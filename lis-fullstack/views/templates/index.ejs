@@ -1,0 +1,37 @@
+<div class="card">
+  <h3>Report Templates</h3>
+
+  <div class="flex-between mb-20">
+    <a href="/templates/new" class="button btn-primary">+ Create New Template</a>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Template Name</th>
+        <th>Test Type</th>
+        <th>Fields</th>
+        <th>Created</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (templates && templates.length) { %>
+        <% templates.forEach(t => { %>
+          <tr>
+            <td><%= t.name %></td>
+            <td><%= t.testType %></td>
+            <td><%= Array.isArray(t.fields) ? t.fields.length + ' fields' : '' %></td>
+            <td><%= t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '' %></td>
+            <td class="action-buttons">
+              <a href="/templates/<%= t.id %>" class="button btn-success btn-small">View</a>
+              <a href="/templates/<%= t.id %>/edit" class="button btn-orange btn-small">Edit</a>
+            </td>
+          </tr>
+        <% }) %>
+      <% } else { %>
+        <tr><td colspan="5">No templates found.</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>

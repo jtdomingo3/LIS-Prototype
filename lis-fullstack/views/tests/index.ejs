@@ -1,0 +1,58 @@
+<div class="card">
+  <h3>Test & Results Management</h3>
+
+  <div class="flex-between mb-20">
+    <div class="flex">
+      <a href="/tests/new" class="button btn-primary">+ Create New Test</a>
+    </div>
+    <div>
+      <input type="text" class="search-box" placeholder="Search tests by patient name or ID..." value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>" onkeydown="if(event.key==='Enter'){window.location.search='?search='+this.value}">
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Test ID</th>
+        <th>Patient</th>
+        <th>Test Type</th>
+        <th>Date</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (tests && tests.length) { %>
+        <% tests.forEach(test => { %>
+          <tr>
+            <td><%= test.testId %></td>
+            <td><%= test.patient ? (test.patient.firstName + ' ' + test.patient.lastName) : 'Unknown' %></td>
+            <td><%= test.testType %></td>
+            <td><%= test.testDate ? new Date(test.testDate).toLocaleDateString() : '' %></td>
+            <td><span class="badge <%= test.status === 'Completed' ? 'badge-success' : (test.status === 'In Progress' ? 'badge-warning' : '') %>"><%= test.status %></span></td>
+            <td class="action-buttons">
+              <a href="/tests/<%= test.id %>" class="button btn-success btn-small">View</a>
+              <% if (test.status === 'Completed') { %>
+                <a href="/reports/preview/<%= test.id %>" class="button btn-orange btn-small">Report</a>
+              <% } %>
+            </td>
+          </tr>
+        <% }) %>
+      <% } else { %>
+        <tr><td colspan="6">No tests found.</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+
+  <% if (typeof totalPages !== 'undefined' && totalPages > 1) { %>
+    <div class="flex-between mt-20">
+      <% if (hasPrevPage) { %>
+        <a href="?page=<%= prevPage %>&search=<%= searchQuery || '' %>" class="button btn-secondary">Previous</a>
+      <% } %>
+      <div>Page <%= currentPage %> of <%= totalPages %></div>
+      <% if (hasNextPage) { %>
+        <a href="?page=<%= nextPage %>&search=<%= searchQuery || '' %>" class="button btn-secondary">Next</a>
+      <% } %>
+    </div>
+  <% } %>
+</div>

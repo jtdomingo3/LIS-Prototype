@@ -1,0 +1,133 @@
+const express = require('express');
+const router = express.Router();
+const User = require('../models/User');
+const { requireGuest } = require('../middleware/auth');
+
+// GET / - Login page
+router.get('/', requireGuest, (req, res) => {
+  // render using the global layout so styles are applied
+  res.render('auth/login', {
+    title: 'LIS - Login'
+  });
+});
+
+// POST /login - Process login
+router.post('/login', requireGuest, async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Validate input
+    if (!email || !password) {
+      req.flash('error_msg', 'Please enter both email and password');
+      return res.redirect('/');
+    }
+
+    // Find user
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      req.flash('error_msg', 'Invalid email or password');
+      return res.redirect('/');
+    }
+
+    // Check password
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      req.flash('error_msg', 'Invalid email or password');
+      return res.redirect('/');
+    }
+
+    // Check if user is active
+    if (user.status !== 'Active') {
+      req.flash('error_msg', 'Your account is inactive. Please contact administrator.');
+      return res.redirect('/');
+    }
+
+    // Update last login
+    user.lastLogin = new Date();
+    await user.save();
+
+    // Create session (use the application's `id` field)
+    req.session.user = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role
+    };
+
+    req.flash('success_msg', `Welcome back, ${user.name}!`);
+    res.redirect('/dashboard');
+
+  } catch (error) {
+    console.error('Login error:', error);
+    req.flash('error_msg', 'An error occurred during login');
+    res.redirect('/');
+  }
+});
+
+// POST /logout - Logout
+router.post('/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Logout error:', err);
+    }
+    res.redirect('/');
+  });
+});
+
+// GET /register - Register page (only for development/testing)
+if (process.env.NODE_ENV === 'development') {
+  router.get('/register', requireGuest, (req, res) => {
+    res.render('auth/register', {
+      title: 'LIS - Register'
+    });
+  });
+
+  router.post('/register', requireGuest, async (req, res) => {
+    try {
+      const { name, email, password, confirmPassword, role } = req.body;
+
+      // Validate input
+      if (!name || !email || !password) {
+        req.flash('error_msg', 'Please fill all required fields');
+        return res.redirect('/register');
+      }
+
+      if (password !== confirmPassword) {
+        req.flash('error_msg', 'Passwords do not match');
+        return res.redirect('/register');
+      }
+
+      if (password.length < 6) {
+        req.flash('error_msg', 'Password must be at least 6 characters long');
+        return res.redirect('/register');
+      }
+
+      // Check if user exists
+      const existingUser = await User.findOne({ email: email.toLowerCase() });
+      if (existingUser) {
+        req.flash('error_msg', 'User with this email already exists');
+        return res.redirect('/register');
+      }
+
+      // Create user
+      const user = new User({
+        name,
+        email: email.toLowerCase(),
+        password,
+        role: role || 'Receptionist'
+      });
+
+      await user.save();
+
+      req.flash('success_msg', 'Registration successful! Please login.');
+      res.redirect('/');
+
+    } catch (error) {
+      console.error('Registration error:', error);
+      req.flash('error_msg', 'An error occurred during registration');
+      res.redirect('/register');
+    }
+  });
+}
+
+module.exports = router;

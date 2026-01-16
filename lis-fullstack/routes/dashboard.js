@@ -1,0 +1,84 @@
+const express = require('express');
+const router = express.Router();
+const Test = require('../models/Test');
+const Patient = require('../models/Patient');
+const { requireAuth } = require('../middleware/auth');
+
+// GET /dashboard - Dashboard page
+router.get('/', requireAuth, async (req, res) => {
+  try {
+    // Get statistics
+    const allPatients = await Patient.find({});
+    const allTests = await Test.find({});
+
+  const totalPatients = allPatients.length;
+  // Pending = tests currently in reception areas (any status that is NOT 'In Progress','Completed','Releasing of Result')
+  const pendingTests = allTests.filter(t => t && t.status && t.status !== 'In Progress' && t.status !== 'Completed' && t.status !== 'Releasing of Result').length;
+  // Completed = tests with final results encoded
+  const completedTests = allTests.filter(t => t && t.status === 'Completed').length;
+  // Active / In Progress = finished reception and waiting for results encoding
+  const activeTests = allTests.filter(t => t && t.status === 'In Progress').length;
+
+  // Compute sales totals from patient paymentHistory (if present)
+  let totalSales = 0;
+  let todaySales = 0;
+  try {
+    const today = new Date();
+    if (Array.isArray(allPatients)) {
+      for (const p of allPatients) {
+        const payments = Array.isArray(p.paymentHistory) ? p.paymentHistory : [];
+        for (const entry of payments) {
+          const amt = parseFloat(entry && entry.amount ? entry.amount : 0) || 0;
+          totalSales += amt;
+          if (entry && entry.timestamp) {
+            const ts = new Date(entry.timestamp);
+            if (ts.getFullYear() === today.getFullYear() && ts.getMonth() === today.getMonth() && ts.getDate() === today.getDate()) {
+              todaySales += amt;
+            }
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Failed computing sales totals', e);
+  }
+
+    // Get recent test results with patient info
+    let recentTests = [];
+    if (Array.isArray(allTests)) {
+      recentTests = allTests
+        .sort((a, b) => new Date(b.createdAt || b.testDate) - new Date(a.createdAt || a.testDate))
+        .slice(0, 10)
+        .map(test => {
+          const patient = Array.isArray(allPatients) ? allPatients.find(p => p.id === test.patient) : null;
+          return {
+            ...test,
+            patient: patient ? { firstName: patient.firstName, lastName: patient.lastName } : null
+          };
+        });
+    }
+
+    res.render('dashboard/index', {
+      title: 'Dashboard',
+      stats: {
+        totalPatients,
+        pendingTests,
+        completedTests,
+        activeTests
+        , totalSales, todaySales
+      },
+      recentTests
+    });
+
+  } catch (error) {
+    console.error('Dashboard error:', error);
+    req.flash('error_msg', 'Error loading dashboard');
+    res.render('dashboard/index', {
+      title: 'Dashboard',
+      stats: { totalPatients: 0, pendingTests: 0, completedTests: 0, activeTests: 0, totalSales: 0, todaySales: 0 },
+      recentTests: []
+    });
+  }
+});
+
+module.exports = router;

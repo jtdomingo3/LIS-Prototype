@@ -1,0 +1,685 @@
+{
+  "users": [
+    {
+      "id": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "name": "Admin User",
+      "email": "admin@lab.com",
+      "password": "$2a$12$I4VdBqwlt/mSExp7aM02je5tVTiec5pE1xhrya1Ul2QD.v4SABV/C",
+      "role": "Admin",
+      "status": "Active",
+      "createdAt": "2026-01-15T01:12:10.333Z",
+      "lastLogin": "2026-01-16T14:50:47.378Z"
+    },
+    {
+      "id": "8ad63d72-ba3b-47f2-9565-5a04c4ab09f8",
+      "name": "Dr. Sarah Chen",
+      "email": "sarah@lab.com",
+      "password": "$2a$12$zaiCleJfd9Ym/E8k/5./nOZaZMgRZqEoZYvSdkGox2K7846K1fm7u",
+      "role": "Doctor",
+      "status": "Active",
+      "createdAt": "2026-01-15T01:12:10.581Z",
+      "lastLogin": null
+    },
+    {
+      "id": "a86fdc77-80e1-458e-9b57-080565a7668b",
+      "name": "Tech Michael Brown",
+      "email": "mike@lab.com",
+      "password": "$2a$12$8b8mUMI4pRDoo4rt9t10uOfp.2PVno7TXe0VaLL54OXA9c4jv318K",
+      "role": "Technician",
+      "status": "Active",
+      "createdAt": "2026-01-15T01:12:10.821Z",
+      "lastLogin": null
+    },
+    {
+      "id": "91159992-a207-4215-bf7e-c361effe40df",
+      "name": "Jane Receptionist",
+      "email": "jane@lab.com",
+      "password": "$2a$12$S3wF.z4I9LtMgKxcCkxCIOgzrbYC0gIurwnSaj0GDZ7c1UFIieQv.",
+      "role": "Receptionist",
+      "status": "Active",
+      "createdAt": "2026-01-15T01:12:11.057Z",
+      "lastLogin": null
+    }
+  ],
+  "patients": [
+    {
+      "id": "29b50756-69cb-4664-b430-379b8b6138f6",
+      "patientId": "P001",
+      "firstName": "John",
+      "lastName": "Doe",
+      "dateOfBirth": "1990-05-15T00:00:00.000Z",
+      "gender": "Male",
+      "phone": "+1 (555) 123-4567",
+      "email": "john.doe@email.com",
+      "address": "123 Main Street, New York, NY 10001",
+      "createdAt": "2026-01-15T01:12:11.293Z",
+      "updatedAt": "2026-01-15T01:12:11.293Z",
+      "createdBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "fullName": "John Doe",
+      "age": 35
+    },
+    {
+      "id": "9f4b2424-3ca2-4e02-b87d-b4e7ff47409b",
+      "patientId": "P002",
+      "firstName": "Maria",
+      "lastName": "Garcia",
+      "dateOfBirth": "1985-08-22T00:00:00.000Z",
+      "gender": "Female",
+      "phone": "+1 (555) 234-5678",
+      "email": "maria.garcia@email.com",
+      "address": "456 Oak Avenue, Los Angeles, CA 90001",
+      "createdAt": "2026-01-15T01:12:11.294Z",
+      "updatedAt": "2026-01-15T01:12:11.294Z",
+      "createdBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "fullName": "Maria Garcia",
+      "age": 40
+    },
+    {
+      "id": "371d75e4-0af9-4a11-a2f5-133746f52fb6",
+      "patientId": "P003",
+      "firstName": "Robert",
+      "lastName": "Johnson",
+      "dateOfBirth": "1992-03-10T00:00:00.000Z",
+      "gender": "Male",
+      "phone": "+1 (555) 345-6789",
+      "email": "robert.j@email.com",
+      "address": "789 Pine Road, Chicago, IL 60601",
+      "createdAt": "2026-01-15T01:12:11.295Z",
+      "updatedAt": "2026-01-15T01:12:11.295Z",
+      "createdBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "fullName": "Robert Johnson",
+      "age": 33
+    },
+    {
+      "id": "086a4c26-0de7-45db-bcb2-d3a5ba619972",
+      "patientId": "P005",
+      "patientCode": "GCL-2026-01-00005",
+      "firstName": "Jeff",
+      "lastName": "Test4",
+      "dateOfBirth": "2026-01-15",
+      "gender": "Male",
+      "phone": "+639158168881",
+      "email": "test@gmail.com",
+      "address": "",
+      "requiredAreas": [
+        "Doctor's Check-up"
+      ],
+      "createdAt": "2026-01-15T08:52:32.078Z",
+      "updatedAt": "2026-01-15T08:52:32.078Z",
+      "createdBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "fullName": "Jeff Test4",
+      "age": 0
+    },
+    {
+      "id": "43cd193e-8749-4db8-bb94-074a5e13ceb3",
+      "patientId": "P006",
+      "patientCode": "GCL-2026-01-00005",
+      "firstName": "Gezyne",
+      "lastName": "Test3",
+      "dateOfBirth": "",
+      "ageManual": "32",
+      "gender": "Male",
+      "phone": "",
+      "email": "jane@lab.com",
+      "address": "bulacan",
+      "requiredAreas": [
+        "Extraction Area",
+        "Specimen Collection Area",
+        "Drug Test",
+        "Ultrasound",
+        "2D Echo",
+        "X-ray",
+        "ECG"
+      ],
+      "createdAt": "2026-01-15T10:38:04.858Z",
+      "updatedAt": "2026-01-15T10:38:04.858Z",
+      "createdBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "fullName": "Gezyne Test3",
+      "age": "32"
+    },
+    {
+      "id": "47775324-22ec-4a4e-b620-27455c2cfcea",
+      "patientId": "P007",
+      "patientCode": "GCL-2026-01-00006",
+      "firstName": "Gerald",
+      "lastName": "Lopez",
+      "dateOfBirth": "1998-11-26",
+      "ageManual": 27,
+      "gender": "Male",
+      "phone": "",
+      "email": "",
+      "address": "Plaridel",
+      "requiredAreas": [
+        "Extraction Area",
+        "Specimen Collection Area",
+        "Ultrasound",
+        "X-ray"
+      ],
+      "createdAt": "2026-01-15T12:39:46.910Z",
+      "updatedAt": "2026-01-16T12:05:13.292Z",
+      "createdBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "paymentHistory": [
+        {
+          "testId": "T007",
+          "amount": 600,
+          "timestamp": "2026-01-16T12:05:13.292Z"
+        }
+      ],
+      "fullName": "Gerald Lopez",
+      "age": 27
+    },
+    {
+      "id": "cdd30f0b-ba48-4e36-ad9e-7c2f09e93210",
+      "patientId": "P008",
+      "patientCode": "GCL-2026-01-00007",
+      "firstName": "Jeff",
+      "lastName": "Test2",
+      "dateOfBirth": "1994-06-11",
+      "ageManual": 31,
+      "gender": "Female",
+      "phone": "+639158168881",
+      "email": "test@gmail.com",
+      "address": "malolos bulacan",
+      "requiredAreas": [
+        "Extraction Area",
+        "Drug Test",
+        "Ultrasound",
+        "X-ray"
+      ],
+      "createdAt": "2026-01-15T12:42:27.888Z",
+      "updatedAt": "2026-01-16T12:22:39.896Z",
+      "createdBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "paymentHistory": [
+        {
+          "testId": "T008",
+          "amount": 50,
+          "timestamp": "2026-01-16T12:22:39.896Z"
+        }
+      ],
+      "fullName": "Jeff Test2",
+      "age": 31
+    },
+    {
+      "id": "ecb4fdc4-3ecd-46f9-95b2-e1314f11af9d",
+      "patientId": "P009",
+      "patientCode": "GCL-2026-01-00008",
+      "firstName": "Jeff",
+      "lastName": "Test4",
+      "dateOfBirth": "1994-06-11",
+      "ageManual": null,
+      "gender": "Male",
+      "phone": "+639158168881",
+      "email": "test@gmail.com",
+      "address": "",
+      "requiredAreas": [
+        "Extraction Area",
+        "Drug Test",
+        "Ultrasound",
+        "2D Echo"
+      ],
+      "createdAt": "2026-01-15T13:06:29.643Z",
+      "updatedAt": "2026-01-15T13:06:29.643Z",
+      "createdBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "fullName": "Jeff Test4",
+      "age": 31
+    },
+    {
+      "id": "993e70e4-873e-458c-8beb-5b26a5ed1d32",
+      "patientId": "P010",
+      "patientCode": "GCL-2026-01-00009",
+      "firstName": "Jeff",
+      "lastName": "Test5",
+      "dateOfBirth": "",
+      "ageManual": "30",
+      "gender": "Male",
+      "phone": "+639158168881",
+      "email": "test@gmail.com",
+      "address": "bulacan",
+      "requiredAreas": [
+        "Extraction Area",
+        "Drug Test",
+        "Ultrasound",
+        "X-ray",
+        "ECG"
+      ],
+      "createdAt": "2026-01-15T13:06:57.277Z",
+      "updatedAt": "2026-01-15T13:06:57.277Z",
+      "createdBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "fullName": "Jeff Test5",
+      "age": "30"
+    },
+    {
+      "id": "196c0a9e-506d-4bf5-a040-791e14b9d052",
+      "patientId": "P011",
+      "patientCode": "GCL-2026-01-00010",
+      "firstName": "Gezyne",
+      "lastName": "Test3",
+      "dateOfBirth": "",
+      "ageManual": "32",
+      "gender": "Female",
+      "phone": "+639158168881",
+      "email": "jane@lab.com",
+      "address": "bulacan",
+      "requiredAreas": [
+        "Extraction Area",
+        "X-ray"
+      ],
+      "createdAt": "2026-01-15T13:35:06.232Z",
+      "updatedAt": "2026-01-15T14:41:54.958Z",
+      "createdBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "fullName": "Gezyne Test3",
+      "age": "32"
+    },
+    {
+      "id": "6a0fb572-399b-48ac-ba99-c980b4e3e716",
+      "patientId": "P012",
+      "patientCode": "GCL-2026-01-00011",
+      "firstName": "Gerald",
+      "lastName": "Lopez2",
+      "dateOfBirth": "",
+      "ageManual": "30",
+      "gender": "Male",
+      "phone": "+639158168881",
+      "email": "test@gmail.com",
+      "address": "Plaridel",
+      "requiredAreas": [
+        "Extraction Area",
+        "Drug Test"
+      ],
+      "createdAt": "2026-01-15T14:00:08.676Z",
+      "updatedAt": "2026-01-15T14:55:35.003Z",
+      "createdBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "paymentHistory": [
+        {
+          "testId": "T012",
+          "amount": 600,
+          "timestamp": "2026-01-15T14:55:35.003Z"
+        }
+      ],
+      "fullName": "Gerald Lopez2",
+      "age": "30"
+    },
+    {
+      "id": "884544f7-54ea-47c9-800b-c478b88afddc",
+      "patientId": "P013",
+      "patientCode": "GCL-2026-01-00001",
+      "firstName": "Gezyne",
+      "lastName": "Test3",
+      "dateOfBirth": "",
+      "ageManual": "32",
+      "gender": "Female",
+      "phone": "+639158168881",
+      "email": "jane@lab.com",
+      "address": "bulacan",
+      "requiredAreas": [
+        "Extraction Area",
+        "Drug Test",
+        "Ultrasound"
+      ],
+      "createdAt": "2026-01-16T12:34:09.494Z",
+      "updatedAt": "2026-01-16T12:35:05.578Z",
+      "createdBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "paymentHistory": [
+        {
+          "testId": "T013",
+          "amount": 500,
+          "timestamp": "2026-01-16T12:35:05.578Z"
+        }
+      ],
+      "fullName": "Gezyne Test3",
+      "age": "32"
+    },
+    {
+      "id": "79bda161-60c4-45d2-9fea-179eb6328621",
+      "patientId": "P014",
+      "patientCode": "GCL-2026-01-00002",
+      "firstName": "Gezyne",
+      "lastName": "Test3",
+      "dateOfBirth": "",
+      "ageManual": "32",
+      "gender": "Female",
+      "phone": "+639158168881",
+      "email": "jane@lab.com",
+      "address": "bulacan",
+      "requiredAreas": [
+        "Extraction Area",
+        "Specimen Collection Area",
+        "Drug Test",
+        "Ultrasound",
+        "X-ray"
+      ],
+      "createdAt": "2026-01-16T12:44:18.387Z",
+      "updatedAt": "2026-01-16T12:45:53.612Z",
+      "createdBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "paymentHistory": [
+        {
+          "testId": "T014",
+          "amount": 578,
+          "timestamp": "2026-01-16T12:45:53.612Z"
+        }
+      ],
+      "fullName": "Gezyne Test3",
+      "age": "32"
+    },
+    {
+      "id": "2f42a7c2-29bf-4377-8aea-ebf1f39c33f9",
+      "patientId": "P015",
+      "patientCode": "GCL-2026-01-00003",
+      "firstName": "Gerald",
+      "lastName": "Lopez2",
+      "dateOfBirth": "",
+      "ageManual": "30",
+      "gender": "Male",
+      "phone": "+639158168881",
+      "email": "test@gmail.com",
+      "address": "Plaridel",
+      "requiredAreas": [
+        "Extraction Area",
+        "Specimen Collection Area",
+        "Drug Test",
+        "Ultrasound"
+      ],
+      "createdAt": "2026-01-16T13:39:22.029Z",
+      "updatedAt": "2026-01-16T13:39:42.076Z",
+      "createdBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "paymentHistory": [
+        {
+          "testId": "T015",
+          "amount": 600,
+          "timestamp": "2026-01-16T13:39:42.076Z"
+        }
+      ],
+      "fullName": "Gerald Lopez2",
+      "age": "30"
+    },
+    {
+      "id": "d83d3f0b-502c-41e1-910b-49c2e980fb85",
+      "patientId": "P016",
+      "patientCode": "GCL-2026-01-00004",
+      "firstName": "Gezyne",
+      "lastName": "Test3",
+      "dateOfBirth": "",
+      "ageManual": "32",
+      "paymentHistory": [
+        {
+          "testId": "T016",
+          "amount": 700,
+          "timestamp": "2026-01-16T13:44:08.329Z"
+        }
+      ],
+      "gender": "Female",
+      "phone": "+639158168881",
+      "email": "jane@lab.com",
+      "address": "bulacan",
+      "requiredAreas": [
+        "Extraction Area",
+        "Specimen Collection Area",
+        "Drug Test",
+        "2D Echo"
+      ],
+      "createdAt": "2026-01-16T13:43:41.871Z",
+      "updatedAt": "2026-01-16T13:44:08.329Z",
+      "createdBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "fullName": "Gezyne Test3",
+      "age": "32"
+    }
+  ],
+  "tests": [
+    {
+      "id": "8089e00a-5f54-4aa3-be96-e731dbd28c9f",
+      "testId": "T003",
+      "patient": "371d75e4-0af9-4a11-a2f5-133746f52fb6",
+      "testType": "Ultrasound",
+      "testDate": "2026-01-13T00:00:00.000Z",
+      "status": "In Progress",
+      "results": "Abdominal ultrasound in progress. Liver normal size, no focal lesions detected.",
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "createdAt": "2026-01-15T01:12:11.297Z",
+      "updatedAt": "2026-01-15T01:12:11.297Z"
+    },
+    {
+      "id": "dd6adeff-8749-40e3-9e77-97bde6f2aa7f",
+      "testId": "T005",
+      "patient": "086a4c26-0de7-45db-bcb2-d3a5ba619972",
+      "testType": "Doctor's Check-up",
+      "testDate": "2026-01-15T08:52:32.081Z",
+      "status": "Completed",
+      "specimenNumbers": {},
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "completedAt": "2026-01-15T08:54:29.324Z",
+      "createdAt": "2026-01-15T08:52:32.081Z",
+      "updatedAt": "2026-01-15T08:54:29.324Z"
+    },
+    {
+      "id": "b7249715-d54c-493e-801e-9ef1f254c537",
+      "testId": "T007",
+      "patient": "47775324-22ec-4a4e-b620-27455c2cfcea",
+      "testType": "Registration",
+      "testDate": "2026-01-15T12:39:46.913Z",
+      "status": "In Progress",
+      "specimenNumbers": {},
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "completedAt": "2026-01-15T12:40:08.016Z",
+      "createdAt": "2026-01-15T12:39:46.913Z",
+      "updatedAt": "2026-01-16T12:28:42.831Z"
+    },
+    {
+      "id": "d2045dd6-7772-4a24-824b-f0480df756ee",
+      "testId": "T008",
+      "patient": "cdd30f0b-ba48-4e36-ad9e-7c2f09e93210",
+      "testType": "Registration",
+      "testDate": "2026-01-15T12:42:27.890Z",
+      "status": "In Progress",
+      "specimenNumbers": {},
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "completedAt": "2026-01-15T12:42:52.749Z",
+      "createdAt": "2026-01-15T12:42:27.890Z",
+      "updatedAt": "2026-01-16T12:46:28.459Z"
+    },
+    {
+      "id": "8cfe5fe5-b8f4-45aa-ba94-0a69471a93f6",
+      "testId": "T009",
+      "patient": "ecb4fdc4-3ecd-46f9-95b2-e1314f11af9d",
+      "testType": "Registration",
+      "testDate": "2026-01-15T13:06:29.646Z",
+      "status": "In Progress",
+      "specimenNumbers": {},
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "completedAt": "2026-01-15T13:32:57.188Z",
+      "createdAt": "2026-01-15T13:06:29.646Z",
+      "updatedAt": "2026-01-16T12:28:34.514Z"
+    },
+    {
+      "id": "ce0bd36d-07d9-4d7a-a378-ceb697ead7b0",
+      "testId": "T010",
+      "patient": "993e70e4-873e-458c-8beb-5b26a5ed1d32",
+      "testType": "Registration",
+      "testDate": "2026-01-15T13:06:57.280Z",
+      "status": "ECG",
+      "specimenNumbers": {},
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "completedAt": "2026-01-15T13:33:06.637Z",
+      "createdAt": "2026-01-15T13:06:57.280Z",
+      "updatedAt": "2026-01-16T13:35:56.163Z"
+    },
+    {
+      "id": "019544e9-bed5-44a2-953f-72dfc87ffc36",
+      "testId": "T011",
+      "patient": "196c0a9e-506d-4bf5-a040-791e14b9d052",
+      "testType": "Registration",
+      "testDate": "2026-01-15T13:35:06.278Z",
+      "status": "In Progress",
+      "specimenNumbers": {},
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "completedAt": "2026-01-15T13:35:14.702Z",
+      "createdAt": "2026-01-15T13:35:06.278Z",
+      "updatedAt": "2026-01-15T14:17:40.794Z"
+    },
+    {
+      "id": "14906067-3838-4ffd-83fa-a80882e99fc5",
+      "testId": "T012",
+      "patient": "6a0fb572-399b-48ac-ba99-c980b4e3e716",
+      "testType": "Registration",
+      "testDate": "2026-01-15T14:00:08.685Z",
+      "status": "In Progress",
+      "specimenNumbers": {},
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "completedAt": "2026-01-15T14:55:35.006Z",
+      "createdAt": "2026-01-15T14:00:08.685Z",
+      "updatedAt": "2026-01-16T12:09:50.554Z"
+    },
+    {
+      "id": "c1cad1ea-7551-435c-9dda-facf9cdd6271",
+      "testId": "T013",
+      "patient": "884544f7-54ea-47c9-800b-c478b88afddc",
+      "testType": "Registration",
+      "testDate": "2026-01-16T12:34:09.496Z",
+      "status": "In Progress",
+      "specimenNumbers": {},
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "completedAt": "2026-01-16T12:35:05.580Z",
+      "createdAt": "2026-01-16T12:34:09.496Z",
+      "updatedAt": "2026-01-16T12:45:50.257Z"
+    },
+    {
+      "id": "3376bc43-f007-476c-83af-21a1e0466ec1",
+      "testId": "T014",
+      "patient": "79bda161-60c4-45d2-9fea-179eb6328621",
+      "testType": "Registration",
+      "testDate": "2026-01-16T12:44:18.390Z",
+      "status": "Ultrasound",
+      "specimenNumbers": {},
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "completedAt": "2026-01-16T12:45:53.616Z",
+      "createdAt": "2026-01-16T12:44:18.391Z",
+      "updatedAt": "2026-01-16T13:37:16.411Z"
+    },
+    {
+      "id": "c5729efd-5036-419c-8b8e-3d11b8b7cd16",
+      "testId": "T015",
+      "patient": "2f42a7c2-29bf-4377-8aea-ebf1f39c33f9",
+      "testType": "Registration",
+      "testDate": "2026-01-16T13:39:22.031Z",
+      "status": "Extraction Area",
+      "specimenNumbers": {},
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "completedAt": "2026-01-16T13:39:42.077Z",
+      "createdAt": "2026-01-16T13:39:22.031Z",
+      "updatedAt": "2026-01-16T13:39:42.079Z"
+    },
+    {
+      "id": "d38061fb-ce44-4255-9ff7-b10acae19e8d",
+      "testId": "T016",
+      "patient": "d83d3f0b-502c-41e1-910b-49c2e980fb85",
+      "testType": "Registration",
+      "testDate": "2026-01-16T13:43:41.874Z",
+      "status": "Extraction Area",
+      "specimenNumbers": {},
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "completedAt": "2026-01-16T13:44:08.330Z",
+      "createdAt": "2026-01-16T13:43:41.874Z",
+      "updatedAt": "2026-01-16T13:44:08.332Z"
+    },
+    {
+      "id": "d94f2cf9-4b03-4be4-9643-b95c27a7b9f8",
+      "testId": "T017",
+      "patient": "29b50756-69cb-4664-b430-379b8b6138f6",
+      "testType": "Ultrasound",
+      "testDate": "2026-02-01",
+      "status": "Pending",
+      "specimenNumbers": {},
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "createdAt": "2026-01-16T13:51:14.375Z",
+      "updatedAt": "2026-01-16T13:51:14.375Z"
+    }
+  ],
+  "templates": [
+    {
+      "id": "2e0ea999-ac6f-448a-b34f-dcdb3ffd42b2",
+      "name": "Blood Test Standard",
+      "testType": "Blood Test",
+      "fields": [
+        {
+          "name": "Hemoglobin (g/dL)",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "Red Blood Cells (M/uL)",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "White Blood Cells (K/uL)",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "Platelets (K/uL)",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "Glucose (mg/dL)",
+          "type": "number",
+          "required": true
+        }
+      ],
+      "footerNotes": "Reference ranges for adult population. Patient advised to maintain healthy lifestyle.",
+      "isActive": true,
+      "createdBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "createdAt": "2026-01-15T01:12:11.298Z",
+      "updatedAt": "2026-01-15T01:12:11.298Z"
+    },
+    {
+      "id": "1f15fec3-9496-4f3d-b799-ad941f479572",
+      "name": "Ultrasound Report",
+      "testType": "Ultrasound",
+      "fields": [
+        {
+          "name": "Organ Examined",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "Findings",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "name": "Measurements",
+          "type": "textarea",
+          "required": false
+        },
+        {
+          "name": "Impression",
+          "type": "textarea",
+          "required": true
+        },
+        {
+          "name": "Recommendations",
+          "type": "textarea",
+          "required": false
+        }
+      ],
+      "footerNotes": "Follow-up as recommended. Schedule appointment if needed.",
+      "isActive": true,
+      "createdBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "createdAt": "2026-01-15T01:12:11.298Z",
+      "updatedAt": "2026-01-15T01:12:11.298Z"
+    }
+  ]
+}

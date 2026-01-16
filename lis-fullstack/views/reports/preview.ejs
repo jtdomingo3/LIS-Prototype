@@ -1,0 +1,22 @@
+<div class="card">
+  <h3>Report Preview</h3>
+
+  <div class="card">
+    <h4>Patient Information</h4>
+    <% if (test.patient) { %>
+      <p><strong>Name:</strong> <%= test.patient.firstName %> <%= test.patient.lastName %></p>
+      <p><strong>Patient ID:</strong> <%= test.patient.patientId %></p>
+    <% } %>
+    <h4>Test Information</h4>
+    <p><strong>Test ID:</strong> <%= test.testId %></p>
+    <p><strong>Test Type:</strong> <%= test.testType %></p>
+    <p><strong>Date:</strong> <%= test.testDate ? new Date(test.testDate).toLocaleDateString() : '' %></p>
+    <h4>Results</h4>
+    <pre style="white-space:pre-wrap;"><%= test.results || 'No results recorded.' %></pre>
+  </div>
+
+  <div class="action-buttons mt-20">
+    <a href="/reports/pdf/<%= test.id %>" class="button btn-primary">Download PDF</a>
+    <a href="/reports/print/<%= test.id %>" target="_blank" class="button btn-orange">Print</a>
+  </div>
+</div>

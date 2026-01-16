@@ -1,0 +1,24 @@
+<div class="card">
+  <h3>Generate & View Reports</h3>
+
+  <div class="form-group">
+    <label>Select Test Result to Generate Report:</label>
+    <select class="search-box" onchange="if(this.value) window.location.href='/reports/preview/'+this.value">
+      <option value="">-- Select a Test Result --</option>
+      <% if (tests && tests.length) { %>
+        <% tests.forEach(t => { %>
+          <option value="<%= t.id %>"><%= t.testId %> - <%= t.patient ? (t.patient.firstName + ' ' + t.patient.lastName) : 'Unknown' %> (<%= t.testDate ? new Date(t.testDate).toLocaleDateString() : '' %>)</option>
+        <% }) %>
+      <% } %>
+    </select>
+  </div>
+
+  <div class="action-buttons">
+    <button class="button btn-primary" onclick="(function(){var sel=document.querySelector('select'); if(sel && sel.value) window.location.href='/reports/pdf/'+sel.value;})();">Download PDF</button>
+    <button class="button btn-orange" onclick="(function(){var sel=document.querySelector('select'); if(sel && sel.value) window.open('/reports/print/'+sel.value, '_blank');})();">Print Report</button>
+  </div>
+
+  <div class="card mt-20">
+    <p style="color:var(--text-gray);">Select a test result to preview report</p>
+  </div>
+</div>

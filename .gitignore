@@ -1,0 +1,10 @@
+# Ignore node_modules in all locations
+node_modules/
+**/node_modules/
+
+# Ignore the sample results folder at repo root
+/sample results/
+
+# Common extras
+npm-debug.log*
+.env

@@ -1,0 +1,65 @@
+<div class="stats-container">
+    <div class="stat-card">
+        <h4>👥 Total Patients</h4>
+        <p class="stat-number"><%= stats.totalPatients %></p>
+    </div>
+    <div class="stat-card orange">
+        <h4>⏳ Pending Tests</h4>
+        <p class="stat-number"><%= stats.pendingTests %></p>
+    </div>
+    <div class="stat-card">
+        <h4>✅ Completed Tests</h4>
+        <p class="stat-number"><%= stats.completedTests %></p>
+    </div>
+    <div class="stat-card orange">
+        <h4>🔄 In Progress</h4>
+        <p class="stat-number"><%= stats.activeTests %></p>
+    </div>
+</div>
+
+<div class="stats-container" style="margin-top:12px;">
+    <div class="stat-card">
+        <h4>💰 Total Sales</h4>
+        <p class="stat-number">₱<%= (typeof stats.totalSales !== 'undefined' ? Number(stats.totalSales).toFixed(2) : '0.00') %></p>
+    </div>
+    <div class="stat-card orange">
+        <h4>📅 Sales Today</h4>
+        <p class="stat-number">₱<%= (typeof stats.todaySales !== 'undefined' ? Number(stats.todaySales).toFixed(2) : '0.00') %></p>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Recent Test Results</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Patient Name</th>
+                <th>Test Type</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% if (recentTests && recentTests.length > 0) { %>
+                <% recentTests.forEach(test => { %>
+                <tr>
+                    <td><strong><%= test.patient ? test.patient.firstName + ' ' + test.patient.lastName : 'Unknown' %></strong></td>
+                    <td><%= test.testType %></td>
+                    <td><%= new Date(test.testDate).toLocaleDateString() %></td>
+                    <td>
+                        <span class="badge <%= test.status === 'Completed' ? 'badge-success' : test.status === 'In Progress' ? 'badge-warning' : 'badge-info' %>">
+                            <%= test.status %>
+                        </span>
+                    </td>
+                    <td>
+                        <a href="/tests/<%= test.id %>" class="button btn-small btn-primary">View</a>
+                    </td>
+                </tr>
+                <% }); %>
+            <% } else { %>
+                <tr><td colspan="5" class="text-center">No tests yet</td></tr>
+            <% } %>
+        </tbody>
+    </table>
+</div>

@@ -1,0 +1,17 @@
+<div class="card">
+  <h3>User Details</h3>
+
+  <p><strong>Name:</strong> <%= user.name %></p>
+  <p><strong>Email:</strong> <%= user.email %></p>
+  <p><strong>Role:</strong> <%= user.role %></p>
+  <p><strong>Status:</strong> <%= user.status %></p>
+  <p><strong>Created At:</strong> <%= new Date(user.createdAt).toLocaleString() %></p>
+
+  <div class="action-buttons">
+    <a href="/users/<%= user.id %>/edit" class="button btn-primary">Edit</a>
+    <form action="/users/<%= user.id %>?_method=DELETE" method="POST" style="display:inline-block;">
+      <button class="button btn-danger" onclick="return confirm('Are you sure you want to delete this user?');">Delete</button>
+    </form>
+    <a href="/users" class="button btn-secondary">Back to Users</a>
+  </div>
+</div>

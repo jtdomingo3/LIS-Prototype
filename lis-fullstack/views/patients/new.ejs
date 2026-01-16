@@ -1,0 +1,102 @@
+<div class="card">
+    <h3>Add New Patient</h3>
+    <form action="/patients" method="POST">
+        <div class="form-group">
+            <label>First Name *</label>
+            <input type="text" name="firstName" value="<%= patient.firstName || '' %>" placeholder="Enter first name" required>
+        </div>
+        <div class="form-group">
+            <label>Last Name *</label>
+            <input type="text" name="lastName" value="<%= patient.lastName || '' %>" placeholder="Enter last name" required>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Date of Birth</label>
+                <input id="dobInput" type="date" name="dateOfBirth" value="<%= patient.dateOfBirth ? new Date(patient.dateOfBirth).toISOString().split('T')[0] : '' %>">
+            </div>
+            <div class="form-group">
+                <label>Age</label>
+                <input id="ageInput" type="number" name="ageManual" value="<%= patient.ageManual || '' %>" placeholder="Enter age if DOB unknown">
+                <small class="muted">Age is auto-calculated when DOB is set. Clear DOB to enter age manually.</small>
+            </div>
+            <div class="form-group">
+                <label>Gender *</label>
+                <select name="gender" required>
+                    <option value="">Select Gender</option>
+                    <option value="Male" <%= patient.gender === 'Male' ? 'selected' : '' %>>Male</option>
+                    <option value="Female" <%= patient.gender === 'Female' ? 'selected' : '' %>>Female</option>
+                    <option value="Other" <%= patient.gender === 'Other' ? 'selected' : '' %>>Other</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Phone Number</label>
+                <input type="text" name="phone" value="<%= patient.phone || '' %>" placeholder="+1 (555) 000-0000">
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" name="email" value="<%= patient.email || '' %>" placeholder="patient@example.com">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Address</label>
+            <textarea name="address" placeholder="Street address, city, state, zip"><%= patient.address || '' %></textarea>
+        </div>
+
+        <div class="card" style="margin-top:12px;">
+          <h4>Route patient to reception areas</h4>
+          <p>Select which areas this patient needs to go to (after Payment Area). Payment is automatic.</p>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            <% const AREA_OPTIONS = ['Extraction Area','Specimen Collection Area','Drug Test','Ultrasound','2D Echo','X-ray','ECG',"Doctor's Check-up"]; %>
+                            <% AREA_OPTIONS.forEach(a => { %>
+              <label style="display:inline-flex; align-items:center; gap:6px;">
+                <input type="checkbox" name="requiredAreas" value="<%= a %>" <%= (patient.requiredAreas && patient.requiredAreas.includes(a)) ? 'checked' : '' %> >
+                <%= a %>
+              </label>
+            <% }) %>
+          </div>
+        </div>
+
+        <div class="form-row">
+            <a href="/patients" class="button btn-secondary">Back to Patients</a>
+            <button type="submit" class="button btn-primary">Save Patient</button>
+        </div>
+    </form>
+</div>
+<script>
+    (function(){
+        const dob = document.getElementById('dobInput');
+        const age = document.getElementById('ageInput');
+
+        function computeAgeFromDob(d) {
+            if (!d) return '';
+            const b = new Date(d);
+            if (isNaN(b.getTime())) return '';
+            const today = new Date();
+            let a = today.getFullYear() - b.getFullYear();
+            const m = today.getMonth() - b.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < b.getDate())) a--;
+            return a;
+        }
+
+        function onDobChange() {
+            const val = dob.value;
+            if (val) {
+                const calc = computeAgeFromDob(val);
+                age.value = calc;
+                age.setAttribute('readonly', 'readonly');
+            } else {
+                // allow manual age entry when DOB is cleared
+                age.removeAttribute('readonly');
+                // keep existing manual value if present
+            }
+        }
+
+        // initialize state
+        if (dob && age) {
+            onDobChange();
+            dob.addEventListener('change', onDobChange);
+        }
+    })();
+</script>

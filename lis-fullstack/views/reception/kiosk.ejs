@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🏥 Patient Queue Display - LIS</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      /* Brand Colors */
+      --brand-black: #1a1a1a;
+      --brand-black-dark: #0f0f0f;
+      --brand-black-light: #2d2d2d;
+      --brand-white: #ffffff;
+      --brand-white-off: #f5f5f5;
+      --brand-gray-light: #f8f9fa;
+      --brand-green: #10b981;
+      --brand-green-dark: #059669;
+      --brand-green-light: #34d399;
+      --brand-orange: #f97316;
+      --brand-orange-dark: #ea580c;
+      --brand-orange-light: #fb923c;
+  --brand-navy: #0b3d91;
+      /* Utility */
+      --text-dark: #1a1a1a;
+      --text-muted: #6b7280;
+      --border-light: #e5e7eb;
+      --border-subtle: rgba(0, 0, 0, 0.08);
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--brand-gray-light);
+      min-height: 100vh;
+      overflow-x: hidden;
+      color: var(--text-dark);
+    }
+
+    .kiosk-container {
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    /* Header */
+    .kiosk-header {
+      text-align: center;
+      margin-bottom: 24px;
+      padding: 20px;
+      background: var(--brand-white);
+      border-radius: 16px;
+      border: 1px solid var(--border-light);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    }
+
+    .kiosk-title {
+      font-size: 2.8rem;
+      font-weight: 700;
+      color: var(--brand-green-dark);
+      margin: 0 0 8px 0;
+      font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      letter-spacing: 0.2px;
+    }
+    /* Title row contains logo + stacked title text */
+    .kiosk-title-row { display: flex; align-items: center; justify-content: center; gap: 18px; }
+    .kiosk-title-stack { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .kiosk-logo { width: 120px; height: auto; border-radius: 8px; box-shadow: 0 6px 18px rgba(5,150,105,0.08); object-fit: cover; }
+  .kiosk-title span { color: var(--brand-green); }
+
+    .kiosk-subtitle {
+      font-size: 1.25rem;
+      color: var(--brand-black);
+      margin: 8px 0 0 0;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+    }
+
+    .kiosk-time {
+      font-size: 2rem;
+      color: var(--brand-orange);
+      font-weight: 700;
+      margin-top: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+    .kiosk-date {
+      font-size: 1rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+      font-weight: 600;
+    }
+
+    /* Status Bar */
+    .status-bar {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-muted);
+      font-size: 1rem;
+      background: var(--brand-white);
+      padding: 10px 20px;
+      border-radius: 50px;
+      border: 1px solid var(--border-light);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .status-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    .status-dot.connected {
+      background: var(--brand-green);
+      box-shadow: 0 0 12px var(--brand-green);
+    }
+
+    .status-dot.disconnected {
+      background: #ef4444;
+      box-shadow: 0 0 12px #ef4444;
+      animation: none;
+    }
+
+    .status-dot.connecting {
+      background: var(--brand-orange);
+      box-shadow: 0 0 12px var(--brand-orange);
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.7; transform: scale(1.1); }
+    }
+
+    /* Areas Grid */
+    .areas-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 20px;
+      max-width: 1800px;
+      margin: 0 auto;
+    }
+
+    @media (max-width: 1400px) {
+      .areas-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+    @media (max-width: 1100px) {
+      .areas-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 800px) {
+      .areas-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 500px) {
+      .areas-grid { grid-template-columns: 1fr; }
+    }
+
+    /* Landscape: force a 5x2 grid and scale elements down so the whole dashboard fits on one screen */
+    @media (orientation: landscape) {
+      /* Ensure no page scroll in landscape by using full-height flex layout */
+      html, body { height: 100%; overflow: hidden; }
+      .kiosk-container { display: flex; flex-direction: column; height: 100%; padding: 12px; padding-bottom: 70px; box-sizing: border-box; }
+      .kiosk-header { padding: 12px; margin-bottom: 12px; }
+  .kiosk-title { font-size: 2.4rem; }
+  .kiosk-title-stack { display: flex; flex-direction: column; gap: 4px; align-items: center; text-align: center; }
+  .kiosk-title { margin: 0; }
+  /* Slightly larger subtitle but tightened spacing under the main title */
+  .kiosk-subtitle { font-size: 1.15rem; margin: 0; color: var(--text-muted); font-weight: 600; }
+      .kiosk-time { font-size: 1.4rem; margin-top: 8px; }
+      .kiosk-date { font-size: 0.95rem; }
+
+      /* 5 columns, 2 rows layout to show up to 10 tiles on one page */
+      .areas-grid {
+        grid-template-columns: repeat(5, 1fr) !important;
+        grid-template-rows: repeat(2, 1fr);
+        grid-auto-rows: 1fr;
+        gap: 12px;
+        max-width: 100%;
+        /* Let the grid take remaining space in the flex column layout (no page scroll) */
+        flex: 1 1 auto;
+        height: auto;
+        margin: 0 auto;
+        overflow: hidden;
+        align-content: stretch;
+      }
+
+      /* Make cards flexible and center content so sizes adapt better on TVs */
+      .area-card { padding: 12px; display: flex; flex-direction: column; justify-content: space-between; }
+      .area-content { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 8px 0; }
+      .area-header { margin-bottom: 8px; display: flex; gap: 8px; align-items: center; }
+
+      /* Area name: clamp so it won't overflow; use ellipsis for very long names */
+      .area-name {
+        font-size: clamp(0.85rem, 1.4vw, 1.05rem);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+      }
+
+      /* Count and labels reduced */
+      .area-count { font-size: clamp(0.7rem, 1.2vw, 0.95rem); padding: 3px 8px; min-width: 30px; }
+      .now-serving-label { font-size: clamp(0.65rem, 1.1vw, 0.9rem); }
+
+      /* Responsive patient-number sizing tuned for TV: conservative max so it fits */
+      .patient-number { font-size: clamp(1rem, 4vw, 2.2rem); line-height: 1; }
+      .patient-number.empty { font-size: clamp(0.9rem, 2.8vw, 1.4rem); }
+
+      .next-patient { font-size: clamp(0.7rem, 1.1vw, 0.9rem); }
+
+      /* Smaller footer so more room for tiles */
+      .kiosk-footer { padding: 8px 12px; }
+      .footer-controls .sound-btn, .footer-controls .control-btn { padding: 8px 12px; }
+    }
+
+    /* Area Card */
+    .area-card {
+      background: var(--brand-white);
+      border-radius: 16px;
+      padding: 20px;
+      border: 2px solid var(--border-light);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+    }
+
+    .area-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: var(--border-light);
+      border-radius: 16px 16px 0 0;
+    }
+
+    .area-card.has-patients::before {
+      background: linear-gradient(90deg, var(--brand-green), var(--brand-green-light));
+    }
+
+    .area-card.has-patients {
+      border-color: var(--brand-green);
+      box-shadow: 0 4px 20px rgba(16, 185, 129, 0.15);
+    }
+
+    .area-card.highlight {
+      animation: highlightPulse 1s ease;
+    }
+
+    @keyframes highlightPulse {
+      0% { transform: scale(1); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04); }
+      50% { transform: scale(1.02); box-shadow: 0 8px 40px rgba(249, 115, 22, 0.3); border-color: var(--brand-orange); }
+      100% { transform: scale(1); box-shadow: 0 4px 20px rgba(16, 185, 129, 0.15); }
+    }
+
+    .area-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+
+    .area-name {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--brand-black);
+      margin: 0;
+      line-height: 1.3;
+    }
+
+    .area-count {
+      background: var(--brand-gray-light);
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 20px;
+      min-width: 36px;
+      text-align: center;
+      border: 1px solid var(--border-light);
+    }
+
+    .area-count.active {
+      background: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-green-dark) 100%);
+      color: var(--brand-white);
+      border-color: var(--brand-green);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    .area-content {
+      text-align: center;
+      padding: 12px 0;
+    }
+
+    .now-serving-label {
+      font-size: 0.85rem;
+      color: var(--brand-orange);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .patient-number {
+      /* Increased default size for better visibility */
+      font-size: 5rem;
+      font-weight: 800;
+      color: var(--text-muted);
+      line-height: 1;
+      margin-bottom: 8px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* When an area has patients, show the number in black (not green) per request */
+    .area-card.has-patients .patient-number {
+      color: var(--brand-black);
+      /* remove green glow to keep the look clean and high-contrast */
+      text-shadow: none;
+    }
+
+    .patient-number.empty {
+      color: var(--border-light);
+      font-size: 2rem;
+    }
+
+    .next-patient {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border-light);
+    }
+
+    .next-patient strong {
+      color: var(--brand-orange);
+    }
+
+    /* Footer */
+    .kiosk-footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--brand-white);
+      backdrop-filter: blur(10px);
+      padding: 16px 24px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 24px;
+      border-top: 3px solid var(--brand-green);
+      box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05);
+      transition: transform 0.3s ease, opacity 0.3s ease;
+    }
+
+    .footer-controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 4px;
+      max-width: 100%;
+    }
+
+    .footer-controls > * {
+      flex: 0 0 auto;
+    }
+
+    .server-tts-label {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      color:var(--text-muted);
+      font-size:0.95rem;
+      border-radius:8px;
+      padding:6px 8px;
+      border:1px solid transparent;
+      background:transparent;
+    }
+
+    .voice-select {
+      margin-left:8px;
+      padding:8px;
+      border-radius:8px;
+      border:1px solid var(--border-light);
+      background:var(--brand-white);
+      min-width:140px;
+    }
+
+    .sound-btn {
+      background: var(--brand-gray-light);
+      color: var(--text-muted);
+      border: 2px solid var(--border-light);
+      padding: 12px 24px;
+      border-radius: 50px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .sound-btn:hover {
+      background: var(--brand-white);
+      border-color: var(--brand-orange);
+      color: var(--brand-black);
+      transform: translateY(-2px);
+    }
+
+    .sound-btn.enabled {
+      background: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-green-dark) 100%);
+      color: var(--brand-white);
+      border-color: var(--brand-green);
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+    }
+
+    .footer-info {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .footer-info strong {
+      color: var(--brand-orange);
+    }
+
+    /* Add padding at bottom for fixed footer */
+    .kiosk-container {
+      padding-bottom: 100px;
+    }
+    /* When footer is hidden reduce bottom padding so grid can use more space */
+    body.footer-hidden .kiosk-container {
+      padding-bottom: 24px;
+    }
+
+    /* Hidden footer state */
+    .kiosk-footer.hidden {
+      transform: translateY(110%);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .control-btn {
+      background: transparent;
+      color: var(--text-muted);
+      border: 2px solid var(--border-light);
+      padding: 10px 18px;
+      border-radius: 50px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+
+    .control-btn:hover {
+      background: var(--brand-white-off);
+      color: var(--brand-black);
+    }
+    /* Floating handle shown when footer is hidden so user can restore it */
+    .footer-handle {
+      position: fixed;
+      bottom: 12px;
+      right: 12px;
+      z-index: 1200;
+      display: none;
+      padding: 10px 14px;
+      border-radius: 999px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+      background: var(--brand-white);
+      border: 2px solid var(--border-light);
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    body.footer-hidden .footer-handle {
+      display: block;
+    }
+
+    /* Additional compacting when JS detects a TV and adds .is-tv to body */
+    body.is-tv {
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    /* Apply only in landscape where we already show 5x2 */
+    @media (orientation: landscape) {
+      body.is-tv .kiosk-container { padding: 8px; padding-bottom: 56px; }
+      body.is-tv .kiosk-header { padding: 8px; margin-bottom: 8px; }
+  body.is-tv .kiosk-title { font-size: 2rem; }
+      body.is-tv .kiosk-subtitle { font-size: 0.95rem; }
+      body.is-tv .status-bar { gap: 12px; margin-bottom: 12px; }
+
+      body.is-tv .areas-grid { gap: 8px; }
+      body.is-tv .area-card { padding: 8px; border-radius: 12px; }
+      body.is-tv .area-header { margin-bottom: 6px; }
+      body.is-tv .area-name { font-size: clamp(0.75rem, 1.2vw, 0.95rem); }
+      body.is-tv .area-count { padding: 2px 6px; min-width: 28px; }
+      body.is-tv .area-content { padding: 6px 0; }
+      body.is-tv .now-serving-label { margin-bottom: 6px; }
+      body.is-tv .patient-number { margin-bottom: 4px; }
+      body.is-tv .next-patient { font-size: clamp(0.65rem, 1vw, 0.85rem); }
+
+      /* Footer compact */
+      body.is-tv .kiosk-footer { padding: 6px 10px; }
+      body.is-tv .footer-controls .sound-btn, body.is-tv .footer-controls .control-btn { padding: 6px 10px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="kiosk-container" id="kioskContainer">
+    <div class="kiosk-header">
+      <div class="kiosk-title-row">
+        <img src="/assets/gezyne-logo.png" alt="Gezyne logo" class="kiosk-logo">
+        <div class="kiosk-title-stack">
+          <h1 class="kiosk-title">Gezyne Clinical Laboratory</h1>
+          <h2 class="kiosk-subtitle">Patient Queue Display</h2>
+          <div class="kiosk-time" id="currentTime">--:--:--</div>
+          <div class="kiosk-date" id="currentDate">---- -- ----</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="status-bar">
+      <div class="status-indicator">
+        <span class="status-dot connecting" id="statusDot"></span>
+        <span id="connectionStatus">Connecting...</span>
+      </div>
+      <div class="status-indicator">
+        <i class="fas fa-sync-alt"></i>
+        <span id="lastUpdate">Waiting for data...</span>
+      </div>
+    </div>
+
+    <div class="areas-grid" id="areasGrid">
+      <% areas.forEach((area, index) => { %>
+        <% const safeId = area.replace(/[^a-z0-9]/gi, '_'); %>
+        <% const patients = assignments[area] || []; %>
+        <% const hasPatients = patients.length > 0; %>
+        <div class="area-card <%= hasPatients ? 'has-patients' : '' %>" id="card-<%= safeId %>" data-area="<%= area %>">
+          <div class="area-header">
+            <h3 class="area-name"><%= area %></h3>
+            <span class="area-count <%= hasPatients ? 'active' : '' %>" id="count-<%= safeId %>"><%= patients.length %></span>
+          </div>
+          <div class="area-content">
+            <div class="now-serving-label">Now Serving</div>
+            <% if (hasPatients) { %>
+            <div class="patient-number" id="patient-<%= safeId %>">
+              <%= patients[0].patientCode ? patients[0].patientCode.split('-').pop() : patients[0].testId %>
+            </div>
+            <% } else { %>
+            <div class="patient-number empty" id="patient-<%= safeId %>">—</div>
+            <% } %>
+            <% if (patients.length > 1) { %>
+            <div class="next-patient" id="next-<%= safeId %>">
+              Next: <strong><%= patients[1].patientCode ? patients[1].patientCode.split('-').pop() : patients[1].testId %></strong>
+            </div>
+            <% } else { %>
+            <div class="next-patient" id="next-<%= safeId %>" style="display:none;"></div>
+            <% } %>
+          </div>
+        </div>
+      <% }); %>
+    </div>
+  </div>
+
+  <div class="kiosk-footer">
+    <div class="footer-controls">
+      <button class="sound-btn" id="soundToggle" onclick="toggleSound()">
+        🔇 Click to Enable Sound
+      </button>
+      <button class="sound-btn" id="speechToggle" onclick="toggleSpeech()">🗣️ Enable Speech</button>
+      <!-- Server TTS is now always enabled; UI for selecting TTS removed -->
+      <button class="control-btn" id="footerToggle" onclick="toggleFooter()">⤢ Hide Panel</button>
+      <button class="control-btn" id="fullscreenToggle" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+    </div>
+    <div class="footer-info">
+      <strong id="messageCount">0</strong> updates received
+    </div>
+  </div>
+
+  <!-- Small floating handle to restore the footer when it's hidden -->
+  <button id="footerHandle" class="control-btn footer-handle" onclick="toggleFooter()" aria-label="Show Panel">⬆ Show Panel</button>
+
+  <!-- Preload audio -->
+  <audio id="notificationAudio" preload="auto">
+    <source src="/assets/new-notification.mp3" type="audio/mpeg">
+  </audio>
+
+  <script>
+  (function() {
+    'use strict';
+
+    // ===== CONFIGURATION =====
+    const CONFIG = {
+      SSE_URL: '/reception/assigned-events?kiosk=1',
+      DATA_URL: '/reception/assigned-data?kiosk=1',
+      RECONNECT_DELAY: 3000,
+      SOUND_SRC: '/assets/new-notification.mp3'
+    };
+
+    // ===== STATE =====
+    let eventSource = null;
+    let soundEnabled = false;
+    let audioContext = null;
+    let audioBuffer = null;
+  let speechEnabled = false;
+    let messageCount = 0;
+    let lastDataHash = '';
+    
+  // store last shown patient per area to detect changes for speech
+  let lastShownPatients = {};
+  // speech rate (lower = slower). persisted in localStorage as 'kioskSpeechRate'
+  // Default set to 0.6 for slower, clearer announcements
+  let speechRate = 0.6;
+  // force server-side TTS for consistent cross-device playback
+  let serverTtsForced = true;
+
+    // ===== DOM ELEMENTS =====
+  const statusDot = document.getElementById('statusDot');
+  const connectionStatus = document.getElementById('connectionStatus');
+  const lastUpdate = document.getElementById('lastUpdate');
+  const soundToggle = document.getElementById('soundToggle');
+  const messageCountEl = document.getElementById('messageCount');
+  const currentTimeEl = document.getElementById('currentTime');
+  const currentDateEl = document.getElementById('currentDate');
+    const notificationAudio = document.getElementById('notificationAudio');
+  const kioskFooter = document.querySelector('.kiosk-footer');
+  const footerToggle = document.getElementById('footerToggle');
+  const fullscreenToggle = document.getElementById('fullscreenToggle');
+  const speechToggle = document.getElementById('speechToggle');
+
+    // ===== UTILITY FUNCTIONS =====
+    function updateTime() {
+      const now = new Date();
+      currentTimeEl.textContent = now.toLocaleTimeString('en-US', { 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit',
+        hour12: true 
+      });
+      try {
+        if (currentDateEl) {
+          currentDateEl.textContent = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+        }
+      } catch (e) { /* ignore */ }
+    }
+
+    // ===== Fullscreen handling =====
+    function isFullscreenActive() {
+      return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+    }
+
+    function updateFullscreenButton() {
+      try {
+        if (!fullscreenToggle) return;
+        if (isFullscreenActive()) {
+          fullscreenToggle.textContent = '⤫ Exit Fullscreen';
+          fullscreenToggle.className = 'control-btn enabled';
+        } else {
+          fullscreenToggle.textContent = '⛶ Fullscreen';
+          fullscreenToggle.className = 'control-btn';
+        }
+      } catch (e) { /* ignore */ }
+    }
+
+    async function enterFullscreen() {
+      try {
+        const el = document.documentElement || document.body;
+        if (el.requestFullscreen) await el.requestFullscreen();
+        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+        else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
+        else if (el.msRequestFullscreen) el.msRequestFullscreen();
+        localStorage.setItem('kioskFullscreen', '1');
+        updateFullscreenButton();
+      } catch (e) { console.warn('[Kiosk] enterFullscreen error', e); }
+    }
+
+    async function exitFullscreen() {
+      try {
+        if (document.exitFullscreen) await document.exitFullscreen();
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+        else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+        else if (document.msExitFullscreen) document.msExitFullscreen();
+        localStorage.setItem('kioskFullscreen', '0');
+        updateFullscreenButton();
+      } catch (e) { console.warn('[Kiosk] exitFullscreen error', e); }
+    }
+
+    function toggleFullscreen() {
+      try {
+        if (isFullscreenActive()) exitFullscreen(); else enterFullscreen();
+      } catch (e) { console.warn('[Kiosk] toggleFullscreen error', e); }
+    }
+
+    // Listen for fullscreen changes to update UI
+    document.addEventListener('fullscreenchange', updateFullscreenButton);
+    document.addEventListener('webkitfullscreenchange', updateFullscreenButton);
+    document.addEventListener('mozfullscreenchange', updateFullscreenButton);
+    document.addEventListener('MSFullscreenChange', updateFullscreenButton);
+
+    // Expose toggle for inline handler
+    window.toggleFullscreen = toggleFullscreen;
+
+    // ===== TV / large-screen text scaling =====
+    function isTvDevice() {
+      try {
+        const ua = navigator.userAgent || '';
+        return /Android TV|SmartTV|CrKey|GoogleTV|TvCast|DIAL|AppleTV|SMART-TV|SMART_TV|SMARTTV|NETTV|HbbTV/i.test(ua) || /Android/i.test(ua) && /TV|SmartTV|CrKey/i.test(ua);
+      } catch (e) { return false; }
+    }
+
+    // Dynamically adjust per-card font sizes so text fits on TV screens where CSS scaling may differ
+    function adjustTextForTV() {
+      try {
+        if (!isTvDevice()) return;
+        const cards = document.querySelectorAll('.area-card');
+        cards.forEach(card => {
+          const rect = card.getBoundingClientRect();
+          const header = card.querySelector('.area-header');
+          const content = card.querySelector('.area-content');
+          const patientEl = card.querySelector('.patient-number');
+          const nameEl = card.querySelector('.area-name');
+          const labelEl = card.querySelector('.now-serving-label');
+
+          const contentH = content ? content.getBoundingClientRect().height : (rect.height * 0.6);
+          const cardW = rect.width || 200;
+
+          // Patient number should occupy a reasonable portion of content height
+          const patientSize = Math.max(18, Math.min(72, Math.floor(contentH * 0.32)));
+          if (patientEl) patientEl.style.fontSize = patientSize + 'px';
+
+          // Area name tuned by card width
+          const nameSize = Math.max(10, Math.min(20, Math.floor(cardW * 0.06)));
+          if (nameEl) { nameEl.style.fontSize = nameSize + 'px'; nameEl.style.lineHeight = '1.1'; }
+
+          // Now serving label small but readable
+          const labelSize = Math.max(10, Math.min(14, Math.floor(contentH * 0.08)));
+          if (labelEl) labelEl.style.fontSize = labelSize + 'px';
+
+          // Ensure overflow hidden to prevent spill
+          if (patientEl) { patientEl.style.overflow = 'hidden'; patientEl.style.textOverflow = 'ellipsis'; }
+        });
+      } catch (e) { console.warn('[Kiosk] adjustTextForTV error', e); }
+    }
+
+    // Throttled resize handler
+    let _tvResizeTimer = null;
+    function setupTVScaling() {
+      try {
+        if (!isTvDevice()) return;
+        document.body.classList.add('is-tv');
+        // run initially after layout settles
+        setTimeout(adjustTextForTV, 120);
+        window.addEventListener('resize', () => {
+          if (_tvResizeTimer) clearTimeout(_tvResizeTimer);
+          _tvResizeTimer = setTimeout(() => adjustTextForTV(), 120);
+        });
+        window.addEventListener('orientationchange', () => setTimeout(adjustTextForTV, 200));
+      } catch (e) { /* ignore */ }
+    }
+
+    function setConnectionStatus(status) {
+      statusDot.className = 'status-dot ' + status;
+      switch(status) {
+        case 'connected':
+          connectionStatus.textContent = '🟢 Live Connected';
+          break;
+        case 'disconnected':
+          connectionStatus.textContent = '🔴 Disconnected - Reconnecting...';
+          break;
+        case 'connecting':
+          connectionStatus.textContent = '🟡 Connecting...';
+          break;
+      }
+    }
+
+    function updateLastUpdate() {
+      const now = new Date();
+      lastUpdate.textContent = 'Updated: ' + now.toLocaleTimeString();
+    }
+
+    // ===== FOOTER HIDE/SHOW =====
+    const FOOTER_KEY = 'kioskFooterHidden';
+
+    function applyFooterState(hidden) {
+      if (!kioskFooter) return;
+      if (hidden) {
+        kioskFooter.classList.add('hidden');
+        document.body.classList.add('footer-hidden');
+        if (footerToggle) footerToggle.innerHTML = '⬆ Show Panel';
+      } else {
+        kioskFooter.classList.remove('hidden');
+        document.body.classList.remove('footer-hidden');
+        if (footerToggle) footerToggle.innerHTML = '⤢ Hide Panel';
+      }
+    }
+
+    function toggleFooter() {
+      try {
+        const hidden = document.body.classList.contains('footer-hidden');
+        const newHidden = !hidden;
+        applyFooterState(newHidden);
+        try { localStorage.setItem(FOOTER_KEY, newHidden ? '1' : '0'); } catch (e) {}
+      } catch (e) {
+        console.warn('[Kiosk] toggleFooter error', e);
+      }
+    }
+
+    // Expose for inline onclick handler
+    window.toggleFooter = toggleFooter;
+
+    function restoreFooterState() {
+      try {
+        const v = localStorage.getItem(FOOTER_KEY);
+        if (v === '1') applyFooterState(true);
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    // ===== SOUND FUNCTIONS =====
+    async function initAudio() {
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        audioContext = new AC();
+
+        // Resume if suspended (for Chrome autoplay policy)
+        if (audioContext.state === 'suspended') {
+          await audioContext.resume();
+        }
+
+        // Try to load and decode the notification sound
+        try {
+          const response = await fetch(CONFIG.SOUND_SRC);
+          if (response.ok) {
+            const arrayBuffer = await response.arrayBuffer();
+            audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+            console.log('[Kiosk] Audio buffer loaded successfully');
+          }
+        } catch (e) {
+          console.warn('[Kiosk] Could not load audio buffer:', e);
+        }
+
+        return true;
+      } catch (e) {
+        console.warn('[Kiosk] AudioContext init failed:', e);
+        return false;
+      }
+    }
+
+    function playNotificationSound() {
+      if (!soundEnabled) return;
+
+      // Try Web Audio API first
+      if (audioContext && audioBuffer) {
+        try {
+          const source = audioContext.createBufferSource();
+          source.buffer = audioBuffer;
+          // reduce ring volume via a gain node so speech is more prominent
+          try {
+            const gainNode = audioContext.createGain();
+            gainNode.gain.value = 0.45; // lower ring to ~45%
+            source.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+          } catch (e) {
+            source.connect(audioContext.destination);
+          }
+          source.start(0);
+          console.log('[Kiosk] Played sound via Web Audio API');
+          return;
+        } catch (e) {
+          console.warn('[Kiosk] Web Audio playback failed:', e);
+        }
+      }
+
+      // Fallback to HTML Audio
+      if (notificationAudio) {
+        try {
+          // reduce HTML audio element volume so voice is louder relatively
+          try { notificationAudio.volume = 0.45; } catch (e) {}
+          notificationAudio.currentTime = 0;
+          notificationAudio.play().catch(e => console.warn('[Kiosk] Audio play failed:', e));
+          console.log('[Kiosk] Played sound via HTML Audio');
+        } catch (e) {
+          console.warn('[Kiosk] HTML Audio failed:', e);
+        }
+      }
+    }
+
+    // ===== SPEECH (Web Speech API) =====
+    const SPEECH_KEY = 'kioskSpeechEnabled';
+
+    // ===== Speech queueing =====
+    // Ensure announcements are queued and played sequentially to avoid dropped/overlapped messages
+    const _speechQueue = [];
+    let _isSpeaking = false;
+    let _currentAudio = null;
+    let _currentUtterance = null;
+
+    function enqueueSpeech(text) {
+      if (!text) return;
+      _speechQueue.push(String(text));
+      processSpeechQueue();
+    }
+
+    async function processSpeechQueue() {
+      if (_isSpeaking) return;
+      const next = _speechQueue.shift();
+      if (!next) return;
+      _isSpeaking = true;
+
+      try {
+        // If server-side TTS is forced, use audio element and wait for it to finish
+        if (serverTtsForced) {
+          try {
+            if (!_currentAudio) {
+              _currentAudio = document.createElement('audio');
+              _currentAudio.id = 'serverTTSAudio';
+              _currentAudio.style.display = 'none';
+              document.body.appendChild(_currentAudio);
+            }
+
+            await new Promise((resolve) => {
+              _currentAudio.onended = () => { resolve(); };
+              _currentAudio.onerror = () => { resolve(); };
+              _currentAudio.src = '/reception/tts?text=' + encodeURIComponent(next) + '&lang=en';
+              try { _currentAudio.pause(); } catch (e) {}
+              _currentAudio.currentTime = 0;
+              _currentAudio.play().catch(e => { console.warn('[Kiosk] serverTTS play failed', e); resolve(); });
+            });
+          } catch (e) {
+            console.warn('[Kiosk] server TTS playback failed', e);
+          }
+        } else {
+          // Use Web Speech API with events to await completion
+          if (!('speechSynthesis' in window)) {
+            // fallback to server TTS if SpeechSynthesis not available
+            await playServerTTS(next);
+          } else {
+            try {
+              _currentUtterance = new SpeechSynthesisUtterance(String(next));
+              _currentUtterance.rate = Number(speechRate) || 0.6;
+              _currentUtterance.pitch = 1;
+              _currentUtterance.volume = 1.0;
+
+              // voice selection
+              try {
+                const voices = window.speechSynthesis.getVoices() || [];
+                const selectedName = localStorage.getItem('kioskVoiceName') || '';
+                let prefer = null;
+                if (selectedName) prefer = voices.find(v => (v.name || v.voiceURI || '') === selectedName);
+                if (!prefer && voices.length) {
+                  const femaleHint = voices.find(v => v.name && /female|zira|amy|samantha|susan|victoria|karen|alloy|google uk|google_us/i.test(v.name));
+                  prefer = femaleHint || voices.find(v => v.lang && v.lang.toLowerCase().startsWith('en') && v.localService) ||
+                           voices.find(v => v.lang && v.lang.toLowerCase().startsWith('en')) || voices[0];
+                }
+                if (prefer) _currentUtterance.voice = prefer;
+              } catch (e) { /* ignore */ }
+
+              await new Promise((resolve) => {
+                _currentUtterance.onend = () => { resolve(); };
+                _currentUtterance.onerror = () => { resolve(); };
+                window.speechSynthesis.cancel();
+                window.speechSynthesis.speak(_currentUtterance);
+              });
+            } catch (e) {
+              console.warn('[Kiosk] Web Speech playback failed, falling back to server TTS', e);
+              await playServerTTS(next);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('[Kiosk] processSpeechQueue error', e);
+      }
+
+      _isSpeaking = false;
+      // small delay so back-to-back TTS requests don't collide
+      setTimeout(() => processSpeechQueue(), 120);
+    }
+
+    function speakText(text) {
+      if (!speechEnabled) return;
+      try {
+        enqueueSpeech(text);
+        console.log('[Kiosk] Queued speech:', text);
+      } catch (e) {
+        console.warn('[Kiosk] speakText enqueue error', e);
+      }
+    }
+
+    // ===== Server TTS fallback =====
+    // playServerTTS returns a Promise that resolves when playback ends (used as fallback)
+    async function playServerTTS(text) {
+      if (!text) return;
+      try {
+        // create an ephemeral audio element so callers can await completion
+        return await new Promise((resolve) => {
+          try {
+            const audio = document.createElement('audio');
+            audio.style.display = 'none';
+            audio.src = '/reception/tts?text=' + encodeURIComponent(String(text)) + '&lang=en';
+            audio.onended = () => { try { audio.remove(); } catch (e) {} ; resolve(); };
+            audio.onerror = () => { try { audio.remove(); } catch (e) {} ; resolve(); };
+            // ensure start from beginning
+            try { audio.pause(); } catch (e) {}
+            audio.currentTime = 0;
+            audio.play().catch(e => { console.warn('[Kiosk] playServerTTS play failed', e); resolve(); });
+          } catch (e) {
+            console.warn('[Kiosk] playServerTTS error', e);
+            resolve();
+          }
+        });
+      } catch (e) {
+        console.warn('[Kiosk] playServerTTS outer error', e);
+      }
+    }
+
+    function sanitizeSpokenNumber(displayText) {
+      if (!displayText) return displayText;
+      // remove non-digits and leading zeros
+      const digits = (displayText + '').replace(/\D/g, '');
+      if (!digits) return displayText;
+      return String(parseInt(digits, 10));
+    }
+
+    function toggleSpeech() {
+      try {
+        speechEnabled = !speechEnabled;
+        if (speechToggle) {
+          speechToggle.textContent = speechEnabled ? '🗣️ Speech Enabled' : '🗣️ Enable Speech';
+          speechToggle.className = speechEnabled ? 'sound-btn enabled' : 'sound-btn';
+        }
+        try { localStorage.setItem(SPEECH_KEY, speechEnabled ? '1' : '0'); } catch (e) {}
+        console.log('[Kiosk] speechEnabled =', speechEnabled);
+        // speak a short sample so user can confirm the voice is working
+        if (speechEnabled) {
+          try {
+            // short friendly sample: 'Welcome'
+            speakText('Welcome');
+          } catch (e) { console.warn('[Kiosk] sample speak failed', e); }
+        }
+      } catch (e) {
+        console.warn('[Kiosk] toggleSpeech error', e);
+      }
+    }
+
+    function restoreSpeechState() {
+      try {
+        const v = localStorage.getItem(SPEECH_KEY);
+        if (v === '1') {
+          speechEnabled = true;
+          if (speechToggle) { speechToggle.textContent = '🗣️ Speech Enabled'; speechToggle.className = 'sound-btn enabled'; }
+        }
+        // restore persisted speech rate if present
+        try {
+          const r = localStorage.getItem('kioskSpeechRate');
+          if (r !== null) {
+            const n = parseFloat(r);
+            if (!isNaN(n)) speechRate = n;
+          }
+        } catch (e) { /* ignore */ }
+      } catch (e) {}
+    }
+
+    // expose for inline handler
+    window.toggleSpeech = toggleSpeech;
+
+  // Allow changing speech rate at runtime and persist it.
+    function setSpeechRate(rate) {
+      try {
+        const n = Number(rate);
+        if (isNaN(n) || n <= 0) return;
+        speechRate = n;
+        try { localStorage.setItem('kioskSpeechRate', String(speechRate)); } catch (e) {}
+        console.log('[Kiosk] speechRate set to', speechRate);
+      } catch (e) {
+        console.warn('[Kiosk] setSpeechRate error', e);
+      }
+    }
+    window.setSpeechRate = setSpeechRate;
+
+    
+
+    // Toggle sound on/off
+    window.toggleSound = async function() {
+      if (!soundEnabled) {
+        const audioReady = await initAudio();
+        soundEnabled = true;
+        soundToggle.className = 'sound-btn enabled';
+        soundToggle.innerHTML = '🔔 Sound Enabled';
+        
+        // Play test sound
+        setTimeout(() => playNotificationSound(), 100);
+        
+        console.log('[Kiosk] Sound enabled');
+      } else {
+        soundEnabled = false;
+        soundToggle.className = 'sound-btn';
+        soundToggle.innerHTML = '🔇 Click to Enable Sound';
+        console.log('[Kiosk] Sound disabled');
+      }
+    };
+
+    // ===== DATA UPDATE FUNCTIONS =====
+    function hashData(data) {
+      return JSON.stringify(data);
+    }
+
+    function updateUI(data) {
+      if (!data || !data.assignments) return;
+
+      const currentHash = hashData(data.assignments);
+      const hasChanges = lastDataHash !== '' && currentHash !== lastDataHash;
+      lastDataHash = currentHash;
+
+      // Update each area card
+      Object.keys(data.assignments).forEach(area => {
+        const safeId = area.replace(/[^a-z0-9]/gi, '_');
+        const patients = data.assignments[area] || [];
+        const hasPatients = patients.length > 0;
+
+        // Update count
+        const countEl = document.getElementById('count-' + safeId);
+        if (countEl) {
+          countEl.textContent = patients.length;
+          countEl.className = 'area-count' + (hasPatients ? ' active' : '');
+        }
+
+        // Update patient number
+        const patientEl = document.getElementById('patient-' + safeId);
+        if (patientEl) {
+            if (hasPatients) {
+              const code = patients[0].patientCode || '';
+              const newText = code.includes('-') ? code.split('-').pop() : code;
+              const oldText = patientEl.textContent;
+              patientEl.textContent = newText;
+              patientEl.className = 'patient-number';
+
+              // Speech: if the shown patient number changed, speak announcement
+              try {
+                const prev = lastShownPatients[area] || '';
+                if (newText !== prev) {
+                  lastShownPatients[area] = newText;
+                  if (speechEnabled) {
+                    const spokenNum = sanitizeSpokenNumber(newText);
+                    const msg = `Now serving Patient ${spokenNum} please proceed to ${area}`;
+                    speakText(msg);
+                  }
+                }
+              } catch (e) { /* ignore */ }
+            } else {
+              patientEl.textContent = '—';
+              patientEl.className = 'patient-number empty';
+              lastShownPatients[area] = '';
+            }
+        }
+
+        // Update next patient
+        const nextEl = document.getElementById('next-' + safeId);
+        if (nextEl) {
+          if (patients.length > 1) {
+            const nextCode = patients[1].patientCode || '';
+            nextEl.innerHTML = 'Next: <strong>' + (nextCode.includes('-') ? nextCode.split('-').pop() : nextCode) + '</strong>';
+            nextEl.style.display = 'block';
+          } else {
+            nextEl.style.display = 'none';
+          }
+        }
+
+        // Update card class
+        const cardEl = document.getElementById('card-' + safeId);
+        if (cardEl) {
+          cardEl.className = 'area-card' + (hasPatients ? ' has-patients' : '');
+          
+          if (hasChanges) {
+            cardEl.classList.add('highlight');
+            setTimeout(() => cardEl.classList.remove('highlight'), 1000);
+          }
+        }
+      });
+
+      updateLastUpdate();
+
+      // Play sound on changes
+      if (hasChanges) {
+        playNotificationSound();
+        console.log('[Kiosk] Data changed, notification played');
+      }
+    }
+
+    async function fetchData() {
+      try {
+        const response = await fetch(CONFIG.DATA_URL, { credentials: 'same-origin' });
+        if (response.ok) {
+          const data = await response.json();
+          updateUI(data);
+          return true;
+        }
+      } catch (e) {
+        console.warn('[Kiosk] fetchData error:', e);
+      }
+      return false;
+    }
+
+    // ===== SSE CONNECTION =====
+    function connectSSE() {
+      if (eventSource) {
+        try { eventSource.close(); } catch(e) {}
+      }
+
+      setConnectionStatus('connecting');
+      console.log('[Kiosk] Connecting to SSE:', CONFIG.SSE_URL);
+
+      try {
+        eventSource = new EventSource(CONFIG.SSE_URL);
+
+        eventSource.onopen = function() {
+          setConnectionStatus('connected');
+          console.log('[Kiosk] SSE connected');
+        };
+
+        eventSource.onmessage = function(event) {
+          messageCount++;
+          messageCountEl.textContent = messageCount;
+          console.log('[Kiosk] SSE message received:', event.data);
+
+          try {
+            const payload = JSON.parse(event.data);
+            
+            if (payload.init) {
+              console.log('[Kiosk] Initial SSE handshake');
+              return;
+            }
+
+            // Fetch fresh data
+            fetchData();
+            
+          } catch (e) {
+            console.warn('[Kiosk] Parse error, fetching anyway');
+            fetchData();
+          }
+        };
+
+        eventSource.onerror = function(err) {
+          console.warn('[Kiosk] SSE error:', err);
+          setConnectionStatus('disconnected');
+          
+          try { eventSource.close(); } catch(e) {}
+          eventSource = null;
+          
+          setTimeout(connectSSE, CONFIG.RECONNECT_DELAY);
+        };
+
+      } catch (e) {
+        console.error('[Kiosk] EventSource creation failed:', e);
+        setConnectionStatus('disconnected');
+        setTimeout(connectSSE, CONFIG.RECONNECT_DELAY);
+      }
+    }
+
+    // ===== INITIALIZATION =====
+    function init() {
+      console.log('[Kiosk] Initializing dashboard...');
+
+      // Start clock
+      updateTime();
+      setInterval(updateTime, 1000);
+
+      // Initial data fetch
+      fetchData().then(() => {
+        console.log('[Kiosk] Initial data loaded');
+      });
+
+      // Connect to SSE
+      connectSSE();
+
+      // Preload audio
+      if (notificationAudio) {
+        notificationAudio.load();
+      }
+
+      // Restore footer hide/show preference
+      restoreFooterState();
+
+      // Restore speech preference
+      restoreSpeechState();
+
+  // Setup TV-specific scaling if needed
+  try { setupTVScaling(); } catch (e) { /* ignore */ }
+
+      // Restore fullscreen preference (user may have enabled before)
+      try {
+        const fs = localStorage.getItem('kioskFullscreen');
+        if (fs === '1') {
+          // Delay slightly to allow page to finish layout
+          setTimeout(() => { try { enterFullscreen(); } catch (e) { /* ignore */ } }, 300);
+        } else {
+          updateFullscreenButton();
+        }
+      } catch (e) { /* ignore */ }
+
+      // Enable sound by default on Android devices (attempt; may be blocked by autoplay policies)
+      try {
+        const ua = navigator.userAgent || '';
+        const isAndroid = /Android/i.test(ua);
+        const isTV = /Android TV|SmartTV|TV|CrKey/i.test(ua);
+        if (isAndroid || isTV) {
+          try { toggleSound(); } catch (e) { console.warn('[Kiosk] auto toggleSound failed', e); }
+        }
+      } catch (e) { /* ignore */ }
+
+      // Auto-enable sound on load
+      autoEnableSound();
+
+      console.log('[Kiosk] Dashboard ready');
+    }
+
+    // Auto-enable sound (will work after first user interaction due to browser policy)
+    async function autoEnableSound() {
+      try {
+        const audioReady = await initAudio();
+        soundEnabled = true;
+        soundToggle.className = 'sound-btn enabled';
+        soundToggle.innerHTML = '🔔 Sound Enabled';
+        console.log('[Kiosk] Sound auto-enabled');
+      } catch (e) {
+        console.log('[Kiosk] Auto-enable failed, waiting for user interaction');
+        // Set up click handler to enable on first interaction
+        document.addEventListener('click', function enableOnClick() {
+          if (!soundEnabled) {
+            toggleSound();
+          }
+          document.removeEventListener('click', enableOnClick);
+        }, { once: true });
+      }
+    }
+
+    // Start when DOM ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  })();
+  </script>
+</body>
+</html>

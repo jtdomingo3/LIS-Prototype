@@ -1,0 +1,27 @@
+<div class="card">
+  <h3>Template Details</h3>
+
+  <div class="card">
+    <p><strong>Name:</strong> <%= template.name %></p>
+    <p><strong>Test Type:</strong> <%= template.testType %></p>
+    <p><strong>Fields:</strong></p>
+    <% if (template.fields && Array.isArray(template.fields)) { %>
+      <ul>
+        <% template.fields.forEach(f => { %>
+          <li><strong><%= f.name %></strong> (<%= f.type %>)</li>
+        <% }) %>
+      </ul>
+    <% } else { %>
+      <pre><%= template.fields || 'No fields' %></pre>
+    <% } %>
+    <p><strong>Footer Notes:</strong></p>
+    <p><%= template.footerNotes || '' %></p>
+  </div>
+
+  <div class="action-buttons mt-20">
+    <a href="/templates/<%= template.id %>/edit" class="button btn-primary">Edit</a>
+    <form action="/templates/<%= template.id %>?_method=DELETE" method="POST" style="display:inline-block;">
+      <button class="button btn-danger">Delete</button>
+    </form>
+  </div>
+</div>

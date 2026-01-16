@@ -1,0 +1,49 @@
+<div class="card">
+  <h3>Create New Test</h3>
+
+  <form action="/tests" method="POST">
+    <div class="form-group">
+      <label>Patient</label>
+      <select name="patient" required>
+        <option value="">-- Select Patient --</option>
+        <% if (patients && patients.length) { %>
+          <% patients.forEach(p => { %>
+            <option value="<%= p.id %>"><%= p.firstName %> <%= p.lastName %> (<%= p.patientId %>)</option>
+          <% }) %>
+        <% } %>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Test Type</label>
+      <% if (templates && templates.length) { %>
+        <select name="testType" required>
+          <option value="">-- Select Test Type --</option>
+          <% templates.forEach(tpl => { %>
+            <option value="<%= tpl.testType || tpl.name %>" <%= test.testType === (tpl.testType || tpl.name) ? 'selected' : '' %>><%= tpl.name %> (<%= tpl.testType %>)</option>
+          <% }) %>
+        </select>
+      <% } else { %>
+        <input type="text" name="testType" value="<%= test.testType || '' %>" required>
+      <% } %>
+    </div>
+
+    <div class="form-group">
+      <label>Test Date</label>
+      <input type="date" name="testDate" value="<%= test.testDate ? new Date(test.testDate).toISOString().substr(0,10) : '' %>" required>
+    </div>
+
+    <div class="form-group">
+      <label>Priority</label>
+      <select name="priority">
+        <option value="Normal">Normal</option>
+        <option value="High">High</option>
+      </select>
+    </div>
+
+    <div class="form-row">
+      <a href="/tests" class="button btn-secondary">Back to Tests</a>
+      <button class="button btn-primary">Create Test</button>
+    </div>
+  </form>
+</div>
