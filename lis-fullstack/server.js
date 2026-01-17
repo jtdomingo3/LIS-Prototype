@@ -10,6 +10,8 @@ const expressLayouts = require('express-ejs-layouts');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+// Default host/IP for the server. Override with the HOST env var if needed.
+const HOST = process.env.HOST || '192.168.31.86';
 const DATA_FILE = path.join(__dirname, 'data.json');
 
 // Initialize data file if it doesn't exist
@@ -133,8 +135,9 @@ app.use((err, req, res, next) => {
   res.status(500).render('500', { title: 'Server Error', error: process.env.NODE_ENV === 'development' ? err : {} });
 });
 
-app.listen(PORT, () => {
-  const url = `http://localhost:${PORT}`;
-  console.log('LIS Server running on port %d', PORT);
+app.listen(PORT, HOST, () => {
+  const url = `http://${HOST}:${PORT}`;
+  console.log('LIS Server running on %s:%d', HOST, PORT);
   console.log(`Open the app in your browser: ${url}`);
+  console.log('To override HOST use: HOST=127.0.0.1 (or set in your environment)');
 });

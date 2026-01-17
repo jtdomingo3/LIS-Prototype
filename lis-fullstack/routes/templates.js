@@ -3,6 +3,8 @@ const router = express.Router();
 const Template = require('../models/Template');
 const User = require('../models/User');
 const { requireAuth, canAccessPatient } = require('../middleware/auth');
+const fs = require('fs');
+const path = require('path');
 
 // GET /templates - List all templates
 router.get('/', requireAuth, canAccessPatient, async (req, res) => {
@@ -20,9 +22,13 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
       })
     );
 
+    // include static result templates
+    const staticTemplates = await getStaticResultTemplates();
+    const allTemplates = [...templatesWithCreators, ...staticTemplates];
+
     res.render('templates/index', {
       title: 'Report Templates',
-      templates: templatesWithCreators
+      templates: allTemplates
     });
 
   } catch (error) {
@@ -34,6 +40,38 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
     });
   }
 });
+
+// Append static result templates (views/reports/results/*.ejs) to the templates list
+async function getStaticResultTemplates() {
+  try {
+    const resultsDir = path.join(__dirname, '..', 'views', 'reports', 'results');
+    // Only expose the actual report templates (exclude sample image files and size placeholders)
+    const allowed = [
+      'fecalysis.ejs',
+      'urinalysis.ejs',
+      'blood-chemistry.ejs',
+      'xray.ejs',
+      'hematology.ejs',
+      'serology.ejs',
+      'ultrasound.ejs'
+    ];
+    const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
+    return files.map(f => {
+      const name = f.replace('.ejs', '').replace(/-/g, ' ');
+      return {
+        id: `static:${f}`,
+        name: name.charAt(0).toUpperCase() + name.slice(1),
+        testType: name,
+        fields: [],
+        createdAt: null,
+        isStatic: true,
+        filename: f
+      };
+    });
+  } catch (err) {
+    return [];
+  }
+}
 
 // GET /templates/new - New template form
 router.get('/new', requireAuth, canAccessPatient, (req, res) => {
@@ -98,6 +136,38 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
 // GET /templates/:id - Show template details
 router.get('/:id', requireAuth, canAccessPatient, async (req, res) => {
   try {
+    const id = req.params.id;
+
+    // Handle static templates (id format: static:filename.ejs)
+    if (id && id.startsWith('static:')) {
+      const filename = id.replace('static:', '');
+      const templateName = filename.replace('.ejs', '');
+
+      // render the static result template file for preview
+      // provide a minimal `test` object so templates referencing `test` don't fail
+      const viewPath = `reports/results/${templateName}`;
+      const renderOptions = {
+        title: 'Template Details',
+        template: { id, name: templateName, isStatic: true },
+        test: { patient: {}, results: {}, requestedBy: null, performedBy: null }
+      };
+
+      // If express-ejs-layouts is installed it wraps res.render; use the original renderer
+      // (stored at res.__render) to bypass layout handling and send the raw template output.
+      if (res.__render && typeof res.__render === 'function') {
+        return res.__render.call(res, viewPath, renderOptions, (err, html) => {
+          if (err) {
+            console.error('Static template render error:', err);
+            req.flash('error_msg', 'Error rendering template');
+            return res.redirect('/templates');
+          }
+          res.send(html);
+        });
+      }
+
+      return res.render(viewPath, Object.assign({}, renderOptions, { layout: false }));
+    }
+
     const template = await Template.findById(req.params.id);
 
     if (!template) {

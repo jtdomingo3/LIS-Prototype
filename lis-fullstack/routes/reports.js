@@ -4,8 +4,45 @@ const Test = require('../models/Test');
 const Patient = require('../models/Patient');
 const User = require('../models/User');
 const Template = require('../models/Template');
+const fs = require('fs');
+const path = require('path');
 const pdf = require('html-pdf');
+const os = require('os');
+let puppeteer;
+try {
+  puppeteer = require('puppeteer');
+} catch (e) {
+  console.warn('Puppeteer not installed; PDF rendering will use html-pdf fallback.');
+}
 const { requireAuth, canAccessPatient } = require('../middleware/auth');
+
+// Helper to inline logo as base64 data URI for reliable PDF rendering
+function getInlineLogo() {
+  try {
+    const p = path.join(__dirname, '..', 'assets', 'gezyne-logo.png');
+    const buf = fs.readFileSync(p);
+    return 'data:image/png;base64,' + buf.toString('base64');
+  } catch (err) {
+    console.warn('Inline logo read failed:', err && err.message);
+    return null;
+  }
+}
+
+// Helper to persistently log report generation errors (creates logs/report-errors.log)
+function logReportError(err, context) {
+  try {
+    const logsDir = path.join(__dirname, '..', 'logs');
+    if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
+    const file = path.join(logsDir, 'report-errors.log');
+    const timestamp = new Date().toISOString();
+    const message = `[${timestamp}] [${context}] ${err && err.stack ? err.stack : String(err)}\n\n`;
+    fs.appendFile(file, message, (e) => {
+      if (e) console.error('Failed to write report error log:', e);
+    });
+  } catch (e) {
+    console.error('logReportError failed:', e);
+  }
+}
 
 // GET /reports - Reports page
 router.get('/', requireAuth, canAccessPatient, async (req, res) => {
@@ -75,15 +112,134 @@ router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) =
       performedBy: performedBy ? { name: performedBy.name } : null
     };
 
-    res.render('reports/preview', {
-      title: 'Report Preview',
-      test: populatedTest,
-      currentDate: new Date().toLocaleDateString()
+    // If user objects are not present, fall back to names stored in test.results
+    if ((!populatedTest.requestedBy || !populatedTest.requestedBy.name) && populatedTest.results && populatedTest.results.requestedByName) {
+      populatedTest.requestedBy = {
+        name: populatedTest.results.requestedByName,
+        license: populatedTest.results.requestedByLicense || null
+      };
+    }
+
+    if ((!populatedTest.performedBy || !populatedTest.performedBy.name) && populatedTest.results && populatedTest.results.performedByName) {
+      populatedTest.performedBy = {
+        name: populatedTest.results.performedByName,
+        license: populatedTest.results.performedByLicense || null
+      };
+    }
+
+    // Determine specific result template for this test and render it to HTML
+    const { template, image } = getResultTemplate(populatedTest);
+    const viewPath = `reports/results/${template}`;
+
+    // Inline logo for preview/template rendering (helps PDF renderer later)
+    const inlineLogo = getInlineLogo();
+
+    // Render the result template without layout into an HTML string, then render preview page
+    const renderOptions = { title: 'Result Preview', test: populatedTest, image, layout: false, inlineLogo };
+    // Use res.render callback to capture HTML
+    res.render(viewPath, renderOptions, (err, renderedHtml) => {
+      if (err) {
+        console.error('Error rendering result template for preview:', err);
+        logReportError(err, 'render preview result template');
+      }
+
+      return res.render('reports/preview', {
+        title: 'Report Preview',
+        test: populatedTest,
+        currentDate: new Date().toLocaleDateString(),
+        renderedResultHtml: renderedHtml || null
+      });
     });
 
   } catch (error) {
     console.error('Report preview error:', error);
     req.flash('error_msg', 'Error loading report preview');
+    res.redirect('/reports');
+  }
+});
+
+// Helper to map test types to result template and default image
+function getResultTemplate(test) {
+  const type = (test && test.testType ? String(test.testType) : '').toLowerCase();
+  // default template and sample image
+  let template = 'blood-chemistry';
+  let image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';
+
+  if (type.includes('fecal') || type.includes('fecalysis')) {
+    template = 'fecalysis';
+    image = '56226bda-3645-4fe4-aec7-7b62ff6a5a4b.jpg';
+  } else if (type.includes('urinal') || type.includes('urinalysis')) {
+    template = 'urinalysis';
+    image = '8bb335a9-e0fb-4909-acdc-e2a070851a13.jpg';
+  } else if (type.includes('blood') || type.includes('chem')) {
+    template = 'blood-chemistry';
+    image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';
+  } else if (type.includes('xray') || type.includes('x-ray') || type.includes('x ray')) {
+    template = 'xray';
+    image = '93220381-3be7-4696-8189-9cca307d20bd.jpg';
+  } else if (type.includes('hemato') || type.includes('hematology') || type.includes('cbc')) {
+    template = 'hematology';
+    image = 'cb07aab1-5855-4314-be0f-d734ce0e608a.jpg';
+  } else if (type.includes('serol') || type.includes('serology')) {
+    template = 'serology';
+    image = 'd7c357bf-74a2-42dc-b3d1-2a573a30784d.jpg';
+  } else if (type.includes('ultra') || type.includes('ultrasound')) {
+    template = 'ultrasound';
+    image = '8bb335a9-e0fb-4909-acdc-e2a070851a13.jpg';
+  }
+
+  // Allow overriding with explicit `template` field on test
+  if (test && test.template && typeof test.template === 'string') {
+    template = test.template;
+  }
+
+  return { template, image };
+}
+
+// GET /reports/result/:testId - Render result template for a test
+router.get('/result/:testId', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const test = await Test.findById(req.params.testId);
+
+    if (!test) {
+      req.flash('error_msg', 'Test not found');
+      return res.redirect('/reports');
+    }
+
+    if (test.status !== 'Completed') {
+      req.flash('error_msg', 'Result template can only be viewed for completed tests');
+      return res.redirect('/reports');
+    }
+
+    const patient = test.patient ? await Patient.findById(test.patient) : null;
+    const requestedBy = test.requestedBy ? await User.findById(test.requestedBy) : null;
+    const performedBy = test.performedBy ? await User.findById(test.performedBy) : null;
+
+    const populatedTest = {
+      ...test,
+      patient: patient ? patient.toJSON() : null,
+      requestedBy: requestedBy ? { name: requestedBy.name } : null,
+      performedBy: performedBy ? { name: performedBy.name } : null
+    };
+
+    const { template, image } = getResultTemplate(populatedTest);
+    // Render the matching template view under reports/results
+    // allow embedding without layout when requested (used by preview iframe)
+    const useLayout = req.query.embedded ? false : 'print';
+    const autoPrint = req.query.print === '1' || req.query.print === 'true';
+    const inlineLogo = getInlineLogo();
+    return res.render(`reports/results/${template}`, {
+      title: 'Result',
+      test: populatedTest,
+      image,
+      layout: useLayout,
+      print: autoPrint,
+      inlineLogo
+    });
+
+  } catch (error) {
+    console.error('Result template render error:', error);
+    req.flash('error_msg', 'Error rendering result template');
     res.redirect('/reports');
   }
 });
@@ -122,98 +278,93 @@ router.get('/pdf/:testId', requireAuth, canAccessPatient, async (req, res) => {
       performedBy: performedBy ? { name: performedBy.name } : null
     };
 
-    // Generate HTML content for PDF
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <title>Laboratory Report</title>
-        <style>
-          body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
-          .header { text-align: center; border-bottom: 3px solid #1a1a1a; padding-bottom: 20px; margin-bottom: 30px; }
-          .header h1 { margin: 0 0 10px 0; color: #1a1a1a; }
-          .header p { margin: 0; color: #10b981; font-weight: bold; }
-          .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
-          .info-section { background: #f9f9f9; padding: 15px; border-radius: 5px; }
-          .info-section h3 { margin: 0 0 10px 0; color: #10b981; font-size: 14px; text-transform: uppercase; }
-          .info-section p { margin: 5px 0; font-size: 12px; }
-          .results { margin-top: 30px; padding-top: 20px; border-top: 2px solid #ddd; }
-          .results h3 { color: #10b981; margin-bottom: 15px; }
-          .results p { margin: 10px 0; font-size: 13px; white-space: pre-line; }
-          .footer { margin-top: 40px; padding-top: 20px; border-top: 2px solid #ddd; font-size: 11px; color: #666; }
-          .footer p { margin: 5px 0; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>LABORATORY TEST REPORT</h1>
-          <p>Professional Clinical Laboratory Services</p>
-        </div>
+    // Determine specific result template and render it to HTML without layout
+    const { template, image } = getResultTemplate(populatedTest);
+    const viewPath = `reports/results/${template}`;
+    const renderOptions = { title: 'Result PDF', test: populatedTest, image, layout: false };
 
-        <div class="info-grid">
-          <div class="info-section">
-            <h3>PATIENT INFORMATION</h3>
-          <p><strong>Name:</strong> ${populatedTest.patient ? `${populatedTest.patient.firstName} ${populatedTest.patient.lastName}` : 'N/A'}</p>
-          <p><strong>Patient ID:</strong> ${populatedTest.patient ? populatedTest.patient.patientId : 'N/A'}</p>
-          <p><strong>Date of Birth:</strong> ${populatedTest.patient && populatedTest.patient.dateOfBirth ? new Date(populatedTest.patient.dateOfBirth).toLocaleDateString() : 'N/A'}</p>
-          <p><strong>Gender:</strong> ${populatedTest.patient ? populatedTest.patient.gender : 'N/A'}</p>
-          <p><strong>Phone:</strong> ${populatedTest.patient && populatedTest.patient.phone ? populatedTest.patient.phone : 'N/A'}</p>
-          </div>
-          <div class="info-section">
-            <h3>TEST INFORMATION</h3>
-            <p><strong>Test ID:</strong> ${populatedTest.testId}</p>
-            <p><strong>Test Type:</strong> ${populatedTest.testType}</p>
-            <p><strong>Test Date:</strong> ${populatedTest.testDate ? new Date(populatedTest.testDate).toLocaleDateString() : 'N/A'}</p>
-            <p><strong>Status:</strong> ${populatedTest.status}</p>
-            <p><strong>Priority:</strong> ${populatedTest.priority}</p>
-          </div>
-        </div>
-
-        <div class="results">
-          <h3>TEST RESULTS</h3>
-          <p>${populatedTest.results || 'No results recorded yet. Results pending.'}</p>
-          ${populatedTest.notes ? `<p><strong>Additional Notes:</strong> ${populatedTest.notes}</p>` : ''}
-        </div>
-
-        <div class="footer">
-          <p><strong>Report Generated:</strong> ${new Date().toLocaleString()}</p>
-          <p><strong>Requested By:</strong> ${populatedTest.requestedBy ? populatedTest.requestedBy.name : 'N/A'}</p>
-          ${populatedTest.performedBy ? `<p><strong>Performed By:</strong> ${populatedTest.performedBy.name}</p>` : ''}
-          <p><strong>Laboratory Name:</strong> Professional Clinical Laboratory Services</p>
-          <p><strong>Authorized By:</strong> Dr. Medical Professional, MD</p>
-          <p style="margin-top: 15px; font-style: italic;">
-            This report contains confidential patient information. Please consult with your healthcare provider regarding test results and recommendations.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
-
-    // PDF options
-    const options = {
-      format: 'A4',
-      orientation: 'portrait',
-      border: {
-        top: '20mm',
-        right: '15mm',
-        bottom: '20mm',
-        left: '15mm'
-      }
-    };
-
-    // Generate PDF
-    pdf.create(htmlContent, options).toBuffer((err, buffer) => {
+    const inlineLogo = getInlineLogo();
+    return res.render(viewPath, Object.assign({}, renderOptions, { inlineLogo }), async (err, renderedHtml) => {
       if (err) {
-        console.error('PDF generation error:', err);
+        console.error('Error rendering result template for PDF:', err);
+        logReportError(err, 'render pdf result template');
         req.flash('error_msg', 'Error generating PDF');
         return res.redirect('/reports');
       }
 
-      // Send PDF as download
-  res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `attachment; filename=Lab_Report_${populatedTest.testId}_${populatedTest.patient ? populatedTest.patient.lastName : 'patient'}.pdf`);
-  res.send(buffer);
+      // Render the print wrapper with the rendered result HTML so PDF matches the print view
+      const inlineLogo2 = getInlineLogo();
+      res.render('reports/print', { title: 'Print Report', test: populatedTest, currentDate: new Date().toLocaleDateString(), renderedResultHtml: renderedHtml, layout: false, inlineLogo: inlineLogo2 }, async (err2, finalHtml) => {
+        if (err2) {
+          console.error('Error rendering print wrapper for PDF:', err2);
+          logReportError(err2, 'render print wrapper for pdf');
+          req.flash('error_msg', 'Error generating PDF');
+          return res.redirect('/reports');
+        }
+
+        // Ensure asset URLs are absolute so the PDF renderer can fetch them
+        const baseUrl = req.protocol + '://' + req.get('host');
+        let htmlForPdf = finalHtml.replace(/(href=|src=|url\()\s*["']?\/assets\//g, function(m) {
+          return m.replace('/assets/', baseUrl + '/assets/');
+        });
+
+        // Try Puppeteer first (headless Chromium) for pixel-perfect rendering
+        if (puppeteer) {
+          try {
+            const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+            const page = await browser.newPage();
+            await page.setContent(htmlForPdf, { waitUntil: 'networkidle0' });
+            const pdfBuffer = await page.pdf({ format: 'Letter', printBackground: true, margin: { top: '0.4in', right: '0.4in', bottom: '0.4in', left: '0.4in' } });
+            await browser.close();
+
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename=Lab_Report_${populatedTest.testId}_${populatedTest.patient ? populatedTest.patient.lastName : 'patient'}.pdf`);
+            res.setHeader('Content-Length', pdfBuffer.length);
+            if (process.env.DEBUG_PDF) {
+              try {
+                const tmpPath = path.join(os.tmpdir(), `lab_report_${populatedTest.testId}.pdf`);
+                fs.writeFileSync(tmpPath, pdfBuffer);
+                console.log('Wrote debug PDF to', tmpPath);
+              } catch (werr) {
+                console.warn('Failed writing debug PDF:', werr && werr.message);
+              }
+            }
+            return res.send(pdfBuffer);
+          } catch (puErr) {
+            console.error('Puppeteer PDF generation failed, falling back to html-pdf:', puErr);
+          }
+        }
+
+        // Fallback to html-pdf
+        const options = {
+          width: '8.5in',
+          height: '11in',
+          border: '0.4in'
+        };
+
+        pdf.create(htmlForPdf, options).toBuffer((err3, buffer) => {
+          if (err3) {
+            console.error('PDF generation error:', err3);
+            logReportError(err3, 'html-pdf create');
+            req.flash('error_msg', 'Error generating PDF');
+            return res.redirect('/reports');
+          }
+
+          res.setHeader('Content-Type', 'application/pdf');
+          res.setHeader('Content-Disposition', `attachment; filename=Lab_Report_${populatedTest.testId}_${populatedTest.patient ? populatedTest.patient.lastName : 'patient'}.pdf`);
+          res.setHeader('Content-Length', buffer.length);
+          if (process.env.DEBUG_PDF) {
+            try {
+              const tmpPath = path.join(os.tmpdir(), `lab_report_fallback_${populatedTest.testId}.pdf`);
+              fs.writeFileSync(tmpPath, buffer);
+              console.log('Wrote debug fallback PDF to', tmpPath);
+            } catch (werr) {
+              console.warn('Failed writing debug fallback PDF:', werr && werr.message);
+            }
+          }
+          res.send(buffer);
+        });
+      });
     });
 
   } catch (error) {
@@ -249,11 +400,31 @@ router.get('/print/:testId', requireAuth, canAccessPatient, async (req, res) => 
       performedBy: performedBy ? { name: performedBy.name } : null
     };
 
-    res.render('reports/print', {
-      title: 'Print Report',
-      test: populatedTest,
-      currentDate: new Date().toLocaleDateString(),
-      layout: 'print'
+    // Render the specific result template into HTML, then render the print wrapper
+    const { template, image } = getResultTemplate(populatedTest);
+    const viewPath = `reports/results/${template}`;
+
+    // Render the result template without layout to get its HTML
+    const inlineLogo = getInlineLogo();
+    res.render(viewPath, { title: 'Result Print', test: populatedTest, image, layout: false, inlineLogo }, (err, renderedHtml) => {
+      if (err) {
+        console.error('Error rendering result template for print:', err);
+        // fallback to previous print view if rendering fails
+        return res.render('reports/print', {
+          title: 'Print Report',
+          test: populatedTest,
+          currentDate: new Date().toLocaleDateString(),
+          layout: 'print'
+        });
+      }
+
+      return res.render('reports/print', {
+        title: 'Print Report',
+        test: populatedTest,
+        currentDate: new Date().toLocaleDateString(),
+        renderedResultHtml: renderedHtml,
+        layout: 'print'
+      });
     });
 
   } catch (error) {

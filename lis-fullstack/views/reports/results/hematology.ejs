@@ -1,0 +1,9 @@
+<style>
+  .report-page{ padding:0.5in; }
+  .report-img{ display:block; margin:0 auto; max-width:100%; height:auto; }
+  .half-letter{ width:48%; }
+  .full-letter{ width:100%; }
+</style>
+<div class="report-page">
+  <pre style="white-space:pre-wrap;font-family:monospace;font-size:13px;"><%= test && test.results ? (typeof test.results === 'string' ? test.results : JSON.stringify(test.results, null, 2)) : '' %></pre>
+</div>

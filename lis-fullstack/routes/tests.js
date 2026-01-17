@@ -4,6 +4,9 @@ const Test = require('../models/Test');
 const Patient = require('../models/Patient');
 const User = require('../models/User');
 const { requireAuth, canAccessPatient } = require('../middleware/auth');
+const fs = require('fs');
+const path = require('path');
+
 
 // GET /tests - List all tests
 router.get('/', requireAuth, canAccessPatient, async (req, res) => {
@@ -80,6 +83,27 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
   // load templates for test types
   const Template = require('../models/Template');
   let templates = await Template.find({ isActive: true });
+  // append static result templates (views/reports/results)
+  try {
+    const resultsDir = path.join(__dirname, '..', 'views', 'reports', 'results');
+    const allowed = [
+      'fecalysis.ejs',
+      'urinalysis.ejs',
+      'blood-chemistry.ejs',
+      'xray.ejs',
+      'hematology.ejs',
+      'serology.ejs',
+      'ultrasound.ejs'
+    ];
+    const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
+    const staticTemplates = files.map(f => {
+      const name = f.replace('.ejs', '').replace(/-/g, ' ');
+      return { name: name.charAt(0).toUpperCase() + name.slice(1), testType: name };
+    });
+    templates = templates.concat(staticTemplates);
+  } catch (e) {
+    // ignore static templates on error
+  }
 
     res.render('tests/new', {
       title: 'Create New Test',
@@ -198,6 +222,94 @@ router.get('/:id', requireAuth, canAccessPatient, async (req, res) => {
   }
 });
 
+// GET /tests/:id/results - Results entry form (supports fecalysis for now)
+router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const test = await Test.findById(req.params.id);
+    if (!test) {
+      req.flash('error_msg', 'Test not found');
+      return res.redirect('/tests');
+    }
+
+    // Only render form for fecalysis (case-insensitive match)
+    if (!test.testType || !/fecalysis/i.test(test.testType)) {
+      req.flash('error_msg', 'Results entry form is only available for Fecalysis tests');
+      return res.redirect(`/tests/${req.params.id}`);
+    }
+
+    // populate patient and performedBy user list
+    const patient = test.patient ? await Patient.findById(test.patient) : null;
+    const testForView = { ...test, patient: patient ? patient.toJSON() : null };
+    const users = await User.find({});
+
+    res.render('tests/results_entry_fecalysis', {
+      title: 'Enter Fecalysis Results',
+      test: testForView,
+      users
+    });
+
+  } catch (err) {
+    console.error('Results entry form error:', err);
+    req.flash('error_msg', 'Error loading results form');
+    res.redirect(`/tests/${req.params.id}`);
+  }
+});
+
+// POST /tests/:id/results - Save results for fecalysis
+router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const test = await Test.findById(req.params.id);
+    if (!test) {
+      req.flash('error_msg', 'Test not found');
+      return res.redirect('/tests');
+    }
+
+    if (!test.testType || !/fecalysis/i.test(test.testType)) {
+      req.flash('error_msg', 'Invalid test type for this results form');
+      return res.redirect(`/tests/${req.params.id}`);
+    }
+
+    const { color, consistency, pusCell, rbc, parasites, others, cocci, bacilli, performedBy,
+      mtName, mtLicense, pathName, pathLicense } = req.body;
+
+    const resultsObj = {
+      color: (color || '').trim(),
+      consistency: (consistency || '').trim(),
+      pusCell: (pusCell || '').trim(),
+      rbc: (rbc || '').trim(),
+      parasites: (parasites || '').trim(),
+      others: (others || '').trim(),
+      cocci: (cocci || '').trim(),
+      bacilli: (bacilli || '').trim(),
+      // allow storing performer name/license directly on results for printing
+      performedByName: (mtName || '').trim(),
+      performedByLicense: (mtLicense || '').trim(),
+      requestedByName: (pathName || '').trim(),
+      requestedByLicense: (pathLicense || '').trim()
+    };
+
+    const updateData = {
+      results: resultsObj,
+      status: 'Completed',
+      completedAt: new Date()
+    };
+
+    // set performedBy only if explicitly provided (performer management is handled separately)
+    if (performedBy) {
+      updateData.performedBy = performedBy;
+    }
+
+    await Test.findByIdAndUpdate(req.params.id, updateData, { new: true });
+
+    req.flash('success_msg', 'Results saved successfully');
+    res.redirect(`/tests/${req.params.id}`);
+  } catch (err) {
+    console.error('Save results error:', err);
+    req.flash('error_msg', 'Error saving results');
+    res.redirect(`/tests/${req.params.id}`);
+  }
+});
+
 // GET /tests/:id/edit - Edit test form
 router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
   try {
@@ -208,6 +320,27 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
   // load templates for test types (file DB)
   const Template = require('../models/Template');
   let templates = await Template.find({ isActive: true });
+  // append static result templates
+  try {
+    const resultsDir = path.join(__dirname, '..', 'views', 'reports', 'results');
+    const allowed = [
+      'fecalysis.ejs',
+      'urinalysis.ejs',
+      'blood-chemistry.ejs',
+      'xray.ejs',
+      'hematology.ejs',
+      'serology.ejs',
+      'ultrasound.ejs'
+    ];
+    const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
+    const staticTemplates = files.map(f => {
+      const name = f.replace('.ejs', '').replace(/-/g, ' ');
+      return { name: name.charAt(0).toUpperCase() + name.slice(1), testType: name };
+    });
+    templates = templates.concat(staticTemplates);
+  } catch (e) {
+    // ignore
+  }
 
     if (!test) {
       req.flash('error_msg', 'Test not found');

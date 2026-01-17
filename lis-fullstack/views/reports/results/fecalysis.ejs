@@ -1,0 +1,130 @@
+<style>
+  /* Page sizing: use standard Letter (8.5in x 11in) but constrain content to top half */
+  @page { size: 8.5in 11in; margin: 0.25in; }
+  body { margin:0; padding:0; }
+  /* Report content width centered on page; max-height limits content to upper half (approx 5.5in) */
+  .report-page{ position:relative; width:7.9in; max-width:100%; margin:0 auto; padding:8px 10px; font-family: Arial, Helvetica, sans-serif; color:#000; box-sizing:border-box }
+  .header{ position:relative; border-bottom:2px solid #0f766e; padding:8px 0 6px; display:flex; align-items:center }
+  .logo{ width:60px; height:auto; display:block; margin-right:2px; flex:0 0 auto }
+  .lab-info{ text-align:center; flex:1 }
+  .header-left{ display:flex; align-items:center; flex:0 0 auto }
+  .lab-info h1{ margin:0; color:#0f766e; font-size:20px; letter-spacing:0.5px }
+  .lab-info p{ margin:2px 0; font-size:11px; color:#0f766e }
+  .patient-info{ width:100%; margin-top:8px; border-collapse:collapse; font-size:12.5px }
+  .patient-info td{ padding:4px 6px; border:1px solid #bbb }
+  .title{ text-align:center; margin:12px 0; font-size:20px; font-weight:bold; letter-spacing:1px }
+  .result-table{ width:100%; border-collapse:collapse; margin-top:6px; font-size:12.5px }
+  .result-table td{ padding:6px; border:1px solid #bbb }
+  .label{ width:30%; background:#f8faf8; font-weight:600 }
+  .small-row td{ padding:4px }
+  .signatures{ display:flex; justify-content:space-between; margin-top:16px }
+  .sig { text-align:center; width:45% }
+  .sig .name{ font-weight:700 }
+  .watermark-img{ position:absolute; left:50%; top:40%; transform:translate(-50%,-50%); width:48%; opacity:0.06; pointer-events:none; z-index:0 }
+  .report-page { position:relative; z-index:1 }
+</style>
+
+<div class="report-page">
+  <div class="header">
+    <div class="header-left">
+      <img src="<%= inlineLogo || '/assets/gezyne-logo.png' %>" class="logo" alt="logo">
+    </div>
+    <div class="lab-info">
+      <h1>GEZYNE CLINICAL LABORATORY</h1>
+      <p>0330 VERGEL DE DIOS ST POBLACION PLARIDEL</p>
+      <p>NEAR MUNICIPAL BASKETBALL COURT</p>
+      <p>0917-649-0807 / 0960-390-0921 / 795-5007</p>
+      <p>Lic. No. 03-435-15CL-20</p>
+    </div>
+  </div>
+
+  <table class="patient-info">
+    <tr>
+      <td><strong>Patient's Reference No:</strong></td>
+      <td><%= test && test.testId ? test.testId : '' %></td>
+      <td><strong>Date:</strong></td>
+      <td><%= test && test.testDate ? (new Date(test.testDate)).toLocaleDateString() : (new Date()).toLocaleDateString() %></td>
+      <td><strong>Time:</strong></td>
+      <td><%= test && test.testDate ? (new Date(test.testDate)).toLocaleTimeString() : (new Date()).toLocaleTimeString() %></td>
+    </tr>
+    <tr>
+      <td><strong>Name:</strong></td>
+      <td colspan="3"><%= test && test.patient ? (test.patient.lastName + ', ' + test.patient.firstName) : '' %></td>
+      <td><strong>Age:</strong></td>
+      <td><%= test && test.patient && test.patient.dateOfBirth ? Math.max(0, new Date().getFullYear() - new Date(test.patient.dateOfBirth).getFullYear()) : '' %></td>
+    </tr>
+    <tr>
+      <td><strong>Address:</strong></td>
+      <td colspan="5"><%= test && test.patient ? (test.patient.address || '') : '' %></td>
+    </tr>
+    <tr>
+      <td><strong>Sex:</strong></td>
+      <td colspan="5"><%= test && test.patient ? (test.patient.gender || '') : '' %></td>
+    </tr>
+  </table>
+
+  <div class="title">FECALYSIS</div>
+
+  <table class="result-table">
+    <tr>
+      <td class="label"><strong>Color:</strong></td>
+      <td><%= test && test.results && test.results.color ? test.results.color : '' %></td>
+      <td class="label"><strong>Parasites:</strong></td>
+      <td>
+        <%= test && test.results && test.results.parasites ? test.results.parasites : '' %>
+        <% if (test && test.results && test.results.parasites) { %><span> /hpf</span><% } %>
+      </td>
+    </tr>
+    <tr>
+      <td class="label"><strong>Consistency:</strong></td>
+      <td colspan="3"><%= test && test.results && test.results.consistency ? test.results.consistency : '' %></td>
+    </tr>
+    <tr class="small-row">
+      <td class="label"><strong>Pus Cell:</strong></td>
+      <td>
+        <%= test && test.results && test.results.pusCell ? test.results.pusCell : '' %>
+        <% if (test && test.results && test.results.pusCell) { %><span> /hpf</span><% } %>
+      </td>
+      <td class="label"><strong>Others:</strong></td>
+      <td><%= test && test.results && test.results.others ? test.results.others : '' %></td>
+    </tr>
+    <tr class="small-row">
+      <td class="label"><strong>RBC:</strong></td>
+      <td>
+        <%= test && test.results && test.results.rbc ? test.results.rbc : '' %>
+        <% if (test && test.results && test.results.rbc) { %><span> /hpf</span><% } %>
+      </td>
+      <td class="label"><strong></strong></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td class="label"><strong>COCCI</strong></td>
+      <td><%= test && test.results && test.results.cocci ? test.results.cocci : '' %></td>
+      <td class="label"><strong>BACILLI</strong></td>
+      <td><%= test && test.results && test.results.bacilli ? test.results.bacilli : '' %></td>
+    </tr>
+  </table>
+
+  <div class="signatures">
+    <div class="sig">
+      <div style="height:40px"></div>
+      <div class="name"><%= test && test.results && test.results.performedByName ? test.results.performedByName : (test && test.performedBy && test.performedBy.name ? test.performedBy.name : '') %></div>
+      <div>Medical Technologist</div>
+      <div><%= test && test.results && test.results.performedByLicense ? ('Lic. No. ' + test.results.performedByLicense) : (test && test.performedBy && test.performedBy.license ? ('Lic. No. ' + test.performedBy.license) : '') %></div>
+    </div>
+    <div class="sig">
+      <div style="height:40px"></div>
+      <div class="name"><%= test && test.results && test.results.requestedByName ? test.results.requestedByName : (test && test.requestedBy && test.requestedBy.name ? test.requestedBy.name : '') %></div>
+      <div>Pathologist</div>
+      <div><%= test && test.results && test.results.requestedByLicense ? ('Lic. No. ' + test.results.requestedByLicense) : (test && test.requestedBy && test.requestedBy.license ? ('Lic. No. ' + test.requestedBy.license) : '') %></div>
+    </div>
+  </div>
+
+  <img class="watermark-img" src="<%= inlineLogo || '/assets/gezyne-logo.png' %>" alt="" />
+</div>
+  <% if (typeof print !== 'undefined' && print) { %>
+    <script>
+      // delay slightly to allow images/styles to load
+      setTimeout(function(){ window.print(); }, 300);
+    </script>
+  <% } %>

@@ -1,0 +1,74 @@
+<div class="card">
+  <h3>Enter Fecalysis Results - <%= test.testId %></h3>
+
+  <form action="/tests/<%= test.id %>/results" method="POST">
+    <input type="hidden" name="_method" value="POST">
+
+    <div class="form-row">
+      <label>Color</label>
+      <input type="text" name="color" value="<%= test.results && test.results.color ? test.results.color : '' %>" required>
+    </div>
+
+    <div class="form-row">
+      <label>Consistency</label>
+      <input type="text" name="consistency" value="<%= test.results && test.results.consistency ? test.results.consistency : '' %>">
+    </div>
+
+    <div class="form-row">
+      <label>Pus Cell</label>
+      <div style="display:flex;gap:8px;align-items:center;"><input type="text" name="pusCell" value="<%= test.results && test.results.pusCell ? test.results.pusCell : '' %>"><span>hpf</span></div>
+    </div>
+
+    <div class="form-row">
+      <label>RBC</label>
+      <div style="display:flex;gap:8px;align-items:center;"><input type="text" name="rbc" value="<%= test.results && test.results.rbc ? test.results.rbc : '' %>"><span>hpf</span></div>
+    </div>
+
+    <div class="form-row">
+      <label>Parasites</label>
+      <div style="display:flex;gap:8px;align-items:center;"><input type="text" name="parasites" value="<%= test.results && test.results.parasites ? test.results.parasites : '' %>"><span>hpf</span></div>
+    </div>
+
+    <div class="form-row">
+      <label>Others</label>
+      <input type="text" name="others" value="<%= test.results && test.results.others ? test.results.others : '' %>">
+    </div>
+
+    <div class="form-row">
+      <label>COCCI</label>
+      <input type="text" name="cocci" value="<%= test.results && test.results.cocci ? test.results.cocci : '' %>">
+    </div>
+
+    <div class="form-row">
+      <label>BACILLI</label>
+      <input type="text" name="bacilli" value="<%= test.results && test.results.bacilli ? test.results.bacilli : '' %>">
+    </div>
+
+    <hr>
+    <h4>Signatures / Performers</h4>
+    <div class="form-row">
+      <label>Medical Technologist (Name)</label>
+      <input type="text" name="mtName" value="<%= test.results && test.results.performedByName ? test.results.performedByName : '' %>">
+    </div>
+    <div class="form-row">
+      <label>Medical Technologist License</label>
+      <input type="text" name="mtLicense" value="<%= test.results && test.results.performedByLicense ? test.results.performedByLicense : '' %>">
+    </div>
+
+    <div class="form-row">
+      <label>Pathologist (Name)</label>
+      <input type="text" name="pathName" value="<%= test.results && test.results.requestedByName ? test.results.requestedByName : '' %>">
+    </div>
+    <div class="form-row">
+      <label>Pathologist License</label>
+      <input type="text" name="pathLicense" value="<%= test.results && test.results.requestedByLicense ? test.results.requestedByLicense : '' %>">
+    </div>
+
+    <!-- Performed By selection deferred; managed separately -->
+
+    <div class="form-row mt-12">
+      <a href="/tests/<%= test.id %>" class="button btn-secondary">Cancel</a>
+      <button class="button btn-primary">Save Results</button>
+    </div>
+  </form>
+</div>

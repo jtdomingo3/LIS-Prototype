@@ -55,7 +55,8 @@ router.post('/login', requireGuest, async (req, res) => {
     };
 
     req.flash('success_msg', `Welcome back, ${user.name}!`);
-    res.redirect('/dashboard');
+    // Attempt to request fullscreen on the dashboard after login (best-effort).
+    res.redirect('/dashboard?fullscreen=1');
 
   } catch (error) {
     console.error('Login error:', error);

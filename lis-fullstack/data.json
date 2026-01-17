@@ -8,7 +8,7 @@
       "role": "Admin",
       "status": "Active",
       "createdAt": "2026-01-15T01:12:10.333Z",
-      "lastLogin": "2026-01-16T14:50:47.378Z"
+      "lastLogin": "2026-01-17T08:30:00.339Z"
     },
     {
       "id": "8ad63d72-ba3b-47f2-9565-5a04c4ab09f8",
@@ -405,6 +405,11 @@
           "testId": "T016",
           "amount": 700,
           "timestamp": "2026-01-16T13:44:08.329Z"
+        },
+        {
+          "testId": "T016",
+          "amount": 500,
+          "timestamp": "2026-01-17T02:21:43.678Z"
         }
       ],
       "gender": "Female",
@@ -418,7 +423,7 @@
         "2D Echo"
       ],
       "createdAt": "2026-01-16T13:43:41.871Z",
-      "updatedAt": "2026-01-16T13:44:08.329Z",
+      "updatedAt": "2026-01-17T02:21:43.678Z",
       "createdBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
       "fullName": "Gezyne Test3",
       "age": "32"
@@ -570,13 +575,13 @@
       "patient": "2f42a7c2-29bf-4377-8aea-ebf1f39c33f9",
       "testType": "Registration",
       "testDate": "2026-01-16T13:39:22.031Z",
-      "status": "Extraction Area",
+      "status": "Drug Test",
       "specimenNumbers": {},
       "priority": "Normal",
       "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
       "completedAt": "2026-01-16T13:39:42.077Z",
       "createdAt": "2026-01-16T13:39:22.031Z",
-      "updatedAt": "2026-01-16T13:39:42.079Z"
+      "updatedAt": "2026-01-17T02:21:10.167Z"
     },
     {
       "id": "d38061fb-ce44-4255-9ff7-b10acae19e8d",
@@ -590,7 +595,7 @@
       "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
       "completedAt": "2026-01-16T13:44:08.330Z",
       "createdAt": "2026-01-16T13:43:41.874Z",
-      "updatedAt": "2026-01-16T13:44:08.332Z"
+      "updatedAt": "2026-01-17T02:21:43.682Z"
     },
     {
       "id": "d94f2cf9-4b03-4be4-9643-b95c27a7b9f8",
@@ -604,6 +609,86 @@
       "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
       "createdAt": "2026-01-16T13:51:14.375Z",
       "updatedAt": "2026-01-16T13:51:14.375Z"
+    },
+    {
+      "id": "95435b6e-91c7-47fc-b91a-99b7c5afc2bd",
+      "testId": "T018",
+      "patient": "9f4b2424-3ca2-4e02-b87d-b4e7ff47409b",
+      "testType": "fecalysis",
+      "testDate": "2026-01-17",
+      "status": "Completed",
+      "specimenNumbers": {},
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "createdAt": "2026-01-17T03:59:04.410Z",
+      "updatedAt": "2026-01-17T04:09:38.561Z",
+      "results": {
+        "color": "Yellowish Brown",
+        "consistency": "Watery/Muciod",
+        "pusCell": "1-2",
+        "rbc": "0-2",
+        "parasites": "Ascaris lumbricoides Ova:",
+        "others": "",
+        "cocci": "Many",
+        "bacilli": "Many"
+      },
+      "completedAt": "2026-01-17T04:09:38.561Z"
+    },
+    {
+      "id": "1d0b23d9-1028-456f-a4d4-081f3ecf3912",
+      "testId": "T019",
+      "patient": "2f42a7c2-29bf-4377-8aea-ebf1f39c33f9",
+      "testType": "fecalysis",
+      "testDate": "2026-01-17",
+      "status": "Completed",
+      "specimenNumbers": {},
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "createdAt": "2026-01-17T04:16:14.411Z",
+      "updatedAt": "2026-01-17T04:16:31.466Z",
+      "results": {
+        "color": "Yellowish Brown",
+        "consistency": "Watery/Muciod",
+        "pusCell": "1-2",
+        "rbc": "0-2",
+        "parasites": "Ascaris lumbricoides Ova:",
+        "others": "",
+        "cocci": "Many",
+        "bacilli": "Many",
+        "performedByName": "Gezyne M. Lopez, RMT",
+        "performedByLicense": "0112126",
+        "requestedByName": "Bernadette R. Espiritu, M.D.",
+        "requestedByLicense": "75547"
+      },
+      "completedAt": "2026-01-17T04:16:31.465Z"
+    },
+    {
+      "id": "1c1be303-578f-4311-a900-4053a8bed8fc",
+      "testId": "T020",
+      "patient": "cdd30f0b-ba48-4e36-ad9e-7c2f09e93210",
+      "testType": "fecalysis",
+      "testDate": "2026-01-17",
+      "status": "Completed",
+      "specimenNumbers": {},
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "createdAt": "2026-01-17T04:17:27.547Z",
+      "updatedAt": "2026-01-17T04:18:06.245Z",
+      "results": {
+        "color": "Yellowish Brown",
+        "consistency": "Watery/Muciod",
+        "pusCell": "1-2",
+        "rbc": "0-2",
+        "parasites": "Ascaris lumbricoides Ova:",
+        "others": "",
+        "cocci": "Many",
+        "bacilli": "Many",
+        "performedByName": "Gezyne M. Lopez, RMT",
+        "performedByLicense": "0112126",
+        "requestedByName": "Bernadette R. Espiritu, M.D.",
+        "requestedByLicense": "75547"
+      },
+      "completedAt": "2026-01-17T04:18:06.244Z"
     }
   ],
   "templates": [

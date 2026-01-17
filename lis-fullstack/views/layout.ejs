@@ -63,6 +63,35 @@
             color: var(--accent-orange);
         }
 
+        /* Branding in sidebar */
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 18px;
+            padding-bottom: 8px;
+            border-bottom: 3px solid var(--secondary-green);
+        }
+
+        .brand-logo {
+            width: 48px;
+            height: 48px;
+            object-fit: contain;
+            border-radius: 6px;
+            background: white;
+            padding: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+        }
+
+        .brand-text {
+            color: var(--accent-orange);
+            font-weight: 700;
+            font-size: 1.05em;
+            text-align: left;
+            line-height: 1;
+        }
+
         .nav-item {
             padding: 14px 16px;
             margin: 10px 0;
@@ -679,7 +708,10 @@
         <!-- Sidebar -->
         <% if (typeof user !== 'undefined' && user) { %>
         <div class="sidebar">
-            <h2>🔬 LIS</h2>
+            <div class="brand">
+                <img src="/assets/gezyne-logo.png" alt="Gezyne Clinical Laboratory" class="brand-logo">
+                <div class="brand-text">Gezyne Clinical Laboratory</div>
+            </div>
             <a href="/dashboard" class="nav-item <%= title.includes('Dashboard') ? 'active' : '' %>"><span class="nav-emoji">📊</span><span class="nav-text">Dashboard</span></a>
             <a href="/patients" class="nav-item <%= title.includes('Patient') ? 'active' : '' %>"><span class="nav-emoji">👥</span><span class="nav-text">Patients</span></a>
             <a href="/reception" class="nav-item <%= title.includes('Reception') ? 'active' : '' %>"><span class="nav-emoji">🏥</span><span class="nav-text">Reception</span></a>
@@ -819,6 +851,25 @@
                     sidebar.classList.remove('collapsed');
                 }
             });
+        })();
+
+        // Attempt to enter fullscreen when ?fullscreen=1 is present (best-effort).
+        (function() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                if (params.get('fullscreen') === '1') {
+                    function enterFullScreen() {
+                        const el = document.documentElement;
+                        if (el.requestFullscreen) el.requestFullscreen();
+                        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+                        else if (el.msRequestFullscreen) el.msRequestFullscreen();
+                    }
+                    // Try immediately; browsers may block if not a user gesture.
+                    try { enterFullScreen(); } catch (e) {}
+                    // As a fallback attach a one-time click handler to complete fullscreen.
+                    document.addEventListener('click', enterFullScreen, { once: true });
+                }
+            } catch (e) {}
         })();
 </script>
 
