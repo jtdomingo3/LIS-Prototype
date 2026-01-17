@@ -36,3 +36,25 @@
 
 [2026-01-17T08:46:03.686Z] [flash:error_msg GET /] Please log in to access this page
 
+[2026-01-17T09:02:10.696Z] [flash:error_msg GET /templates] Error rendering template
+
+[2026-01-17T09:04:12.380Z] [flash:error_msg GET /tests/8a30a483-49f4-4c9a-a117-25da1224e758] Results entry form is only available for Fecalysis tests
+
+[2026-01-17T09:08:25.430Z] [flash:error_msg GET /templates] Error rendering template
+
+[2026-01-17T09:08:33.485Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-17T09:08:43.596Z] [flash:error_msg GET /templates] Error rendering template
+
+[2026-01-17T09:11:45.171Z] [flash:error_msg GET /templates] Error rendering template
+
+[2026-01-17T09:12:04.019Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-17T09:21:03.710Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-17T09:24:37.446Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-17T10:14:31.036Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-17T11:40:13.547Z] [flash:error_msg GET /] Please log in to access this page
+

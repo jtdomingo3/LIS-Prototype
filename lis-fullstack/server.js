@@ -6,13 +6,16 @@ const rateLimit = require('express-rate-limit');
 const path = require('path');
 const methodOverride = require('method-override');
 const fs = require('fs');
+const os = require('os');
 const expressLayouts = require('express-ejs-layouts');
 const { logReportError } = require('./lib/reportLogger');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 // Default host/IP for the server. Override with the HOST env var if needed.
-const HOST = process.env.HOST || '192.168.31.86';
+// Default to listening on all interfaces so the server is reachable from other devices on the network.
+// If you prefer localhost-only, set HOST=127.0.0.1 before starting.
+const HOST = process.env.HOST || '0.0.0.0';
 const DATA_FILE = path.join(__dirname, 'data.json');
 
 // Initialize data file if it doesn't exist
@@ -42,6 +45,53 @@ const db = {
 
 // Make db available globally
 global.db = db;
+
+// Startup validation to detect missing runtime files (helps packaged EXE diagnose common problems)
+function verifyStartupRequirements() {
+  const required = [];
+  const optionalWarnings = [];
+
+  const viewsDir = path.join(__dirname, 'views');
+  const publicDir = path.join(__dirname, 'public');
+  const assetsDir = path.join(__dirname, 'assets');
+
+  if (!fs.existsSync(viewsDir)) required.push({ path: viewsDir, reason: 'EJS views are required to render pages (views folder missing)' });
+  if (!fs.existsSync(DATA_FILE)) required.push({ path: DATA_FILE, reason: 'data.json missing; used as the simple file DB' });
+  if (!fs.existsSync(publicDir)) optionalWarnings.push({ path: publicDir, reason: 'static public folder not found; some static assets may be missing' });
+  if (!fs.existsSync(assetsDir)) optionalWarnings.push({ path: assetsDir, reason: 'assets folder not found; logos/sounds may be missing' });
+
+  // Check for Puppeteer local Chromium (common packaging issue)
+  try {
+    const puppeteerPkg = require.resolve('puppeteer');
+    const puppeteerChromium = path.join(__dirname, 'node_modules', 'puppeteer', '.local-chromium');
+    if (!fs.existsSync(puppeteerChromium)) {
+      optionalWarnings.push({ path: puppeteerChromium, reason: 'puppeteer installed but bundled Chromium not found; Puppeteer-based features will fail unless a system browser is used' });
+    }
+  } catch (e) {
+    // puppeteer not installed - that's fine if you don't use it
+  }
+
+  if (required.length || optionalWarnings.length) {
+    console.error('\n=== LIS Startup Validation ===');
+    if (required.length) {
+      console.error('\nMissing required files/folders:');
+      required.forEach(r => console.error(` - ${r.path}: ${r.reason}`));
+      console.error('\nAction: ensure these files/folders exist in the application directory.');
+      console.error('If you packaged the app with `pkg`, make sure to include these paths in the `pkg.assets` array or distribute them alongside the EXE.');
+    }
+    if (optionalWarnings.length) {
+      console.warn('\nWarnings:');
+      optionalWarnings.forEach(w => console.warn(` - ${w.path}: ${w.reason}`));
+      console.warn('\nAction: these may be optional but can affect features. For Puppeteer, install Chromium or configure Puppeteer to use a system browser.');
+    }
+    console.error('=== End validation ===\n');
+  }
+
+  if (required.length) {
+    // Exit to avoid the packaged executable failing with an obscure error
+    process.exit(1);
+  }
+}
 
 // Middleware
 app.use(express.urlencoded({ extended: true }));
@@ -169,14 +219,51 @@ process.on('uncaughtException', (err) => {
   try {
     logReportError(err, 'uncaughtException');
   } catch (e) { console.error('Failed to log uncaughtException:', e); }
-  // After logging, exit so the process can be restarted by external supervisor
-  console.error('Uncaught exception, exiting process');
+  // Print stack to console for debugging, then exit so the process can be restarted by external supervisor
+  try {
+    console.error('Uncaught exception:', err && err.stack ? err.stack : err);
+  } catch (e) {
+    console.error('Failed to print uncaught exception stack:', e);
+  }
   process.exit(1);
 });
 
+// Run startup checks before listening - helpful for packaged EXE diagnostics
+verifyStartupRequirements();
+
 app.listen(PORT, HOST, () => {
+  const now = new Date();
   const url = `http://${HOST}:${PORT}`;
-  console.log('LIS Server running on %s:%d', HOST, PORT);
-  console.log(`Open the app in your browser: ${url}`);
-  console.log('To override HOST use: HOST=127.0.0.1 (or set in your environment)');
+  // Gather non-internal IPv4 addresses for helpful network links
+  let ips = [];
+  try {
+    ips = Object.values(os.networkInterfaces())
+      .flat()
+      .filter(i => i && i.family === 'IPv4' && !i.internal)
+      .map(i => i.address);
+  } catch (e) {
+    ips = [];
+  }
+
+  const lines = [];
+  lines.push('='.repeat(72));
+  lines.push('Welcome to Gezyne Clinical Laboratory - Laboratory Information System (LIS)');
+  lines.push('');
+  lines.push('Access the LIS:');
+  lines.push(` • Local: ${url}`);
+  if (ips && ips.length) {
+    ips.forEach((ip) => {
+      lines.push(` • On your network: http://${ip}:${PORT}`);
+    });
+  }
+  lines.push('');
+  lines.push('Please do not close this terminal while the server is running.');
+  lines.push('To access the LIS, open one of the links above in your browser.');
+  lines.push('');
+  lines.push(`Started: ${now.toLocaleString()}`);
+  lines.push(`HOST env override: ${process.env.HOST || '(not set)'}   PORT env override: ${process.env.PORT || '(not set)'} `);
+  lines.push('To override the default host, set the HOST environment variable before starting.');
+  lines.push('='.repeat(72));
+
+  console.log(lines.join('\n'));
 });

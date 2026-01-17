@@ -1,0 +1,60 @@
+Param(
+  [switch]$NoNewWindow,
+  [int]$Port
+)
+
+# Determine project directory (works when running as script or as compiled exe)
+try {
+  if ($MyInvocation.MyCommand.Definition -and (Test-Path $MyInvocation.MyCommand.Definition)) {
+    $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
+  } else {
+    $exePath = [System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
+    $scriptDir = Split-Path -Parent $exePath
+  }
+} catch {
+  $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
+}
+
+# Ensure we have a plain filesystem path string
+$projectDir = (Resolve-Path (Join-Path $scriptDir '..')).ProviderPath
+
+if (-not $Port) { $Port = [int]($env:PORT) }
+if (-not $Port) { $Port = 3000 }
+
+Write-Host "Starting Gezyne LIS (project: $projectDir)" -ForegroundColor Cyan
+Write-Host "Using port: $Port" -ForegroundColor Cyan
+
+# Start server in a new PowerShell window unless NoNewWindow is specified
+if (-not $NoNewWindow) {
+  $cmd = "Set-Location -Path '$projectDir'; npm start"
+  Start-Process -FilePath powershell -ArgumentList "-NoExit","-NoProfile","-Command",$cmd -WorkingDirectory $projectDir
+  Write-Host "Started server in a new PowerShell window." -ForegroundColor Green
+} else {
+  Push-Location $projectDir
+  npm start
+  Pop-Location
+}
+
+# Poll the server until it responds, then open the default browser
+$maxWait = 60
+$wait = 0
+$url = "http://localhost:$Port"
+Write-Host "Waiting for server to become available at $url ..."
+$serverUp = $false
+while ($wait -lt $maxWait) {
+  try {
+    $resp = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 3 -ErrorAction Stop
+    $serverUp = $true
+    break
+  } catch {
+    Start-Sleep -Seconds 1
+    $wait++
+  }
+}
+
+if ($serverUp) {
+  Write-Host "Server is up — opening browser at $url" -ForegroundColor Green
+  Start-Process $url
+} else {
+  Write-Warning "Server did not respond within $maxWait seconds. You can open $url manually once the server starts."
+}

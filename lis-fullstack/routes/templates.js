@@ -152,6 +152,10 @@ router.get('/:id', requireAuth, canAccessPatient, async (req, res) => {
         test: { patient: {}, results: {}, requestedBy: null, performedBy: null }
       };
 
+      // Provide inlineLogo fallback so static templates can reference it safely
+      const inlineLogo = (req.app && req.app.locals && req.app.locals.inlineLogo) ? req.app.locals.inlineLogo : '/assets/gezyne-logo.png';
+      Object.assign(renderOptions, { inlineLogo });
+
       // If express-ejs-layouts is installed it wraps res.render; use the original renderer
       // (stored at res.__render) to bypass layout handling and send the raw template output.
       if (res.__render && typeof res.__render === 'function') {

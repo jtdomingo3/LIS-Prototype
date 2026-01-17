@@ -231,9 +231,9 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       return res.redirect('/tests');
     }
 
-    // Only render form for fecalysis (case-insensitive match)
-    if (!test.testType || !/fecalysis/i.test(test.testType)) {
-      req.flash('error_msg', 'Results entry form is only available for Fecalysis tests');
+    // Only render form for fecalysis or urinalysis (case-insensitive match)
+    if (!test.testType || (!/fecalysis/i.test(test.testType) && !/urinalysis/i.test(test.testType))) {
+      req.flash('error_msg', 'Results entry form is only available for Fecalysis or Urinalysis tests');
       return res.redirect(`/tests/${req.params.id}`);
     }
 
@@ -242,8 +242,10 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     const testForView = { ...test, patient: patient ? patient.toJSON() : null };
     const users = await User.find({});
 
-    res.render('tests/results_entry_fecalysis', {
-      title: 'Enter Fecalysis Results',
+    // choose the appropriate entry form
+    const view = /urinalysis/i.test(test.testType) ? 'tests/results_entry_urinalysis' : 'tests/results_entry_fecalysis';
+    res.render(view, {
+      title: `Enter ${test.testType} Results`,
       test: testForView,
       users
     });
@@ -264,29 +266,59 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       return res.redirect('/tests');
     }
 
-    if (!test.testType || !/fecalysis/i.test(test.testType)) {
+
+    if (!test.testType || (!/fecalysis/i.test(test.testType) && !/urinalysis/i.test(test.testType))) {
       req.flash('error_msg', 'Invalid test type for this results form');
       return res.redirect(`/tests/${req.params.id}`);
     }
 
-    const { color, consistency, pusCell, rbc, parasites, others, cocci, bacilli, performedBy,
-      mtName, mtLicense, pathName, pathLicense } = req.body;
+    // Extract common performer fields
+    const { performedBy, mtName, mtLicense, pathName, pathLicense } = req.body;
 
-    const resultsObj = {
-      color: (color || '').trim(),
-      consistency: (consistency || '').trim(),
-      pusCell: (pusCell || '').trim(),
-      rbc: (rbc || '').trim(),
-      parasites: (parasites || '').trim(),
-      others: (others || '').trim(),
-      cocci: (cocci || '').trim(),
-      bacilli: (bacilli || '').trim(),
-      // allow storing performer name/license directly on results for printing
-      performedByName: (mtName || '').trim(),
-      performedByLicense: (mtLicense || '').trim(),
-      requestedByName: (pathName || '').trim(),
-      requestedByLicense: (pathLicense || '').trim()
-    };
+    let resultsObj = {};
+
+    if (/fecalysis/i.test(test.testType)) {
+      const { color, consistency, pusCell, rbc, parasites, others, cocci, bacilli } = req.body;
+      resultsObj = {
+        color: (color || '').trim(),
+        consistency: (consistency || '').trim(),
+        pusCell: (pusCell || '').trim(),
+        rbc: (rbc || '').trim(),
+        parasites: (parasites || '').trim(),
+        others: (others || '').trim(),
+        cocci: (cocci || '').trim(),
+        bacilli: (bacilli || '').trim()
+      };
+    } else if (/urinalysis/i.test(test.testType)) {
+      const { color, appearance, specificGravity, ph, protein, glucose, ketones, blood, nitrite, leukocyte,
+        rbc, wbc, epithelial, mucus, amorphous, bacteria, casts, others } = req.body;
+      resultsObj = {
+        color: (color || '').trim(),
+        appearance: (appearance || '').trim(),
+        specificGravity: (specificGravity || '').trim(),
+        ph: (ph || '').trim(),
+        protein: (protein || '').trim(),
+        glucose: (glucose || '').trim(),
+        ketones: (ketones || '').trim(),
+        blood: (blood || '').trim(),
+        nitrite: (nitrite || '').trim(),
+        leukocyte: (leukocyte || '').trim(),
+        rbc: (rbc || '').trim(),
+        wbc: (wbc || '').trim(),
+        epithelial: (epithelial || '').trim(),
+        mucus: (mucus || '').trim(),
+        amorphous: (amorphous || '').trim(),
+        bacteria: (bacteria || '').trim(),
+        casts: (casts || '').trim(),
+        others: (others || '').trim()
+      };
+    }
+
+    // allow storing performer name/license directly on results for printing
+    resultsObj.performedByName = (mtName || '').trim();
+    resultsObj.performedByLicense = (mtLicense || '').trim();
+    resultsObj.requestedByName = (pathName || '').trim();
+    resultsObj.requestedByLicense = (pathLicense || '').trim();
 
     const updateData = {
       results: resultsObj,

@@ -3,9 +3,13 @@
   "version": "1.0.0",
   "description": "Full-stack Laboratory Information System with Node.js, Express, MongoDB",
   "main": "server.js",
+  "bin": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "build:exe": "pkg . --out-path dist",
+    "build:exe:icon": "node ./scripts/build-exe-with-icon.js",
+    "build:launcher": "node ./scripts/build-launcher.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -35,6 +39,25 @@
     "uuid": "^9.0.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.1"
+    "nodemon": "^3.0.1",
+    "pkg": "^5.8.0",
+    "png-to-ico": "^1.0.0",
+    "rcedit": "^1.1.1",
+    "jimp": "^0.16.1"
   }
+  ,
+  "pkg": {
+    "bin": "server.js",
+    "assets": [
+      "views/**/*",
+      "public/**/*",
+      "assets/**/*",
+      "data.json",
+      "lib/**/*",
+      "routes/**/*",
+      "templates/**/*"
+    ],
+    "targets": ["node18-win-x64"]
+  }
+
 }
