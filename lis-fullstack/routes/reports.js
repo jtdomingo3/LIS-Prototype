@@ -15,6 +15,7 @@ try {
   console.warn('Puppeteer not installed; PDF rendering will use html-pdf fallback.');
 }
 const { requireAuth, canAccessPatient } = require('../middleware/auth');
+const { logReportError } = require('../lib/reportLogger');
 
 // Helper to inline logo as base64 data URI for reliable PDF rendering
 function getInlineLogo() {
@@ -28,21 +29,7 @@ function getInlineLogo() {
   }
 }
 
-// Helper to persistently log report generation errors (creates logs/report-errors.log)
-function logReportError(err, context) {
-  try {
-    const logsDir = path.join(__dirname, '..', 'logs');
-    if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
-    const file = path.join(logsDir, 'report-errors.log');
-    const timestamp = new Date().toISOString();
-    const message = `[${timestamp}] [${context}] ${err && err.stack ? err.stack : String(err)}\n\n`;
-    fs.appendFile(file, message, (e) => {
-      if (e) console.error('Failed to write report error log:', e);
-    });
-  } catch (e) {
-    console.error('logReportError failed:', e);
-  }
-}
+// uses centralized logger in lib/reportLogger.js
 
 // GET /reports - Reports page
 router.get('/', requireAuth, canAccessPatient, async (req, res) => {
@@ -316,10 +303,19 @@ router.get('/pdf/:testId', requireAuth, canAccessPatient, async (req, res) => {
             await page.setContent(htmlForPdf, { waitUntil: 'networkidle0' });
             const pdfBuffer = await page.pdf({ format: 'Letter', printBackground: true, margin: { top: '0.4in', right: '0.4in', bottom: '0.4in', left: '0.4in' } });
             await browser.close();
+            // Verify the renderer returned a PDF buffer (starts with %PDF-)
+            const pdfBuf = Buffer.isBuffer(pdfBuffer) ? pdfBuffer : Buffer.from(pdfBuffer);
+            const header = pdfBuf && pdfBuf.length ? pdfBuf.toString('utf8', 0, 5) : null;
+            if (header !== '%PDF-') {
+              const tmpHtml = path.join(os.tmpdir(), `lab_report_html_${populatedTest.testId}.html`);
+              try { fs.writeFileSync(tmpHtml, htmlForPdf, 'utf8'); console.warn('Puppeteer produced non-PDF output; wrote HTML to', tmpHtml); } catch (werr) { console.warn('Failed writing debug HTML from puppeteer fallback:', werr && werr.message); }
+              logReportError(new Error('Puppeteer did not return a PDF buffer'), `puppeteer pdf header check for ${populatedTest.testId}`);
+              req.flash('error_msg', 'Error generating PDF (renderer produced invalid output)');
+              return res.redirect('/reports');
+            }
 
             res.setHeader('Content-Type', 'application/pdf');
             res.setHeader('Content-Disposition', `attachment; filename=Lab_Report_${populatedTest.testId}_${populatedTest.patient ? populatedTest.patient.lastName : 'patient'}.pdf`);
-            res.setHeader('Content-Length', pdfBuffer.length);
             if (process.env.DEBUG_PDF) {
               try {
                 const tmpPath = path.join(os.tmpdir(), `lab_report_${populatedTest.testId}.pdf`);
@@ -329,7 +325,7 @@ router.get('/pdf/:testId', requireAuth, canAccessPatient, async (req, res) => {
                 console.warn('Failed writing debug PDF:', werr && werr.message);
               }
             }
-            return res.send(pdfBuffer);
+            return res.end(pdfBuffer);
           } catch (puErr) {
             console.error('Puppeteer PDF generation failed, falling back to html-pdf:', puErr);
           }
@@ -349,10 +345,19 @@ router.get('/pdf/:testId', requireAuth, canAccessPatient, async (req, res) => {
             req.flash('error_msg', 'Error generating PDF');
             return res.redirect('/reports');
           }
+          // Verify buffer looks like PDF
+          const bufFallback = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
+          const hdr = bufFallback && bufFallback.length ? bufFallback.toString('utf8', 0, 5) : null;
+          if (hdr !== '%PDF-') {
+            const tmpHtml = path.join(os.tmpdir(), `lab_report_html_fallback_${populatedTest.testId}.html`);
+            try { fs.writeFileSync(tmpHtml, htmlForPdf, 'utf8'); console.warn('html-pdf produced non-PDF output; wrote HTML to', tmpHtml); } catch (werr) { console.warn('Failed writing debug HTML from html-pdf fallback:', werr && werr.message); }
+            logReportError(new Error('html-pdf did not return a PDF buffer'), `html-pdf header check for ${populatedTest.testId}`);
+            req.flash('error_msg', 'Error generating PDF (renderer produced invalid output)');
+            return res.redirect('/reports');
+          }
 
           res.setHeader('Content-Type', 'application/pdf');
           res.setHeader('Content-Disposition', `attachment; filename=Lab_Report_${populatedTest.testId}_${populatedTest.patient ? populatedTest.patient.lastName : 'patient'}.pdf`);
-          res.setHeader('Content-Length', buffer.length);
           if (process.env.DEBUG_PDF) {
             try {
               const tmpPath = path.join(os.tmpdir(), `lab_report_fallback_${populatedTest.testId}.pdf`);
@@ -362,7 +367,7 @@ router.get('/pdf/:testId', requireAuth, canAccessPatient, async (req, res) => {
               console.warn('Failed writing debug fallback PDF:', werr && werr.message);
             }
           }
-          res.send(buffer);
+          return res.end(buffer);
         });
       });
     });

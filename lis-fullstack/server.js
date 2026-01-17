@@ -7,6 +7,7 @@ const path = require('path');
 const methodOverride = require('method-override');
 const fs = require('fs');
 const expressLayouts = require('express-ejs-layouts');
+const { logReportError } = require('./lib/reportLogger');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -94,8 +95,29 @@ app.use((req, res, next) => {
 // Global variables for flash messages
 app.use((req, res, next) => {
   res.locals.success_msg = req.flash('success_msg');
-  res.locals.error_msg = req.flash('error_msg');
-  res.locals.error = req.flash('error');
+  const errorMsgs = req.flash('error_msg');
+  res.locals.error_msg = errorMsgs;
+  // Log any flash error messages to the persistent report error log
+  try {
+    if (Array.isArray(errorMsgs) && errorMsgs.length) {
+      errorMsgs.forEach((m) => {
+        logReportError(m, `flash:error_msg ${req.method} ${req.originalUrl}`);
+      });
+    }
+  } catch (e) {
+    console.error('Failed to log flash error messages:', e);
+  }
+  const errors = req.flash('error');
+  res.locals.error = errors;
+  try {
+    if (Array.isArray(errors) && errors.length) {
+      errors.forEach((m) => {
+        logReportError(m, `flash:error ${req.method} ${req.originalUrl}`);
+      });
+    }
+  } catch (e) {
+    console.error('Failed to log flash error messages (error):', e);
+  }
   res.locals.user = req.session.user || null;
   next();
 });
@@ -131,8 +153,25 @@ app.use((req, res) => {
 // Error handler
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err && err.stack ? err.stack : err);
+  try { logReportError(err, `express error ${req.method} ${req.originalUrl}`); } catch (e) { console.error('Failed to write express error to log:', e); }
   // Show the error details in development, otherwise show generic message
   res.status(500).render('500', { title: 'Server Error', error: process.env.NODE_ENV === 'development' ? err : {} });
+});
+
+// Global process-level error handlers to ensure persistent logging
+process.on('unhandledRejection', (reason, promise) => {
+  try {
+    logReportError(reason, 'unhandledRejection');
+  } catch (e) { console.error('Failed to log unhandledRejection:', e); }
+});
+
+process.on('uncaughtException', (err) => {
+  try {
+    logReportError(err, 'uncaughtException');
+  } catch (e) { console.error('Failed to log uncaughtException:', e); }
+  // After logging, exit so the process can be restarted by external supervisor
+  console.error('Uncaught exception, exiting process');
+  process.exit(1);
 });
 
 app.listen(PORT, HOST, () => {

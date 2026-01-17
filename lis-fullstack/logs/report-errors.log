@@ -1,0 +1,38 @@
+[2026-01-17T08:34:32.353Z] [puppeteer pdf header check for T020] Error: Puppeteer did not return a PDF buffer
+    at C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\routes\reports.js:324:30
+
+[2026-01-17T08:34:53.073Z] [puppeteer pdf header check for T020] Error: Puppeteer did not return a PDF buffer
+    at C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\routes\reports.js:324:30
+
+[2026-01-17T08:34:53.086Z] [puppeteer pdf header check for T020] Error: Puppeteer did not return a PDF buffer
+    at C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\routes\reports.js:324:30
+
+[2026-01-17T08:34:54.050Z] [puppeteer pdf header check for T020] Error: Puppeteer did not return a PDF buffer
+    at C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\routes\reports.js:324:30
+
+[2026-01-17T08:37:15.226Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-17T08:37:27.913Z] [puppeteer pdf header check for T020] Error: Puppeteer did not return a PDF buffer
+    at C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\routes\reports.js:311:30
+
+[2026-01-17T08:37:27.920Z] [flash:error_msg GET /reports] Error generating PDF (renderer produced invalid output)
+
+[2026-01-17T08:39:32.798Z] [puppeteer pdf header check for T020] Error: Puppeteer did not return a PDF buffer
+    at C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\routes\reports.js:311:30
+
+[2026-01-17T08:39:32.805Z] [flash:error_msg GET /reports] Error generating PDF (renderer produced invalid output)
+
+[2026-01-17T08:45:07.429Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-17T08:45:19.417Z] [puppeteer pdf header check for T019] Error: Puppeteer did not return a PDF buffer
+    at C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\routes\reports.js:311:30
+
+[2026-01-17T08:45:19.424Z] [flash:error_msg GET /reports] Error generating PDF (renderer produced invalid output)
+
+[2026-01-17T08:45:50.871Z] [puppeteer pdf header check for T020] Error: Puppeteer did not return a PDF buffer
+    at C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\routes\reports.js:311:30
+
+[2026-01-17T08:45:50.878Z] [flash:error_msg GET /reports] Error generating PDF (renderer produced invalid output)
+
+[2026-01-17T08:46:03.686Z] [flash:error_msg GET /] Please log in to access this page
+
