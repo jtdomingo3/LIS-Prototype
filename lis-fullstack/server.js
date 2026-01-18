@@ -172,6 +172,20 @@ app.use((req, res, next) => {
   next();
 });
 
+// Feature flags (temporary toggles for UI visibility)
+app.locals.featureFlags = {
+  tests: true,
+  reports: true,
+  templates: true,
+  users: true
+};
+
+// Expose current feature flags to all views via res.locals
+app.use((req, res, next) => {
+  res.locals.featureFlags = app.locals.featureFlags;
+  next();
+});
+
 // Set view engine
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -185,6 +199,7 @@ const reportRoutes = require('./routes/reports');
 const templateRoutes = require('./routes/templates');
 const userRoutes = require('./routes/users');
 const receptionRoutes = require('./routes/reception');
+const settingsRoutes = require('./routes/settings');
 
 app.use('/', authRoutes);
 app.use('/dashboard', dashboardRoutes);
@@ -194,6 +209,7 @@ app.use('/reports', reportRoutes);
 app.use('/templates', templateRoutes);
 app.use('/users', userRoutes);
 app.use('/reception', receptionRoutes);
+app.use('/settings', settingsRoutes);
 
 // 404 handler
 app.use((req, res) => {

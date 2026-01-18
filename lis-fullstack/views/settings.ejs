@@ -1,0 +1,20 @@
+<div class="page active">
+  <div class="card">
+    <h3>Settings</h3>
+    <p class="mb-20">Temporarily disable sections of the sidebar. Changes are temporary and in-memory.</p>
+
+    <form method="POST" action="/settings">
+      <div class="checkbox-group">
+        <label class="checkbox-item"><input type="checkbox" name="tests" <%= featureFlags && featureFlags.tests ? 'checked' : '' %>/> Tests & Results</label>
+        <label class="checkbox-item"><input type="checkbox" name="reports" <%= featureFlags && featureFlags.reports ? 'checked' : '' %>/> Reports</label>
+        <label class="checkbox-item"><input type="checkbox" name="templates" <%= featureFlags && featureFlags.templates ? 'checked' : '' %>/> Templates</label>
+        <label class="checkbox-item"><input type="checkbox" name="users" <%= featureFlags && featureFlags.users ? 'checked' : '' %>/> Users</label>
+      </div>
+
+      <div class="mt-20">
+        <button type="submit" class="button btn-primary">Save</button>
+        <a href="/dashboard" class="button btn-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
