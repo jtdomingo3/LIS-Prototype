@@ -54,6 +54,7 @@ async function getStaticResultTemplates() {
       'blood-chemistry.ejs',
       'thyroid-panel.ejs',
       'pregnancy-test.ejs',
+      'pt-aptt.ejs',
       'xray.ejs',
       'hematology.ejs',
       'serology.ejs',

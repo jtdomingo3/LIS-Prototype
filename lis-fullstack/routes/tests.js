@@ -94,6 +94,7 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       'dengue-duo.ejs',
       'thyroid-panel.ejs',
       'blood-chemistry.ejs',
+      'pt-aptt.ejs',
       'xray.ejs',
       'hematology.ejs',
       'serology.ejs',
@@ -236,7 +237,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     }
 
     // Only render form for supported test types (including pregnancy)
-    if (!test.testType || (!/fecalysis/i.test(test.testType) && !/urinalysis/i.test(test.testType) && !/hemato|hematology|cbc/i.test(test.testType) && !/(blood\s*typing|blood-typing|bloodtyping)/i.test(test.testType) && !/serol|serology/i.test(test.testType) && !/thyroid|thyroid\s*panel|thyroid-panel/i.test(test.testType) && !/pregnan|pregnancy|pregnancy\s*test/i.test(test.testType) && !/dengue/i.test(test.testType))) {
+    if (!test.testType || (!/fecalysis/i.test(test.testType) && !/urinalysis/i.test(test.testType) && !/hemato|hematology|cbc/i.test(test.testType) && !/(blood\s*typing|blood-typing|bloodtyping)/i.test(test.testType) && !/serol|serology/i.test(test.testType) && !/thyroid|thyroid\s*panel|thyroid-panel/i.test(test.testType) && !/pregnan|pregnancy|pregnancy\s*test/i.test(test.testType) && !/dengue/i.test(test.testType) && !/pt|prothrombin|pt-aptt|ptaptt/i.test(test.testType))) {
       req.flash('error_msg', 'Results entry form is only available for supported test types (including Pregnancy Test)');
       return res.redirect(`/tests/${req.params.id}`);
     }
@@ -255,6 +256,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     if (/thyroid|thyroid\s*panel|thyroid-panel/i.test(test.testType)) view = 'tests/results_entry_thyroid_panel';
     if (/pregnan|pregnancy|pregnancy\s*test/i.test(test.testType)) view = 'tests/results_entry_pregnancy_test';
     if (/dengue/i.test(test.testType)) view = 'tests/results_entry_dengue_duo';
+    if (/pt|prothrombin|pt-aptt|ptaptt/i.test(test.testType)) view = 'tests/results_entry_pt_aptt';
     res.render(view, {
       title: `Enter ${test.testType} Results`,
       test: testForView,
@@ -278,7 +280,7 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     }
 
 
-    if (!test.testType || (!/fecalysis/i.test(test.testType) && !/urinalysis/i.test(test.testType) && !/hemato|hematology|cbc/i.test(test.testType) && !/(blood\s*typing|blood-typing|bloodtyping)/i.test(test.testType) && !/serol|serology/i.test(test.testType) && !/thyroid|thyroid\s*panel|thyroid-panel/i.test(test.testType) && !/pregnan|pregnancy|pregnancy\s*test/i.test(test.testType) && !/dengue/i.test(test.testType))) {
+    if (!test.testType || (!/fecalysis/i.test(test.testType) && !/urinalysis/i.test(test.testType) && !/hemato|hematology|cbc/i.test(test.testType) && !/(blood\s*typing|blood-typing|bloodtyping)/i.test(test.testType) && !/serol|serology/i.test(test.testType) && !/thyroid|thyroid\s*panel|thyroid-panel/i.test(test.testType) && !/pregnan|pregnancy|pregnancy\s*test/i.test(test.testType) && !/dengue/i.test(test.testType) && !/pt|prothrombin|pt-aptt|ptaptt/i.test(test.testType))) {
       req.flash('error_msg', 'Invalid test type for this results form');
       return res.redirect(`/tests/${req.params.id}`);
     }
@@ -378,6 +380,19 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
         igm: (igm || '').trim(),
         igg: (igg || '').trim()
       };
+    } else if (/pt|prothrombin|pt-aptt|ptaptt/i.test(test.testType)) {
+      const { pt_control, pt_patient, pt_activity, pt_inr, aptt_patient } = req.body;
+      resultsObj = {
+        prothrombin: {
+          control: (pt_control || '').trim(),
+          patient: (pt_patient || '').trim(),
+          activity: (pt_activity || '').trim(),
+          inr: (pt_inr || '').trim()
+        },
+        aptt: {
+          patient: (aptt_patient || '').trim()
+        }
+      };
     } else if (/pregnan|pregnancy|pregnancy\s*test/i.test(test.testType)) {
       const { sample, result } = req.body;
       resultsObj = {
@@ -456,6 +471,7 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
       'pregnancy-test.ejs',
       'dengue-duo.ejs',
       'blood-chemistry.ejs',
+      'pt-aptt.ejs',
       'xray.ejs',
       'hematology.ejs',
       'serology.ejs',

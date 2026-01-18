@@ -1,0 +1,83 @@
+<div class="card">
+  <h3>Enter PT / APTT Results - <%= test.testId %></h3>
+
+  <form action="/tests/<%= test.id %>/results" method="POST">
+    <input type="hidden" name="_method" value="POST">
+
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;">
+      <div class="form-row" style="margin:0;">
+        <label>Date</label>
+        <input type="date" name="entryDate" value="<%= test && test.testDate ? (new Date(test.testDate)).toISOString().slice(0,10) : (new Date()).toISOString().slice(0,10) %>" readonly>
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>Time Requested</label>
+        <input type="time" name="timeRequested" value="<%= test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '' %>" readonly>
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>Time Released</label>
+        <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : '' %>">
+      </div>
+    </div>
+
+    <h4>Prothrombin Time (PT)</h4>
+    <div class="form-row">
+      <label>Control</label>
+      <input type="text" name="pt_control" value="<%= (test.results && test.results.prothrombin && test.results.prothrombin.control) ? test.results.prothrombin.control : '10.9 sec.' %>">
+    </div>
+    <div class="form-row">
+      <label>Patient</label>
+      <input type="text" name="pt_patient" value="<%= (test.results && test.results.prothrombin && test.results.prothrombin.patient) ? test.results.prothrombin.patient : '' %>">
+    </div>
+    <div class="form-row">
+      <label>Activity</label>
+      <input type="text" name="pt_activity" value="<%= (test.results && test.results.prothrombin && test.results.prothrombin.activity) ? test.results.prothrombin.activity : '' %>">
+    </div>
+    <div class="form-row">
+      <label>INR</label>
+      <input type="text" name="pt_inr" value="<%= (test.results && test.results.prothrombin && test.results.prothrombin.inr) ? test.results.prothrombin.inr : '' %>">
+    </div>
+
+    <hr>
+    <h4>APTT</h4>
+    <div class="form-row">
+      <label>Patient</label>
+      <input type="text" name="aptt_patient" value="<%= (test.results && test.results.aptt && test.results.aptt.patient) ? test.results.aptt.patient : '' %>">
+    </div>
+
+    <hr>
+    <h4>Signatures / Performers</h4>
+    <div class="form-row">
+      <label>Medical Technologist (Name)</label>
+      <input type="text" name="mtName" value="<%= test.results && test.results.performedByName ? test.results.performedByName : '' %>">
+    </div>
+    <div class="form-row">
+      <label>Medical Technologist License</label>
+      <input type="text" name="mtLicense" value="<%= test.results && test.results.performedByLicense ? test.results.performedByLicense : '' %>">
+    </div>
+
+    <div class="form-row">
+      <label>Pathologist (Name)</label>
+      <input type="text" name="pathName" value="<%= test.results && test.results.requestedByName ? test.results.requestedByName : '' %>">
+    </div>
+    <div class="form-row">
+      <label>Pathologist License</label>
+      <input type="text" name="pathLicense" value="<%= test.results && test.results.requestedByLicense ? test.results.requestedByLicense : '' %>">
+    </div>
+
+    <hr>
+    <h4>Validation</h4>
+    <div class="form-row">
+      <label>2nd Medical Technologist (Validator Name)</label>
+      <input type="text" name="validatedByName" value="<%= test.results && test.results.validatedByName ? test.results.validatedByName : '' %>">
+    </div>
+    <div class="form-row">
+      <label>2nd Medical Technologist License</label>
+      <input type="text" name="validatedByLicense" value="<%= test.results && test.results.validatedByLicense ? test.results.validatedByLicense : '' %>">
+    </div>
+
+    <div class="form-row mt-12">
+      <a href="/tests/<%= test.id %>" class="button btn-secondary">Cancel</a>
+      <button class="button btn-primary">Save Results</button>
+    </div>
+  </form>
+</div>

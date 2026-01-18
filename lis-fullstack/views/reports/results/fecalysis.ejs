@@ -107,16 +107,16 @@
 
   <div class="signatures">
     <div class="sig">
-      <div style="height:40px"></div>
+      <div style="border-top:1px solid #000; height:12px; margin-bottom:6px"></div>
       <div class="name"><%= test && test.results && test.results.performedByName ? test.results.performedByName : (test && test.performedBy && test.performedBy.name ? test.performedBy.name : '') %></div>
+      <div class="normal-small"><%= test && test.results && test.results.performedByLicense ? ('Lic. No. ' + test.results.performedByLicense) : (test && test.performedBy && test.performedBy.license ? ('Lic. No. ' + test.performedBy.license) : '') %></div>
       <div>Medical Technologist</div>
-      <div><%= test && test.results && test.results.performedByLicense ? ('Lic. No. ' + test.results.performedByLicense) : (test && test.performedBy && test.performedBy.license ? ('Lic. No. ' + test.performedBy.license) : '') %></div>
     </div>
     <div class="sig">
-      <div style="height:40px"></div>
+      <div style="border-top:1px solid #000; height:12px; margin-bottom:6px"></div>
       <div class="name"><%= test && test.results && test.results.requestedByName ? test.results.requestedByName : (test && test.requestedBy && test.requestedBy.name ? test.requestedBy.name : '') %></div>
+      <div class="normal-small"><%= test && test.results && test.results.requestedByLicense ? ('Lic. No. ' + test.results.requestedByLicense) : (test && test.requestedBy && test.requestedBy.license ? ('Lic. No. ' + test.requestedBy.license) : '') %></div>
       <div>Pathologist</div>
-      <div><%= test && test.results && test.results.requestedByLicense ? ('Lic. No. ' + test.results.requestedByLicense) : (test && test.requestedBy && test.requestedBy.license ? ('Lic. No. ' + test.requestedBy.license) : '') %></div>
     </div>
   </div>
 

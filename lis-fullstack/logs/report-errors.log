@@ -58,3 +58,209 @@
 
 [2026-01-17T11:40:13.547Z] [flash:error_msg GET /] Please log in to access this page
 
+[2026-01-17T11:46:00.829Z] [flash:error_msg POST /logout] Password must be at least 6 characters long
+
+[2026-01-17T11:46:09.010Z] [flash:error_msg GET /] Invalid email or password
+
+[2026-01-17T11:48:08.828Z] [flash:error_msg GET /] Invalid email or password
+
+[2026-01-17T11:48:10.897Z] [flash:error_msg GET /] Invalid email or password
+
+[2026-01-17T11:48:11.508Z] [flash:error_msg GET /] Invalid email or password
+
+[2026-01-17T11:48:12.085Z] [flash:error_msg GET /] Invalid email or password
+
+[2026-01-17T11:48:12.661Z] [flash:error_msg GET /] Invalid email or password
+
+[2026-01-17T11:48:13.213Z] [flash:error_msg GET /] Invalid email or password
+
+[2026-01-17T11:48:13.777Z] [flash:error_msg GET /] Invalid email or password
+
+[2026-01-17T11:50:35.789Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-17T11:54:12.041Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-17T11:54:13.994Z] [flash:error_msg GET /] Invalid email or password
+
+[2026-01-17T11:54:14.788Z] [flash:error_msg GET /] Invalid email or password
+
+[2026-01-17T11:54:15.311Z] [flash:error_msg GET /] Invalid email or password
+
+[2026-01-17T11:54:15.757Z] [flash:error_msg GET /] Invalid email or password
+
+[2026-01-17T11:57:05.496Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-18T02:46:20.059Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-18T02:53:03.029Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-18T03:24:20.272Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-18T05:51:24.385Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-18T05:54:03.469Z] [express error GET /reception] ReferenceError: C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\views\layout.ejs:718
+    716|             <a href="/patients" class="nav-item <%= title.includes('Patient') ? 'active' : '' %>"><span class="nav-emoji">👥</span><span class="nav-text">Patients</span></a>
+    717|             <a href="/reception" class="nav-item <%= title.includes('Reception') ? 'active' : '' %>"><span class="nav-emoji">🏥</span><span class="nav-text">Reception</span></a>
+ >> 718|             <% if (!featureFlags || featureFlags.tests) { %>
+    719|             <a href="/tests" class="nav-item <%= title.includes('Test') ? 'active' : '' %>"><span class="nav-emoji">🧪</span><span class="nav-text">Tests & Results</span></a>
+    720|             <% } %>
+    721|             <% if (!featureFlags || featureFlags.reports) { %>
+
+featureFlags is not defined
+    at eval (eval at compile (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:673:12), <anonymous>:30:8)
+    at layout (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:703:17)
+    at tryHandleCache (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:274:36)
+    at exports.renderFile [as engine] (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:491:10)
+    at View.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\view.js:135:8)
+    at tryRender (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:657:10)
+    at app.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:609:3)
+    at ServerResponse.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\response.js:1049:7)
+    at C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express-ejs-layouts\lib\express-layouts.js:113:20
+    at tryHandleCache (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:280:5)
+
+[2026-01-18T05:54:20.402Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-18T06:13:39.235Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-18T06:24:40.190Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-18T06:47:20.929Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-18T07:04:04.374Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-18T07:08:29.876Z] [flash:error_msg GET /reception] Error marking complete
+
+[2026-01-18T07:09:36.766Z] [render preview result template] Error: Failed to lookup view "reports/results/blood-chemistry" in views directory "C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\views"
+    at app.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:597:17)
+    at ServerResponse.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\response.js:1049:7)
+    at res.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express-ejs-layouts\lib\express-layouts.js:67:20)
+    at C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\routes\reports.js:127:9
+
+[2026-01-18T07:09:36.818Z] [express error GET /reports/result/a564eea9-3273-4e52-9607-82a6d08f8555?embedded=1] Error: Failed to lookup view "reports/results/blood-chemistry" in views directory "C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\views"
+    at app.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:597:17)
+    at ServerResponse.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\response.js:1049:7)
+    at res.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express-ejs-layouts\lib\express-layouts.js:67:20)
+    at C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\routes\reports.js:221:16
+
+[2026-01-18T07:09:55.170Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-18T07:10:34.425Z] [render preview result template] Error: Failed to lookup view "reports/results/blood-chemistry" in views directory "C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\views"
+    at app.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:597:17)
+    at ServerResponse.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\response.js:1049:7)
+    at res.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express-ejs-layouts\lib\express-layouts.js:67:20)
+    at C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\routes\reports.js:127:9
+
+[2026-01-18T07:10:34.485Z] [express error GET /reports/result/a564eea9-3273-4e52-9607-82a6d08f8555?embedded=1] Error: Failed to lookup view "reports/results/blood-chemistry" in views directory "C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\views"
+    at app.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:597:17)
+    at ServerResponse.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\response.js:1049:7)
+    at res.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express-ejs-layouts\lib\express-layouts.js:67:20)
+    at C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\routes\reports.js:221:16
+
+[2026-01-18T07:12:47.162Z] [render preview result template] Error: Failed to lookup view "reports/results/blood-chemistry" in views directory "C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\views"
+    at app.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:597:17)
+    at ServerResponse.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\response.js:1049:7)
+    at res.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express-ejs-layouts\lib\express-layouts.js:67:20)
+    at C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\routes\reports.js:127:9
+
+[2026-01-18T07:12:47.226Z] [express error GET /reports/result/a564eea9-3273-4e52-9607-82a6d08f8555?embedded=1] Error: Failed to lookup view "reports/results/blood-chemistry" in views directory "C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\views"
+    at app.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:597:17)
+    at ServerResponse.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\response.js:1049:7)
+    at res.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express-ejs-layouts\lib\express-layouts.js:67:20)
+    at C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\routes\reports.js:221:16
+
+[2026-01-18T07:21:02.052Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-18T07:23:28.290Z] [render preview result template] Error: Failed to lookup view "reports/results/blood-chemistry" in views directory "C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\views"
+    at app.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:597:17)
+    at ServerResponse.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\response.js:1049:7)
+    at res.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express-ejs-layouts\lib\express-layouts.js:67:20)
+    at C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\routes\reports.js:127:9
+
+[2026-01-18T07:23:28.351Z] [express error GET /reports/result/a564eea9-3273-4e52-9607-82a6d08f8555?embedded=1] Error: Failed to lookup view "reports/results/blood-chemistry" in views directory "C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\views"
+    at app.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:597:17)
+    at ServerResponse.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\response.js:1049:7)
+    at res.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express-ejs-layouts\lib\express-layouts.js:67:20)
+    at C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\routes\reports.js:221:16
+
+[2026-01-18T07:24:37.530Z] [render preview result template] Error: Failed to lookup view "reports/results/blood-chemistry" in views directory "C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\views"
+    at app.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:597:17)
+    at ServerResponse.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\response.js:1049:7)
+    at res.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express-ejs-layouts\lib\express-layouts.js:67:20)
+    at C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\routes\reports.js:127:9
+
+[2026-01-18T07:24:37.584Z] [express error GET /reports/result/a564eea9-3273-4e52-9607-82a6d08f8555?embedded=1] Error: Failed to lookup view "reports/results/blood-chemistry" in views directory "C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\views"
+    at app.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:597:17)
+    at ServerResponse.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\response.js:1049:7)
+    at res.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express-ejs-layouts\lib\express-layouts.js:67:20)
+    at C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\routes\reports.js:221:16
+
+[2026-01-18T07:28:24.291Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-18T07:28:37.181Z] [flash:error_msg GET /patients] Cannot delete patient with existing test records
+
+[2026-01-18T07:38:29.103Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-18T07:40:08.740Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-18T07:57:17.806Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-18T07:57:19.371Z] [flash:error_msg GET /] Invalid email or password
+
+[2026-01-18T07:57:20.443Z] [flash:error_msg GET /] Invalid email or password
+
+[2026-01-18T07:57:21.922Z] [flash:error_msg GET /] Invalid email or password
+
+[2026-01-18T08:17:22.284Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-18T08:18:24.301Z] [render preview result template] Error: Failed to lookup view "reports/results/blood-chemistry" in views directory "C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\views"
+    at app.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:597:17)
+    at ServerResponse.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\response.js:1049:7)
+    at res.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express-ejs-layouts\lib\express-layouts.js:67:20)
+    at C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\routes\reports.js:127:9
+
+[2026-01-18T08:18:24.372Z] [express error GET /reports/result/c333836d-1b99-483c-b06d-e939f86eb806?embedded=1] Error: Failed to lookup view "reports/results/blood-chemistry" in views directory "C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\views"
+    at app.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:597:17)
+    at ServerResponse.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\response.js:1049:7)
+    at res.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express-ejs-layouts\lib\express-layouts.js:67:20)
+    at C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\routes\reports.js:224:16
+
+[2026-01-18T08:18:28.604Z] [render preview result template] Error: Failed to lookup view "reports/results/blood-chemistry" in views directory "C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\views"
+    at app.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:597:17)
+    at ServerResponse.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\response.js:1049:7)
+    at res.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express-ejs-layouts\lib\express-layouts.js:67:20)
+    at C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\routes\reports.js:127:9
+
+[2026-01-18T08:18:28.643Z] [express error GET /reports/result/c333836d-1b99-483c-b06d-e939f86eb806?embedded=1] Error: Failed to lookup view "reports/results/blood-chemistry" in views directory "C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\views"
+    at app.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:597:17)
+    at ServerResponse.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\response.js:1049:7)
+    at res.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express-ejs-layouts\lib\express-layouts.js:67:20)
+    at C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\routes\reports.js:224:16
+
+[2026-01-18T08:25:59.393Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-18T08:42:53.967Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-18T08:44:04.545Z] [flash:error_msg GET /tests/85dd74f3-c350-4013-b8f0-7fd40364b71f] Invalid test type for this results form
+
+[2026-01-18T08:45:49.127Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-18T09:10:24.171Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-18T09:21:09.872Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-18T10:35:42.373Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-18T10:55:52.743Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-18T12:53:46.417Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-18T12:54:00.255Z] [flash:error_msg GET /templates] Error rendering template
+
+[2026-01-18T12:56:50.879Z] [flash:error_msg GET /templates] Error rendering template
+
+[2026-01-18T12:58:23.813Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-18T14:12:52.632Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-18T14:17:38.213Z] [flash:error_msg GET /] Please log in to access this page
+
