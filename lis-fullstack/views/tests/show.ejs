@@ -9,12 +9,14 @@
     <p><strong>Status:</strong> <span class="badge"><%= test.status %></span></p>
     <p><strong>Requested By:</strong> <%= test.requestedBy ? test.requestedBy.name : 'N/A' %></p>
     <p><strong>Performed By:</strong> <%= test.performedBy ? test.performedBy.name : 'N/A' %></p>
-    <p><strong>Results:</strong> <pre style="white-space:pre-wrap;"><%= test.results || 'No results' %></pre></p>
+    <p><strong>Results:</strong>
+      <pre style="white-space:pre-wrap;"><% if (test.results && typeof test.results === 'object') { %><%= JSON.stringify(test.results, null, 2) %><% } else { %><%= test.results || 'No results' %><% } %></pre>
+    </p>
   </div>
 
   <div class="action-buttons mt-20">
     <a href="/tests/<%= test.id %>/edit" class="button btn-primary">Edit</a>
-    <% if (test.testType && (/fecalysis/i.test(test.testType) || /urinalysis/i.test(test.testType))) { %>
+    <% if (test.testType && (/fecalysis/i.test(test.testType) || /urinalysis/i.test(test.testType) || /hemato|hematology|cbc/i.test(test.testType))) { %>
       <a href="/tests/<%= test.id %>/results" class="button btn-success">Enter Results</a>
     <% } %>
     <a href="/tests" class="button btn-secondary">Back to Tests</a>

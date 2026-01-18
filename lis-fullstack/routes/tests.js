@@ -231,9 +231,9 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       return res.redirect('/tests');
     }
 
-    // Only render form for fecalysis or urinalysis (case-insensitive match)
-    if (!test.testType || (!/fecalysis/i.test(test.testType) && !/urinalysis/i.test(test.testType))) {
-      req.flash('error_msg', 'Results entry form is only available for Fecalysis or Urinalysis tests');
+    // Only render form for fecalysis, urinalysis, or hematology (case-insensitive match)
+    if (!test.testType || (!/fecalysis/i.test(test.testType) && !/urinalysis/i.test(test.testType) && !/hemato|hematology|cbc/i.test(test.testType))) {
+      req.flash('error_msg', 'Results entry form is only available for Fecalysis, Urinalysis, or Hematology tests');
       return res.redirect(`/tests/${req.params.id}`);
     }
 
@@ -243,7 +243,9 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     const users = await User.find({});
 
     // choose the appropriate entry form
-    const view = /urinalysis/i.test(test.testType) ? 'tests/results_entry_urinalysis' : 'tests/results_entry_fecalysis';
+    let view = 'tests/results_entry_fecalysis';
+    if (/urinalysis/i.test(test.testType)) view = 'tests/results_entry_urinalysis';
+    if (/hemato|hematology|cbc/i.test(test.testType)) view = 'tests/results_entry_hematology';
     res.render(view, {
       title: `Enter ${test.testType} Results`,
       test: testForView,
@@ -267,10 +269,13 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     }
 
 
-    if (!test.testType || (!/fecalysis/i.test(test.testType) && !/urinalysis/i.test(test.testType))) {
+    if (!test.testType || (!/fecalysis/i.test(test.testType) && !/urinalysis/i.test(test.testType) && !/hemato|hematology|cbc/i.test(test.testType))) {
       req.flash('error_msg', 'Invalid test type for this results form');
       return res.redirect(`/tests/${req.params.id}`);
     }
+
+    // Debug: log incoming body to help diagnose missing fields
+    console.log('POST /tests/:id/results body:', JSON.stringify(req.body || {}));
 
     // Extract common performer fields
     const { performedBy, mtName, mtLicense, pathName, pathLicense } = req.body;
@@ -312,6 +317,23 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
         casts: (casts || '').trim(),
         others: (others || '').trim()
       };
+    } else if (/hemato|hematology|cbc/i.test(test.testType)) {
+      const { rbc, hemoglobin, hematocrit, mcv, mch, mchc, wbc, neutrophils, lymphocyte, monocyte, eosinophils, basophils, platelets } = req.body;
+      resultsObj = {
+        rbc: (rbc || '').trim(),
+        hemoglobin: (hemoglobin || '').trim(),
+        hematocrit: (hematocrit || '').trim(),
+        mcv: (mcv || '').trim(),
+        mch: (mch || '').trim(),
+        mchc: (mchc || '').trim(),
+        wbc: (wbc || '').trim(),
+        neutrophils: (neutrophils || '').trim(),
+        lymphocyte: (lymphocyte || '').trim(),
+        monocyte: (monocyte || '').trim(),
+        eosinophils: (eosinophils || '').trim(),
+        basophils: (basophils || '').trim(),
+        platelets: (platelets || '').trim()
+      };
     }
 
     // allow storing performer name/license directly on results for printing
@@ -319,11 +341,33 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     resultsObj.performedByLicense = (mtLicense || '').trim();
     resultsObj.requestedByName = (pathName || '').trim();
     resultsObj.requestedByLicense = (pathLicense || '').trim();
+    // optional validator (second medtech) fields
+    resultsObj.validatedByName = (req.body.validatedByName || '').trim();
+    resultsObj.validatedByLicense = (req.body.validatedByLicense || '').trim();
+
+    // Debug: log constructed results object before saving
+    console.log('Constructed resultsObj for test', req.params.id, JSON.stringify(resultsObj || {}));
+
+    // Determine completedAt from optional timeReleased input (use test date's date part)
+    let completedAt = new Date();
+    if (req.body.timeReleased && String(req.body.timeReleased).trim()) {
+      try {
+        const baseDate = test.testDate ? new Date(test.testDate) : new Date();
+        const dateStr = baseDate.toISOString().slice(0,10); // YYYY-MM-DD
+        const timeStr = String(req.body.timeReleased).trim(); // expected HH:MM
+        const iso = dateStr + 'T' + (timeStr.length === 5 ? (timeStr + ':00') : timeStr);
+        const parsed = new Date(iso);
+        if (!isNaN(parsed.getTime())) completedAt = parsed;
+      } catch (e) {
+        // fallback to now
+        completedAt = new Date();
+      }
+    }
 
     const updateData = {
       results: resultsObj,
       status: 'Completed',
-      completedAt: new Date()
+      completedAt: completedAt
     };
 
     // set performedBy only if explicitly provided (performer management is handled separately)
