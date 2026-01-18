@@ -8,6 +8,7 @@ class Patient {
     this.firstName = data.firstName;
     this.lastName = data.lastName;
     this.dateOfBirth = data.dateOfBirth;
+    this.physician = data.physician || data.physicianName || null;
     // If encoder supplied an age instead of DOB, store it here
     this.ageManual = data.ageManual || data.age || null;
     // Preserve payment history (if any)
@@ -66,8 +67,11 @@ class Patient {
     obj.fullName = this.fullName;
     // Prefer computed age from DOB; fallback to manual age if provided
     obj.age = this.age !== null && this.age !== undefined ? this.age : (this.ageManual || null);
+    obj.physician = this.physician || null;
     obj.ageManual = this.ageManual || null;
     obj.requiredAreas = this.requiredAreas || [];
+    // Provide legacy `sex` alias for templates that expect `patient.sex`
+    obj.sex = obj.gender || null;
     return obj;
   }
 

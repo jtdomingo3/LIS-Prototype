@@ -158,6 +158,12 @@ function getResultTemplate(test) {
   } else if (type.includes('urinal') || type.includes('urinalysis')) {
     template = 'urinalysis';
     image = '8bb335a9-e0fb-4909-acdc-e2a070851a13.jpg';
+  } else if (type.includes('blood typing') || type.includes('blood-typing') || type.includes('bloodtyping')) {
+    template = 'blood-typing';
+    image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';
+  } else if (type.includes('pregnan') || type.includes('pregnancy')) {
+    template = 'pregnancy-test';
+    image = 'd7c357bf-74a2-42dc-b3d1-2a573a30784d.jpg';
   } else if (type.includes('blood') || type.includes('chem')) {
     template = 'blood-chemistry';
     image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';
@@ -167,6 +173,9 @@ function getResultTemplate(test) {
   } else if (type.includes('hemato') || type.includes('hematology') || type.includes('cbc')) {
     template = 'hematology';
     image = 'cb07aab1-5855-4314-be0f-d734ce0e608a.jpg';
+  } else if (type.includes('thyroid') || type.includes('thyroid panel') || type.includes('thyroid-panel')) {
+    template = 'thyroid-panel';
+    image = 'd7c357bf-74a2-42dc-b3d1-2a573a30784d.jpg';
   } else if (type.includes('serol') || type.includes('serology')) {
     template = 'serology';
     image = 'd7c357bf-74a2-42dc-b3d1-2a573a30784d.jpg';

@@ -63,7 +63,7 @@
       </tr>
       <tr>
         <td><strong>Physician:</strong></td>
-        <td colspan="5"><%= test && test.requestedBy && test.requestedBy.name ? test.requestedBy.name : (test && test.results && test.results.requestedByName ? test.results.requestedByName : '') %></td>
+        <td colspan="5"><%= (test && test.patient && (test.patient.physician || test.patient.physicianName)) ? (test.patient.physician || test.patient.physicianName) : '' %></td>
       </tr>
     </table>
 

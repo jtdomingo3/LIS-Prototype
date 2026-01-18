@@ -40,6 +40,10 @@
             </div>
         </div>
         <div class="form-group">
+            <label>Physician</label>
+            <input type="text" name="physician" value="<%= patient.physician || '' %>" placeholder="Referring physician or doctor's name">
+        </div>
+        <div class="form-group">
             <label>Address</label>
             <textarea name="address" placeholder="Street address, city, state, zip"><%= patient.address || '' %></textarea>
         </div>

@@ -12,8 +12,9 @@
   .patient-box td{ padding:4px 6px; border:1px solid #000; box-sizing:border-box }
   .section-title{ text-align:center; margin:12px 0; font-size:20px; font-weight:bold }
   .results-frame{ width:100%; border:2px solid #000; border-collapse:collapse; margin-top:6px; box-sizing:border-box }
-  .results-frame td{ padding:12px; vertical-align:middle; border-bottom:1px solid #000 }
-  .results-frame th{ padding:8px; text-align:left; border-bottom:2px solid #000; font-weight:700 }
+  .results-frame td{ padding:8px; vertical-align:middle; border-bottom:1px solid #000; border-left:1px solid #000 }
+  .results-frame th{ padding:8px; text-align:left; border-bottom:2px solid #000; border-left:1px solid #000; font-weight:700 }
+  .results-frame .center{ text-align:center }
   .signatures{ display:flex; justify-content:space-between; margin-top:24px }
   .sig{ text-align:center; width:32% }
   .watermark{ position:absolute; left:50%; top:44%; transform:translate(-50%,-50%); width:52%; opacity:0.06; pointer-events:none; z-index:0 }
@@ -60,26 +61,33 @@
       </tr>
     </table>
 
-    <div class="section-title">SEROLOGY</div>
+    <div class="section-title">THYROID PANEL</div>
 
     <table class="results-frame">
       <tr>
-        <th style="width:60%">TEST</th>
-        <th style="width:40%">RESULT</th>
+        <th style="width:35%">TEST</th>
+        <th style="width:25%">RESULT</th>
+        <th style="width:20%">UNIT</th>
+        <th style="width:20%">REFERENCE</th>
       </tr>
-      <% const entries = (test && test.results && test.results.entries) ? test.results.entries : []; %>
-      <% if (entries && entries.length) { %>
-        <% entries.forEach(function(e){ %>
-          <tr>
-            <td style="border-right:1px solid #000"><%= e.test %></td>
-            <td style="text-align:center; font-weight:700"><%= e.result %></td>
-          </tr>
-        <% }) %>
-      <% } else { %>
-        <tr>
-          <td colspan="2" style="text-align:center; padding:18px">No results entered</td>
-        </tr>
-      <% } %>
+      <tr>
+        <td>TSH</td>
+        <td class="center" style="font-weight:700"><%= test && test.results && test.results.tsh ? test.results.tsh : '' %></td>
+        <td class="center">mIU/L</td>
+        <td class="center">0.30 - 4.20</td>
+      </tr>
+      <tr>
+        <td>FT4</td>
+        <td class="center" style="font-weight:700"><%= test && test.results && test.results.ft4 ? test.results.ft4 : '' %></td>
+        <td class="center">pmol/L</td>
+        <td class="center">12.0 - 22.0</td>
+      </tr>
+      <tr>
+        <td>FT3</td>
+        <td class="center" style="font-weight:700"><%= test && test.results && test.results.ft3 ? test.results.ft3 : '' %></td>
+        <td class="center">pmol/L</td>
+        <td class="center">2.80 - 7.10</td>
+      </tr>
     </table>
 
     <div class="signatures">

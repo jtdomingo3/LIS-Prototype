@@ -1,0 +1,104 @@
+<div class="card">
+  <h3>Enter Serology Results - <%= test.testId %></h3>
+
+  <form action="/tests/<%= test.id %>/results" method="POST">
+    <input type="hidden" name="_method" value="POST">
+
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;">
+      <div class="form-row" style="margin:0;">
+        <label>Date</label>
+        <input type="date" name="entryDate" value="<%= test && test.testDate ? (new Date(test.testDate)).toISOString().slice(0,10) : (new Date()).toISOString().slice(0,10) %>" readonly>
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>Time Requested</label>
+        <input type="time" name="timeRequested" value="<%= test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '' %>" readonly>
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>Time Released</label>
+        <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : '' %>">
+      </div>
+    </div>
+
+    <h4>Results</h4>
+    <div id="serology-rows">
+      <% const existing = (test.results && test.results.entries) ? test.results.entries : null; %>
+      <% if (existing && existing.length) { %>
+        <% existing.forEach(function(e, idx) { %>
+          <div class="serology-row" style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+            <input type="text" name="testName[]" placeholder="Test" value="<%= e.test %>" style="flex:1" required>
+            <input type="text" name="testResult[]" placeholder="Result" value="<%= e.result %>" style="flex:1" required>
+            <button type="button" class="btn-remove-row">Remove</button>
+          </div>
+        <% }) %>
+      <% } else { %>
+        <div class="serology-row" style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+          <input type="text" name="testName[]" placeholder="Test" style="flex:1" required>
+          <input type="text" name="testResult[]" placeholder="Result" style="flex:1" required>
+          <button type="button" class="btn-remove-row">Remove</button>
+        </div>
+      <% } %>
+    </div>
+    <div style="margin-bottom:12px;">
+      <button type="button" id="btn-add-row" class="button">Add Test</button>
+    </div>
+
+    <hr>
+    <h4>Signatures / Performers</h4>
+    <div class="form-row">
+      <label>Medical Technologist (Name)</label>
+      <input type="text" name="mtName" value="<%= test.results && test.results.performedByName ? test.results.performedByName : '' %>">
+    </div>
+    <div class="form-row">
+      <label>Medical Technologist License</label>
+      <input type="text" name="mtLicense" value="<%= test.results && test.results.performedByLicense ? test.results.performedByLicense : '' %>">
+    </div>
+
+    <div class="form-row">
+      <label>Pathologist (Name)</label>
+      <input type="text" name="pathName" value="<%= test.results && test.results.requestedByName ? test.results.requestedByName : '' %>">
+    </div>
+    <div class="form-row">
+      <label>Pathologist License</label>
+      <input type="text" name="pathLicense" value="<%= test.results && test.results.requestedByLicense ? test.results.requestedByLicense : '' %>">
+    </div>
+
+    <hr>
+    <h4>Validation</h4>
+    <div class="form-row">
+      <label>2nd Medical Technologist (Validator Name)</label>
+      <input type="text" name="validatedByName" value="<%= test.results && test.results.validatedByName ? test.results.validatedByName : '' %>">
+    </div>
+    <div class="form-row">
+      <label>2nd Medical Technologist License</label>
+      <input type="text" name="validatedByLicense" value="<%= test.results && test.results.validatedByLicense ? test.results.validatedByLicense : '' %>">
+    </div>
+
+    <div class="form-row mt-12">
+      <a href="/tests/<%= test.id %>" class="button btn-secondary">Cancel</a>
+      <button class="button btn-primary">Save Results</button>
+    </div>
+  </form>
+
+  <script>
+    (function(){
+      const container = document.getElementById('serology-rows');
+      const addBtn = document.getElementById('btn-add-row');
+      function makeRow(nameVal, resultVal){
+        const div = document.createElement('div');
+        div.className = 'serology-row';
+        div.style.display = 'flex'; div.style.gap = '8px'; div.style.alignItems = 'center'; div.style.marginBottom = '6px';
+        const inp1 = document.createElement('input'); inp1.type='text'; inp1.name='testName[]'; inp1.placeholder='Test'; inp1.style.flex='1'; inp1.required=true; if(nameVal) inp1.value = nameVal;
+        const inp2 = document.createElement('input'); inp2.type='text'; inp2.name='testResult[]'; inp2.placeholder='Result'; inp2.style.flex='1'; inp2.required=true; if(resultVal) inp2.value = resultVal;
+        const rem = document.createElement('button'); rem.type='button'; rem.className='btn-remove-row'; rem.innerText='Remove';
+        rem.addEventListener('click', function(){ container.removeChild(div); });
+        div.appendChild(inp1); div.appendChild(inp2); div.appendChild(rem);
+        return div;
+      }
+      addBtn.addEventListener('click', function(){ container.appendChild(makeRow('','')); });
+      // attach remove handlers to initial rows
+      Array.from(document.getElementsByClassName('btn-remove-row')).forEach(function(b){
+        b.addEventListener('click', function(){ const row = b.parentNode; row.parentNode.removeChild(row); });
+      });
+    })();
+  </script>
+</div>

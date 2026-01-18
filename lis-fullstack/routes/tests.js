@@ -89,6 +89,9 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
     const allowed = [
       'fecalysis.ejs',
       'urinalysis.ejs',
+      'blood-typing.ejs',
+      'pregnancy-test.ejs',
+      'thyroid-panel.ejs',
       'blood-chemistry.ejs',
       'xray.ejs',
       'hematology.ejs',
@@ -231,9 +234,9 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       return res.redirect('/tests');
     }
 
-    // Only render form for fecalysis, urinalysis, or hematology (case-insensitive match)
-    if (!test.testType || (!/fecalysis/i.test(test.testType) && !/urinalysis/i.test(test.testType) && !/hemato|hematology|cbc/i.test(test.testType))) {
-      req.flash('error_msg', 'Results entry form is only available for Fecalysis, Urinalysis, or Hematology tests');
+    // Only render form for supported test types (including pregnancy)
+    if (!test.testType || (!/fecalysis/i.test(test.testType) && !/urinalysis/i.test(test.testType) && !/hemato|hematology|cbc/i.test(test.testType) && !/(blood\s*typing|blood-typing|bloodtyping)/i.test(test.testType) && !/serol|serology/i.test(test.testType) && !/thyroid|thyroid\s*panel|thyroid-panel/i.test(test.testType) && !/pregnan|pregnancy|pregnancy\s*test/i.test(test.testType))) {
+      req.flash('error_msg', 'Results entry form is only available for supported test types (including Pregnancy Test)');
       return res.redirect(`/tests/${req.params.id}`);
     }
 
@@ -246,6 +249,10 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     let view = 'tests/results_entry_fecalysis';
     if (/urinalysis/i.test(test.testType)) view = 'tests/results_entry_urinalysis';
     if (/hemato|hematology|cbc/i.test(test.testType)) view = 'tests/results_entry_hematology';
+    if (/(blood\s*typing|blood-typing|bloodtyping)/i.test(test.testType)) view = 'tests/results_entry_blood_typing';
+    if (/serol|serology/i.test(test.testType)) view = 'tests/results_entry_serology';
+    if (/thyroid|thyroid\s*panel|thyroid-panel/i.test(test.testType)) view = 'tests/results_entry_thyroid_panel';
+    if (/pregnan|pregnancy|pregnancy\s*test/i.test(test.testType)) view = 'tests/results_entry_pregnancy_test';
     res.render(view, {
       title: `Enter ${test.testType} Results`,
       test: testForView,
@@ -269,7 +276,7 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     }
 
 
-    if (!test.testType || (!/fecalysis/i.test(test.testType) && !/urinalysis/i.test(test.testType) && !/hemato|hematology|cbc/i.test(test.testType))) {
+    if (!test.testType || (!/fecalysis/i.test(test.testType) && !/urinalysis/i.test(test.testType) && !/hemato|hematology|cbc/i.test(test.testType) && !/(blood\s*typing|blood-typing|bloodtyping)/i.test(test.testType) && !/serol|serology/i.test(test.testType) && !/thyroid|thyroid\s*panel|thyroid-panel/i.test(test.testType) && !/pregnan|pregnancy|pregnancy\s*test/i.test(test.testType))) {
       req.flash('error_msg', 'Invalid test type for this results form');
       return res.redirect(`/tests/${req.params.id}`);
     }
@@ -333,6 +340,40 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
         eosinophils: (eosinophils || '').trim(),
         basophils: (basophils || '').trim(),
         platelets: (platelets || '').trim()
+      };
+    } else if (/(blood\s*typing|blood-typing|bloodtyping)/i.test(test.testType)) {
+      const { specimen, result } = req.body;
+      resultsObj = {
+        specimen: (specimen || '').trim(),
+        result: (result || '').trim()
+      };
+    } else if (/serol|serology/i.test(test.testType)) {
+      // Serology: allow multiple test/result rows submitted as arrays
+      const names = req.body.testName;
+      const values = req.body.testResult;
+      const entries = [];
+      if (Array.isArray(names)) {
+        for (let i = 0; i < names.length; i++) {
+          const n = (names[i] || '').trim();
+          const v = Array.isArray(values) ? (values[i] || '').trim() : (values || '').trim();
+          if (n || v) entries.push({ test: n, result: v });
+        }
+      } else if (names || values) {
+        entries.push({ test: (names || '').trim(), result: (values || '').trim() });
+      }
+      resultsObj = { entries };
+    } else if (/thyroid|thyroid\s*panel|thyroid-panel/i.test(test.testType)) {
+      const { tsh, ft4, ft3 } = req.body;
+      resultsObj = {
+        tsh: (tsh || '').trim(),
+        ft4: (ft4 || '').trim(),
+        ft3: (ft3 || '').trim()
+      };
+    } else if (/pregnan|pregnancy|pregnancy\s*test/i.test(test.testType)) {
+      const { sample, result } = req.body;
+      resultsObj = {
+        sample: (sample || '').trim(),
+        result: (result || '').trim()
       };
     }
 
@@ -402,6 +443,8 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
     const allowed = [
       'fecalysis.ejs',
       'urinalysis.ejs',
+      'blood-typing.ejs',
+      'pregnancy-test.ejs',
       'blood-chemistry.ejs',
       'xray.ejs',
       'hematology.ejs',

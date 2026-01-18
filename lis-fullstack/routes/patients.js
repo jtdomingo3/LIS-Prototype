@@ -89,7 +89,7 @@ router.get('/new', requireAuth, canAccessPatient, (req, res) => {
 // POST /patients - Create new patient
 router.post('/', requireAuth, canAccessPatient, async (req, res) => {
   try {
-    const { firstName, lastName, dateOfBirth, gender, phone, email, address } = req.body;
+    const { firstName, lastName, dateOfBirth, gender, phone, email, address, physician } = req.body;
     // encoder may provide age instead of DOB -> accept either
     const ageManual = req.body.ageManual || req.body.age || null;
     // normalize requiredAreas (checkboxes)
@@ -149,6 +149,7 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       lastName,
       dateOfBirth,
       ageManual,
+      physician,
       gender,
       phone,
       email,
@@ -307,7 +308,7 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
     // PUT /patients/:id - Update patient
 router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
   try {
-    const { firstName, lastName, dateOfBirth, gender, phone, email, address } = req.body;
+    const { firstName, lastName, dateOfBirth, gender, phone, email, address, physician } = req.body;
     const ageManual = req.body.ageManual || req.body.age || null;
     const requiredAreas = Array.isArray(req.body.requiredAreas)
       ? req.body.requiredAreas
@@ -326,6 +327,7 @@ router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
         lastName,
         dateOfBirth,
         ageManual,
+        physician,
         gender,
         phone,
         email,
