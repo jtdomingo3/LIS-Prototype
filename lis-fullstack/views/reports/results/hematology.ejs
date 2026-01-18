@@ -77,8 +77,26 @@
               <table class="inner-table">
                 <tr><th style="width:60%">Result</th><th style="width:40%">Normal</th></tr>
                 <tr><td>RBC ct. (x 10^6/µL)</td><td class="normal-small"> <strong><%= test && test.results && test.results.rbc ? test.results.rbc : '' %></strong> &nbsp;&nbsp; <span style="float:right">3.8-5.8</span></td></tr>
-                <tr><td>Hemoglobin (g/dL)</td><td class="normal-small"> <strong><%= test && test.results && test.results.hemoglobin ? test.results.hemoglobin : '' %></strong> &nbsp;&nbsp; <span style="float:right">130-160 (Male)</span></td></tr>
-                <tr><td>Hematocrit (%)</td><td class="normal-small"> <strong><%= test && test.results && test.results.hematocrit ? test.results.hematocrit : '' %></strong> &nbsp;&nbsp; <span style="float:right">0.37-0.49</span></td></tr>
+                <tr>
+                  <td>Hemoglobin (g/dL)</td>
+                  <td class="normal-small"> <strong><%= (test && test.results && test.results.hemoglobin) ? test.results.hemoglobin : '' %></strong>
+                    &nbsp;&nbsp;
+                    <div style="float:right; text-align:right;">
+                      <div style="white-space:nowrap">Male&nbsp;&nbsp;130-160</div>
+                      <div style="white-space:nowrap; margin-top:4px">Female&nbsp;&nbsp;120-140</div>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>Hematocrit (%)</td>
+                  <td class="normal-small"> <strong><%= (test && test.results && test.results.hematocrit) ? test.results.hematocrit : '' %></strong>
+                    &nbsp;&nbsp;
+                    <div style="float:right; text-align:right;">
+                      <div style="white-space:nowrap">Male&nbsp;&nbsp;0.38-0.49</div>
+                      <div style="white-space:nowrap; margin-top:4px">Female&nbsp;&nbsp;0.36-0.44</div>
+                    </div>
+                  </td>
+                </tr>
                 <tr><td>MCV (µm^3)</td><td class="normal-small"> <strong><%= test && test.results && test.results.mcv ? test.results.mcv : '' %></strong> &nbsp;&nbsp; <span style="float:right">83.0-98.0</span></td></tr>
                 <tr><td>MCH (pg)</td><td class="normal-small"> <strong><%= test && test.results && test.results.mch ? test.results.mch : '' %></strong> &nbsp;&nbsp; <span style="float:right">27.0-32.2</span></td></tr>
                 <tr><td>MCHC (g/dL)</td><td class="normal-small"> <strong><%= test && test.results && test.results.mchc ? test.results.mchc : '' %></strong> &nbsp;&nbsp; <span style="float:right">31.8-33.7</span></td></tr>

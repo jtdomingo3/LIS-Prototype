@@ -164,6 +164,9 @@ function getResultTemplate(test) {
   } else if (type.includes('pregnan') || type.includes('pregnancy')) {
     template = 'pregnancy-test';
     image = 'd7c357bf-74a2-42dc-b3d1-2a573a30784d.jpg';
+  } else if (type.includes('dengue')) {
+    template = 'dengue-duo';
+    image = 'd7c357bf-74a2-42dc-b3d1-2a573a30784d.jpg';
   } else if (type.includes('blood') || type.includes('chem')) {
     template = 'blood-chemistry';
     image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';

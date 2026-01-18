@@ -50,6 +50,7 @@ async function getStaticResultTemplates() {
       'fecalysis.ejs',
       'urinalysis.ejs',
       'blood-typing.ejs',
+      'dengue-duo.ejs',
       'blood-chemistry.ejs',
       'thyroid-panel.ejs',
       'pregnancy-test.ejs',

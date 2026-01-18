@@ -91,6 +91,7 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       'urinalysis.ejs',
       'blood-typing.ejs',
       'pregnancy-test.ejs',
+      'dengue-duo.ejs',
       'thyroid-panel.ejs',
       'blood-chemistry.ejs',
       'xray.ejs',
@@ -235,7 +236,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     }
 
     // Only render form for supported test types (including pregnancy)
-    if (!test.testType || (!/fecalysis/i.test(test.testType) && !/urinalysis/i.test(test.testType) && !/hemato|hematology|cbc/i.test(test.testType) && !/(blood\s*typing|blood-typing|bloodtyping)/i.test(test.testType) && !/serol|serology/i.test(test.testType) && !/thyroid|thyroid\s*panel|thyroid-panel/i.test(test.testType) && !/pregnan|pregnancy|pregnancy\s*test/i.test(test.testType))) {
+    if (!test.testType || (!/fecalysis/i.test(test.testType) && !/urinalysis/i.test(test.testType) && !/hemato|hematology|cbc/i.test(test.testType) && !/(blood\s*typing|blood-typing|bloodtyping)/i.test(test.testType) && !/serol|serology/i.test(test.testType) && !/thyroid|thyroid\s*panel|thyroid-panel/i.test(test.testType) && !/pregnan|pregnancy|pregnancy\s*test/i.test(test.testType) && !/dengue/i.test(test.testType))) {
       req.flash('error_msg', 'Results entry form is only available for supported test types (including Pregnancy Test)');
       return res.redirect(`/tests/${req.params.id}`);
     }
@@ -253,6 +254,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     if (/serol|serology/i.test(test.testType)) view = 'tests/results_entry_serology';
     if (/thyroid|thyroid\s*panel|thyroid-panel/i.test(test.testType)) view = 'tests/results_entry_thyroid_panel';
     if (/pregnan|pregnancy|pregnancy\s*test/i.test(test.testType)) view = 'tests/results_entry_pregnancy_test';
+    if (/dengue/i.test(test.testType)) view = 'tests/results_entry_dengue_duo';
     res.render(view, {
       title: `Enter ${test.testType} Results`,
       test: testForView,
@@ -276,7 +278,7 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     }
 
 
-    if (!test.testType || (!/fecalysis/i.test(test.testType) && !/urinalysis/i.test(test.testType) && !/hemato|hematology|cbc/i.test(test.testType) && !/(blood\s*typing|blood-typing|bloodtyping)/i.test(test.testType) && !/serol|serology/i.test(test.testType) && !/thyroid|thyroid\s*panel|thyroid-panel/i.test(test.testType) && !/pregnan|pregnancy|pregnancy\s*test/i.test(test.testType))) {
+    if (!test.testType || (!/fecalysis/i.test(test.testType) && !/urinalysis/i.test(test.testType) && !/hemato|hematology|cbc/i.test(test.testType) && !/(blood\s*typing|blood-typing|bloodtyping)/i.test(test.testType) && !/serol|serology/i.test(test.testType) && !/thyroid|thyroid\s*panel|thyroid-panel/i.test(test.testType) && !/pregnan|pregnancy|pregnancy\s*test/i.test(test.testType) && !/dengue/i.test(test.testType))) {
       req.flash('error_msg', 'Invalid test type for this results form');
       return res.redirect(`/tests/${req.params.id}`);
     }
@@ -369,6 +371,13 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
         ft4: (ft4 || '').trim(),
         ft3: (ft3 || '').trim()
       };
+    } else if (/dengue/i.test(test.testType)) {
+      const { ns1, igm, igg } = req.body;
+      resultsObj = {
+        ns1: (ns1 || '').trim(),
+        igm: (igm || '').trim(),
+        igg: (igg || '').trim()
+      };
     } else if (/pregnan|pregnancy|pregnancy\s*test/i.test(test.testType)) {
       const { sample, result } = req.body;
       resultsObj = {
@@ -445,6 +454,7 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
       'urinalysis.ejs',
       'blood-typing.ejs',
       'pregnancy-test.ejs',
+      'dengue-duo.ejs',
       'blood-chemistry.ejs',
       'xray.ejs',
       'hematology.ejs',
