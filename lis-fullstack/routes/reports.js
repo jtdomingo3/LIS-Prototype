@@ -34,8 +34,9 @@ function getInlineLogo() {
 // GET /reports - Reports page
 router.get('/', requireAuth, canAccessPatient, async (req, res) => {
   try {
-    // Get all completed tests for report generation
-    const completedTests = await Test.find({ status: 'Completed' });
+    // Get all completed or released tests for report generation
+    const allTests = await Test.find({});
+    const completedTests = Array.isArray(allTests) ? allTests.filter(t => t && (t.status === 'Completed' || t.status === 'Released')) : [];
     
     // Manually populate patient data and sort by testDate
     let testsWithPatients = [];
@@ -86,8 +87,8 @@ router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) =
       return res.redirect('/reports');
     }
 
-    if (test.status !== 'Completed') {
-      req.flash('error_msg', 'Report can only be generated for completed tests');
+    if (!(test.status === 'Completed' || test.status === 'Released')) {
+      req.flash('error_msg', 'Report can only be generated for completed or released tests');
       return res.redirect('/reports');
     }
 
@@ -221,8 +222,8 @@ router.get('/result/:testId', requireAuth, canAccessPatient, async (req, res) =>
       return res.redirect('/reports');
     }
 
-    if (test.status !== 'Completed') {
-      req.flash('error_msg', 'Result template can only be viewed for completed tests');
+    if (!(test.status === 'Completed' || test.status === 'Released')) {
+      req.flash('error_msg', 'Result template can only be viewed for completed or released tests');
       return res.redirect('/reports');
     }
 
@@ -269,8 +270,8 @@ router.get('/pdf/:testId', requireAuth, canAccessPatient, async (req, res) => {
       return res.redirect('/reports');
     }
 
-    if (test.status !== 'Completed') {
-      req.flash('error_msg', 'PDF can only be generated for completed tests');
+    if (!(test.status === 'Completed' || test.status === 'Released')) {
+      req.flash('error_msg', 'PDF can only be generated for completed or released tests');
       return res.redirect('/reports');
     }
 
