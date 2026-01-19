@@ -15,7 +15,7 @@
   .results-frame td{ padding:0; vertical-align:middle }
   .specimen-cell{ width:50%; padding:18px; font-size:28px; font-weight:700; text-align:center; border-right:1px solid #000 }
   .result-cell{ width:50%; padding:18px; font-size:56px; font-weight:900; text-align:center }
-  .signatures{ display:flex; justify-content:space-between; margin-top:24px }
+  .signatures{ display:flex; justify-content:space-between; margin-top:48px }
   .sig{ text-align:center; width:32% }
   .watermark{ position:absolute; left:50%; top:44%; transform:translate(-50%,-50%); width:52%; opacity:0.06; pointer-events:none; z-index:0 }
   .report-container{ position:relative; z-index:1 }
@@ -71,30 +71,30 @@
         <td style="border-bottom:1px solid #000; text-align:center; font-weight:700; padding:6px;">Result</td>
       </tr>
       <tr>
-        <td style="width:50%" class="specimen-cell"><%= test && test.results && test.results.specimen ? test.results.specimen : '' %></td>
-        <td style="width:50%" class="result-cell"><%= test && test.results && test.results.result ? test.results.result : '' %></td>
+        <td style="width:50%" class="specimen-cell"><%= test && test.results && test.results.specimen ? String(test.results.specimen).toUpperCase() : '' %></td>
+        <td style="width:50%" class="result-cell"><%= test && test.results && test.results.result ? String(test.results.result).toUpperCase() : '' %></td>
       </tr>
     </table>
 
     <div class="signatures">
       <div class="sig">
-        <div style="border-top:1px solid #000; height:10px; margin-bottom:6px"></div>
+        <div style="border-top:1px solid #000; height:0; margin-bottom:8px"></div>
         <div style="font-weight:700"><strong><%= (test && test.results && test.results.performedByName) || (test && test.performedBy && test.performedBy.name) || '' %></strong></div>
-        <div class="normal-small"><% if (test && test.results && test.results.performedByLicense) { %><strong>Lic. No. <%= test.results.performedByLicense %></strong><% } %></div>
+        <div style="font-size:11px"><% if (test && test.results && test.results.performedByLicense) { %><strong>Lic. No. <%= test.results.performedByLicense %></strong><% } %></div>
         <div>Medical Technologist</div>
       </div>
 
       <div class="sig">
-        <div style="border-top:1px solid #000; height:10px; margin-bottom:6px"></div>
+        <div style="border-top:1px solid #000; height:0; margin-bottom:8px"></div>
         <div style="font-weight:700"><strong><%= (test && test.results && test.results.validatedByName) || '' %></strong></div>
-        <div class="normal-small"><% if (test && test.results && test.results.validatedByLicense) { %><strong>Lic. No. <%= test.results.validatedByLicense %></strong><% } %></div>
+        <div style="font-size:11px"><% if (test && test.results && test.results.validatedByLicense) { %><strong>Lic. No. <%= test.results.validatedByLicense %></strong><% } %></div>
         <div>Validated By</div>
       </div>
 
       <div class="sig">
-        <div style="border-top:1px solid #000; height:10px; margin-bottom:6px"></div>
+        <div style="border-top:1px solid #000; height:0; margin-bottom:8px"></div>
         <div style="font-weight:700"><strong><%= (test && test.results && test.results.requestedByName) || (test && test.requestedBy && test.requestedBy.name) || '' %></strong></div>
-        <div class="normal-small"><% if (test && test.results && test.results.requestedByLicense) { %><strong>Lic. No. <%= test.results.requestedByLicense %></strong><% } %></div>
+        <div style="font-size:11px"><% if (test && test.results && test.results.requestedByLicense) { %><strong>Lic. No. <%= test.results.requestedByLicense %></strong><% } %></div>
         <div>Pathologist</div>
       </div>
     </div>
