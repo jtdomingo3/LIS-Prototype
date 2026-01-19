@@ -51,6 +51,7 @@ async function getStaticResultTemplates() {
     // Only expose the actual report templates (exclude sample image files and size placeholders)
     const allowed = [
       'fecalysis.ejs',
+      'esr.ejs',
       'fecal-occult-blood.ejs',
       'urinalysis.ejs',
       'blood-typing.ejs',

@@ -174,6 +174,9 @@ function getResultTemplate(test) {
   } else if (type.includes('dengue')) {
     template = 'dengue-duo';
     image = 'd7c357bf-74a2-42dc-b3d1-2a573a30784d.jpg';
+  } else if (type.includes('esr') || type.includes('erythrocyte') || type.includes('erythrocyte sedimentation')) {
+    template = 'esr';
+    image = 'cb07aab1-5855-4314-be0f-d734ce0e608a.jpg';
   } else if (type.includes('pt') || type.includes('prothrombin') || type.includes('pt-aptt') || type.includes('ptaptt')) {
     template = 'pt-aptt';
     image = 'd7c357bf-74a2-42dc-b3d1-2a573a30784d.jpg';

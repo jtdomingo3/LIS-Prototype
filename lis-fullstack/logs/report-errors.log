@@ -450,3 +450,11 @@ Or, if you meant to create an async function, pass `async: true` as an option.
 
 [2026-01-19T09:42:22.205Z] [flash:error_msg GET /] Please log in to access this page
 
+[2026-01-19T10:16:52.261Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-19T10:19:38.512Z] [flash:error_msg GET /tests/2aa33012-93d3-4b94-8451-4cdb1f7468d0] Results entry form is only available for supported test types (including Pregnancy Test)
+
+[2026-01-19T10:19:43.959Z] [flash:error_msg GET /tests/2aa33012-93d3-4b94-8451-4cdb1f7468d0] Results entry form is only available for supported test types (including Pregnancy Test)
+
+[2026-01-19T10:22:49.020Z] [flash:error_msg GET /] Please log in to access this page
+

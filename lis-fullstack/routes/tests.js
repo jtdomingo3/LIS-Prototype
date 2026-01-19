@@ -88,6 +88,7 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
     const resultsDir = path.join(__dirname, '..', 'views', 'reports', 'results');
     const allowed = [
       'fecalysis.ejs',
+      'esr.ejs',
       'fecal-occult-blood.ejs',
       'urinalysis.ejs',
       'blood-typing.ejs',
@@ -238,7 +239,24 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     }
 
     // Only render form for supported test types (including pregnancy)
-    if (!test.testType || (!/fecalysis/i.test(test.testType) && !/(fecal\s*occult|fecal-occult|fecaloccult)/i.test(test.testType) && !/urinalysis/i.test(test.testType) && !/hemato|hematology|cbc/i.test(test.testType) && !/(blood\s*typing|blood-typing|bloodtyping)/i.test(test.testType) && !/serol|serology/i.test(test.testType) && !/thyroid|thyroid\s*panel|thyroid-panel/i.test(test.testType) && !/pregnan|pregnancy|pregnancy\s*test/i.test(test.testType) && !/dengue/i.test(test.testType) && !/pt|prothrombin|pt-aptt|ptaptt/i.test(test.testType) && !/(blood\s*chemistry|blood-chemistry|blood\s*chem)/i.test(test.testType))) {
+    // Temporary diagnostic: log testType and guard evaluations to help debugging
+    const tt = test.testType || '';
+    const checks = {
+      fecalysis: /fecalysis/i.test(tt),
+      fecal_occult: /(fecal\s*occult|fecal-occult|fecaloccult)/i.test(tt),
+      urinalysis: /urinalysis/i.test(tt),
+      hematology: /hemato|hematology|cbc/i.test(tt),
+      blood_typing: /(blood\s*typing|blood-typing|bloodtyping)/i.test(tt),
+      serology: /serol|serology/i.test(tt),
+      thyroid: /thyroid|thyroid\s*panel|thyroid-panel/i.test(tt),
+      pregnancy: /pregnan|pregnancy|pregnancy\s*test/i.test(tt),
+      dengue: /dengue/i.test(tt),
+      pt: /pt|prothrombin|pt-aptt|ptaptt/i.test(tt),
+      blood_chem: /(blood\s*chemistry|blood-chemistry|blood\s*chem)/i.test(tt),
+      esr: /(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(tt)
+    };
+    console.log(`DEBUG GET /tests/${req.params.id}/results - testType='${tt}', checks=`, checks);
+    if (!tt || !Object.values(checks).some(Boolean)) {
       req.flash('error_msg', 'Results entry form is only available for supported test types (including Pregnancy Test)');
       return res.redirect(`/tests/${req.params.id}`);
     }
@@ -251,6 +269,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     // choose the appropriate entry form
     let view = 'tests/results_entry_fecalysis';
     if (/(fecal\s*occult|fecal-occult|fecaloccult)/i.test(test.testType)) view = 'tests/results_entry_fecal_occult_blood';
+    if (/(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(test.testType)) view = 'tests/results_entry_esr';
     if (/urinalysis/i.test(test.testType)) view = 'tests/results_entry_urinalysis';
     if (/hemato|hematology|cbc/i.test(test.testType)) view = 'tests/results_entry_hematology';
     if (/(blood\s*typing|blood-typing|bloodtyping)/i.test(test.testType)) view = 'tests/results_entry_blood_typing';
@@ -283,7 +302,7 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     }
 
 
-    if (!test.testType || (!/fecalysis/i.test(test.testType) && !/(fecal\s*occult|fecal-occult|fecaloccult)/i.test(test.testType) && !/urinalysis/i.test(test.testType) && !/hemato|hematology|cbc/i.test(test.testType) && !/(blood\s*typing|blood-typing|bloodtyping)/i.test(test.testType) && !/serol|serology/i.test(test.testType) && !/thyroid|thyroid\s*panel|thyroid-panel/i.test(test.testType) && !/pregnan|pregnancy|pregnancy\s*test/i.test(test.testType) && !/dengue/i.test(test.testType) && !/pt|prothrombin|pt-aptt|ptaptt/i.test(test.testType) && !/blood|blood\s*chemistry|blood-chemistry/i.test(test.testType))) {
+    if (!test.testType || (!/fecalysis/i.test(test.testType) && !/(fecal\s*occult|fecal-occult|fecaloccult)/i.test(test.testType) && !/urinalysis/i.test(test.testType) && !/hemato|hematology|cbc/i.test(test.testType) && !/(blood\s*typing|blood-typing|bloodtyping)/i.test(test.testType) && !/serol|serology/i.test(test.testType) && !/thyroid|thyroid\s*panel|thyroid-panel/i.test(test.testType) && !/pregnan|pregnancy|pregnancy\s*test/i.test(test.testType) && !/dengue/i.test(test.testType) && !/pt|prothrombin|pt-aptt|ptaptt/i.test(test.testType) && !/blood|blood\s*chemistry|blood-chemistry/i.test(test.testType) && !/(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(test.testType))) {
       req.flash('error_msg', 'Invalid test type for this results form');
       return res.redirect(`/tests/${req.params.id}`);
     }
@@ -301,6 +320,49 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       resultsObj = {
         specimen: (specimen || '').trim(),
         result: (result || '').trim()
+      };
+    } else if (/(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(test.testType)) {
+      const { esr_value } = req.body;
+      const raw = (esr_value || '').toString().trim();
+      let flag = '';
+      const val = parseFloat(raw);
+
+      // Determine patient age and sex to choose reference range
+      let patientObj = null;
+      try {
+        if (test.patient) patientObj = await Patient.findById(test.patient);
+      } catch (e) {
+        patientObj = null;
+      }
+
+      let age = null;
+      if (patientObj && patientObj.dateOfBirth) {
+        age = Math.max(0, new Date().getFullYear() - new Date(patientObj.dateOfBirth).getFullYear());
+      }
+      const sex = patientObj && patientObj.sex ? String(patientObj.sex).toLowerCase() : '';
+
+      // Defaults
+      const childUpper = 20;
+      const maleUpper = 10;
+      const femaleUpper = 20;
+      const lower = 0;
+
+      let upper = maleUpper;
+      if (age !== null && age < 18) {
+        upper = childUpper;
+      } else {
+        if (sex === 'male' || sex === 'm') upper = maleUpper;
+        else upper = femaleUpper;
+      }
+
+      if (!isNaN(val)) {
+        if (val > upper) flag = 'H';
+        else if (val < lower) flag = 'L';
+      }
+
+      resultsObj = {
+        esr_value: raw,
+        esr_flag: flag
       };
     } else if (/fecalysis/i.test(test.testType)) {
       const { color, consistency, pusCell, rbc, parasites, others, cocci, bacilli } = req.body;
@@ -498,6 +560,7 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
     const resultsDir = path.join(__dirname, '..', 'views', 'reports', 'results');
     const allowed = [
       'fecalysis.ejs',
+      'esr.ejs',
       'urinalysis.ejs',
       'blood-typing.ejs',
       'pregnancy-test.ejs',
