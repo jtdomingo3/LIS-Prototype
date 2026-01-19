@@ -46,7 +46,11 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
           .map(async (test) => {
             const patient = await Patient.findById(test.patient);
             return {
-              ...test,
+              id: test.id || test._id,
+              testId: test.testId,
+              testDate: test.testDate,
+              testType: test.testType || '',
+              template: test.template || '',
               patient: patient ? {
                 firstName: patient.firstName,
                 lastName: patient.lastName,

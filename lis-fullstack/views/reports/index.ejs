@@ -7,7 +7,7 @@
       <option value="">-- Select a Test Result --</option>
       <% if (tests && tests.length) { %>
         <% tests.forEach(t => { %>
-          <option value="<%= t.id %>"><%= t.testId %> - <%= t.patient ? (t.patient.firstName + ' ' + t.patient.lastName) : 'Unknown' %> (<%= t.testDate ? new Date(t.testDate).toLocaleDateString() : '' %>)</option>
+          <option value="<%= t.id %>"><%= t.testId %> - <%= t.patient ? (t.patient.firstName + ' ' + t.patient.lastName) : 'Unknown' %> - <%= t.testType || t.template || 'Unknown Test' %> (<%= t.testDate ? new Date(t.testDate).toLocaleDateString() : '' %>)</option>
         <% }) %>
       <% } %>
     </select>
