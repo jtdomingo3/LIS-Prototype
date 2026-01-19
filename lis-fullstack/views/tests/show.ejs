@@ -16,7 +16,7 @@
 
   <div class="action-buttons mt-20">
     <a href="/tests/<%= test.id %>/edit" class="button btn-primary">Edit</a>
-    <% if (test.testType && (/fecalysis/i.test(test.testType) || /urinalysis/i.test(test.testType) || /hemato|hematology|cbc/i.test(test.testType) || /(blood\s*typing|blood-typing|bloodtyping)/i.test(test.testType) || /serol|serology/i.test(test.testType) || /thyroid|thyroid\s*panel|thyroid-panel/i.test(test.testType) || /pregnan|pregnancy|pregnancy\s*test/i.test(test.testType) || /dengue/i.test(test.testType) || /pt|prothrombin|pt-aptt|ptaptt/i.test(test.testType) || /blood|blood\s*chemistry|blood-chemistry/i.test(test.testType))) { %>
+    <% if (test.testType && (/fecalysis/i.test(test.testType) || /(fecal\s*occult|fecal-occult|fecaloccult)/i.test(test.testType) || /urinalysis/i.test(test.testType) || /hemato|hematology|cbc/i.test(test.testType) || /(blood\s*typing|blood-typing|bloodtyping)/i.test(test.testType) || /serol|serology/i.test(test.testType) || /thyroid|thyroid\s*panel|thyroid-panel/i.test(test.testType) || /pregnan|pregnancy|pregnancy\s*test/i.test(test.testType) || /dengue/i.test(test.testType) || /pt|prothrombin|pt-aptt|ptaptt/i.test(test.testType) || /blood|blood\s*chemistry|blood-chemistry/i.test(test.testType))) { %>
       <a href="/tests/<%= test.id %>/results" class="button btn-success">Enter Results</a>
     <% } %>
     <a href="/tests" class="button btn-secondary">Back to Tests</a>

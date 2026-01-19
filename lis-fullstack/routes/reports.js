@@ -156,7 +156,10 @@ function getResultTemplate(test) {
   let template = 'blood-chemistry';
   let image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';
 
-  if (type.includes('fecal') || type.includes('fecalysis')) {
+  if (type.includes('fecal occult') || type.includes('fecal-occult') || type.includes('fecaloccult')) {
+    template = 'fecal-occult-blood';
+    image = '56226bda-3645-4fe4-aec7-7b62ff6a5a4b.jpg';
+  } else if (type.includes('fecal') || type.includes('fecalysis')) {
     template = 'fecalysis';
     image = '56226bda-3645-4fe4-aec7-7b62ff6a5a4b.jpg';
   } else if (type.includes('urinal') || type.includes('urinalysis')) {
