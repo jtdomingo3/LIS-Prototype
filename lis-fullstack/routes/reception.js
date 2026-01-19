@@ -46,7 +46,12 @@ const AREAS = [
 //   (test.completedAt or non-empty test.results). Also, do NOT map Doctor's Check-up to Releasing.
 function mapAreaForTest(test) {
   if (!test || !test.status) return test && test.status ? test.status : null;
+  // Treat explicit 'Released' status as final Completed (do not map back to Releasing)
+  if (test.status === 'Released') return 'Completed';
   if (test.status === 'Completed') {
+    // If a test has been released (finalized), keep it as Completed and do not
+    // map it back to the 'Releasing of Result' area.
+    if (test.released) return 'Completed';
     const hasResults = Boolean(test.completedAt || (test.results && String(test.results).trim()));
     const isDoctorCheckup = test.testType === "Doctor's Check-up";
     const isRegistration = test.testType === 'Registration';
@@ -608,11 +613,25 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
       }
 
       // If we reach here, there was no nextArea (either none defined, or previousArea was last)
-      // Reception finished for this test. Move to 'In Progress' (waiting for results encoding).
-      // Registration should also be treated as In Progress (waiting for results) per requirements.
-      test.status = 'In Progress';
-      await test.save();
-      console.log('complete: moved to In Progress', { testId: test.testId });
+      // Reception finished for this test.
+      // If the previous area was "Releasing of Result" then the process ends -> keep Completed.
+      // Otherwise move to 'In Progress' (waiting for results encoding).
+      if (previousArea === 'Releasing of Result') {
+        // mark as released so mapAreaForTest will not send it back to Releasing
+        try {
+          test.status = 'Released';
+          test.released = true;
+          await test.save();
+        } catch (e) {
+          console.warn('Failed to persist released flag/status', e);
+        }
+        console.log('complete: final step (Releasing) — marked Released, keep Released', { testId: test.testId });
+      } else {
+        // Registration should still be treated as In Progress per requirements
+        test.status = 'In Progress';
+        await test.save();
+        console.log('complete: moved to In Progress', { testId: test.testId });
+      }
       try {
         const payload = { action: 'complete', testId: test.testId, status: test.status, time: (new Date()).toISOString() };
         console.log('SSE emit', payload.action, payload.testId, payload.status);

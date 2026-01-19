@@ -458,3 +458,77 @@ Or, if you meant to create an async function, pass `async: true` as an option.
 
 [2026-01-19T10:22:49.020Z] [flash:error_msg GET /] Please log in to access this page
 
+[2026-01-19T10:56:56.209Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-19T11:05:41.882Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-19T11:38:02.966Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-19T11:43:54.687Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-19T11:48:00.536Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-19T11:52:11.555Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-19T11:57:55.376Z] [express error GET /tests/3178ad43-4faa-44d1-bee1-08e4c827a8f8/results] SyntaxError: Unexpected token ')' in C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\views\tests\results_entry_ct_bt.ejs while compiling ejs
+
+If the above error is not helpful, you may want to try EJS-Lint:
+https://github.com/RyanZim/EJS-Lint
+Or, if you meant to create an async function, pass `async: true` as an option.
+    at new Function (<anonymous>)
+    at Template.compile (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:673:12)
+    at Object.compile (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:398:16)
+    at handleCache (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:235:18)
+    at tryHandleCache (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:274:16)
+    at exports.renderFile [as engine] (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:491:10)
+    at View.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\view.js:135:8)
+    at tryRender (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:657:10)
+    at app.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:609:3)
+    at ServerResponse.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\response.js:1049:7)
+
+[2026-01-19T12:06:05.286Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-19T12:06:14.233Z] [express error GET /tests/3178ad43-4faa-44d1-bee1-08e4c827a8f8/results] SyntaxError: Unexpected token ')' in C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\views\tests\results_entry_ct_bt.ejs while compiling ejs
+
+If the above error is not helpful, you may want to try EJS-Lint:
+https://github.com/RyanZim/EJS-Lint
+Or, if you meant to create an async function, pass `async: true` as an option.
+    at new Function (<anonymous>)
+    at Template.compile (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:673:12)
+    at Object.compile (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:398:16)
+    at handleCache (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:235:18)
+    at tryHandleCache (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:274:16)
+    at exports.renderFile [as engine] (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:491:10)
+    at View.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\view.js:135:8)
+    at tryRender (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:657:10)
+    at app.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:609:3)
+    at ServerResponse.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\response.js:1049:7)
+
+[2026-01-19T12:06:58.964Z] [express error GET /tests/8bee15e5-f96f-4309-ae6e-02b67e67b993/results] SyntaxError: Unexpected token ')' in C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\views\tests\results_entry_ct_bt.ejs while compiling ejs
+
+If the above error is not helpful, you may want to try EJS-Lint:
+https://github.com/RyanZim/EJS-Lint
+Or, if you meant to create an async function, pass `async: true` as an option.
+    at new Function (<anonymous>)
+    at Template.compile (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:673:12)
+    at Object.compile (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:398:16)
+    at handleCache (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:235:18)
+    at tryHandleCache (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:274:16)
+    at exports.renderFile [as engine] (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:491:10)
+    at View.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\view.js:135:8)
+    at tryRender (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:657:10)
+    at app.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:609:3)
+    at ServerResponse.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\response.js:1049:7)
+
+[2026-01-19T12:08:40.264Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-19T12:14:49.173Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-19T12:27:03.945Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-19T12:34:46.301Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-19T12:52:53.314Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-19T12:56:30.138Z] [flash:error_msg GET /] Please log in to access this page
+

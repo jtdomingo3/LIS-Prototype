@@ -1,0 +1,76 @@
+<div class="card">
+  <h3>Enter CT & BT Results - <%= test.testId %></h3>
+
+  <form action="/tests/<%= test.id %>/results" method="POST">
+    <input type="hidden" name="_method" value="POST">
+
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;">
+      <div class="form-row" style="margin:0;">
+        <label>Date</label>
+        <input type="date" name="entryDate" value="<%= test && test.testDate ? (new Date(test.testDate)).toISOString().slice(0,10) : (new Date()).toISOString().slice(0,10) %>" readonly>
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>Time Requested</label>
+        <input type="time" name="timeRequested" value="<%= test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '' %>" readonly>
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>Time Released</label>
+        <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : '' %>">
+      </div>
+    </div>
+
+    <div class="form-row" style="display:flex;gap:12px;align-items:center;">
+      <div style="flex:1;">
+        <label>Bleeding Time</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="number" name="bleeding_min" step="1" min="0" placeholder="minutes" value="<%= test.results && (test.results.bleeding_min || (test.results.bleeding_time && parseInt(test.results.bleeding_time,10))) ? (test.results.bleeding_min || (test.results.bleeding_time && parseInt(test.results.bleeding_time,10))) : '' %>" style="width:120px"> <span>minutes</span>
+          <input type="number" name="bleeding_sec" step="1" min="0" max="59" placeholder="seconds" value="<%= test.results && typeof test.results.bleeding_seconds !== 'undefined' ? test.results.bleeding_seconds : '' %>" style="width:120px"> <span>secs</span>
+        </div>
+      </div>
+
+      <div style="flex:1;">
+        <label>Clotting Time</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="number" name="clotting_min" step="1" min="0" placeholder="minutes" value="<%= test.results && (test.results.clotting_min || (test.results.clotting_time && parseInt(test.results.clotting_time,10))) ? (test.results.clotting_min || (test.results.clotting_time && parseInt(test.results.clotting_time,10))) : '' %>" style="width:120px"> <span>minutes</span>
+          <input type="number" name="clotting_sec" step="1" min="0" max="59" placeholder="seconds" value="<%= test.results && typeof test.results.clotting_seconds !== 'undefined' ? test.results.clotting_seconds : '' %>" style="width:120px"> <span>secs</span>
+        </div>
+      </div>
+    </div>
+
+    <hr>
+    <h4>Signatures / Performers</h4>
+    <div class="form-row">
+      <label>Medical Technologist (Name)</label>
+      <input type="text" name="mtName" value="<%= test.results && test.results.performedByName ? test.results.performedByName : '' %>">
+    </div>
+    <div class="form-row">
+      <label>Medical Technologist License</label>
+      <input type="text" name="mtLicense" value="<%= test.results && test.results.performedByLicense ? test.results.performedByLicense : '' %>">
+    </div>
+
+    <div class="form-row">
+      <label>Pathologist (Name)</label>
+      <input type="text" name="pathName" value="<%= test.results && test.results.requestedByName ? test.results.requestedByName : '' %>">
+    </div>
+    <div class="form-row">
+      <label>Pathologist License</label>
+      <input type="text" name="pathLicense" value="<%= test.results && test.results.requestedByLicense ? test.results.requestedByLicense : '' %>">
+    </div>
+
+    <hr>
+    <h4>Validation</h4>
+    <div class="form-row">
+      <label>2nd Medical Technologist (Validator Name)</label>
+      <input type="text" name="validatedByName" value="<%= test.results && test.results.validatedByName ? test.results.validatedByName : '' %>">
+    </div>
+    <div class="form-row">
+      <label>2nd Medical Technologist License</label>
+      <input type="text" name="validatedByLicense" value="<%= test.results && test.results.validatedByLicense ? test.results.validatedByLicense : '' %>">
+    </div>
+
+    <div class="form-row mt-12">
+      <a href="/tests/<%= test.id %>" class="button btn-secondary">Cancel</a>
+      <button class="button btn-primary">Save Results</button>
+    </div>
+  </form>
+</div>

@@ -52,6 +52,7 @@ async function getStaticResultTemplates() {
     const allowed = [
       'fecalysis.ejs',
       'esr.ejs',
+      'ct-bt.ejs',
       'fecal-occult-blood.ejs',
       'urinalysis.ejs',
       'blood-typing.ejs',

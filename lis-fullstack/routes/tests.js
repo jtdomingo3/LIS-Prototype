@@ -91,6 +91,7 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       'esr.ejs',
       'fecal-occult-blood.ejs',
       'urinalysis.ejs',
+      'ct-bt.ejs',
       'blood-typing.ejs',
       'pregnancy-test.ejs',
       'dengue-duo.ejs',
@@ -254,6 +255,8 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       pt: /pt|prothrombin|pt-aptt|ptaptt/i.test(tt),
       blood_chem: /(blood\s*chemistry|blood-chemistry|blood\s*chem)/i.test(tt),
       esr: /(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(tt)
+      ,
+      ct_bt: /(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt)/i.test(tt)
     };
     console.log(`DEBUG GET /tests/${req.params.id}/results - testType='${tt}', checks=`, checks);
     if (!tt || !Object.values(checks).some(Boolean)) {
@@ -269,6 +272,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     // choose the appropriate entry form
     let view = 'tests/results_entry_fecalysis';
     if (/(fecal\s*occult|fecal-occult|fecaloccult)/i.test(test.testType)) view = 'tests/results_entry_fecal_occult_blood';
+    if (/(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt)/i.test(test.testType)) view = 'tests/results_entry_ct_bt';
     if (/(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(test.testType)) view = 'tests/results_entry_esr';
     if (/urinalysis/i.test(test.testType)) view = 'tests/results_entry_urinalysis';
     if (/hemato|hematology|cbc/i.test(test.testType)) view = 'tests/results_entry_hematology';
@@ -302,7 +306,26 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     }
 
 
-    if (!test.testType || (!/fecalysis/i.test(test.testType) && !/(fecal\s*occult|fecal-occult|fecaloccult)/i.test(test.testType) && !/urinalysis/i.test(test.testType) && !/hemato|hematology|cbc/i.test(test.testType) && !/(blood\s*typing|blood-typing|bloodtyping)/i.test(test.testType) && !/serol|serology/i.test(test.testType) && !/thyroid|thyroid\s*panel|thyroid-panel/i.test(test.testType) && !/pregnan|pregnancy|pregnancy\s*test/i.test(test.testType) && !/dengue/i.test(test.testType) && !/pt|prothrombin|pt-aptt|ptaptt/i.test(test.testType) && !/blood|blood\s*chemistry|blood-chemistry/i.test(test.testType) && !/(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(test.testType))) {
+    // Diagnostic: log testType and which regex checks match (helps debug unsupported type errors)
+    const tt = test.testType || '';
+    const checks = {
+      fecalysis: /fecalysis/i.test(tt),
+      fecal_occult: /(fecal\s*occult|fecal-occult|fecaloccult)/i.test(tt),
+      urinalysis: /urinalysis/i.test(tt),
+      hematology: /hemato|hematology|cbc/i.test(tt),
+      blood_typing: /(blood\s*typing|blood-typing|bloodtyping)/i.test(tt),
+      serology: /serol|serology/i.test(tt),
+      thyroid: /thyroid|thyroid\s*panel|thyroid-panel/i.test(tt),
+      pregnancy: /pregnan|pregnancy|pregnancy\s*test/i.test(tt),
+      dengue: /dengue/i.test(tt),
+      pt: /pt|prothrombin|pt-aptt|ptaptt/i.test(tt),
+      blood_chem: /(blood\s*chemistry|blood-chemistry|blood\s*chem)/i.test(tt),
+      esr: /(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(tt),
+      ct_bt: /(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt)/i.test(tt)
+    };
+    console.log(`DEBUG POST /tests/${req.params.id}/results - testType='${tt}', checks=`, checks);
+
+    if (!tt || !Object.values(checks).some(Boolean)) {
       req.flash('error_msg', 'Invalid test type for this results form');
       return res.redirect(`/tests/${req.params.id}`);
     }
@@ -363,6 +386,87 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       resultsObj = {
         esr_value: raw,
         esr_flag: flag
+      };
+    } else if (/(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt|ct\s*bt|ctbt)/i.test(test.testType)) {
+      // Accept minutes and seconds fields for more accurate time input
+      const { bleeding_min, bleeding_sec, clotting_min, clotting_sec } = req.body;
+      // Fallback to old single-field names if present (back-compat)
+      const fallbackBt = (req.body.bleeding_time || '').toString().trim();
+      const fallbackCt = (req.body.clotting_time || '').toString().trim();
+
+      const minBt = (bleeding_min || '').toString().trim();
+      const secBt = (bleeding_sec || '').toString().trim();
+      const minCt = (clotting_min || '').toString().trim();
+      const secCt = (clotting_sec || '').toString().trim();
+
+      // Helper to parse ints; return null when not a valid integer
+      function toIntSafe(s) {
+        const n = parseInt(s, 10);
+        return isNaN(n) ? null : n;
+      }
+
+      function computeTotalSeconds(minStr, secStr, fallbackStr) {
+        const m = toIntSafe(minStr);
+        const s = toIntSafe(secStr);
+        if (m === null && s === null) {
+          if (fallbackStr) {
+            const parsed = parseFloat(fallbackStr);
+            if (!isNaN(parsed)) return Math.round(parsed * 60);
+          }
+          return null;
+        }
+        const minutes = Math.max(0, (m === null ? 0 : m));
+        let seconds = Math.max(0, (s === null ? 0 : s));
+        // normalize seconds into minutes if >= 60
+        if (seconds >= 60) {
+          const extra = Math.floor(seconds / 60);
+          seconds = seconds % 60;
+          return (minutes + extra) * 60 + seconds;
+        }
+        return minutes * 60 + seconds;
+      }
+
+      const btSeconds = computeTotalSeconds(minBt, secBt, fallbackBt);
+      const ctSeconds = computeTotalSeconds(minCt, secCt, fallbackCt);
+
+      // Reference ranges in seconds
+      const btLowerSec = 1 * 60;
+      const btUpperSec = 5 * 60;
+      const ctLowerSec = 2 * 60;
+      const ctUpperSec = 7 * 60;
+
+      let flagBt = '';
+      let flagCt = '';
+      if (btSeconds !== null && !isNaN(btSeconds)) {
+        if (btSeconds > btUpperSec) flagBt = 'H';
+        else if (btSeconds < btLowerSec) flagBt = 'L';
+      }
+      if (ctSeconds !== null && !isNaN(ctSeconds)) {
+        if (ctSeconds > ctUpperSec) flagCt = 'H';
+        else if (ctSeconds < ctLowerSec) flagCt = 'L';
+      }
+
+      // Prepare display strings like "2 minutes 45 secs" or fall back to numeric minute value
+      function formatTimeDisplay(secVal, fallback) {
+        if (secVal === null || isNaN(secVal)) return (fallback || '');
+        const mins = Math.floor(secVal / 60);
+        const secs = Math.round(secVal % 60);
+        if (secs) return `${mins} minutes ${secs} secs`;
+        return `${mins}`;
+      }
+
+      const displayBt = formatTimeDisplay(btSeconds, fallbackBt);
+      const displayCt = formatTimeDisplay(ctSeconds, fallbackCt);
+
+      resultsObj = {
+        bleeding_time: displayBt,
+        bleeding_time_display: displayBt,
+        bleeding_seconds: btSeconds,
+        bleeding_flag: flagBt,
+        clotting_time: displayCt,
+        clotting_time_display: displayCt,
+        clotting_seconds: ctSeconds,
+        clotting_flag: flagCt
       };
     } else if (/fecalysis/i.test(test.testType)) {
       const { color, consistency, pusCell, rbc, parasites, others, cocci, bacilli } = req.body;
@@ -561,6 +665,7 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
     const allowed = [
       'fecalysis.ejs',
       'esr.ejs',
+      'ct-bt.ejs',
       'urinalysis.ejs',
       'blood-typing.ejs',
       'pregnancy-test.ejs',

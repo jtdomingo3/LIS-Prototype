@@ -65,7 +65,7 @@
                 <form action="/reception/complete" method="POST" class="complete-form" style="display:inline-block; margin-left:6px;">
                   <input type="hidden" name="testId" value="<%= test.id %>">
                   <input type="hidden" name="area" value="<%= areaName %>">
-                  <button type="submit" class="button btn-success btn-small" title="Mark complete">Mark Complete</button>
+                  <button type="submit" class="button btn-success btn-small" title="Mark complete"><%= areaName === 'Releasing of Result' ? 'Mark Released' : 'Mark Complete' %></button>
                 </form>
                 <% } else { %>
                 <!-- Payment Area: only Amount, Mark Complete, and Delete (no Assign, no View) -->
