@@ -8,7 +8,7 @@
       "role": "Admin",
       "status": "Active",
       "createdAt": "2026-01-15T01:12:10.333Z",
-      "lastLogin": "2026-01-19T08:00:35.370Z"
+      "lastLogin": "2026-01-19T08:30:28.235Z"
     },
     {
       "id": "8ad63d72-ba3b-47f2-9565-5a04c4ab09f8",
@@ -180,37 +180,82 @@
       "id": "ba007285-4597-4015-be5f-e48aa07bec3b",
       "testId": "T001",
       "patient": "8dc57999-479c-45d5-9d81-18a2f5dff3ac",
-      "testType": "Registration",
-      "testDate": "2026-01-19T06:44:16.804Z",
-      "status": "In Progress",
+      "testType": "blood chemistry",
+      "testDate": "2026-01-19",
+      "status": "Completed",
       "specimenNumbers": {},
       "assignedDoctorId": null,
       "assignedDoctorName": null,
-      "priority": "Normal",
       "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
-      "completedAt": "2026-01-19T06:44:25.487Z",
+      "completedAt": "2026-01-19T06:44:00.000Z",
       "createdAt": "2026-01-19T06:44:16.804Z",
-      "updatedAt": "2026-01-19T06:44:40.909Z"
+      "updatedAt": "2026-01-19T08:34:28.548Z",
+      "results": {
+        "fbs": "120",
+        "rbs": "140",
+        "firstHour": "80",
+        "secondHour": "70",
+        "cholesterol": "400",
+        "tg": "50",
+        "hdl": "",
+        "ldl": "",
+        "vldl": "",
+        "uricAcid": "",
+        "creatinine": "",
+        "bun": "",
+        "sgpt": "",
+        "sgot": "",
+        "sodium": "",
+        "potassium": "",
+        "chloride": "",
+        "hba1c": "8",
+        "alb": "80",
+        "performedByName": "Aiza Lyca Bartolome, RMT",
+        "performedByLicense": "0110576",
+        "requestedByName": "Bernadette R. Espiritu, M.D.",
+        "requestedByLicense": "75547",
+        "validatedByName": "Shaina Aubrey Parungao, RMT",
+        "validatedByLicense": "0129565"
+      }
     },
     {
       "id": "3b729ac0-2090-4204-8f43-3b3afe0d58f7",
       "testId": "T002",
       "patient": "21d9bc78-c601-4d41-a465-5432b5fa73b1",
-      "testType": "Registration",
-      "testDate": "2026-01-19T06:45:22.268Z",
-      "status": "Doctor's Check-up - Dr. Arcilla",
+      "testType": "hematology",
+      "testDate": "2026-01-19",
+      "status": "Completed",
       "specimenNumbers": {},
       "assignedDoctorId": null,
       "assignedDoctorName": null,
-      "priority": "Normal",
       "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
-      "completedAt": "2026-01-19T06:45:30.194Z",
+      "completedAt": "2026-01-19T06:45:00.000Z",
       "createdAt": "2026-01-19T06:45:22.268Z",
-      "updatedAt": "2026-01-19T06:46:29.846Z"
+      "updatedAt": "2026-01-19T08:19:29.499Z",
+      "results": {
+        "rbc": "4.0",
+        "hemoglobin": "130",
+        "hematocrit": "0.40",
+        "mcv": "95",
+        "mch": "30",
+        "mchc": "33",
+        "wbc": "8",
+        "neutrophils": "60",
+        "lymphocyte": "30",
+        "monocyte": "5",
+        "eosinophils": "5",
+        "basophils": "0",
+        "platelets": "300",
+        "performedByName": "Aiza Lyca Bartolome, RMT",
+        "performedByLicense": "0110576",
+        "requestedByName": "Bernadette R. Espiritu, M.D.",
+        "requestedByLicense": "75547",
+        "validatedByName": "Shaina Aubrey Parungao, RMT",
+        "validatedByLicense": "0129565"
+      }
     }
   ],
   "templates": [
-    {
-    }
+    {}
   ]
 }

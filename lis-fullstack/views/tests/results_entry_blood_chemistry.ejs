@@ -1,0 +1,80 @@
+<div class="card">
+  <h3>Enter Blood Chemistry Results - <%= test.testId %></h3>
+
+  <form action="/tests/<%= test.id %>/results" method="POST">
+    <input type="hidden" name="_method" value="POST">
+
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
+      <div class="form-row" style="margin:0;">
+        <label>Date</label>
+        <input type="date" name="entryDate" value="<%= test && test.testDate ? (new Date(test.testDate)).toISOString().slice(0,10) : (new Date()).toISOString().slice(0,10) %>" readonly>
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>Time Requested</label>
+        <input type="time" name="timeRequested" value="<%= test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '' %>" readonly>
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>Time Released</label>
+        <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : '' %>">
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="form-row"><label>FBS</label><input type="text" name="fbs" value="<%= test.results && test.results.fbs ? test.results.fbs : '' %>"></div>
+      <div class="form-row"><label>RBS</label><input type="text" name="rbs" value="<%= test.results && test.results.rbs ? test.results.rbs : '' %>"></div>
+      <div class="form-row"><label>1st Hour</label><input type="text" name="firstHour" value="<%= test.results && test.results.firstHour ? test.results.firstHour : '' %>"></div>
+      <div class="form-row"><label>2nd Hour</label><input type="text" name="secondHour" value="<%= test.results && test.results.secondHour ? test.results.secondHour : '' %>"></div>
+      <div class="form-row"><label>Cholesterol</label><input type="text" name="cholesterol" value="<%= test.results && test.results.cholesterol ? test.results.cholesterol : '' %>"></div>
+      <div class="form-row"><label>Triglyceride</label><input type="text" name="tg" value="<%= test.results && test.results.tg ? test.results.tg : '' %>"></div>
+      <div class="form-row"><label>HDL-C</label><input type="text" name="hdl" value="<%= test.results && test.results.hdl ? test.results.hdl : '' %>"></div>
+      <div class="form-row"><label>LDL</label><input type="text" name="ldl" value="<%= test.results && test.results.ldl ? test.results.ldl : '' %>"></div>
+      <div class="form-row"><label>VLDL</label><input type="text" name="vldl" value="<%= test.results && test.results.vldl ? test.results.vldl : '' %>"></div>
+      <div class="form-row"><label>Uric Acid</label><input type="text" name="uricAcid" value="<%= test.results && test.results.uricAcid ? test.results.uricAcid : '' %>"></div>
+      <div class="form-row"><label>Creatinine</label><input type="text" name="creatinine" value="<%= test.results && test.results.creatinine ? test.results.creatinine : '' %>"></div>
+      <div class="form-row"><label>BUN</label><input type="text" name="bun" value="<%= test.results && test.results.bun ? test.results.bun : '' %>"></div>
+      <div class="form-row"><label>SGPT (ALT)</label><input type="text" name="sgpt" value="<%= test.results && test.results.sgpt ? test.results.sgpt : '' %>"></div>
+      <div class="form-row"><label>SGOT (AST)</label><input type="text" name="sgot" value="<%= test.results && test.results.sgot ? test.results.sgot : '' %>"></div>
+      <div class="form-row"><label>Sodium</label><input type="text" name="sodium" value="<%= test.results && test.results.sodium ? test.results.sodium : '' %>"></div>
+      <div class="form-row"><label>Potassium</label><input type="text" name="potassium" value="<%= test.results && test.results.potassium ? test.results.potassium : '' %>"></div>
+      <div class="form-row"><label>Chloride</label><input type="text" name="chloride" value="<%= test.results && test.results.chloride ? test.results.chloride : '' %>"></div>
+      <div class="form-row"><label>Hba1c</label><input type="text" name="hba1c" value="<%= test.results && test.results.hba1c ? test.results.hba1c : '' %>"></div>
+      <div class="form-row"><label>ALB</label><input type="text" name="alb" value="<%= test.results && test.results.alb ? test.results.alb : '' %>"></div>
+    </div>
+
+    <hr>
+    <h4>Signatures / Performers</h4>
+    <div class="form-row">
+      <label>Medical Technologist (Name)</label>
+      <input type="text" name="mtName" value="<%= test.results && test.results.performedByName ? test.results.performedByName : '' %>">
+    </div>
+    <div class="form-row">
+      <label>Medical Technologist License</label>
+      <input type="text" name="mtLicense" value="<%= test.results && test.results.performedByLicense ? test.results.performedByLicense : '' %>">
+    </div>
+
+    <div class="form-row">
+      <label>Pathologist (Name)</label>
+      <input type="text" name="pathName" value="<%= test.results && test.results.requestedByName ? test.results.requestedByName : '' %>">
+    </div>
+    <div class="form-row">
+      <label>Pathologist License</label>
+      <input type="text" name="pathLicense" value="<%= test.results && test.results.requestedByLicense ? test.results.requestedByLicense : '' %>">
+    </div>
+
+    <hr>
+    <h4>Validation</h4>
+    <div class="form-row">
+      <label>2nd Medical Technologist (Validator Name)</label>
+      <input type="text" name="validatedByName" value="<%= test.results && test.results.validatedByName ? test.results.validatedByName : '' %>">
+    </div>
+    <div class="form-row">
+      <label>2nd Medical Technologist License</label>
+      <input type="text" name="validatedByLicense" value="<%= test.results && test.results.validatedByLicense ? test.results.validatedByLicense : '' %>">
+    </div>
+
+    <div class="form-row mt-12">
+      <a href="/tests/<%= test.id %>" class="button btn-secondary">Cancel</a>
+      <button class="button btn-primary">Save Results</button>
+    </div>
+  </form>
+</div>

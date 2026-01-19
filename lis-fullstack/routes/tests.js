@@ -237,7 +237,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     }
 
     // Only render form for supported test types (including pregnancy)
-    if (!test.testType || (!/fecalysis/i.test(test.testType) && !/urinalysis/i.test(test.testType) && !/hemato|hematology|cbc/i.test(test.testType) && !/(blood\s*typing|blood-typing|bloodtyping)/i.test(test.testType) && !/serol|serology/i.test(test.testType) && !/thyroid|thyroid\s*panel|thyroid-panel/i.test(test.testType) && !/pregnan|pregnancy|pregnancy\s*test/i.test(test.testType) && !/dengue/i.test(test.testType) && !/pt|prothrombin|pt-aptt|ptaptt/i.test(test.testType))) {
+    if (!test.testType || (!/fecalysis/i.test(test.testType) && !/urinalysis/i.test(test.testType) && !/hemato|hematology|cbc/i.test(test.testType) && !/(blood\s*typing|blood-typing|bloodtyping)/i.test(test.testType) && !/serol|serology/i.test(test.testType) && !/thyroid|thyroid\s*panel|thyroid-panel/i.test(test.testType) && !/pregnan|pregnancy|pregnancy\s*test/i.test(test.testType) && !/dengue/i.test(test.testType) && !/pt|prothrombin|pt-aptt|ptaptt/i.test(test.testType) && !/blood|blood\s*chemistry|blood-chemistry/i.test(test.testType))) {
       req.flash('error_msg', 'Results entry form is only available for supported test types (including Pregnancy Test)');
       return res.redirect(`/tests/${req.params.id}`);
     }
@@ -257,6 +257,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     if (/pregnan|pregnancy|pregnancy\s*test/i.test(test.testType)) view = 'tests/results_entry_pregnancy_test';
     if (/dengue/i.test(test.testType)) view = 'tests/results_entry_dengue_duo';
     if (/pt|prothrombin|pt-aptt|ptaptt/i.test(test.testType)) view = 'tests/results_entry_pt_aptt';
+    if (/blood|blood\s*chemistry|blood-chemistry/i.test(test.testType)) view = 'tests/results_entry_blood_chemistry';
     res.render(view, {
       title: `Enter ${test.testType} Results`,
       test: testForView,
@@ -280,7 +281,7 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     }
 
 
-    if (!test.testType || (!/fecalysis/i.test(test.testType) && !/urinalysis/i.test(test.testType) && !/hemato|hematology|cbc/i.test(test.testType) && !/(blood\s*typing|blood-typing|bloodtyping)/i.test(test.testType) && !/serol|serology/i.test(test.testType) && !/thyroid|thyroid\s*panel|thyroid-panel/i.test(test.testType) && !/pregnan|pregnancy|pregnancy\s*test/i.test(test.testType) && !/dengue/i.test(test.testType) && !/pt|prothrombin|pt-aptt|ptaptt/i.test(test.testType))) {
+    if (!test.testType || (!/fecalysis/i.test(test.testType) && !/urinalysis/i.test(test.testType) && !/hemato|hematology|cbc/i.test(test.testType) && !/(blood\s*typing|blood-typing|bloodtyping)/i.test(test.testType) && !/serol|serology/i.test(test.testType) && !/thyroid|thyroid\s*panel|thyroid-panel/i.test(test.testType) && !/pregnan|pregnancy|pregnancy\s*test/i.test(test.testType) && !/dengue/i.test(test.testType) && !/pt|prothrombin|pt-aptt|ptaptt/i.test(test.testType) && !/blood|blood\s*chemistry|blood-chemistry/i.test(test.testType))) {
       req.flash('error_msg', 'Invalid test type for this results form');
       return res.redirect(`/tests/${req.params.id}`);
     }
@@ -379,6 +380,29 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
         ns1: (ns1 || '').trim(),
         igm: (igm || '').trim(),
         igg: (igg || '').trim()
+      };
+    } else if (/blood|blood\s*chemistry|blood-chemistry/i.test(test.testType)) {
+      const { fbs, rbs, firstHour, secondHour, cholesterol, tg, hdl, ldl, vldl, uricAcid, creatinine, bun, sgpt, sgot, sodium, potassium, chloride, hba1c, alb } = req.body;
+      resultsObj = {
+        fbs: (fbs || '').trim(),
+        rbs: (rbs || '').trim(),
+        firstHour: (firstHour || '').trim(),
+        secondHour: (secondHour || '').trim(),
+        cholesterol: (cholesterol || '').trim(),
+        tg: (tg || '').trim(),
+        hdl: (hdl || '').trim(),
+        ldl: (ldl || '').trim(),
+        vldl: (vldl || '').trim(),
+        uricAcid: (uricAcid || '').trim(),
+        creatinine: (creatinine || '').trim(),
+        bun: (bun || '').trim(),
+        sgpt: (sgpt || '').trim(),
+        sgot: (sgot || '').trim(),
+        sodium: (sodium || '').trim(),
+        potassium: (potassium || '').trim(),
+        chloride: (chloride || '').trim(),
+        hba1c: (hba1c || '').trim(),
+        alb: (alb || '').trim()
       };
     } else if (/pt|prothrombin|pt-aptt|ptaptt/i.test(test.testType)) {
       const { pt_control, pt_patient, pt_activity, pt_inr, aptt_patient } = req.body;
