@@ -8,7 +8,7 @@
       "role": "Admin",
       "status": "Active",
       "createdAt": "2026-01-15T01:12:10.333Z",
-      "lastLogin": "2026-01-18T14:17:40.277Z"
+      "lastLogin": "2026-01-19T08:00:35.370Z"
     },
     {
       "id": "8ad63d72-ba3b-47f2-9565-5a04c4ab09f8",
@@ -49,454 +49,168 @@
       "status": "Active",
       "createdAt": "2026-01-17T11:53:48.616Z",
       "lastLogin": null
+    },
+    {
+      "id": "13733d28-a85a-4024-8f13-9fc3a1b05413",
+      "name": "Admin User",
+      "email": "admin@lab.com",
+      "password": "$2a$12$0yWMkEBa4q9QPbvTsc6voumqPVrBA4EdHQ.9YFOor2NqLYE5ZwOhC",
+      "role": "Admin",
+      "status": "Active",
+      "createdAt": "2026-01-19T05:39:43.621Z",
+      "lastLogin": null
+    },
+    {
+      "id": "8db5eff9-02e0-4c3a-8e8c-82f7f5541c6b",
+      "name": "Dr. Sarah Chen",
+      "email": "sarah@lab.com",
+      "password": "$2a$12$HW1HQox9V.46RSZjv18ZduG0CfA8TfV5fDkzkzqeylYjrbdtGDcyq",
+      "role": "Doctor",
+      "status": "Active",
+      "createdAt": "2026-01-19T05:39:43.868Z",
+      "lastLogin": null
+    },
+    {
+      "id": "7a9ed48f-dece-42df-8876-5dca950be134",
+      "name": "Dr. Lorenzo",
+      "email": "lorenzo@lab.com",
+      "password": "$2a$12$u81BbcBVuT.lO85ktserD.gJVd6fTfpj1P.FRAnzs8CmLWXp6adQO",
+      "role": "Doctor",
+      "status": "Active",
+      "createdAt": "2026-01-19T05:39:44.100Z",
+      "lastLogin": null
+    },
+    {
+      "id": "0344114e-6bf2-4d98-aa79-35d8d97e36e4",
+      "name": "Dr. Arcilla",
+      "email": "arcilla@lab.com",
+      "password": "$2a$12$FgMYy75Q0oc0chDbXYxZcO78D2UAgCq0ZFcYl/Q6BvXt95KiYljRS",
+      "role": "Doctor",
+      "status": "Active",
+      "createdAt": "2026-01-19T05:39:44.343Z",
+      "lastLogin": null
+    },
+    {
+      "id": "1c5e5083-0ded-44a3-8189-c5c918b14eb9",
+      "name": "Tech Michael Brown",
+      "email": "mike@lab.com",
+      "password": "$2a$12$BMjdiVU6mgtK5xCI1DlLV.rcY032dhjwAENOLf/ZnKZkmkMb0iXki",
+      "role": "Technician",
+      "status": "Active",
+      "createdAt": "2026-01-19T05:39:44.579Z",
+      "lastLogin": null
+    },
+    {
+      "id": "42f6f4c8-6fb1-4457-9899-083736809448",
+      "name": "Jane Receptionist",
+      "email": "jane@lab.com",
+      "password": "$2a$12$bZQ1kJQKDWaqKm6JOxCoU.5..bix7gKlY.68pk8kN2hHMot2PSlPu",
+      "role": "Receptionist",
+      "status": "Active",
+      "createdAt": "2026-01-19T05:39:44.816Z",
+      "lastLogin": null
     }
   ],
   "patients": [
     {
-      "id": "177a9ee3-7982-4658-8c2a-d885630d19d7",
+      "id": "8dc57999-479c-45d5-9d81-18a2f5dff3ac",
       "patientId": "P001",
       "patientCode": "GCL-2026-01-00001",
-      "firstName": "Gezyne ",
-      "lastName": "Lopez",
-      "dateOfBirth": "1994-04-02",
-      "physician": null,
-      "ageManual": "31",
-      "paymentHistory": [
-        {
-          "testId": "T001",
-          "amount": 800,
-          "timestamp": "2026-01-18T08:01:02.835Z"
-        }
-      ],
-      "gender": "Female",
-      "phone": "09239210344",
-      "email": "",
-      "address": "Malolos",
-      "requiredAreas": [
-        "Extraction Area",
-        "Specimen Collection Area",
-        "Drug Test"
-      ],
-      "createdAt": "2026-01-18T08:00:19.053Z",
-      "updatedAt": "2026-01-18T08:01:02.835Z",
-      "createdBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
-      "fullName": "Gezyne  Lopez",
-      "age": 31,
-      "sex": "Female"
-    },
-    {
-      "id": "ce08a3c6-a465-45ee-9ac1-e47ea446544b",
-      "patientId": "P002",
-      "patientCode": "GCL-2026-01-00002",
-      "firstName": "Jeff",
-      "lastName": "Domingo",
-      "dateOfBirth": "1994-06-11",
-      "physician": null,
-      "ageManual": "31",
-      "paymentHistory": [
-        {
-          "testId": "T002",
-          "amount": 600,
-          "timestamp": "2026-01-18T08:03:15.032Z"
-        }
-      ],
-      "gender": "Male",
-      "phone": "",
-      "email": "",
-      "address": "",
-      "requiredAreas": [
-        "Extraction Area",
-        "Ultrasound",
-        "2D Echo"
-      ],
-      "createdAt": "2026-01-18T08:01:48.172Z",
-      "updatedAt": "2026-01-18T08:03:15.032Z",
-      "createdBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
-      "fullName": "Jeff Domingo",
-      "age": 31,
-      "sex": "Male"
-    },
-    {
-      "id": "3f985a2e-7c5d-4119-a22b-e6db78149273",
-      "patientId": "P003",
-      "patientCode": "GCL-2026-01-00003",
-      "firstName": "Jeff",
-      "lastName": "Domingo",
-      "dateOfBirth": "1994-06-11",
-      "physician": null,
-      "ageManual": "31",
-      "paymentHistory": [
-        {
-          "testId": "T003",
-          "amount": 300,
-          "timestamp": "2026-01-18T08:07:49.857Z"
-        }
-      ],
-      "gender": "Male",
-      "phone": "",
-      "email": "",
-      "address": "",
-      "requiredAreas": [
-        "Extraction Area",
-        "Specimen Collection Area",
-        "Drug Test",
-        "Ultrasound",
-        "2D Echo",
-        "X-ray",
-        "ECG",
-        "Doctor's Check-up"
-      ],
-      "createdAt": "2026-01-18T08:06:59.677Z",
-      "updatedAt": "2026-01-18T08:07:49.857Z",
-      "createdBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
-      "fullName": "Jeff Domingo",
-      "age": 31,
-      "sex": "Male"
-    },
-    {
-      "id": "9b1d7558-0733-4962-9244-01764009f750",
-      "patientId": "P004",
-      "patientCode": "GCL-2026-01-00004",
       "firstName": "Gezyne",
       "lastName": "Lopez",
-      "dateOfBirth": "",
+      "dateOfBirth": "1994-04-02",
       "physician": "Dr. Spoiled Brat",
       "ageManual": "31",
       "paymentHistory": [
         {
-          "testId": "T004",
-          "amount": 600,
-          "timestamp": "2026-01-18T08:08:58.871Z"
+          "testId": "T001",
+          "amount": 500,
+          "timestamp": "2026-01-19T06:44:25.486Z"
         }
       ],
       "gender": "Female",
       "phone": "+6319158168881",
       "email": "domingojeff44@gmail.com",
-      "address": "Malolos",
+      "address": "",
       "requiredAreas": [
-        "Specimen Collection Area",
-        "Drug Test",
-        "Ultrasound",
-        "2D Echo",
-        "X-ray",
-        "ECG",
-        "Doctor's Check-up"
+        "Extraction Area",
+        "Doctor's Check-up - Dr. Lorenzo"
       ],
-      "createdAt": "2026-01-18T08:07:26.056Z",
-      "updatedAt": "2026-01-18T08:08:58.871Z",
+      "createdAt": "2026-01-19T06:44:16.802Z",
+      "updatedAt": "2026-01-19T06:44:25.486Z",
       "createdBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
       "fullName": "Gezyne Lopez",
-      "age": "31",
+      "age": 31,
       "sex": "Female"
+    },
+    {
+      "id": "21d9bc78-c601-4d41-a465-5432b5fa73b1",
+      "patientId": "P002",
+      "patientCode": "GCL-2026-01-00002",
+      "firstName": "Jeff Louine Jamir",
+      "lastName": "Domingo",
+      "dateOfBirth": "1994-06-11",
+      "physician": "Dr. Spoiled Brat",
+      "ageManual": "31",
+      "paymentHistory": [
+        {
+          "testId": "T002",
+          "amount": 400,
+          "timestamp": "2026-01-19T06:45:30.192Z"
+        }
+      ],
+      "gender": "Male",
+      "phone": "+6319158168881",
+      "email": "domingojeff44@gmail.com",
+      "address": "",
+      "requiredAreas": [
+        "Extraction Area",
+        "Doctor's Check-up - Dr. Arcilla"
+      ],
+      "createdAt": "2026-01-19T06:45:22.266Z",
+      "updatedAt": "2026-01-19T06:45:30.192Z",
+      "createdBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "fullName": "Jeff Louine Jamir Domingo",
+      "age": 31,
+      "sex": "Male"
     }
   ],
   "tests": [
     {
-      "id": "603b6346-2892-4867-a637-376c070f4e01",
+      "id": "ba007285-4597-4015-be5f-e48aa07bec3b",
       "testId": "T001",
-      "patient": "177a9ee3-7982-4658-8c2a-d885630d19d7",
+      "patient": "8dc57999-479c-45d5-9d81-18a2f5dff3ac",
       "testType": "Registration",
-      "testDate": "2026-01-18T08:00:19.055Z",
+      "testDate": "2026-01-19T06:44:16.804Z",
       "status": "In Progress",
       "specimenNumbers": {},
+      "assignedDoctorId": null,
+      "assignedDoctorName": null,
       "priority": "Normal",
       "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
-      "completedAt": "2026-01-18T08:01:02.838Z",
-      "createdAt": "2026-01-18T08:00:19.055Z",
-      "updatedAt": "2026-01-18T08:05:56.103Z"
+      "completedAt": "2026-01-19T06:44:25.487Z",
+      "createdAt": "2026-01-19T06:44:16.804Z",
+      "updatedAt": "2026-01-19T06:44:40.909Z"
     },
     {
-      "id": "f91d0e1b-8451-45b1-9854-995082245e05",
+      "id": "3b729ac0-2090-4204-8f43-3b3afe0d58f7",
       "testId": "T002",
-      "patient": "ce08a3c6-a465-45ee-9ac1-e47ea446544b",
+      "patient": "21d9bc78-c601-4d41-a465-5432b5fa73b1",
       "testType": "Registration",
-      "testDate": "2026-01-18T08:01:48.173Z",
-      "status": "In Progress",
+      "testDate": "2026-01-19T06:45:22.268Z",
+      "status": "Doctor's Check-up - Dr. Arcilla",
       "specimenNumbers": {},
+      "assignedDoctorId": null,
+      "assignedDoctorName": null,
       "priority": "Normal",
       "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
-      "completedAt": "2026-01-18T08:03:15.034Z",
-      "createdAt": "2026-01-18T08:01:48.173Z",
-      "updatedAt": "2026-01-18T08:06:29.482Z"
-    },
-    {
-      "id": "2c4096cc-b59c-4bee-b1f7-21f3c1190aa8",
-      "testId": "T003",
-      "patient": "3f985a2e-7c5d-4119-a22b-e6db78149273",
-      "testType": "Registration",
-      "testDate": "2026-01-18T08:06:59.686Z",
-      "status": "Drug Test",
-      "specimenNumbers": {},
-      "priority": "Normal",
-      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
-      "completedAt": "2026-01-18T08:07:49.859Z",
-      "createdAt": "2026-01-18T08:06:59.686Z",
-      "updatedAt": "2026-01-18T08:08:59.114Z"
-    },
-    {
-      "id": "43afadf6-cbfb-459a-a344-b82f7b903050",
-      "testId": "T004",
-      "patient": "9b1d7558-0733-4962-9244-01764009f750",
-      "testType": "Registration",
-      "testDate": "2026-01-18T08:07:26.057Z",
-      "status": "Specimen Collection Area",
-      "specimenNumbers": {},
-      "priority": "Normal",
-      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
-      "completedAt": "2026-01-18T08:08:58.872Z",
-      "createdAt": "2026-01-18T08:07:26.057Z",
-      "updatedAt": "2026-01-18T08:08:58.872Z"
-    },
-    {
-      "id": "8bd0362c-dc2f-47ab-8b6b-eb2d67aecdbd",
-      "testId": "T005",
-      "patient": "177a9ee3-7982-4658-8c2a-d885630d19d7",
-      "testType": "pregnancy test",
-      "testDate": "2026-01-18",
-      "status": "Completed",
-      "specimenNumbers": {},
-      "priority": "Normal",
-      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
-      "createdAt": "2026-01-18T08:26:28.435Z",
-      "updatedAt": "2026-01-18T08:26:43.817Z",
-      "results": {
-        "sample": "Urine",
-        "result": "Positive",
-        "performedByName": "Aiza Lyca Bartolome, RMT",
-        "performedByLicense": "0110576",
-        "requestedByName": "Bernadette R. Espiritu, M.D.",
-        "requestedByLicense": "75547",
-        "validatedByName": "Shaina Aubrey Parungao, RMT",
-        "validatedByLicense": "0129565"
-      },
-      "completedAt": "2026-01-18T08:26:00.000Z"
-    },
-    {
-      "id": "b82257b2-2798-4ec8-bc42-50bcdbcecf6d",
-      "testId": "T006",
-      "patient": "177a9ee3-7982-4658-8c2a-d885630d19d7",
-      "testType": "thyroid panel",
-      "testDate": "2026-01-18",
-      "status": "Completed",
-      "specimenNumbers": {},
-      "priority": "Normal",
-      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
-      "createdAt": "2026-01-18T08:32:40.820Z",
-      "updatedAt": "2026-01-18T08:32:53.743Z",
-      "results": {
-        "tsh": "4",
-        "ft4": "10",
-        "ft3": "7",
-        "performedByName": "Aiza Lyca Bartolome, RMT",
-        "performedByLicense": "0110576",
-        "requestedByName": "Bernadette R. Espiritu, M.D.",
-        "requestedByLicense": "75547",
-        "validatedByName": "Shaina Aubrey Parungao, RMT",
-        "validatedByLicense": "0129565"
-      },
-      "completedAt": "2026-01-18T08:32:00.000Z"
-    },
-    {
-      "id": "85dd74f3-c350-4013-b8f0-7fd40364b71f",
-      "testId": "T007",
-      "patient": "ce08a3c6-a465-45ee-9ac1-e47ea446544b",
-      "testType": "dengue duo",
-      "testDate": "2026-01-18",
-      "status": "Completed",
-      "specimenNumbers": {},
-      "priority": "Normal",
-      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
-      "createdAt": "2026-01-18T08:43:27.605Z",
-      "updatedAt": "2026-01-18T08:46:14.331Z",
-      "results": {
-        "ns1": "NS1",
-        "igm": "Negative",
-        "igg": "Negative",
-        "performedByName": "Aiza Lyca Bartolome, RMT",
-        "performedByLicense": "0112126",
-        "requestedByName": "Bernadette R. Espiritu, M.D.",
-        "requestedByLicense": "75547",
-        "validatedByName": "Shaina Aubrey Parungao, RMT",
-        "validatedByLicense": "0129565"
-      },
-      "completedAt": "2026-01-18T08:46:00.000Z"
-    },
-    {
-      "id": "a7e45918-63f9-41b1-89e7-87c8aaabdff3",
-      "testId": "T008",
-      "patient": "ce08a3c6-a465-45ee-9ac1-e47ea446544b",
-      "testType": "hematology",
-      "testDate": "2026-01-18",
-      "status": "Completed",
-      "specimenNumbers": {},
-      "priority": "Normal",
-      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
-      "createdAt": "2026-01-18T08:49:47.448Z",
-      "updatedAt": "2026-01-18T08:50:02.816Z",
-      "results": {
-        "rbc": "4.0",
-        "hemoglobin": "130",
-        "hematocrit": "0.40",
-        "mcv": "95",
-        "mch": "30",
-        "mchc": "33",
-        "wbc": "8",
-        "neutrophils": "60",
-        "lymphocyte": "30",
-        "monocyte": "5",
-        "eosinophils": "5",
-        "basophils": "0",
-        "platelets": "300",
-        "performedByName": "Aiza Lyca Bartolome, RMT",
-        "performedByLicense": "0110576",
-        "requestedByName": "Bernadette R. Espiritu, M.D.",
-        "requestedByLicense": "75547",
-        "validatedByName": "Shaina Aubrey Parungao, RMT",
-        "validatedByLicense": "0129565"
-      },
-      "completedAt": "2026-01-18T08:49:00.000Z"
-    },
-    {
-      "id": "c86006b7-948f-4e10-9a15-3ac2815c558f",
-      "testId": "T009",
-      "patient": "177a9ee3-7982-4658-8c2a-d885630d19d7",
-      "testType": "hematology",
-      "testDate": "2026-01-18",
-      "status": "Completed",
-      "specimenNumbers": {},
-      "priority": "Normal",
-      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
-      "createdAt": "2026-01-18T09:07:50.045Z",
-      "updatedAt": "2026-01-18T09:08:01.687Z",
-      "results": {
-        "rbc": "4.0",
-        "hemoglobin": "130",
-        "hematocrit": "0.40",
-        "mcv": "95",
-        "mch": "30",
-        "mchc": "33",
-        "wbc": "8",
-        "neutrophils": "60",
-        "lymphocyte": "30",
-        "monocyte": "5",
-        "eosinophils": "5",
-        "basophils": "0",
-        "platelets": "300",
-        "performedByName": "Aiza Lyca Bartolome, RMT",
-        "performedByLicense": "0110576",
-        "requestedByName": "Bernadette R. Espiritu, M.D.",
-        "requestedByLicense": "75547",
-        "validatedByName": "Shaina Aubrey Parungao, RMT",
-        "validatedByLicense": "0129565"
-      },
-      "completedAt": "2026-01-18T09:07:00.000Z"
-    },
-    {
-      "id": "a48f5d8a-2277-4ace-a2a9-d8ad251f7ca0",
-      "testId": "T010",
-      "patient": "3f985a2e-7c5d-4119-a22b-e6db78149273",
-      "testType": "pt aptt",
-      "testDate": "2026-01-18",
-      "status": "Completed",
-      "specimenNumbers": {},
-      "priority": "Normal",
-      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
-      "createdAt": "2026-01-18T13:34:00.873Z",
-      "updatedAt": "2026-01-18T13:52:53.355Z",
-      "results": {
-        "prothrombin": {
-          "control": "10.9 sec.",
-          "patient": "10",
-          "activity": "10",
-          "inr": "10"
-        },
-        "aptt": {
-          "patient": "9.8"
-        },
-        "performedByName": "Aiza Lyca Bartolome, RMT",
-        "performedByLicense": "0110576",
-        "requestedByName": "Bernadette R. Espiritu, M.D.",
-        "requestedByLicense": "75547",
-        "validatedByName": "Shaina Aubrey Parungao, RMT",
-        "validatedByLicense": "0129565"
-      },
-      "completedAt": "2026-01-18T13:34:00.000Z"
+      "completedAt": "2026-01-19T06:45:30.194Z",
+      "createdAt": "2026-01-19T06:45:22.268Z",
+      "updatedAt": "2026-01-19T06:46:29.846Z"
     }
   ],
   "templates": [
     {
-      "id": "2e0ea999-ac6f-448a-b34f-dcdb3ffd42b2",
-      "name": "Blood Test Standard",
-      "testType": "Blood Test",
-      "fields": [
-        {
-          "name": "Hemoglobin (g/dL)",
-          "type": "number",
-          "required": true
-        },
-        {
-          "name": "Red Blood Cells (M/uL)",
-          "type": "number",
-          "required": true
-        },
-        {
-          "name": "White Blood Cells (K/uL)",
-          "type": "number",
-          "required": true
-        },
-        {
-          "name": "Platelets (K/uL)",
-          "type": "number",
-          "required": true
-        },
-        {
-          "name": "Glucose (mg/dL)",
-          "type": "number",
-          "required": true
-        }
-      ],
-      "footerNotes": "Reference ranges for adult population. Patient advised to maintain healthy lifestyle.",
-      "isActive": true,
-      "createdBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
-      "createdAt": "2026-01-15T01:12:11.298Z",
-      "updatedAt": "2026-01-15T01:12:11.298Z"
-    },
-    {
-      "id": "1f15fec3-9496-4f3d-b799-ad941f479572",
-      "name": "Ultrasound Report",
-      "testType": "Ultrasound",
-      "fields": [
-        {
-          "name": "Organ Examined",
-          "type": "text",
-          "required": true
-        },
-        {
-          "name": "Findings",
-          "type": "textarea",
-          "required": true
-        },
-        {
-          "name": "Measurements",
-          "type": "textarea",
-          "required": false
-        },
-        {
-          "name": "Impression",
-          "type": "textarea",
-          "required": true
-        },
-        {
-          "name": "Recommendations",
-          "type": "textarea",
-          "required": false
-        }
-      ],
-      "footerNotes": "Follow-up as recommended. Schedule appointment if needed.",
-      "isActive": true,
-      "createdBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
-      "createdAt": "2026-01-15T01:12:11.298Z",
-      "updatedAt": "2026-01-15T01:12:11.298Z"
     }
   ]
 }

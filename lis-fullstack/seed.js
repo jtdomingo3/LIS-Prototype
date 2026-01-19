@@ -60,6 +60,20 @@ async function seedDatabase() {
         status: 'Active'
       },
       {
+        name: 'Dr. Lorenzo',
+        email: 'lorenzo@lab.com',
+        password: 'password123',
+        role: 'Doctor',
+        status: 'Active'
+      },
+      {
+        name: 'Dr. Arcilla',
+        email: 'arcilla@lab.com',
+        password: 'password123',
+        role: 'Doctor',
+        status: 'Active'
+      },
+      {
         name: 'Tech Michael Brown',
         email: 'mike@lab.com',
         password: 'password123',

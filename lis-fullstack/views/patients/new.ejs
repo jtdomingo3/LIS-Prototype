@@ -52,7 +52,7 @@
           <h4>Route patient to reception areas</h4>
           <p>Select which areas this patient needs to go to (after Payment Area). Payment is automatic.</p>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                            <% const AREA_OPTIONS = ['Extraction Area','Specimen Collection Area','Drug Test','Ultrasound','2D Echo','X-ray','ECG',"Doctor's Check-up"]; %>
+                            <% const AREA_OPTIONS = ['Extraction Area','Drug Test','Ultrasound','2D Echo','X-ray','ECG',"Doctor's Check-up - Dr. Lorenzo","Doctor's Check-up - Dr. Arcilla"]; %>
                             <% AREA_OPTIONS.forEach(a => { %>
               <label style="display:inline-flex; align-items:center; gap:6px;">
                 <input type="checkbox" name="requiredAreas" value="<%= a %>" <%= (patient.requiredAreas && patient.requiredAreas.includes(a)) ? 'checked' : '' %> >

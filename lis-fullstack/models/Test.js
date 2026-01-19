@@ -10,6 +10,9 @@ class Test {
     this.status = data.status || 'Pending';
     // specimenNumbers is a mapping of areaName -> specimenCode (string)
     this.specimenNumbers = data.specimenNumbers || {};
+    // assigned doctor info (optional)
+    this.assignedDoctorId = data.assignedDoctorId || data.assignedDoctor || null;
+    this.assignedDoctorName = data.assignedDoctorName || data.assignedDoctorName || null;
     this.results = data.results;
     this.notes = data.notes;
     this.priority = data.priority || 'Normal';

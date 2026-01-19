@@ -183,12 +183,16 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
           testId = 'T' + String(id).padStart(3, '0');
         }
 
-        // If patient ONLY requires Doctor's Check-up, place test directly to Doctor's Check-up
+        // If patient ONLY requires a Doctor's Check-up (A or B), place test directly to that specific doctor room
         let initialTestType = 'Registration';
         let initialStatus = 'Payment Area';
-        if (Array.isArray(requiredAreas) && requiredAreas.length === 1 && requiredAreas[0] === "Doctor's Check-up") {
-          initialTestType = "Doctor's Check-up";
-          initialStatus = "Doctor's Check-up";
+        if (Array.isArray(requiredAreas) && requiredAreas.length === 1) {
+          const only = String(requiredAreas[0] || '');
+          if (only.toLowerCase().startsWith("doctor's check-up")) {
+            // use the specific area name (e.g. "Doctor's Check-up - A")
+            initialTestType = "Doctor's Check-up";
+            initialStatus = only;
+          }
         }
 
         const newTest = new Test({

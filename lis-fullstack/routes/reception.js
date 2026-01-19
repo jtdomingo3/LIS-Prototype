@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Test = require('../models/Test');
 const Patient = require('../models/Patient');
+const User = require('../models/User');
 const { requireAuth, canAccessPatient } = require('../middleware/auth');
 // Use a shared SSE emitter so other modules can easily emit updates
 const sseEmitter = require('../lib/sseEmitter');
@@ -28,14 +29,14 @@ function allowKioskOrAuth(req, res, next) {
 const AREAS = [
   'Payment Area',
   'Extraction Area',
-  'Specimen Collection Area',
   'Drug Test',
   'Ultrasound',
   '2D Echo',
   'X-ray',
   'ECG',
   'Releasing of Result',
-  "Doctor's Check-up"
+  "Doctor's Check-up - Dr. Lorenzo",
+  "Doctor's Check-up - Dr. Arcilla"
 ];
 
 // Helper to map a test to the reception area it should appear in.
@@ -122,7 +123,7 @@ router.get('/assigned', allowKioskOrAuth, async (req, res) => {
         if (!t.patient) continue;
         const patient = await Patient.findById(t.patient);
         if (!patient || !patient.patientCode) continue;
-        areaAssignments[area].push({ testId: t.testId, patientCode: patient.patientCode, name: `${patient.firstName} ${patient.lastName}` });
+        areaAssignments[area].push({ testId: t.testId, patientCode: patient.patientCode, name: `${patient.firstName} ${patient.lastName}`, assignedDoctor: t.assignedDoctorName || null });
       }
     }
 
@@ -240,7 +241,7 @@ router.get('/assigned-data', allowKioskOrAuth, async (req, res) => {
         if (!t.patient) continue;
         const patient = await Patient.findById(t.patient);
         if (!patient || !patient.patientCode) continue;
-        areaAssignments[area].push({ testId: t.testId, patientCode: patient.patientCode });
+        areaAssignments[area].push({ testId: t.testId, patientCode: patient.patientCode, assignedDoctor: t.assignedDoctorName || null });
       }
     }
 
@@ -308,6 +309,9 @@ router.get('/area/:name', requireAuth, canAccessPatient, async (req, res) => {
     const allPatients = await Patient.find({});
     const encodedPatients = Array.isArray(allPatients) ? allPatients.filter(p => p.patientCode).map(p => p.toJSON()) : [];
 
+    // Load available doctors for assignment dropdown
+    const users = await User.find({ role: 'Doctor' });
+
     res.render('reception/area', {
       title: `Reception - ${areaName}`,
       areaName,
@@ -315,6 +319,7 @@ router.get('/area/:name', requireAuth, canAccessPatient, async (req, res) => {
       areas: AREAS,
       specimens,
       encodedPatients
+      , users
     });
   } catch (err) {
     console.error('Reception area error:', err);
@@ -326,7 +331,7 @@ router.get('/area/:name', requireAuth, canAccessPatient, async (req, res) => {
 // POST /reception/assign - assign a test to an area (update status)
 router.post('/assign', requireAuth, canAccessPatient, async (req, res) => {
   try {
-    const { testId, area, specimen } = req.body || {};
+    const { testId, area, specimen, assignedDoctor } = req.body || {};
     console.log('POST /reception/assign invoked', { testId, area, specimen, user: req.session && req.session.user ? req.session.user.username : null });
 
     // Basic validation
@@ -403,11 +408,29 @@ router.post('/assign', requireAuth, canAccessPatient, async (req, res) => {
       if (!test.specimenNumbers || typeof test.specimenNumbers !== 'object') test.specimenNumbers = {};
       test.specimenNumbers[area] = String(specimen).trim();
     }
+    // If a doctor assignment was provided, persist it on the test
+    if (assignedDoctor && String(assignedDoctor).trim()) {
+      try {
+        const doc = await User.findById(assignedDoctor);
+        if (doc) {
+          test.assignedDoctorId = doc.id;
+          test.assignedDoctorName = doc.name;
+        } else {
+          // store raw value if lookup fails
+          test.assignedDoctorId = String(assignedDoctor).trim();
+          test.assignedDoctorName = String(assignedDoctor).trim();
+        }
+      } catch (e) {
+        console.warn('Failed to lookup assigned doctor', e);
+        test.assignedDoctorId = String(assignedDoctor).trim();
+        test.assignedDoctorName = String(assignedDoctor).trim();
+      }
+    }
     await test.save();
 
     // notify any connected clients that assignments changed
     try {
-      const payload = { action: 'assign', testId: test.testId, area, time: (new Date()).toISOString(), patientCode: patientObj.patientCode };
+      const payload = { action: 'assign', testId: test.testId, area, time: (new Date()).toISOString(), patientCode: patientObj.patientCode, assignedDoctor: test.assignedDoctorName };
       console.log('SSE emit', payload.action, payload.testId, payload.area);
       sseEmitter.emit('update', payload);
     } catch (e) { console.warn('SSE emit failed', e); }

@@ -264,3 +264,181 @@ featureFlags is not defined
 
 [2026-01-18T14:17:38.213Z] [flash:error_msg GET /] Please log in to access this page
 
+[2026-01-19T05:40:48.391Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-19T05:42:27.272Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-19T05:47:11.232Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-19T05:48:02.999Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-19T05:49:25.600Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-19T06:17:09.530Z] [express error GET /reception/area/Doctor's%20Check-up%20-%20A] SyntaxError: Unexpected string in C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\views\reception\area.ejs while compiling ejs
+
+If the above error is not helpful, you may want to try EJS-Lint:
+https://github.com/RyanZim/EJS-Lint
+Or, if you meant to create an async function, pass `async: true` as an option.
+    at new Function (<anonymous>)
+    at Template.compile (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:673:12)
+    at Object.compile (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:398:16)
+    at handleCache (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:235:18)
+    at tryHandleCache (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:274:16)
+    at exports.renderFile [as engine] (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:491:10)
+    at View.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\view.js:135:8)
+    at tryRender (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:657:10)
+    at app.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:609:3)
+    at ServerResponse.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\response.js:1049:7)
+
+[2026-01-19T06:17:10.681Z] [express error GET /reception/area/Doctor's%20Check-up%20-%20A] SyntaxError: Unexpected string in C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\views\reception\area.ejs while compiling ejs
+
+If the above error is not helpful, you may want to try EJS-Lint:
+https://github.com/RyanZim/EJS-Lint
+Or, if you meant to create an async function, pass `async: true` as an option.
+    at new Function (<anonymous>)
+    at Template.compile (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:673:12)
+    at Object.compile (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:398:16)
+    at handleCache (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:235:18)
+    at tryHandleCache (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:274:16)
+    at exports.renderFile [as engine] (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:491:10)
+    at View.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\view.js:135:8)
+    at tryRender (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:657:10)
+    at app.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:609:3)
+    at ServerResponse.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\response.js:1049:7)
+
+[2026-01-19T06:17:11.342Z] [express error GET /reception/area/Doctor's%20Check-up%20-%20A] SyntaxError: Unexpected string in C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\views\reception\area.ejs while compiling ejs
+
+If the above error is not helpful, you may want to try EJS-Lint:
+https://github.com/RyanZim/EJS-Lint
+Or, if you meant to create an async function, pass `async: true` as an option.
+    at new Function (<anonymous>)
+    at Template.compile (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:673:12)
+    at Object.compile (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:398:16)
+    at handleCache (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:235:18)
+    at tryHandleCache (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:274:16)
+    at exports.renderFile [as engine] (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:491:10)
+    at View.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\view.js:135:8)
+    at tryRender (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:657:10)
+    at app.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:609:3)
+    at ServerResponse.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\response.js:1049:7)
+
+[2026-01-19T06:17:33.563Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-19T06:17:36.896Z] [express error GET /reception] SyntaxError: Unexpected string in C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\views\reception\index.ejs while compiling ejs
+
+If the above error is not helpful, you may want to try EJS-Lint:
+https://github.com/RyanZim/EJS-Lint
+Or, if you meant to create an async function, pass `async: true` as an option.
+    at new Function (<anonymous>)
+    at Template.compile (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:673:12)
+    at Object.compile (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:398:16)
+    at handleCache (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:235:18)
+    at tryHandleCache (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:274:16)
+    at exports.renderFile [as engine] (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:491:10)
+    at View.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\view.js:135:8)
+    at tryRender (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:657:10)
+    at app.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:609:3)
+    at ServerResponse.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\response.js:1049:7)
+
+[2026-01-19T06:29:36.236Z] [express error GET /reception/area/Payment%20Area] SyntaxError: Unexpected string in C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\views\reception\area.ejs while compiling ejs
+
+If the above error is not helpful, you may want to try EJS-Lint:
+https://github.com/RyanZim/EJS-Lint
+Or, if you meant to create an async function, pass `async: true` as an option.
+    at new Function (<anonymous>)
+    at Template.compile (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:673:12)
+    at Object.compile (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:398:16)
+    at handleCache (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:235:18)
+    at tryHandleCache (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:274:16)
+    at exports.renderFile [as engine] (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:491:10)
+    at View.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\view.js:135:8)
+    at tryRender (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:657:10)
+    at app.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:609:3)
+    at ServerResponse.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\response.js:1049:7)
+
+[2026-01-19T06:34:20.208Z] [express error GET /reception/area/Payment%20Area] SyntaxError: Unexpected string in C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\views\reception\area.ejs while compiling ejs
+
+If the above error is not helpful, you may want to try EJS-Lint:
+https://github.com/RyanZim/EJS-Lint
+Or, if you meant to create an async function, pass `async: true` as an option.
+    at new Function (<anonymous>)
+    at Template.compile (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:673:12)
+    at Object.compile (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:398:16)
+    at handleCache (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:235:18)
+    at tryHandleCache (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:274:16)
+    at exports.renderFile [as engine] (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:491:10)
+    at View.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\view.js:135:8)
+    at tryRender (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:657:10)
+    at app.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:609:3)
+    at ServerResponse.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\response.js:1049:7)
+
+[2026-01-19T06:34:21.267Z] [express error GET /reception/area/Payment%20Area] SyntaxError: Unexpected string in C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\views\reception\area.ejs while compiling ejs
+
+If the above error is not helpful, you may want to try EJS-Lint:
+https://github.com/RyanZim/EJS-Lint
+Or, if you meant to create an async function, pass `async: true` as an option.
+    at new Function (<anonymous>)
+    at Template.compile (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:673:12)
+    at Object.compile (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:398:16)
+    at handleCache (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:235:18)
+    at tryHandleCache (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:274:16)
+    at exports.renderFile [as engine] (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:491:10)
+    at View.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\view.js:135:8)
+    at tryRender (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:657:10)
+    at app.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:609:3)
+    at ServerResponse.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\response.js:1049:7)
+
+[2026-01-19T06:35:31.685Z] [express error GET /reception/area/Payment%20Area] SyntaxError: Unexpected string in C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\views\reception\area.ejs while compiling ejs
+
+If the above error is not helpful, you may want to try EJS-Lint:
+https://github.com/RyanZim/EJS-Lint
+Or, if you meant to create an async function, pass `async: true` as an option.
+    at new Function (<anonymous>)
+    at Template.compile (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:673:12)
+    at Object.compile (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:398:16)
+    at handleCache (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:235:18)
+    at tryHandleCache (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:274:16)
+    at exports.renderFile [as engine] (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:491:10)
+    at View.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\view.js:135:8)
+    at tryRender (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:657:10)
+    at app.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:609:3)
+    at ServerResponse.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\response.js:1049:7)
+
+[2026-01-19T06:35:56.518Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-19T06:36:00.975Z] [express error GET /reception/area/Payment%20Area] SyntaxError: Unexpected string in C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\views\reception\area.ejs while compiling ejs
+
+If the above error is not helpful, you may want to try EJS-Lint:
+https://github.com/RyanZim/EJS-Lint
+Or, if you meant to create an async function, pass `async: true` as an option.
+    at new Function (<anonymous>)
+    at Template.compile (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:673:12)
+    at Object.compile (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:398:16)
+    at handleCache (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:235:18)
+    at tryHandleCache (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:274:16)
+    at exports.renderFile [as engine] (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:491:10)
+    at View.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\view.js:135:8)
+    at tryRender (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:657:10)
+    at app.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:609:3)
+    at ServerResponse.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\response.js:1049:7)
+
+[2026-01-19T06:36:03.580Z] [express error GET /reception/area/Extraction%20Area] SyntaxError: Unexpected string in C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\views\reception\area.ejs while compiling ejs
+
+If the above error is not helpful, you may want to try EJS-Lint:
+https://github.com/RyanZim/EJS-Lint
+Or, if you meant to create an async function, pass `async: true` as an option.
+    at new Function (<anonymous>)
+    at Template.compile (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:673:12)
+    at Object.compile (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:398:16)
+    at handleCache (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:235:18)
+    at tryHandleCache (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:274:16)
+    at exports.renderFile [as engine] (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\ejs\lib\ejs.js:491:10)
+    at View.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\view.js:135:8)
+    at tryRender (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:657:10)
+    at app.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\application.js:609:3)
+    at ServerResponse.render (C:\Users\Jeff\repo\LIS Prototype\lis-fullstack\node_modules\express\lib\response.js:1049:7)
+
+[2026-01-19T06:42:25.499Z] [flash:error_msg GET /] Please log in to access this page
+
+[2026-01-19T08:00:33.562Z] [flash:error_msg GET /] Please log in to access this page
+

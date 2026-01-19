@@ -45,8 +45,13 @@
                 <form action="/reception/assign" method="POST" style="display:inline-block; margin-right:6px;">
                   <input type="hidden" name="testId" value="<%= test.id %>">
                   <select name="area" required style="margin-right:6px;">
+                    <% 
+                      // map specific area values to nicer display labels if needed
+                      const optionLabelMap = {};
+                    %>
                     <% areas.forEach(a => { %>
-                      <option value="<%= a %>" <%= a === areaName ? 'selected' : '' %>><%= a %></option>
+                      <% const displayLabel = optionLabelMap[a] || String(a).replace(/\s*-\s*[AB]$/i, ''); %>
+                      <option value="<%= a %>" <%= a === areaName ? 'selected' : '' %>><%= displayLabel %></option>
                     <% }) %>
                   </select>
                   <input type="text" name="specimen" placeholder="Specimen # (optional)" style="margin-right:6px;" <%= test.patientEncoded ? '' : 'disabled' %>>

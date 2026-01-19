@@ -1155,7 +1155,14 @@
                   lastShownPatients[area] = newText;
                   if (speechEnabled) {
                     const spokenNum = sanitizeSpokenNumber(newText);
-                    const msg = `Now serving Patient ${spokenNum} please proceed to ${area}`;
+                    let msg;
+                    if (String(area).toLowerCase().includes("doctor") && patients[0] && patients[0].assignedDoctor) {
+                      const docName = patients[0].assignedDoctor || '';
+                      const lastName = docName.split(' ').slice(-1)[0] || docName;
+                      msg = `Now serving Patient ${spokenNum} please proceed to Doctor ${lastName} for Check-up`;
+                    } else {
+                      msg = `Now serving Patient ${spokenNum} please proceed to ${area}`;
+                    }
                     speakText(msg);
                   }
                 }

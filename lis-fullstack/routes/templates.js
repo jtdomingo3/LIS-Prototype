@@ -24,7 +24,10 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
 
     // include static result templates
     const staticTemplates = await getStaticResultTemplates();
-    const allTemplates = [...templatesWithCreators, ...staticTemplates];
+    // Exclude static templates that conflict with DB templates (match by testType)
+    const existingTypes = new Set((templatesWithCreators || []).map(t => (t.testType || '').toLowerCase()));
+    const filteredStatic = (staticTemplates || []).filter(st => !existingTypes.has((st.testType || '').toLowerCase()));
+    const allTemplates = [...templatesWithCreators, ...filteredStatic];
 
     res.render('templates/index', {
       title: 'Report Templates',

@@ -16,10 +16,17 @@
   </style>
 
   <div class="area-grid-container">
-    <% (areas.slice ? areas.slice(0,10) : areas).forEach(area => { %>
+    <% 
+      const roomLabelMap = {
+        "Doctor's Check-up - Dr. Lorenzo": "Doctor's Check-up — Dr. Lorenzo",
+        "Doctor's Check-up - Dr. Arcilla": "Doctor's Check-up — Dr. Arcilla"
+      };
+      (areas.slice ? areas.slice(0,10) : areas).forEach(area => { 
+        const displayName = roomLabelMap[area.name] || String(area.name).replace(/\s*-\s*[AB]$/i, "");
+    %>
       <div class="area-tile">
         <span class="accent"></span>
-        <h4><%= area.name %></h4>
+        <h4><%= displayName %></h4>
         <div class="count"><%= area.count %></div>
         <div class="actions">
           <a href="/reception/area/<%= encodeURIComponent(area.name) %>" class="button btn-primary btn-small">View Queue</a>
