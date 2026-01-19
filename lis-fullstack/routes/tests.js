@@ -77,7 +77,6 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
   try {
   let patients = await Patient.find({});
   // debug: ensure we have an array
-  console.log('GET /tests/new - patients type:', typeof patients, 'isArray:', Array.isArray(patients));
   // sort patients by lastName ascending
   if (Array.isArray(patients)) patients.sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
   // load templates for test types
@@ -97,6 +96,7 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       'dengue-duo.ejs',
       'thyroid-panel.ejs',
       'blood-chemistry.ejs',
+      'blood-chemistry-lipid-profile.ejs',
       'pt-aptt.ejs',
       'xray.ejs',
       'hematology.ejs',
@@ -246,6 +246,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       fecalysis: /fecalysis/i.test(tt),
       fecal_occult: /(fecal\s*occult|fecal-occult|fecaloccult)/i.test(tt),
       urinalysis: /urinalysis/i.test(tt),
+      lipid: /(lipid|lipid\s*profile|blood\s*chemistry\s*-?\s*lipid|blood\s*chemistry\s*lipid\s*profile|blood\s*chemistry\s*lipid)/i.test(tt),
       hematology: /hemato|hematology|cbc/i.test(tt),
       blood_typing: /(blood\s*typing|blood-typing|bloodtyping)/i.test(tt),
       serology: /serol|serology/i.test(tt),
@@ -271,6 +272,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
 
     // choose the appropriate entry form
     let view = 'tests/results_entry_fecalysis';
+    if (/(lipid|lipid\s*profile|blood\s*chemistry\s*-\s*lipid|blood\s*chemistry\s*lipid)/i.test(test.testType)) view = 'tests/results_entry_blood_chemistry_lipid_profile';
     if (/(fecal\s*occult|fecal-occult|fecaloccult)/i.test(test.testType)) view = 'tests/results_entry_fecal_occult_blood';
     if (/(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt)/i.test(test.testType)) view = 'tests/results_entry_ct_bt';
     if (/(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(test.testType)) view = 'tests/results_entry_esr';
@@ -282,7 +284,8 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     if (/pregnan|pregnancy|pregnancy\s*test/i.test(test.testType)) view = 'tests/results_entry_pregnancy_test';
     if (/dengue/i.test(test.testType)) view = 'tests/results_entry_dengue_duo';
     if (/pt|prothrombin|pt-aptt|ptaptt/i.test(test.testType)) view = 'tests/results_entry_pt_aptt';
-    if (/(blood\s*chemistry|blood-chemistry|blood\s*chem)/i.test(test.testType)) view = 'tests/results_entry_blood_chemistry';
+    if (/(blood\s*chemistry|blood-chemistry|blood\s*chem)/i.test(test.testType) && !/(lipid|lipid\s*profile|blood\s*chemistry\s*-?\s*lipid|blood\s*chemistry\s*lipid\s*profile|blood\s*chemistry\s*lipid)/i.test(test.testType)) view = 'tests/results_entry_blood_chemistry';
+    console.log(`DEBUG GET /tests/${req.params.id}/results - selected view='${view}'`);
     res.render(view, {
       title: `Enter ${test.testType} Results`,
       test: testForView,
@@ -320,6 +323,7 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       dengue: /dengue/i.test(tt),
       pt: /pt|prothrombin|pt-aptt|ptaptt/i.test(tt),
       blood_chem: /(blood\s*chemistry|blood-chemistry|blood\s*chem)/i.test(tt),
+      lipid: /(lipid|lipid\s*profile|blood\s*chemistry\s*-?\s*lipid|blood\s*chemistry\s*lipid\s*profile|blood\s*chemistry\s*lipid)/i.test(tt),
       esr: /(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(tt),
       ct_bt: /(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt)/i.test(tt)
     };
@@ -330,7 +334,6 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       return res.redirect(`/tests/${req.params.id}`);
     }
 
-    // Debug: log incoming body to help diagnose missing fields
     console.log('POST /tests/:id/results body:', JSON.stringify(req.body || {}));
 
     // Extract common performer fields
@@ -480,6 +483,61 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
         cocci: (cocci || '').trim(),
         bacilli: (bacilli || '').trim()
       };
+
+    } else if (/(lipid|lipid\s*profile|blood\s*chemistry\s*-\s*lipid|blood\s*chemistry\s*lipid)/i.test(test.testType)) {
+      // Lipid profile: Cholesterol, Triglyceride (tg), HDL, LDL (auto-calc default)
+      const { cholesterol, tg, hdl, ldl, note } = req.body;
+      // parse numeric values
+      function toNum(v) {
+        if (v === undefined || v === null) return null;
+        const s = String(v).trim();
+        if (s === '') return null;
+        const n = parseFloat(s.replace(/[^0-9.+-eE]/g, ''));
+        return isNaN(n) ? null : n;
+      }
+      const cholN = toNum(cholesterol);
+      const tgN = toNum(tg);
+      const hdlN = toNum(hdl);
+      let ldlN = toNum(ldl);
+
+      // If LDL not provided, compute using Friedewald approximation: LDL = TC - HDL - (TG/5)
+      if ((ldlN === null || ldlN === undefined) && cholN !== null && hdlN !== null && tgN !== null) {
+        ldlN = cholN - hdlN - (tgN / 5.0);
+        // round to 2 decimals
+        ldlN = Math.round(ldlN * 100) / 100;
+      }
+
+      // Compute H/L flags based on reference ranges
+      function computeFlag(val, min, max) {
+        if (val === null || val === undefined) return '';
+        if (typeof min === 'number' && !isNaN(min) && val < min) return 'L';
+        if (typeof max === 'number' && !isNaN(max) && val > max) return 'H';
+        return '';
+      }
+
+      const cholFlag = computeFlag(cholN, 0, 200);
+      const tgFlag = computeFlag(tgN, 60, 150);
+      const hdlFlag = computeFlag(hdlN, 35, 80);
+      const ldlFlag = computeFlag(ldlN, 66, 178);
+
+      // Prepare display values (string) but keep numeric for flags if needed
+      const display = (v) => (v === null || v === undefined ? '' : String(v));
+
+      resultsObj = {
+        cholesterol: display(cholesterol || ''),
+        cholesterol_numeric: cholN,
+        cholesterol_flag: cholFlag,
+        tg: display(tg || ''),
+        tg_numeric: tgN,
+        tg_flag: tgFlag,
+        hdl: display(hdl || ''),
+        hdl_numeric: hdlN,
+        hdl_flag: hdlFlag,
+        ldl: (ldl !== undefined && ldl !== null && String(ldl).trim() !== '') ? String(ldl) : (ldlN !== null ? String(ldlN) : ''),
+        ldl_numeric: ldlN,
+        ldl_flag: ldlFlag,
+        note: (note || '').trim()
+      };
     } else if (/urinalysis/i.test(test.testType)) {
       const { color, appearance, specificGravity, ph, protein, glucose, ketones, blood, nitrite, leukocyte,
         rbc, wbc, epithelial, mucus, amorphous, bacteria, casts, others } = req.body;
@@ -608,8 +666,7 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     resultsObj.validatedByName = (req.body.validatedByName || '').trim();
     resultsObj.validatedByLicense = (req.body.validatedByLicense || '').trim();
 
-    // Debug: log constructed results object before saving
-    console.log('Constructed resultsObj for test', req.params.id, JSON.stringify(resultsObj || {}));
+    // debug logging removed
 
     // Determine completedAt from optional timeReleased input (use test date's date part)
     let completedAt = new Date();

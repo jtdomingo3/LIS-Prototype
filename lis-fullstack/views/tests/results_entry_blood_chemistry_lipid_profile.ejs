@@ -1,0 +1,106 @@
+<div class="card">
+  <h3>Enter Blood Chemistry - Lipid Profile Results - <%= test.testId %></h3>
+
+  <form action="/tests/<%= test.id %>/results" method="POST">
+    <input type="hidden" name="_method" value="POST">
+
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;">
+      <div class="form-row" style="margin:0;">
+        <label>Date</label>
+        <input type="date" name="entryDate" value="<%= test && test.testDate ? (new Date(test.testDate)).toISOString().slice(0,10) : (new Date()).toISOString().slice(0,10) %>" readonly>
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>Time Requested</label>
+        <input type="time" name="timeRequested" value="<%= test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '' %>" readonly>
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>Time Released</label>
+        <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : '' %>">
+      </div>
+    </div>
+
+    <div class="form-row" style="display:flex;gap:12px;align-items:center;">
+      <div style="flex:1;">
+        <label>Cholesterol (Total)</label>
+        <input type="number" step="0.01" name="cholesterol" placeholder="mg/dL" value="<%= test.results && test.results.cholesterol ? test.results.cholesterol : '' %>">
+      </div>
+      <div style="flex:1;">
+        <label>Triglyceride (TG)</label>
+        <input type="number" step="0.01" name="tg" placeholder="mg/dL" value="<%= test.results && test.results.tg ? test.results.tg : '' %>">
+      </div>
+    </div>
+
+    <div class="form-row" style="display:flex;gap:12px;align-items:center;margin-top:8px;">
+      <div style="flex:1;">
+        <label>HDL Cholesterol</label>
+        <input type="number" step="0.01" name="hdl" placeholder="mg/dL" value="<%= test.results && test.results.hdl ? test.results.hdl : '' %>">
+      </div>
+      <div style="flex:1;">
+        <label>LDL Cholesterol (auto-calculated)</label>
+        <input type="number" step="0.01" name="ldl" placeholder="mg/dL" id="ldlField" value="<%= test.results && test.results.ldl ? test.results.ldl : '' %>">
+      </div>
+    </div>
+
+    <div style="margin-top:8px;" class="form-row">
+      <label>Note (appears below report table)</label>
+      <textarea name="note" rows="3" style="width:100%"><%= test.results && test.results.note ? test.results.note : '' %></textarea>
+    </div>
+
+    <hr>
+    <h4>Signatures / Performers</h4>
+    <div class="form-row">
+      <label>Medical Technologist (Name)</label>
+      <input type="text" name="mtName" value="<%= test.results && test.results.performedByName ? test.results.performedByName : '' %>">
+    </div>
+    <div class="form-row">
+      <label>Medical Technologist License</label>
+      <input type="text" name="mtLicense" value="<%= test.results && test.results.performedByLicense ? test.results.performedByLicense : '' %>">
+    </div>
+
+    <div class="form-row">
+      <label>Pathologist (Name)</label>
+      <input type="text" name="pathName" value="<%= test.results && test.results.requestedByName ? test.results.requestedByName : '' %>">
+    </div>
+    <div class="form-row">
+      <label>Pathologist License</label>
+      <input type="text" name="pathLicense" value="<%= test.results && test.results.requestedByLicense ? test.results.requestedByLicense : '' %>">
+    </div>
+
+    <hr>
+    <h4>Validation</h4>
+    <div class="form-row">
+      <label>2nd Medical Technologist (Validator Name)</label>
+      <input type="text" name="validatedByName" value="<%= test.results && test.results.validatedByName ? test.results.validatedByName : '' %>">
+    </div>
+    <div class="form-row">
+      <label>2nd Medical Technologist License</label>
+      <input type="text" name="validatedByLicense" value="<%= test.results && test.results.validatedByLicense ? test.results.validatedByLicense : '' %>">
+    </div>
+
+    <div class="form-row mt-12">
+      <a href="/tests/<%= test.id %>" class="button btn-secondary">Cancel</a>
+      <button class="button btn-primary">Save Results</button>
+    </div>
+  </form>
+
+  <script>
+    // Auto-calc LDL = TC - HDL - (TG/5)
+    (function(){
+      function toNum(v){ var n = parseFloat(String(v||'').trim()); return isNaN(n) ? null : n }
+      var chol = document.querySelector('input[name="cholesterol"]');
+      var tg = document.querySelector('input[name="tg"]');
+      var hdl = document.querySelector('input[name="hdl"]');
+      var ldl = document.getElementById('ldlField');
+      function calc(){
+        var c = toNum(chol && chol.value);
+        var t = toNum(tg && tg.value);
+        var h = toNum(hdl && hdl.value);
+        if (c!==null && t!==null && h!==null) {
+          var val = c - h - (t/5.0);
+          ldl.value = Math.round(val*100)/100;
+        }
+      }
+      [chol,tg,hdl].forEach(function(el){ if(el) el.addEventListener('input', calc) });
+    })();
+  </script>
+</div>

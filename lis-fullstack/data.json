@@ -8,7 +8,7 @@
       "role": "Admin",
       "status": "Active",
       "createdAt": "2026-01-15T01:12:10.333Z",
-      "lastLogin": "2026-01-19T10:22:51.139Z"
+      "lastLogin": "2026-01-19T13:54:14.758Z"
     },
     {
       "id": "8ad63d72-ba3b-47f2-9565-5a04c4ab09f8",
@@ -182,14 +182,10 @@
       "patient": "8dc57999-479c-45d5-9d81-18a2f5dff3ac",
       "testType": "blood chemistry",
       "testDate": "2026-01-19",
-      "status": "Completed",
+      "status": "Released",
       "specimenNumbers": {},
       "assignedDoctorId": null,
       "assignedDoctorName": null,
-      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
-      "completedAt": "2026-01-19T06:44:00.000Z",
-      "createdAt": "2026-01-19T06:44:16.804Z",
-      "updatedAt": "2026-01-19T08:34:28.548Z",
       "results": {
         "fbs": "120",
         "rbs": "140",
@@ -216,7 +212,13 @@
         "requestedByLicense": "75547",
         "validatedByName": "Shaina Aubrey Parungao, RMT",
         "validatedByLicense": "0129565"
-      }
+      },
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "completedAt": "2026-01-19T06:44:00.000Z",
+      "createdAt": "2026-01-19T06:44:16.804Z",
+      "updatedAt": "2026-01-19T13:01:54.019Z",
+      "released": true
     },
     {
       "id": "3b729ac0-2090-4204-8f43-3b3afe0d58f7",
@@ -224,14 +226,10 @@
       "patient": "21d9bc78-c601-4d41-a465-5432b5fa73b1",
       "testType": "hematology",
       "testDate": "2026-01-19",
-      "status": "Completed",
+      "status": "Released",
       "specimenNumbers": {},
       "assignedDoctorId": null,
       "assignedDoctorName": null,
-      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
-      "completedAt": "2026-01-19T06:45:00.000Z",
-      "createdAt": "2026-01-19T06:45:22.268Z",
-      "updatedAt": "2026-01-19T09:05:15.849Z",
       "results": {
         "rbc": "8",
         "hemoglobin": "170",
@@ -252,7 +250,13 @@
         "requestedByLicense": "75547",
         "validatedByName": "Shaina Aubrey Parungao, RMT",
         "validatedByLicense": "0129565"
-      }
+      },
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "completedAt": "2026-01-19T06:45:00.000Z",
+      "createdAt": "2026-01-19T06:45:22.268Z",
+      "updatedAt": "2026-01-19T13:01:53.283Z",
+      "released": true
     },
     {
       "id": "8b461fed-52aa-42b9-889d-bca51db6a57f",
@@ -260,14 +264,10 @@
       "patient": "21d9bc78-c601-4d41-a465-5432b5fa73b1",
       "testType": "dengue duo",
       "testDate": "2026-01-19",
-      "status": "Completed",
+      "status": "Released",
       "specimenNumbers": {},
       "assignedDoctorId": null,
       "assignedDoctorName": null,
-      "priority": "Normal",
-      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
-      "createdAt": "2026-01-19T09:07:14.349Z",
-      "updatedAt": "2026-01-19T09:07:36.866Z",
       "results": {
         "ns1": "NS1",
         "igm": "Negative",
@@ -279,7 +279,12 @@
         "validatedByName": "Shaina Aubrey Parungao, RMT",
         "validatedByLicense": "0129565"
       },
-      "completedAt": "2026-01-19T09:07:00.000Z"
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "completedAt": "2026-01-19T09:07:00.000Z",
+      "createdAt": "2026-01-19T09:07:14.349Z",
+      "updatedAt": "2026-01-19T13:01:52.608Z",
+      "released": true
     },
     {
       "id": "f2aaa7a6-c3f7-492f-8b7a-7beeb2042109",
@@ -287,14 +292,10 @@
       "patient": "8dc57999-479c-45d5-9d81-18a2f5dff3ac",
       "testType": "serology",
       "testDate": "2026-01-19",
-      "status": "Completed",
+      "status": "Released",
       "specimenNumbers": {},
       "assignedDoctorId": null,
       "assignedDoctorName": null,
-      "priority": "Normal",
-      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
-      "createdAt": "2026-01-19T09:08:05.094Z",
-      "updatedAt": "2026-01-19T09:08:38.948Z",
       "results": {
         "entries": [
           {
@@ -309,7 +310,12 @@
         "validatedByName": "Shaina Aubrey Parungao, RMT",
         "validatedByLicense": "0129565"
       },
-      "completedAt": "2026-01-19T09:08:00.000Z"
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "completedAt": "2026-01-19T09:08:00.000Z",
+      "createdAt": "2026-01-19T09:08:05.094Z",
+      "updatedAt": "2026-01-19T13:01:51.953Z",
+      "released": true
     },
     {
       "id": "08ccdf68-da82-4301-9cf9-b073cfd9aa5e",
@@ -317,14 +323,10 @@
       "patient": "21d9bc78-c601-4d41-a465-5432b5fa73b1",
       "testType": "urinalysis",
       "testDate": "2026-01-19",
-      "status": "Completed",
+      "status": "Released",
       "specimenNumbers": {},
       "assignedDoctorId": null,
       "assignedDoctorName": null,
-      "priority": "Normal",
-      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
-      "createdAt": "2026-01-19T09:09:39.292Z",
-      "updatedAt": "2026-01-19T09:09:53.919Z",
       "results": {
         "color": "Yellow",
         "appearance": "Clear",
@@ -351,7 +353,12 @@
         "validatedByName": "",
         "validatedByLicense": ""
       },
-      "completedAt": "2026-01-19T09:09:53.918Z"
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "completedAt": "2026-01-19T09:09:53.918Z",
+      "createdAt": "2026-01-19T09:09:39.292Z",
+      "updatedAt": "2026-01-19T13:01:50.537Z",
+      "released": true
     },
     {
       "id": "6369dc54-7da9-4015-a022-794925ff165f",
@@ -359,14 +366,10 @@
       "patient": "21d9bc78-c601-4d41-a465-5432b5fa73b1",
       "testType": "fecal occult blood",
       "testDate": "2026-01-19",
-      "status": "Completed",
+      "status": "Released",
       "specimenNumbers": {},
       "assignedDoctorId": null,
       "assignedDoctorName": null,
-      "priority": "Normal",
-      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
-      "createdAt": "2026-01-19T09:36:59.228Z",
-      "updatedAt": "2026-01-19T09:43:19.467Z",
       "results": {
         "specimen": "Stool",
         "result": "Negative",
@@ -377,7 +380,12 @@
         "validatedByName": "Shaina Aubrey Parungao, RMT",
         "validatedByLicense": "0129565"
       },
-      "completedAt": "2026-01-19T09:42:00.000Z"
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "completedAt": "2026-01-19T09:42:00.000Z",
+      "createdAt": "2026-01-19T09:36:59.228Z",
+      "updatedAt": "2026-01-19T13:01:49.969Z",
+      "released": true
     },
     {
       "id": "bd894e93-c93e-43c0-8118-e93d3d201400",
@@ -385,14 +393,10 @@
       "patient": "21d9bc78-c601-4d41-a465-5432b5fa73b1",
       "testType": "blood typing",
       "testDate": "2026-01-19",
-      "status": "Completed",
+      "status": "Released",
       "specimenNumbers": {},
       "assignedDoctorId": null,
       "assignedDoctorName": null,
-      "priority": "Normal",
-      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
-      "createdAt": "2026-01-19T09:50:33.422Z",
-      "updatedAt": "2026-01-19T09:50:56.324Z",
       "results": {
         "specimen": "Whole Blood",
         "result": "AB+",
@@ -403,7 +407,12 @@
         "validatedByName": "Shaina Aubrey Parungao, RMT",
         "validatedByLicense": "0129565"
       },
-      "completedAt": "2026-01-19T09:50:00.000Z"
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "completedAt": "2026-01-19T09:50:00.000Z",
+      "createdAt": "2026-01-19T09:50:33.422Z",
+      "updatedAt": "2026-01-19T13:01:49.121Z",
+      "released": true
     },
     {
       "id": "2aa33012-93d3-4b94-8451-4cdb1f7468d0",
@@ -411,14 +420,10 @@
       "patient": "21d9bc78-c601-4d41-a465-5432b5fa73b1",
       "testType": "esr",
       "testDate": "2026-01-19",
-      "status": "Completed",
+      "status": "Released",
       "specimenNumbers": {},
       "assignedDoctorId": null,
       "assignedDoctorName": null,
-      "priority": "Normal",
-      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
-      "createdAt": "2026-01-19T10:17:28.484Z",
-      "updatedAt": "2026-01-19T10:23:18.126Z",
       "results": {
         "esr_value": "40",
         "esr_flag": "H",
@@ -429,7 +434,114 @@
         "validatedByName": "Shaina Aubrey Parungao, RMT",
         "validatedByLicense": "0129565"
       },
-      "completedAt": "2026-01-19T10:23:00.000Z"
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "completedAt": "2026-01-19T10:23:00.000Z",
+      "createdAt": "2026-01-19T10:17:28.484Z",
+      "updatedAt": "2026-01-19T13:03:27.662Z",
+      "released": true
+    },
+    {
+      "id": "17cc53a3-7cdc-4960-bce2-f75e6205f6bb",
+      "testId": "T009",
+      "patient": "21d9bc78-c601-4d41-a465-5432b5fa73b1",
+      "testType": "ct bt",
+      "testDate": "2026-01-19",
+      "status": "Released",
+      "specimenNumbers": {},
+      "assignedDoctorId": null,
+      "assignedDoctorName": null,
+      "results": {
+        "bleeding_time": "2 minutes 30 secs",
+        "bleeding_time_display": "2 minutes 30 secs",
+        "bleeding_seconds": 150,
+        "bleeding_flag": "",
+        "clotting_time": "5 minutes 30 secs",
+        "clotting_time_display": "5 minutes 30 secs",
+        "clotting_seconds": 330,
+        "clotting_flag": "",
+        "performedByName": "Aiza Lyca Bartolome, RMT",
+        "performedByLicense": "0110576",
+        "requestedByName": "Bernadette R. Espiritu, M.D.",
+        "requestedByLicense": "75547",
+        "validatedByName": "Shaina Aubrey Parungao, RMT",
+        "validatedByLicense": "0129565"
+      },
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "completedAt": "2026-01-19T13:03:04.085Z",
+      "createdAt": "2026-01-19T13:02:37.199Z",
+      "updatedAt": "2026-01-19T13:03:26.839Z",
+      "released": true
+    },
+    {
+      "id": "dd765614-c488-4178-a9e3-85aa9c984934",
+      "testId": "T010",
+      "patient": "21d9bc78-c601-4d41-a465-5432b5fa73b1",
+      "testType": "blood chemistry lipid profile",
+      "testDate": "2026-01-19",
+      "status": "Completed",
+      "specimenNumbers": {},
+      "assignedDoctorId": null,
+      "assignedDoctorName": null,
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "createdAt": "2026-01-19T13:27:54.396Z",
+      "updatedAt": "2026-01-19T13:51:34.805Z",
+      "results": {
+        "cholesterol": "400",
+        "cholesterol_numeric": 400,
+        "cholesterol_flag": "H",
+        "tg": "50",
+        "tg_numeric": 50,
+        "tg_flag": "L",
+        "hdl": "40",
+        "hdl_numeric": 40,
+        "hdl_flag": "",
+        "ldl": "350",
+        "ldl_numeric": 350,
+        "ldl_flag": "H",
+        "note": "bla bla",
+        "performedByName": "Aiza Lyca Bartolome, RMT",
+        "performedByLicense": "0110576",
+        "requestedByName": "Bernadette R. Espiritu, M.D.",
+        "requestedByLicense": "75547",
+        "validatedByName": "Shaina Aubrey Parungao, RMT",
+        "validatedByLicense": "0129565"
+      },
+      "completedAt": "2026-01-19T13:40:00.000Z"
+    },
+    {
+      "id": "0cc41a5a-7453-4981-a1a6-4d9d3eacca88",
+      "testId": "T011",
+      "patient": "21d9bc78-c601-4d41-a465-5432b5fa73b1",
+      "testType": "fecalysis",
+      "testDate": "2026-01-19",
+      "status": "Completed",
+      "specimenNumbers": {},
+      "assignedDoctorId": null,
+      "assignedDoctorName": null,
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "createdAt": "2026-01-19T13:52:18.819Z",
+      "updatedAt": "2026-01-19T13:54:21.088Z",
+      "results": {
+        "color": "Yellow",
+        "consistency": "Watery/Muciod",
+        "pusCell": "1-2",
+        "rbc": "0-1",
+        "parasites": "Ascaris lumbricoides Ova:",
+        "others": "",
+        "cocci": "Many",
+        "bacilli": "Many",
+        "performedByName": "Aiza Lyca Bartolome, RMT",
+        "performedByLicense": "0110576",
+        "requestedByName": "Bernadette R. Espiritu, M.D.",
+        "requestedByLicense": "75547",
+        "validatedByName": "",
+        "validatedByLicense": ""
+      },
+      "completedAt": "2026-01-19T13:54:21.087Z"
     }
   ],
   "templates": [

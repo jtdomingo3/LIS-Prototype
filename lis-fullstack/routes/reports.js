@@ -178,6 +178,9 @@ function getResultTemplate(test) {
   } else if (type.includes('esr') || type.includes('erythrocyte') || type.includes('erythrocyte sedimentation')) {
     template = 'esr';
     image = 'cb07aab1-5855-4314-be0f-d734ce0e608a.jpg';
+  } else if (type.includes('lipid') || type.includes('lipid profile') || type.includes('lipid-profile')) {
+    template = 'blood-chemistry-lipid-profile';
+    image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';
   } else if (type.includes('bleeding') || type.includes('clotting') || type.includes('ct & bt') || type.includes('ct & bt') || type.includes('ct') && type.includes('bt')) {
     template = 'ct-bt';
     image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';

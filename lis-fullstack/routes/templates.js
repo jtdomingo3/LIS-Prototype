@@ -58,6 +58,7 @@ async function getStaticResultTemplates() {
       'blood-typing.ejs',
       'dengue-duo.ejs',
       'blood-chemistry.ejs',
+      'blood-chemistry-lipid-profile.ejs',
       'thyroid-panel.ejs',
       'pregnancy-test.ejs',
       'pt-aptt.ejs',
