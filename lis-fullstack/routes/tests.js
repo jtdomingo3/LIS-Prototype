@@ -274,6 +274,8 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       esr: /(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(tt)
       ,
       ct_bt: /(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt)/i.test(tt)
+      ,
+      xray: /(x-?ray|xray|radiograph)/i.test(tt)
     };
     console.log(`DEBUG GET /tests/${req.params.id}/results - testType='${tt}', checks=`, checks);
     if (!tt || !Object.values(checks).some(Boolean)) {
@@ -296,6 +298,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     if (/(electrolyte|electrolytes|sodium|potassium|chloride)/i.test(test.testType)) view = 'tests/results_entry_blood_chemistry_electrolytes';
     if (/(blood sugar|blood-sugar|sugar|fbs|rbs|1st hour|2nd hour)/i.test(test.testType)) view = 'tests/results_entry_blood_chemistry_blood_sugar';
     if (/(albumin|alb)/i.test(normalizedType)) view = 'tests/results_entry_blood_chemistry_albumin';
+    if (/(x-?ray|xray|radiograph)/i.test(test.testType)) view = 'tests/results_entry_xray';
     if (/(fecal\s*occult|fecal-occult|fecaloccult)/i.test(test.testType)) view = 'tests/results_entry_fecal_occult_blood';
     if (/(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt)/i.test(test.testType)) view = 'tests/results_entry_ct_bt';
     if (/(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(test.testType)) view = 'tests/results_entry_esr';
@@ -352,6 +355,8 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
         blood_sugar: /(blood sugar|blood-sugar|sugar|fbs|rbs|1st hour|2nd hour)/i.test(tt),
       esr: /(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(tt),
       ct_bt: /(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt)/i.test(tt)
+      ,
+      xray: /(x-?ray|xray|radiograph)/i.test(tt)
     };
     console.log(`DEBUG POST /tests/${req.params.id}/results - testType='${tt}', checks=`, checks);
 
@@ -366,6 +371,7 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     const { performedBy, mtName, mtLicense, pathName, pathLicense } = req.body;
 
     let resultsObj = {};
+    let topUpdates = {};
 
     if (/(fecal\s*occult|fecal-occult|fecaloccult)/i.test(test.testType)) {
       const { specimen, result } = req.body;
@@ -796,6 +802,19 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       // optional note
       resultsObj.note = (req.body.note || '').trim();
 
+    } else if (/(x-?ray|xray|radiograph)/i.test(test.testType)) {
+      // X-Ray: save case number, short examination, and rich-text paragraphs
+      const caseNumber = (req.body.caseNumber || '').toString().trim();
+      const examination = (req.body.examination || '').toString().trim();
+      const paragraphs = (req.body.paragraphs || '').toString().trim();
+
+      resultsObj = {
+        paragraphs: paragraphs || ''
+      };
+
+      if (caseNumber) topUpdates.caseNumber = caseNumber;
+      if (examination) topUpdates.examination = examination;
+
     } else if (/(blood(\s*|-)chemistry|blood\s*chem)/i.test(test.testType)) {
       const { fbs, rbs, firstHour, secondHour, cholesterol, tg, hdl, ldl, vldl, uricAcid, creatinine, bun, sgpt, sgot, sodium, potassium, chloride, hba1c, alb } = req.body;
       function toNum(v){ if (v===undefined||v===null) return null; const s=String(v).trim(); if(s==='') return null; const n=parseFloat(s.replace(/[^0-9.+-eE]/g,'')); return isNaN(n)?null:n }
@@ -880,7 +899,8 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     const updateData = {
       results: resultsObj,
       status: 'Completed',
-      completedAt: completedAt
+      completedAt: completedAt,
+      ...topUpdates
     };
 
     // set performedBy only if explicitly provided (performer management is handled separately)
