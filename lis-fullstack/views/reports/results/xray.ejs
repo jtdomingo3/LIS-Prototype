@@ -71,7 +71,7 @@
 
     <div class="section-title">X-Ray Result</div>
 
-    <div class="results-frame" style="border:none; padding:12px; line-height:1.4; font-size:<%= (test && test.results && test.results.paragraphs_font_size) ? test.results.paragraphs_font_size : '16px' %>; font-family:<%= (test && test.results && test.results.paragraphs_font_family) ? ('"' + test.results.paragraphs_font_family + '"') : "'Times New Roman'" %>">
+    <div class="results-frame" style="border:none; padding:12px; line-height:1.4; padding-left:5.5em; font-size:<%= (test && test.results && test.results.paragraphs_font_size) ? test.results.paragraphs_font_size : '16px' %>; font-family:<%= (test && test.results && test.results.paragraphs_font_family) ? ('"' + test.results.paragraphs_font_family + '"') : "'Times New Roman'" %>">
       <% 
         var raw = (test && test.results && (test.results.paragraphs || test.results.result)) ? (test.results.paragraphs || test.results.result) : '';
         var htmlOut = raw;
