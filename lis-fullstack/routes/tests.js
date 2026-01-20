@@ -96,6 +96,7 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       'dengue-duo.ejs',
       'thyroid-panel.ejs',
       'blood-chemistry.ejs',
+      'blood-chemistry-bun-crea.ejs',
       'blood-chemistry-lipid-profile.ejs',
       'blood-chemistry-electrolytes.ejs',
       'blood-chemistry-hba1c.ejs',
@@ -108,6 +109,9 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
     ];
     const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
     const staticTemplates = files.map(f => {
+      if (f === 'blood-chemistry-bun-crea.ejs') {
+        return { name: 'Blood Chemistry - BUN/Crea', testType: 'BUN/Creat' };
+      }
       const name = f.replace('.ejs', '').replace(/-/g, ' ');
       return { name: name.charAt(0).toUpperCase() + name.slice(1), testType: name };
     });
@@ -293,7 +297,8 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     if (/pregnan|pregnancy|pregnancy\s*test/i.test(test.testType)) view = 'tests/results_entry_pregnancy_test';
     if (/dengue/i.test(test.testType)) view = 'tests/results_entry_dengue_duo';
     if (/pt|prothrombin|pt-aptt|ptaptt/i.test(test.testType)) view = 'tests/results_entry_pt_aptt';
-    if (/(blood\s*chemistry|blood-chemistry|blood\s*chem)/i.test(test.testType) && !/(lipid|lipid\s*profile|blood\s*chemistry\s*-?\s*lipid|blood\s*chemistry\s*lipid\s*profile|blood\s*chemistry\s*lipid|electrolyte|electrolytes|sodium|potassium|chloride|hba1c|hb\s*a1c|hb-a1c|blood sugar|blood-sugar|sugar|fbs|rbs|1st hour|2nd hour)/i.test(test.testType)) view = 'tests/results_entry_blood_chemistry';
+    if (/(bun|creatinine|bun[\s\/-]?crea|bun\/?crea)/i.test(test.testType)) view = 'tests/results_entry_blood_chemistry_bun_crea';
+    if (/(blood\s*chemistry|blood-chemistry|blood\s*chem)/i.test(test.testType) && !/(lipid|lipid\s*profile|blood\s*chemistry\s*-?\s*lipid|blood\s*chemistry\s*lipid\s*profile|blood\s*chemistry\s*lipid|electrolyte|electrolytes|sodium|potassium|chloride|hba1c|hb\s*a1c|hb-a1c|blood sugar|blood-sugar|sugar|fbs|rbs|1st hour|2nd hour|bun|creatinine|bun[\s\/\-]?crea|bun\/?crea)/i.test(test.testType)) view = 'tests/results_entry_blood_chemistry';
     console.log(`DEBUG GET /tests/${req.params.id}/results - selected view='${view}'`);
     res.render(view, {
       title: `Enter ${test.testType} Results`,
@@ -734,6 +739,33 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
         resultsObj.secondHour_flag = (req.body.secondHour_flag || flagNum(secondNum, secondRef.min, secondRef.max));
         resultsObj.secondHour_ref = secondRef.display || '';
       }
+    } else if (/(bun|creatinine|bun[\s\/-]?crea|bun\/?crea)/i.test(test.testType)) {
+      // Standalone BUN / Creatinine variant (result-only). Only save fields present and compute numeric + flags.
+      const creatRaw = (req.body.creatinine || req.body.crea || '').toString().trim();
+      const bunRaw = (req.body.bun || '').toString().trim();
+
+      function toNum(v){ if (v===undefined||v===null) return null; const s=String(v).trim(); if(s==='') return null; const n=parseFloat(s.replace(/[^0-9.+-eE]/g,'')); return isNaN(n)?null:n }
+      function flagNum(n,min,max){ if(n===null) return ''; if(typeof min==='number' && !isNaN(min) && n<min) return 'L'; if(typeof max==='number' && !isNaN(max) && n>max) return 'H'; return '' }
+
+      const creatNum = toNum(creatRaw);
+      const bunNum = toNum(bunRaw);
+
+      resultsObj = {};
+      if (creatRaw || creatNum !== null) {
+        resultsObj.creatinine = creatRaw || (creatNum!==null?String(creatNum):'');
+        resultsObj.creatinine_numeric = creatNum;
+        resultsObj.creatinine_flag = (req.body.creatinine_flag || flagNum(creatNum, 0.5, 1.0));
+        resultsObj.creatinine_ref = '0.50-1.00';
+      }
+      if (bunRaw || bunNum !== null) {
+        resultsObj.bun = bunRaw || (bunNum!==null?String(bunNum):'');
+        resultsObj.bun_numeric = bunNum;
+        resultsObj.bun_flag = (req.body.bun_flag || flagNum(bunNum, 4.67, 23.36));
+        resultsObj.bun_ref = '4.67-23.36';
+      }
+      // optional note
+      resultsObj.note = (req.body.note || '').trim();
+
     } else if (/(blood(\s*|-)chemistry|blood\s*chem)/i.test(test.testType)) {
       const { fbs, rbs, firstHour, secondHour, cholesterol, tg, hdl, ldl, vldl, uricAcid, creatinine, bun, sgpt, sgot, sodium, potassium, chloride, hba1c, alb } = req.body;
       resultsObj = {
@@ -849,6 +881,7 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
       'pregnancy-test.ejs',
       'dengue-duo.ejs',
       'blood-chemistry.ejs',
+      'blood-chemistry-bun-crea.ejs',
       'blood-chemistry-electrolytes.ejs',
       'blood-chemistry-hba1c.ejs',
       'pt-aptt.ejs',
@@ -859,6 +892,9 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
     ];
     const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
     const staticTemplates = files.map(f => {
+      if (f === 'blood-chemistry-bun-crea.ejs') {
+        return { name: 'Blood Chemistry - BUN/Crea', testType: 'BUN/Creat' };
+      }
       const name = f.replace('.ejs', '').replace(/-/g, ' ');
       return { name: name.charAt(0).toUpperCase() + name.slice(1), testType: name };
     });

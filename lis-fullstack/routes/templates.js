@@ -58,6 +58,7 @@ async function getStaticResultTemplates() {
       'blood-typing.ejs',
       'dengue-duo.ejs',
       'blood-chemistry.ejs',
+      'blood-chemistry-bun-crea.ejs',
       'blood-chemistry-lipid-profile.ejs',
       'blood-chemistry-electrolytes.ejs',
       'blood-chemistry-hba1c.ejs',
@@ -72,6 +73,17 @@ async function getStaticResultTemplates() {
     ];
     const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
     return files.map(f => {
+      if (f === 'blood-chemistry-bun-crea.ejs') {
+        return {
+          id: `static:${f}`,
+          name: 'Blood Chemistry - BUN/Crea',
+          testType: 'BUN/Creat',
+          fields: [],
+          createdAt: null,
+          isStatic: true,
+          filename: f
+        };
+      }
       const name = f.replace('.ejs', '').replace(/-/g, ' ');
       return {
         id: `static:${f}`,

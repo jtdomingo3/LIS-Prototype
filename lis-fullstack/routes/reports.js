@@ -184,6 +184,9 @@ function getResultTemplate(test) {
   } else if (type.includes('electrolyte') || type.includes('electrolytes') || type.includes('sodium') || type.includes('potassium') || type.includes('chloride')) {
     template = 'blood-chemistry-electrolytes';
     image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';
+  } else if (type.includes('bun') || type.includes('creatinine') || type.includes('crea')) {
+    template = 'blood-chemistry-bun-crea';
+    image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';
   } else if (/blood sugar|blood-sugar|sugar|fbs|rbs|1st hour|2nd hour/.test(type)) {
     template = 'blood-chemistry-blood-sugar';
     image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';
