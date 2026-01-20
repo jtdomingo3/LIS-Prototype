@@ -58,6 +58,7 @@ async function getStaticResultTemplates() {
       'blood-typing.ejs',
       'dengue-duo.ejs',
       'blood-chemistry.ejs',
+      'blood-chemistry-sgpt-sgot.ejs',
       'blood-chemistry-bun-crea.ejs',
       'blood-chemistry-lipid-profile.ejs',
       'blood-chemistry-electrolytes.ejs',
@@ -78,6 +79,17 @@ async function getStaticResultTemplates() {
           id: `static:${f}`,
           name: 'Blood Chemistry - BUN/Crea',
           testType: 'BUN/Creat',
+          fields: [],
+          createdAt: null,
+          isStatic: true,
+          filename: f
+        };
+      }
+      if (f === 'blood-chemistry-sgpt-sgot.ejs') {
+        return {
+          id: `static:${f}`,
+          name: 'Blood Chemistry - SGPT/SGOT',
+          testType: 'Blood Chemistry - SGPT/SGOT',
           fields: [],
           createdAt: null,
           isStatic: true,

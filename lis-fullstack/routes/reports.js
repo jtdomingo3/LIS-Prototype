@@ -181,6 +181,9 @@ function getResultTemplate(test) {
   } else if (type.includes('lipid') || type.includes('lipid profile') || type.includes('lipid-profile')) {
     template = 'blood-chemistry-lipid-profile';
     image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';
+  } else if (type.includes('sgpt') || type.includes('sgot') || /sgpt\s*\/?\s*sgot/.test(type) || type.includes('sgpt sgot')) {
+    template = 'blood-chemistry-sgpt-sgot';
+    image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';
   } else if (type.includes('electrolyte') || type.includes('electrolytes') || type.includes('sodium') || type.includes('potassium') || type.includes('chloride')) {
     template = 'blood-chemistry-electrolytes';
     image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';
@@ -196,7 +199,7 @@ function getResultTemplate(test) {
   } else if (type.includes('bleeding') || type.includes('clotting') || type.includes('ct & bt') || type.includes('ct & bt') || type.includes('ct') && type.includes('bt')) {
     template = 'ct-bt';
     image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';
-  } else if (type.includes('pt') || type.includes('prothrombin') || type.includes('pt-aptt') || type.includes('ptaptt')) {
+  } else if (/\b(?:pt|prothrombin|pt-aptt|ptaptt)\b/.test(type)) {
     template = 'pt-aptt';
     image = 'd7c357bf-74a2-42dc-b3d1-2a573a30784d.jpg';
   } else if (type.includes('blood') || type.includes('chem')) {
