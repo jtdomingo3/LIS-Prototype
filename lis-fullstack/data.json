@@ -8,7 +8,7 @@
       "role": "Admin",
       "status": "Active",
       "createdAt": "2026-01-15T01:12:10.333Z",
-      "lastLogin": "2026-01-20T04:32:12.651Z"
+      "lastLogin": "2026-01-20T04:41:26.030Z"
     }
   ],
   "patients": [
@@ -223,7 +223,7 @@
       "patient": "21d9bc78-c601-4d41-a465-5432b5fa73b1",
       "testType": "urinalysis",
       "testDate": "2026-01-19",
-      "status": "Released",
+      "status": "Completed",
       "specimenNumbers": {},
       "assignedDoctorId": null,
       "assignedDoctorName": null,
@@ -235,9 +235,11 @@
         "protein": "Negative",
         "glucose": "Negative",
         "ketones": "Negative",
+        "bilirubin": "Negative",
         "blood": "Negative",
         "nitrite": "Negative",
         "leukocyte": "Negative",
+        "urobilinogen": "Negative",
         "rbc": "0-1",
         "wbc": "0-2",
         "epithelial": "Few",
@@ -245,19 +247,20 @@
         "amorphous": "Few",
         "bacteria": "Few",
         "casts": "",
-        "others": "",
+        "others": "trip",
+        "note": "",
         "performedByName": "Gezyne M. Lopez, RMT",
         "performedByLicense": "0112126",
         "requestedByName": "Bernadette R. Espiritu, M.D.",
         "requestedByLicense": "75547",
-        "validatedByName": "",
-        "validatedByLicense": ""
+        "validatedByName": "Shaina Aubrey Parungao, RMT",
+        "validatedByLicense": "0129565"
       },
       "priority": "Normal",
       "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
-      "completedAt": "2026-01-19T09:09:53.918Z",
+      "completedAt": "2026-01-19T09:09:00.000Z",
       "createdAt": "2026-01-19T09:09:39.292Z",
-      "updatedAt": "2026-01-19T13:01:50.537Z",
+      "updatedAt": "2026-01-20T04:57:40.940Z",
       "released": true
     },
     {
@@ -424,7 +427,7 @@
       "priority": "Normal",
       "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
       "createdAt": "2026-01-19T13:52:18.819Z",
-      "updatedAt": "2026-01-19T13:54:21.088Z",
+      "updatedAt": "2026-01-20T04:55:40.320Z",
       "results": {
         "color": "Yellow",
         "consistency": "Watery/Muciod",
@@ -432,16 +435,17 @@
         "rbc": "0-1",
         "parasites": "Ascaris lumbricoides Ova:",
         "others": "",
-        "cocci": "Many",
-        "bacilli": "Many",
+        "cocci": "",
+        "bacilli": "",
+        "note": "",
         "performedByName": "Aiza Lyca Bartolome, RMT",
         "performedByLicense": "0110576",
         "requestedByName": "Bernadette R. Espiritu, M.D.",
         "requestedByLicense": "75547",
-        "validatedByName": "",
-        "validatedByLicense": ""
+        "validatedByName": "Shaina Aubrey Parungao, RMT",
+        "validatedByLicense": "0129565"
       },
-      "completedAt": "2026-01-19T13:54:21.087Z"
+      "completedAt": "2026-01-19T13:54:00.000Z"
     },
     {
       "id": "cd616b55-9352-40b4-83ca-741a191cf17e",
@@ -616,6 +620,39 @@
         "validatedByLicense": "0129565"
       },
       "completedAt": "2026-01-20T02:56:00.000Z"
+    },
+    {
+      "id": "6ea84c4a-3b23-4410-a3f3-3b2c55e79050",
+      "testId": "T017",
+      "patient": "21d9bc78-c601-4d41-a465-5432b5fa73b1",
+      "testType": "pt aptt",
+      "testDate": "2026-01-20",
+      "status": "Completed",
+      "specimenNumbers": {},
+      "assignedDoctorId": null,
+      "assignedDoctorName": null,
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "createdAt": "2026-01-20T04:58:58.915Z",
+      "updatedAt": "2026-01-20T04:59:54.344Z",
+      "results": {
+        "prothrombin": {
+          "control": "10.9 sec.",
+          "patient": "10",
+          "activity": "10",
+          "inr": "10"
+        },
+        "aptt": {
+          "patient": "9.8"
+        },
+        "performedByName": "Aiza Lyca Bartolome, RMT",
+        "performedByLicense": "0110576",
+        "requestedByName": "Bernadette R. Espiritu, M.D.",
+        "requestedByLicense": "75547",
+        "validatedByName": "Shaina Aubrey Parungao, RMT",
+        "validatedByLicense": "0129565"
+      },
+      "completedAt": "2026-01-20T15:59:00.000Z"
     }
   ],
   "templates": [

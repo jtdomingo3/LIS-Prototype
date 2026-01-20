@@ -11,7 +11,7 @@
       </div>
       <div class="form-row" style="margin:0;">
         <label>Time Requested</label>
-        <input type="time" name="timeRequested" value="<%= test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '' %>" readonly>
+        <input type="time" name="timeRequested" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '') %>">
       </div>
       <div class="form-row" style="margin:0;">
         <label>Time Released</label>
@@ -35,15 +35,6 @@
       <input type="text" name="mtLicense" value="<%= test.results && test.results.performedByLicense ? test.results.performedByLicense : '' %>">
     </div>
 
-    <div class="form-row">
-      <label>Pathologist (Name)</label>
-      <input type="text" name="pathName" value="<%= test.results && test.results.requestedByName ? test.results.requestedByName : '' %>">
-    </div>
-    <div class="form-row">
-      <label>Pathologist License</label>
-      <input type="text" name="pathLicense" value="<%= test.results && test.results.requestedByLicense ? test.results.requestedByLicense : '' %>">
-    </div>
-
     <hr>
     <h4>Validation</h4>
     <div class="form-row">
@@ -53,6 +44,15 @@
     <div class="form-row">
       <label>2nd Medical Technologist License</label>
       <input type="text" name="validatedByLicense" value="<%= test.results && test.results.validatedByLicense ? test.results.validatedByLicense : '' %>">
+    </div>
+
+    <div class="form-row">
+      <label>Pathologist (Name)</label>
+      <input type="text" name="pathName" value="<%= test.results && test.results.requestedByName ? test.results.requestedByName : '' %>">
+    </div>
+    <div class="form-row">
+      <label>Pathologist License</label>
+      <input type="text" name="pathLicense" value="<%= test.results && test.results.requestedByLicense ? test.results.requestedByLicense : '' %>">
     </div>
 
     <div class="form-row mt-12">
