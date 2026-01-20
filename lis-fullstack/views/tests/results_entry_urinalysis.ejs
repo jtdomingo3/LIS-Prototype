@@ -24,12 +24,30 @@
     </div>
     <div class="form-row">
       <label>Color</label>
-      <input type="text" name="color" value="<%= test.results && test.results.color ? test.results.color : '' %>">
+      <select name="color">
+        <option value=""></option>
+        <option value="Yellow" <%= test.results && test.results.color === 'Yellow' ? 'selected' : '' %>>Yellow</option>
+        <option value="Light Yellow" <%= test.results && test.results.color === 'Light Yellow' ? 'selected' : '' %>>Light Yellow</option>
+        <option value="Dark Yellow" <%= test.results && test.results.color === 'Dark Yellow' ? 'selected' : '' %>>Dark Yellow</option>
+        <option value="Amber" <%= test.results && test.results.color === 'Amber' ? 'selected' : '' %>>Amber</option>
+        <option value="Red" <%= test.results && test.results.color === 'Red' ? 'selected' : '' %>>Red</option>
+        <option value="Reddish Brown" <%= test.results && test.results.color === 'Reddish Brown' ? 'selected' : '' %>>Reddish Brown</option>
+        <option value="Yellow Orange" <%= test.results && test.results.color === 'Yellow Orange' ? 'selected' : '' %>>Yellow Orange</option>
+        <option value="Straw" <%= test.results && test.results.color === 'Straw' ? 'selected' : '' %>>Straw</option>
+        <option value="Clear" <%= test.results && test.results.color === 'Clear' ? 'selected' : '' %>>Clear</option>
+      </select>
     </div>
 
     <div class="form-row">
       <label>Transparency</label>
-      <input type="text" name="appearance" value="<%= test.results && test.results.appearance ? test.results.appearance : '' %>">
+      <select name="appearance">
+        <option value=""></option>
+        <option value="Turbid" <%= test.results && test.results.appearance === 'Turbid' ? 'selected' : '' %>>Turbid</option>
+        <option value="Slightly Turbid" <%= test.results && test.results.appearance === 'Slightly Turbid' ? 'selected' : '' %>>Slightly Turbid</option>
+        <option value="Hazy" <%= test.results && test.results.appearance === 'Hazy' ? 'selected' : '' %>>Hazy</option>
+        <option value="Clear" <%= test.results && test.results.appearance === 'Clear' ? 'selected' : '' %>>Clear</option>
+        <option value="Slightly Hazy" <%= test.results && test.results.appearance === 'Slightly Hazy' ? 'selected' : '' %>>Slightly Hazy</option>
+      </select>
     </div>
 
     <div class="form-row">
@@ -44,41 +62,105 @@
 
     <div class="form-row">
       <label>Glucose</label>
-      <input type="text" name="glucose" value="<%= test.results && test.results.glucose ? test.results.glucose : '' %>">
+      <select name="glucose">
+        <option value=""></option>
+        <option value="Negative" <%= test.results && test.results.glucose === 'Negative' ? 'selected' : '' %>>Negative</option>
+        <option value="+" <%= test.results && test.results.glucose === '+' ? 'selected' : '' %>>+</option>
+        <option value="++" <%= test.results && test.results.glucose === '++' ? 'selected' : '' %>>++</option>
+        <option value="+++" <%= test.results && test.results.glucose === '+++' ? 'selected' : '' %>>>+++</option>
+        <option value="++++" <%= test.results && test.results.glucose === '++++' ? 'selected' : '' %>>>++++</option>
+        <option value="Trace" <%= test.results && test.results.glucose === 'Trace' ? 'selected' : '' %>>Trace</option>
+      </select>
     </div>
 
     <div class="form-row">
       <label>Protein</label>
-      <input type="text" name="protein" value="<%= test.results && test.results.protein ? test.results.protein : '' %>">
+      <select name="protein">
+        <option value=""></option>
+        <option value="Negative" <%= test.results && test.results.protein === 'Negative' ? 'selected' : '' %>>Negative</option>
+        <option value="+" <%= test.results && test.results.protein === '+' ? 'selected' : '' %>>+</option>
+        <option value="++" <%= test.results && test.results.protein === '++' ? 'selected' : '' %>>++</option>
+        <option value="+++" <%= test.results && test.results.protein === '+++' ? 'selected' : '' %>>>+++</option>
+        <option value="++++" <%= test.results && test.results.protein === '++++' ? 'selected' : '' %>>>++++</option>
+        <option value="Trace" <%= test.results && test.results.protein === 'Trace' ? 'selected' : '' %>>Trace</option>
+      </select>
     </div>
 
     <div class="form-row">
       <label>Leukocyte</label>
-      <input type="text" name="leukocyte" value="<%= test.results && test.results.leukocyte ? test.results.leukocyte : '' %>">
+      <select name="leukocyte">
+        <option value=""></option>
+        <option value="Negative" <%= test.results && test.results.leukocyte === 'Negative' ? 'selected' : '' %>>Negative</option>
+        <option value="+" <%= test.results && test.results.leukocyte === '+' ? 'selected' : '' %>>+</option>
+        <option value="++" <%= test.results && test.results.leukocyte === '++' ? 'selected' : '' %>>++</option>
+        <option value="+++" <%= test.results && test.results.leukocyte === '+++' ? 'selected' : '' %>>>+++</option>
+        <option value="++++" <%= test.results && test.results.leukocyte === '++++' ? 'selected' : '' %>>>++++</option>
+        <option value="Trace" <%= test.results && test.results.leukocyte === 'Trace' ? 'selected' : '' %>>Trace</option>
+      </select>
     </div>
 
     <div class="form-row">
       <label>Nitrite</label>
-      <input type="text" name="nitrite" value="<%= test.results && test.results.nitrite ? test.results.nitrite : '' %>">
+      <select name="nitrite">
+        <option value=""></option>
+        <option value="Negative" <%= test.results && test.results.nitrite === 'Negative' ? 'selected' : '' %>>Negative</option>
+        <option value="+" <%= test.results && test.results.nitrite === '+' ? 'selected' : '' %>>+</option>
+        <option value="++" <%= test.results && test.results.nitrite === '++' ? 'selected' : '' %>>++</option>
+        <option value="+++" <%= test.results && test.results.nitrite === '+++' ? 'selected' : '' %>>>+++</option>
+        <option value="++++" <%= test.results && test.results.nitrite === '++++' ? 'selected' : '' %>>>++++</option>
+        <option value="Trace" <%= test.results && test.results.nitrite === 'Trace' ? 'selected' : '' %>>Trace</option>
+      </select>
     </div>
 
     <div class="form-row">
       <label>Urobilinogen</label>
-      <input type="text" name="urobilinogen" value="<%= test.results && test.results.urobilinogen ? test.results.urobilinogen : '' %>">
+      <select name="urobilinogen">
+        <option value=""></option>
+        <option value="Negative" <%= test.results && test.results.urobilinogen === 'Negative' ? 'selected' : '' %>>Negative</option>
+        <option value="+" <%= test.results && test.results.urobilinogen === '+' ? 'selected' : '' %>>+</option>
+        <option value="++" <%= test.results && test.results.urobilinogen === '++' ? 'selected' : '' %>>++</option>
+        <option value="+++" <%= test.results && test.results.urobilinogen === '+++' ? 'selected' : '' %>>>+++</option>
+        <option value="++++" <%= test.results && test.results.urobilinogen === '++++' ? 'selected' : '' %>>>++++</option>
+        <option value="Trace" <%= test.results && test.results.urobilinogen === 'Trace' ? 'selected' : '' %>>Trace</option>
+      </select>
     </div>
 
     <div class="form-row">
       <label>Blood</label>
-      <input type="text" name="blood" value="<%= test.results && test.results.blood ? test.results.blood : '' %>">
+      <select name="blood">
+        <option value=""></option>
+        <option value="Negative" <%= test.results && test.results.blood === 'Negative' ? 'selected' : '' %>>Negative</option>
+        <option value="+" <%= test.results && test.results.blood === '+' ? 'selected' : '' %>>+</option>
+        <option value="++" <%= test.results && test.results.blood === '++' ? 'selected' : '' %>>++</option>
+        <option value="+++" <%= test.results && test.results.blood === '+++' ? 'selected' : '' %>>>+++</option>
+        <option value="++++" <%= test.results && test.results.blood === '++++' ? 'selected' : '' %>>>++++</option>
+        <option value="Trace" <%= test.results && test.results.blood === 'Trace' ? 'selected' : '' %>>Trace</option>
+      </select>
     </div>
 
     <div class="form-row">
       <label>Ketones</label>
-      <input type="text" name="ketones" value="<%= test.results && test.results.ketones ? test.results.ketones : '' %>">
+      <select name="ketones">
+        <option value=""></option>
+        <option value="Negative" <%= test.results && test.results.ketones === 'Negative' ? 'selected' : '' %>>Negative</option>
+        <option value="+" <%= test.results && test.results.ketones === '+' ? 'selected' : '' %>>+</option>
+        <option value="++" <%= test.results && test.results.ketones === '++' ? 'selected' : '' %>>++</option>
+        <option value="+++" <%= test.results && test.results.ketones === '+++' ? 'selected' : '' %>>>+++</option>
+        <option value="++++" <%= test.results && test.results.ketones === '++++' ? 'selected' : '' %>>>++++</option>
+        <option value="Trace" <%= test.results && test.results.ketones === 'Trace' ? 'selected' : '' %>>Trace</option>
+      </select>
     </div>
     <div class="form-row">
       <label>Bilirubin</label>
-      <input type="text" name="bilirubin" value="<%= test.results && test.results.bilirubin ? test.results.bilirubin : '' %>">
+      <select name="bilirubin">
+        <option value=""></option>
+        <option value="Negative" <%= test.results && test.results.bilirubin === 'Negative' ? 'selected' : '' %>>Negative</option>
+        <option value="+" <%= test.results && test.results.bilirubin === '+' ? 'selected' : '' %>>+</option>
+        <option value="++" <%= test.results && test.results.bilirubin === '++' ? 'selected' : '' %>>++</option>
+        <option value="+++" <%= test.results && test.results.bilirubin === '+++' ? 'selected' : '' %>>>+++</option>
+        <option value="++++" <%= test.results && test.results.bilirubin === '++++' ? 'selected' : '' %>>>++++</option>
+        <option value="Trace" <%= test.results && test.results.bilirubin === 'Trace' ? 'selected' : '' %>>Trace</option>
+      </select>
     </div>
 
     <hr>
@@ -93,19 +175,47 @@
     </div>
     <div class="form-row">
       <label>Epithelial Cells</label>
-      <input type="text" name="epithelial" value="<%= test.results && test.results.epithelial ? test.results.epithelial : '' %>">
+      <select name="epithelial">
+        <option value=""></option>
+        <option value="Few" <%= test.results && test.results.epithelial === 'Few' ? 'selected' : '' %>>Few</option>
+        <option value="Moderate" <%= test.results && test.results.epithelial === 'Moderate' ? 'selected' : '' %>>Moderate</option>
+        <option value="Rare" <%= test.results && test.results.epithelial === 'Rare' ? 'selected' : '' %>>Rare</option>
+        <option value="Many" <%= test.results && test.results.epithelial === 'Many' ? 'selected' : '' %>>Many</option>
+        <option value="None" <%= test.results && test.results.epithelial === 'None' ? 'selected' : '' %>>None</option>
+      </select>
     </div>
     <div class="form-row">
       <label>Mucus Threads</label>
-      <input type="text" name="mucus" value="<%= test.results && test.results.mucus ? test.results.mucus : '' %>">
+      <select name="mucus">
+        <option value=""></option>
+        <option value="Few" <%= test.results && test.results.mucus === 'Few' ? 'selected' : '' %>>Few</option>
+        <option value="Moderate" <%= test.results && test.results.mucus === 'Moderate' ? 'selected' : '' %>>Moderate</option>
+        <option value="Rare" <%= test.results && test.results.mucus === 'Rare' ? 'selected' : '' %>>Rare</option>
+        <option value="Many" <%= test.results && test.results.mucus === 'Many' ? 'selected' : '' %>>Many</option>
+        <option value="None" <%= test.results && test.results.mucus === 'None' ? 'selected' : '' %>>None</option>
+      </select>
     </div>
     <div class="form-row">
       <label>Amorphous Crystals</label>
-      <input type="text" name="amorphous" value="<%= test.results && test.results.amorphous ? test.results.amorphous : '' %>">
+      <select name="amorphous">
+        <option value=""></option>
+        <option value="Few" <%= test.results && test.results.amorphous === 'Few' ? 'selected' : '' %>>Few</option>
+        <option value="Moderate" <%= test.results && test.results.amorphous === 'Moderate' ? 'selected' : '' %>>Moderate</option>
+        <option value="Rare" <%= test.results && test.results.amorphous === 'Rare' ? 'selected' : '' %>>Rare</option>
+        <option value="Many" <%= test.results && test.results.amorphous === 'Many' ? 'selected' : '' %>>Many</option>
+        <option value="None" <%= test.results && test.results.amorphous === 'None' ? 'selected' : '' %>>None</option>
+      </select>
     </div>
     <div class="form-row">
       <label>Bacteria</label>
-      <input type="text" name="bacteria" value="<%= test.results && test.results.bacteria ? test.results.bacteria : '' %>">
+      <select name="bacteria">
+        <option value=""></option>
+        <option value="Few" <%= test.results && test.results.bacteria === 'Few' ? 'selected' : '' %>>Few</option>
+        <option value="Moderate" <%= test.results && test.results.bacteria === 'Moderate' ? 'selected' : '' %>>Moderate</option>
+        <option value="Rare" <%= test.results && test.results.bacteria === 'Rare' ? 'selected' : '' %>>Rare</option>
+        <option value="Many" <%= test.results && test.results.bacteria === 'Many' ? 'selected' : '' %>>Many</option>
+        <option value="None" <%= test.results && test.results.bacteria === 'None' ? 'selected' : '' %>>None</option>
+      </select>
     </div>
 
     <div class="form-row">
