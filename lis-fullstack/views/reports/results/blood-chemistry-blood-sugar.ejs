@@ -1,0 +1,206 @@
+<style>
+  @page { size: Letter; margin: 0.25in; }
+  body { margin:0; padding:0; box-sizing:border-box; }
+  *, *:before, *:after { box-sizing:inherit; }
+  .report-page{ position:relative; width:100%; max-width:calc(8.5in - 0.5in); margin:0 auto; padding:8px; font-family: 'Times New Roman', Times, serif; color:#000 }
+  .header{ display:flex; align-items:flex-start; gap:12px }
+  .logo{ width:72px; height:auto; margin-right:8px }
+  .lab-title{ text-align:center; flex:1; min-width:0 }
+  .lab-title h1{ margin:0; font-size:22px; color:#009957; letter-spacing:1px }
+  .lab-sub{ font-size:10px; margin-top:4px }
+  .patient-box{ margin-top:8px; width:100%; border-collapse:collapse; font-size:12px }
+  .patient-box td{ padding:4px 6px; border:1px solid #000; box-sizing:border-box }
+  .section-title{ text-align:center; margin:11px 0; font-size:16px; font-weight:bold }
+  .results-frame{ width:100%; border:2px solid #000; border-collapse:collapse; margin-top:6px; box-sizing:border-box }
+  .results-frame th, .results-frame td{ border:1px solid #000; padding:8px; vertical-align:middle }
+  .test-col{ width:45%; font-size:15px; font-weight:700; padding-left:12px }
+  .value-col{ width:25%; font-size:15px; font-weight:700; text-align:center }
+  .unit-col{ width:15%; text-align:center; font-size:13px }
+  .ref-col{ width:15%; text-align:center; font-size:13px }
+  .results-frame th.ref-header{ white-space:nowrap }
+  .note{ margin-top:6px; border:none; min-height:unset; padding:0 4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+  .note-text{ color:#c00 }
+  .signatures{ display:flex; justify-content:space-between; margin-top:36px }
+  .sig{ text-align:center; width:32% }
+  .watermark{ position:absolute; left:50%; top:44%; transform:translate(-50%,-50%); width:52%; opacity:0.06; pointer-events:none; z-index:0 }
+  .report-container{ position:relative; z-index:1 }
+</style>
+
+<div class="report-page">
+  <div class="report-container">
+    <div class="header">
+      <div>
+        <img src="<%= inlineLogo || '/assets/gezyne-logo.png' %>" class="logo" alt="logo">
+      </div>
+      <div class="lab-title">
+        <h1>GEZYNE CLINICAL LABORATORY</h1>
+        <div class="lab-sub">0330 VERGEL DE DIOS ST POBLACION PLARIDEL</div>
+        <div class="lab-sub">0917-649-0807 / 0960-390-0921 / 795-5007</div>
+      </div>
+      <div style="min-width:180px; font-size:12px; text-align:right">
+        <table style="border-collapse:collapse; width:100%; font-size:12px">
+          <tr><td style="border:1px solid #000; padding:4px">Date:</td><td style="border:1px solid #000; padding:4px"><%= test && test.testDate ? (new Date(test.testDate)).toLocaleDateString() : new Date().toLocaleDateString() %></td></tr>
+          <tr><td style="border:1px solid #000; padding:4px">Time Requested:</td><td style="border:1px solid #000; padding:4px"><%= test && test.testDate ? (new Date(test.testDate)).toLocaleTimeString() : '' %></td></tr>
+          <tr><td style="border:1px solid #000; padding:4px">Time Released:</td><td style="border:1px solid #000; padding:4px"><%= test && test.completedAt ? (new Date(test.completedAt)).toLocaleTimeString() : '' %></td></tr>
+        </table>
+      </div>
+    </div>
+
+    <table class="patient-box">
+      <tr>
+        <td style="width:20%"><strong>Patient's Reference No. :</strong></td>
+        <td style="width:30%"><%= test && test.testId ? test.testId : '' %></td>
+        <td style="width:15%"><strong>DOB:</strong></td>
+        <td style="width:15%"><%= test && test.patient && test.patient.dateOfBirth ? (new Date(test.patient.dateOfBirth)).toLocaleDateString() : '' %></td>
+        <td style="width:10%"><strong>Sex:</strong></td>
+        <td style="width:10%"><%= test && test.patient && test.patient.sex ? test.patient.sex : '' %></td>
+      </tr>
+      <tr>
+        <td><strong>Name:</strong></td>
+        <td colspan="3"><%= test && test.patient ? (test.patient.lastName + ', ' + test.patient.firstName) : '' %></td>
+        <td><strong>Age:</strong></td>
+        <td><%= test && test.patient && test.patient.dateOfBirth ? Math.max(0, new Date().getFullYear() - new Date(test.patient.dateOfBirth).getFullYear()) : (test && test.patient && test.patient.ageManual ? test.patient.ageManual : '') %></td>
+      </tr>
+      <tr>
+        <td><strong>Physician:</strong></td>
+        <td colspan="5"><%= (test && test.patient && (test.patient.physician || test.patient.physicianName)) ? (test.patient.physician || test.patient.physicianName) : '' %></td>
+      </tr>
+    </table>
+
+    <div class="section-title">BLOOD CHEMISTRY - BLOOD SUGAR</div>
+
+    <% /* Helper functions and defaults */ %>
+    <% function parseRange(refStr) {
+         if (!refStr) return {display: '', min: NaN, max: NaN};
+         var s = String(refStr).trim();
+         var m = s.match(/([0-9]+(?:\.[0-9]+)?)\s*[\-–—]\s*([0-9]+(?:\.[0-9]+)?)/);
+         if (m) return {display: (m[1] + '-' + m[2]), min: parseFloat(m[1]), max: parseFloat(m[2])};
+         var m2 = s.match(/([0-9]+(?:\.[0-9]+)?)/);
+         if (m2) return {display: m2[1], min: parseFloat(m2[1]), max: NaN};
+         return {display: s, min: NaN, max: NaN};
+       }
+
+       function flagValue(val, min, max) {
+         if (val === undefined || val === null || String(val).trim() === '') return '';
+         var n = parseFloat(String(val).replace(/[^0-9.+-eE]/g, ''));
+         if (isNaN(n)) return '';
+         if (typeof min === 'number' && !isNaN(min) && n < min) return 'L';
+         if (typeof max === 'number' && !isNaN(max) && n > max) return 'H';
+         return '';
+       }
+
+       function firstPresent(keys) {
+         for (var i=0;i<keys.length;i++){
+           var k = keys[i];
+           if (!k) continue;
+           if (test && test.results && (test.results[k] !== undefined && test.results[k] !== null && String(test.results[k]).trim() !== '')) return test.results[k];
+         }
+         return '';
+       }
+
+       var defaults = {
+         fbs: {displayRef: '70-110', min:70, max:110, unit:'mg/dL'},
+         rbs: {displayRef: '80-130', min:80, max:130, unit:'mg/dL'},
+         firstHour: {displayRef: '90-140', min:90, max:140, unit:'mg/dL'},
+         secondHour: {displayRef: '80-120', min:80, max:120, unit:'mg/dL'}
+       };
+    %>
+
+    <table class="results-frame">
+      <tr>
+        <th style="text-align:left">TEST</th>
+        <th style="text-align:center">RESULT</th>
+        <th style="text-align:center">UNIT</th>
+        <th class="ref-header" style="text-align:center">REFERENCE VALUE</th>
+      </tr>
+
+      <% // FBS
+         var fbsVal = firstPresent(['fbs']);
+         var fbsNum = firstPresent(['fbs_numeric']);
+         var fbsRefRaw = firstPresent(['fbs_ref','reference','ref']);
+         var fbsRef = fbsRefRaw ? parseRange(fbsRefRaw) : {display: defaults.fbs.displayRef, min: defaults.fbs.min, max: defaults.fbs.max};
+         if (fbsVal || fbsNum) { %>
+      <tr>
+        <td class="test-col">FBS</td>
+        <td class="value-col"><%= fbsVal || fbsNum || '' %><% var fbsFlag = (test && test.results && test.results.fbs_flag) ? test.results.fbs_flag : flagValue((fbsNum||fbsVal), fbsRef.min, fbsRef.max); if (fbsFlag) { %> (<span style="color:#c00"><%= fbsFlag %></span>)<% } %></td>
+        <td class="unit-col"><%= defaults.fbs.unit %></td>
+        <td class="ref-col"><%= fbsRef.display %></td>
+      </tr>
+      <% } %>
+
+      <% // RBS
+         var rbsVal = firstPresent(['rbs']);
+         var rbsNum = firstPresent(['rbs_numeric']);
+         var rbsRefRaw = firstPresent(['rbs_ref','reference','ref']);
+         var rbsRef = rbsRefRaw ? parseRange(rbsRefRaw) : {display: defaults.rbs.displayRef, min: defaults.rbs.min, max: defaults.rbs.max};
+         if (rbsVal || rbsNum) { %>
+      <tr>
+        <td class="test-col">RBS</td>
+        <td class="value-col"><%= rbsVal || rbsNum || '' %><% var rbsFlag = (test && test.results && test.results.rbs_flag) ? test.results.rbs_flag : flagValue((rbsNum||rbsVal), rbsRef.min, rbsRef.max); if (rbsFlag) { %> (<span style="color:#c00"><%= rbsFlag %></span>)<% } %></td>
+        <td class="unit-col"><%= defaults.rbs.unit %></td>
+        <td class="ref-col"><%= rbsRef.display %></td>
+      </tr>
+      <% } %>
+
+      <% // 1st Hour
+         var firstVal = firstPresent(['firstHour','1stHour','first_hour']);
+         var firstNum = firstPresent(['firstHour_numeric']);
+         var firstRefRaw = firstPresent(['firstHour_ref','firstHourRef','reference','ref']);
+         var firstRef = firstRefRaw ? parseRange(firstRefRaw) : {display: defaults.firstHour.displayRef, min: defaults.firstHour.min, max: defaults.firstHour.max};
+         if (firstVal || firstNum) { %>
+      <tr>
+        <td class="test-col">1st Hour</td>
+        <td class="value-col"><%= firstVal || firstNum || '' %><% var firstFlag = (test && test.results && test.results.firstHour_flag) ? test.results.firstHour_flag : flagValue((firstNum||firstVal), firstRef.min, firstRef.max); if (firstFlag) { %> (<span style="color:#c00"><%= firstFlag %></span>)<% } %></td>
+        <td class="unit-col"><%= defaults.firstHour.unit %></td>
+        <td class="ref-col"><%= firstRef.display %></td>
+      </tr>
+      <% } %>
+
+      <% // 2nd Hour
+         var secondVal = firstPresent(['secondHour','2ndHour','second_hour']);
+         var secondNum = firstPresent(['secondHour_numeric']);
+         var secondRefRaw = firstPresent(['secondHour_ref','secondHourRef','reference','ref']);
+         var secondRef = secondRefRaw ? parseRange(secondRefRaw) : {display: defaults.secondHour.displayRef, min: defaults.secondHour.min, max: defaults.secondHour.max};
+         if (secondVal || secondNum) { %>
+      <tr>
+        <td class="test-col">2nd Hour</td>
+        <td class="value-col"><%= secondVal || secondNum || '' %><% var secondFlag = (test && test.results && test.results.secondHour_flag) ? test.results.secondHour_flag : flagValue((secondNum||secondVal), secondRef.min, secondRef.max); if (secondFlag) { %> (<span style="color:#c00"><%= secondFlag %></span>)<% } %></td>
+        <td class="unit-col"><%= defaults.secondHour.unit %></td>
+        <td class="ref-col"><%= secondRef.display %></td>
+      </tr>
+      <% } %>
+
+    </table>
+
+    <div class="note"><strong>NOTE:</strong> <span class="note-text"><%= test && test.results && test.results.note ? test.results.note : '' %></span></div>
+
+    <div class="signatures">
+      <div class="sig">
+        <div style="border-top:1px solid #000; height:10px; margin-bottom:6px"></div>
+        <div style="font-weight:700"><strong><%= (test && test.results && test.results.performedByName) || (test && test.performedBy && test.performedBy.name) || '' %></strong></div>
+        <div style="font-size:11px"><% if (test && test.results && test.results.performedByLicense) { %><strong>Lic. No. <%= test.results.performedByLicense %></strong><% } %></div>
+        <div>Medical Technologist</div>
+      </div>
+
+      <div class="sig">
+        <div style="border-top:1px solid #000; height:10px; margin-bottom:6px"></div>
+        <div style="font-weight:700"><strong><%= (test && test.results && test.results.validatedByName) || '' %></strong></div>
+        <div style="font-size:11px"><% if (test && test.results && test.results.validatedByLicense) { %><strong>Lic. No. <%= test.results.validatedByLicense %></strong><% } %></div>
+        <div>Validated By</div>
+      </div>
+
+      <div class="sig">
+        <div style="border-top:1px solid #000; height:10px; margin-bottom:6px"></div>
+        <div style="font-weight:700"><strong><%= (test && test.results && test.results.requestedByName) || (test && test.requestedBy && test.requestedBy.name) || '' %></strong></div>
+        <div style="font-size:11px"><% if (test && test.results && test.results.requestedByLicense) { %><strong>Lic. No. <%= test.results.requestedByLicense %></strong><% } %></div>
+        <div>Pathologist</div>
+      </div>
+    </div>
+  </div>
+
+  <img class="watermark" src="<%= inlineLogo || '/assets/gezyne-logo.png' %>" alt="" />
+</div>
+
+<% if (typeof print !== 'undefined' && print) { %>
+  <script>setTimeout(function(){ window.print(); }, 300);</script>
+<% } %>

@@ -8,7 +8,7 @@
       "role": "Admin",
       "status": "Active",
       "createdAt": "2026-01-15T01:12:10.333Z",
-      "lastLogin": "2026-01-20T00:28:54.517Z"
+      "lastLogin": "2026-01-20T02:18:05.823Z"
     }
   ],
   "patients": [
@@ -442,6 +442,102 @@
         "validatedByLicense": ""
       },
       "completedAt": "2026-01-19T13:54:21.087Z"
+    },
+    {
+      "id": "cd616b55-9352-40b4-83ca-741a191cf17e",
+      "testId": "T012",
+      "patient": "21d9bc78-c601-4d41-a465-5432b5fa73b1",
+      "testType": "blood chemistry electrolytes",
+      "testDate": "2026-01-20",
+      "status": "Completed",
+      "specimenNumbers": {},
+      "assignedDoctorId": null,
+      "assignedDoctorName": null,
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "createdAt": "2026-01-20T00:50:01.872Z",
+      "updatedAt": "2026-01-20T01:02:19.354Z",
+      "results": {
+        "sodium": "50",
+        "sodium_numeric": 50,
+        "sodium_flag": "L",
+        "sodium_ref": "135-145",
+        "potassium": "10",
+        "potassium_numeric": 10,
+        "potassium_flag": "H",
+        "potassium_ref": "3.5-5.1",
+        "chloride": "800",
+        "chloride_numeric": 800,
+        "chloride_flag": "H",
+        "chloride_ref": "98-107",
+        "performedByName": "Aiza Lyca Bartolome, RMT",
+        "performedByLicense": "0110576",
+        "requestedByName": "Bernadette R. Espiritu, M.D.",
+        "requestedByLicense": "75547",
+        "validatedByName": "Shaina Aubrey Parungao, RMT",
+        "validatedByLicense": "0129565"
+      },
+      "completedAt": "2026-01-20T00:53:00.000Z"
+    },
+    {
+      "id": "55e224e2-21f3-4cbd-a10d-a0ef3ba13c4d",
+      "testId": "T013",
+      "patient": "8dc57999-479c-45d5-9d81-18a2f5dff3ac",
+      "testType": "blood chemistry hba1c",
+      "testDate": "2026-01-20",
+      "status": "Completed",
+      "specimenNumbers": {},
+      "assignedDoctorId": null,
+      "assignedDoctorName": null,
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "createdAt": "2026-01-20T01:27:36.114Z",
+      "updatedAt": "2026-01-20T01:28:00.752Z",
+      "results": {
+        "hba1c": "8",
+        "hba1c_numeric": 8,
+        "hba1c_flag": "H",
+        "hba1c_ref": "4.00-6.50",
+        "performedByName": "Aiza Lyca Bartolome, RMT",
+        "performedByLicense": "0110576",
+        "requestedByName": "Bernadette R. Espiritu, M.D.",
+        "requestedByLicense": "75547",
+        "validatedByName": "Shaina Aubrey Parungao, RMT",
+        "validatedByLicense": "0129565"
+      },
+      "completedAt": "2026-01-20T01:27:00.000Z"
+    },
+    {
+      "id": "60c17ac2-d503-47ea-a964-981484ec5945",
+      "testId": "T014",
+      "patient": "21d9bc78-c601-4d41-a465-5432b5fa73b1",
+      "testType": "blood chemistry blood sugar",
+      "testDate": "2026-01-20",
+      "status": "Completed",
+      "specimenNumbers": {},
+      "assignedDoctorId": null,
+      "assignedDoctorName": null,
+      "priority": "Normal",
+      "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
+      "createdAt": "2026-01-20T02:20:36.406Z",
+      "updatedAt": "2026-01-20T02:26:51.242Z",
+      "results": {
+        "fbs": "120",
+        "fbs_numeric": 120,
+        "fbs_flag": "H",
+        "fbs_ref": "70-110",
+        "rbs": "140",
+        "rbs_numeric": 140,
+        "rbs_flag": "H",
+        "rbs_ref": "80-130",
+        "performedByName": "Aiza Lyca Bartolome, RMT",
+        "performedByLicense": "0110576",
+        "requestedByName": "Bernadette R. Espiritu, M.D.",
+        "requestedByLicense": "75547",
+        "validatedByName": "Shaina Aubrey Parungao, RMT",
+        "validatedByLicense": "0129565"
+      },
+      "completedAt": "2026-01-20T02:21:00.000Z"
     }
   ],
   "templates": [

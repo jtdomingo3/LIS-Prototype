@@ -181,6 +181,15 @@ function getResultTemplate(test) {
   } else if (type.includes('lipid') || type.includes('lipid profile') || type.includes('lipid-profile')) {
     template = 'blood-chemistry-lipid-profile';
     image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';
+  } else if (type.includes('electrolyte') || type.includes('electrolytes') || type.includes('sodium') || type.includes('potassium') || type.includes('chloride')) {
+    template = 'blood-chemistry-electrolytes';
+    image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';
+  } else if (/blood sugar|blood-sugar|sugar|fbs|rbs|1st hour|2nd hour/.test(type)) {
+    template = 'blood-chemistry-blood-sugar';
+    image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';
+  } else if (type.includes('hba1c') || type.includes('hb a1c') || type.includes('hb-a1c') || type.includes('hba 1c')) {
+    template = 'blood-chemistry-hba1c';
+    image = 'd7c357bf-74a2-42dc-b3d1-2a573a30784d.jpg';
   } else if (type.includes('bleeding') || type.includes('clotting') || type.includes('ct & bt') || type.includes('ct & bt') || type.includes('ct') && type.includes('bt')) {
     template = 'ct-bt';
     image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';

@@ -97,6 +97,9 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       'thyroid-panel.ejs',
       'blood-chemistry.ejs',
       'blood-chemistry-lipid-profile.ejs',
+      'blood-chemistry-electrolytes.ejs',
+      'blood-chemistry-hba1c.ejs',
+      'blood-chemistry-blood-sugar.ejs',
       'pt-aptt.ejs',
       'xray.ejs',
       'hematology.ejs',
@@ -247,10 +250,13 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       fecal_occult: /(fecal\s*occult|fecal-occult|fecaloccult)/i.test(tt),
       urinalysis: /urinalysis/i.test(tt),
       lipid: /(lipid|lipid\s*profile|blood\s*chemistry\s*-?\s*lipid|blood\s*chemistry\s*lipid\s*profile|blood\s*chemistry\s*lipid)/i.test(tt),
+      electrolytes: /(electrolyte|electrolytes|sodium|potassium|chloride)/i.test(tt),
+        blood_sugar: /(blood sugar|blood-sugar|sugar|fbs|rbs|1st hour|2nd hour)/i.test(tt),
       hematology: /hemato|hematology|cbc/i.test(tt),
       blood_typing: /(blood\s*typing|blood-typing|bloodtyping)/i.test(tt),
       serology: /serol|serology/i.test(tt),
       thyroid: /thyroid|thyroid\s*panel|thyroid-panel/i.test(tt),
+      hba1c: /(hba1c|hb\s*a1c|hb-a1c|hba\s*1c)/i.test(tt),
       pregnancy: /pregnan|pregnancy|pregnancy\s*test/i.test(tt),
       dengue: /dengue/i.test(tt),
       pt: /pt|prothrombin|pt-aptt|ptaptt/i.test(tt),
@@ -273,6 +279,9 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     // choose the appropriate entry form
     let view = 'tests/results_entry_fecalysis';
     if (/(lipid|lipid\s*profile|blood\s*chemistry\s*-\s*lipid|blood\s*chemistry\s*lipid)/i.test(test.testType)) view = 'tests/results_entry_blood_chemistry_lipid_profile';
+    if (/(hba1c|hb\s*a1c|hb-a1c|hba\s*1c)/i.test(test.testType)) view = 'tests/results_entry_blood_chemistry_hba1c';
+    if (/(electrolyte|electrolytes|sodium|potassium|chloride)/i.test(test.testType)) view = 'tests/results_entry_blood_chemistry_electrolytes';
+    if (/(blood sugar|blood-sugar|sugar|fbs|rbs|1st hour|2nd hour)/i.test(test.testType)) view = 'tests/results_entry_blood_chemistry_blood_sugar';
     if (/(fecal\s*occult|fecal-occult|fecaloccult)/i.test(test.testType)) view = 'tests/results_entry_fecal_occult_blood';
     if (/(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt)/i.test(test.testType)) view = 'tests/results_entry_ct_bt';
     if (/(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(test.testType)) view = 'tests/results_entry_esr';
@@ -284,7 +293,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     if (/pregnan|pregnancy|pregnancy\s*test/i.test(test.testType)) view = 'tests/results_entry_pregnancy_test';
     if (/dengue/i.test(test.testType)) view = 'tests/results_entry_dengue_duo';
     if (/pt|prothrombin|pt-aptt|ptaptt/i.test(test.testType)) view = 'tests/results_entry_pt_aptt';
-    if (/(blood\s*chemistry|blood-chemistry|blood\s*chem)/i.test(test.testType) && !/(lipid|lipid\s*profile|blood\s*chemistry\s*-?\s*lipid|blood\s*chemistry\s*lipid\s*profile|blood\s*chemistry\s*lipid)/i.test(test.testType)) view = 'tests/results_entry_blood_chemistry';
+    if (/(blood\s*chemistry|blood-chemistry|blood\s*chem)/i.test(test.testType) && !/(lipid|lipid\s*profile|blood\s*chemistry\s*-?\s*lipid|blood\s*chemistry\s*lipid\s*profile|blood\s*chemistry\s*lipid|electrolyte|electrolytes|sodium|potassium|chloride|hba1c|hb\s*a1c|hb-a1c|blood sugar|blood-sugar|sugar|fbs|rbs|1st hour|2nd hour)/i.test(test.testType)) view = 'tests/results_entry_blood_chemistry';
     console.log(`DEBUG GET /tests/${req.params.id}/results - selected view='${view}'`);
     res.render(view, {
       title: `Enter ${test.testType} Results`,
@@ -324,6 +333,8 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       pt: /pt|prothrombin|pt-aptt|ptaptt/i.test(tt),
       blood_chem: /(blood\s*chemistry|blood-chemistry|blood\s*chem)/i.test(tt),
       lipid: /(lipid|lipid\s*profile|blood\s*chemistry\s*-?\s*lipid|blood\s*chemistry\s*lipid\s*profile|blood\s*chemistry\s*lipid)/i.test(tt),
+        electrolytes: /(electrolyte|electrolytes|sodium|potassium|chloride)/i.test(tt),
+        blood_sugar: /(blood sugar|blood-sugar|sugar|fbs|rbs|1st hour|2nd hour)/i.test(tt),
       esr: /(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(tt),
       ct_bt: /(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt)/i.test(tt)
     };
@@ -613,6 +624,114 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
         igm: (igm || '').trim(),
         igg: (igg || '').trim()
       };
+    } else if (/(hba1c|hb\s*a1c|hb-a1c|hba\s*1c)/i.test(test.testType)) {
+      // Single-analyte HbA1c
+      const raw = (req.body.hba1c || '').toString().trim();
+      function toNum(v){ if (v===undefined||v===null) return null; const s=String(v).trim(); if(s==='') return null; const n=parseFloat(s.replace(/[^0-9.+-eE]/g,'')); return isNaN(n)?null:n }
+      function parseRange(ref){ if(!ref) return null; const m=String(ref).match(/([0-9]+(?:\.[0-9]+)?)\s*[\-–—]\s*([0-9]+(?:\.[0-9]+)?)/); if(m) return {min:parseFloat(m[1]), max:parseFloat(m[2]), display:m[1]+'-'+m[2]}; const m2=String(ref).match(/([0-9]+(?:\.[0-9]+)?)/); if(m2) return {min:parseFloat(m2[1]), max:NaN, display:m2[1]}; return null }
+      function flagNum(n,min,max){ if(n===null) return ''; if(typeof min==='number' && !isNaN(min) && n<min) return 'L'; if(typeof max==='number' && !isNaN(max) && n>max) return 'H'; return '' }
+      const num = toNum(raw);
+      const refRaw = (req.body.hba1c_ref || req.body.reference || '').toString().trim();
+      const ref = parseRange(refRaw) || {min:4.00, max:6.50, display:'4.00-6.50'};
+      resultsObj = {};
+      resultsObj.hba1c = raw;
+      resultsObj.hba1c_numeric = num;
+      resultsObj.hba1c_flag = (req.body.hba1c_flag || flagNum(num, ref.min, ref.max));
+      resultsObj.hba1c_ref = ref.display || '';
+    } else if (/(electrolyte|electrolytes|sodium|potassium|chloride)/i.test(test.testType)) {
+      // Standalone electrolytes entry: sodium, potassium, chloride
+      const sRaw = (req.body.sodium || req.body.na || '').toString().trim();
+      const kRaw = (req.body.potassium || req.body.k || '').toString().trim();
+      const clRaw = (req.body.chloride || req.body.cl || '').toString().trim();
+      const sRefRaw = (req.body.sodium_ref || req.body.na_ref || '').toString().trim();
+      const kRefRaw = (req.body.potassium_ref || req.body.k_ref || '').toString().trim();
+      const clRefRaw = (req.body.chloride_ref || req.body.cl_ref || '').toString().trim();
+
+      function toNum(v){ if (v===undefined||v===null) return null; const s=String(v).trim(); if(s==='') return null; const n=parseFloat(s.replace(/[^0-9.+-eE]/g,'')); return isNaN(n)?null:n }
+      function parseRange(ref){ if(!ref) return null; const m=String(ref).match(/([0-9]+(?:\.[0-9]+)?)\s*[\-–—]\s*([0-9]+(?:\.[0-9]+)?)/); if(m) return {min:parseFloat(m[1]), max:parseFloat(m[2]), display:m[1]+'-'+m[2]}; const m2=String(ref).match(/([0-9]+(?:\.[0-9]+)?)/); if(m2) return {min:parseFloat(m2[1]), max:NaN, display:m2[1]}; return null }
+      function flagNum(n,min,max){ if(n===null) return ''; if(typeof min==='number' && !isNaN(min) && n<min) return 'L'; if(typeof max==='number' && !isNaN(max) && n>max) return 'H'; return '' }
+
+      const defaults = { sodium:{min:135,max:145,display:'135-145'}, potassium:{min:3.5,max:5.1,display:'3.5-5.1'}, chloride:{min:98,max:107,display:'98-107'} };
+
+      const sNum = toNum(sRaw);
+      const kNum = toNum(kRaw);
+      const clNum = toNum(clRaw);
+
+      const sRef = parseRange(sRefRaw) || defaults.sodium;
+      const kRef = parseRange(kRefRaw) || defaults.potassium;
+      const clRef = parseRange(clRefRaw) || defaults.chloride;
+
+      resultsObj = {};
+      if (sRaw || sNum !== null) {
+        resultsObj.sodium = sRaw || (sNum!==null?String(sNum):'');
+        resultsObj.sodium_numeric = sNum;
+        resultsObj.sodium_flag = (req.body.sodium_flag || flagNum(sNum, sRef.min, sRef.max));
+        resultsObj.sodium_ref = sRef.display || '';
+      }
+      if (kRaw || kNum !== null) {
+        resultsObj.potassium = kRaw || (kNum!==null?String(kNum):'');
+        resultsObj.potassium_numeric = kNum;
+        resultsObj.potassium_flag = (req.body.potassium_flag || flagNum(kNum, kRef.min, kRef.max));
+        resultsObj.potassium_ref = kRef.display || '';
+      }
+      if (clRaw || clNum !== null) {
+        resultsObj.chloride = clRaw || (clNum!==null?String(clNum):'');
+        resultsObj.chloride_numeric = clNum;
+        resultsObj.chloride_flag = (req.body.chloride_flag || flagNum(clNum, clRef.min, clRef.max));
+        resultsObj.chloride_ref = clRef.display || '';
+      }
+    } else if (/(blood sugar|blood-sugar|sugar|fbs|rbs|1st hour|2nd hour)/i.test(test.testType)) {
+      // Standalone blood sugar entry: fbs, rbs, firstHour, secondHour
+      const fbsRaw = (req.body.fbs || '').toString().trim();
+      const rbsRaw = (req.body.rbs || '').toString().trim();
+      const firstRaw = (req.body.firstHour || req.body['1stHour'] || req.body['1st hour'] || '').toString().trim();
+      const secondRaw = (req.body.secondHour || req.body['2ndHour'] || req.body['2nd hour'] || '').toString().trim();
+      const fbsRefRaw = (req.body.fbs_ref || req.body.fbsRef || '').toString().trim();
+      const rbsRefRaw = (req.body.rbs_ref || req.body.rbsRef || '').toString().trim();
+      const firstRefRaw = (req.body.firstHour_ref || req.body.firstHourRef || '').toString().trim();
+      const secondRefRaw = (req.body.secondHour_ref || req.body.secondHourRef || '').toString().trim();
+
+      function toNum(v){ if (v===undefined||v===null) return null; const s=String(v).trim(); if(s==='') return null; const n=parseFloat(s.replace(/[^0-9.+-eE]/g,'')); return isNaN(n)?null:n }
+      function parseRange(ref){ if(!ref) return null; const m=String(ref).match(/([0-9]+(?:\.[0-9]+)?)\s*[\-–—]\s*([0-9]+(?:\.[0-9]+)?)/); if(m) return {min:parseFloat(m[1]), max:parseFloat(m[2]), display:m[1]+'-'+m[2]}; const m2=String(ref).match(/([0-9]+(?:\.[0-9]+)?)/); if(m2) return {min:parseFloat(m2[1]), max:NaN, display:m2[1]}; return null }
+      function flagNum(n,min,max){ if(n===null) return ''; if(typeof min==='number' && !isNaN(min) && n<min) return 'L'; if(typeof max==='number' && !isNaN(max) && n>max) return 'H'; return '' }
+
+      const defaults = { fbs:{min:70,max:110,display:'70-110'}, rbs:{min:80,max:130,display:'80-130'}, firstHour:{min:90,max:140,display:'90-140'}, secondHour:{min:80,max:120,display:'80-120'} };
+
+      const fbsNum = toNum(fbsRaw);
+      const rbsNum = toNum(rbsRaw);
+      const firstNum = toNum(firstRaw);
+      const secondNum = toNum(secondRaw);
+
+      const fbsRef = parseRange(fbsRefRaw) || defaults.fbs;
+      const rbsRef = parseRange(rbsRefRaw) || defaults.rbs;
+      const firstRef = parseRange(firstRefRaw) || defaults.firstHour;
+      const secondRef = parseRange(secondRefRaw) || defaults.secondHour;
+
+      resultsObj = {};
+      if (fbsRaw || fbsNum !== null) {
+        resultsObj.fbs = fbsRaw || (fbsNum!==null?String(fbsNum):'');
+        resultsObj.fbs_numeric = fbsNum;
+        resultsObj.fbs_flag = (req.body.fbs_flag || flagNum(fbsNum, fbsRef.min, fbsRef.max));
+        resultsObj.fbs_ref = fbsRef.display || '';
+      }
+      if (rbsRaw || rbsNum !== null) {
+        resultsObj.rbs = rbsRaw || (rbsNum!==null?String(rbsNum):'');
+        resultsObj.rbs_numeric = rbsNum;
+        resultsObj.rbs_flag = (req.body.rbs_flag || flagNum(rbsNum, rbsRef.min, rbsRef.max));
+        resultsObj.rbs_ref = rbsRef.display || '';
+      }
+      if (firstRaw || firstNum !== null) {
+        resultsObj.firstHour = firstRaw || (firstNum!==null?String(firstNum):'');
+        resultsObj.firstHour_numeric = firstNum;
+        resultsObj.firstHour_flag = (req.body.firstHour_flag || flagNum(firstNum, firstRef.min, firstRef.max));
+        resultsObj.firstHour_ref = firstRef.display || '';
+      }
+      if (secondRaw || secondNum !== null) {
+        resultsObj.secondHour = secondRaw || (secondNum!==null?String(secondNum):'');
+        resultsObj.secondHour_numeric = secondNum;
+        resultsObj.secondHour_flag = (req.body.secondHour_flag || flagNum(secondNum, secondRef.min, secondRef.max));
+        resultsObj.secondHour_ref = secondRef.display || '';
+      }
     } else if (/(blood(\s*|-)chemistry|blood\s*chem)/i.test(test.testType)) {
       const { fbs, rbs, firstHour, secondHour, cholesterol, tg, hdl, ldl, vldl, uricAcid, creatinine, bun, sgpt, sgot, sodium, potassium, chloride, hba1c, alb } = req.body;
       resultsObj = {
@@ -728,6 +847,8 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
       'pregnancy-test.ejs',
       'dengue-duo.ejs',
       'blood-chemistry.ejs',
+      'blood-chemistry-electrolytes.ejs',
+      'blood-chemistry-hba1c.ejs',
       'pt-aptt.ejs',
       'xray.ejs',
       'hematology.ejs',
