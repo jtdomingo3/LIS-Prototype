@@ -1,149 +1,214 @@
+
 <style>
-  @page { size: 8.5in 11in; margin: 0.25in; }
-  body { margin:0; padding:0; }
-  .report-page{ position:relative; width:7.9in; max-width:100%; margin:0 auto; padding:8px 10px; font-family: Arial, Helvetica, sans-serif; color:#000; box-sizing:border-box }
-  .header{ position:relative; border-bottom:2px solid #0f766e; padding:8px 0 6px; display:flex; align-items:center }
-  .logo{ width:60px; height:auto; display:block; margin-right:2px; flex:0 0 auto }
-  .lab-info{ text-align:center; flex:1 }
-  .header-left{ display:flex; align-items:center; flex:0 0 auto }
-  .lab-info h1{ margin:0; color:#0f766e; font-size:20px; letter-spacing:0.5px }
-  .lab-info p{ margin:2px 0; font-size:11px; color:#0f766e }
-  .patient-info{ width:100%; margin-top:8px; border-collapse:collapse; font-size:12.5px }
-  .patient-info td{ padding:4px 6px; border:1px solid #bbb }
-  .title{ text-align:center; margin:12px 0; font-size:20px; font-weight:bold; letter-spacing:1px }
-  .result-table{ width:100%; border-collapse:collapse; margin-top:6px; font-size:12px }
-  .result-table td{ padding:6px 6px; border:1px solid #444 }
-  .label{ width:28%; background:transparent; font-weight:400; font-size:12px }
-  /* make entered result values slightly smaller to fit half-page */
-  .result-table td:nth-child(2) strong,
-  .result-table td:nth-child(4) strong {
-    font-size:11px;
-    font-weight:600;
-  }
-  .result-table td span { font-size:10px }
-  .small-row td{ padding:4px }
-  .signatures{ display:flex; justify-content:space-between; margin-top:12px }
-  .sig { text-align:center; width:45%; font-size:11.5px }
-  .sig .name{ font-weight:700; font-size:12px }
-  .watermark-img{ position:absolute; left:50%; top:40%; transform:translate(-50%,-50%); width:48%; opacity:0.06; pointer-events:none; z-index:0 }
-  .report-page { position:relative; z-index:1 }
+  @page { size: Letter; margin: 0.25in; }
+  body { margin:0; padding:0; box-sizing:border-box; }
+  *, *:before, *:after { box-sizing:inherit; }
+  .report-page{ position:relative; width:100%; max-width:calc(8.5in - 0.5in); margin:0 auto; padding:6px; font-family: 'Times New Roman', Times, serif; color:#000; font-size:12px }
+  .header{ display:flex; align-items:flex-start; gap:8px }
+  .logo{ width:60px; height:auto; margin-right:6px }
+  .lab-title{ text-align:center; flex:1; min-width:0 }
+  .lab-title h1{ margin:0; font-size:18px; color:#009957; letter-spacing:1px }
+  .lab-sub{ font-size:9px; margin-top:3px }
+  .patient-box{ margin-top:6px; width:100%; border-collapse:collapse; font-size:11px }
+  .patient-box td{ padding:3px 5px; border:1px solid #000; box-sizing:border-box }
+  .section-title{ text-align:center; margin:8px 0; font-size:16px; font-weight:bold }
+  .results-frame{ width:100%; border:1px solid #000; border-collapse:collapse; margin-top:6px; box-sizing:border-box }
+  .results-frame th, .results-frame td{ border:1px solid #000; padding:4px; vertical-align:middle; font-size:11px }
+  .test-col{ width:50%; font-size:12px; font-weight:400; padding-left:8px; text-align:left }
+  .results-frame th.test-col { text-align:center }
+  .result-col{ width:50%; font-size:12px; text-align:center; text-transform:uppercase; font-weight:700 }
+  .section-label{ text-align:left; display:block; font-weight:700 }
+  .label-right{ text-align:left; display:block }
+  .note{ margin-top:8px; border:none; padding:0 4px; font-size:11px }
+  .note-text{ color:#c00 }
+  .signatures{ display:flex; justify-content:space-between; margin-top:24px }
+  .sig{ text-align:center; width:32% }
+  .watermark{ position:absolute; left:50%; top:42%; transform:translate(-50%,-50%); width:42%; opacity:0.06; pointer-events:none; z-index:0 }
+  .report-container{ position:relative; z-index:1 }
 </style>
 
 <div class="report-page">
-  <div class="header">
-    <div class="header-left">
-      <img src="<%= inlineLogo || '/assets/gezyne-logo.png' %>" class="logo" alt="logo">
-    </div>
-    <div class="lab-info">
-      <h1>GEZYNE CLINICAL LABORATORY</h1>
-      <p>0330 VERGEL DE DIOS ST POBLACION PLARIDEL</p>
-      <p>NEAR MUNICIPAL BASKETBALL COURT</p>
-      <p>0917-649-0807 / 0960-390-0921 / 795-5007</p>
-      <p>Lic. No. 03-435-15CL-20</p>
-    </div>
-  </div>
-
-  <table class="patient-info">
-    <tr>
-      <td><strong>Patient's Reference No:</strong></td>
-      <td><%= test && test.testId ? test.testId : '' %></td>
-      <td><strong>Date:</strong></td>
-      <td><%= test && test.testDate ? (new Date(test.testDate)).toLocaleDateString() : (new Date()).toLocaleDateString() %></td>
-      <td><strong>Time:</strong></td>
-      <td><%= test && test.testDate ? (new Date(test.testDate)).toLocaleTimeString() : (new Date()).toLocaleTimeString() %></td>
-    </tr>
-    <tr>
-      <td><strong>Name:</strong></td>
-      <td colspan="3"><%= test && test.patient ? (test.patient.lastName + ', ' + test.patient.firstName) : '' %></td>
-      <td><strong>Age:</strong></td>
-      <td><%= test && test.patient && test.patient.dateOfBirth ? Math.max(0, new Date().getFullYear() - new Date(test.patient.dateOfBirth).getFullYear()) : '' %></td>
-    </tr>
-    <tr>
-      <td><strong>Address:</strong></td>
-      <td colspan="5"><%= test && test.patient ? (test.patient.address || '') : '' %></td>
-    </tr>
-    <tr>
-      <td><strong>Sex:</strong></td>
-      <td colspan="5"><%= test && test.patient ? (test.patient.gender || '') : '' %></td>
-    </tr>
-  </table>
-
-  <div class="title">URINALYSIS</div>
-  <table class="result-table" style="width:100%;">
-    <tr>
-      <td style="vertical-align:top;">
-        <table style="width:100%; border-collapse:collapse;">
-          <tr>
-            <td class="label">Color</td>
-            <td style="width:30%;"><strong><%= test && test.results && test.results.color ? test.results.color : '' %></strong></td>
-            <td class="label" style="width:18%;">PUS</td>
-            <td style="width:12%; text-align:center;"><strong><%= test && test.results && test.results.wbc ? test.results.wbc : '' %></strong> <% if (test && test.results && test.results.wbc) { %><span>/hpf</span><% } %></td>
-          </tr>
-          <tr>
-            <td class="label">Transparency</td>
-            <td><strong><%= test && test.results && test.results.appearance ? test.results.appearance : '' %></strong></td>
-            <td class="label">RBC</td>
-            <td style="text-align:center;"><strong><%= test && test.results && test.results.rbc ? test.results.rbc : '' %></strong> <% if (test && test.results && test.results.rbc) { %><span>/hpf</span><% } %></td>
-          </tr>
-          <tr>
-            <td class="label">pH</td>
-            <td><strong><%= test && test.results && test.results.ph ? test.results.ph : '' %></strong></td>
-            <td class="label">Epithelial Cells</td>
-            <td style="text-align:center;"><strong><%= test && test.results && test.results.epithelial ? test.results.epithelial : '' %></strong></td>
-          </tr>
-          <tr>
-            <td class="label">Specific Gravity</td>
-            <td><strong><%= test && test.results && test.results.specificGravity ? test.results.specificGravity : '' %></strong></td>
-            <td class="label">Mucus Thread</td>
-            <td style="text-align:center;"><strong><%= test && test.results && test.results.mucus ? test.results.mucus : '' %></strong></td>
-          </tr>
-          <tr>
-            <td class="label">Glucose</td>
-            <td><strong><%= test && test.results && test.results.glucose ? test.results.glucose : '' %></strong></td>
-            <td class="label">Amorphous (urates/PO4)</td>
-            <td style="text-align:center;"><strong><%= test && test.results && test.results.amorphous ? test.results.amorphous : '' %></strong></td>
-          </tr>
-          <tr>
-            <td class="label">Protein</td>
-            <td><strong><%= test && test.results && test.results.protein ? test.results.protein : '' %></strong></td>
-            <td class="label">Bacteria</td>
-            <td style="text-align:center;"><strong><%= test && test.results && test.results.bacteria ? test.results.bacteria : '' %></strong></td>
-          </tr>
-          <tr>
-            <td class="label"></td>
-            <td></td>
-            <td class="label">Cast</td>
-            <td style="text-align:center;"><strong><%= test && test.results && test.results.casts ? test.results.casts : '' %></strong></td>
-          </tr>
-          <tr>
-            <td class="label"></td>
-            <td></td>
-            <td class="label">Others</td>
-            <td style="text-align:center;"><strong><%= test && test.results && test.results.others ? test.results.others : '' %></strong></td>
-          </tr>
+  <div class="report-container">
+    <div class="header">
+      <div>
+        <img src="<%= inlineLogo || '/assets/gezyne-logo.png' %>" class="logo" alt="logo">
+      </div>
+      <div class="lab-title">
+        <h1>GEZYNE CLINICAL LABORATORY</h1>
+        <div class="lab-sub">0330 VERGEL DE DIOS ST POBLACION PLARIDEL</div>
+        <div class="lab-sub">NEAR MUNICIPAL BASKETBALL COURT</div>
+        <div class="lab-sub">0917-649-0807 / 0960-390-0921 / 795-5007</div>
+      </div>
+      <div style="min-width:180px; font-size:12px; text-align:right">
+        <table style="border-collapse:collapse; width:100%; font-size:12px">
+          <tr><td style="border:1px solid #000; padding:4px">Date:</td><td style="border:1px solid #000; padding:4px"><%= test && test.testDate ? (new Date(test.testDate)).toLocaleDateString() : new Date().toLocaleDateString() %></td></tr>
+          <tr><td style="border:1px solid #000; padding:4px">Time Requested:</td><td style="border:1px solid #000; padding:4px"><%= test && test.testDate ? (new Date(test.testDate)).toLocaleTimeString() : '' %></td></tr>
+          <tr><td style="border:1px solid #000; padding:4px">Time Released:</td><td style="border:1px solid #000; padding:4px"><%= test && test.completedAt ? (new Date(test.completedAt)).toLocaleTimeString() : '' %></td></tr>
         </table>
-      </td>
-    </tr>
-  </table>
-
-  <div class="signatures">
-    <div class="sig">
-      <div style="border-top:1px solid #000; height:10px; margin-bottom:6px"></div>
-      <div class="name"><%= test && test.results && test.results.performedByName ? test.results.performedByName : (test && test.performedBy && test.performedBy.name ? test.performedBy.name : '') %></div>
-      <div class="normal-small"><%= test && test.results && test.results.performedByLicense ? ('Lic. No. ' + test.results.performedByLicense) : (test && test.performedBy && test.performedBy.license ? ('Lic. No. ' + test.performedBy.license) : '') %></div>
-      <div>Medical Technologist</div>
+      </div>
     </div>
-    <div class="sig">
-      <div style="border-top:1px solid #000; height:10px; margin-bottom:6px"></div>
-      <div class="name"><%= test && test.results && test.results.requestedByName ? test.results.requestedByName : (test && test.requestedBy && test.requestedBy.name ? test.requestedBy.name : '') %></div>
-      <div class="normal-small"><%= test && test.results && test.results.requestedByLicense ? ('Lic. No. ' + test.results.requestedByLicense) : (test && test.requestedBy && test.requestedBy.license ? ('Lic. No. ' + test.requestedBy.license) : '') %></div>
-      <div>Pathologist</div>
+
+    <table class="patient-box">
+      <tr>
+        <td style="width:20%"><strong>Patient's Reference No. :</strong></td>
+        <td style="width:30%"><%= test && test.testId ? test.testId : '' %></td>
+        <td style="width:15%"><strong>DOB:</strong></td>
+        <td style="width:15%"><%= test && test.patient && test.patient.dateOfBirth ? (new Date(test.patient.dateOfBirth)).toLocaleDateString() : '' %></td>
+        <td style="width:10%"><strong>Sex:</strong></td>
+        <td style="width:10%"><%= test && test.patient && test.patient.sex ? test.patient.sex : '' %></td>
+      </tr>
+      <tr>
+        <td><strong>Name:</strong></td>
+        <td colspan="3"><%= test && test.patient ? (test.patient.lastName + ', ' + test.patient.firstName) : '' %></td>
+        <td><strong>Age:</strong></td>
+        <td><%= test && test.patient && test.patient.dateOfBirth ? Math.max(0, new Date().getFullYear() - new Date(test.patient.dateOfBirth).getFullYear()) : (test && test.patient && test.patient.ageManual ? test.patient.ageManual : '') %></td>
+      </tr>
+      <tr>
+        <td><strong>Physician:</strong></td>
+        <td colspan="5"><%= (test && test.patient && (test.patient.physician || test.patient.physicianName)) ? (test.patient.physician || test.patient.physicianName) : '' %></td>
+      </tr>
+    </table>
+
+    <div class="section-title">URINALYSIS</div>
+
+    <table class="results-frame">
+      <tr>
+        <td style="width:50%; vertical-align:top;">
+          <table style="width:100%; border-collapse:collapse;">
+            <tr>
+              <th style="text-align:left; padding:6px; border:1px solid #000;">PHYSICAL / CHEMICAL ANALYSIS</th>
+              <th style="text-align:center; padding:6px; border:1px solid #000; width:20%">Results</th>
+              <th style="text-align:center; padding:6px; border:1px solid #000; width:20%">Reference Interval</th>
+            </tr>
+            <tr>
+              <td class="label">Color</td>
+              <td style="text-align:center"><%= test && test.results && test.results.color ? test.results.color : '' %></td>
+              <td style="text-align:center"></td>
+            </tr>
+            <tr>
+              <td class="label">Transparency</td>
+              <td style="text-align:center"><%= test && test.results && test.results.appearance ? test.results.appearance : '' %></td>
+              <td style="text-align:center"></td>
+            </tr>
+            <tr>
+              <td class="label">pH</td>
+              <td style="text-align:center"><%= test && test.results && test.results.ph ? test.results.ph : '' %></td>
+              <td style="text-align:center">5.0 - 7.0</td>
+            </tr>
+            <tr>
+              <td class="label">Sp. Gravity</td>
+              <td style="text-align:center"><%= test && test.results && test.results.specificGravity ? test.results.specificGravity : '' %></td>
+              <td style="text-align:center">1.005 - 1.025</td>
+            </tr>
+            <tr>
+              <td class="label">Glucose</td>
+              <td style="text-align:center"><%= test && test.results && test.results.glucose ? test.results.glucose : '' %></td>
+              <td style="text-align:center">Negative</td>
+            </tr>
+            <tr>
+              <td class="label">Protein</td>
+              <td style="text-align:center"><%= test && test.results && test.results.protein ? test.results.protein : '' %></td>
+              <td style="text-align:center">Negative</td>
+            </tr>
+            <tr>
+              <td class="label">Leukocyte</td>
+              <td style="text-align:center"><%= test && test.results && test.results.leukocyte ? test.results.leukocyte : '' %></td>
+              <td style="text-align:center">Negative</td>
+            </tr>
+            <tr>
+              <td class="label">Nitrite</td>
+              <td style="text-align:center"><%= test && test.results && test.results.nitrite ? test.results.nitrite : '' %></td>
+              <td style="text-align:center">Negative</td>
+            </tr>
+            <tr>
+              <td class="label">Urobilinogen</td>
+              <td style="text-align:center"><%= test && test.results && test.results.urobilinogen ? test.results.urobilinogen : '' %></td>
+              <td style="text-align:center">Negative</td>
+            </tr>
+            <tr>
+              <td class="label">Blood</td>
+              <td style="text-align:center"><%= test && test.results && test.results.blood ? test.results.blood : '' %></td>
+              <td style="text-align:center">Negative</td>
+            </tr>
+            <!-- Ketones and Bilirubin moved to Microscopic Analysis column -->
+          </table>
+        </td>
+        <td style="width:50%; vertical-align:top;">
+          <table style="width:100%; border-collapse:collapse;">
+            <tr>
+              <th style="text-align:left; padding:6px; border:1px solid #000">MICROSCOPIC ANALYSIS</th>
+              <th style="text-align:center; padding:6px; border:1px solid #000; width:20%">Results</th>
+              <th style="text-align:center; padding:6px; border:1px solid #000; width:20%">Reference Interval</th>
+            </tr>
+            <tr>
+              <td class="label">WBC</td>
+              <td style="text-align:center"><%= test && test.results && test.results.wbc ? test.results.wbc : '' %></td>
+              <td style="text-align:center">0-3 / hpf</td>
+            </tr>
+            <tr>
+              <td class="label">RBC</td>
+              <td style="text-align:center"><%= test && test.results && test.results.rbc ? test.results.rbc : '' %></td>
+              <td style="text-align:center">0-5 / hpf</td>
+            </tr>
+            <tr>
+              <td class="label">Epithelial Cells</td>
+              <td style="text-align:center"><%= test && test.results && test.results.epithelial ? test.results.epithelial : '' %></td>
+              <td style="text-align:center"></td>
+            </tr>
+            <tr>
+              <td class="label">Mucus Threads</td>
+              <td style="text-align:center"><%= test && test.results && test.results.mucus ? test.results.mucus : '' %></td>
+              <td style="text-align:center"></td>
+            </tr>
+            <tr>
+              <td class="label">Amorphous Crystals</td>
+              <td style="text-align:center"><%= test && test.results && test.results.amorphous ? test.results.amorphous : '' %></td>
+              <td style="text-align:center"></td>
+            </tr>
+            <tr>
+              <td class="label">Bacteria</td>
+              <td style="text-align:center"><%= test && test.results && test.results.bacteria ? test.results.bacteria : '' %></td>
+              <td style="text-align:center"></td>
+            </tr>
+            <tr>
+              <td class="label">Others</td>
+              <td style="text-align:center"><%= test && test.results && test.results.others ? test.results.others : '' %></td>
+              <td style="text-align:center"></td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <div class="note"><strong>NOTE:</strong> <span class="note-text"><%= test && test.results && test.results.note ? test.results.note : '' %></span></div>
+
+    <div class="signatures">
+      <div class="sig">
+        <div style="border-top:1px solid #000; height:10px; margin-bottom:6px"></div>
+        <div style="font-weight:700"><strong><%= (test && test.results && test.results.performedByName) || (test && test.performedBy && test.performedBy.name) || '' %></strong></div>
+        <div style="font-size:11px"><% if (test && test.results && test.results.performedByLicense) { %><strong>Lic. No. <%= test.results.performedByLicense %></strong><% } %></div>
+        <div>Medical Technologist</div>
+      </div>
+
+      <div class="sig">
+        <div style="border-top:1px solid #000; height:10px; margin-bottom:6px"></div>
+        <div style="font-weight:700"><strong><%= (test && test.results && test.results.validatedByName) || '' %></strong></div>
+        <div style="font-size:11px"><% if (test && test.results && test.results.validatedByLicense) { %><strong>Lic. No. <%= test.results.validatedByLicense %></strong><% } %></div>
+        <div>Validated by</div>
+      </div>
+
+      <div class="sig">
+        <div style="border-top:1px solid #000; height:10px; margin-bottom:6px"></div>
+        <div style="font-weight:700"><strong><%= (test && test.results && test.results.requestedByName) || (test && test.requestedBy && test.requestedBy.name) || '' %></strong></div>
+        <div style="font-size:11px"><% if (test && test.results && test.results.requestedByLicense) { %><strong>Lic. No. <%= test.results.requestedByLicense %></strong><% } %></div>
+        <div>Pathologist</div>
+      </div>
     </div>
   </div>
 
-  <img class="watermark-img" src="<%= inlineLogo || '/assets/gezyne-logo.png' %>" alt="" />
-  <% if (typeof print !== 'undefined' && print) { %>
-    <script>
-      setTimeout(function(){ window.print(); }, 300);
-    </script>
-  <% } %>
+  <img class="watermark" src="<%= inlineLogo || '/assets/gezyne-logo.png' %>" alt="" />
+</div>
+
+<% if (typeof print !== 'undefined' && print) { %>
+  <script>setTimeout(function(){ window.print(); }, 300);</script>
+<% } %>
