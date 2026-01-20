@@ -21,43 +21,57 @@
 
     <div class="form-row">
       <label>Case Number</label>
-      <input type="text" name="caseNumber" value="<%= test && test.caseNumber ? test.caseNumber : '' %>">
+      <input type="text" name="caseNumber" placeholder="Enter case number (assigned by radtech)" value="<%= test && test.caseNumber ? test.caseNumber : (test && test.results && test.results.caseNumber ? test.results.caseNumber : '') %>">
     </div>
 
     <div class="form-row">
       <label>Examination (short)</label>
-      <input type="text" name="examination" value="<%= test && (test.examination || test.examinationName) ? (test.examination || test.examinationName) : '' %>">
+      <input type="text" name="examination" placeholder="e.g. SKULL AP/LAT + WATERS" value="<%= test && (test.examination || test.examinationName) ? (test.examination || test.examinationName) : (test && test.results && test.results.examination ? test.results.examination : '') %>">
     </div>
 
-    <div style="margin-top:8px">
+      <div style="margin-top:8px">
       <label>Examination / Findings (paragraphs)</label>
       <div style="margin-bottom:6px; display:flex; gap:8px; align-items:center;">
         <button type="button" class="button btn-small" onclick="wrapSelection('<b>','</b>')">B</button>
         <button type="button" class="button btn-small" onclick="wrapSelection('<i>','</i>')"><em>I</em></button>
         <button type="button" class="button btn-small" onclick="wrapSelection('<u>','</u>')">U</button>
         <button type="button" class="button btn-small" onclick="insertParagraph()">Insert Paragraph</button>
+        <label style="margin-left:12px">Font:</label>
+        <select name="paragraphsFontFamily">
+          <option value="Times New Roman" <%= test.results && test.results.paragraphs_font_family==='Times New Roman' ? 'selected' : '' %>>Times New Roman</option>
+          <option value="Arial" <%= test.results && test.results.paragraphs_font_family==='Arial' ? 'selected' : '' %>>Arial</option>
+          <option value="Georgia" <%= test.results && test.results.paragraphs_font_family==='Georgia' ? 'selected' : '' %>>Georgia</option>
+          <option value="Garamond" <%= test.results && test.results.paragraphs_font_family==='Garamond' ? 'selected' : '' %>>Garamond</option>
+          <option value="Calibri" <%= test.results && test.results.paragraphs_font_family==='Calibri' ? 'selected' : '' %>>Calibri</option>
+        </select>
+        <label>Size:</label>
+        <select name="paragraphsFontSize">
+          <option value="14px" <%= test.results && test.results.paragraphs_font_size==='14px' ? 'selected' : '' %>>14px</option>
+          <option value="16px" <%= (!test.results || !test.results.paragraphs_font_size || test.results.paragraphs_font_size==='16px') ? 'selected' : '' %>>16px</option>
+          <option value="18px" <%= test.results && test.results.paragraphs_font_size==='18px' ? 'selected' : '' %>>18px</option>
+        </select>
       </div>
-      <textarea id="paragraphs" name="paragraphs" rows="8" style="width:100%; font-family:inherit;"> <%= test && test.results && (test.results.paragraphs || test.results.result) ? (test.results.paragraphs || test.results.result) : '<p>Enter findings here. This may be 2-3 paragraphs depending on the reading.</p>\n<p>Describe radiographic findings, impressions, and recommendations.</p>' %></textarea>
+      <textarea id="paragraphs" name="paragraphs" rows="8" spellcheck="true" style="width:100%; font-family:inherit;"> <%= test && test.results && (test.results.paragraphs || test.results.result) ? (test.results.paragraphs || test.results.result) : '<p>Enter findings here. This may be 2-3 paragraphs depending on the reading.</p>\n<p>Describe radiographic findings, impressions, and recommendations.</p>' %></textarea>
     </div>
 
     <hr>
     <h4>Signatures / Performers</h4>
     <div class="form-row">
       <label>X-Ray Technologist (Name)</label>
-      <input type="text" name="mtName" value="<%= test.results && test.results.performedByName ? test.results.performedByName : '' %>">
+      <input type="text" name="mtName" placeholder="Technologist name" value="<%= test.results && test.results.performedByName ? test.results.performedByName : '' %>">
     </div>
     <div class="form-row">
       <label>Technologist License</label>
-      <input type="text" name="mtLicense" value="<%= test.results && test.results.performedByLicense ? test.results.performedByLicense : '' %>">
+      <input type="text" name="mtLicense" placeholder="License number (optional)" value="<%= test.results && test.results.performedByLicense ? test.results.performedByLicense : '' %>">
     </div>
 
     <div class="form-row">
       <label>Radiologist (Name)</label>
-      <input type="text" name="pathName" value="<%= test.results && test.results.requestedByName ? test.results.requestedByName : '' %>">
+      <input type="text" name="pathName" placeholder="Radiologist name" value="<%= test.results && test.results.requestedByName ? test.results.requestedByName : '' %>">
     </div>
     <div class="form-row">
       <label>Radiologist License</label>
-      <input type="text" name="pathLicense" value="<%= test.results && test.results.requestedByLicense ? test.results.requestedByLicense : '' %>">
+      <input type="text" name="pathLicense" placeholder="License number (optional)" value="<%= test.results && test.results.requestedByLicense ? test.results.requestedByLicense : '' %>">
     </div>
 
     <div class="form-row mt-12">

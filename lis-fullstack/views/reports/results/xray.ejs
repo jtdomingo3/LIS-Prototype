@@ -47,7 +47,7 @@
     <table class="patient-box">
       <tr>
         <td style="width:20%"><strong>Case No.:</strong></td>
-        <td style="width:30%"><%= test && test.caseNumber ? test.caseNumber : '' %></td>
+        <td style="width:30%"><%= test && test.caseNumber ? test.caseNumber : (test && test.results && test.results.caseNumber ? test.results.caseNumber : '') %></td>
         <td style="width:15%"><strong>DOB:</strong></td>
         <td style="width:15%"><%= test && test.patient && test.patient.dateOfBirth ? (new Date(test.patient.dateOfBirth)).toLocaleDateString() : '' %></td>
         <td style="width:10%"><strong>Sex:</strong></td>
@@ -61,7 +61,7 @@
       </tr>
       <tr>
         <td><strong>Examination:</strong></td>
-        <td colspan="5"><%= (test && test.patient && (test.examination || test.examinationName)) %></td>
+        <td colspan="5"><%= (test && (test.examination || (test.results && test.results.examination) || test.examinationName)) %></td>
       </tr>
       <tr>
         <td><strong>Physician:</strong></td>
@@ -69,10 +69,23 @@
       </tr>
     </table>
 
-    <div class="section-title"></div>
+    <div class="section-title">X-Ray Result</div>
 
-    <div class="results-frame" style="border:none; padding:12px; font-size:14px; line-height:1.4">
-      <%- (test && test.results && (test.results.paragraphs || test.results.result)) ? (test.results.paragraphs || test.results.result) : '' %>
+    <div class="results-frame" style="border:none; padding:12px; line-height:1.4; font-size:<%= (test && test.results && test.results.paragraphs_font_size) ? test.results.paragraphs_font_size : '16px' %>; font-family:<%= (test && test.results && test.results.paragraphs_font_family) ? ('"' + test.results.paragraphs_font_family + '"') : "'Times New Roman'" %>">
+      <% 
+        var raw = (test && test.results && (test.results.paragraphs || test.results.result)) ? (test.results.paragraphs || test.results.result) : '';
+        var htmlOut = raw;
+        if (raw && !/<\/?[a-z][\s\S]*>/i.test(raw)) {
+          // convert double newlines to paragraphs, single newline to <br>
+          var parts = raw.split(/\r?\n\r?\n/).map(function(p){ return p.trim(); }).filter(Boolean);
+          if (parts.length) {
+            htmlOut = parts.map(function(p){ return '<p>' + p.replace(/\r?\n/g, '<br>') + '</p>'; }).join('\n');
+          } else {
+            htmlOut = raw.replace(/\r?\n/g, '<br>');
+          }
+        }
+      %>
+      <%- htmlOut %>
     </div>
 
     <div class="signatures">

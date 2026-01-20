@@ -806,11 +806,29 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       // X-Ray: save case number, short examination, and rich-text paragraphs
       const caseNumber = (req.body.caseNumber || '').toString().trim();
       const examination = (req.body.examination || '').toString().trim();
-      const paragraphs = (req.body.paragraphs || '').toString().trim();
+      const paragraphsRaw = (req.body.paragraphs || '').toString();
+      const fontSize = (req.body.paragraphsFontSize || '').toString().trim();
+      const fontFamily = (req.body.paragraphsFontFamily || '').toString().trim();
+
+      // If user submitted raw text without HTML tags, convert newlines to paragraphs
+      let paragraphs = paragraphsRaw.trim();
+      const hasHtmlTag = /<\/?[a-z][\s\S]*>/i.test(paragraphs);
+      if (!hasHtmlTag && paragraphs.length) {
+        // Split on double newlines for paragraphs, single newlines to <br>
+        const paras = paragraphs.split(/\r?\n\r?\n/).map(p => p.trim()).filter(Boolean).map(p => '<p>' + p.replace(/\r?\n/g, '<br>') + '</p>');
+        paragraphs = paras.join('\n');
+      }
 
       resultsObj = {
         paragraphs: paragraphs || ''
       };
+
+      // Also store caseNumber and examination inside results as fallback
+      if (caseNumber) resultsObj.caseNumber = caseNumber;
+      if (examination) resultsObj.examination = examination;
+
+      if (fontSize) resultsObj.paragraphs_font_size = fontSize;
+      if (fontFamily) resultsObj.paragraphs_font_family = fontFamily;
 
       if (caseNumber) topUpdates.caseNumber = caseNumber;
       if (examination) topUpdates.examination = examination;
