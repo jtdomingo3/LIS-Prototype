@@ -483,7 +483,7 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
         clotting_flag: flagCt
       };
     } else if (/fecalysis/i.test(test.testType)) {
-      const { color, consistency, pusCell, rbc, parasites, others, cocci, bacilli } = req.body;
+      const { color, consistency, pusCell, rbc, parasites, others, cocci, bacilli, note } = req.body;
       resultsObj = {
         color: (color || '').trim(),
         consistency: (consistency || '').trim(),
@@ -492,7 +492,8 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
         parasites: (parasites || '').trim(),
         others: (others || '').trim(),
         cocci: (cocci || '').trim(),
-        bacilli: (bacilli || '').trim()
+        bacilli: (bacilli || '').trim(),
+        note: (note || '').trim()
       };
 
     } else if (/(lipid|lipid\s*profile|blood\s*chemistry\s*-\s*lipid|blood\s*chemistry\s*lipid)/i.test(test.testType)) {
@@ -550,8 +551,8 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
         note: (note || '').trim()
       };
     } else if (/urinalysis/i.test(test.testType)) {
-      const { color, appearance, specificGravity, ph, protein, glucose, ketones, blood, nitrite, leukocyte,
-        rbc, wbc, epithelial, mucus, amorphous, bacteria, casts, others, note } = req.body;
+      const { color, appearance, specificGravity, ph, protein, glucose, ketones, bilirubin, blood, nitrite, leukocyte,
+        urobilinogen, rbc, wbc, epithelial, mucus, amorphous, bacteria, casts, others, note } = req.body;
       resultsObj = {
         color: (color || '').trim(),
         appearance: (appearance || '').trim(),
@@ -560,9 +561,11 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
         protein: (protein || '').trim(),
         glucose: (glucose || '').trim(),
         ketones: (ketones || '').trim(),
+        bilirubin: (bilirubin || '').trim(),
         blood: (blood || '').trim(),
         nitrite: (nitrite || '').trim(),
         leukocyte: (leukocyte || '').trim(),
+        urobilinogen: (urobilinogen || '').trim(),
         rbc: (rbc || '').trim(),
         wbc: (wbc || '').trim(),
         epithelial: (epithelial || '').trim(),

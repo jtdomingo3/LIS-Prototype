@@ -8,7 +8,7 @@
       "role": "Admin",
       "status": "Active",
       "createdAt": "2026-01-15T01:12:10.333Z",
-      "lastLogin": "2026-01-20T03:55:40.087Z"
+      "lastLogin": "2026-01-20T04:32:12.651Z"
     }
   ],
   "patients": [
@@ -293,7 +293,7 @@
       "patient": "21d9bc78-c601-4d41-a465-5432b5fa73b1",
       "testType": "blood typing",
       "testDate": "2026-01-19",
-      "status": "Released",
+      "status": "Completed",
       "specimenNumbers": {},
       "assignedDoctorId": null,
       "assignedDoctorName": null,
@@ -311,7 +311,7 @@
       "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
       "completedAt": "2026-01-19T09:50:00.000Z",
       "createdAt": "2026-01-19T09:50:33.422Z",
-      "updatedAt": "2026-01-19T13:01:49.121Z",
+      "updatedAt": "2026-01-20T03:57:12.844Z",
       "released": true
     },
     {
@@ -552,16 +552,17 @@
       "priority": "Normal",
       "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
       "createdAt": "2026-01-20T03:00:45.449Z",
-      "updatedAt": "2026-01-20T03:04:48.595Z",
+      "updatedAt": "2026-01-20T04:30:27.571Z",
       "results": {
         "color": "Yellow",
         "consistency": "Watery/Muciod",
         "pusCell": "1-2",
         "rbc": "0-1",
         "parasites": "Ascaris lumbricoides Ova",
-        "others": "",
+        "others": "trip",
         "cocci": "",
         "bacilli": "",
+        "note": "bla bla",
         "performedByName": "Aiza Lyca Bartolome, RMT",
         "performedByLicense": "0110576",
         "requestedByName": "Bernadette R. Espiritu, M.D.",
@@ -569,7 +570,7 @@
         "validatedByName": "Shaina Aubrey Parungao, RMT",
         "validatedByLicense": "0129565"
       },
-      "completedAt": "2026-01-20T03:04:48.595Z"
+      "completedAt": "2026-01-20T01:04:00.000Z"
     },
     {
       "id": "0926d063-0923-452a-a1c5-ff4262f0baeb",
@@ -584,7 +585,7 @@
       "priority": "Normal",
       "requestedBy": "2349040a-9d75-41d0-a69d-39ab7575405f",
       "createdAt": "2026-01-20T03:45:55.145Z",
-      "updatedAt": "2026-01-20T03:56:24.986Z",
+      "updatedAt": "2026-01-20T04:32:26.746Z",
       "results": {
         "color": "Yellow",
         "appearance": "Clear",
@@ -593,9 +594,11 @@
         "protein": "Negative",
         "glucose": "Negative",
         "ketones": "Negative",
+        "bilirubin": "Negative",
         "blood": "Negative",
         "nitrite": "Negative",
         "leukocyte": "Negative",
+        "urobilinogen": "Negative",
         "rbc": "0-1",
         "wbc": "0-2",
         "epithelial": "Few",
@@ -603,7 +606,7 @@
         "amorphous": "Few",
         "bacteria": "Few",
         "casts": "",
-        "others": "",
+        "others": "trip",
         "note": "bla bla",
         "performedByName": "Aiza Lyca Bartolome, RMT",
         "performedByLicense": "0110576",
@@ -612,7 +615,7 @@
         "validatedByName": "Shaina Aubrey Parungao, RMT",
         "validatedByLicense": "0129565"
       },
-      "completedAt": "2026-01-20T03:56:24.985Z"
+      "completedAt": "2026-01-20T02:56:00.000Z"
     }
   ],
   "templates": [
