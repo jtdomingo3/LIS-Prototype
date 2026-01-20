@@ -11,7 +11,7 @@
       </div>
       <div class="form-row" style="margin:0;">
         <label>Time Requested</label>
-        <input type="time" name="timeRequested" value="<%= test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '' %>" readonly>
+          <input type="time" name="timeRequested" value="<%= test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '' %>">
       </div>
       <div class="form-row" style="margin:0;">
         <label>Time Released</label>
@@ -21,12 +21,37 @@
 
     <div class="form-row">
       <label>Color</label>
-      <input type="text" name="color" value="<%= test.results && test.results.color ? test.results.color : '' %>" required>
+      <select name="color" required>
+        <option value=""></option>
+        <option value="Brown" <%= test.results && test.results.color === 'Brown' ? 'selected' : '' %>>Brown</option>
+        <option value="Light Brown" <%= test.results && test.results.color === 'Light Brown' ? 'selected' : '' %>>Light Brown</option>
+        <option value="Dark Brown" <%= test.results && test.results.color === 'Dark Brown' ? 'selected' : '' %>>Dark Brown</option>
+        <option value="Yellow" <%= test.results && test.results.color === 'Yellow' ? 'selected' : '' %>>Yellow</option>
+        <option value="Black" <%= test.results && test.results.color === 'Black' ? 'selected' : '' %>>Black</option>
+        <option value="Red" <%= test.results && test.results.color === 'Red' ? 'selected' : '' %>>Red</option>
+        <option value="Green" <%= test.results && test.results.color === 'Green' ? 'selected' : '' %>>Green</option>
+        <option value="White" <%= test.results && test.results.color === 'White' ? 'selected' : '' %>>White</option>
+        <option value="Clay-colored" <%= test.results && test.results.color === 'Clay-colored' ? 'selected' : '' %>>Clay-colored</option>
+        <option value="Pale" <%= test.results && test.results.color === 'Pale' ? 'selected' : '' %>>Pale</option>
+        <option value="Orange" <%= test.results && test.results.color === 'Orange' ? 'selected' : '' %>>Orange</option>
+        <option value="Maroon" <%= test.results && test.results.color === 'Maroon' ? 'selected' : '' %>>Maroon</option>
+        <option value="Red-brown" <%= test.results && test.results.color === 'Red-brown' ? 'selected' : '' %>>Red-brown</option>
+        <option value="Silver" <%= test.results && test.results.color === 'Silver' ? 'selected' : '' %>>Silver</option>
+      </select>
     </div>
 
     <div class="form-row">
       <label>Consistency</label>
-      <input type="text" name="consistency" value="<%= test.results && test.results.consistency ? test.results.consistency : '' %>">
+      <select name="consistency">
+        <option value=""></option>
+        <option value="Soft" <%= test.results && test.results.consistency === 'Soft' ? 'selected' : '' %>>Soft</option>
+        <option value="Watery" <%= test.results && test.results.consistency === 'Watery' ? 'selected' : '' %>>Watery</option>
+        <option value="Mucoid" <%= test.results && test.results.consistency === 'Mucoid' ? 'selected' : '' %>>Mucoid</option>
+        <option value="Formed" <%= test.results && test.results.consistency === 'Formed' ? 'selected' : '' %>>Formed</option>
+        <option value="Semi-Watery" <%= test.results && test.results.consistency === 'Semi-Watery' ? 'selected' : '' %>>Semi-Watery</option>
+        <option value="Semi-Mucoid" <%= test.results && test.results.consistency === 'Semi-Mucoid' ? 'selected' : '' %>>Semi-Mucoid</option>
+        <option value="Semi-Formed" <%= test.results && test.results.consistency === 'Semi-Formed' ? 'selected' : '' %>>Semi-Formed</option>
+      </select>
     </div>
 
     <div class="form-row">
@@ -41,7 +66,67 @@
 
     <div class="form-row">
       <label>Ova &amp; Parasite</label>
-      <div style="display:flex;gap:8px;align-items:center;"><input type="text" name="parasites" value="<%= test.results && test.results.parasites ? test.results.parasites : '' %>"><span>hpf</span></div>
+      <% 
+        const parasitesValRaw = test.results && test.results.parasites ? test.results.parasites : '';
+        const parasiteOptions = [
+          'No ova of any Intestinal Parasite Seen',
+          'Entamoeba histolytica',
+          'Entamoeba histolytica Cyst',
+          'Ascaris lumbricoides',
+          'Trichuris trichiura',
+          'Entamoeba  coli cyst'
+        ];
+        let parasitesName = parasitesValRaw;
+        let parasitesCount = '';
+        const colonIndex = parasitesValRaw.indexOf(':');
+        if(colonIndex !== -1){
+          parasitesName = parasitesValRaw.slice(0, colonIndex).trim();
+            parasitesCount = parasitesValRaw.slice(colonIndex + 1).replace(/\/?\s*hpf/i, '').trim();
+        }
+        const parasitesIsKnown = parasiteOptions.includes(parasitesName);
+      %>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="parasites_select" name="parasites_select">
+          <option value=""></option>
+          <% parasiteOptions.forEach(function(opt){ %>
+            <option value="<%= opt %>" <%= parasitesName === opt ? 'selected' : '' %>><%= opt %></option>
+          <% }) %>
+          <option value="Other" <%= !parasitesIsKnown && parasitesName ? 'selected' : '' %>>Other (specify)</option>
+        </select>
+        <input id="parasites_count" type="text" placeholder="e.g., 0-1, 2-5" style="display:<%= parasitesIsKnown && parasitesName !== 'No ova of any Intestinal Parasite Seen' ? 'inline-block' : 'none' %>;" value="<%= parasitesCount %>">
+        <input id="parasites_other" type="text" placeholder="Specify parasite" style="display:<%= parasitesIsKnown ? 'none' : 'inline-block' %>;" value="<%= parasitesIsKnown ? '' : parasitesName %>">
+        <input type="hidden" id="parasites" name="parasites" value="<%= parasitesValRaw %>">
+        <span>hpf</span>
+      </div>
+      <script>
+        (function(){
+          var sel = document.getElementById('parasites_select');
+          var other = document.getElementById('parasites_other');
+          var count = document.getElementById('parasites_count');
+          var hidden = document.getElementById('parasites');
+          function updateVisibility(){
+            if(!sel) return;
+            var val = sel.value || '';
+            if(val === 'Other'){
+              other.style.display = 'inline-block';
+              count.style.display = 'none';
+              hidden.value = other.value || '';
+            } else if(val === 'No ova of any Intestinal Parasite Seen' || val === ''){
+              other.style.display = 'none';
+              count.style.display = 'none';
+              hidden.value = val || '';
+            } else {
+              other.style.display = 'none';
+              count.style.display = 'inline-block';
+              hidden.value = val + (count.value ? ': ' + count.value + ' / hpf' : '');
+            }
+          }
+          if(sel){ sel.addEventListener('change', updateVisibility); }
+          if(other){ other.addEventListener('input', function(){ hidden.value = other.value || ''; }); }
+          if(count){ count.addEventListener('input', function(){ var v = sel.value || ''; hidden.value = v + (count.value ? ': ' + count.value + ' / hpf' : ''); }); }
+          updateVisibility();
+        })();
+      </script>
     </div>
 
     <div class="form-row">

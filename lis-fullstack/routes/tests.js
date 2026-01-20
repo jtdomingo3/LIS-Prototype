@@ -483,7 +483,7 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
         clotting_flag: flagCt
       };
     } else if (/fecalysis/i.test(test.testType)) {
-      const { color, consistency, pusCell, rbc, parasites, others, cocci, bacilli, note } = req.body;
+      const { color, consistency, pusCell, rbc, parasites, others, note } = req.body;
       resultsObj = {
         color: (color || '').trim(),
         consistency: (consistency || '').trim(),
@@ -491,8 +491,6 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
         rbc: (rbc || '').trim(),
         parasites: (parasites || '').trim(),
         others: (others || '').trim(),
-        cocci: (cocci || '').trim(),
-        bacilli: (bacilli || '').trim(),
         note: (note || '').trim()
       };
 
