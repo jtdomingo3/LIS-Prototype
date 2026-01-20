@@ -793,6 +793,8 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
         resultsObj.alb_flag = (req.body.alb_flag || flagNum(albNum, albRef.min, albRef.max));
         resultsObj.alb_ref = albRef.display || '';
       }
+      // optional note
+      resultsObj.note = (req.body.note || '').trim();
 
     } else if (/(blood(\s*|-)chemistry|blood\s*chem)/i.test(test.testType)) {
       const { fbs, rbs, firstHour, secondHour, cholesterol, tg, hdl, ldl, vldl, uricAcid, creatinine, bun, sgpt, sgot, sodium, potassium, chloride, hba1c, alb } = req.body;

@@ -20,6 +20,8 @@
   .sig{ text-align:center; width:32% }
   .watermark{ position:absolute; left:50%; top:44%; transform:translate(-50%,-50%); width:52%; opacity:0.06; pointer-events:none; z-index:0 }
   .report-container{ position:relative; z-index:1 }
+  .note{ margin-top:6px; border:none; min-height:unset; padding:0 4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+  .note-text{ color:#c00 }
 </style>
 
 <div class="report-page">
@@ -62,7 +64,6 @@
         <td colspan="5"><%= (test && test.patient && (test.patient.physician || test.patient.physicianName)) ? (test.patient.physician || test.patient.physicianName) : '' %></td>
       </tr>
     </table>
-
     <div class="section-title">BLOOD CHEMISTRY - ALBUMIN</div>
 
     <% function parseRange(refStr) {
@@ -117,6 +118,8 @@
       <% } %>
 
     </table>
+
+    <div class="note"><strong>NOTE:</strong> <span class="note-text"><%= test && test.results && test.results.note ? test.results.note : '' %></span></div>
 
     <div class="signatures">
       <div class="sig">
