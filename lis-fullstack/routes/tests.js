@@ -551,7 +551,7 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       };
     } else if (/urinalysis/i.test(test.testType)) {
       const { color, appearance, specificGravity, ph, protein, glucose, ketones, blood, nitrite, leukocyte,
-        rbc, wbc, epithelial, mucus, amorphous, bacteria, casts, others } = req.body;
+        rbc, wbc, epithelial, mucus, amorphous, bacteria, casts, others, note } = req.body;
       resultsObj = {
         color: (color || '').trim(),
         appearance: (appearance || '').trim(),
@@ -570,7 +570,8 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
         amorphous: (amorphous || '').trim(),
         bacteria: (bacteria || '').trim(),
         casts: (casts || '').trim(),
-        others: (others || '').trim()
+        others: (others || '').trim(),
+        note: (note || '').trim()
       };
     } else if (/hemato|hematology|cbc/i.test(test.testType)) {
       const { rbc, hemoglobin, hematocrit, mcv, mch, mchc, wbc, neutrophils, lymphocyte, monocyte, eosinophils, basophils, platelets } = req.body;

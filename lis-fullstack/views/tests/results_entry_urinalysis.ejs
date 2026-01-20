@@ -5,18 +5,16 @@
     <input type="hidden" name="_method" value="POST">
 
     <div class="form-row">
+      <strong>Physical / Chemical Analysis</strong>
+    </div>
+    <div class="form-row">
       <label>Color</label>
-      <input type="text" name="color" value="<%= test.results && test.results.color ? test.results.color : '' %>" required>
+      <input type="text" name="color" value="<%= test.results && test.results.color ? test.results.color : '' %>">
     </div>
 
     <div class="form-row">
-      <label>Appearance</label>
+      <label>Transparency</label>
       <input type="text" name="appearance" value="<%= test.results && test.results.appearance ? test.results.appearance : '' %>">
-    </div>
-
-    <div class="form-row">
-      <label>Specific Gravity</label>
-      <input type="text" name="specificGravity" value="<%= test.results && test.results.specificGravity ? test.results.specificGravity : '' %>">
     </div>
 
     <div class="form-row">
@@ -25,8 +23,8 @@
     </div>
 
     <div class="form-row">
-      <label>Protein</label>
-      <input type="text" name="protein" value="<%= test.results && test.results.protein ? test.results.protein : '' %>">
+      <label>Specific Gravity</label>
+      <input type="text" name="specificGravity" value="<%= test.results && test.results.specificGravity ? test.results.specificGravity : '' %>">
     </div>
 
     <div class="form-row">
@@ -35,13 +33,13 @@
     </div>
 
     <div class="form-row">
-      <label>Ketones</label>
-      <input type="text" name="ketones" value="<%= test.results && test.results.ketones ? test.results.ketones : '' %>">
+      <label>Protein</label>
+      <input type="text" name="protein" value="<%= test.results && test.results.protein ? test.results.protein : '' %>">
     </div>
 
     <div class="form-row">
-      <label>Blood</label>
-      <input type="text" name="blood" value="<%= test.results && test.results.blood ? test.results.blood : '' %>">
+      <label>Leukocyte</label>
+      <input type="text" name="leukocyte" value="<%= test.results && test.results.leukocyte ? test.results.leukocyte : '' %>">
     </div>
 
     <div class="form-row">
@@ -50,30 +48,44 @@
     </div>
 
     <div class="form-row">
-      <label>Leukocyte Esterase</label>
-      <input type="text" name="leukocyte" value="<%= test.results && test.results.leukocyte ? test.results.leukocyte : '' %>">
+      <label>Urobilinogen</label>
+      <input type="text" name="urobilinogen" value="<%= test.results && test.results.urobilinogen ? test.results.urobilinogen : '' %>">
+    </div>
+
+    <div class="form-row">
+      <label>Blood</label>
+      <input type="text" name="blood" value="<%= test.results && test.results.blood ? test.results.blood : '' %>">
+    </div>
+
+    <div class="form-row">
+      <label>Ketones</label>
+      <input type="text" name="ketones" value="<%= test.results && test.results.ketones ? test.results.ketones : '' %>">
+    </div>
+    <div class="form-row">
+      <label>Bilirubin</label>
+      <input type="text" name="bilirubin" value="<%= test.results && test.results.bilirubin ? test.results.bilirubin : '' %>">
     </div>
 
     <hr>
-    <h4>Microscopy (cells per hpf)</h4>
-    <div class="form-row">
-      <label>RBC</label>
-      <div style="display:flex;gap:8px;align-items:center;"><input type="text" name="rbc" value="<%= test.results && test.results.rbc ? test.results.rbc : '' %>"><span>hpf</span></div>
-    </div>
+    <h4>Microscopy Examination</h4>
     <div class="form-row">
       <label>WBC</label>
       <div style="display:flex;gap:8px;align-items:center;"><input type="text" name="wbc" value="<%= test.results && test.results.wbc ? test.results.wbc : '' %>"><span>hpf</span></div>
+    </div>
+    <div class="form-row">
+      <label>RBC</label>
+      <div style="display:flex;gap:8px;align-items:center;"><input type="text" name="rbc" value="<%= test.results && test.results.rbc ? test.results.rbc : '' %>"><span>hpf</span></div>
     </div>
     <div class="form-row">
       <label>Epithelial Cells</label>
       <input type="text" name="epithelial" value="<%= test.results && test.results.epithelial ? test.results.epithelial : '' %>">
     </div>
     <div class="form-row">
-      <label>Mucus Thread</label>
+      <label>Mucus Threads</label>
       <input type="text" name="mucus" value="<%= test.results && test.results.mucus ? test.results.mucus : '' %>">
     </div>
     <div class="form-row">
-      <label>Amorphous (urates/PO4)</label>
+      <label>Amorphous Crystals</label>
       <input type="text" name="amorphous" value="<%= test.results && test.results.amorphous ? test.results.amorphous : '' %>">
     </div>
     <div class="form-row">
@@ -82,13 +94,13 @@
     </div>
 
     <div class="form-row">
-      <label>Casts</label>
-      <input type="text" name="casts" value="<%= test.results && test.results.casts ? test.results.casts : '' %>">
+      <label>Others</label>
+      <input type="text" name="others" value="<%= test.results && test.results.others ? test.results.others : '' %>">
     </div>
 
     <div class="form-row">
-      <label>Others</label>
-      <input type="text" name="others" value="<%= test.results && test.results.others ? test.results.others : '' %>">
+      <label>Note</label>
+      <textarea name="note" rows="3"><%= test.results && test.results.note ? test.results.note : '' %></textarea>
     </div>
 
     <hr>
@@ -100,6 +112,15 @@
     <div class="form-row">
       <label>Medical Technologist License</label>
       <input type="text" name="mtLicense" value="<%= test.results && test.results.performedByLicense ? test.results.performedByLicense : '' %>">
+    </div>
+
+    <div class="form-row">
+      <label>Validator (Name)</label>
+      <input type="text" name="validatedByName" value="<%= test.results && test.results.validatedByName ? test.results.validatedByName : '' %>">
+    </div>
+    <div class="form-row">
+      <label>Validator License</label>
+      <input type="text" name="validatedByLicense" value="<%= test.results && test.results.validatedByLicense ? test.results.validatedByLicense : '' %>">
     </div>
 
     <div class="form-row">
