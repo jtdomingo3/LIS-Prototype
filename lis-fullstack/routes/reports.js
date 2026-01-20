@@ -181,6 +181,9 @@ function getResultTemplate(test) {
   } else if (type.includes('lipid') || type.includes('lipid profile') || type.includes('lipid-profile')) {
     template = 'blood-chemistry-lipid-profile';
     image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';
+  } else if (type.includes('ecg') || type.includes('electrocardio') || type.includes('electrocardiogram')) {
+    template = 'ecg';
+    image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';
   } else if (type.includes('albumin') || type.includes('\balb\b')) {
     template = 'blood-chemistry-albumin';
     image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';

@@ -69,6 +69,7 @@ async function getStaticResultTemplates() {
       'pregnancy-test.ejs',
       'pt-aptt.ejs',
       'xray.ejs',
+      'ecg.ejs',
       'hematology.ejs',
       'serology.ejs',
       'ultrasound.ejs'

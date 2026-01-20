@@ -1,0 +1,103 @@
+<style>
+  @page { size: Letter; margin: 0.25in; }
+  body { margin:0; padding:0; box-sizing:border-box; }
+  *, *:before, *:after { box-sizing:inherit; }
+  .report-page{ position:relative; width:100%; max-width:calc(8.5in - 0.5in); margin:0 auto; padding:8px; font-family: 'Times New Roman', Times, serif; color:#000 }
+  .header{ display:flex; align-items:flex-start; gap:12px }
+  .logo{ width:72px; height:auto; margin-right:8px }
+  .lab-title{ text-align:center; flex:1; min-width:0 }
+  .lab-title h1{ margin:0; font-size:22px; color:#009957; letter-spacing:1px }
+  .lab-sub{ font-size:10px; margin-top:4px; color:#009957 }
+  .patient-box{ margin-top:8px; width:100%; border-collapse:collapse; font-size:12px }
+  .patient-box td{ padding:4px 6px; border:1px solid #000; box-sizing:border-box }
+  .section-title{ text-align:center; margin:12px 0; font-size:20px; font-weight:bold }
+  .results-frame{ width:100%; border:2px solid #000; border-collapse:collapse; margin-top:6px; box-sizing:border-box }
+  .results-frame td, .results-frame th { padding:12px; vertical-align:middle; border:1px solid #000 }
+  .results-frame th{ text-align:left; font-weight:700 }
+  .center{ text-align:center }
+  .signatures{ display:flex; justify-content:center; margin-top:24px }
+  .sig{ text-align:center; width:60%; max-width:420px }
+  /* move ECG watermark higher and slightly smaller than other reports */
+  .watermark{ position:absolute; left:50%; top:20%; transform:translate(-50%,-50%); width:40%; opacity:0.06; pointer-events:none; z-index:0 }
+  .report-container{ position:relative; z-index:1 }
+  .normal-small{ font-size:11px; color:#333 }
+</style>
+<div class="report-page">
+  <div class="report-container">
+    <div class="header">
+      <div>
+        <img src="<%= inlineLogo || '/assets/gezyne-logo.png' %>" class="logo" alt="logo">
+      </div>
+      <div class="lab-title">
+        <h1>GEZYNE CLINICAL LABORATORY</h1>
+        <div class="lab-sub">0330 VERGEL DE DIOS ST POBLACION PLARIDEL</div>
+        <div class="lab-sub">NEAR MUNICIPAL BASKETBALL COURT</div>
+        <div class="lab-sub">0917-649-0807 / 0960-390-0921 / 795-5007</div>
+        <div class="lab-sub">Lic. No. 03-435-15CL-20</div>
+      </div>
+      <div style="min-width:180px; font-size:12px; text-align:right">
+        <table style="border-collapse:collapse; width:100%; font-size:12px">
+          <tr><td style="border:1px solid #000; padding:4px">Date:</td><td style="border:1px solid #000; padding:4px"><%= test && test.testDate ? (new Date(test.testDate)).toLocaleDateString() : new Date().toLocaleDateString() %></td></tr>
+          <tr><td style="border:1px solid #000; padding:4px">Time Requested:</td><td style="border:1px solid #000; padding:4px"><%= test && test.testDate ? (new Date(test.testDate)).toLocaleTimeString() : '' %></td></tr>
+          <tr><td style="border:1px solid #000; padding:4px">Time Released:</td><td style="border:1px solid #000; padding:4px"><%= test && test.completedAt ? (new Date(test.completedAt)).toLocaleTimeString() : '' %></td></tr>
+        </table>
+      </div>
+    </div>
+
+    <table class="patient-box">
+      <tr>
+        <td style="width:20%"><strong>Patient's Reference No. :</strong></td>
+        <td style="width:30%"><%= test && test.testId ? test.testId : '' %></td>
+        <td style="width:15%"><strong>DOB:</strong></td>
+        <td style="width:15%"><%= test && test.patient && test.patient.dateOfBirth ? (new Date(test.patient.dateOfBirth)).toLocaleDateString() : '' %></td>
+        <td style="width:10%"><strong>Sex:</strong></td>
+        <td style="width:10%"><%= test && test.patient && test.patient.sex ? test.patient.sex : '' %></td>
+      </tr>
+      <tr>
+        <td><strong>Name:</strong></td>
+        <td colspan="3"><%= test && test.patient ? (test.patient.lastName + ', ' + test.patient.firstName) : '' %></td>
+        <td><strong>Age:</strong></td>
+        <td><%= test && test.patient && test.patient.dateOfBirth ? Math.max(0, new Date().getFullYear() - new Date(test.patient.dateOfBirth).getFullYear()) : (test && test.patient && test.patient.ageManual ? test.patient.ageManual : '') %></td>
+      </tr>
+      <tr>
+        <td><strong>Physician:</strong></td>
+        <td colspan="5"><%= (test && test.patient && (test.patient.physician || test.patient.physicianName)) ? (test.patient.physician || test.patient.physicianName) : (test && test.requestedBy && test.requestedBy.name ? test.requestedBy.name : (test && test.results && test.results.requestedByName ? test.results.requestedByName : '')) %></td>
+      </tr>
+    </table>
+
+    <div class="section-title">ECG Result</div>
+
+    <div class="results-frame" style="border:none; padding:12px; line-height:1.4; padding-left:5.5em; font-size:<%= (test && test.results && test.results.paragraphs_font_size) ? test.results.paragraphs_font_size : '16px' %>; font-family:<%= (test && test.results && test.results.paragraphs_font_family) ? ('"' + test.results.paragraphs_font_family + '"') : "'Times New Roman'" %>">
+      <% 
+        var raw = (test && test.results && (test.results.paragraphs || test.results.result)) ? (test.results.paragraphs || test.results.result) : '';
+        var htmlOut = raw;
+        if (raw && !/<\/?[a-z][\s\S]*>/i.test(raw)) {
+          // convert double newlines to paragraphs, single newline to <br>
+          var parts = raw.split(/\r?\n\r?\n/).map(function(p){ return p.trim(); }).filter(Boolean);
+          if (parts.length) {
+            htmlOut = parts.map(function(p){ return '<p>' + p.replace(/\r?\n/g, '<br>') + '</p>'; }).join('\n');
+          } else {
+            htmlOut = raw.replace(/\r?\n/g, '<br>');
+          }
+        }
+      %>
+      <%- htmlOut %>
+    </div>
+
+    <div class="signatures">
+      <div class="sig">
+        <div style="border-top:1px solid #000; height:0; margin-bottom:8px"></div>
+        <div style="font-weight:700; font-size:14px"><strong><%= (test && test.results && test.results.doctorName) || (test && test.requestedBy && test.requestedBy.name) || '' %></strong></div>
+        <div style="font-size:11px"><% if (test && test.results && test.results.doctorLicense) { %><strong>Lic. No. <%= test.results.doctorLicense %></strong><% } %></div>
+        <div style="font-size:14px; font-weight:700"><%= (test && test.results && test.results.doctorDesignation) ? test.results.doctorDesignation : 'Physician' %></div>
+      </div>
+    </div>
+    </div>
+  </div>
+
+  <img class="watermark" src="<%= inlineLogo || '/assets/gezyne-logo.png' %>" alt="" />
+</div>
+
+<% if (typeof print !== 'undefined' && print) { %>
+  <script>setTimeout(function(){ window.print(); }, 300);</script>
+<% } %>

@@ -105,6 +105,7 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       'blood-chemistry-blood-sugar.ejs',
       'pt-aptt.ejs',
       'xray.ejs',
+      'ecg.ejs',
       'hematology.ejs',
       'serology.ejs',
       'ultrasound.ejs'
@@ -275,7 +276,8 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       ,
       ct_bt: /(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt)/i.test(tt)
       ,
-      xray: /(x-?ray|xray|radiograph)/i.test(tt)
+      xray: /(x-?ray|xray|radiograph)/i.test(tt),
+      ecg: /(ecg|electrocardio|electrocardiogram)/i.test(tt)
     };
     console.log(`DEBUG GET /tests/${req.params.id}/results - testType='${tt}', checks=`, checks);
     if (!tt || !Object.values(checks).some(Boolean)) {
@@ -299,6 +301,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     if (/(blood sugar|blood-sugar|sugar|fbs|rbs|1st hour|2nd hour)/i.test(test.testType)) view = 'tests/results_entry_blood_chemistry_blood_sugar';
     if (/(albumin|alb)/i.test(normalizedType)) view = 'tests/results_entry_blood_chemistry_albumin';
     if (/(x-?ray|xray|radiograph)/i.test(test.testType)) view = 'tests/results_entry_xray';
+    if (/(ecg|electrocardio|electrocardiogram)/i.test(test.testType)) view = 'tests/results_entry_ecg';
     if (/(fecal\s*occult|fecal-occult|fecaloccult)/i.test(test.testType)) view = 'tests/results_entry_fecal_occult_blood';
     if (/(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt)/i.test(test.testType)) view = 'tests/results_entry_ct_bt';
     if (/(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(test.testType)) view = 'tests/results_entry_esr';
@@ -357,6 +360,8 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       ct_bt: /(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt)/i.test(tt)
       ,
       xray: /(x-?ray|xray|radiograph)/i.test(tt)
+      ,
+      ecg: /(ecg|electrocardio|electrocardiogram)/i.test(tt)
     };
     console.log(`DEBUG POST /tests/${req.params.id}/results - testType='${tt}', checks=`, checks);
 
@@ -834,38 +839,35 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       if (examination) topUpdates.examination = examination;
 
     } else if (/(blood(\s*|-)chemistry|blood\s*chem)/i.test(test.testType)) {
-      const { fbs, rbs, firstHour, secondHour, cholesterol, tg, hdl, ldl, vldl, uricAcid, creatinine, bun, sgpt, sgot, sodium, potassium, chloride, hba1c, alb } = req.body;
-      function toNum(v){ if (v===undefined||v===null) return null; const s=String(v).trim(); if(s==='') return null; const n=parseFloat(s.replace(/[^0-9.+-eE]/g,'')); return isNaN(n)?null:n }
-      function flagNum(n,min,max){ if(n===null) return ''; if(typeof min==='number' && !isNaN(min) && n<min) return 'L'; if(typeof max==='number' && !isNaN(max) && n>max) return 'H'; return '' }
 
-      const sgptNum = toNum(sgpt);
-      const sgotNum = toNum(sgot);
+    } else if (/(ecg|electrocardio|electrocardiogram)/i.test(test.testType)) {
+      // ECG: paragraph findings + single reading physician
+      const paragraphsRaw = (req.body.paragraphs || '').toString();
+      const fontSize = (req.body.paragraphsFontSize || '').toString().trim();
+      const fontFamily = (req.body.paragraphsFontFamily || '').toString().trim();
+
+      let paragraphs = paragraphsRaw.trim();
+      const hasHtmlTagEcg = /<\/?[a-z][\s\S]*>/i.test(paragraphs);
+      if (!hasHtmlTagEcg && paragraphs.length) {
+        const paras = paragraphs.split(/\r?\n\r?\n/).map(p => p.trim()).filter(Boolean).map(p => '<p>' + p.replace(/\r?\n/g, '<br>') + '</p>');
+        paragraphs = paras.join('\n');
+      }
 
       resultsObj = {
-        fbs: (fbs || '').trim(),
-        rbs: (rbs || '').trim(),
-        firstHour: (firstHour || '').trim(),
-        secondHour: (secondHour || '').trim(),
-        cholesterol: (cholesterol || '').trim(),
-        tg: (tg || '').trim(),
-        hdl: (hdl || '').trim(),
-        ldl: (ldl || '').trim(),
-        vldl: (vldl || '').trim(),
-        uricAcid: (uricAcid || '').trim(),
-        creatinine: (creatinine || '').trim(),
-        bun: (bun || '').trim(),
-        sgpt: (sgpt || '').trim(),
-        sgpt_numeric: (sgptNum !== null ? sgptNum : undefined),
-        sgpt_flag: (req.body.sgpt_flag || flagNum(sgptNum, 0, 32)),
-        sgot: (sgot || '').trim(),
-        sgot_numeric: (sgotNum !== null ? sgotNum : undefined),
-        sgot_flag: (req.body.sgot_flag || flagNum(sgotNum, 0, 31)),
-        sodium: (sodium || '').trim(),
-        potassium: (potassium || '').trim(),
-        chloride: (chloride || '').trim(),
-        hba1c: (hba1c || '').trim(),
-        alb: (alb || '').trim()
+        paragraphs: paragraphs || ''
       };
+
+      if (fontSize) resultsObj.paragraphs_font_size = fontSize;
+      if (fontFamily) resultsObj.paragraphs_font_family = fontFamily;
+
+      // Reading physician
+      resultsObj.doctorName = (req.body.doctorName || '').trim();
+      resultsObj.doctorLicense = (req.body.doctorLicense || '').trim();
+      // Prefer custom designation if provided (doctorDesignationOther)
+      const doctorDesignationOther = (req.body.doctorDesignationOther || '').toString().trim();
+      resultsObj.doctorDesignation = doctorDesignationOther ? doctorDesignationOther : (req.body.doctorDesignation || '').trim();
+
+      // ECG results stored above (paragraphs + doctor info)
     } else if (/\b(?:pt|prothrombin|pt-aptt|ptaptt)\b/i.test(test.testType)) {
       const { pt_control, pt_patient, pt_activity, pt_inr, aptt_patient } = req.body;
       resultsObj = {
@@ -966,6 +968,7 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
       'blood-chemistry-albumin.ejs',
       'pt-aptt.ejs',
       'xray.ejs',
+      'ecg.ejs',
       'hematology.ejs',
       'serology.ejs',
       'ultrasound.ejs'
