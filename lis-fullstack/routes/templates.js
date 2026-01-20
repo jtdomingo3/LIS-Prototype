@@ -63,6 +63,7 @@ async function getStaticResultTemplates() {
       'blood-chemistry-lipid-profile.ejs',
       'blood-chemistry-electrolytes.ejs',
       'blood-chemistry-hba1c.ejs',
+      'blood-chemistry-albumin.ejs',
       'blood-chemistry-blood-sugar.ejs',
       'thyroid-panel.ejs',
       'pregnancy-test.ejs',

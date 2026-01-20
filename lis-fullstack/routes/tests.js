@@ -101,6 +101,7 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       'blood-chemistry-lipid-profile.ejs',
       'blood-chemistry-electrolytes.ejs',
       'blood-chemistry-hba1c.ejs',
+      'blood-chemistry-albumin.ejs',
       'blood-chemistry-blood-sugar.ejs',
       'pt-aptt.ejs',
       'xray.ejs',
@@ -265,6 +266,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       serology: /serol|serology/i.test(tt),
       thyroid: /thyroid|thyroid\s*panel|thyroid-panel/i.test(tt),
       hba1c: /(hba1c|hb\s*a1c|hb-a1c|hba\s*1c)/i.test(tt),
+      albumin: /(albumin|alb)/i.test(tt),
       pregnancy: /pregnan|pregnancy|pregnancy\s*test/i.test(tt),
       dengue: /dengue/i.test(tt),
       pt: /\b(?:pt|prothrombin|pt-aptt|ptaptt)\b/i.test(tt),
@@ -293,6 +295,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     if (/(hba1c|hb\s*a1c|hb-a1c|hba\s*1c)/i.test(test.testType)) view = 'tests/results_entry_blood_chemistry_hba1c';
     if (/(electrolyte|electrolytes|sodium|potassium|chloride)/i.test(test.testType)) view = 'tests/results_entry_blood_chemistry_electrolytes';
     if (/(blood sugar|blood-sugar|sugar|fbs|rbs|1st hour|2nd hour)/i.test(test.testType)) view = 'tests/results_entry_blood_chemistry_blood_sugar';
+    if (/(albumin|alb)/i.test(normalizedType)) view = 'tests/results_entry_blood_chemistry_albumin';
     if (/(fecal\s*occult|fecal-occult|fecaloccult)/i.test(test.testType)) view = 'tests/results_entry_fecal_occult_blood';
     if (/(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt)/i.test(test.testType)) view = 'tests/results_entry_ct_bt';
     if (/(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(test.testType)) view = 'tests/results_entry_esr';
@@ -305,7 +308,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     if (/dengue/i.test(test.testType)) view = 'tests/results_entry_dengue_duo';
     if (/\b(?:pt|prothrombin|pt-aptt|ptaptt)\b/i.test(test.testType)) view = 'tests/results_entry_pt_aptt';
     if (/(bun|creatinine|bun[\s\/-]?crea|bun\/?crea)/i.test(test.testType)) view = 'tests/results_entry_blood_chemistry_bun_crea';
-    if (/(blood\s*chemistry|blood-chemistry|blood\s*chem)/i.test(test.testType) && !/(lipid|lipid\s*profile|blood\s*chemistry\s*-?\s*lipid|blood\s*chemistry\s*lipid\s*profile|blood\s*chemistry\s*lipid|electrolyte|electrolytes|sodium|potassium|chloride|hba1c|hb\s*a1c|hb-a1c|blood sugar|blood-sugar|sugar|fbs|rbs|1st hour|2nd hour|bun|creatinine|bun[\s\/\-]?crea|bun\/?crea|sgpt|sgot)/i.test(test.testType)) view = 'tests/results_entry_blood_chemistry';
+    if (/(blood\s*chemistry|blood-chemistry|blood\s*chem)/i.test(normalizedType) && !/(lipid|lipid\s*profile|blood\s*chemistry\s*-?\s*lipid|blood\s*chemistry\s*lipid\s*profile|blood\s*chemistry\s*lipid|electrolyte|electrolytes|sodium|potassium|chloride|hba1c|hb\s*a1c|hb-a1c|blood sugar|blood-sugar|sugar|fbs|rbs|1st hour|2nd hour|bun|creatinine|bun[\s\/\-]?crea|bun\/?crea|sgpt|sgot|albumin|alb)/i.test(normalizedType)) view = 'tests/results_entry_blood_chemistry';
     console.log(`DEBUG GET /tests/${req.params.id}/results - selected view='${view}'`);
     res.render(view, {
       title: `Enter ${test.testType} Results`,
@@ -773,6 +776,24 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       // optional note
       resultsObj.note = (req.body.note || '').trim();
 
+    } else if (/(albumin|alb)/i.test(test.testType)) {
+      // Simple ALB entry: single analyte with optional reference
+      const albRaw = (req.body.alb || req.body.ALB || '').toString().trim();
+      function toNum(v){ if (v===undefined||v===null) return null; const s=String(v).trim(); if(s==='') return null; const n=parseFloat(s.replace(/[^0-9.+-eE]/g,'')); return isNaN(n)?null:n }
+      function parseRange(ref){ if(!ref) return null; const m=String(ref).match(/([0-9]+(?:\.[0-9]+)?)\s*[\-–—]\s*([0-9]+(?:\.[0-9]+)?)/); if(m) return {min:parseFloat(m[1]), max:parseFloat(m[2]), display:m[1]+'-'+m[2]}; const m2=String(ref).match(/([0-9]+(?:\.[0-9]+)?)/); if(m2) return {min:parseFloat(m2[1]), max:NaN, display:m2[1]}; return null }
+      function flagNum(n,min,max){ if(n===null) return ''; if(typeof min==='number' && !isNaN(min) && n<min) return 'L'; if(typeof max==='number' && !isNaN(max) && n>max) return 'H'; return '' }
+
+      const albNum = toNum(albRaw);
+      const albRefRaw = (req.body.alb_ref || req.body.albRef || req.body.reference || '').toString().trim();
+      const albRef = parseRange(albRefRaw) || {min:3.00, max:6.00, display:'3.00-6.00'};
+      resultsObj = {};
+      if (albRaw || albNum !== null) {
+        resultsObj.alb = albRaw || (albNum!==null?String(albNum):'');
+        resultsObj.alb_numeric = albNum;
+        resultsObj.alb_flag = (req.body.alb_flag || flagNum(albNum, albRef.min, albRef.max));
+        resultsObj.alb_ref = albRef.display || '';
+      }
+
     } else if (/(blood(\s*|-)chemistry|blood\s*chem)/i.test(test.testType)) {
       const { fbs, rbs, firstHour, secondHour, cholesterol, tg, hdl, ldl, vldl, uricAcid, creatinine, bun, sgpt, sgot, sodium, potassium, chloride, hba1c, alb } = req.body;
       function toNum(v){ if (v===undefined||v===null) return null; const s=String(v).trim(); if(s==='') return null; const n=parseFloat(s.replace(/[^0-9.+-eE]/g,'')); return isNaN(n)?null:n }
@@ -902,6 +923,7 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
       'blood-chemistry-bun-crea.ejs',
       'blood-chemistry-electrolytes.ejs',
       'blood-chemistry-hba1c.ejs',
+      'blood-chemistry-albumin.ejs',
       'pt-aptt.ejs',
       'xray.ejs',
       'hematology.ejs',

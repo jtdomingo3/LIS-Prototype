@@ -1,0 +1,150 @@
+<style>
+  @page { size: Letter; margin: 0.25in; }
+  body { margin:0; padding:0; box-sizing:border-box; }
+  .report-page{ position:relative; width:100%; max-width:calc(8.5in - 0.5in); margin:0 auto; padding:8px; font-family: 'Times New Roman', Times, serif; color:#000 }
+  .header{ display:flex; align-items:flex-start; gap:12px }
+  .logo{ width:72px; height:auto; margin-right:8px }
+  .lab-title{ text-align:center; flex:1; min-width:0 }
+  .lab-title h1{ margin:0; font-size:22px; color:#009957; letter-spacing:1px }
+  .lab-sub{ font-size:10px; margin-top:4px }
+  .patient-box{ margin-top:8px; width:100%; border-collapse:collapse; font-size:12px }
+  .patient-box td{ padding:4px 6px; border:1px solid #000; box-sizing:border-box }
+  .section-title{ text-align:center; margin:11px 0; font-size:16px; font-weight:bold }
+  .results-frame{ width:100%; border:2px solid #000; border-collapse:collapse; margin-top:6px; box-sizing:border-box }
+  .results-frame th, .results-frame td{ border:1px solid #000; padding:8px; vertical-align:middle }
+  .test-col{ width:55%; font-size:15px; font-weight:700; padding-left:12px }
+  .value-col{ width:20%; font-size:15px; font-weight:700; text-align:center }
+  .unit-col{ width:15%; text-align:center; font-size:13px }
+  .ref-col{ width:10%; text-align:center; font-size:13px }
+  .signatures{ display:flex; justify-content:space-between; margin-top:36px }
+  .sig{ text-align:center; width:32% }
+  .watermark{ position:absolute; left:50%; top:44%; transform:translate(-50%,-50%); width:52%; opacity:0.06; pointer-events:none; z-index:0 }
+  .report-container{ position:relative; z-index:1 }
+</style>
+
+<div class="report-page">
+  <div class="report-container">
+    <div class="header">
+      <div>
+        <img src="<%= inlineLogo || '/assets/gezyne-logo.png' %>" class="logo" alt="logo">
+      </div>
+      <div class="lab-title">
+        <h1>GEZYNE CLINICAL LABORATORY</h1>
+        <div class="lab-sub">0330 VERGEL DE DIOS ST POBLACION PLARIDEL</div>
+        <div class="lab-sub">0917-649-0807 / 0960-390-0921 / 795-5007</div>
+      </div>
+      <div style="min-width:180px; font-size:12px; text-align:right">
+        <table style="border-collapse:collapse; width:100%; font-size:12px">
+          <tr><td style="border:1px solid #000; padding:4px">Date:</td><td style="border:1px solid #000; padding:4px"><%= test && test.testDate ? (new Date(test.testDate)).toLocaleDateString() : new Date().toLocaleDateString() %></td></tr>
+          <tr><td style="border:1px solid #000; padding:4px">Time Requested:</td><td style="border:1px solid #000; padding:4px"><%= test && test.testDate ? (new Date(test.testDate)).toLocaleTimeString() : '' %></td></tr>
+          <tr><td style="border:1px solid #000; padding:4px">Time Released:</td><td style="border:1px solid #000; padding:4px"><%= test && test.completedAt ? (new Date(test.completedAt)).toLocaleTimeString() : '' %></td></tr>
+        </table>
+      </div>
+    </div>
+
+    <table class="patient-box">
+      <tr>
+        <td style="width:20%"><strong>Patient's Reference No. :</strong></td>
+        <td style="width:30%"><%= test && test.testId ? test.testId : '' %></td>
+        <td style="width:15%"><strong>DOB:</strong></td>
+        <td style="width:15%"><%= test && test.patient && test.patient.dateOfBirth ? (new Date(test.patient.dateOfBirth)).toLocaleDateString() : '' %></td>
+        <td style="width:10%"><strong>Sex:</strong></td>
+        <td style="width:10%"><%= test && test.patient && test.patient.sex ? test.patient.sex : '' %></td>
+      </tr>
+      <tr>
+        <td><strong>Name:</strong></td>
+        <td colspan="3"><%= test && test.patient ? (test.patient.lastName + ', ' + test.patient.firstName) : '' %></td>
+        <td><strong>Age:</strong></td>
+        <td><%= test && test.patient && test.patient.dateOfBirth ? Math.max(0, new Date().getFullYear() - new Date(test.patient.dateOfBirth).getFullYear()) : (test && test.patient && test.patient.ageManual ? test.patient.ageManual : '') %></td>
+      </tr>
+      <tr>
+        <td><strong>Physician:</strong></td>
+        <td colspan="5"><%= (test && test.patient && (test.patient.physician || test.patient.physicianName)) ? (test.patient.physician || test.patient.physicianName) : '' %></td>
+      </tr>
+    </table>
+
+    <div class="section-title">BLOOD CHEMISTRY - ALBUMIN</div>
+
+    <% function parseRange(refStr) {
+         if (!refStr) return {display: '', min: NaN, max: NaN};
+         var s = String(refStr).trim();
+         var m = s.match(/([0-9]+(?:\.[0-9]+)?)\s*[\-–—]\s*([0-9]+(?:\.[0-9]+)?)/);
+         if (m) return {display: (m[1] + '-' + m[2]), min: parseFloat(m[1]), max: parseFloat(m[2])};
+         var m2 = s.match(/([0-9]+(?:\.[0-9]+)?)/);
+         if (m2) return {display: m2[1], min: parseFloat(m2[1]), max: NaN};
+         return {display: s, min: NaN, max: NaN};
+       }
+
+       function flagValue(val, min, max) {
+         if (val === undefined || val === null || String(val).trim() === '') return '';
+         var n = parseFloat(String(val).replace(/[^0-9.+-eE]/g, ''));
+         if (isNaN(n)) return '';
+         if (typeof min === 'number' && !isNaN(min) && n < min) return 'L';
+         if (typeof max === 'number' && !isNaN(max) && n > max) return 'H';
+         return '';
+       }
+
+       function firstPresent(keys) {
+         for (var i=0;i<keys.length;i++){
+           var k = keys[i];
+           if (!k) continue;
+           if (test && test.results && (test.results[k] !== undefined && test.results[k] !== null && String(test.results[k]).trim() !== '')) return test.results[k];
+         }
+         return '';
+       }
+
+    %>
+
+    <table class="results-frame">
+      <tr>
+        <th style="text-align:left">TEST</th>
+        <th style="text-align:center">RESULT</th>
+        <th style="text-align:center">UNIT</th>
+        <th class="ref-header" style="text-align:center">REFERENCE VALUE</th>
+      </tr>
+
+      <% var albVal = firstPresent(['alb','ALB']);
+         var albNum = firstPresent(['alb_numeric']);
+         var albRefRaw = firstPresent(['alb_ref','reference','ref']);
+         var albRef = albRefRaw ? parseRange(albRefRaw) : {display:'3.00-6.00', min:3.00, max:6.00};
+         if (albVal || albNum) { %>
+      <tr>
+        <td class="test-col">ALB</td>
+        <td class="value-col"><%= albVal || albNum || '' %><% var albFlag = (test && test.results && test.results.alb_flag) ? test.results.alb_flag : flagValue((albNum||albVal), albRef.min, albRef.max); if (albFlag) { %> (<span style="color:#c00"><%= albFlag %></span>)<% } %></td>
+        <td class="unit-col">g/L</td>
+        <td class="ref-col"><%= albRef.display %></td>
+      </tr>
+      <% } %>
+
+    </table>
+
+    <div class="signatures">
+      <div class="sig">
+        <div style="border-top:1px solid #000; height:10px; margin-bottom:6px"></div>
+        <div style="font-weight:700"><strong><%= (test && test.results && test.results.performedByName) || (test && test.performedBy && test.performedBy.name) || '' %></strong></div>
+        <div style="font-size:11px"><% if (test && test.results && test.results.performedByLicense) { %><strong>Lic. No. <%= test.results.performedByLicense %></strong><% } %></div>
+        <div>Medical Technologist</div>
+      </div>
+
+      <div class="sig">
+        <div style="border-top:1px solid #000; height:10px; margin-bottom:6px"></div>
+        <div style="font-weight:700"><strong><%= (test && test.results && test.results.validatedByName) || '' %></strong></div>
+        <div style="font-size:11px"><% if (test && test.results && test.results.validatedByLicense) { %><strong>Lic. No. <%= test.results.validatedByLicense %></strong><% } %></div>
+        <div>Validated By</div>
+      </div>
+
+      <div class="sig">
+        <div style="border-top:1px solid #000; height:10px; margin-bottom:6px"></div>
+        <div style="font-weight:700"><strong><%= (test && test.results && test.results.requestedByName) || (test && test.requestedBy && test.requestedBy.name) || '' %></strong></div>
+        <div style="font-size:11px"><% if (test && test.results && test.results.requestedByLicense) { %><strong>Lic. No. <%= test.results.requestedByLicense %></strong><% } %></div>
+        <div>Pathologist</div>
+      </div>
+    </div>
+  </div>
+
+  <img class="watermark" src="<%= inlineLogo || '/assets/gezyne-logo.png' %>" alt="" />
+</div>
+
+<% if (typeof print !== 'undefined' && print) { %>
+  <script>setTimeout(function(){ window.print(); }, 300);</script>
+<% } %>
