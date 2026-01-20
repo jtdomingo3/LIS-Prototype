@@ -16,6 +16,7 @@
   .test-col{ width:40%; font-size:14px; font-weight:400; padding-left:12px; text-align:left }
   .results-frame th.test-col { text-align:center }
   .result-col{ width:60%; font-size:14px; text-align:center; text-transform:uppercase; font-weight:700 }
+  .result-col .ova { text-transform:none; font-style:italic; font-weight:400 }
   .section-label{ text-align:left; display:block }
   .label-right{ text-align:right; display:block }
   .note{ margin-top:8px; border:none; padding:0 4px }
@@ -25,6 +26,23 @@
   .watermark{ position:absolute; left:50%; top:44%; transform:translate(-50%,-50%); width:52%; opacity:0.06; pointer-events:none; z-index:0 }
   .report-container{ position:relative; z-index:1 }
 </style>
+
+<%
+  function formatScientificName(s) {
+    if (!s) return '';
+    try {
+      var raw = String(s).trim();
+      if (!raw) return '';
+      var lower = raw.toLowerCase();
+      var parts = lower.split(/\s+/);
+      // Capitalize genus (first word), leave others lowercase
+      parts[0] = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+      return parts.join(' ');
+    } catch (e) {
+      return s;
+    }
+  }
+%>
 
 <div class="report-page">
   <div class="report-container">
@@ -100,7 +118,7 @@
         <td class="result-col">
           <div style="margin-top:8px"><%= test && test.results && test.results.pusCell ? test.results.pusCell : '' %></div>
           <div style="margin-top:6px"><%= test && test.results && test.results.rbc ? test.results.rbc : '' %></div>
-          <div style="margin-top:6px"><%= test && test.results && test.results.parasites ? test.results.parasites : '' %></div>
+          <div style="margin-top:6px"><em class="ova"><%= formatScientificName(test && test.results && test.results.parasites ? test.results.parasites : '') %></em></div>
           <div style="margin-top:6px"><%= test && test.results && test.results.others ? test.results.others : '' %></div>
         </td>
       </tr>

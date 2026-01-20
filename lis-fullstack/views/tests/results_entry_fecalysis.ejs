@@ -15,17 +15,17 @@
     </div>
 
     <div class="form-row">
-      <label>Pus Cell</label>
+      <label>White Blood Cell</label>
       <div style="display:flex;gap:8px;align-items:center;"><input type="text" name="pusCell" value="<%= test.results && test.results.pusCell ? test.results.pusCell : '' %>"><span>hpf</span></div>
     </div>
 
     <div class="form-row">
-      <label>RBC</label>
+      <label>Red Blood Cell</label>
       <div style="display:flex;gap:8px;align-items:center;"><input type="text" name="rbc" value="<%= test.results && test.results.rbc ? test.results.rbc : '' %>"><span>hpf</span></div>
     </div>
 
     <div class="form-row">
-      <label>Parasites</label>
+      <label>Ova &amp; Parasite</label>
       <div style="display:flex;gap:8px;align-items:center;"><input type="text" name="parasites" value="<%= test.results && test.results.parasites ? test.results.parasites : '' %>"><span>hpf</span></div>
     </div>
 
@@ -34,14 +34,11 @@
       <input type="text" name="others" value="<%= test.results && test.results.others ? test.results.others : '' %>">
     </div>
 
-    <div class="form-row">
-      <label>COCCI</label>
-      <input type="text" name="cocci" value="<%= test.results && test.results.cocci ? test.results.cocci : '' %>">
-    </div>
+    
 
     <div class="form-row">
-      <label>BACILLI</label>
-      <input type="text" name="bacilli" value="<%= test.results && test.results.bacilli ? test.results.bacilli : '' %>">
+      <label>Note</label>
+      <textarea name="note" rows="3"><%= test.results && test.results.note ? test.results.note : '' %></textarea>
     </div>
 
     <hr>
@@ -53,6 +50,15 @@
     <div class="form-row">
       <label>Medical Technologist License</label>
       <input type="text" name="mtLicense" value="<%= test.results && test.results.performedByLicense ? test.results.performedByLicense : '' %>">
+    </div>
+
+    <div class="form-row">
+      <label>Validator (Name)</label>
+      <input type="text" name="validatedByName" value="<%= test.results && test.results.validatedByName ? test.results.validatedByName : '' %>">
+    </div>
+    <div class="form-row">
+      <label>Validator License</label>
+      <input type="text" name="validatedByLicense" value="<%= test.results && test.results.validatedByLicense ? test.results.validatedByLicense : '' %>">
     </div>
 
     <div class="form-row">
