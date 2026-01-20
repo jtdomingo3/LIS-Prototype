@@ -21,17 +21,17 @@
 
     <div class="form-row">
       <label>TSH (mIU/L)</label>
-      <input type="text" name="tsh" value="<%= test.results && test.results.tsh ? test.results.tsh : '' %>" required>
+      <input type="text" name="tsh" value="<%= test.results && test.results.tsh ? test.results.tsh : '' %>">
     </div>
 
     <div class="form-row">
       <label>FT4 (pmol/L)</label>
-      <input type="text" name="ft4" value="<%= test.results && test.results.ft4 ? test.results.ft4 : '' %>" required>
+      <input type="text" name="ft4" value="<%= test.results && test.results.ft4 ? test.results.ft4 : '' %>">
     </div>
 
     <div class="form-row">
       <label>FT3 (pmol/L)</label>
-      <input type="text" name="ft3" value="<%= test.results && test.results.ft3 ? test.results.ft3 : '' %>" required>
+      <input type="text" name="ft3" value="<%= test.results && test.results.ft3 ? test.results.ft3 : '' %>">
     </div>
 
     <hr>
@@ -70,4 +70,19 @@
       <button class="button btn-primary">Save Results</button>
     </div>
   </form>
+  <script>
+    (function(){
+      var form = document.querySelector('form[action="/tests/<%= test.id %>/results"]');
+      if(!form) return;
+      form.addEventListener('submit', function(e){
+        var tsh = (form.querySelector('[name="tsh"]')||{}).value || '';
+        var ft4 = (form.querySelector('[name="ft4"]')||{}).value || '';
+        var ft3 = (form.querySelector('[name="ft3"]')||{}).value || '';
+        if(!tsh.trim() && !ft4.trim() && !ft3.trim()){
+          e.preventDefault();
+          alert('Please enter at least one thyroid test result (TSH, FT4 or FT3).');
+        }
+      });
+    })();
+  </script>
 </div>

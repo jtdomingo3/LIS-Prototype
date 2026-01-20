@@ -15,7 +15,7 @@
   .results-frame td{ padding:8px; vertical-align:middle; border-bottom:1px solid #000; border-left:1px solid #000 }
   .results-frame th{ padding:8px; text-align:left; border-bottom:2px solid #000; border-left:1px solid #000; font-weight:700 }
   .results-frame .center{ text-align:center }
-  .signatures{ display:flex; justify-content:space-between; margin-top:24px }
+  .signatures{ display:flex; justify-content:space-between; margin-top:48px }
   .sig{ text-align:center; width:32% }
   .watermark{ position:absolute; left:50%; top:44%; transform:translate(-50%,-50%); width:52%; opacity:0.06; pointer-events:none; z-index:0 }
   .report-container{ position:relative; z-index:1 }
@@ -62,34 +62,56 @@
       </tr>
     </table>
 
-    <div class="section-title">THYROID PANEL</div>
+    <% 
+      function toNum(v){ if(v===undefined||v===null) return NaN; const s=String(v).replace(/[^0-9.+\-eE]/g,'').trim(); const n=parseFloat(s); return isNaN(n)?NaN:n }
+      function flagNum(n,min,max){ if(isNaN(n)) return ''; if(typeof min==='number' && n<min) return 'L'; if(typeof max==='number' && n>max) return 'H'; return '' }
+      const tshVal = test && test.results && test.results.tsh ? test.results.tsh : '';
+      const ft4Val = test && test.results && test.results.ft4 ? test.results.ft4 : '';
+      const ft3Val = test && test.results && test.results.ft3 ? test.results.ft3 : '';
+      const tshN = toNum(tshVal);
+      const ft4N = toNum(ft4Val);
+      const ft3N = toNum(ft3Val);
+      const tshFlag = flagNum(tshN, 0.30, 4.20);
+      const ft4Flag = flagNum(ft4N, 12.0, 22.0);
+      const ft3Flag = flagNum(ft3N, 2.80, 7.10);
+      const hasThyroid = tshVal || ft4Val || ft3Val;
+    %>
+    <% if (hasThyroid) { %>
+      <div class="section-title">THYROID PANEL</div>
 
-    <table class="results-frame">
-      <tr>
-        <th style="width:35%">TEST</th>
-        <th style="width:25%">RESULT</th>
-        <th style="width:20%">UNIT</th>
-        <th style="width:20%">REFERENCE</th>
-      </tr>
-      <tr>
-        <td>TSH</td>
-        <td class="center" style="font-weight:700"><%= test && test.results && test.results.tsh ? test.results.tsh : '' %></td>
-        <td class="center">mIU/L</td>
-        <td class="center">0.30 - 4.20</td>
-      </tr>
-      <tr>
-        <td>FT4</td>
-        <td class="center" style="font-weight:700"><%= test && test.results && test.results.ft4 ? test.results.ft4 : '' %></td>
-        <td class="center">pmol/L</td>
-        <td class="center">12.0 - 22.0</td>
-      </tr>
-      <tr>
-        <td>FT3</td>
-        <td class="center" style="font-weight:700"><%= test && test.results && test.results.ft3 ? test.results.ft3 : '' %></td>
-        <td class="center">pmol/L</td>
-        <td class="center">2.80 - 7.10</td>
-      </tr>
-    </table>
+      <table class="results-frame">
+        <tr>
+          <th style="width:35%">TEST</th>
+          <th style="width:25%">RESULT</th>
+          <th style="width:20%">UNIT</th>
+          <th style="width:20%">REFERENCE</th>
+        </tr>
+        <% if (tshVal) { %>
+        <tr>
+          <td>TSH</td>
+          <td class="center" style="font-weight:700"><%= tshVal %> <% if (tshFlag) { %><span style="color:#c00; font-weight:700">(<%= tshFlag %>)</span><% } %></td>
+          <td class="center">mIU/L</td>
+          <td class="center">0.30 - 4.20</td>
+        </tr>
+        <% } %>
+        <% if (ft4Val) { %>
+        <tr>
+          <td>FT4</td>
+          <td class="center" style="font-weight:700"><%= ft4Val %> <% if (ft4Flag) { %><span style="color:#c00; font-weight:700">(<%= ft4Flag %>)</span><% } %></td>
+          <td class="center">pmol/L</td>
+          <td class="center">12.0 - 22.0</td>
+        </tr>
+        <% } %>
+        <% if (ft3Val) { %>
+        <tr>
+          <td>FT3</td>
+          <td class="center" style="font-weight:700"><%= ft3Val %> <% if (ft3Flag) { %><span style="color:#c00; font-weight:700">(<%= ft3Flag %>)</span><% } %></td>
+          <td class="center">pmol/L</td>
+          <td class="center">2.80 - 7.10</td>
+        </tr>
+        <% } %>
+      </table>
+    <% } %>
 
     <div class="signatures">
       <div class="sig">
