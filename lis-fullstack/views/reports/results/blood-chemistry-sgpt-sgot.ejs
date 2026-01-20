@@ -16,6 +16,7 @@
   .result-value{ text-align:center; font-weight:700; color:#000 }
   .flag{ color:#d00; margin-left:6px; font-weight:700 }
   .note-value { color: #d00; font-weight:normal }
+  .watermark{ position:absolute; left:50%; top:44%; transform:translate(-50%,-50%); width:52%; opacity:0.06; pointer-events:none; z-index:0 }
   .signatures{ display:flex; justify-content:space-between; margin-top:24px }
   .sig{ text-align:center; width:32% }
 </style>
@@ -111,6 +112,8 @@
       <div>Pathologist</div>
     </div>
   </div>
+  
+  <img class="watermark" src="<%= inlineLogo || '/assets/gezyne-logo.png' %>" alt="" />
 </div>
 
 <% if (typeof print !== 'undefined' && print) { %>
