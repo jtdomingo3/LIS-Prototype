@@ -15,9 +15,9 @@
   .results-frame td, .results-frame th { padding:12px; vertical-align:middle; border:1px solid #000 }
   .results-frame th{ text-align:left; font-weight:700 }
   .center{ text-align:center }
-  .sig{ text-align:center; width:32%; margin:0 auto }
-  /* move ECG watermark higher and slightly smaller than other reports */
-  .watermark{ position:absolute; left:50%; top:20%; transform:translate(-50%,-50%); width:40%; opacity:0.06; pointer-events:none; z-index:0 }
+  .signatures{ display:flex; justify-content:space-between; margin-top:48px }
+  .sig{ text-align:center; width:32% }
+  .watermark{ position:absolute; left:50%; top:44%; transform:translate(-50%,-50%); width:52%; opacity:0.06; pointer-events:none; z-index:0 }
   .report-container{ position:relative; z-index:1 }
   .normal-small{ font-size:11px; color:#333 }
 </style>
@@ -82,6 +82,8 @@
       %>
       <%- htmlOut %>
     </div>
+
+    <div class="signatures">
 
       <div class="sig">
         <div style="border-top:1px solid #000; height:0; margin-bottom:8px"></div>
