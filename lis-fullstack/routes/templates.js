@@ -74,6 +74,7 @@ async function getStaticResultTemplates() {
       'serology.ejs',
       'ultrasound-abd-kubp-hbt.ejs'
       , 'ultrasound-transvaginal.ejs'
+      , 'ultrasound-1st-trimester-obstetrics.ejs'
     ];
     const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
     return files.map(f => {
@@ -115,6 +116,17 @@ async function getStaticResultTemplates() {
           id: `static:${f}`,
           name: 'Ultrasound - Transvaginal',
           testType: 'ultrasound-transvaginal',
+          fields: [],
+          createdAt: null,
+          isStatic: true,
+          filename: f
+        };
+      }
+      if (f === 'ultrasound-1st-trimester-obstetrics.ejs') {
+        return {
+          id: `static:${f}`,
+          name: 'Ultrasound - 1st Trimester Obstetrics',
+          testType: 'ultrasound-1st-trimester-obstetrics',
           fields: [],
           createdAt: null,
           isStatic: true,

@@ -109,7 +109,8 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       'hematology.ejs',
       'serology.ejs',
       'ultrasound-abd-kubp-hbt.ejs',
-      'ultrasound-transvaginal.ejs'
+      'ultrasound-transvaginal.ejs',
+      'ultrasound-1st-trimester-obstetrics.ejs'
     ];
     const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
     const staticTemplates = files.map(f => {
@@ -129,6 +130,13 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       return { name: name.charAt(0).toUpperCase() + name.slice(1), testType: f.replace('.ejs','') };
     });
     templates = templates.concat(staticTemplates);
+    // Ensure 1st trimester (twin) static template is available in selection
+    try {
+      const exists = templates.some(t => (t.testType || '').toLowerCase() === 'ultrasound-1st-trimester-obstetrics');
+      if (!exists) {
+        templates.push({ name: 'Ultrasound - 1st Trimester Obstetrics', testType: 'ultrasound-1st-trimester-obstetrics' });
+      }
+    } catch (e) {}
   } catch (e) {
     // ignore static templates on error
   }
@@ -281,6 +289,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       blood_chem: /(blood\s*chemistry|blood-chemistry|blood\s*chem)/i.test(tt),
       ultrasound_abd: /(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(tt),
       ultrasound_transvaginal: /(ultrasound[-\s]?transvaginal|transvaginal)/i.test(tt),
+      ultrasound_1st_trimester: /(1st\s*trimester|first\s*trimester|1st[-\s]?trimester|trimester\s*obstetrics|ultrasound[-\s]?.*1st)/i.test(tt),
       esr: /(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(tt)
       ,
       ct_bt: /(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt)/i.test(tt)
@@ -326,6 +335,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     if (/(bun|creatinine|bun[\s\/-]?crea|bun\/?crea)/i.test(test.testType)) view = 'tests/results_entry_blood_chemistry_bun_crea';
     if (/(blood\s*chemistry|blood-chemistry|blood\s*chem)/i.test(normalizedType) && !/(lipid|lipid\s*profile|blood\s*chemistry\s*-?\s*lipid|blood\s*chemistry\s*lipid\s*profile|blood\s*chemistry\s*lipid|electrolyte|electrolytes|sodium|potassium|chloride|hba1c|hb\s*a1c|hb-a1c|blood sugar|blood-sugar|sugar|fbs|rbs|1st hour|2nd hour|bun|creatinine|bun[\s\/\-]?crea|bun\/?crea|sgpt|sgot|albumin|alb)/i.test(normalizedType)) view = 'tests/results_entry_blood_chemistry';
     if (/(ultrasound[-\s]?transvaginal|transvaginal)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_transvaginal';
+    if (/(1st\s*trimester|first\s*trimester|1st[-\s]?trimester|trimester\s*obstetrics)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_1st_trimester_obstetrics';
     if (/(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_abd_kubp_hbt';
     console.log(`DEBUG GET /tests/${req.params.id}/results - selected view='${view}'`);
     res.render(view, {
@@ -369,7 +379,8 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
         electrolytes: /(electrolyte|electrolytes|sodium|potassium|chloride)/i.test(tt),
         blood_sugar: /(blood sugar|blood-sugar|sugar|fbs|rbs|1st hour|2nd hour)/i.test(tt),
         ultrasound_abd: /(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(tt),
-        ultrasound_transvaginal: /(ultrasound[-\s]?transvaginal|transvaginal)/i.test(tt),
+          ultrasound_transvaginal: /(ultrasound[-\s]?transvaginal|transvaginal)/i.test(tt),
+          ultrasound_1st_trimester: /(1st\s*trimester|first\s*trimester|1st[-\s]?trimester|trimester\s*obstetrics|ultrasound[-\s]?.*1st)/i.test(tt),
       esr: /(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(tt),
       ct_bt: /(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt)/i.test(tt)
       ,
@@ -960,6 +971,157 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
         doctorLicense: doctorLicense,
         doctorDesignation: doctorDesignation
       };
+    } else if (/(1st\s*trimester|first\s*trimester|1st[-\s]?trimester|trimester\s*obstetrics)/i.test(test.testType)) {
+      // 1st Trimester Obstetrics - unified single/twin parsing
+      const isTwinRaw = req.body.isTwin;
+      const isTwin = (isTwinRaw === 'on' || isTwinRaw === 'true' || isTwinRaw === true || String(isTwinRaw).toLowerCase() === 'on');
+
+      function parseCommentArray(signsRaw, textsRaw, fallbackKey1, fallbackKey2) {
+        let entries = [];
+        if (Array.isArray(signsRaw) || Array.isArray(textsRaw)) {
+          const signs = Array.isArray(signsRaw) ? signsRaw : (signsRaw ? [signsRaw] : []);
+          const texts = Array.isArray(textsRaw) ? textsRaw : (textsRaw ? [textsRaw] : []);
+          const max = Math.max(signs.length, texts.length);
+          for (let i = 0; i < max; i++) {
+            const s = signs[i] !== undefined ? String(signs[i]).trim() : '-';
+            const t = texts[i] !== undefined ? String(texts[i]).trim() : '';
+            if (t || s) entries.push({ sign: (s === '+' ? '+' : '-'), text: t });
+          }
+        } else if (req.body[fallbackKey1] || req.body[fallbackKey2]) {
+          if (req.body[fallbackKey1]) entries.push({ sign: '-', text: String(req.body[fallbackKey1]).trim() });
+          if (req.body[fallbackKey2]) entries.push({ sign: '-', text: String(req.body[fallbackKey2]).trim() });
+        }
+        return entries;
+      }
+
+      if (isTwin) {
+        const gA_len = (req.body.gestational_sac_length_A || req.body.gestational_sac_length || '').toString().trim();
+        const gA_age = (req.body.gestational_sac_age_A || req.body.gestational_sac_age || '').toString().trim();
+        const crlA_len = (req.body.crl_length_A || req.body.crl_length || '').toString().trim();
+        const crlA_age = (req.body.crl_age_A || req.body.crl_age || '').toString().trim();
+
+        const gB_len = (req.body.gestational_sac_length_B || '').toString().trim();
+        const gB_age = (req.body.gestational_sac_age_B || '').toString().trim();
+        const crlB_len = (req.body.crl_length_B || '').toString().trim();
+        const crlB_age = (req.body.crl_age_B || '').toString().trim();
+
+        const commentEntriesA = parseCommentArray(req.body['comment_sign_A[]'] || req.body.comment_sign_A, req.body['comment_text_A[]'] || req.body.comment_text_A, 'comment_yolk', 'yolkSac');
+        const commentEntriesB = parseCommentArray(req.body['comment_sign_B[]'] || req.body.comment_sign_B, req.body['comment_text_B[]'] || req.body.comment_text_B, 'comment_hemorrhage', 'hemorrhage');
+
+        // combined fallback for older forms
+        let combinedComments = [];
+        if (Array.isArray(req.body['comment_sign[]']) || Array.isArray(req.body['comment_text[]'])) {
+          const signs = Array.isArray(req.body['comment_sign[]']) ? req.body['comment_sign[]'] : (req.body['comment_sign[]'] ? [req.body['comment_sign[]']] : []);
+          const texts = Array.isArray(req.body['comment_text[]']) ? req.body['comment_text[]'] : (req.body['comment_text[]'] ? [req.body['comment_text[]']] : []);
+          const max = Math.max(signs.length, texts.length);
+          for (let i = 0; i < max; i++) {
+            const s = signs[i] !== undefined ? String(signs[i]).trim() : '-';
+            const t = texts[i] !== undefined ? String(texts[i]).trim() : '';
+            if (t || s) combinedComments.push({ sign: (s === '+' ? '+' : '-'), text: t });
+          }
+        }
+
+        const avgA = (req.body.average_ultrasound_age_A || req.body.average_ultrasound_age || '').toString().trim();
+        const fhrA = (req.body.fetal_heart_rate_A || req.body.fetal_heart_rate || '').toString().trim();
+        const avgB = (req.body.average_ultrasound_age_B || '').toString().trim();
+        const fhrB = (req.body.fetal_heart_rate_B || '').toString().trim();
+
+        const expected_date_of_delivery_raw = (req.body.expected_date_of_delivery || req.body.expectedDateOfDelivery || '').toString().trim();
+        let expected_date_of_delivery = '';
+        if (expected_date_of_delivery_raw) {
+          const d = new Date(expected_date_of_delivery_raw);
+          if (!isNaN(d.getTime())) expected_date_of_delivery = d.toISOString(); else expected_date_of_delivery = expected_date_of_delivery_raw;
+        }
+
+        const other = (req.body.other || '').toString().trim();
+        const impression = (req.body.impression || '').toString().trim();
+        const doctorName = (req.body.pathName || req.body.doctorName || '').toString().trim();
+        const doctorLicense = (req.body.pathLicense || req.body.doctorLicense || '').toString().trim();
+        const doctorDesignation = (req.body.doctorDesignation || req.body.doctorDesignation || '').toString().trim();
+
+        resultsObj = {
+          isTwin: true,
+          gestational_sac_length_A: gA_len,
+          gestational_sac_age_A: gA_age,
+          crl_length_A: crlA_len,
+          crl_age_A: crlA_age,
+          gestational_sac_length_B: gB_len,
+          gestational_sac_age_B: gB_age,
+          crl_length_B: crlB_len,
+          crl_age_B: crlB_age,
+          comment_entries_A: commentEntriesA,
+          comment_entries_B: commentEntriesB,
+          // keep legacy combined comments if present
+          comment_entries: (commentEntriesA && commentEntriesA.length) || (commentEntriesB && commentEntriesB.length) ? (commentEntriesA.concat(commentEntriesB)) : (combinedComments.length ? combinedComments : []),
+          average_ultrasound_age_A: avgA,
+          fetal_heart_rate_A: fhrA,
+          average_ultrasound_age_B: avgB,
+          fetal_heart_rate_B: fhrB,
+          expected_date_of_delivery: expected_date_of_delivery,
+          other: other,
+          impression: impression,
+          doctorName: doctorName,
+          doctorLicense: doctorLicense,
+          doctorDesignation: doctorDesignation
+        };
+      } else {
+        // single fetus parsing (back-compat and new single form)
+        const g_len = (req.body.gestational_sac_length || req.body.gestationalSacLength || '').toString().trim();
+        const g_age = (req.body.gestational_sac_age || req.body.gestationalSacAge || '').toString().trim();
+        const crl_len = (req.body.crl_length || req.body.crlLength || '').toString().trim();
+        const crl_age = (req.body.crl_age || req.body.crlAge || '').toString().trim();
+
+        const commentSigns = req.body['comment_sign[]'] || req.body.comment_sign || req.body.comment_signs || req.body.comment_sign;
+        const commentTexts = req.body['comment_text[]'] || req.body.comment_text || req.body.comment_texts || req.body.comment_text;
+        let commentEntries = [];
+        if (Array.isArray(commentSigns) || Array.isArray(commentTexts)) {
+          const signs = Array.isArray(commentSigns) ? commentSigns : (commentSigns ? [commentSigns] : []);
+          const texts = Array.isArray(commentTexts) ? commentTexts : (commentTexts ? [commentTexts] : []);
+          const max = Math.max(signs.length, texts.length);
+          for (let i = 0; i < max; i++) {
+            const s = signs[i] !== undefined ? String(signs[i]).trim() : '-';
+            const t = texts[i] !== undefined ? String(texts[i]).trim() : '';
+            if (t || s) commentEntries.push({ sign: (s === '+' ? '+' : '-'), text: t });
+          }
+        } else if (req.body.comment_yolk || req.body.yolkSac || req.body.comment_hemorrhage || req.body.hemorrhage) {
+          if (req.body.comment_yolk || req.body.yolkSac) commentEntries.push({ sign: '-', text: (req.body.comment_yolk || req.body.yolkSac).toString().trim() });
+          if (req.body.comment_hemorrhage || req.body.hemorrhage) commentEntries.push({ sign: '-', text: (req.body.comment_hemorrhage || req.body.hemorrhage).toString().trim() });
+        }
+
+        const average_ultrasound_age = (req.body.average_ultrasound_age || req.body.averageUltrasoundAge || '').toString().trim();
+        const fetal_heart_rate = (req.body.fetal_heart_rate || req.body.fetalHeartRate || '').toString().trim();
+        const expected_date_of_delivery_raw = (req.body.expected_date_of_delivery || req.body.expectedDateOfDelivery || '').toString().trim();
+        let expected_date_of_delivery = '';
+        if (expected_date_of_delivery_raw) {
+          const d = new Date(expected_date_of_delivery_raw);
+          if (!isNaN(d.getTime())) expected_date_of_delivery = d.toISOString(); else expected_date_of_delivery = expected_date_of_delivery_raw;
+        }
+        const other = (req.body.other || '').toString().trim();
+        const impression = (req.body.impression || '').toString().trim();
+        const doctorName = (req.body.pathName || req.body.doctorName || '').toString().trim();
+        const doctorLicense = (req.body.pathLicense || req.body.doctorLicense || '').toString().trim();
+        const doctorDesignation = (req.body.doctorDesignation || req.body.doctorDesignation || '').toString().trim();
+
+        resultsObj = {
+          isTwin: false,
+          gestational_sac_length: g_len,
+          gestational_sac_age: g_age,
+          crl_length: crl_len,
+          crl_age: crl_age,
+          comment_entries: commentEntries,
+          // back-compat
+          comment_yolk: (commentEntries && commentEntries[0] ? (commentEntries[0].text || '') : ''),
+          comment_hemorrhage: (commentEntries && commentEntries[1] ? (commentEntries[1].text || '') : ''),
+          average_ultrasound_age: average_ultrasound_age,
+          fetal_heart_rate: fetal_heart_rate,
+          expected_date_of_delivery: expected_date_of_delivery,
+          other: other,
+          impression: impression,
+          doctorName: doctorName,
+          doctorLicense: doctorLicense,
+          doctorDesignation: doctorDesignation
+        };
+      }
     } else if (/(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(test.testType)) {
       // Ultrasound ABD / KUBP / HBT variant: accept examination select, findings paragraphs, and impression
       const examination = (req.body.examination || '').toString().trim();
@@ -1063,6 +1225,8 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
       'hematology.ejs',
       'serology.ejs',
       'ultrasound-abd-kubp-hbt.ejs'
+      , 'ultrasound-transvaginal.ejs'
+      , 'ultrasound-1st-trimester-obstetrics.ejs'
     ];
     const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
     const staticTemplates = files.map(f => {
@@ -1076,6 +1240,12 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
       return { name: name.charAt(0).toUpperCase() + name.slice(1), testType: name };
     });
     templates = templates.concat(staticTemplates);
+    try {
+      const exists2 = templates.some(t => (t.testType || '').toLowerCase() === 'ultrasound-1st-trimester-obstetrics');
+      if (!exists2) {
+        templates.push({ name: 'Ultrasound - 1st Trimester Obstetrics', testType: 'ultrasound-1st-trimester-obstetrics' });
+      }
+    } catch (e) {}
   } catch (e) {
     // ignore
   }
