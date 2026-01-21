@@ -1132,6 +1132,7 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       const doctorDesignation = (req.body.doctorDesignation || '').toString().trim();
       resultsObj = {
         examination: examination,
+        section_title: (req.body.section_title || req.body.sectionTitle || '').toString().trim() || 'ULTRASOUND RESULT',
         paragraphs: paragraphs,
         impression: impression,
         doctorName: doctorName,

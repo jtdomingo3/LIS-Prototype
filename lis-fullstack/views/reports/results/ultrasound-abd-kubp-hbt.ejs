@@ -68,7 +68,7 @@
       </tr>
     </table>
 
-    <div class="section-title">ULTRASOUND RESULT</div>
+    <div class="section-title"><%= test && test.results && test.results.section_title ? test.results.section_title : 'ULTRASOUND RESULT' %></div>
 
     <div class="results-frame" style="border:none; padding:12px; line-height:1.4; padding-left:5.5em; padding-right:3.5em;font-size:<%= (test && test.results && test.results.paragraphs_font_size) ? test.results.paragraphs_font_size : '16px' %>; font-family:<%= (test && test.results && test.results.paragraphs_font_family) ? ('"' + test.results.paragraphs_font_family + '"') : "'Times New Roman'" %>">
       <% 

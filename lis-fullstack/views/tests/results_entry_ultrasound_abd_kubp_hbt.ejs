@@ -20,13 +20,50 @@
     </div>
 
     <div class="form-row">
+      <label>Section Title</label>
+      <input type="text" name="section_title" placeholder="Section title" value="<%= test && test.results && test.results.section_title ? test.results.section_title : 'ULTRASOUND RESULT' %>">
+    </div>
+
+    <div class="form-row">
       <label>Examination</label>
-      <select name="examination">
+      <select name="examination_select" onchange="updateExaminationField(this)">
+        <option value="">-- select --</option>
         <option value="WAB-P UTZ" <%= test && test.results && test.results.examination==='WAB-P UTZ' ? 'selected' : '' %>>WAB-P UTZ</option>
         <option value="KUBP-UTZ" <%= test && test.results && test.results.examination==='KUBP-UTZ' ? 'selected' : '' %>>KUBP-UTZ</option>
         <option value="HBT UTZ" <%= test && test.results && test.results.examination==='HBT UTZ' ? 'selected' : '' %>>HBT UTZ</option>
+        <option value="Other" <%= test && test.results && test.results.examination && ['WAB-P UTZ','KUBP-UTZ','HBT UTZ'].indexOf(test.results.examination)===-1 && test.results.examination ? 'selected' : '' %>>Other (type...)</option>
       </select>
+      <input type="text" name="examination_custom" id="examination_custom" placeholder="Type examination" style="display:none; margin-left:8px;" value="<%= (test && test.results && test.results.examination && ['WAB-P UTZ','KUBP-UTZ','HBT UTZ'].indexOf(test.results.examination)===-1) ? test.results.examination : '' %>">
+      <input type="hidden" name="examination" id="examination_hidden" value="<%= test && test.results && test.results.examination ? test.results.examination : '' %>">
     </div>
+
+    <script>
+      function updateExaminationField() {
+        var sel = document.querySelector('[name="examination_select"]');
+        var custom = document.getElementById('examination_custom');
+        var hidden = document.getElementById('examination_hidden');
+        if (!sel || !hidden || !custom) return;
+        if (sel.value === 'Other') {
+          custom.style.display = 'inline-block';
+          hidden.value = custom.value || '';
+        } else {
+          custom.style.display = 'none';
+          hidden.value = sel.value || '';
+        }
+      }
+      document.addEventListener('DOMContentLoaded', function(){
+        updateExaminationField();
+        var sel = document.querySelector('[name="examination_select"]');
+        var custom = document.getElementById('examination_custom');
+        if (sel) sel.addEventListener('change', updateExaminationField);
+        if (custom) custom.addEventListener('input', function(){
+          var hidden = document.getElementById('examination_hidden'); if (hidden) hidden.value = custom.value;
+        });
+        // ensure hidden is synced on submit
+        var form = document.querySelector('form[action][method]');
+        if (form) form.addEventListener('submit', function(){ updateExaminationField(); });
+      });
+    </script>
 
     <div style="margin-top:8px">
       <label>Findings / Examination (paragraphs)</label>
