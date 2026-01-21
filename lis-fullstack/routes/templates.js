@@ -72,7 +72,7 @@ async function getStaticResultTemplates() {
       'ecg.ejs',
       'hematology.ejs',
       'serology.ejs',
-      'ultrasound.ejs'
+      'ultrasound-abd-kubp-hbt.ejs'
     ];
     const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
     return files.map(f => {
@@ -92,6 +92,17 @@ async function getStaticResultTemplates() {
           id: `static:${f}`,
           name: 'Blood Chemistry - SGPT/SGOT',
           testType: 'Blood Chemistry - SGPT/SGOT',
+          fields: [],
+          createdAt: null,
+          isStatic: true,
+          filename: f
+        };
+      }
+      if (f === 'ultrasound-abd-kubp-hbt.ejs') {
+        return {
+          id: `static:${f}`,
+          name: 'Ultrasound - ABD / KUBP / HBT',
+          testType: 'ultrasound-abd-kubp-hbt',
           fields: [],
           createdAt: null,
           isStatic: true,

@@ -223,8 +223,8 @@ function getResultTemplate(test) {
   } else if (type.includes('serol') || type.includes('serology')) {
     template = 'serology';
     image = 'd7c357bf-74a2-42dc-b3d1-2a573a30784d.jpg';
-  } else if (type.includes('ultra') || type.includes('ultrasound')) {
-    template = 'ultrasound';
+  } else if (type.includes('ultrasound-abd-kubp-hbt') || type.includes('ultrasound abd kubp hbt')) {
+    template = 'ultrasound-abd-kubp-hbt';
     image = '8bb335a9-e0fb-4909-acdc-e2a070851a13.jpg';
   }
 

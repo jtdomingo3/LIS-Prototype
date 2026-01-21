@@ -108,7 +108,7 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       'ecg.ejs',
       'hematology.ejs',
       'serology.ejs',
-      'ultrasound.ejs'
+      'ultrasound-abd-kubp-hbt.ejs'
     ];
     const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
     const staticTemplates = files.map(f => {
@@ -118,8 +118,11 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       if (f === 'blood-chemistry-sgpt-sgot.ejs') {
         return { name: 'Blood Chemistry - SGPT/SGOT', testType: 'Blood Chemistry - SGPT/SGOT' };
       }
+      if (f === 'ultrasound-abd-kubp-hbt.ejs') {
+        return { name: 'Ultrasound - ABD / KUBP / HBT', testType: 'ultrasound-abd-kubp-hbt' };
+      }
       const name = f.replace('.ejs', '').replace(/-/g, ' ');
-      return { name: name.charAt(0).toUpperCase() + name.slice(1), testType: name };
+      return { name: name.charAt(0).toUpperCase() + name.slice(1), testType: f.replace('.ejs','') };
     });
     templates = templates.concat(staticTemplates);
   } catch (e) {
@@ -272,6 +275,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       dengue: /dengue/i.test(tt),
       pt: /\b(?:pt|prothrombin|pt-aptt|ptaptt)\b/i.test(tt),
       blood_chem: /(blood\s*chemistry|blood-chemistry|blood\s*chem)/i.test(tt),
+      ultrasound_abd: /(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(tt),
       esr: /(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(tt)
       ,
       ct_bt: /(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt)/i.test(tt)
@@ -281,6 +285,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     };
     console.log(`DEBUG GET /tests/${req.params.id}/results - testType='${tt}', checks=`, checks);
     if (!tt || !Object.values(checks).some(Boolean)) {
+      console.error(`UNSUPPORTED results entry request for test ${req.params.id} - testType='${tt}'`, { checks });
       req.flash('error_msg', 'Results entry form is only available for supported test types (including Pregnancy Test)');
       return res.redirect(`/tests/${req.params.id}`);
     }
@@ -315,6 +320,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     if (/\b(?:pt|prothrombin|pt-aptt|ptaptt)\b/i.test(test.testType)) view = 'tests/results_entry_pt_aptt';
     if (/(bun|creatinine|bun[\s\/-]?crea|bun\/?crea)/i.test(test.testType)) view = 'tests/results_entry_blood_chemistry_bun_crea';
     if (/(blood\s*chemistry|blood-chemistry|blood\s*chem)/i.test(normalizedType) && !/(lipid|lipid\s*profile|blood\s*chemistry\s*-?\s*lipid|blood\s*chemistry\s*lipid\s*profile|blood\s*chemistry\s*lipid|electrolyte|electrolytes|sodium|potassium|chloride|hba1c|hb\s*a1c|hb-a1c|blood sugar|blood-sugar|sugar|fbs|rbs|1st hour|2nd hour|bun|creatinine|bun[\s\/\-]?crea|bun\/?crea|sgpt|sgot|albumin|alb)/i.test(normalizedType)) view = 'tests/results_entry_blood_chemistry';
+    if (/(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_abd_kubp_hbt';
     console.log(`DEBUG GET /tests/${req.params.id}/results - selected view='${view}'`);
     res.render(view, {
       title: `Enter ${test.testType} Results`,
@@ -356,6 +362,7 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       lipid: /(lipid|lipid\s*profile|blood\s*chemistry\s*-?\s*lipid|blood\s*chemistry\s*lipid\s*profile|blood\s*chemistry\s*lipid)/i.test(tt),
         electrolytes: /(electrolyte|electrolytes|sodium|potassium|chloride)/i.test(tt),
         blood_sugar: /(blood sugar|blood-sugar|sugar|fbs|rbs|1st hour|2nd hour)/i.test(tt),
+      ultrasound_abd: /(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(tt),
       esr: /(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(tt),
       ct_bt: /(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt)/i.test(tt)
       ,
@@ -366,6 +373,7 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     console.log(`DEBUG POST /tests/${req.params.id}/results - testType='${tt}', checks=`, checks);
 
     if (!tt || !Object.values(checks).some(Boolean)) {
+      console.error(`UNSUPPORTED POST results entry for test ${req.params.id} - testType='${tt}'`, { checks });
       req.flash('error_msg', 'Invalid test type for this results form');
       return res.redirect(`/tests/${req.params.id}`);
     }
@@ -887,6 +895,24 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
         sample: (sample || '').trim(),
         result: (result || '').trim()
       };
+    } else if (/(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(test.testType)) {
+      // Ultrasound ABD / KUBP / HBT variant: accept examination select, findings paragraphs, and impression
+      const examination = (req.body.examination || '').toString().trim();
+      const paragraphs = (req.body.paragraphs || req.body.findings || req.body.result || '').toString().trim();
+      const impression = (req.body.impression || '').toString().trim();
+      const doctorName = (req.body.pathName || req.body.doctorName || '').toString().trim();
+      const doctorLicense = (req.body.pathLicense || req.body.doctorLicense || '').toString().trim();
+      const doctorDesignation = (req.body.doctorDesignation || '').toString().trim();
+      resultsObj = {
+        examination: examination,
+        paragraphs: paragraphs,
+        impression: impression,
+        doctorName: doctorName,
+        doctorLicense: doctorLicense,
+        doctorDesignation: doctorDesignation,
+        paragraphs_font_family: req.body.paragraphsFontFamily || req.body.paragraphs_font_family,
+        paragraphs_font_size: req.body.paragraphsFontSize || req.body.paragraphs_font_size
+      };
     }
 
     // allow storing performer name/license directly on results for printing
@@ -971,7 +997,7 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
       'ecg.ejs',
       'hematology.ejs',
       'serology.ejs',
-      'ultrasound.ejs'
+      'ultrasound-abd-kubp-hbt.ejs'
     ];
     const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
     const staticTemplates = files.map(f => {
