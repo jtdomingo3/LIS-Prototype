@@ -65,20 +65,20 @@
       <div class="twins-grid">
         <div class="twin-box">
           <h4>TWIN A</h4>
-          <div><strong>Gestational sac:</strong> <span style="margin-left:8px"><%= test && test.results && test.results.gestational_sac_length_A ? (test.results.gestational_sac_length_A + ' cm') : '' %></span> <span style="margin-left:36px"><%= test && test.results && test.results.gestational_sac_age_A ? test.results.gestational_sac_age_A : '' %></span></div>
-          <div style="margin-top:6px"><strong>CRL:</strong> <span style="margin-left:8px"><%= test && test.results && test.results.crl_length_A ? (test.results.crl_length_A + ' cm') : '' %></span> <span style="margin-left:36px"><%= test && test.results && test.results.crl_age_A ? test.results.crl_age_A : '' %></span></div>
+            <div style="font-size:14px; line-height:1"><strong>Gestational sac:</strong> <span style="margin-left:8px"><%= test && test.results && test.results.gestational_sac_length_A ? (test.results.gestational_sac_length_A + ' cm') : '' %></span> <span style="margin-left:36px"><%= test && test.results && test.results.gestational_sac_age_A ? test.results.gestational_sac_age_A : '' %></span></div>
+            <div style="margin-top:6px; font-size:14px; line-height:1"><strong>CRL:</strong> <span style="margin-left:8px"><%= test && test.results && test.results.crl_length_A ? (test.results.crl_length_A + ' cm') : '' %></span> <span style="margin-left:36px"><%= test && test.results && test.results.crl_age_A ? test.results.crl_age_A : '' %></span></div>
         </div>
 
         <div class="twin-box">
           <h4>TWIN B</h4>
-          <div><strong>Gestational sac:</strong> <span style="margin-left:8px"><%= test && test.results && test.results.gestational_sac_length_B ? (test.results.gestational_sac_length_B + ' cm') : '' %></span> <span style="margin-left:36px"><%= test && test.results && test.results.gestational_sac_age_B ? test.results.gestational_sac_age_B : '' %></span></div>
-          <div style="margin-top:6px"><strong>CRL:</strong> <span style="margin-left:8px"><%= test && test.results && test.results.crl_length_B ? (test.results.crl_length_B + ' cm') : '' %></span> <span style="margin-left:36px"><%= test && test.results && test.results.crl_age_B ? test.results.crl_age_B : '' %></span></div>
+            <div style="font-size:14px; line-height:1"><strong>Gestational sac:</strong> <span style="margin-left:8px"><%= test && test.results && test.results.gestational_sac_length_B ? (test.results.gestational_sac_length_B + ' cm') : '' %></span> <span style="margin-left:36px"><%= test && test.results && test.results.gestational_sac_age_B ? test.results.gestational_sac_age_B : '' %></span></div>
+            <div style="margin-top:6px; font-size:14px; line-height:1"><strong>CRL:</strong> <span style="margin-left:8px"><%= test && test.results && test.results.crl_length_B ? (test.results.crl_length_B + ' cm') : '' %></span> <span style="margin-left:36px"><%= test && test.results && test.results.crl_age_B ? test.results.crl_age_B : '' %></span></div>
         </div>
       </div>
     <% } else { %>
       <div style="max-width:640px; margin:0 auto; padding:10px; font-family:'Courier New', monospace; font-size:13px">
-        <div><strong>Gestational sac:</strong> <span style="margin-left:8px"><%= test && test.results && test.results.gestational_sac_length ? (test.results.gestational_sac_length + ' cm') : '' %></span> <span style="margin-left:36px"><%= test && test.results && test.results.gestational_sac_age ? test.results.gestational_sac_age : '' %></span></div>
-        <div style="margin-top:6px"><strong>CRL:</strong> <span style="margin-left:8px"><%= test && test.results && test.results.crl_length ? (test.results.crl_length + ' cm') : '' %></span> <span style="margin-left:36px"><%= test && test.results && test.results.crl_age ? test.results.crl_age : '' %></span></div>
+       <div style="font-size:14px; line-height:1"><strong>Gestational sac:</strong> <span style="margin-left:8px"><%= test && test.results && test.results.gestational_sac_length ? (test.results.gestational_sac_length + ' cm') : '' %></span> <span style="margin-left:36px"><%= test && test.results && test.results.gestational_sac_age ? test.results.gestational_sac_age : '' %></span></div>
+         <div style="margin-top:6px; font-size:14px;"><strong>CRL:</strong> <span style="margin-left:8px"><%= test && test.results && test.results.crl_length ? (test.results.crl_length + ' cm') : '' %></span> <span style="margin-left:36px"><%= test && test.results && test.results.crl_age ? test.results.crl_age : '' %></span></div>
       </div>
     <% } %>
 
@@ -114,7 +114,7 @@
         <% } %>
       <% } %>
 
-      <% /* Average / Fetal heart rate block - show per-twin (two columns) or single, positioned after COMMENTS and before Expected date */ %>
+      <% /* Average / Fetal heart rate block - show per-twin (two columns) or single. For non-twin, indent the results below comments. */ %>
       <% if (test && test.results && test.results.isTwin) { %>
         <div style="display:flex; gap:24px; margin-top:12px;">
           <div style="flex:1; font-family:'Courier New', monospace; font-size:14px">
@@ -126,15 +126,23 @@
             <div style="margin-top:6px"><strong>Fetal heart rate:</strong> <%= test.results.fetal_heart_rate_B ? test.results.fetal_heart_rate_B : '' %> BPM</div>
           </div>
         </div>
+
+        <div style="margin-top:12px"><strong>Expected date of delivery:</strong> <%= test && test.results && test.results.expected_date_of_delivery ? (new Date(test.results.expected_date_of_delivery)).toLocaleDateString() : '' %></div>
+
+        <div style="margin-top:12px"><strong>Other:</strong></div>
+        <div style="margin-left:1.25em; margin-top:6px; font-family:'Courier New', monospace;"><%= test && test.results && test.results.other ? test.results.other : '' %></div>
+
       <% } else { %>
-        <div style="margin-top:12px"><strong>Average ultrasound age:</strong> <%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : '' %></div>
-        <div style="margin-top:6px"><strong>Fetal heart rate:</strong> <%= test && test.results && test.results.fetal_heart_rate ? test.results.fetal_heart_rate : '' %> BPM</div>
+        <div style="margin-left:3.5em;">
+          <div style="margin-top:12px"><strong>Average ultrasound age:</strong> <%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : '' %></div>
+          <div style="margin-top:6px"><strong>Fetal heart rate:</strong> <%= test && test.results && test.results.fetal_heart_rate ? test.results.fetal_heart_rate : '' %> BPM</div>
+
+          <div style="margin-top:12px"><strong>Expected date of delivery:</strong> <%= test && test.results && test.results.expected_date_of_delivery ? (new Date(test.results.expected_date_of_delivery)).toLocaleDateString() : '' %></div>
+
+          <div style="margin-top:12px"><strong>Other:</strong></div>
+          <div style="margin-left:1.25em; margin-top:6px; font-family:'Courier New', monospace;"><%= test && test.results && test.results.other ? test.results.other : '' %></div>
+        </div>
       <% } %>
-
-      <div style="margin-top:12px"><strong>Expected date of delivery:</strong> <%= test && test.results && test.results.expected_date_of_delivery ? (new Date(test.results.expected_date_of_delivery)).toLocaleDateString() : '' %></div>
-
-      <div style="margin-top:12px"><strong>Other:</strong></div>
-      <div style="margin-left:1.25em; margin-top:6px; font-family:'Courier New', monospace;"><%= test && test.results && test.results.other ? test.results.other : '' %></div>
 
       <div style="margin-top:16px; font-weight:700">IMPRESSION</div>
       <div style="margin-left:1.25em; margin-top:6px">
