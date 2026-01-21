@@ -15,7 +15,7 @@
   .results-frame td, .results-frame th { padding:12px; vertical-align:middle; border:1px solid #000 }
   .results-frame th{ text-align:left; font-weight:700 }
   .center{ text-align:center }
-  .sig{ text-align:center; width:32% }
+  .sig{ text-align:center; width:32%; margin:0 auto }
   /* move ECG watermark higher and slightly smaller than other reports */
   .watermark{ position:absolute; left:50%; top:20%; transform:translate(-50%,-50%); width:40%; opacity:0.06; pointer-events:none; z-index:0 }
   .report-container{ position:relative; z-index:1 }
@@ -66,7 +66,7 @@
 
     <div class="section-title">ECG Result</div>
 
-    <div class="results-frame" style="border:none; padding:12px; line-height:1.4; padding-left:5.5em; font-size:<%= (test && test.results && test.results.paragraphs_font_size) ? test.results.paragraphs_font_size : '16px' %>; font-family:<%= (test && test.results && test.results.paragraphs_font_family) ? ('"' + test.results.paragraphs_font_family + '"') : "'Times New Roman'" %>">
+    <div class="results-frame" style="border:none; padding:12px; line-height:1.4; padding-left:5.5em; padding-right:3.5em;font-size:<%= (test && test.results && test.results.paragraphs_font_size) ? test.results.paragraphs_font_size : '16px' %>; font-family:<%= (test && test.results && test.results.paragraphs_font_family) ? ('"' + test.results.paragraphs_font_family + '"') : "'Times New Roman'" %>">
       <% 
         var raw = (test && test.results && (test.results.paragraphs || test.results.result)) ? (test.results.paragraphs || test.results.result) : '';
         var htmlOut = raw;
@@ -85,12 +85,9 @@
 
       <div class="sig">
         <div style="border-top:1px solid #000; height:0; margin-bottom:8px"></div>
-        <div style="font-weight:700"><strong><%= (test && test.results && test.results.requestedByName) || (test && test.requestedBy && test.requestedBy.name) || '' %></strong></div>
-        <div style="font-size:11px"><% if (test && test.results && test.results.requestedByLicense) { %><strong>Lic. No. <%= test.results.requestedByLicense %></strong><% } %></div>
-        <div>Radiologist</div>
         <div style="font-weight:700"><strong><%= (test && test.results && test.results.doctorName) || (test && test.requestedBy && test.requestedBy.name) || '' %></strong></div>
         <div style="font-size:11px"><% if (test && test.results && test.results.doctorLicense) { %><strong>Lic. No. <%= test.results.doctorLicense %></strong><% } %></div>
-        <div style="font-size:12px"><%= (test && test.results && test.results.doctorDesignation) ? test.results.doctorDesignation : 'Physician' %></div>
+        <div style="font-weight:500"><%= (test && test.results && test.results.doctorDesignation) ? test.results.doctorDesignation : 'Physician' %></div>
       </div>
     </div>
   </div>
