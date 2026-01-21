@@ -75,6 +75,7 @@ async function getStaticResultTemplates() {
       'ultrasound-abd-kubp-hbt.ejs'
       , 'ultrasound-transvaginal.ejs'
       , 'ultrasound-1st-trimester-obstetrics.ejs'
+        , 'ultrasound-pelvic.ejs'
     ];
     const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
     return files.map(f => {
@@ -133,6 +134,17 @@ async function getStaticResultTemplates() {
           filename: f
         };
       }
+        if (f === 'ultrasound-pelvic.ejs') {
+          return {
+            id: `static:${f}`,
+            name: 'Ultrasound - Pelvic Ultrasound',
+            testType: 'ultrasound-pelvic',
+            fields: [],
+            createdAt: null,
+            isStatic: true,
+            filename: f
+          };
+        }
       const name = f.replace('.ejs', '').replace(/-/g, ' ');
       return {
         id: `static:${f}`,

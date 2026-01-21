@@ -110,7 +110,8 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       'serology.ejs',
       'ultrasound-abd-kubp-hbt.ejs',
       'ultrasound-transvaginal.ejs',
-      'ultrasound-1st-trimester-obstetrics.ejs'
+      'ultrasound-1st-trimester-obstetrics.ejs',
+      'ultrasound-pelvic.ejs'
     ];
     const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
     const staticTemplates = files.map(f => {
@@ -125,6 +126,9 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       }
       if (f === 'ultrasound-transvaginal.ejs') {
         return { name: 'Ultrasound - Transvaginal', testType: 'ultrasound-transvaginal' };
+      }
+      if (f === 'ultrasound-pelvic.ejs') {
+        return { name: 'Ultrasound - Pelvic Ultrasound', testType: 'ultrasound-pelvic' };
       }
       const name = f.replace('.ejs', '').replace(/-/g, ' ');
       return { name: name.charAt(0).toUpperCase() + name.slice(1), testType: f.replace('.ejs','') };
@@ -289,6 +293,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       blood_chem: /(blood\s*chemistry|blood-chemistry|blood\s*chem)/i.test(tt),
       ultrasound_abd: /(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(tt),
       ultrasound_transvaginal: /(ultrasound[-\s]?transvaginal|transvaginal)/i.test(tt),
+      ultrasound_pelvic: /(static:)?(ultrasound[-_\s]?pelvic(\.ejs)?|pelvic)/i.test(tt),
       ultrasound_1st_trimester: /(1st\s*trimester|first\s*trimester|1st[-\s]?trimester|trimester\s*obstetrics|ultrasound[-\s]?.*1st)/i.test(tt),
       esr: /(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(tt)
       ,
@@ -297,6 +302,15 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       xray: /(x-?ray|xray|radiograph)/i.test(tt),
       ecg: /(ecg|electrocardio|electrocardiogram)/i.test(tt)
     };
+    // Fallback: if the POST body contains gestational/CRL fields, treat as ultrasound (pelvic/transvaginal)
+    try {
+      const hasGest = req && req.body && (req.body.gestational_sac_length || req.body.gestational_sac_length_A || req.body.gestational_sac_length_B);
+      const hasCrl = req && req.body && (req.body.crl_length || req.body.crl_length_A || req.body.crl_length_B);
+      if (hasGest || hasCrl) {
+        checks.ultrasound_transvaginal = true;
+        checks.ultrasound_pelvic = true;
+      }
+    } catch (e) {}
     console.log(`DEBUG GET /tests/${req.params.id}/results - testType='${tt}', checks=`, checks);
     if (!tt || !Object.values(checks).some(Boolean)) {
       console.error(`UNSUPPORTED results entry request for test ${req.params.id} - testType='${tt}'`, { checks });
@@ -337,6 +351,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     if (/(ultrasound[-\s]?transvaginal|transvaginal)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_transvaginal';
     if (/(1st\s*trimester|first\s*trimester|1st[-\s]?trimester|trimester\s*obstetrics)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_1st_trimester_obstetrics';
     if (/(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_abd_kubp_hbt';
+    if (/(static:)?(ultrasound[-_\s]?pelvic(\.ejs)?|pelvic)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_pelvic';
     console.log(`DEBUG GET /tests/${req.params.id}/results - selected view='${view}'`);
     res.render(view, {
       title: `Enter ${test.testType} Results`,
@@ -376,11 +391,12 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       pt: /\b(?:pt|prothrombin|pt-aptt|ptaptt)\b/i.test(tt),
       blood_chem: /(blood\s*chemistry|blood-chemistry|blood\s*chem)/i.test(tt),
       lipid: /(lipid|lipid\s*profile|blood\s*chemistry\s*-?\s*lipid|blood\s*chemistry\s*lipid\s*profile|blood\s*chemistry\s*lipid)/i.test(tt),
-        electrolytes: /(electrolyte|electrolytes|sodium|potassium|chloride)/i.test(tt),
-        blood_sugar: /(blood sugar|blood-sugar|sugar|fbs|rbs|1st hour|2nd hour)/i.test(tt),
-        ultrasound_abd: /(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(tt),
-          ultrasound_transvaginal: /(ultrasound[-\s]?transvaginal|transvaginal)/i.test(tt),
-          ultrasound_1st_trimester: /(1st\s*trimester|first\s*trimester|1st[-\s]?trimester|trimester\s*obstetrics|ultrasound[-\s]?.*1st)/i.test(tt),
+      electrolytes: /(electrolyte|electrolytes|sodium|potassium|chloride)/i.test(tt),
+      blood_sugar: /(blood sugar|blood-sugar|sugar|fbs|rbs|1st hour|2nd hour)/i.test(tt),
+      ultrasound_abd: /(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(tt),
+      ultrasound_transvaginal: /(ultrasound[-\s]?transvaginal|transvaginal)/i.test(tt),
+      ultrasound_pelvic: /(ultrasound[-_\s]?pelvic(\.ejs)?|pelvic)/i.test(tt),
+      ultrasound_1st_trimester: /(1st\s*trimester|first\s*trimester|1st[-\s]?trimester|trimester\s*obstetrics|ultrasound[-\s]?.*1st)/i.test(tt),
       esr: /(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(tt),
       ct_bt: /(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt)/i.test(tt)
       ,
@@ -390,8 +406,20 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     };
     console.log(`DEBUG POST /tests/${req.params.id}/results - testType='${tt}', checks=`, checks);
 
+    // Ensure pelvic ultrasound forms are accepted even when testType string
+    // does not exactly match (some forms submit fields instead of testType).
+    checks.ultrasound_pelvic = checks.ultrasound_pelvic || /(static:)?(ultrasound[-_\s]?pelvic(\.ejs)?|pelvic)/i.test(tt);
+    // Fallback: if the request contains common ultrasound fields, accept as ultrasound-pelvic
+    if (!checks.ultrasound_pelvic && req && req.body && (
+      req.body.gestational_sac_length || req.body.crl_length || req.body.impression || req.body.paragraphs || req.body.findings || req.body.examination
+    )) {
+      checks.ultrasound_pelvic = true;
+      // also mark transvaginal true for compatibility with shared ultrasound handlers
+      checks.ultrasound_transvaginal = checks.ultrasound_transvaginal || true;
+    }
+
     if (!tt || !Object.values(checks).some(Boolean)) {
-      console.error(`UNSUPPORTED POST results entry for test ${req.params.id} - testType='${tt}'`, { checks });
+      console.error(`UNSUPPORTED POST results entry for test ${req.params.id} - testType='${tt}'`, { checks, template: test && test.template });
       req.flash('error_msg', 'Invalid test type for this results form');
       return res.redirect(`/tests/${req.params.id}`);
     }
@@ -913,7 +941,7 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
         sample: (sample || '').trim(),
         result: (result || '').trim()
       };
-    } else if (/(ultrasound[-\s]?transvaginal|transvaginal)/i.test(test.testType)) {
+    } else if (/(static:)?(ultrasound[-_\s]?(transvaginal|pelvic)(\.ejs)?|transvaginal|pelvic)/i.test(test.testType)) {
       // Transvaginal ultrasound: structured fields per checklist
       const gestational_sac_length = (req.body.gestational_sac_length || req.body.gestationalSacLength || '').toString().trim();
       const gestational_sac_age = (req.body.gestational_sac_age || req.body.gestationalSacAge || '').toString().trim();
@@ -1228,6 +1256,7 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
       'ultrasound-abd-kubp-hbt.ejs'
       , 'ultrasound-transvaginal.ejs'
       , 'ultrasound-1st-trimester-obstetrics.ejs'
+      , 'ultrasound-pelvic.ejs'
     ];
     const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
     const staticTemplates = files.map(f => {
