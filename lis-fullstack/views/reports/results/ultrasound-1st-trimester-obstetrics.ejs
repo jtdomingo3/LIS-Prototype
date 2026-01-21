@@ -115,12 +115,12 @@
       <% if (test && test.results && test.results.isTwin) { %>
         <div style="display:flex; gap:24px; margin-top:12px;">
           <div style="flex:1; font-family:'Courier New', monospace; font-size:14px">
-            <div><strong>Average ultrasound age (Twin A):</strong> <%= test.results.average_ultrasound_age_A ? test.results.average_ultrasound_age_A : '' %></div>
-            <div style="margin-top:6px"><strong>Fetal heart rate (Twin A):</strong> <%= test.results.fetal_heart_rate_A ? test.results.fetal_heart_rate_A : '' %> BPM</div>
+            <div><strong>Average ultrasound age:</strong> <%= test.results.average_ultrasound_age_A ? test.results.average_ultrasound_age_A : '' %></div>
+            <div style="margin-top:6px"><strong>Fetal heart rate:</strong> <%= test.results.fetal_heart_rate_A ? test.results.fetal_heart_rate_A : '' %> BPM</div>
           </div>
           <div style="flex:1; font-family:'Courier New', monospace; font-size:14px">
-            <div><strong>Average ultrasound age (Twin B):</strong> <%= test.results.average_ultrasound_age_B ? test.results.average_ultrasound_age_B : '' %></div>
-            <div style="margin-top:6px"><strong>Fetal heart rate (Twin B):</strong> <%= test.results.fetal_heart_rate_B ? test.results.fetal_heart_rate_B : '' %> BPM</div>
+            <div><strong>Average ultrasound age:</strong> <%= test.results.average_ultrasound_age_B ? test.results.average_ultrasound_age_B : '' %></div>
+            <div style="margin-top:6px"><strong>Fetal heart rate:</strong> <%= test.results.fetal_heart_rate_B ? test.results.fetal_heart_rate_B : '' %> BPM</div>
           </div>
         </div>
       <% } else { %>
