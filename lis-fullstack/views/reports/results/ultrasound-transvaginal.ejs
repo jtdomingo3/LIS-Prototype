@@ -83,7 +83,7 @@
       <% } %>
 
       <div style="margin-top:12px; padding-left:5.5em"><strong>Average ultrasound age:</strong> <%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : '' %></div>
-      <div style="margin-top:6px; padding-left:5.5em"><strong>Fetal heart rate:</strong> <%= test && test.results && test.results.fetal_heart_rate ? test.results.fetal_heart_rate : '' %></div>
+      <div style="margin-top:6px; padding-left:5.5em"><strong>Fetal heart rate:</strong> <%= test && test.results && test.results.fetal_heart_rate ? test.results.fetal_heart_rate : '' %> BPM</div>
       <div style="margin-top:6px; padding-left:5.5em"><strong>Expected date of delivery:</strong> <%= test && test.results && test.results.expected_date_of_delivery ? (new Date(test.results.expected_date_of_delivery)).toLocaleDateString() : '' %></div>
 
       <div style="margin-top:12px"><strong>Others:</strong> <%= test && test.results && test.results.other ? test.results.other : '' %></div>
