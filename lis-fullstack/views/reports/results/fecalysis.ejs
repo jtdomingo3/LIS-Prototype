@@ -68,22 +68,22 @@
 
     <table class="patient-box">
       <tr>
-        <td style="width:20%"><strong>Patient's Reference No. :</strong></td>
-        <td style="width:30%"><%= test && test.testId ? test.testId : '' %></td>
-        <td style="width:15%"><strong>DOB:</strong></td>
-        <td style="width:15%"><%= test && test.patient && test.patient.dateOfBirth ? (new Date(test.patient.dateOfBirth)).toLocaleDateString() : '' %></td>
-        <td style="width:10%"><strong>Sex:</strong></td>
-        <td style="width:10%"><%= test && test.patient && test.patient.sex ? test.patient.sex : '' %></td>
+        <td style="width:20%">Patient's Reference No. :</td>
+        <td style="width:30%"><strong><%= test && test.testId ? test.testId : '' %></strong></td>
+        <td style="width:15%">DOB:</td>
+        <td style="width:15%"><strong><%= test && test.patient && test.patient.dateOfBirth ? (new Date(test.patient.dateOfBirth)).toLocaleDateString() : '' %></strong></td>
+        <td style="width:10%">Sex:</td>
+        <td style="width:10%"><strong><%= test && test.patient && test.patient.sex ? test.patient.sex : '' %></strong></td>
       </tr>
       <tr>
-        <td><strong>Name:</strong></td>
-        <td colspan="3"><%= test && test.patient ? (test.patient.lastName + ', ' + test.patient.firstName) : '' %></td>
-        <td><strong>Age:</strong></td>
-        <td><%= test && test.patient && test.patient.dateOfBirth ? Math.max(0, new Date().getFullYear() - new Date(test.patient.dateOfBirth).getFullYear()) : (test && test.patient && test.patient.ageManual ? test.patient.ageManual : '') %></td>
+        <td>Name:</td>
+        <td colspan="3"><strong><%= test && test.patient ? (test.patient.lastName + ', ' + test.patient.firstName) : '' %></strong></td>
+        <td>Age:</td>
+        <td><strong><%= test && test.patient && test.patient.dateOfBirth ? Math.max(0, new Date().getFullYear() - new Date(test.patient.dateOfBirth).getFullYear()) : (test && test.patient && test.patient.ageManual ? test.patient.ageManual : '') %></strong></td>
       </tr>
       <tr>
-        <td><strong>Physician:</strong></td>
-        <td colspan="5"><%= (test && test.patient && (test.patient.physician || test.patient.physicianName)) ? (test.patient.physician || test.patient.physicianName) : '' %></td>
+        <td>Physician:</td>
+        <td colspan="5"><strong><%= (test && test.patient && (test.patient.physician || test.patient.physicianName)) ? (test.patient.physician || test.patient.physicianName) : '' %></strong></td>
       </tr>
     </table>
 
