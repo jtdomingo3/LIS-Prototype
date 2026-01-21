@@ -28,11 +28,12 @@
         <button type="button" class="button btn-small" onclick="insertParagraph()">Insert Paragraph</button>
         <label style="margin-left:12px">Font:</label>
         <select name="paragraphsFontFamily">
-          <option value="Times New Roman">Times New Roman</option>
-          <option value="Arial">Arial</option>
-          <option value="Georgia">Georgia</option>
-          <option value="Garamond">Garamond</option>
-          <option value="Calibri">Calibri</option>
+          <option value="Times New Roman" <%= test.results && test.results.paragraphs_font_family==='Times New Roman' ? 'selected' : '' %>>Times New Roman</option>
+          <option value="Courier New" <%= test.results && test.results.paragraphs_font_family==='Courier New' ? 'selected' : '' %>>Courier New</option>
+          <option value="Arial" <%= test.results && test.results.paragraphs_font_family==='Arial' ? 'selected' : '' %>>Arial</option>
+          <option value="Georgia" <%= test.results && test.results.paragraphs_font_family==='Georgia' ? 'selected' : '' %>>Georgia</option>
+          <option value="Garamond" <%= test.results && test.results.paragraphs_font_family==='Garamond' ? 'selected' : '' %>>Garamond</option>
+          <option value="Calibri" <%= test.results && test.results.paragraphs_font_family==='Calibri' ? 'selected' : '' %>>Calibri</option>
         </select>
         <label>Size:</label>
         <select name="paragraphsFontSize">
