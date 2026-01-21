@@ -65,7 +65,7 @@
       <div class="twins-grid">
         <div class="twin-box">
           <h4>TWIN A</h4>
-          <div><strong>GESTATIONAL SAC</strong> <span style="margin-left:8px"><%= test && test.results && test.results.gestational_sac_length_A ? (test.results.gestational_sac_length_A + ' cm') : '' %></span> <span style="margin-left:36px"><%= test && test.results && test.results.gestational_sac_age_A ? test.results.gestational_sac_age_A : '' %></span></div>
+          <div><strong>GESTATIONAL SAC:</strong> <span style="margin-left:8px"><%= test && test.results && test.results.gestational_sac_length_A ? (test.results.gestational_sac_length_A + ' cm') : '' %></span> <span style="margin-left:36px"><%= test && test.results && test.results.gestational_sac_age_A ? test.results.gestational_sac_age_A : '' %></span></div>
           <div style="margin-top:6px"><strong>CRL:</strong> <span style="margin-left:8px"><%= test && test.results && test.results.crl_length_A ? (test.results.crl_length_A + ' cm') : '' %></span> <span style="margin-left:36px"><%= test && test.results && test.results.crl_age_A ? test.results.crl_age_A : '' %></span></div>
         </div>
 
@@ -77,7 +77,7 @@
       </div>
     <% } else { %>
       <div style="max-width:640px; margin:0 auto; padding:10px; font-family:'Courier New', monospace; font-size:13px">
-        <div><strong>Gestational sac:</strong> <span style="margin-left:8px"><%= test && test.results && test.results.gestational_sac_length ? (test.results.gestational_sac_length + ' cm') : '' %></span> <span style="margin-left:36px"><%= test && test.results && test.results.gestational_sac_age ? test.results.gestational_sac_age : '' %></span></div>
+        <div><strong>GESTATIONAL SAC:</strong> <span style="margin-left:8px"><%= test && test.results && test.results.gestational_sac_length ? (test.results.gestational_sac_length + ' cm') : '' %></span> <span style="margin-left:36px"><%= test && test.results && test.results.gestational_sac_age ? test.results.gestational_sac_age : '' %></span></div>
         <div style="margin-top:6px"><strong>CRL:</strong> <span style="margin-left:8px"><%= test && test.results && test.results.crl_length ? (test.results.crl_length + ' cm') : '' %></span> <span style="margin-left:36px"><%= test && test.results && test.results.crl_age ? test.results.crl_age : '' %></span></div>
       </div>
     <% } %>
