@@ -158,6 +158,38 @@ router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) =
     const nextId = (currentIndex >= 0 && currentIndex < testsForNav.length - 1) ? testsForNav[currentIndex + 1].id : null;
     // --- END NEW ---
 
+    // If filter params are provided, compute prev/next within the filtered list server-side too
+    try {
+      const fp = req.query.filterPatient || null;
+      const ft = req.query.filterTestType || null;
+      const fd = req.query.filterDate || null;
+      if (fp || ft || fd) {
+        const filteredServer = testsForNav.filter(tn => {
+          if (fp && ((tn.patientName || '') !== fp)) return false;
+          if (ft && ((tn.testType || '') !== ft)) return false;
+          if (fd) {
+            const d = tn.testDate ? new Date(tn.testDate).toISOString().slice(0,10) : '';
+            if (d !== fd) return false;
+          }
+          return true;
+        });
+
+        if (Array.isArray(filteredServer) && filteredServer.length) {
+          const curIdx = filteredServer.findIndex(tn => String(tn.id) === String(test.id || test._id));
+          if (curIdx !== -1) {
+            // override prev/next with filtered navigation
+            const fPrev = curIdx > 0 ? filteredServer[curIdx - 1].id : null;
+            const fNext = curIdx < filteredServer.length - 1 ? filteredServer[curIdx + 1].id : null;
+            // assign only if found (preserve previous nulls otherwise)
+            if (fPrev) prevId = fPrev;
+            if (fNext) nextId = fNext;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Error computing server-side filtered prev/next:', e && e.message);
+    }
+
     // Render the result template without layout into an HTML string,
     // then wrap it with the print wrapper so preview iframe gets full HTML+styles
     const renderOptions = { title: 'Result Preview', test: populatedTest, image, layout: false, inlineLogo };
@@ -617,13 +649,19 @@ router.get('/print-multiple', requireAuth, canAccessPatient, async (req, res) =>
 
       const { template, image } = getResultTemplate(populatedTest);
       // Render each template into HTML (no layout)
-      const html = await new Promise((resolve, reject) => {
-        res.render(`reports/results/${template}`, { title: 'Result', test: populatedTest, image, layout: false, inlineLogo: getInlineLogo() }, (err, html) => {
-          if (err) return reject(err);
-          resolve(html);
+      try {
+        const html = await new Promise((resolve, reject) => {
+          res.render(`reports/results/${template}`, { title: 'Result', test: populatedTest, image, layout: false, inlineLogo: getInlineLogo() }, (err, html) => {
+            if (err) return reject(err);
+            resolve(html);
+          });
         });
-      });
-      renderedParts.push(html);
+        renderedParts.push(html);
+      } catch (renderErr) {
+        console.error('Failed to render template for test', t.id || t._id, renderErr && renderErr.message);
+        logReportError(renderErr, `render-multiple ${t.id || t._id}`);
+        // skip this test and continue with others
+      }
     }
 
     // Join each rendered report with a page-break

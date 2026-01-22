@@ -38,7 +38,6 @@
         <% } %>
       </select>
       <input id="filterDate" type="date" style="width:130px; padding:8px;">
-      <button class="button" id="applyFilters">Apply Filters</button>
       <button class="button" id="clearFilters">Clear Filters</button>
       <button class="button btn-primary" id="printFiltered">Print Filtered</button>
     </div>
@@ -50,7 +49,6 @@
       <option value="">-- Filtered Results (Apply Filters) --</option>
     </select>
     <div style="margin-top:6px; text-align:right;">
-      <button class="button" id="openSelected">Open Selected</button>
       <span id="filteredPager" style="margin-left:12px; font-weight:600;"></span>
     </div>
   </div>
@@ -169,9 +167,15 @@
     // always update pager after initial setup
     updatePager();
 
-    // update nav links and pager when inputs change
-    [patientInput, testTypeSelect, dateFilter].forEach(el => el.addEventListener('change', function(){ applyParamsToNavLinks(); updatePager(); }));
-    [patientInput, testTypeSelect].forEach(el => el.addEventListener('input', function(){ applyParamsToNavLinks(); updatePager(); }));
+    // update nav links, pager and filtered list when inputs change (auto-apply)
+    function onFilterChange(){
+      populateFilteredSelect();
+      setUrlParams();
+      applyParamsToNavLinks();
+      updatePager();
+    }
+    [patientInput, testTypeSelect, dateFilter].forEach(el => el.addEventListener('change', onFilterChange));
+    [patientInput, testTypeSelect].forEach(el => el.addEventListener('input', onFilterChange));
 
     clearBtn.addEventListener('click', function(){
       patientInput.value = '';
@@ -195,10 +199,8 @@
       window.open(url, '_blank');
     });
 
-    // Apply Filters: populate filteredSelect and update URL/nav links
-    const applyBtn = document.getElementById('applyFilters');
+    // Filtered select element (auto-open on change)
     const filteredSelect = document.getElementById('filteredSelect');
-    const openSelectedBtn = document.getElementById('openSelected');
 
     function populateFilteredSelect(){
       // clear existing
@@ -224,22 +226,16 @@
       history.replaceState(null, '', newUrl);
     }
 
-    applyBtn.addEventListener('click', function(){
-      populateFilteredSelect();
-      setUrlParams();
-      applyParamsToNavLinks();
-      updatePager();
-    });
+    // (Apply is automatic on change)
 
-    openSelectedBtn.addEventListener('click', function(){
+    // auto-open when the filtered-select value changes (preserve filters)
+    filteredSelect.addEventListener('change', function(){
       const v = filteredSelect.value;
-      if (!v) { alert('No test selected'); return; }
-      // preserve filters in URL when navigating
+      if (!v) return;
       const qs = getQueryString();
       window.location.href = '/reports/preview/' + v + qs;
     });
-
-    // allow double-click on select to open
+    // also allow double-click to open (backwards compatibility)
     filteredSelect.addEventListener('dblclick', function(){
       const v = filteredSelect.value;
       if (v) {
