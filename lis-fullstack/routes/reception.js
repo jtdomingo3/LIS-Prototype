@@ -41,34 +41,38 @@ const AREAS = [
 
 // Mapping from testType (canonical key) to the reception area responsible
 const TEST_TYPE_TO_AREA = {
-  'blood-chemistry-albumin': 'Extraction',
-  'blood-chemistry-blood-sugar': 'Extraction',
-  'blood-chemistry-bun-crea': 'Extraction',
-  'blood-chemistry-electrolytes': 'Extraction',
-  'blood-chemistry-hba1c': 'Extraction',
-  'blood-chemistry-lipid-profile': 'Extraction',
-  'blood-chemistry-sgpt-sgot': 'Extraction',
-  'blood-typing': 'Extraction',
-  'ct-bt': 'Extraction',
-  'dengue-duo': 'Extraction',
+  'blood-chemistry-albumin': 'Extraction Area',
+  'blood-chemistry-blood-sugar': 'Extraction Area',
+  'blood-chemistry-bun-crea': 'Extraction Area',
+  'blood-chemistry-electrolytes': 'Extraction Area',
+  'blood-chemistry-hba1c': 'Extraction Area',
+  'blood-chemistry-lipid-profile': 'Extraction Area',
+  'blood-chemistry-sgpt-sgot': 'Extraction Area',
+  'blood-typing': 'Extraction Area',
+  'ct-bt': 'Extraction Area',
+  'dengue-duo': 'Extraction Area',
   'drugtest': 'Drug Test',
   'ecg': 'ECG',
   'echocardiography-2d': '2D Echo',
-  'esr': 'Extraction',
-  'fecal-occult-blood': 'Extraction',
-  'fecalysis': 'Extraction',
-  'hematology': 'Extraction',
-  'pregnancy-test': 'Extraction',
-  'pt-aptt': 'Extraction',
-  'serology': 'Extraction',
-  'thyroid-panel': 'Extraction',
+  'esr': 'Extraction Area',
+  'fecal-occult-blood': 'Extraction Area',
+  'fecalysis': 'Extraction Area',
+  'hematology': 'Extraction Area',
+  'pregnancy-test': 'Extraction Area',
+  'pt-aptt': 'Extraction Area',
+  'serology': 'Extraction Area',
+  'thyroid-panel': 'Extraction Area',
   'ultrasound-1st-trimester-obstetrics': 'Ultrasound',
   'ultrasound-abd-kubp-hbt': 'Ultrasound',
   'ultrasound-biophysical': 'Ultrasound',
   'ultrasound-pelvic': 'Ultrasound',
   'ultrasound-transvaginal': 'Ultrasound',
-  'urinalysis': 'Extraction',
-  'xray': 'X-ray'
+  'urinalysis': 'Extraction Area',
+  // Use exact AREA names from AREAS above so forwarding maps correctly to the queue pages
+  'xray': 'X-ray',
+  // Extraction should map to the named area used in AREAS
+  // many entries above previously used the short name 'Extraction' — these remain logical lab targets
+  // but during forwarding we check for exact status equality against AREAS; ensure code uses the AREAS values
 };
 
 // Helper to map a test to the reception area it should appear in.
@@ -370,11 +374,14 @@ router.get('/area/:name', requireAuth, canAccessPatient, async (req, res) => {
             clinical = Number(p.labTotals.clinical || 0);
             xray = Number(p.labTotals.xray || 0);
           } else {
-            for (const tt of entry.tests) {
-              const price = Number(tt.price) || 0;
-              const target = TEST_TYPE_TO_AREA[String(tt.testType || '').toLowerCase()] || 'Extraction';
-              if (target === 'X-ray') xray += price; else clinical += price;
-            }
+          for (const tt of entry.tests) {
+            const price = Number(tt.price) || 0;
+            const target = TEST_TYPE_TO_AREA[String(tt.testType || '').toLowerCase()] || 'Extraction Area';
+            try {
+              const tnorm = String(target || '').toLowerCase();
+              if (tnorm.includes('xray') || tnorm.includes('x-ray')) xray += price; else clinical += price;
+            } catch (e) { clinical += price; }
+          }
           }
           const total = clinical + xray;
           groups.push({ patient: p, tests: entry.tests, clinical, xray, total });
@@ -571,29 +578,50 @@ router.post('/complete-payment', requireAuth, canAccessPatient, async (req, res)
       console.warn('Failed to record aggregated payment on patient', saveErr);
     }
 
-    // forward tests for this patient that are currently in Payment Area to their target areas
-    // If `lab` is provided, only forward tests for that lab. lab === 'xray' -> X-ray tests; 'clinical' -> others.
+    // Forward tests for this patient that are currently in Payment Area, but only to the next
+    // required area in the patient's workflow. This prevents queuing the same patient in
+    // multiple areas at once and preserves the per-patient sequencing (Payment -> Extraction -> X-ray ...).
     const tests = await Test.find({ patient: patientObj.id }) || [];
     const moved = [];
-    for (const t of tests) {
-      if (!t || t.status !== 'Payment Area') continue;
-      const target = TEST_TYPE_TO_AREA[String(t.testType || '').toLowerCase()] || 'Extraction';
-      const isXrayTest = target === 'X-ray';
-      if (lab === 'xray' && !isXrayTest) continue;
-      if (lab === 'clinical' && isXrayTest) continue;
-      // ensure we don't create duplicate active items in the same area for this patient.
-      const existingInTarget = (await Test.find({ patient: patientObj.id })).find(x => x && x.status === target);
-      if (existingInTarget) {
-        // keep this test Completed but do not move to avoid duplicates; medtech will see grouped tests
-        t.status = 'Completed';
+
+    // Derive ordered required areas from patient's stored requiredAreas (which should contain area names)
+    const required = Array.isArray(patientObj && patientObj.requiredAreas) ? patientObj.requiredAreas.slice() : [];
+    const orderedRequired = AREAS.filter(a => required.includes(a) && a !== 'Payment Area' && a !== 'Releasing of Result');
+    const nextArea = orderedRequired.length ? orderedRequired[0] : null;
+
+    // If there's no next area, do not forward tests; keep them Completed/In Progress as appropriate
+    if (nextArea) {
+      // move only tests that map to the nextArea
+      for (const t of tests) {
+        if (!t || t.status !== 'Payment Area') continue;
+        const target = TEST_TYPE_TO_AREA[String(t.testType || '').toLowerCase()] || 'Extraction Area';
+        // check if this test's target corresponds to nextArea (robust, case-insensitive)
+        let targetMatchesNext = false;
+        try {
+          const tn = String(target || '').toLowerCase();
+          const nn = String(nextArea || '').toLowerCase();
+          if (nn.includes('xray') || nn.includes('x-ray')) targetMatchesNext = tn.includes('xray') || tn.includes('x-ray');
+          else if (nn.includes('extraction')) targetMatchesNext = tn.includes('extraction');
+          else targetMatchesNext = tn === nn;
+        } catch (e) { targetMatchesNext = false; }
+        if (!targetMatchesNext) continue;
+
+        // ensure we don't create duplicate active items in the same area for this patient.
+        const existingInTarget = (await Test.find({ patient: patientObj.id })).find(x => x && x.status === nextArea);
+        if (existingInTarget) {
+          // keep this test Completed but do not move to avoid duplicates
+          t.status = 'Completed';
+          await t.save();
+          moved.push({ testId: t.testId, movedTo: null, note: 'kept Completed (duplicate active exists in target)' });
+          continue;
+        }
+
+        // Move matching test(s) to the next required area
+        t.status = nextArea;
         await t.save();
-        moved.push({ testId: t.testId, movedTo: null, note: 'kept Completed (duplicate active exists in target)' });
-        continue;
+        moved.push({ testId: t.testId, movedTo: nextArea });
+        try { sseEmitter.emit('update', { action: 'forward', testId: t.testId, movedTo: nextArea, time: (new Date()).toISOString(), patientCode: patientObj.patientCode }); } catch (e) { }
       }
-      t.status = target;
-      await t.save();
-      moved.push({ testId: t.testId, movedTo: target });
-      try { sseEmitter.emit('update', { action: 'forward', testId: t.testId, movedTo: target, time: (new Date()).toISOString(), patientCode: patientObj.patientCode }); } catch (e) { }
     }
 
     return res.json({ success: true, message: `Payment recorded for ${patientObj.firstName} ${patientObj.lastName}`, moved });

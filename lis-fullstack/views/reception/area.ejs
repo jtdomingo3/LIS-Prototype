@@ -44,22 +44,28 @@
                   <div style="font-size:0.85em; color:var(--text-gray);">X‑Ray: <%= (p.xray || 0).toFixed(2) %></div>
                 </td>
                 <td>
-                  <form action="/reception/complete-payment" method="POST" class="complete-payment-form" style="display:inline-block; margin-right:6px;">
-                    <input type="hidden" name="patientId" value="<%= p.patient.id %>">
-                    <input type="hidden" name="lab" value="clinical">
-                    <input type="number" name="amount" step="0.01" min="0.01" value="<%= (p.clinical || 0).toFixed(2) %>" style="width:110px; margin-right:6px;" required>
-                    <button type="submit" class="button btn-success btn-small">Pay Clinical</button>
-                  </form>
-                  <% if (p.xray && Number(p.xray) > 0) { %>
-                    <form action="/reception/complete-payment" method="POST" class="complete-payment-form" style="display:inline-block;">
+                    <!-- Editable lab totals (allow adjusting clinical/xray amounts) and single Mark Complete action -->
+                    <div style="margin-bottom:6px; display:flex; gap:12px; align-items:center;">
+                      <% if (p.clinical && Number(p.clinical) > 0) { %>
+                        <div>
+                          <label style="font-size:0.85em;">Clinical:</label>
+                          <input type="number" step="0.01" min="0" name="clinicalAmount" class="clinical-amount" value="<%= (p.clinical || 0).toFixed(2) %>" style="width:110px; margin-left:6px;">
+                        </div>
+                      <% } %>
+                      <% if (p.xray && Number(p.xray) > 0) { %>
+                        <div>
+                          <label style="font-size:0.85em;">X‑Ray:</label>
+                          <input type="number" step="0.01" min="0" name="xrayAmount" class="xray-amount" value="<%= (p.xray || 0).toFixed(2) %>" style="width:110px; margin-left:6px;">
+                        </div>
+                      <% } %>
+                      <div>
+                        <label style="font-size:0.85em;">Estimated Total:</label>
+                        <input type="number" step="0.01" min="0" name="amount" class="payment-amount" value="<%= (p.total || 0).toFixed(2) %>" style="width:110px; margin-left:6px;">
+                      </div>
+                    </div>
+                    <form action="/reception/complete-payment" method="POST" class="complete-payment-form" style="display:inline-block; margin-right:6px;">
                       <input type="hidden" name="patientId" value="<%= p.patient.id %>">
-                      <input type="hidden" name="lab" value="xray">
-                      <input type="number" name="amount" step="0.01" min="0.01" value="<%= (p.xray || 0).toFixed(2) %>" style="width:110px; margin-right:6px;" required>
-                      <button type="submit" class="button btn-warning btn-small">Pay X‑Ray</button>
-                    </form>
-                  <% } %>
-                    <form action="/reception/complete-payment" method="POST" class="complete-payment-form" style="display:inline-block;">
-                      <input type="hidden" name="patientId" value="<%= p.patient.id %>">
+                      <input type="hidden" name="lab" value="">
                       <input type="number" name="amount" class="payment-amount" step="0.01" min="0.01" value="<%= (p.total || 0).toFixed(2) %>" style="width:110px; margin-right:6px;" required>
                       <button type="submit" class="button btn-success btn-small payment-submit" title="Mark complete" onclick="return paymentSubmitFallback(this)">Mark Complete</button>
                     </form>
@@ -104,6 +110,18 @@
                     </select>
                     <input type="text" name="specimen" placeholder="Specimen # (optional)" style="margin-right:6px;" <%= t.patientEncoded ? '' : 'disabled' %>>
                     <button class="button btn-primary btn-small" <%= t.patientEncoded ? '' : 'disabled' %>>Assign</button>
+                  </form>
+                  <!-- Mark complete for grouped tests -->
+                  <form action="/reception/complete" method="POST" class="complete-form" style="display:inline-block; margin-left:6px;">
+                    <input type="hidden" name="testId" value="<%= t.id %>">
+                    <input type="hidden" name="area" value="<%= areaName %>">
+                    <button type="submit" class="button btn-success btn-small" title="Mark complete"><%= areaName === 'Releasing of Result' ? 'Mark Released' : 'Mark Complete' %></button>
+                  </form>
+                  <!-- Delete from queue for grouped tests -->
+                  <form action="/reception/delete" method="POST" class="delete-form" style="display:inline-block; margin-left:6px;" onsubmit="return confirm('Delete this test from the queue?');">
+                    <input type="hidden" name="testId" value="<%= t.id %>">
+                    <input type="hidden" name="area" value="<%= areaName %>">
+                    <button type="submit" class="button btn-danger btn-small" title="Delete">Delete</button>
                   </form>
                 <% }) %>
               </td>
@@ -413,6 +431,23 @@
             try { localStorage.setItem('reception:updated', String(Date.now())); } catch (e) {}
           }
         });
+      });
+
+      // Sync clinical/xray inputs to the main payment amount input when present
+      document.querySelectorAll('tr').forEach(row => {
+        const clinicalInput = row.querySelector('.clinical-amount');
+        const xrayInput = row.querySelector('.xray-amount');
+        const totalInput = row.querySelector('.payment-amount');
+        if (!totalInput) return;
+        function updateTotal() {
+          const c = clinicalInput ? parseFloat(String(clinicalInput.value).replace(/[ ,]/g, '')) || 0 : 0;
+          const x = xrayInput ? parseFloat(String(xrayInput.value).replace(/[ ,]/g, '')) || 0 : 0;
+          totalInput.value = (c + x).toFixed(2);
+          // also update any other payment-amount inputs within same row/forms
+          row.querySelectorAll('.payment-amount').forEach(inp => { if (inp !== totalInput) inp.value = totalInput.value; });
+        }
+        if (clinicalInput) clinicalInput.addEventListener('input', updateTotal);
+        if (xrayInput) xrayInput.addEventListener('input', updateTotal);
       });
 
       // handle delete

@@ -172,34 +172,34 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
 
       // Mapping of test -> area used for initial status routing
       const TEST_TO_AREA = {
-        'blood-chemistry-albumin': 'Extraction',
-        'blood-chemistry-blood-sugar': 'Extraction',
-        'blood-chemistry-bun-crea': 'Extraction',
-        'blood-chemistry-electrolytes': 'Extraction',
-        'blood-chemistry-hba1c': 'Extraction',
-        'blood-chemistry-lipid-profile': 'Extraction',
-        'blood-chemistry-sgpt-sgot': 'Extraction',
-        'blood-typing': 'Extraction',
-        'ct-bt': 'Extraction',
-        'dengue-duo': 'Extraction',
-        'drugtest': 'Drugtest',
+        'blood-chemistry-albumin': 'Extraction Area',
+        'blood-chemistry-blood-sugar': 'Extraction Area',
+        'blood-chemistry-bun-crea': 'Extraction Area',
+        'blood-chemistry-electrolytes': 'Extraction Area',
+        'blood-chemistry-hba1c': 'Extraction Area',
+        'blood-chemistry-lipid-profile': 'Extraction Area',
+        'blood-chemistry-sgpt-sgot': 'Extraction Area',
+        'blood-typing': 'Extraction Area',
+        'ct-bt': 'Extraction Area',
+        'dengue-duo': 'Extraction Area',
+        'drugtest': 'Drug Test',
         'ecg': 'ECG',
         'echocardiography-2d': '2D Echo',
-        'esr': 'Extraction',
-        'fecal-occult-blood': 'Extraction',
-        'fecalysis': 'Extraction',
-        'hematology': 'Extraction',
-        'pregnancy-test': 'Extraction',
-        'pt-aptt': 'Extraction',
-        'serology': 'Extraction',
-        'thyroid-panel': 'Extraction',
+        'esr': 'Extraction Area',
+        'fecal-occult-blood': 'Extraction Area',
+        'fecalysis': 'Extraction Area',
+        'hematology': 'Extraction Area',
+        'pregnancy-test': 'Extraction Area',
+        'pt-aptt': 'Extraction Area',
+        'serology': 'Extraction Area',
+        'thyroid-panel': 'Extraction Area',
         'ultrasound-1st-trimester-obstetrics': 'Ultrasound',
         'ultrasound-abd-kubp-hbt': 'Ultrasound',
         'ultrasound-biophysical': 'Ultrasound',
         'ultrasound-pelvic': 'Ultrasound',
         'ultrasound-transvaginal': 'Ultrasound',
-        'urinalysis': 'Extraction',
-        'xray': 'X-Ray'
+        'urinalysis': 'Extraction Area',
+        'xray': 'X-ray'
       };
 
       // Determine blood-chemistry group count; if two or more variants selected, also add overall 'blood-chemistry'
@@ -209,6 +209,19 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       // Build a deduped list of tests to create
       const toCreateSet = new Set(selected.map(s => String(s || '').trim()).filter(s => s));
       if (makeOverallBloodChem) toCreateSet.add('blood-chemistry');
+
+      // Build set of required area names for this patient based on selected tests
+      const requiredAreaNames = new Set();
+      for (const t of Array.from(toCreateSet)) {
+        const tt = String(t || '').trim();
+        if (!tt) continue;
+        const ar = TEST_TO_AREA[tt] || 'Extraction Area';
+        // Normalize 'X-Ray' spelling used in AREAS
+        if (String(ar).toLowerCase().includes('xray') || String(ar).toLowerCase().includes('x-ray')) requiredAreaNames.add('X-ray');
+        else if (String(ar).toLowerCase().includes('drug')) requiredAreaNames.add('Drug Test');
+        else if (String(ar).toLowerCase().includes('ultrasound')) requiredAreaNames.add('Ultrasound');
+        else requiredAreaNames.add(ar);
+      }
 
       // Prepare uniqueness helpers
       const allTestsForId = await Test.find({});
@@ -243,8 +256,10 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
         }
         nextNum++;
 
-        const area = TEST_TO_AREA[type] || 'Extraction';
-        const status = (area === 'Ultrasound' || area === 'ECG' || area === 'X-Ray' || area === 'Drugtest') ? area : 'Payment Area';
+        const area = TEST_TO_AREA[type] || 'Extraction Area';
+        // Always route newly created tests to Payment Area first so payment is collected
+        // before forwarding to Extraction/X-ray. Forwarding is handled after payment.
+        const status = 'Payment Area';
 
         // determine price for this test (form inputs named like price-<testKey>)
         const priceKey = `price-${type}`;
@@ -271,9 +286,15 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
         if (price && price > 0) {
           totalCharges += price;
           charges.push({ testType: type, amount: price });
-          if (area === 'X-Ray') {
-            xrayTotal += price;
-          } else {
+          // classify by area name (case-insensitive, accept variations like 'xray' or 'x-ray')
+          try {
+            const aNorm = String(area || '').toLowerCase();
+            if (aNorm.includes('xray') || aNorm.includes('x-ray')) {
+              xrayTotal += price;
+            } else {
+              clinicalTotal += price;
+            }
+          } catch (e) {
             clinicalTotal += price;
           }
         }
@@ -308,6 +329,12 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
           if (clinicalTotal > 0) paymentItems.push({ lab: 'clinical', amount: clinicalTotal, paid: false });
           if (xrayTotal > 0) paymentItems.push({ lab: 'xray', amount: xrayTotal, paid: false });
           patient.paymentItems = paymentItems;
+          // Also persist derived required area names for forwarding logic
+          try {
+            patient.requiredAreas = Array.from(requiredAreaNames || []);
+          } catch (e) {
+            // fallback: keep existing requiredAreas value
+          }
           await patient.save();
         }
       } catch (e) {
