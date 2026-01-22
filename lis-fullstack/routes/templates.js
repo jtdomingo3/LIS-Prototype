@@ -74,6 +74,7 @@ async function getStaticResultTemplates() {
       'serology.ejs',
       'ultrasound-abd-kubp-hbt.ejs'
       , 'ultrasound-transvaginal.ejs'
+      , 'ultrasound-biophysical.ejs'
       , 'ultrasound-1st-trimester-obstetrics.ejs'
         , 'ultrasound-pelvic.ejs'
     ];
@@ -117,6 +118,17 @@ async function getStaticResultTemplates() {
           id: `static:${f}`,
           name: 'Ultrasound - Transvaginal',
           testType: 'ultrasound-transvaginal',
+          fields: [],
+          createdAt: null,
+          isStatic: true,
+          filename: f
+        };
+      }
+      if (f === 'ultrasound-biophysical.ejs') {
+        return {
+          id: `static:${f}`,
+          name: 'Ultrasound - Biophysical',
+          testType: 'ultrasound-biophysical',
           fields: [],
           createdAt: null,
           isStatic: true,

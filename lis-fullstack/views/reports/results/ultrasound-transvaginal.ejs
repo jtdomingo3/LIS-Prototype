@@ -60,7 +60,7 @@
       </tr>
     </table>
 
-    <div class="section-title">TRANSVAGINAL ULTRASOUND</div>
+    <div class="section-title"><%= (test && test.results && test.results.section_title) ? test.results.section_title : 'TRANSVAGINAL ULTRASOUND' %></div>
 
     <div style="font-family:'Courier New', monospace; font-size:14px; padding-left:5.5em; padding-right:1.25em; line-height:1.5">
       <div style="padding-left:0em"><strong>Gestational sac:</strong>

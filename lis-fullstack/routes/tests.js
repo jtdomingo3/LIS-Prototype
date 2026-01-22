@@ -110,6 +110,7 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       'serology.ejs',
       'ultrasound-abd-kubp-hbt.ejs',
       'ultrasound-transvaginal.ejs',
+      'ultrasound-biophysical.ejs',
       'ultrasound-1st-trimester-obstetrics.ejs',
       'ultrasound-pelvic.ejs'
     ];
@@ -126,6 +127,9 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       }
       if (f === 'ultrasound-transvaginal.ejs') {
         return { name: 'Ultrasound - Transvaginal', testType: 'ultrasound-transvaginal' };
+      }
+      if (f === 'ultrasound-biophysical.ejs') {
+        return { name: 'Ultrasound - Biophysical', testType: 'ultrasound-biophysical' };
       }
       if (f === 'ultrasound-pelvic.ejs') {
         return { name: 'Ultrasound - Pelvic Ultrasound', testType: 'ultrasound-pelvic' };
@@ -293,6 +297,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       blood_chem: /(blood\s*chemistry|blood-chemistry|blood\s*chem)/i.test(tt),
       ultrasound_abd: /(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(tt),
       ultrasound_transvaginal: /(ultrasound[-\s]?transvaginal|transvaginal)/i.test(tt),
+      ultrasound_biophysical: /(ultrasound[-\s]?biophysical|biophysical)/i.test(tt),
       ultrasound_pelvic: /(static:)?(ultrasound[-_\s]?pelvic(\.ejs)?|pelvic)/i.test(tt),
       ultrasound_1st_trimester: /(1st\s*trimester|first\s*trimester|1st[-\s]?trimester|trimester\s*obstetrics|ultrasound[-\s]?.*1st)/i.test(tt),
       esr: /(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(tt)
@@ -306,9 +311,12 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     try {
       const hasGest = req && req.body && (req.body.gestational_sac_length || req.body.gestational_sac_length_A || req.body.gestational_sac_length_B);
       const hasCrl = req && req.body && (req.body.crl_length || req.body.crl_length_A || req.body.crl_length_B);
+      const hasBiophysical = req && req.body && (req.body.bpd_size || req.body.hc_size || req.body.ac_size || req.body.fl_size || req.body['biometry_size[]'] || req.body.biometry_size);
       if (hasGest || hasCrl) {
         checks.ultrasound_transvaginal = true;
         checks.ultrasound_pelvic = true;
+      } else if (hasBiophysical) {
+        checks.ultrasound_biophysical = true;
       }
     } catch (e) {}
     console.log(`DEBUG GET /tests/${req.params.id}/results - testType='${tt}', checks=`, checks);
@@ -349,6 +357,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     if (/(bun|creatinine|bun[\s\/-]?crea|bun\/?crea)/i.test(test.testType)) view = 'tests/results_entry_blood_chemistry_bun_crea';
     if (/(blood\s*chemistry|blood-chemistry|blood\s*chem)/i.test(normalizedType) && !/(lipid|lipid\s*profile|blood\s*chemistry\s*-?\s*lipid|blood\s*chemistry\s*lipid\s*profile|blood\s*chemistry\s*lipid|electrolyte|electrolytes|sodium|potassium|chloride|hba1c|hb\s*a1c|hb-a1c|blood sugar|blood-sugar|sugar|fbs|rbs|1st hour|2nd hour|bun|creatinine|bun[\s\/\-]?crea|bun\/?crea|sgpt|sgot|albumin|alb)/i.test(normalizedType)) view = 'tests/results_entry_blood_chemistry';
     if (/(ultrasound[-\s]?transvaginal|transvaginal)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_transvaginal';
+    if (/(ultrasound[-\s]?biophysical|biophysical)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_biophysical';
     if (/(1st\s*trimester|first\s*trimester|1st[-\s]?trimester|trimester\s*obstetrics)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_1st_trimester_obstetrics';
     if (/(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_abd_kubp_hbt';
     if (/(static:)?(ultrasound[-_\s]?pelvic(\.ejs)?|pelvic)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_pelvic';
@@ -395,6 +404,7 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       blood_sugar: /(blood sugar|blood-sugar|sugar|fbs|rbs|1st hour|2nd hour)/i.test(tt),
       ultrasound_abd: /(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(tt),
       ultrasound_transvaginal: /(ultrasound[-\s]?transvaginal|transvaginal)/i.test(tt),
+      ultrasound_biophysical: /(ultrasound[-\s]?biophysical|biophysical)/i.test(tt),
       ultrasound_pelvic: /(ultrasound[-_\s]?pelvic(\.ejs)?|pelvic)/i.test(tt),
       ultrasound_1st_trimester: /(1st\s*trimester|first\s*trimester|1st[-\s]?trimester|trimester\s*obstetrics|ultrasound[-\s]?.*1st)/i.test(tt),
       esr: /(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(tt),
@@ -409,6 +419,8 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     // Ensure pelvic ultrasound forms are accepted even when testType string
     // does not exactly match (some forms submit fields instead of testType).
     checks.ultrasound_pelvic = checks.ultrasound_pelvic || /(static:)?(ultrasound[-_\s]?pelvic(\.ejs)?|pelvic)/i.test(tt);
+    // Ensure biophysical ultrasound forms are accepted when form fields are submitted
+    checks.ultrasound_biophysical = checks.ultrasound_biophysical || /(ultrasound[-\s]?biophysical|biophysical)/i.test(tt);
     // Fallback: if the request contains common ultrasound fields, accept as ultrasound-pelvic
     if (!checks.ultrasound_pelvic && req && req.body && (
       req.body.gestational_sac_length || req.body.crl_length || req.body.impression || req.body.paragraphs || req.body.findings || req.body.examination
@@ -416,6 +428,12 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       checks.ultrasound_pelvic = true;
       // also mark transvaginal true for compatibility with shared ultrasound handlers
       checks.ultrasound_transvaginal = checks.ultrasound_transvaginal || true;
+    }
+    // Fallback: if the request contains biophysical-specific fields, accept as biophysical
+    if (!checks.ultrasound_biophysical && req && req.body && (
+      req.body.bpd_size || req.body.hc_size || req.body.ac_size || req.body.fl_size || req.body['biometry_size[]'] || req.body.biometry_size
+    )) {
+      checks.ultrasound_biophysical = true;
     }
 
     if (!tt || !Object.values(checks).some(Boolean)) {
@@ -941,6 +959,95 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
         sample: (sample || '').trim(),
         result: (result || '').trim()
       };
+    } else if (/(ultrasound[-\s]?biophysical|biophysical)/i.test(test.testType)) {
+      // Biophysical ultrasound parsing
+      const bpd_size = (req.body.bpd_size || '').toString().trim();
+      const bpd_label = (req.body.bpd_label || '').toString().trim();
+      const hc_size = (req.body.hc_size || '').toString().trim();
+      const hc_label = (req.body.hc_label || '').toString().trim();
+      const ac_size = (req.body.ac_size || '').toString().trim();
+      const ac_label = (req.body.ac_label || '').toString().trim();
+      const fl_size = (req.body.fl_size || '').toString().trim();
+      const fl_label = (req.body.fl_label || '').toString().trim();
+
+      // extra biometry rows
+      const labelsRaw = req.body['biometry_label[]'] || req.body.biometry_label || req.body.biometry_label;
+      const sizesRaw = req.body['biometry_size[]'] || req.body.biometry_size || req.body.biometry_size;
+      let biometry = [];
+      if (Array.isArray(labelsRaw) || Array.isArray(sizesRaw)) {
+        const labels = Array.isArray(labelsRaw) ? labelsRaw : (labelsRaw ? [labelsRaw] : []);
+        const sizes = Array.isArray(sizesRaw) ? sizesRaw : (sizesRaw ? [sizesRaw] : []);
+        const max = Math.max(labels.length, sizes.length);
+        for (let i = 0; i < max; i++) {
+          const lbl = labels[i] !== undefined ? String(labels[i]).trim() : '';
+          const sz = sizes[i] !== undefined ? String(sizes[i]).trim() : '';
+          if (lbl || sz) biometry.push({ label: lbl, size: sz });
+        }
+      }
+
+      const number_of_fetus = (req.body.number_of_fetus || '').toString().trim();
+      const average_ultrasound_age = (req.body.average_ultrasound_age || '').toString().trim();
+      const presentation = (req.body.presentation || '').toString().trim();
+      const edc_by_ultrasound_raw = (req.body.edc_by_ultrasound || '').toString().trim();
+      let edc_by_ultrasound = '';
+      if (edc_by_ultrasound_raw) {
+        const d = new Date(edc_by_ultrasound_raw);
+        if (!isNaN(d.getTime())) edc_by_ultrasound = d.toISOString(); else edc_by_ultrasound = edc_by_ultrasound_raw;
+      }
+      const efw = (req.body.efw || '').toString().trim();
+      const fetal_heart_rate = (req.body.fetal_heart_rate || '').toString().trim();
+      const placental_location = (req.body.placental_location || '').toString().trim();
+      const maturity = (req.body.maturity || '').toString().trim();
+      const amniotic_fluid = (req.body.amniotic_fluid || '').toString().trim();
+      const gender = (req.body.gender || '').toString().trim();
+      const fetal_tone = (req.body.fetal_tone || '').toString().trim();
+      const fetal_movement = (req.body.fetal_movement || '').toString().trim();
+      const fetal_breathing = (req.body.fetal_breathing || '').toString().trim();
+      const afi = (req.body.afi || '').toString().trim();
+      const bps = (req.body.bps || '').toString().trim();
+      const estimated_date_of_delivery_raw = (req.body.estimated_date_of_delivery || req.body.estimatedDateOfDelivery || '').toString().trim();
+      let estimated_date_of_delivery = '';
+      if (estimated_date_of_delivery_raw) {
+        const d2 = new Date(estimated_date_of_delivery_raw);
+        if (!isNaN(d2.getTime())) estimated_date_of_delivery = d2.toISOString(); else estimated_date_of_delivery = estimated_date_of_delivery_raw;
+      }
+
+      const impression = (req.body.impression || '').toString().trim();
+      const doctorName = (req.body.pathName || req.body.doctorName || '').toString().trim();
+      const doctorLicense = (req.body.pathLicense || req.body.doctorLicense || '').toString().trim();
+      const doctorDesignation = (req.body.doctorDesignation || '').toString().trim();
+
+      resultsObj = {
+        bpd_size, bpd_label,
+        hc_size, hc_label,
+        ac_size, ac_label,
+        fl_size, fl_label,
+        biometry,
+        number_of_fetus,
+        average_ultrasound_age,
+        presentation,
+        edc_by_ultrasound,
+        efw,
+        fetal_heart_rate,
+        placental_location,
+        maturity,
+        amniotic_fluid,
+        gender,
+        fetal_tone,
+        fetal_movement,
+        fetal_breathing,
+        afi,
+        bps,
+        estimated_date_of_delivery,
+        impression,
+        doctorName,
+        doctorLicense,
+        doctorDesignation
+      };
+
+      // store editable section title
+      resultsObj.section_title = (req.body.section_title || req.body.sectionTitle || (test && test.results && test.results.section_title) || 'BIOPHYSICAL ULTRASOUND').toString().trim();
+
     } else if (/(static:)?(ultrasound[-_\s]?(transvaginal|pelvic)(\.ejs)?|transvaginal|pelvic)/i.test(test.testType)) {
       // Transvaginal ultrasound: structured fields per checklist
       const gestational_sac_length = (req.body.gestational_sac_length || req.body.gestationalSacLength || '').toString().trim();
@@ -999,6 +1106,8 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
         doctorLicense: doctorLicense,
         doctorDesignation: doctorDesignation
       };
+      // store editable section title when provided (or keep existing/default)
+      resultsObj.section_title = (req.body.section_title || req.body.sectionTitle || (test && test.results && test.results.section_title) || (/(transvaginal)/i.test(test.testType) ? 'TRANSVAGINAL ULTRASOUND' : 'PELVIC ULTRASOUND')).toString().trim();
     } else if (/(1st\s*trimester|first\s*trimester|1st[-\s]?trimester|trimester\s*obstetrics)/i.test(test.testType)) {
       // 1st Trimester Obstetrics - unified single/twin parsing
       const isTwinRaw = req.body.isTwin;
@@ -1092,6 +1201,8 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
           doctorLicense: doctorLicense,
           doctorDesignation: doctorDesignation
         };
+        // allow editable section title for 1st trimester
+        resultsObj.section_title = (req.body.section_title || req.body.sectionTitle || (test && test.results && test.results.section_title) || '1st TRIMESTER OBSTETRICS').toString().trim();
       } else {
         // single fetus parsing (back-compat and new single form)
         const g_len = (req.body.gestational_sac_length || req.body.gestationalSacLength || '').toString().trim();
@@ -1149,6 +1260,8 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
           doctorLicense: doctorLicense,
           doctorDesignation: doctorDesignation
         };
+        // allow editable section title for 1st trimester
+        resultsObj.section_title = (req.body.section_title || req.body.sectionTitle || (test && test.results && test.results.section_title) || '1st TRIMESTER OBSTETRICS').toString().trim();
       }
     } else if (/(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(test.testType)) {
       // Ultrasound ABD / KUBP / HBT variant: accept examination select, findings paragraphs, and impression
@@ -1255,6 +1368,7 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
       'serology.ejs',
       'ultrasound-abd-kubp-hbt.ejs'
       , 'ultrasound-transvaginal.ejs'
+      , 'ultrasound-biophysical.ejs'
       , 'ultrasound-1st-trimester-obstetrics.ejs'
       , 'ultrasound-pelvic.ejs'
     ];

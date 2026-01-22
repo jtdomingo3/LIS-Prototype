@@ -239,6 +239,10 @@ function getResultTemplate(test) {
     template = 'ultrasound-pelvic';
     image = '8bb335a9-e0fb-4909-acdc-e2a070851a13.jpg';
   }
+  else if (type.includes('biophysical') || type.includes('ultrasound-biophysical')) {
+    template = 'ultrasound-biophysical';
+    image = '8bb335a9-e0fb-4909-acdc-e2a070851a13.jpg';
+  }
 
   // Allow overriding with explicit `template` field on test
   if (test && test.template && typeof test.template === 'string') {

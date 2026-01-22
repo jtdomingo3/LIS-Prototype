@@ -1,0 +1,184 @@
+<div class="card">
+  <h3>Enter Biophysical Ultrasound Results - <%= test.testId %></h3>
+
+  <form action="/tests/<%= test.id %>/results" method="POST">
+    <input type="hidden" name="_method" value="POST">
+
+    <% const sample = {
+      bpd_size: '8.95 cm', bpd_label: '36 CI',
+      hc_size: '31.97 cm', hc_label: '36',
+      ac_size: '32.27 cm', ac_label: '36',
+      fl_size: '7.01 cm', fl_label: '36',
+      number_of_fetus: 'SINGLE', average_ultrasound_age: '36',
+      presentation: 'CEPHALIC',
+      edc_by_ultrasound: '2026-02-17',
+      efw: '2853 g', fetal_heart_rate: '140 bpm',
+      placental_location: 'POSTERO-FUNDAL', maturity: 'GRADE-3',
+      amniotic_fluid: 'ADEQUATE 17.22', gender: '', fetal_tone: '2',
+      fetal_movement: '2', fetal_breathing: '2', afi: '', bps: '8/8',
+      estimated_date_of_delivery: '2026-02-17',
+      impression: 'SINGLE, LIVE, INTRAUTERINE PREGNANCY OF 36 WEEKS. CEPHALIC PRESENTATION. EDD: FEBRUARY 17, 2026.'
+    } %>
+
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+      <div class="form-row" style="margin:0;">
+        <label>Date</label>
+        <input type="date" name="entryDate" value="<%= test && test.testDate ? (new Date(test.testDate)).toISOString().slice(0,10) : (new Date()).toISOString().slice(0,10) %>" readonly>
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>Time Requested</label>
+        <input type="time" name="timeRequested" value="<%= test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '' %>">
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>Time Released</label>
+        <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : '' %>">
+      </div>
+    </div>
+
+    <div style="margin-top:8px">
+      <label>Section Title</label>
+      <input type="text" name="section_title" value="<%= test && test.results && test.results.section_title ? test.results.section_title : 'BIOPHYSICAL ULTRASOUND' %>">
+    </div>
+
+    <div style="margin-top:12px; font-weight:700">BIOMETRY:</div>
+    <div id="biometryList" style="margin-top:8px">
+      <!-- Standard four measurements with two placeholders each -->
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+        <label style="width:60px">BPD:</label>
+        <input type="text" name="bpd_size" placeholder="<%= sample.bpd_size %>" value="<%= test && test.results && test.results.bpd_size ? test.results.bpd_size : '' %>" style="width:120px">
+        <input type="text" name="bpd_label" placeholder="<%= sample.bpd_label %>" value="<%= test && test.results && test.results.bpd_label ? test.results.bpd_label : '' %>" style="margin-left:8px; width:160px">
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+        <label style="width:60px">HC:</label>
+        <input type="text" name="hc_size" placeholder="<%= sample.hc_size %>" value="<%= test && test.results && test.results.hc_size ? test.results.hc_size : '' %>" style="width:120px">
+        <input type="text" name="hc_label" placeholder="<%= sample.hc_label %>" value="<%= test && test.results && test.results.hc_label ? test.results.hc_label : '' %>" style="margin-left:8px; width:160px">
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+        <label style="width:60px">AC:</label>
+        <input type="text" name="ac_size" placeholder="<%= sample.ac_size %>" value="<%= test && test.results && test.results.ac_size ? test.results.ac_size : '' %>" style="width:120px">
+        <input type="text" name="ac_label" placeholder="<%= sample.ac_label %>" value="<%= test && test.results && test.results.ac_label ? test.results.ac_label : '' %>" style="margin-left:8px; width:160px">
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+        <label style="width:60px">FL:</label>
+        <input type="text" name="fl_size" placeholder="<%= sample.fl_size %>" value="<%= test && test.results && test.results.fl_size ? test.results.fl_size : '' %>" style="width:120px">
+        <input type="text" name="fl_label" placeholder="<%= sample.fl_label %>" value="<%= test && test.results && test.results.fl_label ? test.results.fl_label : '' %>" style="margin-left:8px; width:160px">
+      </div>
+      <% if (test && test.results && Array.isArray(test.results.biometry) && test.results.biometry.length) { %>
+        <% test.results.biometry.forEach(function(b){ %>
+          <div class="biometry-row" style="display:flex;gap:8px;align-items:center;margin-top:6px">
+            <input type="text" name="biometry_label[]" placeholder="Label" value="<%= b && b.label ? b.label : '' %>" style="width:120px">
+            <input type="text" name="biometry_size[]" placeholder="<%= sample.bpd_size %>" value="<%= b && b.size ? b.size : '' %>" style="margin-left:8px; width:120px">
+            <button type="button" class="button btn-small" onclick="removeBiometryRow(this)">Remove</button>
+          </div>
+        <% }) %>
+      <% } %>
+    </div>
+    <div style="margin-top:8px">
+      <button type="button" class="button" onclick="addBiometryRow()">Add Biometry Row</button>
+    </div>
+
+    <hr style="margin-top:12px">
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div>
+        <label>NUMBER OF FETUS</label>
+        <input type="text" name="number_of_fetus" placeholder="<%= sample.number_of_fetus %>" value="<%= test && test.results && test.results.number_of_fetus ? test.results.number_of_fetus : '' %>">
+
+        <label style="margin-top:8px; display:block">AVERAGE ULTRASOUND AGE</label>
+        <input type="text" name="average_ultrasound_age" placeholder="<%= sample.average_ultrasound_age %>" value="<%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : '' %>">
+
+        <label style="margin-top:8px; display:block">PRESENTATION</label>
+        <input type="text" name="presentation" placeholder="<%= sample.presentation %>" value="<%= test && test.results && test.results.presentation ? test.results.presentation : '' %>">
+
+        <label style="margin-top:8px; display:block">EDC BY ULTRASOUND</label>
+        <input type="date" name="edc_by_ultrasound" value="<%= test && test.results && test.results.edc_by_ultrasound ? (new Date(test.results.edc_by_ultrasound)).toISOString().slice(0,10) : (sample.edc_by_ultrasound || '') %>">
+
+        <label style="margin-top:8px; display:block">EFW</label>
+        <input type="text" name="efw" placeholder="<%= sample.efw %>" value="<%= test && test.results && test.results.efw ? test.results.efw : '' %>">
+
+        <label style="margin-top:8px; display:block">FETAL HEART RATE</label>
+        <input type="text" name="fetal_heart_rate" placeholder="<%= sample.fetal_heart_rate %>" value="<%= test && test.results && test.results.fetal_heart_rate ? test.results.fetal_heart_rate : '' %>">
+      </div>
+      <div>
+        <label>PLACENTAL LOCATION</label>
+        <input type="text" name="placental_location" placeholder="<%= sample.placental_location %>" value="<%= test && test.results && test.results.placental_location ? test.results.placental_location : '' %>">
+
+        <label style="margin-top:8px; display:block">MATURITY</label>
+        <input type="text" name="maturity" placeholder="<%= sample.maturity %>" value="<%= test && test.results && test.results.maturity ? test.results.maturity : '' %>">
+
+        <label style="margin-top:8px; display:block">AMNIOTIC FLUID</label>
+        <input type="text" name="amniotic_fluid" placeholder="<%= sample.amniotic_fluid %>" value="<%= test && test.results && test.results.amniotic_fluid ? test.results.amniotic_fluid : '' %>">
+
+        <label style="margin-top:8px; display:block">GENDER</label>
+        <input type="text" name="gender" placeholder="e.g. MALE / FEMALE" value="<%= test && test.results && test.results.gender ? test.results.gender : '' %>">
+
+        <label style="margin-top:8px; display:block">FETAL TONE</label>
+        <input type="text" name="fetal_tone" placeholder="<%= sample.fetal_tone %>" value="<%= test && test.results && test.results.fetal_tone ? test.results.fetal_tone : '' %>">
+
+        <label style="margin-top:8px; display:block">FETAL MOVEMENT</label>
+        <input type="text" name="fetal_movement" placeholder="<%= sample.fetal_movement %>" value="<%= test && test.results && test.results.fetal_movement ? test.results.fetal_movement : '' %>">
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px">
+      <div>
+        <label>FETAL BREATHING</label>
+        <input type="text" name="fetal_breathing" placeholder="<%= sample.fetal_breathing %>" value="<%= test && test.results && test.results.fetal_breathing ? test.results.fetal_breathing : '' %>">
+
+        <label style="margin-top:8px; display:block">AFI</label>
+        <input type="text" name="afi" placeholder="e.g. 17.22" value="<%= test && test.results && test.results.afi ? test.results.afi : '' %>">
+      </div>
+      <div>
+        <label>BPS</label>
+        <input type="text" name="bps" placeholder="<%= sample.bps %>" value="<%= test && test.results && test.results.bps ? test.results.bps : '' %>">
+
+        <label style="margin-top:8px; display:block">ESTIMATED DATE OF DELIVERY</label>
+        <input type="date" name="estimated_date_of_delivery" value="<%= test && test.results && test.results.estimated_date_of_delivery ? (new Date(test.results.estimated_date_of_delivery)).toISOString().slice(0,10) : (sample.estimated_date_of_delivery || '') %>">
+      </div>
+    </div>
+
+    <div style="margin-top:8px">
+      <label>IMPRESSION</label>
+      <textarea name="impression" rows="4" style="width:100%"><%= test && test.results && test.results.impression ? test.results.impression : 'Enter impression here.' %></textarea>
+    </div>
+
+    <hr>
+    <h4>Signatures / Performers</h4>
+    <div class="form-row">
+      <label>Radiologist (Name)</label>
+      <input type="text" name="pathName" placeholder="Radiologist name" value="<%= test.results && test.results.pathName ? test.results.pathName : (test.results && test.results.doctorName ? test.results.doctorName : '') %>">
+    </div>
+    <div class="form-row">
+      <label>Radiologist License</label>
+      <input type="text" name="pathLicense" placeholder="License number (optional)" value="<%= test.results && test.results.pathLicense ? test.results.pathLicense : (test.results && test.results.doctorLicense ? test.results.doctorLicense : '') %>">
+    </div>
+    <div class="form-row">
+      <label>Designation</label>
+      <input type="text" name="doctorDesignation" placeholder="e.g. MD, FPCR - Radiologist" value="<%= test.results && test.results.doctorDesignation ? test.results.doctorDesignation : 'Radiologist' %>">
+    </div>
+
+    <div class="form-row mt-12">
+      <a href="/tests/<%= test.id %>" class="button btn-secondary">Cancel</a>
+      <button class="button btn-primary">Save Results</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  function addBiometryRow() {
+    const container = document.getElementById('biometryList');
+    const div = document.createElement('div');
+    div.className = 'biometry-row';
+    div.style.cssText = 'display:flex;gap:8px;align-items:center;margin-top:6px';
+    div.innerHTML = `
+      <input type="text" name="biometry_label[]" placeholder="Label" style="width:120px">
+      <input type="text" name="biometry_size[]" placeholder="0.00" style="margin-left:8px; width:120px">
+      <button type="button" class="button btn-small" onclick="removeBiometryRow(this)">Remove</button>
+    `;
+    container.appendChild(div);
+  }
+  function removeBiometryRow(btn) {
+    const row = btn && btn.parentNode;
+    if (row && row.parentNode) row.parentNode.removeChild(row);
+  }
+</script>

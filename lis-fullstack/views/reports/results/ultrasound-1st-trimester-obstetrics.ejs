@@ -59,7 +59,7 @@
       </tr>
     </table>
 
-    <div class="section-title">1st TRIMESTER OBSTETRICS (ULTRASOUND)</div>
+    <div class="section-title"><%= (test && test.results && test.results.section_title) ? test.results.section_title : '1st TRIMESTER OBSTETRICS (ULTRASOUND)' %></div>
 
     <% if (test && test.results && test.results.isTwin) { %>
       <div class="twins-grid">
