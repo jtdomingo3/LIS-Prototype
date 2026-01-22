@@ -130,7 +130,7 @@ router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) =
     }
 
     // Determine specific result template for this test and render it to HTML
-    const { template, image } = getResultTemplate(populatedTest);
+    const template = getResultTemplate(populatedTest);
     const viewPath = `reports/results/${template}`;
 
     // Inline logo for preview/template rendering (helps PDF renderer later)
@@ -192,7 +192,7 @@ router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) =
 
     // Render the result template without layout into an HTML string,
     // then wrap it with the print wrapper so preview iframe gets full HTML+styles
-    const renderOptions = { title: 'Result Preview', test: populatedTest, image, layout: false, inlineLogo };
+    const renderOptions = { title: 'Result Preview', test: populatedTest, layout: false, inlineLogo };
     // Use res.render callback to capture template HTML
     res.render(viewPath, renderOptions, (err, renderedHtml) => {
       if (err) {
@@ -251,101 +251,68 @@ router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) =
   }
 });
 
-// Helper to map test types to result template and default image
+// Helper to map test types to result template (images removed — templates drive views)
 function getResultTemplate(test) {
   const type = (test && test.testType ? String(test.testType) : '').toLowerCase();
-  // default template and sample image
+  // default template
   let template = 'blood-chemistry';
-  let image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';
 
   if (type.includes('fecal occult') || type.includes('fecal-occult') || type.includes('fecaloccult')) {
     template = 'fecal-occult-blood';
-    image = '56226bda-3645-4fe4-aec7-7b62ff6a5a4b.jpg';
   } else if (type.includes('fecal') || type.includes('fecalysis')) {
     template = 'fecalysis';
-    image = '56226bda-3645-4fe4-aec7-7b62ff6a5a4b.jpg';
   } else if (type.includes('urinal') || type.includes('urinalysis')) {
     template = 'urinalysis';
-    image = '8bb335a9-e0fb-4909-acdc-e2a070851a13.jpg';
   } else if (type.includes('blood typing') || type.includes('blood-typing') || type.includes('bloodtyping')) {
     template = 'blood-typing';
-    image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';
   } else if (type.includes('pregnan') || type.includes('pregnancy')) {
     template = 'pregnancy-test';
-    image = 'd7c357bf-74a2-42dc-b3d1-2a573a30784d.jpg';
   } else if (type.includes('dengue')) {
     template = 'dengue-duo';
-    image = 'd7c357bf-74a2-42dc-b3d1-2a573a30784d.jpg';
   } else if (type.includes('esr') || type.includes('erythrocyte') || type.includes('erythrocyte sedimentation')) {
     template = 'esr';
-    image = 'cb07aab1-5855-4314-be0f-d734ce0e608a.jpg';
   } else if (type.includes('lipid') || type.includes('lipid profile') || type.includes('lipid-profile')) {
     template = 'blood-chemistry-lipid-profile';
-    image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';
   } else if (type.includes('ecg') || type.includes('electrocardio') || type.includes('electrocardiogram')) {
     template = 'ecg';
-    image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';
   } else if (type.includes('echo') || type.includes('echocardiograph') || type.includes('echocardiography') || /2d\s*echo/.test(type)) {
     template = 'echocardiography-2d';
-    image = '8bb335a9-e0fb-4909-acdc-e2a070851a13.jpg';
   } else if (type.includes('albumin') || type.includes('\balb\b')) {
     template = 'blood-chemistry-albumin';
-    image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';
   } else if (type.includes('sgpt') || type.includes('sgot') || /sgpt\s*\/?\s*sgot/.test(type) || type.includes('sgpt sgot')) {
     template = 'blood-chemistry-sgpt-sgot';
-    image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';
   } else if (type.includes('electrolyte') || type.includes('electrolytes') || type.includes('sodium') || type.includes('potassium') || type.includes('chloride')) {
     template = 'blood-chemistry-electrolytes';
-    image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';
   } else if (type.includes('bun') || type.includes('creatinine') || type.includes('crea')) {
     template = 'blood-chemistry-bun-crea';
-    image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';
   } else if (/blood sugar|blood-sugar|sugar|fbs|rbs|1st hour|2nd hour/.test(type)) {
     template = 'blood-chemistry-blood-sugar';
-    image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';
   } else if (type.includes('hba1c') || type.includes('hb a1c') || type.includes('hb-a1c') || type.includes('hba 1c')) {
     template = 'blood-chemistry-hba1c';
-    image = 'd7c357bf-74a2-42dc-b3d1-2a573a30784d.jpg';
   } else if (type.includes('bleeding') || type.includes('clotting') || type.includes('ct & bt') || type.includes('ct & bt') || type.includes('ct') && type.includes('bt')) {
     template = 'ct-bt';
-    image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';
   } else if (/\b(?:pt|prothrombin|pt-aptt|ptaptt)\b/.test(type)) {
     template = 'pt-aptt';
-    image = 'd7c357bf-74a2-42dc-b3d1-2a573a30784d.jpg';
   } else if (type.includes('blood') || type.includes('chem')) {
     template = 'blood-chemistry';
-    image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';
   } else if (type.includes('xray') || type.includes('x-ray') || type.includes('x ray')) {
     template = 'xray';
-    image = '93220381-3be7-4696-8189-9cca307d20bd.jpg';
   } else if (type.includes('hemato') || type.includes('hematology') || type.includes('cbc')) {
     template = 'hematology';
-    image = 'cb07aab1-5855-4314-be0f-d734ce0e608a.jpg';
   } else if (type.includes('thyroid') || type.includes('thyroid panel') || type.includes('thyroid-panel')) {
     template = 'thyroid-panel';
-    image = 'd7c357bf-74a2-42dc-b3d1-2a573a30784d.jpg';
   } else if (type.includes('serol') || type.includes('serology')) {
     template = 'serology';
-    image = 'd7c357bf-74a2-42dc-b3d1-2a573a30784d.jpg';
   } else if (type.includes('ultrasound-abd-kubp-hbt') || type.includes('ultrasound abd kubp hbt')) {
     template = 'ultrasound-abd-kubp-hbt';
-    image = '8bb335a9-e0fb-4909-acdc-e2a070851a13.jpg';
-  }
-  else if (type.includes('1st') && type.includes('trimester') || /1st\s*trimester|first\s*trimester/.test(type)) {
+  } else if (type.includes('1st') && type.includes('trimester') || /1st\s*trimester|first\s*trimester/.test(type)) {
     template = 'ultrasound-1st-trimester-obstetrics';
-    image = '8bb335a9-e0fb-4909-acdc-e2a070851a13.jpg';
-  }
-  else if (type.includes('transvaginal') || type.includes('ultrasound-transvaginal')) {
+  } else if (type.includes('transvaginal') || type.includes('ultrasound-transvaginal')) {
     template = 'ultrasound-transvaginal';
-    image = '8bb335a9-e0fb-4909-acdc-e2a070851a13.jpg';
-  }
-  else if (type.includes('pelvic') || type.includes('ultrasound-pelvic')) {
+  } else if (type.includes('pelvic') || type.includes('ultrasound-pelvic')) {
     template = 'ultrasound-pelvic';
-    image = '8bb335a9-e0fb-4909-acdc-e2a070851a13.jpg';
-  }
-  else if (type.includes('biophysical') || type.includes('ultrasound-biophysical')) {
+  } else if (type.includes('biophysical') || type.includes('ultrasound-biophysical')) {
     template = 'ultrasound-biophysical';
-    image = '8bb335a9-e0fb-4909-acdc-e2a070851a13.jpg';
   }
 
   // Allow overriding with explicit `template` field on test
@@ -353,7 +320,7 @@ function getResultTemplate(test) {
     template = test.template;
   }
 
-  return { template, image };
+  return template;
 }
 
 // GET /reports/result/:testId - Render result template for a test
@@ -382,7 +349,7 @@ router.get('/result/:testId', requireAuth, canAccessPatient, async (req, res) =>
       performedBy: performedBy ? { name: performedBy.name } : null
     };
 
-    const { template, image } = getResultTemplate(populatedTest);
+    const template = getResultTemplate(populatedTest);
     // Render the matching template view under reports/results
     // allow embedding without layout when requested (used by preview iframe)
     const useLayout = req.query.embedded ? false : 'print';
@@ -391,7 +358,6 @@ router.get('/result/:testId', requireAuth, canAccessPatient, async (req, res) =>
     return res.render(`reports/results/${template}`, {
       title: 'Result',
       test: populatedTest,
-      image,
       layout: useLayout,
       print: autoPrint,
       inlineLogo
@@ -439,9 +405,9 @@ router.get('/pdf/:testId', requireAuth, canAccessPatient, async (req, res) => {
     };
 
     // Determine specific result template and render it to HTML without layout
-    const { template, image } = getResultTemplate(populatedTest);
+    const template = getResultTemplate(populatedTest);
     const viewPath = `reports/results/${template}`;
-    const renderOptions = { title: 'Result PDF', test: populatedTest, image, layout: false };
+    const renderOptions = { title: 'Result PDF', test: populatedTest, layout: false };
 
     const inlineLogo = getInlineLogo();
     return res.render(viewPath, Object.assign({}, renderOptions, { inlineLogo }), async (err, renderedHtml) => {
@@ -579,12 +545,12 @@ router.get('/print/:testId', requireAuth, canAccessPatient, async (req, res) => 
     };
 
     // Render the specific result template into HTML, then render the print wrapper
-    const { template, image } = getResultTemplate(populatedTest);
+    const template = getResultTemplate(populatedTest);
     const viewPath = `reports/results/${template}`;
 
     // Render the result template without layout to get its HTML
     const inlineLogo = getInlineLogo();
-    res.render(viewPath, { title: 'Result Print', test: populatedTest, image, layout: false, inlineLogo }, (err, renderedHtml) => {
+    res.render(viewPath, { title: 'Result Print', test: populatedTest, layout: false, inlineLogo }, (err, renderedHtml) => {
       if (err) {
         console.error('Error rendering result template for print:', err);
         // fallback to previous print view if rendering fails
@@ -650,11 +616,11 @@ router.get('/print-multiple', requireAuth, canAccessPatient, async (req, res) =>
         performedBy: performedBy ? { name: performedBy.name } : null
       };
 
-      const { template, image } = getResultTemplate(populatedTest);
+      const template = getResultTemplate(populatedTest);
       // Render each template into HTML (no layout)
       try {
         const html = await new Promise((resolve, reject) => {
-          res.render(`reports/results/${template}`, { title: 'Result', test: populatedTest, image, layout: false, inlineLogo: getInlineLogo() }, (err, html) => {
+          res.render(`reports/results/${template}`, { title: 'Result', test: populatedTest, layout: false, inlineLogo: getInlineLogo() }, (err, html) => {
             if (err) return reject(err);
             resolve(html);
           });
