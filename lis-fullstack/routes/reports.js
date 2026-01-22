@@ -62,9 +62,19 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
       );
     }
 
+    // Also provide a lightweight list for client-side navigation/filtering
+    const testsForNav = testsWithPatients.map(t => ({
+      id: t.id,
+      testId: t.testId,
+      patientName: t.patient ? `${t.patient.firstName || ''} ${t.patient.lastName || ''}`.trim() : '',
+      testType: t.testType || t.template || '',
+      testDate: t.testDate || null
+    }));
+
     res.render('reports/index', {
       title: 'Generate & View Reports',
-      tests: testsWithPatients
+      tests: testsWithPatients,
+      testsForNav
     });
 
   } catch (error) {
@@ -126,20 +136,79 @@ router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) =
     // Inline logo for preview/template rendering (helps PDF renderer later)
     const inlineLogo = getInlineLogo();
 
-    // Render the result template without layout into an HTML string, then render preview page
+    // --- NEW: build navigation list for prev/next and client-side filtering ---
+    const allTests = await Test.find({});
+    const completedSorted = Array.isArray(allTests) ? allTests.filter(t => t && (t.status === 'Completed' || t.status === 'Released')) : [];
+    // sort by testDate (newest first)
+    completedSorted.sort((a, b) => new Date(b.testDate || b.createdAt) - new Date(a.testDate || a.createdAt));
+
+    const testsForNav = await Promise.all(completedSorted.map(async (t) => {
+      const p = t.patient ? await Patient.findById(t.patient) : null;
+      return {
+        id: t.id || t._id,
+        testId: t.testId,
+        testType: t.testType || t.template || '',
+        patientName: p ? `${p.firstName || ''} ${p.lastName || ''}`.trim() : (t.patientName || ''),
+        testDate: t.testDate || t.createdAt || null
+      };
+    }));
+
+    const currentIndex = testsForNav.findIndex(tn => String(tn.id) === String(test.id || test._id));
+    const prevId = (currentIndex > 0) ? testsForNav[currentIndex - 1].id : null;
+    const nextId = (currentIndex >= 0 && currentIndex < testsForNav.length - 1) ? testsForNav[currentIndex + 1].id : null;
+    // --- END NEW ---
+
+    // Render the result template without layout into an HTML string,
+    // then wrap it with the print wrapper so preview iframe gets full HTML+styles
     const renderOptions = { title: 'Result Preview', test: populatedTest, image, layout: false, inlineLogo };
-    // Use res.render callback to capture HTML
+    // Use res.render callback to capture template HTML
     res.render(viewPath, renderOptions, (err, renderedHtml) => {
       if (err) {
         console.error('Error rendering result template for preview:', err);
         logReportError(err, 'render preview result template');
       }
 
-      return res.render('reports/preview', {
-        title: 'Report Preview',
-        test: populatedTest,
-        currentDate: new Date().toLocaleDateString(),
-        renderedResultHtml: renderedHtml || null
+      // Render the print wrapper which includes styles and print layout
+        const printOptions = { title: 'Print Report', test: populatedTest, currentDate: new Date().toLocaleDateString(), renderedResultHtml: renderedHtml, layout: false, inlineLogo };
+        return res.render('reports/print', printOptions, (err2, finalHtml) => {
+        if (err2) {
+          console.error('Error rendering print wrapper for preview:', err2);
+          logReportError(err2, 'render print wrapper for preview');
+          // fall back to the raw rendered template if wrapper fails
+            // include incoming filter query string so links preserve filters
+            const qparts = [];
+            if (req.query.filterPatient) qparts.push('filterPatient=' + encodeURIComponent(req.query.filterPatient));
+            if (req.query.filterTestType) qparts.push('filterTestType=' + encodeURIComponent(req.query.filterTestType));
+            if (req.query.filterDate) qparts.push('filterDate=' + encodeURIComponent(req.query.filterDate));
+            const filterQuery = qparts.length ? ('?' + qparts.join('&')) : '';
+            return res.render('reports/preview', {
+              title: 'Report Preview',
+              test: populatedTest,
+              currentDate: new Date().toLocaleDateString(),
+              renderedResultHtml: renderedHtml || null,
+              testsForNav,
+              prevId,
+              nextId,
+              filterQuery
+            });
+        }
+
+        // finalHtml contains the full HTML (with styles) suitable for iframe srcdoc
+          const qparts = [];
+          if (req.query.filterPatient) qparts.push('filterPatient=' + encodeURIComponent(req.query.filterPatient));
+          if (req.query.filterTestType) qparts.push('filterTestType=' + encodeURIComponent(req.query.filterTestType));
+          if (req.query.filterDate) qparts.push('filterDate=' + encodeURIComponent(req.query.filterDate));
+          const filterQuery = qparts.length ? ('?' + qparts.join('&')) : '';
+          return res.render('reports/preview', {
+            title: 'Report Preview',
+            test: populatedTest,
+            currentDate: new Date().toLocaleDateString(),
+            renderedResultHtml: finalHtml || renderedHtml || null,
+            testsForNav,
+            prevId,
+            nextId,
+            filterQuery
+          });
       });
     });
 
@@ -505,6 +574,67 @@ router.get('/print/:testId', requireAuth, canAccessPatient, async (req, res) => 
     console.error('Print report error:', error);
     req.flash('error_msg', 'Error loading print view');
     res.redirect('/reports');
+  }
+});
+
+// GET /reports/print-multiple?ids=id1,id2,... - Print multiple filtered reports
+router.get('/print-multiple', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    let ids = req.query.ids;
+    if (!ids) {
+      req.flash('error_msg', 'No tests specified for printing');
+      return res.redirect('/reports');
+    }
+    if (typeof ids === 'string') ids = ids.split(',').map(s => s.trim()).filter(Boolean);
+    if (!Array.isArray(ids) || !ids.length) {
+      req.flash('error_msg', 'No valid test ids provided');
+      return res.redirect('/reports');
+    }
+
+    // Fetch tests and preserve order from ids
+    const found = await Test.find({ _id: { $in: ids } });
+    const foundById = {};
+    found.forEach(t => { foundById[String(t._id)] = t; });
+    const ordered = ids.map(id => foundById[id]).filter(Boolean).filter(t => t && (t.status === 'Completed' || t.status === 'Released'));
+
+    if (!ordered.length) {
+      req.flash('error_msg', 'No printable tests found for provided ids');
+      return res.redirect('/reports');
+    }
+
+    const renderedParts = [];
+    for (const t of ordered) {
+      const patient = t.patient ? await Patient.findById(t.patient) : null;
+      const requestedBy = t.requestedBy ? await User.findById(t.requestedBy) : null;
+      const performedBy = t.performedBy ? await User.findById(t.performedBy) : null;
+
+      const populatedTest = {
+        ...t,
+        patient: patient ? patient.toJSON() : null,
+        requestedBy: requestedBy ? { name: requestedBy.name } : null,
+        performedBy: performedBy ? { name: performedBy.name } : null
+      };
+
+      const { template, image } = getResultTemplate(populatedTest);
+      // Render each template into HTML (no layout)
+      const html = await new Promise((resolve, reject) => {
+        res.render(`reports/results/${template}`, { title: 'Result', test: populatedTest, image, layout: false, inlineLogo: getInlineLogo() }, (err, html) => {
+          if (err) return reject(err);
+          resolve(html);
+        });
+      });
+      renderedParts.push(html);
+    }
+
+    // Join each rendered report with a page-break
+    const concatenated = renderedParts.join('\n<div style="page-break-after:always;"></div>\n');
+    return res.render('reports/print', { title: 'Print Reports', renderedResultHtml: concatenated, layout: false });
+
+  } catch (err) {
+    console.error('Print multiple error:', err);
+    logReportError(err, 'print-multiple');
+    req.flash('error_msg', 'Error printing multiple reports');
+    return res.redirect('/reports');
   }
 });
 
