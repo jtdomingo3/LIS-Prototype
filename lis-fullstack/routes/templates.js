@@ -24,9 +24,10 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
 
     // include static result templates
     const staticTemplates = await getStaticResultTemplates();
-    // Exclude static templates that conflict with DB templates (match by testType)
-    const existingTypes = new Set((templatesWithCreators || []).map(t => (t.testType || '').toLowerCase()));
-    const filteredStatic = (staticTemplates || []).filter(st => !existingTypes.has((st.testType || '').toLowerCase()));
+    // Exclude static templates that conflict with DB templates (match by normalized testType)
+    function normKey(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '') }
+    const existingTypes = new Set((templatesWithCreators || []).map(t => normKey(t.testType || t.name)));
+    const filteredStatic = (staticTemplates || []).filter(st => !existingTypes.has(normKey(st.testType || st.name)));
     const allTemplates = [...templatesWithCreators, ...filteredStatic];
 
     res.render('templates/index', {
@@ -48,38 +49,8 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
 async function getStaticResultTemplates() {
   try {
     const resultsDir = path.join(__dirname, '..', 'views', 'reports', 'results');
-    // Only expose the actual report templates (exclude sample image files and size placeholders)
-    const allowed = [
-      'fecalysis.ejs',
-      'esr.ejs',
-      'ct-bt.ejs',
-      'fecal-occult-blood.ejs',
-      'urinalysis.ejs',
-      'blood-typing.ejs',
-      'dengue-duo.ejs',
-      'blood-chemistry.ejs',
-      'blood-chemistry-sgpt-sgot.ejs',
-      'blood-chemistry-bun-crea.ejs',
-      'blood-chemistry-lipid-profile.ejs',
-      'blood-chemistry-electrolytes.ejs',
-      'blood-chemistry-hba1c.ejs',
-      'blood-chemistry-albumin.ejs',
-      'blood-chemistry-blood-sugar.ejs',
-      'thyroid-panel.ejs',
-      'pregnancy-test.ejs',
-      'pt-aptt.ejs',
-      'xray.ejs',
-      'ecg.ejs',
-      'hematology.ejs',
-      'serology.ejs',
-      'ultrasound-abd-kubp-hbt.ejs',
-      'echocardiography-2d.ejs'
-      , 'ultrasound-transvaginal.ejs'
-      , 'ultrasound-biophysical.ejs'
-      , 'ultrasound-1st-trimester-obstetrics.ejs'
-        , 'ultrasound-pelvic.ejs'
-    ];
-    const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
+    // Read all .ejs files in the results directory so new templates are automatically available
+    const files = fs.readdirSync(resultsDir).filter(f => f && f.toLowerCase().endsWith('.ejs'));
     return files.map(f => {
       if (f === 'blood-chemistry-bun-crea.ejs') {
         return {
@@ -169,11 +140,12 @@ async function getStaticResultTemplates() {
             filename: f
           };
         }
-      const name = f.replace('.ejs', '').replace(/-/g, ' ');
+      const displayName = f.replace('.ejs', '').replace(/-/g, ' ');
       return {
         id: `static:${f}`,
-        name: name.charAt(0).toUpperCase() + name.slice(1),
-        testType: name,
+        name: displayName.charAt(0).toUpperCase() + displayName.slice(1),
+        // Use filename (dash-separated) as canonical testType so it matches other code paths
+        testType: f.replace('.ejs', ''),
         fields: [],
         createdAt: null,
         isStatic: true,

@@ -17,6 +17,14 @@ class Patient {
     this.phone = data.phone;
     this.email = data.email;
     this.address = data.address;
+    // Estimated total charges for this patient's pending tests
+    this.estimatedTotal = data.estimatedTotal || 0;
+    // Breakdown of charges per test (array of { testType, amount })
+    this.charges = Array.isArray(data.charges) ? data.charges : (data.charges ? data.charges : []);
+    // Totals by lab: clinical laboratory and x-ray laboratory
+    this.labTotals = data.labTotals || { clinical: 0, xray: 0 };
+    // Payment items (one per lab) to be collected: [{ lab: 'clinical'|'xray', amount, paid:false }]
+    this.paymentItems = Array.isArray(data.paymentItems) ? data.paymentItems : (data.paymentItems ? data.paymentItems : []);
     // list of reception areas this patient needs to go to (after Payment Area)
     this.requiredAreas = Array.isArray(data.requiredAreas) ? data.requiredAreas : (data.requiredAreas ? [data.requiredAreas] : []);
     this.createdAt = data.createdAt || new Date();
@@ -70,6 +78,10 @@ class Patient {
     obj.physician = this.physician || null;
     obj.ageManual = this.ageManual || null;
     obj.requiredAreas = this.requiredAreas || [];
+    obj.estimatedTotal = this.estimatedTotal || 0;
+    obj.charges = Array.isArray(this.charges) ? this.charges : [];
+    obj.labTotals = this.labTotals || { clinical: 0, xray: 0 };
+    obj.paymentItems = Array.isArray(this.paymentItems) ? this.paymentItems : [];
     // Provide legacy `sex` alias for templates that expect `patient.sex`
     obj.sex = obj.gender || null;
     return obj;

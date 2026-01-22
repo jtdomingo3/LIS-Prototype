@@ -51,15 +51,70 @@
         <div class="card" style="margin-top:12px;">
           <h4>Route patient to reception areas</h4>
           <p>Select which areas this patient needs to go to (after Payment Area). Payment is automatic.</p>
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                            <% const AREA_OPTIONS = ['Extraction Area','Drug Test','Ultrasound','2D Echo','X-ray','ECG',"Doctor's Check-up - Dr. Lorenzo","Doctor's Check-up - Dr. Arcilla"]; %>
-                            <% AREA_OPTIONS.forEach(a => { %>
-              <label style="display:inline-flex; align-items:center; gap:6px;">
-                <input type="checkbox" name="requiredAreas" value="<%= a %>" <%= (patient.requiredAreas && patient.requiredAreas.includes(a)) ? 'checked' : '' %> >
-                <%= a %>
-              </label>
-            <% }) %>
-          </div>
+                    <style>
+                        .checkbox-columns { column-gap: 20px; column-fill: auto; }
+                        /* Always use 4 columns on tablet/desktop for compact layout */
+                        @media (min-width: 768px) { .checkbox-columns { column-count: 4; } }
+                        /* Use 2 columns on small devices */
+                        @media (min-width: 480px) and (max-width: 767px) { .checkbox-columns { column-count: 2; } }
+                        /* Single column on very small devices */
+                        @media (max-width: 479px) { .checkbox-columns { column-count: 1; } }
+                        .checkbox-columns label { display: block; margin-bottom: 6px; break-inside: avoid; }
+                    </style>
+                    <div class="checkbox-columns">
+                        <% const TEST_OPTIONS = [
+                            { label: 'Blood Chemistry Albumin', value: 'blood-chemistry-albumin' },
+                            { label: 'Blood Chemistry Blood Sugar', value: 'blood-chemistry-blood-sugar' },
+                            { label: 'Blood Chemistry BUN Crea', value: 'blood-chemistry-bun-crea' },
+                            { label: 'Blood Chemistry Electrolytes', value: 'blood-chemistry-electrolytes' },
+                            { label: 'Blood Chemistry HbA1c', value: 'blood-chemistry-hba1c' },
+                            { label: 'Blood Chemistry Lipid Profile', value: 'blood-chemistry-lipid-profile' },
+                            { label: 'Blood Chemistry SGPT SGOT', value: 'blood-chemistry-sgpt-sgot' },
+                            { label: 'Blood Typing', value: 'blood-typing' },
+                            { label: 'CT BT', value: 'ct-bt' },
+                            { label: 'Dengue Duo', value: 'dengue-duo' },
+                            { label: 'Drugtest', value: 'drugtest' },
+                            { label: 'ECG', value: 'ecg' },
+                            { label: 'Echocardiography 2D', value: 'echocardiography-2d' },
+                            { label: 'ESR', value: 'esr' },
+                            { label: 'Fecal Occult Blood', value: 'fecal-occult-blood' },
+                            { label: 'Fecalysis', value: 'fecalysis' },
+                            { label: 'Hematology (CBC)', value: 'hematology' },
+                            { label: 'Pregnancy Test', value: 'pregnancy-test' },
+                            { label: 'PT APTT', value: 'pt-aptt' },
+                            { label: 'Serology (HBsAg)', value: 'serology' },
+                            { label: 'Thyroid Panel', value: 'thyroid-panel' },
+                            { label: 'Ultrasound 1st Trimester Obstetrics', value: 'ultrasound-1st-trimester-obstetrics' },
+                            { label: 'Ultrasound ABD KUBP HBT', value: 'ultrasound-abd-kubp-hbt' },
+                            { label: 'Ultrasound Biophysical', value: 'ultrasound-biophysical' },
+                            { label: 'Ultrasound Pelvic', value: 'ultrasound-pelvic' },
+                            { label: 'Ultrasound Transvaginal', value: 'ultrasound-transvaginal' },
+                            { label: 'Urinalysis', value: 'urinalysis' },
+                            { label: 'X-Ray', value: 'xray' }
+                        ]; %>
+                        <% TEST_OPTIONS.forEach(opt => { %>
+                            <label>
+                                <input type="checkbox" class="test-checkbox" name="requiredAreas" value="<%= opt.value %>" <%= (patient.requiredAreas && patient.requiredAreas.includes(opt.value)) ? 'checked' : '' %> >
+                                <span style="margin-left:8px;"><%= opt.label %></span>
+                                <input type="number" step="0.01" min="0" name="price-<%= opt.value %>" class="test-price" placeholder="Price" style="width:86px; margin-left:8px; display:none;">
+                            </label>
+                        <% }) %>
+                    </div>
+
+                    <div style="margin-top:10px; display:flex; gap:16px; align-items:center;">
+                        <div>
+                            <label style="font-weight:600;">Clinical Lab Total:</label>
+                            <input type="text" id="clinicalTotal" name="clinicalTotal" value="0.00" readonly style="width:120px; margin-left:8px;">
+                        </div>
+                        <div>
+                            <label style="font-weight:600;">X-Ray Lab Total:</label>
+                            <input type="text" id="xrayTotal" name="xrayTotal" value="0.00" readonly style="width:120px; margin-left:8px;">
+                        </div>
+                        <div>
+                            <label style="font-weight:600;">Estimated Total:</label>
+                            <input type="text" id="estimatedTotal" name="estimatedTotal" value="0.00" readonly style="width:120px; margin-left:8px;">
+                        </div>
+                    </div>
         </div>
 
         <div class="form-row">
@@ -102,5 +157,40 @@
             onDobChange();
             dob.addEventListener('change', onDobChange);
         }
+        // Price toggle + total calculation
+        function toNumber(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n; }
+        const checkboxes = document.querySelectorAll('.test-checkbox');
+        const estimatedEl = document.getElementById('estimatedTotal');
+        const clinicalEl = document.getElementById('clinicalTotal');
+        const xrayEl = document.getElementById('xrayTotal');
+        function recomputeTotal() {
+            let total = 0;
+            let clinical = 0;
+            let xray = 0;
+            checkboxes.forEach(cb => {
+                if (!cb.checked) return;
+                const name = 'price-' + cb.value;
+                const ip = document.querySelector('input[name="' + name + '"]');
+                const price = ip ? toNumber(ip.value) : 0;
+                total += price;
+                if (cb.value === 'xray') xray += price; else clinical += price;
+            });
+            estimatedEl.value = total.toFixed(2);
+            clinicalEl.value = clinical.toFixed(2);
+            xrayEl.value = xray.toFixed(2);
+        }
+
+        checkboxes.forEach(cb => {
+            const val = cb.value;
+            const priceInput = document.querySelector('input[name="price-' + val + '"]');
+            function updateInputs() {
+                if (priceInput) priceInput.style.display = cb.checked ? 'inline-block' : 'none';
+                recomputeTotal();
+            }
+            cb.addEventListener('change', updateInputs);
+            if (priceInput) priceInput.addEventListener('input', recomputeTotal);
+            // initialize visibility
+            updateInputs();
+        });
     })();
 </script>

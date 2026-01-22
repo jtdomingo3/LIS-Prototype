@@ -39,6 +39,38 @@ const AREAS = [
   "Doctor's Check-up - Dr. Arcilla"
 ];
 
+// Mapping from testType (canonical key) to the reception area responsible
+const TEST_TYPE_TO_AREA = {
+  'blood-chemistry-albumin': 'Extraction',
+  'blood-chemistry-blood-sugar': 'Extraction',
+  'blood-chemistry-bun-crea': 'Extraction',
+  'blood-chemistry-electrolytes': 'Extraction',
+  'blood-chemistry-hba1c': 'Extraction',
+  'blood-chemistry-lipid-profile': 'Extraction',
+  'blood-chemistry-sgpt-sgot': 'Extraction',
+  'blood-typing': 'Extraction',
+  'ct-bt': 'Extraction',
+  'dengue-duo': 'Extraction',
+  'drugtest': 'Drug Test',
+  'ecg': 'ECG',
+  'echocardiography-2d': '2D Echo',
+  'esr': 'Extraction',
+  'fecal-occult-blood': 'Extraction',
+  'fecalysis': 'Extraction',
+  'hematology': 'Extraction',
+  'pregnancy-test': 'Extraction',
+  'pt-aptt': 'Extraction',
+  'serology': 'Extraction',
+  'thyroid-panel': 'Extraction',
+  'ultrasound-1st-trimester-obstetrics': 'Ultrasound',
+  'ultrasound-abd-kubp-hbt': 'Ultrasound',
+  'ultrasound-biophysical': 'Ultrasound',
+  'ultrasound-pelvic': 'Ultrasound',
+  'ultrasound-transvaginal': 'Ultrasound',
+  'urinalysis': 'Extraction',
+  'xray': 'X-ray'
+};
+
 // Helper to map a test to the reception area it should appear in.
 // Rules:
 // - If test.status !== 'Completed', return the status as-is.
@@ -317,14 +349,60 @@ router.get('/area/:name', requireAuth, canAccessPatient, async (req, res) => {
     // Load available doctors for assignment dropdown
     const users = await User.find({ role: 'Doctor' });
 
+    // For certain areas (Payment Area, Extraction Area, X-ray) group by patient so staff see one row per patient with their tests
+    const GROUP_AREAS = ['Payment Area', 'Extraction Area', 'X-ray'];
+    if (GROUP_AREAS.includes(areaName)) {
+      const map = new Map();
+      for (const t of populated) {
+        if (!t.patient || !t.patient.id) continue;
+        const pid = t.patient.id;
+        if (!map.has(pid)) map.set(pid, { patient: t.patient, tests: [] });
+        map.get(pid).tests.push(t);
+      }
+      const groups = [];
+      for (const [pid, entry] of map.entries()) {
+        const p = entry.patient;
+        if (areaName === 'Payment Area') {
+          // compute clinical and xray totals
+          let clinical = 0;
+          let xray = 0;
+          if (p && p.labTotals && (Number(p.labTotals.clinical) || Number(p.labTotals.xray))) {
+            clinical = Number(p.labTotals.clinical || 0);
+            xray = Number(p.labTotals.xray || 0);
+          } else {
+            for (const tt of entry.tests) {
+              const price = Number(tt.price) || 0;
+              const target = TEST_TYPE_TO_AREA[String(tt.testType || '').toLowerCase()] || 'Extraction';
+              if (target === 'X-ray') xray += price; else clinical += price;
+            }
+          }
+          const total = clinical + xray;
+          groups.push({ patient: p, tests: entry.tests, clinical, xray, total });
+        } else {
+          groups.push({ patient: p, tests: entry.tests });
+        }
+      }
+
+      return res.render('reception/area', {
+        title: `Reception - ${areaName}`,
+        areaName,
+        areas: AREAS,
+        specimens,
+        encodedPatients,
+        users,
+        groups
+      });
+    }
+
+    // default: render per-test queue
     res.render('reception/area', {
       title: `Reception - ${areaName}`,
       areaName,
       tests: populated,
       areas: AREAS,
       specimens,
-      encodedPatients
-      , users
+      encodedPatients,
+      users
     });
   } catch (err) {
     console.error('Reception area error:', err);
@@ -464,6 +542,64 @@ router.post('/assign', requireAuth, canAccessPatient, async (req, res) => {
     }
     req.flash('error_msg', 'Error assigning test');
     return res.redirect('/reception');
+  }
+});
+
+// POST /reception/complete-payment - record aggregated payment for a patient and forward their tests
+// Accepts optional `lab` param: 'clinical' or 'xray'. When provided, only forward tests that belong to that lab.
+router.post('/complete-payment', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const { patientId, amount } = req.body || {};
+    const lab = req.body && req.body.lab ? String(req.body.lab).toLowerCase() : null;
+    if (!patientId) return res.status(400).json({ success: false, message: 'Missing patientId' });
+    const parsed = parseFloat(String(amount || '').replace(/[ ,]/g, ''));
+    if (!Number.isFinite(parsed) || parsed <= 0) return res.status(400).json({ success: false, message: 'Invalid amount' });
+
+    const patientObj = await Patient.findById(patientId);
+    if (!patientObj) return res.status(404).json({ success: false, message: 'Patient not found' });
+
+    // record a single payment entry for the patient
+    try {
+      patientObj.paymentHistory = Array.isArray(patientObj.paymentHistory) ? patientObj.paymentHistory : [];
+      patientObj.paymentHistory.push({ amount: parsed, timestamp: (new Date()).toISOString(), note: 'Payment Area (aggregated)' });
+      // mark all paymentItems as paid if present
+      if (Array.isArray(patientObj.paymentItems)) {
+        patientObj.paymentItems = patientObj.paymentItems.map(pi => ({ ...pi, paid: true }));
+      }
+      await patientObj.save();
+    } catch (saveErr) {
+      console.warn('Failed to record aggregated payment on patient', saveErr);
+    }
+
+    // forward tests for this patient that are currently in Payment Area to their target areas
+    // If `lab` is provided, only forward tests for that lab. lab === 'xray' -> X-ray tests; 'clinical' -> others.
+    const tests = await Test.find({ patient: patientObj.id }) || [];
+    const moved = [];
+    for (const t of tests) {
+      if (!t || t.status !== 'Payment Area') continue;
+      const target = TEST_TYPE_TO_AREA[String(t.testType || '').toLowerCase()] || 'Extraction';
+      const isXrayTest = target === 'X-ray';
+      if (lab === 'xray' && !isXrayTest) continue;
+      if (lab === 'clinical' && isXrayTest) continue;
+      // ensure we don't create duplicate active items in the same area for this patient.
+      const existingInTarget = (await Test.find({ patient: patientObj.id })).find(x => x && x.status === target);
+      if (existingInTarget) {
+        // keep this test Completed but do not move to avoid duplicates; medtech will see grouped tests
+        t.status = 'Completed';
+        await t.save();
+        moved.push({ testId: t.testId, movedTo: null, note: 'kept Completed (duplicate active exists in target)' });
+        continue;
+      }
+      t.status = target;
+      await t.save();
+      moved.push({ testId: t.testId, movedTo: target });
+      try { sseEmitter.emit('update', { action: 'forward', testId: t.testId, movedTo: target, time: (new Date()).toISOString(), patientCode: patientObj.patientCode }); } catch (e) { }
+    }
+
+    return res.json({ success: true, message: `Payment recorded for ${patientObj.firstName} ${patientObj.lastName}`, moved });
+  } catch (err) {
+    console.error('complete-payment error', err);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 

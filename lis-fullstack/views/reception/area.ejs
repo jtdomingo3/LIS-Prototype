@@ -9,84 +9,180 @@
 
   <div id="queuePane" style="margin-top:12px;">
     <!-- Create & assign removed: new patients are auto-created and assigned to Payment Area on encoding -->
-    <% if (!tests || tests.length === 0) { %>
-      <p class="text-center">No tests currently assigned to this area.</p>
-    <% } else { %>
+    <% if (areaName === 'Payment Area') { %>
+      <% if (!groups || groups.length === 0) { %>
+        <p class="text-center">No patients waiting for payment.</p>
+      <% } else { %>
+        <table style="width:100%; margin-top:12px;">
+          <thead>
+            <tr>
+              <th>Patient</th>
+              <th>Tests</th>
+              <th>Total</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% groups.forEach(p => { %>
+              <tr>
+                <td>
+                  <strong><%= p.patient.firstName %> <%= p.patient.lastName %></strong>
+                  <% if (p.patient.patientCode) { %>
+                    <div style="font-size:0.85em; color:var(--text-gray);">Code: <%= p.patient.patientCode %></div>
+                  <% } %>
+                </td>
+                <td>
+                  <ul style="margin:0; padding-left:18px;">
+                    <% p.tests.forEach(t => { %>
+                      <li><%= t.testType %> (<%= t.testId %>)</li>
+                    <% }) %>
+                  </ul>
+                </td>
+                <td style="white-space:nowrap;">
+                  <div>PHP <%= (p.total || 0).toFixed(2) %></div>
+                  <div style="font-size:0.85em; color:var(--text-gray);">Clinical: <%= (p.clinical || 0).toFixed(2) %></div>
+                  <div style="font-size:0.85em; color:var(--text-gray);">X‑Ray: <%= (p.xray || 0).toFixed(2) %></div>
+                </td>
+                <td>
+                  <form action="/reception/complete-payment" method="POST" class="complete-payment-form" style="display:inline-block; margin-right:6px;">
+                    <input type="hidden" name="patientId" value="<%= p.patient.id %>">
+                    <input type="hidden" name="lab" value="clinical">
+                    <input type="number" name="amount" step="0.01" min="0.01" value="<%= (p.clinical || 0).toFixed(2) %>" style="width:110px; margin-right:6px;" required>
+                    <button type="submit" class="button btn-success btn-small">Pay Clinical</button>
+                  </form>
+                  <% if (p.xray && Number(p.xray) > 0) { %>
+                    <form action="/reception/complete-payment" method="POST" class="complete-payment-form" style="display:inline-block;">
+                      <input type="hidden" name="patientId" value="<%= p.patient.id %>">
+                      <input type="hidden" name="lab" value="xray">
+                      <input type="number" name="amount" step="0.01" min="0.01" value="<%= (p.xray || 0).toFixed(2) %>" style="width:110px; margin-right:6px;" required>
+                      <button type="submit" class="button btn-warning btn-small">Pay X‑Ray</button>
+                    </form>
+                  <% } %>
+                    <form action="/reception/complete-payment" method="POST" class="complete-payment-form" style="display:inline-block;">
+                      <input type="hidden" name="patientId" value="<%= p.patient.id %>">
+                      <input type="number" name="amount" class="payment-amount" step="0.01" min="0.01" value="<%= (p.total || 0).toFixed(2) %>" style="width:110px; margin-right:6px;" required>
+                      <button type="submit" class="button btn-success btn-small payment-submit" title="Mark complete" onclick="return paymentSubmitFallback(this)">Mark Complete</button>
+                    </form>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      <% } %>
+    <% } else if (typeof groups !== 'undefined' && groups && groups.length) { %>
+      <% /* Grouped view for areas like Extraction or X-ray where multiple tests per patient should be shown */ %>
       <table style="width:100%; margin-top:12px;">
         <thead>
           <tr>
-            <th>Test ID</th>
             <th>Patient</th>
-            <th>Test Type</th>
-            <th>Date</th>
+            <th>Tests</th>
             <th>Action</th>
           </tr>
         </thead>
         <tbody>
-          <% tests.forEach(test => { %>
+          <% groups.forEach(g => { %>
             <tr>
-              <td><%= test.testId %></td>
               <td>
-                <% if (test.patient) { %>
-                  <strong><%= test.patient.firstName %> <%= test.patient.lastName %></strong>
-                  <% if (test.patient.patientCode) { %>
-                    <div style="font-size:0.85em; color:var(--text-gray);">Code: <%= test.patient.patientCode %></div>
-                  <% } else { %>
-                    <div style="font-size:0.85em; color:var(--danger);">(Not encoded)</div>
-                  <% } %>
-                <% } else { %>
-                  Unknown
+                <strong><%= g.patient.firstName %> <%= g.patient.lastName %></strong>
+                <% if (g.patient.patientCode) { %>
+                  <div style="font-size:0.85em; color:var(--text-gray);">Code: <%= g.patient.patientCode %></div>
                 <% } %>
               </td>
-              <td><%= test.testType %></td>
-              <td><%= test.testDate ? new Date(test.testDate).toLocaleString() : 'N/A' %></td>
               <td>
-                <% if (areaName !== 'Payment Area') { %>
-                <form action="/reception/assign" method="POST" style="display:inline-block; margin-right:6px;">
-                  <input type="hidden" name="testId" value="<%= test.id %>">
-                  <select name="area" required style="margin-right:6px;">
-                    <% 
-                      // map specific area values to nicer display labels if needed
-                      const optionLabelMap = {};
-                    %>
-                    <% areas.forEach(a => { %>
-                      <% const displayLabel = optionLabelMap[a] || String(a).replace(/\s*-\s*[AB]$/i, ''); %>
-                      <option value="<%= a %>" <%= a === areaName ? 'selected' : '' %>><%= displayLabel %></option>
-                    <% }) %>
-                  </select>
-                  <input type="text" name="specimen" placeholder="Specimen # (optional)" style="margin-right:6px;" <%= test.patientEncoded ? '' : 'disabled' %>>
-                  <button class="button btn-primary btn-small" <%= test.patientEncoded ? '' : 'disabled' %>>Assign</button>
-                  <% if (!test.patientEncoded) { %>
-                    <div style="font-size:0.8em;color:var(--danger);margin-top:6px;">Patient must be encoded (have a patient code) before assignment. <a href="/patients/<%= test.patient ? test.patient.id : '' %>/edit">Encode now</a></div>
-                  <% } %>
-                </form>
-                <a href="/tests/<%= test.id %>" class="button btn-secondary btn-small">View</a>
-                <!-- Mark complete -->
-                <form action="/reception/complete" method="POST" class="complete-form" style="display:inline-block; margin-left:6px;">
-                  <input type="hidden" name="testId" value="<%= test.id %>">
-                  <input type="hidden" name="area" value="<%= areaName %>">
-                  <button type="submit" class="button btn-success btn-small" title="Mark complete"><%= areaName === 'Releasing of Result' ? 'Mark Released' : 'Mark Complete' %></button>
-                </form>
-                <% } else { %>
-                <!-- Payment Area: only Amount, Mark Complete, and Delete (no Assign, no View) -->
-                <form action="/reception/complete" method="POST" class="complete-form" style="display:inline-block; margin-left:6px;">
-                  <input type="hidden" name="testId" value="<%= test.id %>">
-                  <input type="hidden" name="area" value="<%= areaName %>">
-                  <input type="number" name="amount" class="payment-amount" step="0.01" min="0.01" placeholder="Amount" style="width:110px; margin-right:6px;" required>
-                  <button type="submit" class="button btn-success btn-small payment-submit" title="Mark complete" onclick="return paymentSubmitFallback(this)">Mark Complete</button>
-                </form>
-                <% } %>
-                <!-- Delete from queue -->
-                <form action="/reception/delete" method="POST" class="delete-form" style="display:inline-block; margin-left:6px;" onsubmit="return confirm('Delete this test from the queue?');">
-                  <input type="hidden" name="testId" value="<%= test.id %>">
-                  <input type="hidden" name="area" value="<%= areaName %>">
-                  <button type="submit" class="button btn-danger btn-small" title="Delete">Delete</button>
-                </form>
+                <% g.tests.forEach(t => { %>
+                  <div style="font-size:0.9em; margin-bottom:4px;"><strong><%= t.testId %></strong> — <%= t.testType %></div>
+                <% }) %>
+              </td>
+              <td>
+                <% g.tests.forEach(t => { %>
+                  <form action="/reception/assign" method="POST" style="display:inline-block; margin-right:6px;">
+                    <input type="hidden" name="testId" value="<%= t.id %>">
+                    <select name="area" required style="margin-right:6px;">
+                      <% areas.forEach(a => { %>
+                        <option value="<%= a %>" <%= a === areaName ? 'selected' : '' %>><%= a %></option>
+                      <% }) %>
+                    </select>
+                    <input type="text" name="specimen" placeholder="Specimen # (optional)" style="margin-right:6px;" <%= t.patientEncoded ? '' : 'disabled' %>>
+                    <button class="button btn-primary btn-small" <%= t.patientEncoded ? '' : 'disabled' %>>Assign</button>
+                  </form>
+                <% }) %>
               </td>
             </tr>
           <% }) %>
         </tbody>
       </table>
+    <% } else { %>
+      <% if (!tests || tests.length === 0) { %>
+        <p class="text-center">No tests currently assigned to this area.</p>
+      <% } else { %>
+        <table style="width:100%; margin-top:12px;">
+          <thead>
+            <tr>
+              <th>Test ID</th>
+              <th>Patient</th>
+              <th>Test Type</th>
+              <th>Date</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% tests.forEach(test => { %>
+              <tr>
+                <td><%= test.testId %></td>
+                <td>
+                  <% if (test.patient) { %>
+                    <strong><%= test.patient.firstName %> <%= test.patient.lastName %></strong>
+                    <% if (test.patient.patientCode) { %>
+                      <div style="font-size:0.85em; color:var(--text-gray);">Code: <%= test.patient.patientCode %></div>
+                    <% } else { %>
+                      <div style="font-size:0.85em; color:var(--danger);">(Not encoded)</div>
+                    <% } %>
+                  <% } else { %>
+                    Unknown
+                  <% } %>
+                </td>
+                <td><%= test.testType %></td>
+                <td><%= test.testDate ? new Date(test.testDate).toLocaleString() : 'N/A' %></td>
+                <td>
+                  <% if (areaName !== 'Payment Area') { %>
+                  <form action="/reception/assign" method="POST" style="display:inline-block; margin-right:6px;">
+                    <input type="hidden" name="testId" value="<%= test.id %>">
+                    <select name="area" required style="margin-right:6px;">
+                      <% 
+                        // map specific area values to nicer display labels if needed
+                        const optionLabelMap = {};
+                      %>
+                      <% areas.forEach(a => { %>
+                        <% const displayLabel = optionLabelMap[a] || String(a).replace(/\s*-\s*[AB]$/i, ''); %>
+                        <option value="<%= a %>" <%= a === areaName ? 'selected' : '' %>><%= displayLabel %></option>
+                      <% }) %>
+                    </select>
+                    <input type="text" name="specimen" placeholder="Specimen # (optional)" style="margin-right:6px;" <%= test.patientEncoded ? '' : 'disabled' %>>
+                    <button class="button btn-primary btn-small" <%= test.patientEncoded ? '' : 'disabled' %>>Assign</button>
+                    <% if (!test.patientEncoded) { %>
+                      <div style="font-size:0.8em;color:var(--danger);margin-top:6px;">Patient must be encoded (have a patient code) before assignment. <a href="/patients/<%= test.patient ? test.patient.id : '' %>/edit">Encode now</a></div>
+                    <% } %>
+                  </form>
+                  <a href="/tests/<%= test.id %>" class="button btn-secondary btn-small">View</a>
+                  <!-- Mark complete -->
+                  <form action="/reception/complete" method="POST" class="complete-form" style="display:inline-block; margin-left:6px;">
+                    <input type="hidden" name="testId" value="<%= test.id %>">
+                    <input type="hidden" name="area" value="<%= areaName %>">
+                    <button type="submit" class="button btn-success btn-small" title="Mark complete"><%= areaName === 'Releasing of Result' ? 'Mark Released' : 'Mark Complete' %></button>
+                  </form>
+                  <% } %>
+                  <!-- Delete from queue -->
+                  <form action="/reception/delete" method="POST" class="delete-form" style="display:inline-block; margin-left:6px;" onsubmit="return confirm('Delete this test from the queue?');">
+                    <input type="hidden" name="testId" value="<%= test.id %>">
+                    <input type="hidden" name="area" value="<%= areaName %>">
+                    <button type="submit" class="button btn-danger btn-small" title="Delete">Delete</button>
+                  </form>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      <% } %>
     <% } %>
   </div>
 
@@ -275,6 +371,48 @@
             }
           });
         }
+      });
+
+      // handle aggregated payment forms (AJAX)
+      document.querySelectorAll('.complete-payment-form').forEach(form => {
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const btn = form.querySelector('button[type="submit"]');
+          if (btn) btn.disabled = true;
+          let bodyParams = null;
+          try { bodyParams = serializeForm(form); } catch (serr) { bodyParams = new URLSearchParams(); }
+          let resp;
+          try {
+            resp = await fetch(form.action, {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+              body: bodyParams
+            });
+          } catch (err) {
+            if (btn) btn.disabled = false;
+            alert('Network error recording payment');
+            return;
+          }
+          if (btn) btn.disabled = false;
+          const json = await resp.json().catch(() => null);
+          if (!resp.ok) {
+            alert((json && json.message) ? json.message : 'Error recording payment');
+            return;
+          }
+          // remove the patient row from the table
+          const row = form.closest('tr');
+          if (row) row.remove();
+          if (json && json.message) {
+            const note = document.createElement('div');
+            note.className = 'alert alert-success active';
+            note.textContent = json.message;
+            const main = document.querySelector('.main-content') || document.body;
+            main.insertBefore(note, main.firstChild);
+            setTimeout(() => note.classList.remove('active'), 3000);
+            try { localStorage.setItem('reception:updated', String(Date.now())); } catch (e) {}
+          }
+        });
       });
 
       // handle delete

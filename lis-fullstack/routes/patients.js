@@ -160,83 +160,167 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
 
     await patient.save();
 
-    // After encoding a new patient, automatically create a Test assigned to Payment Area
+    // After encoding a new patient, automatically create Tests for each selected test
     try {
       const Test = require('../models/Test');
-      // Do not create if patient already has an active test (avoid duplicates)
-      const existing = await Test.find({ patient: patient.id });
+      // Fetch existing tests for this patient to avoid creating duplicates
+      const existing = await Test.find({ patient: patient.id }) || [];
       console.log('Auto-create test: found existing tests for patient', { patientId: patient.id, existingCount: Array.isArray(existing) ? existing.length : 0 });
-      const active = Array.isArray(existing) && existing.find(t => t && t.status && t.status !== 'Completed' && t.status !== 'Releasing of Result');
-      if (!active) {
-        // Generate a unique testId
-        const allTestsForId = await Test.find({});
-        let testId = 'T001';
-        if (allTestsForId && allTestsForId.length) {
-          const maxNum = allTestsForId.reduce((max, t) => {
-            const n = parseInt((t.testId || 'T0').substring(1)) || 0;
-            return Math.max(max, n);
-          }, 0);
-          testId = 'T' + String(maxNum + 1).padStart(3, '0');
-        }
-        while ((await Test.findOne({ testId })) !== null) {
-          const id = parseInt(testId.substring(1)) + 1;
-          testId = 'T' + String(id).padStart(3, '0');
-        }
 
-        // If patient ONLY requires a Doctor's Check-up (A or B), place test directly to that specific doctor room
-        let initialTestType = 'Registration';
-        let initialStatus = 'Payment Area';
-        if (Array.isArray(requiredAreas) && requiredAreas.length === 1) {
-          const only = String(requiredAreas[0] || '');
-          if (only.toLowerCase().startsWith("doctor's check-up")) {
-            // use the specific area name (e.g. "Doctor's Check-up - A")
-            initialTestType = "Doctor's Check-up";
-            initialStatus = only;
-          }
+      // Normalize selected tests (stored in requiredAreas) to array of strings
+      const selected = Array.isArray(requiredAreas) ? requiredAreas : (requiredAreas ? [requiredAreas] : []);
+
+      // Mapping of test -> area used for initial status routing
+      const TEST_TO_AREA = {
+        'blood-chemistry-albumin': 'Extraction',
+        'blood-chemistry-blood-sugar': 'Extraction',
+        'blood-chemistry-bun-crea': 'Extraction',
+        'blood-chemistry-electrolytes': 'Extraction',
+        'blood-chemistry-hba1c': 'Extraction',
+        'blood-chemistry-lipid-profile': 'Extraction',
+        'blood-chemistry-sgpt-sgot': 'Extraction',
+        'blood-typing': 'Extraction',
+        'ct-bt': 'Extraction',
+        'dengue-duo': 'Extraction',
+        'drugtest': 'Drugtest',
+        'ecg': 'ECG',
+        'echocardiography-2d': '2D Echo',
+        'esr': 'Extraction',
+        'fecal-occult-blood': 'Extraction',
+        'fecalysis': 'Extraction',
+        'hematology': 'Extraction',
+        'pregnancy-test': 'Extraction',
+        'pt-aptt': 'Extraction',
+        'serology': 'Extraction',
+        'thyroid-panel': 'Extraction',
+        'ultrasound-1st-trimester-obstetrics': 'Ultrasound',
+        'ultrasound-abd-kubp-hbt': 'Ultrasound',
+        'ultrasound-biophysical': 'Ultrasound',
+        'ultrasound-pelvic': 'Ultrasound',
+        'ultrasound-transvaginal': 'Ultrasound',
+        'urinalysis': 'Extraction',
+        'xray': 'X-Ray'
+      };
+
+      // Determine blood-chemistry group count; if two or more variants selected, also add overall 'blood-chemistry'
+      const bloodVariants = selected.filter(s => String(s || '').toLowerCase().startsWith('blood-chemistry-') && String(s || '').toLowerCase() !== 'blood-chemistry');
+      const makeOverallBloodChem = (bloodVariants.length >= 2 && !selected.includes('blood-chemistry'));
+
+      // Build a deduped list of tests to create
+      const toCreateSet = new Set(selected.map(s => String(s || '').trim()).filter(s => s));
+      if (makeOverallBloodChem) toCreateSet.add('blood-chemistry');
+
+      // Prepare uniqueness helpers
+      const allTestsForId = await Test.find({});
+      let maxNum = 0;
+      if (allTestsForId && allTestsForId.length) {
+        maxNum = allTestsForId.reduce((max, t) => {
+          const n = parseInt((t.testId || 'T0').substring(1)) || 0;
+          return Math.max(max, n);
+        }, 0);
+      }
+      let nextNum = maxNum + 1;
+
+      const createdTests = [];
+      let totalCharges = 0;
+      const charges = [];
+      let clinicalTotal = 0;
+      let xrayTotal = 0;
+      // Build a set of currently active test types to avoid duplicates
+      const activeTypes = new Set((existing || []).filter(t => t && t.status && t.status !== 'Completed' && t.status !== 'Releasing of Result').map(t => String(t.testType || '').toLowerCase()));
+
+      for (const tt of Array.from(toCreateSet)) {
+        const type = String(tt || '').trim();
+        if (!type) continue;
+        // skip if an active test of same normalized type exists
+        if (activeTypes.has(type.toLowerCase())) continue;
+
+        // generate unique testId
+        let testId = 'T' + String(nextNum).padStart(3, '0');
+        while ((await Test.findOne({ testId })) !== null) {
+          nextNum++;
+          testId = 'T' + String(nextNum).padStart(3, '0');
+        }
+        nextNum++;
+
+        const area = TEST_TO_AREA[type] || 'Extraction';
+        const status = (area === 'Ultrasound' || area === 'ECG' || area === 'X-Ray' || area === 'Drugtest') ? area : 'Payment Area';
+
+        // determine price for this test (form inputs named like price-<testKey>)
+        const priceKey = `price-${type}`;
+        let price = 0;
+        if (req.body && typeof req.body[priceKey] !== 'undefined') {
+          price = parseFloat(req.body[priceKey]) || 0;
         }
 
         const newTest = new Test({
           testId,
           patient: patient.id,
-          testType: initialTestType,
-          // Store full ISO timestamp so the time-of-encoding is preserved
+          testType: type,
           testDate: (new Date()).toISOString(),
-          status: initialStatus,
+          status,
           requestedBy: req.session.user.id,
-          // Ensure createdAt also contains the exact encode time
           createdAt: (new Date()).toISOString(),
-          specimenNumbers: {}
+          specimenNumbers: {},
+          price
         });
 
         await newTest.save();
-        console.log('Auto-create test: saved new test', { testId: newTest.testId, testDbId: newTest.id, patientId: patient.id });
-        // Notify kiosk clients immediately that a new test was assigned to Payment Area
+        createdTests.push(newTest);
+        // record charge and attribute to lab totals
+        if (price && price > 0) {
+          totalCharges += price;
+          charges.push({ testType: type, amount: price });
+          if (area === 'X-Ray') {
+            xrayTotal += price;
+          } else {
+            clinicalTotal += price;
+          }
+        }
+
+        // emit SSE
         try {
-          // Use shared SSE emitter to notify kiosks immediately
           const sse = require('../lib/sseEmitter');
           if (sse && typeof sse.emit === 'function') {
             const payload = {
               action: 'assign',
               testId: newTest.testId,
-              area: initialStatus,
+              area: status,
               time: (new Date()).toISOString(),
               patientCode: patient.patientCode,
               patientName: `${patient.firstName} ${patient.lastName}`
             };
-            console.log('Auto-create SSE emit', payload);
             sse.emit('update', payload);
           }
         } catch (emitErr) {
           console.warn('Auto-create SSE emit failed', emitErr);
         }
-        req.flash('success_msg', `Patient ${firstName} ${lastName} added and assigned to Payment Area`);
+      }
+
+      // persist estimated charges on patient record, including lab totals
+      try {
+        if (charges.length) {
+          patient.charges = charges;
+          patient.estimatedTotal = totalCharges;
+          patient.labTotals = { clinical: clinicalTotal, xray: xrayTotal };
+          // Prepare payment items: one entry per lab (clinical, xray) so payments UI can add a single payment per lab
+          const paymentItems = [];
+          if (clinicalTotal > 0) paymentItems.push({ lab: 'clinical', amount: clinicalTotal, paid: false });
+          if (xrayTotal > 0) paymentItems.push({ lab: 'xray', amount: xrayTotal, paid: false });
+          patient.paymentItems = paymentItems;
+          await patient.save();
+        }
+      } catch (e) {
+        console.warn('Failed to save patient charges', e);
+      }
+
+      if (createdTests.length) {
+        req.flash('success_msg', `Patient ${firstName} ${lastName} added and ${createdTests.length} test(s) assigned`);
       } else {
-        console.log('Auto-create test: active test exists, skipping auto-create', { activeTestId: active.testId, status: active.status });
         req.flash('success_msg', `Patient ${firstName} ${lastName} added successfully!`);
       }
     } catch (err) {
       console.error('Auto-create test error:', err);
-      // still continue, patient was created
       req.flash('success_msg', `Patient ${firstName} ${lastName} added successfully!`);
     }
 

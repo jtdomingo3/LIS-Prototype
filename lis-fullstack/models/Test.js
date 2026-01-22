@@ -21,6 +21,10 @@ class Test {
     this.completedAt = data.completedAt;
     this.createdAt = data.createdAt || new Date();
     this.updatedAt = data.updatedAt || new Date();
+    // price/charges for this test (numeric)
+    this.price = typeof data.price !== 'undefined' ? data.price : 0;
+    // optional breakdown for composite charges (e.g., xray parts)
+    this.chargeComponents = Array.isArray(data.chargeComponents) ? data.chargeComponents : (data.chargeComponents ? data.chargeComponents : []);
   }
 
   // Save to database

@@ -52,11 +52,40 @@
                     <h4>Route patient to reception areas</h4>
                     <p>Select which areas this patient needs to go to (after Payment Area). Payment is automatic.</p>
                     <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                            <% const AREA_OPTIONS = ['Extraction Area','Drug Test','Ultrasound','2D Echo','X-ray','ECG',"Doctor's Check-up - Dr. Lorenzo","Doctor's Check-up - Dr. Arcilla"]; %>
-                        <% AREA_OPTIONS.forEach(a => { %>
+                        <% const TEST_OPTIONS = [
+                          { label: 'Blood Chemistry Albumin', value: 'blood-chemistry-albumin' },
+                          { label: 'Blood Chemistry Blood Sugar', value: 'blood-chemistry-blood-sugar' },
+                          { label: 'Blood Chemistry BUN Crea', value: 'blood-chemistry-bun-crea' },
+                          { label: 'Blood Chemistry Electrolytes', value: 'blood-chemistry-electrolytes' },
+                          { label: 'Blood Chemistry HbA1c', value: 'blood-chemistry-hba1c' },
+                          { label: 'Blood Chemistry Lipid Profile', value: 'blood-chemistry-lipid-profile' },
+                          { label: 'Blood Chemistry SGPT SGOT', value: 'blood-chemistry-sgpt-sgot' },
+                          { label: 'Blood Typing', value: 'blood-typing' },
+                          { label: 'CT BT', value: 'ct-bt' },
+                          { label: 'Dengue Duo', value: 'dengue-duo' },
+                          { label: 'Drugtest', value: 'drugtest' },
+                          { label: 'ECG', value: 'ecg' },
+                          { label: 'Echocardiography 2D', value: 'echocardiography-2d' },
+                          { label: 'ESR', value: 'esr' },
+                          { label: 'Fecal Occult Blood', value: 'fecal-occult-blood' },
+                          { label: 'Fecalysis', value: 'fecalysis' },
+                          { label: 'Hematology (CBC)', value: 'hematology' },
+                          { label: 'Pregnancy Test', value: 'pregnancy-test' },
+                          { label: 'PT APTT', value: 'pt-aptt' },
+                          { label: 'Serology (HBsAg)', value: 'serology' },
+                          { label: 'Thyroid Panel', value: 'thyroid-panel' },
+                          { label: 'Ultrasound 1st Trimester Obstetrics', value: 'ultrasound-1st-trimester-obstetrics' },
+                          { label: 'Ultrasound ABD KUBP HBT', value: 'ultrasound-abd-kubp-hbt' },
+                          { label: 'Ultrasound Biophysical', value: 'ultrasound-biophysical' },
+                          { label: 'Ultrasound Pelvic', value: 'ultrasound-pelvic' },
+                          { label: 'Ultrasound Transvaginal', value: 'ultrasound-transvaginal' },
+                          { label: 'Urinalysis', value: 'urinalysis' },
+                          { label: 'X-Ray', value: 'xray' }
+                        ]; %>
+                        <% TEST_OPTIONS.forEach(opt => { %>
                             <label style="display:inline-flex; align-items:center; gap:6px;">
-                                <input type="checkbox" name="requiredAreas" value="<%= a %>" <%= (patient.requiredAreas && patient.requiredAreas.includes(a)) ? 'checked' : '' %> >
-                                <%= a %>
+                                <input type="checkbox" name="requiredAreas" value="<%= opt.value %>" <%= (patient.requiredAreas && patient.requiredAreas.includes(opt.value)) ? 'checked' : '' %> >
+                                <%= opt.label %>
                             </label>
                         <% }) %>
                     </div>

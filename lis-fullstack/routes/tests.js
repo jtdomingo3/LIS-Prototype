@@ -85,37 +85,8 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
   // append static result templates (views/reports/results)
     try {
     const resultsDir = path.join(__dirname, '..', 'views', 'reports', 'results');
-    const allowed = [
-      'fecalysis.ejs',
-      'esr.ejs',
-      'fecal-occult-blood.ejs',
-      'urinalysis.ejs',
-      'ct-bt.ejs',
-      'blood-typing.ejs',
-      'pregnancy-test.ejs',
-      'dengue-duo.ejs',
-      'thyroid-panel.ejs',
-      'blood-chemistry.ejs',
-      'blood-chemistry-sgpt-sgot.ejs',
-      'blood-chemistry-bun-crea.ejs',
-      'blood-chemistry-lipid-profile.ejs',
-      'blood-chemistry-electrolytes.ejs',
-      'blood-chemistry-hba1c.ejs',
-      'blood-chemistry-albumin.ejs',
-      'blood-chemistry-blood-sugar.ejs',
-      'pt-aptt.ejs',
-      'xray.ejs',
-      'ecg.ejs',
-      'hematology.ejs',
-      'serology.ejs',
-      'ultrasound-abd-kubp-hbt.ejs',
-      'echocardiography-2d.ejs',
-      'ultrasound-transvaginal.ejs',
-      'ultrasound-biophysical.ejs',
-      'ultrasound-1st-trimester-obstetrics.ejs',
-      'ultrasound-pelvic.ejs'
-    ];
-    const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
+    // Include all .ejs result templates so adding new templates doesn't require code changes
+    const files = fs.readdirSync(resultsDir).filter(f => f && f.toLowerCase().endsWith('.ejs'));
     const staticTemplates = files.map(f => {
       if (f === 'blood-chemistry-bun-crea.ejs') {
         return { name: 'Blood Chemistry - BUN/Crea', testType: 'BUN/Creat' };
@@ -141,7 +112,14 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       const name = f.replace('.ejs', '').replace(/-/g, ' ');
       return { name: name.charAt(0).toUpperCase() + name.slice(1), testType: f.replace('.ejs','') };
     });
-    templates = templates.concat(staticTemplates);
+    // Filter out static templates that conflict with DB templates (by testType/name)
+    try {
+      const existingTypes = new Set((templates || []).map(t => (t.testType || t.name || '').toLowerCase()));
+      const filteredStatic = staticTemplates.filter(st => !existingTypes.has((st.testType || st.name || '').toLowerCase()));
+      templates = templates.concat(filteredStatic);
+    } catch (e) {
+      templates = templates.concat(staticTemplates);
+    }
     // Ensure 1st trimester (twin) static template is available in selection
     try {
       const exists = templates.some(t => (t.testType || '').toLowerCase() === 'ultrasound-1st-trimester-obstetrics');
@@ -169,7 +147,23 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
 // POST /tests - Create new test
 router.post('/', requireAuth, canAccessPatient, async (req, res) => {
   try {
-    const { patient, testType, testDate, status, results, notes, priority } = req.body;
+    // Normalize incoming values and add lightweight debug logging to help diagnose
+    // cases where testType may be submitted as a filename (e.g. '... .ejs').
+    const { patient } = req.body;
+    let rawTestType = req.body.testType || '';
+    const testDate = req.body.testDate;
+    const status = req.body.status;
+    const results = req.body.results;
+    const notes = req.body.notes;
+    const priority = req.body.priority;
+
+    // strip trailing .ejs if present and trim
+    rawTestType = String(rawTestType).trim();
+    if (/\.ejs$/i.test(rawTestType)) {
+      console.log('POST /tests - received testType with .ejs suffix, normalizing:', rawTestType);
+      rawTestType = rawTestType.replace(/\.ejs$/i, '');
+    }
+    const testType = rawTestType;
 
     // Validate required fields
     if (!patient || !testType || !testDate) {
@@ -1439,7 +1433,30 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
       const name = f.replace('.ejs', '').replace(/-/g, ' ');
       return { name: name.charAt(0).toUpperCase() + name.slice(1), testType: name };
     });
-    templates = templates.concat(staticTemplates);
+    // Merge staticTemplates but avoid duplicates where DB templates use same testType/name
+    try {
+      function normKey(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '') }
+      const existingTypes = new Set((templates || []).map(t => normKey(t.testType || t.name)));
+      const filtered = staticTemplates.filter(st => !existingTypes.has(normKey(st.testType || st.name)));
+      templates = templates.concat(filtered);
+    } catch (e) {
+      templates = templates.concat(staticTemplates);
+    }
+
+    // Final pass: deduplicate the `templates` array by normalized key while preserving order
+    try {
+      const seen = new Set();
+      const deduped = [];
+      function normKey(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '') }
+      for (const t of (templates || [])) {
+        const k = normKey(t.testType || t.name);
+        if (!seen.has(k)) {
+          seen.add(k);
+          deduped.push(t);
+        }
+      }
+      templates = deduped;
+    } catch (e) {}
     try {
       const exists2 = templates.some(t => (t.testType || '').toLowerCase() === 'ultrasound-1st-trimester-obstetrics');
       if (!exists2) {
