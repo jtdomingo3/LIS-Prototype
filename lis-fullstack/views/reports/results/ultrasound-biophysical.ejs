@@ -1,12 +1,12 @@
 <style>
   @page { size: Letter; margin: 0.25in; }
   body { margin:0; padding:0; box-sizing:border-box; }
-  .report-page{ position:relative; width:100%; max-width:calc(8.5in - 0.4in); margin:0 auto; padding:8px; color:#000 }
+  .report-page{ position:relative; width:100%; max-width:calc(8.5in - 0.4in); margin:0 auto; padding:0.25in; color:#000 }
   .header{ display:flex; align-items:flex-start; gap:12px }
   .logo{ width:72px; height:auto; margin-right:8px }
   .lab-title{ text-align:center; flex:1; min-width:0 }
   .lab-title h1{ margin:0; font-size:22px; color:#009957; letter-spacing:1px }
-  .patient-box{ margin-top:8px; width:100%; border-collapse:collapse; font-size:12px }
+  .patient-box{ margin-top:8px; width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed }
   .patient-box td{ padding:4px 6px; border:1px solid #000; box-sizing:border-box }
   .section-title{ text-align:center; margin:24px 0 8px; font-size:20px; font-weight:bold }
   .biometry{ font-family:'Courier New', monospace; font-size:13px; margin-top:8px }
@@ -66,10 +66,10 @@
       <div style="margin-top:40px; font-weight:700; font-size:13px"><strong>BIOMETRY:</strong></div>
       <div style="display:flex; gap:24px; align-items:flex-start; padding-left:6em; margin-top:20px">
         <div>
-          <div>BPD: <%= test && test.results && test.results.bpd_size ? test.results.bpd_size : '' %> cm </div>
-          <div>HC:  <%= test && test.results && test.results.hc_size ? test.results.hc_size : '' %> cm </div>
-          <div>AC:  <%= test && test.results && test.results.ac_size ? test.results.ac_size : '' %> cm </div>
-          <div>FL:  <%= test && test.results && test.results.fl_size ? test.results.fl_size : '' %> cm </div>
+          <div><strong>BPD: </strong><%= test && test.results && test.results.bpd_size ? test.results.bpd_size : '' %> cm </div>
+          <div><strong>HC: </strong><%= test && test.results && test.results.hc_size ? test.results.hc_size : '' %> cm </div>
+          <div><strong>AC: </strong><%= test && test.results && test.results.ac_size ? test.results.ac_size : '' %> cm </div>
+          <div><strong>FL: </strong><%= test && test.results && test.results.fl_size ? test.results.fl_size : '' %> cm </div>
         </div>
         <div>
             <div><%= test && test.results && test.results.bpd_label ? test.results.bpd_label : '' %></div>
@@ -88,22 +88,22 @@
     </div>
 
     <div class="placeholders">
-      <div>NUMBER OF FETUS: <%= test && test.results && test.results.number_of_fetus ? test.results.number_of_fetus : '' %></div>
-      <div>AVERAGE ULTRASOUND AGE: <%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : '' %></div>
-      <div>PRESENTATION: <%= test && test.results && test.results.presentation ? test.results.presentation : '' %></div>
-      <div>EDC BY ULTRASOUND: <%= test && test.results && test.results.edc_by_ultrasound ? (new Date(test.results.edc_by_ultrasound)).toLocaleDateString() : '' %></div>
-      <div>EFW: <%= test && test.results && test.results.efw ? test.results.efw : '' %> g</div>
-      <div>FETAL HEART RATE: <%= test && test.results && test.results.fetal_heart_rate ? test.results.fetal_heart_rate : '' %> BPM</div>
-      <div>PLACENTAL LOCATION: <%= test && test.results && test.results.placental_location ? test.results.placental_location : '' %></div>
-      <div>MATURITY: <%= test && test.results && test.results.maturity ? test.results.maturity : '' %></div>
-      <div>AMNIOTIC FLUID: <%= test && test.results && test.results.amniotic_fluid ? test.results.amniotic_fluid : '' %></div>
-      <div>GENDER: <%= test && test.results && test.results.gender ? test.results.gender : '' %></div>
-      <div>FETAL TONE: <%= test && test.results && test.results.fetal_tone ? test.results.fetal_tone : '' %></div>
-      <div>FETAL MOVEMENT: <%= test && test.results && test.results.fetal_movement ? test.results.fetal_movement : '' %></div>
-      <div>FETAL BREATHING: <%= test && test.results && test.results.fetal_breathing ? test.results.fetal_breathing : '' %></div>
-      <div>AFI: <%= test && test.results && test.results.afi ? test.results.afi : '' %></div>
-      <div>BPS: <%= test && test.results && test.results.bps ? test.results.bps : '' %></div>
-      <div>ESTIMATED DATE OF DELIVERY: <%= test && test.results && test.results.estimated_date_of_delivery ? (new Date(test.results.estimated_date_of_delivery)).toLocaleDateString() : '' %></div>
+      <div><strong>NUMBER OF FETUS:</strong> <%= test && test.results && test.results.number_of_fetus ? test.results.number_of_fetus : '' %></div>
+      <div><strong>AVERAGE ULTRASOUND AGE:</strong> <%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : '' %></div>
+      <div><strong>PRESENTATION:</strong> <%= test && test.results && test.results.presentation ? test.results.presentation : '' %></div>
+      <div><strong>EDC BY ULTRASOUND:</strong> <%= test && test.results && test.results.edc_by_ultrasound ? (new Date(test.results.edc_by_ultrasound)).toLocaleDateString() : '' %></div>
+      <div><strong>EFW:</strong> <%= test && test.results && test.results.efw ? test.results.efw : '' %> g</div>
+      <div><strong>FETAL HEART RATE:</strong> <%= test && test.results && test.results.fetal_heart_rate ? test.results.fetal_heart_rate : '' %> BPM</div>
+      <div><strong>PLACENTAL LOCATION: </strong><%= test && test.results && test.results.placental_location ? test.results.placental_location : '' %></div>
+      <div><strong>MATURITY:</strong> <%= test && test.results && test.results.maturity ? test.results.maturity : '' %></div>
+      <div><strong>AMNIOTIC FLUID:</strong> <%= test && test.results && test.results.amniotic_fluid ? test.results.amniotic_fluid : '' %></div>
+      <div><strong>GENDER:</strong> <%= test && test.results && test.results.gender ? test.results.gender : '' %></div>
+      <div><strong>FETAL TONE:</strong> <%= test && test.results && test.results.fetal_tone ? test.results.fetal_tone : '' %></div>
+      <div><strong>FETAL MOVEMENT:</strong> <%= test && test.results && test.results.fetal_movement ? test.results.fetal_movement : '' %></div>
+      <div><strong>FETAL BREATHING:</strong> <%= test && test.results && test.results.fetal_breathing ? test.results.fetal_breathing : '' %></div>
+      <div><strong>AFI:</strong> <%= test && test.results && test.results.afi ? test.results.afi : '' %></div>
+      <div><strong>BPS:</strong> <%= test && test.results && test.results.bps ? test.results.bps : '' %></div>
+      <div><strong>ESTIMATED DATE OF DELIVERY:</strong> <%= test && test.results && test.results.estimated_date_of_delivery ? (new Date(test.results.estimated_date_of_delivery)).toLocaleDateString() : '' %></div>
     </div>
 
     <div class="impression">
