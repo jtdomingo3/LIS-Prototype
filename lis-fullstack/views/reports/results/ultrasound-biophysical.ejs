@@ -10,7 +10,8 @@
   .patient-box td{ padding:4px 6px; border:1px solid #000; box-sizing:border-box }
   .section-title{ text-align:center; margin:24px 0 8px; font-size:20px; font-weight:bold }
   .biometry{ font-family:'Courier New', monospace; font-size:13px; margin-top:8px }
-  .placeholders{ margin-top:12px; font-family:'Courier New', monospace; font-size:13px; padding-left:4.5em; margin-top:20px; margin-top:20px }
+  .content-left{ padding-left:6em }
+  .placeholders{ margin-top:12px; font-family:'Courier New', monospace; font-size:13px; padding-left:6em }
   .signatures{ display:flex; justify-content:flex-end; margin-top:36px; padding-right:1.25in }
   .sig{ text-align:center; width:40%; padding-right:0.25in }
   .signatures, .sig { font-family: 'Times New Roman', Times, serif; }
@@ -62,13 +63,19 @@
     <div class="section-title"><%= (test && test.results && test.results.section_title) ? test.results.section_title : 'BIOPHYSICAL ULTRASOUND' %></div>
 
     <div class="biometry">
-      <div style="margin-top:12px; font-weight:700; font-size:13px"><strong>BIOMETRY:</strong></div>
-      <div style="display:flex; gap:24px; align-items:flex-start; padding-left:5.5em; margin-top:20px">
+      <div style="margin-top:40px; font-weight:700; font-size:13px"><strong>BIOMETRY:</strong></div>
+      <div style="display:flex; gap:24px; align-items:flex-start; padding-left:6em; margin-top:20px">
         <div>
-          <div>BPD: <%= test && test.results && test.results.bpd_size ? test.results.bpd_size : '' %> cm <%= test && test.results && test.results.bpd_label ? test.results.bpd_label : '' %></div>
-          <div>HC:  <%= test && test.results && test.results.hc_size ? test.results.hc_size : '' %> cm <%= test && test.results && test.results.hc_label ? test.results.hc_label : '' %></div>
-          <div>AC:  <%= test && test.results && test.results.ac_size ? test.results.ac_size : '' %> cm <%= test && test.results && test.results.ac_label ? test.results.ac_label : '' %></div>
-          <div>FL:  <%= test && test.results && test.results.fl_size ? test.results.fl_size : '' %> cm <%= test && test.results && test.results.fl_label ? test.results.fl_label : '' %></div>
+          <div>BPD: <%= test && test.results && test.results.bpd_size ? test.results.bpd_size : '' %> cm </div>
+          <div>HC:  <%= test && test.results && test.results.hc_size ? test.results.hc_size : '' %> cm </div>
+          <div>AC:  <%= test && test.results && test.results.ac_size ? test.results.ac_size : '' %> cm </div>
+          <div>FL:  <%= test && test.results && test.results.fl_size ? test.results.fl_size : '' %> cm </div>
+        </div>
+        <div>
+            <div><%= test && test.results && test.results.bpd_label ? test.results.bpd_label : '' %></div>
+            <div><%= test && test.results && test.results.hc_label ? test.results.hc_label : '' %></div>
+            <div><%= test && test.results && test.results.ac_label ? test.results.ac_label : '' %></div>
+            <div><%= test && test.results && test.results.fl_label ? test.results.fl_label : '' %></div>
         </div>
       </div>
       <% if (test && test.results && Array.isArray(test.results.biometry) && test.results.biometry.length) { %>
@@ -99,8 +106,8 @@
       <div>ESTIMATED DATE OF DELIVERY: <%= test && test.results && test.results.estimated_date_of_delivery ? (new Date(test.results.estimated_date_of_delivery)).toLocaleDateString() : '' %></div>
     </div>
 
-    <div style="margin-top:12px; font-weight:700; font-size:13px">IMPRESSION</div>
     <div class="impression">
+    <div style="margin-top:40px; font-weight:700; font-size:13px; margin-bottom: 10px;">IMPRESSION</div>
       <% var raw = (test && test.results && test.results.impression) ? test.results.impression : ''; %>
       <% if (raw && !/<\/?[a-z][\s\S]*>/i.test(raw)) { %>
         <%= raw.replace(/\r?\n/g, '<br>') %>
