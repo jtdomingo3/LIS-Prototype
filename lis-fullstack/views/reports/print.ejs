@@ -7,22 +7,6 @@
     body { font-family: Arial, sans-serif; margin: 30px; }
     h1 { color: #10b981; }
     .section { margin-bottom: 20px; }
-    
-    /* Print-specific styles to reduce top margin */
-    @media print {
-      @page {
-        size: Letter;
-        margin: 0.25in;
-      }
-      html, body {
-        margin: 0 !important;
-        padding: 0 !important;
-      }
-      #rendered-result {
-        margin: 0 !important;
-        padding: 0 !important;
-      }
-    }
   </style>
   <script>
     window.onload = function() { window.print(); };

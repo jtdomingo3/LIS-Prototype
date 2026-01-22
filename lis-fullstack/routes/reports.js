@@ -385,9 +385,8 @@ router.get('/result/:testId', requireAuth, canAccessPatient, async (req, res) =>
     const { template, image } = getResultTemplate(populatedTest);
     // Render the matching template view under reports/results
     // allow embedding without layout when requested (used by preview iframe)
-    // When printing, always use print layout for proper @page CSS
+    const useLayout = req.query.embedded ? false : 'print';
     const autoPrint = req.query.print === '1' || req.query.print === 'true';
-    const useLayout = autoPrint ? 'print' : (req.query.embedded ? false : 'print');
     const inlineLogo = getInlineLogo();
     return res.render(`reports/results/${template}`, {
       title: 'Result',
