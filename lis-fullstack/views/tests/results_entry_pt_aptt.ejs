@@ -15,7 +15,7 @@
       </div>
       <div class="form-row" style="margin:0;">
         <label>Time Released</label>
-        <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : '' %>">
+        <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (new Date()).toTimeString().slice(0,5) %>">
       </div>
     </div>
 

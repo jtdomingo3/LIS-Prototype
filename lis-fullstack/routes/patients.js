@@ -199,9 +199,12 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
           testId,
           patient: patient.id,
           testType: initialTestType,
-          testDate: new Date(),
+          // Store full ISO timestamp so the time-of-encoding is preserved
+          testDate: (new Date()).toISOString(),
           status: initialStatus,
           requestedBy: req.session.user.id,
+          // Ensure createdAt also contains the exact encode time
+          createdAt: (new Date()).toISOString(),
           specimenNumbers: {}
         });
 
