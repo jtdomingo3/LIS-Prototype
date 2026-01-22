@@ -202,13 +202,21 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
         'xray': 'X-ray'
       };
 
-      // Determine blood-chemistry group count; if two or more variants selected, also add overall 'blood-chemistry'
+      // Determine blood-chemistry group count.
+      // If two or more specific variants are selected, only create the generic
+      // 'blood-chemistry' test (and do NOT create the specific variants).
       const bloodVariants = selected.filter(s => String(s || '').toLowerCase().startsWith('blood-chemistry-') && String(s || '').toLowerCase() !== 'blood-chemistry');
       const makeOverallBloodChem = (bloodVariants.length >= 2 && !selected.includes('blood-chemistry'));
 
       // Build a deduped list of tests to create
       const toCreateSet = new Set(selected.map(s => String(s || '').trim()).filter(s => s));
-      if (makeOverallBloodChem) toCreateSet.add('blood-chemistry');
+      if (makeOverallBloodChem) {
+        // remove specific variants, add only generic 'blood-chemistry'
+        for (const v of Array.from(toCreateSet)) {
+          if (String(v || '').toLowerCase().startsWith('blood-chemistry-')) toCreateSet.delete(v);
+        }
+        toCreateSet.add('blood-chemistry');
+      }
 
       // Build set of required area names for this patient based on selected tests
       const requiredAreaNames = new Set();

@@ -112,16 +112,24 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
 
     // Only count tests that have an encoded patient (patient exists and has patientCode)
     // Use mapAreaForTest to decide which reception area a test should appear in
+    // Count unique patients per area (one patient counts once per area regardless of tests)
     const counts = AREAS.map(a => ({ name: a, count: 0 }));
     if (Array.isArray(allTests)) {
+      // build a map area -> Set(patientId)
+      const areaPatients = new Map();
+      for (const a of AREAS) areaPatients.set(a, new Set());
       for (const t of allTests) {
         const areaForTest = mapAreaForTest(t);
         if (!AREAS.includes(areaForTest)) continue;
         if (!t.patient) continue;
         const patient = await Patient.findById(t.patient);
         if (!patient || !patient.patientCode) continue;
-        const idx = counts.findIndex(c => c.name === areaForTest);
-        if (idx >= 0) counts[idx].count++;
+        const set = areaPatients.get(areaForTest);
+        if (set) set.add(patient.id);
+      }
+      for (const c of counts) {
+        const set = areaPatients.get(c.name);
+        c.count = set ? set.size : 0;
       }
     }
 
@@ -558,11 +566,13 @@ router.post('/complete-payment', requireAuth, canAccessPatient, async (req, res)
   try {
     const { patientId, amount } = req.body || {};
     const lab = req.body && req.body.lab ? String(req.body.lab).toLowerCase() : null;
+    console.log('POST /reception/complete-payment invoked', { patientId, amount, lab, user: req.session && req.session.user ? req.session.user.username : null });
     if (!patientId) return res.status(400).json({ success: false, message: 'Missing patientId' });
     const parsed = parseFloat(String(amount || '').replace(/[ ,]/g, ''));
     if (!Number.isFinite(parsed) || parsed <= 0) return res.status(400).json({ success: false, message: 'Invalid amount' });
 
     const patientObj = await Patient.findById(patientId);
+    console.log('Loaded patient for payment', { patientId, found: !!patientObj, patientCode: patientObj && patientObj.patientCode });
     if (!patientObj) return res.status(404).json({ success: false, message: 'Patient not found' });
 
     // record a single payment entry for the patient
@@ -574,57 +584,67 @@ router.post('/complete-payment', requireAuth, canAccessPatient, async (req, res)
         patientObj.paymentItems = patientObj.paymentItems.map(pi => ({ ...pi, paid: true }));
       }
       await patientObj.save();
+      console.log('Recorded aggregated payment on patient', { patientId: patientObj.id, paymentHistoryCount: patientObj.paymentHistory.length });
     } catch (saveErr) {
       console.warn('Failed to record aggregated payment on patient', saveErr);
     }
 
-    // Forward tests for this patient that are currently in Payment Area, but only to the next
-    // required area in the patient's workflow. This prevents queuing the same patient in
-    // multiple areas at once and preserves the per-patient sequencing (Payment -> Extraction -> X-ray ...).
+    // Forward ALL tests for this patient that are currently in Payment Area to their
+    // respective target areas (based on test type). Payment is collected for the entire
+    // visit, so all tests should proceed to their workflows simultaneously.
+
+    // Fetch tests for patient and log a snapshot for debugging
     const tests = await Test.find({ patient: patientObj.id }) || [];
+    try {
+      const snap = tests.map(x => ({ testId: x.testId, status: x.status, testType: x.testType, completedAt: x.completedAt || null }));
+      console.log('Patient tests snapshot (before forwarding)', { patientId: patientObj.id, tests: snap });
+    } catch (e) {}
+    console.log('Patient tests fetched for forwarding', { patientId: patientObj.id, totalTests: tests.length });
+
     const moved = [];
 
-    // Derive ordered required areas from patient's stored requiredAreas (which should contain area names)
-    const required = Array.isArray(patientObj && patientObj.requiredAreas) ? patientObj.requiredAreas.slice() : [];
-    const orderedRequired = AREAS.filter(a => required.includes(a) && a !== 'Payment Area' && a !== 'Releasing of Result');
-    const nextArea = orderedRequired.length ? orderedRequired[0] : null;
+    // Forward each Payment Area test to its specific target area based on test type
+    for (const t of tests) {
+      if (!t || t.status !== 'Payment Area') continue;
+      const target = TEST_TYPE_TO_AREA[String(t.testType || '').toLowerCase()] || 'Extraction Area';
+      // Normalize target area name (e.g., 'xray' -> 'X-ray')
+      const tnorm = String(target || '').toLowerCase();
+      let normalizedTarget = target;
+      if (tnorm.includes('xray') || tnorm.includes('x-ray')) normalizedTarget = 'X-ray';
+      
+      console.log('Considering test for move', { testId: t.testId, testType: t.testType, target: normalizedTarget });
 
-    // If there's no next area, do not forward tests; keep them Completed/In Progress as appropriate
-    if (nextArea) {
-      // move only tests that map to the nextArea
-      for (const t of tests) {
-        if (!t || t.status !== 'Payment Area') continue;
-        const target = TEST_TYPE_TO_AREA[String(t.testType || '').toLowerCase()] || 'Extraction Area';
-        // check if this test's target corresponds to nextArea (robust, case-insensitive)
-        let targetMatchesNext = false;
-        try {
-          const tn = String(target || '').toLowerCase();
-          const nn = String(nextArea || '').toLowerCase();
-          if (nn.includes('xray') || nn.includes('x-ray')) targetMatchesNext = tn.includes('xray') || tn.includes('x-ray');
-          else if (nn.includes('extraction')) targetMatchesNext = tn.includes('extraction');
-          else targetMatchesNext = tn === nn;
-        } catch (e) { targetMatchesNext = false; }
-        if (!targetMatchesNext) continue;
+      // optionally filter by lab parameter
+      const isXrayTest = tnorm.includes('xray') || tnorm.includes('x-ray');
+      if (lab === 'xray' && !isXrayTest) { console.log('Skipping due lab filter (xray required)'); continue; }
+      if (lab === 'clinical' && isXrayTest) { console.log('Skipping due lab filter (clinical required)'); continue; }
 
-        // ensure we don't create duplicate active items in the same area for this patient.
-        const existingInTarget = (await Test.find({ patient: patientObj.id })).find(x => x && x.status === nextArea);
-        if (existingInTarget) {
-          // keep this test Completed but do not move to avoid duplicates
-          t.status = 'Completed';
-          await t.save();
-          moved.push({ testId: t.testId, movedTo: null, note: 'kept Completed (duplicate active exists in target)' });
-          continue;
-        }
-
-        // Move matching test(s) to the next required area
-        t.status = nextArea;
-        await t.save();
-        moved.push({ testId: t.testId, movedTo: nextArea });
-        try { sseEmitter.emit('update', { action: 'forward', testId: t.testId, movedTo: nextArea, time: (new Date()).toISOString(), patientCode: patientObj.patientCode }); } catch (e) { }
-      }
+      // Move test to its target area
+      t.status = normalizedTarget;
+      await t.save();
+      // debug verify persisted status
+      try {
+        const persisted = await Test.findById(t.id);
+        console.log('After save persisted test status', { testId: persisted && persisted.testId, status: persisted && persisted.status });
+      } catch (e) { console.warn('Failed to verify persisted test after move', e); }
+      moved.push({ testId: t.testId, movedTo: normalizedTarget });
+      console.log('Moved test to target', { testId: t.testId, movedTo: normalizedTarget });
+      try { sseEmitter.emit('update', { action: 'forward', testId: t.testId, movedTo: normalizedTarget, time: (new Date()).toISOString(), patientCode: patientObj.patientCode }); } catch (e) { }
     }
 
-    return res.json({ success: true, message: `Payment recorded for ${patientObj.firstName} ${patientObj.lastName}`, moved });
+    // compute how many tests for this patient still remain in Payment Area
+    const afterTests = await Test.find({ patient: patientObj.id }) || [];
+    try {
+      const snapAfter = afterTests.map(x => ({ testId: x.testId, status: x.status, testType: x.testType, completedAt: x.completedAt || null }));
+      console.log('Patient tests snapshot (after forwarding)', { patientId: patientObj.id, tests: snapAfter });
+    } catch (e) {}
+    const remaining = afterTests.filter(x => x && x.status === 'Payment Area').length;
+    console.log('After forwarding, remaining Payment Area tests for patient', { patientId: patientObj.id, remaining });
+    // include patient's labTotals so client can refresh displayed amounts
+    const labTotals = patientObj && patientObj.labTotals ? patientObj.labTotals : { clinical: 0, xray: 0 };
+    console.log('complete-payment summary', { moved, remaining, labTotals });
+
+    return res.json({ success: true, message: `Payment recorded for ${patientObj.firstName} ${patientObj.lastName}`, moved, remaining, labTotals });
   } catch (err) {
     console.error('complete-payment error', err);
     return res.status(500).json({ success: false, message: 'Internal server error' });
@@ -646,6 +666,14 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
       return res.redirect('/reception');
     }
     const test = await Test.findById(testId);
+    try {
+      // debug: snapshot patient's tests before completion
+      if (test && test.patient) {
+        const all = await Test.find({ patient: test.patient }) || [];
+        const snap = all.map(x => ({ testId: x.testId, status: x.status, testType: x.testType, completedAt: x.completedAt || null }));
+        console.log('complete: patient tests snapshot (before complete)', { patientId: test.patient, tests: snap });
+      }
+    } catch (e) {}
     if (!test) {
       req.flash('error_msg', 'Test not found');
       return res.redirect('/reception');
@@ -717,83 +745,114 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
       return res.redirect(previousArea ? `/reception/area/${encodeURIComponent(previousArea)}` : '/reception');
     }
 
-    // mark as completed for this step first
+    // If completing from Payment Area, forward this specific test to its
+    // target area (based on test type) rather than using the patient's
+    // overall nextArea ordering. This makes per-test "Mark Complete" act
+    // on the individual test's target.
+    if (previousArea === 'Payment Area') {
+      if (!test.patient) {
+        const msg = 'Cannot forward: test has no associated patient. Please encode the patient first.';
+        console.warn(msg, { testId });
+        if (req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'))) {
+          return res.status(400).json({ success: false, message: msg });
+        }
+        req.flash('error_msg', msg);
+        return res.redirect(`/reception/area/${encodeURIComponent(previousArea || area || 'Payment Area')}`);
+      }
+      const patientObj = await Patient.findById(test.patient);
+      if (!patientObj) {
+        const msg = 'Associated patient not found';
+        if (req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'))) {
+          return res.status(404).json({ success: false, message: msg });
+        }
+        req.flash('error_msg', msg);
+        return res.redirect(`/reception/area/${encodeURIComponent(previousArea || area || 'Payment Area')}`);
+      }
+
+      // Determine the specific target area for this test type
+      const target = TEST_TYPE_TO_AREA[String(test.testType || '').toLowerCase()] || 'Extraction Area';
+      // normalize common X-ray naming
+      const tnorm = String(target || '').toLowerCase();
+      const normalizedTarget = (tnorm.includes('xray') || tnorm.includes('x-ray')) ? 'X-ray' : target;
+
+      // Prevent duplicate active item in same area
+      const existing = await Test.find({ patient: patientObj.id });
+      const conflict = Array.isArray(existing) && existing.find(ti => ti && ti.status === normalizedTarget && ti.id !== test.id);
+      console.log('complete (Payment Area): forwarding decision', { testId: test.testId, target: normalizedTarget, conflict: !!conflict });
+      if (conflict) {
+        const msg = `${test.testId} cannot be forwarded: patient already has active item in ${normalizedTarget}`;
+        console.log('complete: forward blocked by conflict (per-test)', { testId: test.testId, target: normalizedTarget });
+        if (req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'))) {
+          return res.status(409).json({ success: false, message: msg, conflict: true });
+        }
+        req.flash('info_msg', msg);
+        return res.redirect(`/reception/area/${encodeURIComponent(previousArea || '')}`);
+      }
+
+      // Move the test to its target area directly
+      test.status = normalizedTarget;
+      await test.save();
+      try {
+        const persisted = await Test.findById(test.id);
+        console.log('complete: persisted after forward (per-test)', { testId: persisted && persisted.testId, status: persisted && persisted.status });
+      } catch (e) { console.warn('complete: failed to verify persisted after forward (per-test)', e); }
+      try {
+        const payload = { action: 'forward', testId: test.testId, movedTo: test.status, time: (new Date()).toISOString() };
+        console.log('SSE emit', payload.action, payload.testId, payload.movedTo);
+        sseEmitter.emit('update', payload);
+      } catch (e) { }
+
+      const message = `${test.testId} moved to ${test.status}`;
+      if (req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'))) {
+        return res.json({ success: true, message, movedTo: test.status });
+      }
+      req.flash('success_msg', message);
+      return res.redirect(previousArea ? `/reception/area/${encodeURIComponent(previousArea)}` : '/reception');
+    }
+
+    // mark as completed for this step first (non-Payment Area flows)
     test.status = 'Completed';
     await test.save();
-  console.log('complete: marked Completed', { testId: test.testId });
+    console.log('complete: marked Completed', { testId: test.testId });
+    try {
+      if (test && test.patient) {
+        const all2 = await Test.find({ patient: test.patient }) || [];
+        const snap2 = all2.map(x => ({ testId: x.testId, status: x.status, testType: x.testType, completedAt: x.completedAt || null }));
+        console.log('complete: patient tests snapshot (after mark Completed)', { patientId: test.patient, tests: snap2 });
+      }
+    } catch (e) {}
+    try {
+      const persisted = await Test.findById(test.id);
+      console.log('complete: persisted after mark Completed', { testId: persisted && persisted.testId, status: persisted && persisted.status, completedAt: persisted && persisted.completedAt });
+    } catch (e) { console.warn('complete: failed to verify persisted after Completed', e); }
 
-    // now attempt to auto-forward to next required area for patient
+    // now attempt to move test to In Progress (waiting for results encoding).
+    // Each test has its own workflow: Payment → Target Area → In Progress → Completed → Releasing → Released
+    // We do NOT forward this test to other patient areas — each test is independent.
     if (test.patient) {
-      const patientObj = await Patient.findById(test.patient);
-      const required = Array.isArray(patientObj && patientObj.requiredAreas) ? patientObj.requiredAreas.slice() : [];
-
-      // produce ordered requiredAreas using AREAS sequence (skip Payment Area and Releasing)
-      const orderedRequired = AREAS.filter(a => required.includes(a) && a !== 'Payment Area' && a !== 'Releasing of Result');
-
-      // find next area after previousArea. Only forward when there is a *next* required area.
-      let nextArea = null;
-      if (previousArea === 'Payment Area') {
-        nextArea = orderedRequired.length ? orderedRequired[0] : null;
-      } else {
-        const idx = orderedRequired.indexOf(previousArea);
-        if (idx >= 0 && idx < orderedRequired.length - 1) {
-          nextArea = orderedRequired[idx + 1];
-        } else {
-          // previousArea either not in the patient's required list, or it was the last required area.
-          // In both cases we should NOT auto-forward to the first item to avoid cycling back.
-          nextArea = null;
-        }
-      }
-
-      // Ensure patient is not already active in that area
-      if (nextArea) {
-        const existing = await Test.find({ patient: patientObj.id });
-        const conflict = Array.isArray(existing) && existing.find(t => t && t.status === nextArea);
-        console.log('complete: forwarding decision', { testId: test.testId, nextArea, conflict: !!conflict });
-        if (!conflict) {
-          // re-use same test record to forward to next area (status becomes nextArea)
-          test.status = nextArea;
-          await test.save();
-          try {
-            const payload = { action: 'forward', testId: test.testId, movedTo: nextArea, time: (new Date()).toISOString() };
-            console.log('SSE emit', payload.action, payload.testId, payload.movedTo);
-            sseEmitter.emit('update', payload);
-          } catch (e) { }
-          // stay on the same area page so receptionist can continue serving the next patient
-          req.flash('success_msg', `${test.testId} moved to ${nextArea}`);
-          if (req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'))) {
-            return res.json({ success: true, message: `${test.testId} moved to ${nextArea}`, movedTo: nextArea });
-          }
-          return res.redirect(`/reception/area/${encodeURIComponent(previousArea || '')}`);
-        } else {
-          // cannot forward because an active test already exists in next area
-          console.log('complete: forward blocked by conflict', { testId: test.testId, nextArea });
-          req.flash('info_msg', `${test.testId} completed; would forward to ${nextArea} but patient already has an active item there. It remains completed.`);
-          if (req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'))) {
-            return res.json({ success: true, message: `${test.testId} completed; would forward to ${nextArea} but patient already has an active item there. It remains completed.`, movedTo: null, conflict: true });
-          }
-          return res.redirect(`/reception/area/${encodeURIComponent(previousArea || '')}`);
-        }
-      }
-
-      // If we reach here, there was no nextArea (either none defined, or previousArea was last)
-      // Reception finished for this test.
-      // If the previous area was "Releasing of Result" then the process ends -> keep Completed.
-      // Otherwise move to 'In Progress' (waiting for results encoding).
+      // If the previous area was "Releasing of Result" then the process ends -> mark Released.
       if (previousArea === 'Releasing of Result') {
         // mark as released so mapAreaForTest will not send it back to Releasing
         try {
           test.status = 'Released';
           test.released = true;
           await test.save();
+          try {
+            const persisted = await Test.findById(test.id);
+            console.log('complete: persisted after released', { testId: persisted && persisted.testId, status: persisted && persisted.status, released: persisted && persisted.released });
+          } catch (e) { console.warn('complete: failed to verify persisted after released', e); }
         } catch (e) {
           console.warn('Failed to persist released flag/status', e);
         }
         console.log('complete: final step (Releasing) — marked Released, keep Released', { testId: test.testId });
       } else {
-        // Registration should still be treated as In Progress per requirements
+        // Move to 'In Progress' (waiting for results encoding)
         test.status = 'In Progress';
         await test.save();
+        try {
+          const persisted = await Test.findById(test.id);
+          console.log('complete: persisted after In Progress', { testId: persisted && persisted.testId, status: persisted && persisted.status });
+        } catch (e) { console.warn('complete: failed to verify persisted after In Progress', e); }
         console.log('complete: moved to In Progress', { testId: test.testId });
       }
       try {
@@ -842,6 +901,141 @@ router.post('/delete', requireAuth, canAccessPatient, async (req, res) => {
     console.error('Delete error:', err);
     req.flash('error_msg', 'Error deleting test');
     res.redirect('/reception');
+  }
+});
+
+// POST /reception/complete-all - complete ALL tests for a patient in a specific area at once
+// Used in grouped views (Extraction, X-ray, etc.) to move all patient tests to In Progress together
+router.post('/complete-all', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const { patientId, area } = req.body || {};
+    console.log('POST /reception/complete-all invoked', { patientId, area });
+    if (!patientId || !area) {
+      const msg = 'Missing patientId or area';
+      if (req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'))) {
+        return res.status(400).json({ success: false, message: msg });
+      }
+      req.flash('error_msg', msg);
+      return res.redirect('/reception');
+    }
+
+    // Find all tests for this patient in the specified area
+    const tests = await Test.find({ patient: patientId }) || [];
+    const testsInArea = tests.filter(t => t && t.status === area);
+    console.log('complete-all: tests in area', { patientId, area, count: testsInArea.length });
+
+    if (testsInArea.length === 0) {
+      const msg = `No tests found for patient in ${area}`;
+      if (req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'))) {
+        return res.status(404).json({ success: false, message: msg });
+      }
+      req.flash('info_msg', msg);
+      return res.redirect(`/reception/area/${encodeURIComponent(area)}`);
+    }
+
+    const completed = [];
+    for (const t of testsInArea) {
+      // Determine new status based on current area
+      if (area === 'Releasing of Result') {
+        t.status = 'Released';
+        t.released = true;
+      } else {
+        t.status = 'In Progress';
+      }
+      await t.save();
+      completed.push(t.testId);
+      try {
+        const payload = { action: 'complete', testId: t.testId, status: t.status, time: (new Date()).toISOString() };
+        sseEmitter.emit('update', payload);
+      } catch (e) { }
+    }
+
+    console.log('complete-all: completed tests', { patientId, area, completed });
+    const message = `Completed ${completed.length} test(s) from ${area}`;
+    if (req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'))) {
+      return res.json({ success: true, message, completed });
+    }
+    req.flash('success_msg', message);
+    return res.redirect(`/reception/area/${encodeURIComponent(area)}`);
+  } catch (err) {
+    console.error('complete-all error:', err);
+    if (req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'))) {
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+    req.flash('error_msg', 'Error completing tests');
+    return res.redirect('/reception');
+  }
+});
+
+// POST /reception/delete-patient - delete all Payment Area tests for a patient (used from Payment Area grouped row)
+router.post('/delete-patient', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const { patientId } = req.body || {};
+    if (!patientId) return res.status(400).json({ success: false, message: 'Missing patientId' });
+    // find tests for this patient that are still in Payment Area
+    const tests = await Test.find({ patient: patientId }) || [];
+    const toDelete = tests.filter(t => t && t.status === 'Payment Area');
+    const deleted = [];
+      for (const t of toDelete) {
+      try {
+        const d = await Test.findByIdAndDelete(t.id);
+        if (d) {
+          deleted.push(d.testId || d.id);
+          try { sseEmitter.emit('update', { action: 'delete', testId: d.testId, time: (new Date()).toISOString() }); } catch (e) {}
+        }
+      } catch (e) {
+        console.warn('Failed to delete test during delete-patient', e);
+      }
+    }
+    return res.json({ success: true, message: `Deleted ${deleted.length} Payment Area test(s)`, deleted });
+  } catch (err) {
+    console.error('delete-patient error', err);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// POST /reception/delete-patient-area - delete all tests for a patient in a specific area
+router.post('/delete-patient-area', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const { patientId, area } = req.body || {};
+    console.log('POST /reception/delete-patient-area invoked', { patientId, area });
+    if (!patientId || !area) {
+      const msg = 'Missing patientId or area';
+      if (req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'))) {
+        return res.status(400).json({ success: false, message: msg });
+      }
+      req.flash('error_msg', msg);
+      return res.redirect('/reception');
+    }
+    // Find tests for this patient in the specified area
+    const tests = await Test.find({ patient: patientId }) || [];
+    const toDelete = tests.filter(t => t && t.status === area);
+    const deleted = [];
+    for (const t of toDelete) {
+      try {
+        const d = await Test.findByIdAndDelete(t.id);
+        if (d) {
+          deleted.push(d.testId || d.id);
+          try { sseEmitter.emit('update', { action: 'delete', testId: d.testId, time: (new Date()).toISOString() }); } catch (e) {}
+        }
+      } catch (e) {
+        console.warn('Failed to delete test during delete-patient-area', e);
+      }
+    }
+    console.log('delete-patient-area: deleted tests', { patientId, area, deleted });
+    const message = `Deleted ${deleted.length} test(s) from ${area}`;
+    if (req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'))) {
+      return res.json({ success: true, message, deleted });
+    }
+    req.flash('success_msg', message);
+    return res.redirect(`/reception/area/${encodeURIComponent(area)}`);
+  } catch (err) {
+    console.error('delete-patient-area error', err);
+    if (req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'))) {
+      return res.status(500).json({ success: false, message: 'Internal server error' });
+    }
+    req.flash('error_msg', 'Error deleting tests');
+    return res.redirect('/reception');
   }
 });
 

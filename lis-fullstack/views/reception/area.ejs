@@ -69,6 +69,10 @@
                       <input type="number" name="amount" class="payment-amount" step="0.01" min="0.01" value="<%= (p.total || 0).toFixed(2) %>" style="width:110px; margin-right:6px;" required>
                       <button type="submit" class="button btn-success btn-small payment-submit" title="Mark complete" onclick="return paymentSubmitFallback(this)">Mark Complete</button>
                     </form>
+                    <form action="/reception/delete-patient" method="POST" class="delete-patient-form" style="display:inline-block; margin-left:6px;" onsubmit="return confirm('Delete all Payment Area items for this patient?');">
+                      <input type="hidden" name="patientId" value="<%= p.patient.id %>">
+                      <button type="submit" class="button btn-danger btn-small">Delete</button>
+                    </form>
                 </td>
               </tr>
             <% }) %>
@@ -95,35 +99,27 @@
                 <% } %>
               </td>
               <td>
-                <% g.tests.forEach(t => { %>
-                  <div style="font-size:0.9em; margin-bottom:4px;"><strong><%= t.testId %></strong> — <%= t.testType %></div>
-                <% }) %>
+                <ul style="margin:0; padding-left:18px;">
+                  <% g.tests.forEach(t => { %>
+                    <li style="font-size:0.9em; margin-bottom:2px;"><strong><%= t.testId %></strong> — <%= t.testType %></li>
+                  <% }) %>
+                </ul>
               </td>
               <td>
-                <% g.tests.forEach(t => { %>
-                  <form action="/reception/assign" method="POST" style="display:inline-block; margin-right:6px;">
-                    <input type="hidden" name="testId" value="<%= t.id %>">
-                    <select name="area" required style="margin-right:6px;">
-                      <% areas.forEach(a => { %>
-                        <option value="<%= a %>" <%= a === areaName ? 'selected' : '' %>><%= a %></option>
-                      <% }) %>
-                    </select>
-                    <input type="text" name="specimen" placeholder="Specimen # (optional)" style="margin-right:6px;" <%= t.patientEncoded ? '' : 'disabled' %>>
-                    <button class="button btn-primary btn-small" <%= t.patientEncoded ? '' : 'disabled' %>>Assign</button>
-                  </form>
-                  <!-- Mark complete for grouped tests -->
-                  <form action="/reception/complete" method="POST" class="complete-form" style="display:inline-block; margin-left:6px;">
-                    <input type="hidden" name="testId" value="<%= t.id %>">
-                    <input type="hidden" name="area" value="<%= areaName %>">
-                    <button type="submit" class="button btn-success btn-small" title="Mark complete"><%= areaName === 'Releasing of Result' ? 'Mark Released' : 'Mark Complete' %></button>
-                  </form>
-                  <!-- Delete from queue for grouped tests -->
-                  <form action="/reception/delete" method="POST" class="delete-form" style="display:inline-block; margin-left:6px;" onsubmit="return confirm('Delete this test from the queue?');">
-                    <input type="hidden" name="testId" value="<%= t.id %>">
-                    <input type="hidden" name="area" value="<%= areaName %>">
-                    <button type="submit" class="button btn-danger btn-small" title="Delete">Delete</button>
-                  </form>
-                <% }) %>
+                <!-- Mark Complete All for entire patient row -->
+                <form action="/reception/complete-all" method="POST" class="complete-all-form" style="display:inline-block; margin-right:12px;">
+                  <input type="hidden" name="patientId" value="<%= g.patient.id %>">
+                  <input type="hidden" name="area" value="<%= areaName %>">
+                  <button type="submit" class="button btn-success btn-small" title="Mark all <%= g.tests.length %> test(s) complete">
+                    <%= areaName === 'Releasing of Result' ? 'Release All' : 'Mark Complete All' %> (<%= g.tests.length %>)
+                  </button>
+                </form>
+                <!-- Delete all tests for this patient in this area -->
+                <form action="/reception/delete-patient-area" method="POST" class="delete-patient-area-form" style="display:inline-block;" onsubmit="return confirm('Delete all <%= g.tests.length %> test(s) for this patient from <%= areaName %>?');">
+                  <input type="hidden" name="patientId" value="<%= g.patient.id %>">
+                  <input type="hidden" name="area" value="<%= areaName %>">
+                  <button type="submit" class="button btn-danger btn-small" title="Delete all tests">Delete All</button>
+                </form>
               </td>
             </tr>
           <% }) %>
@@ -418,9 +414,27 @@
             alert((json && json.message) ? json.message : 'Error recording payment');
             return;
           }
-          // remove the patient row from the table
+          // Decide whether to remove the patient row: only remove when no Payment Area tests remain
           const row = form.closest('tr');
-          if (row) row.remove();
+          const remaining = json && typeof json.remaining === 'number' ? json.remaining : 0;
+          const labTotals = json && json.labTotals ? json.labTotals : null;
+          if (row) {
+            if (remaining === 0) {
+              row.remove();
+            } else {
+              // update displayed values if present: clinical/xray/total inputs
+              try {
+                if (labTotals) {
+                  const clin = row.querySelector('.clinical-amount');
+                  const xray = row.querySelector('.xray-amount');
+                  const totals = row.querySelectorAll('.payment-amount');
+                  if (clin && typeof labTotals.clinical !== 'undefined') clin.value = Number(labTotals.clinical || 0).toFixed(2);
+                  if (xray && typeof labTotals.xray !== 'undefined') xray.value = Number(labTotals.xray || 0).toFixed(2);
+                  totals.forEach(t => { t.value = Number((labTotals.clinical || 0) + (labTotals.xray || 0)).toFixed(2); });
+                }
+              } catch (e) { /* ignore UI update errors */ }
+            }
+          }
           if (json && json.message) {
             const note = document.createElement('div');
             note.className = 'alert alert-success active';
@@ -481,6 +495,122 @@
               // notify other tabs via localStorage so kiosk/assigned views refresh immediately
               localStorage.setItem('reception:updated', String(Date.now()));
             } catch (e) { }
+          }
+        });
+      });
+
+      // handle delete-patient (group row) forms
+      document.querySelectorAll('.delete-patient-form').forEach(form => {
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          if (!confirm('Delete all Payment Area items for this patient?')) return;
+          const btn = form.querySelector('button[type="submit"]');
+          if (btn) btn.disabled = true;
+          let resp;
+          try {
+            resp = await fetch(form.action, {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+              body: serializeForm(form)
+            });
+          } catch (err) {
+            if (btn) btn.disabled = false;
+            alert('Network error deleting patient items');
+            return;
+          }
+          if (btn) btn.disabled = false;
+          const json = await resp.json().catch(() => null);
+          if (!resp.ok) {
+            alert((json && json.message) ? json.message : 'Error deleting patient items');
+            return;
+          }
+          const row = form.closest('tr');
+          if (row) row.remove();
+          if (json && json.message) {
+            const note = document.createElement('div');
+            note.className = 'alert alert-success active';
+            note.textContent = json.message;
+            document.querySelector('.main-content').insertBefore(note, document.querySelector('.main-content').firstChild);
+            setTimeout(() => note.classList.remove('active'), 3000);
+            try { localStorage.setItem('reception:updated', String(Date.now())); } catch (e) {}
+          }
+        });
+      });
+
+      // handle complete-all-form (grouped area: complete all tests for patient in this area)
+      document.querySelectorAll('.complete-all-form').forEach(form => {
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const btn = form.querySelector('button[type="submit"]');
+          if (btn) btn.disabled = true;
+          let resp;
+          try {
+            resp = await fetch(form.action, {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+              body: serializeForm(form)
+            });
+          } catch (err) {
+            if (btn) btn.disabled = false;
+            alert('Network error completing tests');
+            return;
+          }
+          if (btn) btn.disabled = false;
+          const json = await resp.json().catch(() => null);
+          if (!resp.ok) {
+            alert((json && json.message) ? json.message : 'Error completing tests');
+            return;
+          }
+          const row = form.closest('tr');
+          if (row) row.remove();
+          if (json && json.message) {
+            const note = document.createElement('div');
+            note.className = 'alert alert-success active';
+            note.textContent = json.message;
+            document.querySelector('.main-content').insertBefore(note, document.querySelector('.main-content').firstChild);
+            setTimeout(() => note.classList.remove('active'), 3000);
+            try { localStorage.setItem('reception:updated', String(Date.now())); } catch (e) {}
+          }
+        });
+      });
+
+      // handle delete-patient-area-form (grouped area: delete all tests for patient in this area)
+      document.querySelectorAll('.delete-patient-area-form').forEach(form => {
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          if (!confirm('Delete all tests for this patient in this area?')) return;
+          const btn = form.querySelector('button[type="submit"]');
+          if (btn) btn.disabled = true;
+          let resp;
+          try {
+            resp = await fetch(form.action, {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+              body: serializeForm(form)
+            });
+          } catch (err) {
+            if (btn) btn.disabled = false;
+            alert('Network error deleting tests');
+            return;
+          }
+          if (btn) btn.disabled = false;
+          const json = await resp.json().catch(() => null);
+          if (!resp.ok) {
+            alert((json && json.message) ? json.message : 'Error deleting tests');
+            return;
+          }
+          const row = form.closest('tr');
+          if (row) row.remove();
+          if (json && json.message) {
+            const note = document.createElement('div');
+            note.className = 'alert alert-success active';
+            note.textContent = json.message;
+            document.querySelector('.main-content').insertBefore(note, document.querySelector('.main-content').firstChild);
+            setTimeout(() => note.classList.remove('active'), 3000);
+            try { localStorage.setItem('reception:updated', String(Date.now())); } catch (e) {}
           }
         });
       });

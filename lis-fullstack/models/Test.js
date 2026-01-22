@@ -30,17 +30,37 @@ class Test {
   // Save to database
   async save() {
     this.updatedAt = new Date();
+    // Only set a persistent `completedAt` timestamp when a test has results
+    // recorded. Marking a step as Completed in the queue (e.g. Extraction)
+    // should not imply that results were encoded and therefore should not
+    // automatically route the test to 'Releasing of Result'. This preserves
+    // the workflow where results must be encoded before release.
     if (this.status === 'Completed' && !this.completedAt) {
-      this.completedAt = new Date();
+      const hasResults = (this.results && (typeof this.results === 'string' ? String(this.results).trim() : Object.keys(this.results || {}).length > 0));
+      if (hasResults) {
+        this.completedAt = new Date();
+      }
     }
     const tests = global.db.getTests();
     const index = tests.findIndex(t => t.id === this.id);
+    // record previous state for debugging
+    const prev = index >= 0 ? tests[index] : null;
     if (index >= 0) {
       tests[index] = this;
     } else {
       tests.push(this);
     }
     global.db.saveTests(tests);
+    try {
+      // debug: log status transitions when they occur
+      const prevStatus = prev ? prev.status : null;
+      const newStatus = this.status;
+      const prevCompleted = prev ? prev.completedAt : null;
+      const newCompleted = this.completedAt || null;
+      if (prevStatus !== newStatus || (!!prevCompleted) !== (!!newCompleted)) {
+        try { console.log('Test.save: status change', { testId: this.testId, prevStatus, newStatus, prevCompleted: prevCompleted ? prevCompleted : null, newCompleted }); } catch (e) {}
+      }
+    } catch (e) {}
     return this;
   }
 
