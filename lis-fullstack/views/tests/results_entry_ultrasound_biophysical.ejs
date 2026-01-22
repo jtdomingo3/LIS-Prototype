@@ -5,10 +5,10 @@
     <input type="hidden" name="_method" value="POST">
 
     <% const sample = {
-      bpd_size: '8.95 cm', bpd_label: '36 CI',
-      hc_size: '31.97 cm', hc_label: '36',
-      ac_size: '32.27 cm', ac_label: '36',
-      fl_size: '7.01 cm', fl_label: '36',
+      bpd_size: '8.95 cm', bpd_label: '36w2d',
+      hc_size: '31.97 cm', hc_label: '36w0d',
+      ac_size: '32.27 cm', ac_label: '36w1d',
+      fl_size: '7.01 cm', fl_label: '36w0d',
       number_of_fetus: 'SINGLE', average_ultrasound_age: '36',
       presentation: 'CEPHALIC',
       edc_by_ultrasound: '2026-02-17',
@@ -40,7 +40,7 @@
       <input type="text" name="section_title" value="<%= test && test.results && test.results.section_title ? test.results.section_title : 'BIOPHYSICAL ULTRASOUND' %>">
     </div>
 
-    <div style="margin-top:12px; font-weight:700">BIOMETRY:</div>
+    <div style="margin-top:12px; font-weight:700; font-size:14px;">BIOMETRY:</div>
     <div id="biometryList" style="margin-top:8px">
       <!-- Standard four measurements with two placeholders each -->
       <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
@@ -138,7 +138,7 @@
     </div>
 
     <div style="margin-top:8px">
-      <label>IMPRESSION</label>
+      <label style="font-weight:700; font-size:14px; display:block; margin-bottom:6px">IMPRESSION</label>
       <textarea name="impression" rows="4" style="width:100%"><%= test && test.results && test.results.impression ? test.results.impression : 'Enter impression here.' %></textarea>
     </div>
 
