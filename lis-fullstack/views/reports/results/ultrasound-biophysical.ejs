@@ -65,10 +65,10 @@
       <div style="margin-top:12px; font-weight:700; font-size:13px"><strong>BIOMETRY:</strong></div>
       <div style="display:flex; gap:24px; align-items:flex-start; padding-left:5.5em; margin-top:20px">
         <div>
-          <div>BPD: <strong><%= test && test.results && test.results.bpd_size ? test.results.bpd_size : '' %></strong> <%= test && test.results && test.results.bpd_label ? test.results.bpd_label : '' %></div>
-          <div>HC:  <strong><%= test && test.results && test.results.hc_size ? test.results.hc_size : '' %></strong> <%= test && test.results && test.results.hc_label ? test.results.hc_label : '' %></div>
-          <div>AC:  <strong><%= test && test.results && test.results.ac_size ? test.results.ac_size : '' %></strong> <%= test && test.results && test.results.ac_label ? test.results.ac_label : '' %></div>
-          <div>FL:  <strong><%= test && test.results && test.results.fl_size ? test.results.fl_size : '' %></strong> <%= test && test.results && test.results.fl_label ? test.results.fl_label : '' %></div>
+          <div>BPD: <%= test && test.results && test.results.bpd_size ? test.results.bpd_size : '' %> cm <%= test && test.results && test.results.bpd_label ? test.results.bpd_label : '' %></div>
+          <div>HC:  <%= test && test.results && test.results.hc_size ? test.results.hc_size : '' %> cm <%= test && test.results && test.results.hc_label ? test.results.hc_label : '' %></div>
+          <div>AC:  <%= test && test.results && test.results.ac_size ? test.results.ac_size : '' %> cm <%= test && test.results && test.results.ac_label ? test.results.ac_label : '' %></div>
+          <div>FL:  <%= test && test.results && test.results.fl_size ? test.results.fl_size : '' %> cm <%= test && test.results && test.results.fl_label ? test.results.fl_label : '' %></div>
         </div>
       </div>
       <% if (test && test.results && Array.isArray(test.results.biometry) && test.results.biometry.length) { %>
@@ -85,8 +85,8 @@
       <div>AVERAGE ULTRASOUND AGE: <%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : '' %></div>
       <div>PRESENTATION: <%= test && test.results && test.results.presentation ? test.results.presentation : '' %></div>
       <div>EDC BY ULTRASOUND: <%= test && test.results && test.results.edc_by_ultrasound ? (new Date(test.results.edc_by_ultrasound)).toLocaleDateString() : '' %></div>
-      <div>EFW: <%= test && test.results && test.results.efw ? test.results.efw : '' %></div>
-      <div>FETAL HEART RATE: <%= test && test.results && test.results.fetal_heart_rate ? test.results.fetal_heart_rate : '' %></div>
+      <div>EFW: <%= test && test.results && test.results.efw ? test.results.efw : '' %> g</div>
+      <div>FETAL HEART RATE: <%= test && test.results && test.results.fetal_heart_rate ? test.results.fetal_heart_rate : '' %> BPM</div>
       <div>PLACENTAL LOCATION: <%= test && test.results && test.results.placental_location ? test.results.placental_location : '' %></div>
       <div>MATURITY: <%= test && test.results && test.results.maturity ? test.results.maturity : '' %></div>
       <div>AMNIOTIC FLUID: <%= test && test.results && test.results.amniotic_fluid ? test.results.amniotic_fluid : '' %></div>
