@@ -109,6 +109,7 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       'hematology.ejs',
       'serology.ejs',
       'ultrasound-abd-kubp-hbt.ejs',
+      'echocardiography-2d.ejs',
       'ultrasound-transvaginal.ejs',
       'ultrasound-biophysical.ejs',
       'ultrasound-1st-trimester-obstetrics.ejs',
@@ -124,6 +125,9 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       }
       if (f === 'ultrasound-abd-kubp-hbt.ejs') {
         return { name: 'Ultrasound - ABD / KUBP / HBT', testType: 'ultrasound-abd-kubp-hbt' };
+      }
+      if (f === 'echocardiography-2d.ejs') {
+        return { name: 'Echocardiography - 2D', testType: 'echocardiography-2d' };
       }
       if (f === 'ultrasound-transvaginal.ejs') {
         return { name: 'Ultrasound - Transvaginal', testType: 'ultrasound-transvaginal' };
@@ -295,6 +299,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       dengue: /dengue/i.test(tt),
       pt: /\b(?:pt|prothrombin|pt-aptt|ptaptt)\b/i.test(tt),
       blood_chem: /(blood\s*chemistry|blood-chemistry|blood\s*chem)/i.test(tt),
+        echocardiography: /(echo|echocardiograph|echocardiography|2d\s*echo|2decho)/i.test(tt),
       ultrasound_abd: /(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(tt),
       ultrasound_transvaginal: /(ultrasound[-\s]?transvaginal|transvaginal)/i.test(tt),
       ultrasound_biophysical: /(ultrasound[-\s]?biophysical|biophysical)/i.test(tt),
@@ -306,6 +311,8 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       ,
       xray: /(x-?ray|xray|radiograph)/i.test(tt),
       ecg: /(ecg|electrocardio|electrocardiogram)/i.test(tt)
+      ,
+      echocardiography: /(echo|echocardiograph|echocardiography|2d\s*echo|2decho)/i.test(tt)
     };
     // Fallback: if the POST body contains gestational/CRL fields, treat as ultrasound (pelvic/transvaginal)
     try {
@@ -360,6 +367,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     if (/(ultrasound[-\s]?biophysical|biophysical)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_biophysical';
     if (/(1st\s*trimester|first\s*trimester|1st[-\s]?trimester|trimester\s*obstetrics)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_1st_trimester_obstetrics';
     if (/(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_abd_kubp_hbt';
+    if (/(echo|echocardiograph|echocardiography|2d\s*echo|2decho)/i.test(test.testType)) view = 'tests/results_entry_echocardiography_2d';
     if (/(static:)?(ultrasound[-_\s]?pelvic(\.ejs)?|pelvic)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_pelvic';
     console.log(`DEBUG GET /tests/${req.params.id}/results - selected view='${view}'`);
     res.render(view, {
@@ -1282,6 +1290,50 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
         paragraphs_font_family: req.body.paragraphsFontFamily || req.body.paragraphs_font_family,
         paragraphs_font_size: req.body.paragraphsFontSize || req.body.paragraphs_font_size
       };
+    } else if (/(echo|echocardiograph|echocardiography|2d\s*echo|2decho)/i.test(test.testType)) {
+      // Echocardiography (2D): findings paragraphs, color flow study, conclusion and signature
+      const paragraphs = (req.body.paragraphs || req.body.findings || req.body.result || '').toString().trim();
+      const color_flow = (req.body.color_flow || req.body.color_flow_study || '').toString().trim();
+      const conclusion = (req.body.conclusion || req.body.impression || req.body.conclusion_text || '').toString().trim();
+      const doctorName = (req.body.pathName || req.body.doctorName || '').toString().trim();
+      const doctorLicense = (req.body.pathLicense || req.body.doctorLicense || '').toString().trim();
+      const doctorDesignation = (req.body.doctorDesignation || '').toString().trim() || 'Cardiologist';
+
+      // weight/height/bsa handling
+      const weightRaw = (req.body.weight || '').toString().trim();
+      const heightRaw = (req.body.height || '').toString().trim();
+      const bsaRaw = (req.body.bsa || '').toString().trim();
+
+      // parse numeric values when possible
+      function toNum(v){ if (v===undefined||v===null) return null; const s=String(v).trim(); if(s==='') return null; const n=parseFloat(s.replace(/[^0-9.+-eE]/g,'')); return isNaN(n)?null:n }
+      const weightNum = toNum(weightRaw);
+      const heightNum = toNum(heightRaw);
+      let bsaVal = (bsaRaw && bsaRaw !== '') ? bsaRaw : '';
+
+      // If bsa not provided but weight and height are numeric, compute Mosteller BSA
+      if ((!bsaVal || bsaVal==='') && weightNum !== null && heightNum !== null) {
+        const bsaCalc = Math.sqrt((heightNum * weightNum) / 3600);
+        if (!isNaN(bsaCalc)) bsaVal = (Math.round(bsaCalc * 100) / 100).toFixed(2);
+      }
+
+      resultsObj = {
+        paragraphs: paragraphs,
+        color_flow: color_flow,
+        conclusion: conclusion,
+        doctorName: doctorName,
+        doctorLicense: doctorLicense,
+        doctorDesignation: doctorDesignation,
+        weight: weightRaw || (weightNum!==null?String(weightNum):''),
+        weight_numeric: weightNum,
+        height: heightRaw || (heightNum!==null?String(heightNum):''),
+        height_numeric: heightNum,
+        bsa: bsaVal,
+        section_title: (req.body.section_title || req.body.sectionTitle || (test && test.results && test.results.section_title) || 'ECHOCARDIOGRAPHY REPORT').toString().trim(),
+        paragraphs_font_family: req.body.paragraphsFontFamily || req.body.paragraphs_font_family,
+        paragraphs_font_size: req.body.paragraphsFontSize || req.body.paragraphs_font_size
+      };
+      // Diagnostic log for echocardiography saving
+      console.log(`ECHOCARDIO POST for test ${req.params.id} - weight,height,bsa:`, { weightRaw, heightRaw, bsaVal });
     }
 
     // allow storing performer name/license directly on results for printing
@@ -1323,7 +1375,10 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       updateData.performedBy = performedBy;
     }
 
-    await Test.findByIdAndUpdate(req.params.id, updateData, { new: true });
+    const updated = await Test.findByIdAndUpdate(req.params.id, updateData, { new: true });
+    try {
+      console.log('Saved results for test', req.params.id, 'results keys:', updated && updated.results ? Object.keys(updated.results) : null);
+    } catch (e) {}
 
     req.flash('success_msg', 'Results saved successfully');
     res.redirect(`/tests/${req.params.id}`);
@@ -1366,7 +1421,8 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
       'ecg.ejs',
       'hematology.ejs',
       'serology.ejs',
-      'ultrasound-abd-kubp-hbt.ejs'
+      'ultrasound-abd-kubp-hbt.ejs',
+      'echocardiography-2d.ejs'
       , 'ultrasound-transvaginal.ejs'
       , 'ultrasound-biophysical.ejs'
       , 'ultrasound-1st-trimester-obstetrics.ejs'

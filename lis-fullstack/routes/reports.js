@@ -285,6 +285,9 @@ function getResultTemplate(test) {
   } else if (type.includes('ecg') || type.includes('electrocardio') || type.includes('electrocardiogram')) {
     template = 'ecg';
     image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';
+  } else if (type.includes('echo') || type.includes('echocardiograph') || type.includes('echocardiography') || /2d\s*echo/.test(type)) {
+    template = 'echocardiography-2d';
+    image = '8bb335a9-e0fb-4909-acdc-e2a070851a13.jpg';
   } else if (type.includes('albumin') || type.includes('\balb\b')) {
     template = 'blood-chemistry-albumin';
     image = '924756c2-1555-439d-bb99-4306bafd22de.jpg';

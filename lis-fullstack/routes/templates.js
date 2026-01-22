@@ -72,7 +72,8 @@ async function getStaticResultTemplates() {
       'ecg.ejs',
       'hematology.ejs',
       'serology.ejs',
-      'ultrasound-abd-kubp-hbt.ejs'
+      'ultrasound-abd-kubp-hbt.ejs',
+      'echocardiography-2d.ejs'
       , 'ultrasound-transvaginal.ejs'
       , 'ultrasound-biophysical.ejs'
       , 'ultrasound-1st-trimester-obstetrics.ejs'
@@ -107,6 +108,17 @@ async function getStaticResultTemplates() {
           id: `static:${f}`,
           name: 'Ultrasound - ABD / KUBP / HBT',
           testType: 'ultrasound-abd-kubp-hbt',
+          fields: [],
+          createdAt: null,
+          isStatic: true,
+          filename: f
+        };
+      }
+      if (f === 'echocardiography-2d.ejs') {
+        return {
+          id: `static:${f}`,
+          name: 'Echocardiography - 2D',
+          testType: 'echocardiography-2d',
           fields: [],
           createdAt: null,
           isStatic: true,
