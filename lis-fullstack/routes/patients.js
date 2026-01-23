@@ -210,9 +210,16 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
     }
 
     const mappedAreas = new Set();
+    // Build requestedTests array with amounts and lab tagging
+    const requestedTestsDetailed = [];
     for (const t of selectedTests) {
       const a = mapTestToArea(t);
       if (a) mappedAreas.add(a);
+      const slug = String(t).toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
+      const rawAmt = req.body['amount_' + slug];
+      const amt = rawAmt ? parseFloat(String(rawAmt).replace(/,/g,'')) : 0;
+      const lab = (a === 'X-ray') ? 'xray' : 'clinical';
+      requestedTestsDetailed.push({ key: t, label: t, amount: isNaN(amt) ? 0 : amt, lab });
     }
 
     // If none of the selected tests map to a reception area, treat as awaiting-only
@@ -245,8 +252,8 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       email,
       address,
       requiredAreas: finalRequiredAreas,
-      // preserve selected tests for extraction/medtech visibility
-      requestedTests: selectedTests,
+      // preserve selected tests for extraction/medtech visibility (detailed objects)
+      requestedTests: requestedTestsDetailed,
       createdBy: req.session.user.id
     });
 
@@ -300,7 +307,7 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
           specimenNumbers: {}
           ,
           // preserve selected tests so medtechs know what to extract
-          requestedTests: selectedTests,
+          requestedTests: requestedTestsDetailed,
           // mark if this patient's selected tests are 'awaiting-only' so downstream logic
           // can decide not to route after payment
           awaitingOnly: awaitingOnly

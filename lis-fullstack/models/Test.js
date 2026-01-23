@@ -21,6 +21,10 @@ class Test {
     this.completedAt = data.completedAt;
     this.createdAt = data.createdAt || new Date();
     this.updatedAt = data.updatedAt || new Date();
+    // Preserve requestedTests (array of { key,label,amount,lab }) when provided
+    this.requestedTests = Array.isArray(data.requestedTests) ? data.requestedTests : (data.requestedTests || []);
+    // Flag indicating all requested tests are awaiting-only (no routing)
+    this.awaitingOnly = !!data.awaitingOnly;
   }
 
   // Save to database

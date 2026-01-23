@@ -29,6 +29,28 @@
                 </select>
             </div>
         </div>
+            <script>
+                (function(){
+                    // Toggle amount input visibility + enabled state based on checkbox
+                    document.querySelectorAll('.test-checkbox').forEach(cb => {
+                        const key = cb.getAttribute('data-key');
+                        const amt = document.querySelector('input[name="amount_' + key + '"]');
+                        function update() {
+                            if (!amt) return;
+                            if (cb.checked) {
+                                amt.disabled = false;
+                                amt.style.display = '';
+                            } else {
+                                amt.disabled = true;
+                                amt.style.display = 'none';
+                            }
+                        }
+                        cb.addEventListener('change', update);
+                        // init
+                        update();
+                    });
+                })();
+            </script>
         <div class="form-row">
             <div class="form-group">
                 <label>Phone Number</label>
@@ -52,10 +74,14 @@
                     <h4>Select Requested Tests</h4>
                     <p>Choose the tests/services to request for this patient. The system will map selected tests to reception areas automatically.</p>
                     <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px; margin-top:8px;">
-                        <% (templates || []).forEach(t => { %>
+                        <% (templates || []).forEach(t => {
+                                 const rawKey = String(t.testType || t.name || '').trim();
+                                 const slug = rawKey.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
+                        %>
                             <label style="display:flex; align-items:center; gap:8px; padding:6px; border-radius:6px; background:#fff; border:1px solid #eee;">
-                                <input type="checkbox" name="selectedTests" value="<%= t.testType || t.name %>" <%= (patient.requestedTests && patient.requestedTests.includes(t.testType || t.name)) ? 'checked' : '' %> >
-                                <span style="font-size:0.95em;"><%= t.name || t.testType %></span>
+                                <input type="checkbox" class="test-checkbox" data-key="<%= slug %>" name="selectedTests" value="<%= rawKey %>" <%= (patient.requestedTests && patient.requestedTests.find(r => (r && (r.key||r) === rawKey || r === rawKey))) ? 'checked' : '' %> >
+                                <span style="font-size:0.95em; flex:1;"><%= t.name || t.testType %></span>
+                                <input type="number" step="0.01" min="0" name="amount_<%= slug %>" class="test-amount" placeholder="Amount" style="width:120px;" value="<%= (patient.requestedTests && (patient.requestedTests.find(r => (r && (r.key||r) === rawKey) || r === rawKey) || {}).amount) || '' %>">
                             </label>
                         <% }) %>
                     </div>

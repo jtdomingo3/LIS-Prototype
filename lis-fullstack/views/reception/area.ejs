@@ -68,12 +68,61 @@
                   <button type="submit" class="button btn-success btn-small" title="Mark complete"><%= areaName === 'Releasing of Result' ? 'Mark Released' : 'Mark Complete' %></button>
                 </form>
                 <% } else { %>
-                <!-- Payment Area: only Amount, Mark Complete, and Delete (no Assign, no View) -->
+                <!-- Payment Area: show aggregated amounts for Clinical and X-ray labs -->
                 <form action="/reception/complete" method="POST" class="complete-form" style="display:inline-block; margin-left:6px;">
                   <input type="hidden" name="testId" value="<%= test.id %>">
                   <input type="hidden" name="area" value="<%= areaName %>">
-                  <input type="number" name="amount" class="payment-amount" step="0.01" min="0.01" placeholder="Amount" style="width:110px; margin-right:6px;" required>
-                  <button type="submit" class="button btn-success btn-small payment-submit" title="Mark complete" onclick="return paymentSubmitFallback(this)">Mark Complete</button>
+                  <% 
+                    // compute aggregated amounts from test.requestedTests (saved at encoding)
+                    let clinicalTotal = 0;
+                    let xrayTotal = 0;
+                    try {
+                      const source = Array.isArray(test.requestedTests) ? test.requestedTests : (test.patient && Array.isArray(test.patient.requestedTests) ? test.patient.requestedTests : []);
+                      source.forEach(rt => {
+                        const a = Number(rt && rt.amount ? rt.amount : 0) || 0;
+                        if (rt && rt.lab === 'xray') xrayTotal += a; else clinicalTotal += a;
+                      });
+                    } catch (e) {}
+
+                    // If a prior payment was already recorded for this test, prefer showing that amount
+                    let prefillClinical = null;
+                    let prefillXray = null;
+                    try {
+                      const p = test.patient;
+                      if (p && Array.isArray(p.paymentHistory)) {
+                        // find latest entries for this testId by scanning from end
+                        for (let i = p.paymentHistory.length - 1; i >= 0; i--) {
+                          const ph = p.paymentHistory[i];
+                          if (!ph || ph.testId !== test.testId) continue;
+                          // if lab explicitly set, map accordingly
+                          if (ph.lab === 'clinical' && (prefillClinical === null)) prefillClinical = Number(ph.amount) || 0;
+                          if (ph.lab === 'xray' && (prefillXray === null)) prefillXray = Number(ph.amount) || 0;
+                          // legacy entry without lab -> treat as clinical if clinical not set
+                          if ((!ph.lab || ph.lab === '') && (prefillClinical === null)) prefillClinical = Number(ph.amount) || 0;
+                          // if both prefill values found, break
+                          if (prefillClinical !== null && prefillXray !== null) break;
+                        }
+                      }
+                    } catch (e) {
+                      console.warn('Failed to compute prefill amounts from paymentHistory', e);
+                    }
+
+                    const clinicalValue = (prefillClinical !== null ? prefillClinical : clinicalTotal);
+                    const xrayValue = (prefillXray !== null ? prefillXray : xrayTotal);
+                  %>
+                  <div style="display:flex; gap:8px; align-items:center;">
+                    <div>
+                      <label style="display:block; font-size:0.85em;">Clinical Lab Amount</label>
+                      <input type="number" name="amount_clinical" class="payment-amount" step="0.01" min="0" placeholder="Clinical" style="width:140px; margin-right:6px;" value="<%= (clinicalValue || 0).toFixed(2) %>">
+                    </div>
+                    <div>
+                      <label style="display:block; font-size:0.85em;">X-ray Lab Amount</label>
+                      <input type="number" name="amount_xray" class="payment-amount" step="0.01" min="0" placeholder="X-ray" style="width:140px; margin-right:6px;" value="<%= (xrayValue || 0).toFixed(2) %>">
+                    </div>
+                    <div style="align-self:flex-end;">
+                      <button type="submit" class="button btn-success btn-small payment-submit" title="Mark complete" onclick="return paymentSubmitFallback(this)">Mark Complete</button>
+                    </div>
+                  </div>
                 </form>
                 <% } %>
                 <!-- Delete from queue -->
@@ -152,21 +201,26 @@
       }
 
       // Fallback submit helper for Payment Area button clicks.
-      // Validates the amount, logs debugging info, and triggers a programmatic submit
-      // which will be intercepted by the AJAX submit handler above.
+      // Validates that at least one lab amount (clinical or x-ray) is a positive number,
+      // logs debugging info, and triggers a programmatic submit which will be intercepted
+      // by the AJAX submit handler above.
       function paymentSubmitFallback(btn) {
         try {
           const form = btn && btn.closest ? btn.closest('form') : null;
           if (!form) return true;
-          const amtInput = form.querySelector('.payment-amount');
-          if (amtInput) {
-            const raw = amtInput.value;
-            const parsed = parseFloat(String(raw).replace(/[,\s]/g, ''));
-            const htmlValid = typeof amtInput.checkValidity === 'function' ? amtInput.checkValidity() : true;
-            const valid = htmlValid && Number.isFinite(parsed) && parsed > 0;
-            console.debug('[DEBUG] paymentSubmitFallback', { raw, parsed, htmlValid, valid });
-            if (!valid) {
-              alert('Please enter a valid positive amount before marking complete.');
+          const amtInputs = Array.from(form.querySelectorAll('.payment-amount'));
+          if (amtInputs.length) {
+            let anyValid = false;
+            for (const inp of amtInputs) {
+              const raw = inp.value;
+              const parsed = parseFloat(String(raw).replace(/[,\s]/g, ''));
+              const htmlValid = typeof inp.checkValidity === 'function' ? inp.checkValidity() : true;
+              const valid = htmlValid && Number.isFinite(parsed) && parsed > 0;
+              console.debug('[DEBUG] paymentSubmitFallback', { name: inp.name, raw, parsed, htmlValid, valid });
+              if (valid) { anyValid = true; break; }
+            }
+            if (!anyValid) {
+              alert('Please enter a valid positive amount for Clinical and/or X-ray before marking complete.');
               return false;
             }
           }
@@ -180,31 +234,30 @@
         }
       }
 
-      // Enable/disable Payment Area submit buttons based on amount input
-      // Make this robust across browsers/locales and add debug logging for troubleshooting
-      document.querySelectorAll('.payment-amount').forEach(input => {
-        const form = input.closest('form');
-        const btn = form ? form.querySelector('.payment-submit') : null;
+      // Enable/disable Payment Area submit buttons based on amount inputs in the same form.
+      // If at least one lab amount is a valid positive number, enable submit.
+      document.querySelectorAll('form').forEach(form => {
+        const inputs = Array.from(form.querySelectorAll('.payment-amount'));
+        if (!inputs.length) return;
+        const btn = form.querySelector('.payment-submit');
         function parseAmount(v) {
           if (v === null || v === undefined) return NaN;
-          // strip common thousands separators, trim whitespace
           try { return parseFloat(String(v).replace(/[,\s]/g, '')); } catch (e) { return NaN; }
         }
         function update() {
-          const raw = input.value;
-          const amt = parseAmount(raw);
-          // Use HTML5 validity when available as a stronger signal
-          let htmlValid = true;
-          try { htmlValid = typeof input.checkValidity === 'function' ? input.checkValidity() : true; } catch (e) { htmlValid = true; }
-          const valid = htmlValid && Number.isFinite(amt) && amt > 0;
-          if (btn) {
-            btn.disabled = !valid;
+          let anyValid = false;
+          for (const input of inputs) {
+            const raw = input.value;
+            const amt = parseAmount(raw);
+            let htmlValid = true;
+            try { htmlValid = typeof input.checkValidity === 'function' ? input.checkValidity() : true; } catch (e) { htmlValid = true; }
+            const valid = htmlValid && Number.isFinite(amt) && amt > 0;
+            if (valid) { anyValid = true; break; }
           }
-          // helpful debug output when troubleshooting why button remains disabled
-          console.debug('[DEBUG] payment-amount update', { raw, parsed: amt, htmlValid, buttonDisabled: btn ? btn.disabled : null });
+          if (btn) btn.disabled = !anyValid;
+          console.debug('[DEBUG] payment-amount form update', { formAction: form.action, anyValid, buttonDisabled: btn ? btn.disabled : null });
         }
-        ['input','change','blur'].forEach(ev => input.addEventListener(ev, update));
-        // initialize after a short timeout in case the DOM or value was set programmatically
+        ['input','change','blur'].forEach(ev => inputs.forEach(i => i.addEventListener(ev, update)));
         setTimeout(update, 0);
       });
 

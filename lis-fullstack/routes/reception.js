@@ -476,7 +476,7 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
     try { console.log('POST /reception/complete headers.cookie:', req.headers && req.headers.cookie ? req.headers.cookie : null); } catch (e) {}
     try { console.log('POST /reception/complete session keys:', req.session ? JSON.stringify(Object.keys(req.session)) : null); } catch (e) {}
   try { console.log('POST /reception/complete isAjax:', !!req.xhr, 'x-requested-with:', req.headers['x-requested-with'] || null, 'accept:', req.headers.accept || null); } catch (e) {}
-  const { testId, area, amount } = req.body;
+  const { testId, area, amount, amount_clinical, amount_xray } = req.body;
     if (!testId) {
       req.flash('error_msg', 'Missing test id');
       return res.redirect('/reception');
@@ -490,12 +490,27 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
     const previousArea = area || test.status || null;
     console.log('complete: test found', { testId: test.testId, previousArea, testType: test.testType, currentStatus: test.status });
 
-    // If completing from Payment Area, require amount and record payment in patient timeseries
+    // If completing from Payment Area, require amount(s) and record payment(s) in patient timeseries
     if ((previousArea === 'Payment Area' || area === 'Payment Area')) {
-      const parsedAmount = parseFloat(String(amount || '').replace(/,/g, ''));
-      if (!parsedAmount || Number.isNaN(parsedAmount) || parsedAmount <= 0) {
-        const msg = 'Amount paid is required for Payment Area and must be a positive number';
-        console.warn('Payment validation failed:', { testId, amount });
+      // Support new fields amount_clinical and amount_xray; fall back to legacy `amount` as clinical
+      const toNumber = v => {
+        const s = String(v || '').replace(/,/g, '').trim();
+        const n = parseFloat(s);
+        return (Number.isNaN(n) ? null : n);
+      };
+      let parsedClinical = toNumber(amount_clinical);
+      let parsedXray = toNumber(amount_xray);
+      // legacy single amount field
+      if ((parsedClinical === null || parsedClinical === 0) && (parsedXray === null || parsedXray === 0) && amount) {
+        parsedClinical = toNumber(amount);
+      }
+
+      // require at least one positive amount
+      const hasValidClinical = parsedClinical !== null && parsedClinical > 0;
+      const hasValidXray = parsedXray !== null && parsedXray > 0;
+      if (!hasValidClinical && !hasValidXray) {
+        const msg = 'Amount paid is required for Payment Area and must include a positive number (clinical and/or x-ray)';
+        console.warn('Payment validation failed:', { testId, amount, amount_clinical, amount_xray });
         if (req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'))) {
           return res.status(400).json({ success: false, message: msg });
         }
@@ -523,12 +538,19 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
         return res.redirect(`/reception/area/${encodeURIComponent(previousArea || area || 'Payment Area')}`);
       }
 
-      // Append payment timeseries entry to patient
+      // Append payment timeseries entry(ies) to patient
       try {
         patientObj.paymentHistory = Array.isArray(patientObj.paymentHistory) ? patientObj.paymentHistory : [];
-        patientObj.paymentHistory.push({ testId: test.testId, amount: parsedAmount, timestamp: (new Date()).toISOString() });
+        const now = (new Date()).toISOString();
+        if (hasValidClinical) {
+          patientObj.paymentHistory.push({ testId: test.testId, amount: parsedClinical, lab: 'clinical', timestamp: now });
+          console.log('Recorded clinical payment for patient', { patientId: patientObj.id, testId: test.testId, amount: parsedClinical });
+        }
+        if (hasValidXray) {
+          patientObj.paymentHistory.push({ testId: test.testId, amount: parsedXray, lab: 'xray', timestamp: now });
+          console.log('Recorded x-ray payment for patient', { patientId: patientObj.id, testId: test.testId, amount: parsedXray });
+        }
         await patientObj.save();
-        console.log('Recorded payment for patient', { patientId: patientObj.id, testId: test.testId, amount: parsedAmount });
       } catch (saveErr) {
         console.error('Error saving patient payment history:', saveErr);
         // do not block completion if payment save fails; log and continue
