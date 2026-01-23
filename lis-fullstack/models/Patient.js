@@ -19,6 +19,8 @@ class Patient {
     this.address = data.address;
     // list of reception areas this patient needs to go to (after Payment Area)
     this.requiredAreas = Array.isArray(data.requiredAreas) ? data.requiredAreas : (data.requiredAreas ? [data.requiredAreas] : []);
+    // preserve selected tests list for extraction/processing visibility
+    this.requestedTests = Array.isArray(data.requestedTests) ? data.requestedTests : (data.requestedTests ? [data.requestedTests] : []);
     this.createdAt = data.createdAt || new Date();
     this.updatedAt = data.updatedAt || new Date();
     this.createdBy = data.createdBy;
@@ -70,6 +72,7 @@ class Patient {
     obj.physician = this.physician || null;
     obj.ageManual = this.ageManual || null;
     obj.requiredAreas = this.requiredAreas || [];
+    obj.requestedTests = Array.isArray(this.requestedTests) ? this.requestedTests : [];
     // Provide legacy `sex` alias for templates that expect `patient.sex`
     obj.sex = obj.gender || null;
     return obj;

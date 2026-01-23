@@ -48,19 +48,31 @@
             <textarea name="address" placeholder="Street address, city, state, zip"><%= patient.address || '' %></textarea>
         </div>
 
-        <div class="card" style="margin-top:12px;">
-          <h4>Route patient to reception areas</h4>
-          <p>Select which areas this patient needs to go to (after Payment Area). Payment is automatic.</p>
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                            <% const AREA_OPTIONS = ['Extraction Area','Drug Test','Ultrasound','2D Echo','X-ray','ECG',"Doctor's Check-up - Dr. Lorenzo","Doctor's Check-up - Dr. Arcilla"]; %>
-                            <% AREA_OPTIONS.forEach(a => { %>
-              <label style="display:inline-flex; align-items:center; gap:6px;">
-                <input type="checkbox" name="requiredAreas" value="<%= a %>" <%= (patient.requiredAreas && patient.requiredAreas.includes(a)) ? 'checked' : '' %> >
-                <%= a %>
-              </label>
-            <% }) %>
-          </div>
-        </div>
+                <div class="card" style="margin-top:12px;">
+                    <h4>Select Requested Tests</h4>
+                    <p>Choose the tests/services to request for this patient. The system will map selected tests to reception areas automatically.</p>
+                    <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px; margin-top:8px;">
+                        <% (templates || []).forEach(t => { %>
+                            <label style="display:flex; align-items:center; gap:8px; padding:6px; border-radius:6px; background:#fff; border:1px solid #eee;">
+                                <input type="checkbox" name="selectedTests" value="<%= t.testType || t.name %>" <%= (patient.requestedTests && patient.requestedTests.includes(t.testType || t.name)) ? 'checked' : '' %> >
+                                <span style="font-size:0.95em;"><%= t.name || t.testType %></span>
+                            </label>
+                        <% }) %>
+                    </div>
+
+                    <div style="margin-top:12px;">
+                        <h5>Doctor's Check-upnn</h5>
+                        <% const DOCS = ["Doctor's Check-up - Dr. Lorenzo","Doctor's Check-up - Dr. Arcilla"]; %>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;">
+                            <% DOCS.forEach(d => { %>
+                                <label style="display:inline-flex; align-items:center; gap:6px;">
+                                    <input type="checkbox" name="requiredAreas" value="<%= d %>" <%= (patient.requiredAreas && patient.requiredAreas.includes(d)) ? 'checked' : '' %> >
+                                    <%= d %>
+                                </label>
+                            <% }) %>
+                        </div>
+                    </div>
+                </div>
 
         <div class="form-row">
             <a href="/patients" class="button btn-secondary">Back to Patients</a>

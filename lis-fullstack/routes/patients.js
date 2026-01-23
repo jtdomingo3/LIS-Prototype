@@ -79,11 +79,53 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
 });
 
 // GET /patients/new - New patient form
+// GET /patients/new - New patient form (load test templates so we can select tests)
 router.get('/new', requireAuth, canAccessPatient, (req, res) => {
-  res.render('patients/new', {
-    title: 'Add New Patient',
-    patient: {}
-  });
+  try {
+    const Template = require('../models/Template');
+    (async () => {
+      let templates = [];
+      try {
+        templates = await Template.find({ isActive: true });
+        // also try to include static result templates similar to /tests/new
+        const fs = require('fs');
+        const path = require('path');
+        const resultsDir = path.join(__dirname, '..', 'views', 'reports', 'results');
+        const allowed = [
+          'fecalysis.ejs','esr.ejs','fecal-occult-blood.ejs','urinalysis.ejs','ct-bt.ejs','blood-typing.ejs','pregnancy-test.ejs','dengue-duo.ejs','thyroid-panel.ejs','blood-chemistry.ejs','blood-chemistry-sgpt-sgot.ejs','blood-chemistry-bun-crea.ejs','blood-chemistry-lipid-profile.ejs','blood-chemistry-electrolytes.ejs','blood-chemistry-hba1c.ejs','blood-chemistry-albumin.ejs','blood-chemistry-blood-sugar.ejs','pt-aptt.ejs','xray.ejs','ecg.ejs','hematology.ejs','serology.ejs','ultrasound-abd-kubp-hbt.ejs','echocardiography-2d.ejs','ultrasound-transvaginal.ejs','ultrasound-biophysical.ejs','ultrasound-1st-trimester-obstetrics.ejs','ultrasound-pelvic.ejs','drugtest.ejs'
+        ];
+        try {
+          const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
+          const staticTemplates = files.map(f => {
+            if (f === 'drugtest.ejs') return { name: 'Drug Test', testType: 'drugtest' };
+            if (f === 'blood-chemistry-bun-crea.ejs') return { name: 'Blood Chemistry - BUN/Crea', testType: 'BUN/Creat' };
+            if (f === 'blood-chemistry-sgpt-sgot.ejs') return { name: 'Blood Chemistry - SGPT/SGOT', testType: 'Blood Chemistry - SGPT/SGOT' };
+            if (f === 'ultrasound-abd-kubp-hbt.ejs') return { name: 'Ultrasound - ABD / KUBP / HBT', testType: 'ultrasound-abd-kubp-hbt' };
+            if (f === 'echocardiography-2d.ejs') return { name: 'Echocardiography - 2D', testType: 'echocardiography-2d' };
+            if (f === 'ultrasound-transvaginal.ejs') return { name: 'Ultrasound - Transvaginal', testType: 'ultrasound-transvaginal' };
+            if (f === 'ultrasound-biophysical.ejs') return { name: 'Ultrasound - Biophysical', testType: 'ultrasound-biophysical' };
+            if (f === 'ultrasound-pelvic.ejs') return { name: 'Ultrasound - Pelvic Ultrasound', testType: 'ultrasound-pelvic' };
+            const name = f.replace('.ejs', '').replace(/-/g, ' ');
+            return { name: name.charAt(0).toUpperCase() + name.slice(1), testType: f.replace('.ejs','') };
+          });
+          templates = templates.concat(staticTemplates);
+        } catch (e) {}
+      } catch (e) {
+        templates = [];
+      }
+
+      res.render('patients/new', {
+        title: 'Add New Patient',
+        patient: {},
+        templates
+      });
+    })();
+  } catch (e) {
+    res.render('patients/new', {
+      title: 'Add New Patient',
+      patient: {}
+    });
+  }
 });
 
 // POST /patients - Create new patient
@@ -92,10 +134,14 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
     const { firstName, lastName, dateOfBirth, gender, phone, email, address, physician } = req.body;
     // encoder may provide age instead of DOB -> accept either
     const ageManual = req.body.ageManual || req.body.age || null;
-    // normalize requiredAreas (checkboxes)
-    const requiredAreas = Array.isArray(req.body.requiredAreas)
+    // normalize doctor's checkup selection (checkboxes)
+    const doctorSelections = Array.isArray(req.body.requiredAreas)
       ? req.body.requiredAreas
       : req.body.requiredAreas ? [req.body.requiredAreas] : [];
+    // normalize selected tests from the form
+    const selectedTests = Array.isArray(req.body.selectedTests)
+      ? req.body.selectedTests
+      : req.body.selectedTests ? [req.body.selectedTests] : [];
 
     // Validate required fields - accept either dateOfBirth or manual age
     if (!firstName || !lastName || !gender || (!dateOfBirth && !ageManual)) {
@@ -142,6 +188,50 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
     const seq = (patientsToday.length || 0) + 1;
     const patientCode = `GCL-${yyyy}-${mm}-${String(seq).padStart(5, '0')}`;
 
+    // Determine area mapping from selected tests using an explicit map
+    function mapTestToArea(testLabel) {
+      const s = String(testLabel || '').toLowerCase();
+      if (!s) return null;
+      // None / awaiting-only tests
+      if (s.includes('fecal') || s.includes('fecal occult') || s.includes('fecal-occult') || s.includes('pregnancy') || s.includes('urinalysis')) return null;
+      // Echocardiography / 2D
+      if (s.includes('echocardiography') || s.includes('2d echo') || s.includes('2d')) return '2D Echo';
+      // Drug test
+      if (s.includes('drugtest') || s.includes('drug test') || s === 'drugtest') return 'Drug Test';
+      // ECG
+      if (s === 'ecg' || s.includes('ecg')) return 'ECG';
+      // Ultrasound variants
+      if (s.includes('ultrasound')) return 'Ultrasound';
+      // X-Ray
+      if (s.includes('xray') || s.includes('x-ray') || s.includes('x ray')) return 'X-ray';
+      // Extraction-related (blood chemistry, hematology, serology, etc.)
+      if (s.includes('blood') || s.includes('chemistry') || s.includes('bun') || s.includes('crea') || s.includes('hematology') || s.includes('esr') || s.includes('pt') || s.includes('aptt') || s.includes('serology') || s.includes('typing') || s.includes('ct') || s.includes('dengue') || s.includes('thyroid')) return 'Extraction Area';
+      return null;
+    }
+
+    const mappedAreas = new Set();
+    for (const t of selectedTests) {
+      const a = mapTestToArea(t);
+      if (a) mappedAreas.add(a);
+    }
+
+    // If none of the selected tests map to a reception area, treat as awaiting-only
+    const awaitingOnly = (selectedTests.length > 0) && mappedAreas.size === 0;
+
+    // Build final requiredAreas: collect all unique mapped areas in the same
+    // order reception expects so that downstream queuing/forwarding logic
+    // will process them in the intended order.
+    const AREA_ORDER = ['Extraction Area', 'Drug Test', 'Ultrasound', '2D Echo', 'X-ray', 'ECG'];
+    let finalRequiredAreas = [];
+    if (!awaitingOnly && mappedAreas.size > 0) {
+      finalRequiredAreas = AREA_ORDER.filter(a => mappedAreas.has(a));
+      const others = Array.from(mappedAreas).filter(a => !AREA_ORDER.includes(a));
+      finalRequiredAreas = finalRequiredAreas.concat(others);
+    } else if (!selectedTests.length) {
+      // no tests selected - preserve doctor's selection(s)
+      finalRequiredAreas = doctorSelections.slice();
+    }
+
     const patient = new Patient({
       patientId,
       patientCode,
@@ -154,7 +244,9 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       phone,
       email,
       address,
-      requiredAreas,
+      requiredAreas: finalRequiredAreas,
+      // preserve selected tests for extraction/medtech visibility
+      requestedTests: selectedTests,
       createdBy: req.session.user.id
     });
 
@@ -186,8 +278,8 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
         // If patient ONLY requires a Doctor's Check-up (A or B), place test directly to that specific doctor room
         let initialTestType = 'Registration';
         let initialStatus = 'Payment Area';
-        if (Array.isArray(requiredAreas) && requiredAreas.length === 1) {
-          const only = String(requiredAreas[0] || '');
+        if (Array.isArray(finalRequiredAreas) && finalRequiredAreas.length === 1) {
+          const only = String(finalRequiredAreas[0] || '');
           if (only.toLowerCase().startsWith("doctor's check-up")) {
             // use the specific area name (e.g. "Doctor's Check-up - A")
             initialTestType = "Doctor's Check-up";
@@ -206,6 +298,12 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
           // Ensure createdAt also contains the exact encode time
           createdAt: (new Date()).toISOString(),
           specimenNumbers: {}
+          ,
+          // preserve selected tests so medtechs know what to extract
+          requestedTests: selectedTests,
+          // mark if this patient's selected tests are 'awaiting-only' so downstream logic
+          // can decide not to route after payment
+          awaitingOnly: awaitingOnly
         });
 
         await newTest.save();
