@@ -1498,10 +1498,12 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
       , 'ultrasound-transvaginal.ejs'
       , 'ultrasound-biophysical.ejs'
       , 'ultrasound-1st-trimester-obstetrics.ejs'
+      , 'drugtest.ejs'
       , 'ultrasound-pelvic.ejs'
     ];
     const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
     const staticTemplates = files.map(f => {
+      if (f === 'drugtest.ejs') return { name: 'Drug Test', testType: 'drugtest' };
       if (f === 'blood-chemistry-bun-crea.ejs') {
         return { name: 'Blood Chemistry - BUN/Crea', testType: 'BUN/Creat' };
       }
