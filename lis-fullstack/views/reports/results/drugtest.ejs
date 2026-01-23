@@ -1,0 +1,163 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Drug Test Report</title>
+  <style>
+  /* Render area matching Letter (8.5 x 11in) with narrow printable margins for accurate preview */
+  @page { size: Letter; margin: 0.25in; }
+  body { font-family: Arial, Helvetica, sans-serif; color: #000; margin: 0; padding: 0; background:#f3f6f4; font-size:11px; line-height:1.12 }
+  .page { width: 8.0in; margin: 0.25in auto; padding: 0.25in; box-shadow: none; background:#fff; }
+
+  /* Header layout: left column for photo / meta, right for center title */
+  .header { display:flex; gap:12px; align-items:flex-start; }
+  .left-col { width:1.25in; }
+  .photo { width: 1.0in; height: 1.0in; border: 1px solid #999; overflow: hidden; flex: 0 0 auto; margin-left:0.35in }
+  .photo img { width:100%; height:100%; object-fit:cover; display:block }
+  .nb-block { margin-top:6px; font-size:11px }
+  .nb-block .nb-sub { margin-top:6px }
+  .photo-row { display:flex; align-items:center; gap:8px; margin-top:6px }
+  .nb-block { text-align:left }
+
+  .center-col { flex:1 1 auto; text-align:center }
+  .top-right { text-align:right; font-size:10px }
+  .ho-mark { font-weight:bold; font-size:10px; text-align:left; margin-bottom:4px }
+  h1.title { font-size: 14px; margin: 0; letter-spacing: 0.5px }
+  .sub { font-size: 9.5px; margin-top: 3px }
+  .content { padding-left: 0.35in }
+
+  .meta { margin-top: 8px; display:flex; justify-content:space-between; align-items:flex-start; }
+  .meta .left { width:36%; }
+  .meta .right { width:60%; }
+  .meta p { margin: 3px 0; font-size:11px }
+  .section-title { font-weight: bold; margin-top: 6px; font-size:12px }
+
+  /* Results table should span the printable area inside the page */
+  table.result-table { width: 100%; border-collapse: collapse; margin-top: 12px }
+  table.result-table th, table.result-table td { border:1px solid #000; padding:6px; font-size:11px }
+  table.result-table th { font-style: italic; background: #fff }
+
+  .signatures { margin-top: 18px; display:flex; justify-content:space-between; align-items:center }
+  .sig { width:45%; text-align:center }
+  .sig .name { margin-top: 6px; text-decoration: underline; font-size:11px }
+  .sig .num { font-size:10px }
+  .small-italic { font-size: 10px; font-style: italic; margin-top: 6px; }
+  .center-note { text-align:center; margin-top: 6px; font-style: italic; font-size:10px }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <div class="left-col">
+        <div class="ho-mark">HO</div>
+        <div class="photo-row">
+          <div class="photo">
+          <% if (test && test.results && test.results.photoData) { %>
+            <img src="<%= test.results.photoData %>" alt="photo" />
+          <% } else { %>
+            <img src="/assets/drugtest-photo.svg" alt="placeholder" />
+          <% } %>
+          </div>
+          <div class="nb-block">
+            <div style="font-size:11px"><strong><%= (test && test.results && test.results.serial) || (test && test.testId) || 'NB126997' %></strong></div>
+            <div class="nb-sub" style="font-size:10px"><%= (test && test.results && test.results.analystNo) || '15' %></div>
+          </div>
+        </div>
+      </div>
+      <div class="center-col">
+        <div class="top-right">Report ID: <%= (test && test.results && test.results.reportId) ? test.results.reportId : 'DTO-R03' %></div>
+        <h1 class="title">DEPARTMENT OF HEALTH</h1>
+        <div style="font-weight:bold;">GEZYNE CLINICAL LABORATORY</div>
+  <div class="sub">0330 VERGEL DE DIOS, POBLACION, PLARIDEL, BULACAN</div>
+  <div class="sub">Phone Number 795-5007</div>
+        <h2 style="margin-top:6px; font-size:14px;">DRUG TEST REPORT</h2>
+      </div>
+    </div>
+
+    <div class="content">
+    <div class="meta">
+      <div class="left">
+        <p><strong>CCF No:</strong> <%= (test && test.results && test.results.ccfNo) || '202511290286' %></p>
+        <% let displayName = '';
+           try {
+             if (test && test.patient) {
+               const p = test.patient;
+               displayName = ((p.lastName || '') + ', ' + (p.firstName || '')).trim();
+             }
+           } catch(e){}
+           if (!displayName && test && test.results && test.results.name) displayName = test.results.name;
+        %>
+        <p><strong>Name:</strong> <%= displayName || '' %></p>
+        <p><strong>Gender:</strong> <%= (test && test.results && test.results.gender) || (test.patient && (test.patient.gender || test.patient.sex)) || '' %></p>
+      </div>
+      <div class="right">
+        <p><strong>Transaction Date Time:</strong> <%= (test && test.results && test.results.transactionDateTime) ? new Date(test.results.transactionDateTime).toLocaleString() : (test.testDate ? new Date(test.testDate).toLocaleString() : '') %></p>
+        <p><strong>Report Date Time:</strong> <%= (test && test.results && test.results.reportDateTime) ? new Date(test.results.reportDateTime).toLocaleString() : new Date().toLocaleString() %></p>
+      </div>
+  </div>
+
+  <div style="clear:both; margin-top:8px;">
+      <p><strong>Test Method</strong> &nbsp;&nbsp;&nbsp; TEST KIT</p>
+      <p><strong>Purpose:</strong> <u><%= (test && test.results && test.results.purpose) || 'EMPLOYMENT' %></u></p>
+    </div>
+    <div>
+      <div class="section-title">Result</div>
+      <table class="result-table">
+        <thead>
+          <tr>
+            <th style="width:55%">Drug/Metabolite</th>
+            <th style="width:22%">Result</th>
+            <th style="width:23%">Remarks</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% function row(drug, res, rem) { %>
+            <tr>
+              <td><%= drug %></td>
+              <td style="text-align:center"><%= res || '' %></td>
+              <td style="text-align:center"><%= rem || '' %></td>
+            </tr>
+          <% } %>
+
+          <% if (test && test.results && Array.isArray(test.results.drugs) && test.results.drugs.length) { %>
+            <% test.results.drugs.forEach(function(d){ %>
+              <tr>
+                <td><%= d.drug || '' %></td>
+                <td style="text-align:center"><%= d.result || '' %></td>
+                <td style="text-align:center"><%= d.remarks || '' %></td>
+              </tr>
+            <% }) %>
+          <% } else { %>
+            <% row('METHAMPHETAMINE', (test && test.results && test.results.drugs && test.results.drugs[0] && test.results.drugs[0].result) || 'NEGATIVE', (test && test.results && test.results.drugs && test.results.drugs[0] && test.results.drugs[0].remarks) || 'PASSED'); %>
+            <% row('TETRAHYDROCANNABINOL', (test && test.results && test.results.drugs && test.results.drugs[1] && test.results.drugs[1].result) || 'NEGATIVE', (test && test.results && test.results.drugs && test.results.drugs[1] && test.results.drugs[1].remarks) || 'PASSED'); %>
+          <% } %>
+        </tbody>
+      </table>
+  </div>
+
+    <div class="signatures">
+      <div class="sig">
+        <div class="num" style="float:left; width:10%"><strong><%= (test && test.results && test.results.analystNo) || '35' %></strong></div>
+        <div style="margin:0 20px;">
+          <div class="name"><%= (test && test.results && test.results.analyst) || 'MS. NICOLE S. RAMOS' %></div>
+        </div>
+        <div style="clear:both"></div>
+        <div><strong>Analyst</strong></div>
+      </div>
+      <div class="sig">
+        <div class="num" style="float:right; width:10%"><strong><%= (test && test.results && test.results.headNo) || '53' %></strong></div>
+        <div style="margin:0 20px;">
+          <div class="name"><%= (test && test.results && test.results.headLab) || 'DR. BERNADETTE R. ESPIRITU' %></div>
+        </div>
+        <div style="clear:both"></div>
+        <div><strong>Head of Laboratory</strong></div>
+      </div>
+    </div>
+
+    <div class="small-italic">Valid Within 12 Month/s from Transaction Date</div>
+    <div class="center-note">This is a DOH-DDB IDTOMIS generated report</div>
+
+    </div> <!-- .content -->
+  </div>
+</body>
+</html>

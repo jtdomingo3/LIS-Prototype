@@ -6,6 +6,10 @@ const User = require('../models/User');
 const { requireAuth, canAccessPatient } = require('../middleware/auth');
 const fs = require('fs');
 const path = require('path');
+const multer = require('multer');
+
+// multer for handling multipart/form-data file uploads in memory
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 
 // GET /tests - List all tests
@@ -113,10 +117,12 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       'ultrasound-transvaginal.ejs',
       'ultrasound-biophysical.ejs',
       'ultrasound-1st-trimester-obstetrics.ejs',
-      'ultrasound-pelvic.ejs'
+      'ultrasound-pelvic.ejs',
+      'drugtest.ejs'
     ];
     const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
     const staticTemplates = files.map(f => {
+      if (f === 'drugtest.ejs') return { name: 'Drug Test', testType: 'drugtest' };
       if (f === 'blood-chemistry-bun-crea.ejs') {
         return { name: 'Blood Chemistry - BUN/Crea', testType: 'BUN/Creat' };
       }
@@ -307,6 +313,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       ultrasound_1st_trimester: /(1st\s*trimester|first\s*trimester|1st[-\s]?trimester|trimester\s*obstetrics|ultrasound[-\s]?.*1st)/i.test(tt),
       esr: /(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(tt)
       ,
+      drugtest: /(drug\s*test|drugtest)/i.test(tt),
       ct_bt: /(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt)/i.test(tt)
       ,
       xray: /(x-?ray|xray|radiograph)/i.test(tt),
@@ -369,6 +376,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     if (/(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_abd_kubp_hbt';
     if (/(echo|echocardiograph|echocardiography|2d\s*echo|2decho)/i.test(test.testType)) view = 'tests/results_entry_echocardiography_2d';
     if (/(static:)?(ultrasound[-_\s]?pelvic(\.ejs)?|pelvic)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_pelvic';
+    if (/(drug\s*test|drugtest)/i.test(test.testType)) view = 'tests/results_entry_drugtest';
     console.log(`DEBUG GET /tests/${req.params.id}/results - selected view='${view}'`);
     res.render(view, {
       title: `Enter ${test.testType} Results`,
@@ -384,7 +392,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
 });
 
 // POST /tests/:id/results - Save results for fecalysis
-router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
+router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoFile'), async (req, res) => {
   try {
     const test = await Test.findById(req.params.id);
     if (!test) {
@@ -416,6 +424,7 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       ultrasound_pelvic: /(ultrasound[-_\s]?pelvic(\.ejs)?|pelvic)/i.test(tt),
       ultrasound_1st_trimester: /(1st\s*trimester|first\s*trimester|1st[-\s]?trimester|trimester\s*obstetrics|ultrasound[-\s]?.*1st)/i.test(tt),
       esr: /(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(tt),
+      drugtest: /(drug\s*test|drugtest)/i.test(tt),
       ct_bt: /(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt)/i.test(tt)
       ,
       xray: /(x-?ray|xray|radiograph)/i.test(tt)
@@ -600,6 +609,69 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
         note: (note || '').trim()
       };
 
+    } else if (/(drug\s*test|drugtest)/i.test(test.testType)) {
+      // Drug test entry parsing
+      const serial = (req.body.serial || '').toString().trim() || 'NB126997';
+      const ccfNo = (req.body.ccfNo || '').toString().trim() || '202511290286';
+      const name = (req.body.name || '').toString().trim();
+      const gender = (req.body.gender || '').toString().trim();
+      const transactionDateTime = req.body.transactionDateTime ? new Date(req.body.transactionDateTime).toISOString() : null;
+      const reportDateTime = req.body.reportDateTime ? new Date(req.body.reportDateTime).toISOString() : null;
+      const purpose = (req.body.purpose || '').toString().trim();
+      const analyst = (req.body.analyst || '').toString().trim();
+      const headLab = (req.body.headLab || '').toString().trim();
+      // If multer processed an uploaded file, prefer that (process with sharp if available)
+      let photoData = null;
+      try {
+        if (req.file && req.file.buffer) {
+          try {
+            // Try to use sharp for safe server-side resizing/compression
+            const sharp = require('sharp');
+            const maxDim = 800;
+            const processed = await sharp(req.file.buffer)
+              .rotate()
+              .resize({ width: maxDim, height: maxDim, fit: 'inside' })
+              .jpeg({ quality: 75 })
+              .toBuffer();
+            photoData = `data:image/jpeg;base64,${processed.toString('base64')}`;
+          } catch (sharpErr) {
+            // sharp not available or processing failed — fallback to original buffer
+            photoData = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+          }
+        } else if (req.body.photoData) {
+          photoData = (req.body.photoData || '').toString().trim() || null;
+        }
+      } catch (e) {
+        photoData = null;
+      }
+
+      // drugs arrays
+      const names = (Array.isArray(req.body['drugNames[]']) ? req.body['drugNames[]'] : (Array.isArray(req.body.drugNames) ? req.body.drugNames : (req.body['drugNames[]'] ? [req.body['drugNames[]']] : (req.body.drugNames ? [req.body.drugNames] : []))));
+      const results = (Array.isArray(req.body['drugResults[]']) ? req.body['drugResults[]'] : (Array.isArray(req.body.drugResults) ? req.body.drugResults : (req.body['drugResults[]'] ? [req.body['drugResults[]']] : (req.body.drugResults ? [req.body.drugResults] : []))));
+      const remarks = (Array.isArray(req.body['drugRemarks[]']) ? req.body['drugRemarks[]'] : (Array.isArray(req.body.drugRemarks) ? req.body.drugRemarks : (req.body['drugRemarks[]'] ? [req.body['drugRemarks[]']] : (req.body.drugRemarks ? [req.body.drugRemarks] : []))));
+
+      const drugs = [];
+      const maxLen = Math.max(names.length, results.length, remarks.length);
+      for (let i = 0; i < maxLen; i++) {
+        const dname = (names[i] || '').toString().trim();
+        const dres = (results[i] || '').toString().trim() || '';
+        const drem = (remarks[i] || '').toString().trim() || '';
+        if (dname || dres || drem) drugs.push({ drug: dname, result: dres, remarks: drem });
+      }
+
+      resultsObj = {
+        serial,
+        ccfNo,
+        name,
+        gender,
+        transactionDateTime,
+        reportDateTime,
+        purpose,
+        drugs,
+        photoData,
+        analyst,
+        headLab
+      };
     } else if (/(lipid|lipid\s*profile|blood\s*chemistry\s*-\s*lipid|blood\s*chemistry\s*lipid)/i.test(test.testType)) {
       // Lipid profile: Cholesterol, Triglyceride (tg), HDL, LDL (auto-calc default)
       const { cholesterol, tg, hdl, ldl, note } = req.body;

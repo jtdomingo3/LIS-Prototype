@@ -78,9 +78,21 @@ async function getStaticResultTemplates() {
       , 'ultrasound-biophysical.ejs'
       , 'ultrasound-1st-trimester-obstetrics.ejs'
         , 'ultrasound-pelvic.ejs'
+        , 'drugtest.ejs'
     ];
     const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
     return files.map(f => {
+      if (f === 'drugtest.ejs') {
+        return {
+          id: `static:${f}`,
+          name: 'Drug Test',
+          testType: 'drugtest',
+          fields: [],
+          createdAt: null,
+          isStatic: true,
+          filename: f
+        };
+      }
       if (f === 'blood-chemistry-bun-crea.ejs') {
         return {
           id: `static:${f}`,

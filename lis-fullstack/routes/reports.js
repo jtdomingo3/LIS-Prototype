@@ -267,6 +267,8 @@ function getResultTemplate(test) {
     template = 'blood-typing';
   } else if (type.includes('pregnan') || type.includes('pregnancy')) {
     template = 'pregnancy-test';
+  } else if (type.includes('drug') || type.includes('drugtest')) {
+    template = 'drugtest';
   } else if (type.includes('dengue')) {
     template = 'dengue-duo';
   } else if (type.includes('esr') || type.includes('erythrocyte') || type.includes('erythrocyte sedimentation')) {
