@@ -6,6 +6,7 @@ const { requireAuth, canAccessPatient } = require('../middleware/auth');
 const fs = require('fs');
 const pathMod = require('path');
 const Jimp = require('jimp');
+const bwipjs = require('bwip-js');
 
 // Print logging helper
 const PRINT_LOG_PATH = pathMod.join(__dirname, '..', 'logs', 'print.log');
@@ -498,6 +499,8 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
 
       // Attempt to rasterize small logo + patient code into one image to print beside ID
       let rasterHex = null;
+      // barcode raster (Code128) hex for raw ESC/POS insertion
+      let rasterHexBarcode = null;
       try {
         const logoPath = pathMod.join(__dirname, '..', 'assets', 'gezyne-logo-NOTEXT.png');
         if (fs.existsSync(logoPath)) {
@@ -589,6 +592,56 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
         rasterHex = null;
       }
 
+      // Generate Code128 barcode raster for the full patient code and pack into ESC/POS raster
+      try {
+        const codeStr = String(patient.patientCode || patient.patientId || '');
+        if (codeStr) {
+          // bwip-js: generate a PNG buffer of the barcode
+          const png = await bwipjs.toBuffer({
+            bcid: 'code128',
+            text: codeStr,
+            scale: 3,
+            height: 40,
+            includetext: false,
+            backgroundcolor: 'FFFFFF'
+          });
+          const barImg = await Jimp.read(png);
+          // Fit to printer width (keep some margin)
+          const targetWidth = 320;
+          if (barImg.bitmap.width > targetWidth) barImg.resize(targetWidth, Jimp.AUTO);
+
+          const width = barImg.bitmap.width;
+          const height = barImg.bitmap.height;
+          const widthBytes = Math.ceil(width / 8);
+          const data = Buffer.alloc(widthBytes * height);
+          for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+              const idx = (y * width + x) * 4;
+              const r = barImg.bitmap.data[idx + 0];
+              const g = barImg.bitmap.data[idx + 1];
+              const b = barImg.bitmap.data[idx + 2];
+              const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+              const bit = gray < 128 ? 1 : 0;
+              if (bit) {
+                const byteIndex = y * widthBytes + Math.floor(x / 8);
+                const bitIndex = 7 - (x % 8);
+                data[byteIndex] |= (1 << bitIndex);
+              }
+            }
+          }
+          const xL = widthBytes & 0xff;
+          const xH = (widthBytes >> 8) & 0xff;
+          const yL = height & 0xff;
+          const yH = (height >> 8) & 0xff;
+          const header = Buffer.from([0x1d, 0x76, 0x30, 0x00, xL, xH, yL, yH]);
+          const rasterBuf = Buffer.concat([header, data]);
+          rasterHexBarcode = rasterBuf.toString('hex');
+        }
+      } catch (bcErr) {
+        console.warn('Barcode generation failed:', bcErr);
+        rasterHexBarcode = null;
+      }
+
       // Compose one copy
       const copySpec = [];
       // insert rasterized logo+code if available, otherwise fallback to printing
@@ -622,6 +675,12 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       copySpec.push({ type: 'text', align: 'center', size: 'normal', text: sanitizeText('Please keep this ticket') });
       copySpec.push({ type: 'text', align: 'center', size: 'normal', text: sanitizeText('until you are finished') });
       copySpec.push({ type: 'cut' });
+      // If we generated a barcode raster, append it centered below the code/logo
+      if (rasterHexBarcode) {
+        copySpec.push({ type: 'feed', count: 1 });
+        copySpec.push({ type: 'raw', hex: rasterHexBarcode });
+        copySpec.push({ type: 'feed', count: 1 });
+      }
 
       // TEMPORARY: Print only one thermal paper copy
       // const spacer = [{ type: 'feed', count: 4 }];
