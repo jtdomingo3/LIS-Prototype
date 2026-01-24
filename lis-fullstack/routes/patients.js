@@ -416,8 +416,8 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
             const norm = normalize(label);
             const amt = (t && (t.amount || t.amount === 0)) ? Number(t.amount) : 0;
             const remarkRaw = t && (t.remarks || t.remark) ? sanitizeText(t.remarks || t.remark) : '';
-            const isSendOut = /send out/.test(norm);
-            const isDoctorCheckup = /doctor'?s check ?up/.test(norm);
+            const isSendOut = /send\s*out/.test(norm);
+            const isDoctorCheckup = /doctor\s*'?s?\s*check\s*up/.test(norm);
 
             let line = `- ${label}`;
             if (amt || isSendOut || isDoctorCheckup) {
@@ -437,7 +437,7 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
           patient.requiredAreas.forEach(area => {
             const areaLabel = String(area || '');
             const areaNorm = normalize(areaLabel);
-            if (!printed.has(areaNorm) && (/doctor'?s check ?up|send out|referral|referal/.test(areaNorm))) {
+            if (!printed.has(areaNorm) && (/doctor\s*'?s?\s*check\s*up|send\s*out|referral|referal/.test(areaNorm))) {
               // prefer amounts/remarks from patient.requestedTests when available
               let amt = 0;
               let remarks = '';
