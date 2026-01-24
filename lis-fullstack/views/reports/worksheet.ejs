@@ -13,7 +13,7 @@
     /* preview area should expand to card width and allow horizontal scrolling when many columns */
     #previewArea { width:100%; max-width:none }
     /* Allow table to size naturally and enable horizontal scroll on container when many columns */
-    #previewTable { width:100%; min-width: max-content; table-layout:auto; border-collapse:collapse }
+    #previewTable { width:auto; min-width: max-content; table-layout:auto; border-collapse:collapse }
     #previewTable th, #previewTable td { white-space:normal; word-break:break-word; padding:6px; vertical-align:top }
     #previewTable th { background:#0b7a3f; color:#ffffff; position:sticky; top:0; z-index:2; font-weight:600; }
     /* Ensure the preview container handles overflow cleanly */
@@ -60,10 +60,10 @@
         <a href="/reports" style="margin-left:12px">Cancel</a>
       </div>
     </form>
-    <div id="previewArea" style="max-width:900px;margin:12px auto;display:none">
+    <div id="previewArea" style="width:100%;margin:12px auto;display:none">
       <h4>Preview (<span id="previewCount">0</span> rows)</h4>
       <div style="overflow:auto;max-height:400px;border:1px solid #ddd;background:#fff;padding:8px">
-        <table id="previewTable" style="width:100%;border-collapse:collapse">
+        <table id="previewTable" style="border-collapse:collapse">
           <thead>
             <tr id="previewHead"></tr>
           </thead>
