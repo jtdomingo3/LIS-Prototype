@@ -39,6 +39,9 @@ const AREAS = [
   "Doctor's Check-up - Dr. Arcilla"
 ];
 
+// Simple in-memory advertisement text for kiosk marquee (editable from /reception)
+let kioskAdText = '';
+
 // Helper to map a test to the reception area it should appear in.
 // Rules:
 // - If test.status !== 'Completed', return the status as-is.
@@ -91,7 +94,8 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
 
     res.render('reception/index', {
       title: 'Reception',
-      areas: counts
+      areas: counts,
+      ad: kioskAdText
     });
   } catch (err) {
     console.error('Reception index error:', err);
@@ -131,6 +135,18 @@ router.get('/assigned', allowKioskOrAuth, async (req, res) => {
         areaAssignments[area].push({ testId: t.testId, patientCode: patient.patientCode, name: `${patient.firstName} ${patient.lastName}`, assignedDoctor: t.assignedDoctorName || null });
       }
     }
+
+    // Deduplicate assignments per area by patientCode so the same patient isn't shown multiple times
+    Object.keys(areaAssignments).forEach(area => {
+      const seen = new Set();
+      areaAssignments[area] = areaAssignments[area].filter(a => {
+        const code = a && a.patientCode ? String(a.patientCode) : null;
+        if (!code) return false;
+        if (seen.has(code)) return false;
+        seen.add(code);
+        return true;
+      });
+    });
 
   // Always redirect to kiosk mode - the kiosk view is now the only view for /assigned
   const kioskQuery = req.query && (req.query.kiosk === '1' || String(req.query.kiosk).toLowerCase() === 'true');
@@ -250,9 +266,22 @@ router.get('/assigned-data', allowKioskOrAuth, async (req, res) => {
       }
     }
 
+    // Deduplicate assignments per area by patientCode to avoid repeating the same patient
+    Object.keys(areaAssignments).forEach(area => {
+      const seen = new Set();
+      areaAssignments[area] = areaAssignments[area].filter(a => {
+        const code = a && a.patientCode ? String(a.patientCode) : null;
+        if (!code) return false;
+        if (seen.has(code)) return false;
+        seen.add(code);
+        return true;
+      });
+    });
+
     res.json({
       areas: AREAS,
       assignments: areaAssignments,
+      ad: kioskAdText,
       updatedAt: new Date().toISOString()
     });
   } catch (err) {
@@ -272,6 +301,24 @@ router.get('/emit-test', allowKioskOrAuth, (req, res) => {
   } catch (e) {
     console.error('DEBUG emit failed', e);
     return res.status(500).json({ ok: false });
+  }
+});
+
+// POST /reception/advert - set the kiosk advertisement text (admin only)
+router.post('/advert', requireAuth, async (req, res) => {
+  try {
+    const ad = req.body && (req.body.ad || req.body.adText || req.body.advert) ? String(req.body.ad || req.body.adText || req.body.advert) : '';
+    kioskAdText = ad;
+    console.log('Kiosk advertisement updated:', kioskAdText);
+    try {
+      sseEmitter.emit('update', { action: 'advert', ad: kioskAdText, time: (new Date()).toISOString() });
+    } catch (e) { console.warn('Failed to emit SSE advert update', e); }
+    req.flash && req.flash('success_msg', 'Kiosk advertisement updated');
+    return res.redirect('/reception');
+  } catch (e) {
+    console.error('Failed to update kiosk ad', e);
+    req.flash && req.flash('error_msg', 'Failed to update advertisement');
+    return res.redirect('/reception');
   }
 });
 

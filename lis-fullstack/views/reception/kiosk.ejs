@@ -469,6 +469,41 @@
       color: var(--brand-orange);
     }
 
+    /* Marquee / advertisement - fixed so it stays visible when footer is hidden */
+    .kiosk-marquee {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 84px; /* sits above footer by default */
+      z-index: 1150;
+      width: 100%;
+      overflow: hidden;
+      white-space: nowrap;
+      box-sizing: border-box;
+      padding: 8px 16px;
+      background: linear-gradient(90deg, rgba(16,185,129,0.06), rgba(11,61,145,0.03));
+      border-radius: 8px 8px 0 0;
+      margin: 0 auto;
+      max-width: 1600px;
+      font-weight: 700;
+      color: var(--brand-navy);
+      font-size: 1.25rem;
+    }
+
+    /* When footer is hidden, move marquee closer to bottom */
+    body.footer-hidden .kiosk-marquee { bottom: 12px; }
+
+    .kiosk-marquee .marquee-inner {
+      display: inline-block;
+      will-change: transform;
+      padding-left: 100%;
+    }
+
+    @keyframes marqueeScroll {
+      0% { transform: translateX(0%); }
+      100% { transform: translateX(-100%); }
+    }
+
     /* Add padding at bottom for fixed footer */
     .kiosk-container {
       padding-bottom: 100px;
@@ -607,6 +642,11 @@
         </div>
       <% }); %>
     </div>
+  </div>
+
+  <!-- Marquee sits above the footer and remains visible when footer is hidden -->
+  <div class="kiosk-marquee" id="kioskMarquee" style="display:none;">
+    <div class="marquee-inner" id="kioskMarqueeInner">&nbsp;</div>
   </div>
 
   <div class="kiosk-footer">
@@ -1248,6 +1288,28 @@
       });
 
       updateLastUpdate();
+
+      // Update marquee/ad text when provided
+      try {
+        const marqueeEl = document.getElementById('kioskMarquee');
+        const marqueeInner = document.getElementById('kioskMarqueeInner');
+        (function setMarquee(text) {
+          try {
+            if (!marqueeEl || !marqueeInner) return;
+            const t = String(text || '').trim();
+            if (!t) {
+              marqueeInner.style.animation = '';
+              marqueeInner.textContent = '';
+              marqueeEl.style.display = 'none';
+              return;
+            }
+            marqueeInner.textContent = '   ' + t + '   ';
+            marqueeEl.style.display = 'block';
+            const duration = Math.max(12, Math.min(90, Math.round(t.length * 0.12) + 12));
+            marqueeInner.style.animation = `marqueeScroll ${duration}s linear infinite`;
+          } catch (e) { /* ignore */ }
+        })(data && data.ad ? data.ad : '');
+      } catch (e) { /**/ }
 
       // Play sound on changes
       if (hasChanges) {
