@@ -8,6 +8,7 @@
         <label class="checkbox-item"><input type="checkbox" name="tests" <%= featureFlags && featureFlags.tests ? 'checked' : '' %>/> Tests & Results</label>
         <label class="checkbox-item"><input type="checkbox" name="reports" <%= featureFlags && featureFlags.reports ? 'checked' : '' %>/> Reports</label>
         <label class="checkbox-item"><input type="checkbox" name="templates" <%= featureFlags && featureFlags.templates ? 'checked' : '' %>/> Templates</label>
+        <label class="checkbox-item"><input type="checkbox" name="worksheet" <%= featureFlags && featureFlags.worksheet ? 'checked' : '' %>/> Worksheet</label>
         <label class="checkbox-item"><input type="checkbox" name="users" <%= featureFlags && featureFlags.users ? 'checked' : '' %>/> Users</label>
       </div>
 
@@ -33,7 +34,7 @@
 
       <div class="mt-20">
         <button type="submit" class="button btn-primary">Save</button>
-        <a href="/dashboard" class="button btn-secondary">Cancel</a>
+        <a href="/dashboard" class="button btn-secondary" style="margin-left:8px;">Cancel</a>
       </div>
     </form>
     <hr/>

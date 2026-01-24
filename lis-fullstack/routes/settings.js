@@ -33,6 +33,7 @@ router.post('/', requireAuth, canManageUsers, (req, res) => {
     req.app.locals.featureFlags.tests = !!flags.tests;
     req.app.locals.featureFlags.reports = !!flags.reports;
     req.app.locals.featureFlags.templates = !!flags.templates;
+    req.app.locals.featureFlags.worksheet = !!flags.worksheet;
     req.app.locals.featureFlags.users = !!flags.users;
 
     // Backup settings: support frequency-based scheduling (daily/weekly/monthly)
@@ -77,6 +78,24 @@ router.post('/', requireAuth, canManageUsers, (req, res) => {
     req.flash('error_msg', 'Failed to update settings');
     return res.redirect('/settings');
   }
+});
+
+// Apply settings for this session only (no global change)
+router.post('/apply', requireAuth, canManageUsers, (req, res) => {
+  try {
+    const flags = req.body || {};
+    req.session.featureFlags = {
+      tests: !!flags.tests,
+      reports: !!flags.reports,
+      templates: !!flags.templates,
+      worksheet: !!flags.worksheet,
+      users: !!flags.users
+    };
+    req.flash('success_msg', 'Settings applied for this session');
+  } catch (e) {
+    req.flash('error_msg', 'Failed to apply settings');
+  }
+  return res.redirect('/settings');
 });
 
 // Manual backup endpoint

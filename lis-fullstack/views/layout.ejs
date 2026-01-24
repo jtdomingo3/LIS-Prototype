@@ -720,6 +720,8 @@
             <% } %>
             <% if (!featureFlags || featureFlags.reports) { %>
             <a href="/reports" class="nav-item <%= title.includes('Report') ? 'active' : '' %>"><span class="nav-emoji">📋</span><span class="nav-text">Reports</span></a>
+            <% } %>
+            <% if (!featureFlags || featureFlags.worksheet) { %>
             <a href="/reports/worksheet" class="nav-item <%= title.includes('Worksheet') ? 'active' : '' %>"><span class="nav-emoji">📊</span><span class="nav-text">Worksheet</span></a>
             <% } %>
             <% if (!featureFlags || featureFlags.templates) { %>

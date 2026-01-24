@@ -177,12 +177,15 @@ app.locals.featureFlags = {
   tests: true,
   reports: true,
   templates: true,
-  users: true
+  users: true,
+  worksheet: true
 };
 
 // Expose current feature flags to all views via res.locals
 app.use((req, res, next) => {
-  res.locals.featureFlags = app.locals.featureFlags;
+  // Allow session-level overrides for temporary (Apply) changes
+  const sessionFlags = (req.session && req.session.featureFlags) ? req.session.featureFlags : {};
+  res.locals.featureFlags = Object.assign({}, app.locals.featureFlags, sessionFlags);
   next();
 });
 
