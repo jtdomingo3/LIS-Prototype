@@ -262,15 +262,21 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
     const AREA_ORDER = ['Extraction Area', 'Drug Test', 'Ultrasound', '2D Echo', 'X-ray', 'ECG', 'For Send Out'];
     let finalRequiredAreas = [];
     if (!awaitingOnly && mappedAreas.size > 0) {
+      // Start with AREA_ORDER matches to preserve ordering
       finalRequiredAreas = AREA_ORDER.filter(a => mappedAreas.has(a));
       const others = Array.from(mappedAreas).filter(a => !AREA_ORDER.includes(a));
-      finalRequiredAreas = finalRequiredAreas.concat(others);
+      // Merge: AREA_ORDER matches -> others -> doctor selections (avoid duplicates)
+      const merged = finalRequiredAreas.slice();
+      others.forEach(o => { if (!merged.includes(o)) merged.push(o); });
+      (doctorSelections || []).forEach(d => { if (d && !merged.includes(d)) merged.push(d); });
+      // Ensure For Send Out is present when selected
+      if (forSendOutSelected && !merged.includes('For Send Out')) merged.push('For Send Out');
+      finalRequiredAreas = merged;
     } else {
       // preserve doctor's selection(s) and For Send Out if present
-      finalRequiredAreas = doctorSelections.slice();
+      finalRequiredAreas = Array.isArray(doctorSelections) ? doctorSelections.slice() : [];
+      if (forSendOutSelected && !finalRequiredAreas.includes('For Send Out')) finalRequiredAreas.push('For Send Out');
     }
-
-    
 
     const patient = new Patient({
       patientId,
@@ -398,64 +404,77 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       const total = tests.reduce((s, t) => s + (Number((t && (t.amount || t.amount === 0) ? t.amount : 0) || 0)), 0);
 
       function makeTestLines() {
+        const normalize = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+        const slugify = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
         let lines = [];
-        const printedLabels = new Set();
-        // Print all tests first
+        const printed = new Set();
+
+        // Print all requested tests first (prefer values stored in patient.requestedTests)
         if (tests.length) {
           tests.forEach(t => {
             const label = (t && (t.label || t.key)) || String(t || '');
+            const norm = normalize(label);
             const amt = (t && (t.amount || t.amount === 0)) ? Number(t.amount) : 0;
-            const remarkRaw = t && t.remarks ? sanitizeText(t.remarks) : '';
-            const isSendOut = label.toLowerCase().includes('send out');
-            const isDoctorCheckup = label.toLowerCase().includes("doctor's check-up");
+            const remarkRaw = t && (t.remarks || t.remark) ? sanitizeText(t.remarks || t.remark) : '';
+            const isSendOut = /send out/.test(norm);
+            const isDoctorCheckup = /doctor'?s check ?up/.test(norm);
+
             let line = `- ${label}`;
             if (amt || isSendOut || isDoctorCheckup) {
-              line += ` - PHP ${amt.toFixed(2)}`;
+              line += ` - PHP ${Number(amt || 0).toFixed(2)}`;
             }
             lines.push({ type: 'text', text: line });
-            // print remark on its own short line (smaller font) underneath
             if (remarkRaw) {
               const short = remarkRaw.length > 40 ? remarkRaw.slice(0, 37) + '...' : remarkRaw;
               lines.push({ type: 'text', text: `  ${short}`, size: 'small' });
             }
-            printedLabels.add(label.toLowerCase());
+            printed.add(norm);
           });
         }
-        // Always print Doctor's Check-up, Send Out, and Referral/Referal from requiredAreas, avoid duplicates
+
+        // Ensure doctor's check-up / send out / referral entries in requiredAreas are always printed
         if (Array.isArray(patient.requiredAreas)) {
           patient.requiredAreas.forEach(area => {
-            const areaLabel = String(area);
-            const areaLabelLower = areaLabel.toLowerCase();
-            if ((areaLabelLower.includes("doctor's check-up") || areaLabelLower.includes('send out') || areaLabelLower.includes('referral') || areaLabelLower.includes('referal')) && !printedLabels.has(areaLabelLower)) {
-              // Try to get remarks and amount from req.body if available
-              let remarks = '';
+            const areaLabel = String(area || '');
+            const areaNorm = normalize(areaLabel);
+            if (!printed.has(areaNorm) && (/doctor'?s check ?up|send out|referral|referal/.test(areaNorm))) {
+              // prefer amounts/remarks from patient.requestedTests when available
               let amt = 0;
-              if (req.body) {
-                const slug = areaLabelLower.replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
-                // alternate slug: drop leading "for_" and remove underscores to match form fields like "sendout"
+              let remarks = '';
+              if (Array.isArray(patient.requestedTests)) {
+                const match = patient.requestedTests.find(rt => normalize((rt && (rt.label || rt.key)) || rt) === areaNorm);
+                if (match) {
+                  amt = (match && (match.amount || match.amount === 0)) ? Number(match.amount) : amt;
+                  remarks = match && (match.remarks || match.remark) ? String(match.remarks || match.remark) : remarks;
+                }
+              }
+              // fallback: read from submitted form fields (several naming variants)
+              if (req && req.body) {
+                const slug = slugify(areaLabel);
                 const alt = slug.replace(/^for_/, '').replace(/_+/g, '');
-                function getBodyField(...keys) { for (const k of keys) if (typeof req.body[k] !== 'undefined' && req.body[k] !== null && String(req.body[k]).trim() !== '') return req.body[k]; return undefined; }
+                const getBodyField = (...keys) => { for (const k of keys) if (typeof req.body[k] !== 'undefined' && req.body[k] !== null && String(req.body[k]).trim() !== '') return req.body[k]; return undefined; };
                 const remarkVal = getBodyField('remark_' + slug, 'remarks_' + slug, 'remark_' + alt, 'remarks_' + alt, 'remark-' + alt, 'remarks-' + alt);
-                if (remarkVal) remarks = ` (${sanitizeText(remarkVal)})`;
+                if (typeof remarkVal !== 'undefined' && remarkVal !== null && String(remarkVal).trim() !== '') remarks = String(remarkVal).trim();
                 const amtRaw = getBodyField('amount_' + slug, 'amount_' + alt, 'amount' + alt, 'amount-' + alt);
-                if (typeof amtRaw !== 'undefined') {
+                if (typeof amtRaw !== 'undefined' && amtRaw !== null && String(amtRaw).trim() !== '') {
                   const parsed = parseFloat(String(amtRaw).replace(/,/g, ''));
                   if (!Number.isNaN(parsed)) amt = parsed;
                 }
               }
+
               let line = `- ${areaLabel}`;
-              if (amt) line += ` - PHP ${amt.toFixed(2)}`;
+              if (amt) line += ` - PHP ${Number(amt || 0).toFixed(2)}`;
               lines.push({ type: 'text', text: line });
-              // print remark below the area line, short form and smaller size
               if (remarks) {
                 const r = String(remarks).replace(/^\s*\(|\)\s*$/g, '');
                 const short = r.length > 40 ? r.slice(0, 37) + '...' : r;
                 lines.push({ type: 'text', text: `  ${short}`, size: 'small' });
               }
-              printedLabels.add(areaLabelLower);
+              printed.add(areaNorm);
             }
           });
         }
+
         if (!lines.length) return [{ type: 'text', text: '- (No tests specified)' }];
         return lines;
       }
