@@ -67,10 +67,18 @@ class Patient {
     // Ensure paymentHistory is present in serialized output
     obj.paymentHistory = Array.isArray(this.paymentHistory) ? this.paymentHistory : [];
     obj.fullName = this.fullName;
-    // Prefer computed age from DOB; fallback to manual age if provided
-    obj.age = this.age !== null && this.age !== undefined ? this.age : (this.ageManual || null);
+    // Prefer computed age from DOB; fallback to manual age if provided (preserve 0)
+    if (this.age !== null && this.age !== undefined) {
+      obj.age = this.age;
+    } else if (this.ageManual !== undefined && this.ageManual !== null && String(this.ageManual).trim() !== '') {
+      const maybeNum = Number(this.ageManual);
+      obj.age = !isNaN(maybeNum) ? maybeNum : String(this.ageManual);
+    } else {
+      obj.age = null;
+    }
     obj.physician = this.physician || null;
-    obj.ageManual = this.ageManual || null;
+    // Preserve manual age as string so values like 0 are not treated as missing
+    obj.ageManual = (this.ageManual !== undefined && this.ageManual !== null && String(this.ageManual).trim() !== '') ? String(this.ageManual) : null;
     obj.requiredAreas = this.requiredAreas || [];
     obj.requestedTests = Array.isArray(this.requestedTests) ? this.requestedTests : [];
     // Provide legacy `sex` alias for templates that expect `patient.sex`
