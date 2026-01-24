@@ -604,6 +604,7 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
       }
     }
 
+
     // If this test is a Doctor's Check-up -> mark Completed and do NOT forward or set In Progress
     if (test.testType === "Doctor's Check-up") {
       test.status = 'Completed';
@@ -622,10 +623,24 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
       return res.redirect(previousArea ? `/reception/area/${encodeURIComponent(previousArea)}` : '/reception');
     }
 
-    // mark as completed for this step first
-    test.status = 'Completed';
-    await test.save();
-  console.log('complete: marked Completed', { testId: test.testId });
+    // If patient's requiredAreas includes 'For Send Out', set status to 'For Referral' after payment
+    let setForReferral = false;
+    if (test.patient) {
+      const patientObj = await Patient.findById(test.patient);
+      if (patientObj && Array.isArray(patientObj.requiredAreas)) {
+        setForReferral = patientObj.requiredAreas.some(area => String(area).toLowerCase().includes('send out'));
+      }
+    }
+    if (setForReferral) {
+      test.status = 'For Referral';
+      await test.save();
+      console.log('complete: For Send Out detected, marked For Referral', { testId: test.testId });
+    } else {
+      // mark as completed for this step first
+      test.status = 'Completed';
+      await test.save();
+      console.log('complete: marked Completed', { testId: test.testId });
+    }
 
     // now attempt to auto-forward to next required area for patient
     if (test.patient) {

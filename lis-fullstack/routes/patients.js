@@ -227,14 +227,30 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
     const mappedAreas = new Set();
     // Build requestedTests array with amounts and lab tagging
     const requestedTestsDetailed = [];
+    let forSendOutSelected = false;
+    // Accept explicit "For Send Out" checkbox in the form (common name variants)
+    if (req.body) {
+      const v = req.body.forSendOut || req.body.for_send_out || req.body['for-send-out'] || req.body['forSendOut'];
+      if (v === '1' || v === 'on' || v === 'true' || v === 'yes') {
+        forSendOutSelected = true;
+      }
+    }
     for (const t of selectedTests) {
+      const tLower = String(t).toLowerCase();
+      if (tLower.includes('send out') || tLower.includes('for send out')) {
+        forSendOutSelected = true;
+      }
       const a = mapTestToArea(t);
       if (a) mappedAreas.add(a);
-      const slug = String(t).toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
+      const slug = tLower.replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
       const rawAmt = req.body['amount_' + slug];
       const amt = rawAmt ? parseFloat(String(rawAmt).replace(/,/g,'')) : 0;
       const lab = (a === 'X-ray') ? 'xray' : 'clinical';
       requestedTestsDetailed.push({ key: t, label: t, amount: isNaN(amt) ? 0 : amt, lab, area: a || null });
+    }
+    // Standardize: If For Send Out is selected, add to requiredAreas
+    if (forSendOutSelected && !doctorSelections.includes('For Send Out')) {
+      doctorSelections.push('For Send Out');
     }
 
     // If none of the selected tests map to a reception area, treat as awaiting-only
@@ -243,14 +259,14 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
     // Build final requiredAreas: collect all unique mapped areas in the same
     // order reception expects so that downstream queuing/forwarding logic
     // will process them in the intended order.
-    const AREA_ORDER = ['Extraction Area', 'Drug Test', 'Ultrasound', '2D Echo', 'X-ray', 'ECG'];
+    const AREA_ORDER = ['Extraction Area', 'Drug Test', 'Ultrasound', '2D Echo', 'X-ray', 'ECG', 'For Send Out'];
     let finalRequiredAreas = [];
     if (!awaitingOnly && mappedAreas.size > 0) {
       finalRequiredAreas = AREA_ORDER.filter(a => mappedAreas.has(a));
       const others = Array.from(mappedAreas).filter(a => !AREA_ORDER.includes(a));
       finalRequiredAreas = finalRequiredAreas.concat(others);
-    } else if (!selectedTests.length) {
-      // no tests selected - preserve doctor's selection(s)
+    } else {
+      // preserve doctor's selection(s) and For Send Out if present
       finalRequiredAreas = doctorSelections.slice();
     }
 
@@ -371,6 +387,9 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       const { spawnSync } = require('child_process');
 
       // Build simple receipt spec for thermal_test.js JSON input
+      // If For Send Out is in requiredAreas, after payment, set status to For Referral (not Completed/Pending)
+      // This logic should be handled in the payment/queueing logic, not here, but here's a note:
+      // TODO: In your payment/queueing logic, after payment, if requiredAreas includes 'For Send Out', set test.status = 'For Referral'
       const now = new Date();
       const currentDate = now.toISOString().replace('T', ' ').slice(0, 19);
       const fullName = `${patient.firstName || ''} ${patient.lastName || ''}`.trim();
@@ -400,12 +419,12 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
             printedLabels.add(label.toLowerCase());
           });
         }
-        // Always print Doctor's Check-up and Send Out from requiredAreas, avoid duplicates
+        // Always print Doctor's Check-up, Send Out, and Referral/Referal from requiredAreas, avoid duplicates
         if (Array.isArray(patient.requiredAreas)) {
           patient.requiredAreas.forEach(area => {
             const areaLabel = String(area);
             const areaLabelLower = areaLabel.toLowerCase();
-            if ((areaLabelLower.includes("doctor's check-up") || areaLabelLower.includes('send out')) && !printedLabels.has(areaLabelLower)) {
+            if ((areaLabelLower.includes("doctor's check-up") || areaLabelLower.includes('send out') || areaLabelLower.includes('referral') || areaLabelLower.includes('referal')) && !printedLabels.has(areaLabelLower)) {
               // Try to get remarks and amount from req.body if available
               let remarks = '';
               let amt = 0;
@@ -551,9 +570,9 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       copySpec.push({ type: 'text', text: sanitizeText('Name: ' + fullName) });
       copySpec.push({ type: 'text', text: sanitizeText('Age: ' + age) });
       copySpec.push({ type: 'feed', count: 1 });
-      copySpec.push({ type: 'text', size: 'small', text: sanitizeText('Laboratory Request:') });
+      copySpec.push({ type: 'text', size: 'normal', text: sanitizeText('Laboratory Request:') });
       copySpec.push({ type: 'feed', count: 0 });
-      const sanitizedTestLines = makeTestLines().map(l => ({ type: 'text', size: 'small', text: sanitizeText(l.text) }));
+        const sanitizedTestLines = makeTestLines().map(l => ({ type: 'text', size: 'normal', text: sanitizeText(l.text) }));
       copySpec.push.apply(copySpec, sanitizedTestLines);
       copySpec.push({ type: 'feed', count: 1 });
       copySpec.push({ type: 'text', text: sanitizeText('Amount: PHP ' + total.toFixed(2)) });
@@ -569,9 +588,9 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       copySpec.push({ type: 'cut' });
 
       // TEMPORARY: Print only one thermal paper copy
-      const spacer = [{ type: 'feed', count: 4 }];
-      const spec = copySpec.concat(spacer, copySpec);
-      // const spec = copySpec; // Only one copy for now
+      // const spacer = [{ type: 'feed', count: 4 }];
+      // const spec = copySpec.concat(spacer, copySpec);
+      const spec = copySpec; // Only one copy for now
 
       // Save a copy of the spec to workspace logs for inspection (helps trace unexpected content)
       try {
