@@ -201,7 +201,7 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       }
     });
     const seq = (patientsToday.length || 0) + 1;
-    const patientCode = `GCL-${yyyy}-${mm}-${String(seq).padStart(5, '0')}`;
+    const patientCode = `GCL-${yyyy}${mm}${dayStr}-${String(seq).padStart(5, '0')}`;
 
     // Determine area mapping from selected tests using an explicit map
     function mapTestToArea(testLabel) {
@@ -414,12 +414,13 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
           tests.forEach(t => {
             const label = (t && (t.label || t.key)) || String(t || '');
             const norm = normalize(label);
+            const displayLabel = String(label).replace(/doctor'?s/gi, 'Doctor').replace(/\s+/g, ' ').trim();
             const amt = (t && (t.amount || t.amount === 0)) ? Number(t.amount) : 0;
             const remarkRaw = t && (t.remarks || t.remark) ? sanitizeText(t.remarks || t.remark) : '';
             const isSendOut = /send\s*out/.test(norm);
             const isDoctorCheckup = /doctor\s*'?s?\s*check\s*up/.test(norm);
 
-            let line = `- ${label}`;
+            let line = `- ${displayLabel}`;
             if (amt || isSendOut || isDoctorCheckup) {
               line += ` - PHP ${Number(amt || 0).toFixed(2)}`;
             }
@@ -462,7 +463,8 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
                 }
               }
 
-              let line = `- ${areaLabel}`;
+              const displayArea = String(areaLabel).replace(/doctor'?s/gi, 'Doctor').replace(/\s+/g, ' ').trim();
+              let line = `- ${displayArea}`;
               if (amt) line += ` - PHP ${Number(amt || 0).toFixed(2)}`;
               lines.push({ type: 'text', text: line });
               if (remarks) {
