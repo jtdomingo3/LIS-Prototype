@@ -1,7 +1,12 @@
 <div class="card">
     <h3>Patient Management</h3>
-    <div style="margin-bottom: 20px;">
-        <a href="/patients/new" class="button btn-primary">➕ Add New Patient</a>
+    <div style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+            <a href="/patients/new" class="button btn-primary">➕ Add New Patient</a>
+        </div>
+        <div>
+            <button id="testPrintBtn" class="button btn-secondary">Test Print</button>
+        </div>
     </div>
     <input type="text" class="search-box" id="patientSearch" placeholder="Search patients by name or ID..." value="<%= searchQuery %>">
     <table>
@@ -64,5 +69,18 @@
             const text = row.textContent.toLowerCase();
             row.style.display = text.includes(searchTerm) ? '' : 'none';
         });
+    });
+
+    // Test Print button: call server endpoint to run thermal test
+    document.getElementById('testPrintBtn').addEventListener('click', function() {
+        if (!confirm('Send a test print to the configured thermal printer?')) return;
+        this.disabled = true;
+        fetch('/patients/thermal-print', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ receipt: true }) })
+            .then(r => r.json())
+            .then(j => {
+                alert(j && j.success ? 'Print job sent.' : ('Print failed: ' + (j && j.error ? j.error : 'unknown')));
+            })
+            .catch(err => { alert('Print request failed: ' + err); })
+            .finally(() => { document.getElementById('testPrintBtn').disabled = false; });
     });
 </script>

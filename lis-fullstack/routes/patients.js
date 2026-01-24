@@ -3,6 +3,21 @@ const router = express.Router();
 const Patient = require('../models/Patient');
 const User = require('../models/User');
 const { requireAuth, canAccessPatient } = require('../middleware/auth');
+const fs = require('fs');
+const pathMod = require('path');
+const Jimp = require('jimp');
+
+// Print logging helper
+const PRINT_LOG_PATH = pathMod.join(__dirname, '..', 'logs', 'print.log');
+function appendPrintLog(entry) {
+  try {
+    const ts = new Date().toISOString();
+    const data = `[${ts}] ${entry}\n`;
+    fs.appendFileSync(PRINT_LOG_PATH, data, { encoding: 'utf8' });
+  } catch (e) {
+    console.error('Failed to write print log:', e);
+  }
+}
 
 // GET /patients - List all patients
 router.get('/', requireAuth, canAccessPatient, async (req, res) => {
@@ -348,6 +363,227 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       req.flash('success_msg', `Patient ${firstName} ${lastName} added successfully!`);
     }
 
+    // After saving, attempt server-side thermal print of patient receipt
+    try {
+      const fs = require('fs');
+      const os = require('os');
+      const pathMod = require('path');
+      const { spawnSync } = require('child_process');
+
+      // Build simple receipt spec for thermal_test.js JSON input
+      const now = new Date();
+      const currentDate = now.toISOString().replace('T', ' ').slice(0, 19);
+      const fullName = `${patient.firstName || ''} ${patient.lastName || ''}`.trim();
+      const age = patient.ageManual || patient.age || 'N/A';
+      const tests = Array.isArray(patient.requestedTests) ? patient.requestedTests : [];
+      const total = tests.reduce((s, t) => s + (Number((t && (t.amount || t.amount === 0) ? t.amount : 0) || 0)), 0);
+
+      function makeTestLines() {
+        if (!tests.length) return [{ type: 'text', text: '• (No tests specified)' }];
+        return tests.map(t => {
+          const label = (t && (t.label || t.key)) || String(t || '');
+          const amt = (t && (t.amount || t.amount === 0)) ? Number(t.amount) : 0;
+          return { type: 'text', text: `- ${label}${amt ? (' - PHP ' + amt.toFixed(2)) : ''}` };
+        });
+      }
+
+      // sanitize text to avoid characters that CP437 cannot encode (which appear as '?')
+      function sanitizeText(s) {
+        if (s == null) return '';
+        let out = String(s);
+        // replace common symbols with ASCII-safe alternatives
+        out = out.replace(/₱/g, 'PHP ');
+        out = out.replace(/[–—−]/g, '-');
+        out = out.replace(/•/g, '-');
+        // remove any remaining non-ASCII characters to avoid '?' in output
+        out = out.replace(/[^\u0000-\u007f]/g, '');
+        // collapse multiple spaces
+        out = out.replace(/\s+/g, ' ').trim();
+        return out;
+      }
+
+      // Attempt to rasterize small logo + patient code into one image to print beside ID
+      let rasterHex = null;
+      try {
+        const logoPath = pathMod.join(__dirname, '..', 'assets', 'gezyne-logo-NOTEXT.png');
+        if (fs.existsSync(logoPath)) {
+          const logoImg = await Jimp.read(logoPath);
+          // Target width for printer (pixels). Use 384 as common thermal width.
+          const targetWidth = 384;
+          // Scale logo to reasonable height
+          const maxLogoHeight = 48;
+          logoImg.scaleToFit(80, maxLogoHeight);
+          const logoW = logoImg.bitmap.width;
+          const logoH = logoImg.bitmap.height;
+
+          // Prepare canvas and print patient code text on the right side.
+          // Extract last 5-digit sequence and render it much larger for visibility.
+          const codeText = (patient.patientCode || patient.patientId || '').toString();
+          const last5Match = codeText.match(/(\d{5})$/);
+          const last5 = last5Match ? last5Match[1] : null;
+          const prefix = last5 ? codeText.slice(0, codeText.length - last5.length).trim() : codeText;
+
+          // Load fonts: small for prefix, big for the 5-digit number
+          const smallFont = await Jimp.loadFont(Jimp.FONT_SANS_16_BLACK);
+          // Use the largest available built-in sans font for emphasis
+          const bigFont = await Jimp.loadFont(Jimp.FONT_SANS_64_BLACK);
+
+          // Measure heights to decide canvas height
+          const bigText = last5 || codeText;
+          const bigTextWidth = Jimp.measureText(bigFont, bigText);
+          const bigTextHeight = Jimp.measureTextHeight(bigFont, bigText, bigTextWidth);
+          const smallTextWidth = prefix ? Jimp.measureText(smallFont, prefix) : 0;
+          const smallTextHeight = prefix ? Jimp.measureTextHeight(smallFont, prefix, smallTextWidth) : 0;
+
+          const padding = 6;
+          const gap = 6; // space between elements
+
+          // Small middle text to place between logo and patient code
+          const middleText = sanitizeText('GEZYNE CLINICAL LABORATORY');
+          const midTextWidth = Jimp.measureText(smallFont, middleText);
+          const midTextHeight = Jimp.measureTextHeight(smallFont, middleText, midTextWidth);
+
+          // Layout: logo centered at the top, small text centered below it, then patient code centered
+          const canvasHeight = padding + logoH + gap + midTextHeight + gap + bigTextHeight + padding;
+          const canvas = new Jimp(targetWidth, canvasHeight, 0xffffffff);
+
+          // center logo at top
+          const logoX = Math.floor((targetWidth - logoW) / 2);
+          const logoY = padding;
+          canvas.composite(logoImg, logoX, logoY);
+
+          // center middle text under logo
+          const midX = Math.floor((targetWidth - midTextWidth) / 2);
+          const midY = padding + logoH + gap;
+          canvas.print(smallFont, midX, midY, middleText);
+
+          // Center the emphasized patient code under the middle text
+          const bigX = Math.floor((targetWidth - bigTextWidth) / 2);
+          const bigY = midY + midTextHeight + gap;
+          canvas.print(bigFont, bigX, bigY, bigText);
+
+          // Convert canvas to monochrome bitmap and pack into ESC/POS raster format
+          const width = canvas.bitmap.width;
+          const height = canvas.bitmap.height;
+          const widthBytes = Math.ceil(width / 8);
+          const data = Buffer.alloc(widthBytes * height);
+          for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+              const idx = (y * width + x) * 4;
+              const r = canvas.bitmap.data[idx + 0];
+              const g = canvas.bitmap.data[idx + 1];
+              const b = canvas.bitmap.data[idx + 2];
+              const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+              const bit = gray < 128 ? 1 : 0;
+              if (bit) {
+                const byteIndex = y * widthBytes + Math.floor(x / 8);
+                const bitIndex = 7 - (x % 8);
+                data[byteIndex] |= (1 << bitIndex);
+              }
+            }
+          }
+          const xL = widthBytes & 0xff;
+          const xH = (widthBytes >> 8) & 0xff;
+          const yL = height & 0xff;
+          const yH = (height >> 8) & 0xff;
+          const header = Buffer.from([0x1d, 0x76, 0x30, 0x00, xL, xH, yL, yH]);
+          const rasterBuf = Buffer.concat([header, data]);
+          rasterHex = rasterBuf.toString('hex');
+        }
+      } catch (imgErr) {
+        console.warn('Logo rasterization failed:', imgErr);
+        rasterHex = null;
+      }
+
+      // Compose one copy
+      const copySpec = [];
+      // insert rasterized logo+code if available, otherwise fallback to printing
+      // the last 5 digits (matching the patients list) in a large font
+      if (rasterHex) {
+        copySpec.push({ type: 'raw', hex: rasterHex });
+      } else {
+        const codeStr = String(patient.patientCode || patient.patientId || '');
+        const last5Match = codeStr.match(/(\d{5})$/);
+        const last5 = last5Match ? last5Match[1] : codeStr;
+        copySpec.push({ type: 'text', align: 'center', size: 'double', bold: true, text: sanitizeText(last5) });
+      }
+      copySpec.push({ type: 'text', align: 'center', text: sanitizeText(currentDate) });
+      copySpec.push({ type: 'feed', count: 1 });
+      copySpec.push({ type: 'text', text: sanitizeText('Name: ' + fullName) });
+      copySpec.push({ type: 'text', text: sanitizeText('Age: ' + age) });
+      copySpec.push({ type: 'feed', count: 1 });
+      copySpec.push({ type: 'text', text: sanitizeText('Laboratory Request:') });
+      copySpec.push({ type: 'feed', count: 0 });
+      const sanitizedTestLines = makeTestLines().map(l => ({ type: 'text', text: sanitizeText(l.text) }));
+      copySpec.push.apply(copySpec, sanitizedTestLines);
+      copySpec.push({ type: 'feed', count: 1 });
+      copySpec.push({ type: 'text', text: sanitizeText('Amount: PHP ' + total.toFixed(2)) });
+      copySpec.push({ type: 'feed', count: 2 });
+      copySpec.push({ type: 'feed', count: 1 });
+      copySpec.push({ type: 'hr', align: 'center', count: 28 });
+      copySpec.push({ type: 'feed', count: 0 });
+      copySpec.push({ type: 'text', text: sanitizeText('Validated Amount Received by') });
+      copySpec.push({ type: 'feed', count: 2 });
+      copySpec.push({ type: 'text', align: 'center', size: 'normal', text: sanitizeText('This is not a valid OR') });
+      copySpec.push({ type: 'text', align: 'center', size: 'normal', text: sanitizeText('Please keep this ticket') });
+      copySpec.push({ type: 'text', align: 'center', size: 'normal', text: sanitizeText('until you are finished') });
+      copySpec.push({ type: 'cut' });
+
+      // Two copies: duplicate copySpec with a spacer between copies to ensure clear separation
+      const spacer = [{ type: 'feed', count: 4 }];
+      const spec = copySpec.concat(spacer, copySpec);
+
+      // Save a copy of the spec to workspace logs for inspection (helps trace unexpected content)
+      try {
+        const inspectPath = pathMod.join(__dirname, '..', 'logs', 'last_patient_spec.json');
+        fs.writeFileSync(inspectPath, JSON.stringify(spec, null, 2), { encoding: 'utf8' });
+      } catch (e) {
+        console.warn('Failed to write last_patient_spec.json for inspection:', e);
+      }
+
+      // Write spec to temp JSON file
+      const tmp = os.tmpdir();
+      const specPath = pathMod.join(tmp, `patient_receipt_${Date.now()}.json`);
+      fs.writeFileSync(specPath, JSON.stringify(spec), { encoding: 'utf8' });
+
+      const scriptPath = pathMod.join(__dirname, '..', 'scripts', 'thermal_test.js');
+      const args = [scriptPath, '--json', specPath];
+      const ENV_PRINTER = process.env.PRINTER_NAME || process.env.PRINTER || null;
+      if (ENV_PRINTER) args.push('--printer', ENV_PRINTER);
+
+      const proc = spawnSync(process.execPath, args, { cwd: pathMod.join(__dirname, '..'), encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 });
+      try { fs.unlinkSync(specPath); } catch (e) {}
+
+      // Log print result for debugging
+      try {
+        const entry = {
+          action: 'patient_receipt_print',
+          patientId: patient.id || patient._id || null,
+          patientCode: patient.patientCode || patient.patientId || null,
+          args: args,
+          exitCode: proc.status != null ? proc.status : null,
+          error: proc.error ? String(proc.error) : null,
+          stdout: proc.stdout || null,
+          stderr: proc.stderr || null,
+          timestamp: new Date().toISOString()
+        };
+        appendPrintLog(JSON.stringify(entry));
+      } catch (logErr) {
+        console.error('Failed to append print log:', logErr);
+      }
+
+      if (proc.error || proc.status !== 0) {
+        console.error('Patient print failed:', proc.error || proc.stderr || proc.stdout || proc.status);
+        // keep user flow working, but warn
+        req.flash('warning_msg', 'Patient saved but printing failed (see server logs)');
+      } else {
+        req.flash('success_msg', 'Patient saved and receipt printed');
+      }
+    } catch (printErr) {
+      console.error('Error during patient print attempt:', printErr);
+      req.flash('warning_msg', 'Patient saved but printing error occurred');
+    }
+
     res.redirect('/patients');
 
   } catch (error) {
@@ -357,6 +593,50 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       title: 'Add New Patient',
       patient: req.body
     });
+  }
+});
+
+// POST /patients/thermal-print - trigger a thermal printer test
+router.post('/thermal-print', requireAuth, canAccessPatient, (req, res) => {
+  try {
+    const { spawnSync } = require('child_process');
+    const pathMod = require('path');
+    const scriptPath = pathMod.join(__dirname, '..', 'scripts', 'thermal_test.js');
+
+    // Build args: call Node with the script and --receipt
+    const args = [scriptPath, '--receipt'];
+    if (req.body && req.body.printer) args.push('--printer', req.body.printer);
+
+    const proc = spawnSync(process.execPath, args, { cwd: pathMod.join(__dirname, '..'), encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 });
+    // append log
+    try {
+      const entry = {
+        action: 'thermal_test_manual',
+        user: req.session && req.session.user ? req.session.user.id : null,
+        args: args,
+        exitCode: proc.status != null ? proc.status : null,
+        error: proc.error ? String(proc.error) : null,
+        stdout: proc.stdout || null,
+        stderr: proc.stderr || null,
+        timestamp: new Date().toISOString()
+      };
+      appendPrintLog(JSON.stringify(entry));
+    } catch (logErr) {
+      console.error('Failed to append print log:', logErr);
+    }
+
+    if (proc.error) {
+      console.error('Thermal print spawn error:', proc.error);
+      return res.status(500).json({ success: false, error: String(proc.error) });
+    }
+    if (proc.status !== 0) {
+      console.error('Thermal print failed:', proc.stderr || proc.stdout || proc.status);
+      return res.status(500).json({ success: false, error: proc.stderr || proc.stdout || ('Exit code: ' + proc.status) });
+    }
+    return res.json({ success: true, output: proc.stdout });
+  } catch (e) {
+    console.error('Thermal print handler error:', e);
+    return res.status(500).json({ success: false, error: String(e) });
   }
 });
 
