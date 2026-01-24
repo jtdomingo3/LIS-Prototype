@@ -405,17 +405,19 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
           tests.forEach(t => {
             const label = (t && (t.label || t.key)) || String(t || '');
             const amt = (t && (t.amount || t.amount === 0)) ? Number(t.amount) : 0;
-            const remarks = t && t.remarks ? ` (${sanitizeText(t.remarks)})` : '';
+            const remarkRaw = t && t.remarks ? sanitizeText(t.remarks) : '';
             const isSendOut = label.toLowerCase().includes('send out');
             const isDoctorCheckup = label.toLowerCase().includes("doctor's check-up");
             let line = `- ${label}`;
             if (amt || isSendOut || isDoctorCheckup) {
               line += ` - PHP ${amt.toFixed(2)}`;
             }
-            if (remarks) {
-              line += remarks;
-            }
             lines.push({ type: 'text', text: line });
+            // print remark on its own short line (smaller font) underneath
+            if (remarkRaw) {
+              const short = remarkRaw.length > 40 ? remarkRaw.slice(0, 37) + '...' : remarkRaw;
+              lines.push({ type: 'text', text: `  ${short}`, size: 'small' });
+            }
             printedLabels.add(label.toLowerCase());
           });
         }
@@ -430,13 +432,26 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
               let amt = 0;
               if (req.body) {
                 const slug = areaLabelLower.replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
-                if (req.body['remarks_' + slug]) remarks = ` (${sanitizeText(req.body['remarks_' + slug])})`;
-                if (req.body['amount_' + slug]) amt = parseFloat(String(req.body['amount_' + slug]).replace(/,/g,'')) || 0;
+                // alternate slug: drop leading "for_" and remove underscores to match form fields like "sendout"
+                const alt = slug.replace(/^for_/, '').replace(/_+/g, '');
+                function getBodyField(...keys) { for (const k of keys) if (typeof req.body[k] !== 'undefined' && req.body[k] !== null && String(req.body[k]).trim() !== '') return req.body[k]; return undefined; }
+                const remarkVal = getBodyField('remark_' + slug, 'remarks_' + slug, 'remark_' + alt, 'remarks_' + alt, 'remark-' + alt, 'remarks-' + alt);
+                if (remarkVal) remarks = ` (${sanitizeText(remarkVal)})`;
+                const amtRaw = getBodyField('amount_' + slug, 'amount_' + alt, 'amount' + alt, 'amount-' + alt);
+                if (typeof amtRaw !== 'undefined') {
+                  const parsed = parseFloat(String(amtRaw).replace(/,/g, ''));
+                  if (!Number.isNaN(parsed)) amt = parsed;
+                }
               }
               let line = `- ${areaLabel}`;
               if (amt) line += ` - PHP ${amt.toFixed(2)}`;
-              if (remarks) line += remarks;
               lines.push({ type: 'text', text: line });
+              // print remark below the area line, short form and smaller size
+              if (remarks) {
+                const r = String(remarks).replace(/^\s*\(|\)\s*$/g, '');
+                const short = r.length > 40 ? r.slice(0, 37) + '...' : r;
+                lines.push({ type: 'text', text: `  ${short}`, size: 'small' });
+              }
               printedLabels.add(areaLabelLower);
             }
           });
@@ -572,7 +587,7 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       copySpec.push({ type: 'feed', count: 1 });
       copySpec.push({ type: 'text', size: 'normal', text: sanitizeText('Laboratory Request:') });
       copySpec.push({ type: 'feed', count: 0 });
-        const sanitizedTestLines = makeTestLines().map(l => ({ type: 'text', size: 'normal', text: sanitizeText(l.text) }));
+        const sanitizedTestLines = makeTestLines().map(l => ({ type: 'text', size: l.size || 'normal', text: sanitizeText(l.text) }));
       copySpec.push.apply(copySpec, sanitizedTestLines);
       copySpec.push({ type: 'feed', count: 1 });
       copySpec.push({ type: 'text', text: sanitizeText('Amount: PHP ' + total.toFixed(2)) });
