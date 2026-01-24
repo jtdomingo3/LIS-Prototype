@@ -1,0 +1,55 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Worksheet Export</title>
+  <style>
+    .card{ max-width:900px; margin:20px auto; padding:18px; border:1px solid #e6e6e6; background:#fff }
+    .form-row{ display:flex; gap:12px; align-items:center; margin-bottom:12px }
+    label{ min-width:120px; font-weight:600 }
+    input, select { padding:8px; min-width:160px }
+    .actions{ margin-top:16px }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h3>Worksheet Export</h3>
+    <form action="/reports/worksheet/download" method="POST">
+      <div class="form-row">
+        <label>Test Type</label>
+        <select name="testType">
+          <option value="">-- All / Select --</option>
+          <% if (types && types.length) { types.forEach(function(tp){ %>
+            <option value="<%= tp %>"><%= tp %></option>
+          <% }) } %>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <label>Date From</label>
+        <input type="date" name="dateFrom" />
+        <label>Date To</label>
+        <input type="date" name="dateTo" />
+      </div>
+
+      <div class="form-row">
+        <label>Export Scope</label>
+        <label><input type="checkbox" name="allData" value="1" /> Export ALL data (ignore filters)</label>
+      </div>
+
+      <div class="form-row">
+        <label>Format</label>
+        <select name="format">
+          <option value="csv">CSV</option>
+          <option value="xlsx">Excel (.xlsx)</option>
+        </select>
+      </div>
+
+      <div class="actions">
+        <button type="submit" class="button btn-primary">Download</button>
+        <a href="/reports" style="margin-left:12px">Cancel</a>
+      </div>
+    </form>
+  </div>
+</body>
+</html>

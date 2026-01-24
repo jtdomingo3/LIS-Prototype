@@ -39,8 +39,10 @@
     "minimist": "^1.2.8",
     "multer": "^2.0.2",
     "puppeteer": "^24.35.0",
-    "uuid": "^9.0.0"
+    "uuid": "^9.0.0",
+    "exceljs": "^4.3.0"
   },
+  
   "devDependencies": {
     "jimp": "^0.16.1",
     "nodemon": "^3.0.1",
