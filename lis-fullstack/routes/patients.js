@@ -683,9 +683,9 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       }
 
       // TEMPORARY: Print only one thermal paper copy
-      // const spacer = [{ type: 'feed', count: 4 }];
-      // const spec = copySpec.concat(spacer, copySpec);
-      const spec = copySpec; // Only one copy for now
+      const spacer = [{ type: 'feed', count: 4 }];
+      const spec = copySpec.concat(spacer, copySpec);
+      // const spec = copySpec; // Only one copy for now
 
       // Save a copy of the spec to workspace logs for inspection (helps trace unexpected content)
       try {
