@@ -35,7 +35,42 @@
                     document.querySelectorAll('.test-checkbox').forEach(cb => {
                         const key = cb.getAttribute('data-key');
                         const amt = document.querySelector('input[name="amount_' + key + '"]');
-                        const remark = document.querySelector('input[name="remark_' + key + '"]');
+                        const remark = document.querySelector('[name="remark_' + key + '"]');
+
+                        function updateAmount() {
+                            if (!amt) return;
+                            if (cb.checked) {
+                                amt.disabled = false;
+                                amt.style.display = '';
+                            } else {
+                                amt.disabled = true;
+                                amt.style.display = 'none';
+                            }
+                        }
+
+                        function updateRemark() {
+                            if (!remark) return;
+                            if (cb.checked) {
+                                remark.disabled = false;
+                                remark.style.display = '';
+                            } else {
+                                remark.disabled = true;
+                                remark.style.display = 'none';
+                            }
+                        }
+
+                        cb.addEventListener('change', function(){ updateAmount(); updateRemark(); });
+
+                        // init
+                        updateAmount();
+                        updateRemark();
+                    });
+
+                    // For Send Out toggle
+                    document.querySelectorAll('.sendout-checkbox').forEach(cb => {
+                        const key = cb.getAttribute('data-key');
+                        const amt = document.querySelector('input[name="amount_' + key + '"]');
+                        const remark = document.querySelector('[name="remark_' + key + '"]');
 
                         function updateAmount() {
                             if (!amt) return;
@@ -101,13 +136,21 @@
                                     <input type="number" step="0.01" min="0" name="amount_<%= slug %>" class="test-amount" placeholder="Amount" style="width:120px;" value="<%= (patient.requestedTests && (patient.requestedTests.find(r => (r && (r.key||r) === rawKey) || r === rawKey) || {}).amount) || '' %>">
                                 </div>
                                 <div style="display:flex; gap:8px; align-items:center; margin-top:6px;">
-                                    <input type="text" name="remark_<%= slug %>" class="test-remark" placeholder="Remarks" style="flex:1; width:100%;" value="<%= (patient.requestedTests && (patient.requestedTests.find(r => (r && (r.key||r) === rawKey) || r === rawKey) || {}).remark) || '' %>">
+                                    <textarea name="remark_<%= slug %>" class="test-remark" placeholder="Remarks" rows="2" style="flex:1; width:100%; resize:vertical;"> <%= (patient.requestedTests && (patient.requestedTests.find(r => (r && (r.key||r) === rawKey) || r === rawKey) || {}).remark) || '' %></textarea>
                                 </div>
                             </label>
                         <% }) %>
                     </div>
 
                     <div style="margin-top:12px;">
+                        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; align-items:center;">
+                            <label style="display:inline-flex; align-items:center; gap:8px; margin-right:12px;">
+                                <input type="checkbox" class="sendout-checkbox" data-key="sendout" name="forSendOut" value="1" <%= patient.forSendOut ? 'checked' : '' %> >
+                                <span style="font-size:0.95em;">For Send Out</span>
+                            </label>
+                            <input type="number" step="0.01" min="0" name="amount_sendout" class="test-amount" placeholder="Amount" style="width:120px; display:none;" value="<%= (patient.sendOut || {}).amount || '' %>">
+                            <textarea name="remark_sendout" class="test-remark" placeholder="Remarks" rows="2" style="flex:1; width:220px; display:none; margin-left:6px; resize:vertical;"><%= (patient.sendOut || {}).remark || '' %></textarea>
+                        </div>
                         <h5>Doctor's Check-up</h5>
                         <% const DOCS = ["Doctor's Check-up - Dr. Lorenzo","Doctor's Check-up - Dr. Arcilla"]; %>
                         <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;">

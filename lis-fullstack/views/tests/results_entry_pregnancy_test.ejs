@@ -25,6 +25,7 @@
         <option value="">-- Select Sample --</option>
         <option value="Urine" <%= test.results && test.results.sample === 'Urine' ? 'selected' : '' %>>Urine</option>
         <option value="Blood" <%= test.results && test.results.sample === 'Blood' ? 'selected' : '' %>>Blood</option>
+        <option value="Blood" <%= test.results && test.results.sample === 'Blood' ? 'selected' : '' %>>Serum</option>
       </select>
     </div>
 
