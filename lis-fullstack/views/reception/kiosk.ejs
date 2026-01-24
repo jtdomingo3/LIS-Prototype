@@ -348,6 +348,39 @@
       color: var(--brand-orange);
     }
 
+    /* Next list grid (5 rows x 2 columns) */
+    .next-label {
+      font-size: 0.85rem;
+      color: var(--brand-green);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 700;
+    }
+
+    .next-list {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: repeat(5, auto);
+      gap: 8px;
+      max-width: 260px;
+      max-height: 220px;
+      overflow: hidden;
+      margin: 0 auto;
+    }
+
+    .next-item {
+      background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+      color: var(--brand-black);
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-weight: 800;
+      font-size: 1.05rem; /* slightly larger for readability */
+      text-align: center;
+      box-shadow: 0 6px 18px rgba(2,6,23,0.06);
+      font-variant-numeric: tabular-nums;
+    }
+
     /* Footer */
     .kiosk-footer {
       position: fixed;
@@ -562,13 +595,14 @@
             <% } else { %>
             <div class="patient-number empty" id="patient-<%= safeId %>">—</div>
             <% } %>
-            <% if (patients.length > 1) { %>
             <div class="next-patient" id="next-<%= safeId %>">
-              Next: <strong><%= patients[1].patientCode ? patients[1].patientCode.split('-').pop() : patients[1].testId %></strong>
+              <div class="next-label">Next</div>
+              <div class="next-list" id="nextlist-<%= safeId %>">
+                <% for (let i = 1; i < Math.min(patients.length, 11); i++) { %>
+                  <div class="next-item"><%= patients[i].patientCode ? patients[i].patientCode.split('-').pop() : patients[i].testId %></div>
+                <% } %>
+              </div>
             </div>
-            <% } else { %>
-            <div class="next-patient" id="next-<%= safeId %>" style="display:none;"></div>
-            <% } %>
           </div>
         </div>
       <% }); %>
@@ -1179,15 +1213,25 @@
             }
         }
 
-        // Update next patient
+        // Update next patients list (up to 10)
         const nextEl = document.getElementById('next-' + safeId);
-        if (nextEl) {
+        const nextListEl = document.getElementById('nextlist-' + safeId);
+        if (nextEl && nextListEl) {
           if (patients.length > 1) {
-            const nextCode = patients[1].patientCode || '';
-            nextEl.innerHTML = 'Next: <strong>' + (nextCode.includes('-') ? nextCode.split('-').pop() : nextCode) + '</strong>';
+            nextListEl.innerHTML = '';
+            const entries = patients.slice(1, 11);
+            entries.forEach(p => {
+              const code = p.patientCode || '';
+              const short = code.includes('-') ? code.split('-').pop() : code;
+              const div = document.createElement('div');
+              div.className = 'next-item';
+              div.textContent = short || '—';
+              nextListEl.appendChild(div);
+            });
             nextEl.style.display = 'block';
           } else {
             nextEl.style.display = 'none';
+            nextListEl.innerHTML = '';
           }
         }
 
