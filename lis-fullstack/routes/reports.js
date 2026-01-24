@@ -686,7 +686,33 @@ router.post('/worksheet/download', requireAuth, canAccessPatient, async (req, re
     }
 
     let testsRaw = await Test.find(q);
-    // Test.find returns an array for this file-based model; sort in-memory by testDate ascending
+    // Test.find returns an array for this file-based model; apply filters in-memory because model supports limited query keys
+    if (!allData) {
+      if (testType) {
+        const ttLower = String(testType).toLowerCase().trim();
+        testsRaw = (testsRaw || []).filter(t => {
+          const candidate = String(t.testType || t.template || '').toLowerCase().trim();
+          return candidate.includes(ttLower) || ttLower.includes(candidate);
+        });
+      }
+      if (dateFrom) {
+        const from = new Date(dateFrom);
+        testsRaw = (testsRaw || []).filter(t => {
+          const d = new Date(t.testDate || t.createdAt);
+          return d >= from;
+        });
+      }
+      if (dateTo) {
+        const end = new Date(dateTo);
+        end.setHours(23,59,59,999);
+        testsRaw = (testsRaw || []).filter(t => {
+          const d = new Date(t.testDate || t.createdAt);
+          return d <= end;
+        });
+      }
+    }
+
+    // sort in-memory by testDate ascending
     testsRaw = (testsRaw || []).sort((a, b) => new Date(a.testDate || a.createdAt) - new Date(b.testDate || b.createdAt));
 
     // collect rows and dynamic result keys
@@ -832,5 +858,68 @@ router.post('/worksheet/download', requireAuth, canAccessPatient, async (req, re
     console.error('Worksheet export error:', error);
     req.flash('error_msg', 'Error generating worksheet export');
     res.redirect('/reports');
+  }
+});
+
+// POST /reports/worksheet/preview - return a preview (JSON) of filtered rows (limited)
+router.post('/worksheet/preview', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const { testType, dateFrom, dateTo, allData, limit } = req.body || {};
+    const q = {};
+    // fetch all then filter in-memory (same logic as download)
+    let testsRaw = await Test.find(q);
+    if (!allData) {
+      if (testType) {
+        const ttLower = String(testType).toLowerCase();
+        testsRaw = (testsRaw || []).filter(t => {
+          const candidate = String(t.testType || t.template || '').toLowerCase();
+          return candidate === ttLower;
+        });
+      }
+      if (dateFrom) {
+        const from = new Date(dateFrom);
+        testsRaw = (testsRaw || []).filter(t => {
+          const d = new Date(t.testDate || t.createdAt);
+          return d >= from;
+        });
+      }
+      if (dateTo) {
+        const end = new Date(dateTo);
+        end.setHours(23,59,59,999);
+        testsRaw = (testsRaw || []).filter(t => {
+          const d = new Date(t.testDate || t.createdAt);
+          return d <= end;
+        });
+      }
+    }
+    testsRaw = (testsRaw || []).sort((a, b) => new Date(a.testDate || a.createdAt) - new Date(b.testDate || b.createdAt));
+
+    // build preview rows (minimal patient info + date/time + performedBy + results object)
+    const previewRows = [];
+    const resultKeys = new Set();
+    for (const t of testsRaw) {
+      const p = t.patient ? await Patient.findById(t.patient) : null;
+      const performedBy = t.performedBy ? await User.findById(t.performedBy) : null;
+      const resultsObj = (t.results && typeof t.results === 'object') ? t.results : (t.results ? { results: String(t.results) } : {});
+      Object.keys(resultsObj).forEach(k => resultKeys.add(k));
+      previewRows.push({
+        testId: t.testId || t.id || t._id || '',
+        testType: t.testType || t.template || '',
+        date: t.testDate ? new Date(t.testDate).toISOString().slice(0,10) : (t.createdAt ? new Date(t.createdAt).toISOString().slice(0,10) : ''),
+        time: t.testDate ? new Date(t.testDate).toISOString().slice(11,19) : '',
+        patientId: p ? (p.patientId || '') : '',
+        firstName: p ? (p.firstName || '') : '',
+        lastName: p ? (p.lastName || '') : '',
+        signatory: performedBy ? (performedBy.name || '') : (t.performedByName || ''),
+        resultsObj
+      });
+    }
+
+    const resultCols = Array.from(resultKeys);
+    const max = Math.min(1000, parseInt(limit || '200', 10) || 200);
+    return res.json({ count: previewRows.length, rows: previewRows.slice(0, max), resultCols });
+  } catch (err) {
+    console.error('Worksheet preview error:', err);
+    return res.status(500).json({ error: 'Error generating preview' });
   }
 });
