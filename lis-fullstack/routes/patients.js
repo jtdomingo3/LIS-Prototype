@@ -379,12 +379,51 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       const total = tests.reduce((s, t) => s + (Number((t && (t.amount || t.amount === 0) ? t.amount : 0) || 0)), 0);
 
       function makeTestLines() {
-        if (!tests.length) return [{ type: 'text', text: '• (No tests specified)' }];
-        return tests.map(t => {
-          const label = (t && (t.label || t.key)) || String(t || '');
-          const amt = (t && (t.amount || t.amount === 0)) ? Number(t.amount) : 0;
-          return { type: 'text', text: `- ${label}${amt ? (' - PHP ' + amt.toFixed(2)) : ''}` };
-        });
+        let lines = [];
+        const printedLabels = new Set();
+        // Print all tests first
+        if (tests.length) {
+          tests.forEach(t => {
+            const label = (t && (t.label || t.key)) || String(t || '');
+            const amt = (t && (t.amount || t.amount === 0)) ? Number(t.amount) : 0;
+            const remarks = t && t.remarks ? ` (${sanitizeText(t.remarks)})` : '';
+            const isSendOut = label.toLowerCase().includes('send out');
+            const isDoctorCheckup = label.toLowerCase().includes("doctor's check-up");
+            let line = `- ${label}`;
+            if (amt || isSendOut || isDoctorCheckup) {
+              line += ` - PHP ${amt.toFixed(2)}`;
+            }
+            if (remarks) {
+              line += remarks;
+            }
+            lines.push({ type: 'text', text: line });
+            printedLabels.add(label.toLowerCase());
+          });
+        }
+        // Always print Doctor's Check-up and Send Out from requiredAreas, avoid duplicates
+        if (Array.isArray(patient.requiredAreas)) {
+          patient.requiredAreas.forEach(area => {
+            const areaLabel = String(area);
+            const areaLabelLower = areaLabel.toLowerCase();
+            if ((areaLabelLower.includes("doctor's check-up") || areaLabelLower.includes('send out')) && !printedLabels.has(areaLabelLower)) {
+              // Try to get remarks and amount from req.body if available
+              let remarks = '';
+              let amt = 0;
+              if (req.body) {
+                const slug = areaLabelLower.replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
+                if (req.body['remarks_' + slug]) remarks = ` (${sanitizeText(req.body['remarks_' + slug])})`;
+                if (req.body['amount_' + slug]) amt = parseFloat(String(req.body['amount_' + slug]).replace(/,/g,'')) || 0;
+              }
+              let line = `- ${areaLabel}`;
+              if (amt) line += ` - PHP ${amt.toFixed(2)}`;
+              if (remarks) line += remarks;
+              lines.push({ type: 'text', text: line });
+              printedLabels.add(areaLabelLower);
+            }
+          });
+        }
+        if (!lines.length) return [{ type: 'text', text: '- (No tests specified)' }];
+        return lines;
       }
 
       // sanitize text to avoid characters that CP437 cannot encode (which appear as '?')
@@ -512,9 +551,9 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       copySpec.push({ type: 'text', text: sanitizeText('Name: ' + fullName) });
       copySpec.push({ type: 'text', text: sanitizeText('Age: ' + age) });
       copySpec.push({ type: 'feed', count: 1 });
-      copySpec.push({ type: 'text', text: sanitizeText('Laboratory Request:') });
+      copySpec.push({ type: 'text', size: 'small', text: sanitizeText('Laboratory Request:') });
       copySpec.push({ type: 'feed', count: 0 });
-      const sanitizedTestLines = makeTestLines().map(l => ({ type: 'text', text: sanitizeText(l.text) }));
+      const sanitizedTestLines = makeTestLines().map(l => ({ type: 'text', size: 'small', text: sanitizeText(l.text) }));
       copySpec.push.apply(copySpec, sanitizedTestLines);
       copySpec.push({ type: 'feed', count: 1 });
       copySpec.push({ type: 'text', text: sanitizeText('Amount: PHP ' + total.toFixed(2)) });
@@ -529,9 +568,10 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       copySpec.push({ type: 'text', align: 'center', size: 'normal', text: sanitizeText('until you are finished') });
       copySpec.push({ type: 'cut' });
 
-      // Two copies: duplicate copySpec with a spacer between copies to ensure clear separation
+      // TEMPORARY: Print only one thermal paper copy
       const spacer = [{ type: 'feed', count: 4 }];
       const spec = copySpec.concat(spacer, copySpec);
+      // const spec = copySpec; // Only one copy for now
 
       // Save a copy of the spec to workspace logs for inspection (helps trace unexpected content)
       try {
