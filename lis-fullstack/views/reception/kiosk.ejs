@@ -584,6 +584,24 @@
       body.is-tv .kiosk-footer { padding: 6px 10px; }
       body.is-tv .footer-controls .sound-btn, body.is-tv .footer-controls .control-btn { padding: 6px 10px; }
     }
+
+      /* Zoom handling: reduce header and overall kiosk scale when browser zoom is detected */
+      body.zoomed .kiosk-container {
+        transform: scale(0.96);
+        transform-origin: top center;
+        transition: transform 180ms ease;
+      }
+
+      body.zoomed .kiosk-header {
+        transform: scale(0.85);
+        transform-origin: center top;
+        padding: 10px 8px;
+      }
+
+      body.zoomed .kiosk-title { font-size: 2rem; }
+      body.zoomed .kiosk-subtitle { font-size: 0.95rem; }
+      body.zoomed .kiosk-time { font-size: 1.4rem; }
+      body.zoomed .kiosk-date { font-size: 0.85rem; }
   </style>
 </head>
 <body>
@@ -1417,6 +1435,31 @@
 
   // Setup TV-specific scaling if needed
   try { setupTVScaling(); } catch (e) { /* ignore */ }
+
+      // Monitor browser zoom and reduce header/overall scale when zoomed
+      try {
+        function getZoomLevel() {
+          try {
+            if (window.outerWidth && window.innerWidth) return window.outerWidth / window.innerWidth;
+            if (window.devicePixelRatio) return window.devicePixelRatio;
+          } catch (e) { }
+          return 1;
+        }
+
+        function checkZoom() {
+          try {
+            const z = getZoomLevel();
+            // Heuristic: treat >1.07 as zoomed-in
+            if (z > 1.07) document.body.classList.add('zoomed'); else document.body.classList.remove('zoomed');
+          } catch (e) { /* ignore */ }
+        }
+
+        checkZoom();
+        window.addEventListener('resize', () => setTimeout(checkZoom, 120));
+        window.addEventListener('orientationchange', () => setTimeout(checkZoom, 160));
+        // Poll occasionally for environments where outerWidth doesn't change
+        setInterval(checkZoom, 2000);
+      } catch (e) { /* ignore */ }
 
       // Restore fullscreen preference (user may have enabled before)
       try {
