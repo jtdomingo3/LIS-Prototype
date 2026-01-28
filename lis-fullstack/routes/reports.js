@@ -595,11 +595,11 @@ router.get('/print-multiple', requireAuth, canAccessPatient, async (req, res) =>
       return res.redirect('/reports');
     }
 
-    // Fetch tests and preserve order from ids
-    const found = await Test.find({ _id: { $in: ids } });
-    const foundById = {};
-    found.forEach(t => { foundById[String(t._id)] = t; });
-    const ordered = ids.map(id => foundById[id]).filter(Boolean).filter(t => t && (t.status === 'Completed' || t.status === 'Released'));
+    // Fetch tests by id in the provided order. The file-backed `Test` model
+    // does not support Mongo-style queries with $in, so fetch each id
+    // explicitly and preserve the requested order.
+    const fetched = await Promise.all(ids.map(id => Test.findById(id)));
+    const ordered = (fetched || []).filter(Boolean).filter(t => t && (t.status === 'Completed' || t.status === 'Released'));
 
     if (!ordered.length) {
       req.flash('error_msg', 'No printable tests found for provided ids');
