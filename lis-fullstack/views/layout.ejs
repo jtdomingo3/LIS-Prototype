@@ -754,9 +754,12 @@
                             <span id="notifBadge" style="display:inline-block;min-width:20px;height:20px;line-height:20px;padding:0 6px;border-radius:10px;background:var(--danger);color:white;font-size:0.85em;text-align:center;visibility:hidden;">0</span>
                         </button>
                         <div id="notifDropdown" style="position:absolute;right:0;top:36px;min-width:320px;background:var(--text-white);border:1px solid var(--border-gray);border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.12);display:none;z-index:999;padding:10px;">
-                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:12px;">
                                 <strong>Notifications</strong>
-                                <small style="color:var(--text-gray);font-size:0.85em;">Auto-refresh: <label style="cursor:pointer;display:inline-block;margin-left:6px;"><input id="notifAutoRefresh" type="checkbox" style="vertical-align:middle;"/> Enable</label></small>
+                                <div style="display:flex;align-items:center;gap:10px;">
+                                    <small style="color:var(--text-gray);font-size:0.85em;">Auto-refresh: <label style="cursor:pointer;display:inline-block;margin-left:6px;"><input id="notifAutoRefresh" type="checkbox" style="vertical-align:middle;"/> Enable</label></small>
+                                    <small style="color:var(--text-gray);font-size:0.85em;">Mute sound: <label style="cursor:pointer;display:inline-block;margin-left:6px;"><input id="notifMute" type="checkbox" style="vertical-align:middle;"/> </label></small>
+                                </div>
                             </div>
                             <div id="notifList" style="max-height:220px;overflow:auto;"></div>
                             <div style="text-align:right;margin-top:8px;"><button id="clearNotifs" class="button btn-small">Clear</button></div>
@@ -892,11 +895,13 @@
             const list = document.getElementById('notifList');
             const clearBtn = document.getElementById('clearNotifs');
             const autoRefreshCheckbox = document.getElementById('notifAutoRefresh');
+            const muteCheckbox = document.getElementById('notifMute');
 
             if (!badge || !btn || !dropdown) return;
 
-            // restore preference
+            // restore preferences
             try { if (localStorage.getItem('notif-auto-refresh') === '1') autoRefreshCheckbox.checked = true; } catch(e){}
+            try { if (localStorage.getItem('notif-muted') === '1') muteCheckbox.checked = true; } catch(e){}
 
             function showBadge(count){
                 try {
@@ -928,6 +933,7 @@
             clearBtn && clearBtn.addEventListener('click', function(){ setNotifs([]); renderList(); showBadge(0); });
 
             autoRefreshCheckbox && autoRefreshCheckbox.addEventListener('change', function(){ try { localStorage.setItem('notif-auto-refresh', this.checked ? '1' : '0'); } catch(e){} });
+            muteCheckbox && muteCheckbox.addEventListener('change', function(){ try { localStorage.setItem('notif-muted', this.checked ? '1' : '0'); } catch(e){} });
 
             // Initial render
             renderList(); showBadge(getNotifs().length);
@@ -977,8 +983,11 @@
                                 text = (data.action ? (data.action + ': ') : '') + (data.testId || JSON.stringify(data));
                             }
                             prependNotif(text);
-                            // play sound (best-effort)
-                            try { if (sound && typeof sound.play === 'function') { sound.currentTime = 0; sound.play().catch(()=>{}); } } catch(e){}
+                            // play sound (best-effort) unless muted
+                            try {
+                                const muted = (function(){ try { return localStorage.getItem('notif-muted') === '1'; } catch(e){ return false; } })();
+                                if (!muted && sound && typeof sound.play === 'function') { sound.currentTime = 0; sound.play().catch(()=>{}); }
+                            } catch(e){}
                             // auto-refresh across tabs if user enabled
                             try {
                                 const enabled = localStorage.getItem('notif-auto-refresh') === '1';
