@@ -85,6 +85,15 @@ async function printPatientReceipt(patient, testOrTests) {
         let line = `- ${label}`;
         if (amt) line += ` - PHP ${Number(amt).toFixed(2)}`;
         copySpec.push({ type: 'text', text: line });
+        // If this requested test has remarks, include them indented on the next line
+        try {
+          const rem = r && (r.remarks || r.remark || r.note || r.notes);
+          if (rem && String(rem).trim()) {
+            const sanitized = sanitizeText(String(rem).trim());
+            // Print remark text indented, but drop the literal "Remarks:" label
+            copySpec.push({ type: 'text', text: '  ' + sanitized });
+          }
+        } catch (e) {}
       });
     } else {
       copySpec.push({ type: 'text', text: '- (No tests specified)' });
@@ -162,6 +171,13 @@ async function printPatientReceipt(patient, testOrTests) {
         console.warn('Failed to run thermal debug preview:', e);
       }
     }
+
+    // When debug logging is requested, save the spec JSON to the print log so we have the exact payload
+    try {
+      if (process.env.PRINT_DEBUG_PRINT_PAYLOAD === '1') {
+        appendPrintLog(JSON.stringify({ action: 'print_spec_saved', specPath, spec: spec }));
+      }
+    } catch (e) {}
 
     const proc = spawnSync(process.execPath, args, { cwd: path.join(__dirname, '..'), encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 });
     // In debug mode keep the spec file and also append the spec JSON to the print log for inspection

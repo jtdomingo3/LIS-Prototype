@@ -43,6 +43,20 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
       });
     }
 
+    // Ensure For Send Out is added even when no selectedTests were provided
+    try {
+      const forSendOutAlways = req.body.forSendOut === '1' || req.body.forSendOut === 'on' || req.body.forSendOut === 'true';
+      if (forSendOutAlways) {
+        const exists = requestedTestsDetailed.some(r => String(r.label || r.key || '').toLowerCase() === 'for send out');
+        if (!exists) {
+          const amtRaw = req.body['amount_sendout'];
+          const amt = amtRaw ? parseFloat(String(amtRaw).replace(/,/g,'')) : 0;
+          const remark = req.body['remark_sendout'] || '';
+          requestedTestsDetailed.push({ key: 'For Send Out', label: 'For Send Out', amount: isNaN(amt) ? 0 : amt, lab: 'external', area: 'For Send Out', remarks: remark });
+        }
+      }
+    } catch (e) {}
+
     // Apply status filter
     if (statusFilter) {
       const sf = statusFilter.toString().toLowerCase();
@@ -245,6 +259,22 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       }
     }
 
+    // Also include any selected Doctor's Check-up requiredAreas as requested tests so they appear on receipts
+    try {
+      const requiredAreas = Array.isArray(req.body.requiredAreas) ? req.body.requiredAreas : (req.body.requiredAreas ? [req.body.requiredAreas] : []);
+      for (const ra of requiredAreas) {
+        if (!ra) continue;
+        const rstr = String(ra || '').trim();
+        if (/doctor/i.test(rstr) && /check/i.test(rstr)) {
+          // Normalize label to shorter form to keep it on one line when printed
+          const normalized = rstr.replace(/Doctor'?s\s*Check-?up/i, 'Doctor Check-up');
+          // Avoid duplicating if already present
+          const exists = requestedTestsDetailed.some(x => String(x.label || x.key || '').toLowerCase() === normalized.toLowerCase());
+          if (!exists) requestedTestsDetailed.push({ key: normalized, label: normalized, amount: 0, lab: 'clinical', area: 'Doctor', remarks: '' });
+        }
+      }
+    } catch (e) {}
+
     // Validate required fields: require patient and either a single testType or selectedTests
     const hasSelected = Array.isArray(selectedTests) && selectedTests.length > 0;
     if (!patient || (!testType && !hasSelected)) {
@@ -387,7 +417,10 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
 
     // If UI requested printing after assign, invoke print helper once for the patient with all created tests
     try {
-      const doPrint = req.body && (req.body.printAfterAssign === '1' || req.body.printAfterAssign === 'on' || req.body.printAfterAssign === 'true');
+      const requiredAreas = Array.isArray(req.body.requiredAreas) ? req.body.requiredAreas : (req.body.requiredAreas ? [req.body.requiredAreas] : []);
+      const doctorSelected = requiredAreas.some(r => String(r || '').toLowerCase().includes('doctor') && String(r || '').toLowerCase().includes('check'));
+      let doPrint = req.body && (req.body.printAfterAssign === '1' || req.body.printAfterAssign === 'on' || req.body.printAfterAssign === 'true');
+      if (doctorSelected) doPrint = true;
       if (doPrint) {
         const printHelper = require('../lib/printHelper');
         const patientObj = await Patient.findById(patient);
