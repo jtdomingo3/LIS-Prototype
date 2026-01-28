@@ -248,7 +248,14 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       if (/fecal|fecalysis|stool/.test(s)) return 'FA';
       if (/urinal|urine|urinalysis/.test(s)) return 'UA';
       if (/pregnan|pregnancy/.test(s)) return 'PT';
-      if (/blood|chemistry|hematology|pt|aptt|bun|crea|sgpt|sgot|lipid|hba1c|albumin|blood\s*sugar/.test(s)) return 'BC';
+      // Specific clinical tests -> unique prefixes
+      if (/blood\s*typing|blood-typing|bloodtyping/.test(s)) return 'BT';
+      if (/hematology|hemato|cbc/.test(s)) return 'HM';
+      if (/thyroid|thyroid\s*panel/.test(s)) return 'TH';
+      if (/\besr\b|erythrocyte/.test(s)) return 'ESR';
+      if (/dengue/.test(s)) return 'DG';
+      if (/(ct\s*&?\s*bt|ct\s*bt|ct\s*and\s*bt|bleeding|clotting)/.test(s)) return 'CTBT';
+      if (/blood|chemistry|pt|aptt|bun|crea|sgpt|sgot|lipid|hba1c|albumin|blood\s*sugar|chemistry/.test(s)) return 'BC';
       return 'T';
     };
 
@@ -259,7 +266,8 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
         const next = (counters[prefix] || 0) + 1;
         counters[prefix] = next;
         global.db.saveCounters(counters);
-        return prefix + String(next).padStart(4, '0');
+        // increase width to accommodate more test ids (add 3 digits)
+        return prefix + String(next).padStart(7, '0');
       } catch (e) {
         // fallback to timestamp-based id
         return prefix + Date.now();
