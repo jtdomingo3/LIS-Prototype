@@ -746,9 +746,29 @@
                     <button id="sidebarToggle" class="hamburger" aria-label="Toggle menu">☰</button>
                     <h1><%= title %></h1>
                 </div>
-                <div class="user-info">
-                    <p>Welcome, <%= user.name %></p>
-                    <p><%= new Date().toLocaleTimeString() %></p>
+                <div style="display:flex; align-items:center; gap:14px;">
+                    <div id="notificationWidget" style="position:relative;">
+                        <button id="notifBtn" title="Notifications" style="background:transparent;border:none;padding:0 6px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+                            <i class="fa fa-bell" style="color:#f3c623;font-size:1.25em;"></i>
+                            <span id="notifConn" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ef4444;box-shadow:0 0 4px rgba(0,0,0,0.15);" title="Disconnected"></span>
+                            <span id="notifBadge" style="display:inline-block;min-width:20px;height:20px;line-height:20px;padding:0 6px;border-radius:10px;background:var(--danger);color:white;font-size:0.85em;text-align:center;visibility:hidden;">0</span>
+                        </button>
+                        <div id="notifDropdown" style="position:absolute;right:0;top:36px;min-width:320px;background:var(--text-white);border:1px solid var(--border-gray);border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.12);display:none;z-index:999;padding:10px;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                                <strong>Notifications</strong>
+                                <small style="color:var(--text-gray);font-size:0.85em;">Auto-refresh: <label style="cursor:pointer;display:inline-block;margin-left:6px;"><input id="notifAutoRefresh" type="checkbox" style="vertical-align:middle;"/> Enable</label></small>
+                            </div>
+                            <div id="notifList" style="max-height:220px;overflow:auto;"></div>
+                            <div style="text-align:right;margin-top:8px;"><button id="clearNotifs" class="button btn-small">Clear</button></div>
+                        </div>
+                    </div>
+                    <audio id="notifSound" preload="auto">
+                        <source src="/assets/new-notification.mp3" type="audio/mpeg">
+                    </audio>
+                    <div class="user-info">
+                        <p>Welcome, <%= user.name %></p>
+                        <p><span id="currentDate"><%= new Date().toLocaleDateString() %></span>&nbsp;<span id="currentTime"><%= new Date().toLocaleTimeString() %></span></p>
+                    </div>
                 </div>
             </div>
 
@@ -772,13 +792,13 @@
     <div id="sidebarBackdrop" class="sidebar-backdrop" tabindex="-1"></div>
 
     <script>
-        // Update time every second
+        // Update date and time every second
         function updateTime() {
             const now = new Date();
-            const timeElements = document.querySelectorAll('.user-info p:last-child');
-            timeElements.forEach(el => {
-                el.textContent = now.toLocaleTimeString();
-            });
+            const timeEl = document.getElementById('currentTime');
+            const dateEl = document.getElementById('currentDate');
+            if (timeEl) timeEl.textContent = now.toLocaleTimeString();
+            if (dateEl) dateEl.textContent = now.toLocaleDateString();
         }
         setInterval(updateTime, 1000);
 
@@ -861,6 +881,120 @@
                     sidebar.classList.remove('collapsed');
                 }
             });
+        })();
+
+        // ===== Global SSE Notifications =====
+        (function(){
+            const sound = document.getElementById('notifSound');
+            const badge = document.getElementById('notifBadge');
+            const btn = document.getElementById('notifBtn');
+            const dropdown = document.getElementById('notifDropdown');
+            const list = document.getElementById('notifList');
+            const clearBtn = document.getElementById('clearNotifs');
+            const autoRefreshCheckbox = document.getElementById('notifAutoRefresh');
+
+            if (!badge || !btn || !dropdown) return;
+
+            // restore preference
+            try { if (localStorage.getItem('notif-auto-refresh') === '1') autoRefreshCheckbox.checked = true; } catch(e){}
+
+            function showBadge(count){
+                try {
+                    if (!count || count <= 0) { badge.style.visibility = 'hidden'; badge.textContent = '0'; }
+                    else { badge.style.visibility = 'visible'; badge.textContent = String(count); }
+                } catch(e){}
+            }
+
+            // notifications stored in sessionStorage for this tab
+            function getNotifs(){ try { return JSON.parse(sessionStorage.getItem('notifs') || '[]'); } catch(e){ return []; } }
+            function setNotifs(n){ try { sessionStorage.setItem('notifs', JSON.stringify(n || [])); } catch(e){} }
+
+            function prependNotif(txt){
+                const n = getNotifs();
+                n.unshift({ text: txt, time: new Date().toISOString() });
+                setNotifs(n.slice(0,50));
+                renderList();
+                showBadge(n.length);
+            }
+
+            function renderList(){
+                const n = getNotifs();
+                list.innerHTML = n.map(it => `<div style="padding:8px;border-bottom:1px solid var(--border-gray);font-size:0.9em;"><div style="font-weight:600">${escapeHtml(it.text)}</div><div style="color:var(--text-gray);font-size:0.8em;margin-top:6px">${new Date(it.time).toLocaleString()}</div></div>`).join('') || '<div style="color:var(--text-gray);padding:8px">No notifications</div>';
+            }
+
+            function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+            btn.addEventListener('click', function(e){ e.preventDefault(); dropdown.style.display = (dropdown.style.display === 'block') ? 'none' : 'block'; renderList(); });
+            clearBtn && clearBtn.addEventListener('click', function(){ setNotifs([]); renderList(); showBadge(0); });
+
+            autoRefreshCheckbox && autoRefreshCheckbox.addEventListener('change', function(){ try { localStorage.setItem('notif-auto-refresh', this.checked ? '1' : '0'); } catch(e){} });
+
+            // Initial render
+            renderList(); showBadge(getNotifs().length);
+
+            // SSE connection
+            let es = null;
+            const connEl = document.getElementById('notifConn');
+            function setConn(status){ try { if (connEl) { connEl.style.background = status ? '#10b981' : '#ef4444'; connEl.title = status ? 'Connected' : 'Disconnected'; } } catch(e){} }
+            function indicateConnecting(){ try { if (connEl) { connEl.style.background = '#f59e0b'; connEl.title = 'Connecting...'; } } catch(e){} }
+
+            // initialize as disconnected until EventSource opens
+            setConn(false);
+
+            function connect(){
+                try {
+                    indicateConnecting();
+                    const url = '/reception/assigned-events';
+                    es = new EventSource(url);
+                    es.onopen = function(){ console.log('[SSE] connected'); setConn(true); };
+                    es.onmessage = function(ev){
+                        try {
+                            const data = ev.data ? JSON.parse(ev.data) : null;
+                            if (!data) return;
+                            // ignore handshake/init messages
+                            if (data.init && data.serverTime) return;
+                            let text = '';
+                            if (data.message) {
+                                text = data.message;
+                            } else if (data.action === 'patient_created') {
+                                text = `New patient added: ${data.patientName || ''}`;
+                                if (data.patientIdLabel) text += ` (ID: ${data.patientIdLabel})`;
+                                else if (data.patientCode) text += ` (Code: ${data.patientCode})`;
+                            } else if (data.action === 'assigned') {
+                                if (Array.isArray(data.tests) && data.tests.length) {
+                                    const ids = data.tests.map(t => t.testId || t.id || '').filter(Boolean).join(', ');
+                                    text = `Assigned tests: ${ids}`;
+                                } else {
+                                    text = `Assigned: ${data.testId || ''}`;
+                                }
+                            } else if (data.action === 'complete') {
+                                text = `Test completed: ${data.testId || ''}`;
+                            } else if (data.action === 'advert') {
+                                text = `Kiosk advertisement updated: ${data.ad || ''}`;
+                            } else if (data.action === 'debug') {
+                                text = data.message || data.msg || 'Debug event';
+                            } else {
+                                text = (data.action ? (data.action + ': ') : '') + (data.testId || JSON.stringify(data));
+                            }
+                            prependNotif(text);
+                            // play sound (best-effort)
+                            try { if (sound && typeof sound.play === 'function') { sound.currentTime = 0; sound.play().catch(()=>{}); } } catch(e){}
+                            // auto-refresh across tabs if user enabled
+                            try {
+                                const enabled = localStorage.getItem('notif-auto-refresh') === '1';
+                                if (enabled) {
+                                    // use a short timeout so UI updates render before reload
+                                    setTimeout(() => { window.location.reload(); }, 600);
+                                }
+                            } catch(e){}
+                        } catch (e) { console.warn('[SSE] message parse error', e); }
+                    };
+                    es.onerror = function(err){ console.warn('[SSE] error, will attempt reconnect', err); try { es.close(); } catch(e){}; es = null; setConn(false); setTimeout(connect, 3000); };
+                } catch (e) { console.warn('[SSE] connect failed', e); setTimeout(connect, 5000); }
+            }
+
+            // Start connection if EventSource supported
+            if ('EventSource' in window) connect();
         })();
 
         // Attempt to enter fullscreen when ?fullscreen=1 is present (best-effort).

@@ -8,6 +8,7 @@ const fs = require('fs');
 const pathMod = require('path');
 const Jimp = require('jimp');
 const bwipjs = require('bwip-js');
+const sseEmitter = require('../lib/sseEmitter');
 
 // Print logging helper
 const PRINT_LOG_PATH = pathMod.join(__dirname, '..', 'logs', 'print.log');
@@ -341,6 +342,12 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
     });
 
     await patient.save();
+
+    // Emit SSE update so all connected clients receive a notification
+    try {
+      const msg = `New patient added: ${patient.firstName} ${patient.middleName ? (patient.middleName + ' ') : ''}${patient.lastName}` + (patient.patientId ? ` (ID: ${patient.patientId})` : '');
+      sseEmitter.emit('update', { action: 'patient_created', patientId: patient.id, patientName: `${patient.firstName} ${patient.lastName}`, patientCode: patient.patientCode || null, patientIdLabel: patient.patientId || null, time: (new Date()).toISOString(), message: msg });
+    } catch (e) { console.warn('SSE emit failed for patient_created', e); }
 
     // Patient saved — tests will be assigned from patient management. Printing is manual.
     req.flash('success_msg', `Patient ${firstName} ${middleName ? middleName + ' ' : ''}${lastName} added successfully!`);
