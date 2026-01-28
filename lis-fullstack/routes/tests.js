@@ -391,19 +391,17 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       if (doPrint) {
         const printHelper = require('../lib/printHelper');
         const patientObj = await Patient.findById(patient);
-        const result = await printHelper.printPatientReceipt(patientObj, createdTests);
-        if (result && result.success) {
-          req.flash('success_msg', `Tests created and receipt printed`);
-        } else {
-          console.warn('Print after assign failed', result && result.error);
-          req.flash('warning_msg', `Tests created but printing failed`);
-        }
-        return res.redirect('/patients');
+        // Fire-and-forget printing so HTTP response/redirect is not blocked by printer transport
+        printHelper.printPatientReceipt(patientObj, createdTests)
+          .then(result => {
+            if (result && result.success) console.log('Background print succeeded for patient', patient);
+            else console.warn('Background print failed for patient', patient, result && result.error);
+          })
+          .catch(err => console.warn('Background print error', err));
       }
     } catch (e) {
       console.error('Print after assign error:', e);
       req.flash('warning_msg', `Tests created but printing error occurred`);
-      return res.redirect('/patients');
     }
 
     req.flash('success_msg', `Tests created successfully!`);

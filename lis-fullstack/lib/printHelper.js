@@ -103,15 +103,26 @@ async function printPatientReceipt(patient, testOrTests) {
     copySpec.push({ type: 'text', align: 'center', size: 'normal', text: sanitizeText('Please keep this ticket') });
     copySpec.push({ type: 'text', align: 'center', size: 'normal', text: sanitizeText('until you are finished') });
 
-    // Optional: append generated barcode raster centered below the code/logo (before cut)
+    // Optional: append generated barcode (prefer raster; fallback to native ESC/POS barcode command)
     try {
       const code = sanitizeText(patientObj.patientCode || patientObj.patientId || '');
       if (code) {
         const barcodeHex = await barcodeToEscPosHex(code);
-        if (barcodeHex) {
+        const useNative = process.env.PRINT_USE_NATIVE_BARCODE === '1';
+        // If raster barcode available and native not explicitly requested, include raster
+        if (barcodeHex && !useNative) {
           copySpec.push({ type: 'feed', count: 1 });
           copySpec.push({ type: 'raw', hex: barcodeHex });
           copySpec.push({ type: 'feed', count: 1 });
+        } else {
+          // fallback / native path
+          const nativeHex = nativeEscPosBarcodeHex(code, { width: 3, height: 80, hri: 0 });
+          if (nativeHex) {
+            copySpec.push({ type: 'feed', count: 1 });
+            copySpec.push({ type: 'raw', hex: nativeHex });
+            copySpec.push({ type: 'feed', count: 1 });
+            try { appendPrintLog(JSON.stringify({ action: 'barcode_fallback_native', patientCode: code })); } catch (e) {}
+          }
         }
       }
     } catch (e) {}
@@ -226,11 +237,12 @@ async function rasterImageToEscPosHex(imagePath) {
 
 async function barcodeToEscPosHex(text) {
   try {
-    const png = await bwipjs.toBuffer({ bcid: 'code128', text: text, scale: 2, height: 10, includetext: false });
+    // Use stronger barcode rendering settings (scale 3, taller height) for better scanner readability
+    const png = await bwipjs.toBuffer({ bcid: 'code128', text: text, scale: 3, height: 40, includetext: false, backgroundcolor: 'FFFFFF' });
     // load into Jimp to prepare raster
     const img = await Jimp.read(png);
-    // scale to printer width if needed
-    const maxWidth = 384;
+    // scale to a slightly narrower target to leave margins
+    const maxWidth = 320;
     if (img.bitmap.width > maxWidth) img.resize(maxWidth, Jimp.AUTO);
     img.greyscale();
 
@@ -256,6 +268,35 @@ async function barcodeToEscPosHex(text) {
     const yH = (height >> 8) & 0xff;
     const header = Buffer.from([0x1d, 0x76, 0x30, 0x00, xL, xH, yL, yH]);
     const out = Buffer.concat([header, rasterData]);
+    return out.toString('hex');
+  } catch (e) {
+    return null;
+  }
+}
+
+// Build a native ESC/POS barcode command sequence (Code128)
+function nativeEscPosBarcodeHex(text, options) {
+  try {
+    const t = String(text || '');
+    const bufArr = [];
+    // Set barcode module width (GS w n) - default 3
+    const moduleWidth = (options && options.width) ? Number(options.width) : 3;
+    bufArr.push(Buffer.from([0x1d, 0x77, moduleWidth & 0xff]));
+    // Set barcode height (GS h n)
+    const height = (options && options.height) ? Number(options.height) : 80;
+    bufArr.push(Buffer.from([0x1d, 0x68, height & 0xff]));
+    // HRI (human readable) position: 0 = not printed
+    const hri = (options && options.hri) ? options.hri : 0;
+    bufArr.push(Buffer.from([0x1d, 0x48, hri & 0xff]));
+
+    // GS k m n d... : m=73 (0x49) for CODE128 on many printers
+    const dataBuf = Buffer.from(t, 'ascii');
+    const m = 0x49;
+    const n = dataBuf.length & 0xff;
+    bufArr.push(Buffer.from([0x1d, 0x6b, m, n]));
+    bufArr.push(dataBuf);
+
+    const out = Buffer.concat(bufArr);
     return out.toString('hex');
   } catch (e) {
     return null;
