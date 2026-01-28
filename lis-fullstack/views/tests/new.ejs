@@ -58,12 +58,20 @@
 
     <!-- Test Date and Priority removed — defaults will be applied by server -->
 
-    <div class="form-row">
-      <a href="/tests" class="button btn-secondary">Back to Tests</a>
-      <label style="display:inline-flex; align-items:center; gap:8px; margin-right:12px;">
-        <input type="checkbox" name="printAfterAssign" value="1"> Print receipt after assign
-      </label>
-      <button class="button btn-primary">Create Test</button>
+    <div class="form-row" style="display:flex; gap:12px; align-items:center; flex-wrap:nowrap; justify-content:flex-start;">
+      <div style="display:flex; gap:12px; align-items:center;">
+        <a href="/tests" class="button btn-secondary" style="white-space:nowrap;">Back to Tests</a>
+      </div>
+
+      <div style="flex:0 0 auto; margin-left:8px;">
+        <button class="button btn-primary" style="white-space:nowrap;">Create Test</button>
+      </div>
+
+      <div style="display:flex; gap:8px; align-items:center; margin-left:8px;">
+        <label style="display:inline-flex; align-items:center; gap:8px; white-space:nowrap;">
+          <input type="checkbox" name="printAfterAssign" value="1"> Print receipt after assign
+        </label>
+      </div>
     </div>
   </form>
 </div>
