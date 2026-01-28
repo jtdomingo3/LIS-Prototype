@@ -344,7 +344,8 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
 
     // Patient saved — tests will be assigned from patient management. Printing is manual.
     req.flash('success_msg', `Patient ${firstName} ${middleName ? middleName + ' ' : ''}${lastName} added successfully!`);
-    res.redirect('/patients');
+    // Stay on the new patient form so users can continue adding patients
+    res.redirect('/patients/new');
 
   } catch (error) {
     console.error('Create patient error:', error);
