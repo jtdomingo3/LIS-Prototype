@@ -25,6 +25,8 @@ class Test {
     this.requestedTests = Array.isArray(data.requestedTests) ? data.requestedTests : (data.requestedTests || []);
     // Flag indicating all requested tests are awaiting-only (no routing)
     this.awaitingOnly = !!data.awaitingOnly;
+    // statusHistory: array of { from, to, user, area, timestamp }
+    this.statusHistory = Array.isArray(data.statusHistory) ? data.statusHistory : (data.statusHistory || []);
   }
 
   // Save to database
@@ -35,13 +37,39 @@ class Test {
     }
     const tests = global.db.getTests();
     const index = tests.findIndex(t => t.id === this.id);
-    if (index >= 0) {
-      tests[index] = this;
-    } else {
+    // Ensure initial statusHistory entry exists for new records
+    if (index < 0) {
+      if (!Array.isArray(this.statusHistory) || this.statusHistory.length === 0) {
+        this.statusHistory = [{ from: null, to: this.status || null, user: null, area: this.status || null, timestamp: (new Date()).toISOString() }];
+      }
       tests.push(this);
+    } else {
+      // If updating, ensure we don't duplicate history entries — only add if last entry differs
+      const prev = tests[index];
+      const last = Array.isArray(this.statusHistory) && this.statusHistory.length ? this.statusHistory[this.statusHistory.length - 1] : null;
+      const prevStatus = prev && prev.status ? prev.status : null;
+      if (prevStatus !== this.status) {
+        // Only append if last recorded 'to' is different
+        if (!last || last.to !== this.status) {
+          const entry = { from: prevStatus, to: this.status, user: null, area: this.status, timestamp: (new Date()).toISOString() };
+          this.statusHistory = Array.isArray(this.statusHistory) ? this.statusHistory : [];
+          this.statusHistory.push(entry);
+        }
+      }
+      tests[index] = this;
     }
     global.db.saveTests(tests);
     return this;
+  }
+
+  // Add a status history entry with optional user/area and do not save automatically
+  addStatusEntry(entry) {
+    try {
+      this.statusHistory = Array.isArray(this.statusHistory) ? this.statusHistory : [];
+      const e = Object.assign({}, entry || {});
+      if (!e.timestamp) e.timestamp = (new Date()).toISOString();
+      this.statusHistory.push(e);
+    } catch (e) {}
   }
 
   // Convert to JSON

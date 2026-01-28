@@ -4,6 +4,7 @@ const Test = require('../models/Test');
 const Patient = require('../models/Patient');
 const User = require('../models/User');
 const { requireAuth, canAccessPatient } = require('../middleware/auth');
+const sseEmitter = require('../lib/sseEmitter');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
@@ -159,9 +160,11 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
     // ignore static templates on error
   }
 
+    const test = {};
+    test.patient = req.query.patient || '';
     res.render('tests/new', {
       title: 'Create New Test',
-      test: {},
+      test,
       patients,
       templates
     });
@@ -176,9 +179,50 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
 router.post('/', requireAuth, canAccessPatient, async (req, res) => {
   try {
     const { patient, testType, testDate, status, results, notes, priority } = req.body;
+    // normalize selected tests (from checkbox grid)
+    const selectedTests = Array.isArray(req.body.selectedTests) ? req.body.selectedTests : (req.body.selectedTests ? [req.body.selectedTests] : []);
 
-    // Validate required fields
-    if (!patient || !testType || !testDate) {
+    // Build detailed requestedTests if selectedTests provided
+    let requestedTestsDetailed = [];
+    let awaitingOnly = false;
+    if (selectedTests.length) {
+      const mapTestToArea = (testLabel) => {
+        const s = String(testLabel || '').toLowerCase();
+        if (!s) return null;
+        if (s.includes('fecal') || s.includes('pregnancy') || s.includes('urinalysis')) return null;
+        if (s.includes('echocardiography') || s.includes('2d echo') || s.includes('2d')) return '2D Echo';
+        if (s.includes('drugtest') || s.includes('drug test')) return 'Drug Test';
+        if (s.includes('ecg')) return 'ECG';
+        if (s.includes('ultrasound')) return 'Ultrasound';
+        if (s.includes('xray') || s.includes('x-ray')) return 'X-ray';
+        if (s.includes('blood') || s.includes('chemistry') || s.includes('hematology') || s.includes('serology') || s.includes('pt') || s.includes('aptt')) return 'Extraction Area';
+        return null;
+      };
+      const mappedAreas = new Set();
+      for (const t of selectedTests) {
+        const raw = String(t || '');
+        const slug = raw.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
+        const amtRaw = req.body['amount_' + slug];
+        const amt = amtRaw ? parseFloat(String(amtRaw).replace(/,/g,'')) : 0;
+        const remark = req.body['remark_' + slug] || '';
+        const area = mapTestToArea(raw);
+        if (area) mappedAreas.add(area);
+        requestedTestsDetailed.push({ key: raw, label: raw, amount: isNaN(amt) ? 0 : amt, lab: (area === 'X-ray') ? 'xray' : 'clinical', area: area || null, remarks: remark });
+      }
+      awaitingOnly = selectedTests.length > 0 && mappedAreas.size === 0;
+      // Add For Send Out if present
+      const forSendOut = req.body.forSendOut === '1' || req.body.forSendOut === 'on' || req.body.forSendOut === 'true';
+      if (forSendOut) {
+        const amtRaw = req.body['amount_sendout'];
+        const amt = amtRaw ? parseFloat(String(amtRaw).replace(/,/g,'')) : 0;
+        const remark = req.body['remark_sendout'] || '';
+        requestedTestsDetailed.push({ key: 'For Send Out', label: 'For Send Out', amount: isNaN(amt) ? 0 : amt, lab: 'external', area: 'For Send Out', remarks: remark });
+      }
+    }
+
+    // Validate required fields: require patient and either a single testType or selectedTests
+    const hasSelected = Array.isArray(selectedTests) && selectedTests.length > 0;
+    if (!patient || (!testType && !hasSelected)) {
       req.flash('error_msg', 'Please fill all required fields');
       let patients = await Patient.find({});
       if (Array.isArray(patients)) patients.sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
@@ -192,39 +236,145 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       });
     }
 
-    // Generate test ID (file DB compatible)
-    const allTestsForId = await Test.find({});
-    let testId = 'T001';
-    if (allTestsForId && allTestsForId.length) {
-      const maxNum = allTestsForId.reduce((max, t) => {
-        const n = parseInt((t.testId || 'T0').substring(1)) || 0;
-        return Math.max(max, n);
-      }, 0);
-      testId = 'T' + String(maxNum + 1).padStart(3, '0');
+    // Helper: determine prefix from label
+    const getPrefixForLabel = (label) => {
+      const s = String(label || '').toLowerCase();
+      if (/drug/.test(s)) return 'DT';
+      if (/\becg\b|electrocardio|electrocardiogram/.test(s)) return 'ECG';
+      if (/x[-\s]?ray|radiograph/.test(s)) return 'XR';
+      if (/ultrasound|ultra[-\s]?sound/.test(s)) return 'US';
+      if (/echo|echocardiograph|echocardiography|2d\s*echo/.test(s)) return 'ECHO';
+      if (/serol|serology/.test(s)) return 'SR';
+      if (/fecal|fecalysis|stool/.test(s)) return 'FA';
+      if (/urinal|urine|urinalysis/.test(s)) return 'UA';
+      if (/pregnan|pregnancy/.test(s)) return 'PT';
+      if (/blood|chemistry|hematology|pt|aptt|bun|crea|sgpt|sgot|lipid|hba1c|albumin|blood\s*sugar/.test(s)) return 'BC';
+      return 'T';
+    };
+
+    // Helper: get next counter and persist
+    const getNextTestId = (prefix) => {
+      try {
+        const counters = global.db.getCounters() || {};
+        const next = (counters[prefix] || 0) + 1;
+        counters[prefix] = next;
+        global.db.saveCounters(counters);
+        return prefix + String(next).padStart(4, '0');
+      } catch (e) {
+        // fallback to timestamp-based id
+        return prefix + Date.now();
+      }
+    };
+
+    const createdTests = [];
+
+    // Group blood chemistry variants into single 'Blood Chemistry' test when multiple selected
+    if (requestedTestsDetailed && requestedTestsDetailed.length) {
+      const copyRequested = requestedTestsDetailed.slice();
+      // Treat specific requested items as Blood Chemistry only when they match chemistry-related keywords
+      // but explicitly exclude 'typing' (e.g., 'Blood Typing') which is a separate serology/hematology test.
+      const isBloodChem = r => {
+        const s = String(r.key || r.label || '').toLowerCase();
+        if (!s) return false;
+        if (s.includes('typing')) return false; // exclude Blood Typing
+        return /chemistry|bun|crea|sgpt|sgot|lipid|hba1c|albumin|blood\s*sugar|blood\s*chemistry/.test(s);
+      };
+      const bloodItems = copyRequested.filter(isBloodChem);
+      if (bloodItems.length > 1) {
+        const prefix = getPrefixForLabel('Blood Chemistry');
+        const tid = getNextTestId(prefix);
+        const payload = {
+          testId: tid,
+          patient,
+          testType: 'Blood Chemistry',
+          testDate: (new Date()).toISOString(),
+          status: 'Payment Area',
+          priority: (priority && String(priority).trim()) ? priority : 'Normal',
+          requestedBy: req.session.user.id,
+          requestedTests: bloodItems,
+          awaitingOnly: awaitingOnly
+        };
+        const t = new Test(payload);
+        await t.save();
+        createdTests.push(t);
+        // remove blood items from further processing
+        for (const b of bloodItems) {
+          const idx = copyRequested.findIndex(x => x.key === b.key && x.label === b.label);
+          if (idx >= 0) copyRequested.splice(idx, 1);
+        }
+      }
+
+      // Create individual tests for remaining requested items
+      for (const rt of copyRequested) {
+        const prefix = getPrefixForLabel(rt.label || rt.key || 'T');
+        const tid = getNextTestId(prefix);
+        const payload = {
+          testId: tid,
+          patient,
+          testType: rt.label || rt.key || 'Test',
+          testDate: (new Date()).toISOString(),
+          status: 'Payment Area',
+          priority: (priority && String(priority).trim()) ? priority : 'Normal',
+          requestedBy: req.session.user.id,
+          requestedTests: [rt],
+          awaitingOnly: awaitingOnly
+        };
+        const t = new Test(payload);
+        await t.save();
+        createdTests.push(t);
+      }
+    } else {
+      // Single testType path
+      const prefix = getPrefixForLabel(testType || 'T');
+      const tid = getNextTestId(prefix);
+      const payload = {
+        testId: tid,
+        patient,
+        testType: testType || 'Registration',
+        testDate: (new Date()).toISOString(),
+        status: 'Payment Area',
+        results,
+        notes,
+        priority: (priority && String(priority).trim()) ? priority : 'Normal',
+        requestedBy: req.session.user.id
+      };
+      if (requestedTestsDetailed.length) {
+        payload.requestedTests = requestedTestsDetailed;
+        payload.awaitingOnly = awaitingOnly;
+      }
+      const t = new Test(payload);
+      await t.save();
+      createdTests.push(t);
     }
 
-    // Ensure uniqueness if collision
-    while ((await Test.findOne({ testId })) !== null) {
-      const id = parseInt(testId.substring(1)) + 1;
-      testId = 'T' + String(id).padStart(3, '0');
+    // Emit SSE update so reception/kiosk updates
+    try {
+      sseEmitter.emit('update', { action: 'assigned', patientId: patient, tests: createdTests.map(ct => ({ testId: ct.testId, id: ct.id, testType: ct.testType })), time: (new Date()).toISOString() });
+    } catch (e) { console.warn('SSE emit failed', e); }
+
+    // If UI requested printing after assign, invoke print helper once for the patient with all created tests
+    try {
+      const doPrint = req.body && (req.body.printAfterAssign === '1' || req.body.printAfterAssign === 'on' || req.body.printAfterAssign === 'true');
+      if (doPrint) {
+        const printHelper = require('../lib/printHelper');
+        const patientObj = await Patient.findById(patient);
+        const result = await printHelper.printPatientReceipt(patientObj, createdTests);
+        if (result && result.success) {
+          req.flash('success_msg', `Tests created and receipt printed`);
+        } else {
+          console.warn('Print after assign failed', result && result.error);
+          req.flash('warning_msg', `Tests created but printing failed`);
+        }
+        return res.redirect('/patients');
+      }
+    } catch (e) {
+      console.error('Print after assign error:', e);
+      req.flash('warning_msg', `Tests created but printing error occurred`);
+      return res.redirect('/patients');
     }
 
-    const test = new Test({
-      testId,
-      patient,
-      testType,
-      testDate,
-      status: status || 'Pending',
-      results,
-      notes,
-      priority: priority || 'Normal',
-      requestedBy: req.session.user.id
-    });
-
-    await test.save();
-
-    req.flash('success_msg', `${testType} test created successfully!`);
-    res.redirect('/tests');
+    req.flash('success_msg', `Tests created successfully!`);
+    return res.redirect('/patients');
 
     } catch (error) {
     console.error('Create test error:', error);

@@ -77,9 +77,8 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
         })
       : [];
 
-    // Only count tests that have an encoded patient (patient exists and has patientCode)
-    // Use mapAreaForTest to decide which reception area a test should appear in
-    const counts = AREAS.map(a => ({ name: a, count: 0 }));
+    // Count unique patients per area (deduplicate by patientCode) so dashboard shows patient counts
+    const counts = AREAS.map(a => ({ name: a, count: 0, _seen: new Set() }));
     if (Array.isArray(allTests)) {
       for (const t of allTests) {
         const areaForTest = mapAreaForTest(t);
@@ -88,8 +87,13 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
         const patient = await Patient.findById(t.patient);
         if (!patient || !patient.patientCode) continue;
         const idx = counts.findIndex(c => c.name === areaForTest);
-        if (idx >= 0) counts[idx].count++;
+        if (idx >= 0) counts[idx]._seen.add(String(patient.patientCode));
       }
+    }
+    // finalize counts and remove internal sets
+    for (const c of counts) {
+      c.count = c._seen.size || 0;
+      delete c._seen;
     }
 
     res.render('reception/index', {
@@ -352,6 +356,44 @@ router.get('/area/:name', requireAuth, canAccessPatient, async (req, res) => {
       };
     }));
 
+    // If this is the Payment Area, aggregate tests by patient so we only show one row per patient.
+    let aggregated = null;
+    if (areaName === 'Payment Area') {
+      const byPatient = {};
+      for (const t of populated) {
+        if (!t.patient || !t.patient.id) continue;
+        const pid = t.patient.id;
+        if (!byPatient[pid]) byPatient[pid] = { patient: t.patient, patientEncoded: t.patientEncoded, tests: [], firstDate: t.testDate || t.createdAt };
+        byPatient[pid].tests.push(t);
+        // keep earliest date for display
+        try {
+          const cur = new Date(byPatient[pid].firstDate || 0).getTime();
+          const cand = new Date(t.testDate || t.createdAt || 0).getTime();
+          if (cand < cur) byPatient[pid].firstDate = t.testDate || t.createdAt;
+        } catch (e) {}
+      }
+      // convert to array with aggregated amounts
+      aggregated = Object.keys(byPatient).map(pid => {
+        const item = byPatient[pid];
+        // compute clinical/xray totals and list of testIds
+        let clinicalTotal = 0, xrayTotal = 0;
+        const testIds = [];
+        const testTypes = [];
+        for (const tt of item.tests) {
+          testIds.push(tt.testId || tt.testId);
+          testTypes.push(tt.testType || 'Test');
+          try {
+            const rlist = Array.isArray(tt.requestedTests) ? tt.requestedTests : [];
+            for (const r of rlist) {
+              const a = Number(r && (r.amount || r.amount === 0) ? r.amount : 0) || 0;
+              if (r && r.lab === 'xray') xrayTotal += a; else clinicalTotal += a;
+            }
+          } catch (e) {}
+        }
+        return { patient: item.patient, patientEncoded: item.patientEncoded, tests: item.tests, testIds, testTypes, clinicalTotal, xrayTotal, date: item.firstDate };
+      });
+    }
+
     // Build specimen list (tests that have a specimen number for this area)
     const specimens = populated
       .filter(t => t.specimenNumbers && t.specimenNumbers[areaName])
@@ -367,7 +409,7 @@ router.get('/area/:name', requireAuth, canAccessPatient, async (req, res) => {
     res.render('reception/area', {
       title: `Reception - ${areaName}`,
       areaName,
-      tests: populated,
+      tests: areaName === 'Payment Area' ? aggregated : populated,
       areas: AREAS,
       specimens,
       encodedPatients
@@ -439,6 +481,8 @@ router.post('/assign', requireAuth, canAccessPatient, async (req, res) => {
         // and proceed to assign the selected test to the requested area.
         console.warn('Assign conflict - clearing existing active assignment', { testId, conflict: conflict.testId, patient: patientObj.id });
         try {
+          // record history with user info
+          conflict.addStatusEntry({ from: conflict.status, to: 'Completed', user: req.session && req.session.user ? req.session.user.username : null, area: 'Completed', timestamp: (new Date()).toISOString() });
           conflict.status = 'Completed';
           // completedAt is set by Test.save() when status === 'Completed'
           await conflict.save();
@@ -454,6 +498,8 @@ router.post('/assign', requireAuth, canAccessPatient, async (req, res) => {
       }
     }
 
+    // record history entry including user and area
+    test.addStatusEntry({ from: test.status, to: area, user: req.session && req.session.user ? req.session.user.username : null, area, timestamp: (new Date()).toISOString() });
     test.status = area;
     // If a specimen code was provided, record it for this area
     if (specimen && String(specimen).trim()) {
@@ -523,7 +569,125 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
     try { console.log('POST /reception/complete headers.cookie:', req.headers && req.headers.cookie ? req.headers.cookie : null); } catch (e) {}
     try { console.log('POST /reception/complete session keys:', req.session ? JSON.stringify(Object.keys(req.session)) : null); } catch (e) {}
   try { console.log('POST /reception/complete isAjax:', !!req.xhr, 'x-requested-with:', req.headers['x-requested-with'] || null, 'accept:', req.headers.accept || null); } catch (e) {}
-  const { testId, area, amount, amount_clinical, amount_xray } = req.body;
+  const { testId, patientId, testIds, area, amount, amount_clinical, amount_xray } = req.body;
+
+    // Batch payment flow when submitted from Payment Area aggregated row
+    if (patientId) {
+      // parse amounts
+      const toNumber = v => { const s = String(v || '').replace(/,/g,'').trim(); const n = parseFloat(s); return Number.isNaN(n) ? null : n; };
+      let parsedClinical = toNumber(amount_clinical);
+      let parsedXray = toNumber(amount_xray);
+      if ((parsedClinical === null || parsedClinical === 0) && (parsedXray === null || parsedXray === 0) && amount) parsedClinical = toNumber(amount);
+      const hasValidClinical = parsedClinical !== null && parsedClinical > 0;
+      const hasValidXray = parsedXray !== null && parsedXray > 0;
+      if (!hasValidClinical && !hasValidXray) {
+        const msg = 'Amount paid is required for Payment Area and must include a positive number (clinical and/or x-ray)';
+        if (req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'))) return res.status(400).json({ success: false, message: msg });
+        req.flash('error_msg', msg); return res.redirect(`/reception/area/${encodeURIComponent('Payment Area')}`);
+      }
+      const patientObj = await Patient.findById(patientId);
+      if (!patientObj) { const msg = 'Patient not found'; if (req.xhr) return res.status(404).json({ success:false, message: msg }); req.flash('error_msg', msg); return res.redirect('/reception'); }
+
+      // find all tests for this patient currently in Payment Area
+      const allTests = await Test.find({ patient: patientId });
+      const payTests = Array.isArray(allTests) ? allTests.filter(t => t && String(t.status) === 'Payment Area') : [];
+      if (!payTests.length) {
+        const msg = 'No payable items found for patient'; if (req.xhr) return res.status(400).json({ success:false, message: msg }); req.flash('error_msg', msg); return res.redirect('/reception');
+      }
+
+      // compute requested totals per category across tests
+      let totalRequestedClinical = 0, totalRequestedXray = 0;
+      const perTestRequested = payTests.map(t => {
+        let c = 0, x = 0;
+        try {
+          const rlist = Array.isArray(t.requestedTests) ? t.requestedTests : [];
+          for (const r of rlist) {
+            const a = Number(r && (r.amount || r.amount === 0) ? r.amount : 0) || 0;
+            if (r && r.lab === 'xray') x += a; else c += a;
+          }
+        } catch (e) {}
+        totalRequestedClinical += c; totalRequestedXray += x;
+        return { id: t.id, testId: t.testId, clinicalRequested: c, xrayRequested: x, obj: t };
+      });
+
+      // Distribute clinical amount proportionally, fallback equal split
+      const now = (new Date()).toISOString();
+      patientObj.paymentHistory = Array.isArray(patientObj.paymentHistory) ? patientObj.paymentHistory : [];
+      for (const p of perTestRequested) {
+        let clinicalShare = 0, xrayShare = 0;
+        if (hasValidClinical) {
+          if (totalRequestedClinical > 0) clinicalShare = (p.clinicalRequested / totalRequestedClinical) * parsedClinical; else clinicalShare = parsedClinical / perTestRequested.length;
+          clinicalShare = Math.round((clinicalShare + Number.EPSILON) * 100) / 100;
+          if (clinicalShare > 0) {
+            patientObj.paymentHistory.push({ testId: p.testId, amount: clinicalShare, lab: 'clinical', timestamp: now });
+          }
+        }
+        if (hasValidXray) {
+          if (totalRequestedXray > 0) xrayShare = (p.xrayRequested / totalRequestedXray) * parsedXray; else xrayShare = parsedXray / perTestRequested.length;
+          xrayShare = Math.round((xrayShare + Number.EPSILON) * 100) / 100;
+          if (xrayShare > 0) {
+            patientObj.paymentHistory.push({ testId: p.testId, amount: xrayShare, lab: 'xray', timestamp: now });
+          }
+        }
+
+        // move each test to its target area (determine from requestedTests or testType)
+          try {
+            const t = p.obj;
+            // determine target area (robust): prefer explicit requestedTests[].area, then detect by labels/lab flags,
+            // and explicitly map "typing" to Extraction Area (Blood Typing should go to Extraction, not grouped).
+            let target = null;
+            try {
+              if (Array.isArray(t.requestedTests) && t.requestedTests.length) {
+                // if any requestedTest has an explicit area, prefer that one
+                for (const rr of t.requestedTests) {
+                  if (rr && rr.area) { target = rr.area; break; }
+                }
+                // if still null, examine lab flags and labels to infer
+                if (!target) {
+                  // if any requested test explicitly marks lab xray -> X-ray
+                  const anyX = t.requestedTests.some(rr => rr && String(rr.lab).toLowerCase() === 'xray');
+                  if (anyX) target = 'X-ray';
+                  // if any label contains 'typing' -> Extraction Area
+                  if (!target) {
+                    const anyTyping = t.requestedTests.some(rr => rr && String(rr.label || '').toLowerCase().includes('typing'));
+                    if (anyTyping) target = 'Extraction Area';
+                  }
+                  // otherwise fall back to label-based heuristics below
+                }
+              }
+            } catch (e) { console.warn('Failed to inspect requestedTests for forwarding target', e); }
+            if (!target) {
+              const label = String(t.testType || '').toLowerCase();
+              if (label.includes('xray')) target = 'X-ray';
+              else if (label.includes('ultrasound') || label.includes('echo')) target = 'Ultrasound';
+              else if (label.includes('ecg')) target = 'ECG';
+              else if (label.includes('drug')) target = 'Drug Test';
+              else if (/blood|chemistry|hematology|serology|pt|aptt|typing/.test(label)) target = 'Extraction Area';
+            }
+          if (t.testType === "Doctor's Check-up") {
+            t.addStatusEntry({ from: t.status, to: 'Completed', user: req.session && req.session.user ? req.session.user.username : null, area: 'Completed', timestamp: now });
+            t.status = 'Completed';
+            await t.save();
+            try { sseEmitter.emit('update', { action: 'complete', testId: t.testId, status: t.status, time: now }); } catch (e) {}
+          } else if (target) {
+            t.addStatusEntry({ from: t.status, to: target, user: req.session && req.session.user ? req.session.user.username : null, area: target, timestamp: now });
+            t.status = target;
+            await t.save();
+            try { sseEmitter.emit('update', { action: 'assign', testId: t.testId, area: target, time: now }); } catch (e) {}
+          } else {
+            t.addStatusEntry({ from: t.status, to: 'In Progress', user: req.session && req.session.user ? req.session.user.username : null, area: 'In Progress', timestamp: now });
+            t.status = 'In Progress';
+            await t.save();
+            try { sseEmitter.emit('update', { action: 'complete', testId: t.testId, status: t.status, time: now }); } catch (e) {}
+          }
+        } catch (e) { console.error('Failed to forward test after payment', e); }
+      }
+
+      try { await patientObj.save(); } catch (e) { console.error('Failed to save patient payment history', e); }
+      const msg = `Payment recorded and ${perTestRequested.length} item(s) forwarded`; if (req.xhr) return res.json({ success:true, message: msg }); req.flash('success_msg', msg); return res.redirect('/reception');
+    }
+
+    // single test flow
     if (!testId) {
       req.flash('error_msg', 'Missing test id');
       return res.redirect('/reception');
@@ -607,6 +771,7 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
 
     // If this test is a Doctor's Check-up -> mark Completed and do NOT forward or set In Progress
     if (test.testType === "Doctor's Check-up") {
+      test.addStatusEntry({ from: test.status, to: 'Completed', user: req.session && req.session.user ? req.session.user.username : null, area: 'Completed', timestamp: (new Date()).toISOString() });
       test.status = 'Completed';
       await test.save();
       console.log('complete: Doctor checkup marked Completed', { testId: test.testId });
@@ -632,11 +797,13 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
       }
     }
     if (setForReferral) {
+      test.addStatusEntry({ from: test.status, to: 'For Referral', user: req.session && req.session.user ? req.session.user.username : null, area: 'For Referral', timestamp: (new Date()).toISOString() });
       test.status = 'For Referral';
       await test.save();
       console.log('complete: For Send Out detected, marked For Referral', { testId: test.testId });
     } else {
       // mark as completed for this step first
+      test.addStatusEntry({ from: test.status, to: 'Completed', user: req.session && req.session.user ? req.session.user.username : null, area: 'Completed', timestamp: (new Date()).toISOString() });
       test.status = 'Completed';
       await test.save();
       console.log('complete: marked Completed', { testId: test.testId });
@@ -672,6 +839,7 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
         console.log('complete: forwarding decision', { testId: test.testId, nextArea, conflict: !!conflict });
         if (!conflict) {
           // re-use same test record to forward to next area (status becomes nextArea)
+          test.addStatusEntry({ from: test.status, to: nextArea, user: req.session && req.session.user ? req.session.user.username : null, area: nextArea, timestamp: (new Date()).toISOString() });
           test.status = nextArea;
           await test.save();
           try {
@@ -703,6 +871,7 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
       if (previousArea === 'Releasing of Result') {
         // mark as released so mapAreaForTest will not send it back to Releasing
         try {
+          test.addStatusEntry({ from: test.status, to: 'Released', user: req.session && req.session.user ? req.session.user.username : null, area: 'Releasing of Result', timestamp: (new Date()).toISOString() });
           test.status = 'Released';
           test.released = true;
           await test.save();
@@ -712,6 +881,7 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
         console.log('complete: final step (Releasing) — marked Released, keep Released', { testId: test.testId });
       } else {
         // Registration should still be treated as In Progress per requirements
+        test.addStatusEntry({ from: test.status, to: 'In Progress', user: req.session && req.session.user ? req.session.user.username : null, area: 'In Progress', timestamp: (new Date()).toISOString() });
         test.status = 'In Progress';
         await test.save();
         console.log('complete: moved to In Progress', { testId: test.testId });

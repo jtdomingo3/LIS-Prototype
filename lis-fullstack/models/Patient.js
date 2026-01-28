@@ -21,6 +21,9 @@ class Patient {
     this.requiredAreas = Array.isArray(data.requiredAreas) ? data.requiredAreas : (data.requiredAreas ? [data.requiredAreas] : []);
     // preserve selected tests list for extraction/processing visibility
     this.requestedTests = Array.isArray(data.requestedTests) ? data.requestedTests : (data.requestedTests ? [data.requestedTests] : []);
+    this.company = data.company || '';
+    this.philhealthConsent = !!data.philhealthConsent;
+    this.philhealthId = data.philhealthId || '';
     this.createdAt = data.createdAt || new Date();
     this.updatedAt = data.updatedAt || new Date();
     this.createdBy = data.createdBy;
@@ -83,6 +86,10 @@ class Patient {
     obj.requestedTests = Array.isArray(this.requestedTests) ? this.requestedTests : [];
     // Provide legacy `sex` alias for templates that expect `patient.sex`
     obj.sex = obj.gender || null;
+    // Optional company / PhilHealth fields
+    obj.company = this.company || '';
+    obj.philhealthConsent = !!this.philhealthConsent;
+    obj.philhealthId = this.philhealthId || null;
     return obj;
   }
 

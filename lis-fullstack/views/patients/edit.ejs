@@ -44,8 +44,35 @@
                         <input type="text" name="physician" value="<%= patient.physician || '' %>" placeholder="Referring physician or doctor's name">
                 </div>
                 <div class="form-group">
+                    <label>Company (optional)</label>
+                    <input type="text" name="company" value="<%= patient.company || '' %>" placeholder="Company / Employer (optional)">
+                </div>
+                <div class="form-group">
                         <label>Address</label>
                         <textarea name="address" placeholder="Street address, city, state, zip"><%= patient.address || '' %></textarea>
+                </div>
+
+                <div class="card" style="margin-top:12px;">
+                    <h4>PhilHealth</h4>
+                    <p>
+                        The Gezyne Clinical Laboratory is an accredited PhilHealth provider. Coverage depends on the specific tests requested; some services may be fully covered while others may receive partial benefits. Please indicate whether the patient is a PhilHealth member.
+                    </p>
+                    <div style="margin-top:8px;">
+                        <div style="display:flex; gap:24px; align-items:center;">
+                            <label style="display:inline-flex; align-items:center; gap:8px; white-space:nowrap;">
+                                <input type="radio" name="philhealthConsent" id="philYesEdit" value="1" <%= patient.philhealthConsent ? 'checked' : '' %> >
+                                <span>Yes — apply PhilHealth benefits</span>
+                            </label>
+                            <label style="display:inline-flex; align-items:center; gap:8px; white-space:nowrap;">
+                                <input type="radio" name="philhealthConsent" id="philNoEdit" value="0" <%= patient.philhealthConsent ? '' : 'checked' %> >
+                                <span>No — not a PhilHealth member</span>
+                            </label>
+                        </div>
+                        <div id="philIdWrapEdit" style="display:<%= patient.philhealthConsent ? '' : 'none' %>; margin-top:12px;">
+                            <label style="display:block; margin-bottom:4px;">PhilHealth ID Number (optional)</label>
+                            <input id="philIdEdit" type="text" name="philhealthId" value="<%= patient.philhealthId || '' %>" placeholder="e.g. 12-345678901-2">
+                        </div>
+                    </div>
                 </div>
 
                 <div class="card" style="margin-top:12px;">
@@ -100,6 +127,30 @@
             onDobChange();
             dob.addEventListener('change', onDobChange);
         }
+    })();
+</script>
+<script>
+    (function(){
+        const philChk = document.getElementById('philChkEdit');
+        const philIdWrap = document.getElementById('philIdWrapEdit');
+        if (philChk && philIdWrap) {
+            philChk.addEventListener('change', function(){
+                if (philChk.checked) philIdWrap.style.display = '';
+                else philIdWrap.style.display = 'none';
+            });
+        }
+    })();
+</script>
+<script>
+    (function(){
+        const yes = document.getElementById('philYesEdit');
+        const no = document.getElementById('philNoEdit');
+        const wrap = document.getElementById('philIdWrapEdit');
+        if (!yes || !no || !wrap) return;
+        function update(){ if (yes.checked) wrap.style.display = ''; else wrap.style.display = 'none'; }
+        yes.addEventListener('change', update);
+        no.addEventListener('change', update);
+        update();
     })();
 </script>
         </form>

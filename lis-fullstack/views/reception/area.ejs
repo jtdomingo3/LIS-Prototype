@@ -15,125 +15,127 @@
       <table style="width:100%; margin-top:12px;">
         <thead>
           <tr>
-            <th>Test ID</th>
-            <th>Patient</th>
-            <th>Test Type</th>
-            <th>Date</th>
-            <th>Action</th>
+            <% if (areaName !== 'Payment Area') { %>
+              <th>Test ID</th>
+              <th>Patient</th>
+              <th>Test Type</th>
+              <th>Date</th>
+              <th>Action</th>
+            <% } else { %>
+              <th>Patient</th>
+              <th>Tests</th>
+              <th>Action</th>
+            <% } %>
           </tr>
         </thead>
         <tbody>
-          <% tests.forEach(test => { %>
-            <tr>
-              <td><%= test.testId %></td>
-              <td>
-                <% if (test.patient) { %>
-                  <strong><%= test.patient.firstName %> <%= test.patient.lastName %></strong>
-                  <% if (test.patient.patientCode) { %>
-                    <div style="font-size:0.85em; color:var(--text-gray);">Code: <%= test.patient.patientCode %></div>
+          <% if (areaName === 'Payment Area') {
+               // The server already provides aggregated rows for Payment Area in `tests`.
+               // Render each aggregated row as-is and use the precomputed clinical/xray totals.
+               tests.forEach(row => { %>
+              <tr>
+                <td>
+                  <strong><%= row.patient ? (row.patient.firstName + ' ' + row.patient.lastName) : 'Unknown' %></strong>
+                  <% if (row.patient && row.patient.patientCode) { %>
+                    <div style="font-size:0.85em; color:var(--text-gray);">Code: <%= String(row.patient.patientCode).slice(-5) %></div>
                   <% } else { %>
                     <div style="font-size:0.85em; color:var(--danger);">(Not encoded)</div>
                   <% } %>
-                <% } else { %>
-                  Unknown
-                <% } %>
-              </td>
-              <td><%= test.testType %></td>
-              <td><%= test.testDate ? new Date(test.testDate).toLocaleString() : 'N/A' %></td>
-              <td>
-                <% if (areaName !== 'Payment Area') { %>
-                <form action="/reception/assign" method="POST" style="display:inline-block; margin-right:6px;">
-                  <input type="hidden" name="testId" value="<%= test.id %>">
-                  <select name="area" required style="margin-right:6px;">
-                    <% 
-                      // map specific area values to nicer display labels if needed
-                      const optionLabelMap = {};
-                    %>
-                    <% areas.forEach(a => { %>
-                      <% const displayLabel = optionLabelMap[a] || String(a).replace(/\s*-\s*[AB]$/i, ''); %>
-                      <option value="<%= a %>" <%= a === areaName ? 'selected' : '' %>><%= displayLabel %></option>
-                    <% }) %>
-                  </select>
-                  <input type="text" name="specimen" placeholder="Specimen # (optional)" style="margin-right:6px;" <%= test.patientEncoded ? '' : 'disabled' %>>
-                  <button class="button btn-primary btn-small" <%= test.patientEncoded ? '' : 'disabled' %>>Assign</button>
-                  <% if (!test.patientEncoded) { %>
-                    <div style="font-size:0.8em;color:var(--danger);margin-top:6px;">Patient must be encoded (have a patient code) before assignment. <a href="/patients/<%= test.patient ? test.patient.id : '' %>/edit">Encode now</a></div>
+                </td>
+                <td>
+                  <ul style="margin:0 0 0 12px; padding:0; list-style:disc;">
+                    <% if (Array.isArray(row.tests) && row.tests.length) {
+                         row.tests.forEach(t => {
+                           if (Array.isArray(t.requestedTests) && t.requestedTests.length) {
+                             t.requestedTests.forEach(rt => { const amt = Number(rt.amount || 0); %>
+                              <li style="margin-bottom:4px;"><%= (rt.label || '').replace(/-/g,' ').replace(/\b\w/g, function(ch){return ch.toUpperCase();}) %> <span style="color:var(--text-gray);">(<%= rt.lab || 'clinical' %>)</span> <strong style="margin-left:8px;">₱<%= amt.toFixed(2) %></strong></li>
+                             <% })
+                           } else {
+                             const singleAmt = Number((Array.isArray(t.requestedTests) && t.requestedTests[0] && t.requestedTests[0].amount) ? t.requestedTests[0].amount : (t.amount || 0)); %>
+                              <li style="margin-bottom:4px;"><%= (t.testType || t.testId || 'Test').toString().replace(/-/g,' ').replace(/\b\w/g, function(ch){return ch.toUpperCase();}) %> <strong style="margin-left:8px;">₱<%= singleAmt.toFixed(2) %></strong></li>
+                           <% }
+                         })
+                       } else { %>
+                         <li>No tests</li>
+                       <% } %>
+                  </ul>
+                </td>
+                <td>
+                  <form action="/reception/complete" method="POST" class="complete-form" style="display:inline-block; margin-left:6px;">
+                    <input type="hidden" name="patientId" value="<%= row.patient ? row.patient.id : '' %>">
+                    <input type="hidden" name="testIds" value="<%= (row.testIds || []).join(',') %>">
+                    <input type="hidden" name="area" value="<%= areaName %>">
+                    <div style="display:flex; gap:8px; align-items:center;">
+                      <div>
+                        <label style="display:block; font-size:0.85em;">Clinical Lab Amount</label>
+                        <input type="number" name="amount_clinical" class="payment-amount" step="0.01" min="0" placeholder="Clinical" style="width:140px; margin-right:6px;" value="<%= (row.clinicalTotal || 0).toFixed(2) %>">
+                      </div>
+                      <div>
+                        <label style="display:block; font-size:0.85em;">X-ray Lab Amount</label>
+                        <input type="number" name="amount_xray" class="payment-amount" step="0.01" min="0" placeholder="X-ray" style="width:140px; margin-right:6px;" value="<%= (row.xrayTotal || 0).toFixed(2) %>">
+                      </div>
+                      <div style="align-self:flex-end;">
+                        <button type="submit" class="button btn-success btn-small payment-submit" title="Mark complete" onclick="return paymentSubmitFallback(this)">Mark Complete</button>
+                      </div>
+                    </div>
+                  </form>
+                  <form action="/reception/delete" method="POST" class="delete-form" style="display:inline-block; margin-left:6px;" onsubmit="return confirm('Delete these tests from the queue?');">
+                    <input type="hidden" name="testId" value="<%= (row.testIds && row.testIds.length ? row.testIds[0] : '') %>">
+                    <input type="hidden" name="area" value="<%= areaName %>">
+                    <button type="submit" class="button btn-danger btn-small" title="Delete">Delete</button>
+                  </form>
+                </td>
+              </tr>
+            <% }) %>
+          <% } else {
+            // Non-Payment Area: render each test as before
+            tests.forEach(test => { %>
+              <tr>
+                <td><%= test.testId %></td>
+                <td>
+                  <% if (test.patient) { %>
+                    <strong><%= test.patient.firstName %> <%= test.patient.lastName %></strong>
+                    <% if (test.patient.patientCode) { %>
+                      <div style="font-size:0.85em; color:var(--text-gray);">Code: <%= String(test.patient.patientCode).slice(-5) %></div>
+                    <% } else { %>
+                      <div style="font-size:0.85em; color:var(--danger);">(Not encoded)</div>
+                    <% } %>
+                  <% } else { %>
+                    Unknown
                   <% } %>
-                </form>
-                <a href="/tests/<%= test.id %>" class="button btn-secondary btn-small">View</a>
-                <!-- Mark complete -->
-                <form action="/reception/complete" method="POST" class="complete-form" style="display:inline-block; margin-left:6px;">
-                  <input type="hidden" name="testId" value="<%= test.id %>">
-                  <input type="hidden" name="area" value="<%= areaName %>">
-                  <button type="submit" class="button btn-success btn-small" title="Mark complete"><%= areaName === 'Releasing of Result' ? 'Mark Released' : 'Mark Complete' %></button>
-                </form>
-                <% } else { %>
-                <!-- Payment Area: show aggregated amounts for Clinical and X-ray labs -->
-                <form action="/reception/complete" method="POST" class="complete-form" style="display:inline-block; margin-left:6px;">
-                  <input type="hidden" name="testId" value="<%= test.id %>">
-                  <input type="hidden" name="area" value="<%= areaName %>">
-                  <% 
-                    // compute aggregated amounts from test.requestedTests (saved at encoding)
-                    let clinicalTotal = 0;
-                    let xrayTotal = 0;
-                    try {
-                      const source = Array.isArray(test.requestedTests) ? test.requestedTests : (test.patient && Array.isArray(test.patient.requestedTests) ? test.patient.requestedTests : []);
-                      source.forEach(rt => {
-                        const a = Number(rt && rt.amount ? rt.amount : 0) || 0;
-                        if (rt && rt.lab === 'xray') xrayTotal += a; else clinicalTotal += a;
-                      });
-                    } catch (e) {}
-
-                    // If a prior payment was already recorded for this test, prefer showing that amount
-                    let prefillClinical = null;
-                    let prefillXray = null;
-                    try {
-                      const p = test.patient;
-                      if (p && Array.isArray(p.paymentHistory)) {
-                        // find latest entries for this testId by scanning from end
-                        for (let i = p.paymentHistory.length - 1; i >= 0; i--) {
-                          const ph = p.paymentHistory[i];
-                          if (!ph || ph.testId !== test.testId) continue;
-                          // if lab explicitly set, map accordingly
-                          if (ph.lab === 'clinical' && (prefillClinical === null)) prefillClinical = Number(ph.amount) || 0;
-                          if (ph.lab === 'xray' && (prefillXray === null)) prefillXray = Number(ph.amount) || 0;
-                          // legacy entry without lab -> treat as clinical if clinical not set
-                          if ((!ph.lab || ph.lab === '') && (prefillClinical === null)) prefillClinical = Number(ph.amount) || 0;
-                          // if both prefill values found, break
-                          if (prefillClinical !== null && prefillXray !== null) break;
-                        }
-                      }
-                    } catch (e) {
-                      console.warn('Failed to compute prefill amounts from paymentHistory', e);
-                    }
-
-                    const clinicalValue = (prefillClinical !== null ? prefillClinical : clinicalTotal);
-                    const xrayValue = (prefillXray !== null ? prefillXray : xrayTotal);
-                  %>
-                  <div style="display:flex; gap:8px; align-items:center;">
-                    <div>
-                      <label style="display:block; font-size:0.85em;">Clinical Lab Amount</label>
-                      <input type="number" name="amount_clinical" class="payment-amount" step="0.01" min="0" placeholder="Clinical" style="width:140px; margin-right:6px;" value="<%= (clinicalValue || 0).toFixed(2) %>">
-                    </div>
-                    <div>
-                      <label style="display:block; font-size:0.85em;">X-ray Lab Amount</label>
-                      <input type="number" name="amount_xray" class="payment-amount" step="0.01" min="0" placeholder="X-ray" style="width:140px; margin-right:6px;" value="<%= (xrayValue || 0).toFixed(2) %>">
-                    </div>
-                    <div style="align-self:flex-end;">
-                      <button type="submit" class="button btn-success btn-small payment-submit" title="Mark complete" onclick="return paymentSubmitFallback(this)">Mark Complete</button>
-                    </div>
-                  </div>
-                </form>
-                <% } %>
-                <!-- Delete from queue -->
-                <form action="/reception/delete" method="POST" class="delete-form" style="display:inline-block; margin-left:6px;" onsubmit="return confirm('Delete this test from the queue?');">
-                  <input type="hidden" name="testId" value="<%= test.id %>">
-                  <input type="hidden" name="area" value="<%= areaName %>">
-                  <button type="submit" class="button btn-danger btn-small" title="Delete">Delete</button>
-                </form>
-              </td>
-            </tr>
-          <% }) %>
+                </td>
+                <td><%= (test.testType || '').toString().replace(/-/g,' ').replace(/\b\w/g, function(ch){return ch.toUpperCase();}) %></td>
+                <td><%= test.testDate ? new Date(test.testDate).toLocaleString() : 'N/A' %></td>
+                <td>
+                  <form action="/reception/assign" method="POST" style="display:inline-block; margin-right:6px;">
+                    <input type="hidden" name="testId" value="<%= test.id %>">
+                    <select name="area" required style="margin-right:6px;">
+                      <% const optionLabelMap = {}; areas.forEach(a => { %>
+                        <% const displayLabel = optionLabelMap[a] || String(a).replace(/\s*-\s*[AB]$/i, ''); %>
+                        <option value="<%= a %>" <%= a === areaName ? 'selected' : '' %>><%= displayLabel %></option>
+                      <% }) %>
+                    </select>
+                    <input type="text" name="specimen" placeholder="Specimen # (optional)" style="margin-right:6px;" <%= test.patientEncoded ? '' : 'disabled' %>>
+                    <button class="button btn-primary btn-small" <%= test.patientEncoded ? '' : 'disabled' %>>Assign</button>
+                    <% if (!test.patientEncoded) { %>
+                      <div style="font-size:0.8em;color:var(--danger);margin-top:6px;">Patient must be encoded (have a patient code) before assignment. <a href="/patients/<%= test.patient ? test.patient.id : '' %>/edit">Encode now</a></div>
+                    <% } %>
+                  </form>
+                  <a href="/tests/<%= test.id %>" class="button btn-secondary btn-small">View</a>
+                  <form action="/reception/complete" method="POST" class="complete-form" style="display:inline-block; margin-left:6px;">
+                    <input type="hidden" name="testId" value="<%= test.id %>">
+                    <input type="hidden" name="area" value="<%= areaName %>">
+                    <button type="submit" class="button btn-success btn-small" title="Mark complete"><%= areaName === 'Releasing of Result' ? 'Mark Released' : 'Mark Complete' %></button>
+                  </form>
+                  <form action="/reception/delete" method="POST" class="delete-form" style="display:inline-block; margin-left:6px;" onsubmit="return confirm('Delete this test from the queue?');">
+                    <input type="hidden" name="testId" value="<%= test.id %>">
+                    <input type="hidden" name="area" value="<%= areaName %>">
+                    <button type="submit" class="button btn-danger btn-small" title="Delete">Delete</button>
+                  </form>
+                </td>
+              </tr>
+            <% })
+          } %>
         </tbody>
       </table>
     <% } %>

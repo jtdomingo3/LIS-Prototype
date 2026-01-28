@@ -24,7 +24,9 @@ if (!fs.existsSync(DATA_FILE)) {
     users: [],
     patients: [],
     tests: [],
-    templates: []
+    templates: [],
+    // persistent counters for per-test-type IDs
+    counters: {}
   };
   fs.writeFileSync(DATA_FILE, JSON.stringify(initialData, null, 2));
 }
@@ -37,10 +39,12 @@ const db = {
   getPatients: () => db.read().patients,
   getTests: () => db.read().tests,
   getTemplates: () => db.read().templates,
+  getCounters: () => db.read().counters || {},
   saveUsers: (users) => { const data = db.read(); data.users = users; db.write(data); },
   savePatients: (patients) => { const data = db.read(); data.patients = patients; db.write(data); },
   saveTests: (tests) => { const data = db.read(); data.tests = tests; db.write(data); },
   saveTemplates: (templates) => { const data = db.read(); data.templates = templates; db.write(data); }
+  ,saveCounters: (counters) => { const data = db.read(); data.counters = counters; db.write(data); }
 };
 
 // Make db available globally

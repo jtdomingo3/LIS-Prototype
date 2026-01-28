@@ -29,79 +29,7 @@
                 </select>
             </div>
         </div>
-            <script>
-                document.addEventListener('DOMContentLoaded', function(){
-                    // Toggle amount and remark input visibility + enabled state based on checkboxes
-                    document.querySelectorAll('.test-checkbox').forEach(cb => {
-                        const key = cb.getAttribute('data-key');
-                        const amt = document.querySelector('input[name="amount_' + key + '"]');
-                        const remark = document.querySelector('[name="remark_' + key + '"]');
-
-                        function updateAmount() {
-                            if (!amt) return;
-                            if (cb.checked) {
-                                amt.disabled = false;
-                                amt.style.display = '';
-                            } else {
-                                amt.disabled = true;
-                                amt.style.display = 'none';
-                            }
-                        }
-
-                        function updateRemark() {
-                            if (!remark) return;
-                            if (cb.checked) {
-                                remark.disabled = false;
-                                remark.style.display = '';
-                            } else {
-                                remark.disabled = true;
-                                remark.style.display = 'none';
-                            }
-                        }
-
-                        cb.addEventListener('change', function(){ updateAmount(); updateRemark(); });
-
-                        // init
-                        updateAmount();
-                        updateRemark();
-                    });
-
-                    // For Send Out toggle
-                    document.querySelectorAll('.sendout-checkbox').forEach(cb => {
-                        const key = cb.getAttribute('data-key');
-                        const amt = document.querySelector('input[name="amount_' + key + '"]');
-                        const remark = document.querySelector('[name="remark_' + key + '"]');
-
-                        function updateAmount() {
-                            if (!amt) return;
-                            if (cb.checked) {
-                                amt.disabled = false;
-                                amt.style.display = '';
-                            } else {
-                                amt.disabled = true;
-                                amt.style.display = 'none';
-                            }
-                        }
-
-                        function updateRemark() {
-                            if (!remark) return;
-                            if (cb.checked) {
-                                remark.disabled = false;
-                                remark.style.display = '';
-                            } else {
-                                remark.disabled = true;
-                                remark.style.display = 'none';
-                            }
-                        }
-
-                        cb.addEventListener('change', function(){ updateAmount(); updateRemark(); });
-
-                        // init
-                        updateAmount();
-                        updateRemark();
-                    });
-                });
-            </script>
+            
         <div class="form-row">
             <div class="form-group">
                 <label>Phone Number</label>
@@ -117,52 +45,38 @@
             <input type="text" name="physician" value="<%= patient.physician || '' %>" placeholder="Referring physician or doctor's name">
         </div>
         <div class="form-group">
+            <label>Company (optional)</label>
+            <input type="text" name="company" value="<%= patient.company || '' %>" placeholder="Company / Employer (optional)">
+        </div>
+        <div class="form-group">
             <label>Address</label>
             <textarea name="address" placeholder="Street address, city, state, zip"><%= patient.address || '' %></textarea>
         </div>
 
-                <div class="card" style="margin-top:12px;">
-                    <h4>Select Requested Tests</h4>
-                    <p>Choose the tests/services to request for this patient. The system will map selected tests to reception areas automatically.</p>
-                    <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px; margin-top:8px;">
-                        <% (templates || []).forEach(t => {
-                                 const rawKey = String(t.testType || t.name || '').trim();
-                                 const slug = rawKey.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
-                        %>
-                            <label style="display:flex; align-items:center; gap:8px; padding:6px; border-radius:6px; background:#fff; border:1px solid #eee; flex-direction:column; align-items:stretch;">
-                                <div style="display:flex; align-items:center; gap:8px;">
-                                    <input type="checkbox" class="test-checkbox" data-key="<%= slug %>" name="selectedTests" value="<%= rawKey %>" <%= (patient.requestedTests && patient.requestedTests.find(r => (r && (r.key||r) === rawKey || r === rawKey))) ? 'checked' : '' %> >
-                                    <span style="font-size:0.95em; flex:1;"><%= t.name || t.testType %></span>
-                                    <input type="number" step="0.01" min="0" name="amount_<%= slug %>" class="test-amount" placeholder="Amount" style="width:120px;" value="<%= (patient.requestedTests && (patient.requestedTests.find(r => (r && (r.key||r) === rawKey) || r === rawKey) || {}).amount) || '' %>">
-                                </div>
-                                <div style="display:flex; gap:8px; align-items:center; margin-top:6px;">
-                                    <textarea name="remark_<%= slug %>" class="test-remark" placeholder="Remarks" rows="2" style="flex:1; width:100%; resize:vertical;"> <%= (patient.requestedTests && (patient.requestedTests.find(r => (r && (r.key||r) === rawKey) || r === rawKey) || {}).remark) || '' %></textarea>
-                                </div>
-                            </label>
-                        <% }) %>
+        <div class="card" style="margin-top:12px;">
+            <h4>PhilHealth</h4>
+            <p>
+                The Gezyne Clinical Laboratory is an accredited PhilHealth provider. Coverage depends on the specific tests requested; some services may be fully covered while others may receive partial benefits. Please indicate whether the patient is a PhilHealth member.
+            </p>
+                <div style="margin-top:8px;">
+                    <div style="display:flex; gap:24px; align-items:center;">
+                        <label style="display:inline-flex; align-items:center; gap:8px; white-space:nowrap;">
+                            <input type="radio" name="philhealthConsent" id="philYes" value="1" <%= patient && patient.philhealthConsent ? 'checked' : '' %> >
+                            <span>Yes — apply PhilHealth benefits</span>
+                        </label>
+                        <label style="display:inline-flex; align-items:center; gap:8px; white-space:nowrap;">
+                            <input type="radio" name="philhealthConsent" id="philNo" value="0" <%= patient && patient.philhealthConsent ? '' : 'checked' %> >
+                            <span>No — not a PhilHealth member</span>
+                        </label>
                     </div>
-
-                    <div style="margin-top:12px;">
-                        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; align-items:center;">
-                            <label style="display:inline-flex; align-items:center; gap:8px; margin-right:12px;">
-                                <input type="checkbox" class="sendout-checkbox" data-key="sendout" name="forSendOut" value="1" <%= patient.forSendOut ? 'checked' : '' %> >
-                                <span style="font-size:0.95em;">For Send Out</span>
-                            </label>
-                            <input type="number" step="0.01" min="0" name="amount_sendout" class="test-amount" placeholder="Amount" style="width:120px; display:none;" value="<%= (patient.sendOut || {}).amount || '' %>">
-                            <textarea name="remark_sendout" class="test-remark" placeholder="Remarks" rows="2" style="flex:1; width:220px; display:none; margin-left:6px; resize:vertical;"><%= (patient.sendOut || {}).remark || '' %></textarea>
-                        </div>
-                        <h5>Doctor's Check-up</h5>
-                        <% const DOCS = ["Doctor's Check-up - Dr. Lorenzo","Doctor's Check-up - Dr. Arcilla"]; %>
-                        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;">
-                            <% DOCS.forEach(d => { %>
-                                <label style="display:inline-flex; align-items:center; gap:6px;">
-                                    <input type="checkbox" name="requiredAreas" value="<%= d %>" <%= (patient.requiredAreas && patient.requiredAreas.includes(d)) ? 'checked' : '' %> >
-                                    <%= d %>
-                                </label>
-                            <% }) %>
-                        </div>
+                    <div id="philIdWrap" style="display:<%= patient && patient.philhealthConsent ? '' : 'none' %>; margin-top:12px;">
+                        <label style="display:block; margin-bottom:4px;">PhilHealth ID Number (optional)</label>
+                        <input id="philId" type="text" name="philhealthId" value="<%= patient && patient.philhealthId ? patient.philhealthId : '' %>" placeholder="e.g. 12-345678901-2">
                     </div>
                 </div>
+        </div>
+
+                
 
         <div class="form-row">
             <a href="/patients" class="button btn-secondary">Back to Patients</a>
@@ -204,5 +118,29 @@
             onDobChange();
             dob.addEventListener('change', onDobChange);
         }
+    })();
+</script>
+<script>
+    (function(){
+        const philChk = document.getElementById('philChk');
+        const philIdWrap = document.getElementById('philIdWrap');
+        if (philChk && philIdWrap) {
+            philChk.addEventListener('change', function(){
+                if (philChk.checked) philIdWrap.style.display = '';
+                else philIdWrap.style.display = 'none';
+            });
+        }
+    })();
+</script>
+<script>
+    (function(){
+        const yes = document.getElementById('philYes');
+        const no = document.getElementById('philNo');
+        const wrap = document.getElementById('philIdWrap');
+        if (!yes || !no || !wrap) return;
+        function update(){ if (yes.checked) wrap.style.display = ''; else wrap.style.display = 'none'; }
+        yes.addEventListener('change', update);
+        no.addEventListener('change', update);
+        update();
     })();
 </script>

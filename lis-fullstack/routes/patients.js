@@ -148,6 +148,9 @@ router.get('/new', requireAuth, canAccessPatient, (req, res) => {
 router.post('/', requireAuth, canAccessPatient, async (req, res) => {
   try {
     const { firstName, lastName, dateOfBirth, gender, phone, email, address, physician } = req.body;
+    const company = req.body.company || '';
+    const philhealthConsent = req.body.philhealthConsent === 'on' || req.body.philhealthConsent === '1' || req.body.philhealthConsent === 'true';
+    const philhealthId = req.body.philhealthId || '';
     // encoder may provide age instead of DOB -> accept either
     const ageManual = req.body.ageManual || req.body.age || null;
     // normalize doctor's checkup selection (checkboxes)
@@ -291,6 +294,9 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       phone,
       email,
       address,
+      company,
+      philhealthConsent,
+      philhealthId,
       requiredAreas: finalRequiredAreas,
       // preserve selected tests for extraction/medtech visibility (detailed objects)
       requestedTests: requestedTestsDetailed,
@@ -299,445 +305,8 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
 
     await patient.save();
 
-    // After encoding a new patient, automatically create a Test assigned to Payment Area
-    try {
-      const Test = require('../models/Test');
-      // Do not create if patient already has an active test (avoid duplicates)
-      const existing = await Test.find({ patient: patient.id });
-      console.log('Auto-create test: found existing tests for patient', { patientId: patient.id, existingCount: Array.isArray(existing) ? existing.length : 0 });
-      const active = Array.isArray(existing) && existing.find(t => t && t.status && t.status !== 'Completed' && t.status !== 'Releasing of Result');
-      if (!active) {
-        // Generate a unique testId
-        const allTestsForId = await Test.find({});
-        let testId = 'T001';
-        if (allTestsForId && allTestsForId.length) {
-          const maxNum = allTestsForId.reduce((max, t) => {
-            const n = parseInt((t.testId || 'T0').substring(1)) || 0;
-            return Math.max(max, n);
-          }, 0);
-          testId = 'T' + String(maxNum + 1).padStart(3, '0');
-        }
-        while ((await Test.findOne({ testId })) !== null) {
-          const id = parseInt(testId.substring(1)) + 1;
-          testId = 'T' + String(id).padStart(3, '0');
-        }
-
-        // If patient ONLY requires a Doctor's Check-up (A or B), place test directly to that specific doctor room
-        let initialTestType = 'Registration';
-        let initialStatus = 'Payment Area';
-        if (Array.isArray(finalRequiredAreas) && finalRequiredAreas.length === 1) {
-          const only = String(finalRequiredAreas[0] || '');
-          if (only.toLowerCase().startsWith("doctor's check-up")) {
-            // use the specific area name (e.g. "Doctor's Check-up - A")
-            initialTestType = "Doctor's Check-up";
-            initialStatus = only;
-          }
-        }
-
-        const newTest = new Test({
-          testId,
-          patient: patient.id,
-          testType: initialTestType,
-          // Store full ISO timestamp so the time-of-encoding is preserved
-          testDate: (new Date()).toISOString(),
-          status: initialStatus,
-          requestedBy: req.session.user.id,
-          // Ensure createdAt also contains the exact encode time
-          createdAt: (new Date()).toISOString(),
-          specimenNumbers: {}
-          ,
-          // preserve selected tests so medtechs know what to extract
-          // include requestedTests from saved patient so areas/amounts are preserved
-          requestedTests: patient.requestedTests || [],
-          // mark if this patient's selected tests are 'awaiting-only' so downstream logic
-          // can decide not to route after payment
-          awaitingOnly: awaitingOnly
-        });
-
-        await newTest.save();
-        console.log('Auto-create test: saved new test', { testId: newTest.testId, testDbId: newTest.id, patientId: patient.id });
-        // Notify kiosk clients immediately that a new test was assigned to Payment Area
-        try {
-          // Use shared SSE emitter to notify kiosks immediately
-          const sse = require('../lib/sseEmitter');
-          if (sse && typeof sse.emit === 'function') {
-            const payload = {
-              action: 'assign',
-              testId: newTest.testId,
-              area: initialStatus,
-              time: (new Date()).toISOString(),
-              patientCode: patient.patientCode,
-              patientName: `${patient.firstName} ${patient.lastName}`
-            };
-            console.log('Auto-create SSE emit', payload);
-            sse.emit('update', payload);
-          }
-        } catch (emitErr) {
-          console.warn('Auto-create SSE emit failed', emitErr);
-        }
-        req.flash('success_msg', `Patient ${firstName} ${lastName} added and assigned to Payment Area`);
-      } else {
-        console.log('Auto-create test: active test exists, skipping auto-create', { activeTestId: active.testId, status: active.status });
-        req.flash('success_msg', `Patient ${firstName} ${lastName} added successfully!`);
-      }
-    } catch (err) {
-      console.error('Auto-create test error:', err);
-      // still continue, patient was created
-      req.flash('success_msg', `Patient ${firstName} ${lastName} added successfully!`);
-    }
-
-    // After saving, attempt server-side thermal print of patient receipt
-    try {
-      const fs = require('fs');
-      const os = require('os');
-      const pathMod = require('path');
-      const { spawnSync } = require('child_process');
-
-      // Build simple receipt spec for thermal_test.js JSON input
-      // If For Send Out is in requiredAreas, after payment, set status to For Referral (not Completed/Pending)
-      // This logic should be handled in the payment/queueing logic, not here, but here's a note:
-      // TODO: In your payment/queueing logic, after payment, if requiredAreas includes 'For Send Out', set test.status = 'For Referral'
-      const now = new Date();
-      const currentDate = now.toISOString().replace('T', ' ').slice(0, 19);
-      const fullName = `${patient.firstName || ''} ${patient.lastName || ''}`.trim();
-      const age = patient.ageManual || patient.age || 'N/A';
-      const tests = Array.isArray(patient.requestedTests) ? patient.requestedTests : [];
-      const total = tests.reduce((s, t) => s + (Number((t && (t.amount || t.amount === 0) ? t.amount : 0) || 0)), 0);
-
-      function makeTestLines() {
-        const normalize = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-        const slugify = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
-        let lines = [];
-        const printed = new Set();
-
-        // Print all requested tests first (prefer values stored in patient.requestedTests)
-        if (tests.length) {
-          tests.forEach(t => {
-            const label = (t && (t.label || t.key)) || String(t || '');
-            const norm = normalize(label);
-            const displayLabel = String(label).replace(/doctor'?s/gi, 'Doctor').replace(/\s+/g, ' ').trim();
-            const amt = (t && (t.amount || t.amount === 0)) ? Number(t.amount) : 0;
-            const remarkRaw = t && (t.remarks || t.remark) ? sanitizeText(t.remarks || t.remark) : '';
-            const isSendOut = /send\s*out/.test(norm);
-            const isDoctorCheckup = /doctor\s*'?s?\s*check\s*up/.test(norm);
-
-            let line = `- ${displayLabel}`;
-            if (amt || isSendOut || isDoctorCheckup) {
-              line += ` - PHP ${Number(amt || 0).toFixed(2)}`;
-            }
-            lines.push({ type: 'text', text: line });
-            if (remarkRaw) {
-              const short = remarkRaw.length > 40 ? remarkRaw.slice(0, 37) + '...' : remarkRaw;
-              lines.push({ type: 'text', text: `  ${short}`, size: 'small' });
-            }
-            printed.add(norm);
-          });
-        }
-
-        // Ensure doctor's check-up / send out / referral entries in requiredAreas are always printed
-        if (Array.isArray(patient.requiredAreas)) {
-          patient.requiredAreas.forEach(area => {
-            const areaLabel = String(area || '');
-            const areaNorm = normalize(areaLabel);
-            if (!printed.has(areaNorm) && (/doctor\s*'?s?\s*check\s*up|send\s*out|referral|referal/.test(areaNorm))) {
-              // prefer amounts/remarks from patient.requestedTests when available
-              let amt = 0;
-              let remarks = '';
-              if (Array.isArray(patient.requestedTests)) {
-                const match = patient.requestedTests.find(rt => normalize((rt && (rt.label || rt.key)) || rt) === areaNorm);
-                if (match) {
-                  amt = (match && (match.amount || match.amount === 0)) ? Number(match.amount) : amt;
-                  remarks = match && (match.remarks || match.remark) ? String(match.remarks || match.remark) : remarks;
-                }
-              }
-              // fallback: read from submitted form fields (several naming variants)
-              if (req && req.body) {
-                const slug = slugify(areaLabel);
-                const alt = slug.replace(/^for_/, '').replace(/_+/g, '');
-                const getBodyField = (...keys) => { for (const k of keys) if (typeof req.body[k] !== 'undefined' && req.body[k] !== null && String(req.body[k]).trim() !== '') return req.body[k]; return undefined; };
-                const remarkVal = getBodyField('remark_' + slug, 'remarks_' + slug, 'remark_' + alt, 'remarks_' + alt, 'remark-' + alt, 'remarks-' + alt);
-                if (typeof remarkVal !== 'undefined' && remarkVal !== null && String(remarkVal).trim() !== '') remarks = String(remarkVal).trim();
-                const amtRaw = getBodyField('amount_' + slug, 'amount_' + alt, 'amount' + alt, 'amount-' + alt);
-                if (typeof amtRaw !== 'undefined' && amtRaw !== null && String(amtRaw).trim() !== '') {
-                  const parsed = parseFloat(String(amtRaw).replace(/,/g, ''));
-                  if (!Number.isNaN(parsed)) amt = parsed;
-                }
-              }
-
-              const displayArea = String(areaLabel).replace(/doctor'?s/gi, 'Doctor').replace(/\s+/g, ' ').trim();
-              let line = `- ${displayArea}`;
-              if (amt) line += ` - PHP ${Number(amt || 0).toFixed(2)}`;
-              lines.push({ type: 'text', text: line });
-              if (remarks) {
-                const r = String(remarks).replace(/^\s*\(|\)\s*$/g, '');
-                const short = r.length > 40 ? r.slice(0, 37) + '...' : r;
-                lines.push({ type: 'text', text: `  ${short}`, size: 'small' });
-              }
-              printed.add(areaNorm);
-            }
-          });
-        }
-
-        if (!lines.length) return [{ type: 'text', text: '- (No tests specified)' }];
-        return lines;
-      }
-
-      // sanitize text to avoid characters that CP437 cannot encode (which appear as '?')
-      function sanitizeText(s) {
-        if (s == null) return '';
-        let out = String(s);
-        // replace common symbols with ASCII-safe alternatives
-        out = out.replace(/₱/g, 'PHP ');
-        out = out.replace(/[–—−]/g, '-');
-        out = out.replace(/•/g, '-');
-        // remove any remaining non-ASCII characters to avoid '?' in output
-        out = out.replace(/[^\u0000-\u007f]/g, '');
-        // collapse multiple spaces
-        out = out.replace(/\s+/g, ' ').trim();
-        return out;
-      }
-
-      // Attempt to rasterize small logo + patient code into one image to print beside ID
-      let rasterHex = null;
-      // barcode raster (Code128) hex for raw ESC/POS insertion
-      let rasterHexBarcode = null;
-      try {
-        const logoPath = pathMod.join(__dirname, '..', 'assets', 'gezyne-logo-NOTEXT.png');
-        if (fs.existsSync(logoPath)) {
-          const logoImg = await Jimp.read(logoPath);
-          // Target width for printer (pixels). Use 384 as common thermal width.
-          const targetWidth = 384;
-          // Scale logo to reasonable height
-          const maxLogoHeight = 48;
-          logoImg.scaleToFit(80, maxLogoHeight);
-          const logoW = logoImg.bitmap.width;
-          const logoH = logoImg.bitmap.height;
-
-          // Prepare canvas and print patient code text on the right side.
-          // Extract last 5-digit sequence and render it much larger for visibility.
-          const codeText = (patient.patientCode || patient.patientId || '').toString();
-          const last5Match = codeText.match(/(\d{5})$/);
-          const last5 = last5Match ? last5Match[1] : null;
-          const prefix = last5 ? codeText.slice(0, codeText.length - last5.length).trim() : codeText;
-
-          // Load fonts: small for prefix, big for the 5-digit number
-          const smallFont = await Jimp.loadFont(Jimp.FONT_SANS_16_BLACK);
-          // Use the largest available built-in sans font for emphasis
-          const bigFont = await Jimp.loadFont(Jimp.FONT_SANS_64_BLACK);
-
-          // Measure heights to decide canvas height
-          const bigText = last5 || codeText;
-          const bigTextWidth = Jimp.measureText(bigFont, bigText);
-          const bigTextHeight = Jimp.measureTextHeight(bigFont, bigText, bigTextWidth);
-          const smallTextWidth = prefix ? Jimp.measureText(smallFont, prefix) : 0;
-          const smallTextHeight = prefix ? Jimp.measureTextHeight(smallFont, prefix, smallTextWidth) : 0;
-
-          const padding = 6;
-          const gap = 6; // space between elements
-
-          // Small middle text to place between logo and patient code
-          const middleText = sanitizeText('GEZYNE CLINICAL LABORATORY');
-          const midTextWidth = Jimp.measureText(smallFont, middleText);
-          const midTextHeight = Jimp.measureTextHeight(smallFont, middleText, midTextWidth);
-
-          // Layout: logo centered at the top, small text centered below it, then patient code centered
-          const canvasHeight = padding + logoH + gap + midTextHeight + gap + bigTextHeight + padding;
-          const canvas = new Jimp(targetWidth, canvasHeight, 0xffffffff);
-
-          // center logo at top
-          const logoX = Math.floor((targetWidth - logoW) / 2);
-          const logoY = padding;
-          canvas.composite(logoImg, logoX, logoY);
-
-          // center middle text under logo
-          const midX = Math.floor((targetWidth - midTextWidth) / 2);
-          const midY = padding + logoH + gap;
-          canvas.print(smallFont, midX, midY, middleText);
-
-          // Center the emphasized patient code under the middle text
-          const bigX = Math.floor((targetWidth - bigTextWidth) / 2);
-          const bigY = midY + midTextHeight + gap;
-          canvas.print(bigFont, bigX, bigY, bigText);
-
-          // Convert canvas to monochrome bitmap and pack into ESC/POS raster format
-          const width = canvas.bitmap.width;
-          const height = canvas.bitmap.height;
-          const widthBytes = Math.ceil(width / 8);
-          const data = Buffer.alloc(widthBytes * height);
-          for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-              const idx = (y * width + x) * 4;
-              const r = canvas.bitmap.data[idx + 0];
-              const g = canvas.bitmap.data[idx + 1];
-              const b = canvas.bitmap.data[idx + 2];
-              const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-              const bit = gray < 128 ? 1 : 0;
-              if (bit) {
-                const byteIndex = y * widthBytes + Math.floor(x / 8);
-                const bitIndex = 7 - (x % 8);
-                data[byteIndex] |= (1 << bitIndex);
-              }
-            }
-          }
-          const xL = widthBytes & 0xff;
-          const xH = (widthBytes >> 8) & 0xff;
-          const yL = height & 0xff;
-          const yH = (height >> 8) & 0xff;
-          const header = Buffer.from([0x1d, 0x76, 0x30, 0x00, xL, xH, yL, yH]);
-          const rasterBuf = Buffer.concat([header, data]);
-          rasterHex = rasterBuf.toString('hex');
-        }
-      } catch (imgErr) {
-        console.warn('Logo rasterization failed:', imgErr);
-        rasterHex = null;
-      }
-
-      // Generate Code128 barcode raster for the full patient code and pack into ESC/POS raster
-      try {
-        const codeStr = String(patient.patientCode || patient.patientId || '');
-        if (codeStr) {
-          // bwip-js: generate a PNG buffer of the barcode
-          const png = await bwipjs.toBuffer({
-            bcid: 'code128',
-            text: codeStr,
-            scale: 3,
-            height: 40,
-            includetext: false,
-            backgroundcolor: 'FFFFFF'
-          });
-          const barImg = await Jimp.read(png);
-          // Fit to printer width (keep some margin)
-          const targetWidth = 320;
-          if (barImg.bitmap.width > targetWidth) barImg.resize(targetWidth, Jimp.AUTO);
-
-          const width = barImg.bitmap.width;
-          const height = barImg.bitmap.height;
-          const widthBytes = Math.ceil(width / 8);
-          const data = Buffer.alloc(widthBytes * height);
-          for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-              const idx = (y * width + x) * 4;
-              const r = barImg.bitmap.data[idx + 0];
-              const g = barImg.bitmap.data[idx + 1];
-              const b = barImg.bitmap.data[idx + 2];
-              const gray = 0.299 * r + 0.587 * g + 0.114 * b;
-              const bit = gray < 128 ? 1 : 0;
-              if (bit) {
-                const byteIndex = y * widthBytes + Math.floor(x / 8);
-                const bitIndex = 7 - (x % 8);
-                data[byteIndex] |= (1 << bitIndex);
-              }
-            }
-          }
-          const xL = widthBytes & 0xff;
-          const xH = (widthBytes >> 8) & 0xff;
-          const yL = height & 0xff;
-          const yH = (height >> 8) & 0xff;
-          const header = Buffer.from([0x1d, 0x76, 0x30, 0x00, xL, xH, yL, yH]);
-          const rasterBuf = Buffer.concat([header, data]);
-          rasterHexBarcode = rasterBuf.toString('hex');
-        }
-      } catch (bcErr) {
-        console.warn('Barcode generation failed:', bcErr);
-        rasterHexBarcode = null;
-      }
-
-      // Compose one copy
-      const copySpec = [];
-      // insert rasterized logo+code if available, otherwise fallback to printing
-      // the last 5 digits (matching the patients list) in a large font
-      if (rasterHex) {
-        copySpec.push({ type: 'raw', hex: rasterHex });
-      } else {
-        const codeStr = String(patient.patientCode || patient.patientId || '');
-        const last5Match = codeStr.match(/(\d{5})$/);
-        const last5 = last5Match ? last5Match[1] : codeStr;
-        copySpec.push({ type: 'text', align: 'center', size: 'double', bold: true, text: sanitizeText(last5) });
-      }
-      copySpec.push({ type: 'text', align: 'center', text: sanitizeText(currentDate) });
-      copySpec.push({ type: 'feed', count: 1 });
-      copySpec.push({ type: 'text', text: sanitizeText('Name: ' + fullName) });
-      copySpec.push({ type: 'text', text: sanitizeText('Age: ' + age) });
-      copySpec.push({ type: 'feed', count: 1 });
-      copySpec.push({ type: 'text', size: 'normal', text: sanitizeText('Laboratory Request:') });
-      copySpec.push({ type: 'feed', count: 0 });
-        const sanitizedTestLines = makeTestLines().map(l => ({ type: 'text', size: l.size || 'normal', text: sanitizeText(l.text) }));
-      copySpec.push.apply(copySpec, sanitizedTestLines);
-      copySpec.push({ type: 'feed', count: 1 });
-      copySpec.push({ type: 'text', text: sanitizeText('Amount: PHP ' + total.toFixed(2)) });
-      copySpec.push({ type: 'feed', count: 2 });
-      copySpec.push({ type: 'feed', count: 1 });
-      copySpec.push({ type: 'hr', align: 'center', count: 28 });
-      copySpec.push({ type: 'feed', count: 0 });
-      copySpec.push({ type: 'text', text: sanitizeText('Validated Amount Received by') });
-      copySpec.push({ type: 'feed', count: 2 });
-      copySpec.push({ type: 'text', align: 'center', size: 'normal', text: sanitizeText('This is not a valid OR') });
-      copySpec.push({ type: 'text', align: 'center', size: 'normal', text: sanitizeText('Please keep this ticket') });
-      copySpec.push({ type: 'text', align: 'center', size: 'normal', text: sanitizeText('until you are finished') });
-      copySpec.push({ type: 'cut' });
-      // If we generated a barcode raster, append it centered below the code/logo
-      if (rasterHexBarcode) {
-        copySpec.push({ type: 'feed', count: 1 });
-        copySpec.push({ type: 'raw', hex: rasterHexBarcode });
-        copySpec.push({ type: 'feed', count: 1 });
-      }
-
-      // TEMPORARY: Print only one thermal paper copy
-      const spacer = [{ type: 'feed', count: 4 }];
-      const spec = copySpec.concat(spacer, copySpec);
-      // const spec = copySpec; // Only one copy for now
-
-      // Save a copy of the spec to workspace logs for inspection (helps trace unexpected content)
-      try {
-        const inspectPath = pathMod.join(__dirname, '..', 'logs', 'last_patient_spec.json');
-        fs.writeFileSync(inspectPath, JSON.stringify(spec, null, 2), { encoding: 'utf8' });
-      } catch (e) {
-        console.warn('Failed to write last_patient_spec.json for inspection:', e);
-      }
-
-      // Write spec to temp JSON file
-      const tmp = os.tmpdir();
-      const specPath = pathMod.join(tmp, `patient_receipt_${Date.now()}.json`);
-      fs.writeFileSync(specPath, JSON.stringify(spec), { encoding: 'utf8' });
-
-      const scriptPath = pathMod.join(__dirname, '..', 'scripts', 'thermal_test.js');
-      const args = [scriptPath, '--json', specPath];
-      const ENV_PRINTER = process.env.PRINTER_NAME || process.env.PRINTER || null;
-      if (ENV_PRINTER) args.push('--printer', ENV_PRINTER);
-
-      const proc = spawnSync(process.execPath, args, { cwd: pathMod.join(__dirname, '..'), encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 });
-      try { fs.unlinkSync(specPath); } catch (e) {}
-
-      // Log print result for debugging
-      try {
-        const entry = {
-          action: 'patient_receipt_print',
-          patientId: patient.id || patient._id || null,
-          patientCode: patient.patientCode || patient.patientId || null,
-          args: args,
-          exitCode: proc.status != null ? proc.status : null,
-          error: proc.error ? String(proc.error) : null,
-          stdout: proc.stdout || null,
-          stderr: proc.stderr || null,
-          timestamp: new Date().toISOString()
-        };
-        appendPrintLog(JSON.stringify(entry));
-      } catch (logErr) {
-        console.error('Failed to append print log:', logErr);
-      }
-
-      if (proc.error || proc.status !== 0) {
-        console.error('Patient print failed:', proc.error || proc.stderr || proc.stdout || proc.status);
-        // keep user flow working, but warn
-        req.flash('warning_msg', 'Patient saved but printing failed (see server logs)');
-      } else {
-        req.flash('success_msg', 'Patient saved and receipt printed');
-      }
-    } catch (printErr) {
-      console.error('Error during patient print attempt:', printErr);
-      req.flash('warning_msg', 'Patient saved but printing error occurred');
-    }
-
+    // Patient saved — tests will be assigned from patient management. Printing is manual.
+    req.flash('success_msg', `Patient ${firstName} ${lastName} added successfully!`);
     res.redirect('/patients');
 
   } catch (error) {
@@ -790,6 +359,69 @@ router.post('/thermal-print', requireAuth, canAccessPatient, (req, res) => {
     return res.json({ success: true, output: proc.stdout });
   } catch (e) {
     console.error('Thermal print handler error:', e);
+    return res.status(500).json({ success: false, error: String(e) });
+  }
+});
+
+// POST /patients/:id/print - print patient receipt on demand
+router.post('/:id/print', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const patient = await Patient.findById(req.params.id);
+    if (!patient) return res.status(404).json({ success: false, error: 'Patient not found' });
+
+    // build a simple receipt spec
+    const now = new Date();
+    const currentDate = now.toISOString().replace('T', ' ').slice(0, 19);
+    const fullName = `${patient.firstName || ''} ${patient.lastName || ''}`.trim();
+    const age = patient.ageManual || patient.age || 'N/A';
+    const tests = Array.isArray(patient.requestedTests) ? patient.requestedTests : [];
+    const total = tests.reduce((s, t) => s + (Number((t && (t.amount || t.amount === 0) ? t.amount : 0) || 0)), 0);
+
+    const spec = [];
+    spec.push({ type: 'text', align: 'center', size: 'double', bold: true, text: (patient.patientCode || patient.patientId || '') });
+    spec.push({ type: 'text', align: 'center', text: currentDate });
+    spec.push({ type: 'feed', count: 1 });
+    spec.push({ type: 'text', text: 'Name: ' + fullName });
+    spec.push({ type: 'text', text: 'Age: ' + age });
+    spec.push({ type: 'feed', count: 1 });
+    spec.push({ type: 'text', size: 'normal', text: 'Laboratory Request:' });
+    if (tests.length) {
+      tests.forEach(t => {
+        const label = (t && (t.label || t.key)) || String(t || '');
+        const amt = (t && (t.amount || t.amount === 0)) ? Number(t.amount) : 0;
+        let line = `- ${label}`;
+        if (amt) line += ` - PHP ${Number(amt).toFixed(2)}`;
+        spec.push({ type: 'text', text: line });
+      });
+    } else {
+      spec.push({ type: 'text', text: '- (No tests specified)' });
+    }
+    spec.push({ type: 'feed', count: 1 });
+    spec.push({ type: 'text', text: 'Amount: PHP ' + Number(total || 0).toFixed(2) });
+    spec.push({ type: 'feed', count: 4 });
+    spec.push({ type: 'cut' });
+
+    // write to temp and call thermal_test script
+    const os = require('os');
+    const tmp = os.tmpdir();
+    const specPath = pathMod.join(tmp, `patient_receipt_${Date.now()}.json`);
+    fs.writeFileSync(specPath, JSON.stringify(spec), { encoding: 'utf8' });
+
+    const { spawnSync } = require('child_process');
+    const scriptPath = pathMod.join(__dirname, '..', 'scripts', 'thermal_test.js');
+    const args = [scriptPath, '--json', specPath];
+    const ENV_PRINTER = process.env.PRINTER_NAME || process.env.PRINTER || null;
+    if (ENV_PRINTER) args.push('--printer', ENV_PRINTER);
+
+    const proc = spawnSync(process.execPath, args, { cwd: pathMod.join(__dirname, '..'), encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 });
+    try { fs.unlinkSync(specPath); } catch (e) {}
+
+    try { appendPrintLog(JSON.stringify({ action: 'patient_receipt_print_manual', patientId: patient.id, args, exitCode: proc.status || null, stderr: proc.stderr || null, stdout: proc.stdout || null })); } catch (e) {}
+
+    if (proc.error || proc.status !== 0) return res.status(500).json({ success: false, error: proc.stderr || proc.stdout || String(proc.error) });
+    return res.json({ success: true, output: proc.stdout });
+  } catch (e) {
+    console.error('Patient print error:', e);
     return res.status(500).json({ success: false, error: String(e) });
   }
 });
@@ -881,7 +513,10 @@ router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
         phone,
         email,
         address,
-        requiredAreas
+        requiredAreas,
+        company,
+        philhealthConsent,
+        philhealthId
       },
       { new: true }
     );
