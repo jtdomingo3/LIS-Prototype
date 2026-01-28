@@ -419,6 +419,54 @@ router.get('/area/:name', requireAuth, canAccessPatient, async (req, res) => {
       // convert to array with aggregated amounts
       aggregated = Object.keys(byPatient).map(pid => {
         const item = byPatient[pid];
+
+        // Merge Blood Chemistry variant tests into a single logical 'Blood Chemistry' test
+        try {
+          const bcIdxs = [];
+          for (let i = 0; i < item.tests.length; i++) {
+            const tt = item.tests[i];
+            const ttLabel = String(tt.testType || '').toLowerCase();
+            if (/blood\s*chemistry|^bc\b|^blood[-_\s]?chem/i.test(ttLabel)) {
+              bcIdxs.push(i);
+            }
+          }
+          if (bcIdxs.length > 1) {
+            // collect requestedTests from all BC variant tests
+            const mergedRequested = [];
+            const mergedSpecimens = {};
+            const mergedIds = [];
+            for (const idx of bcIdxs.sort((a,b)=>b-a)) {
+              const tt = item.tests[idx];
+              mergedIds.push(tt.testId || tt.id || ('BC-' + idx));
+              if (Array.isArray(tt.requestedTests)) mergedRequested.push(...tt.requestedTests);
+              if (tt.specimenNumbers && typeof tt.specimenNumbers === 'object') {
+                Object.assign(mergedSpecimens, tt.specimenNumbers);
+              }
+              // remove the variant entry
+              item.tests.splice(idx, 1);
+            }
+            // dedupe mergedRequested by key/label
+            const seen = new Set();
+            const deduped = [];
+            for (const r of mergedRequested) {
+              const k = (String(r.key || r.label || '')).toLowerCase();
+              if (!k) continue;
+              if (seen.has(k)) continue;
+              seen.add(k);
+              deduped.push(r);
+            }
+            // create a synthetic merged test for view purposes
+            const mergedTest = Object.assign({}, item.tests[0] || {}, {
+              testId: mergedIds.join(','),
+              testType: 'Blood Chemistry',
+              requestedTests: deduped,
+              specimenNumbers: Object.keys(mergedSpecimens).length ? mergedSpecimens : undefined
+            });
+            // insert merged test at start
+            item.tests.unshift(mergedTest);
+          }
+        } catch (e) { console.warn('Failed merging blood chemistry variants', e); }
+
         // compute clinical/xray totals and list of testIds (per-area totals)
         let clinicalTotal = 0, xrayTotal = 0;
         const testIds = [];
@@ -648,6 +696,7 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
 
       // Map each test to a candidate target area (null => Awaiting)
       const candidates = testsToProcess.map(t => ({ test: t, target: getTargetAreaForTest(t) }));
+      console.log('DEBUG Payment Area candidates:', candidates.map(c => ({ testId: c.test && c.test.testId, target: c.target })));
       // Choose the earliest area in AREAS order among non-null targets; this area becomes active for the patient
       const nonNullTargets = candidates.map(c => c.target).filter(Boolean);
       let chosenTarget = null;
@@ -663,6 +712,7 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
       // If no chosen target, everything stays Awaiting
       for (const c of candidates) {
         try {
+          console.log('DEBUG Payment Area processing test', { testId: c.test && c.test.testId, originalStatus: c.test && c.test.status, candidateTarget: c.target, chosenTarget });
           const t = c.test;
           const label = String(t.testType || '').toLowerCase();
           const isSampleOnDemand = /fecal|pregnan|fob|urinal|fecalysis|fecal-occult-blood|pregnancy/.test(label) ||

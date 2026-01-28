@@ -36,11 +36,12 @@
                 <ul style="margin:0 0 0 12px; padding:0; list-style:disc;">
                   <% if (Array.isArray(row.tests) && row.tests.length) {
                        row.tests.forEach(t => {
-                         // use area-specific requested list when available, otherwise fall back to whole test type
-                         const areaList = Array.isArray(t._areaRequested) && t._areaRequested.length ? t._areaRequested : (Array.isArray(t.requestedTests) ? t.requestedTests : []);
-                         if (areaList.length) {
-                           areaList.forEach(rt => { const amt = Number(rt.amount || 0); %>
-                            <li style="margin-bottom:4px;"><%= (rt.label || '').replace(/-/g,' ').replace(/\b\w/g, function(ch){return ch.toUpperCase();}) %> <span style="color:var(--text-gray);">(<%= rt.lab || 'clinical' %>)</span>
+                         // Render a single collapsed row for Blood Chemistry tests (group variants)
+                         const tt = (t.testType || '').toString().toLowerCase();
+                         const isBloodChem = /blood\s*chemistry|blood-chemistry|^bc\b/i.test(tt) || (Array.isArray(t.requestedTests) && t.requestedTests.length > 1 && t.requestedTests.every(r=>/(blood|chemistry|bun|crea|sgpt|sgot|lipid|hba1c|albumin|blood[-_\s]?sugar)/i.test(String(r.key||r.label||''))));
+                         if (isBloodChem) {
+                           const label = (t.testType && t.testType.toString()) ? (t.testType.toString()) : 'Blood Chemistry'; %>
+                            <li style="margin-bottom:4px;"><%= label.replace(/-/g,' ').replace(/\b\w/g, function(ch){return ch.toUpperCase();}) %>
                                <div style="margin-top:4px; font-size:0.85em;">
                                 <% if (areaName !== 'Payment Area') { %>
                                  <form action="/reception/assign" method="POST" style="display:inline-block; margin-right:6px;">
@@ -54,30 +55,52 @@
                                    <button class="button btn-primary btn-small" <%= row.patientEncoded ? '' : 'disabled' %>>Assign</button>
                                  </form>
                                 <% } %>
-                                <!-- per-test View/Delete removed; use patient-level actions in Action column -->
                                </div>
                              </li>
-                           <% })
-                         } else {
-                           const singleLabel = (t.testType || 'Test').toString().replace(/-/g,' ').replace(/\b\w/g, function(ch){return ch.toUpperCase();}); %>
-                           <li style="margin-bottom:4px;"><%= singleLabel %>
-                             <div style="margin-top:4px; font-size:0.85em;">
-                               <% if (areaName !== 'Payment Area') { %>
-                               <form action="/reception/assign" method="POST" style="display:inline-block; margin-right:6px;">
-                                 <input type="hidden" name="testId" value="<%= t.id %>">
-                                 <select name="area" required style="margin-right:6px;">
-                                   <% areas.forEach(a => { %>
-                                     <option value="<%= a %>" <%= a === areaName ? 'selected' : '' %>><%= a %></option>
-                                   <% }) %>
-                                 </select>
-                                 <input type="text" name="specimen" placeholder="Specimen # (optional)" style="margin-right:6px;" <%= row.patientEncoded ? '' : 'disabled' %>>
-                                 <button class="button btn-primary btn-small" <%= row.patientEncoded ? '' : 'disabled' %>>Assign</button>
-                               </form>
-                               <% } %>
-                               <!-- per-test View/Delete removed; use patient-level actions in Action column -->
-                             </div>
-                           </li>
-                         <% }
+                         <% } else {
+                           // use area-specific requested list when available, otherwise fall back to whole test type
+                           const areaList = Array.isArray(t._areaRequested) && t._areaRequested.length ? t._areaRequested : (Array.isArray(t.requestedTests) ? t.requestedTests : []);
+                           if (areaList.length) {
+                             areaList.forEach(rt => { const amt = Number(rt.amount || 0); %>
+                              <li style="margin-bottom:4px;"><%= (rt.label || '').replace(/-/g,' ').replace(/\b\w/g, function(ch){return ch.toUpperCase();}) %> <span style="color:var(--text-gray);">(<%= rt.lab || 'clinical' %>)</span>
+                                 <div style="margin-top:4px; font-size:0.85em;">
+                                  <% if (areaName !== 'Payment Area') { %>
+                                   <form action="/reception/assign" method="POST" style="display:inline-block; margin-right:6px;">
+                                     <input type="hidden" name="testId" value="<%= t.id %>">
+                                     <select name="area" required style="margin-right:6px;">
+                                       <% areas.forEach(a => { %>
+                                         <option value="<%= a %>" <%= a === areaName ? 'selected' : '' %>><%= a %></option>
+                                       <% }) %>
+                                     </select>
+                                     <input type="text" name="specimen" placeholder="Specimen # (optional)" style="margin-right:6px;" <%= row.patientEncoded ? '' : 'disabled' %>>
+                                     <button class="button btn-primary btn-small" <%= row.patientEncoded ? '' : 'disabled' %>>Assign</button>
+                                   </form>
+                                  <% } %>
+                                   <!-- per-test View/Delete removed; use patient-level actions in Action column -->
+                                 </div>
+                               </li>
+                             <% })
+                           } else {
+                             const singleLabel = (t.testType || 'Test').toString().replace(/-/g,' ').replace(/\b\w/g, function(ch){return ch.toUpperCase();}); %>
+                             <li style="margin-bottom:4px;"><%= singleLabel %>
+                               <div style="margin-top:4px; font-size:0.85em;">
+                                 <% if (areaName !== 'Payment Area') { %>
+                                 <form action="/reception/assign" method="POST" style="display:inline-block; margin-right:6px;">
+                                   <input type="hidden" name="testId" value="<%= t.id %>">
+                                   <select name="area" required style="margin-right:6px;">
+                                     <% areas.forEach(a => { %>
+                                       <option value="<%= a %>" <%= a === areaName ? 'selected' : '' %>><%= a %></option>
+                                     <% }) %>
+                                   </select>
+                                   <input type="text" name="specimen" placeholder="Specimen # (optional)" style="margin-right:6px;" <%= row.patientEncoded ? '' : 'disabled' %>>
+                                   <button class="button btn-primary btn-small" <%= row.patientEncoded ? '' : 'disabled' %>>Assign</button>
+                                 </form>
+                                 <% } %>
+                                 <!-- per-test View/Delete removed; use patient-level actions in Action column -->
+                               </div>
+                             </li>
+                           <% }
+                         }
                        })
                      } else { %>
                        <li>No tests</li>
