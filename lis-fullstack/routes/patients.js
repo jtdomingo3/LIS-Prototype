@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Patient = require('../models/Patient');
 const User = require('../models/User');
+const Test = require('../models/Test');
 const { requireAuth, canAccessPatient } = require('../middleware/auth');
 const fs = require('fs');
 const pathMod = require('path');
@@ -50,7 +51,7 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
     const totalPages = Math.ceil(totalPatients / limit);
 
     // Paginate
-    const patients = allPatients.slice(skip, skip + limit);
+    let patients = allPatients.slice(skip, skip + limit);
 
     // Calculate age for each patient (prefer DOB computed age, fallback to manual age)
     patients.forEach(patient => {
@@ -75,6 +76,40 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
         patient.age = 'N/A';
       }
     });
+
+    // Attach hasTests flag per patient so the view can decide which action button to show.
+    // Fallback: prefer reading the file-based DB `data.json` directly when available
+    try {
+      const testsCountByPatient = {};
+      // try file DB first
+      const dbPath = pathMod.join(__dirname, '..', 'data.json');
+      let fileTests = null;
+      try {
+        const raw = fs.readFileSync(dbPath, 'utf8');
+        const parsed = JSON.parse(raw || '{}');
+        if (Array.isArray(parsed.tests)) fileTests = parsed.tests;
+      } catch (e) {
+        fileTests = null;
+      }
+
+      if (Array.isArray(fileTests)) {
+        fileTests.forEach(t => { if (t && t.patient) testsCountByPatient[String(t.patient)] = (testsCountByPatient[String(t.patient)] || 0) + 1; });
+      } else {
+        // fallback to model API
+        const allTests = await Test.find({});
+        if (Array.isArray(allTests)) {
+          allTests.forEach(t => { if (t && t.patient) testsCountByPatient[String(t.patient)] = (testsCountByPatient[String(t.patient)] || 0) + 1; });
+        }
+      }
+
+      patients = patients.map(p => {
+        const plain = (p && typeof p.toJSON === 'function') ? p.toJSON() : p;
+        return Object.assign({}, plain, { hasTests: !!testsCountByPatient[String(plain.id)] });
+      });
+      console.log('DEBUG patients hasTests map:', testsCountByPatient);
+    } catch (e) {
+      console.warn('Failed to compute patient test flags:', e);
+    }
 
     res.render('patients/index', {
       title: 'Patient Management',
@@ -489,8 +524,9 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
     // PUT /patients/:id - Update patient
 router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
   try {
-    const { firstName, lastName, dateOfBirth, gender, phone, email, address, physician } = req.body;
+    const { firstName, lastName, dateOfBirth, gender, phone, email, address, physician, company, philhealthConsent, philhealthId } = req.body;
     const ageManual = req.body.ageManual || req.body.age || null;
+    const philhealthConsentBool = (philhealthConsent === 'on' || philhealthConsent === '1' || philhealthConsent === 'true');
     const requiredAreas = Array.isArray(req.body.requiredAreas)
       ? req.body.requiredAreas
       : req.body.requiredAreas ? [req.body.requiredAreas] : [];
@@ -514,9 +550,9 @@ router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
         email,
         address,
         requiredAreas,
-        company,
-        philhealthConsent,
-        philhealthId
+        company: company || '',
+        philhealthConsent: !!philhealthConsentBool,
+        philhealthId: philhealthId || ''
       },
       { new: true }
     );
