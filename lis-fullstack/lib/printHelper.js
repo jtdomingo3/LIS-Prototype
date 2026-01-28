@@ -2,6 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { spawnSync } = require('child_process');
+const Jimp = require('jimp');
+const bwipjs = require('bwip-js');
 
 const PRINT_LOG_PATH = path.join(__dirname, '..', 'logs', 'print.log');
 
@@ -49,29 +51,77 @@ async function printPatientReceipt(patient, testOrTests) {
 
     const total = requested.reduce((s, r) => s + (Number((r && (r.amount || r.amount === 0) ? r.amount : 0) || 0)), 0);
 
-    const spec = [];
-    spec.push({ type: 'text', align: 'center', size: 'double', bold: true, text: sanitizeText(patientObj.patientCode || patientObj.patientId || '') });
-    spec.push({ type: 'text', align: 'center', text: currentDate });
-    spec.push({ type: 'feed', count: 1 });
-    spec.push({ type: 'text', text: 'Name: ' + sanitizeText(fullName) });
-    spec.push({ type: 'text', text: 'Age: ' + sanitizeText(age) });
-    spec.push({ type: 'feed', count: 1 });
-    spec.push({ type: 'text', size: 'normal', text: 'Laboratory Request:' });
+    // Build detailed copySpec matching the requested layout
+    const copySpec = [];
+
+    // Top: rasterized logo + lab name + big 5-digit code if available
+    try {
+      const logoPath = path.join(__dirname, '..', 'assets', 'gezyne-logo-NOTEXT.png');
+      if (fs.existsSync(logoPath)) {
+        const rawHex = await rasterLogoAndCodeToEscPosHex(logoPath, patientObj);
+        if (rawHex) copySpec.push({ type: 'raw', hex: rawHex });
+      }
+    } catch (e) {}
+
+    // Fallback: big patient code text if raster not available
+    if (copySpec.length === 0) {
+      const codeText = sanitizeText(patientObj.patientCode || patientObj.patientId || '');
+      const last5Match = codeText.match(/(\d{5})$/);
+      const last5 = last5Match ? last5Match[1] : codeText;
+      copySpec.push({ type: 'text', align: 'center', size: 'double', bold: true, text: sanitizeText(last5) });
+    }
+
+    copySpec.push({ type: 'text', align: 'center', text: currentDate });
+    copySpec.push({ type: 'feed', count: 1 });
+    copySpec.push({ type: 'text', text: 'Name: ' + sanitizeText(fullName) });
+    copySpec.push({ type: 'text', text: 'Age: ' + sanitizeText(age) });
+    copySpec.push({ type: 'feed', count: 1 });
+    copySpec.push({ type: 'text', size: 'normal', text: 'Laboratory Request:' });
+
     if (requested.length) {
       requested.forEach(r => {
         const label = sanitizeText(r.label || r.key || '');
         const amt = (r && (r.amount || r.amount === 0)) ? Number(r.amount) : 0;
         let line = `- ${label}`;
         if (amt) line += ` - PHP ${Number(amt).toFixed(2)}`;
-        spec.push({ type: 'text', text: line });
+        copySpec.push({ type: 'text', text: line });
       });
     } else {
-      spec.push({ type: 'text', text: '- (No tests specified)' });
+      copySpec.push({ type: 'text', text: '- (No tests specified)' });
     }
-    spec.push({ type: 'feed', count: 1 });
-    spec.push({ type: 'text', text: 'Amount: PHP ' + Number(total || 0).toFixed(2) });
-    spec.push({ type: 'feed', count: 4 });
-    spec.push({ type: 'cut' });
+
+    copySpec.push({ type: 'feed', count: 1 });
+    copySpec.push({ type: 'text', text: 'Amount: PHP ' + Number(total || 0).toFixed(2) });
+    copySpec.push({ type: 'feed', count: 2 });
+
+    // Divider and validation lines (preserve exactly as provided)
+    copySpec.push({ type: 'hr', align: 'center', count: 28 });
+    copySpec.push({ type: 'feed', count: 0 });
+    copySpec.push({ type: 'text', text: sanitizeText('Validated Amount Received by') });
+    copySpec.push({ type: 'feed', count: 2 });
+    copySpec.push({ type: 'text', align: 'center', size: 'normal', text: sanitizeText('This is not a valid OR') });
+    copySpec.push({ type: 'text', align: 'center', size: 'normal', text: sanitizeText('Please keep this ticket') });
+    copySpec.push({ type: 'text', align: 'center', size: 'normal', text: sanitizeText('until you are finished') });
+
+    // Optional: append generated barcode raster centered below the code/logo (before cut)
+    try {
+      const code = sanitizeText(patientObj.patientCode || patientObj.patientId || '');
+      if (code) {
+        const barcodeHex = await barcodeToEscPosHex(code);
+        if (barcodeHex) {
+          copySpec.push({ type: 'feed', count: 1 });
+          copySpec.push({ type: 'raw', hex: barcodeHex });
+          copySpec.push({ type: 'feed', count: 1 });
+        }
+      }
+    } catch (e) {}
+
+    copySpec.push({ type: 'cut' });
+
+    // Build final spec: two copies by default, keep single-copy commented for debugging
+    const spacer = [{ type: 'feed', count: 4 }];
+    const spec = copySpec.concat(spacer, copySpec);
+    // const spec = copySpec; // Uncomment to print only one copy while debugging
 
     const tmp = os.tmpdir();
     const specPath = path.join(tmp, `patient_receipt_${Date.now()}.json`);
@@ -82,8 +132,32 @@ async function printPatientReceipt(patient, testOrTests) {
     const ENV_PRINTER = process.env.PRINTER_NAME || process.env.PRINTER || null;
     if (ENV_PRINTER) args.push('--printer', ENV_PRINTER);
 
+    // Allow test mode: if PRINT_DRY_RUN=1, ask thermal_test to print preview instead of sending to printer
+    const debugDry = process.env.PRINT_DRY_RUN === '1';
+    if (debugDry && !args.includes('--dry-run')) args.push('--dry-run');
+
+    // If requested, run a debug dry-run first and print the payload/preview to the terminal
+    if (process.env.PRINT_DEBUG_PRINT_PAYLOAD === '1') {
+      try {
+        const debugArgs = [scriptPath, '--json', specPath, '--dry-run'];
+        const debugProc = spawnSync(process.execPath, debugArgs, { cwd: path.join(__dirname, '..'), encoding: 'utf8', maxBuffer: 40 * 1024 * 1024 });
+        const preview = debugProc.stdout || debugProc.stderr || '';
+        console.log('--- Thermal preview (PRINT_DEBUG_PRINT_PAYLOAD) ---');
+        console.log(preview);
+        try {
+          appendPrintLog(JSON.stringify({ action: 'print_preview_console', patientCode: patientObj.patientCode || patientObj.patientId || null, preview: String(preview).slice(0, 20000) }));
+        } catch (e) {}
+      } catch (e) {
+        console.warn('Failed to run thermal debug preview:', e);
+      }
+    }
+
     const proc = spawnSync(process.execPath, args, { cwd: path.join(__dirname, '..'), encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 });
-    try { fs.unlinkSync(specPath); } catch (e) {}
+    // In debug mode keep the spec file and also append the spec JSON to the print log for inspection
+    try {
+      if (!debugDry) try { fs.unlinkSync(specPath); } catch (e) {}
+      else appendPrintLog(JSON.stringify({ action: 'print_spec_debug', specPath, spec }));
+    } catch (e) {}
 
     const entry = {
       action: 'patient_receipt_print_helper',
@@ -105,6 +179,161 @@ async function printPatientReceipt(patient, testOrTests) {
   } catch (e) {
     appendPrintLog(JSON.stringify({ action: 'print_helper_error', error: String(e), timestamp: new Date().toISOString() }));
     return { success: false, error: String(e) };
+  }
+}
+
+async function rasterImageToEscPosHex(imagePath) {
+  try {
+    const img = await Jimp.read(imagePath);
+    // convert to monochrome bitmap, scale to printer width (384px typical for 48mm)
+    const maxWidth = 384;
+    if (img.bitmap.width > maxWidth) img.resize(maxWidth, Jimp.AUTO);
+    img.greyscale().contrast(0.1);
+    img.bitmap.data = img.bitmap.data; // ensure buffer exists
+
+    // build 1-bit per pixel bitmap rows
+    const width = img.bitmap.width;
+    const height = img.bitmap.height;
+    const bytesPerRow = Math.ceil(width / 8);
+    const rasterData = Buffer.alloc(bytesPerRow * height);
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * 4;
+        const r = img.bitmap.data[idx];
+        // threshold
+        const bit = (r > 127) ? 0 : 1; // black pixel -> 1
+        if (bit) {
+          const byteIndex = y * bytesPerRow + Math.floor(x / 8);
+          const bitIndex = 7 - (x % 8);
+          rasterData[byteIndex] |= (1 << bitIndex);
+        }
+      }
+    }
+
+    // ESC/POS raster bit image: GS v 0 m xL xH yL yH d...
+    const xL = bytesPerRow & 0xff;
+    const xH = (bytesPerRow >> 8) & 0xff;
+    const yL = height & 0xff;
+    const yH = (height >> 8) & 0xff;
+    const header = Buffer.from([0x1d, 0x76, 0x30, 0x00, xL, xH, yL, yH]);
+    const out = Buffer.concat([header, rasterData]);
+    return out.toString('hex');
+  } catch (e) {
+    return null;
+  }
+}
+
+async function barcodeToEscPosHex(text) {
+  try {
+    const png = await bwipjs.toBuffer({ bcid: 'code128', text: text, scale: 2, height: 10, includetext: false });
+    // load into Jimp to prepare raster
+    const img = await Jimp.read(png);
+    // scale to printer width if needed
+    const maxWidth = 384;
+    if (img.bitmap.width > maxWidth) img.resize(maxWidth, Jimp.AUTO);
+    img.greyscale();
+
+    const width = img.bitmap.width;
+    const height = img.bitmap.height;
+    const bytesPerRow = Math.ceil(width / 8);
+    const rasterData = Buffer.alloc(bytesPerRow * height);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * 4;
+        const r = img.bitmap.data[idx];
+        const bit = (r > 127) ? 0 : 1;
+        if (bit) {
+          const byteIndex = y * bytesPerRow + Math.floor(x / 8);
+          const bitIndex = 7 - (x % 8);
+          rasterData[byteIndex] |= (1 << bitIndex);
+        }
+      }
+    }
+    const xL = bytesPerRow & 0xff;
+    const xH = (bytesPerRow >> 8) & 0xff;
+    const yL = height & 0xff;
+    const yH = (height >> 8) & 0xff;
+    const header = Buffer.from([0x1d, 0x76, 0x30, 0x00, xL, xH, yL, yH]);
+    const out = Buffer.concat([header, rasterData]);
+    return out.toString('hex');
+  } catch (e) {
+    return null;
+  }
+}
+
+async function rasterLogoAndCodeToEscPosHex(imagePath, patientObj) {
+  try {
+    const img = await Jimp.read(imagePath);
+    const targetWidth = 384;
+    const padding = 6;
+
+    // Prepare fonts
+    const smallFont = await Jimp.loadFont(Jimp.FONT_SANS_16_BLACK);
+    let bigFont;
+    try { bigFont = await Jimp.loadFont(Jimp.FONT_SANS_64_BLACK); } catch (e) { bigFont = await Jimp.loadFont(Jimp.FONT_SANS_32_BLACK); }
+
+    // Scale logo to reasonable height
+    const maxLogoHeight = 48;
+    img.scaleToFit(80, maxLogoHeight);
+    const logoW = img.bitmap.width;
+    const logoH = img.bitmap.height;
+
+    const codeText = String(patientObj.patientCode || patientObj.patientId || '');
+    const last5Match = codeText.match(/(\d{5})$/);
+    const bigText = last5Match ? last5Match[1] : (codeText || '');
+    const middleText = sanitizeText('GEZYNE CLINICAL LABORATORY');
+
+    const bigTextWidth = Jimp.measureText(bigFont, bigText);
+    const bigTextHeight = Jimp.measureTextHeight(bigFont, bigText, bigTextWidth);
+    const midTextWidth = Jimp.measureText(smallFont, middleText);
+    const midTextHeight = Jimp.measureTextHeight(smallFont, middleText, midTextWidth);
+
+    const gap = 6;
+    const canvasHeight = padding + logoH + gap + midTextHeight + gap + bigTextHeight + padding;
+    const canvas = new Jimp(targetWidth, canvasHeight, 0xffffffff);
+
+    const logoX = Math.floor((targetWidth - logoW) / 2);
+    const logoY = padding;
+    canvas.composite(img, logoX, logoY);
+
+    const midX = Math.floor((targetWidth - midTextWidth) / 2);
+    const midY = padding + logoH + gap;
+    canvas.print(smallFont, midX, midY, middleText);
+
+    const bigX = Math.floor((targetWidth - bigTextWidth) / 2);
+    const bigY = midY + midTextHeight + gap;
+    canvas.print(bigFont, bigX, bigY, bigText);
+
+    // Convert to monochrome bitmap
+    const width = canvas.bitmap.width;
+    const height = canvas.bitmap.height;
+    const bytesPerRow = Math.ceil(width / 8);
+    const rasterData = Buffer.alloc(bytesPerRow * height);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * 4;
+        const r = canvas.bitmap.data[idx + 0];
+        const g = canvas.bitmap.data[idx + 1];
+        const b = canvas.bitmap.data[idx + 2];
+        const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+        const bit = gray < 128 ? 1 : 0;
+        if (bit) {
+          const byteIndex = y * bytesPerRow + Math.floor(x / 8);
+          const bitIndex = 7 - (x % 8);
+          rasterData[byteIndex] |= (1 << bitIndex);
+        }
+      }
+    }
+    const xL = bytesPerRow & 0xff;
+    const xH = (bytesPerRow >> 8) & 0xff;
+    const yL = height & 0xff;
+    const yH = (height >> 8) & 0xff;
+    const header = Buffer.from([0x1d, 0x76, 0x30, 0x00, xL, xH, yL, yH]);
+    const out = Buffer.concat([header, rasterData]);
+    return out.toString('hex');
+  } catch (e) {
+    return null;
   }
 }
 

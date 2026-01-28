@@ -183,6 +183,10 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
 
     const test = {};
     test.patient = req.query.patient || '';
+    // If opening the new test form from a patient link, enable print-after-assign by default
+    if (req.query && req.query.patient) {
+      test.printAfterAssign = '1';
+    }
     res.render('tests/new', {
       title: 'Create New Test',
       test,
