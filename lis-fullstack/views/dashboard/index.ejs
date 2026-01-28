@@ -28,6 +28,25 @@
     </div>
 </div>
 
+<div class="stats-container" style="margin-top:12px;">
+    <div class="stat-card">
+        <h4>🏥 Clinical Today</h4>
+        <p class="stat-number">₱<%= (typeof stats.clinicalToday !== 'undefined' ? Number(stats.clinicalToday).toFixed(2) : '0.00') %></p>
+    </div>
+    <div class="stat-card orange">
+        <h4>🩻 X-ray Today</h4>
+        <p class="stat-number">₱<%= (typeof stats.xrayToday !== 'undefined' ? Number(stats.xrayToday).toFixed(2) : '0.00') %></p>
+    </div>
+    <div class="stat-card">
+        <h4>🏥 Clinical Total</h4>
+        <p class="stat-number">₱<%= (typeof stats.clinicalSales !== 'undefined' ? Number(stats.clinicalSales).toFixed(2) : '0.00') %></p>
+    </div>
+    <div class="stat-card orange">
+        <h4>🩻 X-ray Total</h4>
+        <p class="stat-number">₱<%= (typeof stats.xraySales !== 'undefined' ? Number(stats.xraySales).toFixed(2) : '0.00') %></p>
+    </div>
+</div>
+
 <div class="card">
     <h3>Recent Test Results</h3>
     <table>

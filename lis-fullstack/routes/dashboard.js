@@ -22,18 +22,30 @@ router.get('/', requireAuth, async (req, res) => {
   // Compute sales totals from patient paymentHistory (if present)
   let totalSales = 0;
   let todaySales = 0;
+  let clinicalSales = 0;
+  let xraySales = 0;
+  let clinicalToday = 0;
+  let xrayToday = 0;
   try {
     const today = new Date();
     if (Array.isArray(allPatients)) {
       for (const p of allPatients) {
         const payments = Array.isArray(p.paymentHistory) ? p.paymentHistory : [];
         for (const entry of payments) {
-          const amt = parseFloat(entry && entry.amount ? entry.amount : 0) || 0;
-          totalSales += amt;
+          // Support new split entries with `clinical` and `xray`, fallback to legacy `amount` or `total`.
+          const clin = parseFloat(entry && (entry.clinical || entry.clinical === 0) ? entry.clinical : 0) || 0;
+          const xray = parseFloat(entry && (entry.xray || entry.xray === 0) ? entry.xray : 0) || 0;
+          const legacy = parseFloat(entry && (entry.amount || entry.total) ? (entry.amount || entry.total) : 0) || 0;
+          const entryTotal = (clin || xray) ? (clin + xray) : legacy;
+          totalSales += entryTotal;
+          clinicalSales += clin;
+          xraySales += xray;
           if (entry && entry.timestamp) {
             const ts = new Date(entry.timestamp);
             if (ts.getFullYear() === today.getFullYear() && ts.getMonth() === today.getMonth() && ts.getDate() === today.getDate()) {
-              todaySales += amt;
+              todaySales += entryTotal;
+              clinicalToday += clin;
+              xrayToday += xray;
             }
           }
         }
@@ -60,12 +72,12 @@ router.get('/', requireAuth, async (req, res) => {
 
     res.render('dashboard/index', {
       title: 'Dashboard',
-      stats: {
+        stats: {
         totalPatients,
         pendingTests,
         completedTests,
         activeTests
-        , totalSales, todaySales
+        , totalSales, todaySales, clinicalSales, xraySales, clinicalToday, xrayToday
       },
       recentTests
     });

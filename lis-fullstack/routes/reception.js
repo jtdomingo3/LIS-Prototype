@@ -726,6 +726,26 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
         } catch (e) { console.warn('Failed saving processed test', e); }
       }
 
+      // Record payment amounts on the patient so dashboard can sum by lab
+      try {
+        const patientObj = await Patient.findById(patientId);
+        if (patientObj) {
+          const clin = Number(amount_clinical || 0) || 0;
+          const xray = Number(amount_xray || 0) || 0;
+          const entry = {
+            timestamp: (new Date()).toISOString(),
+            area: 'Payment Area',
+            clinical: clin,
+            xray: xray,
+            total: clin + xray,
+            tests: ids.slice()
+          };
+          patientObj.paymentHistory = Array.isArray(patientObj.paymentHistory) ? patientObj.paymentHistory : [];
+          patientObj.paymentHistory.push(entry);
+          await patientObj.save();
+        }
+      } catch (e) { console.warn('Failed recording patient paymentHistory', e); }
+
     } else {
       // Non-payment area marking: if specific testIds provided, use them; otherwise
       // complete all tests for this patient that currently map to this area.
