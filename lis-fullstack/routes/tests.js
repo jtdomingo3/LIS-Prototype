@@ -21,20 +21,38 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
     const skip = (page - 1) * limit;
 
     const searchQuery = req.query.search || '';
+    const statusFilter = req.query.status || '';
+    const typeFilter = req.query.testType || '';
 
   // Get all tests and patients
   let allTests = await Test.find({});
   const allPatients = await Patient.find({});
 
+    // Available test types for filter dropdown
+    const availableTestTypes = Array.isArray(allTests) ? Array.from(new Set(allTests.map(t => (t.testType || '').toString()).filter(Boolean))).sort() : [];
+
+    // Apply search filter
     if (searchQuery) {
       const searchLower = searchQuery.toLowerCase();
       allTests = allTests.filter(test => {
         const patient = allPatients.find(p => p.id === test.patient);
         const patientName = patient ? `${patient.firstName} ${patient.lastName}`.toLowerCase() : '';
-        return test.testId.toLowerCase().includes(searchLower) ||
-               test.testType.toLowerCase().includes(searchLower) ||
+        return (test.testId || '').toString().toLowerCase().includes(searchLower) ||
+               (test.testType || '').toString().toLowerCase().includes(searchLower) ||
                patientName.includes(searchLower);
       });
+    }
+
+    // Apply status filter
+    if (statusFilter) {
+      const sf = statusFilter.toString().toLowerCase();
+      allTests = allTests.filter(t => ((t.status || '').toString().toLowerCase() === sf));
+    }
+
+    // Apply testType filter (substring match)
+    if (typeFilter) {
+      const tf = typeFilter.toString().toLowerCase();
+      allTests = allTests.filter(t => (t.testType || '').toString().toLowerCase().includes(tf));
     }
 
     // Sort by creation date (newest first)
@@ -68,7 +86,10 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
       hasNextPage: page < totalPages,
       prevPage: page - 1,
       nextPage: page + 1,
-      searchQuery
+      searchQuery,
+      statusFilter,
+      typeFilter,
+      availableTestTypes
     });
   } catch (error) {
     console.error('Tests list error:', error);

@@ -6,7 +6,25 @@
       <a href="/tests/new" class="button btn-primary">+ Create New Test</a>
     </div>
     <div>
-      <input type="text" class="search-box" placeholder="Search tests by patient name or ID..." value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>" onkeydown="if(event.key==='Enter'){window.location.search='?search='+this.value}">
+      <form method="GET" action="/tests" style="display:flex; gap:8px; align-items:center;">
+        <select name="status" style="padding:0 12px; height:44px; font-size:14px; width:220px; box-sizing:border-box; border-radius:8px; border:1px solid #d0d7de; background:#fff;" onchange="this.form.submit();">
+          <option value="">All Statuses</option>
+          <option value="Payment Area" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Payment Area') ? 'selected' : '' %>>Payment Area</option>
+          <option value="Extraction Area" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Extraction Area') ? 'selected' : '' %>>Extraction Area</option>
+          <option value="Pending" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Pending') ? 'selected' : '' %>>Pending</option>
+          <option value="Awaiting" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Awaiting') ? 'selected' : '' %>>Awaiting</option>
+          <option value="In Progress" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'In Progress') ? 'selected' : '' %>>In Progress</option>
+          <option value="Completed" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Completed') ? 'selected' : '' %>>Completed</option>
+        </select>
+        <input type="text" name="search" class="search-box" placeholder="Search tests by patient name or ID..." value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>" style="height:44px; padding:10px 14px; font-size:14px; min-width:240px; flex:1; box-sizing:border-box; border-radius:8px; border:1px solid #d0d7de; margin:0 8px;">
+        <select name="testType" style="padding:0 12px; height:44px; font-size:14px; width:220px; box-sizing:border-box; border-radius:8px; border:1px solid #d0d7de; background:#fff;" onchange="this.form.submit();">
+          <option value="">All Test Types</option>
+          <% if (Array.isArray(availableTestTypes)) { availableTestTypes.forEach(function(tt){ %>
+            <option value="<%= tt %>" <%= (typeof typeFilter !== 'undefined' && typeFilter === tt) ? 'selected' : '' %>><%= tt %></option>
+          <% }) } %>
+        </select>
+        <a href="/tests" class="button btn-secondary" style="height:44px; display:inline-flex; align-items:center; padding:0 14px; border-radius:8px;">Clear Filter</a>
+      </form>
     </div>
   </div>
 
