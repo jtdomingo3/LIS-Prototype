@@ -31,7 +31,7 @@ async function printPatientReceipt(patient, testOrTests) {
     const patientObj = (patient && typeof patient.toJSON === 'function') ? patient.toJSON() : patient || {};
     const now = new Date();
     const currentDate = now.toISOString().replace('T', ' ').slice(0, 19);
-    const fullName = `${patientObj.firstName || ''} ${patientObj.lastName || ''}`.trim();
+    const fullName = `${patientObj.firstName || ''} ${patientObj.middleName ? patientObj.middleName + ' ' : ''}${patientObj.lastName || ''}`.trim();
     const age = patientObj.ageManual || patientObj.age || 'N/A';
 
     // testOrTests can be a single test or an array

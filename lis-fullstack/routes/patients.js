@@ -35,11 +35,12 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
 
     if (searchQuery) {
       const searchLower = searchQuery.toLowerCase();
-      allPatients = allPatients.filter(patient =>
-        patient.firstName.toLowerCase().includes(searchLower) ||
-        patient.lastName.toLowerCase().includes(searchLower) ||
-        patient.patientId.toLowerCase().includes(searchLower)
-      );
+        allPatients = allPatients.filter(patient =>
+          (patient.firstName && patient.firstName.toLowerCase().includes(searchLower)) ||
+          (patient.middleName && patient.middleName.toLowerCase().includes(searchLower)) ||
+          (patient.lastName && patient.lastName.toLowerCase().includes(searchLower)) ||
+          (patient.patientId && patient.patientId.toLowerCase().includes(searchLower))
+        );
     }
 
     // Sort by creation date (newest first)
@@ -182,7 +183,7 @@ router.get('/new', requireAuth, canAccessPatient, (req, res) => {
 // POST /patients - Create new patient
 router.post('/', requireAuth, canAccessPatient, async (req, res) => {
   try {
-    const { firstName, lastName, dateOfBirth, gender, phone, email, address, physician } = req.body;
+    const { firstName, middleName, lastName, dateOfBirth, gender, phone, email, address, physician } = req.body;
     const company = req.body.company || '';
     const philhealthConsent = req.body.philhealthConsent === 'on' || req.body.philhealthConsent === '1' || req.body.philhealthConsent === 'true';
     const philhealthId = req.body.philhealthId || '';
@@ -321,6 +322,7 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       patientId,
       patientCode,
       firstName,
+      middleName: middleName || '',
       lastName,
       dateOfBirth,
       ageManual,
@@ -341,7 +343,7 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
     await patient.save();
 
     // Patient saved — tests will be assigned from patient management. Printing is manual.
-    req.flash('success_msg', `Patient ${firstName} ${lastName} added successfully!`);
+    req.flash('success_msg', `Patient ${firstName} ${middleName ? middleName + ' ' : ''}${lastName} added successfully!`);
     res.redirect('/patients');
 
   } catch (error) {
@@ -407,7 +409,7 @@ router.post('/:id/print', requireAuth, canAccessPatient, async (req, res) => {
     // build a simple receipt spec
     const now = new Date();
     const currentDate = now.toISOString().replace('T', ' ').slice(0, 19);
-    const fullName = `${patient.firstName || ''} ${patient.lastName || ''}`.trim();
+    const fullName = `${patient.firstName || ''} ${patient.middleName ? patient.middleName + ' ' : ''}${patient.lastName || ''}`.trim();
     const age = patient.ageManual || patient.age || 'N/A';
     const tests = Array.isArray(patient.requestedTests) ? patient.requestedTests : [];
     const total = tests.reduce((s, t) => s + (Number((t && (t.amount || t.amount === 0) ? t.amount : 0) || 0)), 0);
@@ -524,7 +526,7 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
     // PUT /patients/:id - Update patient
 router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
   try {
-    const { firstName, lastName, dateOfBirth, gender, phone, email, address, physician, company, philhealthConsent, philhealthId } = req.body;
+    const { firstName, middleName, lastName, dateOfBirth, gender, phone, email, address, physician, company, philhealthConsent, philhealthId } = req.body;
     const ageManual = req.body.ageManual || req.body.age || null;
     const philhealthConsentBool = (philhealthConsent === 'on' || philhealthConsent === '1' || philhealthConsent === 'true');
     const requiredAreas = Array.isArray(req.body.requiredAreas)
@@ -541,6 +543,7 @@ router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
       req.params.id,
       {
         firstName,
+        middleName: middleName || '',
         lastName,
         dateOfBirth,
         ageManual,

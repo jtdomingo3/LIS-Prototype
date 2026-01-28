@@ -6,6 +6,7 @@ class Patient {
     this.patientId = data.patientId;
     this.patientCode = data.patientCode; // e.g., GCL-YYYY-MM-00000
     this.firstName = data.firstName;
+    this.middleName = data.middleName || '';
     this.lastName = data.lastName;
     this.dateOfBirth = data.dateOfBirth;
     this.physician = data.physician || data.physicianName || null;
@@ -31,6 +32,8 @@ class Patient {
 
   // Virtual for full name
   get fullName() {
+    const m = (this.middleName || '').toString().trim();
+    if (m) return `${this.firstName} ${m} ${this.lastName}`;
     return `${this.firstName} ${this.lastName}`;
   }
 
@@ -70,6 +73,7 @@ class Patient {
     // Ensure paymentHistory is present in serialized output
     obj.paymentHistory = Array.isArray(this.paymentHistory) ? this.paymentHistory : [];
     obj.fullName = this.fullName;
+    obj.middleName = this.middleName || '';
     // Prefer computed age from DOB; fallback to manual age if provided (preserve 0)
     if (this.age !== null && this.age !== undefined) {
       obj.age = this.age;

@@ -27,7 +27,7 @@
                 <% patients.forEach(patient => { %>
                 <tr>
                     <td><strong><%= patient.patientCode ? patient.patientCode.split('-').pop() : patient.patientId %></strong></td>
-                    <td><%= patient.firstName %> <%= patient.lastName %></td>
+                    <td><%= patient.firstName %> <%= patient.middleName ? patient.middleName + ' ' : '' %><%= patient.lastName %></td>
                     <td><%= (patient.age !== null && patient.age !== undefined) ? patient.age : (patient.ageManual !== null && patient.ageManual !== undefined ? patient.ageManual : '') %></td>
                     <td><%= patient.gender %></td>
                     <td><%= patient.phone || 'N/A' %></td>
