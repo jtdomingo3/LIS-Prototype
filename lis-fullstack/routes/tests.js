@@ -155,6 +155,7 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       'ultrasound-biophysical.ejs',
       'ultrasound-1st-trimester-obstetrics.ejs',
       'ultrasound-pelvic.ejs',
+      'ultrasound-pelvic-biometry.ejs',
       'drugtest.ejs'
     ];
     const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
@@ -183,6 +184,9 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       }
       if (f === 'ultrasound-pelvic.ejs') {
         return { name: 'Ultrasound - Pelvic Ultrasound', testType: 'ultrasound-pelvic' };
+      }
+      if (f === 'ultrasound-pelvic-biometry.ejs') {
+        return { name: 'Ultrasound - Pelvic Biometry', testType: 'ultrasound-pelvic-biometry' };
       }
       const name = f.replace('.ejs', '').replace(/-/g, ' ');
       return { name: name.charAt(0).toUpperCase() + name.slice(1), testType: f.replace('.ejs','') };
@@ -630,7 +634,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       ultrasound_abd: /(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(tt),
       ultrasound_transvaginal: /(ultrasound[-\s]?transvaginal|transvaginal)/i.test(tt),
       ultrasound_biophysical: /(ultrasound[-\s]?biophysical|biophysical)/i.test(tt),
-      ultrasound_pelvic: /(static:)?(ultrasound[-_\s]?pelvic(\.ejs)?|pelvic)/i.test(tt),
+      ultrasound_pelvic: /(static:)?(ultrasound[-_\s]?pelvic(?:[-_\s]?biometry)?(\.ejs)?|pelvic(?:[-_\s]?biometry)?)/i.test(tt),
       ultrasound_1st_trimester: /(?:1st|first|2nd|second|3rd|third|trimester|trimester[-_\s]?obstetrics|ultrasound[-_\s]?trimester)/i.test(tt),
       esr: /(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(tt)
       ,
@@ -696,7 +700,8 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     if (/(?:1st|first|2nd|second|3rd|third|trimester|ultrasound[-_\s]?trimester)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_1st_trimester_obstetrics';
     if (/(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_abd_kubp_hbt';
     if (/(echo|echocardiograph|echocardiography|2d\s*echo|2decho)/i.test(test.testType)) view = 'tests/results_entry_echocardiography_2d';
-    if (/(static:)?(ultrasound[-_\s]?pelvic(\.ejs)?|pelvic)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_pelvic';
+    if (/(static:)?(ultrasound[-_\s]?pelvic[-_\s]?biometry|pelvic\s*biometry|pelvic-biometry|ultrasound[-_\s]?pelvicbiometry)(\.ejs)?/i.test(test.testType)) view = 'tests/results_entry_ultrasound_pelvic_biometry';
+    if (/(static:)?(ultrasound[-_\s]?pelvic(?![-_\s]?biometry)(\.ejs)?|pelvic(?![-_\s]?biometry))/i.test(test.testType)) view = 'tests/results_entry_ultrasound_pelvic';
     if (/(drug\s*test|drugtest)/i.test(test.testType)) view = 'tests/results_entry_drugtest';
     console.log(`DEBUG GET /tests/${req.params.id}/results - selected view='${view}'`);
     res.render(view, {
@@ -1360,7 +1365,7 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
         sample: (sample || '').trim(),
         result: (result || '').trim()
       };
-    } else if (/(ultrasound[-\s]?biophysical|biophysical)/i.test(test.testType)) {
+    } else if (/(ultrasound[-\s]?biophysical|biophysical|ultrasound[-_\s]?pelvic[-_\s]?biometry|pelvic[-_\s]?biometry|pelvic\s*biometry)/i.test(test.testType)) {
       // Biophysical ultrasound parsing
       const bpd_size = (req.body.bpd_size || '').toString().trim();
       const bpd_label = (req.body.bpd_label || '').toString().trim();
@@ -1454,7 +1459,7 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
       // store editable section title
       resultsObj.section_title = (req.body.section_title || req.body.sectionTitle || (test && test.results && test.results.section_title) || 'BIOPHYSICAL ULTRASOUND').toString().trim();
 
-    } else if (/(static:)?(ultrasound[-_\s]?(transvaginal|pelvic)(\.ejs)?|transvaginal|pelvic)/i.test(test.testType)) {
+    } else if (/(static:)?(ultrasound[-_\s]?(transvaginal|pelvic(?:[-_\s]?biometry)?)(\.ejs)?|transvaginal|pelvic(?:[-_\s]?biometry)?)/i.test(test.testType)) {
       // Transvaginal ultrasound: structured fields per checklist
       const gestational_sac_length = (req.body.gestational_sac_length || req.body.gestationalSacLength || '').toString().trim();
       const gestational_sac_age = (req.body.gestational_sac_age || req.body.gestationalSacAge || '').toString().trim();

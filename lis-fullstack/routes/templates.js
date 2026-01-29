@@ -78,6 +78,7 @@ async function getStaticResultTemplates() {
       , 'ultrasound-biophysical.ejs'
       , 'ultrasound-1st-trimester-obstetrics.ejs'
         , 'ultrasound-pelvic.ejs'
+        , 'ultrasound-pelvic-biometry.ejs'
         , 'drugtest.ejs'
     ];
     const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
@@ -175,6 +176,17 @@ async function getStaticResultTemplates() {
             id: `static:${f}`,
             name: 'Ultrasound - Pelvic Ultrasound',
             testType: 'ultrasound-pelvic',
+            fields: [],
+            createdAt: null,
+            isStatic: true,
+            filename: f
+          };
+        }
+        if (f === 'ultrasound-pelvic-biometry.ejs') {
+          return {
+            id: `static:${f}`,
+            name: 'Ultrasound - Pelvic Biometry',
+            testType: 'ultrasound-pelvic-biometry',
             fields: [],
             createdAt: null,
             isStatic: true,

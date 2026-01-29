@@ -1,0 +1,165 @@
+<div class="card">
+  <h3>Enter Pelvic Ultrasound - Biometry Results - <%= test.testId %></h3>
+
+  <form action="/tests/<%= test.id %>/results" method="POST">
+    <input type="hidden" name="_method" value="POST">
+
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+      <div class="form-row" style="margin:0;">
+        <label>Date</label>
+        <input type="date" name="entryDate" value="<%= test && test.testDate ? (new Date(test.testDate)).toISOString().slice(0,10) : (new Date()).toISOString().slice(0,10) %>" readonly>
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>Time Requested</label>
+        <input type="time" name="timeRequested" value="<%= test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '' %>">
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>Time Released</label>
+        <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (new Date()).toTimeString().slice(0,5) %>">
+      </div>
+    </div>
+
+    <div style="margin-top:8px">
+      <label>Section Title</label>
+      <input type="text" name="section_title" value="<%= test && test.results && test.results.section_title ? test.results.section_title : 'PELVIC ULTRASOUND' %>">
+    </div>
+
+    <div style="margin-top:12px; font-weight:700; font-size:14px;">BIOMETRY:</div>
+    <div id="biometryList" style="margin-top:8px">
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+        <label style="width:60px">BPD:</label>
+        <input type="text" name="bpd_size" placeholder="8.95" value="<%= test && test.results && test.results.bpd_size ? test.results.bpd_size : '' %>" style="width:120px">
+        <input type="text" name="bpd_label" placeholder="36w2d" value="<%= test && test.results && test.results.bpd_label ? test.results.bpd_label : '' %>" style="margin-left:8px; width:160px">
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+        <label style="width:60px">HC:</label>
+        <input type="text" name="hc_size" placeholder="31.97" value="<%= test && test.results && test.results.hc_size ? test.results.hc_size : '' %>" style="width:120px">
+        <input type="text" name="hc_label" placeholder="36w0d" value="<%= test && test.results && test.results.hc_label ? test.results.hc_label : '' %>" style="margin-left:8px; width:160px">
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+        <label style="width:60px">AC:</label>
+        <input type="text" name="ac_size" placeholder="32.27" value="<%= test && test.results && test.results.ac_size ? test.results.ac_size : '' %>" style="width:120px">
+        <input type="text" name="ac_label" placeholder="36w1d" value="<%= test && test.results && test.results.ac_label ? test.results.ac_label : '' %>" style="margin-left:8px; width:160px">
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+        <label style="width:60px">FL:</label>
+        <input type="text" name="fl_size" placeholder="7.01" value="<%= test && test.results && test.results.fl_size ? test.results.fl_size : '' %>" style="width:120px">
+        <input type="text" name="fl_label" placeholder="36w0d" value="<%= test && test.results && test.results.fl_label ? test.results.fl_label : '' %>" style="margin-left:8px; width:160px">
+      </div>
+      <% if (test && test.results && Array.isArray(test.results.biometry) && test.results.biometry.length) { %>
+        <% test.results.biometry.forEach(function(b){ %>
+          <div class="biometry-row" style="display:flex;gap:8px;align-items:center;margin-top:6px">
+            <input type="text" name="biometry_label[]" placeholder="Label" value="<%= b && b.label ? b.label : '' %>" style="width:120px">
+            <input type="text" name="biometry_size[]" placeholder="8.95" value="<%= b && b.size ? b.size : '' %>" style="margin-left:8px; width:120px">
+            <button type="button" class="button btn-small" onclick="removeBiometryRow(this)">Remove</button>
+          </div>
+        <% }) %>
+      <% } %>
+    </div>
+    <div style="margin-top:8px">
+      <button type="button" class="button" onclick="addBiometryRow()">Add Biometry Row</button>
+    </div>
+
+    <hr style="margin-top:12px">
+
+    <div style="margin-top:8px">
+      <label>NUMBER OF FETUS</label>
+      <input type="text" name="number_of_fetus" placeholder="SINGLE" value="<%= test && test.results && test.results.number_of_fetus ? test.results.number_of_fetus : '' %>">
+
+      <label style="margin-top:8px; display:block">AVERAGE ULTRASOUND AGE</label>
+      <input type="text" name="average_ultrasound_age" placeholder="36w0d" value="<%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : '' %>">
+
+      <label style="margin-top:8px; display:block">PRESENTATION</label>
+      <input type="text" name="presentation" placeholder="CEPHALIC" value="<%= test && test.results && test.results.presentation ? test.results.presentation : '' %>">
+
+      <label style="margin-top:8px; display:block">EDC BY ULTRASOUND</label>
+      <input type="date" name="edc_by_ultrasound" value="<%= test && test.results && test.results.edc_by_ultrasound ? (new Date(test.results.edc_by_ultrasound)).toISOString().slice(0,10) : '' %>">
+
+      <label style="margin-top:8px; display:block">EFW</label>
+      <input type="text" name="efw" placeholder="2853" value="<%= test && test.results && test.results.efw ? test.results.efw : '' %>">
+
+      <label style="margin-top:8px; display:block">FETAL HEART RATE</label>
+      <input type="text" name="fetal_heart_rate" placeholder="140" value="<%= test && test.results && test.results.fetal_heart_rate ? test.results.fetal_heart_rate : '' %>">
+    </div>
+
+    <div style="margin-top:8px">
+      <label>PLACENTAL LOCATION</label>
+      <input type="text" name="placental_location" placeholder="POSTERO-FUNDAL" value="<%= test && test.results && test.results.placental_location ? test.results.placental_location : '' %>">
+
+      <label style="margin-top:8px; display:block">MATURITY</label>
+      <input type="text" name="maturity" placeholder="GRADE-3" value="<%= test && test.results && test.results.maturity ? test.results.maturity : '' %>">
+
+      <label style="margin-top:8px; display:block">AMNIOTIC FLUID</label>
+      <input type="text" name="amniotic_fluid" placeholder="ADEQUATE 17.22" value="<%= test && test.results && test.results.amniotic_fluid ? test.results.amniotic_fluid : '' %>">
+
+      <label style="margin-top:8px; display:block">GENDER</label>
+      <input type="text" name="gender" placeholder="e.g. MALE / FEMALE" value="<%= test && test.results && test.results.gender ? test.results.gender : '' %>">
+    </div>
+
+    <div style="margin-top:8px">
+      <label style="font-weight:700; font-size:14px; display:block; margin-bottom:6px">IMPRESSION</label>
+      <textarea name="impression" rows="4" style="width:100%"><%= test && test.results && test.results.impression ? test.results.impression : 'Enter impression here.' %></textarea>
+    </div>
+
+    <div style="margin-top:8px">
+      <label>Space between Impression and Footer</label>
+      <div>
+        <select name="impression_spacing" style="width:220px">
+          <option value="" <%= !(test && test.results && test.results.impression_spacing) ? 'selected' : '' %>>Default (template)</option>
+          <option value="12px" <%= test && test.results && test.results.impression_spacing==='12px' ? 'selected' : '' %>>12px</option>
+          <option value="24px" <%= test && test.results && test.results.impression_spacing==='24px' ? 'selected' : '' %>>24px</option>
+          <option value="36px" <%= test && test.results && test.results.impression_spacing==='36px' ? 'selected' : '' %>>36px</option>
+          <option value="48px" <%= test && test.results && test.results.impression_spacing==='48px' ? 'selected' : '' %>>48px</option>
+          <option value="72px" <%= test && test.results && test.results.impression_spacing==='72px' ? 'selected' : '' %>>72px</option>
+          <option value="96px" <%= test && test.results && test.results.impression_spacing==='96px' ? 'selected' : '' %>>96px</option>
+          <option value="120px" <%= test && test.results && test.results.impression_spacing==='120px' ? 'selected' : '' %>>120px</option>
+          <option value="180px" <%= test && test.results && test.results.impression_spacing==='180px' ? 'selected' : '' %>>180px</option>
+          <option value="240px" <%= test && test.results && test.results.impression_spacing==='240px' ? 'selected' : '' %>>240px</option>
+          <% if (test && test.results && test.results.impression_spacing && ['12px','24px','36px','48px','72px','96px','120px','180px','240px'].indexOf(test.results.impression_spacing) === -1) { %>
+            <option value="<%= test.results.impression_spacing %>" selected>Custom: <%= test.results.impression_spacing %></option>
+          <% } %>
+        </select>
+      </div>
+      <div style="font-size:12px;color:#666;margin-top:4px">Select a spacing value (examples: <strong>36px</strong>, <strong>2in</strong>); leave as <strong>Default</strong> to use the template's preset.</div>
+    </div>
+
+    <hr>
+    <h4>Signatures / Performers</h4>
+    <div class="form-row">
+      <label>Radiologist (Name)</label>
+      <input type="text" name="pathName" placeholder="Radiologist name" value="<%= test.results && test.results.pathName ? test.results.pathName : (test.results && test.results.doctorName ? test.results.doctorName : '') %>">
+    </div>
+    <div class="form-row">
+      <label>Radiologist License</label>
+      <input type="text" name="pathLicense" placeholder="License number (optional)" value="<%= test.results && test.results.pathLicense ? test.results.pathLicense : (test.results && test.results.doctorLicense ? test.results.doctorLicense : '') %>">
+    </div>
+    <div class="form-row">
+      <label>Designation</label>
+      <input type="text" name="doctorDesignation" placeholder="e.g. MD, FPCR - Radiologist" value="<%= test.results && test.results.doctorDesignation ? test.results.doctorDesignation : 'Radiologist' %>">
+    </div>
+
+    <div class="form-row mt-12">
+      <a href="/tests/<%= test.id %>" class="button btn-secondary">Cancel</a>
+      <button class="button btn-primary">Save Results</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  function addBiometryRow() {
+    const container = document.getElementById('biometryList');
+    const div = document.createElement('div');
+    div.className = 'biometry-row';
+    div.style.cssText = 'display:flex;gap:8px;align-items:center;margin-top:6px';
+    div.innerHTML = `
+      <input type="text" name="biometry_label[]" placeholder="Label" style="width:120px">
+      <input type="text" name="biometry_size[]" placeholder="0.00" style="margin-left:8px; width:120px">
+      <button type="button" class="button btn-small" onclick="removeBiometryRow(this)">Remove</button>
+    `;
+    container.appendChild(div);
+  }
+  function removeBiometryRow(btn) {
+    const row = btn && btn.parentNode;
+    if (row && row.parentNode) row.parentNode.removeChild(row);
+  }
+</script>

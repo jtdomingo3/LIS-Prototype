@@ -312,6 +312,8 @@ function getResultTemplate(test) {
     template = 'ultrasound-1st-trimester-obstetrics';
   } else if (type.includes('transvaginal') || type.includes('ultrasound-transvaginal')) {
     template = 'ultrasound-transvaginal';
+  } else if (type.includes('pelvic-biometry') || type.includes('pelvic biometry') || type.includes('ultrasound-pelvic-biometry') || /pelvic[_\-\s]?biometry/.test(type)) {
+    template = 'ultrasound-pelvic-biometry';
   } else if (type.includes('pelvic') || type.includes('ultrasound-pelvic')) {
     template = 'ultrasound-pelvic';
   } else if (type.includes('biophysical') || type.includes('ultrasound-biophysical')) {
@@ -320,8 +322,15 @@ function getResultTemplate(test) {
 
   // Allow overriding with explicit `template` field on test
   if (test && test.template && typeof test.template === 'string') {
+    // Log when an explicit template override is used
+    console.log(`getResultTemplate override: test.template present -> using explicit template='${test.template}'`);
     template = test.template;
   }
+
+  // Debug: report which template was selected for this test type
+  try {
+    console.log(`getResultTemplate: type='${type}', selected='${template}'`);
+  } catch (e) {}
 
   return template;
 }
