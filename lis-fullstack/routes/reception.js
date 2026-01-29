@@ -715,12 +715,17 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
       const candidates = testsToProcess.map(t => ({ test: t, target: getTargetAreaForTest(t) }));
       console.log('DEBUG Payment Area candidates:', candidates.map(c => ({ testId: c.test && c.test.testId, target: c.target })));
       // Choose the earliest area in AREAS order among non-null targets; this area becomes active for the patient
+      // Prefer non-Sendout targets when multiple targets exist so patients with mixed requests
+      // (e.g., Sendout + Extraction Area) will be advanced to clinical/xray/etc. while the
+      // Sendout test remains tagged for sendout processing.
       const nonNullTargets = candidates.map(c => c.target).filter(Boolean);
       let chosenTarget = null;
       if (nonNullTargets.length) {
-        // pick the one with smallest AREAS index
+        // If there are any non-sendout targets, prefer them
+        const nonSendout = nonNullTargets.filter(t => String(t || '').toLowerCase() !== 'sendout');
+        const consider = nonSendout.length ? nonSendout : nonNullTargets;
         let bestIdx = Infinity;
-        for (const tgt of nonNullTargets) {
+        for (const tgt of consider) {
           const idx = AREAS.indexOf(tgt);
           if (idx >= 0 && idx < bestIdx) { bestIdx = idx; chosenTarget = tgt; }
         }
@@ -855,6 +860,9 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
         }
       }
 
+      // Special-case: if we are completing a Doctor's Check-up area, mark tests as 'Checked'
+      const isDoctorArea = String(area || '').toLowerCase().includes("doctor's check-up");
+
       // Now apply the chosenNextArea: only tests whose nextArea === chosenNextArea
       // should be moved there. Other tests with a nextArea remain Awaiting. Tests
       // with no nextArea are handled as before (Awaiting for sample-on-demand,
@@ -862,6 +870,15 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
       for (const w of work) {
         try {
           const t = w.test;
+          if (isDoctorArea) {
+            // Mark as Checked (doctor completed the check)
+            t.addStatusEntry({ from: t.status, to: 'Checked', user: req.session && req.session.user ? req.session.user.username : null, area: 'Checked', timestamp: (new Date()).toISOString() });
+            t.status = 'Checked';
+            await t.save();
+            processed.push(t.testId || t.id);
+            try { sseEmitter.emit('update', { action: 'complete', testId: t.testId, status: t.status, patient: t.patient, time: (new Date()).toISOString() }); } catch (e) { console.warn('SSE emit failed', e); }
+            continue;
+          }
           if (w.nextArea && chosenNextArea && w.nextArea === chosenNextArea) {
             t.addStatusEntry({ from: t.status, to: w.nextArea, user: req.session && req.session.user ? req.session.user.username : null, area: w.nextArea, timestamp: (new Date()).toISOString() });
             t.status = w.nextArea;

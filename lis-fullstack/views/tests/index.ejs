@@ -49,9 +49,13 @@
             <td><%= test.testDate ? new Date(test.testDate).toLocaleDateString() : '' %></td>
             <td><span class="badge <%= test.status === 'Completed' ? 'badge-success' : (test.status === 'In Progress' ? 'badge-warning' : '') %>"><%= test.status %></span></td>
             <td class="action-buttons">
-              <% if (test.status !== 'Completed') { %>
-                <a href="/tests/<%= test.id %>/results" class="button btn-primary btn-small">Enter Result</a>
-              <% } else { %>
+              <% 
+                const isDoctor = String(test.testType || '').toLowerCase().includes('doctor') || (Array.isArray(test.requestedTests) && test.requestedTests.some(rr => String(rr && (rr.label || rr.key) || '').toLowerCase().includes('doctor')));
+                const isSendout = String(test.status || '').toLowerCase() === 'sendout' || (Array.isArray(test.requestedTests) && test.requestedTests.some(rr => {
+                  try { const lab = String(rr.lab || '').toLowerCase(); const lbl = String(rr.label || '').toLowerCase(); return lab === 'external' || lbl.includes('send out') || lbl.includes('sendout') || lbl.includes('for send'); } catch (e) { return false; }
+                }));
+              %>
+              <% if (!isDoctor && !isSendout) { %>
                 <a href="/tests/<%= test.id %>/results" class="button btn-primary btn-small">Enter Result</a>
               <% } %>
               <a href="/tests/<%= test.id %>" class="button btn-orange btn-small">View</a>

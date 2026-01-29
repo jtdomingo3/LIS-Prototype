@@ -899,8 +899,12 @@
 
             if (!badge || !btn || !dropdown) return;
 
-            // restore preferences
-            try { if (localStorage.getItem('notif-auto-refresh') === '1') autoRefreshCheckbox.checked = true; } catch(e){}
+            // restore preferences (default: auto-refresh enabled)
+            try {
+                const v = localStorage.getItem('notif-auto-refresh');
+                if (v === '1' || v === null) autoRefreshCheckbox.checked = true;
+                else autoRefreshCheckbox.checked = false;
+            } catch(e){}
             try { if (localStorage.getItem('notif-muted') === '1') muteCheckbox.checked = true; } catch(e){}
 
             function showBadge(count){
@@ -1005,7 +1009,7 @@
             // Defer SSE connection until the user stays on the page for 10s.
             // If user switches tab/loses visibility, cancel the pending connect and close any open connection.
             let sseDeferredTimer = null;
-            function scheduleSSEConnect(delay = 10000) {
+            function scheduleSSEConnect(delay = 5000) {
                 if (!('EventSource' in window)) return;
                 try { clearTimeout(sseDeferredTimer); } catch(e){}
                 sseDeferredTimer = setTimeout(() => {
@@ -1017,8 +1021,8 @@
 
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible') {
-                    // schedule connect after 10s of being visible
-                    scheduleSSEConnect(10000);
+                    // schedule connect after 5s of being visible
+                    scheduleSSEConnect(5000);
                 } else {
                     // cancel pending connect and close any existing connection
                     try { clearTimeout(sseDeferredTimer); } catch(e){}
@@ -1026,8 +1030,8 @@
                 }
             });
 
-            // Kick off initial schedule when page loads (will connect after 10s if still visible)
-            if (document.visibilityState === 'visible') scheduleSSEConnect(10000);
+            // Kick off initial schedule when page loads (will connect after 5s if still visible)
+            if (document.visibilityState === 'visible') scheduleSSEConnect(5000);
         })();
 
         // Attempt to enter fullscreen when ?fullscreen=1 is present (best-effort).
