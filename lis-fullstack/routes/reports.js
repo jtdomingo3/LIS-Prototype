@@ -308,7 +308,7 @@ function getResultTemplate(test) {
     template = 'serology';
   } else if (type.includes('ultrasound-abd-kubp-hbt') || type.includes('ultrasound abd kubp hbt')) {
     template = 'ultrasound-abd-kubp-hbt';
-  } else if (type.includes('1st') && type.includes('trimester') || /1st\s*trimester|first\s*trimester/.test(type)) {
+  } else if (/(?:1st|first|2nd|second|3rd|third|trimester)/i.test(type)) {
     template = 'ultrasound-1st-trimester-obstetrics';
   } else if (type.includes('transvaginal') || type.includes('ultrasound-transvaginal')) {
     template = 'ultrasound-transvaginal';

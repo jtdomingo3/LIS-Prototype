@@ -162,8 +162,8 @@ async function getStaticResultTemplates() {
       if (f === 'ultrasound-1st-trimester-obstetrics.ejs') {
         return {
           id: `static:${f}`,
-          name: 'Ultrasound - 1st Trimester Obstetrics',
-          testType: 'ultrasound-1st-trimester-obstetrics',
+          name: 'Ultrasound - Trimester Obstetrics',
+          testType: 'ultrasound-trimester-obstetrics',
           fields: [],
           createdAt: null,
           isStatic: true,

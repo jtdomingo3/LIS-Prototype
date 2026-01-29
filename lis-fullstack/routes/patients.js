@@ -158,6 +158,7 @@ router.get('/new', requireAuth, canAccessPatient, (req, res) => {
             if (f === 'ultrasound-transvaginal.ejs') return { name: 'Ultrasound - Transvaginal', testType: 'ultrasound-transvaginal' };
             if (f === 'ultrasound-biophysical.ejs') return { name: 'Ultrasound - Biophysical', testType: 'ultrasound-biophysical' };
             if (f === 'ultrasound-pelvic.ejs') return { name: 'Ultrasound - Pelvic Ultrasound', testType: 'ultrasound-pelvic' };
+            if (f === 'ultrasound-1st-trimester-obstetrics.ejs') return { name: 'Ultrasound - Trimester Obstetrics', testType: 'ultrasound-trimester-obstetrics' };
             const name = f.replace('.ejs', '').replace(/-/g, ' ');
             return { name: name.charAt(0).toUpperCase() + name.slice(1), testType: f.replace('.ejs','') };
           });

@@ -178,6 +178,9 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       if (f === 'ultrasound-biophysical.ejs') {
         return { name: 'Ultrasound - Biophysical', testType: 'ultrasound-biophysical' };
       }
+      if (f === 'ultrasound-1st-trimester-obstetrics.ejs') {
+        return { name: 'Ultrasound - Trimester Obstetrics', testType: 'ultrasound-trimester-obstetrics' };
+      }
       if (f === 'ultrasound-pelvic.ejs') {
         return { name: 'Ultrasound - Pelvic Ultrasound', testType: 'ultrasound-pelvic' };
       }
@@ -185,11 +188,11 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       return { name: name.charAt(0).toUpperCase() + name.slice(1), testType: f.replace('.ejs','') };
     });
     templates = templates.concat(staticTemplates);
-    // Ensure 1st trimester (twin) static template is available in selection
+    // Ensure trimester ultrasound static template is available in selection
     try {
-      const exists = templates.some(t => (t.testType || '').toLowerCase() === 'ultrasound-1st-trimester-obstetrics');
+      const exists = templates.some(t => (t.testType || '').toLowerCase() === 'ultrasound-trimester-obstetrics');
       if (!exists) {
-        templates.push({ name: 'Ultrasound - 1st Trimester Obstetrics', testType: 'ultrasound-1st-trimester-obstetrics' });
+        templates.push({ name: 'Ultrasound - Trimester Obstetrics', testType: 'ultrasound-trimester-obstetrics' });
       }
     } catch (e) {}
   } catch (e) {
@@ -628,7 +631,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       ultrasound_transvaginal: /(ultrasound[-\s]?transvaginal|transvaginal)/i.test(tt),
       ultrasound_biophysical: /(ultrasound[-\s]?biophysical|biophysical)/i.test(tt),
       ultrasound_pelvic: /(static:)?(ultrasound[-_\s]?pelvic(\.ejs)?|pelvic)/i.test(tt),
-      ultrasound_1st_trimester: /(1st\s*trimester|first\s*trimester|1st[-\s]?trimester|trimester\s*obstetrics|ultrasound[-\s]?.*1st)/i.test(tt),
+      ultrasound_1st_trimester: /(?:1st|first|2nd|second|3rd|third|trimester|trimester[-_\s]?obstetrics|ultrasound[-_\s]?trimester)/i.test(tt),
       esr: /(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(tt)
       ,
       drugtest: /(drug\s*test|drugtest)/i.test(tt),
@@ -690,7 +693,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     if (/(blood\s*chemistry|blood-chemistry|blood\s*chem)/i.test(normalizedType) && !/(lipid|lipid\s*profile|blood\s*chemistry\s*-?\s*lipid|blood\s*chemistry\s*lipid\s*profile|blood\s*chemistry\s*lipid|electrolyte|electrolytes|sodium|potassium|chloride|hba1c|hb\s*a1c|hb-a1c|blood sugar|blood-sugar|sugar|fbs|rbs|1st hour|2nd hour|bun|creatinine|bun[\s\/\-]?crea|bun\/?crea|sgpt|sgot|albumin|alb)/i.test(normalizedType)) view = 'tests/results_entry_blood_chemistry';
     if (/(ultrasound[-\s]?transvaginal|transvaginal)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_transvaginal';
     if (/(ultrasound[-\s]?biophysical|biophysical)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_biophysical';
-    if (/(1st\s*trimester|first\s*trimester|1st[-\s]?trimester|trimester\s*obstetrics)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_1st_trimester_obstetrics';
+    if (/(?:1st|first|2nd|second|3rd|third|trimester|ultrasound[-_\s]?trimester)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_1st_trimester_obstetrics';
     if (/(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_abd_kubp_hbt';
     if (/(echo|echocardiograph|echocardiography|2d\s*echo|2decho)/i.test(test.testType)) view = 'tests/results_entry_echocardiography_2d';
     if (/(static:)?(ultrasound[-_\s]?pelvic(\.ejs)?|pelvic)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_pelvic';
@@ -1506,7 +1509,7 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
       };
       // store editable section title when provided (or keep existing/default)
       resultsObj.section_title = (req.body.section_title || req.body.sectionTitle || (test && test.results && test.results.section_title) || (/(transvaginal)/i.test(test.testType) ? 'TRANSVAGINAL ULTRASOUND' : 'PELVIC ULTRASOUND')).toString().trim();
-    } else if (/(1st\s*trimester|first\s*trimester|1st[-\s]?trimester|trimester\s*obstetrics)/i.test(test.testType)) {
+    } else if (/(?:1st|first|2nd|second|3rd|third|trimester|ultrasound[-_\s]?trimester|trimester[-_\s]?obstetrics)/i.test(test.testType)) {
       // 1st Trimester Obstetrics - unified single/twin parsing
       const isTwinRaw = req.body.isTwin;
       const isTwin = (isTwinRaw === 'on' || isTwinRaw === 'true' || isTwinRaw === true || String(isTwinRaw).toLowerCase() === 'on');
@@ -1599,8 +1602,8 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
           doctorLicense: doctorLicense,
           doctorDesignation: doctorDesignation
         };
-        // allow editable section title for 1st trimester
-        resultsObj.section_title = (req.body.section_title || req.body.sectionTitle || (test && test.results && test.results.section_title) || '1st TRIMESTER OBSTETRICS').toString().trim();
+        // allow editable section title for trimester obstetrics
+        resultsObj.section_title = (req.body.section_title || req.body.sectionTitle || (test && test.results && test.results.section_title) || 'TRIMESTER OBSTETRICS').toString().trim();
       } else {
         // single fetus parsing (back-compat and new single form)
         const g_len = (req.body.gestational_sac_length || req.body.gestationalSacLength || '').toString().trim();
@@ -1658,8 +1661,8 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
           doctorLicense: doctorLicense,
           doctorDesignation: doctorDesignation
         };
-        // allow editable section title for 1st trimester
-        resultsObj.section_title = (req.body.section_title || req.body.sectionTitle || (test && test.results && test.results.section_title) || '1st TRIMESTER OBSTETRICS').toString().trim();
+        // allow editable section title for trimester obstetrics
+        resultsObj.section_title = (req.body.section_title || req.body.sectionTitle || (test && test.results && test.results.section_title) || 'TRIMESTER OBSTETRICS').toString().trim();
       }
     } else if (/(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(test.testType)) {
       // Ultrasound ABD / KUBP / HBT variant: accept examination select, findings paragraphs, and impression
@@ -1833,9 +1836,9 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
     });
     templates = templates.concat(staticTemplates);
     try {
-      const exists2 = templates.some(t => (t.testType || '').toLowerCase() === 'ultrasound-1st-trimester-obstetrics');
+      const exists2 = templates.some(t => (t.testType || '').toLowerCase() === 'ultrasound-trimester-obstetrics');
       if (!exists2) {
-        templates.push({ name: 'Ultrasound - 1st Trimester Obstetrics', testType: 'ultrasound-1st-trimester-obstetrics' });
+        templates.push({ name: 'Ultrasound - Trimester Obstetrics', testType: 'ultrasound-trimester-obstetrics' });
       }
     } catch (e) {}
   } catch (e) {
