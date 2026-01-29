@@ -40,6 +40,7 @@
     "method-override": "^3.0.0",
     "minimist": "^1.2.8",
     "multer": "^2.0.2",
+    "proper-lockfile": "^4.1.2",
     "puppeteer": "^24.35.0",
     "uuid": "^9.0.0"
   },

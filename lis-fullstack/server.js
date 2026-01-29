@@ -16,35 +16,80 @@ const PORT = process.env.PORT || 3000;
 // Default to listening on all interfaces so the server is reachable from other devices on the network.
 // If you prefer localhost-only, set HOST=127.0.0.1 before starting.
 const HOST = process.env.HOST || '0.0.0.0';
-const DATA_FILE = path.join(__dirname, 'data.json');
+const JSONStore = require('./lib/jsonStore');
+// Instantiate JSON-backed store with default options. Set `DATA_ENCRYPTION_KEY` env var to enable AES-256-GCM at-rest encryption (base64 key, 32 bytes).
+const store = new JSONStore({ dataDir: __dirname });
 
-// Initialize data file if it doesn't exist
-if (!fs.existsSync(DATA_FILE)) {
-  const initialData = {
-    users: [],
-    patients: [],
-    tests: [],
-    templates: [],
-    // persistent counters for per-test-type IDs
-    counters: {}
-  };
-  fs.writeFileSync(DATA_FILE, JSON.stringify(initialData, null, 2));
-}
-
-// Simple file-based database functions
+// Provide a thin compatibility wrapper matching the previous `db` functions used throughout the app.
 const db = {
-  read: () => JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')),
-  write: (data) => fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2)),
-  getUsers: () => db.read().users,
-  getPatients: () => db.read().patients,
-  getTests: () => db.read().tests,
-  getTemplates: () => db.read().templates,
-  getCounters: () => db.read().counters || {},
-  saveUsers: (users) => { const data = db.read(); data.users = users; db.write(data); },
-  savePatients: (patients) => { const data = db.read(); data.patients = patients; db.write(data); },
-  saveTests: (tests) => { const data = db.read(); data.tests = tests; db.write(data); },
-  saveTemplates: (templates) => { const data = db.read(); data.templates = templates; db.write(data); }
-  ,saveCounters: (counters) => { const data = db.read(); data.counters = counters; db.write(data); }
+  // legacy read/write left for completeness (reads full lab+users in memory)
+  read: async () => {
+    const users = await store.getUsers();
+    const lab = await store.getLab();
+    return Object.assign({}, { users }, lab);
+  },
+  write: async (data) => {
+    if (data.users) store.saveUsers(data.users);
+    const lab = { patients: data.patients || [], tests: data.tests || [], templates: data.templates || [], counters: data.counters || {} };
+    store.saveLab(lab);
+  },
+  // Synchronous getters for compatibility with existing models that expect arrays/objects
+  getUsers: () => {
+    try {
+      const raw = store._readRaw(store.usersFile);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      console.error('Failed to read users synchronously:', e);
+      return [];
+    }
+  },
+  getPatients: () => {
+    try {
+      const raw = store._readRaw(store.labFile);
+      const lab = raw ? JSON.parse(raw) : {};
+      return lab.patients || [];
+    } catch (e) {
+      console.error('Failed to read patients synchronously:', e);
+      return [];
+    }
+  },
+  getTests: () => {
+    try {
+      const raw = store._readRaw(store.labFile);
+      const lab = raw ? JSON.parse(raw) : {};
+      return lab.tests || [];
+    } catch (e) {
+      console.error('Failed to read tests synchronously:', e);
+      return [];
+    }
+  },
+  getTemplates: () => {
+    try {
+      const raw = store._readRaw(store.labFile);
+      const lab = raw ? JSON.parse(raw) : {};
+      return lab.templates || [];
+    } catch (e) {
+      console.error('Failed to read templates synchronously:', e);
+      return [];
+    }
+  },
+  getCounters: () => {
+    try {
+      const raw = store._readRaw(store.labFile);
+      const lab = raw ? JSON.parse(raw) : {};
+      return lab.counters || {};
+    } catch (e) {
+      console.error('Failed to read counters synchronously:', e);
+      return {};
+    }
+  },
+  saveUsers: (users) => store.saveUsers(users),
+  savePatients: (patients) => store.savePatients(patients),
+  saveTests: (tests) => store.saveTests(tests),
+  saveTemplates: (templates) => store.saveTemplates(templates),
+  saveCounters: (counters) => store.saveCounters(counters),
+  // expose flush for clean shutdowns/tests
+  flushAll: () => store.flushAll()
 };
 
 // Make db available globally
@@ -60,7 +105,9 @@ function verifyStartupRequirements() {
   const assetsDir = path.join(__dirname, 'assets');
 
   if (!fs.existsSync(viewsDir)) required.push({ path: viewsDir, reason: 'EJS views are required to render pages (views folder missing)' });
-  if (!fs.existsSync(DATA_FILE)) required.push({ path: DATA_FILE, reason: 'data.json missing; used as the simple file DB' });
+  const usersFile = path.join(__dirname, 'data-users.json');
+  const labFile = path.join(__dirname, 'data-lab.json');
+  if (!fs.existsSync(usersFile) || !fs.existsSync(labFile)) required.push({ path: `${usersFile} & ${labFile}`, reason: 'data store files missing; data-users.json/data-lab.json expected (legacy data.json may be migrated)' });
   if (!fs.existsSync(publicDir)) optionalWarnings.push({ path: publicDir, reason: 'static public folder not found; some static assets may be missing' });
   if (!fs.existsSync(assetsDir)) optionalWarnings.push({ path: assetsDir, reason: 'assets folder not found; logos/sounds may be missing' });
 
@@ -108,7 +155,24 @@ app.use('/assets', express.static(path.join(__dirname, 'assets')));
 // Simple request logger to help debug routes and payloads
 app.use((req, res, next) => {
   const now = new Date().toISOString();
-  console.log(`[${now}] ${req.method} ${req.originalUrl}` + (Object.keys(req.body || {}).length ? ` body=${JSON.stringify(req.body)}` : ''));
+  // Redact sensitive fields before logging request bodies
+  let safeBody = null;
+  try {
+    if (req.body && typeof req.body === 'object' && Object.keys(req.body).length) {
+      safeBody = JSON.parse(JSON.stringify(req.body));
+      const sensitive = ['password', 'pass', 'pwd', 'token', 'authorization', 'auth', 'pin'];
+      sensitive.forEach((k) => {
+        if (Object.prototype.hasOwnProperty.call(safeBody, k)) safeBody[k] = '[REDACTED]';
+      });
+    }
+  } catch (e) {
+    safeBody = '[UNSERIALIZABLE]';
+  }
+
+  console.log(
+    `[${now}] ${req.method} ${req.originalUrl}` +
+      (safeBody && typeof safeBody === 'object' && Object.keys(safeBody).length ? ` body=${JSON.stringify(safeBody)}` : '')
+  );
   next();
 });
 
@@ -139,8 +203,14 @@ app.use((req, res, next) => {
     if (req.method === 'POST' && req.originalUrl && req.originalUrl.indexOf('/reception/complete') === 0) {
       const now = new Date().toISOString();
       console.log(`[${now}] TOP-LEVEL capture: ${req.method} ${req.originalUrl} body=${JSON.stringify(req.body || {})}`);
-      try { console.log('TOP-LEVEL headers.cookie:', req.headers && req.headers.cookie ? req.headers.cookie : null); } catch (e) {}
-      try { console.log('TOP-LEVEL session.user:', req.session && req.session.user ? req.session.user : null); } catch (e) {}
+      try { console.log('TOP-LEVEL headers.cookie: [REDACTED]'); } catch (e) {}
+      try {
+        // Log only minimal non-sensitive session user info
+        if (req.session && req.session.user) {
+          const su = req.session.user;
+          console.log('TOP-LEVEL session.user:', { id: su.id, name: su.name, role: su.role });
+        }
+      } catch (e) {}
     }
   } catch (e) {}
   next();

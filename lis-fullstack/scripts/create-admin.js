@@ -9,20 +9,35 @@ async function main() {
   const password = args.password || args.p || 'admin123';
   const name = args.name || args.n || 'Administrator';
 
-  const dataFile = path.join(__dirname, '..', 'data.json');
-  if (!fs.existsSync(dataFile)) {
-    console.error('data.json not found at', dataFile);
-    process.exit(1);
+  const usersFile = path.join(__dirname, '..', 'data-users.json');
+
+  let users = [];
+  // Prefer explicit users file; fallback to legacy data.json migration if present
+  if (fs.existsSync(usersFile)) {
+    try {
+      const raw = fs.readFileSync(usersFile, 'utf8');
+      users = JSON.parse(raw) || [];
+    } catch (e) {
+      console.error('Failed to parse data-users.json:', e);
+      process.exit(1);
+    }
+  } else {
+    const legacy = path.join(__dirname, '..', 'data.json');
+    if (fs.existsSync(legacy)) {
+      try {
+        const raw = fs.readFileSync(legacy, 'utf8');
+        const parsed = JSON.parse(raw) || {};
+        users = parsed.users || [];
+        console.log('Migrated users from legacy data.json');
+      } catch (e) {
+        console.error('Failed to parse legacy data.json:', e);
+        process.exit(1);
+      }
+    }
   }
 
-  const raw = fs.readFileSync(dataFile, 'utf8');
-  let data;
-  try { data = JSON.parse(raw); } catch (e) { console.error('Failed to parse data.json:', e); process.exit(1); }
-
-  data.users = data.users || [];
-
   // Check existing
-  const exists = data.users.find(u => u.email === email);
+  const exists = users.find(u => u.email === email);
   if (exists) {
     console.log('User with this email already exists:', email);
     process.exit(0);
@@ -42,9 +57,14 @@ async function main() {
     lastLogin: null
   };
 
-  data.users.push(user);
-  fs.writeFileSync(dataFile, JSON.stringify(data, null, 2));
-  console.log('Admin user created:', email);
+  users.push(user);
+  try {
+    fs.writeFileSync(usersFile, JSON.stringify(users, null, 2));
+    console.log('Admin user created:', email);
+  } catch (e) {
+    console.error('Failed to write users file:', e);
+    process.exit(1);
+  }
 }
 
 main().catch(e => { console.error(e); process.exit(1); });
