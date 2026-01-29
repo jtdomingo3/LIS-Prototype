@@ -455,13 +455,17 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       }
     } else {
       // Single testType path
-      const prefix = getPrefixForLabel(testType || 'T');
+      // Detect sendout single-request early: use SO prefix and queue to Sendout immediately
+      const forSendOutSingle = req.body && (req.body.forSendOut === '1' || req.body.forSendOut === 'on' || req.body.forSendOut === 'true');
+      let prefix = getPrefixForLabel(testType || 'T');
+      if (forSendOutSingle) prefix = 'SO';
       const tid = getNextTestId(prefix);
       const payload = {
         testId: tid,
         patient,
-        testType: testType || 'Registration',
+        testType: forSendOutSingle ? 'For Send Out' : (testType || 'Registration'),
         testDate: (new Date()).toISOString(),
+        // keep initial status as 'Payment Area' so reception/payment can process it
         status: 'Payment Area',
         results,
         notes,
@@ -475,7 +479,6 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       try {
         console.log('DEBUG POST /tests - single-path payload check, forSendOut raw=', req.body && req.body.forSendOut);
       } catch (e) {}
-      const forSendOutSingle = req.body && (req.body.forSendOut === '1' || req.body.forSendOut === 'on' || req.body.forSendOut === 'true');
       if (!requestedTestsDetailed.length && forSendOutSingle) {
         const amtRaw = req.body['amount_sendout'];
         const amt = amtRaw ? parseFloat(String(amtRaw).replace(/,/g,'')) : 0;
