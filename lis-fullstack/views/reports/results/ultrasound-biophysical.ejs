@@ -114,7 +114,7 @@
     <div style="margin-top:40px; font-weight:700; font-size:13px; margin-bottom: 10px;">IMPRESSION</div>
       <% var raw = (test && test.results && test.results.impression) ? test.results.impression : ''; %>
       <% if (raw && !/<\/?[a-z][\s\S]*>/i.test(raw)) { %>
-        <%= raw.replace(/\r?\n/g, '<br>') %>
+        <%- raw.replace(/\r?\n/g, '<br>') %>
       <% } else { %>
         <%- raw %>
       <% } %>

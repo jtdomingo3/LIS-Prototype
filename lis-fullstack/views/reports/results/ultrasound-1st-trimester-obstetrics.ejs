@@ -155,10 +155,10 @@
           <% var parts = raw.split(/\r?\n\r?\n/).map(function(p){ return p.trim(); }).filter(Boolean); %>
           <% if (parts.length) { %>
             <% parts.forEach(function(p){ %>
-              <p style="margin:0"><%= p.replace(/\r?\n/g, '<br>') %></p>
-            <% }) %>
+                <p style="margin:0"><%- p.replace(/\r?\n/g, '<br>') %></p>
+              <% }) %>
           <% } else { %>
-            <%= raw.replace(/\r?\n/g, '<br>') %>
+            <%- raw.replace(/\r?\n/g, '<br>') %>
           <% } %>
         <% } else { %>
           <%- raw %>
