@@ -21,9 +21,15 @@
       const isSendout = String(test.status || '').toLowerCase() === 'sendout' || (Array.isArray(test.requestedTests) && test.requestedTests.some(rr => {
         try { const lab = String(rr.lab || '').toLowerCase(); const lbl = String(rr.label || '').toLowerCase(); return lab === 'external' || lbl.includes('send out') || lbl.includes('sendout') || lbl.includes('for send'); } catch (e) { return false; }
       }));
+      const hasResults = (test.results && (typeof test.results === 'object' ? Object.keys(test.results).length > 0 : String(test.results).trim().length > 0));
+      const isCompleted = String(test.status || '').toLowerCase() === 'completed';
+      const showReport = hasResults || isCompleted;
     %>
     <% if (!isDoctor && !isSendout && test.testType && (/fecalysis/i.test(test.testType) || /(fecal\s*occult|fecal-occult|fecaloccult)/i.test(test.testType) || /urinalysis/i.test(test.testType) || /hemato|hematology|cbc/i.test(test.testType) || /(blood\s*typing|blood-typing|bloodtyping)/i.test(test.testType) || /serol|serology/i.test(test.testType) || /thyroid|thyroid\s*panel|thyroid-panel/i.test(test.testType) || /pregnan|pregnancy|pregnancy\s*test/i.test(test.testType) || /dengue/i.test(test.testType) || /pt|prothrombin|pt-aptt|ptaptt/i.test(test.testType) || /blood|blood\s*chemistry|blood-chemistry/i.test(test.testType) || /(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(test.testType) || /(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt|ct\s*bt|ctbt)/i.test(test.testType) || /(x-?ray|xray|radiograph)/i.test(test.testType) || /(ecg|electrocardio|electrocardiogram)/i.test(test.testType) || /(echo|echocardiograph|echocardiography|2d\s*echo|2decho)/i.test(test.testType) || /(ultra|ultrasound)/i.test(test.testType) || /(drug\s*test|drugtest)/i.test(test.testType))) { %>
       <a href="/tests/<%= test.id %>/results" class="button btn-success">Enter Results</a>
+    <% } %>
+    <% if (showReport) { %>
+      <a href="/reports/preview/<%= test.id %>" class="button btn-orange" target="_blank">View Report</a>
     <% } %>
     <a href="/tests" class="button btn-secondary">Back to Tests</a>
     <form action="/tests/<%= test.id %>?_method=DELETE" method="POST" style="display:inline-block;">
