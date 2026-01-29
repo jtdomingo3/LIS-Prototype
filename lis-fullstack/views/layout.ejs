@@ -1002,8 +1002,32 @@
                 } catch (e) { console.warn('[SSE] connect failed', e); setTimeout(connect, 5000); }
             }
 
-            // Start connection if EventSource supported
-            if ('EventSource' in window) connect();
+            // Defer SSE connection until the user stays on the page for 10s.
+            // If user switches tab/loses visibility, cancel the pending connect and close any open connection.
+            let sseDeferredTimer = null;
+            function scheduleSSEConnect(delay = 10000) {
+                if (!('EventSource' in window)) return;
+                try { clearTimeout(sseDeferredTimer); } catch(e){}
+                sseDeferredTimer = setTimeout(() => {
+                    try {
+                        if (document.visibilityState === 'visible') connect();
+                    } catch (e) { console.warn('[SSE] deferred connect failed', e); }
+                }, delay);
+            }
+
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    // schedule connect after 10s of being visible
+                    scheduleSSEConnect(10000);
+                } else {
+                    // cancel pending connect and close any existing connection
+                    try { clearTimeout(sseDeferredTimer); } catch(e){}
+                    try { if (es) { es.close(); es = null; setConn(false); } } catch (e) {}
+                }
+            });
+
+            // Kick off initial schedule when page loads (will connect after 10s if still visible)
+            if (document.visibilityState === 'visible') scheduleSSEConnect(10000);
         })();
 
         // Attempt to enter fullscreen when ?fullscreen=1 is present (best-effort).
