@@ -468,9 +468,28 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
         priority: (priority && String(priority).trim()) ? priority : 'Normal',
         requestedBy: req.session.user.id
       };
-      if (requestedTestsDetailed.length) {
+      // If the form requested a Send Out but no detailed requestedTests were provided
+      // (single testType path), attach a normalized For Send Out requested item so
+      // the Payment Area processing can route it to the internal 'Sendout' area.
+      // Add defensive logging to help debug missing form fields in production.
+      try {
+        console.log('DEBUG POST /tests - single-path payload check, forSendOut raw=', req.body && req.body.forSendOut);
+      } catch (e) {}
+      const forSendOutSingle = req.body && (req.body.forSendOut === '1' || req.body.forSendOut === 'on' || req.body.forSendOut === 'true');
+      if (!requestedTestsDetailed.length && forSendOutSingle) {
+        const amtRaw = req.body['amount_sendout'];
+        const amt = amtRaw ? parseFloat(String(amtRaw).replace(/,/g,'')) : 0;
+        const remark = req.body['remark_sendout'] || '';
+        payload.requestedTests = [{ key: 'For Send Out', label: 'For Send Out', amount: isNaN(amt) ? 0 : amt, lab: 'external', area: 'Sendout', remarks: remark }];
+        payload.awaitingOnly = awaitingOnly;
+        console.log('DEBUG POST /tests - attached single-path For Send Out requestedTests', payload.requestedTests);
+      } else if (requestedTestsDetailed.length) {
         payload.requestedTests = requestedTestsDetailed;
         payload.awaitingOnly = awaitingOnly;
+        console.log('DEBUG POST /tests - attached requestedTestsDetailed length=', requestedTestsDetailed.length);
+      } else {
+        // ensure requestedTests exists as empty array for clarity in DB
+        payload.requestedTests = payload.requestedTests || [];
       }
       // If this is a doctor check-up (and there are no X-ray/clinical/lab items), queue directly
       try {
