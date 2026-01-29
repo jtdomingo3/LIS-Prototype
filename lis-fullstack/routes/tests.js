@@ -1446,6 +1446,11 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
         doctorDesignation
       };
 
+      // optional spacing between impression and signatures
+      if (req.body.impression_spacing && String(req.body.impression_spacing).trim()) {
+        resultsObj.impression_spacing = String(req.body.impression_spacing).trim();
+      }
+
       // store editable section title
       resultsObj.section_title = (req.body.section_title || req.body.sectionTitle || (test && test.results && test.results.section_title) || 'BIOPHYSICAL ULTRASOUND').toString().trim();
 
@@ -1509,6 +1514,10 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
       };
       // store editable section title when provided (or keep existing/default)
       resultsObj.section_title = (req.body.section_title || req.body.sectionTitle || (test && test.results && test.results.section_title) || (/(transvaginal)/i.test(test.testType) ? 'TRANSVAGINAL ULTRASOUND' : 'PELVIC ULTRASOUND')).toString().trim();
+      // optional spacing between impression and signatures
+      if (req.body.impression_spacing && String(req.body.impression_spacing).trim()) {
+        resultsObj.impression_spacing = String(req.body.impression_spacing).trim();
+      }
     } else if (/(?:1st|first|2nd|second|3rd|third|trimester|ultrasound[-_\s]?trimester|trimester[-_\s]?obstetrics)/i.test(test.testType)) {
       // 1st Trimester Obstetrics - unified single/twin parsing
       const isTwinRaw = req.body.isTwin;
@@ -1602,6 +1611,9 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
           doctorLicense: doctorLicense,
           doctorDesignation: doctorDesignation
         };
+        if (req.body.impression_spacing && String(req.body.impression_spacing).trim()) {
+          resultsObj.impression_spacing = String(req.body.impression_spacing).trim();
+        }
         // allow editable section title for trimester obstetrics
         resultsObj.section_title = (req.body.section_title || req.body.sectionTitle || (test && test.results && test.results.section_title) || 'TRIMESTER OBSTETRICS').toString().trim();
       } else {
@@ -1663,6 +1675,9 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
         };
         // allow editable section title for trimester obstetrics
         resultsObj.section_title = (req.body.section_title || req.body.sectionTitle || (test && test.results && test.results.section_title) || 'TRIMESTER OBSTETRICS').toString().trim();
+        if (req.body.impression_spacing && String(req.body.impression_spacing).trim()) {
+          resultsObj.impression_spacing = String(req.body.impression_spacing).trim();
+        }
       }
     } else if (/(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(test.testType)) {
       // Ultrasound ABD / KUBP / HBT variant: accept examination select, findings paragraphs, and impression
@@ -1683,6 +1698,9 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
         paragraphs_font_family: req.body.paragraphsFontFamily || req.body.paragraphs_font_family,
         paragraphs_font_size: req.body.paragraphsFontSize || req.body.paragraphs_font_size
       };
+      if (req.body.impression_spacing && String(req.body.impression_spacing).trim()) {
+        resultsObj.impression_spacing = String(req.body.impression_spacing).trim();
+      }
     } else if (/(echo|echocardiograph|echocardiography|2d\s*echo|2decho)/i.test(test.testType)) {
       // Echocardiography (2D): findings paragraphs, color flow study, conclusion and signature
       const paragraphs = (req.body.paragraphs || req.body.findings || req.body.result || '').toString().trim();
