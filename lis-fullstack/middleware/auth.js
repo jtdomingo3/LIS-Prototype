@@ -43,6 +43,10 @@ const canAccessPatient = (req, res, next) => {
   // Admin should have full access
   if (req.session.user && req.session.user.role === 'Admin') return next();
 
+  // Allow if user explicitly has patients permission
+  const perms = (req.session.user && req.session.user.permissions) || {};
+  if (perms.patients) return next();
+
   const allowedRoles = ['Admin', 'Doctor', 'Technician'];
   if (!allowedRoles.includes(req.session.user.role)) {
     req.flash('error_msg', 'You do not have permission to access patient data');
