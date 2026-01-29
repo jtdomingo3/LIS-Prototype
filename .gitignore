@@ -9,4 +9,5 @@ node_modules/
 npm-debug.log*
 .env
 lis-fullstack/data.json
+lis-fullstack/data-users.json
 lis-fullstack/logs/report-errors.log

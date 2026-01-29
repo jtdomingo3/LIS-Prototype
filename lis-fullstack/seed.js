@@ -6,6 +6,9 @@ const Test = require('./models/Test');
 const Template = require('./models/Template');
 
 const DATA_FILE = path.join(__dirname, 'data.json');
+const USERS_FILE = path.join(__dirname, 'data-users.json');
+const crypto = require('crypto');
+const USER_DATA_KEY = process.env.DATA_USERS_KEY || process.env.USER_DATA_KEY || null;
 
 // Initialize data file if it doesn't exist
 if (!fs.existsSync(DATA_FILE)) {
@@ -18,15 +21,65 @@ if (!fs.existsSync(DATA_FILE)) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(initialData, null, 2));
 }
 
+// Ensure users file exists
+if (!fs.existsSync(USERS_FILE)) {
+  fs.writeFileSync(USERS_FILE, USER_DATA_KEY ? JSON.stringify([]) : JSON.stringify([], null, 2));
+}
+
+function deriveKey(secret) {
+  return crypto.createHash('sha256').update(String(secret)).digest();
+}
+
+function encryptJson(obj) {
+  if (!USER_DATA_KEY) return JSON.stringify(obj, null, 2);
+  const key = deriveKey(USER_DATA_KEY);
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  const plaintext = Buffer.from(JSON.stringify(obj));
+  const encrypted = Buffer.concat([cipher.update(plaintext), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return JSON.stringify({ v: 1, iv: iv.toString('base64'), tag: tag.toString('base64'), data: encrypted.toString('base64') }, null, 2);
+}
+
+function decryptJson(raw) {
+  if (!raw) return [];
+  if (!USER_DATA_KEY) return JSON.parse(raw);
+  let parsed;
+  try { parsed = JSON.parse(raw); } catch (e) { return JSON.parse(raw || '[]'); }
+  if (!parsed || !parsed.data) return parsed;
+  const key = deriveKey(USER_DATA_KEY);
+  const iv = Buffer.from(parsed.iv, 'base64');
+  const tag = Buffer.from(parsed.tag, 'base64');
+  const encrypted = Buffer.from(parsed.data, 'base64');
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+  decipher.setAuthTag(tag);
+  const dec = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+  return JSON.parse(dec.toString('utf8'));
+}
+
 // Simple file-based database functions
 const db = {
   read: () => JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')),
   write: (data) => fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2)),
-  getUsers: () => db.read().users,
+  // Users are stored in a separate file (data-users.json)
+  getUsers: () => {
+    try {
+      const raw = fs.readFileSync(USERS_FILE, 'utf8');
+      return decryptJson(raw);
+    } catch (e) {
+      return [];
+    }
+  },
+  saveUsers: (users) => {
+    try {
+      fs.writeFileSync(USERS_FILE, encryptJson(users), 'utf8');
+    } catch (e) {
+      console.error('Failed to write users file:', e);
+    }
+  },
   getPatients: () => db.read().patients,
   getTests: () => db.read().tests,
   getTemplates: () => db.read().templates,
-  saveUsers: (users) => { const data = db.read(); data.users = users; db.write(data); },
   savePatients: (patients) => { const data = db.read(); data.patients = patients; db.write(data); },
   saveTests: (tests) => { const data = db.read(); data.tests = tests; db.write(data); },
   saveTemplates: (templates) => { const data = db.read(); data.templates = templates; db.write(data); }
@@ -39,201 +92,47 @@ async function seedDatabase() {
   try {
     console.log('Starting database seeding...');
 
-    // Create admin user
-    const adminUser = new User({
-      name: 'Admin User',
-      email: 'admin@lab.com',
-      password: 'password123',
-      role: 'Admin',
-      status: 'Active'
-    });
-    await adminUser.save();
-    console.log('Created admin user');
+    // Load users from data-users.json and ensure admin exists
+    const existingUsers = db.getUsers() || [];
+    let adminUser = existingUsers.find(u => u.email === 'admin@lab.com');
 
-    // Create sample users
-    const users = [
-      {
-        name: 'Dr. Sarah Chen',
-        email: 'sarah@lab.com',
+    if (!adminUser) {
+      adminUser = new User({
+        name: 'Admin User',
+        email: 'admin@lab.com',
         password: 'password123',
-        role: 'Doctor',
+        role: 'Admin',
         status: 'Active'
-      },
-      {
-        name: 'Dr. Lorenzo',
-        email: 'lorenzo@lab.com',
-        password: 'password123',
-        role: 'Doctor',
-        status: 'Active'
-      },
-      {
-        name: 'Dr. Arcilla',
-        email: 'arcilla@lab.com',
-        password: 'password123',
-        role: 'Doctor',
-        status: 'Active'
-      },
-      {
-        name: 'Tech Michael Brown',
-        email: 'mike@lab.com',
-        password: 'password123',
-        role: 'Technician',
-        status: 'Active'
-      },
-      {
-        name: 'Jane Receptionist',
-        email: 'jane@lab.com',
-        password: 'password123',
-        role: 'Receptionist',
-        status: 'Active'
+      });
+      await adminUser.save();
+      console.log('Created admin user in data-users.json');
+    } else {
+      // ensure admin password remains password123 if it is plaintext or missing
+      if (!adminUser.password || !adminUser.password.startsWith('$2a$')) {
+        const u = new User(Object.assign({}, adminUser, { password: 'password123' }));
+        await u.save();
+        console.log('Ensured admin password is set and hashed');
       }
-    ];
-
-    for (const userData of users) {
-      const user = new User(userData);
-      await user.save();
+      adminUser = await User.findOne({ email: 'admin@lab.com' });
     }
-    console.log('Created sample users');
 
-    // Create sample patients
-    const patients = [
-      {
-        patientId: 'P001',
-        firstName: 'John',
-        lastName: 'Doe',
-        dateOfBirth: new Date('1990-05-15'),
-        gender: 'Male',
-        phone: '+1 (555) 123-4567',
-        email: 'john.doe@email.com',
-        address: '123 Main Street, New York, NY 10001',
-        createdBy: adminUser.id
-      },
-      {
-        patientId: 'P002',
-        firstName: 'Maria',
-        lastName: 'Garcia',
-        dateOfBirth: new Date('1985-08-22'),
-        gender: 'Female',
-        phone: '+1 (555) 234-5678',
-        email: 'maria.garcia@email.com',
-        address: '456 Oak Avenue, Los Angeles, CA 90001',
-        createdBy: adminUser.id
-      },
-      {
-        patientId: 'P003',
-        firstName: 'Robert',
-        lastName: 'Johnson',
-        dateOfBirth: new Date('1992-03-10'),
-        gender: 'Male',
-        phone: '+1 (555) 345-6789',
-        email: 'robert.j@email.com',
-        address: '789 Pine Road, Chicago, IL 60601',
-        createdBy: adminUser.id
+    // Ensure other existing users have a default password 'gezyne' if not set or not hashed
+    for (const u of existingUsers) {
+      if (u.email === 'admin@lab.com') continue;
+      if (!u.password || !u.password.startsWith('$2a$')) {
+        const tmp = new User(Object.assign({}, u, { password: 'gezyne' }));
+        await tmp.save();
+        console.log(`Set default password for ${u.email}`);
       }
-    ];
-
-    const savedPatients = [];
-    for (const patientData of patients) {
-      const patient = new Patient(patientData);
-      const saved = await patient.save();
-      savedPatients.push(saved);
     }
-    console.log('Created sample patients');
+    console.log('Loaded users from data-users.json');
 
-    // Create sample tests
-    const tests = [
-      {
-        testId: 'T001',
-        patient: savedPatients[0].id,
-        testType: 'Blood Test',
-        testDate: new Date('2026-01-15'),
-        status: 'Completed',
-        results: 'Hemoglobin: 14.5 g/dL\nRed Blood Cells: 4.8 M/uL\nWhite Blood Cells: 7.2 K/uL\nPlatelets: 250 K/uL\nGlucose: 95 mg/dL',
-        requestedBy: adminUser.id,
-        performedBy: adminUser.id,
-        completedAt: new Date('2026-01-15')
-      },
-      {
-        testId: 'T002',
-        patient: savedPatients[1].id,
-        testType: 'X-Ray',
-        testDate: new Date('2026-01-14'),
-        status: 'Completed',
-        results: 'Chest X-Ray: Normal. No abnormalities detected. Heart size normal. Lungs clear bilaterally.',
-        requestedBy: adminUser.id,
-        performedBy: adminUser.id,
-        completedAt: new Date('2026-01-14')
-      },
-      {
-        testId: 'T003',
-        patient: savedPatients[2].id,
-        testType: 'Ultrasound',
-        testDate: new Date('2026-01-13'),
-        status: 'In Progress',
-        results: 'Abdominal ultrasound in progress. Liver normal size, no focal lesions detected.',
-        requestedBy: adminUser.id
-      },
-      {
-        testId: 'T004',
-        patient: savedPatients[0].id,
-        testType: 'ECG',
-        testDate: new Date('2026-01-12'),
-        status: 'Completed',
-        results: 'Normal sinus rhythm. Heart rate: 72 bpm. No ST changes. Normal axis.',
-        requestedBy: adminUser.id,
-        performedBy: adminUser.id,
-        completedAt: new Date('2026-01-12')
-      }
-    ];
-
-    for (const testData of tests) {
-      const test = new Test(testData);
-      await test.save();
-    }
-    console.log('Created sample tests');
-
-    // Create sample templates
-    const templates = [
-      {
-        name: 'Blood Test Standard',
-        testType: 'Blood Test',
-        fields: [
-          { name: 'Hemoglobin (g/dL)', type: 'number', required: true },
-          { name: 'Red Blood Cells (M/uL)', type: 'number', required: true },
-          { name: 'White Blood Cells (K/uL)', type: 'number', required: true },
-          { name: 'Platelets (K/uL)', type: 'number', required: true },
-          { name: 'Glucose (mg/dL)', type: 'number', required: true }
-        ],
-        footerNotes: 'Reference ranges for adult population. Patient advised to maintain healthy lifestyle.',
-        createdBy: adminUser.id
-      },
-      {
-        name: 'Ultrasound Report',
-        testType: 'Ultrasound',
-        fields: [
-          { name: 'Organ Examined', type: 'text', required: true },
-          { name: 'Findings', type: 'textarea', required: true },
-          { name: 'Measurements', type: 'textarea', required: false },
-          { name: 'Impression', type: 'textarea', required: true },
-          { name: 'Recommendations', type: 'textarea', required: false }
-        ],
-        footerNotes: 'Follow-up as recommended. Schedule appointment if needed.',
-        createdBy: adminUser.id
-      }
-    ];
-
-    for (const templateData of templates) {
-      const template = new Template(templateData);
-      await template.save();
-    }
-    console.log('Created sample templates');
+    // Sample patients, tests, and templates were removed per request.
 
     console.log('Database seeded successfully!');
     console.log('\nLogin credentials:');
     console.log('Admin: admin@lab.com / password123');
-    console.log('Doctor: sarah@lab.com / password123');
-    console.log('Technician: mike@lab.com / password123');
-    console.log('Receptionist: jane@lab.com / password123');
+    console.log('Other users: see data-users.json (default password if not set: gezyne)');
 
   } catch (error) {
     console.error('Error seeding database:', error);
