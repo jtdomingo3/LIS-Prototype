@@ -17,6 +17,9 @@ const PORT = process.env.PORT || 3000;
 // If you prefer localhost-only, set HOST=127.0.0.1 before starting.
 const HOST = process.env.HOST || '0.0.0.0';
 const DATA_FILE = path.join(__dirname, 'data.json');
+const USERS_FILE = path.join(__dirname, 'data-users.json');
+const crypto = require('crypto');
+const USER_DATA_KEY = process.env.DATA_USERS_KEY || process.env.USER_DATA_KEY || null;
 
 // Initialize data file if it doesn't exist
 if (!fs.existsSync(DATA_FILE)) {
@@ -31,20 +34,70 @@ if (!fs.existsSync(DATA_FILE)) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(initialData, null, 2));
 }
 
+// Ensure users file exists
+if (!fs.existsSync(USERS_FILE)) {
+  fs.writeFileSync(USERS_FILE, USER_DATA_KEY ? JSON.stringify([]) : JSON.stringify([], null, 2));
+}
+
+function deriveKey(secret) {
+  return crypto.createHash('sha256').update(String(secret)).digest();
+}
+
+function encryptJson(obj) {
+  if (!USER_DATA_KEY) return JSON.stringify(obj, null, 2);
+  const key = deriveKey(USER_DATA_KEY);
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  const plaintext = Buffer.from(JSON.stringify(obj));
+  const encrypted = Buffer.concat([cipher.update(plaintext), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return JSON.stringify({ v: 1, iv: iv.toString('base64'), tag: tag.toString('base64'), data: encrypted.toString('base64') }, null, 2);
+}
+
+function decryptJson(raw) {
+  if (!raw) return [];
+  if (!USER_DATA_KEY) return JSON.parse(raw);
+  let parsed;
+  try { parsed = JSON.parse(raw); } catch (e) { return JSON.parse(raw || '[]'); }
+  if (!parsed || !parsed.data) return parsed;
+  const key = deriveKey(USER_DATA_KEY);
+  const iv = Buffer.from(parsed.iv, 'base64');
+  const tag = Buffer.from(parsed.tag, 'base64');
+  const encrypted = Buffer.from(parsed.data, 'base64');
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+  decipher.setAuthTag(tag);
+  const dec = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+  return JSON.parse(dec.toString('utf8'));
+}
+
 // Simple file-based database functions
 const db = {
   read: () => JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')),
   write: (data) => fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2)),
-  getUsers: () => db.read().users,
+  // Users stored separately in data-users.json (optional encrypted)
+  getUsers: () => {
+    try {
+      const raw = fs.readFileSync(USERS_FILE, 'utf8');
+      return decryptJson(raw);
+    } catch (e) {
+      return [];
+    }
+  },
+  saveUsers: (users) => {
+    try {
+      fs.writeFileSync(USERS_FILE, encryptJson(users), 'utf8');
+    } catch (e) {
+      console.error('Failed to write users file:', e);
+    }
+  },
   getPatients: () => db.read().patients,
   getTests: () => db.read().tests,
   getTemplates: () => db.read().templates,
   getCounters: () => db.read().counters || {},
-  saveUsers: (users) => { const data = db.read(); data.users = users; db.write(data); },
   savePatients: (patients) => { const data = db.read(); data.patients = patients; db.write(data); },
   saveTests: (tests) => { const data = db.read(); data.tests = tests; db.write(data); },
-  saveTemplates: (templates) => { const data = db.read(); data.templates = templates; db.write(data); }
-  ,saveCounters: (counters) => { const data = db.read(); data.counters = counters; db.write(data); }
+  saveTemplates: (templates) => { const data = db.read(); data.templates = templates; db.write(data); },
+  saveCounters: (counters) => { const data = db.read(); data.counters = counters; db.write(data); }
 };
 
 // Make db available globally
@@ -106,9 +159,32 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
 // Simple request logger to help debug routes and payloads
+function maskSensitive(obj) {
+  const SENSITIVE = new Set(['password','pwd','pass','confirmPassword','confirm_password','passwordConfirm']);
+  if (obj == null) return obj;
+  if (Array.isArray(obj)) return obj.map(v => maskSensitive(v));
+  if (typeof obj === 'object') {
+    const out = {};
+    for (const k of Object.keys(obj)) {
+      if (SENSITIVE.has(k)) out[k] = '[FILTERED]';
+      else out[k] = maskSensitive(obj[k]);
+    }
+    return out;
+  }
+  return obj;
+}
+
 app.use((req, res, next) => {
   const now = new Date().toISOString();
-  console.log(`[${now}] ${req.method} ${req.originalUrl}` + (Object.keys(req.body || {}).length ? ` body=${JSON.stringify(req.body)}` : ''));
+  let bodyPart = '';
+  try {
+    const b = req.body || {};
+    if (Object.keys(b).length) {
+      const masked = maskSensitive(b);
+      bodyPart = ` body=${JSON.stringify(masked)}`;
+    }
+  } catch (e) { bodyPart = ' body=[unserializable]'; }
+  console.log(`[${now}] ${req.method} ${req.originalUrl}` + bodyPart);
   next();
 });
 
@@ -191,6 +267,53 @@ app.use((req, res, next) => {
   const sessionFlags = (req.session && req.session.featureFlags) ? req.session.featureFlags : {};
   res.locals.featureFlags = Object.assign({}, app.locals.featureFlags, sessionFlags);
   next();
+});
+
+// Authorization: enforce per-user permissions stored in session.user.permissions
+const routePermissionMap = [
+  { prefix: '/dashboard', perm: 'dashboard' },
+  { prefix: '/patients', perm: 'patients' },
+  { prefix: '/reception', perm: 'reception' },
+  { prefix: '/tests', perm: 'tests' },
+  { prefix: '/reports', perm: 'reports' },
+  { prefix: '/templates', perm: 'templates' },
+  { prefix: '/users', perm: 'users' },
+  { prefix: '/worksheet', perm: 'worksheet' }
+];
+
+app.use((req, res, next) => {
+  try {
+    const path = req.originalUrl || req.url || '';
+    const mapping = routePermissionMap.find(m => path.indexOf(m.prefix) === 0);
+    if (!mapping) return next();
+
+    // allow public auth routes (login/register)
+    if (path === '/' || path.indexOf('/login') === 0) return next();
+
+    const sessionUser = req.session && req.session.user;
+    if (!sessionUser) {
+      req.flash('error_msg', 'Please login to access that page');
+      return res.redirect('/');
+    }
+
+    const perms = sessionUser.permissions || {};
+
+    // Dashboard: allow any authenticated user (temporary easy fix)
+    if (mapping.perm === 'dashboard') {
+      return next();
+    }
+
+    // Allow Admin role everywhere
+    if (sessionUser.role === 'Admin') return next();
+
+    if (perms[mapping.perm]) return next();
+
+    // Not allowed
+    req.flash('error_msg', 'You do not have permission to access that page');
+    return res.redirect('/dashboard');
+  } catch (e) {
+    return next();
+  }
 });
 
 // Set view engine

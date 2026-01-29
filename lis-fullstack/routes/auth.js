@@ -46,17 +46,44 @@ router.post('/login', requireGuest, async (req, res) => {
     user.lastLogin = new Date();
     await user.save();
 
-    // Create session (use the application's `id` field)
+    // Create session (use the application's `id` field) and include permissions
     req.session.user = {
       id: user.id,
       name: user.name,
       email: user.email,
-      role: user.role
+      role: user.role,
+      permissions: user.permissions || {}
     };
 
     req.flash('success_msg', `Welcome back, ${user.name}!`);
-    // Attempt to request fullscreen on the dashboard after login (best-effort).
-    res.redirect('/dashboard?fullscreen=1');
+
+    // Redirect user to the first page they have permission to access.
+    const sessionUser = req.session.user;
+    const perms = sessionUser.permissions || {};
+    const allowedDashboardRoles = new Set(['Admin', 'Manager', 'Owner']);
+
+    // If user role is allowed for dashboard, send them there.
+    if (allowedDashboardRoles.has(sessionUser.role)) {
+      return res.redirect('/dashboard?fullscreen=1');
+    }
+
+    // Ordered destination preferences for non-dashboard users
+    const routes = [
+      { path: '/reception', perm: 'reception' },
+      { path: '/patients', perm: 'patients' },
+      { path: '/tests', perm: 'tests' },
+      { path: '/reports', perm: 'reports' },
+      { path: '/templates', perm: 'templates' },
+      { path: '/users', perm: 'users' }
+    ];
+
+    for (const r of routes) {
+      if (perms[r.perm]) return res.redirect(r.path);
+    }
+
+    // Fallback to dashboard only if role allows; otherwise redirect to login with message
+    req.flash('error_msg', 'You do not have access to the dashboard. Please contact administrator for access.');
+    return res.redirect('/');
 
   } catch (error) {
     console.error('Login error:', error);
