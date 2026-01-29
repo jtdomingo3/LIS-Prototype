@@ -82,7 +82,7 @@
           <div class="two-col">
             <div class="col">
               <table class="inner-table">
-                <tr><th style="width:50%"></th><th style="width:15%">Result</th><th style="width:35%">Normal</th></tr>
+                <tr><th style="width:50%"></th><th style="width:15%">Result</th><th style="width:35%">Normal Values</th></tr>
                 <tr><td>RBC ct. (x 10^6/µL)</td><td style="text-align:center"><strong><%= test && test.results && test.results.rbc ? test.results.rbc : '' %></strong></td><td class="normal-small" style="text-align:right">3.8-5.8</td></tr>
                 <tr>
                   <td>Hemoglobin (g/dL)</td>
@@ -112,7 +112,7 @@
 
             <div class="col">
               <table class="inner-table">
-                <tr><th style="width:50%"></th><th style="width:15%">Result</th><th style="width:35%">Normal</th></tr>
+                <tr><th style="width:50%"></th><th style="width:15%">Result</th><th style="width:35%">Normal Values</th></tr>
                 <tr><td>WBC ct.(x10^9/L)</td><td style="text-align:center"><strong><%= test && test.results && test.results.wbc ? test.results.wbc : '' %></strong></td><td class="normal-small" style="text-align:right">5.0-10.0</td></tr>
                 <tr><td>Neutrophils (%)</td><td style="text-align:center"><strong><%= test && test.results && test.results.neutrophils ? test.results.neutrophils : '' %></strong></td><td class="normal-small" style="text-align:right">43.0-76.0</td></tr>
                 <tr><td>Lymphocyte (%)</td><td style="text-align:center"><strong><%= test && test.results && test.results.lymphocyte ? test.results.lymphocyte : '' %></strong></td><td class="normal-small" style="text-align:right">17.0-48.0</td></tr>
