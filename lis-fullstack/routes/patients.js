@@ -414,58 +414,14 @@ router.post('/:id/print', requireAuth, canAccessPatient, async (req, res) => {
   try {
     const patient = await Patient.findById(req.params.id);
     if (!patient) return res.status(404).json({ success: false, error: 'Patient not found' });
-
-    // build a simple receipt spec
-    const now = new Date();
-    const currentDate = now.toISOString().replace('T', ' ').slice(0, 19);
-    const fullName = `${patient.firstName || ''} ${patient.middleName ? patient.middleName + ' ' : ''}${patient.lastName || ''}`.trim();
-    const age = patient.ageManual || patient.age || 'N/A';
-    const tests = Array.isArray(patient.requestedTests) ? patient.requestedTests : [];
-    const total = tests.reduce((s, t) => s + (Number((t && (t.amount || t.amount === 0) ? t.amount : 0) || 0)), 0);
-
-    const spec = [];
-    spec.push({ type: 'text', align: 'center', size: 'double', bold: true, text: (patient.patientCode || patient.patientId || '') });
-    spec.push({ type: 'text', align: 'center', text: currentDate });
-    spec.push({ type: 'feed', count: 1 });
-    spec.push({ type: 'text', text: 'Name: ' + fullName });
-    spec.push({ type: 'text', text: 'Age: ' + age });
-    spec.push({ type: 'feed', count: 1 });
-    spec.push({ type: 'text', size: 'normal', text: 'Laboratory Request:' });
-    if (tests.length) {
-      tests.forEach(t => {
-        const label = (t && (t.label || t.key)) || String(t || '');
-        const amt = (t && (t.amount || t.amount === 0)) ? Number(t.amount) : 0;
-        let line = `- ${label}`;
-        if (amt) line += ` - PHP ${Number(amt).toFixed(2)}`;
-        spec.push({ type: 'text', text: line });
-      });
-    } else {
-      spec.push({ type: 'text', text: '- (No tests specified)' });
-    }
-    spec.push({ type: 'feed', count: 1 });
-    spec.push({ type: 'text', text: 'Amount: PHP ' + Number(total || 0).toFixed(2) });
-    spec.push({ type: 'feed', count: 4 });
-    spec.push({ type: 'cut' });
-
-    // write to temp and call thermal_test script
-    const os = require('os');
-    const tmp = os.tmpdir();
-    const specPath = pathMod.join(tmp, `patient_receipt_${Date.now()}.json`);
-    fs.writeFileSync(specPath, JSON.stringify(spec), { encoding: 'utf8' });
-
-    const { spawnSync } = require('child_process');
-    const scriptPath = pathMod.join(__dirname, '..', 'scripts', 'thermal_test.js');
-    const args = [scriptPath, '--json', specPath];
-    const ENV_PRINTER = process.env.PRINTER_NAME || process.env.PRINTER || null;
-    if (ENV_PRINTER) args.push('--printer', ENV_PRINTER);
-
-    const proc = spawnSync(process.execPath, args, { cwd: pathMod.join(__dirname, '..'), encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 });
-    try { fs.unlinkSync(specPath); } catch (e) {}
-
-    try { appendPrintLog(JSON.stringify({ action: 'patient_receipt_print_manual', patientId: patient.id, args, exitCode: proc.status || null, stderr: proc.stderr || null, stdout: proc.stdout || null })); } catch (e) {}
-
-    if (proc.error || proc.status !== 0) return res.status(500).json({ success: false, error: proc.stderr || proc.stdout || String(proc.error) });
-    return res.json({ success: true, output: proc.stdout });
+    // Use the latest print helper to generate the revised receipt format
+    const printHelper = require('../lib/printHelper');
+    // Fetch patient's tests to include requested items in the receipt
+    const Test = require('../models/Test');
+    const tests = await Test.find({ patient: req.params.id });
+    const result = await printHelper.printPatientReceipt(patient, tests);
+    if (!result || !result.success) return res.status(500).json({ success: false, error: result && result.error ? result.error : 'Print failed' });
+    return res.json({ success: true, output: result.output });
   } catch (e) {
     console.error('Patient print error:', e);
     return res.status(500).json({ success: false, error: String(e) });
