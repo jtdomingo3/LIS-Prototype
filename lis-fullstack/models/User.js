@@ -7,8 +7,22 @@ class User {
     this.name = data.name;
     this.email = data.email;
     this.password = data.password;
+    this.licenseNumber = data.licenseNumber || null;
     this.role = data.role || 'Receptionist';
     this.status = data.status || 'Active';
+    // Permissions control access to UI/features. Default conservative permissions (no user management, no delete)
+    const defaultPerms = {
+      dashboard: true,
+      patients: true,
+      reception: true,
+      tests: true,
+      reports: true,
+      worksheet: true,
+      templates: true,
+      users: false,
+      delete: false
+    };
+    this.permissions = data.permissions || defaultPerms;
     this.createdAt = data.createdAt || new Date();
     this.lastLogin = data.lastLogin || null;
   }
@@ -44,6 +58,8 @@ class User {
       name: this.name,
       email: this.email,
       password: this.password,
+        licenseNumber: this.licenseNumber || null,
+        permissions: this.permissions || {},
       role: this.role,
       status: this.status,
       createdAt: this.createdAt,

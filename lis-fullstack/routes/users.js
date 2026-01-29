@@ -12,14 +12,15 @@ router.get('/', requireAuth, canManageUsers, async (req, res) => {
     const usersWithoutPasswords = users
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       .map(user => ({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        status: user.status,
-        createdAt: user.createdAt,
-        lastLogin: user.lastLogin
-      }));
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          licenseNumber: user.licenseNumber || '',
+          role: user.role,
+          status: user.status,
+          createdAt: user.createdAt,
+          lastLogin: user.lastLogin
+        }));
 
     res.render('users/index', {
       title: 'User Management',
@@ -47,7 +48,7 @@ router.get('/new', requireAuth, canManageUsers, (req, res) => {
 // POST /users - Create new user
 router.post('/', requireAuth, canManageUsers, async (req, res) => {
   try {
-    const { name, email, password, confirmPassword, role, status } = req.body;
+    const { name, email, password, confirmPassword, role, status, customRole, licenseNumber } = req.body;
 
     // Validate required fields
     if (!name || !email || !password) {
@@ -86,17 +87,36 @@ router.post('/', requireAuth, canManageUsers, async (req, res) => {
       });
     }
 
+    const finalRole = (role === 'Other' && customRole && String(customRole).trim()) ? String(customRole).trim() : (role || 'Receptionist');
+
+    // Build permissions object from checkbox inputs (checkboxes send 'on' when checked)
+    const perms = {
+      dashboard: !!req.body.perm_dashboard,
+      patients: !!req.body.perm_patients,
+      reception: !!req.body.perm_reception,
+      tests: !!req.body.perm_tests,
+      reports: !!req.body.perm_reports,
+      worksheet: !!req.body.perm_worksheet,
+      templates: !!req.body.perm_templates,
+      users: !!req.body.perm_users,
+      delete: !!req.body.perm_delete
+    };
+
     const user = new User({
       name,
       email: email.toLowerCase(),
       password,
-      role: role || 'Receptionist',
-      status: status || 'Active'
+      role: finalRole,
+      status: status || 'Active',
+      licenseNumber: licenseNumber || null,
+      permissions: perms
     });
+
+    console.log('Creating user:', { name, email: email.toLowerCase(), role: finalRole, licenseNumber: licenseNumber || null });
 
     await user.save();
 
-    req.flash('success_msg', `User "${name}" created successfully as ${role}!`);
+    req.flash('success_msg', `User "${name}" created successfully as ${finalRole}!`);
     res.redirect('/users');
 
   } catch (error) {
@@ -159,7 +179,7 @@ router.get('/:id/edit', requireAuth, canManageUsers, async (req, res) => {
 // PUT /users/:id - Update user
 router.put('/:id', requireAuth, canManageUsers, async (req, res) => {
   try {
-    const { name, email, role, status, password, confirmPassword } = req.body;
+    const { name, email, role, status, password, confirmPassword, customRole, licenseNumber } = req.body;
 
     // Validate required fields
     if (!name || !email) {
@@ -174,12 +194,28 @@ router.put('/:id', requireAuth, canManageUsers, async (req, res) => {
       return res.redirect(`/users/${req.params.id}/edit`);
     }
 
+    const finalRole = (role === 'Other' && customRole && String(customRole).trim()) ? String(customRole).trim() : role;
+
     const updateData = {
       name,
       email: email.toLowerCase(),
-      role,
-      status
+      role: finalRole,
+      status,
+      licenseNumber: licenseNumber || null,
+      permissions: {
+        dashboard: !!req.body.perm_dashboard,
+        patients: !!req.body.perm_patients,
+        reception: !!req.body.perm_reception,
+        tests: !!req.body.perm_tests,
+        reports: !!req.body.perm_reports,
+        worksheet: !!req.body.perm_worksheet,
+        templates: !!req.body.perm_templates,
+        users: !!req.body.perm_users,
+        delete: !!req.body.perm_delete
+      }
     };
+
+    console.log('Updating user:', { id: req.params.id, name, email: email.toLowerCase(), role: finalRole, licenseNumber: licenseNumber || null });
 
     // Update password if provided
     if (password) {
@@ -201,6 +237,11 @@ router.put('/:id', requireAuth, canManageUsers, async (req, res) => {
       return res.redirect('/users');
     }
 
+    // If the updated user is the currently logged-in user, refresh their session to include updated permissions
+    if (req.session && req.session.user && req.session.user.id === req.params.id) {
+      req.session.user = { id: user.id, name: user.name, email: user.email, role: user.role, permissions: user.permissions || {} };
+    }
+
     req.flash('success_msg', `User "${name}" updated successfully!`);
     res.redirect(`/users/${req.params.id}`);
 
@@ -218,6 +259,15 @@ router.delete('/:id', requireAuth, canManageUsers, async (req, res) => {
     if (req.params.id === req.session.user.id) {
       req.flash('error_msg', 'You cannot delete your own account');
       return res.redirect('/users');
+    }
+
+    // Enforce delete permission for non-admins
+    if (!(req.session.user && req.session.user.role === 'Admin')) {
+      const perms = (req.session.user && req.session.user.permissions) || {};
+      if (!perms.delete) {
+        req.flash('error_msg', 'You do not have permission to delete users');
+        return res.redirect('/users');
+      }
     }
 
     const user = await User.findByIdAndDelete(req.params.id);

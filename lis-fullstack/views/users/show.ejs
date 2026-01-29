@@ -3,6 +3,9 @@
 
   <p><strong>Name:</strong> <%= user.name %></p>
   <p><strong>Email:</strong> <%= user.email %></p>
+  <% if (user.licenseNumber) { %>
+    <p><strong>License Number:</strong> <%= user.licenseNumber %></p>
+  <% } %>
   <p><strong>Role:</strong> <%= user.role %></p>
   <p><strong>Status:</strong> <%= user.status %></p>
   <p><strong>Created At:</strong> <%= new Date(user.createdAt).toLocaleString() %></p>

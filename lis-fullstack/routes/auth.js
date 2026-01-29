@@ -46,12 +46,13 @@ router.post('/login', requireGuest, async (req, res) => {
     user.lastLogin = new Date();
     await user.save();
 
-    // Create session (use the application's `id` field)
+    // Create session (use the application's `id` field) and include permissions
     req.session.user = {
       id: user.id,
       name: user.name,
       email: user.email,
-      role: user.role
+      role: user.role,
+      permissions: user.permissions || {}
     };
 
     req.flash('success_msg', `Welcome back, ${user.name}!`);

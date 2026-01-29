@@ -10,13 +10,29 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 
 const DEFAULT_BACKUP_DIR = path.join(os.homedir(), 'Documents', 'LIS', 'backup');
 
 function performBackup(destDir) {
-  const DATA_FILE = path.join(__dirname, '..', 'data.json');
   const dir = destDir && String(destDir).length ? destDir : DEFAULT_BACKUP_DIR;
   fs.mkdirSync(dir, { recursive: true });
   const ts = new Date().toISOString().replace(/[:.]/g, '-');
   const dest = path.join(dir, `backup_${ts}.json`);
-  fs.copyFileSync(DATA_FILE, dest);
-  return dest;
+  // Build combined snapshot from split store files (users + lab)
+  try {
+    const users = (global.db && typeof global.db.getUsers === 'function') ? global.db.getUsers() : [];
+    const patients = (global.db && typeof global.db.getPatients === 'function') ? global.db.getPatients() : [];
+    const tests = (global.db && typeof global.db.getTests === 'function') ? global.db.getTests() : [];
+    const templates = (global.db && typeof global.db.getTemplates === 'function') ? global.db.getTemplates() : [];
+    const counters = (global.db && typeof global.db.getCounters === 'function') ? global.db.getCounters() : {};
+    const combined = { users, patients, tests, templates, counters };
+    fs.writeFileSync(dest, JSON.stringify(combined, null, 2), 'utf8');
+    return dest;
+  } catch (e) {
+    // Fallback: attempt to copy legacy data.json if present
+    const DATA_FILE = path.join(__dirname, '..', 'data.json');
+    if (fs.existsSync(DATA_FILE)) {
+      fs.copyFileSync(DATA_FILE, dest);
+      return dest;
+    }
+    throw e;
+  }
 }
 
 // Only allow authenticated users; editing flags restricted to Admins
@@ -111,7 +127,7 @@ router.post('/backup', requireAuth, canManageUsers, (req, res) => {
 });
 
 // Restore endpoint (upload JSON file)
-router.post('/restore', requireAuth, canManageUsers, upload.single('backupFile'), (req, res) => {
+router.post('/restore', requireAuth, canManageUsers, upload.single('backupFile'), async (req, res) => {
   try {
     if (!req.file) {
       req.flash('error_msg', 'No file uploaded');
@@ -119,11 +135,34 @@ router.post('/restore', requireAuth, canManageUsers, upload.single('backupFile')
     }
     // Validate JSON first
     const parsed = JSON.parse(req.file.buffer.toString('utf8'));
-    const DATA_FILE = path.join(__dirname, '..', 'data.json');
-    // backup current before overwrite
+    // Backup current before overwrite
     performBackup();
-    fs.writeFileSync(DATA_FILE, JSON.stringify(parsed, null, 2), 'utf8');
-    req.flash('success_msg', 'Restore completed (previous data backed up)');
+
+    // If parsed looks like combined snapshot (users + patients/tests/templates/counters)
+    if (parsed && (parsed.users || parsed.patients || parsed.tests || parsed.templates || parsed.counters)) {
+      try {
+        // Use global.db.write if available (it will save users and lab split)
+        if (global.db && typeof global.db.write === 'function') {
+          await global.db.write(parsed);
+        } else {
+          // Fallback: write files directly
+          const usersFile = path.join(__dirname, '..', 'data-users.json');
+          const labFile = path.join(__dirname, '..', 'data-lab.json');
+          fs.writeFileSync(usersFile, JSON.stringify(parsed.users || [], null, 2), 'utf8');
+          const lab = { patients: parsed.patients || [], tests: parsed.tests || [], templates: parsed.templates || [], counters: parsed.counters || {} };
+          fs.writeFileSync(labFile, JSON.stringify(lab, null, 2), 'utf8');
+        }
+        req.flash('success_msg', 'Restore completed (previous data backed up)');
+      } catch (e) {
+        console.error('Restore write error:', e);
+        req.flash('error_msg', `Restore failed while writing data: ${e && e.message ? e.message : String(e)}`);
+      }
+    } else {
+      // Unknown format: write to combined data.json for compatibility
+      const DATA_FILE = path.join(__dirname, '..', 'data.json');
+      fs.writeFileSync(DATA_FILE, JSON.stringify(parsed, null, 2), 'utf8');
+      req.flash('success_msg', 'Restore completed (written to legacy data.json)');
+    }
   } catch (e) {
     console.error('Restore error:', e);
     req.flash('error_msg', `Restore failed: ${e && e.message ? e.message : String(e)}`);
@@ -134,23 +173,25 @@ router.post('/restore', requireAuth, canManageUsers, upload.single('backupFile')
 // Clear data endpoint (backs up current data, preserves Admin users)
 router.post('/clear', requireAuth, canManageUsers, (req, res) => {
   try {
-    const DATA_FILE = path.join(__dirname, '..', 'data.json');
-    const raw = fs.readFileSync(DATA_FILE, 'utf8');
-    const parsed = JSON.parse(raw || '{}');
-    // backup current before clearing
+    // Backup current before clearing
     performBackup();
 
-    const newData = {};
-    Object.keys(parsed).forEach((k) => {
-      if (k === 'users') {
-        newData.users = Array.isArray(parsed.users) ? parsed.users.filter(u => u && u.role === 'Admin') : [];
-      } else if (Array.isArray(parsed[k])) {
-        newData[k] = [];
-      } else {
-        newData[k] = {};
-      }
-    });
-    fs.writeFileSync(DATA_FILE, JSON.stringify(newData, null, 2), 'utf8');
+    // Preserve Admin users only, clear lab data
+    const users = (global.db && typeof global.db.getUsers === 'function') ? global.db.getUsers() : [];
+    const adminUsers = Array.isArray(users) ? users.filter(u => u && u.role === 'Admin') : [];
+    if (global.db && typeof global.db.saveUsers === 'function') {
+      global.db.saveUsers(adminUsers);
+    } else {
+      const usersFile = path.join(__dirname, '..', 'data-users.json');
+      fs.writeFileSync(usersFile, JSON.stringify(adminUsers, null, 2), 'utf8');
+    }
+
+    // Clear lab data
+    if (global.db && typeof global.db.savePatients === 'function') global.db.savePatients([]);
+    if (global.db && typeof global.db.saveTests === 'function') global.db.saveTests([]);
+    if (global.db && typeof global.db.saveTemplates === 'function') global.db.saveTemplates([]);
+    if (global.db && typeof global.db.saveCounters === 'function') global.db.saveCounters({});
+
     req.flash('success_msg', 'Data cleared (admin users preserved). Backup created.');
   } catch (e) {
     console.error('Clear data error:', e);

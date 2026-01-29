@@ -712,22 +712,35 @@
                 <img src="/assets/gezyne-logo.png" alt="Gezyne Clinical Laboratory" class="brand-logo">
                 <div class="brand-text">Gezyne Clinical Laboratory</div>
             </div>
+            <% if (user.role === 'Admin' || (user.permissions && user.permissions.dashboard)) { %>
             <a href="/dashboard" class="nav-item <%= title.includes('Dashboard') ? 'active' : '' %>"><span class="nav-emoji">📊</span><span class="nav-text">Dashboard</span></a>
+            <% } %>
+
+            <% if (user.role === 'Admin' || (user.permissions && user.permissions.patients)) { %>
             <a href="/patients" class="nav-item <%= title.includes('Patient') ? 'active' : '' %>"><span class="nav-emoji">👥</span><span class="nav-text">Patients</span></a>
+            <% } %>
+
+            <% if (user.role === 'Admin' || (user.permissions && user.permissions.reception)) { %>
             <a href="/reception" class="nav-item <%= title.includes('Reception') ? 'active' : '' %>"><span class="nav-emoji">🏥</span><span class="nav-text">Reception</span></a>
-            <% if (!featureFlags || featureFlags.tests) { %>
+            <% } %>
+
+            <% if ((user.role === 'Admin' || (user.permissions && user.permissions.tests)) && (!featureFlags || featureFlags.tests)) { %>
             <a href="/tests" class="nav-item <%= title.includes('Test') ? 'active' : '' %>"><span class="nav-emoji">🧪</span><span class="nav-text">Tests & Results</span></a>
             <% } %>
-            <% if (!featureFlags || featureFlags.reports) { %>
+
+            <% if ((user.role === 'Admin' || (user.permissions && user.permissions.reports)) && (!featureFlags || featureFlags.reports)) { %>
             <a href="/reports" class="nav-item <%= title.includes('Report') ? 'active' : '' %>"><span class="nav-emoji">📋</span><span class="nav-text">Reports</span></a>
             <% } %>
-            <% if (!featureFlags || featureFlags.worksheet) { %>
+
+            <% if ((user.role === 'Admin' || (user.permissions && user.permissions.worksheet)) && (!featureFlags || featureFlags.worksheet)) { %>
             <a href="/reports/worksheet" class="nav-item <%= title.includes('Worksheet') ? 'active' : '' %>"><span class="nav-emoji">📊</span><span class="nav-text">Worksheet</span></a>
             <% } %>
-            <% if (!featureFlags || featureFlags.templates) { %>
+
+            <% if ((user.role === 'Admin' || (user.permissions && user.permissions.templates)) && (!featureFlags || featureFlags.templates)) { %>
             <a href="/templates" class="nav-item <%= title.includes('Template') ? 'active' : '' %>"><span class="nav-emoji">📄</span><span class="nav-text">Templates</span></a>
             <% } %>
-            <% if (user.role === 'Admin' && (!featureFlags || featureFlags.users)) { %>
+
+            <% if ((user.role === 'Admin' || (user.permissions && user.permissions.users)) && (!featureFlags || featureFlags.users)) { %>
             <a href="/users" class="nav-item <%= title.includes('User') ? 'active' : '' %>"><span class="nav-emoji">👤</span><span class="nav-text">Users</span></a>
             <% } %>
             <form action="/logout" method="POST" style="margin-top: 30px;">
@@ -769,7 +782,7 @@
                         <source src="/assets/new-notification.mp3" type="audio/mpeg">
                     </audio>
                     <div class="user-info">
-                        <p>Welcome, <%= user.name %></p>
+                        <p>Welcome, <%= user.name %> &nbsp; <a href="/profile" style="font-size:0.85em;color:var(--text-gray);margin-left:8px;">(Profile)</a></p>
                         <p><span id="currentDate"><%= new Date().toLocaleDateString() %></span>&nbsp;<span id="currentTime"><%= new Date().toLocaleTimeString() %></span></p>
                     </div>
                 </div>

@@ -56,11 +56,31 @@ const canManageUsers = (req, res, next) => {
   // Admin has full access
   if (req.session.user && req.session.user.role === 'Admin') return next();
 
-  if (req.session.user.role !== 'Admin') {
-    req.flash('error_msg', 'Only administrators can manage users');
+  const perms = (req.session.user && req.session.user.permissions) || {};
+  if (perms.users) return next();
+
+  req.flash('error_msg', 'Only administrators or users with Users permission can manage users');
+  return res.redirect('/dashboard');
+};
+
+// Generic permission checker for feature keys (e.g., 'patients', 'reports', 'templates')
+const requirePermission = (feature) => (req, res, next) => {
+  try {
+    const user = req.session && req.session.user;
+    if (!user) {
+      req.flash('error_msg', 'Please log in to access this page');
+      return res.redirect('/');
+    }
+    if (user.role === 'Admin') return next();
+    const perms = user.permissions || {};
+    if (perms[feature]) return next();
+    req.flash('error_msg', 'You do not have permission to access this page');
+    return res.redirect('/dashboard');
+  } catch (e) {
+    console.error('Permission check failed:', e);
+    req.flash('error_msg', 'Permission check failed');
     return res.redirect('/dashboard');
   }
-  next();
 };
 
 module.exports = {
@@ -69,4 +89,5 @@ module.exports = {
   requireRole,
   canAccessPatient,
   canManageUsers
+  ,requirePermission
 };

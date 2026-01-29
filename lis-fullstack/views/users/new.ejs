@@ -7,6 +7,19 @@
       <input type="text" name="name" value="<%= user.name || '' %>" required>
     </div>
 
+    <fieldset style="margin-top:12px;border:1px solid #ddd;padding:12px;border-radius:6px;">
+      <legend>Feature Access</legend>
+      <label><input type="checkbox" name="perm_dashboard" <%= user && user.permissions && user.permissions.dashboard ? 'checked' : '' %> > Dashboard</label><br>
+      <label><input type="checkbox" name="perm_patients" <%= user && user.permissions && user.permissions.patients ? 'checked' : '' %> > Patients</label><br>
+      <label><input type="checkbox" name="perm_reception" <%= user && user.permissions && user.permissions.reception ? 'checked' : '' %> > Reception</label><br>
+      <label><input type="checkbox" name="perm_tests" <%= user && user.permissions && user.permissions.tests ? 'checked' : '' %> > Tests & Results</label><br>
+      <label><input type="checkbox" name="perm_reports" <%= user && user.permissions && user.permissions.reports ? 'checked' : '' %> > Reports</label><br>
+      <label><input type="checkbox" name="perm_worksheet" <%= user && user.permissions && user.permissions.worksheet ? 'checked' : '' %> > Worksheet</label><br>
+      <label><input type="checkbox" name="perm_templates" <%= user && user.permissions && user.permissions.templates ? 'checked' : '' %> > Templates</label><br>
+      <label><input type="checkbox" name="perm_users" <%= user && user.permissions && user.permissions.users ? 'checked' : '' %> > Users (access to Users management)</label><br>
+      <label><input type="checkbox" name="perm_delete" <%= user && user.permissions && user.permissions.delete ? 'checked' : '' %> > Allow Delete actions</label>
+    </fieldset>
+
     <div class="form-group">
       <label>Email</label>
       <input type="email" name="email" value="<%= user.email || '' %>" required>
@@ -24,12 +37,25 @@
 
     <div class="form-group">
       <label>Role</label>
-      <select name="role">
-        <option value="Receptionist">Receptionist</option>
-        <option value="Technician">Technician</option>
-        <option value="Doctor">Doctor</option>
-        <option value="Admin">Admin</option>
+      <select name="role" id="roleSelect">
+        <option value="Receptionist" <%= (user.role || '') === 'Receptionist' ? 'selected' : '' %>>Receptionist</option>
+        <option value="Technician" <%= (user.role || '') === 'Technician' ? 'selected' : '' %>>Technician</option>
+        <option value="Doctor" <%= (user.role || '') === 'Doctor' ? 'selected' : '' %>>Doctor</option>
+        <option value="Admin" <%= (user.role || '') === 'Admin' ? 'selected' : '' %>>Admin</option>
+        <option value="Medical Technologist" <%= (user.role || '') === 'Medical Technologist' ? 'selected' : '' %>>Medical Technologist</option>
+        <option value="Radiologist" <%= (user.role || '') === 'Radiologist' ? 'selected' : '' %>>Radiologist</option>
+        <option value="Nurse" <%= (user.role || '') === 'Nurse' ? 'selected' : '' %>>Nurse</option>
+        <option value="Sonographer" <%= (user.role || '') === 'Sonographer' ? 'selected' : '' %>>Sonographer</option>
+        <option value="System IT" <%= (user.role || '') === 'System IT' ? 'selected' : '' %>>System IT</option>
+        <option value="Other" <%= user.role && ['Receptionist','Technician','Doctor','Admin','Medical Technologist','Radiologist','Nurse','Sonographer','System IT'].includes(user.role) ? '' : 'selected' %>>Other (specify below)</option>
       </select>
+      <input type="text" name="customRole" id="customRole" placeholder="Enter custom role" style="display:none;margin-top:8px;" value="<%= user.role && ['Receptionist','Technician','Doctor','Admin','Medical Technologist','Radiologist','Nurse','Sonographer','System IT'].includes(user.role) ? '' : user.role %>">
+      <input type="text" name="customRole" id="customRole" placeholder="Enter custom role" style="display:none;margin-top:8px;">
+    </div>
+
+    <div class="form-group">
+      <label>License Number (optional)</label>
+      <input type="text" name="licenseNumber" value="<%= user.licenseNumber || '' %>">
     </div>
 
     <div class="form-group">
@@ -40,6 +66,32 @@
       </select>
     </div>
 
+    <fieldset style="margin-top:12px;border:1px solid #ddd;padding:12px;border-radius:6px;">
+      <legend>Feature Access</legend>
+      <label><input type="checkbox" name="perm_dashboard" checked> Dashboard</label><br>
+      <label><input type="checkbox" name="perm_patients" checked> Patients</label><br>
+      <label><input type="checkbox" name="perm_reception" checked> Reception</label><br>
+      <label><input type="checkbox" name="perm_tests" checked> Tests & Results</label><br>
+      <label><input type="checkbox" name="perm_reports" checked> Reports</label><br>
+      <label><input type="checkbox" name="perm_worksheet" checked> Worksheet</label><br>
+      <label><input type="checkbox" name="perm_templates" checked> Templates</label><br>
+      <label><input type="checkbox" name="perm_users"> Users (access to Users management)</label><br>
+      <label><input type="checkbox" name="perm_delete"> Allow Delete actions</label>
+    </fieldset>
+
     <button class="button btn-primary">Create User</button>
   </form>
 </div>
+
+<script>
+  (function(){
+    const roleSelect = document.getElementById('roleSelect');
+    const custom = document.getElementById('customRole');
+    function toggle(){
+      if(roleSelect && custom){
+        custom.style.display = roleSelect.value === 'Other' ? 'block' : 'none';
+      }
+    }
+    if(roleSelect){ roleSelect.addEventListener('change', toggle); toggle(); }
+  })();
+</script>

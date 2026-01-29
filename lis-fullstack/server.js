@@ -275,6 +275,7 @@ const testRoutes = require('./routes/tests');
 const reportRoutes = require('./routes/reports');
 const templateRoutes = require('./routes/templates');
 const userRoutes = require('./routes/users');
+const profileRoutes = require('./routes/profile');
 const receptionRoutes = require('./routes/reception');
 const settingsRoutes = require('./routes/settings');
 
@@ -285,6 +286,7 @@ app.use('/tests', testRoutes);
 app.use('/reports', reportRoutes);
 app.use('/templates', templateRoutes);
 app.use('/users', userRoutes);
+app.use('/profile', profileRoutes);
 app.use('/reception', receptionRoutes);
 app.use('/settings', settingsRoutes);
 
