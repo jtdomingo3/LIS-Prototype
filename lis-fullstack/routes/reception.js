@@ -28,6 +28,7 @@ function allowKioskOrAuth(req, res, next) {
 // Define the reception areas
 const AREAS = [
   'Payment Area',
+  'Sendout',
   'Extraction Area',
   'Drug Test',
   'Ultrasound',
@@ -96,7 +97,12 @@ function getTargetAreaForTest(t) {
 function getTargetAreaForRequest(rr) {
   if (!rr) return null;
   try {
-    if (rr.area) return rr.area;
+    // Normalize legacy 'For Send Out' to internal 'Sendout' area
+    if (rr.area) {
+      const ra = String(rr.area || '').toLowerCase();
+      if (ra.includes('send')) return 'Sendout';
+      return rr.area;
+    }
     const lab = String(rr.lab || '').toLowerCase();
     if (lab === 'xray') return 'X-ray';
     const label = String(rr.label || '').toLowerCase();
@@ -104,6 +110,7 @@ function getTargetAreaForRequest(rr) {
     if (label.includes('ultrasound') || label.includes('echo')) return 'Ultrasound';
     if (label.includes('ecg')) return 'ECG';
     if (label.includes('drug')) return 'Drug Test';
+    if (label.includes('send')) return 'Sendout';
     if (/blood|chemistry|hematology|serology|pt|aptt/.test(label)) return 'Extraction Area';
   } catch (e) { }
   return null;
@@ -121,12 +128,16 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
         })
       : [];
 
+    // Build display areas (exclude internal-only areas like 'Sendout' from kiosk/dashboard tiles)
+    const DISPLAY_AREAS = AREAS.filter(a => String(a).toLowerCase() !== 'sendout');
+
     // Count unique patients per area (deduplicate by patientCode) so dashboard shows patient counts
-    const counts = AREAS.map(a => ({ name: a, count: 0, _seen: new Set() }));
+    const counts = DISPLAY_AREAS.map(a => ({ name: a, count: 0, _seen: new Set() }));
     if (Array.isArray(allTests)) {
       for (const t of allTests) {
         const areaForTest = mapAreaForTest(t);
-        if (!AREAS.includes(areaForTest)) continue;
+        // only count areas that are part of DISPLAY_AREAS
+        if (!DISPLAY_AREAS.includes(areaForTest)) continue;
         if (!t.patient) continue;
         const patient = await Patient.findById(t.patient);
         if (!patient || !patient.patientCode) continue;
@@ -167,8 +178,10 @@ router.get('/assigned', allowKioskOrAuth, async (req, res) => {
           return aDate - bDate;
         })
       : [];
+    // For assigned (kiosk) view we expose DISPLAY_AREAS only (hide internal-only 'Sendout')
+    const DISPLAY_AREAS = AREAS.filter(a => String(a).toLowerCase() !== 'sendout');
     const areaAssignments = {};
-    for (const area of AREAS) {
+    for (const area of DISPLAY_AREAS) {
       areaAssignments[area] = [];
     }
 
@@ -176,7 +189,7 @@ router.get('/assigned', allowKioskOrAuth, async (req, res) => {
       for (const t of allTests) {
         if (!t.status) continue;
         const area = mapAreaForTest(t);
-        if (!AREAS.includes(area)) continue;
+        if (!DISPLAY_AREAS.includes(area)) continue;
         if (!t.patient) continue;
         const patient = await Patient.findById(t.patient);
         if (!patient || !patient.patientCode) continue;
@@ -206,10 +219,10 @@ router.get('/assigned', allowKioskOrAuth, async (req, res) => {
       return res.redirect('/reception/assigned?kiosk=1');
     }
     
-    // Render kiosk view (fullscreen, no layout)
+    // Render kiosk view (fullscreen, no layout) exposing only DISPLAY_AREAS
     res.render('reception/kiosk', {
       title: 'Patient Queue Display',
-      areas: AREAS,
+      areas: DISPLAY_AREAS,
       assignments: areaAssignments,
       kiosk: true,
       layout: false
@@ -299,14 +312,15 @@ router.get('/assigned-data', allowKioskOrAuth, async (req, res) => {
         return aDate - bDate;
       })
     : [];
-    const areaAssignments = {};
-    for (const area of AREAS) areaAssignments[area] = [];
+      const DISPLAY_AREAS = AREAS.filter(a => String(a).toLowerCase() !== 'sendout');
+      const areaAssignments = {};
+      for (const area of DISPLAY_AREAS) areaAssignments[area] = [];
 
     if (Array.isArray(allTests)) {
       for (const t of allTests) {
         if (!t.status) continue;
         const area = mapAreaForTest(t);
-        if (!AREAS.includes(area)) continue;
+          if (!DISPLAY_AREAS.includes(area)) continue;
         if (!t.patient) continue;
         const patient = await Patient.findById(t.patient);
         if (!patient || !patient.patientCode) continue;
@@ -586,8 +600,11 @@ router.post('/assign', requireAuth, canAccessPatient, async (req, res) => {
         console.warn('Assign conflict - clearing existing active assignment', { testId, conflict: conflict.testId, patient: patientObj.id });
         try {
           // record history with user info
-          conflict.addStatusEntry({ from: conflict.status, to: 'Completed', user: req.session && req.session.user ? req.session.user.username : null, area: 'Completed', timestamp: (new Date()).toISOString() });
-          conflict.status = 'Completed';
+          // When clearing an active assignment that is a doctor's check-up, mark as 'Checked'
+          const isDoctorType = (conflict.testType === "Doctor's Check-up") || (conflict.testType && String(conflict.testType).toLowerCase().includes('doctor')) || (String(conflict.status || '').toLowerCase().includes('doctor'));
+          const finalStatus = isDoctorType ? 'Checked' : 'Completed';
+          conflict.addStatusEntry({ from: conflict.status, to: finalStatus, user: req.session && req.session.user ? req.session.user.username : null, area: finalStatus, timestamp: (new Date()).toISOString() });
+          conflict.status = finalStatus;
           // completedAt is set by Test.save() when status === 'Completed'
           await conflict.save();
           // notify clients that the other test was completed/cleared
@@ -717,7 +734,13 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
           const label = String(t.testType || '').toLowerCase();
           const isSampleOnDemand = /fecal|pregnan|fob|urinal|fecalysis|fecal-occult-blood|pregnancy/.test(label) ||
                                   (Array.isArray(t.requestedTests) && t.requestedTests.some(rr => rr && /(fecal|pregnan|fob|urinal|pregnancy|fecalysis)/i.test(String(rr.label || ''))));
-          const targ = chosenTarget && c.target === chosenTarget ? chosenTarget : (isSampleOnDemand ? 'Awaiting' : 'Pending');
+          // If this test is for external sendout, tag it as Sendout immediately
+          let targ;
+          if (String(c.target || '').toLowerCase() === 'sendout') {
+            targ = 'Sendout';
+          } else {
+            targ = chosenTarget && c.target === chosenTarget ? chosenTarget : (isSampleOnDemand ? 'Awaiting' : 'Pending');
+          }
           t.addStatusEntry({ from: t.status, to: targ, user: req.session && req.session.user ? req.session.user.username : null, area: targ, timestamp: (new Date()).toISOString() });
           t.status = targ;
           await t.save();

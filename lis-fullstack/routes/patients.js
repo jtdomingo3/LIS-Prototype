@@ -290,8 +290,9 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       requestedTestsDetailed.push({ key: t, label: t, amount: isNaN(amt) ? 0 : amt, lab, area: a || null });
     }
     // Standardize: If For Send Out is selected, add to requiredAreas
-    if (forSendOutSelected && !doctorSelections.includes('For Send Out')) {
-      doctorSelections.push('For Send Out');
+    if (forSendOutSelected && !doctorSelections.includes('Sendout')) {
+      // normalize to internal 'Sendout' label
+      doctorSelections.push('Sendout');
     }
 
     // If none of the selected tests map to a reception area, treat as awaiting-only
@@ -300,7 +301,7 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
     // Build final requiredAreas: collect all unique mapped areas in the same
     // order reception expects so that downstream queuing/forwarding logic
     // will process them in the intended order.
-    const AREA_ORDER = ['Extraction Area', 'Drug Test', 'Ultrasound', '2D Echo', 'X-ray', 'ECG', 'For Send Out'];
+    const AREA_ORDER = ['Extraction Area', 'Drug Test', 'Ultrasound', '2D Echo', 'X-ray', 'ECG', 'Sendout'];
     let finalRequiredAreas = [];
     if (!awaitingOnly && mappedAreas.size > 0) {
       // Start with AREA_ORDER matches to preserve ordering
@@ -310,13 +311,13 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       const merged = finalRequiredAreas.slice();
       others.forEach(o => { if (!merged.includes(o)) merged.push(o); });
       (doctorSelections || []).forEach(d => { if (d && !merged.includes(d)) merged.push(d); });
-      // Ensure For Send Out is present when selected
-      if (forSendOutSelected && !merged.includes('For Send Out')) merged.push('For Send Out');
+      // Ensure Sendout is present when selected
+      if (forSendOutSelected && !merged.includes('Sendout')) merged.push('Sendout');
       finalRequiredAreas = merged;
     } else {
       // preserve doctor's selection(s) and For Send Out if present
       finalRequiredAreas = Array.isArray(doctorSelections) ? doctorSelections.slice() : [];
-      if (forSendOutSelected && !finalRequiredAreas.includes('For Send Out')) finalRequiredAreas.push('For Send Out');
+      if (forSendOutSelected && !finalRequiredAreas.includes('Sendout')) finalRequiredAreas.push('Sendout');
     }
 
     const patient = new Patient({

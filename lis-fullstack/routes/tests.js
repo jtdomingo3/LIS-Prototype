@@ -52,7 +52,8 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
           const amtRaw = req.body['amount_sendout'];
           const amt = amtRaw ? parseFloat(String(amtRaw).replace(/,/g,'')) : 0;
           const remark = req.body['remark_sendout'] || '';
-          requestedTestsDetailed.push({ key: 'For Send Out', label: 'For Send Out', amount: isNaN(amt) ? 0 : amt, lab: 'external', area: 'For Send Out', remarks: remark });
+          // normalize to internal 'Sendout' area
+          requestedTestsDetailed.push({ key: 'For Send Out', label: 'For Send Out', amount: isNaN(amt) ? 0 : amt, lab: 'external', area: 'Sendout', remarks: remark });
         }
       }
     } catch (e) {}
@@ -255,13 +256,16 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
         const amtRaw = req.body['amount_sendout'];
         const amt = amtRaw ? parseFloat(String(amtRaw).replace(/,/g,'')) : 0;
         const remark = req.body['remark_sendout'] || '';
-        requestedTestsDetailed.push({ key: 'For Send Out', label: 'For Send Out', amount: isNaN(amt) ? 0 : amt, lab: 'external', area: 'For Send Out', remarks: remark });
+        // use internal normalized area name 'Sendout' (do not expose as separate kiosk tile)
+        requestedTestsDetailed.push({ key: 'For Send Out', label: 'For Send Out', amount: isNaN(amt) ? 0 : amt, lab: 'external', area: 'Sendout', remarks: remark });
       }
     }
 
+    // Normalize requiredAreas from form (may contain doctor selections)
+    const requiredAreas = Array.isArray(req.body.requiredAreas) ? req.body.requiredAreas : (req.body.requiredAreas ? [req.body.requiredAreas] : []);
+
     // Also include any selected Doctor's Check-up requiredAreas as requested tests so they appear on receipts
     try {
-      const requiredAreas = Array.isArray(req.body.requiredAreas) ? req.body.requiredAreas : (req.body.requiredAreas ? [req.body.requiredAreas] : []);
       for (const ra of requiredAreas) {
         if (!ra) continue;
         const rstr = String(ra || '').trim();
@@ -275,9 +279,12 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       }
     } catch (e) {}
 
-    // Validate required fields: require patient and either a single testType or selectedTests
+    // Validate required fields: require patient and either a single testType, selectedTests,
+    // or a doctor/sendout selection (these are allowed to create tests without a testType)
     const hasSelected = Array.isArray(selectedTests) && selectedTests.length > 0;
-    if (!patient || (!testType && !hasSelected)) {
+    const doctorSelected = requiredAreas.some(r => r && /doctor/i.test(String(r)));
+    const forSendOutFlag = (req.body.forSendOut === '1' || req.body.forSendOut === 'on' || req.body.forSendOut === 'true') || requestedTestsDetailed.some(r => String(r.area || '').toLowerCase() === 'sendout');
+    if (!patient || (!testType && !hasSelected && !doctorSelected && !forSendOutFlag)) {
       req.flash('error_msg', 'Please fill all required fields');
       let patients = await Patient.find({});
       if (Array.isArray(patients)) patients.sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
@@ -294,6 +301,8 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
     // Helper: determine prefix from label
     const getPrefixForLabel = (label) => {
       const s = String(label || '').toLowerCase();
+      if (/send\s*out|for\s*send|sendout|send-out/.test(s)) return 'SO';
+      if (/doctor|check-?up|checkup/.test(s)) return 'DC';
       if (/drug/.test(s)) return 'DT';
       if (/\becg\b|electrocardio|electrocardiogram/.test(s)) return 'ECG';
       if (/x[-\s]?ray|radiograph/.test(s)) return 'XR';
@@ -330,6 +339,47 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
     };
 
     const createdTests = [];
+
+    // Helper to detect doctor-only requested item
+
+    // Helper to detect doctor-only requested item
+    const isDoctorRequest = (rt) => {
+      try {
+        const lab = String(rt.lab || '').toLowerCase();
+        const label = String(rt.label || rt.key || '').toLowerCase();
+        if (lab === 'doctor' || label.includes('doctor')) return true;
+      } catch (e) {}
+      return false;
+    };
+
+    // Helper to pick doctor area string from requiredAreas (prefer Lorenzo then Arcilla)
+    const pickDoctorArea = () => {
+      try {
+        for (const r of requiredAreas) {
+          if (!r) continue;
+          const s = String(r).toLowerCase();
+          if (s.includes("dr. lorenzo") || s.includes('lorenzo')) return "Doctor's Check-up - Dr. Lorenzo";
+          if (s.includes("dr. arcilla") || s.includes('arcilla')) return "Doctor's Check-up - Dr. Arcilla";
+        }
+      } catch (e) {}
+      return null;
+    };
+
+    // Helper to lookup doctor user by last name
+    const findDoctorUser = async (areaStr) => {
+      try {
+        if (!areaStr) return null;
+        if (areaStr.toLowerCase().includes('lorenzo')) {
+          const docs = await User.find({ role: 'Doctor' });
+          return docs.find(d => String(d.name || '').toLowerCase().includes('lorenzo')) || null;
+        }
+        if (areaStr.toLowerCase().includes('arcilla')) {
+          const docs = await User.find({ role: 'Doctor' });
+          return docs.find(d => String(d.name || '').toLowerCase().includes('arcilla')) || null;
+        }
+      } catch (e) { console.warn('findDoctorUser failed', e); }
+      return null;
+    };
 
     // Group blood chemistry variants into single 'Blood Chemistry' test when multiple selected
     if (requestedTestsDetailed && requestedTestsDetailed.length) {
@@ -382,6 +432,23 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
           requestedTests: [rt],
           awaitingOnly: awaitingOnly
         };
+        // If this single requested item is a doctor-only request and no other non-doctor items
+        // are present for this patient creation flow, queue directly to doctor's checkup.
+        try {
+          const doctorArea = pickDoctorArea();
+          if (isDoctorRequest(rt) && (!copyRequested.some(x => !isDoctorRequest(x)))) {
+            if (doctorArea) {
+              payload.status = doctorArea;
+              const docUser = await findDoctorUser(doctorArea);
+              if (docUser) { payload.assignedDoctorId = docUser.id; payload.assignedDoctorName = docUser.name; }
+            } else {
+              // if no explicit doctor selected, use a generic doctor area default to Lorenzo
+              payload.status = "Doctor's Check-up - Dr. Lorenzo";
+              const docUser = await findDoctorUser("Doctor's Check-up - Dr. Lorenzo");
+              if (docUser) { payload.assignedDoctorId = docUser.id; payload.assignedDoctorName = docUser.name; }
+            }
+          }
+        } catch (e) { console.warn('Doctor assignment logic failed', e); }
         const t = new Test(payload);
         await t.save();
         createdTests.push(t);
@@ -405,6 +472,22 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
         payload.requestedTests = requestedTestsDetailed;
         payload.awaitingOnly = awaitingOnly;
       }
+      // If this is a doctor check-up (and there are no X-ray/clinical/lab items), queue directly
+      try {
+        const allDoctorOnly = requestedTestsDetailed.length && requestedTestsDetailed.every(isDoctorRequest);
+        const doctorArea = pickDoctorArea();
+        if ((String(testType || '').toLowerCase().includes('doctor') || allDoctorOnly) && allDoctorOnly) {
+          if (doctorArea) {
+            payload.status = doctorArea;
+            const docUser = await findDoctorUser(doctorArea);
+            if (docUser) { payload.assignedDoctorId = docUser.id; payload.assignedDoctorName = docUser.name; }
+          } else {
+            payload.status = "Doctor's Check-up - Dr. Lorenzo";
+            const docUser = await findDoctorUser("Doctor's Check-up - Dr. Lorenzo");
+            if (docUser) { payload.assignedDoctorId = docUser.id; payload.assignedDoctorName = docUser.name; }
+          }
+        }
+      } catch (e) { console.warn('Doctor-only single test logic failed', e); }
       const t = new Test(payload);
       await t.save();
       createdTests.push(t);
@@ -417,7 +500,6 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
 
     // If UI requested printing after assign, invoke print helper once for the patient with all created tests
     try {
-      const requiredAreas = Array.isArray(req.body.requiredAreas) ? req.body.requiredAreas : (req.body.requiredAreas ? [req.body.requiredAreas] : []);
       const doctorSelected = requiredAreas.some(r => String(r || '').toLowerCase().includes('doctor') && String(r || '').toLowerCase().includes('check'));
       let doPrint = req.body && (req.body.printAfterAssign === '1' || req.body.printAfterAssign === 'on' || req.body.printAfterAssign === 'true');
       if (doctorSelected) doPrint = true;
