@@ -58,6 +58,7 @@ function decryptJson(raw) {
   if (!raw) return [];
   if (!USER_DATA_KEY) return JSON.parse(raw);
   let parsed;
+
   try { parsed = JSON.parse(raw); } catch (e) { return JSON.parse(raw || '[]'); }
   if (!parsed || !parsed.data) return parsed;
   const key = deriveKey(USER_DATA_KEY);
@@ -285,30 +286,49 @@ app.use((req, res, next) => {
   try {
     const path = req.originalUrl || req.url || '';
     const mapping = routePermissionMap.find(m => path.indexOf(m.prefix) === 0);
+
+    console.debug(`[auth-guard] incoming ${req.method} ${path} mapping=${mapping ? mapping.prefix+'=>'+mapping.perm : '<none>'}`);
+
     if (!mapping) return next();
+
+    // Allow users to access their own profile regardless of broader '/users' permission
+    if (path.indexOf('/users/profile') === 0) {
+      console.debug('[auth-guard] allowing /users/profile for authenticated users');
+      return next();
+    }
 
     // allow public auth routes (login/register)
     if (path === '/' || path.indexOf('/login') === 0) return next();
 
     const sessionUser = req.session && req.session.user;
     if (!sessionUser) {
+      console.warn(`[auth-guard] blocked ${req.method} ${path} - no session user`);
       req.flash('error_msg', 'Please login to access that page');
       return res.redirect('/');
     }
 
     const perms = sessionUser.permissions || {};
+    console.debug(`[auth-guard] sessionUser=${sessionUser.email} role=${sessionUser.role} perms=${JSON.stringify(perms)}`);
 
     // Dashboard: allow any authenticated user (temporary easy fix)
     if (mapping.perm === 'dashboard') {
+      console.debug('[auth-guard] allowing access to dashboard for authenticated user');
       return next();
     }
 
     // Allow Admin role everywhere
-    if (sessionUser.role === 'Admin') return next();
+    if (sessionUser.role === 'Admin') {
+      console.debug('[auth-guard] allowing Admin user');
+      return next();
+    }
 
-    if (perms[mapping.perm]) return next();
+    if (perms[mapping.perm]) {
+      console.debug(`[auth-guard] allowing via permission ${mapping.perm}`);
+      return next();
+    }
 
     // Not allowed
+    console.warn(`[auth-guard] denying ${sessionUser.email} access to ${path} (required=${mapping.perm})`);
     req.flash('error_msg', 'You do not have permission to access that page');
     return res.redirect('/dashboard');
   } catch (e) {

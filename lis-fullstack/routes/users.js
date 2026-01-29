@@ -3,6 +3,9 @@ const router = express.Router();
 const User = require('../models/User');
 const { requireAuth, canManageUsers } = require('../middleware/auth');
 
+// Allow users to manage their own profile
+const { requireGuest } = require('../middleware/auth');
+
 // GET /users - List all users
 router.get('/', requireAuth, canManageUsers, async (req, res) => {
   try {
@@ -110,6 +113,71 @@ router.post('/', requireAuth, canManageUsers, async (req, res) => {
 });
 
 // GET /users/:id - Show user details
+// GET /profile - view current user's profile
+router.get('/profile', requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.session.user.id);
+    if (!user) {
+      req.flash('error_msg', 'User not found');
+      return res.redirect('/');
+    }
+    res.render('users/profile', { title: 'My Profile', user: user.toJSON() });
+  } catch (error) {
+    console.error('Profile view error:', error);
+    req.flash('error_msg', 'Error loading profile');
+    res.redirect('/');
+  }
+});
+
+// PUT /profile - update current user's profile (name, email, password)
+router.put('/profile', requireAuth, async (req, res) => {
+  try {
+    const { name, email, password, confirmPassword } = req.body;
+    if (!name || !email) {
+      req.flash('error_msg', 'Please fill all required fields');
+      return res.redirect('/users/profile');
+    }
+
+    // Check if email is taken by another user
+    const existing = await User.findOne({ email: email.toLowerCase() });
+    if (existing && existing.id !== req.session.user.id) {
+      req.flash('error_msg', 'Email is already taken by another user');
+      return res.redirect('/users/profile');
+    }
+
+    const update = { name, email: email.toLowerCase() };
+    if (password) {
+      if (password !== confirmPassword) {
+        req.flash('error_msg', 'Passwords do not match');
+        return res.redirect('/users/profile');
+      }
+      if (password.length < 6) {
+        req.flash('error_msg', 'Password must be at least 6 characters long');
+        return res.redirect('/users/profile');
+      }
+      update.password = password;
+    }
+
+    const updated = await User.findByIdAndUpdate(req.session.user.id, update, { new: true });
+    if (!updated) {
+      req.flash('error_msg', 'User not found');
+      return res.redirect('/');
+    }
+
+    // Update session info
+    req.session.user.name = updated.name;
+    req.session.user.email = updated.email;
+
+    req.flash('success_msg', 'Profile updated successfully');
+    res.redirect('/users/profile');
+  } catch (error) {
+    console.error('Profile update error:', error);
+    req.flash('error_msg', 'Error updating profile');
+    res.redirect('/users/profile');
+  }
+});
+
+// GET /users/:id - Show user details
 router.get('/:id', requireAuth, canManageUsers, async (req, res) => {
   try {
     let user = await User.findById(req.params.id);
@@ -123,7 +191,8 @@ router.get('/:id', requireAuth, canManageUsers, async (req, res) => {
 
     res.render('users/show', {
       title: 'User Details',
-      user
+      user,
+      currentUser: req.session.user
     });
 
   } catch (error) {
@@ -146,7 +215,8 @@ router.get('/:id/edit', requireAuth, canManageUsers, async (req, res) => {
 
     res.render('users/edit', {
       title: 'Edit User',
-      user
+      user,
+      currentUser: req.session.user
     });
 
   } catch (error) {
@@ -233,6 +303,90 @@ router.delete('/:id', requireAuth, canManageUsers, async (req, res) => {
     console.error('Delete user error:', error);
     req.flash('error_msg', 'Error deleting user');
     res.redirect('/users');
+  }
+});
+
+// POST /users/:id/reset-password - Admin resets a user's password to default 'gezyne'
+router.post('/:id/reset-password', requireAuth, canManageUsers, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      req.flash('error_msg', 'User not found');
+      return res.redirect('/users');
+    }
+
+    // Reset password to default 'gezyne'
+    const updated = await User.findByIdAndUpdate(req.params.id, { password: 'gezyne' }, { new: true });
+    req.flash('success_msg', `Password for ${updated.email} has been reset to the default.`);
+    res.redirect(`/users/${req.params.id}`);
+  } catch (error) {
+    console.error('Reset password error:', error);
+    req.flash('error_msg', 'Error resetting password');
+    res.redirect('/users');
+  }
+});
+
+// GET /profile - view current user's profile
+router.get('/profile', requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.session.user.id);
+    if (!user) {
+      req.flash('error_msg', 'User not found');
+      return res.redirect('/');
+    }
+    res.render('users/profile', { title: 'My Profile', user: user.toJSON() });
+  } catch (error) {
+    console.error('Profile view error:', error);
+    req.flash('error_msg', 'Error loading profile');
+    res.redirect('/');
+  }
+});
+
+// PUT /profile - update current user's profile (name, email, password)
+router.put('/profile', requireAuth, async (req, res) => {
+  try {
+    const { name, email, password, confirmPassword } = req.body;
+    if (!name || !email) {
+      req.flash('error_msg', 'Please fill all required fields');
+      return res.redirect('/profile');
+    }
+
+    // Check if email is taken by another user
+    const existing = await User.findOne({ email: email.toLowerCase() });
+    if (existing && existing.id !== req.session.user.id) {
+      req.flash('error_msg', 'Email is already taken by another user');
+      return res.redirect('/profile');
+    }
+
+    const update = { name, email: email.toLowerCase() };
+    if (password) {
+      if (password !== confirmPassword) {
+        req.flash('error_msg', 'Passwords do not match');
+        return res.redirect('/profile');
+      }
+      if (password.length < 6) {
+        req.flash('error_msg', 'Password must be at least 6 characters long');
+        return res.redirect('/profile');
+      }
+      update.password = password;
+    }
+
+    const updated = await User.findByIdAndUpdate(req.session.user.id, update, { new: true });
+    if (!updated) {
+      req.flash('error_msg', 'User not found');
+      return res.redirect('/');
+    }
+
+    // Update session info
+    req.session.user.name = updated.name;
+    req.session.user.email = updated.email;
+
+    req.flash('success_msg', 'Profile updated successfully');
+    res.redirect('/profile');
+  } catch (error) {
+    console.error('Profile update error:', error);
+    req.flash('error_msg', 'Error updating profile');
+    res.redirect('/profile');
   }
 });
 
