@@ -39,18 +39,25 @@ class Patient {
 
   // Virtual for age
   get age() {
-    if (!this.dateOfBirth) return null;
-    const today = new Date();
-    const birthDate = new Date(this.dateOfBirth);
-    if (isNaN(birthDate.getTime())) return null;
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
+    // If dateOfBirth is present and valid, compute age from DOB
+    if (this.dateOfBirth) {
+      const today = new Date();
+      const birthDate = new Date(this.dateOfBirth);
+      if (!isNaN(birthDate.getTime())) {
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+        return age;
+      }
     }
-
-    return age;
+    // Fallback: use manual age if provided (preserve numeric when possible)
+    if (this.ageManual !== undefined && this.ageManual !== null && String(this.ageManual).trim() !== '') {
+      const maybeNum = Number(this.ageManual);
+      return !isNaN(maybeNum) ? maybeNum : String(this.ageManual);
+    }
+    return null;
   }
 
   // Save to database
