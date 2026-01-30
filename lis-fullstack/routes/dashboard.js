@@ -12,8 +12,10 @@ router.get('/', requireAuth, async (req, res) => {
     const allTests = await Test.find({});
 
   const totalPatients = allPatients.length;
-  // Pending = tests currently in reception areas (any status that is NOT 'In Progress','Completed','Released','Releasing of Result')
-  const pendingTests = allTests.filter(t => t && t.status && t.status !== 'In Progress' && t.status !== 'Completed' && t.status !== 'Releasing of Result' && t.status !== 'Released').length;
+  // Pending = tests currently in reception areas.
+  // Exclude statuses that represent in-progress, finalized, or external sendout/check states.
+  const NON_PENDING_STATUSES = ['In Progress', 'Completed', 'Releasing of Result', 'Released', 'Sendout', 'Checked'];
+  const pendingTests = allTests.filter(t => t && t.status && !NON_PENDING_STATUSES.includes(t.status)).length;
   // Completed = tests with final results encoded (include Released)
   const completedTests = allTests.filter(t => t && (t.status === 'Completed' || t.status === 'Released')).length;
   // Active / In Progress = finished reception and waiting for results encoding
