@@ -1,4 +1,5 @@
 const { v4: uuidv4 } = require('uuid');
+const { logReportError } = require('../lib/reportLogger');
 
 class Test {
   constructor(data) {
@@ -32,8 +33,10 @@ class Test {
   // Save to database
   async save() {
     this.updatedAt = new Date();
+    // normalize to ISO string so disk comparisons are consistent
+    try { this.updatedAt = new Date().toISOString(); } catch (e) { this.updatedAt = String(new Date()); }
     if (this.status === 'Completed' && !this.completedAt) {
-      this.completedAt = new Date();
+      try { this.completedAt = new Date().toISOString(); } catch (e) { this.completedAt = String(new Date()); }
     }
     const tests = global.db.getTests();
     const index = tests.findIndex(t => t.id === this.id);
@@ -46,6 +49,20 @@ class Test {
     } else {
       // If updating, ensure we don't duplicate history entries — only add if last entry differs
       const prev = tests[index];
+      // Guard: once a test is Completed or Released, do not allow reverting to a non-completed state
+      try {
+        const lockedStates = new Set(['Completed', 'Released']);
+        if (prev && prev.status && lockedStates.has(prev.status) && !(this.status && lockedStates.has(this.status))) {
+          // attempted revert detected
+          const msg = `Attempted to revert locked test id=${this.id} from ${prev.status} to ${this.status}`;
+          console.warn('[GUARD]', msg);
+          try { logReportError(msg, 'guard:revert-test'); } catch (e) {}
+          // enforce previous completed/released status
+          this.status = prev.status;
+          // keep completedAt from prev
+          this.completedAt = prev.completedAt || this.completedAt;
+        }
+      } catch (e) {}
       const last = Array.isArray(this.statusHistory) && this.statusHistory.length ? this.statusHistory[this.statusHistory.length - 1] : null;
       const prevStatus = prev && prev.status ? prev.status : null;
       if (prevStatus !== this.status) {
@@ -132,8 +149,42 @@ class Test {
     }
 
     if (test) {
-      Object.assign(test, updateData, { updatedAt: new Date() });
+      // Instrumentation: set/normalize incoming updatedAt
+      const incoming = Object.assign({}, updateData);
+      if (!incoming.updatedAt) {
+        try { incoming.updatedAt = new Date().toISOString(); } catch (e) { incoming.updatedAt = String(new Date()); }
+      }
+
+      // Stale-update guard: if disk has newer updatedAt, skip apply
+      try {
+        const diskTs = test && test.updatedAt ? Date.parse(test.updatedAt) : 0;
+        const incTs = incoming && incoming.updatedAt ? Date.parse(incoming.updatedAt) : 0;
+        if (diskTs && incTs && incTs < diskTs) {
+          console.log(`[DEBUG Test.findOneAndUpdate] skipping stale update id=${test.id} incoming=${new Date(incTs).toISOString()} disk=${new Date(diskTs).toISOString()}`);
+          return options.new !== false ? new Test(test) : new Test(test);
+        }
+      } catch (e) {}
+
+      // Guard: prevent reverting Completed/Released via findOneAndUpdate
+      try {
+        const locked = new Set(['Completed', 'Released']);
+        if (test && test.status && locked.has(test.status) && incoming && incoming.status && !locked.has(incoming.status)) {
+          const msg = `Attempted to revert locked test id=${test.id} from ${test.status} to ${incoming.status} (findOneAndUpdate)`;
+          console.warn('[GUARD]', msg);
+          try { logReportError(msg, 'guard:revert-test'); } catch (e) {}
+          // drop incoming.status to preserve locked state
+          delete incoming.status;
+          // don't touch completedAt
+          if (incoming.completedAt) delete incoming.completedAt;
+        }
+      } catch (e) {}
+
+      console.log(`[DEBUG Test.findOneAndUpdate] id=${test.id} beforeStatus=${test.status} update=${JSON.stringify(incoming).slice(0,200)}`);
+      Object.assign(test, incoming);
+      // ensure updatedAt normalization on disk object
+      test.updatedAt = incoming.updatedAt;
       global.db.saveTests(tests);
+      console.log(`[DEBUG Test.findOneAndUpdate] id=${test.id} afterStatus=${test.status} updatedAt=${test.updatedAt}`);
       return options.new !== false ? new Test(test) : new Test(test);
     }
 

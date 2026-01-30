@@ -73,10 +73,26 @@ function decryptJson(raw) {
   return JSON.parse(dec.toString('utf8'));
 }
 
-// Simple file-based database functions
+// Simple file-based database functions with atomic write and merge protection
 const db = {
   read: () => JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')),
-  write: (data) => fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2)),
+  write: (data) => {
+    try {
+      const dir = path.dirname(DATA_FILE);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      const tmp = `${DATA_FILE}.tmp-${process.pid}-${Date.now()}`;
+      // create a timestamp on top-level to help detect staleness when needed
+      if (data && typeof data === 'object') data.__lastWrite = (new Date()).toISOString();
+      fs.writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf8');
+      try { fs.renameSync(tmp, DATA_FILE); } catch (e) {
+        // fallback to copy+unlink on platforms that behave differently
+        try { fs.copyFileSync(tmp, DATA_FILE); fs.unlinkSync(tmp); } catch (e2) { throw e2; }
+      }
+    } catch (e) {
+      console.error('DB write failed:', e);
+      throw e;
+    }
+  },
   // Users stored separately in data-users.json (optional encrypted)
   getUsers: () => {
     try {
@@ -98,7 +114,43 @@ const db = {
   getTemplates: () => db.read().templates,
   getCounters: () => db.read().counters || {},
   savePatients: (patients) => { const data = db.read(); data.patients = patients; db.write(data); },
-  saveTests: (tests) => { const data = db.read(); data.tests = tests; db.write(data); },
+  // saveTests now merges incoming tests with on-disk tests using `updatedAt` to avoid
+  // older writes overwriting newer changes when concurrent requests are processed.
+  saveTests: (tests) => {
+    try {
+      const disk = db.read();
+      const existing = Array.isArray(disk.tests) ? disk.tests : [];
+      const mergedMap = new Map();
+
+      // seed with existing
+      for (const t of existing) {
+        if (t && t.id) mergedMap.set(t.id, t);
+      }
+
+      // overlay with incoming tests when newer (or absent on disk)
+      for (const t of (Array.isArray(tests) ? tests : [])) {
+        if (!t || !t.id) continue;
+        const cur = mergedMap.get(t.id);
+        const curTs = cur && cur.updatedAt ? Date.parse(cur.updatedAt) : 0;
+        const incomingTs = t.updatedAt ? Date.parse(t.updatedAt) : 0;
+        if (!cur || incomingTs >= curTs) {
+          mergedMap.set(t.id, t);
+        } else {
+          console.log(`[DB] skipping stale write for test id=${t.id} incoming=${new Date(incomingTs).toISOString()} disk=${new Date(curTs).toISOString()}`);
+        }
+      }
+
+      // Preserve any tests that existed on disk but were omitted from the incoming payload
+      const merged = Array.from(mergedMap.values());
+      const data = disk || { users: [], patients: [], tests: [], templates: [], counters: {} };
+      data.tests = merged;
+      db.write(data);
+    } catch (e) {
+      console.error('saveTests failed:', e);
+      // fallback to naive write if merge fails
+      const data = db.read(); data.tests = tests; db.write(data);
+    }
+  },
   saveTemplates: (templates) => { const data = db.read(); data.templates = templates; db.write(data); },
   saveCounters: (counters) => { const data = db.read(); data.counters = counters; db.write(data); }
 };
