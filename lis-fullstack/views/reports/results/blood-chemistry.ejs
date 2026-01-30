@@ -1,6 +1,5 @@
 <style>
   @page { size: Letter; margin: 0.25in; }
-<%- include('./_highlight') %>
 
   body { margin:0; padding:0; box-sizing:border-box; }
   *, *:before, *:after { box-sizing:inherit; }
@@ -14,7 +13,7 @@
   .patient-box td{ padding:4px 6px; border:1px solid #000; box-sizing:border-box }
   .section-title{ text-align:center; margin:11px 0; font-size:16px; font-weight:bold }
   .results-frame{ width:100%; border:2px solid #000; border-collapse:collapse; margin-top:6px; box-sizing:border-box }
-  .results-frame td{ padding:6px  vertical-align:middle; border-bottom:1px solid #000 }
+  .results-frame td{ padding:6px; vertical-align:middle; border-bottom:1px solid #000 }
   .results-frame th{ padding:8px; text-align:left; border-bottom:2px solid #000; font-weight:700 }
   .blood-results th{ padding:4px 8px; font-size:10px; font-weight:700 }
   .blood-results td{ padding:4px 8px; font-size:10px }
@@ -28,6 +27,7 @@
   .report-container{ position:relative; z-index:1 }
   .normal-small{ font-size:11px; color:#333 }
 </style>
+<%- include('./_highlight') %>
 <div class="report-page">
   <div class="report-container">
     <div class="header">
