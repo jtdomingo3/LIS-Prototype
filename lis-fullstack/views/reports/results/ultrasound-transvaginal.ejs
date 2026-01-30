@@ -69,14 +69,23 @@
     <div class="section-title"><%= (test && test.results && test.results.section_title) ? test.results.section_title : 'TRANSVAGINAL ULTRASOUND' %></div>
 
     <div style="font-family:'Courier New', monospace; font-size:14px; padding-left:5.5em; padding-right:1.25em; line-height:1.5">
-      <div style="padding-left:0em"><strong>Gestational sac:</strong>
-        <span style="margin-left:12px"><%= test && test.results && test.results.gestational_sac_length ? (test.results.gestational_sac_length + ' cm') : '' %></span>
-        <span style="margin-left:72px"><%= test && test.results && test.results.gestational_sac_age ? test.results.gestational_sac_age : '' %></span>
-      </div>
-      <div style="margin-top:6px; padding-left:0em"><strong>CRL:</strong>
-        <span style="margin-left:12px"><%= test && test.results && test.results.crl_length ? (test.results.crl_length + ' cm') : '' %></span>
-        <span style="margin-left:72px"><%= test && test.results && test.results.crl_age ? test.results.crl_age : '' %></span>
-      </div>
+      <table style="width:100%; border-collapse:collapse; border:none; table-layout:fixed;">
+        <colgroup>
+          <col style="width:26%">
+          <col style="width:50%">
+          <col style="width:24%">
+        </colgroup>
+        <tr>
+          <td style="padding:0"><strong>Gestational sac:</strong></td>
+          <td style="padding:0 0 0 12px"><span><%= test && test.results && test.results.gestational_sac_length ? (test.results.gestational_sac_length + ' cm') : '' %></span></td>
+          <td style="padding:0 0 0 12px; text-align:left"><span><%= test && test.results && test.results.gestational_sac_age ? test.results.gestational_sac_age : '' %></span></td>
+        </tr>
+        <tr>
+          <td style="padding:6px 0 0 0"><strong>CRL:</strong></td>
+          <td style="padding:6px 0 0 12px"><span><%= test && test.results && test.results.crl_length ? (test.results.crl_length + ' cm') : '' %></span></td>
+          <td style="padding:6px 0 0 12px; text-align:left"><span><%= test && test.results && test.results.crl_age ? test.results.crl_age : '' %></span></td>
+        </tr>
+      </table>
 
       <div style="margin-top:12px; padding-left:4px"><strong>COMMENTS:</strong></div>
       <% if (test && test.results && Array.isArray(test.results.comment_entries) && test.results.comment_entries.length) { %>
