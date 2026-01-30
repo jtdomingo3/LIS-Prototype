@@ -52,7 +52,20 @@
           <option value="18px" <%= test.results && test.results.paragraphs_font_size==='18px' ? 'selected' : '' %>>18px</option>
         </select>
       </div>
-      <textarea id="paragraphs" name="paragraphs" rows="8" spellcheck="true" style="width:100%; font-family:inherit;"><%- (test && test.results && (test.results.paragraphs || test.results.result)) ? (test.results.paragraphs || test.results.result) : 'Enter findings here. This may be 2-3 paragraphs depending on the reading.\n\nDescribe radiographic findings, impressions, and recommendations.' %></textarea>
+      <% 
+        var _rawEdit = (test && test.results && (test.results.paragraphs || test.results.result)) ? (test.results.paragraphs || test.results.result) : '';
+        var _editValue = _rawEdit;
+        if (_editValue && /<\/?[a-z][\s\S]*>/i.test(_editValue)) {
+          _editValue = _editValue.replace(/<br\s*\/?\s*>/gi, '\n');
+          _editValue = _editValue.replace(/<\/p>\s*<p[^>]*>/gi, '\n\n');
+          _editValue = _editValue.replace(/<\/?p[^>]*>/gi, '');
+          _editValue = _editValue.replace(/&nbsp;/g, ' ');
+          _editValue = _editValue.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+          _editValue = _editValue.trim();
+        }
+        var _defaultText = 'Enter findings here. This may be 2-3 paragraphs depending on the reading.\n\nDescribe radiographic findings, impressions, and recommendations.';
+      %>
+      <textarea id="paragraphs" name="paragraphs" rows="8" spellcheck="true" style="width:100%; font-family:inherit;"><%= _editValue && _editValue.length ? _editValue : _defaultText %></textarea>
     </div>
 
     <hr>
