@@ -11,3 +11,5 @@ npm-debug.log*
 lis-fullstack/data.json
 lis-fullstack/data-users.json
 lis-fullstack/logs/report-errors.log
+# Ignore uploaded e-signatures stored by the app
+lis-fullstack/assets/signature/
