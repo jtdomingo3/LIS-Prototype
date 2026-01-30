@@ -1013,7 +1013,9 @@
                             } catch(e){}
                             // auto-refresh across tabs if user enabled
                             try {
-                                const enabled = localStorage.getItem('notif-auto-refresh') === '1';
+                                // Treat missing setting as enabled by default (legacy behavior)
+                                const v = localStorage.getItem('notif-auto-refresh');
+                                const enabled = (v === '1' || v === null || (autoRefreshCheckbox && autoRefreshCheckbox.checked));
                                 if (enabled) {
                                     // use a short timeout so UI updates render before reload
                                     setTimeout(() => { window.location.reload(); }, 600);
