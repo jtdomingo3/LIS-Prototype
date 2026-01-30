@@ -706,44 +706,44 @@
 <body>
     <div class="container">
         <!-- Sidebar -->
-        <% if (typeof user !== 'undefined' && user) { %>
+        <% if (typeof sessionUser !== 'undefined' && sessionUser) { %>
         <div class="sidebar">
             <div class="brand">
                 <img src="/assets/gezyne-logo.png" alt="Gezyne Clinical Laboratory" class="brand-logo">
                 <div class="brand-text">Gezyne Clinical Laboratory</div>
             </div>
-            <% const perms = (user && user.permissions) ? user.permissions : {}; %>
+            <% const perms = (sessionUser && sessionUser.permissions) ? sessionUser.permissions : {}; %>
             <% const dashboardRoles = new Set(['Admin','Manager','Owner']); %>
-            <% if (dashboardRoles.has(user.role) || perms.dashboard) { %>
+            <% if (dashboardRoles.has(sessionUser.role) || perms.dashboard) { %>
             <a href="/dashboard" class="nav-item <%= title.includes('Dashboard') ? 'active' : '' %>"><span class="nav-emoji">📊</span><span class="nav-text">Dashboard</span></a>
             <% } %>
-            <% if (user.role === 'Admin' || perms.patients) { %>
+            <% if (sessionUser.role === 'Admin' || perms.patients) { %>
             <a href="/patients" class="nav-item <%= title.includes('Patient') ? 'active' : '' %>"><span class="nav-emoji">👥</span><span class="nav-text">Patients</span></a>
             <% } %>
-            <% if (user.role === 'Admin' || perms.reception) { %>
+            <% if (sessionUser.role === 'Admin' || perms.reception) { %>
             <a href="/reception" class="nav-item <%= title.includes('Reception') ? 'active' : '' %>"><span class="nav-emoji">🏥</span><span class="nav-text">Reception</span></a>
             <% } %>
             <% if (!featureFlags || featureFlags.tests) { %>
-            <% if (user.role === 'Admin' || perms.tests) { %>
+            <% if (sessionUser.role === 'Admin' || perms.tests) { %>
             <a href="/tests" class="nav-item <%= title.includes('Test') ? 'active' : '' %>"><span class="nav-emoji">🧪</span><span class="nav-text">Tests & Results</span></a>
             <% } %>
             <% } %>
             <% if (!featureFlags || featureFlags.reports) { %>
-            <% if (user.role === 'Admin' || perms.reports) { %>
+            <% if (sessionUser.role === 'Admin' || perms.reports) { %>
             <a href="/reports" class="nav-item <%= title.includes('Report') ? 'active' : '' %>"><span class="nav-emoji">📋</span><span class="nav-text">Reports</span></a>
             <% } %>
             <% } %>
             <% if (!featureFlags || featureFlags.worksheet) { %>
-            <% if (user.role === 'Admin' || perms.worksheet) { %>
+            <% if (sessionUser.role === 'Admin' || perms.worksheet) { %>
             <a href="/reports/worksheet" class="nav-item <%= title.includes('Worksheet') ? 'active' : '' %>"><span class="nav-emoji">📊</span><span class="nav-text">Worksheet</span></a>
             <% } %>
             <% } %>
             <% if (!featureFlags || featureFlags.templates) { %>
-            <% if (user.role === 'Admin' || perms.templates) { %>
+            <% if (sessionUser.role === 'Admin' || perms.templates) { %>
             <a href="/templates" class="nav-item <%= title.includes('Template') ? 'active' : '' %>"><span class="nav-emoji">📄</span><span class="nav-text">Templates</span></a>
             <% } %>
             <% } %>
-            <% if ((user.role === 'Admin' || perms.users) && (!featureFlags || featureFlags.users)) { %>
+            <% if ((sessionUser.role === 'Admin' || perms.users) && (!featureFlags || featureFlags.users)) { %>
             <a href="/users" class="nav-item <%= title.includes('User') ? 'active' : '' %>"><span class="nav-emoji">👤</span><span class="nav-text">Users</span></a>
             <% } %>
             <form action="/logout" method="POST" style="margin-top: 30px;">
@@ -755,7 +755,7 @@
 
         <!-- Main Content -->
         <div class="main-content">
-            <% if (typeof user !== 'undefined' && user) { %>
+            <% if (typeof sessionUser !== 'undefined' && sessionUser) { %>
             <!-- Header -->
             <div class="header">
                 <div style="display:flex; align-items:center; gap:12px;">
@@ -786,7 +786,7 @@
                     </audio>
                                         <div class="user-info" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
                                                 <div style="display:flex;align-items:center;gap:8px;">
-                                                    <p style="margin:0;">Welcome, <a href="/users/profile" style="color:inherit;text-decoration:none;font-weight:600;"><%= user.name %></a></p>
+                                                    <p style="margin:0;">Welcome, <a href="/users/profile" style="color:inherit;text-decoration:none;font-weight:600;"><%= sessionUser ? sessionUser.name : '' %></a></p>
                                                     <a href="/users/profile" class="button btn-small" style="padding:6px 8px;margin-left:6px;">Profile</a>
                                                 </div>
                                                 <p style="margin:0;"><span id="currentDate"><%= new Date().toLocaleDateString() %></span>&nbsp;<span id="currentTime"><%= new Date().toLocaleTimeString() %></span></p>

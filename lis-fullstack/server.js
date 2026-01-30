@@ -252,6 +252,9 @@ app.use((req, res, next) => {
     console.error('Failed to log flash error messages (error):', e);
   }
   res.locals.user = req.session.user || null;
+  // Also expose the session's user under `sessionUser` so layout can rely on the
+  // logged-in user even when a view passes a `user` variable for other purposes
+  res.locals.sessionUser = req.session.user || null;
   next();
 });
 
