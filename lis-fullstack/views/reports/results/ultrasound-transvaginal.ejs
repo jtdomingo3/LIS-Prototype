@@ -19,6 +19,7 @@
   .signatures, .sig { font-family: 'Times New Roman', Times, serif; }
   .watermark{ position:absolute; left:50%; top:44%; transform:translate(-50%,-50%); width:52%; opacity:0.06; pointer-events:none; z-index:0 }
   .report-container{ position:relative; z-index:1 }
+  .measure, .measure td, .measure span { font-family: 'Courier New', monospace; font-size:12px; }
 </style>
 
 <%- include('./_highlight') %>
@@ -68,8 +69,8 @@
 
     <div class="section-title"><%= (test && test.results && test.results.section_title) ? test.results.section_title : 'TRANSVAGINAL ULTRASOUND' %></div>
 
-    <div style="font-family:'Courier New', monospace; font-size:14px; padding-left:5.5em; padding-right:1.25em; line-height:1.5">
-      <table style="width:100%; border-collapse:collapse; border:none; table-layout:fixed;">
+    <div style="font-family:'Courier New', monospace; font-size:12px; padding-left:5.5em; padding-right:1.25em; line-height:1.5">
+      <table class="measure" style="width:100%; border-collapse:collapse; border:none; table-layout:fixed;">
         <colgroup>
           <col style="width:26%">
           <col style="width:50%">
