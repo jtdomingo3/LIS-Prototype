@@ -359,14 +359,18 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       return false;
     };
 
-    // Helper to pick doctor area string from requiredAreas (prefer Lorenzo then Arcilla)
+    // Doctor area names configurable via environment
+    const DOCTOR_1_NAME = process.env.DOCTOR_1_NAME || 'Dr. Lorenzo';
+    const DOCTOR_2_NAME = process.env.DOCTOR_2_NAME || 'Dr. Arcilla';
+    function doctorArea(name) { return `Doctor's Check-up - ${name}`; }
+    // Helper to pick doctor area string from requiredAreas (prefer DOCTOR_1 then DOCTOR_2)
     const pickDoctorArea = () => {
       try {
         for (const r of requiredAreas) {
           if (!r) continue;
           const s = String(r).toLowerCase();
-          if (s.includes("dr. lorenzo") || s.includes('lorenzo')) return "Doctor's Check-up - Dr. Lorenzo";
-          if (s.includes("dr. arcilla") || s.includes('arcilla')) return "Doctor's Check-up - Dr. Arcilla";
+          if (s.includes((DOCTOR_1_NAME || '').toLowerCase()) || s.includes('lorenzo')) return doctorArea(DOCTOR_1_NAME);
+          if (s.includes((DOCTOR_2_NAME || '').toLowerCase()) || s.includes('arcilla')) return doctorArea(DOCTOR_2_NAME);
         }
       } catch (e) {}
       return null;
@@ -449,9 +453,9 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
               const docUser = await findDoctorUser(doctorArea);
               if (docUser) { payload.assignedDoctorId = docUser.id; payload.assignedDoctorName = docUser.name; }
             } else {
-              // if no explicit doctor selected, use a generic doctor area default to Lorenzo
-              payload.status = "Doctor's Check-up - Dr. Lorenzo";
-              const docUser = await findDoctorUser("Doctor's Check-up - Dr. Lorenzo");
+              // if no explicit doctor selected, use the configured first doctor area
+              payload.status = doctorArea(DOCTOR_1_NAME);
+              const docUser = await findDoctorUser(doctorArea(DOCTOR_1_NAME));
               if (docUser) { payload.assignedDoctorId = docUser.id; payload.assignedDoctorName = docUser.name; }
             }
           }
@@ -511,8 +515,8 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
             const docUser = await findDoctorUser(doctorArea);
             if (docUser) { payload.assignedDoctorId = docUser.id; payload.assignedDoctorName = docUser.name; }
           } else {
-            payload.status = "Doctor's Check-up - Dr. Lorenzo";
-            const docUser = await findDoctorUser("Doctor's Check-up - Dr. Lorenzo");
+            payload.status = doctorArea(DOCTOR_1_NAME);
+            const docUser = await findDoctorUser(doctorArea(DOCTOR_1_NAME));
             if (docUser) { payload.assignedDoctorId = docUser.id; payload.assignedDoctorName = docUser.name; }
           }
         }

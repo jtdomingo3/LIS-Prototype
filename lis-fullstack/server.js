@@ -1,4 +1,6 @@
 const express = require('express');
+// Load environment variables from .env when present
+try { require('dotenv').config({ path: require('path').join(__dirname, '.env') }); } catch (e) {}
 const session = require('express-session');
 const flash = require('connect-flash');
 const helmet = require('helmet');
@@ -261,6 +263,25 @@ app.use((req, res, next) => {
     res.locals.allUsers = (users || []).map(u => ({ id: u.id || u.email, name: u.name || u.email, email: u.email, role: u.role || '', licenseNumber: u.licenseNumber || '' }));
   } catch (e) {
     res.locals.allUsers = [];
+  }
+  next();
+});
+
+// Expose configured doctor names and derived doctor area labels to views
+const DOCTOR_1_NAME = process.env.DOCTOR_1_NAME || '';
+const DOCTOR_2_NAME = process.env.DOCTOR_2_NAME || '';
+app.use((req, res, next) => {
+  try {
+    res.locals.DOCTOR_1_NAME = DOCTOR_1_NAME;
+    res.locals.DOCTOR_2_NAME = DOCTOR_2_NAME;
+    const areas = [];
+    if (DOCTOR_1_NAME) areas.push(`Doctor's Check-up - ${DOCTOR_1_NAME}`);
+    if (DOCTOR_2_NAME) areas.push(`Doctor's Check-up - ${DOCTOR_2_NAME}`);
+    res.locals.DOCTOR_AREAS = areas;
+  } catch (e) {
+    res.locals.DOCTOR_1_NAME = '';
+    res.locals.DOCTOR_2_NAME = '';
+    res.locals.DOCTOR_AREAS = [];
   }
   next();
 });

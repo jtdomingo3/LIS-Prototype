@@ -25,7 +25,11 @@ function allowKioskOrAuth(req, res, next) {
   });
 }
 
-// Define the reception areas
+// Define the reception areas. Doctor names are configurable via environment variables
+// DOCTOR_1_NAME and DOCTOR_2_NAME (defaults kept for backwards compatibility).
+const DOCTOR_1_NAME = process.env.DOCTOR_1_NAME;
+const DOCTOR_2_NAME = process.env.DOCTOR_2_NAME;
+function doctorArea(name) { return `Doctor's Check-up - ${name}`; }
 const AREAS = [
   'Payment Area',
   'Sendout',
@@ -36,8 +40,8 @@ const AREAS = [
   'X-ray',
   'ECG',
   'Releasing of Result',
-  "Doctor's Check-up - Dr. Lorenzo",
-  "Doctor's Check-up - Dr. Arcilla"
+  doctorArea(DOCTOR_1_NAME),
+  doctorArea(DOCTOR_2_NAME)
 ];
 
 // Simple in-memory advertisement text for kiosk marquee (editable from /reception)
@@ -57,7 +61,8 @@ function mapAreaForTest(test) {
     // map it back to the 'Releasing of Result' area.
     if (test.released) return 'Completed';
     const hasResults = Boolean(test.completedAt || (test.results && String(test.results).trim()));
-    const isDoctorCheckup = test.testType === "Doctor's Check-up";
+    // Determine if this is a doctor's checkup based on testType or testType containing 'doctor'
+    const isDoctorCheckup = test.testType && String(test.testType).toLowerCase().includes('doctor');
     const isRegistration = test.testType === 'Registration';
     // Only send to Releasing when results exist and it's not Doctor's Check-up or Registration
     if (hasResults && !isDoctorCheckup && !isRegistration) return 'Releasing of Result';
@@ -73,7 +78,18 @@ function getTargetAreaForTest(t) {
   try {
     if (Array.isArray(t.requestedTests) && t.requestedTests.length) {
       for (const rr of t.requestedTests) {
-        if (rr && rr.area) return rr.area;
+        if (rr && rr.area) {
+          const ra = String(rr.area || '').toLowerCase();
+          if (ra.includes('send')) return 'Sendout';
+          // If the area mentions a doctor, map to the configured doctor area (try to detect specific doctor)
+          if (ra.includes("dr.") || ra.includes('doctor')) {
+            const d1 = String(DOCTOR_1_NAME || '').toLowerCase();
+            const d2 = String(DOCTOR_2_NAME || '').toLowerCase();
+            if (d2 && ra.includes(d2)) return doctorArea(DOCTOR_2_NAME);
+            return doctorArea(DOCTOR_1_NAME);
+          }
+          return rr.area;
+        }
       }
       const anyX = t.requestedTests.some(rr => rr && String(rr.lab).toLowerCase() === 'xray');
       if (anyX) return 'X-ray';
@@ -82,6 +98,14 @@ function getTargetAreaForTest(t) {
     }
   } catch (e) { console.warn('getTargetAreaForTest failed to inspect requestedTests', e); }
   const label = String(t.testType || '').toLowerCase();
+  // If the testType indicates a doctor's checkup, map to configured doctor area
+  try {
+    if (label.includes('doctor')) {
+      const d2 = String(DOCTOR_2_NAME || '').toLowerCase();
+      if (d2 && label.includes(d2)) return doctorArea(DOCTOR_2_NAME);
+      return doctorArea(DOCTOR_1_NAME);
+    }
+  } catch (e) {}
   if (label.includes('xray')) return 'X-ray';
   if (label.includes('ultrasound') || label.includes('echo')) return 'Ultrasound';
   if (label.includes('ecg')) return 'ECG';
@@ -101,6 +125,12 @@ function getTargetAreaForRequest(rr) {
     if (rr.area) {
       const ra = String(rr.area || '').toLowerCase();
       if (ra.includes('send')) return 'Sendout';
+      if (ra.includes("dr.") || ra.includes('doctor')) {
+        const d1 = String(DOCTOR_1_NAME || '').toLowerCase();
+        const d2 = String(DOCTOR_2_NAME || '').toLowerCase();
+        if (d2 && ra.includes(d2)) return doctorArea(DOCTOR_2_NAME);
+        return doctorArea(DOCTOR_1_NAME);
+      }
       return rr.area;
     }
     const lab = String(rr.lab || '').toLowerCase();

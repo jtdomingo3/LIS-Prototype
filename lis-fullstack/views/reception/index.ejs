@@ -17,10 +17,16 @@
 
   <div class="area-grid-container">
     <% 
-      const roomLabelMap = {
-        "Doctor's Check-up - Dr. Lorenzo": "Doctor's Check-up — Dr. Lorenzo",
-        "Doctor's Check-up - Dr. Arcilla": "Doctor's Check-up — Dr. Arcilla"
-      };
+      const roomLabelMap = (function(){
+        try {
+          const d1 = (typeof DOCTOR_1_NAME !== 'undefined' && DOCTOR_1_NAME) ? `Doctor's Check-up - ${DOCTOR_1_NAME}` : "Doctor's Check-up - Dr. Lorenzo";
+          const d2 = (typeof DOCTOR_2_NAME !== 'undefined' && DOCTOR_2_NAME) ? `Doctor's Check-up - ${DOCTOR_2_NAME}` : "Doctor's Check-up - Dr. Arcilla";
+          const out = {};
+          out[d1] = `Doctor's Check-up — ${DOCTOR_1_NAME || 'Dr. Lorenzo'}`;
+          out[d2] = `Doctor's Check-up — ${DOCTOR_2_NAME || 'Dr. Arcilla'}`;
+          return out;
+        } catch (e) { return {}; }
+      })();
       (areas.slice ? areas.slice(0,10) : areas).forEach(area => { 
         const displayName = roomLabelMap[area.name] || String(area.name).replace(/\s*-\s*[AB]$/i, "");
     %>
