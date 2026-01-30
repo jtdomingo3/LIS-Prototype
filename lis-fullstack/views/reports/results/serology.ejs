@@ -1,6 +1,5 @@
 <style>
   @page { size: Letter; margin: 0.25in; }
-<%- include('./_highlight') %>
 
   body { margin:0; padding:0; box-sizing:border-box; }
   *, *:before, *:after { box-sizing:inherit; }
@@ -15,13 +14,14 @@
   .section-title{ text-align:center; margin:12px 0; font-size:20px; font-weight:bold }
   .results-frame{ width:100%; border:2px solid #000; border-collapse:collapse; margin-top:6px; box-sizing:border-box }
   .results-frame td{ padding:12px; vertical-align:middle; border-bottom:1px solid #000 }
-  .results-frame th{ padding:8px; text-align:left; border-bottom:2px solid #000; font-weight:700 }
+  .results-frame th{ padding:8px; text-align:center; border-bottom:2px solid #000; font-weight:700 }
   .signatures{ display:flex; justify-content:space-between; margin-top:48px }
   .sig{ text-align:center; width:32% }
   .watermark{ position:absolute; left:50%; top:44%; transform:translate(-50%,-50%); width:52%; opacity:0.06; pointer-events:none; z-index:0 }
   .report-container{ position:relative; z-index:1 }
   .normal-small{ font-size:11px; color:#333 }
 </style>
+<%- include('./_highlight') %>
 <div class="report-page">
   <div class="report-container">
     <div class="header">
@@ -76,7 +76,7 @@
       <% if (entries && entries.length) { %>
         <% entries.forEach(function(e){ %>
           <tr>
-            <td style="border-right:1px solid #000"><%= e.test %></td>
+            <td style="border-right:1px solid #000; text-align:center"><%= e.test %></td>
             <td style="text-align:center; font-weight:700"><%= e.result %></td>
           </tr>
         <% }) %>
