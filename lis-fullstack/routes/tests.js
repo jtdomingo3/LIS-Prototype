@@ -1317,6 +1317,75 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
       if (examination) topUpdates.examination = examination;
 
     } else if (/(blood(\s*|-)chemistry|blood\s*chem)/i.test(test.testType)) {
+      // Generic blood chemistry fallback: attempt to capture common analytes
+      const {
+        fbs, rbs, firstHour, secondHour,
+        cholesterol, tg, hdl, ldl, vldl,
+        uricAcid, creatinine, bun, sgpt, sgot,
+        sodium, potassium, chloride, hba1c, alb, note
+      } = req.body;
+
+      // small helpers
+      function toNum(v){ if (v===undefined||v===null) return null; const s=String(v).trim(); if(s==='') return null; const n=parseFloat(s.replace(/[^0-9.+-eE]/g,'')); return isNaN(n)?null:n }
+      function computeFlag(val, min, max){ if(val===null||val===undefined) return ''; if(typeof min==='number' && !isNaN(min) && val<min) return 'L'; if(typeof max==='number' && !isNaN(max) && val>max) return 'H'; return '' }
+
+      resultsObj = {};
+
+      // Lipids
+      const cholN = toNum(cholesterol);
+      const tgN = toNum(tg);
+      const hdlN = toNum(hdl);
+      let ldlN = toNum(ldl);
+      if ((ldlN === null || ldlN === undefined) && cholN !== null && hdlN !== null && tgN !== null) {
+        ldlN = Math.round((cholN - hdlN - (tgN / 5.0)) * 100) / 100;
+      }
+      if (cholesterol || cholN !== null) {
+        resultsObj.cholesterol = (cholesterol || (cholN!==null?String(cholN):''));
+        resultsObj.cholesterol_numeric = cholN;
+        resultsObj.cholesterol_flag = computeFlag(cholN, 0, 200);
+      }
+      if (tg || tgN !== null) {
+        resultsObj.tg = (tg || (tgN!==null?String(tgN):''));
+        resultsObj.tg_numeric = tgN;
+        resultsObj.tg_flag = computeFlag(tgN, 60, 150);
+      }
+      if (hdl || hdlN !== null) {
+        resultsObj.hdl = (hdl || (hdlN!==null?String(hdlN):''));
+        resultsObj.hdl_numeric = hdlN;
+        resultsObj.hdl_flag = computeFlag(hdlN, 35, 80);
+      }
+      if ((ldl || ldlN !== null)) {
+        resultsObj.ldl = (ldl || (ldlN!==null?String(ldlN):''));
+        resultsObj.ldl_numeric = ldlN;
+        resultsObj.ldl_flag = computeFlag(ldlN, 66, 178);
+      }
+      if (vldl) resultsObj.vldl = String(vldl).trim();
+
+      // Blood sugar
+      const fbsN = toNum(fbs);
+      const rbsN = toNum(rbs);
+      const firstN = toNum(firstHour);
+      const secondN = toNum(secondHour);
+      if (fbs || fbsN !== null) { resultsObj.fbs = (fbs || (fbsN!==null?String(fbsN):'')); resultsObj.fbs_numeric = fbsN; }
+      if (rbs || rbsN !== null) { resultsObj.rbs = (rbs || (rbsN!==null?String(rbsN):'')); resultsObj.rbs_numeric = rbsN; }
+      if (firstHour || firstN !== null) { resultsObj.firstHour = (firstHour || (firstN!==null?String(firstN):'')); resultsObj.firstHour_numeric = firstN; }
+      if (secondHour || secondN !== null) { resultsObj.secondHour = (secondHour || (secondN!==null?String(secondN):'')); resultsObj.secondHour_numeric = secondN; }
+
+      // Renal, liver, electrolytes, albumin, hba1c
+      if (uricAcid) resultsObj.uricAcid = String(uricAcid).trim();
+      if (creatinine || toNum(creatinine) !== null) { resultsObj.creatinine = (creatinine || String(toNum(creatinine))); resultsObj.creatinine_numeric = toNum(creatinine); }
+      if (bun || toNum(bun) !== null) { resultsObj.bun = (bun || String(toNum(bun))); resultsObj.bun_numeric = toNum(bun); }
+      if (sgpt || toNum(sgpt) !== null) { resultsObj.sgpt = (sgpt || String(toNum(sgpt))); resultsObj.sgpt_numeric = toNum(sgpt); }
+      if (sgot || toNum(sgot) !== null) { resultsObj.sgot = (sgot || String(toNum(sgot))); resultsObj.sgot_numeric = toNum(sgot); }
+      if (sodium || toNum(sodium) !== null) { resultsObj.sodium = (sodium || String(toNum(sodium))); resultsObj.sodium_numeric = toNum(sodium); }
+      if (potassium || toNum(potassium) !== null) { resultsObj.potassium = (potassium || String(toNum(potassium))); resultsObj.potassium_numeric = toNum(potassium); }
+      if (chloride || toNum(chloride) !== null) { resultsObj.chloride = (chloride || String(toNum(chloride))); resultsObj.chloride_numeric = toNum(chloride); }
+      if (hba1c || toNum(hba1c) !== null) { resultsObj.hba1c = (hba1c || String(toNum(hba1c))); resultsObj.hba1c_numeric = toNum(hba1c); }
+      if (alb || toNum(alb) !== null) { resultsObj.alb = (alb || String(toNum(alb))); resultsObj.alb_numeric = toNum(alb); }
+
+      if (note) resultsObj.note = String(note).trim();
+
+      console.log('DEBUG: blood chemistry fallback matched, results keys:', Object.keys(resultsObj));
 
     } else if (/(ecg|electrocardio|electrocardiogram)/i.test(test.testType)) {
       // ECG: paragraph findings + single reading physician
