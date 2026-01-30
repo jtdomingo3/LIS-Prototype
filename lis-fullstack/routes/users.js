@@ -1,5 +1,8 @@
 const express = require('express');
 const router = express.Router();
+const fs = require('fs');
+const path = require('path');
+const multer = require('multer');
 const User = require('../models/User');
 const { requireAuth, canManageUsers } = require('../middleware/auth');
 
@@ -139,9 +142,30 @@ router.get('/profile', requireAuth, async (req, res) => {
 });
 
 // PUT /profile - update current user's profile (name, email, password)
-router.put('/profile', requireAuth, async (req, res) => {
+// Configure multer storage for signatures
+const sigDir = path.join(__dirname, '..', 'assets', 'signature');
+function ensureSigDir() {
+  try { fs.mkdirSync(sigDir, { recursive: true }); } catch (e) {}
+}
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    ensureSigDir();
+    cb(null, sigDir);
+  },
+  filename: function (req, file, cb) {
+    // Use email (from form or session) to build safe filename
+    const emailRaw = (req.body && req.body.email) ? req.body.email : (req.session && req.session.user && req.session.user.email ? req.session.user.email : 'user');
+    const safe = String(emailRaw).toLowerCase().replace(/[^a-z0-9]/g, '_');
+    cb(null, `${safe}_signature.png`);
+  }
+});
+
+const upload = multer({ storage });
+
+router.put('/profile', requireAuth, upload.single('signature'), async (req, res) => {
   try {
-    const { name, email, password, confirmPassword } = req.body;
+    const { name, email, password, confirmPassword, licenseNumber } = req.body;
     if (!name || !email) {
       req.flash('error_msg', 'Please fill all required fields');
       return res.redirect('/users/profile');
@@ -154,7 +178,7 @@ router.put('/profile', requireAuth, async (req, res) => {
       return res.redirect('/users/profile');
     }
 
-    const update = { name, email: email.toLowerCase() };
+    const update = { name, email: email.toLowerCase(), licenseNumber: licenseNumber || null };
     if (password) {
       if (password !== confirmPassword) {
         req.flash('error_msg', 'Passwords do not match');
@@ -167,6 +191,11 @@ router.put('/profile', requireAuth, async (req, res) => {
       update.password = password;
     }
 
+    // If a signature file was uploaded, include its filename in the update
+    if (req.file && req.file.filename) {
+      update.signature = req.file.filename;
+    }
+
     const updated = await User.findByIdAndUpdate(req.session.user.id, update, { new: true });
     if (!updated) {
       req.flash('error_msg', 'User not found');
@@ -176,6 +205,8 @@ router.put('/profile', requireAuth, async (req, res) => {
     // Update session info
     req.session.user.name = updated.name;
     req.session.user.email = updated.email;
+    req.session.user.licenseNumber = updated.licenseNumber || null;
+    req.session.user.signature = updated.signature || null;
 
     req.flash('success_msg', 'Profile updated successfully');
     res.redirect('/users/profile');
