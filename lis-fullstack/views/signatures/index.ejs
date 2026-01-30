@@ -1,0 +1,57 @@
+<div class="card">
+  <h3>Signatures</h3>
+
+  <% if (tests && tests.length) { %>
+    <table>
+      <thead>
+        <tr>
+          <th>Test</th>
+          <th>Patient</th>
+          <th>Type</th>
+          <th>Date</th>
+          <th>Signature</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% tests.forEach(t => { %>
+          <tr>
+            <td>
+              <a href="/tests/<%= t.id %>"><%= t.testId || t.id %></a>
+              <a href="/reports/preview/<%= t.id %>" class="button btn-orange btn-small" target="_blank" style="margin-left:8px">Report</a>
+            </td>
+            <td><%= t.patient && (t.patient.firstName || t.patient.name) ? (t.patient.firstName ? (t.patient.firstName + ' ' + (t.patient.lastName || '')) : t.patient.name) : '' %></td>
+            <td><%= t.testType || t.template || '' %></td>
+            <td><%= t.testDate ? new Date(t.testDate).toLocaleString() : '' %></td>
+            <td>
+              <% const sigs = (t.results && t.results.signatures) ? t.results.signatures : {}; %>
+              <% const uid = currentUser && (currentUser.id || currentUser._id) ? String(currentUser.id || currentUser._id) : (currentUser && currentUser.email ? currentUser.email : null); %>
+                <% if (uid && sigs[uid] && sigs[uid].filename) { %>
+                  <div>Signed by <%= sigs[uid].name %> <small>(<%= new Date(sigs[uid].uploadedAt).toLocaleString() %>)</small></div>
+                  <div><img src="/assets/signature/<%= sigs[uid].filename %>" alt="signature" style="max-height:64px;border:1px solid #eee;padding:4px;background:#fff;" /></div>
+                <% } else { %>
+                  <% if (currentUser && currentUser.signature) { %>
+                    <form action="/signatures/<%= t.id %>/sign" method="POST" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                      <label style="display:flex;align-items:center;gap:6px;">
+                        X:<input type="number" step="1" name="x" value="0" style="width:72px" />
+                      </label>
+                      <label style="display:flex;align-items:center;gap:6px;">
+                        Y:<input type="number" step="1" name="y" value="-56" style="width:72px" />
+                      </label>
+                      <label style="display:flex;align-items:center;gap:6px;">
+                        Scale:<input type="number" step="0.1" name="scale" value="1" style="width:72px" />
+                      </label>
+                      <button class="button btn-primary" type="submit">Apply Signature</button>
+                    </form>
+                  <% } else { %>
+                    <div>No profile signature found. Upload one on your <a href="/users/profile">profile</a>.</div>
+                  <% } %>
+                <% } %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } else { %>
+    <p>No signable documents found where your name appears.</p>
+  <% } %>
+</div>
