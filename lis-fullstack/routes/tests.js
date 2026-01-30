@@ -325,7 +325,7 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       if (/thyroid|thyroid\s*panel/.test(s)) return 'TH';
       if (/\besr\b|erythrocyte/.test(s)) return 'ESR';
       if (/dengue/.test(s)) return 'DG';
-      if (/(ct\s*&?\s*bt|ct\s*bt|ct\s*and\s*bt|bleeding|clotting)/.test(s)) return 'CTBT';
+      if (/(ct[-_\s]*&?\s*bt|ct[-_\s]*bt|ct[-_\s]*and[-_\s]*bt|bleeding|clotting)/.test(s)) return 'CTBT';
       if (/blood|chemistry|pt|aptt|bun|crea|sgpt|sgot|lipid|hba1c|albumin|blood\s*sugar|chemistry/.test(s)) return 'BC';
       return 'T';
     };
@@ -639,7 +639,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       esr: /(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(tt)
       ,
       drugtest: /(drug\s*test|drugtest)/i.test(tt),
-      ct_bt: /(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt)/i.test(tt)
+      ct_bt: /(bleeding|clotting|ct[-_\s]*&?\s*bt|ct[-_\s]*and[-_\s]*bt|ct[-_\s]*bt)/i.test(tt)
       ,
       xray: /(x-?ray|xray|radiograph)/i.test(tt),
       ecg: /(ecg|electrocardio|electrocardiogram)/i.test(tt)
@@ -683,7 +683,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     if (/(x-?ray|xray|radiograph)/i.test(test.testType)) view = 'tests/results_entry_xray';
     if (/(ecg|electrocardio|electrocardiogram)/i.test(test.testType)) view = 'tests/results_entry_ecg';
     if (/(fecal\s*occult|fecal-occult|fecaloccult)/i.test(test.testType)) view = 'tests/results_entry_fecal_occult_blood';
-    if (/(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt)/i.test(test.testType)) view = 'tests/results_entry_ct_bt';
+    if (/(bleeding|clotting|ct[-_\s]*&?\s*bt|ct[-_\s]*and[-_\s]*bt|ct[-_\s]*bt)/i.test(test.testType)) view = 'tests/results_entry_ct_bt';
     if (/(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(test.testType)) view = 'tests/results_entry_esr';
     if (/urinalysis/i.test(test.testType)) view = 'tests/results_entry_urinalysis';
     if (/hemato|hematology|cbc/i.test(test.testType)) view = 'tests/results_entry_hematology';
@@ -751,7 +751,7 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
       ultrasound_1st_trimester: /(1st\s*trimester|first\s*trimester|1st[-\s]?trimester|trimester\s*obstetrics|ultrasound[-\s]?.*1st)/i.test(tt),
       esr: /(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(tt),
       drugtest: /(drug\s*test|drugtest)/i.test(tt),
-      ct_bt: /(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt)/i.test(tt)
+      ct_bt: /(bleeding|clotting|ct[-_\s]*&?\s*bt|ct[-_\s]*and[-_\s]*bt|ct[-_\s]*bt)/i.test(tt)
       ,
       xray: /(x-?ray|xray|radiograph)/i.test(tt)
       ,
@@ -842,7 +842,7 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
         esr_value: raw,
         esr_flag: flag
       };
-    } else if (/(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt|ct\s*bt|ctbt)/i.test(test.testType)) {
+    } else if (/(bleeding|clotting|ct[-_\s]*&?\s*bt|ct[-_\s]*and[-_\s]*bt|ct[-_\s]*bt|ctbt)/i.test(test.testType)) {
       // Accept minutes and seconds fields for more accurate time input
       const { bleeding_min, bleeding_sec, clotting_min, clotting_sec } = req.body;
       // Fallback to old single-field names if present (back-compat)
