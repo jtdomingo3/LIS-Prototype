@@ -468,6 +468,7 @@ const templateRoutes = require('./routes/templates');
 const userRoutes = require('./routes/users');
 const receptionRoutes = require('./routes/reception');
 const settingsRoutes = require('./routes/settings');
+const signaturesRoutes = require('./routes/signatures');
 
 app.use('/', authRoutes);
 app.use('/dashboard', dashboardRoutes);
@@ -478,6 +479,7 @@ app.use('/templates', templateRoutes);
 app.use('/users', userRoutes);
 app.use('/reception', receptionRoutes);
 app.use('/settings', settingsRoutes);
+app.use('/signatures', signaturesRoutes);
 
 // 404 handler
 app.use((req, res) => {

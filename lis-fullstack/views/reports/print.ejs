@@ -8,9 +8,11 @@
     h1 { color: #10b981; }
     .section { margin-bottom: 20px; }
   </style>
-  <script>
-    window.onload = function() { window.print(); };
-  </script>
+  <style>
+    /* Signature overlay styling applied globally to reports */
+    .signature-overlay { position:absolute; pointer-events:none; left:50%; transform-origin:center; }
+    .signatures .sig { position:relative }
+  </style>
 </head>
 <body>
   <% if (renderedResultHtml) { %>
@@ -35,5 +37,37 @@
       <pre style="white-space:pre-wrap;"><%= test.results || 'No results' %></pre>
     </div>
   <% } %>
+  <script>
+    (function(){
+      try {
+        const sigs = <%- JSON.stringify(test && test.results && test.results.signatures ? test.results.signatures : {}) %> || {};
+        const keys = Object.keys(sigs || {});
+        if (keys.length) {
+          keys.forEach(uid => {
+            const s = sigs[uid];
+            if (!s || !s.name || !s.filename) return;
+            // find matching signature blocks by comparing text
+            document.querySelectorAll('.signatures .sig').forEach(el => {
+              const text = (el.textContent || el.innerText || '').replace(/\s+/g,' ').trim();
+              if (!text) return;
+              if (text.indexOf(String(s.name).trim()) !== -1) {
+                const p = (s.placement) ? s.placement : { x:0, y:-56, scale:1 };
+                const img = document.createElement('img');
+                img.src = '/assets/signature/' + s.filename;
+                img.className = 'signature-overlay';
+                img.style.top = (p.y || -56) + 'px';
+                img.style.transform = 'translateX(-50%) scale(' + (p.scale || 1) + ')';
+                img.style.maxHeight = '96px';
+                el.style.position = el.style.position || 'relative';
+                el.appendChild(img);
+              }
+            });
+          });
+        }
+      } catch (e) { console.error('Signature injection error', e); }
+      // Print after we injected signatures
+      try { window.print(); } catch (e) {}
+    })();
+  </script>
 </body>
 </html>
