@@ -25,8 +25,13 @@
       const isCompleted = String(test.status || '').toLowerCase() === 'completed';
       const showReport = hasResults || isCompleted;
     %>
-    <% if (!isDoctor && !isSendout && test.testType && (/fecalysis/i.test(test.testType) || /(fecal\s*occult|fecal-occult|fecaloccult)/i.test(test.testType) || /urinalysis/i.test(test.testType) || /hemato|hematology|cbc/i.test(test.testType) || /(blood\s*typing|blood-typing|bloodtyping)/i.test(test.testType) || /serol|serology/i.test(test.testType) || /thyroid|thyroid\s*panel|thyroid-panel/i.test(test.testType) || /pregnan|pregnancy|pregnancy\s*test/i.test(test.testType) || /dengue/i.test(test.testType) || /pt|prothrombin|pt-aptt|ptaptt/i.test(test.testType) || /blood|blood\s*chemistry|blood-chemistry/i.test(test.testType) || /(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(test.testType) || /(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt|ct\s*bt|ctbt)/i.test(test.testType) || /(x-?ray|xray|radiograph)/i.test(test.testType) || /(ecg|electrocardio|electrocardiogram)/i.test(test.testType) || /(echo|echocardiograph|echocardiography|2d\s*echo|2decho)/i.test(test.testType) || /(ultra|ultrasound)/i.test(test.testType) || /(drug\s*test|drugtest)/i.test(test.testType))) { %>
-      <a href="/tests/<%= test.id %>/results" class="button btn-success">Enter Results</a>
+    <% 
+      // normalize test type for additional CT/BT detection
+      const tt = String(test.testType || '').toLowerCase();
+      const basicMatch = (/fecalysis/i.test(test.testType) || /(fecal\s*occult|fecal-occult|fecaloccult)/i.test(test.testType) || /urinalysis/i.test(test.testType) || /hemato|hematology|cbc/i.test(test.testType) || /(blood\s*typing|blood-typing|bloodtyping)/i.test(test.testType) || /serol|serology/i.test(test.testType) || /thyroid|thyroid\s*panel|thyroid-panel/i.test(test.testType) || /pregnan|pregnancy|pregnancy\s*test/i.test(test.testType) || /dengue/i.test(test.testType) || /pt|prothrombin|pt-aptt|ptaptt/i.test(test.testType) || /blood|blood\s*chemistry|blood-chemistry/i.test(test.testType) || /(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(test.testType) || /(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt|ct\s*bt|ctbt)/i.test(test.testType) || /(x-?ray|xray|radiograph)/i.test(test.testType) || /(ecg|electrocardio|electrocardiogram)/i.test(test.testType) || /(echo|echocardiograph|echocardiography|2d\s*echo|2decho)/i.test(test.testType) || /(ultra|ultrasound)/i.test(test.testType) || /(drug\s*test|drugtest)/i.test(test.testType));
+      const isCtBt = (tt.indexOf('ct') !== -1 && tt.indexOf('bt') !== -1) || /ct\s*[\/&]?\s*bt|ctbt/i.test(test.testType);
+      if (!isDoctor && !isSendout && test.testType && (basicMatch || isCtBt)) { %>
+        <a href="/tests/<%= test.id %>/results" class="button btn-success">Enter Results</a>
     <% } %>
     <% if (showReport) { %>
       <a href="/reports/preview/<%= test.id %>" class="button btn-orange" target="_blank">View Report</a>
