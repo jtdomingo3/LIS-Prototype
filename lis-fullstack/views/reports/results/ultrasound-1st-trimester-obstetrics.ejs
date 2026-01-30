@@ -9,7 +9,7 @@
   .lab-sub{ font-size:10px; margin-top:4px; color:#009957 }
   .patient-box{ margin-top:8px; width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed }
   .patient-box td{ padding:4px 6px; border:1px solid #000; box-sizing:border-box }
-  .section-title{ text-align:center; margin:24px 0 8px; font-size:20px; font-weight:bold }
+  .section-title{ text-align:center; margin:24px 0 8px; font-size:20px; font-weight:bold;margin-bottom: 32px; }
   .twins-grid{ display:flex; gap:24px; align-items:flex-start }
   .twin-box{ flex:1; padding:10px; font-family:'Courier New', monospace; font-size:13px }
   .twin-box h4{ margin:0 0 8px 0; text-align:center; font-weight:700 }
@@ -18,6 +18,7 @@
   .signatures, .sig { font-family: 'Times New Roman', Times, serif; }
   .watermark{ position:absolute; left:50%; top:44%; transform:translate(-50%,-50%); width:52%; opacity:0.06; pointer-events:none; z-index:0 }
   .report-container{ position:relative; z-index:1 }
+  .measure, .measure td, .measure span { font-family: 'Courier New', monospace; font-size:12px; }
 </style>
 
 <%- include('./_highlight') %>
@@ -82,10 +83,23 @@
         </div>
       </div>
     <% } else { %>
-      <div style="max-width:640px; margin:0 auto; padding:10px; font-family:'Courier New', monospace; font-size:13px">
-       <div style="font-size:14px; line-height:1"><strong>Gestational sac:</strong> <span style="margin-left:8px"><%= test && test.results && test.results.gestational_sac_length ? (test.results.gestational_sac_length + ' cm') : '' %></span> <span style="margin-left:36px"><%= test && test.results && test.results.gestational_sac_age ? test.results.gestational_sac_age : '' %></span></div>
-         <div style="margin-top:6px; font-size:14px;"><strong>CRL:</strong> <span style="margin-left:8px"><%= test && test.results && test.results.crl_length ? (test.results.crl_length + ' cm') : '' %></span> <span style="margin-left:36px"><%= test && test.results && test.results.crl_age ? test.results.crl_age : '' %></span></div>
-      </div>
+      <table class="measure" style="width:100%; border-collapse:collapse; border:none; table-layout:fixed;">
+        <colgroup>
+          <col style="width:26%">
+          <col style="width:50%">
+          <col style="width:24%">
+        </colgroup>
+        <tr>
+          <td style="padding:0"><strong>Gestational sac:</strong></td>
+          <td style="padding:0 0 0 12px"><span><%= test && test.results && test.results.gestational_sac_length ? (test.results.gestational_sac_length + ' cm') : '' %></span></td>
+          <td style="padding:0 0 0 12px; text-align:left"><span><%= test && test.results && test.results.gestational_sac_age ? test.results.gestational_sac_age : '' %></span></td>
+        </tr>
+        <tr>
+          <td style="padding:6px 0 0 0"><strong>CRL:</strong></td>
+          <td style="padding:6px 0 0 12px"><span><%= test && test.results && test.results.crl_length ? (test.results.crl_length + ' cm') : '' %></span></td>
+          <td style="padding:6px 0 0 12px; text-align:left"><span><%= test && test.results && test.results.crl_age ? test.results.crl_age : '' %></span></td>
+        </tr>
+      </table>
     <% } %>
 
     <div style="margin-top:12px; font-family:'Courier New', monospace; font-size:14px;">
