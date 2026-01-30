@@ -57,23 +57,9 @@
 
     <hr>
     <h4>Signatures / Performers</h4>
-    <div class="form-row">
-      <label>X-Ray Technologist (Name)</label>
-      <input type="text" name="mtName" placeholder="Technologist name" value="<%= test.results && test.results.performedByName ? test.results.performedByName : '' %>">
-    </div>
-    <div class="form-row">
-      <label>Technologist License</label>
-      <input type="text" name="mtLicense" placeholder="License number (optional)" value="<%= test.results && test.results.performedByLicense ? test.results.performedByLicense : '' %>">
-    </div>
+    <%- include('../partials/signatory_select', { prefix: 'mt', label: 'X-Ray Technologist', nameInput: 'mtName', licenseInput: 'mtLicense', existingName: (test.results && test.results.performedByName) ? test.results.performedByName : '', existingLicense: (test.results && test.results.performedByLicense) ? test.results.performedByLicense : '' }) %>
 
-    <div class="form-row">
-      <label>Radiologist (Name)</label>
-      <input type="text" name="pathName" placeholder="Radiologist name" value="<%= test.results && test.results.requestedByName ? test.results.requestedByName : '' %>">
-    </div>
-    <div class="form-row">
-      <label>Radiologist License</label>
-      <input type="text" name="pathLicense" placeholder="License number (optional)" value="<%= test.results && test.results.requestedByLicense ? test.results.requestedByLicense : '' %>">
-    </div>
+    <%- include('../partials/signatory_select', { prefix: 'path', label: 'Radiologist', nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (test.results && test.results.requestedByName) ? test.results.requestedByName : '', existingLicense: (test.results && test.results.requestedByLicense) ? test.results.requestedByLicense : '' }) %>
 
     <div class="form-row mt-12">
       <a href="/tests/<%= test.id %>" class="button btn-secondary">Cancel</a>

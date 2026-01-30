@@ -78,9 +78,9 @@
 
     <div>
       <label>Analyst</label>
-      <input type="text" name="analyst" value="MS. NICOLE S. RAMOS" />
+      <%- include('../partials/signatory_select', { prefix: 'analyst', label: 'Analyst', nameInput: 'analyst', licenseInput: 'analystLicense', existingName: (test && test.results && test.results.analyst) ? test.results.analyst : 'MS. NICOLE S. RAMOS', existingLicense: (test && test.results && test.results.analystLicense) ? test.results.analystLicense : '' }) %>
       <label>Head of Laboratory</label>
-      <input type="text" name="headLab" value="DR. BERNADETTE R. ESPIRITU" />
+      <%- include('../partials/signatory_select', { prefix: 'headLab', label: 'Head of Laboratory', nameInput: 'headLab', licenseInput: 'headLabLicense', existingName: (test && test.results && test.results.headLab) ? test.results.headLab : 'DR. BERNADETTE R. ESPIRITU', existingLicense: (test && test.results && test.results.headLabLicense) ? test.results.headLabLicense : '' }) %>
     </div>
 
     <div class="form-row mt-12">

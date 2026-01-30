@@ -47,14 +47,8 @@
 
     <hr>
     <h4>Reading Physician</h4>
-    <div class="form-row">
-      <label>Doctor Name</label>
-      <input type="text" name="doctorName" placeholder="Doctor's name" value="<%= test.results && test.results.doctorName ? test.results.doctorName : (test && test.requestedBy && test.requestedBy.name ? test.requestedBy.name : '') %>">
-    </div>
-    <div class="form-row">
-      <label>License</label>
-      <input type="text" name="doctorLicense" placeholder="License number" value="<%= test.results && test.results.doctorLicense ? test.results.doctorLicense : '' %>">
-    </div>
+    <%- include('../partials/signatory_select', { prefix: 'doctor', label: 'Reading Physician', nameInput: 'doctorName', licenseInput: 'doctorLicense', existingName: (test.results && test.results.doctorName) ? test.results.doctorName : (test && test.requestedBy && test.requestedBy.name ? test.requestedBy.name : ''), existingLicense: (test.results && test.results.doctorLicense) ? test.results.doctorLicense : '' }) %>
+
     <div class="form-row">
       <label>Designation</label>
       <select name="doctorDesignation" id="doctorDesignationSelect" onchange="onDesignationChange()">

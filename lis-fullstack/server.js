@@ -253,6 +253,18 @@ app.use((req, res, next) => {
   next();
 });
 
+// Expose all users to views for signatory dropdowns
+app.use((req, res, next) => {
+  try {
+    const users = global.db && global.db.getUsers ? global.db.getUsers() : [];
+    // Map to minimal fields used in the UI
+    res.locals.allUsers = (users || []).map(u => ({ id: u.id || u.email, name: u.name || u.email, email: u.email, role: u.role || '', licenseNumber: u.licenseNumber || '' }));
+  } catch (e) {
+    res.locals.allUsers = [];
+  }
+  next();
+});
+
 // Feature flags (temporary toggles for UI visibility)
 app.locals.featureFlags = {
   tests: true,
