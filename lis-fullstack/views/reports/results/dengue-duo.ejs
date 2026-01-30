@@ -1,6 +1,5 @@
 <style>
   @page { size: Letter; margin: 0.25in; }
-<%- include('./_highlight') %>
 
   body { margin:0; padding:0; box-sizing:border-box; }
   *, *:before, *:after { box-sizing:inherit; }
@@ -23,6 +22,7 @@
   .report-container{ position:relative; z-index:1 }
   .normal-small{ font-size:11px; color:#333 }
 </style>
+<%- include('./_highlight') %>
 <div class="report-page">
   <div class="report-container">
     <div class="header">
@@ -70,20 +70,29 @@
 
     <table class="results-frame">
       <tr>
-        <th style="width:60%">TEST</th>
-        <th style="width:40%">RESULT</th>
+        <th style="width:60%; text-align:center">TEST</th>
+        <th style="width:40%; text-align:center">RESULT</th>
       </tr>
       <tr>
-        <td>NS1</td>
-        <td class="center" style="font-weight:700"></td>
+        <td class="center">NS1</td>
+        <td class="center" style="font-weight:700">
+          <% var ns1 = (test && test.results && test.results.ns1) ? String(test.results.ns1).toUpperCase() : ''; %>
+          <% if(ns1==='POSITIVE'){ %><span class="result-highlight"><%= ns1 %></span><% } else { %><%= ns1 %><% } %>
+        </td>
       </tr>
       <tr>
-        <td>IgM</td>
-        <td class="center" style="font-weight:700"><%= test && test.results && test.results.igm ? String(test.results.igm).toUpperCase() : '' %></td>
+        <td class="center">IgM</td>
+        <td class="center" style="font-weight:700">
+          <% var igm = (test && test.results && test.results.igm) ? String(test.results.igm).toUpperCase() : ''; %>
+          <% if(igm==='POSITIVE'){ %><span class="result-highlight"><%= igm %></span><% } else { %><%= igm %><% } %>
+        </td>
       </tr>
       <tr>
-        <td>IgG</td>
-        <td class="center" style="font-weight:700"><%= test && test.results && test.results.igg ? String(test.results.igg).toUpperCase() : '' %></td>
+        <td class="center">IgG</td>
+        <td class="center" style="font-weight:700">
+          <% var igg = (test && test.results && test.results.igg) ? String(test.results.igg).toUpperCase() : ''; %>
+          <% if(igg==='POSITIVE'){ %><span class="result-highlight"><%= igg %></span><% } else { %><%= igg %><% } %>
+        </td>
       </tr>
     </table>
 
