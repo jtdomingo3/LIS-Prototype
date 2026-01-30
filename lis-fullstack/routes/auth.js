@@ -47,13 +47,18 @@ router.post('/login', requireGuest, async (req, res) => {
     await user.save();
 
     // Create session (use the application's `id` field) and include permissions
-    req.session.user = {
+    // Use the full user object (via toJSON) so profile fields like `signature` persist
+    // while relying on User.toJSON to omit sensitive fields like password.
+    const sessionUserObj = (typeof user.toJSON === 'function') ? user.toJSON() : {
       id: user.id,
       name: user.name,
       email: user.email,
-      role: user.role,
-      permissions: user.permissions || {}
+      role: user.role
     };
+    sessionUserObj.permissions = user.permissions || {};
+    // Ensure signature key exists so views can rely on it
+    sessionUserObj.signature = sessionUserObj.signature || null;
+    req.session.user = sessionUserObj;
 
     req.flash('success_msg', `Welcome back, ${user.name}!`);
 
