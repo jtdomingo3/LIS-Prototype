@@ -900,6 +900,20 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
       for (const w of work) {
         try {
           const t = w.test;
+          // Special-case: if we are in the Releasing of Result area, marking complete
+          // should finalize the test as Released rather than moving it back to In Progress.
+          if (String(area || '') === 'Releasing of Result') {
+            try {
+              t.addStatusEntry({ from: t.status, to: 'Released', user: req.session && req.session.user ? req.session.user.username : null, area: 'Released', timestamp: (new Date()).toISOString() });
+              t.status = 'Released';
+              t.released = true;
+              if (!t.completedAt) t.completedAt = (new Date()).toISOString();
+              await t.save();
+              processed.push(t.testId || t.id);
+              try { sseEmitter.emit('update', { action: 'release', testId: t.testId, status: t.status, patient: t.patient, time: (new Date()).toISOString() }); } catch (e) { console.warn('SSE emit failed', e); }
+            } catch (e) { console.warn('Failed releasing test', t && (t.testId || t.id), e); }
+            continue;
+          }
           if (isDoctorArea) {
             // Mark as Checked (doctor completed the check)
             t.addStatusEntry({ from: t.status, to: 'Checked', user: req.session && req.session.user ? req.session.user.username : null, area: 'Checked', timestamp: (new Date()).toISOString() });
