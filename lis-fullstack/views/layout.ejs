@@ -1017,8 +1017,26 @@
                                 const v = localStorage.getItem('notif-auto-refresh');
                                 const enabled = (v === '1' || v === null || (autoRefreshCheckbox && autoRefreshCheckbox.checked));
                                 if (enabled) {
-                                    // use a short timeout so UI updates render before reload
-                                    setTimeout(() => { window.location.reload(); }, 600);
+                                    try {
+                                        const muted = (function(){ try { return localStorage.getItem('notif-muted') === '1'; } catch(e){ return false; } })();
+                                        // If we have a sound element and not muted, attempt to play and wait for play to start
+                                        if (!muted && sound && typeof sound.play === 'function') {
+                                            try {
+                                                // restart sound and attempt play
+                                                sound.currentTime = 0;
+                                                const p = sound.play();
+                                                if (p && typeof p.then === 'function') {
+                                                    p.then(() => { setTimeout(() => { window.location.reload(); }, 400); }).catch(() => { window.location.reload(); });
+                                                } else {
+                                                    // play returned synchronously (older browsers) — reload shortly after starting
+                                                    setTimeout(() => { window.location.reload(); }, 400);
+                                                }
+                                            } catch (e) { window.location.reload(); }
+                                        } else {
+                                            // muted or no sound -> just reload
+                                            setTimeout(() => { window.location.reload(); }, 600);
+                                        }
+                                    } catch (e) { setTimeout(() => { window.location.reload(); }, 600); }
                                 }
                             } catch(e){}
                         } catch (e) { console.warn('[SSE] message parse error', e); }
