@@ -39,7 +39,7 @@
         <label style="margin-left:12px">Font:</label>
         <select name="paragraphsFontFamily">
           <option value="Times New Roman" <%= test.results && test.results.paragraphs_font_family==='Times New Roman' ? 'selected' : '' %>>Times New Roman</option>
-          <option value="Courier New" <%= test.results && test.results.paragraphs_font_family==='Courier New' ? 'selected' : '' %>>Courier New</option>
+          <option value="Courier New" <%= (test.results && test.results.paragraphs_font_family==='Courier New') || (!test.results || !test.results.paragraphs_font_family) ? 'selected' : '' %>>Courier New</option>
           <option value="Arial" <%= test.results && test.results.paragraphs_font_family==='Arial' ? 'selected' : '' %>>Arial</option>
           <option value="Georgia" <%= test.results && test.results.paragraphs_font_family==='Georgia' ? 'selected' : '' %>>Georgia</option>
           <option value="Garamond" <%= test.results && test.results.paragraphs_font_family==='Garamond' ? 'selected' : '' %>>Garamond</option>
@@ -52,7 +52,7 @@
           <option value="18px" <%= test.results && test.results.paragraphs_font_size==='18px' ? 'selected' : '' %>>18px</option>
         </select>
       </div>
-      <textarea id="paragraphs" name="paragraphs" rows="8" spellcheck="true" style="width:100%; font-family:inherit;"> <%= test && test.results && (test.results.paragraphs || test.results.result) ? (test.results.paragraphs || test.results.result) : '<p>Enter findings here. This may be 2-3 paragraphs depending on the reading.</p>\n<p>Describe radiographic findings, impressions, and recommendations.</p>' %></textarea>
+      <textarea id="paragraphs" name="paragraphs" rows="8" spellcheck="true" style="width:100%; font-family:inherit;"><%- (test && test.results && (test.results.paragraphs || test.results.result)) ? (test.results.paragraphs || test.results.result) : 'Enter findings here. This may be 2-3 paragraphs depending on the reading.\n\nDescribe radiographic findings, impressions, and recommendations.' %></textarea>
     </div>
 
     <hr>
