@@ -282,6 +282,36 @@ app.use((req, res, next) => {
   next();
 });
 
+// Server-side result highlighting helper (for PDFs / serverside renders where client JS may not run)
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function highlightResult(text) {
+  if (text == null) return '';
+  var s = String(text);
+  // If it already contains HTML tags, assume it's intentionally formatted and perform replacements on HTML-safe content
+  var containsTags = /<\/?[a-z][\s\S]*>/i.test(s);
+  if (!containsTags) {
+    var out = escapeHtml(s);
+    // highlight words
+    out = out.replace(/\b(Positive|Reactive|trace)\b/gi, function(m){ return '<span class="result-highlight">'+m+'</span>'; });
+    // highlight plus groups
+    out = out.replace(/(\+{1,4})/g, function(m){ return '<span class="result-highlight">'+m+'</span>'; });
+    return out;
+  }
+  // If HTML present, do safer replacements: replace <br> with itself, then wrap matches inside text nodes by simple replace
+  // This is best-effort — avoid full HTML parse for simplicity
+  var escaped = s;
+  escaped = escaped.replace(/\b(Positive|Reactive|trace)\b/gi, function(m){ return '<span class="result-highlight">'+m+'</span>'; });
+  escaped = escaped.replace(/(\+{1,4})/g, function(m){ return '<span class="result-highlight">'+m+'</span>'; });
+  return escaped;
+}
+
+// expose helper to all views as `hl`
+app.use((req, res, next) => { res.locals.hl = highlightResult; next(); });
+
 // Authorization: enforce per-user permissions stored in session.user.permissions
 const routePermissionMap = [
   { prefix: '/dashboard', perm: 'dashboard' },

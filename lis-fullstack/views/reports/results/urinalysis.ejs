@@ -27,6 +27,8 @@
   .report-container{ position:relative; z-index:1 }
 </style>
 
+<%- include('./_highlight') %>
+
 <div class="report-page">
   <div class="report-container">
     <div class="header">
@@ -83,52 +85,52 @@
             </tr>
             <tr>
               <td class="label">Color</td>
-              <td style="text-align:center"><%= test && test.results && test.results.color ? test.results.color : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.color) %></td>
               <td style="text-align:center"></td>
             </tr>
             <tr>
               <td class="label">Transparency</td>
-              <td style="text-align:center"><%= test && test.results && test.results.appearance ? test.results.appearance : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.appearance) %></td>
               <td style="text-align:center"></td>
             </tr>
             <tr>
               <td class="label">pH</td>
-              <td style="text-align:center"><%= test && test.results && test.results.ph ? test.results.ph : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.ph) %></td>
               <td style="text-align:center">5.0 - 7.0</td>
             </tr>
             <tr>
               <td class="label">Sp. Gravity</td>
-              <td style="text-align:center"><%= test && test.results && test.results.specificGravity ? test.results.specificGravity : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.specificGravity) %></td>
               <td style="text-align:center">1.005 - 1.025</td>
             </tr>
             <tr>
               <td class="label">Glucose</td>
-              <td style="text-align:center"><%= test && test.results && test.results.glucose ? test.results.glucose : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.glucose) %></td>
               <td style="text-align:center">Negative</td>
             </tr>
             <tr>
               <td class="label">Protein</td>
-              <td style="text-align:center"><%= test && test.results && test.results.protein ? test.results.protein : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.protein) %></td>
               <td style="text-align:center">Negative</td>
             </tr>
             <tr>
               <td class="label">Leukocyte</td>
-              <td style="text-align:center"><%= test && test.results && test.results.leukocyte ? test.results.leukocyte : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.leukocyte) %></td>
               <td style="text-align:center">Negative</td>
             </tr>
             <tr>
               <td class="label">Nitrite</td>
-              <td style="text-align:center"><%= test && test.results && test.results.nitrite ? test.results.nitrite : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.nitrite) %></td>
               <td style="text-align:center">Negative</td>
             </tr>
             <tr>
               <td class="label">Urobilinogen</td>
-              <td style="text-align:center"><%= test && test.results && test.results.urobilinogen ? test.results.urobilinogen : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.urobilinogen) %></td>
               <td style="text-align:center">Negative</td>
             </tr>
             <tr>
               <td class="label">Blood</td>
-              <td style="text-align:center"><%= test && test.results && test.results.blood ? test.results.blood : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.blood) %></td>
               <td style="text-align:center">Negative</td>
             </tr>
             <!-- Ketones and Bilirubin moved to Microscopic Analysis column -->
@@ -143,37 +145,37 @@
             </tr>
             <tr>
               <td class="label">WBC</td>
-              <td style="text-align:center"><%= test && test.results && test.results.wbc ? test.results.wbc : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.wbc) %></td>
               <td style="text-align:center">0-3 / hpf</td>
             </tr>
             <tr>
               <td class="label">RBC</td>
-              <td style="text-align:center"><%= test && test.results && test.results.rbc ? test.results.rbc : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.rbc) %></td>
               <td style="text-align:center">0-5 / hpf</td>
             </tr>
             <tr>
               <td class="label">Epithelial Cells</td>
-              <td style="text-align:center"><%= test && test.results && test.results.epithelial ? test.results.epithelial : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.epithelial) %></td>
               <td style="text-align:center"></td>
             </tr>
             <tr>
               <td class="label">Mucus Threads</td>
-              <td style="text-align:center"><%= test && test.results && test.results.mucus ? test.results.mucus : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.mucus) %></td>
               <td style="text-align:center"></td>
             </tr>
             <tr>
               <td class="label">Amorphous Crystals</td>
-              <td style="text-align:center"><%= test && test.results && test.results.amorphous ? test.results.amorphous : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.amorphous) %></td>
               <td style="text-align:center"></td>
             </tr>
             <tr>
               <td class="label">Bacteria</td>
-              <td style="text-align:center"><%= test && test.results && test.results.bacteria ? test.results.bacteria : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.bacteria) %></td>
               <td style="text-align:center"></td>
             </tr>
             <tr>
               <td class="label">Others</td>
-              <td style="text-align:center"><%= test && test.results && test.results.others ? test.results.others : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.others) %></td>
               <td style="text-align:center"></td>
             </tr>
           </table>
