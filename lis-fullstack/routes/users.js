@@ -50,7 +50,7 @@ router.get('/new', requireAuth, canManageUsers, (req, res) => {
 // POST /users - Create new user
 router.post('/', requireAuth, canManageUsers, async (req, res) => {
   try {
-    const { name, email, password, confirmPassword, role, status } = req.body;
+    const { name, email, password, confirmPassword, role, status, licenseNumber } = req.body;
 
     // Validate required fields
     if (!name || !email || !password) {
@@ -89,12 +89,21 @@ router.post('/', requireAuth, canManageUsers, async (req, res) => {
       });
     }
 
+    // Build permissions object from nested form inputs
+    const permissionsRaw = req.body.permissions || {};
+    const permissions = {};
+    ['dashboard','patients','reception','tests','reports','worksheet','templates','users','delete'].forEach(k => {
+      permissions[k] = !!(permissionsRaw[k] === '1' || permissionsRaw[k] === 1 || permissionsRaw[k] === true || permissionsRaw[k] === 'on' || permissionsRaw[k]);
+    });
+
     const user = new User({
       name,
       email: email.toLowerCase(),
       password,
       role: role || 'Receptionist',
-      status: status || 'Active'
+      status: status || 'Active',
+      licenseNumber: licenseNumber || null,
+      permissions
     });
 
     await user.save();
@@ -229,7 +238,7 @@ router.get('/:id/edit', requireAuth, canManageUsers, async (req, res) => {
 // PUT /users/:id - Update user
 router.put('/:id', requireAuth, canManageUsers, async (req, res) => {
   try {
-    const { name, email, role, status, password, confirmPassword } = req.body;
+    const { name, email, role, status, password, confirmPassword, licenseNumber } = req.body;
 
     // Validate required fields
     if (!name || !email) {
@@ -244,11 +253,20 @@ router.put('/:id', requireAuth, canManageUsers, async (req, res) => {
       return res.redirect(`/users/${req.params.id}/edit`);
     }
 
+    // Build permissions object from nested form inputs
+    const permissionsRaw = req.body.permissions || {};
+    const permissions = {};
+    ['dashboard','patients','reception','tests','reports','worksheet','templates','users','delete'].forEach(k => {
+      permissions[k] = !!(permissionsRaw[k] === '1' || permissionsRaw[k] === 1 || permissionsRaw[k] === true || permissionsRaw[k] === 'on' || permissionsRaw[k]);
+    });
+
     const updateData = {
       name,
       email: email.toLowerCase(),
       role,
-      status
+      status,
+      licenseNumber: licenseNumber || null,
+      permissions
     };
 
     // Update password if provided
