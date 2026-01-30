@@ -23,9 +23,9 @@
       <label>Sample</label>
       <select name="sample" required>
         <option value="">-- Select Sample --</option>
-        <option value="Urine" <%= test.results && test.results.sample === 'Urine' ? 'selected' : '' %>>Urine</option>
-        <option value="Blood" <%= test.results && test.results.sample === 'Blood' ? 'selected' : '' %>>Blood</option>
-        <option value="Blood" <%= test.results && test.results.sample === 'Blood' ? 'selected' : '' %>>Serum</option>
+        <option value="URINE" <%= test.results && test.results.sample === 'URINE' ? 'selected' : '' %>>Urine</option>
+        <option value="BLOOD" <%= test.results && test.results.sample === 'BLOOD' ? 'selected' : '' %>>Blood</option>
+        <option value="SERUM" <%= test.results && test.results.sample === 'SERUM' ? 'selected' : '' %>>Serum</option>
       </select>
     </div>
 
@@ -33,8 +33,8 @@
       <label>Result</label>
       <select name="result" required>
         <option value="">-- Select Result --</option>
-        <option value="Negative" <%= test.results && test.results.result === 'Negative' ? 'selected' : '' %>>Negative</option>
-        <option value="Positive" <%= test.results && test.results.result === 'Positive' ? 'selected' : '' %>>Positive</option>
+        <option value="NEGATIVE" <%= test.results && test.results.result === 'NEGATIVE' ? 'selected' : '' %>>NEGATIVE</option>
+        <option value="POSITIVE" <%= test.results && test.results.result === 'POSITIVE' ? 'selected' : '' %>>POSITIVE</option>
       </select>
     </div>
 
