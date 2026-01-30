@@ -18,6 +18,8 @@ router.get('/', requireAuth, async (req, res) => {
   const completedTests = allTests.filter(t => t && (t.status === 'Completed' || t.status === 'Released')).length;
   // Active / In Progress = finished reception and waiting for results encoding
   const activeTests = allTests.filter(t => t && t.status === 'In Progress').length;
+  // Released = tests explicitly marked Released
+  const releasedTests = allTests.filter(t => t && t.status === 'Released').length;
 
   // Compute sales totals from patient paymentHistory (if present)
   let totalSales = 0;
@@ -76,7 +78,8 @@ router.get('/', requireAuth, async (req, res) => {
         totalPatients,
         pendingTests,
         completedTests,
-        activeTests
+        activeTests,
+        releasedTests
         , totalSales, todaySales, clinicalSales, xraySales, clinicalToday, xrayToday
       },
       recentTests
