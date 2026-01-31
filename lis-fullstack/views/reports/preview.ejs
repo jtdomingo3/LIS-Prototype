@@ -332,10 +332,15 @@
       const ids = getFilteredIds();
       if (!ids || !ids.length) return false;
       const cur = window.currentTestId;
-      const idx = ids.indexOf(cur);
-      // if current not in filtered list, fall back to server-provided link
-      if (idx === -1) return false;
-      const targetIndex = direction === 'prev' ? idx - 1 : idx + 1;
+      let idx = ids.indexOf(cur);
+      let targetIndex;
+      if (idx === -1) {
+        // current preview not in filtered set: choose sensible start
+        targetIndex = (direction === 'prev') ? (ids.length - 1) : 0;
+      } else {
+        targetIndex = (direction === 'prev') ? (idx - 1) : (idx + 1);
+      }
+      // if target out of bounds, do nothing
       if (targetIndex < 0 || targetIndex >= ids.length) return false;
       const targetId = ids[targetIndex];
       const qs = getQueryString();
@@ -346,11 +351,13 @@
     if (prevBtn) {
       prevBtn.addEventListener('click', function(e){
         e.preventDefault();
-        // try to navigate within filtered set; if not possible, fall back to server href
+        // try to navigate within filtered set; if not possible, fall back to server href (only if present)
         const handled = navigateWithinFiltered('prev');
         if (!handled) {
-          // use the anchor's href (server-provided filterQuery may already be appended)
-          window.location.href = prevBtn.getAttribute('href');
+          const href = prevBtn.getAttribute && prevBtn.getAttribute('href');
+          if (href) {
+            window.location.href = href;
+          }
         }
       });
     }
@@ -359,7 +366,10 @@
         e.preventDefault();
         const handled = navigateWithinFiltered('next');
         if (!handled) {
-          window.location.href = nextBtn.getAttribute('href');
+          const href = nextBtn.getAttribute && nextBtn.getAttribute('href');
+          if (href) {
+            window.location.href = href;
+          }
         }
       });
     }
