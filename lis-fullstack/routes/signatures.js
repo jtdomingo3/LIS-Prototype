@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 const Test = require('../models/Test');
+const Patient = require('../models/Patient');
 const { requireAuth } = require('../middleware/auth');
 
 const sigDir = path.join(__dirname, '..', 'assets', 'signature');
@@ -31,26 +32,59 @@ router.get('/', requireAuth, async (req, res) => {
   try {
     const currentUser = req.session.user;
     const name = currentUser && currentUser.name ? String(currentUser.name).toLowerCase() : '';
-    if (!name) return res.render('signatures/index', { title: 'Signatures', tests: [], currentUser });
 
-    const all = await Test.find();
+    // load tests and patients
+    const allTests = await Test.find();
+    const allPatients = await Patient.find();
+
     // Filter tests where any common signatory field contains the user's name
-    const matches = all.filter(t => {
+    const matches = (allTests || []).filter(t => {
       try {
         const fields = [];
         if (t.results) {
-          // common fields inside results
           Object.keys(t.results).forEach(k => { if (typeof t.results[k] === 'string') fields.push(t.results[k]); });
         }
         if (t.performedBy && t.performedBy.name) fields.push(t.performedBy.name);
         if (t.requestedBy && t.requestedBy.name) fields.push(t.requestedBy.name);
         if (t.assignedDoctorName) fields.push(t.assignedDoctorName);
-        // flatten and check
         return fields.some(f => f && String(f).toLowerCase().includes(name));
       } catch (e) { return false; }
     });
 
-    res.render('signatures/index', { title: 'Signatures', tests: matches, currentUser });
+    // Build available filter options (test types & priorities)
+    const availableTestTypes = Array.isArray(matches) ? Array.from(new Set(matches.map(t => (t.testType || t.template || '').toString()).filter(Boolean))).sort() : [];
+    const priorities = Array.isArray(matches) ? Array.from(new Set(matches.map(t => t.priority || 'Normal'))).sort() : [];
+
+    // Read query params
+    const searchQuery = req.query.search || '';
+    const typeFilter = req.query.type || '';
+    const priorityFilter = req.query.priority || '';
+
+    // Apply server-side filters (search testId, testType, patient name)
+    let filtered = matches;
+    if (searchQuery) {
+      const q = String(searchQuery).toLowerCase();
+      filtered = filtered.filter(test => {
+        const patient = allPatients.find(p => p.id === test.patient);
+        const patientName = patient ? `${patient.firstName || ''} ${patient.lastName || ''}`.toLowerCase() : '';
+        return (test.testId || '').toString().toLowerCase().includes(q) ||
+               (test.testType || '').toString().toLowerCase().includes(q) ||
+               patientName.includes(q);
+      });
+    }
+    if (typeFilter) filtered = filtered.filter(t => ((t.testType || t.template || '') === typeFilter));
+    if (priorityFilter) filtered = filtered.filter(t => (t.priority || 'Normal') === priorityFilter);
+
+    // Attach lightweight patient info and sort by date desc
+    const tests = (filtered || []).sort((a,b) => new Date(b.testDate || b.createdAt) - new Date(a.testDate || a.createdAt))
+      .map(test => {
+        const patient = allPatients.find(p => p.id === test.patient);
+        return Object.assign({}, test, {
+          patient: patient ? { firstName: patient.firstName, lastName: patient.lastName, patientId: patient.patientId } : null
+        });
+      });
+
+    res.render('signatures/index', { title: 'Signatures', tests, currentUser, availableTestTypes, priorities, searchQuery, typeFilter, priorityFilter });
   } catch (err) {
     console.error('Signatures list error:', err);
     req.flash('error_msg', 'Error loading signable documents');
