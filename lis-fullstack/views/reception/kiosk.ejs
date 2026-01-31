@@ -44,14 +44,14 @@
 
     .kiosk-container {
       min-height: 100vh;
-      padding: 24px;
+      padding: 12px;
     }
 
     /* Header */
     .kiosk-header {
       text-align: center;
-      margin-bottom: 24px;
-      padding: 20px;
+      margin-bottom: 12px;
+      padding: 10px;
       background: var(--brand-white);
       border-radius: 16px;
       border: 1px solid var(--border-light);
@@ -59,38 +59,38 @@
     }
 
     .kiosk-title {
-      font-size: 2.8rem;
+      font-size: 1.4rem;
       font-weight: 700;
       color: var(--brand-green-dark);
-      margin: 0 0 8px 0;
+      margin: 0 0 4px 0;
       font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       letter-spacing: 0.2px;
     }
     /* Title row contains logo + stacked title text */
-    .kiosk-title-row { display: flex; align-items: center; justify-content: center; gap: 18px; }
-    .kiosk-title-stack { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-  .kiosk-logo { width: 120px; height: auto; border-radius: 8px; box-shadow: 0 6px 18px rgba(5,150,105,0.08); object-fit: cover; }
+    .kiosk-title-row { display: flex; align-items: center; justify-content: center; gap: 9px; }
+    .kiosk-title-stack { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+    .kiosk-logo { width: 72px; height: auto; border-radius: 8px; box-shadow: 0 6px 18px rgba(5,150,105,0.08); object-fit: cover; }
   .kiosk-title span { color: var(--brand-green); }
 
     .kiosk-subtitle {
-      font-size: 1.25rem;
+      font-size: 1rem;
       color: var(--brand-black);
-      margin: 8px 0 0 0;
+      margin: 6px 0 0 0;
       font-weight: 600;
       letter-spacing: 0.2px;
     }
 
     .kiosk-time {
-      font-size: 2rem;
+      font-size: 1.6rem;
       color: var(--brand-orange);
       font-weight: 700;
-      margin-top: 12px;
+      margin-top: 8px;
       font-variant-numeric: tabular-nums;
     }
     .kiosk-date {
-      font-size: 1rem;
+      font-size: 0.9rem;
       color: var(--text-muted);
-      margin-top: 6px;
+      margin-top: 4px;
       font-weight: 600;
     }
 
@@ -170,15 +170,15 @@
     @media (orientation: landscape) {
       /* Ensure no page scroll in landscape by using full-height flex layout */
       html, body { height: 100%; overflow: hidden; }
-      .kiosk-container { display: flex; flex-direction: column; height: 100%; padding: 12px; padding-bottom: 70px; box-sizing: border-box; }
-      .kiosk-header { padding: 12px; margin-bottom: 12px; }
-  .kiosk-title { font-size: 2.4rem; }
+      .kiosk-container { display: flex; flex-direction: column; height: 100%; padding: 6px; padding-bottom: 70px; box-sizing: border-box; }
+      .kiosk-header { padding: 6px; margin-bottom: 6px; }
+  .kiosk-title { font-size: 1.2rem; }
   .kiosk-title-stack { display: flex; flex-direction: column; gap: 4px; align-items: center; text-align: center; }
   .kiosk-title { margin: 0; }
   /* Slightly larger subtitle but tightened spacing under the main title */
-  .kiosk-subtitle { font-size: 1.15rem; margin: 0; color: var(--text-muted); font-weight: 600; }
-      .kiosk-time { font-size: 1.4rem; margin-top: 8px; }
-      .kiosk-date { font-size: 0.95rem; }
+  .kiosk-subtitle { font-size: 0.95rem; margin: 0; color: var(--text-muted); font-weight: 600; }
+      .kiosk-time { font-size: 1.1rem; margin-top: 8px; }
+      .kiosk-date { font-size: 0.9rem; }
 
       /* 5 columns, 2 rows layout to show up to 10 tiles on one page */
       .areas-grid {
@@ -564,10 +564,13 @@
 
     /* Apply only in landscape where we already show 5x2 */
     @media (orientation: landscape) {
-      body.is-tv .kiosk-container { padding: 8px; padding-bottom: 56px; }
-      body.is-tv .kiosk-header { padding: 8px; margin-bottom: 8px; }
-  body.is-tv .kiosk-title { font-size: 2rem; }
+      body.is-tv .kiosk-container { padding: 4px; padding-bottom: 56px; }
+      body.is-tv .kiosk-header { padding: 4px; margin-bottom: 4px; }
+  body.is-tv .kiosk-title { font-size: 1rem; }
       body.is-tv .kiosk-subtitle { font-size: 0.95rem; }
+      body.is-tv .kiosk-time { font-size: 2.2rem; }
+      body.is-tv .kiosk-date { font-size: 1.1rem; }
+      body.is-tv .kiosk-logo { width: 96px; }
       body.is-tv .status-bar { gap: 12px; margin-bottom: 12px; }
 
       body.is-tv .areas-grid { gap: 8px; }
@@ -602,10 +605,21 @@
       body.zoomed .kiosk-subtitle { font-size: 0.95rem; }
       body.zoomed .kiosk-time { font-size: 1.4rem; }
       body.zoomed .kiosk-date { font-size: 0.85rem; }
+
+      /* Kiosk scaling: set <1 to shrink UI, >1 to enlarge */
+      :root { --kiosk-scale: 0.89; }
+
+      .kiosk-wrapper { display:flex; justify-content:center; }
+      .kiosk-scaled {
+        transform: scale(var(--kiosk-scale));
+        transform-origin: top center;
+        width: calc(100% / var(--kiosk-scale)); /* keep layout width so no clipping */
+      }
   </style>
 </head>
 <body>
-  <div class="kiosk-container" id="kioskContainer">
+  <div class="kiosk-wrapper">
+    <div class="kiosk-container kiosk-scaled" id="kioskContainer">
     <div class="kiosk-header">
       <div class="kiosk-title-row">
         <img src="/assets/gezyne-logo.png" alt="Gezyne logo" class="kiosk-logo">
@@ -659,6 +673,8 @@
           </div>
         </div>
       <% }); %>
+    </div>
+
     </div>
   </div>
 
@@ -853,6 +869,20 @@
       try {
         if (!isTvDevice()) return;
         document.body.classList.add('is-tv');
+        // Apply a stronger shrink on Android TV devices which often render larger
+        try {
+          const ua = navigator.userAgent || '';
+          const isAndroid = /Android/i.test(ua);
+          if (isAndroid) {
+            document.documentElement.style.setProperty('--kiosk-scale', '0.62');
+            document.body.classList.add('android-tv');
+            console.log('[Kiosk] Android TV detected — applying kiosk-scale=0.62');
+          } else {
+            // Slightly smaller default for other TVs
+            document.documentElement.style.setProperty('--kiosk-scale', '0.72');
+            console.log('[Kiosk] TV detected — applying kiosk-scale=0.72');
+          }
+        } catch (e) { /* ignore */ }
         // run initially after layout settles
         setTimeout(adjustTextForTV, 120);
         window.addEventListener('resize', () => {
