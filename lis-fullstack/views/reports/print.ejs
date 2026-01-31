@@ -40,7 +40,7 @@
   <script>
     (function(){
       try {
-        const sigs = <%- JSON.stringify(test && test.results && test.results.signatures ? test.results.signatures : {}) %> || {};
+        const sigs = <%- JSON.stringify(typeof test !== 'undefined' && test && test.results && test.results.signatures ? test.results.signatures : {}) %> || {};
         const keys = Object.keys(sigs || {});
         if (keys.length) {
           keys.forEach(uid => {
