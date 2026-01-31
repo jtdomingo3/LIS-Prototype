@@ -17,7 +17,8 @@
   .unit-col{ width:15%; text-align:center; font-size:13px }
   .ref-col{ width:10%; text-align:center; font-size:13px }
   .signatures{ display:flex; justify-content:space-between; margin-top:36px }
-  .sig{ text-align:center; width:32% }
+  .sig{ text-align:center; width:32%; position:relative; min-height:80px }
+  .signature-overlay{ position:absolute; left:50%; transform:translateX(-50%) scale(1); transform-origin:center; max-width:60%; max-height:96px; opacity:1; z-index:2 }
   .watermark{ position:absolute; left:50%; top:44%; transform:translate(-50%,-50%); width:52%; opacity:0.06; pointer-events:none; z-index:0 }
   .report-container{ position:relative; z-index:1 }
   .note{ margin-top:6px; border:none; min-height:unset; padding:0 4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
@@ -125,24 +126,47 @@
 
     <div class="note"><strong>NOTE:</strong> <span class="note-text"><%= test && test.results && test.results.note ? test.results.note : '' %></span></div>
 
+    <%
+      function findSigFor(displayName){
+        var sigs = (test && test.results && test.results.signatures) ? test.results.signatures : {};
+        for(var k in sigs){ if(sigs[k] && sigs[k].name === displayName) return sigs[k]; }
+        return null;
+      }
+    %>
+
     <div class="signatures">
       <div class="sig">
         <div style="border-top:1px solid #000; height:10px; margin-bottom:6px"></div>
-        <div style="font-weight:700"><strong><%= (test && test.results && test.results.performedByName) || (test && test.performedBy && test.performedBy.name) || '' %></strong></div>
+        <% var displayName = (test && test.results && test.results.performedByName) || (test && test.performedBy && test.performedBy.name) || '' %>
+        <% var sig = findSigFor(displayName); var p = (sig && sig.placement) ? sig.placement : {x:0,y:-72,scale:1}; if(p && (typeof p.y === 'undefined' || p.y === 0)){ p.y = -72; } if(p && (typeof p.scale === 'undefined' || p.scale === 1)){ p.scale = 1.25; } %>
+        <% if (sig && sig.filename) { %>
+          <img src="/assets/signature/<%= sig.filename %>" class="signature-overlay" style="top:<%= p.y %>px; transform:translateX(-50%) scale(<%= typeof p.scale!=='undefined'?p.scale:1 %>); max-height:96px;" />
+        <% } %>
+        <div style="font-weight:700"><strong><%= displayName %></strong></div>
         <div style="font-size:11px"><% if (test && test.results && test.results.performedByLicense) { %><strong>Lic. No. <%= test.results.performedByLicense %></strong><% } %></div>
         <div>Medical Technologist</div>
       </div>
 
       <div class="sig">
         <div style="border-top:1px solid #000; height:10px; margin-bottom:6px"></div>
-        <div style="font-weight:700"><strong><%= (test && test.results && test.results.validatedByName) || '' %></strong></div>
+        <% var displayName = (test && test.results && test.results.validatedByName) || '' %>
+        <% var sig = findSigFor(displayName); var p = (sig && sig.placement) ? sig.placement : {x:0,y:-72,scale:1}; if(p && (typeof p.y === 'undefined' || p.y === 0)){ p.y = -72; } if(p && (typeof p.scale === 'undefined' || p.scale === 1)){ p.scale = 1.25; } %>
+        <% if (sig && sig.filename) { %>
+          <img src="/assets/signature/<%= sig.filename %>" class="signature-overlay" style="top:<%= p.y %>px; transform:translateX(-50%) scale(<%= typeof p.scale!=='undefined'?p.scale:1 %>); max-height:96px;" />
+        <% } %>
+        <div style="font-weight:700"><strong><%= displayName %></strong></div>
         <div style="font-size:11px"><% if (test && test.results && test.results.validatedByLicense) { %><strong>Lic. No. <%= test.results.validatedByLicense %></strong><% } %></div>
         <div>Validated By</div>
       </div>
 
       <div class="sig">
         <div style="border-top:1px solid #000; height:10px; margin-bottom:6px"></div>
-        <div style="font-weight:700"><strong><%= (test && test.results && test.results.requestedByName) || (test && test.requestedBy && test.requestedBy.name) || '' %></strong></div>
+        <% var displayName = (test && test.results && test.results.requestedByName) || (test && test.requestedBy && test.requestedBy.name) || '' %>
+        <% var sig = findSigFor(displayName); var p = (sig && sig.placement) ? sig.placement : {x:0,y:0,scale:1}; if(p && (typeof p.scale === 'undefined' || p.scale === 1)){ p.scale = 1.25; } %>
+        <% if (sig && sig.filename) { %>
+          <img src="/assets/signature/<%= sig.filename %>" class="signature-overlay" style="top:<%= p.y %>px; transform:translateX(-50%) scale(<%= typeof p.scale!=='undefined'?p.scale:1 %>); max-height:96px;" />
+        <% } %>
+        <div style="font-weight:700"><strong><%= displayName %></strong></div>
         <div style="font-size:11px"><% if (test && test.results && test.results.requestedByLicense) { %><strong>Lic. No. <%= test.results.requestedByLicense %></strong><% } %></div>
         <div>Pathologist</div>
       </div>

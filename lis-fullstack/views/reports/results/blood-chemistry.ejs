@@ -23,7 +23,7 @@
   .results-frame .center{ text-align:center }
   .signatures{ display:flex; justify-content:space-between; margin-top:24px }
   .sig{ position:relative; text-align:center; width:32%; min-height:90px }
-  .signature-overlay{ position:absolute; pointer-events:none; left:50%; transform-origin:center; }
+  .signature-overlay{ position:absolute; left:50%; transform:translateX(-50%) scale(1); transform-origin:center; max-width:60%; pointer-events:none; z-index:2 }
   .watermark{ position:absolute; left:50%; top:44%; transform:translate(-50%,-50%); width:52%; opacity:0.06; pointer-events:none; z-index:0 }
   .report-container{ position:relative; z-index:1 }
   .normal-small{ font-size:11px; color:#333 }
@@ -251,8 +251,8 @@
            const _validatedSig = findSigFor(_validatedName);
         %>
         <% if (_validatedSig && _validatedSig.filename) { %>
-          <% const p = _validatedSig.placement || { x:0, y:-56, scale:1 }; %>
-          <img src="/assets/signature/<%= _validatedSig.filename %>" class="signature-overlay" style="left:50%; top:<%= p.y %>px; transform:translateX(-50%) scale(<%= p.scale %>); max-height:96px;" alt="signature" />
+          <% const p = _validatedSig.placement ? _validatedSig.placement : { x:0, y:-72, scale:1 }; if(p && (typeof p.y === 'undefined' || p.y === 0)){ p.y = -72; } if(p && (typeof p.scale === 'undefined' || p.scale === 1)){ p.scale = 1.25; } %>
+          <img src="/assets/signature/<%= _validatedSig.filename %>" class="signature-overlay" style="top:<%= p.y %>px; transform:translateX(-50%) scale(<%= p.scale %>); max-height:96px;" alt="signature" />
         <% } %>
         <div class="normal-small"><% if (test && test.results && test.results.validatedByLicense) { %><strong>Lic. No. <%= test.results.validatedByLicense %></strong><% } %></div>
         <div>Validated By</div>
@@ -265,8 +265,8 @@
            const _requestedSig = findSigFor(_requestedName);
         %>
         <% if (_requestedSig && _requestedSig.filename) { %>
-          <% const p = _requestedSig.placement || { x:0, y:-56, scale:1 }; %>
-          <img src="/assets/signature/<%= _requestedSig.filename %>" class="signature-overlay" style="left:50%; top:<%= p.y %>px; transform:translateX(-50%) scale(<%= p.scale %>); max-height:96px;" alt="signature" />
+          <% const p = _requestedSig.placement ? _requestedSig.placement : { x:0, y:0, scale:1 }; if(p && (typeof p.scale === 'undefined' || p.scale === 1)){ p.scale = 1.25; } %>
+          <img src="/assets/signature/<%= _requestedSig.filename %>" class="signature-overlay" style="top:<%= p.y %>px; transform:translateX(-50%) scale(<%= p.scale %>); max-height:96px;" alt="signature" />
         <% } %>
         <div class="normal-small"><% if (test && test.results && test.results.requestedByLicense) { %><strong>Lic. No. <%= test.results.requestedByLicense %></strong><% } %></div>
         <div>Pathologist</div>
