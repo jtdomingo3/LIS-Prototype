@@ -51,7 +51,9 @@
               const text = (el.textContent || el.innerText || '').replace(/\s+/g,' ').trim();
               if (!text) return;
               if (text.indexOf(String(s.name).trim()) !== -1) {
-                const p = (s.placement) ? s.placement : { x:0, y:-56, scale:1 };
+                  // don't append if server-side template already rendered an overlay
+                  if (el.querySelector && el.querySelector('.signature-overlay')) return;
+                  const p = (s.placement) ? s.placement : { x:0, y:-56, scale:1.25 };
                 const img = document.createElement('img');
                 img.src = '/assets/signature/' + s.filename;
                 img.className = 'signature-overlay';
