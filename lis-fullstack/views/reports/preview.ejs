@@ -4,16 +4,9 @@
   <!-- Navigation & Filters -->
   <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
     <div>
-      <% if (typeof prevId !== 'undefined' && prevId) { %>
-        <a id="prevBtn" href="/reports/preview/<%= prevId %><%= typeof filterQuery !== 'undefined' ? filterQuery : '' %>" class="button btn-secondary">← Previous</a>
-      <% } else { %>
-        <button class="button btn-secondary" disabled>← Previous</button>
-      <% } %>
-      <% if (typeof nextId !== 'undefined' && nextId) { %>
-        <a id="nextBtn" href="/reports/preview/<%= nextId %><%= typeof filterQuery !== 'undefined' ? filterQuery : '' %>" class="button btn-secondary">Next →</a>
-      <% } else { %>
-        <button class="button btn-secondary" disabled>Next →</button>
-      <% } %>
+      <% // Always render as anchors so client-side can update hrefs reliably %>
+      <a id="prevBtn" class="button btn-secondary<%= (typeof prevId === 'undefined' || !prevId) ? ' disabled' : '' %>" <%= (typeof prevId !== 'undefined' && prevId) ? ('href="/reports/preview/' + prevId + (typeof filterQuery !== 'undefined' ? filterQuery : '') + '"') : '' %>>← Previous</a>
+      <a id="nextBtn" class="button btn-secondary<%= (typeof nextId === 'undefined' || !nextId) ? ' disabled' : '' %>" <%= (typeof nextId !== 'undefined' && nextId) ? ('href="/reports/preview/' + nextId + (typeof filterQuery !== 'undefined' ? filterQuery : '') + '"') : '' %>>Next →</a>
     </div>
 
     <div style="flex:1; display:flex; gap:8px; align-items:center;">
