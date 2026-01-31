@@ -113,7 +113,7 @@ function getTargetAreaForTest(t) {
   // Explicit exclusions that should remain Awaiting (handled separately)
   if (label.includes('fecal') || label.includes('pregnan') || label.includes('fob') || label.includes('pregnancy') || label.includes('urinal')) return null;
   // Common blood/serology/hematology templates map to Extraction Area
-  if (/blood|chemistry|hematology|serology|pt|aptt|typing|dengue|esr|thyroid|ct-bt|cbc|hba1c/.test(label)) return 'Extraction Area';
+  if (/blood|chemistry|bun|crea|creatinine|hematology|serology|pt|aptt|typing|dengue|esr|thyroid|ct-bt|cbc|hba1c/.test(label)) return 'Extraction Area';
   return null;
 }
 
@@ -141,7 +141,7 @@ function getTargetAreaForRequest(rr) {
     if (label.includes('ecg')) return 'ECG';
     if (label.includes('drug')) return 'Drug Test';
     if (label.includes('send')) return 'Sendout';
-    if (/blood|chemistry|hematology|serology|pt|aptt/.test(label)) return 'Extraction Area';
+    if (/blood|chemistry|bun|crea|creatinine|hematology|serology|pt|aptt/.test(label)) return 'Extraction Area';
   } catch (e) { }
   return null;
 }
