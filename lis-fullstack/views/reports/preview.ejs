@@ -173,6 +173,16 @@
       setUrlParams();
       applyParamsToNavLinks();
       updatePager();
+      // Auto-navigate to first filtered result so preview updates immediately
+      const ids = getFilteredIds();
+      if (ids && ids.length) {
+        const first = ids[0];
+        if (first !== window.currentTestId) {
+          const qs = getQueryString();
+          window.location.href = '/reports/preview/' + first + qs;
+          return;
+        }
+      }
     }
     [patientInput, testTypeSelect, dateFilter].forEach(el => el.addEventListener('change', onFilterChange));
     [patientInput, testTypeSelect].forEach(el => el.addEventListener('input', onFilterChange));
