@@ -56,19 +56,22 @@
   <div class="card">
     <h4>Patient Information</h4>
     <% if (test.patient) { %>
-      <p><strong>Name:</strong> <%= test.patient.firstName %> <%= test.patient.lastName %></p>
-      <p><strong>Patient ID:</strong> <%= test.patient.patientId %></p>
+      <p><strong>Name:</strong> <span id="patientName"><%= test.patient.firstName %> <%= test.patient.lastName %></span></p>
+      <p><strong>Patient ID:</strong> <span id="patientPatientId"><%= test.patient.patientId %></span></p>
+    <% } else { %>
+      <p><strong>Name:</strong> <span id="patientName"><%= test.patientName || '' %></span></p>
+      <p><strong>Patient ID:</strong> <span id="patientPatientId"><%= (test.patient && test.patient.patientId) || '' %></span></p>
     <% } %>
     <h4>Test Information</h4>
-    <p><strong>Test ID:</strong> <%= test.testId %></p>
-    <p><strong>Test Type:</strong> <%= test.testType %></p>
-    <p><strong>Date:</strong> <%= test.testDate ? new Date(test.testDate).toLocaleDateString() : '' %></p>
+    <p><strong>Test ID:</strong> <span id="displayTestId"><%= test.testId %></span></p>
+    <p><strong>Test Type:</strong> <span id="displayTestType"><%= test.testType %></span></p>
+    <p><strong>Date:</strong> <span id="displayTestDate"><%= test.testDate ? new Date(test.testDate).toLocaleDateString() : '' %></span></p>
     <h4>Results</h4>
     <% if (true) { %>
       <div style="width:100%;height:820px;border:1px solid #e6e6e6;">
             <!-- Load result template via iframe src so it uses the same routing/layout logic and asset paths
                  (avoids srcdoc issues with relative URLs and duplicated/global CSS that distort preview) -->
-            <iframe src="/reports/result/<%= test.id %>?embedded=1" style="width:100%;height:100%;border:0;margin:0;padding:0;" title="Result Template" sandbox="allow-same-origin allow-scripts"></iframe>
+            <iframe id="resultFrame" src="/reports/result/<%= test.id %>?embedded=1" style="width:100%;height:100%;border:0;margin:0;padding:0;" title="Result Template" sandbox="allow-same-origin allow-scripts"></iframe>
       </div>
     <% } else { %>
       <pre style="white-space:pre-wrap;"><%= test.results || 'No results recorded.' %></pre>
@@ -76,8 +79,8 @@
   </div>
 
   <div class="action-buttons mt-20">
-    <a href="/reports/pdf/<%= test.id %>" class="button btn-primary">Download PDF</a>
-    <a href="/reports/result/<%= test.id %>?embedded=1&print=1" target="_blank" class="button btn-orange">Print</a>
+    <a id="downloadPdf" href="/reports/pdf/<%= test.id %>" class="button btn-primary">Download PDF</a>
+    <a id="printLink" href="/reports/result/<%= test.id %>?embedded=1&print=1" target="_blank" class="button btn-orange">Print</a>
     <!-- View Result Template removed per request -->
   </div>
 </div>
@@ -144,6 +147,8 @@
     readParamsToInputs();
     applyParamsToNavLinks();
     const filteredPager = document.getElementById('filteredPager');
+    // debounce timer to allow multi-filtering before auto-navigation
+    let debounceTimer = null;
 
     function updatePager(){
       // If any filter is active, use filtered IDs, otherwise use full tests list
@@ -169,25 +174,39 @@
 
     // update nav links, pager and filtered list when inputs change (auto-apply)
     function onFilterChange(){
+      // Update UI immediately
       populateFilteredSelect();
       setUrlParams();
       applyParamsToNavLinks();
       updatePager();
-      // Auto-navigate to first filtered result so preview updates immediately
+      // Debounce navigation so user can choose multiple filters quickly
+      if (debounceTimer) clearTimeout(debounceTimer);
       const ids = getFilteredIds();
-      if (ids && ids.length) {
-        const first = ids[0];
-        if (first !== window.currentTestId) {
-          const qs = getQueryString();
-          window.location.href = '/reports/preview/' + first + qs;
-          return;
+      // Navigation policy:
+      // - If exactly one filtered result, navigate to it.
+      // - If multiple results and the current test is among them, do NOT navigate (stay on current preview).
+      // - If multiple results and current test is NOT among them, do NOT auto-navigate to avoid disruptive refresh.
+      if (!ids) return;
+      if (ids.length === 1) {
+        const only = ids[0];
+        if (only !== window.currentTestId) {
+          debounceTimer = setTimeout(() => {
+            const qs = getQueryString();
+            renderTestInPlace(only, qs);
+          }, 400);
         }
       }
+      // otherwise do nothing (keep current preview) to avoid refreshing when multiple matches
     }
     [patientInput, testTypeSelect, dateFilter].forEach(el => el.addEventListener('change', onFilterChange));
     [patientInput, testTypeSelect].forEach(el => el.addEventListener('input', onFilterChange));
 
     clearBtn.addEventListener('click', function(){
+      // cancel any pending auto-navigation
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+        debounceTimer = null;
+      }
       patientInput.value = '';
       testTypeSelect.value = '';
       dateFilter.value = '';
@@ -196,6 +215,8 @@
       filteredSelect.selectedIndex = 0;
       history.replaceState(null, '', window.location.pathname);
       applyParamsToNavLinks();
+      // repopulate and update pager
+      populateFilteredSelect();
       updatePager();
     });
 
@@ -238,19 +259,69 @@
 
     // (Apply is automatic on change)
 
+    // render a test preview in-place (without full page reload) when possible
+    const resultFrame = document.getElementById('resultFrame');
+    const elPatientName = document.getElementById('patientName');
+    const elPatientPatientId = document.getElementById('patientPatientId');
+    const elDisplayTestId = document.getElementById('displayTestId');
+    const elDisplayTestType = document.getElementById('displayTestType');
+    const elDisplayTestDate = document.getElementById('displayTestDate');
+    const downloadPdf = document.getElementById('downloadPdf');
+    const printLink = document.getElementById('printLink');
+
+    function renderTestInPlace(id, qs) {
+      qs = qs || '';
+      const t = tests.find(x => String(x.id) === String(id));
+      if (!t) {
+        // fallback to full navigation when test data isn't available client-side
+        window.location.href = '/reports/preview/' + id + qs;
+        return;
+      }
+      // update iframe
+      if (resultFrame) resultFrame.src = '/reports/result/' + id + '?embedded=1' + (qs ? ('&' + qs.replace(/^\?/, '')) : '');
+      // update displayed metadata
+      if (elPatientName) elPatientName.textContent = t.patientName || '';
+      if (elPatientPatientId) elPatientPatientId.textContent = t.patientId || '';
+      if (elDisplayTestId) elDisplayTestId.textContent = t.testId || '';
+      if (elDisplayTestType) elDisplayTestType.textContent = t.testType || '';
+      if (elDisplayTestDate) elDisplayTestDate.textContent = t.testDate ? new Date(t.testDate).toLocaleDateString() : '';
+      // update action links
+      if (downloadPdf) downloadPdf.href = '/reports/pdf/' + id;
+      if (printLink) printLink.href = '/reports/result/' + id + '?embedded=1&print=1';
+      // update history and current id
+      const newPath = '/reports/preview/' + id + qs;
+      try { history.replaceState(null, '', newPath); } catch (e) {}
+      window.currentTestId = id;
+      // update pager and prev/next links according to current filters
+      applyParamsToNavLinks();
+      updatePager();
+      // adjust prev/next anchors to point to next/prev within the current filtered set (if anchors exist)
+      const anyFilter = !!(patientInput.value || testTypeSelect.value || dateFilter.value);
+      const ids = anyFilter ? getFilteredIds() : tests.map(tt => tt.id);
+      const idx = ids.indexOf(id);
+      if (prevBtn && prevBtn.tagName === 'A') {
+        if (idx > 0) prevBtn.href = '/reports/preview/' + ids[idx-1] + getQueryString();
+        else prevBtn.removeAttribute('href');
+      }
+      if (nextBtn && nextBtn.tagName === 'A') {
+        if (idx !== -1 && idx < ids.length - 1) nextBtn.href = '/reports/preview/' + ids[idx+1] + getQueryString();
+        else nextBtn.removeAttribute('href');
+      }
+    }
+
     // auto-open when the filtered-select value changes (preserve filters)
     filteredSelect.addEventListener('change', function(){
       const v = filteredSelect.value;
       if (!v) return;
       const qs = getQueryString();
-      window.location.href = '/reports/preview/' + v + qs;
+      renderTestInPlace(v, qs);
     });
     // also allow double-click to open (backwards compatibility)
     filteredSelect.addEventListener('dblclick', function(){
       const v = filteredSelect.value;
       if (v) {
         const qs = getQueryString();
-        window.location.href = '/reports/preview/' + v + qs;
+        renderTestInPlace(v, qs);
       }
     });
 
@@ -268,7 +339,7 @@
       if (targetIndex < 0 || targetIndex >= ids.length) return false;
       const targetId = ids[targetIndex];
       const qs = getQueryString();
-      window.location.href = '/reports/preview/' + targetId + qs;
+      renderTestInPlace(targetId, qs);
       return true;
     }
 
