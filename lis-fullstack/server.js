@@ -407,11 +407,13 @@ app.use((req, res, next) => {
 
     console.debug(`[auth-guard] incoming ${req.method} ${path} mapping=${mapping ? mapping.prefix+'=>'+mapping.perm : '<none>'}`);
 
-    // === allow public kiosk access to the assigned kiosk view ===
+    // === allow public kiosk access to safe reception endpoints (kiosk mode) ===
     const kioskQuery = req.query && (req.query.kiosk === '1' || String(req.query.kiosk).toLowerCase() === 'true');
     const kioskEnv = (process.env.APP_KIOSK === '1' || String(process.env.APP_KIOSK || '').toLowerCase() === 'true');
-    if ((kioskQuery || kioskEnv) && path.indexOf('/reception/assigned') === 0) {
-      console.debug('[auth-guard] allowing kiosk access to /reception/assigned without auth');
+    // If kiosk mode requested, allow GET requests under /reception/ to proceed without auth.
+    // This lets the kiosk TV fetch the assigned view, SSE, data and TTS resources without login.
+    if ((kioskQuery || kioskEnv) && req.method === 'GET' && path.indexOf('/reception/') === 0) {
+      console.debug('[auth-guard] allowing kiosk GET access to reception path without auth', path);
       return next();
     }
 

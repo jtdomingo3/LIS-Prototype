@@ -1057,7 +1057,7 @@
             await new Promise((resolve) => {
               _currentAudio.onended = () => { resolve(); };
               _currentAudio.onerror = () => { resolve(); };
-              _currentAudio.src = '/reception/tts?text=' + encodeURIComponent(next) + '&lang=en';
+              _currentAudio.src = '/reception/tts?text=' + encodeURIComponent(next) + '&lang=en&kiosk=1';
               try { _currentAudio.pause(); } catch (e) {}
               _currentAudio.currentTime = 0;
               _currentAudio.play().catch(e => { console.warn('[Kiosk] serverTTS play failed', e); resolve(); });
@@ -1132,7 +1132,7 @@
           try {
             const audio = document.createElement('audio');
             audio.style.display = 'none';
-            audio.src = '/reception/tts?text=' + encodeURIComponent(String(text)) + '&lang=en';
+            audio.src = '/reception/tts?text=' + encodeURIComponent(String(text)) + '&lang=en&kiosk=1';
             audio.onended = () => { try { audio.remove(); } catch (e) {} ; resolve(); };
             audio.onerror = () => { try { audio.remove(); } catch (e) {} ; resolve(); };
             // ensure start from beginning
