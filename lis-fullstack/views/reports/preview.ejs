@@ -13,7 +13,7 @@
       <select id="filterPatient" style="flex:2; min-width:300px; padding:8px;">
         <option value="">-- All Patients --</option>
         <% if (testsForNav && testsForNav.length) {
-             const patients = Array.from(new Set(testsForNav.map(t => t.patientName || '').filter(Boolean)));
+            const patients = Array.from(new Set(testsForNav.map(t => t.patientName || '').filter(Boolean))); 
            %>
           <% patients.forEach(function(pn) { %>
             <option value="<%= pn %>"><%= pn %></option>
@@ -23,15 +23,16 @@
       <!-- Test type dropdown (based on templates/testType) -->
         <div style="display:flex; gap:8px; align-items:flex-start;">
           <div style="display:flex; flex-direction:column; gap:8px;">
-            <select id="filterTestType" style="width:240px;padding:8px;">
-              <option value="">-- All Test Types --</option>
-              <% if (testsForNav && testsForNav.length) { 
-                   const types = Array.from(new Set(testsForNav.map(t => t.testType || t.template || '').filter(Boolean))); %>
-                <% types.forEach(function(tp) { %>
-                  <option value="<%= tp %>"><%= tp %></option>
+            <% let testTypes = []; if (testsForNav && testsForNav.length) { testTypes = Array.from(new Set(testsForNav.map(t => t.testType || t.template || '').filter(Boolean))); } %>
+            <div id="filterTestType" style="position:relative;">
+              <button type="button" id="filterTestTypeToggle" class="button" style="white-space:nowrap;">All Test Types ▾</button>
+              <div id="filterTestTypeList" style="display:none; position:absolute; right:0; background:#fff; border:1px solid #ccc; padding:8px; z-index:1000; max-height:220px; overflow:auto; min-width:220px;">
+                <label style="display:block; margin-bottom:6px;"><input type="checkbox" id="filterTestTypeSelectAll"> <strong>Select all</strong></label>
+                <% testTypes.forEach(function(tp) { %>
+                  <label style="display:block; white-space:nowrap; margin:4px 0;"><input type="checkbox" class="filterTestTypeCheckbox" value="<%= tp %>"> <%= tp %></label>
                 <% }) %>
-              <% } %>
-            </select>
+              </div>
+            </div>
           </div>
           <input id="filterDate" type="date" style="width:130px; padding:8px;">
           <button class="button" id="clearFilters">Clear Filters</button>
@@ -93,14 +94,23 @@
     const tests = window.testsForNav || [];
     const patientInput = document.getElementById('filterPatient');
     const testTypeSelect = document.getElementById('filterTestType');
+    const testTypeToggle = document.getElementById('filterTestTypeToggle');
+    const testTypeList = document.getElementById('filterTestTypeList');
     const dateFilter = document.getElementById('filterDate');
     const clearBtn = document.getElementById('clearFilters');
     const printBtn = document.getElementById('printFiltered');
 
+    function getSelectedTestTypes(){
+      const boxes = Array.from(document.querySelectorAll('.filterTestTypeCheckbox'));
+      if (!boxes || !boxes.length) return [];
+      return boxes.filter(b => b.checked).map(b => b.value).filter(Boolean);
+    }
+
     function getQueryString() {
       const params = new URLSearchParams();
       if (patientInput.value) params.set('filterPatient', patientInput.value);
-      if (testTypeSelect.value) params.set('filterTestType', testTypeSelect.value);
+      const selTypes = getSelectedTestTypes();
+      if (selTypes.length) params.set('filterTestType', selTypes.join(','));
       if (dateFilter.value) params.set('filterDate', dateFilter.value);
       const s = params.toString();
       return s ? ('?' + s) : '';
@@ -117,22 +127,29 @@
     }
 
     function readParamsToInputs(){
-      const p = new URLSearchParams(window.location.search);
-      const fp = p.get('filterPatient');
-      const ft = p.get('filterTestType');
-      const fd = p.get('filterDate');
-      if (fp) patientInput.value = fp;
-      if (ft) testTypeSelect.value = ft;
-      if (fd) dateFilter.value = fd;
+        const p = new URLSearchParams(window.location.search);
+        const fp = p.get('filterPatient');
+        const ft = p.get('filterTestType');
+        const fd = p.get('filterDate');
+        if (fp) patientInput.value = fp;
+        if (ft) {
+          const arr = ft.split(',');
+          Array.from(document.querySelectorAll('.filterTestTypeCheckbox')).forEach(cb => {
+            cb.checked = arr.indexOf(cb.value) !== -1;
+          });
+        }
+        if (fd) dateFilter.value = fd;
+        // update select-all checkbox after initializing selections
+        try { if (typeof updateSelectAllState === 'function') updateSelectAllState(); } catch(e) {}
     }
 
     function matchesFilters(t){
       const p = (patientInput.value || '').toLowerCase();
-      const ft = (testTypeSelect.value || '').toLowerCase();
+      const selTypes = getSelectedTestTypes().map(s => (s || '').toLowerCase());
       const fd = (dateFilter.value || '');
       // patient select uses exact match when specified
       if (p && ((t.patientName || '').toLowerCase() !== p)) return false;
-      if (ft && !((t.testType || '').toLowerCase() === ft)) return false;
+      if (selTypes.length && selTypes.indexOf(((t.testType||'').toLowerCase()) ) === -1) return false;
       if (fd && (t.testDate ? new Date(t.testDate).toISOString().slice(0,10) !== fd : true)) return false;
       return true;
     }
@@ -150,7 +167,7 @@
 
     function updatePager(){
       // If any filter is active, use filtered IDs, otherwise use full tests list
-      const anyFilter = !!(patientInput.value || testTypeSelect.value || dateFilter.value);
+      const anyFilter = !!(patientInput.value || getSelectedTestTypes().length || dateFilter.value);
       const ids = anyFilter ? getFilteredIds() : tests.map(t => t.id);
       const total = ids.length || 0;
       const cur = window.currentTestId;
@@ -164,7 +181,7 @@
     }
 
     // populate filtered select only if filters were present in URL on load
-    if (patientInput.value || testTypeSelect.value || dateFilter.value) {
+    if (patientInput.value || getSelectedTestTypes().length || dateFilter.value) {
       populateFilteredSelect();
     }
     // always update pager after initial setup
@@ -196,8 +213,48 @@
       }
       // otherwise do nothing (keep current preview) to avoid refreshing when multiple matches
     }
-    [patientInput, testTypeSelect, dateFilter].forEach(el => el.addEventListener('change', onFilterChange));
-    [patientInput, testTypeSelect].forEach(el => el.addEventListener('input', onFilterChange));
+    // patientInput: respond to input and change; dateFilter: change; testTypeCheckboxes: change
+    [patientInput].forEach(el => el.addEventListener('input', onFilterChange));
+    [patientInput, dateFilter].forEach(el => el.addEventListener('change', onFilterChange));
+    // wire checkbox changes (update select-all state when any checkbox changes)
+    function updateSelectAllState(){
+      const boxes = Array.from(document.querySelectorAll('.filterTestTypeCheckbox'));
+      const selAll = document.getElementById('filterTestTypeSelectAll');
+      if (!selAll) return;
+      selAll.checked = boxes.length > 0 && boxes.every(b => b.checked);
+    }
+
+    Array.from(document.querySelectorAll('.filterTestTypeCheckbox')).forEach(cb => cb.addEventListener('change', function(){
+      updateSelectAllState();
+      onFilterChange();
+    }));
+
+    // wire select-all checkbox
+    const selectAllBox = document.getElementById('filterTestTypeSelectAll');
+    if (selectAllBox) {
+      selectAllBox.addEventListener('change', function(){
+        const checked = selectAllBox.checked;
+        Array.from(document.querySelectorAll('.filterTestTypeCheckbox')).forEach(cb => cb.checked = checked);
+        onFilterChange();
+      });
+    }
+
+    // wire the dropdown toggle for the checkbox list
+    if (testTypeToggle && testTypeList) {
+      testTypeToggle.addEventListener('click', function(e){
+        e.stopPropagation();
+        const showing = testTypeList.style.display === 'block';
+        testTypeList.style.display = showing ? 'none' : 'block';
+        testTypeToggle.textContent = showing ? 'All Test Types ▾' : 'All Test Types ▴';
+      });
+      // close when clicking outside
+      document.addEventListener('click', function(evt){
+        if (!testTypeList.contains(evt.target) && !testTypeToggle.contains(evt.target)) {
+          testTypeList.style.display = 'none';
+          testTypeToggle.textContent = 'All Test Types ▾';
+        }
+      });
+    }
 
     clearBtn.addEventListener('click', function(){
       // cancel any pending auto-navigation
@@ -206,7 +263,9 @@
         debounceTimer = null;
       }
       patientInput.value = '';
-      testTypeSelect.value = '';
+      // clear checkboxes and select-all
+      Array.from(document.querySelectorAll('.filterTestTypeCheckbox')).forEach(cb => cb.checked = false);
+      try { const sa = document.getElementById('filterTestTypeSelectAll'); if (sa) sa.checked = false; } catch(e) {}
       dateFilter.value = '';
       // clear filtered select options
       while (filteredSelect.options.length > 1) filteredSelect.remove(1);
@@ -294,7 +353,7 @@
       applyParamsToNavLinks();
       updatePager();
       // adjust prev/next anchors to point to next/prev within the current filtered set (if anchors exist)
-      const anyFilter = !!(patientInput.value || testTypeSelect.value || dateFilter.value);
+      const anyFilter = !!(patientInput.value || getSelectedTestTypes().length || dateFilter.value);
       const ids = anyFilter ? getFilteredIds() : tests.map(tt => tt.id);
       const idx = ids.indexOf(id);
       if (prevBtn && prevBtn.tagName === 'A') {
