@@ -272,18 +272,15 @@ router.get('/assigned-events', (req, res) => {
   const kioskEnv = (process.env.APP_KIOSK === '1' || String(process.env.APP_KIOSK || '').toLowerCase() === 'true');
   const kiosk = kioskQuery || kioskEnv;
 
-  // if not kiosk, require a valid authenticated session and appropriate role
+  // if not kiosk, require a valid authenticated session. Allow any authenticated user
+  // to connect so all users receive live updates and notifications.
   if (!kiosk) {
     if (!req.session || !req.session.user) {
       // not authenticated -> reject
       res.status(401).end();
       return;
     }
-    const allowedRoles = ['Admin', 'Doctor', 'Technician'];
-    if (!allowedRoles.includes(req.session.user.role)) {
-      res.status(403).end();
-      return;
-    }
+    // any authenticated user allowed (no role check)
   }
 
   // Set headers for SSE
@@ -300,7 +297,7 @@ router.get('/assigned-events', (req, res) => {
   // send an initial comment to establish the stream
   res.write(':ok\n\n');
   // suggest client retry interval (ms)
-  try { res.write('retry: 5000\n\n'); } catch (e) { }
+  try { res.write('retry: 3000\n\n'); } catch (e) { }
 
   // Send an initial data event so clients reliably receive an onmessage immediately
   try {

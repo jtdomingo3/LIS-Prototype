@@ -1050,13 +1050,12 @@
                         } catch (e) { console.warn('[SSE] message parse error', e); }
                     };
                     es.onerror = function(err){ console.warn('[SSE] error, will attempt reconnect', err); try { es.close(); } catch(e){}; es = null; setConn(false); setTimeout(connect, 3000); };
-                } catch (e) { console.warn('[SSE] connect failed', e); setTimeout(connect, 5000); }
+                } catch (e) { console.warn('[SSE] connect failed', e); setTimeout(connect, 3000); }
             }
-
-            // Defer SSE connection until the user stays on the page for 10s.
+            // Defer SSE connection until the user stays on the page for 3s.
             // If user switches tab/loses visibility, cancel the pending connect and close any open connection.
             let sseDeferredTimer = null;
-            function scheduleSSEConnect(delay = 5000) {
+            function scheduleSSEConnect(delay = 3000) {
                 if (!('EventSource' in window)) return;
                 try { clearTimeout(sseDeferredTimer); } catch(e){}
                 sseDeferredTimer = setTimeout(() => {
@@ -1068,8 +1067,8 @@
 
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible') {
-                    // schedule connect after 5s of being visible
-                    scheduleSSEConnect(5000);
+                    // schedule connect after 3s of being visible
+                    scheduleSSEConnect(3000);
                 } else {
                     // cancel pending connect and close any existing connection
                     try { clearTimeout(sseDeferredTimer); } catch(e){}
@@ -1078,7 +1077,7 @@
             });
 
             // Kick off initial schedule when page loads (will connect after 5s if still visible)
-            if (document.visibilityState === 'visible') scheduleSSEConnect(5000);
+            if (document.visibilityState === 'visible') scheduleSSEConnect(3000);
         })();
 
         // Attempt to enter fullscreen when ?fullscreen=1 is present (best-effort).
