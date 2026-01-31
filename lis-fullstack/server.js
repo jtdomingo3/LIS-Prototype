@@ -407,6 +407,14 @@ app.use((req, res, next) => {
 
     console.debug(`[auth-guard] incoming ${req.method} ${path} mapping=${mapping ? mapping.prefix+'=>'+mapping.perm : '<none>'}`);
 
+    // === allow public kiosk access to the assigned kiosk view ===
+    const kioskQuery = req.query && (req.query.kiosk === '1' || String(req.query.kiosk).toLowerCase() === 'true');
+    const kioskEnv = (process.env.APP_KIOSK === '1' || String(process.env.APP_KIOSK || '').toLowerCase() === 'true');
+    if ((kioskQuery || kioskEnv) && path.indexOf('/reception/assigned') === 0) {
+      console.debug('[auth-guard] allowing kiosk access to /reception/assigned without auth');
+      return next();
+    }
+
     if (!mapping) return next();
 
     // Allow users to access their own profile regardless of broader '/users' permission
