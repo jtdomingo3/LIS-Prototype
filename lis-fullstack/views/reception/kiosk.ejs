@@ -182,7 +182,7 @@
 
       /* 5 columns, 2 rows layout to show up to 10 tiles on one page */
       .areas-grid {
-        grid-template-columns: repeat(5, 1fr) !important;
+        grid-template-columns: repeat(5, minmax(270px, 1fr)) !important;
         grid-template-rows: repeat(2, 1fr);
         grid-auto-rows: 1fr;
         gap: 12px;
@@ -574,6 +574,8 @@
       body.is-tv .status-bar { gap: 12px; margin-bottom: 12px; }
 
       body.is-tv .areas-grid { gap: 8px; }
+        /* Ensure tiles have a sensible minimum width on TV so they don't become too narrow */
+        body.is-tv .areas-grid { grid-template-columns: repeat(5, minmax(270px, 1fr)); }
       body.is-tv .area-card { padding: 8px; border-radius: 12px; }
       body.is-tv .area-header { margin-bottom: 6px; }
       body.is-tv .area-name { font-size: clamp(0.75rem, 1.2vw, 0.95rem); }
