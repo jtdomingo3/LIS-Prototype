@@ -21,19 +21,23 @@
         <% } %>
       </select>
       <!-- Test type dropdown (based on templates/testType) -->
-      <select id="filterTestType" style="width:240px;padding:8px;">
-        <option value="">-- All Test Types --</option>
-        <% if (testsForNav && testsForNav.length) { 
-             const types = Array.from(new Set(testsForNav.map(t => t.testType || t.template || '').filter(Boolean))); %>
-          <% types.forEach(function(tp) { %>
-            <option value="<%= tp %>"><%= tp %></option>
-          <% }) %>
-        <% } %>
-      </select>
-      <input id="filterDate" type="date" style="width:130px; padding:8px;">
-      <button class="button" id="clearFilters">Clear Filters</button>
-      <button class="button btn-primary" id="printFiltered">Print Filtered</button>
-    </div>
+        <div style="display:flex; gap:8px; align-items:flex-start;">
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <select id="filterTestType" style="width:240px;padding:8px;">
+              <option value="">-- All Test Types --</option>
+              <% if (testsForNav && testsForNav.length) { 
+                   const types = Array.from(new Set(testsForNav.map(t => t.testType || t.template || '').filter(Boolean))); %>
+                <% types.forEach(function(tp) { %>
+                  <option value="<%= tp %>"><%= tp %></option>
+                <% }) %>
+              <% } %>
+            </select>
+          </div>
+          <input id="filterDate" type="date" style="width:130px; padding:8px;">
+          <button class="button" id="clearFilters">Clear Filters</button>
+          <button class="button btn-primary" id="printFiltered">Print Filtered</button>
+        </div>
+      </div>
   </div>
 
   <!-- Filtered results select (populated when Apply Filters is clicked) -->
@@ -44,6 +48,11 @@
     <div style="margin-top:6px; text-align:right;">
       <span id="filteredPager" style="margin-left:12px; font-weight:600;"></span>
     </div>
+  </div>
+
+  <div style="margin-bottom:12px; text-align:right;">
+    <a id="downloadPdf" href="/reports/pdf/<%= test.id %>" class="button btn-primary">Download PDF</a>
+    <a id="printLink" href="/reports/result/<%= test.id %>?embedded=1&print=1" target="_blank" class="button btn-orange">Print</a>
   </div>
 
   <div class="card">
@@ -71,11 +80,7 @@
     <% } %>
   </div>
 
-  <div class="action-buttons mt-20">
-    <a id="downloadPdf" href="/reports/pdf/<%= test.id %>" class="button btn-primary">Download PDF</a>
-    <a id="printLink" href="/reports/result/<%= test.id %>?embedded=1&print=1" target="_blank" class="button btn-orange">Print</a>
-    <!-- View Result Template removed per request -->
-  </div>
+  <!-- moved download/print controls to top filters area -->
 </div>
 
 <script>
