@@ -1869,6 +1869,11 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
       console.log('Saved results for test', req.params.id, 'results keys:', updated && updated.results ? Object.keys(updated.results) : null);
     } catch (e) {}
 
+    // Emit SSE event to notify clients that results were encoded for this test
+    try {
+      sseEmitter.emit('update', { action: 'result_encoded', testId: updated.testId, status: updated.status, patient: updated.patient, time: (new Date()).toISOString() });
+    } catch (e) { console.warn('SSE emit (result_encoded) failed', e); }
+
     req.flash('success_msg', 'Results saved successfully');
     res.redirect(`/tests/${req.params.id}`);
   } catch (err) {
@@ -2006,6 +2011,13 @@ router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
       req.flash('error_msg', 'Test not found');
       return res.redirect('/tests');
     }
+
+    // If results were included in this update, emit result_encoded event so clients can react
+    try {
+      if (updateData && updateData.results && Object.keys(updateData.results).length) {
+        try { sseEmitter.emit('update', { action: 'result_encoded', testId: test.testId, status: test.status, patient: test.patient, time: (new Date()).toISOString() }); } catch (e) { console.warn('SSE emit (result_encoded) failed', e); }
+      }
+    } catch (e) {}
 
     req.flash('success_msg', `Test ${test.testId} updated successfully!`);
     res.redirect(`/tests/${req.params.id}`);

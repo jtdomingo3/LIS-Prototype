@@ -1005,7 +1005,11 @@
                                     text = `Assigned: ${data.testId || ''}`;
                                 }
                             } else if (data.action === 'complete') {
-                                text = `Test completed: ${data.testId || ''}`;
+                                // completion emitted from Reception (collection step)
+                                text = `Collection Completed: ${data.testId || ''}`;
+                            } else if (data.action === 'result_encoded' || data.action === 'test_completed') {
+                                // explicit result-encoding / test completed from Tests & Results
+                                text = `Test Completed (results encoded): ${data.testId || ''}`;
                             } else if (data.action === 'advert') {
                                 text = `Kiosk advertisement updated: ${data.ad || ''}`;
                             } else if (data.action === 'debug') {

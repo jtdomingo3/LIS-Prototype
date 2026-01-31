@@ -22,7 +22,9 @@
         try { const lab = String(rr.lab || '').toLowerCase(); const lbl = String(rr.label || '').toLowerCase(); return lab === 'external' || lbl.includes('send out') || lbl.includes('sendout') || lbl.includes('for send'); } catch (e) { return false; }
       }));
       const hasResults = (test.results && (typeof test.results === 'object' ? Object.keys(test.results).length > 0 : String(test.results).trim().length > 0));
-      const isCompleted = String(test.status || '').toLowerCase() === 'completed';
+      // Consider Released or presence of completedAt as report-eligible as well
+      const statusStr = String(test.status || '').toLowerCase();
+      const isCompleted = (statusStr === 'completed' || statusStr === 'released' || Boolean(test.completedAt));
       const showReport = hasResults || isCompleted;
     %>
     <% 

@@ -88,12 +88,15 @@
                     </span>
                 </td>
                 <td><%= test.requestedBy ? test.requestedBy.name : 'Unknown' %></td>
-                <td>
-                    <a href="/tests/<%= test.id %>" class="button btn-small btn-primary">View</a>
-                    <% if (test.status === 'Completed') { %>
-                    <a href="/reports/preview/<%= test.id %>" class="button btn-small btn-orange">Report</a>
-                    <% } %>
-                </td>
+                                <td>
+                                        <a href="/tests/<%= test.id %>" class="button btn-small btn-primary">View</a>
+                                        <% 
+                                            const statusStr = String(test.status || '').toLowerCase();
+                                            const hasResults = (test.results && (typeof test.results === 'object' ? Object.keys(test.results).length > 0 : String(test.results).trim().length > 0));
+                                            if (statusStr === 'completed' || statusStr === 'released' || Boolean(test.completedAt) || hasResults) { %>
+                                            <a href="/reports/preview/<%= test.id %>" class="button btn-small btn-orange">Report</a>
+                                        <% } %>
+                                </td>
             </tr>
             <% }); %>
         </tbody>
