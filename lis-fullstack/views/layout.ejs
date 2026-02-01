@@ -759,6 +759,7 @@
                 <button type="submit" class="logout-btn" title="Logout"><i class="fa fa-power-off logout-emoji" aria-hidden="true"></i><span class="logout-text">Logout</span></button>
             </form>
             <a href="/settings" class="nav-item" style="margin-top:8px;"><span class="nav-emoji">⚙️</span><span class="nav-text">Settings</span></a>
+            <button type="button" class="nav-item" id="fullscreenBtn" onclick="toggleFullscreen()" style="margin-top:4px;border:none;width:100%;text-align:left;background:transparent;cursor:pointer;"><span class="nav-emoji">⛶</span><span class="nav-text">Fullscreen</span></button>
         </div>
         <% } %>
 
@@ -1109,6 +1110,42 @@
                 }
             } catch (e) {}
         })();
+
+        // Universal fullscreen toggle for sidebar button
+        function toggleFullscreen() {
+            const fsBtn = document.getElementById('fullscreenBtn');
+            const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+            
+            if (isFullscreen) {
+                // Exit fullscreen
+                if (document.exitFullscreen) document.exitFullscreen();
+                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+                else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+                else if (document.msExitFullscreen) document.msExitFullscreen();
+                if (fsBtn) fsBtn.querySelector('.nav-text').textContent = 'Fullscreen';
+            } else {
+                // Enter fullscreen
+                const el = document.documentElement;
+                if (el.requestFullscreen) el.requestFullscreen();
+                else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+                else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
+                else if (el.msRequestFullscreen) el.msRequestFullscreen();
+                if (fsBtn) fsBtn.querySelector('.nav-text').textContent = 'Exit Fullscreen';
+            }
+        }
+
+        // Update button text on fullscreen change
+        document.addEventListener('fullscreenchange', updateFsButton);
+        document.addEventListener('webkitfullscreenchange', updateFsButton);
+        document.addEventListener('mozfullscreenchange', updateFsButton);
+        document.addEventListener('MSFullscreenChange', updateFsButton);
+        
+        function updateFsButton() {
+            const fsBtn = document.getElementById('fullscreenBtn');
+            if (!fsBtn) return;
+            const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+            fsBtn.querySelector('.nav-text').textContent = isFullscreen ? 'Exit Fullscreen' : 'Fullscreen';
+        }
 </script>
 
     <!-- Scripts injected from individual views (via express-ejs-layouts extractScripts) -->
