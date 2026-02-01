@@ -12,6 +12,30 @@
       box-sizing: border-box;
     }
 
+    /* Zoom-out effect like browser zoom - no empty space */
+    html {
+      /* Default scale for PC browser: 80% zoom (TV scale applied via JavaScript) */
+      --zoom-scale: 0.8;
+      /* Taskbar offset to ensure content doesn't hide behind Windows taskbar */
+      --taskbar-offset: 0px;
+    }
+
+    /* TV mode zoom is applied via JavaScript for better device detection */
+    html.tv-mode {
+      --zoom-scale: 0.62;
+      /* Reduced offset - only account for actual taskbar height */
+      --taskbar-offset: 0px;
+    }
+
+    body {
+      /* Expand body to compensate for scale */
+      width: calc(100% / var(--zoom-scale));
+      /* Subtract taskbar offset so content stays visible above taskbar */
+      height: calc((100vh - var(--taskbar-offset)) / var(--zoom-scale));
+      transform: scale(var(--zoom-scale));
+      transform-origin: top left;
+    }
+
     :root {
       /* Brand Colors */
       --brand-black: #1a1a1a;
@@ -37,21 +61,21 @@
     body {
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
       background: var(--brand-gray-light);
-      min-height: 100vh;
+      min-height: calc((100vh - var(--taskbar-offset)) / var(--zoom-scale));
       overflow-x: hidden;
       color: var(--text-dark);
     }
 
     .kiosk-container {
-      min-height: 100vh;
-      padding: 12px;
+      min-height: calc((100vh - var(--taskbar-offset)) / var(--zoom-scale));
+      padding: 24px;
     }
 
     /* Header */
     .kiosk-header {
       text-align: center;
-      margin-bottom: 12px;
-      padding: 10px;
+      margin-bottom: 24px;
+      padding: 20px;
       background: var(--brand-white);
       border-radius: 16px;
       border: 1px solid var(--border-light);
@@ -59,38 +83,38 @@
     }
 
     .kiosk-title {
-      font-size: 1.4rem;
+      font-size: 2.8rem;
       font-weight: 700;
       color: var(--brand-green-dark);
-      margin: 0 0 4px 0;
+      margin: 0 0 8px 0;
       font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       letter-spacing: 0.2px;
     }
     /* Title row contains logo + stacked title text */
-    .kiosk-title-row { display: flex; align-items: center; justify-content: center; gap: 9px; }
-    .kiosk-title-stack { display: flex; flex-direction: column; align-items: center; gap: 3px; }
-    .kiosk-logo { width: 72px; height: auto; border-radius: 8px; box-shadow: 0 6px 18px rgba(5,150,105,0.08); object-fit: cover; }
+    .kiosk-title-row { display: flex; align-items: center; justify-content: center; gap: 18px; }
+    .kiosk-title-stack { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .kiosk-logo { width: 120px; height: auto; border-radius: 8px; box-shadow: 0 6px 18px rgba(5,150,105,0.08); object-fit: cover; }
   .kiosk-title span { color: var(--brand-green); }
 
     .kiosk-subtitle {
-      font-size: 1rem;
+      font-size: 1.25rem;
       color: var(--brand-black);
-      margin: 6px 0 0 0;
+      margin: 8px 0 0 0;
       font-weight: 600;
       letter-spacing: 0.2px;
     }
 
     .kiosk-time {
-      font-size: 1.6rem;
+      font-size: 2rem;
       color: var(--brand-orange);
       font-weight: 700;
-      margin-top: 8px;
+      margin-top: 12px;
       font-variant-numeric: tabular-nums;
     }
     .kiosk-date {
-      font-size: 0.9rem;
+      font-size: 1rem;
       color: var(--text-muted);
-      margin-top: 4px;
+      margin-top: 6px;
       font-weight: 600;
     }
 
@@ -168,21 +192,22 @@
 
     /* Landscape: force a 5x2 grid and scale elements down so the whole dashboard fits on one screen */
     @media (orientation: landscape) {
-      /* Ensure no page scroll in landscape by using full-height flex layout */
-      html, body { height: 100%; overflow: hidden; }
-      .kiosk-container { display: flex; flex-direction: column; height: 100%; padding: 6px; padding-bottom: 70px; box-sizing: border-box; }
-      .kiosk-header { padding: 6px; margin-bottom: 6px; }
-  .kiosk-title { font-size: 1.2rem; }
+      /* Ensure no page scroll in landscape by using full-height flex layout - adjusted for zoom and taskbar */
+      html { height: calc((100% - var(--taskbar-offset)) / var(--zoom-scale)); overflow: hidden; }
+      body { height: calc((100vh - var(--taskbar-offset)) / var(--zoom-scale)); min-height: auto; overflow: hidden; }
+      .kiosk-container { display: flex; flex-direction: column; height: calc((100vh - var(--taskbar-offset)) / var(--zoom-scale)); padding: 12px; padding-bottom: 12px; box-sizing: border-box; }
+      .kiosk-header { padding: 12px; margin-bottom: 12px; }
+  .kiosk-title { font-size: 2.4rem; }
   .kiosk-title-stack { display: flex; flex-direction: column; gap: 4px; align-items: center; text-align: center; }
   .kiosk-title { margin: 0; }
   /* Slightly larger subtitle but tightened spacing under the main title */
-  .kiosk-subtitle { font-size: 0.95rem; margin: 0; color: var(--text-muted); font-weight: 600; }
-      .kiosk-time { font-size: 1.1rem; margin-top: 8px; }
-      .kiosk-date { font-size: 0.9rem; }
+  .kiosk-subtitle { font-size: 1.15rem; margin: 0; color: var(--text-muted); font-weight: 600; }
+      .kiosk-time { font-size: 1.4rem; margin-top: 8px; }
+      .kiosk-date { font-size: 0.95rem; }
 
       /* 5 columns, 2 rows layout to show up to 10 tiles on one page */
       .areas-grid {
-        grid-template-columns: repeat(5, minmax(270px, 1fr)) !important;
+        grid-template-columns: repeat(5, 1fr) !important;
         grid-template-rows: repeat(2, 1fr);
         grid-auto-rows: 1fr;
         gap: 12px;
@@ -564,18 +589,13 @@
 
     /* Apply only in landscape where we already show 5x2 */
     @media (orientation: landscape) {
-      body.is-tv .kiosk-container { padding: 4px; padding-bottom: 56px; }
-      body.is-tv .kiosk-header { padding: 4px; margin-bottom: 4px; }
-  body.is-tv .kiosk-title { font-size: 1rem; }
+      body.is-tv .kiosk-container { padding: 8px; padding-bottom: 56px; }
+      body.is-tv .kiosk-header { padding: 8px; margin-bottom: 8px; }
+  body.is-tv .kiosk-title { font-size: 2rem; }
       body.is-tv .kiosk-subtitle { font-size: 0.95rem; }
-      body.is-tv .kiosk-time { font-size: 2.2rem; }
-      body.is-tv .kiosk-date { font-size: 1.1rem; }
-      body.is-tv .kiosk-logo { width: 96px; }
       body.is-tv .status-bar { gap: 12px; margin-bottom: 12px; }
 
       body.is-tv .areas-grid { gap: 8px; }
-        /* Ensure tiles have a sensible minimum width on TV so they don't become too narrow */
-        body.is-tv .areas-grid { grid-template-columns: repeat(5, minmax(270px, 1fr)); }
       body.is-tv .area-card { padding: 8px; border-radius: 12px; }
       body.is-tv .area-header { margin-bottom: 6px; }
       body.is-tv .area-name { font-size: clamp(0.75rem, 1.2vw, 0.95rem); }
@@ -607,21 +627,10 @@
       body.zoomed .kiosk-subtitle { font-size: 0.95rem; }
       body.zoomed .kiosk-time { font-size: 1.4rem; }
       body.zoomed .kiosk-date { font-size: 0.85rem; }
-
-      /* Kiosk scaling: set <1 to shrink UI, >1 to enlarge */
-      :root { --kiosk-scale: 0.89; }
-
-      .kiosk-wrapper { display:flex; justify-content:center; }
-      .kiosk-scaled {
-        transform: scale(var(--kiosk-scale));
-        transform-origin: top center;
-        width: calc(100% / var(--kiosk-scale)); /* keep layout width so no clipping */
-      }
   </style>
 </head>
 <body>
-  <div class="kiosk-wrapper">
-    <div class="kiosk-container kiosk-scaled" id="kioskContainer">
+  <div class="kiosk-container" id="kioskContainer">
     <div class="kiosk-header">
       <div class="kiosk-title-row">
         <img src="/assets/gezyne-logo.png" alt="Gezyne logo" class="kiosk-logo">
@@ -675,8 +684,6 @@
           </div>
         </div>
       <% }); %>
-    </div>
-
     </div>
   </div>
 
@@ -834,7 +841,8 @@
     // Dynamically adjust per-card font sizes so text fits on TV screens where CSS scaling may differ
     function adjustTextForTV() {
       try {
-        if (!isTvDevice()) return;
+        // Skip if not in TV mode
+        if (!document.documentElement.classList.contains('tv-mode')) return;
         const cards = document.querySelectorAll('.area-card');
         cards.forEach(card => {
           const rect = card.getBoundingClientRect();
@@ -869,22 +877,20 @@
     let _tvResizeTimer = null;
     function setupTVScaling() {
       try {
-        if (!isTvDevice()) return;
-        document.body.classList.add('is-tv');
-        // Apply a stronger shrink on Android TV devices which often render larger
-        try {
-          const ua = navigator.userAgent || '';
-          const isAndroid = /Android/i.test(ua);
-          if (isAndroid) {
-            document.documentElement.style.setProperty('--kiosk-scale', '0.62');
-            document.body.classList.add('android-tv');
-            console.log('[Kiosk] Android TV detected — applying kiosk-scale=0.62');
-          } else {
-            // Slightly smaller default for other TVs
-            document.documentElement.style.setProperty('--kiosk-scale', '0.72');
-            console.log('[Kiosk] TV detected — applying kiosk-scale=0.72');
-          }
-        } catch (e) { /* ignore */ }
+        // Check if TV device OR if ?tv=1 URL parameter is present (for manual TV mode)
+        const isTV = isTvDevice();
+        const urlParams = new URLSearchParams(window.location.search);
+        const forceTvMode = urlParams.get('tv') === '1';
+        
+        if (isTV || forceTvMode) {
+          // Apply TV zoom mode via CSS class on html element
+          document.documentElement.classList.add('tv-mode');
+          document.body.classList.add('is-tv');
+          console.log('[Kiosk] TV mode enabled - zoom: 62%, isTV:', isTV, 'forceTvMode:', forceTvMode);
+        }
+        
+        if (!isTV && !forceTvMode) return;
+        
         // run initially after layout settles
         setTimeout(adjustTextForTV, 120);
         window.addEventListener('resize', () => {
@@ -892,7 +898,7 @@
           _tvResizeTimer = setTimeout(() => adjustTextForTV(), 120);
         });
         window.addEventListener('orientationchange', () => setTimeout(adjustTextForTV, 200));
-      } catch (e) { /* ignore */ }
+      } catch (e) { console.warn('[Kiosk] setupTVScaling error', e); }
     }
 
     function setConnectionStatus(status) {
@@ -1059,6 +1065,7 @@
             await new Promise((resolve) => {
               _currentAudio.onended = () => { resolve(); };
               _currentAudio.onerror = () => { resolve(); };
+              _currentAudio.src = '/reception/tts?text=' + encodeURIComponent(next) + '&lang=en';
               _currentAudio.src = '/reception/tts?text=' + encodeURIComponent(next) + '&lang=en&kiosk=1';
               try { _currentAudio.pause(); } catch (e) {}
               _currentAudio.currentTime = 0;
@@ -1134,7 +1141,7 @@
           try {
             const audio = document.createElement('audio');
             audio.style.display = 'none';
-            audio.src = '/reception/tts?text=' + encodeURIComponent(String(text)) + '&lang=en&kiosk=1';
+            audio.src = '/reception/tts?text=' + encodeURIComponent(String(text)) + '&lang=en';
             audio.onended = () => { try { audio.remove(); } catch (e) {} ; resolve(); };
             audio.onerror = () => { try { audio.remove(); } catch (e) {} ; resolve(); };
             // ensure start from beginning
