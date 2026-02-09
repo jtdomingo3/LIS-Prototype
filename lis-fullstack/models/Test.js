@@ -200,7 +200,19 @@ class Test {
     const index = tests.findIndex(t => t.id === id);
     if (index >= 0) {
       const deletedTest = tests.splice(index, 1)[0];
-      global.db.saveTests(tests);
+      // Persist deletion by writing the full data object directly to disk.
+      // `db.saveTests` performs a merge overlay which can unintentionally
+      // preserve entries that were removed from the incoming array. For
+      // deletions we must replace the on-disk tests list with the updated
+      // array to ensure the removed test does not remain.
+      try {
+        const data = global.db.read();
+        data.tests = tests;
+        global.db.write(data);
+      } catch (e) {
+        // Fallback to the existing API if direct write fails
+        try { global.db.saveTests(tests); } catch (e2) { console.error('Failed to persist deleted test:', e2); }
+      }
       return new Test(deletedTest);
     }
     return null;
