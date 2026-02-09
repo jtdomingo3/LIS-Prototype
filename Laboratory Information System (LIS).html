@@ -1294,8 +1294,8 @@
         const email = document.getElementById('patientEmail').value.trim();
         const address = document.getElementById('patientAddress').value.trim();
 
-        if (!firstName || !lastName || !dob || !gender) {
-            showAlert('Please fill all required fields (marked with *)', 'error');
+        if (!firstName || !lastName || !gender) {
+            showAlert('Please fill required fields: First name, Last name and Gender', 'error');
             return;
         }
 

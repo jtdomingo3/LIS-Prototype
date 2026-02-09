@@ -201,9 +201,9 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       ? req.body.selectedTests
       : req.body.selectedTests ? [req.body.selectedTests] : [];
 
-    // Validate required fields - accept either dateOfBirth or manual age
-    if (!firstName || !lastName || !gender || (!dateOfBirth && !ageManual)) {
-      req.flash('error_msg', 'Please fill all required fields (either Date of Birth or Age is required)');
+    // Validate required fields: only firstName, lastName and gender are required
+    if (!firstName || !lastName || !gender) {
+      req.flash('error_msg', 'Please fill required fields: First name, Last name and Gender');
       return res.render('patients/new', {
         title: 'Add New Patient',
         patient: req.body
@@ -500,9 +500,9 @@ router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
       ? req.body.requiredAreas
       : req.body.requiredAreas ? [req.body.requiredAreas] : [];
 
-    // Validate required fields - accept either dateOfBirth or manual age
-    if (!firstName || !lastName || !gender || (!dateOfBirth && !ageManual)) {
-      req.flash('error_msg', 'Please fill all required fields (either Date of Birth or Age is required)');
+    // Validate required fields: only firstName, lastName and gender are required
+    if (!firstName || !lastName || !gender) {
+      req.flash('error_msg', 'Please fill required fields: First name, Last name and Gender');
       return res.redirect(`/patients/${req.params.id}/edit`);
     }
 
