@@ -934,6 +934,20 @@
 
             if (!badge || !btn || !dropdown) return;
 
+            // Only enable SSE on a small set of real-time views to avoid system delays.
+            // Keep SSE active only for: /dashboard, /patients, /reception (and their subpaths).
+            try {
+                const path = (window.location && window.location.pathname) ? window.location.pathname : '/';
+                const sseAllowed = ['/dashboard', '/patients', '/reception'];
+                const isAllowed = sseAllowed.some(p => path === p || path.startsWith(p + '/'));
+                if (!isAllowed) {
+                    // Mark connection as disabled and skip SSE setup entirely (no reconnects)
+                    const connEl = document.getElementById('notifConn');
+                    if (connEl) { connEl.style.background = '#ef4444'; connEl.title = 'SSE disabled on this page'; }
+                    return;
+                }
+            } catch (e) { /* if anything goes wrong, fall back to original behavior */ }
+
             // restore preferences (default: auto-refresh enabled)
             try {
                 const v = localStorage.getItem('notif-auto-refresh');
