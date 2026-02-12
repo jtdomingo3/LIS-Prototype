@@ -78,9 +78,9 @@
 
     <div>
       <label>Analyst</label>
-      <%- include('../partials/signatory_select', { prefix: 'analyst', label: 'Analyst', nameInput: 'analyst', licenseInput: 'analystLicense', existingName: (test && test.results && test.results.analyst) ? test.results.analyst : 'MS. NICOLE S. RAMOS', existingLicense: (test && test.results && test.results.analystLicense) ? test.results.analystLicense : '' }) %>
+      <%- include('../partials/signatory_select', { prefix: 'analyst', label: 'Analyst', role: 'Medical Technologist', nameInput: 'analyst', licenseInput: 'analystLicense', existingName: (test && test.results && test.results.analyst) ? test.results.analyst : 'MS. NICOLE S. RAMOS', existingLicense: (test && test.results && test.results.analystLicense) ? test.results.analystLicense : '' }) %>
       <label>Head of Laboratory</label>
-      <%- include('../partials/signatory_select', { prefix: 'headLab', label: 'Head of Laboratory', nameInput: 'headLab', licenseInput: 'headLabLicense', existingName: (test && test.results && test.results.headLab) ? test.results.headLab : 'DR. BERNADETTE R. ESPIRITU', existingLicense: (test && test.results && test.results.headLabLicense) ? test.results.headLabLicense : '' }) %>
+      <%- include('../partials/signatory_select', { prefix: 'headLab', label: 'Head of Laboratory', role: 'Pathologist', nameInput: 'headLab', licenseInput: 'headLabLicense', existingName: (test && test.results && test.results.headLab) ? test.results.headLab : 'DR. BERNADETTE R. ESPIRITU', existingLicense: (test && test.results && test.results.headLabLicense) ? test.results.headLabLicense : '' }) %>
     </div>
 
     <div class="form-row mt-12">

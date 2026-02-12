@@ -60,7 +60,7 @@
 
     <hr>
     <h4>Reading Physician</h4>
-    <%- include('../partials/signatory_select', { prefix: 'doctor', label: 'Reading Physician', nameInput: 'doctorName', licenseInput: 'doctorLicense', existingName: (test.results && test.results.doctorName) ? test.results.doctorName : (test && test.requestedBy && test.requestedBy.name ? test.requestedBy.name : ''), existingLicense: (test.results && test.results.doctorLicense) ? test.results.doctorLicense : '' }) %>
+    <%- include('../partials/signatory_select', { prefix: 'doctor', label: 'Reading Physician', role: ['Radiologist','Internist','Physician','Pathologist','Cardiologist'], nameInput: 'doctorName', licenseInput: 'doctorLicense', existingName: (test.results && test.results.doctorName) ? test.results.doctorName : (test && test.requestedBy && test.requestedBy.name ? test.requestedBy.name : ''), existingLicense: (test.results && test.results.doctorLicense) ? test.results.doctorLicense : '' }) %>
 
     <div class="form-row">
       <label>Designation</label>

@@ -70,7 +70,7 @@
 
     <hr>
     <h4>Signatures / Performers</h4>
-    <%- include('../partials/signatory_select', { prefix: 'mt', label: 'X-Ray Technologist', nameInput: 'mtName', licenseInput: 'mtLicense', existingName: (test.results && test.results.performedByName) ? test.results.performedByName : '', existingLicense: (test.results && test.results.performedByLicense) ? test.results.performedByLicense : '' }) %>
+    <%- include('../partials/signatory_select', { prefix: 'mt', label: 'X-Ray Technologist', role: 'X-Ray Technologist', nameInput: 'mtName', licenseInput: 'mtLicense', existingName: (test.results && test.results.performedByName) ? test.results.performedByName : '', existingLicense: (test.results && test.results.performedByLicense) ? test.results.performedByLicense : '' }) %>
 
     <!-- Radiologist fields removed to avoid overwriting default radiologist/signature in report template -->
 

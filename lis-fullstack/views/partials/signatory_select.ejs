@@ -6,7 +6,16 @@
       <% 
         var filteredUsers = (typeof allUsers !== 'undefined' && allUsers) ? allUsers : [];
         if (typeof role !== 'undefined' && role) {
-          filteredUsers = filteredUsers.filter(function(u){ return (u.role || '') === role; });
+          try {
+            if (Array.isArray(role)) {
+              filteredUsers = filteredUsers.filter(function(u){ return role.indexOf((u.role || '')) !== -1; });
+            } else if (typeof role === 'string' && role.indexOf(',') !== -1) {
+              var rolesArr = role.split(',').map(function(x){ return x.trim(); });
+              filteredUsers = filteredUsers.filter(function(u){ return rolesArr.indexOf((u.role || '')) !== -1; });
+            } else {
+              filteredUsers = filteredUsers.filter(function(u){ return (u.role || '') === role; });
+            }
+          } catch (e) { /* ignore filter errors */ }
         }
         if (filteredUsers && filteredUsers.length) {
           filteredUsers.forEach(function(u){ %>
