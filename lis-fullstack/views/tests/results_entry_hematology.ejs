@@ -21,64 +21,64 @@
 
     <div class="form-row">
       <label>RBC (x10^6/µL)</label>
-      <input type="text" name="rbc" value="<%= test.results && test.results.rbc ? test.results.rbc : '' %>" placeholder="3.8-5.8" required>
+      <input type="text" name="rbc" value="<%= test.results && test.results.rbc ? test.results.rbc : '' %>" placeholder="3.8-5.8 x10^6/µL" title="Reference: 3.8 - 5.8 x10^6/µL" required>
     </div>
 
     <div class="form-row">
       <label>Hemoglobin (g/dL)</label>
-      <input type="text" name="hemoglobin" value="<%= test.results && test.results.hemoglobin ? test.results.hemoglobin : '' %>" placeholder="Male 130-160 / Female 120-140" required>
+      <input type="text" name="hemoglobin" value="<%= test.results && test.results.hemoglobin ? test.results.hemoglobin : '' %>" placeholder="Male 130-160 / Female 120-140 g/dL" title="Reference: Male 130-160, Female 120-140 g/dL" required>
     </div>
 
     <div class="form-row">
       <label>Hematocrit (%)</label>
-        <input type="text" name="hematocrit" value="<%= test.results && test.results.hematocrit ? test.results.hematocrit : '' %>" placeholder="Male 0.38-0.49 / Female 0.36-0.44">
+        <input type="text" name="hematocrit" value="<%= test.results && test.results.hematocrit ? test.results.hematocrit : '' %>" placeholder="Male 0.38-0.49 / Female 0.36-0.44 %" title="Reference: Male 0.38-0.49, Female 0.36-0.44 %">
     </div>
 
     <div class="form-row">
       <label>MCV (fL)</label>
-        <input type="text" name="mcv" value="<%= test.results && test.results.mcv ? test.results.mcv : '' %>" placeholder="83.0-98.0">
+        <input type="text" name="mcv" value="<%= test.results && test.results.mcv ? test.results.mcv : '' %>" placeholder="83.0-98.0 fL" title="Reference: 83.0 - 98.0 fL">
     </div>
 
       <div class="form-row">
         <label>MCH (pg)</label>
-        <input type="text" name="mch" value="<%= test.results && test.results.mch ? test.results.mch : '' %>" placeholder="27.0-32.2">
+        <input type="text" name="mch" value="<%= test.results && test.results.mch ? test.results.mch : '' %>" placeholder="27.0-32.2 pg" title="Reference: 27.0 - 32.2 pg">
       </div>
 
       <div class="form-row">
         <label>MCHC (g/dL)</label>
-        <input type="text" name="mchc" value="<%= test.results && test.results.mchc ? test.results.mchc : '' %>" placeholder="31.8-33.7">
+        <input type="text" name="mchc" value="<%= test.results && test.results.mchc ? test.results.mchc : '' %>" placeholder="31.8-33.7 g/dL" title="Reference: 31.8 - 33.7 g/dL">
       </div>
 
       <hr>
       <h4>Differential / Other Parameters</h4>
       <div class="form-row">
         <label>WBC (x10^9/L)</label>
-        <input type="text" name="wbc" value="<%= test.results && test.results.wbc ? test.results.wbc : '' %>" placeholder="5.0-10.0">
+        <input type="text" name="wbc" value="<%= test.results && test.results.wbc ? test.results.wbc : '' %>" placeholder="5.0-10.0 x10^9/L" title="Reference: 5.0 - 10.0 x10^9/L">
       </div>
       <div class="form-row">
         <label>Neutrophils (%)</label>
-        <input type="text" name="neutrophils" value="<%= test.results && test.results.neutrophils ? test.results.neutrophils : '' %>" placeholder="43.0-76.0">
+        <input type="text" name="neutrophils" value="<%= test.results && test.results.neutrophils ? test.results.neutrophils : '' %>" placeholder="43.0-76.0 %" title="Reference: 43.0 - 76.0 %">
       </div>
       <div class="form-row">
         <label>Lymphocyte (%)</label>
-        <input type="text" name="lymphocyte" value="<%= test.results && test.results.lymphocyte ? test.results.lymphocyte : '' %>" placeholder="17.0-48.0">
+        <input type="text" name="lymphocyte" value="<%= test.results && test.results.lymphocyte ? test.results.lymphocyte : '' %>" placeholder="17.0-48.0 %" title="Reference: 17.0 - 48.0 %">
       </div>
       <div class="form-row">
         <label>Monocyte (%)</label>
-        <input type="text" name="monocyte" value="<%= test.results && test.results.monocyte ? test.results.monocyte : '' %>" placeholder="0-10.0">
+        <input type="text" name="monocyte" value="<%= test.results && test.results.monocyte ? test.results.monocyte : '' %>" placeholder="0-10.0 %" title="Reference: 0 - 10.0 %">
       </div>
       <div class="form-row">
         <label>Eosinophils (%)</label>
-        <input type="text" name="eosinophils" value="<%= test.results && test.results.eosinophils ? test.results.eosinophils : '' %>" placeholder="0.5-5.0">
+        <input type="text" name="eosinophils" value="<%= test.results && test.results.eosinophils ? test.results.eosinophils : '' %>" placeholder="0.5-5.0 %" title="Reference: 0.5 - 5.0 %">
       </div>
       <div class="form-row">
         <label>Basophils (%)</label>
-        <input type="text" name="basophils" value="<%= test.results && test.results.basophils ? test.results.basophils : '' %>" placeholder="0-1">
+        <input type="text" name="basophils" value="<%= test.results && test.results.basophils ? test.results.basophils : '' %>" placeholder="0-1 %" title="Reference: 0 - 1 %">
       </div>
 
       <div class="form-row">
         <label>Platelets (x10^9/µL)</label>
-        <input type="text" name="platelets" value="<%= test.results && test.results.platelets ? test.results.platelets : '' %>" placeholder="150-350">
+        <input type="text" name="platelets" value="<%= test.results && test.results.platelets ? test.results.platelets : '' %>" placeholder="150-350 x10^9/µL" title="Reference: 150 - 350 x10^9/µL">
       </div>
 
     <hr>
