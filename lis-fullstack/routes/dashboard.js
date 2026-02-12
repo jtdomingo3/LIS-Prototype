@@ -59,6 +59,50 @@ router.get('/', requireAuth, async (req, res) => {
     console.warn('Failed computing sales totals', e);
   }
 
+  // Compute totals for each requested test across all tests.
+  // Treat blood chemistry and ultrasound variants as single groups.
+  const testTotals = {};
+  const testTotalsToday = {};
+  try {
+    const isSameDay = (d1, d2) => {
+      try {
+        return d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
+      } catch (e) { return false; }
+    };
+    const normalize = (raw) => {
+      if (!raw) return '';
+      const s = String(raw).trim();
+      const lower = s.toLowerCase();
+      // Group blood chemistry variants
+      if (/blood\s*chemistry|blood-chemistry|\bbc\b|bun|crea|sgpt|sgot|lipid|hba1c|albumin|blood[-_\s]?sugar/i.test(lower)) return 'Blood Chemistry';
+      // Group ultrasound variants
+      if (/ultrasound|ultrasonography|sonography|usg|abdomen sonography|abdominal ultrasound/i.test(lower)) return 'Ultrasound';
+      // Normalize common separators and capitalization
+      return s.replace(/\s+/g, ' ').replace(/[-_]+/g, ' ').trim();
+    };
+
+    if (Array.isArray(allTests)) {
+      const today = new Date();
+      for (const t of allTests) {
+        const rlist = Array.isArray(t.requestedTests) ? t.requestedTests : [];
+        const candidates = rlist.length === 0 ? [ (t.testType || '') ] : rlist.map(r => (r && (r.label || r.key)) ? (r.label || r.key) : r);
+        for (const cand of candidates) {
+          const key = normalize(cand);
+          if (!key) continue;
+          testTotals[key] = (testTotals[key] || 0) + 1;
+          // determine if this test counts for today (based on testDate or createdAt)
+          const dtStr = t.testDate || t.createdAt;
+          const dt = dtStr ? new Date(dtStr) : null;
+          if (dt && isSameDay(dt, today)) {
+            testTotalsToday[key] = (testTotalsToday[key] || 0) + 1;
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Failed computing test totals', e);
+  }
+
     // Get recent test results with patient info
     let recentTests = [];
     if (Array.isArray(allTests)) {
@@ -83,6 +127,7 @@ router.get('/', requireAuth, async (req, res) => {
         activeTests,
         releasedTests
         , totalSales, todaySales, clinicalSales, xraySales, clinicalToday, xrayToday
+          , testTotals, testTotalsToday
       },
       recentTests
     });

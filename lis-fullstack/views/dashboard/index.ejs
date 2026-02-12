@@ -65,6 +65,29 @@
     </div>
 </div>
 
+<div class="card" style="margin-top:12px;">
+    <h3>TEST TOTALS</h3>
+    <% var entries = Object.entries(stats.testTotals || {}); entries.sort(function(a,b){return b[1]-a[1];}); %>
+    <% if (entries && entries.length) { %>
+        <table>
+            <thead>
+                <tr><th>TEST</th><th>TOTAL</th><th>TODAY</th></tr>
+            </thead>
+            <tbody>
+                <% entries.forEach(function(entry){ var name = entry[0]; var total = entry[1]; var today = (stats.testTotalsToday && stats.testTotalsToday[name]) ? stats.testTotalsToday[name] : 0; %>
+                    <tr>
+                        <td><%= name.toUpperCase() %></td>
+                        <td><%= total %></td>
+                        <td><%= today %></td>
+                    </tr>
+                <% }); %>
+            </tbody>
+        </table>
+    <% } else { %>
+        <p>NO TEST TOTALS AVAILABLE</p>
+    <% } %>
+</div>
+
 <div class="card">
     <h3>Recent Test Results</h3>
     <table>
@@ -100,3 +123,4 @@
         </tbody>
     </table>
 </div>
+ 
