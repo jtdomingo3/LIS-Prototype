@@ -52,12 +52,12 @@
 
     <div class="form-row">
       <label>pH</label>
-      <input type="text" name="ph" value="<%= test.results && test.results.ph ? test.results.ph : '' %>">
+      <input type="text" name="ph" value="<%= test.results && test.results.ph ? test.results.ph : '' %>" placeholder="5.0-7.0" title="Reference: 5.0 - 7.0">
     </div>
 
     <div class="form-row">
       <label>Specific Gravity</label>
-      <input type="text" name="specificGravity" value="<%= test.results && test.results.specificGravity ? test.results.specificGravity : '' %>">
+      <input type="text" name="specificGravity" value="<%= test.results && test.results.specificGravity ? test.results.specificGravity : '' %>" placeholder="1.005-1.025" title="Reference: 1.005 - 1.025">
     </div>
 
     <div class="form-row">
@@ -167,11 +167,11 @@
     <h4>Microscopy Examination</h4>
     <div class="form-row">
       <label>WBC</label>
-      <div style="display:flex;gap:8px;align-items:center;"><input type="text" name="wbc" value="<%= test.results && test.results.wbc ? test.results.wbc : '' %>"><span>hpf</span></div>
+      <div style="display:flex;gap:8px;align-items:center;"><input type="text" name="wbc" value="<%= test.results && test.results.wbc ? test.results.wbc : '' %>" placeholder="0-3" title="Reference: 0 - 3 /hpf"><span>hpf</span></div>
     </div>
     <div class="form-row">
       <label>RBC</label>
-      <div style="display:flex;gap:8px;align-items:center;"><input type="text" name="rbc" value="<%= test.results && test.results.rbc ? test.results.rbc : '' %>"><span>hpf</span></div>
+      <div style="display:flex;gap:8px;align-items:center;"><input type="text" name="rbc" value="<%= test.results && test.results.rbc ? test.results.rbc : '' %>" placeholder="0-5" title="Reference: 0 - 5 /hpf"><span>hpf</span></div>
     </div>
     <div class="form-row">
       <label>Epithelial Cells</label>
