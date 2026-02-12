@@ -78,21 +78,94 @@
     <h3>TEST TOTALS</h3>
     <% var entries = Object.entries(stats.testTotals || {}); entries.sort(function(a,b){return b[1]-a[1];}); %>
     <% if (entries && entries.length) { %>
-        <table>
-            <thead>
-                <tr><th>TEST</th><th>TOTAL</th><th>SELECTED</th><th>TODAY</th></tr>
-            </thead>
-            <tbody>
-                <% entries.forEach(function(entry){ var name = entry[0]; var total = entry[1]; var today = (stats.testTotalsToday && stats.testTotalsToday[name]) ? stats.testTotalsToday[name] : 0; var sel = (stats.testTotalsSelected && stats.testTotalsSelected[name]) ? stats.testTotalsSelected[name] : 0; %>
-                    <tr>
-                        <td><%= name.toUpperCase() %></td>
-                        <td><%= total %></td>
-                        <td><%= sel %></td>
-                        <td><%= today %></td>
-                    </tr>
-                <% }); %>
-            </tbody>
-        </table>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <div>
+                <button id="modeTotal" class="button">TOTAL</button>
+                <button id="modeSelected" class="button">SELECTED</button>
+                <button id="modeToday" class="button">TODAY</button>
+            </div>
+            <div style="color:#666; font-size:12px;">Hover bars to see exact values</div>
+        </div>
+        <div style="width:100%; max-height:520px; overflow:auto;">
+            <canvas id="testTotalsChart" height="520"></canvas>
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+        <script>
+            (function(){
+                try {
+                    const entries = <%- JSON.stringify(entries) %> || [];
+                    const selectedMap = <%- JSON.stringify(stats.testTotalsSelected || {}) %> || {};
+                    const todayMap = <%- JSON.stringify(stats.testTotalsToday || {}) %> || {};
+
+                    const labels = entries.map(e => String(e[0]).toUpperCase());
+                    const totals = entries.map(e => Number(e[1] || 0));
+                    const selected = entries.map(e => Number(selectedMap[e[0]] || 0));
+                    const today = entries.map(e => Number(todayMap[e[0]] || 0));
+
+                    // generate color per label (HSL wheel)
+                    function genColors(n){
+                        const colors = [];
+                        for(let i=0;i<n;i++){
+                            const hue = Math.round((i * 360 / Math.max(1,n)) % 360);
+                            colors.push(`hsl(${hue} 78% 52% / 0.9)`);
+                        }
+                        return colors;
+                    }
+
+                    const colors = genColors(labels.length);
+
+                    const canvas = document.getElementById('testTotalsChart');
+                    const itemHeight = 28; // px per bar
+                    const h = Math.max(200, Math.min(1600, labels.length * itemHeight));
+                    canvas.height = h;
+                    const ctx = canvas.getContext('2d');
+
+                    // initial mode: if URL has date= then default to SELECTED, else TOTAL
+                    const qs = window.location.search || '';
+                    let mode = qs.indexOf('date=') !== -1 ? 'SELECTED' : 'TOTAL';
+
+                    function datasetForMode(m){
+                        if (m === 'SELECTED') return selected;
+                        if (m === 'TODAY') return today;
+                        return totals;
+                    }
+
+                    const data = { labels: labels, datasets: [{ label: mode, data: datasetForMode(mode), backgroundColor: colors }] };
+
+                    const options = {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: { x: { beginAtZero: true }, y: { } },
+                        plugins: { tooltip: { enabled: true }, legend: { display: false } }
+                    };
+
+                    if (window._testTotalsChart) window._testTotalsChart.destroy();
+                    window._testTotalsChart = new Chart(ctx, { type: 'bar', data: data, options: options });
+
+                    // button handlers
+                    function setMode(m){
+                        mode = m;
+                        const ds = datasetForMode(mode);
+                        window._testTotalsChart.data.datasets[0].data = ds;
+                        window._testTotalsChart.data.datasets[0].label = mode;
+                        window._testTotalsChart.update();
+                        // visual active state
+                        document.getElementById('modeTotal').style.opacity = (mode==='TOTAL')?1:0.6;
+                        document.getElementById('modeSelected').style.opacity = (mode==='SELECTED')?1:0.6;
+                        document.getElementById('modeToday').style.opacity = (mode==='TODAY')?1:0.6;
+                    }
+
+                    document.getElementById('modeTotal').addEventListener('click', ()=> setMode('TOTAL'));
+                    document.getElementById('modeSelected').addEventListener('click', ()=> setMode('SELECTED'));
+                    document.getElementById('modeToday').addEventListener('click', ()=> setMode('TODAY'));
+
+                    // set initial visual state
+                    setMode(mode);
+
+                } catch (err) { console.warn('Chart render error', err); }
+            })();
+        </script>
     <% } else { %>
         <p>NO TEST TOTALS AVAILABLE</p>
     <% } %>
