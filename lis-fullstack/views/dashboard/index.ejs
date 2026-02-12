@@ -65,19 +65,29 @@
     </div>
 </div>
 
-<div class="card" style="margin-top:12px;">
+<div style="margin-top:12px; display:flex; justify-content:flex-end; align-items:center; gap:12px;">
+    <form method="get" action="/dashboard" style="display:flex; gap:8px; align-items:center;">
+        <label style="font-weight:bold;">SELECT DATE:</label>
+        <input type="date" name="date" value="<%= stats.selectedDate || '' %>" onchange="this.form.submit()" />
+        <a href="/dashboard?date=today" class="button" style="margin-left:8px;">TODAY</a>
+        <a href="/dashboard?date=yesterday" class="button">YESTERDAY</a>
+    </form>
+</div>
+
+<div class="card" style="margin-top:6px;">
     <h3>TEST TOTALS</h3>
     <% var entries = Object.entries(stats.testTotals || {}); entries.sort(function(a,b){return b[1]-a[1];}); %>
     <% if (entries && entries.length) { %>
         <table>
             <thead>
-                <tr><th>TEST</th><th>TOTAL</th><th>TODAY</th></tr>
+                <tr><th>TEST</th><th>TOTAL</th><th>SELECTED</th><th>TODAY</th></tr>
             </thead>
             <tbody>
-                <% entries.forEach(function(entry){ var name = entry[0]; var total = entry[1]; var today = (stats.testTotalsToday && stats.testTotalsToday[name]) ? stats.testTotalsToday[name] : 0; %>
+                <% entries.forEach(function(entry){ var name = entry[0]; var total = entry[1]; var today = (stats.testTotalsToday && stats.testTotalsToday[name]) ? stats.testTotalsToday[name] : 0; var sel = (stats.testTotalsSelected && stats.testTotalsSelected[name]) ? stats.testTotalsSelected[name] : 0; %>
                     <tr>
                         <td><%= name.toUpperCase() %></td>
                         <td><%= total %></td>
+                        <td><%= sel %></td>
                         <td><%= today %></td>
                     </tr>
                 <% }); %>
