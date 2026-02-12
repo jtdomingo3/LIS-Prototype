@@ -116,15 +116,12 @@
 
       <div class="sig">
         <div style="border-top:1px solid #000; height:0; margin-bottom:8px"></div>
-        <% var _requestedName = (test && test.results && test.results.requestedByName) || (test && test.requestedBy && test.requestedBy.name) || 'Dr. Omar Baraga, DPBR' %>
+        <% var _requestedName = (test && test.results && test.results.requestedByName) || (test && test.requestedBy && test.requestedBy.name) || '' %>
         <div style="font-weight:700"><strong><%= _requestedName %></strong></div>
         <% var _requestedSig = findSigFor(_requestedName); %>
         <% if (_requestedSig && _requestedSig.filename) { %>
           <% var p2 = _requestedSig.placement || { x:0, y:-56, scale:1.25 }; if(p2 && (typeof p2.scale==='undefined' || p2.scale===1)) p2.scale=1.25; %>
           <img src="/assets/signature/<%= _requestedSig.filename %>" class="signature-overlay" style="top:<%= p2.y %>px; transform:translateX(-50%) scale(<%= p2.scale %>); max-height:96px;" alt="signature" />
-        <% } else if (_requestedName === 'Dr. Omar Baraga, DPBR') { %>
-          <% var p2 = { x:0, y:-56, scale:1.25 }; %>
-          <img src="/assets/signature/DrBragaSignature.png" class="signature-overlay" style="top:<%= p2.y %>px; transform:translateX(-50%) scale(<%= p2.scale %>); max-height:140px;" alt="Dr. Omar Baraga signature" />
         <% } %>
         <div style="font-size:11px"><% if (test && test.results && test.results.requestedByLicense) { %><strong>Lic. No. <%= test.results.requestedByLicense %></strong><% } %></div>
         <div>Radiologist</div>
