@@ -1826,10 +1826,11 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
     }
 
     // allow storing performer name/license directly on results for printing
-    resultsObj.performedByName = (mtName || '').trim();
-    resultsObj.performedByLicense = (mtLicense || '').trim();
-    resultsObj.requestedByName = (pathName || '').trim();
-    resultsObj.requestedByLicense = (pathLicense || '').trim();
+    // Only set when non-empty to avoid clearing existing/default values
+    if (mtName && String(mtName).trim()) resultsObj.performedByName = String(mtName).trim();
+    if (mtLicense && String(mtLicense).trim()) resultsObj.performedByLicense = String(mtLicense).trim();
+    if (pathName && String(pathName).trim()) resultsObj.requestedByName = String(pathName).trim();
+    if (pathLicense && String(pathLicense).trim()) resultsObj.requestedByLicense = String(pathLicense).trim();
     // optional validator (second medtech) fields
     resultsObj.validatedByName = (req.body.validatedByName || '').trim();
     resultsObj.validatedByLicense = (req.body.validatedByLicense || '').trim();

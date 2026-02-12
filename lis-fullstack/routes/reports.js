@@ -108,10 +108,11 @@ router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) =
     const requestedBy = await User.findById(test.requestedBy);
     const performedBy = await User.findById(test.performedBy);
 
+    const isRequestedByMedical = requestedBy && (requestedBy.role === 'Radiologist' || requestedBy.role === 'Doctor' || requestedBy.role === 'Pathologist');
     const populatedTest = {
       ...test,
       patient: patient ? patient.toJSON() : null,
-      requestedBy: requestedBy ? { name: requestedBy.name } : null,
+      requestedBy: isRequestedByMedical ? { name: requestedBy.name, role: requestedBy.role } : null,
       performedBy: performedBy ? { name: performedBy.name } : null
     };
 
@@ -354,10 +355,11 @@ router.get('/result/:testId', requireAuth, canAccessPatient, async (req, res) =>
     const requestedBy = test.requestedBy ? await User.findById(test.requestedBy) : null;
     const performedBy = test.performedBy ? await User.findById(test.performedBy) : null;
 
+    const isRequestedByMedical = requestedBy && (requestedBy.role === 'Radiologist' || requestedBy.role === 'Doctor' || requestedBy.role === 'Pathologist');
     const populatedTest = {
       ...test,
       patient: patient ? patient.toJSON() : null,
-      requestedBy: requestedBy ? { name: requestedBy.name } : null,
+      requestedBy: isRequestedByMedical ? { name: requestedBy.name, role: requestedBy.role } : null,
       performedBy: performedBy ? { name: performedBy.name } : null
     };
 
@@ -409,10 +411,11 @@ router.get('/pdf/:testId', requireAuth, canAccessPatient, async (req, res) => {
     const requestedBy = test.requestedBy ? await User.findById(test.requestedBy) : null;
     const performedBy = test.performedBy ? await User.findById(test.performedBy) : null;
 
+    const isRequestedByMedical = requestedBy && (requestedBy.role === 'Radiologist' || requestedBy.role === 'Doctor' || requestedBy.role === 'Pathologist');
     const populatedTest = {
       ...test,
       patient: patient ? patient.toJSON() : null,
-      requestedBy: requestedBy ? { name: requestedBy.name } : null,
+      requestedBy: isRequestedByMedical ? { name: requestedBy.name, role: requestedBy.role } : null,
       performedBy: performedBy ? { name: performedBy.name } : null
     };
 
@@ -549,10 +552,11 @@ router.get('/print/:testId', requireAuth, canAccessPatient, async (req, res) => 
     const requestedBy = test.requestedBy ? await User.findById(test.requestedBy) : null;
     const performedBy = test.performedBy ? await User.findById(test.performedBy) : null;
 
+    const isRequestedByMedical = requestedBy && (requestedBy.role === 'Radiologist' || requestedBy.role === 'Doctor' || requestedBy.role === 'Pathologist');
     const populatedTest = {
       ...test,
       patient: patient ? patient.toJSON() : null,
-      requestedBy: requestedBy ? { name: requestedBy.name } : null,
+      requestedBy: isRequestedByMedical ? { name: requestedBy.name, role: requestedBy.role } : null,
       performedBy: performedBy ? { name: performedBy.name } : null
     };
 
@@ -621,10 +625,11 @@ router.get('/print-multiple', requireAuth, canAccessPatient, async (req, res) =>
       const requestedBy = t.requestedBy ? await User.findById(t.requestedBy) : null;
       const performedBy = t.performedBy ? await User.findById(t.performedBy) : null;
 
+      const isRequestedByMedical = requestedBy && (requestedBy.role === 'Radiologist' || requestedBy.role === 'Doctor' || requestedBy.role === 'Pathologist');
       const populatedTest = {
         ...t,
         patient: patient ? patient.toJSON() : null,
-        requestedBy: requestedBy ? { name: requestedBy.name } : null,
+        requestedBy: isRequestedByMedical ? { name: requestedBy.name, role: requestedBy.role } : null,
         performedBy: performedBy ? { name: performedBy.name } : null
       };
 

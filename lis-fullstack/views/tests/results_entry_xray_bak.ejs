@@ -72,7 +72,7 @@
     <h4>Signatures / Performers</h4>
     <%- include('../partials/signatory_select', { prefix: 'mt', label: 'X-Ray Technologist', nameInput: 'mtName', licenseInput: 'mtLicense', existingName: (test.results && test.results.performedByName) ? test.results.performedByName : '', existingLicense: (test.results && test.results.performedByLicense) ? test.results.performedByLicense : '' }) %>
 
-    <!-- Radiologist fields removed to avoid overwriting default radiologist/signature in report template -->
+    <%- include('../partials/signatory_select', { prefix: 'path', label: 'Radiologist', nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (test.results && test.results.requestedByName) ? test.results.requestedByName : '', existingLicense: (test.results && test.results.requestedByLicense) ? test.results.requestedByLicense : '' }) %>
 
     <div class="form-row mt-12">
       <a href="/tests/<%= test.id %>" class="button btn-secondary">Cancel</a>
