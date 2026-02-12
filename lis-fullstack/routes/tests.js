@@ -708,10 +708,34 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     if (/(static:)?(ultrasound[-_\s]?pelvic(?![-_\s]?biometry)(\.ejs)?|pelvic(?![-_\s]?biometry))/i.test(test.testType)) view = 'tests/results_entry_ultrasound_pelvic';
     if (/(drug\s*test|drugtest)/i.test(test.testType)) view = 'tests/results_entry_drugtest';
     console.log(`DEBUG GET /tests/${req.params.id}/results - selected view='${view}'`);
+
+    // Compute a suggested next case number for X-ray entry form (6 digits, zero-padded)
+    let nextCaseNumber = '';
+    try {
+      if (view === 'tests/results_entry_xray') {
+        const allTests = await Test.find();
+        let maxNum = 0;
+        allTests.forEach(t => {
+          const cn = (t.caseNumber || (t.results && t.results.caseNumber)) || '';
+          const digits = String(cn).replace(/[^0-9]/g, '');
+          if (digits) {
+            const n = parseInt(digits, 10);
+            if (!isNaN(n) && n > maxNum) maxNum = n;
+          }
+        });
+        const next = maxNum + 1 || 1;
+        nextCaseNumber = String(next).padStart(6, '0');
+      }
+    } catch (e) {
+      console.warn('Failed to compute nextCaseNumber for xray entry:', e);
+    }
+
+    console.log(`DEBUG nextCaseNumber for view='${view}':`, nextCaseNumber);
     res.render(view, {
       title: `Enter ${test.testType} Results`,
       test: testForView,
-      users
+      users,
+      nextCaseNumber
     });
 
   } catch (err) {

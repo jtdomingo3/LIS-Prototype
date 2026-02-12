@@ -738,13 +738,14 @@ router.post('/worksheet/download', requireAuth, canAccessPatient, async (req, re
       const performedBy = t.performedBy ? await User.findById(t.performedBy) : null;
       const resultsObj = (t.results && typeof t.results === 'object') ? t.results : (t.results ? { results: String(t.results) } : {});
       Object.keys(resultsObj).forEach(k => resultKeys.add(k));
+      const isRequestedByMedical = requestedBy && (requestedBy.role === 'Radiologist' || requestedBy.role === 'Doctor' || requestedBy.role === 'Pathologist');
       rows.push({
         testId: t.testId || (t.id || t._id) || '',
         testType: t.testType || t.template || '',
         testDate: t.testDate ? new Date(t.testDate) : null,
         patient: p ? p.toJSON() : null,
         resultsObj,
-        requestedBy: requestedBy ? { name: requestedBy.name } : (t.requestedByName ? { name: t.requestedByName } : null),
+        requestedBy: isRequestedByMedical ? { name: requestedBy.name } : (t.requestedByName ? { name: t.requestedByName } : null),
         performedBy: performedBy ? { name: performedBy.name, license: performedBy.license || null } : (t.performedByName ? { name: t.performedByName, license: t.performedByLicense || null } : null)
       });
     }

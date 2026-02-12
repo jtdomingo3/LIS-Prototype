@@ -21,7 +21,7 @@
 
     <div class="form-row">
       <label>Case Number</label>
-      <input type="text" name="caseNumber" placeholder="Enter case number (assigned by radtech)" value="<%= test && test.caseNumber ? test.caseNumber : (test && test.results && test.results.caseNumber ? test.results.caseNumber : '') %>">
+      <input type="text" name="caseNumber" placeholder="Enter case number (assigned by radtech)" value="<%= (test && (test.caseNumber || (test.results && test.results.caseNumber))) ? (test.caseNumber || (test.results && test.results.caseNumber)) : (typeof nextCaseNumber !== 'undefined' ? nextCaseNumber : '') %>">
     </div>
 
     <div class="form-row">
