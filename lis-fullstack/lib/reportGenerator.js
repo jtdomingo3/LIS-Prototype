@@ -145,6 +145,27 @@ async function populateTestForPdf(test) {
   return populated;
 }
 
+// ── inline all /assets/signature/ images as base64 data URIs ───────────
+const _sigCache = {};
+function inlineSignatureImages(html) {
+  const sigDir = path.join(__dirname, '..', 'assets', 'signature');
+  return html.replace(/src=["']\/assets\/signature\/([^"']+)["']/gi, (match, filename) => {
+    if (_sigCache[filename]) return `src="${_sigCache[filename]}"`;
+    try {
+      const filePath = path.join(sigDir, filename);
+      if (fs.existsSync(filePath)) {
+        const ext = path.extname(filename).toLowerCase().replace('.', '');
+        const mime = ext === 'png' ? 'image/png' : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/' + ext;
+        const b64 = fs.readFileSync(filePath).toString('base64');
+        const dataUri = `data:${mime};base64,${b64}`;
+        _sigCache[filename] = dataUri;
+        return `src="${dataUri}"`;
+      }
+    } catch (e) {}
+    return match;
+  });
+}
+
 // ── render HTML for a fully-populated test ─────────────────────────────
 async function renderHtmlForTest(populatedTest, templateName) {
   const resultView  = path.join(__dirname, '..', 'views', 'reports', 'results', `${templateName}.ejs`);
@@ -173,7 +194,8 @@ async function renderHtmlForTest(populatedTest, templateName) {
     });
   });
 
-  return finalHtml;
+  // Replace /assets/signature/... URLs with inline base64 so PDF renderer can resolve them
+  return inlineSignatureImages(finalHtml);
 }
 
 // ── convert HTML → PDF using Edge/Chrome via puppeteer-core ────────────
