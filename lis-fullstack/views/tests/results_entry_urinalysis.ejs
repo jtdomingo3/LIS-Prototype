@@ -64,7 +64,7 @@
       <label>Glucose</label>
       <select name="glucose">
         <option value=""></option>
-        <option value="Negative" <%= test.results && test.results.glucose === 'Negative' ? 'selected' : '' %>>Negative</option>
+        <option value="Negative" <%= (!test.results || !test.results.glucose || test.results.glucose === 'Negative') ? 'selected' : '' %>>Negative</option>
         <option value="+" <%= test.results && test.results.glucose === '+' ? 'selected' : '' %>>+</option>
         <option value="++" <%= test.results && test.results.glucose === '++' ? 'selected' : '' %>>++</option>
         <option value="+++" <%= test.results && test.results.glucose === '+++' ? 'selected' : '' %>>+++</option>
@@ -77,7 +77,7 @@
       <label>Protein</label>
       <select name="protein">
         <option value=""></option>
-        <option value="Negative" <%= test.results && test.results.protein === 'Negative' ? 'selected' : '' %>>Negative</option>
+        <option value="Negative" <%= (!test.results || !test.results.protein || test.results.protein === 'Negative') ? 'selected' : '' %>>Negative</option>
         <option value="+" <%= test.results && test.results.protein === '+' ? 'selected' : '' %>>+</option>
         <option value="++" <%= test.results && test.results.protein === '++' ? 'selected' : '' %>>++</option>
         <option value="+++" <%= test.results && test.results.protein === '+++' ? 'selected' : '' %>>+++</option>
@@ -90,7 +90,7 @@
       <label>Leukocyte</label>
       <select name="leukocyte">
         <option value=""></option>
-        <option value="Negative" <%= test.results && test.results.leukocyte === 'Negative' ? 'selected' : '' %>>Negative</option>
+        <option value="Negative" <%= (!test.results || !test.results.leukocyte || test.results.leukocyte === 'Negative') ? 'selected' : '' %>>Negative</option>
         <option value="+" <%= test.results && test.results.leukocyte === '+' ? 'selected' : '' %>>+</option>
         <option value="++" <%= test.results && test.results.leukocyte === '++' ? 'selected' : '' %>>++</option>
         <option value="+++" <%= test.results && test.results.leukocyte === '+++' ? 'selected' : '' %>>+++</option>
@@ -103,7 +103,7 @@
       <label>Nitrite</label>
       <select name="nitrite">
         <option value=""></option>
-        <option value="Negative" <%= test.results && test.results.nitrite === 'Negative' ? 'selected' : '' %>>Negative</option>
+        <option value="Negative" <%= (!test.results || !test.results.nitrite || test.results.nitrite === 'Negative') ? 'selected' : '' %>>Negative</option>
         <option value="+" <%= test.results && test.results.nitrite === '+' ? 'selected' : '' %>>+</option>
         <option value="++" <%= test.results && test.results.nitrite === '++' ? 'selected' : '' %>>++</option>
         <option value="+++" <%= test.results && test.results.nitrite === '+++' ? 'selected' : '' %>>+++</option>
@@ -116,7 +116,7 @@
       <label>Urobilinogen</label>
       <select name="urobilinogen">
         <option value=""></option>
-        <option value="Negative" <%= test.results && test.results.urobilinogen === 'Negative' ? 'selected' : '' %>>Negative</option>
+        <option value="Negative" <%= (!test.results || !test.results.urobilinogen || test.results.urobilinogen === 'Negative') ? 'selected' : '' %>>Negative</option>
         <option value="+" <%= test.results && test.results.urobilinogen === '+' ? 'selected' : '' %>>+</option>
         <option value="++" <%= test.results && test.results.urobilinogen === '++' ? 'selected' : '' %>>++</option>
         <option value="+++" <%= test.results && test.results.urobilinogen === '+++' ? 'selected' : '' %>>+++</option>
@@ -129,7 +129,7 @@
       <label>Blood</label>
       <select name="blood">
         <option value=""></option>
-        <option value="Negative" <%= test.results && test.results.blood === 'Negative' ? 'selected' : '' %>>Negative</option>
+        <option value="Negative" <%= (!test.results || !test.results.blood || test.results.blood === 'Negative') ? 'selected' : '' %>>Negative</option>
         <option value="+" <%= test.results && test.results.blood === '+' ? 'selected' : '' %>>+</option>
         <option value="++" <%= test.results && test.results.blood === '++' ? 'selected' : '' %>>++</option>
         <option value="+++" <%= test.results && test.results.blood === '+++' ? 'selected' : '' %>>+++</option>
@@ -142,7 +142,7 @@
       <label>Ketones</label>
       <select name="ketones">
         <option value=""></option>
-        <option value="Negative" <%= test.results && test.results.ketones === 'Negative' ? 'selected' : '' %>>Negative</option>
+        <option value="Negative" <%= (!test.results || !test.results.ketones || test.results.ketones === 'Negative') ? 'selected' : '' %>>Negative</option>
         <option value="+" <%= test.results && test.results.ketones === '+' ? 'selected' : '' %>>+</option>
         <option value="++" <%= test.results && test.results.ketones === '++' ? 'selected' : '' %>>++</option>
         <option value="+++" <%= test.results && test.results.ketones === '+++' ? 'selected' : '' %>>+++</option>
@@ -154,7 +154,7 @@
       <label>Bilirubin</label>
       <select name="bilirubin">
         <option value=""></option>
-        <option value="Negative" <%= test.results && test.results.bilirubin === 'Negative' ? 'selected' : '' %>>Negative</option>
+        <option value="Negative" <%= (!test.results || !test.results.bilirubin || test.results.bilirubin === 'Negative') ? 'selected' : '' %>>Negative</option>
         <option value="+" <%= test.results && test.results.bilirubin === '+' ? 'selected' : '' %>>+</option>
         <option value="++" <%= test.results && test.results.bilirubin === '++' ? 'selected' : '' %>>++</option>
         <option value="+++" <%= test.results && test.results.bilirubin === '+++' ? 'selected' : '' %>>+++</option>
