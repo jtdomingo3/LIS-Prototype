@@ -37,49 +37,34 @@ function getInlineLogo() {
 // GET /reports - Reports page
 router.get('/', requireAuth, canAccessPatient, async (req, res) => {
   try {
-    // Get all completed or released tests for report generation
+    // Find the most recent completed/released test and redirect to its preview
     const allTests = await Test.find({});
-    const completedTests = Array.isArray(allTests) ? allTests.filter(t => t && (t.status === 'Completed' || t.status === 'Released')) : [];
-    completedTests.sort((a, b) => new Date(b.testDate) - new Date(a.testDate));
+    const completedTests = Array.isArray(allTests)
+      ? allTests.filter(t => t && (t.status === 'Completed' || t.status === 'Released'))
+      : [];
+    completedTests.sort((a, b) => new Date(b.testDate || b.createdAt) - new Date(a.testDate || a.createdAt));
 
-    // Build patient map in one pass (no per-test async lookups)
-    const allPatients = await Patient.find ? await Patient.find({}) : [];
-    const patientMap = {};
-    (Array.isArray(allPatients) ? allPatients : []).forEach(p => {
-      const pid = p.id || p._id;
-      if (pid) patientMap[pid] = { firstName: p.firstName, lastName: p.lastName, patientId: p.patientId };
-    });
+    if (completedTests.length) {
+      const mostRecent = completedTests[0];
+      return res.redirect(`/reports/preview/${mostRecent.id || mostRecent._id}`);
+    }
 
-    const testsWithPatients = completedTests.map(test => ({
-      id: test.id || test._id,
-      testId: test.testId,
-      testDate: test.testDate,
-      testType: test.testType || '',
-      template: test.template || '',
-      patient: test.patient ? (patientMap[test.patient] || null) : null
-    }));
-
-    const testsForNav = testsWithPatients.map(t => ({
-      id: t.id,
-      testId: t.testId,
-      patientName: t.patient ? `${t.patient.firstName || ''} ${t.patient.lastName || ''}`.trim() : '',
-      testType: t.testType || t.template || '',
-      testDate: t.testDate || null
-    }));
-
-    res.render('reports/index', {
-      title: 'Generate & View Reports',
-      tests: testsWithPatients,
-      testsForNav
+    // No completed tests — show a simple message
+    return res.render('reports/preview', {
+      title: 'Report Preview',
+      test: null,
+      currentDate: new Date().toLocaleDateString(),
+      renderedResultHtml: null,
+      testsForNav: [],
+      prevId: null,
+      nextId: null,
+      filterQuery: ''
     });
 
   } catch (error) {
     console.error('Reports page error:', error);
-    req.flash('error_msg', 'Error loading reports page');
-    res.render('reports/index', {
-      title: 'Generate & View Reports',
-      tests: []
-    });
+    req.flash('error_msg', 'Error loading reports');
+    res.redirect('/dashboard');
   }
 });
 

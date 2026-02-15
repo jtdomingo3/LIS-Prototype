@@ -1,6 +1,9 @@
 <div class="card">
   <h3>Report Preview</h3>
 
+<% if (!test) { %>
+  <p style="padding:20px; color:#888;">No completed test results yet.</p>
+<% } else { %>
   <!-- Navigation & Filters -->
   <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
     <div>
@@ -432,3 +435,4 @@
     }
   })();
 </script>
+<% } /* end if test */ %>
