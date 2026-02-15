@@ -76,6 +76,7 @@
         </label>
       </div>
     </div>
+    <input type="hidden" name="returnTo" id="returnTo" value="">
   </form>
 </div>
 
@@ -116,6 +117,16 @@
       select.addEventListener('change', function(){
         select.size = 1;
       });
+        // populate hidden returnTo input so server can redirect back after create
+        try {
+          const rtField = document.getElementById('returnTo');
+          if (rtField) {
+            // prefer explicit returnTo query param, otherwise document.referrer
+            const params = new URLSearchParams(window.location.search || '');
+            const rt = params.get('returnTo') || document.referrer || '';
+            rtField.value = rt;
+          }
+        } catch (e) {}
     })();
 
     document.querySelectorAll('.test-checkbox').forEach(cb => {

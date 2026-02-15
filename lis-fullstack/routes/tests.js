@@ -564,7 +564,33 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
     }
 
     req.flash('success_msg', `Tests created successfully!`);
-    return res.redirect('/patients');
+
+    // Determine where to redirect after creating/assigning tests.
+    // Priority: explicit hidden `returnTo` form field -> query param -> Referer -> fallback '/tests'
+    let returnTo = (req.body && req.body.returnTo) || req.query.returnTo || req.get('Referer') || '/tests';
+    try {
+      // If it's an absolute URL, only allow same-host paths to avoid open-redirects
+      if (/^https?:\/\//i.test(returnTo)) {
+        const u = new URL(returnTo);
+        if (u.host === req.get('host')) {
+          returnTo = u.pathname + (u.search || '');
+        } else {
+          returnTo = '/tests';
+        }
+      } else if (!returnTo.startsWith('/')) {
+        // try to resolve relative URLs against current host
+        try {
+          const u = new URL(returnTo, `${req.protocol}://${req.get('host')}`);
+          returnTo = u.pathname + (u.search || '');
+        } catch (e) {
+          returnTo = '/tests';
+        }
+      }
+    } catch (e) {
+      returnTo = '/tests';
+    }
+
+    return res.redirect(returnTo);
 
     } catch (error) {
     console.error('Create test error:', error);
