@@ -1,0 +1,5 @@
+# Ignore signature images folder
+/assets/signature/
+
+# Ignore local user data file
+/data-users.json
