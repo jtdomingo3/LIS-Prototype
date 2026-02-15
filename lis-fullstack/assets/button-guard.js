@@ -53,10 +53,26 @@
     return false;
   }
 
+  // EXCLUSION: buttons we should NOT guard (text-match, case-insensitive)
+  function isExcludedButton(el){
+    if (!el) return false;
+    // prefer explicit attributes (aria-label/title/data-label), fallback to text/value
+    const attrLabel = (el.getAttribute && (el.getAttribute('aria-label') || el.getAttribute('title') || el.getAttribute('data-label')));
+    const raw = (attrLabel || el.textContent || el.innerText || el.value || '').replace(/[→←↶↷]/g, '').trim();
+    if (!raw) return false;
+    const txt = raw.replace(/\s+/g, ' ').toLowerCase();
+    const exceptions = ['previous','next','print','print filtered','download','clear filter','clear filters'];
+    const esc = exceptions.map(function(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }).join('|');
+    const re = new RegExp('\\b(' + esc + ')\\b');
+    return re.test(txt);
+  }
+
   // Global click guard for buttons/inputs
   document.addEventListener('click', function(ev){
     const el = ev.target.closest('button, input[type="submit"], input[type="button"], .button');
     if (!el) return;
+    // Respect explicit exclusions (Previous/Next/Print/Download/Clear Filter)
+    if (isExcludedButton(el)) return;
     // If already loading, prevent duplicate actions
     if (el.disabled || el.dataset.__loading === '1') {
       ev.preventDefault(); ev.stopImmediatePropagation(); return;
@@ -77,8 +93,11 @@
     injectSpinnerCss();
     // modern browsers provide ev.submitter
     const submitter = ev.submitter || form.querySelector('button[type="submit"], input[type="submit"]');
-    if (submitter) setButtonLoading(submitter);
-    else Array.prototype.forEach.call(form.querySelectorAll('button[type="submit"], input[type="submit"]'), function(b){ setButtonLoading(b); });
+    if (submitter) {
+      if (!isExcludedButton(submitter)) setButtonLoading(submitter);
+    } else {
+      Array.prototype.forEach.call(form.querySelectorAll('button[type="submit"], input[type="submit"]'), function(b){ if (!isExcludedButton(b)) setButtonLoading(b); });
+    }
   }, true);
 
   // Expose a small API for pages that need to restore buttons after async failure
