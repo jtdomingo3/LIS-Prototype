@@ -1,14 +1,36 @@
 <div class="card">
     <h3>Patient Management</h3>
-    <div style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
-        <div>
-            <a href="/patients/new" class="button btn-primary">➕ Add New Patient</a>
+        <div style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
+                <div>
+                        <a href="/patients/new" class="button btn-primary">➕ Add New Patient</a>
+                </div>
+                <div style="flex:1; display:flex; justify-content:flex-start; gap:12px; align-items:center;">
+                    <form method="GET" action="/patients" class="filter-form" style="flex:1;">
+                        <input type="text" name="search" class="search-box" placeholder="Search patients by name or ID..." value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>">
+
+                        <select name="philhealth" class="filter-select" onchange="this.form.submit()">
+                            <option value="">PhilHealth</option>
+                            <option value="yes" <%= (typeof philhealthFilter !== 'undefined' && philhealthFilter === 'yes') ? 'selected' : '' %>>Yes</option>
+                            <option value="no" <%= (typeof philhealthFilter !== 'undefined' && philhealthFilter === 'no') ? 'selected' : '' %>>No</option>
+                        </select>
+
+                        <select name="company" class="filter-select" onchange="this.form.submit()">
+                            <option value="">All Companies</option>
+                            <% (availableCompanies || []).forEach(function(c){ %>
+                                <option value="<%= c %>" <%= (typeof companyFilter !== 'undefined' && companyFilter === c) ? 'selected' : '' %>><%= c %></option>
+                            <% }) %>
+                        </select>
+
+                        <div class="filter-actions">
+                            <a href="/patients" class="button btn-secondary">Clear</a>
+                        </div>
+                    </form>
+
+                    <div style="white-space:nowrap;">
+                        <button id="testPrintBtn" class="button btn-secondary">Test Print</button>
+                    </div>
+                </div>
         </div>
-        <div>
-            <button id="testPrintBtn" class="button btn-secondary">Test Print</button>
-        </div>
-    </div>
-    <input type="text" class="search-box" id="patientSearch" placeholder="Search patients by name or ID..." value="<%= searchQuery %>">
     <table>
         <thead>
             <tr>
@@ -78,18 +100,7 @@
         <% } %>
 </div>
 
-<script>
-    // Client-side search
-    document.getElementById('patientSearch').addEventListener('input', function() {
-        const searchTerm = this.value.toLowerCase();
-        const rows = document.querySelectorAll('#patientsTable tr');
-
-        rows.forEach(row => {
-            const text = row.textContent.toLowerCase();
-            row.style.display = text.includes(searchTerm) ? '' : 'none';
-        });
-    });
-
+    <script>
     // Test Print button: call server endpoint to run thermal test
     document.getElementById('testPrintBtn').addEventListener('click', function() {
         if (!confirm('Send a test print to the configured thermal printer?')) return;
@@ -102,4 +113,4 @@
             .catch(err => { alert('Print request failed: ' + err); })
             .finally(() => { document.getElementById('testPrintBtn').disabled = false; });
     });
-</script>
+    </script>

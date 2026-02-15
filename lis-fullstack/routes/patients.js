@@ -30,18 +30,38 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
     const skip = (page - 1) * limit;
 
     const searchQuery = req.query.search || '';
+    const philhealthFilter = req.query.philhealth || '';
+    const companyFilter = req.query.company || '';
 
     // Get all patients and filter/search
     let allPatients = await Patient.find({});
 
+    // Available companies for the company filter
+    const availableCompanies = Array.isArray(allPatients) ? Array.from(new Set(allPatients.map(p => (p.company || '').toString()).filter(Boolean))).sort() : [];
+
+    // Apply search filter (name/id)
     if (searchQuery) {
       const searchLower = searchQuery.toLowerCase();
-        allPatients = allPatients.filter(patient =>
-          (patient.firstName && patient.firstName.toLowerCase().includes(searchLower)) ||
-          (patient.middleName && patient.middleName.toLowerCase().includes(searchLower)) ||
-          (patient.lastName && patient.lastName.toLowerCase().includes(searchLower)) ||
-          (patient.patientId && patient.patientId.toLowerCase().includes(searchLower))
-        );
+      allPatients = allPatients.filter(patient =>
+        (patient.firstName && patient.firstName.toLowerCase().includes(searchLower)) ||
+        (patient.middleName && patient.middleName.toLowerCase().includes(searchLower)) ||
+        (patient.lastName && patient.lastName.toLowerCase().includes(searchLower)) ||
+        (patient.patientId && patient.patientId.toLowerCase().includes(searchLower))
+      );
+    }
+
+    // PhilHealth filter (yes/no)
+    if (philhealthFilter) {
+      const wantPhil = String(philhealthFilter).toLowerCase() === 'yes';
+      allPatients = allPatients.filter(p => {
+        return wantPhil ? Boolean(p.philhealthConsent) : !Boolean(p.philhealthConsent);
+      });
+    }
+
+    // Company filter (exact match from dropdown)
+    if (companyFilter) {
+      const compLower = String(companyFilter).toLowerCase();
+      allPatients = allPatients.filter(p => (p.company || '').toString().toLowerCase().includes(compLower));
     }
 
     // Sort by creation date (newest first)
@@ -122,7 +142,10 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
       hasNextPage: page < totalPages,
       prevPage: page - 1,
       nextPage: page + 1,
-      searchQuery
+      searchQuery,
+      philhealthFilter,
+      companyFilter,
+      availableCompanies
     });
   } catch (error) {
     console.error('Patients list error:', error);
