@@ -59,6 +59,7 @@ router.get('/', requireAuth, async (req, res) => {
     const searchQuery = req.query.search || '';
     const typeFilter = req.query.type || '';
     const priorityFilter = req.query.priority || '';
+    const dateFilter = req.query.date || '';
 
     // Apply server-side filters (search testId, testType, patient name)
     let filtered = matches;
@@ -74,6 +75,15 @@ router.get('/', requireAuth, async (req, res) => {
     }
     if (typeFilter) filtered = filtered.filter(t => ((t.testType || t.template || '') === typeFilter));
     if (priorityFilter) filtered = filtered.filter(t => (t.priority || 'Normal') === priorityFilter);
+
+    // Date filter (match testDate or createdAt YYYY-MM-DD)
+    if (dateFilter) {
+      const df = String(dateFilter);
+      filtered = filtered.filter(t => {
+        const dt = t.testDate || t.createdAt || null;
+        try { return dt ? new Date(dt).toISOString().slice(0,10) === df : false; } catch (e) { return false; }
+      });
+    }
 
     // Attach lightweight patient info and sort by date desc
     const tests = (filtered || []).sort((a,b) => new Date(b.testDate || b.createdAt) - new Date(a.testDate || a.createdAt))
@@ -102,6 +112,7 @@ router.get('/', requireAuth, async (req, res) => {
       searchQuery, 
       typeFilter, 
       priorityFilter,
+      dateFilter,
       // pagination vars
       currentPage,
       totalPages,

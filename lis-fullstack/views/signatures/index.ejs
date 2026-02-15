@@ -1,7 +1,8 @@
 <div class="card">
   <h3>Signatures</h3>
   <form method="GET" action="/signatures" style="display:flex; gap:8px; margin-bottom:12px; align-items:center;">
-    <input type="text" name="search" placeholder="Search test id / patient / type..." value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>" style="flex:1; padding:8px;">
+    <input type="text" name="search" placeholder="Search test id / patient / type..." value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>" style="flex:1; min-width:360px; padding:8px; height:44px; box-sizing:border-box;">
+    <input type="date" name="date" onchange="this.form.submit()" value="<%= typeof dateFilter !== 'undefined' ? dateFilter : '' %>" style="width:170px; height:44px; padding:6px; box-sizing:border-box;">
     <select name="type" onchange="this.form.submit()" style="width:220px; padding:8px;">
       <option value="">-- All Test Types --</option>
       <% (availableTestTypes || []).forEach(function(tt){ %>
@@ -60,7 +61,7 @@
   <% if (typeof totalPages !== 'undefined' && totalPages > 1) { %>
     <div class="flex-between mt-20">
       <% if (hasPrevPage) { %>
-        <a href="?page=<%= prevPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&priority=<%= encodeURIComponent(priorityFilter || '') %>" class="button btn-secondary">Previous</a>
+        <a href="?page=<%= prevPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&priority=<%= encodeURIComponent(priorityFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="button btn-secondary">Previous</a>
       <% } %>
 
       <div>
@@ -72,12 +73,12 @@
           start = Math.max(1, end - maxDisplay + 1);
           for (let p = start; p <= end; p++) {
         %>
-          <a href="?page=<%= p %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&priority=<%= encodeURIComponent(priorityFilter || '') %>" class="button btn-small <%= p === currentPage ? 'btn-primary' : 'btn-secondary' %>"><%= p %></a>
+          <a href="?page=<%= p %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&priority=<%= encodeURIComponent(priorityFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="button btn-small <%= p === currentPage ? 'btn-primary' : 'btn-secondary' %>"><%= p %></a>
         <% } %>
       </div>
 
       <% if (hasNextPage) { %>
-        <a href="?page=<%= nextPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&priority=<%= encodeURIComponent(priorityFilter || '') %>" class="button btn-secondary">Next</a>
+        <a href="?page=<%= nextPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&priority=<%= encodeURIComponent(priorityFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="button btn-secondary">Next</a>
       <% } %>
     </div>
   <% } %>

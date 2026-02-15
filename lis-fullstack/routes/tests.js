@@ -23,6 +23,7 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
     const searchQuery = req.query.search || '';
     const statusFilter = req.query.status || '';
     const typeFilter = req.query.testType || '';
+    const dateFilter = req.query.date || '';
 
   // Get all tests and patients
   let allTests = await Test.find({});
@@ -70,6 +71,15 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
       allTests = allTests.filter(t => (t.testType || '').toString().toLowerCase().includes(tf));
     }
 
+    // Date filter (match testDate or createdAt YYYY-MM-DD)
+    if (dateFilter) {
+      const df = String(dateFilter);
+      allTests = allTests.filter(t => {
+        const dt = t.testDate || t.createdAt || null;
+        try { return dt ? new Date(dt).toISOString().slice(0,10) === df : false; } catch (e) { return false; }
+      });
+    }
+
     // Sort by creation date (newest first)
     allTests.sort((a, b) => new Date(b.createdAt || b.testDate) - new Date(a.createdAt || a.testDate));
 
@@ -104,6 +114,7 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
       searchQuery,
       statusFilter,
       typeFilter,
+      dateFilter,
       availableTestTypes
     });
   } catch (error) {

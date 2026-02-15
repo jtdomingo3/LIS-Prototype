@@ -32,6 +32,7 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
     const searchQuery = req.query.search || '';
     const philhealthFilter = req.query.philhealth || '';
     const companyFilter = req.query.company || '';
+    const dateFilter = req.query.date || '';
 
     // Get all patients and filter/search
     let allPatients = await Patient.find({});
@@ -62,6 +63,17 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
     if (companyFilter) {
       const compLower = String(companyFilter).toLowerCase();
       allPatients = allPatients.filter(p => (p.company || '').toString().toLowerCase().includes(compLower));
+    }
+
+    // Date filter (match createdAt date YYYY-MM-DD)
+    if (dateFilter) {
+      const df = String(dateFilter);
+      allPatients = allPatients.filter(p => {
+        const dt = p.testDate || p.createdAt || p.dateOfBirth || null;
+        try {
+          return dt ? new Date(dt).toISOString().slice(0,10) === df : false;
+        } catch (e) { return false; }
+      });
     }
 
     // Sort by creation date (newest first)
@@ -145,6 +157,7 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
       searchQuery,
       philhealthFilter,
       companyFilter,
+      dateFilter,
       availableCompanies
     });
   } catch (error) {

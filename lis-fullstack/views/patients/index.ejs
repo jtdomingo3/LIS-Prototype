@@ -5,8 +5,10 @@
                         <a href="/patients/new" class="button btn-primary">➕ Add New Patient</a>
                 </div>
                 <div style="flex:1; display:flex; justify-content:flex-start; gap:12px; align-items:center;">
-                    <form method="GET" action="/patients" class="filter-form" style="flex:1;">
-                        <input type="text" name="search" class="search-box" placeholder="Search patients by name or ID..." value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>">
+                    <form method="GET" action="/patients" class="filter-form" style="flex:1; display:flex; gap:8px; align-items:center;">
+                        <input type="text" name="search" class="search-box" placeholder="Search patients by name or ID..." value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>" style="flex:1;">
+
+                        <input type="date" name="date" class="filter-select" onchange="this.form.submit()" value="<%= typeof dateFilter !== 'undefined' ? dateFilter : '' %>">
 
                         <select name="philhealth" class="filter-select" onchange="this.form.submit()">
                             <option value="">PhilHealth</option>
@@ -77,7 +79,7 @@
         <% if (totalPages > 1) { %>
         <div class="flex-between mt-20">
             <% if (hasPrevPage) { %>
-                <a href="/patients?page=<%= prevPage %>&search=<%= encodeURIComponent(searchQuery || '') %>" class="button btn-secondary">Previous</a>
+                <a href="/patients?page=<%= prevPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&philhealth=<%= encodeURIComponent(philhealthFilter || '') %>&company=<%= encodeURIComponent(companyFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="button btn-secondary">Previous</a>
             <% } %>
 
             <div>
@@ -89,12 +91,12 @@
                     start = Math.max(1, end - maxDisplay + 1);
                     for (let p = start; p <= end; p++) {
                 %>
-                    <a href="/patients?page=<%= p %>&search=<%= encodeURIComponent(searchQuery || '') %>" class="button btn-small <%= p === currentPage ? 'btn-primary' : 'btn-secondary' %>"><%= p %></a>
+                    <a href="/patients?page=<%= p %>&search=<%= encodeURIComponent(searchQuery || '') %>&philhealth=<%= encodeURIComponent(philhealthFilter || '') %>&company=<%= encodeURIComponent(companyFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="button btn-small <%= p === currentPage ? 'btn-primary' : 'btn-secondary' %>"><%= p %></a>
                 <% } %>
             </div>
 
             <% if (hasNextPage) { %>
-                <a href="/patients?page=<%= nextPage %>&search=<%= encodeURIComponent(searchQuery || '') %>" class="button btn-secondary">Next</a>
+                <a href="/patients?page=<%= nextPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&philhealth=<%= encodeURIComponent(philhealthFilter || '') %>&company=<%= encodeURIComponent(companyFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="button btn-secondary">Next</a>
             <% } %>
         </div>
         <% } %>

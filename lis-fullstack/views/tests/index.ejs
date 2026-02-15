@@ -17,6 +17,7 @@
           <option value="Completed" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Completed') ? 'selected' : '' %>>Completed</option>
         </select>
         <input type="text" name="search" class="search-box" placeholder="Search tests by patient name or ID..." value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>" style="height:44px; padding:10px 14px; font-size:14px; min-width:240px; flex:1; box-sizing:border-box; border-radius:8px; border:1px solid #d0d7de; margin:0 8px;">
+        <input type="date" name="date" onchange="this.form.submit();" value="<%= typeof dateFilter !== 'undefined' ? dateFilter : '' %>" style="height:44px; padding:6px;">
         <select name="testType" style="padding:0 12px; height:44px; font-size:14px; width:220px; box-sizing:border-box; border-radius:8px; border:1px solid #d0d7de; background:#fff;" onchange="this.form.submit();">
           <option value="">All Test Types</option>
           <% if (Array.isArray(availableTestTypes)) { availableTestTypes.forEach(function(tt){ %>
@@ -74,7 +75,7 @@
   <% if (typeof totalPages !== 'undefined' && totalPages > 1) { %>
     <div class="flex-between mt-20">
       <% if (hasPrevPage) { %>
-        <a href="?page=<%= prevPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>" class="button btn-secondary">Previous</a>
+        <a href="?page=<%= prevPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="button btn-secondary">Previous</a>
       <% } %>
 
       <div>
@@ -86,12 +87,12 @@
           start = Math.max(1, end - maxDisplay + 1);
           for (let p = start; p <= end; p++) {
         %>
-          <a href="?page=<%= p %>&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>" class="button btn-small <%= p === currentPage ? 'btn-primary' : 'btn-secondary' %>"><%= p %></a>
+          <a href="?page=<%= p %>&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="button btn-small <%= p === currentPage ? 'btn-primary' : 'btn-secondary' %>"><%= p %></a>
         <% } %>
       </div>
 
       <% if (hasNextPage) { %>
-        <a href="?page=<%= nextPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>" class="button btn-secondary">Next</a>
+        <a href="?page=<%= nextPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="button btn-secondary">Next</a>
       <% } %>
     </div>
   <% } %>
