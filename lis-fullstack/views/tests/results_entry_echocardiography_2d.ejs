@@ -92,14 +92,8 @@
 
     <hr>
     <h4>Signatures / Performers</h4>
-    <div class="form-row">
-      <label>Physician (Name)</label>
-      <input type="text" name="pathName" placeholder="Physician name" value="<%= test.results && test.results.pathName ? test.results.pathName : (test.results && test.results.doctorName ? test.results.doctorName : '') %>">
-    </div>
-    <div class="form-row">
-      <label>Physician License</label>
-      <input type="text" name="pathLicense" placeholder="License number (optional)" value="<%= test.results && test.results.pathLicense ? test.results.pathLicense : (test.results && test.results.doctorLicense ? test.results.doctorLicense : '') %>">
-    </div>
+    <%- include('../partials/signatory_select', { prefix: 'path', label: 'Physician', role: ['Cardiologist','Internist','Physician','Radiologist','Pathologist','Doctor'], nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (test.results && test.results.pathName) ? test.results.pathName : (test.results && test.results.doctorName ? test.results.doctorName : ''), existingLicense: (test.results && test.results.pathLicense) ? test.results.pathLicense : (test.results && test.results.doctorLicense ? test.results.doctorLicense : '') }) %>
+
     <div class="form-row">
       <label>Designation</label>
       <input type="text" name="doctorDesignation" placeholder="e.g. MD - Cardiologist" value="<%= test.results && test.results.doctorDesignation ? test.results.doctorDesignation : 'Cardiologist' %>">

@@ -12,6 +12,30 @@
       box-sizing: border-box;
     }
 
+    /* Zoom-out effect like browser zoom - no empty space */
+    html {
+      /* Default scale for PC browser: 80% zoom (TV scale applied via JavaScript) */
+      --zoom-scale: 0.8;
+      /* Taskbar offset to ensure content doesn't hide behind Windows taskbar */
+      --taskbar-offset: 0px;
+    }
+
+    /* TV mode zoom is applied via JavaScript for better device detection */
+    html.tv-mode {
+      --zoom-scale: 0.62;
+      /* Reduced offset - only account for actual taskbar height */
+      --taskbar-offset: 0px;
+    }
+
+    body {
+      /* Expand body to compensate for scale */
+      width: calc(100% / var(--zoom-scale));
+      /* Subtract taskbar offset so content stays visible above taskbar */
+      height: calc((100vh - var(--taskbar-offset)) / var(--zoom-scale));
+      transform: scale(var(--zoom-scale));
+      transform-origin: top left;
+    }
+
     :root {
       /* Brand Colors */
       --brand-black: #1a1a1a;
@@ -37,13 +61,13 @@
     body {
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
       background: var(--brand-gray-light);
-      min-height: 100vh;
+      min-height: calc((100vh - var(--taskbar-offset)) / var(--zoom-scale));
       overflow-x: hidden;
       color: var(--text-dark);
     }
 
     .kiosk-container {
-      min-height: 100vh;
+      min-height: calc((100vh - var(--taskbar-offset)) / var(--zoom-scale));
       padding: 24px;
     }
 
@@ -168,9 +192,10 @@
 
     /* Landscape: force a 5x2 grid and scale elements down so the whole dashboard fits on one screen */
     @media (orientation: landscape) {
-      /* Ensure no page scroll in landscape by using full-height flex layout */
-      html, body { height: 100%; overflow: hidden; }
-      .kiosk-container { display: flex; flex-direction: column; height: 100%; padding: 12px; padding-bottom: 70px; box-sizing: border-box; }
+      /* Ensure no page scroll in landscape by using full-height flex layout - adjusted for zoom and taskbar */
+      html { height: calc((100% - var(--taskbar-offset)) / var(--zoom-scale)); overflow: hidden; }
+      body { height: calc((100vh - var(--taskbar-offset)) / var(--zoom-scale)); min-height: auto; overflow: hidden; }
+      .kiosk-container { display: flex; flex-direction: column; height: calc((100vh - var(--taskbar-offset)) / var(--zoom-scale)); padding: 12px; padding-bottom: 12px; box-sizing: border-box; }
       .kiosk-header { padding: 12px; margin-bottom: 12px; }
   .kiosk-title { font-size: 2.4rem; }
   .kiosk-title-stack { display: flex; flex-direction: column; gap: 4px; align-items: center; text-align: center; }
@@ -348,6 +373,39 @@
       color: var(--brand-orange);
     }
 
+    /* Next list grid (5 rows x 2 columns) */
+    .next-label {
+      font-size: 0.85rem;
+      color: var(--brand-green);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 700;
+    }
+
+    .next-list {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: repeat(5, auto);
+      gap: 8px;
+      max-width: 260px;
+      max-height: 220px;
+      overflow: hidden;
+      margin: 0 auto;
+    }
+
+    .next-item {
+      background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+      color: var(--brand-black);
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-weight: 800;
+      font-size: 1.05rem; /* slightly larger for readability */
+      text-align: center;
+      box-shadow: 0 6px 18px rgba(2,6,23,0.06);
+      font-variant-numeric: tabular-nums;
+    }
+
     /* Footer */
     .kiosk-footer {
       position: fixed;
@@ -436,6 +494,41 @@
       color: var(--brand-orange);
     }
 
+    /* Marquee / advertisement - fixed so it stays visible when footer is hidden */
+    .kiosk-marquee {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 84px; /* sits above footer by default */
+      z-index: 1150;
+      width: 100%;
+      overflow: hidden;
+      white-space: nowrap;
+      box-sizing: border-box;
+      padding: 8px 16px;
+      background: linear-gradient(90deg, rgba(16,185,129,0.06), rgba(11,61,145,0.03));
+      border-radius: 8px 8px 0 0;
+      margin: 0 auto;
+      max-width: 1600px;
+      font-weight: 700;
+      color: var(--brand-navy);
+      font-size: 1.25rem;
+    }
+
+    /* When footer is hidden, move marquee closer to bottom */
+    body.footer-hidden .kiosk-marquee { bottom: 12px; }
+
+    .kiosk-marquee .marquee-inner {
+      display: inline-block;
+      will-change: transform;
+      padding-left: 100%;
+    }
+
+    @keyframes marqueeScroll {
+      0% { transform: translateX(0%); }
+      100% { transform: translateX(-100%); }
+    }
+
     /* Add padding at bottom for fixed footer */
     .kiosk-container {
       padding-bottom: 100px;
@@ -516,6 +609,24 @@
       body.is-tv .kiosk-footer { padding: 6px 10px; }
       body.is-tv .footer-controls .sound-btn, body.is-tv .footer-controls .control-btn { padding: 6px 10px; }
     }
+
+      /* Zoom handling: reduce header and overall kiosk scale when browser zoom is detected */
+      body.zoomed .kiosk-container {
+        transform: scale(0.96);
+        transform-origin: top center;
+        transition: transform 180ms ease;
+      }
+
+      body.zoomed .kiosk-header {
+        transform: scale(0.85);
+        transform-origin: center top;
+        padding: 10px 8px;
+      }
+
+      body.zoomed .kiosk-title { font-size: 2rem; }
+      body.zoomed .kiosk-subtitle { font-size: 0.95rem; }
+      body.zoomed .kiosk-time { font-size: 1.4rem; }
+      body.zoomed .kiosk-date { font-size: 0.85rem; }
   </style>
 </head>
 <body>
@@ -562,17 +673,23 @@
             <% } else { %>
             <div class="patient-number empty" id="patient-<%= safeId %>">—</div>
             <% } %>
-            <% if (patients.length > 1) { %>
             <div class="next-patient" id="next-<%= safeId %>">
-              Next: <strong><%= patients[1].patientCode ? patients[1].patientCode.split('-').pop() : patients[1].testId %></strong>
+              <div class="next-label">Next</div>
+              <div class="next-list" id="nextlist-<%= safeId %>">
+                <% for (let i = 1; i < Math.min(patients.length, 11); i++) { %>
+                  <div class="next-item"><%= patients[i].patientCode ? patients[i].patientCode.split('-').pop() : patients[i].testId %></div>
+                <% } %>
+              </div>
             </div>
-            <% } else { %>
-            <div class="next-patient" id="next-<%= safeId %>" style="display:none;"></div>
-            <% } %>
           </div>
         </div>
       <% }); %>
     </div>
+  </div>
+
+  <!-- Marquee sits above the footer and remains visible when footer is hidden -->
+  <div class="kiosk-marquee" id="kioskMarquee" style="display:none;">
+    <div class="marquee-inner" id="kioskMarqueeInner">&nbsp;</div>
   </div>
 
   <div class="kiosk-footer">
@@ -724,7 +841,8 @@
     // Dynamically adjust per-card font sizes so text fits on TV screens where CSS scaling may differ
     function adjustTextForTV() {
       try {
-        if (!isTvDevice()) return;
+        // Skip if not in TV mode
+        if (!document.documentElement.classList.contains('tv-mode')) return;
         const cards = document.querySelectorAll('.area-card');
         cards.forEach(card => {
           const rect = card.getBoundingClientRect();
@@ -759,8 +877,20 @@
     let _tvResizeTimer = null;
     function setupTVScaling() {
       try {
-        if (!isTvDevice()) return;
-        document.body.classList.add('is-tv');
+        // Check if TV device OR if ?tv=1 URL parameter is present (for manual TV mode)
+        const isTV = isTvDevice();
+        const urlParams = new URLSearchParams(window.location.search);
+        const forceTvMode = urlParams.get('tv') === '1';
+        
+        if (isTV || forceTvMode) {
+          // Apply TV zoom mode via CSS class on html element
+          document.documentElement.classList.add('tv-mode');
+          document.body.classList.add('is-tv');
+          console.log('[Kiosk] TV mode enabled - zoom: 62%, isTV:', isTV, 'forceTvMode:', forceTvMode);
+        }
+        
+        if (!isTV && !forceTvMode) return;
+        
         // run initially after layout settles
         setTimeout(adjustTextForTV, 120);
         window.addEventListener('resize', () => {
@@ -768,7 +898,7 @@
           _tvResizeTimer = setTimeout(() => adjustTextForTV(), 120);
         });
         window.addEventListener('orientationchange', () => setTimeout(adjustTextForTV, 200));
-      } catch (e) { /* ignore */ }
+      } catch (e) { console.warn('[Kiosk] setupTVScaling error', e); }
     }
 
     function setConnectionStatus(status) {
@@ -936,6 +1066,7 @@
               _currentAudio.onended = () => { resolve(); };
               _currentAudio.onerror = () => { resolve(); };
               _currentAudio.src = '/reception/tts?text=' + encodeURIComponent(next) + '&lang=en';
+              _currentAudio.src = '/reception/tts?text=' + encodeURIComponent(next) + '&lang=en&kiosk=1';
               try { _currentAudio.pause(); } catch (e) {}
               _currentAudio.currentTime = 0;
               _currentAudio.play().catch(e => { console.warn('[Kiosk] serverTTS play failed', e); resolve(); });
@@ -1153,10 +1284,15 @@
                 const prev = lastShownPatients[area] || '';
                 if (newText !== prev) {
                   lastShownPatients[area] = newText;
-                  if (speechEnabled) {
+
+                  // Disable voice announcements for the 'Releasing of Result' area only
+                  const areaLower = String(area).toLowerCase();
+                  if (areaLower.includes('releas')) {
+                    // do not speak for release step
+                  } else if (speechEnabled) {
                     const spokenNum = sanitizeSpokenNumber(newText);
                     let msg;
-                    if (String(area).toLowerCase().includes("doctor") && patients[0] && patients[0].assignedDoctor) {
+                    if (areaLower.includes("doctor") && patients[0] && patients[0].assignedDoctor) {
                       const docName = patients[0].assignedDoctor || '';
                       const lastName = docName.split(' ').slice(-1)[0] || docName;
                       msg = `Now serving Patient ${spokenNum} please proceed to Doctor ${lastName} for Check-up`;
@@ -1174,15 +1310,25 @@
             }
         }
 
-        // Update next patient
+        // Update next patients list (up to 10)
         const nextEl = document.getElementById('next-' + safeId);
-        if (nextEl) {
+        const nextListEl = document.getElementById('nextlist-' + safeId);
+        if (nextEl && nextListEl) {
           if (patients.length > 1) {
-            const nextCode = patients[1].patientCode || '';
-            nextEl.innerHTML = 'Next: <strong>' + (nextCode.includes('-') ? nextCode.split('-').pop() : nextCode) + '</strong>';
+            nextListEl.innerHTML = '';
+            const entries = patients.slice(1, 11);
+            entries.forEach(p => {
+              const code = p.patientCode || '';
+              const short = code.includes('-') ? code.split('-').pop() : code;
+              const div = document.createElement('div');
+              div.className = 'next-item';
+              div.textContent = short || '—';
+              nextListEl.appendChild(div);
+            });
             nextEl.style.display = 'block';
           } else {
             nextEl.style.display = 'none';
+            nextListEl.innerHTML = '';
           }
         }
 
@@ -1199,6 +1345,28 @@
       });
 
       updateLastUpdate();
+
+      // Update marquee/ad text when provided
+      try {
+        const marqueeEl = document.getElementById('kioskMarquee');
+        const marqueeInner = document.getElementById('kioskMarqueeInner');
+        (function setMarquee(text) {
+          try {
+            if (!marqueeEl || !marqueeInner) return;
+            const t = String(text || '').trim();
+            if (!t) {
+              marqueeInner.style.animation = '';
+              marqueeInner.textContent = '';
+              marqueeEl.style.display = 'none';
+              return;
+            }
+            marqueeInner.textContent = '   ' + t + '   ';
+            marqueeEl.style.display = 'block';
+            const duration = Math.max(12, Math.min(90, Math.round(t.length * 0.12) + 12));
+            marqueeInner.style.animation = `marqueeScroll ${duration}s linear infinite`;
+          } catch (e) { /* ignore */ }
+        })(data && data.ad ? data.ad : '');
+      } catch (e) { /**/ }
 
       // Play sound on changes
       if (hasChanges) {
@@ -1306,6 +1474,31 @@
 
   // Setup TV-specific scaling if needed
   try { setupTVScaling(); } catch (e) { /* ignore */ }
+
+      // Monitor browser zoom and reduce header/overall scale when zoomed
+      try {
+        function getZoomLevel() {
+          try {
+            if (window.outerWidth && window.innerWidth) return window.outerWidth / window.innerWidth;
+            if (window.devicePixelRatio) return window.devicePixelRatio;
+          } catch (e) { }
+          return 1;
+        }
+
+        function checkZoom() {
+          try {
+            const z = getZoomLevel();
+            // Heuristic: treat >1.07 as zoomed-in
+            if (z > 1.07) document.body.classList.add('zoomed'); else document.body.classList.remove('zoomed');
+          } catch (e) { /* ignore */ }
+        }
+
+        checkZoom();
+        window.addEventListener('resize', () => setTimeout(checkZoom, 120));
+        window.addEventListener('orientationchange', () => setTimeout(checkZoom, 160));
+        // Poll occasionally for environments where outerWidth doesn't change
+        setInterval(checkZoom, 2000);
+      } catch (e) { /* ignore */ }
 
       // Restore fullscreen preference (user may have enabled before)
       try {

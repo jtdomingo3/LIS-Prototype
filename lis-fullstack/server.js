@@ -1,4 +1,6 @@
 const express = require('express');
+// Load environment variables from .env when present
+try { require('dotenv').config({ path: require('path').join(__dirname, '.env') }); } catch (e) {}
 const session = require('express-session');
 const flash = require('connect-flash');
 const helmet = require('helmet');
@@ -17,6 +19,9 @@ const PORT = process.env.PORT || 3000;
 // If you prefer localhost-only, set HOST=127.0.0.1 before starting.
 const HOST = process.env.HOST || '0.0.0.0';
 const DATA_FILE = path.join(__dirname, 'data.json');
+const USERS_FILE = path.join(__dirname, 'data-users.json');
+const crypto = require('crypto');
+const USER_DATA_KEY = process.env.DATA_USERS_KEY || process.env.USER_DATA_KEY || null;
 
 // Initialize data file if it doesn't exist
 if (!fs.existsSync(DATA_FILE)) {
@@ -24,23 +29,130 @@ if (!fs.existsSync(DATA_FILE)) {
     users: [],
     patients: [],
     tests: [],
-    templates: []
+    templates: [],
+    // persistent counters for per-test-type IDs
+    counters: {}
   };
   fs.writeFileSync(DATA_FILE, JSON.stringify(initialData, null, 2));
 }
 
-// Simple file-based database functions
+// Ensure users file exists
+if (!fs.existsSync(USERS_FILE)) {
+  fs.writeFileSync(USERS_FILE, USER_DATA_KEY ? JSON.stringify([]) : JSON.stringify([], null, 2));
+}
+
+function deriveKey(secret) {
+  return crypto.createHash('sha256').update(String(secret)).digest();
+}
+
+function encryptJson(obj) {
+  if (!USER_DATA_KEY) return JSON.stringify(obj, null, 2);
+  const key = deriveKey(USER_DATA_KEY);
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  const plaintext = Buffer.from(JSON.stringify(obj));
+  const encrypted = Buffer.concat([cipher.update(plaintext), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return JSON.stringify({ v: 1, iv: iv.toString('base64'), tag: tag.toString('base64'), data: encrypted.toString('base64') }, null, 2);
+}
+
+function decryptJson(raw) {
+  if (!raw) return [];
+  if (!USER_DATA_KEY) return JSON.parse(raw);
+  let parsed;
+
+  try { parsed = JSON.parse(raw); } catch (e) { return JSON.parse(raw || '[]'); }
+  if (!parsed || !parsed.data) return parsed;
+  const key = deriveKey(USER_DATA_KEY);
+  const iv = Buffer.from(parsed.iv, 'base64');
+  const tag = Buffer.from(parsed.tag, 'base64');
+  const encrypted = Buffer.from(parsed.data, 'base64');
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+  decipher.setAuthTag(tag);
+  const dec = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+  return JSON.parse(dec.toString('utf8'));
+}
+
+// Simple file-based database functions with atomic write and merge protection
 const db = {
   read: () => JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')),
-  write: (data) => fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2)),
-  getUsers: () => db.read().users,
+  write: (data) => {
+    try {
+      const dir = path.dirname(DATA_FILE);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      const tmp = `${DATA_FILE}.tmp-${process.pid}-${Date.now()}`;
+      // create a timestamp on top-level to help detect staleness when needed
+      if (data && typeof data === 'object') data.__lastWrite = (new Date()).toISOString();
+      fs.writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf8');
+      try { fs.renameSync(tmp, DATA_FILE); } catch (e) {
+        // fallback to copy+unlink on platforms that behave differently
+        try { fs.copyFileSync(tmp, DATA_FILE); fs.unlinkSync(tmp); } catch (e2) { throw e2; }
+      }
+    } catch (e) {
+      console.error('DB write failed:', e);
+      throw e;
+    }
+  },
+  // Users stored separately in data-users.json (optional encrypted)
+  getUsers: () => {
+    try {
+      const raw = fs.readFileSync(USERS_FILE, 'utf8');
+      return decryptJson(raw);
+    } catch (e) {
+      return [];
+    }
+  },
+  saveUsers: (users) => {
+    try {
+      fs.writeFileSync(USERS_FILE, encryptJson(users), 'utf8');
+    } catch (e) {
+      console.error('Failed to write users file:', e);
+    }
+  },
   getPatients: () => db.read().patients,
   getTests: () => db.read().tests,
   getTemplates: () => db.read().templates,
-  saveUsers: (users) => { const data = db.read(); data.users = users; db.write(data); },
+  getCounters: () => db.read().counters || {},
   savePatients: (patients) => { const data = db.read(); data.patients = patients; db.write(data); },
-  saveTests: (tests) => { const data = db.read(); data.tests = tests; db.write(data); },
-  saveTemplates: (templates) => { const data = db.read(); data.templates = templates; db.write(data); }
+  // saveTests now merges incoming tests with on-disk tests using `updatedAt` to avoid
+  // older writes overwriting newer changes when concurrent requests are processed.
+  saveTests: (tests) => {
+    try {
+      const disk = db.read();
+      const existing = Array.isArray(disk.tests) ? disk.tests : [];
+      const mergedMap = new Map();
+
+      // seed with existing
+      for (const t of existing) {
+        if (t && t.id) mergedMap.set(t.id, t);
+      }
+
+      // overlay with incoming tests when newer (or absent on disk)
+      for (const t of (Array.isArray(tests) ? tests : [])) {
+        if (!t || !t.id) continue;
+        const cur = mergedMap.get(t.id);
+        const curTs = cur && cur.updatedAt ? Date.parse(cur.updatedAt) : 0;
+        const incomingTs = t.updatedAt ? Date.parse(t.updatedAt) : 0;
+        if (!cur || incomingTs >= curTs) {
+          mergedMap.set(t.id, t);
+        } else {
+          console.log(`[DB] skipping stale write for test id=${t.id} incoming=${new Date(incomingTs).toISOString()} disk=${new Date(curTs).toISOString()}`);
+        }
+      }
+
+      // Preserve any tests that existed on disk but were omitted from the incoming payload
+      const merged = Array.from(mergedMap.values());
+      const data = disk || { users: [], patients: [], tests: [], templates: [], counters: {} };
+      data.tests = merged;
+      db.write(data);
+    } catch (e) {
+      console.error('saveTests failed:', e);
+      // fallback to naive write if merge fails
+      const data = db.read(); data.tests = tests; db.write(data);
+    }
+  },
+  saveTemplates: (templates) => { const data = db.read(); data.templates = templates; db.write(data); },
+  saveCounters: (counters) => { const data = db.read(); data.counters = counters; db.write(data); }
 };
 
 // Make db available globally
@@ -102,9 +214,32 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
 // Simple request logger to help debug routes and payloads
+function maskSensitive(obj) {
+  const SENSITIVE = new Set(['password','pwd','pass','confirmPassword','confirm_password','passwordConfirm']);
+  if (obj == null) return obj;
+  if (Array.isArray(obj)) return obj.map(v => maskSensitive(v));
+  if (typeof obj === 'object') {
+    const out = {};
+    for (const k of Object.keys(obj)) {
+      if (SENSITIVE.has(k)) out[k] = '[FILTERED]';
+      else out[k] = maskSensitive(obj[k]);
+    }
+    return out;
+  }
+  return obj;
+}
+
 app.use((req, res, next) => {
   const now = new Date().toISOString();
-  console.log(`[${now}] ${req.method} ${req.originalUrl}` + (Object.keys(req.body || {}).length ? ` body=${JSON.stringify(req.body)}` : ''));
+  let bodyPart = '';
+  try {
+    const b = req.body || {};
+    if (Object.keys(b).length) {
+      const masked = maskSensitive(b);
+      bodyPart = ` body=${JSON.stringify(masked)}`;
+    }
+  } catch (e) { bodyPart = ' body=[unserializable]'; }
+  console.log(`[${now}] ${req.method} ${req.originalUrl}` + bodyPart);
   next();
 });
 
@@ -169,6 +304,40 @@ app.use((req, res, next) => {
     console.error('Failed to log flash error messages (error):', e);
   }
   res.locals.user = req.session.user || null;
+  // Also expose the session's user under `sessionUser` so layout can rely on the
+  // logged-in user even when a view passes a `user` variable for other purposes
+  res.locals.sessionUser = req.session.user || null;
+  next();
+});
+
+// Expose all users to views for signatory dropdowns
+app.use((req, res, next) => {
+  try {
+    const users = global.db && global.db.getUsers ? global.db.getUsers() : [];
+    // Map to minimal fields used in the UI
+    res.locals.allUsers = (users || []).map(u => ({ id: u.id || u.email, name: u.name || u.email, email: u.email, role: u.role || '', licenseNumber: u.licenseNumber || '' }));
+  } catch (e) {
+    res.locals.allUsers = [];
+  }
+  next();
+});
+
+// Expose configured doctor names and derived doctor area labels to views
+const DOCTOR_1_NAME = process.env.DOCTOR_1_NAME || '';
+const DOCTOR_2_NAME = process.env.DOCTOR_2_NAME || '';
+app.use((req, res, next) => {
+  try {
+    res.locals.DOCTOR_1_NAME = DOCTOR_1_NAME;
+    res.locals.DOCTOR_2_NAME = DOCTOR_2_NAME;
+    const areas = [];
+    if (DOCTOR_1_NAME) areas.push(`Doctor's Check-up - ${DOCTOR_1_NAME}`);
+    if (DOCTOR_2_NAME) areas.push(`Doctor's Check-up - ${DOCTOR_2_NAME}`);
+    res.locals.DOCTOR_AREAS = areas;
+  } catch (e) {
+    res.locals.DOCTOR_1_NAME = '';
+    res.locals.DOCTOR_2_NAME = '';
+    res.locals.DOCTOR_AREAS = [];
+  }
   next();
 });
 
@@ -177,13 +346,122 @@ app.locals.featureFlags = {
   tests: true,
   reports: true,
   templates: true,
-  users: true
+  users: true,
+  worksheet: true
 };
 
 // Expose current feature flags to all views via res.locals
 app.use((req, res, next) => {
-  res.locals.featureFlags = app.locals.featureFlags;
+  // Allow session-level overrides for temporary (Apply) changes
+  const sessionFlags = (req.session && req.session.featureFlags) ? req.session.featureFlags : {};
+  res.locals.featureFlags = Object.assign({}, app.locals.featureFlags, sessionFlags);
   next();
+});
+
+// Server-side result highlighting helper (for PDFs / serverside renders where client JS may not run)
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function highlightResult(text) {
+  if (text == null) return '';
+  var s = String(text);
+  // If it already contains HTML tags, assume it's intentionally formatted and perform replacements on HTML-safe content
+  var containsTags = /<\/?[a-z][\s\S]*>/i.test(s);
+  if (!containsTags) {
+    var out = escapeHtml(s);
+    // highlight words
+    out = out.replace(/\b(Positive|Reactive|trace)\b/gi, function(m){ return '<span class="result-highlight">'+m+'</span>'; });
+    // highlight plus groups
+    out = out.replace(/(\+{1,4})/g, function(m){ return '<span class="result-highlight">'+m+'</span>'; });
+    return out;
+  }
+  // If HTML present, do safer replacements: replace <br> with itself, then wrap matches inside text nodes by simple replace
+  // This is best-effort — avoid full HTML parse for simplicity
+  var escaped = s;
+  escaped = escaped.replace(/\b(Positive|Reactive|trace)\b/gi, function(m){ return '<span class="result-highlight">'+m+'</span>'; });
+  escaped = escaped.replace(/(\+{1,4})/g, function(m){ return '<span class="result-highlight">'+m+'</span>'; });
+  return escaped;
+}
+
+// expose helper to all views as `hl`
+app.use((req, res, next) => { res.locals.hl = highlightResult; next(); });
+
+// Authorization: enforce per-user permissions stored in session.user.permissions
+const routePermissionMap = [
+  { prefix: '/dashboard', perm: 'dashboard' },
+  { prefix: '/patients', perm: 'patients' },
+  { prefix: '/reception', perm: 'reception' },
+  { prefix: '/tests', perm: 'tests' },
+  { prefix: '/reports', perm: 'reports' },
+  { prefix: '/templates', perm: 'templates' },
+  { prefix: '/users', perm: 'users' },
+  { prefix: '/worksheet', perm: 'worksheet' }
+];
+
+app.use((req, res, next) => {
+  try {
+    const path = req.originalUrl || req.url || '';
+    const mapping = routePermissionMap.find(m => path.indexOf(m.prefix) === 0);
+
+    console.debug(`[auth-guard] incoming ${req.method} ${path} mapping=${mapping ? mapping.prefix+'=>'+mapping.perm : '<none>'}`);
+
+    // === allow public kiosk access to safe reception endpoints (kiosk mode) ===
+    const kioskQuery = req.query && (req.query.kiosk === '1' || String(req.query.kiosk).toLowerCase() === 'true');
+    const kioskEnv = (process.env.APP_KIOSK === '1' || String(process.env.APP_KIOSK || '').toLowerCase() === 'true');
+    // If kiosk mode requested, allow GET requests under /reception/ to proceed without auth.
+    // This lets the kiosk TV fetch the assigned view, SSE, data and TTS resources without login.
+    if ((kioskQuery || kioskEnv) && req.method === 'GET' && path.indexOf('/reception/') === 0) {
+      console.debug('[auth-guard] allowing kiosk GET access to reception path without auth', path);
+      return next();
+    }
+
+    if (!mapping) return next();
+
+    // Allow users to access their own profile regardless of broader '/users' permission
+    if (path.indexOf('/users/profile') === 0) {
+      console.debug('[auth-guard] allowing /users/profile for authenticated users');
+      return next();
+    }
+
+    // allow public auth routes (login/register)
+    if (path === '/' || path.indexOf('/login') === 0) return next();
+
+    const sessionUser = req.session && req.session.user;
+    if (!sessionUser) {
+      console.warn(`[auth-guard] blocked ${req.method} ${path} - no session user`);
+      req.flash('error_msg', 'Please login to access that page');
+      return res.redirect('/');
+    }
+
+    const perms = sessionUser.permissions || {};
+    console.debug(`[auth-guard] sessionUser=${sessionUser.email} role=${sessionUser.role} perms=${JSON.stringify(perms)}`);
+
+    // Dashboard: allow any authenticated user (temporary easy fix)
+    if (mapping.perm === 'dashboard') {
+      console.debug('[auth-guard] allowing access to dashboard for authenticated user');
+      return next();
+    }
+
+    // Allow Admin role everywhere
+    if (sessionUser.role === 'Admin') {
+      console.debug('[auth-guard] allowing Admin user');
+      return next();
+    }
+
+    if (perms[mapping.perm]) {
+      console.debug(`[auth-guard] allowing via permission ${mapping.perm}`);
+      return next();
+    }
+
+    // Not allowed
+    console.warn(`[auth-guard] denying ${sessionUser.email} access to ${path} (required=${mapping.perm})`);
+    req.flash('error_msg', 'You do not have permission to access that page');
+    return res.redirect('/dashboard');
+  } catch (e) {
+    return next();
+  }
 });
 
 // Set view engine
@@ -200,6 +478,7 @@ const templateRoutes = require('./routes/templates');
 const userRoutes = require('./routes/users');
 const receptionRoutes = require('./routes/reception');
 const settingsRoutes = require('./routes/settings');
+const signaturesRoutes = require('./routes/signatures');
 
 app.use('/', authRoutes);
 app.use('/dashboard', dashboardRoutes);
@@ -210,6 +489,7 @@ app.use('/templates', templateRoutes);
 app.use('/users', userRoutes);
 app.use('/reception', receptionRoutes);
 app.use('/settings', settingsRoutes);
+app.use('/signatures', signaturesRoutes);
 
 // 404 handler
 app.use((req, res) => {

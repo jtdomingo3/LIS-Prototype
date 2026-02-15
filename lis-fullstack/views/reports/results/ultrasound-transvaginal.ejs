@@ -14,12 +14,16 @@
   .results-frame td, .results-frame th { padding:12px; vertical-align:middle; border:1px solid #000 }
   .results-frame th{ text-align:left; font-weight:700 }
   .signatures{ display:flex; justify-content:flex-end; margin-top:48px; padding-right:1.25in }
-  .sig{ text-align:center; width:40%; padding-right:0.25in }
+  .sig{ position:relative; text-align:center; width:40%; padding-right:0.25in; min-height:90px }
+  .signature-overlay{ position:absolute; pointer-events:none; left:50%; transform-origin:center; }
   /* Signatures and footer should use serif (not Courier New) */
   .signatures, .sig { font-family: 'Times New Roman', Times, serif; }
   .watermark{ position:absolute; left:50%; top:44%; transform:translate(-50%,-50%); width:52%; opacity:0.06; pointer-events:none; z-index:0 }
   .report-container{ position:relative; z-index:1 }
+  .measure, .measure td, .measure span { font-family: 'Courier New', monospace; font-size:12px; }
 </style>
+
+<%- include('./_highlight') %>
 
 <div class="report-page">
   <div class="report-container">
@@ -60,21 +64,30 @@
       </tr>
       <tr>
         <td>Physician:</td>
-        <td colspan="5"><strong><%= (test && test.patient && (test.patient.physician || test.patient.physicianName)) ? (test.patient.physician || test.patient.physicianName) : (test && test.requestedBy && test.requestedBy.name ? test.requestedBy.name : (test && test.results && test.results.requestedByName ? test.results.requestedByName : '')) %></strong></td>
+        <td colspan="5"><strong><%= (test && test.patient && (test.patient.physician || test.patient.physicianName)) ? (test.patient.physician || test.patient.physicianName) : '' %></strong></td>
       </tr>
     </table>
 
     <div class="section-title"><%= (test && test.results && test.results.section_title) ? test.results.section_title : 'TRANSVAGINAL ULTRASOUND' %></div>
 
-    <div style="font-family:'Courier New', monospace; font-size:14px; padding-left:5.5em; padding-right:1.25em; line-height:1.5">
-      <div style="padding-left:0em"><strong>Gestational sac:</strong>
-        <span style="margin-left:12px"><%= test && test.results && test.results.gestational_sac_length ? (test.results.gestational_sac_length + ' cm') : '' %></span>
-        <span style="margin-left:72px"><%= test && test.results && test.results.gestational_sac_age ? test.results.gestational_sac_age : '' %></span>
-      </div>
-      <div style="margin-top:6px; padding-left:0em"><strong>CRL:</strong>
-        <span style="margin-left:12px"><%= test && test.results && test.results.crl_length ? (test.results.crl_length + ' cm') : '' %></span>
-        <span style="margin-left:72px"><%= test && test.results && test.results.crl_age ? test.results.crl_age : '' %></span>
-      </div>
+    <div style="font-family:'Courier New', monospace; font-size:12px; padding-left:5.5em; padding-right:1.25em; line-height:1.5">
+      <table class="measure" style="width:100%; border-collapse:collapse; border:none; table-layout:fixed;">
+        <colgroup>
+          <col style="width:26%">
+          <col style="width:50%">
+          <col style="width:24%">
+        </colgroup>
+        <tr>
+          <td style="padding:0"><strong>Gestational sac:</strong></td>
+          <td style="padding:0 0 0 12px"><span><%= test && test.results && test.results.gestational_sac_length ? (test.results.gestational_sac_length + ' cm') : '' %></span></td>
+          <td style="padding:0 0 0 12px; text-align:left"><span><%= test && test.results && test.results.gestational_sac_age ? test.results.gestational_sac_age : '' %></span></td>
+        </tr>
+        <tr>
+          <td style="padding:6px 0 0 0"><strong>CRL:</strong></td>
+          <td style="padding:6px 0 0 12px"><span><%= test && test.results && test.results.crl_length ? (test.results.crl_length + ' cm') : '' %></span></td>
+          <td style="padding:6px 0 0 12px; text-align:left"><span><%= test && test.results && test.results.crl_age ? test.results.crl_age : '' %></span></td>
+        </tr>
+      </table>
 
       <div style="margin-top:12px; padding-left:4px"><strong>COMMENTS:</strong></div>
       <% if (test && test.results && Array.isArray(test.results.comment_entries) && test.results.comment_entries.length) { %>
@@ -109,11 +122,28 @@
         <% } %>
       </div>
 
-     <div class="signatures">
+    <% function findSigFor(displayName){
+         if (!displayName) return null;
+         const sigs = (test && test.results && test.results.signatures) ? test.results.signatures : {};
+         for (const k in sigs){
+           const s = sigs[k];
+           if (s && s.name && String(s.name).trim() === String(displayName).trim()) return s;
+         }
+         return null;
+       }
+    %>
+    <div class="signatures" style="margin-top:<%= (test && test.results && test.results.impression_spacing) ? test.results.impression_spacing : '36px' %>">
 
       <div class="sig">
-        <div style="border-top:1px solid #000; height:0; margin-bottom:8px"></div>
+        <div style="border-top:1px solid #000; height:10px; margin-bottom:6px"></div>
         <div style="font-weight:700"><strong><span style="white-space:nowrap; display:inline-block"><%= (test && test.results && (test.results.doctorName || test.results.pathName || test.results.performedByName)) || (test && test.performedBy && test.performedBy.name) || '' %></span></strong></div>
+        <% const _performedName = (test && test.results && (test.results.doctorName || test.results.pathName || test.results.performedByName)) || (test && test.performedBy && test.performedBy.name) || '';
+           const _performedSig = findSigFor(_performedName);
+        %>
+        <% if (_performedSig && _performedSig.filename) { %>
+          <% const p = _performedSig.placement || { x:0, y:-56, scale:1 }; %>
+          <img src="/assets/signature/<%= _performedSig.filename %>" class="signature-overlay" style="left:50%; top:<%= p.y %>px; transform:translateX(-50%) scale(<%= p.scale %>); max-height:96px;" alt="signature" />
+        <% } %>
         <div style="font-size:11px"><% if (test && test.results && (test.results.doctorLicense || test.results.pathLicense || test.results.performedByLicense)) { %><strong>Lic. No. <%= (test.results.doctorLicense || test.results.pathLicense || test.results.performedByLicense) %></strong><% } %></div>
         <div style="font-weight:500"><%= (test && test.results && (test.results.doctorDesignation)) ? test.results.doctorDesignation : 'Radiologist' %></div>
       </div>

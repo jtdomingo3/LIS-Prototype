@@ -2,11 +2,20 @@
     <h3>Patient Details</h3>
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
         <div>
-            <h4 style="color: var(--secondary-green); margin-bottom: 15px;">Patient Information</h4>
-            <p><strong>Patient ID:</strong> <%= patient.patientId %></p>
-            <p><strong>Name:</strong> <%= patient.firstName %> <%= patient.lastName %></p>
-            <p><strong>Date of Birth:</strong> <%= new Date(patient.dateOfBirth).toLocaleDateString() %></p>
-            <p><strong>Age:</strong> <%= patient.age %> years</p>
+                        <h4 style="color: var(--secondary-green); margin-bottom: 15px;">Patient Information</h4>
+                        <% 
+                            let dobDisplay = 'No DOB';
+                            try {
+                                if (patient && patient.dateOfBirth) {
+                                    const d = new Date(patient.dateOfBirth);
+                                    if (!isNaN(d.getTime())) dobDisplay = d.toLocaleDateString();
+                                }
+                            } catch (e) {}
+                        %>
+                        <p><strong>Patient ID:</strong> <%= patient.patientId %></p>
+                        <p><strong>Name:</strong> <%= patient.firstName %> <%= patient.lastName %></p>
+                        <p><strong>Date of Birth:</strong> <%= dobDisplay %></p>
+                        <p><strong>Age:</strong> <%= patient.age %> years</p>
             <p><strong>Gender:</strong> <%= patient.gender %></p>
             <p><strong>Phone:</strong> <%= patient.phone || 'N/A' %></p>
             <p><strong>Email:</strong> <%= patient.email || 'N/A' %></p>
@@ -25,9 +34,33 @@
     <div class="action-buttons">
         <a href="/patients/<%= patient.id %>/edit" class="button btn-orange">Edit Patient</a>
         <a href="/tests/new?patient=<%= patient.id %>" class="button btn-primary">Create New Test</a>
+        <button id="printPatientBtn" class="button btn-secondary">Print</button>
         <a href="/patients" class="button btn-secondary">Back to Patients</a>
     </div>
 </div>
+
+<script>
+    (function(){
+        const btn = document.getElementById('printPatientBtn');
+        if (!btn) return;
+        btn.addEventListener('click', function(){
+            if (!confirm('Print patient receipt?')) return;
+            btn.disabled = true;
+            const id = '<%= patient.id %>';
+            fetch('/patients/' + encodeURIComponent(id) + '/print', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+                .then(r => r.json())
+                .then(j => {
+                    if (j && j.success) {
+                        alert('Print job sent.');
+                    } else {
+                        alert('Print failed: ' + (j && j.error ? j.error : 'unknown'));
+                    }
+                })
+                .catch(err => { alert('Print request failed: ' + err); })
+                .finally(() => { btn.disabled = false; });
+        });
+    })();
+</script>
 
 <% if (tests && tests.length > 0) { %>
 <div class="card">
@@ -55,12 +88,15 @@
                     </span>
                 </td>
                 <td><%= test.requestedBy ? test.requestedBy.name : 'Unknown' %></td>
-                <td>
-                    <a href="/tests/<%= test.id %>" class="button btn-small btn-primary">View</a>
-                    <% if (test.status === 'Completed') { %>
-                    <a href="/reports/preview/<%= test.id %>" class="button btn-small btn-orange">Report</a>
-                    <% } %>
-                </td>
+                                <td>
+                                        <a href="/tests/<%= test.id %>" class="button btn-small btn-primary">View</a>
+                                        <% 
+                                            const statusStr = String(test.status || '').toLowerCase();
+                                            const hasResults = (test.results && (typeof test.results === 'object' ? Object.keys(test.results).length > 0 : String(test.results).trim().length > 0));
+                                            if (statusStr === 'completed' || statusStr === 'released' || Boolean(test.completedAt) || hasResults) { %>
+                                            <a href="/reports/preview/<%= test.id %>" class="button btn-small btn-orange">Report</a>
+                                        <% } %>
+                                </td>
             </tr>
             <% }); %>
         </tbody>

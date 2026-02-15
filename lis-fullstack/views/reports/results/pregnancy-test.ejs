@@ -1,5 +1,6 @@
 <style>
   @page { size: Letter; margin: 0.25in; }
+
   body { margin:0; padding:0; box-sizing:border-box; }
   *, *:before, *:after { box-sizing:inherit; }
   .report-page{ position:relative; width:100%; max-width:calc(8.5in - 0.5in); margin:0 auto; padding:8px; font-family: 'Times New Roman', Times, serif; color:#000 }
@@ -13,14 +14,16 @@
   .section-title{ text-align:center; margin:12px 0; font-size:20px; font-weight:bold }
   .results-frame{ width:100%; border:2px solid #000; border-collapse:collapse; margin-top:6px; box-sizing:border-box }
   .results-frame td, .results-frame th { padding:12px; vertical-align:middle; border:1px solid #000 }
-  .results-frame th{ text-align:left; font-weight:700 }
+  .results-frame th{ text-align:center; font-weight:700 }
   .center{ text-align:center }
-  .signatures{ display:flex; justify-content:space-between; margin-top:24px }
-  .sig{ text-align:center; width:32% }
+  .signatures{ display:flex; justify-content:space-between; margin-top:72px}
+  .sig{ position:relative; text-align:center; width:32%; min-height:90px }
+  .signature-overlay{ position:absolute; pointer-events:none; left:50%; transform-origin:center; }
   .watermark{ position:absolute; left:50%; top:44%; transform:translate(-50%,-50%); width:52%; opacity:0.06; pointer-events:none; z-index:0 }
   .report-container{ position:relative; z-index:1 }
   .normal-small{ font-size:11px; color:#333 }
 </style>
+<%- include('./_highlight') %>
 <div class="report-page">
   <div class="report-container">
     <div class="header">
@@ -77,10 +80,27 @@
       </tr>
     </table>
 
+    <% function findSigFor(displayName){
+         if (!displayName) return null;
+         const sigs = (test && test.results && test.results.signatures) ? test.results.signatures : {};
+         for (const k in sigs){
+           const s = sigs[k];
+           if (s && s.name && String(s.name).trim() === String(displayName).trim()) return s;
+         }
+         return null;
+       }
+    %>
     <div class="signatures">
       <div class="sig">
         <div style="border-top:1px solid #000; height:10px; margin-bottom:6px"></div>
         <div style="font-weight:700"><strong><%= (test && test.results && test.results.performedByName) || (test && test.performedBy && test.performedBy.name) || '' %></strong></div>
+        <% const _performedName = (test && test.results && test.results.performedByName) || (test && test.performedBy && test.performedBy.name) || '';
+           const _performedSig = findSigFor(_performedName);
+        %>
+        <% if (_performedSig && _performedSig.filename) { %>
+          <% const p = _performedSig.placement || { x:0, y:-56, scale:1 }; %>
+          <img src="/assets/signature/<%= _performedSig.filename %>" class="signature-overlay" style="left:50%; top:<%= p.y %>px; transform:translateX(-50%) scale(<%= p.scale %>); max-height:96px;" alt="signature" />
+        <% } %>
         <div class="normal-small"><% if (test && test.results && test.results.performedByLicense) { %><strong>Lic. No. <%= test.results.performedByLicense %></strong><% } %></div>
         <div>Medical Technologist</div>
       </div>
@@ -88,6 +108,13 @@
       <div class="sig">
         <div style="border-top:1px solid #000; height:10px; margin-bottom:6px"></div>
         <div style="font-weight:700"><strong><%= (test && test.results && test.results.validatedByName) || '' %></strong></div>
+        <% const _validatedName = (test && test.results && test.results.validatedByName) || '';
+           const _validatedSig = findSigFor(_validatedName);
+        %>
+        <% if (_validatedSig && _validatedSig.filename) { %>
+          <% const p = _validatedSig.placement || { x:0, y:-56, scale:1 }; %>
+          <img src="/assets/signature/<%= _validatedSig.filename %>" class="signature-overlay" style="left:50%; top:<%= p.y %>px; transform:translateX(-50%) scale(<%= p.scale %>); max-height:96px;" alt="signature" />
+        <% } %>
         <div class="normal-small"><% if (test && test.results && test.results.validatedByLicense) { %><strong>Lic. No. <%= test.results.validatedByLicense %></strong><% } %></div>
         <div>Validated By</div>
       </div>
@@ -95,6 +122,13 @@
       <div class="sig">
         <div style="border-top:1px solid #000; height:10px; margin-bottom:6px"></div>
         <div style="font-weight:700"><strong><%= (test && test.results && test.results.requestedByName) || (test && test.requestedBy && test.requestedBy.name) || '' %></strong></div>
+        <% const _requestedName = (test && test.results && test.results.requestedByName) || (test && test.requestedBy && test.requestedBy.name) || '';
+           const _requestedSig = findSigFor(_requestedName);
+        %>
+        <% if (_requestedSig && _requestedSig.filename) { %>
+          <% const p = _requestedSig.placement || { x:0, y:-56, scale:1 }; %>
+          <img src="/assets/signature/<%= _requestedSig.filename %>" class="signature-overlay" style="left:50%; top:<%= p.y %>px; transform:translateX(-50%) scale(<%= p.scale %>); max-height:96px;" alt="signature" />
+        <% } %>
         <div class="normal-small"><% if (test && test.results && test.results.requestedByLicense) { %><strong>Lic. No. <%= test.results.requestedByLicense %></strong><% } %></div>
         <div>Pathologist</div>
       </div>

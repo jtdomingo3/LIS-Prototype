@@ -52,19 +52,19 @@
 
     <div class="form-row">
       <label>pH</label>
-      <input type="text" name="ph" value="<%= test.results && test.results.ph ? test.results.ph : '' %>">
+      <input type="text" name="ph" value="<%= test.results && test.results.ph ? test.results.ph : '' %>" placeholder="5.0-7.0" title="Reference: 5.0 - 7.0">
     </div>
 
     <div class="form-row">
       <label>Specific Gravity</label>
-      <input type="text" name="specificGravity" value="<%= test.results && test.results.specificGravity ? test.results.specificGravity : '' %>">
+      <input type="text" name="specificGravity" value="<%= test.results && test.results.specificGravity ? test.results.specificGravity : '' %>" placeholder="1.005-1.025" title="Reference: 1.005 - 1.025">
     </div>
 
     <div class="form-row">
       <label>Glucose</label>
       <select name="glucose">
         <option value=""></option>
-        <option value="Negative" <%= test.results && test.results.glucose === 'Negative' ? 'selected' : '' %>>Negative</option>
+        <option value="Negative" <%= (!test.results || !test.results.glucose || test.results.glucose === 'Negative') ? 'selected' : '' %>>Negative</option>
         <option value="+" <%= test.results && test.results.glucose === '+' ? 'selected' : '' %>>+</option>
         <option value="++" <%= test.results && test.results.glucose === '++' ? 'selected' : '' %>>++</option>
         <option value="+++" <%= test.results && test.results.glucose === '+++' ? 'selected' : '' %>>+++</option>
@@ -77,7 +77,7 @@
       <label>Protein</label>
       <select name="protein">
         <option value=""></option>
-        <option value="Negative" <%= test.results && test.results.protein === 'Negative' ? 'selected' : '' %>>Negative</option>
+        <option value="Negative" <%= (!test.results || !test.results.protein || test.results.protein === 'Negative') ? 'selected' : '' %>>Negative</option>
         <option value="+" <%= test.results && test.results.protein === '+' ? 'selected' : '' %>>+</option>
         <option value="++" <%= test.results && test.results.protein === '++' ? 'selected' : '' %>>++</option>
         <option value="+++" <%= test.results && test.results.protein === '+++' ? 'selected' : '' %>>+++</option>
@@ -90,7 +90,7 @@
       <label>Leukocyte</label>
       <select name="leukocyte">
         <option value=""></option>
-        <option value="Negative" <%= test.results && test.results.leukocyte === 'Negative' ? 'selected' : '' %>>Negative</option>
+        <option value="Negative" <%= (!test.results || !test.results.leukocyte || test.results.leukocyte === 'Negative') ? 'selected' : '' %>>Negative</option>
         <option value="+" <%= test.results && test.results.leukocyte === '+' ? 'selected' : '' %>>+</option>
         <option value="++" <%= test.results && test.results.leukocyte === '++' ? 'selected' : '' %>>++</option>
         <option value="+++" <%= test.results && test.results.leukocyte === '+++' ? 'selected' : '' %>>+++</option>
@@ -103,7 +103,7 @@
       <label>Nitrite</label>
       <select name="nitrite">
         <option value=""></option>
-        <option value="Negative" <%= test.results && test.results.nitrite === 'Negative' ? 'selected' : '' %>>Negative</option>
+        <option value="Negative" <%= (!test.results || !test.results.nitrite || test.results.nitrite === 'Negative') ? 'selected' : '' %>>Negative</option>
         <option value="+" <%= test.results && test.results.nitrite === '+' ? 'selected' : '' %>>+</option>
         <option value="++" <%= test.results && test.results.nitrite === '++' ? 'selected' : '' %>>++</option>
         <option value="+++" <%= test.results && test.results.nitrite === '+++' ? 'selected' : '' %>>+++</option>
@@ -116,7 +116,7 @@
       <label>Urobilinogen</label>
       <select name="urobilinogen">
         <option value=""></option>
-        <option value="Negative" <%= test.results && test.results.urobilinogen === 'Negative' ? 'selected' : '' %>>Negative</option>
+        <option value="Negative" <%= (!test.results || !test.results.urobilinogen || test.results.urobilinogen === 'Negative') ? 'selected' : '' %>>Negative</option>
         <option value="+" <%= test.results && test.results.urobilinogen === '+' ? 'selected' : '' %>>+</option>
         <option value="++" <%= test.results && test.results.urobilinogen === '++' ? 'selected' : '' %>>++</option>
         <option value="+++" <%= test.results && test.results.urobilinogen === '+++' ? 'selected' : '' %>>+++</option>
@@ -129,7 +129,7 @@
       <label>Blood</label>
       <select name="blood">
         <option value=""></option>
-        <option value="Negative" <%= test.results && test.results.blood === 'Negative' ? 'selected' : '' %>>Negative</option>
+        <option value="Negative" <%= (!test.results || !test.results.blood || test.results.blood === 'Negative') ? 'selected' : '' %>>Negative</option>
         <option value="+" <%= test.results && test.results.blood === '+' ? 'selected' : '' %>>+</option>
         <option value="++" <%= test.results && test.results.blood === '++' ? 'selected' : '' %>>++</option>
         <option value="+++" <%= test.results && test.results.blood === '+++' ? 'selected' : '' %>>+++</option>
@@ -142,7 +142,7 @@
       <label>Ketones</label>
       <select name="ketones">
         <option value=""></option>
-        <option value="Negative" <%= test.results && test.results.ketones === 'Negative' ? 'selected' : '' %>>Negative</option>
+        <option value="Negative" <%= (!test.results || !test.results.ketones || test.results.ketones === 'Negative') ? 'selected' : '' %>>Negative</option>
         <option value="+" <%= test.results && test.results.ketones === '+' ? 'selected' : '' %>>+</option>
         <option value="++" <%= test.results && test.results.ketones === '++' ? 'selected' : '' %>>++</option>
         <option value="+++" <%= test.results && test.results.ketones === '+++' ? 'selected' : '' %>>+++</option>
@@ -154,7 +154,7 @@
       <label>Bilirubin</label>
       <select name="bilirubin">
         <option value=""></option>
-        <option value="Negative" <%= test.results && test.results.bilirubin === 'Negative' ? 'selected' : '' %>>Negative</option>
+        <option value="Negative" <%= (!test.results || !test.results.bilirubin || test.results.bilirubin === 'Negative') ? 'selected' : '' %>>Negative</option>
         <option value="+" <%= test.results && test.results.bilirubin === '+' ? 'selected' : '' %>>+</option>
         <option value="++" <%= test.results && test.results.bilirubin === '++' ? 'selected' : '' %>>++</option>
         <option value="+++" <%= test.results && test.results.bilirubin === '+++' ? 'selected' : '' %>>+++</option>
@@ -167,11 +167,11 @@
     <h4>Microscopy Examination</h4>
     <div class="form-row">
       <label>WBC</label>
-      <div style="display:flex;gap:8px;align-items:center;"><input type="text" name="wbc" value="<%= test.results && test.results.wbc ? test.results.wbc : '' %>"><span>hpf</span></div>
+      <div style="display:flex;gap:8px;align-items:center;"><input type="text" name="wbc" value="<%= test.results && test.results.wbc ? test.results.wbc : '' %>" placeholder="0-3" title="Reference: 0 - 3 /hpf"><span>hpf</span></div>
     </div>
     <div class="form-row">
       <label>RBC</label>
-      <div style="display:flex;gap:8px;align-items:center;"><input type="text" name="rbc" value="<%= test.results && test.results.rbc ? test.results.rbc : '' %>"><span>hpf</span></div>
+      <div style="display:flex;gap:8px;align-items:center;"><input type="text" name="rbc" value="<%= test.results && test.results.rbc ? test.results.rbc : '' %>" placeholder="0-5" title="Reference: 0 - 5 /hpf"><span>hpf</span></div>
     </div>
     <div class="form-row">
       <label>Epithelial Cells</label>
@@ -181,6 +181,7 @@
         <option value="Moderate" <%= test.results && test.results.epithelial === 'Moderate' ? 'selected' : '' %>>Moderate</option>
         <option value="Rare" <%= test.results && test.results.epithelial === 'Rare' ? 'selected' : '' %>>Rare</option>
         <option value="Many" <%= test.results && test.results.epithelial === 'Many' ? 'selected' : '' %>>Many</option>
+        <option value="Loaded" <%= test.results && test.results.epithelial === 'Loaded' ? 'selected' : '' %>>Loaded</option>
         <option value="None" <%= test.results && test.results.epithelial === 'None' ? 'selected' : '' %>>None</option>
       </select>
     </div>
@@ -192,6 +193,7 @@
         <option value="Moderate" <%= test.results && test.results.mucus === 'Moderate' ? 'selected' : '' %>>Moderate</option>
         <option value="Rare" <%= test.results && test.results.mucus === 'Rare' ? 'selected' : '' %>>Rare</option>
         <option value="Many" <%= test.results && test.results.mucus === 'Many' ? 'selected' : '' %>>Many</option>
+        <option value="Loaded" <%= test.results && test.results.mucus === 'Loaded' ? 'selected' : '' %>>Loaded</option>
         <option value="None" <%= test.results && test.results.mucus === 'None' ? 'selected' : '' %>>None</option>
       </select>
     </div>
@@ -203,6 +205,7 @@
         <option value="Moderate" <%= test.results && test.results.amorphous === 'Moderate' ? 'selected' : '' %>>Moderate</option>
         <option value="Rare" <%= test.results && test.results.amorphous === 'Rare' ? 'selected' : '' %>>Rare</option>
         <option value="Many" <%= test.results && test.results.amorphous === 'Many' ? 'selected' : '' %>>Many</option>
+        <option value="Loaded" <%= test.results && test.results.amorphous === 'Loaded' ? 'selected' : '' %>>Loaded</option>
         <option value="None" <%= test.results && test.results.amorphous === 'None' ? 'selected' : '' %>>None</option>
       </select>
     </div>
@@ -214,6 +217,7 @@
         <option value="Moderate" <%= test.results && test.results.bacteria === 'Moderate' ? 'selected' : '' %>>Moderate</option>
         <option value="Rare" <%= test.results && test.results.bacteria === 'Rare' ? 'selected' : '' %>>Rare</option>
         <option value="Many" <%= test.results && test.results.bacteria === 'Many' ? 'selected' : '' %>>Many</option>
+        <option value="Loaded" <%= test.results && test.results.bacteria === 'Loaded' ? 'selected' : '' %>>Loaded</option>
         <option value="None" <%= test.results && test.results.bacteria === 'None' ? 'selected' : '' %>>None</option>
       </select>
     </div>
@@ -230,32 +234,14 @@
 
     <hr>
     <h4>Signatures / Performers</h4>
-    <div class="form-row">
-      <label>Medical Technologist (Name)</label>
-      <input type="text" name="mtName" value="<%= test.results && test.results.performedByName ? test.results.performedByName : '' %>">
-    </div>
-    <div class="form-row">
-      <label>Medical Technologist License</label>
-      <input type="text" name="mtLicense" value="<%= test.results && test.results.performedByLicense ? test.results.performedByLicense : '' %>">
-    </div>
+    <%- include('../partials/signatory_select', { prefix: 'mt', label: 'Medical Technologist', role: 'Medical Technologist', nameInput: 'mtName', licenseInput: 'mtLicense', existingName: (test.results && test.results.performedByName) ? test.results.performedByName : '', existingLicense: (test.results && test.results.performedByLicense) ? test.results.performedByLicense : '' }) %>
 
     <div class="form-row">
-      <label>Validator (Name)</label>
-      <input type="text" name="validatedByName" value="<%= test.results && test.results.validatedByName ? test.results.validatedByName : '' %>">
+      <h4>Validation</h4>
     </div>
-    <div class="form-row">
-      <label>Validator License</label>
-      <input type="text" name="validatedByLicense" value="<%= test.results && test.results.validatedByLicense ? test.results.validatedByLicense : '' %>">
-    </div>
+    <%- include('../partials/signatory_select', { prefix: 'validated', label: 'Validator', role: 'Medical Technologist', nameInput: 'validatedByName', licenseInput: 'validatedByLicense', existingName: (test.results && test.results.validatedByName) ? test.results.validatedByName : '', existingLicense: (test.results && test.results.validatedByLicense) ? test.results.validatedByLicense : '' }) %>
 
-    <div class="form-row">
-      <label>Pathologist (Name)</label>
-      <input type="text" name="pathName" value="<%= test.results && test.results.requestedByName ? test.results.requestedByName : '' %>">
-    </div>
-    <div class="form-row">
-      <label>Pathologist License</label>
-      <input type="text" name="pathLicense" value="<%= test.results && test.results.requestedByLicense ? test.results.requestedByLicense : '' %>">
-    </div>
+    <%- include('../partials/signatory_select', { prefix: 'path', label: 'Pathologist', role: 'Pathologist', nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (test.results && test.results.requestedByName) ? test.results.requestedByName : '', existingLicense: (test.results && test.results.requestedByLicense) ? test.results.requestedByLicense : '' }) %>
 
     <div class="form-row mt-12">
       <a href="/tests/<%= test.id %>" class="button btn-secondary">Cancel</a>

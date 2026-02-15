@@ -51,6 +51,7 @@
         <option value="Semi-Watery" <%= test.results && test.results.consistency === 'Semi-Watery' ? 'selected' : '' %>>Semi-Watery</option>
         <option value="Semi-Mucoid" <%= test.results && test.results.consistency === 'Semi-Mucoid' ? 'selected' : '' %>>Semi-Mucoid</option>
         <option value="Semi-Formed" <%= test.results && test.results.consistency === 'Semi-Formed' ? 'selected' : '' %>>Semi-Formed</option>
+        <option value="Well-Formed" <%= test.results && test.results.consistency === 'Well-Formed' ? 'selected' : '' %>>Well-Formed</option>
       </select>
     </div>
 
@@ -143,32 +144,14 @@
 
     <hr>
     <h4>Signatures / Performers</h4>
-    <div class="form-row">
-      <label>Medical Technologist (Name)</label>
-      <input type="text" name="mtName" value="<%= test.results && test.results.performedByName ? test.results.performedByName : '' %>">
-    </div>
-    <div class="form-row">
-      <label>Medical Technologist License</label>
-      <input type="text" name="mtLicense" value="<%= test.results && test.results.performedByLicense ? test.results.performedByLicense : '' %>">
-    </div>
+    <%- include('../partials/signatory_select', { prefix: 'mt', label: 'Medical Technologist', role: 'Medical Technologist', nameInput: 'mtName', licenseInput: 'mtLicense', existingName: (test.results && test.results.performedByName) ? test.results.performedByName : '', existingLicense: (test.results && test.results.performedByLicense) ? test.results.performedByLicense : '' }) %>
 
     <div class="form-row">
-      <label>Validator (Name)</label>
-      <input type="text" name="validatedByName" value="<%= test.results && test.results.validatedByName ? test.results.validatedByName : '' %>">
+      <h4>Validation</h4>
     </div>
-    <div class="form-row">
-      <label>Validator License</label>
-      <input type="text" name="validatedByLicense" value="<%= test.results && test.results.validatedByLicense ? test.results.validatedByLicense : '' %>">
-    </div>
+    <%- include('../partials/signatory_select', { prefix: 'validated', label: 'Validator', role: 'Medical Technologist', nameInput: 'validatedByName', licenseInput: 'validatedByLicense', existingName: (test.results && test.results.validatedByName) ? test.results.validatedByName : '', existingLicense: (test.results && test.results.validatedByLicense) ? test.results.validatedByLicense : '' }) %>
 
-    <div class="form-row">
-      <label>Pathologist (Name)</label>
-      <input type="text" name="pathName" value="<%= test.results && test.results.requestedByName ? test.results.requestedByName : '' %>">
-    </div>
-    <div class="form-row">
-      <label>Pathologist License</label>
-      <input type="text" name="pathLicense" value="<%= test.results && test.results.requestedByLicense ? test.results.requestedByLicense : '' %>">
-    </div>
+    <%- include('../partials/signatory_select', { prefix: 'path', label: 'Pathologist', role: 'Pathologist', nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (test.results && test.results.requestedByName) ? test.results.requestedByName : '', existingLicense: (test.results && test.results.requestedByLicense) ? test.results.requestedByLicense : '' }) %>
 
     <!-- Performed By selection deferred; managed separately -->
 

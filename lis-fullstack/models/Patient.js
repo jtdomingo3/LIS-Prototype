@@ -6,6 +6,7 @@ class Patient {
     this.patientId = data.patientId;
     this.patientCode = data.patientCode; // e.g., GCL-YYYY-MM-00000
     this.firstName = data.firstName;
+    this.middleName = data.middleName || '';
     this.lastName = data.lastName;
     this.dateOfBirth = data.dateOfBirth;
     this.physician = data.physician || data.physicianName || null;
@@ -19,6 +20,11 @@ class Patient {
     this.address = data.address;
     // list of reception areas this patient needs to go to (after Payment Area)
     this.requiredAreas = Array.isArray(data.requiredAreas) ? data.requiredAreas : (data.requiredAreas ? [data.requiredAreas] : []);
+    // preserve selected tests list for extraction/processing visibility
+    this.requestedTests = Array.isArray(data.requestedTests) ? data.requestedTests : (data.requestedTests ? [data.requestedTests] : []);
+    this.company = data.company || '';
+    this.philhealthConsent = !!data.philhealthConsent;
+    this.philhealthId = data.philhealthId || '';
     this.createdAt = data.createdAt || new Date();
     this.updatedAt = data.updatedAt || new Date();
     this.createdBy = data.createdBy;
@@ -26,23 +32,32 @@ class Patient {
 
   // Virtual for full name
   get fullName() {
+    const m = (this.middleName || '').toString().trim();
+    if (m) return `${this.firstName} ${m} ${this.lastName}`;
     return `${this.firstName} ${this.lastName}`;
   }
 
   // Virtual for age
   get age() {
-    if (!this.dateOfBirth) return null;
-    const today = new Date();
-    const birthDate = new Date(this.dateOfBirth);
-    if (isNaN(birthDate.getTime())) return null;
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
+    // If dateOfBirth is present and valid, compute age from DOB
+    if (this.dateOfBirth) {
+      const today = new Date();
+      const birthDate = new Date(this.dateOfBirth);
+      if (!isNaN(birthDate.getTime())) {
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+        return age;
+      }
     }
-
-    return age;
+    // Fallback: use manual age if provided (preserve numeric when possible)
+    if (this.ageManual !== undefined && this.ageManual !== null && String(this.ageManual).trim() !== '') {
+      const maybeNum = Number(this.ageManual);
+      return !isNaN(maybeNum) ? maybeNum : String(this.ageManual);
+    }
+    return null;
   }
 
   // Save to database
@@ -65,13 +80,27 @@ class Patient {
     // Ensure paymentHistory is present in serialized output
     obj.paymentHistory = Array.isArray(this.paymentHistory) ? this.paymentHistory : [];
     obj.fullName = this.fullName;
-    // Prefer computed age from DOB; fallback to manual age if provided
-    obj.age = this.age !== null && this.age !== undefined ? this.age : (this.ageManual || null);
+    obj.middleName = this.middleName || '';
+    // Prefer computed age from DOB; fallback to manual age if provided (preserve 0)
+    if (this.age !== null && this.age !== undefined) {
+      obj.age = this.age;
+    } else if (this.ageManual !== undefined && this.ageManual !== null && String(this.ageManual).trim() !== '') {
+      const maybeNum = Number(this.ageManual);
+      obj.age = !isNaN(maybeNum) ? maybeNum : String(this.ageManual);
+    } else {
+      obj.age = null;
+    }
     obj.physician = this.physician || null;
-    obj.ageManual = this.ageManual || null;
+    // Preserve manual age as string so values like 0 are not treated as missing
+    obj.ageManual = (this.ageManual !== undefined && this.ageManual !== null && String(this.ageManual).trim() !== '') ? String(this.ageManual) : null;
     obj.requiredAreas = this.requiredAreas || [];
+    obj.requestedTests = Array.isArray(this.requestedTests) ? this.requestedTests : [];
     // Provide legacy `sex` alias for templates that expect `patient.sex`
     obj.sex = obj.gender || null;
+    // Optional company / PhilHealth fields
+    obj.company = this.company || '';
+    obj.philhealthConsent = !!this.philhealthConsent;
+    obj.philhealthId = this.philhealthId || null;
     return obj;
   }
 

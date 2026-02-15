@@ -6,6 +6,10 @@
             <input type="text" name="firstName" value="<%= patient.firstName || '' %>" placeholder="Enter first name" required>
         </div>
         <div class="form-group">
+            <label>Middle Name</label>
+            <input type="text" name="middleName" value="<%= patient.middleName || '' %>" placeholder="Enter middle name (optional)">
+        </div>
+        <div class="form-group">
             <label>Last Name *</label>
             <input type="text" name="lastName" value="<%= patient.lastName || '' %>" placeholder="Enter last name" required>
         </div>
@@ -29,10 +33,11 @@
                 </select>
             </div>
         </div>
+            
         <div class="form-row">
             <div class="form-group">
                 <label>Phone Number</label>
-                <input type="text" name="phone" value="<%= patient.phone || '' %>" placeholder="+1 (555) 000-0000">
+                <input type="text" name="phone" value="<%= patient.phone || '' %>" placeholder="+63 (915) 000-0000">
             </div>
             <div class="form-group">
                 <label>Email</label>
@@ -44,23 +49,38 @@
             <input type="text" name="physician" value="<%= patient.physician || '' %>" placeholder="Referring physician or doctor's name">
         </div>
         <div class="form-group">
+            <label>Company (optional)</label>
+            <input type="text" name="company" value="<%= patient.company || '' %>" placeholder="Company / Employer (optional)">
+        </div>
+        <div class="form-group">
             <label>Address</label>
             <textarea name="address" placeholder="Street address, city, state, zip"><%= patient.address || '' %></textarea>
         </div>
 
         <div class="card" style="margin-top:12px;">
-          <h4>Route patient to reception areas</h4>
-          <p>Select which areas this patient needs to go to (after Payment Area). Payment is automatic.</p>
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                            <% const AREA_OPTIONS = ['Extraction Area','Drug Test','Ultrasound','2D Echo','X-ray','ECG',"Doctor's Check-up - Dr. Lorenzo","Doctor's Check-up - Dr. Arcilla"]; %>
-                            <% AREA_OPTIONS.forEach(a => { %>
-              <label style="display:inline-flex; align-items:center; gap:6px;">
-                <input type="checkbox" name="requiredAreas" value="<%= a %>" <%= (patient.requiredAreas && patient.requiredAreas.includes(a)) ? 'checked' : '' %> >
-                <%= a %>
-              </label>
-            <% }) %>
-          </div>
+            <h4>PhilHealth</h4>
+            <p>
+                The Gezyne Clinical Laboratory is an accredited PhilHealth provider. Coverage depends on the specific tests requested; some services may be fully covered while others may receive partial benefits. Please indicate whether the patient is a PhilHealth member.
+            </p>
+                <div style="margin-top:8px;">
+                    <div style="display:flex; gap:24px; align-items:center;">
+                        <label style="display:inline-flex; align-items:center; gap:8px; white-space:nowrap;">
+                            <input type="radio" name="philhealthConsent" id="philYes" value="1" <%= patient && patient.philhealthConsent ? 'checked' : '' %> >
+                            <span>Yes — apply PhilHealth benefits</span>
+                        </label>
+                        <label style="display:inline-flex; align-items:center; gap:8px; white-space:nowrap;">
+                            <input type="radio" name="philhealthConsent" id="philNo" value="0" <%= patient && patient.philhealthConsent ? '' : 'checked' %> >
+                            <span>No — not a PhilHealth member</span>
+                        </label>
+                    </div>
+                    <div id="philIdWrap" style="display:<%= patient && patient.philhealthConsent ? '' : 'none' %>; margin-top:12px;">
+                        <label style="display:block; margin-bottom:4px;">PhilHealth ID Number (optional)</label>
+                        <input id="philId" type="text" name="philhealthId" value="<%= patient && patient.philhealthId ? patient.philhealthId : '' %>" placeholder="e.g. 12-345678901-2">
+                    </div>
+                </div>
         </div>
+
+                
 
         <div class="form-row">
             <a href="/patients" class="button btn-secondary">Back to Patients</a>
@@ -102,5 +122,29 @@
             onDobChange();
             dob.addEventListener('change', onDobChange);
         }
+    })();
+</script>
+<script>
+    (function(){
+        const philChk = document.getElementById('philChk');
+        const philIdWrap = document.getElementById('philIdWrap');
+        if (philChk && philIdWrap) {
+            philChk.addEventListener('change', function(){
+                if (philChk.checked) philIdWrap.style.display = '';
+                else philIdWrap.style.display = 'none';
+            });
+        }
+    })();
+</script>
+<script>
+    (function(){
+        const yes = document.getElementById('philYes');
+        const no = document.getElementById('philNo');
+        const wrap = document.getElementById('philIdWrap');
+        if (!yes || !no || !wrap) return;
+        function update(){ if (yes.checked) wrap.style.display = ''; else wrap.style.display = 'none'; }
+        yes.addEventListener('change', update);
+        no.addEventListener('change', update);
+        update();
     })();
 </script>

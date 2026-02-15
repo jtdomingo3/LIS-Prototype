@@ -4,23 +4,16 @@
   <!-- Navigation & Filters -->
   <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
     <div>
-      <% if (typeof prevId !== 'undefined' && prevId) { %>
-        <a id="prevBtn" href="/reports/preview/<%= prevId %><%= typeof filterQuery !== 'undefined' ? filterQuery : '' %>" class="button btn-secondary">← Previous</a>
-      <% } else { %>
-        <button class="button btn-secondary" disabled>← Previous</button>
-      <% } %>
-      <% if (typeof nextId !== 'undefined' && nextId) { %>
-        <a id="nextBtn" href="/reports/preview/<%= nextId %><%= typeof filterQuery !== 'undefined' ? filterQuery : '' %>" class="button btn-secondary">Next →</a>
-      <% } else { %>
-        <button class="button btn-secondary" disabled>Next →</button>
-      <% } %>
+      <% // Always render as anchors so client-side can update hrefs reliably %>
+      <a id="prevBtn" class="button btn-secondary<%= (typeof prevId === 'undefined' || !prevId) ? ' disabled' : '' %>" <%= (typeof prevId !== 'undefined' && prevId) ? ('href="/reports/preview/' + prevId + (typeof filterQuery !== 'undefined' ? filterQuery : '') + '"') : '' %>>← Previous</a>
+      <a id="nextBtn" class="button btn-secondary<%= (typeof nextId === 'undefined' || !nextId) ? ' disabled' : '' %>" <%= (typeof nextId !== 'undefined' && nextId) ? ('href="/reports/preview/' + nextId + (typeof filterQuery !== 'undefined' ? filterQuery : '') + '"') : '' %>>Next →</a>
     </div>
 
     <div style="flex:1; display:flex; gap:8px; align-items:center;">
       <select id="filterPatient" style="flex:2; min-width:300px; padding:8px;">
         <option value="">-- All Patients --</option>
         <% if (testsForNav && testsForNav.length) {
-             const patients = Array.from(new Set(testsForNav.map(t => t.patientName || '').filter(Boolean)));
+            const patients = Array.from(new Set(testsForNav.map(t => t.patientName || '').filter(Boolean))); 
            %>
           <% patients.forEach(function(pn) { %>
             <option value="<%= pn %>"><%= pn %></option>
@@ -28,19 +21,24 @@
         <% } %>
       </select>
       <!-- Test type dropdown (based on templates/testType) -->
-      <select id="filterTestType" style="width:240px;padding:8px;">
-        <option value="">-- All Test Types --</option>
-        <% if (testsForNav && testsForNav.length) { 
-             const types = Array.from(new Set(testsForNav.map(t => t.testType || t.template || '').filter(Boolean))); %>
-          <% types.forEach(function(tp) { %>
-            <option value="<%= tp %>"><%= tp %></option>
-          <% }) %>
-        <% } %>
-      </select>
-      <input id="filterDate" type="date" style="width:130px; padding:8px;">
-      <button class="button" id="clearFilters">Clear Filters</button>
-      <button class="button btn-primary" id="printFiltered">Print Filtered</button>
-    </div>
+        <div style="display:flex; gap:8px; align-items:flex-start;">
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <% let testTypes = []; if (testsForNav && testsForNav.length) { testTypes = Array.from(new Set(testsForNav.map(t => t.testType || t.template || '').filter(Boolean))); } %>
+            <div id="filterTestType" style="position:relative;">
+              <button type="button" id="filterTestTypeToggle" class="button" style="white-space:nowrap;">All Test Types ▾</button>
+              <div id="filterTestTypeList" style="display:none; position:absolute; right:0; background:#fff; border:1px solid #ccc; padding:8px; z-index:1000; max-height:220px; overflow:auto; min-width:220px;">
+                <label style="display:block; margin-bottom:6px;"><input type="checkbox" id="filterTestTypeSelectAll"> <strong>Select all</strong></label>
+                <% testTypes.forEach(function(tp) { %>
+                  <label style="display:block; white-space:nowrap; margin:4px 0;"><input type="checkbox" class="filterTestTypeCheckbox" value="<%= tp %>"> <%= tp %></label>
+                <% }) %>
+              </div>
+            </div>
+          </div>
+          <input id="filterDate" type="date" style="width:130px; padding:8px;">
+          <button class="button" id="clearFilters">Clear Filters</button>
+          <button class="button btn-primary" id="printFiltered">Print Filtered</button>
+        </div>
+      </div>
   </div>
 
   <!-- Filtered results select (populated when Apply Filters is clicked) -->
@@ -53,33 +51,37 @@
     </div>
   </div>
 
+  <div style="margin-bottom:12px; text-align:right;">
+    <a id="downloadPdf" href="/reports/pdf/<%= test.id %>" class="button btn-primary">Download PDF</a>
+    <a id="printLink" href="/reports/result/<%= test.id %>?embedded=1&print=1" target="_blank" class="button btn-orange">Print</a>
+  </div>
+
   <div class="card">
     <h4>Patient Information</h4>
     <% if (test.patient) { %>
-      <p><strong>Name:</strong> <%= test.patient.firstName %> <%= test.patient.lastName %></p>
-      <p><strong>Patient ID:</strong> <%= test.patient.patientId %></p>
+      <p><strong>Name:</strong> <span id="patientName"><%= test.patient.firstName %> <%= test.patient.lastName %></span></p>
+      <p><strong>Patient ID:</strong> <span id="patientPatientId"><%= test.patient.patientId %></span></p>
+    <% } else { %>
+      <p><strong>Name:</strong> <span id="patientName"><%= test.patientName || '' %></span></p>
+      <p><strong>Patient ID:</strong> <span id="patientPatientId"><%= (test.patient && test.patient.patientId) || '' %></span></p>
     <% } %>
     <h4>Test Information</h4>
-    <p><strong>Test ID:</strong> <%= test.testId %></p>
-    <p><strong>Test Type:</strong> <%= test.testType %></p>
-    <p><strong>Date:</strong> <%= test.testDate ? new Date(test.testDate).toLocaleDateString() : '' %></p>
+    <p><strong>Test ID:</strong> <span id="displayTestId"><%= test.testId %></span></p>
+    <p><strong>Test Type:</strong> <span id="displayTestType"><%= test.testType %></span></p>
+    <p><strong>Date:</strong> <span id="displayTestDate"><%= test.testDate ? new Date(test.testDate).toLocaleDateString() : '' %></span></p>
     <h4>Results</h4>
     <% if (true) { %>
       <div style="width:100%;height:820px;border:1px solid #e6e6e6;">
             <!-- Load result template via iframe src so it uses the same routing/layout logic and asset paths
                  (avoids srcdoc issues with relative URLs and duplicated/global CSS that distort preview) -->
-            <iframe src="/reports/result/<%= test.id %>?embedded=1" style="width:100%;height:100%;border:0;margin:0;padding:0;" title="Result Template" sandbox="allow-same-origin allow-scripts"></iframe>
+            <iframe id="resultFrame" src="/reports/result/<%= test.id %>?embedded=1" style="width:100%;height:100%;border:0;margin:0;padding:0;" title="Result Template" sandbox="allow-same-origin allow-scripts"></iframe>
       </div>
     <% } else { %>
       <pre style="white-space:pre-wrap;"><%= test.results || 'No results recorded.' %></pre>
     <% } %>
   </div>
 
-  <div class="action-buttons mt-20">
-    <a href="/reports/pdf/<%= test.id %>" class="button btn-primary">Download PDF</a>
-    <a href="/reports/result/<%= test.id %>?embedded=1&print=1" target="_blank" class="button btn-orange">Print</a>
-    <!-- View Result Template removed per request -->
-  </div>
+  <!-- moved download/print controls to top filters area -->
 </div>
 
 <script>
@@ -92,14 +94,23 @@
     const tests = window.testsForNav || [];
     const patientInput = document.getElementById('filterPatient');
     const testTypeSelect = document.getElementById('filterTestType');
+    const testTypeToggle = document.getElementById('filterTestTypeToggle');
+    const testTypeList = document.getElementById('filterTestTypeList');
     const dateFilter = document.getElementById('filterDate');
     const clearBtn = document.getElementById('clearFilters');
     const printBtn = document.getElementById('printFiltered');
 
+    function getSelectedTestTypes(){
+      const boxes = Array.from(document.querySelectorAll('.filterTestTypeCheckbox'));
+      if (!boxes || !boxes.length) return [];
+      return boxes.filter(b => b.checked).map(b => b.value).filter(Boolean);
+    }
+
     function getQueryString() {
       const params = new URLSearchParams();
       if (patientInput.value) params.set('filterPatient', patientInput.value);
-      if (testTypeSelect.value) params.set('filterTestType', testTypeSelect.value);
+      const selTypes = getSelectedTestTypes();
+      if (selTypes.length) params.set('filterTestType', selTypes.join(','));
       if (dateFilter.value) params.set('filterDate', dateFilter.value);
       const s = params.toString();
       return s ? ('?' + s) : '';
@@ -116,22 +127,29 @@
     }
 
     function readParamsToInputs(){
-      const p = new URLSearchParams(window.location.search);
-      const fp = p.get('filterPatient');
-      const ft = p.get('filterTestType');
-      const fd = p.get('filterDate');
-      if (fp) patientInput.value = fp;
-      if (ft) testTypeSelect.value = ft;
-      if (fd) dateFilter.value = fd;
+        const p = new URLSearchParams(window.location.search);
+        const fp = p.get('filterPatient');
+        const ft = p.get('filterTestType');
+        const fd = p.get('filterDate');
+        if (fp) patientInput.value = fp;
+        if (ft) {
+          const arr = ft.split(',');
+          Array.from(document.querySelectorAll('.filterTestTypeCheckbox')).forEach(cb => {
+            cb.checked = arr.indexOf(cb.value) !== -1;
+          });
+        }
+        if (fd) dateFilter.value = fd;
+        // update select-all checkbox after initializing selections
+        try { if (typeof updateSelectAllState === 'function') updateSelectAllState(); } catch(e) {}
     }
 
     function matchesFilters(t){
       const p = (patientInput.value || '').toLowerCase();
-      const ft = (testTypeSelect.value || '').toLowerCase();
+      const selTypes = getSelectedTestTypes().map(s => (s || '').toLowerCase());
       const fd = (dateFilter.value || '');
       // patient select uses exact match when specified
       if (p && ((t.patientName || '').toLowerCase() !== p)) return false;
-      if (ft && !((t.testType || '').toLowerCase() === ft)) return false;
+      if (selTypes.length && selTypes.indexOf(((t.testType||'').toLowerCase()) ) === -1) return false;
       if (fd && (t.testDate ? new Date(t.testDate).toISOString().slice(0,10) !== fd : true)) return false;
       return true;
     }
@@ -144,10 +162,12 @@
     readParamsToInputs();
     applyParamsToNavLinks();
     const filteredPager = document.getElementById('filteredPager');
+    // debounce timer to allow multi-filtering before auto-navigation
+    let debounceTimer = null;
 
     function updatePager(){
       // If any filter is active, use filtered IDs, otherwise use full tests list
-      const anyFilter = !!(patientInput.value || testTypeSelect.value || dateFilter.value);
+      const anyFilter = !!(patientInput.value || getSelectedTestTypes().length || dateFilter.value);
       const ids = anyFilter ? getFilteredIds() : tests.map(t => t.id);
       const total = ids.length || 0;
       const cur = window.currentTestId;
@@ -161,7 +181,7 @@
     }
 
     // populate filtered select only if filters were present in URL on load
-    if (patientInput.value || testTypeSelect.value || dateFilter.value) {
+    if (patientInput.value || getSelectedTestTypes().length || dateFilter.value) {
       populateFilteredSelect();
     }
     // always update pager after initial setup
@@ -169,23 +189,91 @@
 
     // update nav links, pager and filtered list when inputs change (auto-apply)
     function onFilterChange(){
+      // Update UI immediately
       populateFilteredSelect();
       setUrlParams();
       applyParamsToNavLinks();
       updatePager();
+      // Debounce navigation so user can choose multiple filters quickly
+      if (debounceTimer) clearTimeout(debounceTimer);
+      const ids = getFilteredIds();
+      // Navigation policy:
+      // - If exactly one filtered result, navigate to it.
+      // - If multiple results and the current test is among them, do NOT navigate (stay on current preview).
+      // - If multiple results and current test is NOT among them, do NOT auto-navigate to avoid disruptive refresh.
+      if (!ids) return;
+      if (ids.length === 1) {
+        const only = ids[0];
+        if (only !== window.currentTestId) {
+          debounceTimer = setTimeout(() => {
+            const qs = getQueryString();
+            renderTestInPlace(only, qs);
+          }, 400);
+        }
+      }
+      // otherwise do nothing (keep current preview) to avoid refreshing when multiple matches
     }
-    [patientInput, testTypeSelect, dateFilter].forEach(el => el.addEventListener('change', onFilterChange));
-    [patientInput, testTypeSelect].forEach(el => el.addEventListener('input', onFilterChange));
+    // patientInput: respond to input and change; dateFilter: change; testTypeCheckboxes: change
+    [patientInput].forEach(el => el.addEventListener('input', onFilterChange));
+    [patientInput, dateFilter].forEach(el => el.addEventListener('change', onFilterChange));
+    // wire checkbox changes (update select-all state when any checkbox changes)
+    function updateSelectAllState(){
+      const boxes = Array.from(document.querySelectorAll('.filterTestTypeCheckbox'));
+      const selAll = document.getElementById('filterTestTypeSelectAll');
+      if (!selAll) return;
+      selAll.checked = boxes.length > 0 && boxes.every(b => b.checked);
+    }
+
+    Array.from(document.querySelectorAll('.filterTestTypeCheckbox')).forEach(cb => cb.addEventListener('change', function(){
+      updateSelectAllState();
+      onFilterChange();
+    }));
+
+    // wire select-all checkbox
+    const selectAllBox = document.getElementById('filterTestTypeSelectAll');
+    if (selectAllBox) {
+      selectAllBox.addEventListener('change', function(){
+        const checked = selectAllBox.checked;
+        Array.from(document.querySelectorAll('.filterTestTypeCheckbox')).forEach(cb => cb.checked = checked);
+        onFilterChange();
+      });
+    }
+
+    // wire the dropdown toggle for the checkbox list
+    if (testTypeToggle && testTypeList) {
+      testTypeToggle.addEventListener('click', function(e){
+        e.stopPropagation();
+        const showing = testTypeList.style.display === 'block';
+        testTypeList.style.display = showing ? 'none' : 'block';
+        testTypeToggle.textContent = showing ? 'All Test Types ▾' : 'All Test Types ▴';
+      });
+      // close when clicking outside
+      document.addEventListener('click', function(evt){
+        if (!testTypeList.contains(evt.target) && !testTypeToggle.contains(evt.target)) {
+          testTypeList.style.display = 'none';
+          testTypeToggle.textContent = 'All Test Types ▾';
+        }
+      });
+    }
 
     clearBtn.addEventListener('click', function(){
+      // cancel any pending auto-navigation
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+        debounceTimer = null;
+      }
       patientInput.value = '';
-      testTypeSelect.value = '';
+      // clear checkboxes and select-all
+      Array.from(document.querySelectorAll('.filterTestTypeCheckbox')).forEach(cb => cb.checked = false);
+      try { const sa = document.getElementById('filterTestTypeSelectAll'); if (sa) sa.checked = false; } catch(e) {}
       dateFilter.value = '';
       // clear filtered select options
       while (filteredSelect.options.length > 1) filteredSelect.remove(1);
       filteredSelect.selectedIndex = 0;
       history.replaceState(null, '', window.location.pathname);
       applyParamsToNavLinks();
+      // repopulate and update pager
+      populateFilteredSelect();
       updatePager();
     });
 
@@ -228,19 +316,69 @@
 
     // (Apply is automatic on change)
 
+    // render a test preview in-place (without full page reload) when possible
+    const resultFrame = document.getElementById('resultFrame');
+    const elPatientName = document.getElementById('patientName');
+    const elPatientPatientId = document.getElementById('patientPatientId');
+    const elDisplayTestId = document.getElementById('displayTestId');
+    const elDisplayTestType = document.getElementById('displayTestType');
+    const elDisplayTestDate = document.getElementById('displayTestDate');
+    const downloadPdf = document.getElementById('downloadPdf');
+    const printLink = document.getElementById('printLink');
+
+    function renderTestInPlace(id, qs) {
+      qs = qs || '';
+      const t = tests.find(x => String(x.id) === String(id));
+      if (!t) {
+        // fallback to full navigation when test data isn't available client-side
+        window.location.href = '/reports/preview/' + id + qs;
+        return;
+      }
+      // update iframe
+      if (resultFrame) resultFrame.src = '/reports/result/' + id + '?embedded=1' + (qs ? ('&' + qs.replace(/^\?/, '')) : '');
+      // update displayed metadata
+      if (elPatientName) elPatientName.textContent = t.patientName || '';
+      if (elPatientPatientId) elPatientPatientId.textContent = t.patientId || '';
+      if (elDisplayTestId) elDisplayTestId.textContent = t.testId || '';
+      if (elDisplayTestType) elDisplayTestType.textContent = t.testType || '';
+      if (elDisplayTestDate) elDisplayTestDate.textContent = t.testDate ? new Date(t.testDate).toLocaleDateString() : '';
+      // update action links
+      if (downloadPdf) downloadPdf.href = '/reports/pdf/' + id;
+      if (printLink) printLink.href = '/reports/result/' + id + '?embedded=1&print=1';
+      // update history and current id
+      const newPath = '/reports/preview/' + id + qs;
+      try { history.replaceState(null, '', newPath); } catch (e) {}
+      window.currentTestId = id;
+      // update pager and prev/next links according to current filters
+      applyParamsToNavLinks();
+      updatePager();
+      // adjust prev/next anchors to point to next/prev within the current filtered set (if anchors exist)
+      const anyFilter = !!(patientInput.value || getSelectedTestTypes().length || dateFilter.value);
+      const ids = anyFilter ? getFilteredIds() : tests.map(tt => tt.id);
+      const idx = ids.indexOf(id);
+      if (prevBtn && prevBtn.tagName === 'A') {
+        if (idx > 0) prevBtn.href = '/reports/preview/' + ids[idx-1] + getQueryString();
+        else prevBtn.removeAttribute('href');
+      }
+      if (nextBtn && nextBtn.tagName === 'A') {
+        if (idx !== -1 && idx < ids.length - 1) nextBtn.href = '/reports/preview/' + ids[idx+1] + getQueryString();
+        else nextBtn.removeAttribute('href');
+      }
+    }
+
     // auto-open when the filtered-select value changes (preserve filters)
     filteredSelect.addEventListener('change', function(){
       const v = filteredSelect.value;
       if (!v) return;
       const qs = getQueryString();
-      window.location.href = '/reports/preview/' + v + qs;
+      renderTestInPlace(v, qs);
     });
     // also allow double-click to open (backwards compatibility)
     filteredSelect.addEventListener('dblclick', function(){
       const v = filteredSelect.value;
       if (v) {
         const qs = getQueryString();
-        window.location.href = '/reports/preview/' + v + qs;
+        renderTestInPlace(v, qs);
       }
     });
 
@@ -251,25 +389,32 @@
       const ids = getFilteredIds();
       if (!ids || !ids.length) return false;
       const cur = window.currentTestId;
-      const idx = ids.indexOf(cur);
-      // if current not in filtered list, fall back to server-provided link
-      if (idx === -1) return false;
-      const targetIndex = direction === 'prev' ? idx - 1 : idx + 1;
+      let idx = ids.indexOf(cur);
+      let targetIndex;
+      if (idx === -1) {
+        // current preview not in filtered set: choose sensible start
+        targetIndex = (direction === 'prev') ? (ids.length - 1) : 0;
+      } else {
+        targetIndex = (direction === 'prev') ? (idx - 1) : (idx + 1);
+      }
+      // if target out of bounds, do nothing
       if (targetIndex < 0 || targetIndex >= ids.length) return false;
       const targetId = ids[targetIndex];
       const qs = getQueryString();
-      window.location.href = '/reports/preview/' + targetId + qs;
+      renderTestInPlace(targetId, qs);
       return true;
     }
 
     if (prevBtn) {
       prevBtn.addEventListener('click', function(e){
         e.preventDefault();
-        // try to navigate within filtered set; if not possible, fall back to server href
+        // try to navigate within filtered set; if not possible, fall back to server href (only if present)
         const handled = navigateWithinFiltered('prev');
         if (!handled) {
-          // use the anchor's href (server-provided filterQuery may already be appended)
-          window.location.href = prevBtn.getAttribute('href');
+          const href = prevBtn.getAttribute && prevBtn.getAttribute('href');
+          if (href) {
+            window.location.href = href;
+          }
         }
       });
     }
@@ -278,7 +423,10 @@
         e.preventDefault();
         const handled = navigateWithinFiltered('next');
         if (!handled) {
-          window.location.href = nextBtn.getAttribute('href');
+          const href = nextBtn.getAttribute && nextBtn.getAttribute('href');
+          if (href) {
+            window.location.href = href;
+          }
         }
       });
     }

@@ -9,6 +9,9 @@ class User {
     this.password = data.password;
     this.role = data.role || 'Receptionist';
     this.status = data.status || 'Active';
+    this.licenseNumber = data.licenseNumber || null;
+    this.signature = data.signature || null;
+    this.permissions = data.permissions || {};
     this.createdAt = data.createdAt || new Date();
     this.lastLogin = data.lastLogin || null;
   }
@@ -45,6 +48,9 @@ class User {
       email: this.email,
       password: this.password,
       role: this.role,
+      licenseNumber: this.licenseNumber,
+      signature: this.signature,
+      permissions: this.permissions,
       status: this.status,
       createdAt: this.createdAt,
       lastLogin: this.lastLogin
