@@ -172,17 +172,6 @@ function verifyStartupRequirements() {
   if (!fs.existsSync(publicDir)) optionalWarnings.push({ path: publicDir, reason: 'static public folder not found; some static assets may be missing' });
   if (!fs.existsSync(assetsDir)) optionalWarnings.push({ path: assetsDir, reason: 'assets folder not found; logos/sounds may be missing' });
 
-  // Check for Puppeteer local Chromium (common packaging issue)
-  try {
-    const puppeteerPkg = require.resolve('puppeteer');
-    const puppeteerChromium = path.join(__dirname, 'node_modules', 'puppeteer', '.local-chromium');
-    if (!fs.existsSync(puppeteerChromium)) {
-      optionalWarnings.push({ path: puppeteerChromium, reason: 'puppeteer installed but bundled Chromium not found; Puppeteer-based features will fail unless a system browser is used' });
-    }
-  } catch (e) {
-    // puppeteer not installed - that's fine if you don't use it
-  }
-
   if (required.length || optionalWarnings.length) {
     console.error('\n=== LIS Startup Validation ===');
     if (required.length) {
@@ -194,7 +183,7 @@ function verifyStartupRequirements() {
     if (optionalWarnings.length) {
       console.warn('\nWarnings:');
       optionalWarnings.forEach(w => console.warn(` - ${w.path}: ${w.reason}`));
-      console.warn('\nAction: these may be optional but can affect features. For Puppeteer, install Chromium or configure Puppeteer to use a system browser.');
+      console.warn('\nAction: these may be optional but can affect features.');
     }
     console.error('=== End validation ===\n');
   }
@@ -562,4 +551,14 @@ app.listen(PORT, HOST, () => {
   lines.push('='.repeat(72));
 
   console.log(lines.join('\n'));
+
+  // Background: generate any missing PDF reports into Documents/LIS/reports
+  try {
+    const reportGenerator = require('./lib/reportGenerator');
+    reportGenerator.generateAllMissing().catch(e => {
+      console.error('[startup] report generation scan error:', e && e.message);
+    });
+  } catch (e) {
+    console.warn('[startup] could not run report generation scan:', e && e.message);
+  }
 });
