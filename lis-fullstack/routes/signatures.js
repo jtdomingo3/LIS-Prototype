@@ -84,7 +84,32 @@ router.get('/', requireAuth, async (req, res) => {
         });
       });
 
-    res.render('signatures/index', { title: 'Signatures', tests, currentUser, availableTestTypes, priorities, searchQuery, typeFilter, priorityFilter });
+    // --- pagination for signatures list ---
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = 10;
+    const total = (tests || []).length;
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const currentPage = Math.min(page, totalPages);
+    const startIdx = (currentPage - 1) * limit;
+    const pagedTests = (tests || []).slice(startIdx, startIdx + limit);
+
+    res.render('signatures/index', { 
+      title: 'Signatures', 
+      tests: pagedTests, 
+      currentUser, 
+      availableTestTypes, 
+      priorities, 
+      searchQuery, 
+      typeFilter, 
+      priorityFilter,
+      // pagination vars
+      currentPage,
+      totalPages,
+      hasPrevPage: currentPage > 1,
+      hasNextPage: currentPage < totalPages,
+      prevPage: Math.max(1, currentPage - 1),
+      nextPage: Math.min(totalPages, currentPage + 1)
+    });
   } catch (err) {
     console.error('Signatures list error:', err);
     req.flash('error_msg', 'Error loading signable documents');

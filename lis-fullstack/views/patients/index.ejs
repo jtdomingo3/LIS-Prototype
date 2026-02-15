@@ -33,7 +33,7 @@
                     <td><%= patient.phone || 'N/A' %></td>
                     <td><%= patient.company || '' %></td>
                     <td><%= patient.philhealthConsent ? 'Yes' : 'No' %></td>
-                    <td>
+                    <td class="action-buttons" style="flex-wrap:nowrap; white-space:nowrap; margin-top:0;">
                         <% if (patient.hasTests) { %>
                             <a href="/patients/<%= patient.id %>" class="button btn-small btn-primary">View</a>
                         <% } else { %>
@@ -52,19 +52,30 @@
         </tbody>
     </table>
 
-    <% if (totalPages > 1) { %>
-    <div class="mt-20 text-center">
-        <% if (hasPrevPage) { %>
-        <a href="/patients?page=<%= prevPage %>&search=<%= searchQuery %>" class="button btn-secondary">Previous</a>
-        <% } %>
+        <% if (totalPages > 1) { %>
+        <div class="flex-between mt-20">
+            <% if (hasPrevPage) { %>
+                <a href="/patients?page=<%= prevPage %>&search=<%= encodeURIComponent(searchQuery || '') %>" class="button btn-secondary">Previous</a>
+            <% } %>
 
-        <span style="margin: 0 10px;">Page <%= currentPage %> of <%= totalPages %></span>
+            <div>
+                <% 
+                    const maxDisplay = 10;
+                    const half = Math.floor(maxDisplay/2);
+                    let start = Math.max(1, currentPage - half);
+                    let end = Math.min(totalPages, start + maxDisplay - 1);
+                    start = Math.max(1, end - maxDisplay + 1);
+                    for (let p = start; p <= end; p++) {
+                %>
+                    <a href="/patients?page=<%= p %>&search=<%= encodeURIComponent(searchQuery || '') %>" class="button btn-small <%= p === currentPage ? 'btn-primary' : 'btn-secondary' %>"><%= p %></a>
+                <% } %>
+            </div>
 
-        <% if (hasNextPage) { %>
-        <a href="/patients?page=<%= nextPage %>&search=<%= searchQuery %>" class="button btn-secondary">Next</a>
+            <% if (hasNextPage) { %>
+                <a href="/patients?page=<%= nextPage %>&search=<%= encodeURIComponent(searchQuery || '') %>" class="button btn-secondary">Next</a>
+            <% } %>
+        </div>
         <% } %>
-    </div>
-    <% } %>
 </div>
 
 <script>

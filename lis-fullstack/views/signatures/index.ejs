@@ -56,4 +56,29 @@
   <% } else { %>
     <p>No signable tests found.</p>
   <% } %>
+  
+  <% if (typeof totalPages !== 'undefined' && totalPages > 1) { %>
+    <div class="flex-between mt-20">
+      <% if (hasPrevPage) { %>
+        <a href="?page=<%= prevPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&priority=<%= encodeURIComponent(priorityFilter || '') %>" class="button btn-secondary">Previous</a>
+      <% } %>
+
+      <div>
+        <% 
+          const maxDisplay = 10;
+          const half = Math.floor(maxDisplay/2);
+          let start = Math.max(1, currentPage - half);
+          let end = Math.min(totalPages, start + maxDisplay - 1);
+          start = Math.max(1, end - maxDisplay + 1);
+          for (let p = start; p <= end; p++) {
+        %>
+          <a href="?page=<%= p %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&priority=<%= encodeURIComponent(priorityFilter || '') %>" class="button btn-small <%= p === currentPage ? 'btn-primary' : 'btn-secondary' %>"><%= p %></a>
+        <% } %>
+      </div>
+
+      <% if (hasNextPage) { %>
+        <a href="?page=<%= nextPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&priority=<%= encodeURIComponent(priorityFilter || '') %>" class="button btn-secondary">Next</a>
+      <% } %>
+    </div>
+  <% } %>
 </div>
