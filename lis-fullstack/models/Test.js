@@ -1,4 +1,5 @@
 const { v4: uuidv4 } = require('uuid');
+const { logReportError } = require('../lib/reportLogger');
 
 class Test {
   constructor(data) {
@@ -21,23 +22,71 @@ class Test {
     this.completedAt = data.completedAt;
     this.createdAt = data.createdAt || new Date();
     this.updatedAt = data.updatedAt || new Date();
+    // Preserve requestedTests (array of { key,label,amount,lab }) when provided
+    this.requestedTests = Array.isArray(data.requestedTests) ? data.requestedTests : (data.requestedTests || []);
+    // Flag indicating all requested tests are awaiting-only (no routing)
+    this.awaitingOnly = !!data.awaitingOnly;
+    // statusHistory: array of { from, to, user, area, timestamp }
+    this.statusHistory = Array.isArray(data.statusHistory) ? data.statusHistory : (data.statusHistory || []);
   }
 
   // Save to database
   async save() {
     this.updatedAt = new Date();
+    // normalize to ISO string so disk comparisons are consistent
+    try { this.updatedAt = new Date().toISOString(); } catch (e) { this.updatedAt = String(new Date()); }
     if (this.status === 'Completed' && !this.completedAt) {
-      this.completedAt = new Date();
+      try { this.completedAt = new Date().toISOString(); } catch (e) { this.completedAt = String(new Date()); }
     }
     const tests = global.db.getTests();
     const index = tests.findIndex(t => t.id === this.id);
-    if (index >= 0) {
-      tests[index] = this;
-    } else {
+    // Ensure initial statusHistory entry exists for new records
+    if (index < 0) {
+      if (!Array.isArray(this.statusHistory) || this.statusHistory.length === 0) {
+        this.statusHistory = [{ from: null, to: this.status || null, user: null, area: this.status || null, timestamp: (new Date()).toISOString() }];
+      }
       tests.push(this);
+    } else {
+      // If updating, ensure we don't duplicate history entries — only add if last entry differs
+      const prev = tests[index];
+      // Guard: once a test is Completed or Released, do not allow reverting to a non-completed state
+      try {
+        const lockedStates = new Set(['Completed', 'Released']);
+        if (prev && prev.status && lockedStates.has(prev.status) && !(this.status && lockedStates.has(this.status))) {
+          // attempted revert detected
+          const msg = `Attempted to revert locked test id=${this.id} from ${prev.status} to ${this.status}`;
+          console.warn('[GUARD]', msg);
+          try { logReportError(msg, 'guard:revert-test'); } catch (e) {}
+          // enforce previous completed/released status
+          this.status = prev.status;
+          // keep completedAt from prev
+          this.completedAt = prev.completedAt || this.completedAt;
+        }
+      } catch (e) {}
+      const last = Array.isArray(this.statusHistory) && this.statusHistory.length ? this.statusHistory[this.statusHistory.length - 1] : null;
+      const prevStatus = prev && prev.status ? prev.status : null;
+      if (prevStatus !== this.status) {
+        // Only append if last recorded 'to' is different
+        if (!last || last.to !== this.status) {
+          const entry = { from: prevStatus, to: this.status, user: null, area: this.status, timestamp: (new Date()).toISOString() };
+          this.statusHistory = Array.isArray(this.statusHistory) ? this.statusHistory : [];
+          this.statusHistory.push(entry);
+        }
+      }
+      tests[index] = this;
     }
     global.db.saveTests(tests);
     return this;
+  }
+
+  // Add a status history entry with optional user/area and do not save automatically
+  addStatusEntry(entry) {
+    try {
+      this.statusHistory = Array.isArray(this.statusHistory) ? this.statusHistory : [];
+      const e = Object.assign({}, entry || {});
+      if (!e.timestamp) e.timestamp = (new Date()).toISOString();
+      this.statusHistory.push(e);
+    } catch (e) {}
   }
 
   // Convert to JSON
@@ -100,8 +149,42 @@ class Test {
     }
 
     if (test) {
-      Object.assign(test, updateData, { updatedAt: new Date() });
+      // Instrumentation: set/normalize incoming updatedAt
+      const incoming = Object.assign({}, updateData);
+      if (!incoming.updatedAt) {
+        try { incoming.updatedAt = new Date().toISOString(); } catch (e) { incoming.updatedAt = String(new Date()); }
+      }
+
+      // Stale-update guard: if disk has newer updatedAt, skip apply
+      try {
+        const diskTs = test && test.updatedAt ? Date.parse(test.updatedAt) : 0;
+        const incTs = incoming && incoming.updatedAt ? Date.parse(incoming.updatedAt) : 0;
+        if (diskTs && incTs && incTs < diskTs) {
+          console.log(`[DEBUG Test.findOneAndUpdate] skipping stale update id=${test.id} incoming=${new Date(incTs).toISOString()} disk=${new Date(diskTs).toISOString()}`);
+          return options.new !== false ? new Test(test) : new Test(test);
+        }
+      } catch (e) {}
+
+      // Guard: prevent reverting Completed/Released via findOneAndUpdate
+      try {
+        const locked = new Set(['Completed', 'Released']);
+        if (test && test.status && locked.has(test.status) && incoming && incoming.status && !locked.has(incoming.status)) {
+          const msg = `Attempted to revert locked test id=${test.id} from ${test.status} to ${incoming.status} (findOneAndUpdate)`;
+          console.warn('[GUARD]', msg);
+          try { logReportError(msg, 'guard:revert-test'); } catch (e) {}
+          // drop incoming.status to preserve locked state
+          delete incoming.status;
+          // don't touch completedAt
+          if (incoming.completedAt) delete incoming.completedAt;
+        }
+      } catch (e) {}
+
+      console.log(`[DEBUG Test.findOneAndUpdate] id=${test.id} beforeStatus=${test.status} update=${JSON.stringify(incoming).slice(0,200)}`);
+      Object.assign(test, incoming);
+      // ensure updatedAt normalization on disk object
+      test.updatedAt = incoming.updatedAt;
       global.db.saveTests(tests);
+      console.log(`[DEBUG Test.findOneAndUpdate] id=${test.id} afterStatus=${test.status} updatedAt=${test.updatedAt}`);
       return options.new !== false ? new Test(test) : new Test(test);
     }
 
@@ -117,7 +200,19 @@ class Test {
     const index = tests.findIndex(t => t.id === id);
     if (index >= 0) {
       const deletedTest = tests.splice(index, 1)[0];
-      global.db.saveTests(tests);
+      // Persist deletion by writing the full data object directly to disk.
+      // `db.saveTests` performs a merge overlay which can unintentionally
+      // preserve entries that were removed from the incoming array. For
+      // deletions we must replace the on-disk tests list with the updated
+      // array to ensure the removed test does not remain.
+      try {
+        const data = global.db.read();
+        data.tests = tests;
+        global.db.write(data);
+      } catch (e) {
+        // Fallback to the existing API if direct write fails
+        try { global.db.saveTests(tests); } catch (e2) { console.error('Failed to persist deleted test:', e2); }
+      }
       return new Test(deletedTest);
     }
     return null;

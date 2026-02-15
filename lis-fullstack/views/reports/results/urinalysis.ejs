@@ -22,10 +22,13 @@
   .note{ margin-top:8px; border:none; padding:0 4px; font-size:11px }
   .note-text{ color:#c00 }
   .signatures{ display:flex; justify-content:space-between; margin-top:24px }
-  .sig{ text-align:center; width:32% }
+  .sig{ text-align:center; width:32%; position:relative; min-height:80px }
+  .signature-overlay{ position:absolute; left:50%; transform:translateX(-50%) scale(1); transform-origin:center; max-width:60%; opacity:1; z-index:2 }
   .watermark{ position:absolute; left:50%; top:44%; transform:translate(-50%,-50%); width:52%; opacity:0.06; pointer-events:none; z-index:0 }
   .report-container{ position:relative; z-index:1 }
 </style>
+
+<%- include('./_highlight') %>
 
 <div class="report-page">
   <div class="report-container">
@@ -83,52 +86,52 @@
             </tr>
             <tr>
               <td class="label">Color</td>
-              <td style="text-align:center"><%= test && test.results && test.results.color ? test.results.color : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.color) %></td>
               <td style="text-align:center"></td>
             </tr>
             <tr>
               <td class="label">Transparency</td>
-              <td style="text-align:center"><%= test && test.results && test.results.appearance ? test.results.appearance : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.appearance) %></td>
               <td style="text-align:center"></td>
             </tr>
             <tr>
               <td class="label">pH</td>
-              <td style="text-align:center"><%= test && test.results && test.results.ph ? test.results.ph : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.ph) %></td>
               <td style="text-align:center">5.0 - 7.0</td>
             </tr>
             <tr>
               <td class="label">Sp. Gravity</td>
-              <td style="text-align:center"><%= test && test.results && test.results.specificGravity ? test.results.specificGravity : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.specificGravity) %></td>
               <td style="text-align:center">1.005 - 1.025</td>
             </tr>
             <tr>
               <td class="label">Glucose</td>
-              <td style="text-align:center"><%= test && test.results && test.results.glucose ? test.results.glucose : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.glucose) %></td>
               <td style="text-align:center">Negative</td>
             </tr>
             <tr>
               <td class="label">Protein</td>
-              <td style="text-align:center"><%= test && test.results && test.results.protein ? test.results.protein : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.protein) %></td>
               <td style="text-align:center">Negative</td>
             </tr>
             <tr>
               <td class="label">Leukocyte</td>
-              <td style="text-align:center"><%= test && test.results && test.results.leukocyte ? test.results.leukocyte : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.leukocyte) %></td>
               <td style="text-align:center">Negative</td>
             </tr>
             <tr>
               <td class="label">Nitrite</td>
-              <td style="text-align:center"><%= test && test.results && test.results.nitrite ? test.results.nitrite : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.nitrite) %></td>
               <td style="text-align:center">Negative</td>
             </tr>
             <tr>
               <td class="label">Urobilinogen</td>
-              <td style="text-align:center"><%= test && test.results && test.results.urobilinogen ? test.results.urobilinogen : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.urobilinogen) %></td>
               <td style="text-align:center">Negative</td>
             </tr>
             <tr>
               <td class="label">Blood</td>
-              <td style="text-align:center"><%= test && test.results && test.results.blood ? test.results.blood : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.blood) %></td>
               <td style="text-align:center">Negative</td>
             </tr>
             <!-- Ketones and Bilirubin moved to Microscopic Analysis column -->
@@ -143,37 +146,37 @@
             </tr>
             <tr>
               <td class="label">WBC</td>
-              <td style="text-align:center"><%= test && test.results && test.results.wbc ? test.results.wbc : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.wbc) %></td>
               <td style="text-align:center">0-3 / hpf</td>
             </tr>
             <tr>
               <td class="label">RBC</td>
-              <td style="text-align:center"><%= test && test.results && test.results.rbc ? test.results.rbc : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.rbc) %></td>
               <td style="text-align:center">0-5 / hpf</td>
             </tr>
             <tr>
               <td class="label">Epithelial Cells</td>
-              <td style="text-align:center"><%= test && test.results && test.results.epithelial ? test.results.epithelial : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.epithelial) %></td>
               <td style="text-align:center"></td>
             </tr>
             <tr>
               <td class="label">Mucus Threads</td>
-              <td style="text-align:center"><%= test && test.results && test.results.mucus ? test.results.mucus : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.mucus) %></td>
               <td style="text-align:center"></td>
             </tr>
             <tr>
               <td class="label">Amorphous Crystals</td>
-              <td style="text-align:center"><%= test && test.results && test.results.amorphous ? test.results.amorphous : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.amorphous) %></td>
               <td style="text-align:center"></td>
             </tr>
             <tr>
               <td class="label">Bacteria</td>
-              <td style="text-align:center"><%= test && test.results && test.results.bacteria ? test.results.bacteria : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.bacteria) %></td>
               <td style="text-align:center"></td>
             </tr>
             <tr>
               <td class="label">Others</td>
-              <td style="text-align:center"><%= test && test.results && test.results.others ? test.results.others : '' %></td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.others) %></td>
               <td style="text-align:center"></td>
             </tr>
           </table>
@@ -183,24 +186,47 @@
 
     <div class="note"><strong>NOTE:</strong> <span class="note-text"><%= test && test.results && test.results.note ? test.results.note : '' %></span></div>
 
+    <%
+      function findSigFor(displayName){
+        var sigs = (test && test.results && test.results.signatures) ? test.results.signatures : {};
+        for(var k in sigs){ if(sigs[k] && sigs[k].name === displayName) return sigs[k]; }
+        return null;
+      }
+    %>
+
     <div class="signatures">
       <div class="sig">
         <div style="border-top:1px solid #000; height:10px; margin-bottom:6px"></div>
-        <div style="font-weight:700"><strong><%= (test && test.results && test.results.performedByName) || (test && test.performedBy && test.performedBy.name) || '' %></strong></div>
+        <% var displayName = (test && test.results && test.results.performedByName) || (test && test.performedBy && test.performedBy.name) || '' %>
+        <% var sig = findSigFor(displayName); var p = (sig && sig.placement) ? sig.placement : {x:0,y:0,scale:1}; if(p && (typeof p.scale === 'undefined' || p.scale === 1)){ p.scale = 1.25; } %>
+        <% if (sig && sig.filename) { %>
+          <img src="/assets/signature/<%= sig.filename %>" class="signature-overlay" style="top:<%= p.y %>px; transform:translateX(-50%) scale(<%= typeof p.scale!=='undefined'?p.scale:1 %>); max-height:96px;" />
+        <% } %>
+        <div style="font-weight:700"><strong><%= displayName %></strong></div>
         <div style="font-size:11px"><% if (test && test.results && test.results.performedByLicense) { %><strong>Lic. No. <%= test.results.performedByLicense %></strong><% } %></div>
         <div>Medical Technologist</div>
       </div>
 
       <div class="sig">
         <div style="border-top:1px solid #000; height:10px; margin-bottom:6px"></div>
-        <div style="font-weight:700"><strong><%= (test && test.results && test.results.validatedByName) || '' %></strong></div>
+        <% var displayName = (test && test.results && test.results.validatedByName) || '' %>
+        <% var sig = findSigFor(displayName); var p = (sig && sig.placement) ? sig.placement : {x:0,y:0,scale:1}; if(p && (typeof p.scale === 'undefined' || p.scale === 1)){ p.scale = 1.25; } %>
+        <% if (sig && sig.filename) { %>
+          <img src="/assets/signature/<%= sig.filename %>" class="signature-overlay" style="top:<%= p.y %>px; transform:translateX(-50%) scale(<%= typeof p.scale!=='undefined'?p.scale:1 %>); max-height:96px;" />
+        <% } %>
+        <div style="font-weight:700"><strong><%= displayName %></strong></div>
         <div style="font-size:11px"><% if (test && test.results && test.results.validatedByLicense) { %><strong>Lic. No. <%= test.results.validatedByLicense %></strong><% } %></div>
         <div>Validated by</div>
       </div>
 
       <div class="sig">
         <div style="border-top:1px solid #000; height:10px; margin-bottom:6px"></div>
-        <div style="font-weight:700"><strong><%= (test && test.results && test.results.requestedByName) || (test && test.requestedBy && test.requestedBy.name) || '' %></strong></div>
+        <% var displayName = (test && test.results && test.results.requestedByName) || (test && test.requestedBy && test.requestedBy.name) || '' %>
+        <% var sig = findSigFor(displayName); var p = (sig && sig.placement) ? sig.placement : {x:0,y:0,scale:1}; if(p && (typeof p.scale === 'undefined' || p.scale === 1)){ p.scale = 1.25; } %>
+        <% if (sig && sig.filename) { %>
+          <img src="/assets/signature/<%= sig.filename %>" class="signature-overlay" style="top:<%= p.y %>px; transform:translateX(-50%) scale(<%= typeof p.scale!=='undefined'?p.scale:1 %>); max-height:96px;" />
+        <% } %>
+        <div style="font-weight:700"><strong><%= displayName %></strong></div>
         <div style="font-size:11px"><% if (test && test.results && test.results.requestedByLicense) { %><strong>Lic. No. <%= test.results.requestedByLicense %></strong><% } %></div>
         <div>Pathologist</div>
       </div>

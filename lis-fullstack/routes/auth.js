@@ -46,17 +46,49 @@ router.post('/login', requireGuest, async (req, res) => {
     user.lastLogin = new Date();
     await user.save();
 
-    // Create session (use the application's `id` field)
-    req.session.user = {
+    // Create session (use the application's `id` field) and include permissions
+    // Use the full user object (via toJSON) so profile fields like `signature` persist
+    // while relying on User.toJSON to omit sensitive fields like password.
+    const sessionUserObj = (typeof user.toJSON === 'function') ? user.toJSON() : {
       id: user.id,
       name: user.name,
       email: user.email,
       role: user.role
     };
+    sessionUserObj.permissions = user.permissions || {};
+    // Ensure signature key exists so views can rely on it
+    sessionUserObj.signature = sessionUserObj.signature || null;
+    req.session.user = sessionUserObj;
 
     req.flash('success_msg', `Welcome back, ${user.name}!`);
-    // Attempt to request fullscreen on the dashboard after login (best-effort).
-    res.redirect('/dashboard?fullscreen=1');
+
+    // Redirect user to the first page they have permission to access.
+    const sessionUser = req.session.user;
+    const perms = sessionUser.permissions || {};
+    const allowedDashboardRoles = new Set(['Admin', 'Manager', 'Owner']);
+
+    // If user role is allowed for dashboard, send them there.
+    if (allowedDashboardRoles.has(sessionUser.role)) {
+      return res.redirect('/dashboard?fullscreen=1');
+    }
+
+    // Ordered destination preferences for non-dashboard users
+    const routes = [
+      { path: '/reception', perm: 'reception' },
+      { path: '/patients', perm: 'patients' },
+      { path: '/tests', perm: 'tests' },
+      { path: '/reports', perm: 'reports' },
+      { path: '/templates', perm: 'templates' },
+      { path: '/users', perm: 'users' }
+    ];
+
+    for (const r of routes) {
+      if (perms[r.perm]) return res.redirect(r.path);
+    }
+
+    // Fallback to dashboard only if role allows; otherwise redirect to login with message
+    req.flash('error_msg', 'You do not have access to the dashboard. Please contact administrator for access.');
+    return res.redirect('/');
 
   } catch (error) {
     console.error('Login error:', error);

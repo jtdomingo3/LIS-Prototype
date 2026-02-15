@@ -10,8 +10,6 @@
       <tr>
         <th>Template Name</th>
         <th>Test Type</th>
-        <th>Fields</th>
-        <th>Created</th>
         <th>Actions</th>
       </tr>
     </thead>
@@ -33,8 +31,6 @@
           <tr>
             <td><%= t.name %></td>
             <td><%= t.testType %></td>
-            <td><%= Array.isArray(t.fields) ? t.fields.length + ' fields' : '' %></td>
-            <td><%= t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '' %></td>
             <td class="action-buttons">
               <a href="/templates/<%= t.id %>" class="button btn-success btn-small">View</a>
               <% if (!t.isStatic) { %>
@@ -44,7 +40,7 @@
           </tr>
         <% }) %>
       <% } else { %>
-        <tr><td colspan="5">No templates found.</td></tr>
+        <tr><td colspan="3">No templates found.</td></tr>
       <% } %>
     </tbody>
   </table>

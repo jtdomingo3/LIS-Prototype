@@ -1,0 +1,33 @@
+<div class="card">
+  <h3>My Profile</h3>
+
+  <form action="/users/profile?_method=PUT" method="POST" enctype="multipart/form-data">
+    <label>Name</label>
+    <input type="text" name="name" value="<%= user.name %>" required />
+
+    <label>Email</label>
+    <input type="email" name="email" value="<%= user.email %>" required />
+
+    <label>License Number</label>
+    <input type="text" name="licenseNumber" value="<%= user.licenseNumber || '' %>" />
+
+    <label>E-signature (PNG)</label>
+    <% const sigPath = user.signature ? ('/assets/signature/' + user.signature) : null; %>
+    <% if (sigPath) { %>
+      <div style="margin-bottom:8px;"><img src="<%= sigPath %>" alt="signature" style="height:64px;border:1px solid #eee;padding:6px;background:#fff;" /></div>
+    <% } %>
+    <input type="file" name="signature" accept="image/png,image/*" />
+
+    <hr />
+    <h4>Change Password (optional)</h4>
+    <label>New password</label>
+    <input type="password" name="password" />
+    <label>Confirm password</label>
+    <input type="password" name="confirmPassword" />
+
+    <div style="margin-top:12px;">
+      <button class="button btn-primary" type="submit">Save Profile</button>
+      <a href="/dashboard" class="button btn-secondary">Cancel</a>
+    </div>
+  </form>
+</div>

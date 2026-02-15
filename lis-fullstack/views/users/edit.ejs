@@ -27,9 +27,37 @@
       <select name="role">
         <option value="Receptionist" <%= user.role === 'Receptionist' ? 'selected' : '' %>>Receptionist</option>
         <option value="Technician" <%= user.role === 'Technician' ? 'selected' : '' %>>Technician</option>
+        <option value="Medical Technologist" <%= user.role === 'Medical Technologist' ? 'selected' : '' %>>Medical Technologist</option>
+        <option value="X-Ray Technologist" <%= user.role === 'X-Ray Technologist' ? 'selected' : '' %>>X-Ray Technologist</option>
         <option value="Doctor" <%= user.role === 'Doctor' ? 'selected' : '' %>>Doctor</option>
+        <option value="Internist" <%= user.role === 'Internist' ? 'selected' : '' %>>Internist</option>
+        <option value="Pathologist" <%= user.role === 'Pathologist' ? 'selected' : '' %>>Pathologist</option>
+        <option value="Radiologist" <%= user.role === 'Radiologist' ? 'selected' : '' %>>Radiologist</option>
+        <option value="Encoder" <%= user.role === 'Encoder' ? 'selected' : '' %>>Encoder</option>
+        <option value="Drugtest Analyst" <%= user.role === 'Drugtest Analyst' ? 'selected' : '' %>>Drugtest Analyst</option>
+        <option value="Sonographer" <%= user.role === 'Sonographer' ? 'selected' : '' %>>Sonographer</option>
+        <option value="Manager" <%= user.role === 'Manager' ? 'selected' : '' %>>Manager</option>
+        <option value="Owner" <%= user.role === 'Owner' ? 'selected' : '' %>>Owner</option>
         <option value="Admin" <%= user.role === 'Admin' ? 'selected' : '' %>>Admin</option>
       </select>
+    </div>
+
+    <div class="form-group">
+      <label>License Number</label>
+      <input type="text" name="licenseNumber" value="<%= user.licenseNumber || '' %>">
+    </div>
+
+    <div class="form-group">
+      <label>Permissions</label>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        <% const perms = ['dashboard','patients','reception','tests','reports','worksheet','templates','users','delete']; %>
+        <% perms.forEach(p => { %>
+          <label style="display:inline-flex;align-items:center;gap:6px;margin-right:8px;">
+            <input type="checkbox" name="permissions[<%= p %>]" value="1" <%= user.permissions && user.permissions[p] ? 'checked' : '' %> />
+            <span><%= p.charAt(0).toUpperCase() + p.slice(1) %></span>
+          </label>
+        <% }) %>
+      </div>
     </div>
 
     <div class="form-group">

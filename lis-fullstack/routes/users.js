@@ -1,7 +1,13 @@
 const express = require('express');
 const router = express.Router();
+const fs = require('fs');
+const path = require('path');
+const multer = require('multer');
 const User = require('../models/User');
 const { requireAuth, canManageUsers } = require('../middleware/auth');
+
+// Allow users to manage their own profile
+const { requireGuest } = require('../middleware/auth');
 
 // GET /users - List all users
 router.get('/', requireAuth, canManageUsers, async (req, res) => {
@@ -47,7 +53,7 @@ router.get('/new', requireAuth, canManageUsers, (req, res) => {
 // POST /users - Create new user
 router.post('/', requireAuth, canManageUsers, async (req, res) => {
   try {
-    const { name, email, password, confirmPassword, role, status } = req.body;
+    const { name, email, password, confirmPassword, role, status, licenseNumber } = req.body;
 
     // Validate required fields
     if (!name || !email || !password) {
@@ -86,12 +92,21 @@ router.post('/', requireAuth, canManageUsers, async (req, res) => {
       });
     }
 
+    // Build permissions object from nested form inputs
+    const permissionsRaw = req.body.permissions || {};
+    const permissions = {};
+    ['dashboard','patients','reception','tests','reports','worksheet','templates','users','delete'].forEach(k => {
+      permissions[k] = !!(permissionsRaw[k] === '1' || permissionsRaw[k] === 1 || permissionsRaw[k] === true || permissionsRaw[k] === 'on' || permissionsRaw[k]);
+    });
+
     const user = new User({
       name,
       email: email.toLowerCase(),
       password,
       role: role || 'Receptionist',
-      status: status || 'Active'
+      status: status || 'Active',
+      licenseNumber: licenseNumber || null,
+      permissions
     });
 
     await user.save();
@@ -110,6 +125,99 @@ router.post('/', requireAuth, canManageUsers, async (req, res) => {
 });
 
 // GET /users/:id - Show user details
+// GET /profile - view current user's profile
+router.get('/profile', requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.session.user.id);
+    if (!user) {
+      req.flash('error_msg', 'User not found');
+      return res.redirect('/');
+    }
+    res.render('users/profile', { title: 'My Profile', user: user.toJSON() });
+  } catch (error) {
+    console.error('Profile view error:', error);
+    req.flash('error_msg', 'Error loading profile');
+    res.redirect('/');
+  }
+});
+
+// PUT /profile - update current user's profile (name, email, password)
+// Configure multer storage for signatures
+const sigDir = path.join(__dirname, '..', 'assets', 'signature');
+function ensureSigDir() {
+  try { fs.mkdirSync(sigDir, { recursive: true }); } catch (e) {}
+}
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    ensureSigDir();
+    cb(null, sigDir);
+  },
+  filename: function (req, file, cb) {
+    // Use email (from form or session) to build safe filename
+    const emailRaw = (req.body && req.body.email) ? req.body.email : (req.session && req.session.user && req.session.user.email ? req.session.user.email : 'user');
+    const safe = String(emailRaw).toLowerCase().replace(/[^a-z0-9]/g, '_');
+    cb(null, `${safe}_signature.png`);
+  }
+});
+
+const upload = multer({ storage });
+
+router.put('/profile', requireAuth, upload.single('signature'), async (req, res) => {
+  try {
+    const { name, email, password, confirmPassword, licenseNumber } = req.body;
+    if (!name || !email) {
+      req.flash('error_msg', 'Please fill all required fields');
+      return res.redirect('/users/profile');
+    }
+
+    // Check if email is taken by another user
+    const existing = await User.findOne({ email: email.toLowerCase() });
+    if (existing && existing.id !== req.session.user.id) {
+      req.flash('error_msg', 'Email is already taken by another user');
+      return res.redirect('/users/profile');
+    }
+
+    const update = { name, email: email.toLowerCase(), licenseNumber: licenseNumber || null };
+    if (password) {
+      if (password !== confirmPassword) {
+        req.flash('error_msg', 'Passwords do not match');
+        return res.redirect('/users/profile');
+      }
+      if (password.length < 6) {
+        req.flash('error_msg', 'Password must be at least 6 characters long');
+        return res.redirect('/users/profile');
+      }
+      update.password = password;
+    }
+
+    // If a signature file was uploaded, include its filename in the update
+    if (req.file && req.file.filename) {
+      update.signature = req.file.filename;
+    }
+
+    const updated = await User.findByIdAndUpdate(req.session.user.id, update, { new: true });
+    if (!updated) {
+      req.flash('error_msg', 'User not found');
+      return res.redirect('/');
+    }
+
+    // Update session info
+    req.session.user.name = updated.name;
+    req.session.user.email = updated.email;
+    req.session.user.licenseNumber = updated.licenseNumber || null;
+    req.session.user.signature = updated.signature || null;
+
+    req.flash('success_msg', 'Profile updated successfully');
+    res.redirect('/users/profile');
+  } catch (error) {
+    console.error('Profile update error:', error);
+    req.flash('error_msg', 'Error updating profile');
+    res.redirect('/users/profile');
+  }
+});
+
+// GET /users/:id - Show user details
 router.get('/:id', requireAuth, canManageUsers, async (req, res) => {
   try {
     let user = await User.findById(req.params.id);
@@ -123,7 +231,8 @@ router.get('/:id', requireAuth, canManageUsers, async (req, res) => {
 
     res.render('users/show', {
       title: 'User Details',
-      user
+      user,
+      currentUser: req.session.user
     });
 
   } catch (error) {
@@ -146,7 +255,8 @@ router.get('/:id/edit', requireAuth, canManageUsers, async (req, res) => {
 
     res.render('users/edit', {
       title: 'Edit User',
-      user
+      user,
+      currentUser: req.session.user
     });
 
   } catch (error) {
@@ -159,7 +269,7 @@ router.get('/:id/edit', requireAuth, canManageUsers, async (req, res) => {
 // PUT /users/:id - Update user
 router.put('/:id', requireAuth, canManageUsers, async (req, res) => {
   try {
-    const { name, email, role, status, password, confirmPassword } = req.body;
+    const { name, email, role, status, password, confirmPassword, licenseNumber } = req.body;
 
     // Validate required fields
     if (!name || !email) {
@@ -174,11 +284,20 @@ router.put('/:id', requireAuth, canManageUsers, async (req, res) => {
       return res.redirect(`/users/${req.params.id}/edit`);
     }
 
+    // Build permissions object from nested form inputs
+    const permissionsRaw = req.body.permissions || {};
+    const permissions = {};
+    ['dashboard','patients','reception','tests','reports','worksheet','templates','users','delete'].forEach(k => {
+      permissions[k] = !!(permissionsRaw[k] === '1' || permissionsRaw[k] === 1 || permissionsRaw[k] === true || permissionsRaw[k] === 'on' || permissionsRaw[k]);
+    });
+
     const updateData = {
       name,
       email: email.toLowerCase(),
       role,
-      status
+      status,
+      licenseNumber: licenseNumber || null,
+      permissions
     };
 
     // Update password if provided
@@ -233,6 +352,90 @@ router.delete('/:id', requireAuth, canManageUsers, async (req, res) => {
     console.error('Delete user error:', error);
     req.flash('error_msg', 'Error deleting user');
     res.redirect('/users');
+  }
+});
+
+// POST /users/:id/reset-password - Admin resets a user's password to default 'gezyne'
+router.post('/:id/reset-password', requireAuth, canManageUsers, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      req.flash('error_msg', 'User not found');
+      return res.redirect('/users');
+    }
+
+    // Reset password to default 'gezyne'
+    const updated = await User.findByIdAndUpdate(req.params.id, { password: 'gezyne' }, { new: true });
+    req.flash('success_msg', `Password for ${updated.email} has been reset to the default.`);
+    res.redirect(`/users/${req.params.id}`);
+  } catch (error) {
+    console.error('Reset password error:', error);
+    req.flash('error_msg', 'Error resetting password');
+    res.redirect('/users');
+  }
+});
+
+// GET /profile - view current user's profile
+router.get('/profile', requireAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.session.user.id);
+    if (!user) {
+      req.flash('error_msg', 'User not found');
+      return res.redirect('/');
+    }
+    res.render('users/profile', { title: 'My Profile', user: user.toJSON() });
+  } catch (error) {
+    console.error('Profile view error:', error);
+    req.flash('error_msg', 'Error loading profile');
+    res.redirect('/');
+  }
+});
+
+// PUT /profile - update current user's profile (name, email, password)
+router.put('/profile', requireAuth, async (req, res) => {
+  try {
+    const { name, email, password, confirmPassword } = req.body;
+    if (!name || !email) {
+      req.flash('error_msg', 'Please fill all required fields');
+      return res.redirect('/profile');
+    }
+
+    // Check if email is taken by another user
+    const existing = await User.findOne({ email: email.toLowerCase() });
+    if (existing && existing.id !== req.session.user.id) {
+      req.flash('error_msg', 'Email is already taken by another user');
+      return res.redirect('/profile');
+    }
+
+    const update = { name, email: email.toLowerCase() };
+    if (password) {
+      if (password !== confirmPassword) {
+        req.flash('error_msg', 'Passwords do not match');
+        return res.redirect('/profile');
+      }
+      if (password.length < 6) {
+        req.flash('error_msg', 'Password must be at least 6 characters long');
+        return res.redirect('/profile');
+      }
+      update.password = password;
+    }
+
+    const updated = await User.findByIdAndUpdate(req.session.user.id, update, { new: true });
+    if (!updated) {
+      req.flash('error_msg', 'User not found');
+      return res.redirect('/');
+    }
+
+    // Update session info
+    req.session.user.name = updated.name;
+    req.session.user.email = updated.email;
+
+    req.flash('success_msg', 'Profile updated successfully');
+    res.redirect('/profile');
+  } catch (error) {
+    console.error('Profile update error:', error);
+    req.flash('error_msg', 'Error updating profile');
+    res.redirect('/profile');
   }
 });
 

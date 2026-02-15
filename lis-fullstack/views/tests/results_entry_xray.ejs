@@ -21,7 +21,7 @@
 
     <div class="form-row">
       <label>Case Number</label>
-      <input type="text" name="caseNumber" placeholder="Enter case number (assigned by radtech)" value="<%= test && test.caseNumber ? test.caseNumber : (test && test.results && test.results.caseNumber ? test.results.caseNumber : '') %>">
+      <input type="text" name="caseNumber" placeholder="Enter case number (assigned by radtech)" value="<%= (test && (test.caseNumber || (test.results && test.results.caseNumber))) ? (test.caseNumber || (test.results && test.results.caseNumber)) : (typeof nextCaseNumber !== 'undefined' ? nextCaseNumber : '') %>">
     </div>
 
     <div class="form-row">
@@ -39,7 +39,7 @@
         <label style="margin-left:12px">Font:</label>
         <select name="paragraphsFontFamily">
           <option value="Times New Roman" <%= test.results && test.results.paragraphs_font_family==='Times New Roman' ? 'selected' : '' %>>Times New Roman</option>
-          <option value="Courier New" <%= test.results && test.results.paragraphs_font_family==='Courier New' ? 'selected' : '' %>>Courier New</option>
+          <option value="Courier New" <%= (test.results && test.results.paragraphs_font_family==='Courier New') || (!test.results || !test.results.paragraphs_font_family) ? 'selected' : '' %>>Courier New</option>
           <option value="Arial" <%= test.results && test.results.paragraphs_font_family==='Arial' ? 'selected' : '' %>>Arial</option>
           <option value="Georgia" <%= test.results && test.results.paragraphs_font_family==='Georgia' ? 'selected' : '' %>>Georgia</option>
           <option value="Garamond" <%= test.results && test.results.paragraphs_font_family==='Garamond' ? 'selected' : '' %>>Garamond</option>
@@ -52,28 +52,27 @@
           <option value="18px" <%= test.results && test.results.paragraphs_font_size==='18px' ? 'selected' : '' %>>18px</option>
         </select>
       </div>
-      <textarea id="paragraphs" name="paragraphs" rows="8" spellcheck="true" style="width:100%; font-family:inherit;"> <%= test && test.results && (test.results.paragraphs || test.results.result) ? (test.results.paragraphs || test.results.result) : '<p>Enter findings here. This may be 2-3 paragraphs depending on the reading.</p>\n<p>Describe radiographic findings, impressions, and recommendations.</p>' %></textarea>
+      <% 
+        var _rawEdit = (test && test.results && (test.results.paragraphs || test.results.result)) ? (test.results.paragraphs || test.results.result) : '';
+        var _editValue = _rawEdit;
+        if (_editValue && /<\/?[a-z][\s\S]*>/i.test(_editValue)) {
+          _editValue = _editValue.replace(/<br\s*\/?\s*>/gi, '\n');
+          _editValue = _editValue.replace(/<\/p>\s*<p[^>]*>/gi, '\n\n');
+          _editValue = _editValue.replace(/<\/?p[^>]*>/gi, '');
+          _editValue = _editValue.replace(/&nbsp;/g, ' ');
+          _editValue = _editValue.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+          _editValue = _editValue.trim();
+        }
+        var _defaultText = 'Enter findings here. This may be 2-3 paragraphs depending on the reading.\n\nDescribe radiographic findings, impressions, and recommendations.';
+      %>
+      <textarea id="paragraphs" name="paragraphs" rows="8" spellcheck="true" style="width:100%; font-family:inherit;"><%= _editValue && _editValue.length ? _editValue : _defaultText %></textarea>
     </div>
 
     <hr>
     <h4>Signatures / Performers</h4>
-    <div class="form-row">
-      <label>X-Ray Technologist (Name)</label>
-      <input type="text" name="mtName" placeholder="Technologist name" value="<%= test.results && test.results.performedByName ? test.results.performedByName : '' %>">
-    </div>
-    <div class="form-row">
-      <label>Technologist License</label>
-      <input type="text" name="mtLicense" placeholder="License number (optional)" value="<%= test.results && test.results.performedByLicense ? test.results.performedByLicense : '' %>">
-    </div>
+    <%- include('../partials/signatory_select', { prefix: 'mt', label: 'X-Ray Technologist', role: 'X-Ray Technologist', nameInput: 'mtName', licenseInput: 'mtLicense', existingName: (test.results && test.results.performedByName) ? test.results.performedByName : '', existingLicense: (test.results && test.results.performedByLicense) ? test.results.performedByLicense : '' }) %>
 
-    <div class="form-row">
-      <label>Radiologist (Name)</label>
-      <input type="text" name="pathName" placeholder="Radiologist name" value="<%= test.results && test.results.requestedByName ? test.results.requestedByName : '' %>">
-    </div>
-    <div class="form-row">
-      <label>Radiologist License</label>
-      <input type="text" name="pathLicense" placeholder="License number (optional)" value="<%= test.results && test.results.requestedByLicense ? test.results.requestedByLicense : '' %>">
-    </div>
+    <!-- Radiologist fields removed to avoid overwriting default radiologist/signature in report template -->
 
     <div class="form-row mt-12">
       <a href="/tests/<%= test.id %>" class="button btn-secondary">Cancel</a>

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <title><%= title %> - LIS</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -28,6 +28,13 @@
             --warning: #f97316;
             --danger: #ef4444;
             --info: #3b82f6;
+            /* Slightly smaller base font for a tighter UI; adjust 13-15 to taste */
+            font-size: 14px;
+        }
+
+        html {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
         body {
@@ -502,6 +509,45 @@
             box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
         }
 
+        /* Filter form used on listing pages (patients/tests) */
+        .filter-form {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        .filter-form .filter-select {
+            height: 40px;
+            padding: 0 10px;
+            font-size: 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border-gray);
+            background: #fff;
+        }
+        .filter-form .search-box {
+            flex: 1;
+            width: auto;
+            max-width: 720px;
+            margin-bottom: 0;
+            height: 44px;
+            padding: 8px 12px;
+        }
+        .filter-form .filter-select {
+            width: 160px;
+        }
+
+        .filter-form .filter-actions {
+            display: inline-flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .filter-form .filter-actions .button {
+            height: 40px;
+            padding: 0 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
         /* Stats Container */
         .stats-container {
             display: grid;
@@ -706,46 +752,100 @@
 <body>
     <div class="container">
         <!-- Sidebar -->
-        <% if (typeof user !== 'undefined' && user) { %>
+        <% if (typeof sessionUser !== 'undefined' && sessionUser) { %>
         <div class="sidebar">
             <div class="brand">
                 <img src="/assets/gezyne-logo.png" alt="Gezyne Clinical Laboratory" class="brand-logo">
                 <div class="brand-text">Gezyne Clinical Laboratory</div>
             </div>
+            <% const perms = (sessionUser && sessionUser.permissions) ? sessionUser.permissions : {}; %>
+            <% const dashboardRoles = new Set(['Admin','Manager','Owner']); %>
+            <% if (dashboardRoles.has(sessionUser.role) || perms.dashboard) { %>
             <a href="/dashboard" class="nav-item <%= title.includes('Dashboard') ? 'active' : '' %>"><span class="nav-emoji">📊</span><span class="nav-text">Dashboard</span></a>
+            <% } %>
+            <% if (sessionUser.role === 'Admin' || perms.patients) { %>
             <a href="/patients" class="nav-item <%= title.includes('Patient') ? 'active' : '' %>"><span class="nav-emoji">👥</span><span class="nav-text">Patients</span></a>
+            <% } %>
+            <% if (sessionUser.role === 'Admin' || perms.reception) { %>
             <a href="/reception" class="nav-item <%= title.includes('Reception') ? 'active' : '' %>"><span class="nav-emoji">🏥</span><span class="nav-text">Reception</span></a>
+            <% } %>
             <% if (!featureFlags || featureFlags.tests) { %>
+            <% if (sessionUser.role === 'Admin' || perms.tests) { %>
             <a href="/tests" class="nav-item <%= title.includes('Test') ? 'active' : '' %>"><span class="nav-emoji">🧪</span><span class="nav-text">Tests & Results</span></a>
             <% } %>
+            <% } %>
             <% if (!featureFlags || featureFlags.reports) { %>
+            <% if (sessionUser.role === 'Admin' || perms.reports) { %>
             <a href="/reports" class="nav-item <%= title.includes('Report') ? 'active' : '' %>"><span class="nav-emoji">📋</span><span class="nav-text">Reports</span></a>
             <% } %>
+            <% } %>
+            <!-- Signature area: allows users to upload e-signatures for documents where their name appears -->
+            <a href="/signatures" class="nav-item <%= title.includes('Signature') ? 'active' : '' %>"><span class="nav-emoji">✍️</span><span class="nav-text">Signature</span></a>
+            <% if (!featureFlags || featureFlags.worksheet) { %>
+            <% if (sessionUser.role === 'Admin' || perms.worksheet) { %>
+            <a href="/reports/worksheet" class="nav-item <%= title.includes('Worksheet') ? 'active' : '' %>"><span class="nav-emoji">📊</span><span class="nav-text">Worksheet</span></a>
+            <% } %>
+            <% } %>
             <% if (!featureFlags || featureFlags.templates) { %>
+            <% if (sessionUser.role === 'Admin' || perms.templates) { %>
             <a href="/templates" class="nav-item <%= title.includes('Template') ? 'active' : '' %>"><span class="nav-emoji">📄</span><span class="nav-text">Templates</span></a>
             <% } %>
-            <% if (user.role === 'Admin' && (!featureFlags || featureFlags.users)) { %>
+            <% } %>
+            <% if ((sessionUser.role === 'Admin' || perms.users) && (!featureFlags || featureFlags.users)) { %>
             <a href="/users" class="nav-item <%= title.includes('User') ? 'active' : '' %>"><span class="nav-emoji">👤</span><span class="nav-text">Users</span></a>
             <% } %>
             <form action="/logout" method="POST" style="margin-top: 30px;">
                 <button type="submit" class="logout-btn" title="Logout"><i class="fa fa-power-off logout-emoji" aria-hidden="true"></i><span class="logout-text">Logout</span></button>
             </form>
             <a href="/settings" class="nav-item" style="margin-top:8px;"><span class="nav-emoji">⚙️</span><span class="nav-text">Settings</span></a>
+            <button type="button" class="nav-item" id="fullscreenBtn" onclick="toggleFullscreen()" style="margin-top:4px;border:none;width:100%;text-align:left;background:transparent;cursor:pointer;"><span class="nav-emoji">⛶</span><span class="nav-text">Fullscreen</span></button>
         </div>
         <% } %>
 
         <!-- Main Content -->
         <div class="main-content">
-            <% if (typeof user !== 'undefined' && user) { %>
+            <% if (typeof sessionUser !== 'undefined' && sessionUser) { %>
             <!-- Header -->
             <div class="header">
                 <div style="display:flex; align-items:center; gap:12px;">
                     <button id="sidebarToggle" class="hamburger" aria-label="Toggle menu">☰</button>
                     <h1><%= title %></h1>
                 </div>
-                <div class="user-info">
-                    <p>Welcome, <%= user.name %></p>
-                    <p><%= new Date().toLocaleTimeString() %></p>
+                <div style="display:flex; align-items:center; gap:14px;">
+                    <div id="notificationWidget" style="position:relative;">
+                        <button id="notifBtn" title="Notifications" style="background:transparent;border:none;padding:0 6px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+                            <i class="fa fa-bell" style="color:#f3c623;font-size:1.25em;"></i>
+                            <span id="notifConn" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ef4444;box-shadow:0 0 4px rgba(0,0,0,0.15);" title="Disconnected"></span>
+                            <span id="notifBadge" style="display:inline-block;min-width:20px;height:20px;line-height:20px;padding:0 6px;border-radius:10px;background:var(--danger);color:white;font-size:0.85em;text-align:center;visibility:hidden;">0</span>
+                        </button>
+                        <div id="notifDropdown" style="position:absolute;right:0;top:36px;min-width:320px;background:var(--text-white);border:1px solid var(--border-gray);border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.12);display:none;z-index:999;padding:10px;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:12px;">
+                                <strong>Notifications</strong>
+                                <div style="display:flex;align-items:center;gap:10px;">
+                                    <small style="color:var(--text-gray);font-size:0.85em;">Auto-refresh: <label style="cursor:pointer;display:inline-block;margin-left:6px;"><input id="notifAutoRefresh" type="checkbox" style="vertical-align:middle;"/> Enable</label></small>
+                                    <small style="color:var(--text-gray);font-size:0.85em;">Mute sound: <label style="cursor:pointer;display:inline-block;margin-left:6px;"><input id="notifMute" type="checkbox" style="vertical-align:middle;"/> </label></small>
+                                </div>
+                            </div>
+                            <div id="notifList" style="max-height:220px;overflow:auto;"></div>
+                            <div style="text-align:right;margin-top:8px;"><button id="clearNotifs" class="button btn-small">Clear</button></div>
+                        </div>
+                    </div>
+                    <audio id="notifSound" preload="auto">
+                        <source src="/assets/notificaiton_ringtone.mp3" type="audio/mpeg">
+                    </audio>
+                                        <div class="user-info" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                                                <div style="display:flex;align-items:center;gap:8px;">
+                                                                                                        <p style="margin:0;">Welcome, <a href="/users/profile" style="color:inherit;text-decoration:none;font-weight:600;"><%= sessionUser ? sessionUser.name : '' %></a></p>
+                                                                                                        <a href="/users/profile" class="button btn-small" style="padding:6px 8px;margin-left:6px;display:inline-flex;align-items:center;justify-content:center;" title="Profile">
+                                                                                                                <!-- Faceless man / user silhouette icon (simple, no external deps) -->
+                                                                                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                                                                                                                    <path d="M12 12c2.761 0 5-2.239 5-5s-2.239-5-5-5-5 2.239-5 5 2.239 5 5 5z" fill="currentColor" opacity="0.9" />
+                                                                                                                    <path d="M2.5 21c0-3.59 3.91-6.5 8.5-6.5s8.5 2.91 8.5 6.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.9" />
+                                                                                                                </svg>
+                                                                                                        </a>
+                                                </div>
+                                                <p style="margin:0;"><span id="currentDate"><%= new Date().toLocaleDateString() %></span>&nbsp;<span id="currentTime"><%= new Date().toLocaleTimeString() %></span></p>
+                                        </div>
                 </div>
             </div>
 
@@ -769,13 +869,13 @@
     <div id="sidebarBackdrop" class="sidebar-backdrop" tabindex="-1"></div>
 
     <script>
-        // Update time every second
+        // Update date and time every second
         function updateTime() {
             const now = new Date();
-            const timeElements = document.querySelectorAll('.user-info p:last-child');
-            timeElements.forEach(el => {
-                el.textContent = now.toLocaleTimeString();
-            });
+            const timeEl = document.getElementById('currentTime');
+            const dateEl = document.getElementById('currentDate');
+            if (timeEl) timeEl.textContent = now.toLocaleTimeString();
+            if (dateEl) dateEl.textContent = now.toLocaleDateString();
         }
         setInterval(updateTime, 1000);
 
@@ -860,6 +960,191 @@
             });
         })();
 
+        // ===== Global SSE Notifications =====
+        (function(){
+            const sound = document.getElementById('notifSound');
+            const badge = document.getElementById('notifBadge');
+            const btn = document.getElementById('notifBtn');
+            const dropdown = document.getElementById('notifDropdown');
+            const list = document.getElementById('notifList');
+            const clearBtn = document.getElementById('clearNotifs');
+            const autoRefreshCheckbox = document.getElementById('notifAutoRefresh');
+            const muteCheckbox = document.getElementById('notifMute');
+
+            if (!badge || !btn || !dropdown) return;
+
+            // Only enable SSE on a small set of real-time views to avoid system delays.
+            // Keep SSE active only for: /dashboard, /patients, /reception (and their subpaths).
+            try {
+                const path = (window.location && window.location.pathname) ? window.location.pathname : '/';
+                const sseAllowed = ['/dashboard', '/patients', '/reception'];
+                const isAllowed = sseAllowed.some(p => path === p || path.startsWith(p + '/'));
+                if (!isAllowed) {
+                    // Mark connection as disabled and skip SSE setup entirely (no reconnects)
+                    const connEl = document.getElementById('notifConn');
+                    if (connEl) { connEl.style.background = '#ef4444'; connEl.title = 'SSE disabled on this page'; }
+                    return;
+                }
+            } catch (e) { /* if anything goes wrong, fall back to original behavior */ }
+
+            // restore preferences (default: auto-refresh enabled)
+            try {
+                const v = localStorage.getItem('notif-auto-refresh');
+                if (v === '1' || v === null) autoRefreshCheckbox.checked = true;
+                else autoRefreshCheckbox.checked = false;
+            } catch(e){}
+            try { if (localStorage.getItem('notif-muted') === '1') muteCheckbox.checked = true; } catch(e){}
+
+            function showBadge(count){
+                try {
+                    if (!count || count <= 0) { badge.style.visibility = 'hidden'; badge.textContent = '0'; }
+                    else { badge.style.visibility = 'visible'; badge.textContent = String(count); }
+                } catch(e){}
+            }
+
+            // notifications stored in sessionStorage for this tab
+            function getNotifs(){ try { return JSON.parse(sessionStorage.getItem('notifs') || '[]'); } catch(e){ return []; } }
+            function setNotifs(n){ try { sessionStorage.setItem('notifs', JSON.stringify(n || [])); } catch(e){} }
+
+            function prependNotif(txt){
+                const n = getNotifs();
+                n.unshift({ text: txt, time: new Date().toISOString() });
+                setNotifs(n.slice(0,50));
+                renderList();
+                showBadge(n.length);
+            }
+
+            function renderList(){
+                const n = getNotifs();
+                list.innerHTML = n.map(it => `<div style="padding:8px;border-bottom:1px solid var(--border-gray);font-size:0.9em;"><div style="font-weight:600">${escapeHtml(it.text)}</div><div style="color:var(--text-gray);font-size:0.8em;margin-top:6px">${new Date(it.time).toLocaleString()}</div></div>`).join('') || '<div style="color:var(--text-gray);padding:8px">No notifications</div>';
+            }
+
+            function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+            btn.addEventListener('click', function(e){ e.preventDefault(); dropdown.style.display = (dropdown.style.display === 'block') ? 'none' : 'block'; renderList(); });
+            clearBtn && clearBtn.addEventListener('click', function(){ setNotifs([]); renderList(); showBadge(0); });
+
+            autoRefreshCheckbox && autoRefreshCheckbox.addEventListener('change', function(){ try { localStorage.setItem('notif-auto-refresh', this.checked ? '1' : '0'); } catch(e){} });
+            muteCheckbox && muteCheckbox.addEventListener('change', function(){ try { localStorage.setItem('notif-muted', this.checked ? '1' : '0'); } catch(e){} });
+
+            // Initial render
+            renderList(); showBadge(getNotifs().length);
+
+            // SSE connection
+            let es = null;
+            const connEl = document.getElementById('notifConn');
+            function setConn(status){ try { if (connEl) { connEl.style.background = status ? '#10b981' : '#ef4444'; connEl.title = status ? 'Connected' : 'Disconnected'; } } catch(e){} }
+            function indicateConnecting(){ try { if (connEl) { connEl.style.background = '#f59e0b'; connEl.title = 'Connecting...'; } } catch(e){} }
+
+            // initialize as disconnected until EventSource opens
+            setConn(false);
+
+            function connect(){
+                try {
+                    indicateConnecting();
+                    const url = '/reception/assigned-events';
+                    es = new EventSource(url);
+                    es.onopen = function(){ console.log('[SSE] connected'); setConn(true); };
+                    es.onmessage = function(ev){
+                        try {
+                            const data = ev.data ? JSON.parse(ev.data) : null;
+                            if (!data) return;
+                            // ignore handshake/init messages
+                            if (data.init && data.serverTime) return;
+                            let text = '';
+                            if (data.message) {
+                                text = data.message;
+                            } else if (data.action === 'patient_created') {
+                                text = `New patient added: ${data.patientName || ''}`;
+                                if (data.patientIdLabel) text += ` (ID: ${data.patientIdLabel})`;
+                                else if (data.patientCode) text += ` (Code: ${data.patientCode})`;
+                            } else if (data.action === 'assigned') {
+                                if (Array.isArray(data.tests) && data.tests.length) {
+                                    const ids = data.tests.map(t => t.testId || t.id || '').filter(Boolean).join(', ');
+                                    text = `Assigned tests: ${ids}`;
+                                } else {
+                                    text = `Assigned: ${data.testId || ''}`;
+                                }
+                            } else if (data.action === 'complete') {
+                                // completion emitted from Reception (collection step)
+                                text = `Collection Completed: ${data.testId || ''}`;
+                            } else if (data.action === 'result_encoded' || data.action === 'test_completed') {
+                                // explicit result-encoding / test completed from Tests & Results
+                                text = `Test Completed (results encoded): ${data.testId || ''}`;
+                            } else if (data.action === 'advert') {
+                                text = `Kiosk advertisement updated: ${data.ad || ''}`;
+                            } else if (data.action === 'debug') {
+                                text = data.message || data.msg || 'Debug event';
+                            } else {
+                                text = (data.action ? (data.action + ': ') : '') + (data.testId || JSON.stringify(data));
+                            }
+                            prependNotif(text);
+                            // play sound (best-effort) unless muted
+                            try {
+                                const muted = (function(){ try { return localStorage.getItem('notif-muted') === '1'; } catch(e){ return false; } })();
+                                if (!muted && sound && typeof sound.play === 'function') { sound.currentTime = 0; sound.play().catch(()=>{}); }
+                            } catch(e){}
+                            // auto-refresh across tabs if user enabled
+                            try {
+                                // Treat missing setting as enabled by default (legacy behavior)
+                                const v = localStorage.getItem('notif-auto-refresh');
+                                const enabled = (v === '1' || v === null || (autoRefreshCheckbox && autoRefreshCheckbox.checked));
+                                if (enabled) {
+                                    try {
+                                        const muted = (function(){ try { return localStorage.getItem('notif-muted') === '1'; } catch(e){ return false; } })();
+                                        // If we have a sound element and not muted, attempt to play and wait for play to start
+                                        if (!muted && sound && typeof sound.play === 'function') {
+                                            try {
+                                                // restart sound and attempt play
+                                                sound.currentTime = 0;
+                                                const p = sound.play();
+                                                if (p && typeof p.then === 'function') {
+                                                    p.then(() => { setTimeout(() => { window.location.reload(); }, 400); }).catch(() => { window.location.reload(); });
+                                                } else {
+                                                    // play returned synchronously (older browsers) — reload shortly after starting
+                                                    setTimeout(() => { window.location.reload(); }, 400);
+                                                }
+                                            } catch (e) { window.location.reload(); }
+                                        } else {
+                                            // muted or no sound -> just reload
+                                            setTimeout(() => { window.location.reload(); }, 600);
+                                        }
+                                    } catch (e) { setTimeout(() => { window.location.reload(); }, 600); }
+                                }
+                            } catch(e){}
+                        } catch (e) { console.warn('[SSE] message parse error', e); }
+                    };
+                    es.onerror = function(err){ console.warn('[SSE] error, will attempt reconnect', err); try { es.close(); } catch(e){}; es = null; setConn(false); setTimeout(connect, 3000); };
+                } catch (e) { console.warn('[SSE] connect failed', e); setTimeout(connect, 3000); }
+            }
+            // Defer SSE connection until the user stays on the page for 3s.
+            // If user switches tab/loses visibility, cancel the pending connect and close any open connection.
+            let sseDeferredTimer = null;
+            function scheduleSSEConnect(delay = 3000) {
+                if (!('EventSource' in window)) return;
+                try { clearTimeout(sseDeferredTimer); } catch(e){}
+                sseDeferredTimer = setTimeout(() => {
+                    try {
+                        if (document.visibilityState === 'visible') connect();
+                    } catch (e) { console.warn('[SSE] deferred connect failed', e); }
+                }, delay);
+            }
+
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    // schedule connect after 3s of being visible
+                    scheduleSSEConnect(3000);
+                } else {
+                    // cancel pending connect and close any existing connection
+                    try { clearTimeout(sseDeferredTimer); } catch(e){}
+                    try { if (es) { es.close(); es = null; setConn(false); } } catch (e) {}
+                }
+            });
+
+            // Kick off initial schedule when page loads (will connect after 5s if still visible)
+            if (document.visibilityState === 'visible') scheduleSSEConnect(3000);
+        })();
+
         // Attempt to enter fullscreen when ?fullscreen=1 is present (best-effort).
         (function() {
             try {
@@ -878,8 +1163,45 @@
                 }
             } catch (e) {}
         })();
+
+        // Universal fullscreen toggle for sidebar button
+        function toggleFullscreen() {
+            const fsBtn = document.getElementById('fullscreenBtn');
+            const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+            
+            if (isFullscreen) {
+                // Exit fullscreen
+                if (document.exitFullscreen) document.exitFullscreen();
+                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+                else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+                else if (document.msExitFullscreen) document.msExitFullscreen();
+                if (fsBtn) fsBtn.querySelector('.nav-text').textContent = 'Fullscreen';
+            } else {
+                // Enter fullscreen
+                const el = document.documentElement;
+                if (el.requestFullscreen) el.requestFullscreen();
+                else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+                else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
+                else if (el.msRequestFullscreen) el.msRequestFullscreen();
+                if (fsBtn) fsBtn.querySelector('.nav-text').textContent = 'Exit Fullscreen';
+            }
+        }
+
+        // Update button text on fullscreen change
+        document.addEventListener('fullscreenchange', updateFsButton);
+        document.addEventListener('webkitfullscreenchange', updateFsButton);
+        document.addEventListener('mozfullscreenchange', updateFsButton);
+        document.addEventListener('MSFullscreenChange', updateFsButton);
+        
+        function updateFsButton() {
+            const fsBtn = document.getElementById('fullscreenBtn');
+            if (!fsBtn) return;
+            const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+            fsBtn.querySelector('.nav-text').textContent = isFullscreen ? 'Exit Fullscreen' : 'Fullscreen';
+        }
 </script>
 
+    <script src="/assets/button-guard.js"></script>
     <!-- Scripts injected from individual views (via express-ejs-layouts extractScripts) -->
     <%- script %>
 </body>

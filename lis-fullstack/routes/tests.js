@@ -4,8 +4,13 @@ const Test = require('../models/Test');
 const Patient = require('../models/Patient');
 const User = require('../models/User');
 const { requireAuth, canAccessPatient } = require('../middleware/auth');
+const sseEmitter = require('../lib/sseEmitter');
 const fs = require('fs');
 const path = require('path');
+const multer = require('multer');
+
+// multer for handling multipart/form-data file uploads in memory
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 
 // GET /tests - List all tests
@@ -16,19 +21,62 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
     const skip = (page - 1) * limit;
 
     const searchQuery = req.query.search || '';
+    const statusFilter = req.query.status || '';
+    const typeFilter = req.query.testType || '';
+    const dateFilter = req.query.date || '';
 
   // Get all tests and patients
   let allTests = await Test.find({});
   const allPatients = await Patient.find({});
 
+    // Available test types for filter dropdown
+    const availableTestTypes = Array.isArray(allTests) ? Array.from(new Set(allTests.map(t => (t.testType || '').toString()).filter(Boolean))).sort() : [];
+
+    // Apply search filter
     if (searchQuery) {
       const searchLower = searchQuery.toLowerCase();
       allTests = allTests.filter(test => {
         const patient = allPatients.find(p => p.id === test.patient);
         const patientName = patient ? `${patient.firstName} ${patient.lastName}`.toLowerCase() : '';
-        return test.testId.toLowerCase().includes(searchLower) ||
-               test.testType.toLowerCase().includes(searchLower) ||
+        return (test.testId || '').toString().toLowerCase().includes(searchLower) ||
+               (test.testType || '').toString().toLowerCase().includes(searchLower) ||
                patientName.includes(searchLower);
+      });
+    }
+
+    // Ensure For Send Out is added even when no selectedTests were provided
+    try {
+      const forSendOutAlways = req.body.forSendOut === '1' || req.body.forSendOut === 'on' || req.body.forSendOut === 'true';
+      if (forSendOutAlways) {
+        const exists = requestedTestsDetailed.some(r => String(r.label || r.key || '').toLowerCase() === 'for send out');
+        if (!exists) {
+          const amtRaw = req.body['amount_sendout'];
+          const amt = amtRaw ? parseFloat(String(amtRaw).replace(/,/g,'')) : 0;
+          const remark = req.body['remark_sendout'] || '';
+          // normalize to internal 'Sendout' area
+          requestedTestsDetailed.push({ key: 'For Send Out', label: 'For Send Out', amount: isNaN(amt) ? 0 : amt, lab: 'external', area: 'Sendout', remarks: remark });
+        }
+      }
+    } catch (e) {}
+
+    // Apply status filter
+    if (statusFilter) {
+      const sf = statusFilter.toString().toLowerCase();
+      allTests = allTests.filter(t => ((t.status || '').toString().toLowerCase() === sf));
+    }
+
+    // Apply testType filter (substring match)
+    if (typeFilter) {
+      const tf = typeFilter.toString().toLowerCase();
+      allTests = allTests.filter(t => (t.testType || '').toString().toLowerCase().includes(tf));
+    }
+
+    // Date filter (match testDate or createdAt YYYY-MM-DD)
+    if (dateFilter) {
+      const df = String(dateFilter);
+      allTests = allTests.filter(t => {
+        const dt = t.testDate || t.createdAt || null;
+        try { return dt ? new Date(dt).toISOString().slice(0,10) === df : false; } catch (e) { return false; }
       });
     }
 
@@ -63,7 +111,11 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
       hasNextPage: page < totalPages,
       prevPage: page - 1,
       nextPage: page + 1,
-      searchQuery
+      searchQuery,
+      statusFilter,
+      typeFilter,
+      dateFilter,
+      availableTestTypes
     });
   } catch (error) {
     console.error('Tests list error:', error);
@@ -113,10 +165,13 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       'ultrasound-transvaginal.ejs',
       'ultrasound-biophysical.ejs',
       'ultrasound-1st-trimester-obstetrics.ejs',
-      'ultrasound-pelvic.ejs'
+      'ultrasound-pelvic.ejs',
+      'ultrasound-pelvic-biometry.ejs',
+      'drugtest.ejs'
     ];
     const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
     const staticTemplates = files.map(f => {
+      if (f === 'drugtest.ejs') return { name: 'Drug Test', testType: 'drugtest' };
       if (f === 'blood-chemistry-bun-crea.ejs') {
         return { name: 'Blood Chemistry - BUN/Crea', testType: 'BUN/Creat' };
       }
@@ -135,27 +190,39 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       if (f === 'ultrasound-biophysical.ejs') {
         return { name: 'Ultrasound - Biophysical', testType: 'ultrasound-biophysical' };
       }
+      if (f === 'ultrasound-1st-trimester-obstetrics.ejs') {
+        return { name: 'Ultrasound - Trimester Obstetrics', testType: 'ultrasound-trimester-obstetrics' };
+      }
       if (f === 'ultrasound-pelvic.ejs') {
         return { name: 'Ultrasound - Pelvic Ultrasound', testType: 'ultrasound-pelvic' };
+      }
+      if (f === 'ultrasound-pelvic-biometry.ejs') {
+        return { name: 'Ultrasound - Pelvic Biometry', testType: 'ultrasound-pelvic-biometry' };
       }
       const name = f.replace('.ejs', '').replace(/-/g, ' ');
       return { name: name.charAt(0).toUpperCase() + name.slice(1), testType: f.replace('.ejs','') };
     });
     templates = templates.concat(staticTemplates);
-    // Ensure 1st trimester (twin) static template is available in selection
+    // Ensure trimester ultrasound static template is available in selection
     try {
-      const exists = templates.some(t => (t.testType || '').toLowerCase() === 'ultrasound-1st-trimester-obstetrics');
+      const exists = templates.some(t => (t.testType || '').toLowerCase() === 'ultrasound-trimester-obstetrics');
       if (!exists) {
-        templates.push({ name: 'Ultrasound - 1st Trimester Obstetrics', testType: 'ultrasound-1st-trimester-obstetrics' });
+        templates.push({ name: 'Ultrasound - Trimester Obstetrics', testType: 'ultrasound-trimester-obstetrics' });
       }
     } catch (e) {}
   } catch (e) {
     // ignore static templates on error
   }
 
+    const test = {};
+    test.patient = req.query.patient || '';
+    // If opening the new test form from a patient link, enable print-after-assign by default
+    if (req.query && req.query.patient) {
+      test.printAfterAssign = '1';
+    }
     res.render('tests/new', {
       title: 'Create New Test',
-      test: {},
+      test,
       patients,
       templates
     });
@@ -170,9 +237,72 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
 router.post('/', requireAuth, canAccessPatient, async (req, res) => {
   try {
     const { patient, testType, testDate, status, results, notes, priority } = req.body;
+    // normalize selected tests (from checkbox grid)
+    const selectedTests = Array.isArray(req.body.selectedTests) ? req.body.selectedTests : (req.body.selectedTests ? [req.body.selectedTests] : []);
 
-    // Validate required fields
-    if (!patient || !testType || !testDate) {
+    // Build detailed requestedTests if selectedTests provided
+    let requestedTestsDetailed = [];
+    let awaitingOnly = false;
+    if (selectedTests.length) {
+      const mapTestToArea = (testLabel) => {
+        const s = String(testLabel || '').toLowerCase();
+        if (!s) return null;
+        if (s.includes('fecal') || s.includes('pregnancy') || s.includes('urinalysis')) return null;
+        if (s.includes('echocardiography') || s.includes('2d echo') || s.includes('2d')) return '2D Echo';
+        if (s.includes('drugtest') || s.includes('drug test')) return 'Drug Test';
+        if (s.includes('ecg')) return 'ECG';
+        if (s.includes('ultrasound')) return 'Ultrasound';
+        if (s.includes('xray') || s.includes('x-ray')) return 'X-ray';
+        if (s.includes('blood') || s.includes('chemistry') || s.includes('hematology') || s.includes('serology') || s.includes('pt') || s.includes('aptt')) return 'Extraction Area';
+        return null;
+      };
+      const mappedAreas = new Set();
+      for (const t of selectedTests) {
+        const raw = String(t || '');
+        const slug = raw.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
+        const amtRaw = req.body['amount_' + slug];
+        const amt = amtRaw ? parseFloat(String(amtRaw).replace(/,/g,'')) : 0;
+        const remark = req.body['remark_' + slug] || '';
+        const area = mapTestToArea(raw);
+        if (area) mappedAreas.add(area);
+        requestedTestsDetailed.push({ key: raw, label: raw, amount: isNaN(amt) ? 0 : amt, lab: (area === 'X-ray') ? 'xray' : 'clinical', area: area || null, remarks: remark });
+      }
+      awaitingOnly = selectedTests.length > 0 && mappedAreas.size === 0;
+      // Add For Send Out if present
+      const forSendOut = req.body.forSendOut === '1' || req.body.forSendOut === 'on' || req.body.forSendOut === 'true';
+      if (forSendOut) {
+        const amtRaw = req.body['amount_sendout'];
+        const amt = amtRaw ? parseFloat(String(amtRaw).replace(/,/g,'')) : 0;
+        const remark = req.body['remark_sendout'] || '';
+        // use internal normalized area name 'Sendout' (do not expose as separate kiosk tile)
+        requestedTestsDetailed.push({ key: 'For Send Out', label: 'For Send Out', amount: isNaN(amt) ? 0 : amt, lab: 'external', area: 'Sendout', remarks: remark });
+      }
+    }
+
+    // Normalize requiredAreas from form (may contain doctor selections)
+    const requiredAreas = Array.isArray(req.body.requiredAreas) ? req.body.requiredAreas : (req.body.requiredAreas ? [req.body.requiredAreas] : []);
+
+    // Also include any selected Doctor's Check-up requiredAreas as requested tests so they appear on receipts
+    try {
+      for (const ra of requiredAreas) {
+        if (!ra) continue;
+        const rstr = String(ra || '').trim();
+        if (/doctor/i.test(rstr) && /check/i.test(rstr)) {
+          // Normalize label to shorter form to keep it on one line when printed
+          const normalized = rstr.replace(/Doctor'?s\s*Check-?up/i, 'Doctor Check-up');
+          // Avoid duplicating if already present
+          const exists = requestedTestsDetailed.some(x => String(x.label || x.key || '').toLowerCase() === normalized.toLowerCase());
+          if (!exists) requestedTestsDetailed.push({ key: normalized, label: normalized, amount: 0, lab: 'clinical', area: 'Doctor', remarks: '' });
+        }
+      }
+    } catch (e) {}
+
+    // Validate required fields: require patient and either a single testType, selectedTests,
+    // or a doctor/sendout selection (these are allowed to create tests without a testType)
+    const hasSelected = Array.isArray(selectedTests) && selectedTests.length > 0;
+    const doctorSelected = requiredAreas.some(r => r && /doctor/i.test(String(r)));
+    const forSendOutFlag = (req.body.forSendOut === '1' || req.body.forSendOut === 'on' || req.body.forSendOut === 'true') || requestedTestsDetailed.some(r => String(r.area || '').toLowerCase() === 'sendout');
+    if (!patient || (!testType && !hasSelected && !doctorSelected && !forSendOutFlag)) {
       req.flash('error_msg', 'Please fill all required fields');
       let patients = await Patient.find({});
       if (Array.isArray(patients)) patients.sort((a, b) => (a.lastName || '').localeCompare(b.lastName || ''));
@@ -186,39 +316,281 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       });
     }
 
-    // Generate test ID (file DB compatible)
-    const allTestsForId = await Test.find({});
-    let testId = 'T001';
-    if (allTestsForId && allTestsForId.length) {
-      const maxNum = allTestsForId.reduce((max, t) => {
-        const n = parseInt((t.testId || 'T0').substring(1)) || 0;
-        return Math.max(max, n);
-      }, 0);
-      testId = 'T' + String(maxNum + 1).padStart(3, '0');
+    // Helper: determine prefix from label
+    const getPrefixForLabel = (label) => {
+      const s = String(label || '').toLowerCase();
+      if (/send\s*out|for\s*send|sendout|send-out/.test(s)) return 'SO';
+      if (/doctor|check-?up|checkup/.test(s)) return 'DC';
+      if (/drug/.test(s)) return 'DT';
+      if (/\becg\b|electrocardio|electrocardiogram/.test(s)) return 'ECG';
+      if (/x[-\s]?ray|radiograph/.test(s)) return 'XR';
+      if (/ultrasound|ultra[-\s]?sound/.test(s)) return 'US';
+      if (/echo|echocardiograph|echocardiography|2d\s*echo/.test(s)) return 'ECHO';
+      if (/serol|serology/.test(s)) return 'SR';
+      if (/fecal|fecalysis|stool/.test(s)) return 'FA';
+      if (/urinal|urine|urinalysis/.test(s)) return 'UA';
+      if (/pregnan|pregnancy/.test(s)) return 'PT';
+      // Specific clinical tests -> unique prefixes
+      if (/blood\s*typing|blood-typing|bloodtyping/.test(s)) return 'BT';
+      if (/hematology|hemato|cbc/.test(s)) return 'HM';
+      if (/thyroid|thyroid\s*panel/.test(s)) return 'TH';
+      if (/\besr\b|erythrocyte/.test(s)) return 'ESR';
+      if (/dengue/.test(s)) return 'DG';
+      if (/(ct[-_\s]*&?\s*bt|ct[-_\s]*bt|ct[-_\s]*and[-_\s]*bt|bleeding|clotting)/.test(s)) return 'CTBT';
+      if (/blood|chemistry|pt|aptt|bun|crea|sgpt|sgot|lipid|hba1c|albumin|blood\s*sugar|chemistry/.test(s)) return 'BC';
+      return 'T';
+    };
+
+    // Helper: get next counter and persist
+    const getNextTestId = (prefix) => {
+      try {
+        const counters = global.db.getCounters() || {};
+        const next = (counters[prefix] || 0) + 1;
+        counters[prefix] = next;
+        global.db.saveCounters(counters);
+        // increase width to accommodate more test ids (add 3 digits)
+        return prefix + String(next).padStart(7, '0');
+      } catch (e) {
+        // fallback to timestamp-based id
+        return prefix + Date.now();
+      }
+    };
+
+    const createdTests = [];
+
+    // Helper to detect doctor-only requested item
+
+    // Helper to detect doctor-only requested item
+    const isDoctorRequest = (rt) => {
+      try {
+        const lab = String(rt.lab || '').toLowerCase();
+        const label = String(rt.label || rt.key || '').toLowerCase();
+        if (lab === 'doctor' || label.includes('doctor')) return true;
+      } catch (e) {}
+      return false;
+    };
+
+    // Doctor area names configurable via environment
+    const DOCTOR_1_NAME = process.env.DOCTOR_1_NAME || 'Dr. Lorenzo';
+    const DOCTOR_2_NAME = process.env.DOCTOR_2_NAME || 'Dr. Arcilla';
+    function doctorArea(name) { return `Doctor's Check-up - ${name}`; }
+    // Helper to pick doctor area string from requiredAreas (prefer DOCTOR_1 then DOCTOR_2)
+    const pickDoctorArea = () => {
+      try {
+        for (const r of requiredAreas) {
+          if (!r) continue;
+          const s = String(r).toLowerCase();
+          if (s.includes((DOCTOR_1_NAME || '').toLowerCase()) || s.includes('lorenzo')) return doctorArea(DOCTOR_1_NAME);
+          if (s.includes((DOCTOR_2_NAME || '').toLowerCase()) || s.includes('arcilla')) return doctorArea(DOCTOR_2_NAME);
+        }
+      } catch (e) {}
+      return null;
+    };
+
+    // Helper to lookup doctor user by last name
+    const findDoctorUser = async (areaStr) => {
+      try {
+        if (!areaStr) return null;
+        if (areaStr.toLowerCase().includes('lorenzo')) {
+          const docs = await User.find({ role: 'Doctor' });
+          return docs.find(d => String(d.name || '').toLowerCase().includes('lorenzo')) || null;
+        }
+        if (areaStr.toLowerCase().includes('arcilla')) {
+          const docs = await User.find({ role: 'Doctor' });
+          return docs.find(d => String(d.name || '').toLowerCase().includes('arcilla')) || null;
+        }
+      } catch (e) { console.warn('findDoctorUser failed', e); }
+      return null;
+    };
+
+    // Group blood chemistry variants into single 'Blood Chemistry' test when multiple selected
+    if (requestedTestsDetailed && requestedTestsDetailed.length) {
+      const copyRequested = requestedTestsDetailed.slice();
+      // Treat specific requested items as Blood Chemistry only when they match chemistry-related keywords
+      // but explicitly exclude 'typing' (e.g., 'Blood Typing') which is a separate serology/hematology test.
+      const isBloodChem = r => {
+        const s = String(r.key || r.label || '').toLowerCase();
+        if (!s) return false;
+        if (s.includes('typing')) return false; // exclude Blood Typing
+        return /chemistry|bun|crea|sgpt|sgot|lipid|hba1c|albumin|blood\s*sugar|blood\s*chemistry/.test(s);
+      };
+      const bloodItems = copyRequested.filter(isBloodChem);
+      if (bloodItems.length > 1) {
+        const prefix = getPrefixForLabel('Blood Chemistry');
+        const tid = getNextTestId(prefix);
+        const payload = {
+          testId: tid,
+          patient,
+          testType: 'Blood Chemistry',
+          testDate: (new Date()).toISOString(),
+          status: 'Payment Area',
+          priority: (priority && String(priority).trim()) ? priority : 'Normal',
+          requestedBy: req.session.user.id,
+          requestedTests: bloodItems,
+          awaitingOnly: awaitingOnly
+        };
+        const t = new Test(payload);
+        await t.save();
+        createdTests.push(t);
+        // remove blood items from further processing
+        for (const b of bloodItems) {
+          const idx = copyRequested.findIndex(x => x.key === b.key && x.label === b.label);
+          if (idx >= 0) copyRequested.splice(idx, 1);
+        }
+      }
+
+      // Create individual tests for remaining requested items
+      for (const rt of copyRequested) {
+        const prefix = getPrefixForLabel(rt.label || rt.key || 'T');
+        const tid = getNextTestId(prefix);
+        const payload = {
+          testId: tid,
+          patient,
+          testType: rt.label || rt.key || 'Test',
+          testDate: (new Date()).toISOString(),
+          status: 'Payment Area',
+          priority: (priority && String(priority).trim()) ? priority : 'Normal',
+          requestedBy: req.session.user.id,
+          requestedTests: [rt],
+          awaitingOnly: awaitingOnly
+        };
+        // If this single requested item is a doctor-only request and no other non-doctor items
+        // are present for this patient creation flow, queue directly to doctor's checkup.
+        try {
+          const doctorArea = pickDoctorArea();
+          if (isDoctorRequest(rt) && (!copyRequested.some(x => !isDoctorRequest(x)))) {
+            if (doctorArea) {
+              payload.status = doctorArea;
+              const docUser = await findDoctorUser(doctorArea);
+              if (docUser) { payload.assignedDoctorId = docUser.id; payload.assignedDoctorName = docUser.name; }
+            } else {
+              // if no explicit doctor selected, use the configured first doctor area
+              payload.status = doctorArea(DOCTOR_1_NAME);
+              const docUser = await findDoctorUser(doctorArea(DOCTOR_1_NAME));
+              if (docUser) { payload.assignedDoctorId = docUser.id; payload.assignedDoctorName = docUser.name; }
+            }
+          }
+        } catch (e) { console.warn('Doctor assignment logic failed', e); }
+        const t = new Test(payload);
+        await t.save();
+        createdTests.push(t);
+      }
+    } else {
+      // Single testType path
+      // Detect sendout single-request early: use SO prefix and queue to Sendout immediately
+      const forSendOutSingle = req.body && (req.body.forSendOut === '1' || req.body.forSendOut === 'on' || req.body.forSendOut === 'true');
+      let prefix = getPrefixForLabel(testType || 'T');
+      if (forSendOutSingle) prefix = 'SO';
+      const tid = getNextTestId(prefix);
+      const payload = {
+        testId: tid,
+        patient,
+        testType: forSendOutSingle ? 'For Send Out' : (testType || 'Registration'),
+        testDate: (new Date()).toISOString(),
+        // keep initial status as 'Payment Area' so reception/payment can process it
+        status: 'Payment Area',
+        results,
+        notes,
+        priority: (priority && String(priority).trim()) ? priority : 'Normal',
+        requestedBy: req.session.user.id
+      };
+      // If the form requested a Send Out but no detailed requestedTests were provided
+      // (single testType path), attach a normalized For Send Out requested item so
+      // the Payment Area processing can route it to the internal 'Sendout' area.
+      // Add defensive logging to help debug missing form fields in production.
+      try {
+        console.log('DEBUG POST /tests - single-path payload check, forSendOut raw=', req.body && req.body.forSendOut);
+      } catch (e) {}
+      if (!requestedTestsDetailed.length && forSendOutSingle) {
+        const amtRaw = req.body['amount_sendout'];
+        const amt = amtRaw ? parseFloat(String(amtRaw).replace(/,/g,'')) : 0;
+        const remark = req.body['remark_sendout'] || '';
+        payload.requestedTests = [{ key: 'For Send Out', label: 'For Send Out', amount: isNaN(amt) ? 0 : amt, lab: 'external', area: 'Sendout', remarks: remark }];
+        payload.awaitingOnly = awaitingOnly;
+        console.log('DEBUG POST /tests - attached single-path For Send Out requestedTests', payload.requestedTests);
+      } else if (requestedTestsDetailed.length) {
+        payload.requestedTests = requestedTestsDetailed;
+        payload.awaitingOnly = awaitingOnly;
+        console.log('DEBUG POST /tests - attached requestedTestsDetailed length=', requestedTestsDetailed.length);
+      } else {
+        // ensure requestedTests exists as empty array for clarity in DB
+        payload.requestedTests = payload.requestedTests || [];
+      }
+      // If this is a doctor check-up (and there are no X-ray/clinical/lab items), queue directly
+      try {
+        const allDoctorOnly = requestedTestsDetailed.length && requestedTestsDetailed.every(isDoctorRequest);
+        const doctorArea = pickDoctorArea();
+        if ((String(testType || '').toLowerCase().includes('doctor') || allDoctorOnly) && allDoctorOnly) {
+          if (doctorArea) {
+            payload.status = doctorArea;
+            const docUser = await findDoctorUser(doctorArea);
+            if (docUser) { payload.assignedDoctorId = docUser.id; payload.assignedDoctorName = docUser.name; }
+          } else {
+            payload.status = doctorArea(DOCTOR_1_NAME);
+            const docUser = await findDoctorUser(doctorArea(DOCTOR_1_NAME));
+            if (docUser) { payload.assignedDoctorId = docUser.id; payload.assignedDoctorName = docUser.name; }
+          }
+        }
+      } catch (e) { console.warn('Doctor-only single test logic failed', e); }
+      const t = new Test(payload);
+      await t.save();
+      createdTests.push(t);
     }
 
-    // Ensure uniqueness if collision
-    while ((await Test.findOne({ testId })) !== null) {
-      const id = parseInt(testId.substring(1)) + 1;
-      testId = 'T' + String(id).padStart(3, '0');
+    // Emit SSE update so reception/kiosk updates
+    try {
+      sseEmitter.emit('update', { action: 'assigned', patientId: patient, tests: createdTests.map(ct => ({ testId: ct.testId, id: ct.id, testType: ct.testType })), time: (new Date()).toISOString() });
+    } catch (e) { console.warn('SSE emit failed', e); }
+
+    // If UI requested printing after assign, invoke print helper once for the patient with all created tests
+    try {
+      const doctorSelected = requiredAreas.some(r => String(r || '').toLowerCase().includes('doctor') && String(r || '').toLowerCase().includes('check'));
+      let doPrint = req.body && (req.body.printAfterAssign === '1' || req.body.printAfterAssign === 'on' || req.body.printAfterAssign === 'true');
+      if (doctorSelected) doPrint = true;
+      if (doPrint) {
+        const printHelper = require('../lib/printHelper');
+        const patientObj = await Patient.findById(patient);
+        // Fire-and-forget printing so HTTP response/redirect is not blocked by printer transport
+        printHelper.printPatientReceipt(patientObj, createdTests)
+          .then(result => {
+            if (result && result.success) console.log('Background print succeeded for patient', patient);
+            else console.warn('Background print failed for patient', patient, result && result.error);
+          })
+          .catch(err => console.warn('Background print error', err));
+      }
+    } catch (e) {
+      console.error('Print after assign error:', e);
+      req.flash('warning_msg', `Tests created but printing error occurred`);
     }
 
-    const test = new Test({
-      testId,
-      patient,
-      testType,
-      testDate,
-      status: status || 'Pending',
-      results,
-      notes,
-      priority: priority || 'Normal',
-      requestedBy: req.session.user.id
-    });
+    req.flash('success_msg', `Tests created successfully!`);
 
-    await test.save();
+    // Determine where to redirect after creating/assigning tests.
+    // Priority: explicit hidden `returnTo` form field -> query param -> Referer -> fallback '/tests'
+    let returnTo = (req.body && req.body.returnTo) || req.query.returnTo || req.get('Referer') || '/tests';
+    try {
+      // If it's an absolute URL, only allow same-host paths to avoid open-redirects
+      if (/^https?:\/\//i.test(returnTo)) {
+        const u = new URL(returnTo);
+        if (u.host === req.get('host')) {
+          returnTo = u.pathname + (u.search || '');
+        } else {
+          returnTo = '/tests';
+        }
+      } else if (!returnTo.startsWith('/')) {
+        // try to resolve relative URLs against current host
+        try {
+          const u = new URL(returnTo, `${req.protocol}://${req.get('host')}`);
+          returnTo = u.pathname + (u.search || '');
+        } catch (e) {
+          returnTo = '/tests';
+        }
+      }
+    } catch (e) {
+      returnTo = '/tests';
+    }
 
-    req.flash('success_msg', `${testType} test created successfully!`);
-    res.redirect('/tests');
+    return res.redirect(returnTo);
 
     } catch (error) {
     console.error('Create test error:', error);
@@ -298,16 +670,17 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       pregnancy: /pregnan|pregnancy|pregnancy\s*test/i.test(tt),
       dengue: /dengue/i.test(tt),
       pt: /\b(?:pt|prothrombin|pt-aptt|ptaptt)\b/i.test(tt),
-      blood_chem: /(blood\s*chemistry|blood-chemistry|blood\s*chem)/i.test(tt),
+      blood_chem: /(blood\s*chemistry|blood-chemistry|blood\s*chem|(?:bun|creat|creatinine))/i.test(tt),
         echocardiography: /(echo|echocardiograph|echocardiography|2d\s*echo|2decho)/i.test(tt),
       ultrasound_abd: /(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(tt),
       ultrasound_transvaginal: /(ultrasound[-\s]?transvaginal|transvaginal)/i.test(tt),
       ultrasound_biophysical: /(ultrasound[-\s]?biophysical|biophysical)/i.test(tt),
-      ultrasound_pelvic: /(static:)?(ultrasound[-_\s]?pelvic(\.ejs)?|pelvic)/i.test(tt),
-      ultrasound_1st_trimester: /(1st\s*trimester|first\s*trimester|1st[-\s]?trimester|trimester\s*obstetrics|ultrasound[-\s]?.*1st)/i.test(tt),
+      ultrasound_pelvic: /(static:)?(ultrasound[-_\s]?pelvic(?:[-_\s]?biometry)?(\.ejs)?|pelvic(?:[-_\s]?biometry)?)/i.test(tt),
+      ultrasound_1st_trimester: /(?:1st|first|2nd|second|3rd|third|trimester|trimester[-_\s]?obstetrics|ultrasound[-_\s]?trimester)/i.test(tt),
       esr: /(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(tt)
       ,
-      ct_bt: /(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt)/i.test(tt)
+      drugtest: /(drug\s*test|drugtest)/i.test(tt),
+      ct_bt: /(bleeding|clotting|ct[-_\s]*&?\s*bt|ct[-_\s]*and[-_\s]*bt|ct[-_\s]*bt)/i.test(tt)
       ,
       xray: /(x-?ray|xray|radiograph)/i.test(tt),
       ecg: /(ecg|electrocardio|electrocardiogram)/i.test(tt)
@@ -351,7 +724,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     if (/(x-?ray|xray|radiograph)/i.test(test.testType)) view = 'tests/results_entry_xray';
     if (/(ecg|electrocardio|electrocardiogram)/i.test(test.testType)) view = 'tests/results_entry_ecg';
     if (/(fecal\s*occult|fecal-occult|fecaloccult)/i.test(test.testType)) view = 'tests/results_entry_fecal_occult_blood';
-    if (/(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt)/i.test(test.testType)) view = 'tests/results_entry_ct_bt';
+    if (/(bleeding|clotting|ct[-_\s]*&?\s*bt|ct[-_\s]*and[-_\s]*bt|ct[-_\s]*bt)/i.test(test.testType)) view = 'tests/results_entry_ct_bt';
     if (/(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(test.testType)) view = 'tests/results_entry_esr';
     if (/urinalysis/i.test(test.testType)) view = 'tests/results_entry_urinalysis';
     if (/hemato|hematology|cbc/i.test(test.testType)) view = 'tests/results_entry_hematology';
@@ -365,15 +738,41 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     if (/(blood\s*chemistry|blood-chemistry|blood\s*chem)/i.test(normalizedType) && !/(lipid|lipid\s*profile|blood\s*chemistry\s*-?\s*lipid|blood\s*chemistry\s*lipid\s*profile|blood\s*chemistry\s*lipid|electrolyte|electrolytes|sodium|potassium|chloride|hba1c|hb\s*a1c|hb-a1c|blood sugar|blood-sugar|sugar|fbs|rbs|1st hour|2nd hour|bun|creatinine|bun[\s\/\-]?crea|bun\/?crea|sgpt|sgot|albumin|alb)/i.test(normalizedType)) view = 'tests/results_entry_blood_chemistry';
     if (/(ultrasound[-\s]?transvaginal|transvaginal)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_transvaginal';
     if (/(ultrasound[-\s]?biophysical|biophysical)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_biophysical';
-    if (/(1st\s*trimester|first\s*trimester|1st[-\s]?trimester|trimester\s*obstetrics)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_1st_trimester_obstetrics';
+    if (/(?:1st|first|2nd|second|3rd|third|trimester|ultrasound[-_\s]?trimester)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_1st_trimester_obstetrics';
     if (/(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_abd_kubp_hbt';
     if (/(echo|echocardiograph|echocardiography|2d\s*echo|2decho)/i.test(test.testType)) view = 'tests/results_entry_echocardiography_2d';
-    if (/(static:)?(ultrasound[-_\s]?pelvic(\.ejs)?|pelvic)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_pelvic';
+    if (/(static:)?(ultrasound[-_\s]?pelvic[-_\s]?biometry|pelvic\s*biometry|pelvic-biometry|ultrasound[-_\s]?pelvicbiometry)(\.ejs)?/i.test(test.testType)) view = 'tests/results_entry_ultrasound_pelvic_biometry';
+    if (/(static:)?(ultrasound[-_\s]?pelvic(?![-_\s]?biometry)(\.ejs)?|pelvic(?![-_\s]?biometry))/i.test(test.testType)) view = 'tests/results_entry_ultrasound_pelvic';
+    if (/(drug\s*test|drugtest)/i.test(test.testType)) view = 'tests/results_entry_drugtest';
     console.log(`DEBUG GET /tests/${req.params.id}/results - selected view='${view}'`);
+
+    // Compute a suggested next case number for X-ray entry form (6 digits, zero-padded)
+    let nextCaseNumber = '';
+    try {
+      if (view === 'tests/results_entry_xray') {
+        const allTests = await Test.find();
+        let maxNum = 0;
+        allTests.forEach(t => {
+          const cn = (t.caseNumber || (t.results && t.results.caseNumber)) || '';
+          const digits = String(cn).replace(/[^0-9]/g, '');
+          if (digits) {
+            const n = parseInt(digits, 10);
+            if (!isNaN(n) && n > maxNum) maxNum = n;
+          }
+        });
+        const next = maxNum + 1 || 1;
+        nextCaseNumber = String(next).padStart(6, '0');
+      }
+    } catch (e) {
+      console.warn('Failed to compute nextCaseNumber for xray entry:', e);
+    }
+
+    console.log(`DEBUG nextCaseNumber for view='${view}':`, nextCaseNumber);
     res.render(view, {
       title: `Enter ${test.testType} Results`,
       test: testForView,
-      users
+      users,
+      nextCaseNumber
     });
 
   } catch (err) {
@@ -384,7 +783,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
 });
 
 // POST /tests/:id/results - Save results for fecalysis
-router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
+router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoFile'), async (req, res) => {
   try {
     const test = await Test.findById(req.params.id);
     if (!test) {
@@ -406,7 +805,7 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       pregnancy: /pregnan|pregnancy|pregnancy\s*test/i.test(tt),
       dengue: /dengue/i.test(tt),
       pt: /\b(?:pt|prothrombin|pt-aptt|ptaptt)\b/i.test(tt),
-      blood_chem: /(blood\s*chemistry|blood-chemistry|blood\s*chem)/i.test(tt),
+      blood_chem: /(blood\s*chemistry|blood-chemistry|blood\s*chem|(?:bun|creat|creatinine))/i.test(tt),
       lipid: /(lipid|lipid\s*profile|blood\s*chemistry\s*-?\s*lipid|blood\s*chemistry\s*lipid\s*profile|blood\s*chemistry\s*lipid)/i.test(tt),
       electrolytes: /(electrolyte|electrolytes|sodium|potassium|chloride)/i.test(tt),
       blood_sugar: /(blood sugar|blood-sugar|sugar|fbs|rbs|1st hour|2nd hour)/i.test(tt),
@@ -416,7 +815,8 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       ultrasound_pelvic: /(ultrasound[-_\s]?pelvic(\.ejs)?|pelvic)/i.test(tt),
       ultrasound_1st_trimester: /(1st\s*trimester|first\s*trimester|1st[-\s]?trimester|trimester\s*obstetrics|ultrasound[-\s]?.*1st)/i.test(tt),
       esr: /(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(tt),
-      ct_bt: /(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt)/i.test(tt)
+      drugtest: /(drug\s*test|drugtest)/i.test(tt),
+      ct_bt: /(bleeding|clotting|ct[-_\s]*&?\s*bt|ct[-_\s]*and[-_\s]*bt|ct[-_\s]*bt)/i.test(tt)
       ,
       xray: /(x-?ray|xray|radiograph)/i.test(tt)
       ,
@@ -507,7 +907,7 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
         esr_value: raw,
         esr_flag: flag
       };
-    } else if (/(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt|ct\s*bt|ctbt)/i.test(test.testType)) {
+    } else if (/(bleeding|clotting|ct[-_\s]*&?\s*bt|ct[-_\s]*and[-_\s]*bt|ct[-_\s]*bt|ctbt)/i.test(test.testType)) {
       // Accept minutes and seconds fields for more accurate time input
       const { bleeding_min, bleeding_sec, clotting_min, clotting_sec } = req.body;
       // Fallback to old single-field names if present (back-compat)
@@ -600,6 +1000,69 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
         note: (note || '').trim()
       };
 
+    } else if (/(drug\s*test|drugtest)/i.test(test.testType)) {
+      // Drug test entry parsing
+      const serial = (req.body.serial || '').toString().trim() || 'NB126997';
+      const ccfNo = (req.body.ccfNo || '').toString().trim() || '202511290286';
+      const name = (req.body.name || '').toString().trim();
+      const gender = (req.body.gender || '').toString().trim();
+      const transactionDateTime = req.body.transactionDateTime ? new Date(req.body.transactionDateTime).toISOString() : null;
+      const reportDateTime = req.body.reportDateTime ? new Date(req.body.reportDateTime).toISOString() : null;
+      const purpose = (req.body.purpose || '').toString().trim();
+      const analyst = (req.body.analyst || '').toString().trim();
+      const headLab = (req.body.headLab || '').toString().trim();
+      // If multer processed an uploaded file, prefer that (process with sharp if available)
+      let photoData = null;
+      try {
+        if (req.file && req.file.buffer) {
+          try {
+            // Try to use sharp for safe server-side resizing/compression
+            const sharp = require('sharp');
+            const maxDim = 800;
+            const processed = await sharp(req.file.buffer)
+              .rotate()
+              .resize({ width: maxDim, height: maxDim, fit: 'inside' })
+              .jpeg({ quality: 75 })
+              .toBuffer();
+            photoData = `data:image/jpeg;base64,${processed.toString('base64')}`;
+          } catch (sharpErr) {
+            // sharp not available or processing failed — fallback to original buffer
+            photoData = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+          }
+        } else if (req.body.photoData) {
+          photoData = (req.body.photoData || '').toString().trim() || null;
+        }
+      } catch (e) {
+        photoData = null;
+      }
+
+      // drugs arrays
+      const names = (Array.isArray(req.body['drugNames[]']) ? req.body['drugNames[]'] : (Array.isArray(req.body.drugNames) ? req.body.drugNames : (req.body['drugNames[]'] ? [req.body['drugNames[]']] : (req.body.drugNames ? [req.body.drugNames] : []))));
+      const results = (Array.isArray(req.body['drugResults[]']) ? req.body['drugResults[]'] : (Array.isArray(req.body.drugResults) ? req.body.drugResults : (req.body['drugResults[]'] ? [req.body['drugResults[]']] : (req.body.drugResults ? [req.body.drugResults] : []))));
+      const remarks = (Array.isArray(req.body['drugRemarks[]']) ? req.body['drugRemarks[]'] : (Array.isArray(req.body.drugRemarks) ? req.body.drugRemarks : (req.body['drugRemarks[]'] ? [req.body['drugRemarks[]']] : (req.body.drugRemarks ? [req.body.drugRemarks] : []))));
+
+      const drugs = [];
+      const maxLen = Math.max(names.length, results.length, remarks.length);
+      for (let i = 0; i < maxLen; i++) {
+        const dname = (names[i] || '').toString().trim();
+        const dres = (results[i] || '').toString().trim() || '';
+        const drem = (remarks[i] || '').toString().trim() || '';
+        if (dname || dres || drem) drugs.push({ drug: dname, result: dres, remarks: drem });
+      }
+
+      resultsObj = {
+        serial,
+        ccfNo,
+        name,
+        gender,
+        transactionDateTime,
+        reportDateTime,
+        purpose,
+        drugs,
+        photoData,
+        analyst,
+        headLab
+      };
     } else if (/(lipid|lipid\s*profile|blood\s*chemistry\s*-\s*lipid|blood\s*chemistry\s*lipid)/i.test(test.testType)) {
       // Lipid profile: Cholesterol, Triglyceride (tg), HDL, LDL (auto-calc default)
       const { cholesterol, tg, hdl, ldl, note } = req.body;
@@ -919,6 +1382,75 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       if (examination) topUpdates.examination = examination;
 
     } else if (/(blood(\s*|-)chemistry|blood\s*chem)/i.test(test.testType)) {
+      // Generic blood chemistry fallback: attempt to capture common analytes
+      const {
+        fbs, rbs, firstHour, secondHour,
+        cholesterol, tg, hdl, ldl, vldl,
+        uricAcid, creatinine, bun, sgpt, sgot,
+        sodium, potassium, chloride, hba1c, alb, note
+      } = req.body;
+
+      // small helpers
+      function toNum(v){ if (v===undefined||v===null) return null; const s=String(v).trim(); if(s==='') return null; const n=parseFloat(s.replace(/[^0-9.+-eE]/g,'')); return isNaN(n)?null:n }
+      function computeFlag(val, min, max){ if(val===null||val===undefined) return ''; if(typeof min==='number' && !isNaN(min) && val<min) return 'L'; if(typeof max==='number' && !isNaN(max) && val>max) return 'H'; return '' }
+
+      resultsObj = {};
+
+      // Lipids
+      const cholN = toNum(cholesterol);
+      const tgN = toNum(tg);
+      const hdlN = toNum(hdl);
+      let ldlN = toNum(ldl);
+      if ((ldlN === null || ldlN === undefined) && cholN !== null && hdlN !== null && tgN !== null) {
+        ldlN = Math.round((cholN - hdlN - (tgN / 5.0)) * 100) / 100;
+      }
+      if (cholesterol || cholN !== null) {
+        resultsObj.cholesterol = (cholesterol || (cholN!==null?String(cholN):''));
+        resultsObj.cholesterol_numeric = cholN;
+        resultsObj.cholesterol_flag = computeFlag(cholN, 0, 200);
+      }
+      if (tg || tgN !== null) {
+        resultsObj.tg = (tg || (tgN!==null?String(tgN):''));
+        resultsObj.tg_numeric = tgN;
+        resultsObj.tg_flag = computeFlag(tgN, 60, 150);
+      }
+      if (hdl || hdlN !== null) {
+        resultsObj.hdl = (hdl || (hdlN!==null?String(hdlN):''));
+        resultsObj.hdl_numeric = hdlN;
+        resultsObj.hdl_flag = computeFlag(hdlN, 35, 80);
+      }
+      if ((ldl || ldlN !== null)) {
+        resultsObj.ldl = (ldl || (ldlN!==null?String(ldlN):''));
+        resultsObj.ldl_numeric = ldlN;
+        resultsObj.ldl_flag = computeFlag(ldlN, 66, 178);
+      }
+      if (vldl) resultsObj.vldl = String(vldl).trim();
+
+      // Blood sugar
+      const fbsN = toNum(fbs);
+      const rbsN = toNum(rbs);
+      const firstN = toNum(firstHour);
+      const secondN = toNum(secondHour);
+      if (fbs || fbsN !== null) { resultsObj.fbs = (fbs || (fbsN!==null?String(fbsN):'')); resultsObj.fbs_numeric = fbsN; }
+      if (rbs || rbsN !== null) { resultsObj.rbs = (rbs || (rbsN!==null?String(rbsN):'')); resultsObj.rbs_numeric = rbsN; }
+      if (firstHour || firstN !== null) { resultsObj.firstHour = (firstHour || (firstN!==null?String(firstN):'')); resultsObj.firstHour_numeric = firstN; }
+      if (secondHour || secondN !== null) { resultsObj.secondHour = (secondHour || (secondN!==null?String(secondN):'')); resultsObj.secondHour_numeric = secondN; }
+
+      // Renal, liver, electrolytes, albumin, hba1c
+      if (uricAcid) resultsObj.uricAcid = String(uricAcid).trim();
+      if (creatinine || toNum(creatinine) !== null) { resultsObj.creatinine = (creatinine || String(toNum(creatinine))); resultsObj.creatinine_numeric = toNum(creatinine); }
+      if (bun || toNum(bun) !== null) { resultsObj.bun = (bun || String(toNum(bun))); resultsObj.bun_numeric = toNum(bun); }
+      if (sgpt || toNum(sgpt) !== null) { resultsObj.sgpt = (sgpt || String(toNum(sgpt))); resultsObj.sgpt_numeric = toNum(sgpt); }
+      if (sgot || toNum(sgot) !== null) { resultsObj.sgot = (sgot || String(toNum(sgot))); resultsObj.sgot_numeric = toNum(sgot); }
+      if (sodium || toNum(sodium) !== null) { resultsObj.sodium = (sodium || String(toNum(sodium))); resultsObj.sodium_numeric = toNum(sodium); }
+      if (potassium || toNum(potassium) !== null) { resultsObj.potassium = (potassium || String(toNum(potassium))); resultsObj.potassium_numeric = toNum(potassium); }
+      if (chloride || toNum(chloride) !== null) { resultsObj.chloride = (chloride || String(toNum(chloride))); resultsObj.chloride_numeric = toNum(chloride); }
+      if (hba1c || toNum(hba1c) !== null) { resultsObj.hba1c = (hba1c || String(toNum(hba1c))); resultsObj.hba1c_numeric = toNum(hba1c); }
+      if (alb || toNum(alb) !== null) { resultsObj.alb = (alb || String(toNum(alb))); resultsObj.alb_numeric = toNum(alb); }
+
+      if (note) resultsObj.note = String(note).trim();
+
+      console.log('DEBUG: blood chemistry fallback matched, results keys:', Object.keys(resultsObj));
 
     } else if (/(ecg|electrocardio|electrocardiogram)/i.test(test.testType)) {
       // ECG: paragraph findings + single reading physician
@@ -967,7 +1499,7 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
         sample: (sample || '').trim(),
         result: (result || '').trim()
       };
-    } else if (/(ultrasound[-\s]?biophysical|biophysical)/i.test(test.testType)) {
+    } else if (/(ultrasound[-\s]?biophysical|biophysical|ultrasound[-_\s]?pelvic[-_\s]?biometry|pelvic[-_\s]?biometry|pelvic\s*biometry)/i.test(test.testType)) {
       // Biophysical ultrasound parsing
       const bpd_size = (req.body.bpd_size || '').toString().trim();
       const bpd_label = (req.body.bpd_label || '').toString().trim();
@@ -1053,10 +1585,15 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
         doctorDesignation
       };
 
+      // optional spacing between impression and signatures
+      if (req.body.impression_spacing && String(req.body.impression_spacing).trim()) {
+        resultsObj.impression_spacing = String(req.body.impression_spacing).trim();
+      }
+
       // store editable section title
       resultsObj.section_title = (req.body.section_title || req.body.sectionTitle || (test && test.results && test.results.section_title) || 'BIOPHYSICAL ULTRASOUND').toString().trim();
 
-    } else if (/(static:)?(ultrasound[-_\s]?(transvaginal|pelvic)(\.ejs)?|transvaginal|pelvic)/i.test(test.testType)) {
+    } else if (/(static:)?(ultrasound[-_\s]?(transvaginal|pelvic(?:[-_\s]?biometry)?)(\.ejs)?|transvaginal|pelvic(?:[-_\s]?biometry)?)/i.test(test.testType)) {
       // Transvaginal ultrasound: structured fields per checklist
       const gestational_sac_length = (req.body.gestational_sac_length || req.body.gestationalSacLength || '').toString().trim();
       const gestational_sac_age = (req.body.gestational_sac_age || req.body.gestationalSacAge || '').toString().trim();
@@ -1116,7 +1653,11 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       };
       // store editable section title when provided (or keep existing/default)
       resultsObj.section_title = (req.body.section_title || req.body.sectionTitle || (test && test.results && test.results.section_title) || (/(transvaginal)/i.test(test.testType) ? 'TRANSVAGINAL ULTRASOUND' : 'PELVIC ULTRASOUND')).toString().trim();
-    } else if (/(1st\s*trimester|first\s*trimester|1st[-\s]?trimester|trimester\s*obstetrics)/i.test(test.testType)) {
+      // optional spacing between impression and signatures
+      if (req.body.impression_spacing && String(req.body.impression_spacing).trim()) {
+        resultsObj.impression_spacing = String(req.body.impression_spacing).trim();
+      }
+    } else if (/(?:1st|first|2nd|second|3rd|third|trimester|ultrasound[-_\s]?trimester|trimester[-_\s]?obstetrics)/i.test(test.testType)) {
       // 1st Trimester Obstetrics - unified single/twin parsing
       const isTwinRaw = req.body.isTwin;
       const isTwin = (isTwinRaw === 'on' || isTwinRaw === 'true' || isTwinRaw === true || String(isTwinRaw).toLowerCase() === 'on');
@@ -1209,8 +1750,11 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
           doctorLicense: doctorLicense,
           doctorDesignation: doctorDesignation
         };
-        // allow editable section title for 1st trimester
-        resultsObj.section_title = (req.body.section_title || req.body.sectionTitle || (test && test.results && test.results.section_title) || '1st TRIMESTER OBSTETRICS').toString().trim();
+        if (req.body.impression_spacing && String(req.body.impression_spacing).trim()) {
+          resultsObj.impression_spacing = String(req.body.impression_spacing).trim();
+        }
+        // allow editable section title for trimester obstetrics
+        resultsObj.section_title = (req.body.section_title || req.body.sectionTitle || (test && test.results && test.results.section_title) || 'TRIMESTER OBSTETRICS').toString().trim();
       } else {
         // single fetus parsing (back-compat and new single form)
         const g_len = (req.body.gestational_sac_length || req.body.gestationalSacLength || '').toString().trim();
@@ -1268,8 +1812,11 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
           doctorLicense: doctorLicense,
           doctorDesignation: doctorDesignation
         };
-        // allow editable section title for 1st trimester
-        resultsObj.section_title = (req.body.section_title || req.body.sectionTitle || (test && test.results && test.results.section_title) || '1st TRIMESTER OBSTETRICS').toString().trim();
+        // allow editable section title for trimester obstetrics
+        resultsObj.section_title = (req.body.section_title || req.body.sectionTitle || (test && test.results && test.results.section_title) || 'TRIMESTER OBSTETRICS').toString().trim();
+        if (req.body.impression_spacing && String(req.body.impression_spacing).trim()) {
+          resultsObj.impression_spacing = String(req.body.impression_spacing).trim();
+        }
       }
     } else if (/(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(test.testType)) {
       // Ultrasound ABD / KUBP / HBT variant: accept examination select, findings paragraphs, and impression
@@ -1290,6 +1837,9 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
         paragraphs_font_family: req.body.paragraphsFontFamily || req.body.paragraphs_font_family,
         paragraphs_font_size: req.body.paragraphsFontSize || req.body.paragraphs_font_size
       };
+      if (req.body.impression_spacing && String(req.body.impression_spacing).trim()) {
+        resultsObj.impression_spacing = String(req.body.impression_spacing).trim();
+      }
     } else if (/(echo|echocardiograph|echocardiography|2d\s*echo|2decho)/i.test(test.testType)) {
       // Echocardiography (2D): findings paragraphs, color flow study, conclusion and signature
       const paragraphs = (req.body.paragraphs || req.body.findings || req.body.result || '').toString().trim();
@@ -1337,10 +1887,11 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     }
 
     // allow storing performer name/license directly on results for printing
-    resultsObj.performedByName = (mtName || '').trim();
-    resultsObj.performedByLicense = (mtLicense || '').trim();
-    resultsObj.requestedByName = (pathName || '').trim();
-    resultsObj.requestedByLicense = (pathLicense || '').trim();
+    // Only set when non-empty to avoid clearing existing/default values
+    if (mtName && String(mtName).trim()) resultsObj.performedByName = String(mtName).trim();
+    if (mtLicense && String(mtLicense).trim()) resultsObj.performedByLicense = String(mtLicense).trim();
+    if (pathName && String(pathName).trim()) resultsObj.requestedByName = String(pathName).trim();
+    if (pathLicense && String(pathLicense).trim()) resultsObj.requestedByLicense = String(pathLicense).trim();
     // optional validator (second medtech) fields
     resultsObj.validatedByName = (req.body.validatedByName || '').trim();
     resultsObj.validatedByLicense = (req.body.validatedByLicense || '').trim();
@@ -1379,6 +1930,11 @@ router.post('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     try {
       console.log('Saved results for test', req.params.id, 'results keys:', updated && updated.results ? Object.keys(updated.results) : null);
     } catch (e) {}
+
+    // Emit SSE event to notify clients that results were encoded for this test
+    try {
+      sseEmitter.emit('update', { action: 'result_encoded', testId: updated.testId, status: updated.status, patient: updated.patient, time: (new Date()).toISOString() });
+    } catch (e) { console.warn('SSE emit (result_encoded) failed', e); }
 
     req.flash('success_msg', 'Results saved successfully');
     res.redirect(`/tests/${req.params.id}`);
@@ -1426,10 +1982,12 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
       , 'ultrasound-transvaginal.ejs'
       , 'ultrasound-biophysical.ejs'
       , 'ultrasound-1st-trimester-obstetrics.ejs'
+      , 'drugtest.ejs'
       , 'ultrasound-pelvic.ejs'
     ];
     const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
     const staticTemplates = files.map(f => {
+      if (f === 'drugtest.ejs') return { name: 'Drug Test', testType: 'drugtest' };
       if (f === 'blood-chemistry-bun-crea.ejs') {
         return { name: 'Blood Chemistry - BUN/Crea', testType: 'BUN/Creat' };
       }
@@ -1441,9 +1999,9 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
     });
     templates = templates.concat(staticTemplates);
     try {
-      const exists2 = templates.some(t => (t.testType || '').toLowerCase() === 'ultrasound-1st-trimester-obstetrics');
+      const exists2 = templates.some(t => (t.testType || '').toLowerCase() === 'ultrasound-trimester-obstetrics');
       if (!exists2) {
-        templates.push({ name: 'Ultrasound - 1st Trimester Obstetrics', testType: 'ultrasound-1st-trimester-obstetrics' });
+        templates.push({ name: 'Ultrasound - Trimester Obstetrics', testType: 'ultrasound-trimester-obstetrics' });
       }
     } catch (e) {}
   } catch (e) {
@@ -1515,6 +2073,13 @@ router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
       req.flash('error_msg', 'Test not found');
       return res.redirect('/tests');
     }
+
+    // If results were included in this update, emit result_encoded event so clients can react
+    try {
+      if (updateData && updateData.results && Object.keys(updateData.results).length) {
+        try { sseEmitter.emit('update', { action: 'result_encoded', testId: test.testId, status: test.status, patient: test.patient, time: (new Date()).toISOString() }); } catch (e) { console.warn('SSE emit (result_encoded) failed', e); }
+      }
+    } catch (e) {}
 
     req.flash('success_msg', `Test ${test.testId} updated successfully!`);
     res.redirect(`/tests/${req.params.id}`);

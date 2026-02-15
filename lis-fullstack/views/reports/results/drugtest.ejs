@@ -1,0 +1,173 @@
+<style>
+  @page { size: Letter; margin: 0.25in; }
+
+  body { margin:0; padding:0; box-sizing:border-box; }
+  *, *:before, *:after { box-sizing:inherit; }
+  .report-page{ position:relative; width:100%; max-width:calc(8.5in - 0.5in); margin:0 auto; padding:8px; font-family: Arial, Helvetica, sans-serif; color:#000; font-size:12px }
+  .header{ display:flex; align-items:flex-start; gap:12px }
+  .left-col{ width:1.25in }
+  .photo{ width:1.0in; height:1.0in; border:1px solid #999; overflow:hidden; flex:0 0 auto; margin-left:0.35in }
+  .photo img{ width:100%; height:100%; object-fit:cover; display:block }
+  .nb-block{ margin-top:6px; font-size:11px }
+  .nb-block .nb-sub{ margin-top:6px }
+  .photo-row{ display:flex; align-items:center; gap:8px; margin-top:6px }
+  .nb-block{ text-align:left }
+  .center-col{ flex:1 1 auto; text-align:center }
+  .top-right{ text-align:right; font-size:10px }
+  .ho-mark{ font-weight:bold; font-size:10px; text-align:left; margin-bottom:4px }
+  h1.title{ font-size:14px; margin:0; letter-spacing:0.5px }
+  .sub{ font-size:9.5px; margin-top:3px }
+  .content{ padding-left:0.35in }
+  .meta{ margin-top:8px; display:flex; justify-content:space-between; align-items:flex-start }
+  .meta .left{ width:36% }
+  .meta .right{ width:60% }
+  .meta p{ margin:3px 0; font-size:11px }
+  .section-title{ font-weight:bold; margin-top:6px; font-size:12px }
+  .report-page p{ font-size:12px; margin:4px 0 }
+  .label{ font-weight:700; display:inline-block; min-width:110px }
+  .val{ font-weight:700; font-size:12px }
+  .sig strong{ font-size:12px }
+  table.result-table{ width:100%; border-collapse:collapse; margin-top:12px }
+  table.result-table th, table.result-table td{ border:1px solid #000; padding:6px; font-size:11px }
+  table.result-table th{ font-style:italic; background:#fff }
+  .signatures{ margin-top:18px; display:flex; justify-content:space-between; align-items:center }
+  .sig{ width:45%; text-align:center; position:relative; min-height:80px }
+  .signature-overlay{ position:absolute; left:50%; transform:translateX(-50%) scale(1); transform-origin:center; max-width:60%; opacity:1; z-index:2 }
+  .sig .name{ margin-top:6px; text-decoration: underline; font-size:11px }
+  .sig .num{ font-size:10px }
+  .small-italic{ font-size:10px; font-style:italic; margin-top:6px }
+  .center-note{ text-align:center; margin-top:6px; font-style: italic; font-size:10px }
+</style>
+<%- include('./_highlight') %>
+
+<div class="report-page">
+  <div class="header">
+      <div class="left-col">
+        <div class="ho-mark">HO</div>
+        <div class="photo-row">
+          <div class="photo">
+          <% if (test && test.results && test.results.photoData) { %>
+            <img src="<%= test.results.photoData %>" alt="photo" />
+          <% } else { %>
+            <img src="/assets/drugtest-photo.svg" alt="placeholder" />
+          <% } %>
+          </div>
+          <div class="nb-block">
+            <div style="font-size:11px"><strong><%= (test && test.results && test.results.serial) || (test && test.testId) || 'NB126997' %></strong></div>
+            <div class="nb-sub" style="font-size:10px"><%= (test && test.results && test.results.analystNo) || '15' %></div>
+          </div>
+        </div>
+      </div>
+      <div class="center-col">
+        <div class="top-right">Report ID: <%= (test && test.results && test.results.reportId) ? test.results.reportId : 'DTO-R03' %></div>
+        <h1 class="title">DEPARTMENT OF HEALTH</h1>
+        <div style="font-weight:bold;">GEZYNE CLINICAL LABORATORY</div>
+  <div class="sub">0330 VERGEL DE DIOS, POBLACION, PLARIDEL, BULACAN</div>
+  <div class="sub">Phone Number 795-5007</div>
+        <h2 style="margin-top:6px; font-size:14px;">DRUG TEST REPORT</h2>
+      </div>
+    </div>
+
+    <div class="content">
+    <div class="meta">
+      <div class="left">
+        <p><strong>CCF No:</strong> <%= (test && test.results && test.results.ccfNo) || '202511290286' %></p>
+        <% if (typeof displayName === 'undefined') { var displayName = ''; }
+           try {
+             if (test && test.patient) {
+               const p = test.patient;
+               displayName = ((p.lastName || '') + ', ' + (p.firstName || '')).trim();
+             }
+           } catch(e){}
+           if (!displayName && test && test.results && test.results.name) displayName = test.results.name;
+        %>
+        <p><strong>Name:</strong> <%= displayName || '' %></p>
+        <p><strong>Gender:</strong> <%= (test && test.results && test.results.gender) || (test.patient && (test.patient.gender || test.patient.sex)) || '' %></p>
+      </div>
+      <div class="right">
+        <p><strong>Transaction Date Time:</strong> <%= (test && test.results && test.results.transactionDateTime) ? new Date(test.results.transactionDateTime).toLocaleString() : (test.testDate ? new Date(test.testDate).toLocaleString() : '') %></p>
+        <p><strong>Report Date Time:</strong> <%= (test && test.results && test.results.reportDateTime) ? new Date(test.results.reportDateTime).toLocaleString() : new Date().toLocaleString() %></p>
+      </div>
+  </div>
+
+  <div style="clear:both; margin-top:8px;">
+      <p><span class="label">Test Method</span> <span class="val">TEST KIT</span></p>
+      <p><span class="label">Purpose:</span> <u class="val"><%= (test && test.results && test.results.purpose) || 'EMPLOYMENT' %></u></p>
+    </div>
+    <div>
+      <div class="section-title">Result</div>
+      <table class="result-table">
+        <thead>
+          <tr>
+            <th style="width:55%">Drug/Metabolite</th>
+            <th style="width:22%">Result</th>
+            <th style="width:23%">Remarks</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% function row(drug, res, rem) { %>
+            <tr>
+              <td><%= drug %></td>
+              <td style="text-align:center"><%= res || '' %></td>
+              <td style="text-align:center"><%= rem || '' %></td>
+            </tr>
+          <% } %>
+
+          <% if (test && test.results && Array.isArray(test.results.drugs) && test.results.drugs.length) { %>
+            <% test.results.drugs.forEach(function(d){ %>
+              <tr>
+                <td><%= d.drug || '' %></td>
+                <td style="text-align:center"><%= d.result || '' %></td>
+                <td style="text-align:center"><%= d.remarks || '' %></td>
+              </tr>
+            <% }) %>
+          <% } else { %>
+            <% row('METHAMPHETAMINE', (test && test.results && test.results.drugs && test.results.drugs[0] && test.results.drugs[0].result) || 'NEGATIVE', (test && test.results && test.results.drugs && test.results.drugs[0] && test.results.drugs[0].remarks) || 'PASSED'); %>
+            <% row('TETRAHYDROCANNABINOL', (test && test.results && test.results.drugs && test.results.drugs[1] && test.results.drugs[1].result) || 'NEGATIVE', (test && test.results && test.results.drugs && test.results.drugs[1] && test.results.drugs[1].remarks) || 'PASSED'); %>
+          <% } %>
+        </tbody>
+      </table>
+  </div>
+
+    <%
+      function findSigFor(displayName){
+        var sigs = (test && test.results && test.results.signatures) ? test.results.signatures : {};
+        for(var k in sigs){ if(sigs[k] && sigs[k].name === displayName) return sigs[k]; }
+        return null;
+      }
+    %>
+
+    <div class="signatures">
+      <div class="sig">
+        <div class="num" style="float:left; width:10%"><strong><%= (test && test.results && test.results.analystNo) || '35' %></strong></div>
+        <div style="margin:0 20px;">
+          <% var sigName = (test && test.results && test.results.analyst) || '' %>
+          <% var sig = findSigFor(sigName); var p = (sig && sig.placement) ? sig.placement : {x:0,y:0,scale:1}; if(p && (typeof p.scale === 'undefined' || p.scale === 1)){ p.scale = 1.25; } %>
+          <% if (sig && sig.filename) { %>
+            <img src="/assets/signature/<%= sig.filename %>" class="signature-overlay" style="top:<%= p.y %>px; transform:translateX(-50%) scale(<%= typeof p.scale!=='undefined'?p.scale:1 %>); max-height:96px;" />
+          <% } %>
+          <div class="name"><%= sigName || (test && test.results && test.results.analyst) || 'MS. NICOLE S. RAMOS' %></div>
+        </div>
+        <div style="clear:both"></div>
+        <div><strong>Analyst</strong></div>
+      </div>
+      <div class="sig">
+        <div class="num" style="float:right; width:10%"><strong><%= (test && test.results && test.results.headNo) || '53' %></strong></div>
+        <div style="margin:0 20px;">
+          <% var sigName = (test && test.results && test.results.headLab) || '' %>
+          <% var sig = findSigFor(sigName); var p = (sig && sig.placement) ? sig.placement : {x:0,y:0,scale:1}; if(p && (typeof p.scale === 'undefined' || p.scale === 1)){ p.scale = 1.25; } %>
+          <% if (sig && sig.filename) { %>
+            <img src="/assets/signature/<%= sig.filename %>" class="signature-overlay" style="top:<%= p.y %>px; transform:translateX(-50%) scale(<%= typeof p.scale!=='undefined'?p.scale:1 %>); max-height:96px;" />
+          <% } %>
+          <div class="name"><%= sigName || (test && test.results && test.results.headLab) || 'DR. BERNADETTE R. ESPIRITU' %></div>
+        </div>
+        <div style="clear:both"></div>
+        <div><strong>Head of Laboratory</strong></div>
+      </div>
+    </div>
+
+    <div class="small-italic">Valid Within 12 Month/s from Transaction Date</div>
+    <div class="center-note">This is a DOH-DDB IDTOMIS generated report</div>
+
+    </div> <!-- .content -->
+</div>

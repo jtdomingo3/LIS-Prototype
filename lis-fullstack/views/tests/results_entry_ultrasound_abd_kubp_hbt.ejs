@@ -74,8 +74,8 @@
         <button type="button" class="button btn-small" onclick="insertParagraph()">Insert Paragraph</button>
         <label style="margin-left:12px">Font:</label>
         <select name="paragraphsFontFamily">
-          <option value="Times New Roman" <%= test.results && test.results.paragraphs_font_family==='Times New Roman' ? 'selected' : '' %>>Times New Roman</option>
           <option value="Courier New" <%= test.results && test.results.paragraphs_font_family==='Courier New' ? 'selected' : '' %>>Courier New</option>
+          <option value="Times New Roman" <%= test.results && test.results.paragraphs_font_family==='Times New Roman' ? 'selected' : '' %>>Times New Roman</option>
           <option value="Arial" <%= test.results && test.results.paragraphs_font_family==='Arial' ? 'selected' : '' %>>Arial</option>
           <option value="Georgia" <%= test.results && test.results.paragraphs_font_family==='Georgia' ? 'selected' : '' %>>Georgia</option>
         </select>
@@ -94,16 +94,32 @@
       <textarea name="impression" rows="4" style="width:100%"><%= test && test.results && (test.results.impression || test.results.impression_text) ? (test.results.impression || test.results.impression_text) : 'Enter impression here.' %></textarea>
     </div>
 
+    <div style="margin-top:8px">
+      <label>Space between Impression and Footer</label>
+      <div>
+        <select name="impression_spacing" style="width:220px">
+          <option value="" <%= !(test && test.results && test.results.impression_spacing) ? 'selected' : '' %>>Default (template)</option>
+          <option value="12px" <%= test && test.results && test.results.impression_spacing==='12px' ? 'selected' : '' %>>12px</option>
+          <option value="24px" <%= test && test.results && test.results.impression_spacing==='24px' ? 'selected' : '' %>>24px</option>
+          <option value="36px" <%= test && test.results && test.results.impression_spacing==='36px' ? 'selected' : '' %>>36px</option>
+          <option value="48px" <%= test && test.results && test.results.impression_spacing==='48px' ? 'selected' : '' %>>48px</option>
+          <option value="72px" <%= test && test.results && test.results.impression_spacing==='72px' ? 'selected' : '' %>>72px</option>
+          <option value="96px" <%= test && test.results && test.results.impression_spacing==='96px' ? 'selected' : '' %>>96px</option>
+          <option value="120px" <%= test && test.results && test.results.impression_spacing==='120px' ? 'selected' : '' %>>120px</option>
+          <option value="180px" <%= test && test.results && test.results.impression_spacing==='180px' ? 'selected' : '' %>>180px</option>
+          <option value="240px" <%= test && test.results && test.results.impression_spacing==='240px' ? 'selected' : '' %>>240px</option>
+          <% if (test && test.results && test.results.impression_spacing && ['12px','24px','36px','48px','72px','96px','120px','180px','240px'].indexOf(test.results.impression_spacing) === -1) { %>
+            <option value="<%= test.results.impression_spacing %>" selected>Custom: <%= test.results.impression_spacing %></option>
+          <% } %>
+        </select>
+      </div>
+      <div style="font-size:12px;color:#666;margin-top:4px">Select a spacing value (examples: <strong>36px</strong>, <strong>2in</strong>); leave as <strong>Default</strong> to use the template's preset.</div>
+    </div>
+
     <hr>
     <h4>Signatures / Performers</h4>
-    <div class="form-row">
-      <label>Radiologist (Name)</label>
-      <input type="text" name="pathName" placeholder="Radiologist name" value="<%= test.results && test.results.pathName ? test.results.pathName : (test.results && test.results.doctorName ? test.results.doctorName : '') %>">
-    </div>
-    <div class="form-row">
-      <label>Radiologist License</label>
-      <input type="text" name="pathLicense" placeholder="License number (optional)" value="<%= test.results && test.results.pathLicense ? test.results.pathLicense : (test.results && test.results.doctorLicense ? test.results.doctorLicense : '') %>">
-    </div>
+    <%- include('../partials/signatory_select', { prefix: 'path', label: 'Radiologist', role: 'Radiologist', nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (test.results && test.results.pathName) ? test.results.pathName : (test.results && test.results.doctorName ? test.results.doctorName : ''), existingLicense: (test.results && test.results.pathLicense) ? test.results.pathLicense : (test.results && test.results.doctorLicense ? test.results.doctorLicense : '') }) %>
+
     <div class="form-row">
       <label>Designation</label>
       <input type="text" name="doctorDesignation" placeholder="e.g. MD, FPCR - Radiologist" value="<%= test.results && test.results.doctorDesignation ? test.results.doctorDesignation : 'Radiologist' %>">

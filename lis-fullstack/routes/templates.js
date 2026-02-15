@@ -78,9 +78,22 @@ async function getStaticResultTemplates() {
       , 'ultrasound-biophysical.ejs'
       , 'ultrasound-1st-trimester-obstetrics.ejs'
         , 'ultrasound-pelvic.ejs'
+        , 'ultrasound-pelvic-biometry.ejs'
+        , 'drugtest.ejs'
     ];
     const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
     return files.map(f => {
+      if (f === 'drugtest.ejs') {
+        return {
+          id: `static:${f}`,
+          name: 'Drug Test',
+          testType: 'drugtest',
+          fields: [],
+          createdAt: null,
+          isStatic: true,
+          filename: f
+        };
+      }
       if (f === 'blood-chemistry-bun-crea.ejs') {
         return {
           id: `static:${f}`,
@@ -150,8 +163,8 @@ async function getStaticResultTemplates() {
       if (f === 'ultrasound-1st-trimester-obstetrics.ejs') {
         return {
           id: `static:${f}`,
-          name: 'Ultrasound - 1st Trimester Obstetrics',
-          testType: 'ultrasound-1st-trimester-obstetrics',
+          name: 'Ultrasound - Trimester Obstetrics',
+          testType: 'ultrasound-trimester-obstetrics',
           fields: [],
           createdAt: null,
           isStatic: true,
@@ -163,6 +176,17 @@ async function getStaticResultTemplates() {
             id: `static:${f}`,
             name: 'Ultrasound - Pelvic Ultrasound',
             testType: 'ultrasound-pelvic',
+            fields: [],
+            createdAt: null,
+            isStatic: true,
+            filename: f
+          };
+        }
+        if (f === 'ultrasound-pelvic-biometry.ejs') {
+          return {
+            id: `static:${f}`,
+            name: 'Ultrasound - Pelvic Biometry',
+            testType: 'ultrasound-pelvic-biometry',
             fields: [],
             createdAt: null,
             isStatic: true,

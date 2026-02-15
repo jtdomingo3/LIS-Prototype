@@ -20,57 +20,36 @@
     </div>
 
     <div class="grid-2">
-      <div class="form-row"><label>FBS</label><input type="text" name="fbs" value="<%= test.results && test.results.fbs ? test.results.fbs : '' %>"></div>
-      <div class="form-row"><label>RBS</label><input type="text" name="rbs" value="<%= test.results && test.results.rbs ? test.results.rbs : '' %>"></div>
-      <div class="form-row"><label>1st Hour</label><input type="text" name="firstHour" value="<%= test.results && test.results.firstHour ? test.results.firstHour : '' %>"></div>
-      <div class="form-row"><label>2nd Hour</label><input type="text" name="secondHour" value="<%= test.results && test.results.secondHour ? test.results.secondHour : '' %>"></div>
-      <div class="form-row"><label>Cholesterol</label><input type="text" name="cholesterol" value="<%= test.results && test.results.cholesterol ? test.results.cholesterol : '' %>"></div>
-      <div class="form-row"><label>Triglyceride</label><input type="text" name="tg" value="<%= test.results && test.results.tg ? test.results.tg : '' %>"></div>
-      <div class="form-row"><label>HDL-C</label><input type="text" name="hdl" value="<%= test.results && test.results.hdl ? test.results.hdl : '' %>"></div>
-      <div class="form-row"><label>LDL</label><input type="text" name="ldl" value="<%= test.results && test.results.ldl ? test.results.ldl : '' %>"></div>
-      <div class="form-row"><label>VLDL</label><input type="text" name="vldl" value="<%= test.results && test.results.vldl ? test.results.vldl : '' %>"></div>
-      <div class="form-row"><label>Uric Acid</label><input type="text" name="uricAcid" value="<%= test.results && test.results.uricAcid ? test.results.uricAcid : '' %>"></div>
-      <div class="form-row"><label>Creatinine</label><input type="text" name="creatinine" value="<%= test.results && test.results.creatinine ? test.results.creatinine : '' %>"></div>
-      <div class="form-row"><label>BUN</label><input type="text" name="bun" value="<%= test.results && test.results.bun ? test.results.bun : '' %>"></div>
-      <div class="form-row"><label>SGPT (ALT)</label><input type="text" name="sgpt" value="<%= test.results && test.results.sgpt ? test.results.sgpt : '' %>"></div>
-      <div class="form-row"><label>SGOT (AST)</label><input type="text" name="sgot" value="<%= test.results && test.results.sgot ? test.results.sgot : '' %>"></div>
-      <div class="form-row"><label>Sodium</label><input type="text" name="sodium" value="<%= test.results && test.results.sodium ? test.results.sodium : '' %>"></div>
-      <div class="form-row"><label>Potassium</label><input type="text" name="potassium" value="<%= test.results && test.results.potassium ? test.results.potassium : '' %>"></div>
-      <div class="form-row"><label>Chloride</label><input type="text" name="chloride" value="<%= test.results && test.results.chloride ? test.results.chloride : '' %>"></div>
-      <div class="form-row"><label>Hba1c</label><input type="text" name="hba1c" value="<%= test.results && test.results.hba1c ? test.results.hba1c : '' %>"></div>
-      <div class="form-row"><label>ALB</label><input type="text" name="alb" value="<%= test.results && test.results.alb ? test.results.alb : '' %>"></div>
+      <div class="form-row"><label>FBS</label><input type="text" name="fbs" value="<%= test.results && test.results.fbs ? test.results.fbs : '' %>" placeholder="70-110 mg/dL" title="Reference: 70.00 - 110.00 mg/dL"></div>
+      <div class="form-row"><label>RBS</label><input type="text" name="rbs" value="<%= test.results && test.results.rbs ? test.results.rbs : '' %>" placeholder="80-130 mg/dL" title="Reference: 80.00 - 130.00 mg/dL"></div>
+      <div class="form-row"><label>1st Hour</label><input type="text" name="firstHour" value="<%= test.results && test.results.firstHour ? test.results.firstHour : '' %>" placeholder="90-140 mg/dL" title="Reference: 90.00 - 140.00 mg/dL"></div>
+      <div class="form-row"><label>2nd Hour</label><input type="text" name="secondHour" value="<%= test.results && test.results.secondHour ? test.results.secondHour : '' %>" placeholder="80-120 mg/dL" title="Reference: 80.00 - 120.00 mg/dL"></div>
+      <div class="form-row"><label>Cholesterol</label><input type="text" name="cholesterol" value="<%= test.results && test.results.cholesterol ? test.results.cholesterol : '' %>" placeholder="0-200 mg/dL" title="Reference: 0.00 - 200.00 mg/dL"></div>
+      <div class="form-row"><label>Triglyceride</label><input type="text" name="tg" value="<%= test.results && test.results.tg ? test.results.tg : '' %>" placeholder="60-150 mg/dL" title="Reference: 60.00 - 150.00 mg/dL"></div>
+      <div class="form-row"><label>HDL-C</label><input type="text" name="hdl" value="<%= test.results && test.results.hdl ? test.results.hdl : '' %>" placeholder="35-80 mg/dL" title="Reference: 35.00 - 80.00 mg/dL"></div>
+      <div class="form-row"><label>LDL</label><input type="text" name="ldl" value="<%= test.results && test.results.ldl ? test.results.ldl : '' %>" placeholder="66-178 mg/dL" title="Reference: 66.00 - 178.00 mg/dL"></div>
+      <div class="form-row"><label>VLDL</label><input type="text" name="vldl" value="<%= test.results && test.results.vldl ? test.results.vldl : '' %>" placeholder="0-30 mg/dL" title="Reference: 0.00 - 30.00 mg/dL"></div>
+      <div class="form-row"><label>Uric Acid</label><input type="text" name="uricAcid" value="<%= test.results && test.results.uricAcid ? test.results.uricAcid : '' %>" placeholder="2.4-5.7 mg/dL" title="Reference: 2.40 - 5.70 mg/dL"></div>
+      <div class="form-row"><label>Creatinine</label><input type="text" name="creatinine" value="<%= test.results && test.results.creatinine ? test.results.creatinine : '' %>" placeholder="0.5-1.0 mg/dL" title="Reference: 0.50 - 1.00 mg/dL"></div>
+      <div class="form-row"><label>BUN</label><input type="text" name="bun" value="<%= test.results && test.results.bun ? test.results.bun : '' %>" placeholder="4.7-23.4 mg/dL" title="Reference: 4.67 - 23.36 mg/dL"></div>
+      <div class="form-row"><label>SGPT (ALT)</label><input type="text" name="sgpt" value="<%= test.results && test.results.sgpt ? test.results.sgpt : '' %>" placeholder="0-32 U/L" title="Reference: 0.00 - 32.00 U/L"></div>
+      <div class="form-row"><label>SGOT (AST)</label><input type="text" name="sgot" value="<%= test.results && test.results.sgot ? test.results.sgot : '' %>" placeholder="0-31 U/L" title="Reference: 0.00 - 31.00 U/L"></div>
+      <div class="form-row"><label>Sodium</label><input type="text" name="sodium" value="<%= test.results && test.results.sodium ? test.results.sodium : '' %>" placeholder="136-148 mmol/L" title="Reference: 136.00 - 148.00 mmol/L"></div>
+      <div class="form-row"><label>Potassium</label><input type="text" name="potassium" value="<%= test.results && test.results.potassium ? test.results.potassium : '' %>" placeholder="3.5-5.1 mmol/L" title="Reference: 3.50 - 5.10 mmol/L"></div>
+      <div class="form-row"><label>Chloride</label><input type="text" name="chloride" value="<%= test.results && test.results.chloride ? test.results.chloride : '' %>" placeholder="98-107 mmol/L" title="Reference: 98.00 - 107.00 mmol/L"></div>
+      <div class="form-row"><label>Hba1c</label><input type="text" name="hba1c" value="<%= test.results && test.results.hba1c ? test.results.hba1c : '' %>" placeholder="4.0-6.5 %" title="Reference: 4.00 - 6.50 %"></div>
+      <div class="form-row"><label>ALB</label><input type="text" name="alb" value="<%= test.results && test.results.alb ? test.results.alb : '' %>" placeholder="3-6 g/L" title="Reference: 3.00 - 6.00 g/L"></div>
     </div>
 
     <hr>
     <h4>Signatures / Performers</h4>
-    <div class="form-row">
-      <label>Medical Technologist (Name)</label>
-      <input type="text" name="mtName" value="<%= test.results && test.results.performedByName ? test.results.performedByName : '' %>">
-    </div>
-    <div class="form-row">
-      <label>Medical Technologist License</label>
-      <input type="text" name="mtLicense" value="<%= test.results && test.results.performedByLicense ? test.results.performedByLicense : '' %>">
-    </div>
+    <%- include('../partials/signatory_select', { prefix: 'mt', label: 'Medical Technologist', role: 'Medical Technologist', nameInput: 'mtName', licenseInput: 'mtLicense', existingName: (test.results && test.results.performedByName) ? test.results.performedByName : '', existingLicense: (test.results && test.results.performedByLicense) ? test.results.performedByLicense : '' }) %>
 
     <hr>
     <h4>Validation</h4>
-    <div class="form-row">
-      <label>2nd Medical Technologist (Validator Name)</label>
-      <input type="text" name="validatedByName" value="<%= test.results && test.results.validatedByName ? test.results.validatedByName : '' %>">
-    </div>
-    <div class="form-row">
-      <label>2nd Medical Technologist License</label>
-      <input type="text" name="validatedByLicense" value="<%= test.results && test.results.validatedByLicense ? test.results.validatedByLicense : '' %>">
-    </div>
+    <%- include('../partials/signatory_select', { prefix: 'validated', label: '2nd Medical Technologist (Validator)', role: 'Medical Technologist', nameInput: 'validatedByName', licenseInput: 'validatedByLicense', existingName: (test.results && test.results.validatedByName) ? test.results.validatedByName : '', existingLicense: (test.results && test.results.validatedByLicense) ? test.results.validatedByLicense : '' }) %>
 
-    <div class="form-row">
-      <label>Pathologist (Name)</label>
-      <input type="text" name="pathName" value="<%= test.results && test.results.requestedByName ? test.results.requestedByName : '' %>">
-    </div>
-    <div class="form-row">
-      <label>Pathologist License</label>
-      <input type="text" name="pathLicense" value="<%= test.results && test.results.requestedByLicense ? test.results.requestedByLicense : '' %>">
-    </div>
+    <%- include('../partials/signatory_select', { prefix: 'path', label: 'Pathologist', role: 'Pathologist', nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (test.results && test.results.requestedByName) ? test.results.requestedByName : '', existingLicense: (test.results && test.results.requestedByLicense) ? test.results.requestedByLicense : '' }) %>
 
     <div class="form-row mt-12">
       <a href="/tests/<%= test.id %>" class="button btn-secondary">Cancel</a>

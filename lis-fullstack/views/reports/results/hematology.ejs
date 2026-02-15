@@ -23,13 +23,16 @@
   .two-col{ display:flex }
   .col{ width:50%; padding:6px; box-sizing:border-box }
   .normal-small{ font-size:11px; color:#333 }
+  .flag { display:inline-block; min-width:18px; margin-left:6px; color:#d00; font-weight:700 }
   .signatures{ display:flex; justify-content:space-between; margin-top:24px }
-  .sig{ text-align:center; width:32% }
-  .sig-line{ width:70%; margin:0 auto 6px; border-top:1px solid #000; height:0 }
+  .sig{ position:relative; text-align:center; width:32%; min-height:90px }
+  .signature-overlay{ position:absolute; pointer-events:none; left:50%; transform-origin:center; }
   .sig .name{ padding-top:0; margin-bottom:6px; font-weight:700 }
   .watermark{ position:absolute; left:50%; top:44%; transform:translate(-50%,-50%); width:52%; opacity:0.06; pointer-events:none; z-index:0 }
   .report-container{ position:relative; z-index:1 }
 </style>
+
+<%- include('./_highlight') %>
 
 <div class="report-page">
   <div class="report-container">
@@ -76,62 +79,87 @@
 
     <div class="section-title">HEMATOLOGY</div>
 
+    <% function flagValue(val, min, max) {
+         if (val === undefined || val === null || String(val).trim() === '') return '';
+         const n = parseFloat(String(val).replace(/[^0-9.+-eE]/g, ''));
+         if (isNaN(n)) return '';
+         if (typeof min === 'number' && !isNaN(min) && n < min) return 'L';
+         if (typeof max === 'number' && !isNaN(max) && n > max) return 'H';
+         return '';
+       }
+    %>
+    <% var _sex = String((test && test.patient && test.patient.sex) || '').toLowerCase(); %>
+
     <table class="results-frame">
       <tr>
         <td>
           <div class="two-col">
             <div class="col">
               <table class="inner-table">
-                <tr><th style="width:60%">Result</th><th style="width:40%">Normal</th></tr>
-                <tr><td>RBC ct. (x 10^6/µL)</td><td class="normal-small"> <strong><%= test && test.results && test.results.rbc ? test.results.rbc : '' %></strong> <span class="norm-block"><div>3.8-5.8</div></span></td></tr>
+                <tr><th style="width:50%"></th><th style="width:15%">Result</th><th style="width:35%">Normal Values</th></tr>
+                <tr><td>RBC ct. (x 10^6/µL)</td><td style="text-align:center"><strong><%= test && test.results && test.results.rbc ? test.results.rbc : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.rbc,3.8,5.8) %></span></td><td class="normal-small" style="text-align:right">3.8-5.8</td></tr>
                 <tr>
                   <td>Hemoglobin (g/dL)</td>
+                  <td style="text-align:center">
+                    <div style="display:flex; flex-direction:column; align-items:center;">
+                      <div style="min-height:18px; display:flex; align-items:center; justify-content:center;">
+                        <% if (_sex === 'male') { %>
+                          <strong><%= test && test.results && test.results.hemoglobin ? test.results.hemoglobin : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.hemoglobin,130,160) %></span>
+                        <% } else { %>&nbsp;<% } %>
+                      </div>
+                      <div style="min-height:18px; display:flex; align-items:center; justify-content:center; margin-top:4px;">
+                        <% if (_sex === 'female') { %>
+                          <strong><%= test && test.results && test.results.hemoglobin ? test.results.hemoglobin : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.hemoglobin,120,140) %></span>
+                        <% } else { %>&nbsp;<% } %>
+                      </div>
+                    </div>
+                  </td>
                   <td class="normal-small">
-                    <% var _sex = String((test && test.patient && test.patient.sex) || '').toLowerCase(); %>
-                    <div style="display:flex; flex-direction:column;">
-                      <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div style="width:35%; text-align:center;"><strong><% if (_sex === 'male') { %><%= (test && test.results && test.results.hemoglobin) ? test.results.hemoglobin : '' %><% } else { %>&nbsp;<% } %></strong></div>
-                        <div style="width:65%; text-align:right; white-space:nowrap">Male&nbsp;&nbsp;130-160</div>
-                      </div>
-                      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
-                        <div style="width:35%; text-align:center;"><strong><% if (_sex === 'female') { %><%= (test && test.results && test.results.hemoglobin) ? test.results.hemoglobin : '' %><% } else { %>&nbsp;<% } %></strong></div>
-                        <div style="width:65%; text-align:right; white-space:nowrap">Female&nbsp;&nbsp;120-140</div>
-                      </div>
+                    <div style="display:flex; flex-direction:column; align-items:flex-end;">
+                      <div style="white-space:nowrap">Male&nbsp;&nbsp;130-160</div>
+                      <div style="white-space:nowrap; margin-top:4px;">Female&nbsp;&nbsp;120-140</div>
                     </div>
                   </td>
                 </tr>
                 <tr>
                   <td>Hematocrit (%)</td>
-                  <td class="normal-small">
-                    <% var _sex = String((test && test.patient && test.patient.sex) || '').toLowerCase(); %>
-                    <div style="display:flex; flex-direction:column;">
-                      <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div style="width:35%; text-align:center; font-weight:700;"><% if (_sex === 'male') { %><%= (test && test.results && test.results.hematocrit) ? test.results.hematocrit : '' %><% } else { %>&nbsp;<% } %></div>
-                        <div style="width:65%; text-align:right; white-space:nowrap">Male&nbsp;&nbsp;0.38-0.49</div>
+                  <td style="text-align:center">
+                    <div style="display:flex; flex-direction:column; align-items:center;">
+                      <div style="min-height:18px; display:flex; align-items:center; justify-content:center;">
+                        <% if (_sex === 'male') { %>
+                          <strong><%= test && test.results && test.results.hematocrit ? test.results.hematocrit : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.hematocrit,0.38,0.49) %></span>
+                        <% } else { %>&nbsp;<% } %>
                       </div>
-                      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
-                        <div style="width:35%; text-align:center; font-weight:700;"><% if (_sex === 'female') { %><%= (test && test.results && test.results.hematocrit) ? test.results.hematocrit : '' %><% } else { %>&nbsp;<% } %></div>
-                        <div style="width:65%; text-align:right; white-space:nowrap">Female&nbsp;&nbsp;0.36-0.44</div>
+                      <div style="min-height:18px; display:flex; align-items:center; justify-content:center; margin-top:4px;">
+                        <% if (_sex === 'female') { %>
+                          <strong><%= test && test.results && test.results.hematocrit ? test.results.hematocrit : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.hematocrit,0.36,0.44) %></span>
+                        <% } else { %>&nbsp;<% } %>
                       </div>
                     </div>
                   </td>
+                  <td class="normal-small">
+                    <div style="display:flex; flex-direction:column; align-items:flex-end;">
+                      <div style="white-space:nowrap">Male&nbsp;&nbsp;0.38-0.49</div>
+                      <div style="white-space:nowrap; margin-top:4px;">Female&nbsp;&nbsp;0.36-0.44</div>
+                    </div>
+                  </td>
                 </tr>
-                <tr><td>MCV (µm^3)</td><td class="normal-small"> <strong><%= test && test.results && test.results.mcv ? test.results.mcv : '' %></strong> <span class="norm-block"><div>83.0-98.0</div></span></td></tr>
-                <tr><td>MCH (pg)</td><td class="normal-small"> <strong><%= test && test.results && test.results.mch ? test.results.mch : '' %></strong> <span class="norm-block"><div>27.0-32.2</div></span></td></tr>
-                <tr><td>MCHC (g/dL)</td><td class="normal-small"> <strong><%= test && test.results && test.results.mchc ? test.results.mchc : '' %></strong> <span class="norm-block"><div>31.8-33.7</div></span></td></tr>
+                <tr><td>MCV (µm^3)</td><td style="text-align:center"><strong><%= test && test.results && test.results.mcv ? test.results.mcv : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.mcv,83,98) %></span></td><td class="normal-small" style="text-align:right">83.0-98.0</td></tr>
+                <tr><td>MCH (pg)</td><td style="text-align:center"><strong><%= test && test.results && test.results.mch ? test.results.mch : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.mch,27,32.2) %></span></td><td class="normal-small" style="text-align:right">27.0-32.2</td></tr>
+                <tr><td>MCHC (g/dL)</td><td style="text-align:center"><strong><%= test && test.results && test.results.mchc ? test.results.mchc : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.mchc,31.8,33.7) %></span></td><td class="normal-small" style="text-align:right">31.8-33.7</td></tr>
               </table>
             </div>
 
             <div class="col">
               <table class="inner-table">
-                <tr><th style="width:60%">Result</th><th style="width:40%">Normal</th></tr>
-                <tr><td>WBC ct.(x10^9/L)</td><td class="normal-small"> <strong><%= test && test.results && test.results.wbc ? test.results.wbc : '' %></strong> &nbsp;&nbsp; <span style="float:right">5.0-10.0</span></td></tr>
-                <tr><td>Neutrophils (%)</td><td class="normal-small"> <strong><%= test && test.results && test.results.neutrophils ? test.results.neutrophils : '' %></strong> &nbsp;&nbsp; <span style="float:right">43.0-76.0</span></td></tr>
-                <tr><td>Lymphocyte (%)</td><td class="normal-small"> <strong><%= test && test.results && test.results.lymphocyte ? test.results.lymphocyte : '' %></strong> &nbsp;&nbsp; <span style="float:right">17.0-48.0</span></td></tr>
-                <tr><td>Monocyte (%)</td><td class="normal-small"> <strong><%= test && test.results && test.results.monocyte ? test.results.monocyte : '' %></strong> &nbsp;&nbsp; <span style="float:right">0-10.0</span></td></tr>
-                <tr><td>Eosinophils (%)</td><td class="normal-small"> <strong><%= test && test.results && test.results.eosinophils ? test.results.eosinophils : '' %></strong> &nbsp;&nbsp; <span style="float:right">0.5-5.0</span></td></tr>
-                <tr><td>Basophils (%)</td><td class="normal-small"> <strong><%= test && test.results && test.results.basophils ? test.results.basophils : '' %></strong> &nbsp;&nbsp; <span style="float:right">0-1</span></td></tr>
-                <tr><td>Platelet ct.(x10^9/L)</td><td class="normal-small"> <strong><%= test && test.results && test.results.platelets ? test.results.platelets : '' %></strong> &nbsp;&nbsp; <span style="float:right">150-350</span></td></tr>
+                <tr><th style="width:50%"></th><th style="width:15%">Result</th><th style="width:35%">Normal Values</th></tr>
+                <tr><td>WBC ct.(x10^9/L)</td><td style="text-align:center"><strong><%= test && test.results && test.results.wbc ? test.results.wbc : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.wbc,5,10) %></span></td><td class="normal-small" style="text-align:right">5.0-10.0</td></tr>
+                <tr><td>Neutrophils (%)</td><td style="text-align:center"><strong><%= test && test.results && test.results.neutrophils ? test.results.neutrophils : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.neutrophils,43,76) %></span></td><td class="normal-small" style="text-align:right">43.0-76.0</td></tr>
+                <tr><td>Lymphocyte (%)</td><td style="text-align:center"><strong><%= test && test.results && test.results.lymphocyte ? test.results.lymphocyte : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.lymphocyte,17,48) %></span></td><td class="normal-small" style="text-align:right">17.0-48.0</td></tr>
+                <tr><td>Monocyte (%)</td><td style="text-align:center"><strong><%= test && test.results && test.results.monocyte ? test.results.monocyte : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.monocyte,0,10) %></span></td><td class="normal-small" style="text-align:right">0-10.0</td></tr>
+                <tr><td>Eosinophils (%)</td><td style="text-align:center"><strong><%= test && test.results && test.results.eosinophils ? test.results.eosinophils : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.eosinophils,0.5,5) %></span></td><td class="normal-small" style="text-align:right">0.5-5.0</td></tr>
+                <tr><td>Basophils (%)</td><td style="text-align:center"><strong><%= test && test.results && test.results.basophils ? test.results.basophils : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.basophils,0,1) %></span></td><td class="normal-small" style="text-align:right">0-1</td></tr>
+                <tr><td>Platelet ct.(x10^9/L)</td><td style="text-align:center"><strong><%= test && test.results && test.results.platelets ? test.results.platelets : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.platelets,150,350) %></span></td><td class="normal-small" style="text-align:right">150-350</td></tr>
               </table>
             </div>
           </div>
@@ -139,24 +167,57 @@
       </tr>
     </table>
 
+    <% function findSigFor(displayName){
+         if (!displayName) return null;
+         const sigs = (test && test.results && test.results.signatures) ? test.results.signatures : {};
+         for (const k in sigs){
+           const s = sigs[k];
+           if (s && s.name && String(s.name).trim() === String(displayName).trim()) return s;
+         }
+         return null;
+       }
+    %>
     <div class="signatures">
       <div class="sig">
-          <div class="sig-line"></div>
-          <div class="name"><strong><%= (test && test.results && test.results.performedByName) || (test && test.performedBy && test.performedBy.name) || '' %></strong></div>
-          <div class="normal-small"><% if (test && test.results && test.results.performedByLicense) { %><strong>Lic. No. <%= test.results.performedByLicense %></strong><% } %></div>
-          <div>Medical Technologist</div>
+        <div style="border-top:1px solid #000; height:10px; margin-bottom:6px"></div>
+        <div style="font-weight:700">
+          <strong><%= (test && test.results && test.results.performedByName) || (test && test.performedBy && test.performedBy.name) || '' %></strong>
         </div>
+        <% const _performedName = (test && test.results && test.results.performedByName) || (test && test.performedBy && test.performedBy.name) || '';
+           const _performedSig = findSigFor(_performedName);
+        %>
+        <% if (_performedSig && _performedSig.filename) { %>
+          <% const p = _performedSig.placement || { x:0, y:-56, scale:1 }; %>
+          <img src="/assets/signature/<%= _performedSig.filename %>" class="signature-overlay" style="left:50%; top:<%= p.y %>px; transform:translateX(-50%) scale(<%= p.scale %>); max-height:96px;" alt="signature" />
+        <% } %>
+        <div class="normal-small"><% if (test && test.results && test.results.performedByLicense) { %><strong>Lic. No. <%= test.results.performedByLicense %></strong><% } %></div>
+        <div>Medical Technologist</div>
+      </div>
 
       <div class="sig">
-        <div class="sig-line"></div>
-        <div class="name"><strong><%= (test && test.results && test.results.validatedByName) || '' %></strong></div>
+        <div style="border-top:1px solid #000; height:10px; margin-bottom:6px"></div>
+        <div style="font-weight:700"><strong><%= (test && test.results && test.results.validatedByName) || '' %></strong></div>
+        <% const _validatedName = (test && test.results && test.results.validatedByName) || '';
+           const _validatedSig = findSigFor(_validatedName);
+        %>
+        <% if (_validatedSig && _validatedSig.filename) { %>
+          <% const p = _validatedSig.placement || { x:0, y:-56, scale:1 }; %>
+          <img src="/assets/signature/<%= _validatedSig.filename %>" class="signature-overlay" style="left:50%; top:<%= p.y %>px; transform:translateX(-50%) scale(<%= p.scale %>); max-height:96px;" alt="signature" />
+        <% } %>
         <div class="normal-small"><% if (test && test.results && test.results.validatedByLicense) { %><strong>Lic. No. <%= test.results.validatedByLicense %></strong><% } %></div>
         <div>Validated By</div>
       </div>
 
       <div class="sig">
-        <div class="sig-line"></div>
-        <div class="name"><strong><%= (test && test.results && test.results.requestedByName) || (test && test.requestedBy && test.requestedBy.name) || '' %></strong></div>
+        <div style="border-top:1px solid #000; height:10px; margin-bottom:6px"></div>
+        <div style="font-weight:700"><strong><%= (test && test.results && test.results.requestedByName) || (test && test.requestedBy && test.requestedBy.name) || '' %></strong></div>
+        <% const _requestedName = (test && test.results && test.results.requestedByName) || (test && test.requestedBy && test.requestedBy.name) || '';
+           const _requestedSig = findSigFor(_requestedName);
+        %>
+        <% if (_requestedSig && _requestedSig.filename) { %>
+          <% const p = _requestedSig.placement || { x:0, y:-56, scale:1 }; %>
+          <img src="/assets/signature/<%= _requestedSig.filename %>" class="signature-overlay" style="left:50%; top:<%= p.y %>px; transform:translateX(-50%) scale(<%= p.scale %>); max-height:96px;" alt="signature" />
+        <% } %>
         <div class="normal-small"><% if (test && test.results && test.results.requestedByLicense) { %><strong>Lic. No. <%= test.results.requestedByLicense %></strong><% } %></div>
         <div>Pathologist</div>
       </div>
