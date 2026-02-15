@@ -4,14 +4,17 @@
   <form action="/tests" method="POST">
     <div class="form-group">
       <label>Patient</label>
-      <select name="patient" required>
-        <option value="">-- Select Patient --</option>
-        <% if (patients && patients.length) { %>
-          <% patients.forEach(p => { %>
-            <option value="<%= p.id %>" <%= (test.patient && test.patient === p.id) ? 'selected' : '' %>><%= p.firstName %> <%= p.lastName %> (<%= p.patientId %>)</option>
-          <% }) %>
-        <% } %>
-      </select>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <input id="patientSearch" type="text" placeholder="Type to search patients by name or ID..." autocomplete="off" style="padding:10px; font-size:14px;">
+        <select id="patientSelect" name="patient" required style="padding:8px; font-size:14px;">
+          <option value="">-- Select Patient --</option>
+          <% if (patients && patients.length) { %>
+            <% patients.forEach(p => { %>
+              <option value="<%= p.id %>" <%= (test.patient && test.patient === p.id) ? 'selected' : '' %>><%= p.firstName %> <%= p.lastName %> (<%= p.patientId %>)</option>
+            <% }) %>
+          <% } %>
+        </select>
+      </div>
     </div>
 
     <div class="card" style="margin-top:12px;">
@@ -78,6 +81,43 @@
 
 <script>
   document.addEventListener('DOMContentLoaded', function(){
+    // Patient search -> filter patient select options
+    (function(){
+      const input = document.getElementById('patientSearch');
+      const select = document.getElementById('patientSelect');
+      if (!input || !select) return;
+
+      function filter() {
+        const q = String(input.value || '').toLowerCase().trim();
+        let visibleCount = 0;
+        for (let i = 0; i < select.options.length; i++) {
+          const opt = select.options[i];
+          if (!opt.value) { opt.hidden = false; visibleCount++; continue; }
+          const txt = (opt.text || '').toLowerCase();
+          const match = q === '' || txt.indexOf(q) !== -1;
+          opt.hidden = !match;
+          if (match) visibleCount++;
+        }
+        // expand select to show matches when typing
+        if (q !== '' && visibleCount > 1) select.size = Math.min(8, visibleCount);
+        else select.size = 1;
+
+        // if exactly one match, auto-select it
+        if (q !== '' && visibleCount === 1) {
+          for (let i = 0; i < select.options.length; i++) {
+            const opt = select.options[i];
+            if (!opt.hidden && opt.value) { select.value = opt.value; break; }
+          }
+        }
+      }
+
+      input.addEventListener('input', filter);
+      // When the select changes, only collapse the expanded list; do NOT overwrite the typed search value.
+      select.addEventListener('change', function(){
+        select.size = 1;
+      });
+    })();
+
     document.querySelectorAll('.test-checkbox').forEach(cb => {
       const key = cb.getAttribute('data-key');
       const amt = document.querySelector('input[name="amount_' + key + '"]');
