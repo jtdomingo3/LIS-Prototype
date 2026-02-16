@@ -181,7 +181,7 @@ router.get('/new', requireAuth, canAccessPatient, (req, res) => {
         const path = require('path');
         const resultsDir = path.join(__dirname, '..', 'views', 'reports', 'results');
         const allowed = [
-          'fecalysis.ejs','esr.ejs','fecal-occult-blood.ejs','urinalysis.ejs','ct-bt.ejs','blood-typing.ejs','pregnancy-test.ejs','dengue-duo.ejs','thyroid-panel.ejs','blood-chemistry.ejs','blood-chemistry-sgpt-sgot.ejs','blood-chemistry-bun-crea.ejs','blood-chemistry-lipid-profile.ejs','blood-chemistry-electrolytes.ejs','blood-chemistry-hba1c.ejs','blood-chemistry-albumin.ejs','blood-chemistry-blood-sugar.ejs','pt-aptt.ejs','xray.ejs','ecg.ejs','hematology.ejs','serology.ejs','ultrasound-abd-kubp-hbt.ejs','echocardiography-2d.ejs','ultrasound-transvaginal.ejs','ultrasound-biophysical.ejs','ultrasound-1st-trimester-obstetrics.ejs','ultrasound-pelvic.ejs','ultrasound-pelvic-biometry.ejs','drugtest.ejs'
+          'fecalysis.ejs','esr.ejs','fecal-occult-blood.ejs','urinalysis.ejs','ct-bt.ejs','blood-typing.ejs','pregnancy-test.ejs','dengue-duo.ejs','thyroid-panel.ejs','blood-chemistry.ejs','pt-aptt.ejs','xray.ejs','ecg.ejs','hematology.ejs','serology.ejs','ultrasound-abd-kubp-hbt.ejs','echocardiography-2d.ejs','ultrasound-transvaginal.ejs','ultrasound-biophysical.ejs','ultrasound-1st-trimester-obstetrics.ejs','ultrasound-pelvic.ejs','ultrasound-pelvic-biometry.ejs','drugtest.ejs'
         ];
         try {
           const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));

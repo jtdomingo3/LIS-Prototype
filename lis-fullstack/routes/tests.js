@@ -262,13 +262,6 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       'dengue-duo.ejs',
       'thyroid-panel.ejs',
       'blood-chemistry.ejs',
-      'blood-chemistry-sgpt-sgot.ejs',
-      'blood-chemistry-bun-crea.ejs',
-      'blood-chemistry-lipid-profile.ejs',
-      'blood-chemistry-electrolytes.ejs',
-      'blood-chemistry-hba1c.ejs',
-      'blood-chemistry-albumin.ejs',
-      'blood-chemistry-blood-sugar.ejs',
       'pt-aptt.ejs',
       'xray.ejs',
       'ecg.ejs',
@@ -2103,23 +2096,18 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
       'pregnancy-test.ejs',
       'dengue-duo.ejs',
       'blood-chemistry.ejs',
-      'blood-chemistry-sgpt-sgot.ejs',
-      'blood-chemistry-bun-crea.ejs',
-      'blood-chemistry-electrolytes.ejs',
-      'blood-chemistry-hba1c.ejs',
-      'blood-chemistry-albumin.ejs',
       'pt-aptt.ejs',
       'xray.ejs',
       'ecg.ejs',
       'hematology.ejs',
       'serology.ejs',
       'ultrasound-abd-kubp-hbt.ejs',
-      'echocardiography-2d.ejs'
-      , 'ultrasound-transvaginal.ejs'
-      , 'ultrasound-biophysical.ejs'
-      , 'ultrasound-1st-trimester-obstetrics.ejs'
-      , 'drugtest.ejs'
-      , 'ultrasound-pelvic.ejs'
+      'echocardiography-2d.ejs',
+      'ultrasound-transvaginal.ejs',
+      'ultrasound-biophysical.ejs',
+      'ultrasound-1st-trimester-obstetrics.ejs',
+      'drugtest.ejs',
+      'ultrasound-pelvic.ejs'
     ];
     const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
     const staticTemplates = files.map(f => {
