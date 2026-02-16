@@ -17,6 +17,9 @@
         <label>Time Released</label>
         <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (new Date()).toTimeString().slice(0,5) %>">
       </div>
+      <div style="margin-left:auto;">
+        <button type="button" id="captureFromAnalyzer" class="button btn-outline">Capture from Analyzer</button>
+      </div>
     </div>
 
     <div class="grid-2">
@@ -57,3 +60,26 @@
     </div>
   </form>
 </div>
+
+<script>
+  (function(){
+    const btn = document.getElementById('captureFromAnalyzer');
+    if (!btn) return;
+    btn.addEventListener('click', async () => {
+      btn.disabled = true; btn.textContent = 'Capturing...';
+      try {
+        const res = await fetch(`/tests/<%= test.id %>/analyzer/capture`);
+        const json = await res.json();
+        if (json.error) { alert('Analyzer error: ' + json.error); return; }
+        const mapped = json.mapped || {};
+        // Fill inputs by name from mapped fields
+        Object.keys(mapped).forEach(k => {
+          try { const el = document.querySelector(`[name="${k}"]`); if (el) el.value = mapped[k]; } catch(e){}
+        });
+        alert('Prefilled results from analyzer (review before saving)');
+      } catch (err) {
+        alert('Failed to capture: ' + err.message);
+      } finally { btn.disabled = false; btn.textContent = 'Capture from Analyzer'; }
+    });
+  })();
+</script>

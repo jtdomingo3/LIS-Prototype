@@ -23,7 +23,10 @@ function performBackup(destDir) {
 router.get('/', requireAuth, (req, res) => {
   const featureFlags = req.app.locals.featureFlags || {};
   const backupConfig = req.app.locals.backupConfig || { enabled: false, frequency: 'daily', path: DEFAULT_BACKUP_DIR };
-  res.render('settings', { title: 'Settings', featureFlags, backupConfig });
+  // load persistent settings from data.json
+  let settings = {};
+  try { const data = global.db.read(); settings = data.settings || {}; } catch (e) { settings = {}; }
+  res.render('settings', { title: 'Settings', featureFlags, backupConfig, settings });
 });
 
 router.post('/', requireAuth, canManageUsers, (req, res) => {
@@ -41,6 +44,26 @@ router.post('/', requireAuth, canManageUsers, (req, res) => {
     const frequency = flags.backupFrequency || 'daily';
     const backupPath = flags.backupPath || DEFAULT_BACKUP_DIR;
     req.app.locals.backupConfig = { enabled: autoBackup, frequency, path: backupPath };
+
+    // Persist GEZYNE / analyzer path in app data so it's preserved across restarts
+    try {
+      const data = global.db.read();
+      data.settings = data.settings || {};
+      data.settings.gezynePath = flags.gezynePath || '';
+      global.db.write(data);
+      req.app.locals.settings = data.settings;
+    } catch (e) {
+      console.error('Failed to persist settings:', e);
+    }
+    // Ensure feature flags remain enabled by default (UI visibility shouldn't be controlled here)
+    try {
+      req.app.locals.featureFlags = req.app.locals.featureFlags || {};
+      req.app.locals.featureFlags.tests = true;
+      req.app.locals.featureFlags.reports = true;
+      req.app.locals.featureFlags.templates = true;
+      req.app.locals.featureFlags.users = true;
+      req.app.locals.featureFlags.worksheet = true;
+    } catch (e) {}
 
     // Frequency -> milliseconds
     const frequencyToMs = (f) => {

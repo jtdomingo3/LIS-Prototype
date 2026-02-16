@@ -8,9 +8,123 @@ const sseEmitter = require('../lib/sseEmitter');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
+const os = require('os');
 
 // multer for handling multipart/form-data file uploads in memory
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+
+// Analyzer mapping: analyzer ITEM codes -> form field names
+const ANALYZER_MAP = {
+  CHOL: 'cholesterol',
+  CREA: 'creatinine',
+  FBS: 'fbs',
+  HDLC: 'hdl',
+  SGPT: 'sgpt',
+  TG: 'tg',
+  UA: 'uricAcid',
+  UREA: 'bun',
+  LDL: 'ldl',
+  VLDL: 'vldl',
+  HBA1C: 'hba1c',
+  ALB: 'alb',
+  SODIUM: 'sodium',
+  POTASSIUM: 'potassium',
+  CHLORIDE: 'chloride'
+};
+
+async function loadMdbReader() {
+  try {
+    let MDBReader;
+    try {
+      const mod = require('mdb-reader');
+      MDBReader = mod && mod.default ? mod.default : mod;
+    } catch (e) {
+      const mod = await import('mdb-reader');
+      MDBReader = mod && mod.default ? mod.default : mod;
+    }
+    return MDBReader;
+  } catch (e) {
+    throw new Error('mdb-reader not available: ' + e.message);
+  }
+}
+
+// GET /tests/:id/analyzer/capture - read analyzer DB/export and return mapped results
+router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
+  try {
+    const test = await Test.findById(req.params.id);
+    if (!test) return res.status(404).json({ error: 'Test not found' });
+    const patient = test.patient ? await Patient.findById(test.patient) : null;
+
+    // Determine gezyne folder from app settings, env, or default relative path
+    const gezynePath = (req.app && req.app.locals && req.app.locals.settings && req.app.locals.settings.gezynePath)
+      ? req.app.locals.settings.gezynePath
+      : (process.env.GEZYNE_PATH || path.resolve(__dirname, '..', '..', 'new-gezyne'));
+    const mdbFile = path.join(gezynePath, 'DataBase', 'Analyser.MDB');
+    if (!fs.existsSync(mdbFile)) return res.json({ error: 'Analyzer MDB not found at ' + mdbFile });
+
+    const MDBReader = await loadMdbReader();
+    const buf = fs.readFileSync(mdbFile);
+    const reader = new MDBReader(buf);
+    const tables = reader.getTableNames();
+
+    // collect patient records matching name tokens
+    const nameTokens = [];
+    if (patient) {
+      if (patient.firstName) nameTokens.push(String(patient.firstName).toLowerCase());
+      if (patient.lastName) nameTokens.push(String(patient.lastName).toLowerCase());
+      if (patient.fullName) nameTokens.push(String(patient.fullName).toLowerCase());
+    }
+
+    const patientTables = tables.filter(t => /^PATIENT/i.test(t));
+    const matchingPatients = [];
+    for (const t of patientTables) {
+      try {
+        const table = reader.getTable(t);
+        const rows = table.getData({ start: 0, length: 500 });
+        for (const r of rows) {
+          const joined = Object.values(r).join(' ').toLowerCase();
+          if (nameTokens.length === 0 || nameTokens.every(tok => joined.includes(tok))) {
+            matchingPatients.push({ table: t, row: r });
+          }
+        }
+      } catch (e) {}
+    }
+
+    // Collect recent CHECK_RESULT* rows
+    const checkTables = tables.filter(t => /^CHECK_RESULT/i.test(t));
+    const checkRows = [];
+    for (const t of checkTables) {
+      try {
+        const table = reader.getTable(t);
+        const rows = table.getData({ start: 0, length: 1000 });
+        for (const r of rows) checkRows.push(Object.assign({ __table: t }, r));
+      } catch (e) {}
+    }
+
+    // Build mapping of latest item -> result
+    const latestByItem = {};
+    for (const r of checkRows) {
+      try {
+        const code = (r.ITEM || r.Item || r.item || '').toString().toUpperCase();
+        const val = (r.RESULT || r.Result || r.result || null);
+        if (!code) continue;
+        if (!latestByItem[code]) latestByItem[code] = { value: val, row: r };
+      } catch (e) {}
+    }
+
+    // Map to form names
+    const mapped = {};
+    for (const code of Object.keys(latestByItem)) {
+      const field = ANALYZER_MAP[code];
+      if (field) mapped[field] = latestByItem[code].value;
+    }
+
+    res.json({ patients: matchingPatients.slice(0,50), checkCount: checkRows.length, mapped });
+  } catch (err) {
+    console.error('Analyzer capture error', err);
+    res.json({ error: String(err) });
+  }
+});
 
 
 // GET /tests - List all tests

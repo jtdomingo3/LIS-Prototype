@@ -1,22 +1,11 @@
 <div class="page active">
   <div class="card">
     <h3>Settings</h3>
-    <p class="mb-20">Temporarily disable sections of the sidebar. Changes are temporary and in-memory.</p>
-
     <form method="POST" action="/settings">
-      <div class="checkbox-group">
-        <label class="checkbox-item"><input type="checkbox" name="tests" <%= featureFlags && featureFlags.tests ? 'checked' : '' %>/> Tests & Results</label>
-        <label class="checkbox-item"><input type="checkbox" name="reports" <%= featureFlags && featureFlags.reports ? 'checked' : '' %>/> Reports</label>
-        <label class="checkbox-item"><input type="checkbox" name="templates" <%= featureFlags && featureFlags.templates ? 'checked' : '' %>/> Templates</label>
-        <label class="checkbox-item"><input type="checkbox" name="worksheet" <%= featureFlags && featureFlags.worksheet ? 'checked' : '' %>/> Worksheet</label>
-        <label class="checkbox-item"><input type="checkbox" name="users" <%= featureFlags && featureFlags.users ? 'checked' : '' %>/> Users</label>
-      </div>
-
-      <hr/>
       <h4>Data Backup</h4>
-      <div class="field">
-        <label>Enable Auto Backup</label>
+      <div class="field" style="display:flex;align-items:center;gap:8px;">
         <input type="checkbox" name="autoBackup" <%= (backupConfig && backupConfig.enabled) ? 'checked' : '' %> />
+        <label style="margin:0;">Enable Auto Backup</label>
       </div>
       <div class="field">
         <label>Frequency</label>
@@ -30,6 +19,12 @@
         <label>Backup Folder</label>
         <input type="text" name="backupPath" placeholder="e.g. C:\\Users\\You\\Documents\\LIS\\backup" value="<%= (backupConfig && backupConfig.path) || '' %>" />
         <p class="note">Default: My Documents\LIS\backup</p>
+      </div>
+
+      <div class="field">
+        <label>Analyzer Data Folder</label>
+        <input type="text" name="gezynePath" placeholder="e.g. C:\\path\\to\\new-gezyne or \\10.0.0.5\shared\new-gezyne" value="<%= (settings && settings.gezynePath) ? settings.gezynePath : (process.env.GEZYNE_PATH || '') %>" />
+        <p class="note">Path to the analyzer folder containing DataBase\Analyser.MDB. Can be a local path or UNC network path.</p>
       </div>
 
       <div class="mt-20">
