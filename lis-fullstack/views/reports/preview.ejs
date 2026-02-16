@@ -13,16 +13,19 @@
     </div>
 
     <div style="flex:1; display:flex; gap:8px; align-items:center;">
-      <select id="filterPatient" style="flex:2; min-width:300px; padding:8px;">
-        <option value="">-- All Patients --</option>
-        <% if (testsForNav && testsForNav.length) {
-            const patients = Array.from(new Set(testsForNav.map(t => t.patientName || '').filter(Boolean))).sort((a,b) => a.localeCompare(b)); 
-           %>
-          <% patients.forEach(function(pn) { %>
-            <option value="<%= pn %>"><%= pn %></option>
-          <% }) %>
-        <% } %>
-      </select>
+      <div style="display:flex; flex-direction:column; gap:4px; flex:2; min-width:300px;">
+        <input id="patientSearch" type="text" placeholder="Type to search patients by name..." autocomplete="off" style="padding:8px; font-size:14px; border-radius:8px; border:1px solid #d0d7de;">
+        <select id="filterPatient" style="width:100%; padding:8px;">
+          <option value="">-- All Patients --</option>
+          <% if (testsForNav && testsForNav.length) {
+              const patients = Array.from(new Set(testsForNav.map(t => t.patientName || '').filter(Boolean))).sort((a,b) => a.localeCompare(b)); 
+             %>
+            <% patients.forEach(function(pn) { %>
+              <option value="<%= pn %>"><%= pn %></option>
+            <% }) %>
+          <% } %>
+        </select>
+      </div>
       <!-- Test type dropdown (based on templates/testType) -->
         <div style="display:flex; gap:8px; align-items:flex-start;">
           <div style="display:flex; flex-direction:column; gap:8px;">
@@ -94,6 +97,44 @@
   window.currentTestId = '<%= test.id %>';
 
   (function(){
+    // Patient search -> filter patient select options (same pattern as tests/new.ejs)
+    (function(){
+      const searchInput = document.getElementById('patientSearch');
+      const selectEl = document.getElementById('filterPatient');
+      if (!searchInput || !selectEl) return;
+
+      function filterPatientOptions() {
+        const q = String(searchInput.value || '').toLowerCase().trim();
+        let visibleCount = 0;
+        for (let i = 0; i < selectEl.options.length; i++) {
+          const opt = selectEl.options[i];
+          if (!opt.value) { opt.hidden = false; visibleCount++; continue; }
+          const txt = (opt.text || '').toLowerCase();
+          const match = q === '' || txt.indexOf(q) !== -1;
+          opt.hidden = !match;
+          if (match) visibleCount++;
+        }
+        // expand select to show matches when typing
+        if (q !== '' && visibleCount > 1) selectEl.size = Math.min(8, visibleCount);
+        else selectEl.size = 1;
+
+        // if exactly one patient match, auto-select it
+        if (q !== '' && visibleCount === 1) {
+          for (let i = 0; i < selectEl.options.length; i++) {
+            const opt = selectEl.options[i];
+            if (!opt.hidden && opt.value) {
+              selectEl.value = opt.value;
+              selectEl.dispatchEvent(new Event('change'));
+              break;
+            }
+          }
+        }
+      }
+
+      searchInput.addEventListener('input', filterPatientOptions);
+      selectEl.addEventListener('change', function(){ selectEl.size = 1; });
+    })();
+
     const tests = window.testsForNav || [];
     const patientInput = document.getElementById('filterPatient');
     const testTypeSelect = document.getElementById('filterTestType');
@@ -204,17 +245,14 @@
       // - If exactly one filtered result, navigate to it.
       // - If multiple results and the current test is among them, do NOT navigate (stay on current preview).
       // - If multiple results and current test is NOT among them, do NOT auto-navigate to avoid disruptive refresh.
-      if (!ids) return;
-      if (ids.length === 1) {
-        const only = ids[0];
-        if (only !== window.currentTestId) {
-          debounceTimer = setTimeout(() => {
-            const qs = getQueryString();
-            renderTestInPlace(only, qs);
-          }, 400);
-        }
+      if (!ids || !ids.length) return;
+      // If the current test is not in the filtered set, navigate to the first match
+      if (ids.indexOf(window.currentTestId) === -1) {
+        debounceTimer = setTimeout(() => {
+          const qs = getQueryString();
+          renderTestInPlace(ids[0], qs);
+        }, 400);
       }
-      // otherwise do nothing (keep current preview) to avoid refreshing when multiple matches
     }
     // patientInput: respond to input and change; dateFilter: change; testTypeCheckboxes: change
     [patientInput].forEach(el => el.addEventListener('input', onFilterChange));
@@ -266,6 +304,12 @@
         debounceTimer = null;
       }
       patientInput.value = '';
+      // clear patient search box
+      var psBox = document.getElementById('patientSearch');
+      if (psBox) { psBox.value = ''; }
+      // unhide all patient options
+      for (var i = 0; i < patientInput.options.length; i++) patientInput.options[i].hidden = false;
+      patientInput.size = 1;
       // clear checkboxes and select-all
       Array.from(document.querySelectorAll('.filterTestTypeCheckbox')).forEach(cb => cb.checked = false);
       try { const sa = document.getElementById('filterTestTypeSelectAll'); if (sa) sa.checked = false; } catch(e) {}
