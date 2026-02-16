@@ -55,13 +55,6 @@
         <!-- items injected here: each item contains a checkbox and a one-line label -->
       </div>
     </div>
-    <!-- Overlay used to preview a selected filtered item without expanding the list -->
-    <div id="filteredOverlay" style="display:none; position:fixed; top:6%; left:50%; transform:translateX(-50%); width:84%; height:86%; background:#fff; box-shadow:0 8px 30px rgba(0,0,0,0.2); z-index:2000; border-radius:6px; overflow:hidden;">
-      <div style="display:flex; justify-content:flex-end; padding:8px; background:#f7f7f7; border-bottom:1px solid #e6e6e6;">
-        <button id="filteredOverlayClose" class="button">Close</button>
-      </div>
-      <iframe id="filteredOverlayFrame" src="about:blank" style="width:100%; height:calc(100% - 44px); border:0;" sandbox="allow-same-origin allow-scripts"></iframe>
-    </div>
     <div style="margin-top:6px; text-align:right;">
       <span id="filteredPager" style="margin-left:12px; font-weight:600;"></span>
     </div>
@@ -259,7 +252,8 @@
         label.style.textOverflow = 'ellipsis';
 
         label.addEventListener('click', function(){
-          showFilteredOverlay(id);
+          // open in the main preview area (update iframe below)
+          renderTestInPlace(id, getQueryString());
         });
 
         row.appendChild(cb);
@@ -362,28 +356,7 @@
       });
     }
 
-    // overlay functions
-    const filteredOverlay = document.getElementById('filteredOverlay');
-    const filteredOverlayFrame = document.getElementById('filteredOverlayFrame');
-    const filteredOverlayClose = document.getElementById('filteredOverlayClose');
-
-    function showFilteredOverlay(id){
-      if (!filteredOverlay || !filteredOverlayFrame) return;
-      filteredOverlayFrame.src = '/reports/result/' + id + '?embedded=1';
-      filteredOverlay.style.display = 'block';
-      try { document.body.style.overflow = 'hidden'; } catch(e) {}
-    }
-
-    function closeFilteredOverlay(){
-      if (!filteredOverlay || !filteredOverlayFrame) return;
-      filteredOverlay.style.display = 'none';
-      filteredOverlayFrame.src = 'about:blank';
-      try { document.body.style.overflow = ''; } catch(e) {}
-    }
-
-    if (filteredOverlayClose) filteredOverlayClose.addEventListener('click', closeFilteredOverlay);
-    document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeFilteredOverlay(); });
-    if (filteredOverlay) filteredOverlay.addEventListener('click', function(ev){ if (ev.target === filteredOverlay) closeFilteredOverlay(); });
+    // clicking an item updates the main preview iframe (no floating overlay)
 
     function setUrlParams(){ const qs = getQueryString(); const newUrl = window.location.pathname + qs; history.replaceState(null, '', newUrl); }
 
