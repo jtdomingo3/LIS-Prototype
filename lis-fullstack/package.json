@@ -41,6 +41,7 @@
     "minimist": "^1.2.8",
     "multer": "^2.0.2",
     "puppeteer": "^24.35.0",
+    "sharp": "^0.34.5",
     "uuid": "^9.0.0"
   },
   "devDependencies": {

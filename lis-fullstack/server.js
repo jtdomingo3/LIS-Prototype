@@ -330,6 +330,16 @@ app.use((req, res, next) => {
   next();
 });
 
+// Pre-compute inline logo as base64 data URI so every view has it
+// (ensures logo is embedded when page is saved to desktop or used offline)
+try {
+  const _logoBuffer = fs.readFileSync(path.join(__dirname, 'assets', 'gezyne-logo.png'));
+  app.locals.inlineLogo = 'data:image/png;base64,' + _logoBuffer.toString('base64');
+} catch (e) {
+  console.warn('Could not inline logo:', e.message);
+  app.locals.inlineLogo = '/assets/gezyne-logo.png'; // fallback to relative path
+}
+
 // Feature flags (temporary toggles for UI visibility)
 app.locals.featureFlags = {
   tests: true,
