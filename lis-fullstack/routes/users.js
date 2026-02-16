@@ -165,7 +165,7 @@ const upload = multer({ storage });
 
 router.put('/profile', requireAuth, upload.single('signature'), async (req, res) => {
   try {
-    const { name, email, password, confirmPassword, licenseNumber } = req.body;
+    const { name, email, password, confirmPassword, licenseNumber, autoSignatureOption } = req.body;
     if (!name || !email) {
       req.flash('error_msg', 'Please fill all required fields');
       return res.redirect('/users/profile');
@@ -196,6 +196,20 @@ router.put('/profile', requireAuth, upload.single('signature'), async (req, res)
       update.signature = req.file.filename;
     }
 
+    // Handle autoSignatureOption: 'off', '1day', '1week', '1month', 'permanent'
+    try {
+      let autoSignature = { enabled: false, until: null };
+      if (autoSignatureOption && autoSignatureOption !== 'off') {
+        autoSignature.enabled = true;
+        const now = Date.now();
+        if (autoSignatureOption === '1day') autoSignature.until = new Date(now + 1*24*3600*1000).toISOString();
+        else if (autoSignatureOption === '1week') autoSignature.until = new Date(now + 7*24*3600*1000).toISOString();
+        else if (autoSignatureOption === '1month') autoSignature.until = new Date(now + 30*24*3600*1000).toISOString();
+        else if (autoSignatureOption === 'permanent') autoSignature.until = null;
+      }
+      update.autoSignature = autoSignature;
+    } catch (e) {}
+
     const updated = await User.findByIdAndUpdate(req.session.user.id, update, { new: true });
     if (!updated) {
       req.flash('error_msg', 'User not found');
@@ -207,6 +221,7 @@ router.put('/profile', requireAuth, upload.single('signature'), async (req, res)
     req.session.user.email = updated.email;
     req.session.user.licenseNumber = updated.licenseNumber || null;
     req.session.user.signature = updated.signature || null;
+    req.session.user.autoSignature = updated.autoSignature || { enabled:false, until:null };
 
     req.flash('success_msg', 'Profile updated successfully');
     res.redirect('/users/profile');
@@ -394,7 +409,7 @@ router.get('/profile', requireAuth, async (req, res) => {
 // PUT /profile - update current user's profile (name, email, password)
 router.put('/profile', requireAuth, async (req, res) => {
   try {
-    const { name, email, password, confirmPassword } = req.body;
+    const { name, email, password, confirmPassword, autoSignatureOption } = req.body;
     if (!name || !email) {
       req.flash('error_msg', 'Please fill all required fields');
       return res.redirect('/profile');
@@ -420,6 +435,20 @@ router.put('/profile', requireAuth, async (req, res) => {
       update.password = password;
     }
 
+    // handle autoSignatureOption
+    try {
+      let autoSignature = { enabled: false, until: null };
+      if (autoSignatureOption && autoSignatureOption !== 'off') {
+        autoSignature.enabled = true;
+        const now = Date.now();
+        if (autoSignatureOption === '1day') autoSignature.until = new Date(now + 1*24*3600*1000).toISOString();
+        else if (autoSignatureOption === '1week') autoSignature.until = new Date(now + 7*24*3600*1000).toISOString();
+        else if (autoSignatureOption === '1month') autoSignature.until = new Date(now + 30*24*3600*1000).toISOString();
+        else if (autoSignatureOption === 'permanent') autoSignature.until = null;
+      }
+      update.autoSignature = autoSignature;
+    } catch (e) {}
+
     const updated = await User.findByIdAndUpdate(req.session.user.id, update, { new: true });
     if (!updated) {
       req.flash('error_msg', 'User not found');
@@ -429,6 +458,7 @@ router.put('/profile', requireAuth, async (req, res) => {
     // Update session info
     req.session.user.name = updated.name;
     req.session.user.email = updated.email;
+    req.session.user.autoSignature = updated.autoSignature || { enabled:false, until:null };
 
     req.flash('success_msg', 'Profile updated successfully');
     res.redirect('/profile');

@@ -183,3 +183,48 @@ router.post('/:id/sign', requireAuth, async (req, res) => {
 });
 
 module.exports = router;
+
+/**
+ * Apply profile signature for a given user id to a Test if enabled and valid.
+ * Attaches to test.results.signatures and saves the test.
+ * @param {Object} testOrId - Test instance or test id
+ * @param {String} userId - user id to check
+ */
+async function applyProfileSignatureIfEnabled(testOrId, userId) {
+  try {
+    if (!userId) return false;
+    const User = require('../models/User');
+    const Test = require('../models/Test');
+    const user = await User.findById(userId);
+    if (!user) return false;
+    if (!user.signature || !user.autoSignature || !user.autoSignature.enabled) return false;
+    if (user.autoSignature.until) {
+      const until = new Date(user.autoSignature.until);
+      if (isNaN(until) || until.getTime() < Date.now()) return false;
+    }
+
+    let test = null;
+    if (typeof testOrId === 'string') test = await Test.findById(testOrId);
+    else test = testOrId;
+    if (!test) return false;
+
+    test.results = test.results || {};
+    test.results.signatures = test.results.signatures || {};
+    const uid = user.id || user._id || user.email || safeName(user.email);
+    test.results.signatures[uid] = {
+      filename: user.signature,
+      name: user.name,
+      uploadedAt: new Date().toISOString(),
+      placement: { x:0, y:-56, scale:1 }
+    };
+
+    await test.save();
+    return true;
+  } catch (err) {
+    console.warn('applyProfileSignatureIfEnabled error', err);
+    return false;
+  }
+}
+
+// attach helper to exported router so other modules can call it
+module.exports.applyProfileSignatureIfEnabled = applyProfileSignatureIfEnabled;

@@ -1927,6 +1927,28 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
     }
 
     const updated = await Test.findByIdAndUpdate(req.params.id, updateData, { new: true });
+    // Auto-apply profile signatures for any selected signatory fields (e.g., mtSelect, doctorSelect, pathSelect)
+    try {
+      const sigRoutes = require('./signatures');
+      if (sigRoutes && typeof sigRoutes.applyProfileSignatureIfEnabled === 'function') {
+        // scan form fields for keys that end with 'Select' (signatory_select uses '<prefix>Select')
+        for (const key of Object.keys(req.body || {})) {
+          try {
+            if (/Select$/.test(key)) {
+              const uid = req.body[key];
+              if (uid && uid !== '__manual__') {
+                await sigRoutes.applyProfileSignatureIfEnabled(updated, uid);
+              }
+            }
+          } catch (e) { console.warn('Auto-apply signature iteration error for key', key, e); }
+        }
+        // backward-compat: also try performedBy if present
+        if (performedBy) {
+          try { await sigRoutes.applyProfileSignatureIfEnabled(updated, performedBy); } catch (e) {}
+        }
+      }
+    } catch (e) { console.warn('Auto-apply signature failed', e); }
+
     try {
       console.log('Saved results for test', req.params.id, 'results keys:', updated && updated.results ? Object.keys(updated.results) : null);
     } catch (e) {}
