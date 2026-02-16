@@ -45,6 +45,16 @@ router.post('/', requireAuth, canManageUsers, (req, res) => {
     const backupPath = flags.backupPath || DEFAULT_BACKUP_DIR;
     req.app.locals.backupConfig = { enabled: autoBackup, frequency, path: backupPath };
 
+    // Persist backup config into data.json so it survives restarts
+    try {
+      const data = global.db.read();
+      data.backupConfig = { enabled: autoBackup, frequency, path: backupPath };
+      global.db.write(data);
+      req.app.locals.backupConfig = data.backupConfig;
+    } catch (e) {
+      console.error('Failed to persist backup config:', e);
+    }
+
     // Persist GEZYNE / analyzer path in app data so it's preserved across restarts
     try {
       const data = global.db.read();
