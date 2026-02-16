@@ -164,12 +164,15 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
     // Count unique patients per area (deduplicate by patientCode) so dashboard shows patient counts
     const counts = DISPLAY_AREAS.map(a => ({ name: a, count: 0, _seen: new Set() }));
     if (Array.isArray(allTests)) {
+      // Prefetch patients once to avoid repeated synchronous disk reads inside the loop
+      const allPatients = global.db.getPatients() || [];
+      const patientsById = Object.fromEntries((allPatients || []).map(p => [p.id, p]));
       for (const t of allTests) {
         const areaForTest = mapAreaForTest(t);
         // only count areas that are part of DISPLAY_AREAS
         if (!DISPLAY_AREAS.includes(areaForTest)) continue;
         if (!t.patient) continue;
-        const patient = await Patient.findById(t.patient);
+        const patient = patientsById[t.patient];
         if (!patient || !patient.patientCode) continue;
         const idx = counts.findIndex(c => c.name === areaForTest);
         if (idx >= 0) counts[idx]._seen.add(String(patient.patientCode));
@@ -216,12 +219,15 @@ router.get('/assigned', allowKioskOrAuth, async (req, res) => {
     }
 
     if (Array.isArray(allTests)) {
+      // Prefetch patients once to avoid repeated disk reads
+      const allPatients = global.db.getPatients() || [];
+      const patientsById = Object.fromEntries((allPatients || []).map(p => [p.id, p]));
       for (const t of allTests) {
         if (!t.status) continue;
         const area = mapAreaForTest(t);
         if (!DISPLAY_AREAS.includes(area)) continue;
         if (!t.patient) continue;
-        const patient = await Patient.findById(t.patient);
+        const patient = patientsById[t.patient];
         if (!patient || !patient.patientCode) continue;
         areaAssignments[area].push({ testId: t.testId, patientCode: patient.patientCode, name: `${patient.firstName} ${patient.lastName}`, assignedDoctor: t.assignedDoctorName || null });
       }
@@ -344,12 +350,15 @@ router.get('/assigned-data', allowKioskOrAuth, async (req, res) => {
       for (const area of DISPLAY_AREAS) areaAssignments[area] = [];
 
     if (Array.isArray(allTests)) {
+      // Prefetch patients once to avoid repeated disk reads
+      const allPatients = global.db.getPatients() || [];
+      const patientsById = Object.fromEntries((allPatients || []).map(p => [p.id, p]));
       for (const t of allTests) {
         if (!t.status) continue;
         const area = mapAreaForTest(t);
           if (!DISPLAY_AREAS.includes(area)) continue;
         if (!t.patient) continue;
-        const patient = await Patient.findById(t.patient);
+        const patient = patientsById[t.patient];
         if (!patient || !patient.patientCode) continue;
         areaAssignments[area].push({ testId: t.testId, patientCode: patient.patientCode, assignedDoctor: t.assignedDoctorName || null });
       }
@@ -431,15 +440,18 @@ router.get('/area/:name', requireAuth, canAccessPatient, async (req, res) => {
     }) : [];
 
     // Populate patient info for each test and prepare specimens list for the area
-    const populated = await Promise.all(tests.map(async (t) => {
-      const patient = t.patient ? await Patient.findById(t.patient) : null;
-      const patientObj = patient ? patient.toJSON() : null;
+    // Prefetch patients once to avoid repeated synchronous disk reads
+    const allPatients = global.db.getPatients() || [];
+    const patientsById = Object.fromEntries((allPatients || []).map(p => [p.id, p]));
+    const populated = tests.map((t) => {
+      const patientRaw = t.patient ? patientsById[t.patient] : null;
+      const patientObj = patientRaw ? patientRaw : null;
       return {
         ...t,
         patient: patientObj,
         patientEncoded: patientObj && patientObj.patientCode ? true : false
       };
-    }));
+    });
 
     // Aggregate tests by patient so each area shows one row per patient (tests listed inside)
     let aggregated = null;
@@ -544,9 +556,9 @@ router.get('/area/:name', requireAuth, canAccessPatient, async (req, res) => {
       .filter(t => t.specimenNumbers && t.specimenNumbers[areaName])
       .map(t => ({ testId: t.testId, specimen: t.specimenNumbers[areaName], patient: t.patient }));
 
-    // Get list of encoded patients for quick assign dropdown
-    const allPatients = await Patient.find({});
-    const encodedPatients = Array.isArray(allPatients) ? allPatients.filter(p => p.patientCode).map(p => p.toJSON()) : [];
+    // Get list of encoded patients for quick assign dropdown (use in-memory list)
+    const allPatientsRaw = global.db.getPatients() || [];
+    const encodedPatients = Array.isArray(allPatientsRaw) ? allPatientsRaw.filter(p => p.patientCode).map(p => p) : [];
 
     // Load available doctors for assignment dropdown
     const users = await User.find({ role: 'Doctor' });
