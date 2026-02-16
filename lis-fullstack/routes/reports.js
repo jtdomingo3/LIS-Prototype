@@ -116,7 +116,7 @@ router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) =
     const patientMap = {};
     (Array.isArray(allPatients) ? allPatients : []).forEach(p => {
       const pid = p.id || p._id;
-      if (pid) patientMap[pid] = `${p.firstName || ''} ${p.lastName || ''}`.trim();
+      if (pid) patientMap[pid] = `${p.lastName || ''}, ${p.firstName || ''}`.replace(/^,\s*/, '').replace(/,\s*$/, '').trim();
     });
 
     const testsForNav = completedSorted.map(t => ({

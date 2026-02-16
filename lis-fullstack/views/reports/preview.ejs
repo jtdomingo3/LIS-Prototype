@@ -16,7 +16,7 @@
       <select id="filterPatient" style="flex:2; min-width:300px; padding:8px;">
         <option value="">-- All Patients --</option>
         <% if (testsForNav && testsForNav.length) {
-            const patients = Array.from(new Set(testsForNav.map(t => t.patientName || '').filter(Boolean))); 
+            const patients = Array.from(new Set(testsForNav.map(t => t.patientName || '').filter(Boolean))).sort((a,b) => a.localeCompare(b)); 
            %>
           <% patients.forEach(function(pn) { %>
             <option value="<%= pn %>"><%= pn %></option>
