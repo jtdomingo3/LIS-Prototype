@@ -140,6 +140,16 @@
         <td style="width:50%; vertical-align:top;">
           <table style="width:100%; border-collapse:collapse;">
             <tr>
+              <td class="label">Ketones</td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.ketones) %></td>
+              <td style="text-align:center">Negative</td>
+            </tr>
+            <tr>
+              <td class="label">Bilirubin</td>
+              <td style="text-align:center"><%- hl(test && test.results && test.results.bilirubin) %></td>
+              <td style="text-align:center">Negative</td>
+            </tr>
+            <tr>
               <th style="text-align:left; padding:6px; border:1px solid #000">MICROSCOPIC ANALYSIS</th>
               <th style="text-align:center; padding:6px; border:1px solid #000; width:20%">Results</th>
               <th style="text-align:center; padding:6px; border:1px solid #000; width:20%">Reference Interval</th>
