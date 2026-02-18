@@ -1,11 +1,30 @@
-const { app, Tray, Menu, nativeImage, shell, dialog } = require('electron');
+const { app, Tray, Menu, nativeImage, shell, dialog, BrowserWindow, ipcMain } = require('electron');
 const { exec, spawn } = require('child_process');
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
 const http = require('http');
 
 const SERVICE_NAME = 'GezyneLIS';
 const PORT = process.env.PORT || 3000;
-const URL = `http://localhost:${PORT}`;
+
+function getLocalIp() {
+  // prefer explicit HOST env var if provided
+  if (process.env.HOST) return process.env.HOST;
+  const nets = os.networkInterfaces();
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name]) {
+      if (net.family === 'IPv4' && !net.internal) {
+        // skip docker/virtual adapters with local-only addresses like 169.254
+        if (net.address && !net.address.startsWith('169.254')) return net.address;
+      }
+    }
+  }
+  return 'localhost';
+}
+
+const HOST = getLocalIp();
+const URL = `http://${HOST}:${PORT}`;
 const PROJECT_ROOT = path.join(__dirname, '..');
 const SERVER_SCRIPT = path.join(PROJECT_ROOT, 'server.js');
 
@@ -13,6 +32,8 @@ let serviceInstalled = false;
 let serverChild = null;
 
 let tray = null;
+let mainWindow = null;
+let logBuffer = [];
 
 function runServiceCommand(cmd, cb) {
   // Use sc to control Windows service
@@ -20,6 +41,36 @@ function runServiceCommand(cmd, cb) {
     if (err) return cb(err, stdout || stderr);
     cb(null, stdout);
   });
+}
+
+function createMainWindow() {
+  if (mainWindow) return mainWindow;
+  mainWindow = new BrowserWindow({
+    width: 800,
+    height: 560,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false
+    }
+  });
+  // set window icon to project build icon to match app
+  try {
+    const winIcon = path.join(PROJECT_ROOT, 'build', 'icon.ico');
+    if (fs.existsSync(winIcon)) mainWindow.setIcon(winIcon);
+  } catch (e) {}
+  mainWindow.loadFile(path.join(__dirname, 'ui.html'));
+  mainWindow.on('close', (e) => {
+    // hide instead of close
+    if (!app.isQuitting) {
+      e.preventDefault();
+      mainWindow.hide();
+    }
+  });
+  // send recent logs on ready
+  mainWindow.webContents.on('did-finish-load', () => {
+    mainWindow.webContents.send('log-update', logBuffer.join('\n'));
+  });
+  return mainWindow;
 }
 
 function checkServiceExists(cb) {
@@ -38,9 +89,11 @@ function startServerDirect(cb) {
   if (serverChild) return cb && cb(null, 'already running');
   try {
     // Spawn using system `node` executable; requires node on PATH or bundled EXE alternative
-    serverChild = spawn('node', [SERVER_SCRIPT], { cwd: PROJECT_ROOT, detached: false, stdio: 'ignore' });
-    serverChild.unref();
-    serverChild.on('exit', () => { serverChild = null; });
+    // capture stdout/stderr for log streaming
+    serverChild = spawn('node', [SERVER_SCRIPT], { cwd: PROJECT_ROOT, detached: false, stdio: ['ignore', 'pipe', 'pipe'] });
+    serverChild.on('exit', () => { serverChild = null; appendLog('[server] exited'); });
+    if (serverChild.stdout) serverChild.stdout.on('data', (d) => appendLog(d.toString()));
+    if (serverChild.stderr) serverChild.stderr.on('data', (d) => appendLog('[ERR] ' + d.toString()));
     cb && cb(null, `started pid=${serverChild.pid}`);
   } catch (e) {
     serverChild = null;
@@ -59,9 +112,37 @@ function stopServerDirect(cb) {
   }
 }
 
+function appendLog(line) {
+  const ts = new Date().toISOString();
+  const out = `[${ts}] ${String(line).trim()}`;
+  logBuffer.push(out);
+  if (logBuffer.length > 2000) logBuffer = logBuffer.slice(logBuffer.length - 2000);
+  try { if (mainWindow && mainWindow.webContents) mainWindow.webContents.send('log-update', logBuffer.join('\n')); } catch (e) {}
+}
+
+// If pm2/pm2 logs exist, tail them and append
+function watchPm2Logs() {
+  const outLog = path.join(PROJECT_ROOT, 'logs', 'pm2-out.log');
+  const errLog = path.join(PROJECT_ROOT, 'logs', 'pm2-error.log');
+  [outLog, errLog].forEach((p) => {
+    if (!fs.existsSync(p)) return;
+    try { const txt = fs.readFileSync(p, 'utf8'); if (txt) appendLog(`[pm2:${path.basename(p)}] ` + txt.split('\n').slice(-200).join('\n')); } catch (e) {}
+    fs.watchFile(p, { interval: 1000 }, (curr, prev) => {
+      if (curr.size > prev.size) {
+        try {
+          const s = fs.createReadStream(p, { start: prev.size, end: curr.size });
+          let buf = '';
+          s.on('data', (d) => { buf += d.toString(); });
+          s.on('end', () => { appendLog(`[pm2:${path.basename(p)}] ` + buf); });
+        } catch (e) {}
+      }
+    });
+  });
+}
+
 function checkServerUp() {
   return new Promise((resolve) => {
-    const req = http.request({ method: 'HEAD', host: '127.0.0.1', port: PORT, path: '/', timeout: 2000 }, (res) => {
+    const req = http.request({ method: 'HEAD', host: HOST, port: PORT, path: '/', timeout: 2000 }, (res) => {
       resolve(res.statusCode >= 200 && res.statusCode < 500);
     });
     req.on('error', () => resolve(false));
@@ -72,6 +153,7 @@ function checkServerUp() {
 
 function buildContextMenu(isUp) {
   const items = [];
+  items.push({ label: 'Open UI', click: () => { createMainWindow(); mainWindow.show(); } });
   items.push({ label: isUp ? 'Open LIS (browser)' : 'Open LIS (server not ready)', click: () => shell.openExternal(URL) });
   items.push({ type: 'separator' });
 
@@ -101,15 +183,23 @@ function createTray() {
   if (icon.isEmpty()) icon = nativeImage.createFromNamedImage('shell32_3', [16,16]);
   tray = new Tray(icon);
   tray.setToolTip('Gezyne LIS');
+  // double-click the tray icon to open the UI
+  tray.on('double-click', () => {
+    try {
+      const w = createMainWindow();
+      w.show();
+      w.focus();
+    } catch (e) { console.warn('Failed to open UI on tray double-click', e); }
+  });
 
   // initial menu
   // detect service presence then set menu
-  checkServiceExists((err, exists) => { serviceInstalled = !!exists; checkServerUp().then(isUp => tray.setContextMenu(buildContextMenu(isUp))); });
+  checkServiceExists((err, exists) => { serviceInstalled = !!exists; if (serviceInstalled) watchPm2Logs(); checkServerUp().then(isUp => tray.setContextMenu(buildContextMenu(isUp))); });
 
   // update every 5s
   setInterval(async () => {
     // re-check service presence periodically in case installer registered it
-    checkServiceExists((err, exists) => { serviceInstalled = !!exists; });
+    checkServiceExists((err, exists) => { if (exists && !serviceInstalled) { serviceInstalled = true; watchPm2Logs(); } else serviceInstalled = !!exists; });
     const isUp = await checkServerUp();
     tray.setContextMenu(buildContextMenu(isUp));
     try { tray.setTitle(isUp ? 'LIS: Up' : 'LIS: Down'); } catch (e) {}
@@ -118,6 +208,37 @@ function createTray() {
 
 app.whenReady().then(() => {
   createTray();
+  // open UI on start
+  createMainWindow();
+  mainWindow.show();
+});
+
+// IPC handlers from renderer
+ipcMain.on('start-server', (e) => {
+  if (serviceInstalled) return runServiceCommand(`sc start ${SERVICE_NAME}`, (err) => { if (err) e.sender.send('log-update', `Start service failed: ${String(err)}`); else e.sender.send('log-update', 'Service start requested'); });
+  startServerDirect((err, out) => { if (err) e.sender.send('log-update', `Start failed: ${String(err)}`); else e.sender.send('log-update', out); });
+});
+
+ipcMain.on('stop-server', (e) => {
+  if (serviceInstalled) return runServiceCommand(`sc stop ${SERVICE_NAME}`, (err) => { if (err) e.sender.send('log-update', `Stop service failed: ${String(err)}`); else e.sender.send('log-update', 'Service stop requested'); });
+  stopServerDirect((err, out) => { if (err) e.sender.send('log-update', `Stop failed: ${String(err)}`); else e.sender.send('log-update', out); });
+});
+
+ipcMain.on('restart-server', (e) => {
+  if (serviceInstalled) return runServiceCommand(`sc stop ${SERVICE_NAME} && sc start ${SERVICE_NAME}`, (err) => { if (err) e.sender.send('log-update', `Restart failed: ${String(err)}`); else e.sender.send('log-update', 'Service restart requested'); });
+  stopServerDirect(() => startServerDirect((err, out) => { if (err) e.sender.send('log-update', `Restart failed: ${String(err)}`); else e.sender.send('log-update', out); }));
+});
+
+ipcMain.on('open-lis', (e) => {
+  shell.openExternal(URL);
+});
+
+ipcMain.on('hide-window', (e) => {
+  if (mainWindow) mainWindow.hide();
+});
+
+ipcMain.on('request-logs', (e) => {
+  e.sender.send('log-update', logBuffer.join('\n'));
 });
 
 app.on('window-all-closed', (e) => {

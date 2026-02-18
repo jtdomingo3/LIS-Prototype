@@ -1,0 +1,28 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Gezyne LIS - Tray UI</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img id="logo" src="../build/icon.ico" alt="Gezyne" />
+      <h2>Gezyne LIS - Controller</h2>
+    </div>
+    <div class="controls">
+      <button id="start">Start</button>
+      <button id="stop">Stop</button>
+      <button id="restart">Restart</button>
+      <button id="open">Open LIS</button>
+      <button id="hide">Hide to Tray</button>
+    </div>
+
+    <h3>Server Logs</h3>
+    <pre id="logs" class="logs">Starting...</pre>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
