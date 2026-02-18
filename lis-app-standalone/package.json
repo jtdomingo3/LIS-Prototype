@@ -44,7 +44,8 @@
       "perMachine": false,
       "allowElevation": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createStartMenuShortcut": true,
+      "license": "build/TERMS.txt"
     }
   },
   "author": "Gezyne Clinical Laboratory",
