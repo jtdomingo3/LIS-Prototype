@@ -437,6 +437,8 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       if (/fecal|fecalysis|stool/.test(s)) return 'FA';
       if (/urinal|urine|urinalysis/.test(s)) return 'UA';
       if (/pregnan|pregnancy/.test(s)) return 'PT';
+      // Prothrombin / APTT (coagulation) tests should use their own APT prefix
+      if (/\b(?:pt|prothrombin|pt-aptt|ptaptt|aptt)\b/.test(s)) return 'APT';
       // Specific clinical tests -> unique prefixes
       if (/blood\s*typing|blood-typing|bloodtyping/.test(s)) return 'BT';
       if (/hematology|hemato|cbc/.test(s)) return 'HM';
@@ -444,7 +446,8 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       if (/\besr\b|erythrocyte/.test(s)) return 'ESR';
       if (/dengue/.test(s)) return 'DG';
       if (/(ct[-_\s]*&?\s*bt|ct[-_\s]*bt|ct[-_\s]*and[-_\s]*bt|bleeding|clotting)/.test(s)) return 'CTBT';
-      if (/blood|chemistry|pt|aptt|bun|crea|sgpt|sgot|lipid|hba1c|albumin|blood\s*sugar|chemistry/.test(s)) return 'BC';
+      // Blood chemistry group (exclude PT/APTT which are coagulation tests)
+      if (/(?:blood|chemistry|bun|crea|sgpt|sgot|lipid|hba1c|albumin|blood\s*sugar)/.test(s)) return 'BC';
       return 'T';
     };
 
