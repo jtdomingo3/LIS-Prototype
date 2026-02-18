@@ -346,7 +346,22 @@
         ids = allFiltered;
       }
       const url = '/reports/print-multiple?ids=' + encodeURIComponent(ids.join(','));
-      window.open(url, '_blank');
+      // If running inside the Electron standalone app, request the main
+      // process to open the print preview (generates PDF and opens system viewer).
+      if (window.lisApp && typeof window.lisApp.printPreview === 'function') {
+        // Ensure we pass an absolute URL; the main process needs a full origin.
+        let fullUrl = (url && url[0] === '/') ? (window.location.origin + url) : url;
+        // Tell the server to suppress any automatic `window.print()` when
+        // rendering inside the hidden source window — we open the generated
+        // PDF ourselves via the system viewer.
+        if (fullUrl && fullUrl.indexOf('suppressPrint=1') === -1) {
+          fullUrl += (fullUrl.indexOf('?') === -1) ? '?suppressPrint=1' : '&suppressPrint=1';
+        }
+        window.lisApp.printPreview(fullUrl);
+      } else {
+        // Fallback for browser/server mode
+        window.open(url, '_blank');
+      }
     });
 
     if (filteredSelectAll) {

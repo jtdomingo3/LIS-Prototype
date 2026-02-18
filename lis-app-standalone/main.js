@@ -383,8 +383,7 @@ function openPrintPreviewWindow(url) {
   }
   openPrintPreviewWindow._busy = true;
   console.log('[Print] opening print preview for:', url);
-
-  // 1. Create a hidden "source" window that loads the report page
+  // Create a hidden "source" window that loads the report page and prints to PDF
   const sourceWin = new BrowserWindow({
     width: 800,
     height: 1100,
@@ -400,11 +399,17 @@ function openPrintPreviewWindow(url) {
 
   sourceWin.loadURL(url);
 
-  // Suppress window.print() as EARLY as possible — the report templates
-  // call setTimeout(window.print, 300).  dom-ready fires before did-finish-load.
+  // Suppress window.print() as early as possible — templates sometimes call it.
   sourceWin.webContents.on('dom-ready', () => {
     sourceWin.webContents.executeJavaScript('window.print = function(){}; void 0;').catch(() => {});
   });
+
+  // Safety timer: if PDF generation stalls, release the busy guard and close the source window
+  const stallTimer = setTimeout(() => {
+    console.error('[Print] PDF generation stalled — forcing cleanup');
+    try { if (sourceWin && !sourceWin.isDestroyed()) sourceWin.close(); } catch {}
+    openPrintPreviewWindow._busy = false;
+  }, 30000);
 
   sourceWin.webContents.on('did-finish-load', async () => {
     // Double-suppress in case dom-ready handler didn't win the race
@@ -422,48 +427,32 @@ function openPrintPreviewWindow(url) {
 
       sourceWin.close();
 
-      // 2. Save PDF to a temp file
+      // Save PDF to a temp file
       const tmpDir = path.join(userDataPath, 'temp-pdfs');
       if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
-      const pdfPath = path.join(tmpDir, `preview-${Date.now()}.pdf`);
+      const pdfPath = path.join(tmpDir, `report-${Date.now()}.pdf`);
       fs.writeFileSync(pdfPath, pdfBuffer);
 
-      // 3. Open PDF in a viewer window
-      const previewWin = new BrowserWindow({
-        width: 900,
-        height: 1050,
-        title: 'Print Preview — Gezyne LIS',
-        icon: appIcon || undefined,
-        autoHideMenuBar: true,
-        webPreferences: {
-          preload: path.join(__dirname, 'preload-print.js'),
-          nodeIntegration: false,
-          contextIsolation: true,
-          partition: 'persist:lis',
-        },
-      });
+      // Open the PDF in the system default viewer so users get a native preview + print UI
+      const openRes = await shell.openPath(pdfPath);
+      if (openRes) {
+        console.error('[Print] shell.openPath returned error:', openRes);
+      }
 
-      // Load the custom print preview HTML — renders PDF pages as canvases via pdf.js
-      previewWin.loadFile(path.join(__dirname, 'renderer', 'print-preview.html'), {
-        query: { pdf: pdfPath },
-      });
-
-      // Clean up temp PDF after a delay when the preview window closes
-      // (delay because the system PDF viewer may still be reading it)
-      previewWin.on('closed', () => {
-        setTimeout(() => {
-          try { fs.unlinkSync(pdfPath); } catch { /* already cleaned or still in use */ }
-        }, 30000);
-      });
+      // Schedule cleanup of the temporary file after a delay (allow viewer to read it)
+      setTimeout(() => {
+        try { fs.unlinkSync(pdfPath); } catch { /* ignore */ }
+      }, 120000);
     } catch (err) {
       console.error('[Print] PDF generation failed:', err);
-      sourceWin.close();
+      try { sourceWin.close(); } catch {}
       // Fallback: show the system print dialog on the main page
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.print();
       }
     }
 
+    clearTimeout(stallTimer);
     openPrintPreviewWindow._busy = false;
   });
 
@@ -472,6 +461,7 @@ function openPrintPreviewWindow(url) {
     console.error('[Print] source window failed to load');
     try { sourceWin.close(); } catch {}
     openPrintPreviewWindow._busy = false;
+    try { clearTimeout(stallTimer); } catch(e) {}
   });
 }
 
@@ -504,6 +494,21 @@ ipcMain.handle('save-pdf', async (_e, { sourcePath }) => {
   if (!result.canceled && result.filePath) {
     fs.copyFileSync(sourcePath, result.filePath);
     return { success: true, path: result.filePath };
+  }
+  return { success: false };
+});
+
+/* ── IPC: open the PDF in the OS default viewer (gives full preview + native print dialog) ── */
+ipcMain.handle('open-pdf', async (_e, { filePath }) => {
+  try {
+    if (filePath && fs.existsSync(filePath)) {
+      // shell.openPath resolves with an empty string on success, or error text on failure
+      const res = await shell.openPath(filePath);
+      if (!res) return { success: true };
+      console.error('[Print] shell.openPath error:', res);
+    }
+  } catch (err) {
+    console.error('[Print] open-pdf failed:', err);
   }
   return { success: false };
 });

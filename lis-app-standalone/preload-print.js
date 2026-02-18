@@ -17,4 +17,18 @@ contextBridge.exposeInMainWorld('lisAppPrint', {
    *  We must use IPC because sandboxed preloads cannot require('fs'). */
   readPdfFile: (filePath) => ipcRenderer.invoke('read-pdf-file', { filePath }),
   savePdf:     (sourcePath) => ipcRenderer.invoke('save-pdf', { sourcePath }),
+  // Open the PDF with the system default PDF viewer (provides full preview + printer UI)
+  openPdf:     (filePath) => ipcRenderer.invoke('open-pdf', { filePath }),
 });
+
+// Prevent page scripts from calling window.print() and opening the
+// Electron native print dialog. This preload runs before any page script,
+// so overriding `print` here reliably suppresses in-page print triggers.
+try {
+  if (typeof globalThis !== 'undefined') {
+    globalThis.print = function() { /* suppressed by preload */ };
+  }
+  if (typeof window !== 'undefined') {
+    window.print = function() { /* suppressed by preload */ };
+  }
+} catch (e) { /* ignore if environment disallows */ }

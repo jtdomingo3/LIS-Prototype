@@ -337,13 +337,25 @@ router.get('/print/:testId', requireAuth, canAccessPatient, async (req, res) => 
         });
       }
 
+      // If the caller requested suppression of automatic in-page printing
+      // (used by the standalone app), strip inline print calls from the
+      // rendered HTML so they cannot trigger the Electron print dialog.
+      if (req.query && req.query.suppressPrint) {
+        try {
+          renderedHtml = String(renderedHtml)
+            .replace(/setTimeout\s*\(\s*(?:function\s*\(\)\s*\{\s*window\.print\s*\(\s*\)\s*;?\s*\}|window\.print)\s*,\s*\d+\s*\)\s*;?/g, '')
+            .replace(/window\.print\s*\(\s*\)\s*;?/g, '');
+        } catch (e) { /* ignore sanitize errors */ }
+      }
+
       return res.render('reports/print', {
-        title: 'Print Report',
-        test: populatedTest,
-        currentDate: new Date().toLocaleDateString(),
-        renderedResultHtml: renderedHtml,
-        layout: 'print'
-      });
+                title: 'Print Report',
+                test: populatedTest,
+                currentDate: new Date().toLocaleDateString(),
+                renderedResultHtml: renderedHtml,
+                layout: 'print',
+               suppressPrint: !!req.query.suppressPrint
+            });
     });
 
   } catch (error) {
@@ -401,7 +413,16 @@ router.get('/print-multiple', requireAuth, canAccessPatient, async (req, res) =>
             resolve(html);
           });
         });
-        renderedParts.push(html);
+        // If suppressPrint was requested, remove inline print triggers from each part
+        let sanitized = html;
+        if (req.query && req.query.suppressPrint) {
+          try {
+            sanitized = String(html)
+              .replace(/setTimeout\s*\(\s*(?:function\s*\(\)\s*\{\s*window\.print\s*\(\s*\)\s*;?\s*\}|window\.print)\s*,\s*\d+\s*\)\s*;?/g, '')
+              .replace(/window\.print\s*\(\s*\)\s*;?/g, '');
+          } catch (e) { /* ignore */ }
+        }
+        renderedParts.push(sanitized);
       } catch (renderErr) {
         console.error('Failed to render template for test', t.id || t._id, renderErr && renderErr.message);
         logReportError(renderErr, `render-multiple ${t.id || t._id}`);
@@ -411,7 +432,7 @@ router.get('/print-multiple', requireAuth, canAccessPatient, async (req, res) =>
 
     // Join each rendered report with a page-break
     const concatenated = renderedParts.join('\n<div style="page-break-after:always;"></div>\n');
-    return res.render('reports/print', { title: 'Print Reports', renderedResultHtml: concatenated, layout: false });
+    return res.render('reports/print', { title: 'Print Reports', renderedResultHtml: concatenated, layout: false, suppressPrint: !!req.query.suppressPrint });
 
   } catch (err) {
     console.error('Print multiple error:', err);
