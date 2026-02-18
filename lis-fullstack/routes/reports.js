@@ -32,6 +32,32 @@ function getInlineLogo() {
   return _cachedInlineLogo;
 }
 
+// Flatten nested results object into dot-notated flat map
+function flattenResults(obj, prefix = '') {
+  const out = {};
+  try {
+    if (obj == null) return out;
+    if (typeof obj !== 'object' || Array.isArray(obj)) {
+      out[prefix || 'results'] = obj;
+      return out;
+    }
+    for (const k of Object.keys(obj)) {
+      const v = obj[k];
+      const key = prefix ? (prefix + '.' + k) : k;
+      if (v != null && typeof v === 'object' && !Array.isArray(v)) {
+        const nested = flattenResults(v, key);
+        Object.assign(out, nested);
+      } else {
+        out[key] = v;
+      }
+    }
+  } catch (e) {
+    // fallback: stringify
+    out[prefix || 'results'] = String(obj);
+  }
+  return out;
+}
+
 // uses centralized logger in lib/reportLogger.js
 
 // GET /reports - Reports page
@@ -533,22 +559,24 @@ router.post('/worksheet/download', requireAuth, canAccessPatient, async (req, re
     // sort in-memory by testDate ascending
     testsRaw = (testsRaw || []).sort((a, b) => new Date(a.testDate || a.createdAt) - new Date(b.testDate || b.createdAt));
 
-    // collect rows and dynamic result keys
+    // collect rows and dynamic flattened result keys
     const rows = [];
     const resultKeys = new Set();
     for (const t of testsRaw) {
       const p = t.patient ? await Patient.findById(t.patient) : null;
       const requestedBy = t.requestedBy ? await User.findById(t.requestedBy) : null;
       const performedBy = t.performedBy ? await User.findById(t.performedBy) : null;
-      const resultsObj = (t.results && typeof t.results === 'object') ? t.results : (t.results ? { results: String(t.results) } : {});
-      Object.keys(resultsObj).forEach(k => resultKeys.add(k));
+      const resultsObjRaw = (t.results && typeof t.results === 'object') ? t.results : (t.results ? { results: String(t.results) } : {});
+      const flatResults = flattenResults(resultsObjRaw);
+      Object.keys(flatResults).forEach(k => resultKeys.add(k));
       const isRequestedByMedical = requestedBy && (requestedBy.role === 'Radiologist' || requestedBy.role === 'Doctor' || requestedBy.role === 'Pathologist');
       rows.push({
         testId: t.testId || (t.id || t._id) || '',
         testType: t.testType || t.template || '',
         testDate: t.testDate ? new Date(t.testDate) : null,
         patient: p ? p.toJSON() : null,
-        resultsObj,
+        resultsObj: resultsObjRaw,
+        flatResults,
         requestedBy: isRequestedByMedical ? { name: requestedBy.name } : (t.requestedByName ? { name: t.requestedByName } : null),
         performedBy: performedBy ? { name: performedBy.name, license: performedBy.license || null } : (t.performedByName ? { name: t.performedByName, license: t.performedByLicense || null } : null)
       });
@@ -584,7 +612,11 @@ router.post('/worksheet/download', requireAuth, canAccessPatient, async (req, re
         r.performedBy ? r.performedBy.license || '' : '',
         r.requestedBy ? r.requestedBy.name : ''
       ];
-      const resultVals = resultCols.map(k => (r.resultsObj && typeof r.resultsObj[k] !== 'undefined') ? r.resultsObj[k] : '');
+      const resultVals = resultCols.map(k => {
+        if (r.flatResults && typeof r.flatResults[k] !== 'undefined') return r.flatResults[k];
+        if (r.resultsObj && typeof r.resultsObj[k] !== 'undefined') return r.resultsObj[k];
+        return '';
+      });
       const rowVals = base.concat(resultVals).map(escapeCsvCell).join(',');
       lines.push(rowVals);
     }
@@ -726,14 +758,15 @@ router.post('/worksheet/preview', requireAuth, canAccessPatient, async (req, res
     }
     testsRaw = (testsRaw || []).sort((a, b) => new Date(a.testDate || a.createdAt) - new Date(b.testDate || b.createdAt));
 
-    // build preview rows (minimal patient info + date/time + performedBy + results object)
+    // build preview rows (minimal patient info + date/time + performedBy + flattened results)
     const previewRows = [];
     const resultKeys = new Set();
     for (const t of testsRaw) {
       const p = t.patient ? await Patient.findById(t.patient) : null;
       const performedBy = t.performedBy ? await User.findById(t.performedBy) : null;
-      const resultsObj = (t.results && typeof t.results === 'object') ? t.results : (t.results ? { results: String(t.results) } : {});
-      Object.keys(resultsObj).forEach(k => resultKeys.add(k));
+      const resultsObjRaw = (t.results && typeof t.results === 'object') ? t.results : (t.results ? { results: String(t.results) } : {});
+      const flatResults = flattenResults(resultsObjRaw);
+      Object.keys(flatResults).forEach(k => resultKeys.add(k));
       previewRows.push({
         testId: t.testId || t.id || t._id || '',
         testType: t.testType || t.template || '',
@@ -743,7 +776,8 @@ router.post('/worksheet/preview', requireAuth, canAccessPatient, async (req, res
         firstName: p ? (p.firstName || '') : '',
         lastName: p ? (p.lastName || '') : '',
         signatory: performedBy ? (performedBy.name || '') : (t.performedByName || ''),
-        resultsObj
+        resultsObj: resultsObjRaw,
+        flatResults
       });
     }
 

@@ -123,7 +123,7 @@
               const baseVals = [r.testId,r.testType,r.date,r.time,r.patientId,r.firstName,r.lastName,r.signatory];
               baseVals.forEach(v => { const td = document.createElement('td'); td.textContent = v || ''; td.style.padding='6px'; td.style.borderBottom='1px solid #f1f1f1'; tr.appendChild(td); });
               // result columns
-              resultCols.forEach(k => { const td = document.createElement('td'); td.textContent = (r.resultsObj && typeof r.resultsObj[k] !== 'undefined') ? r.resultsObj[k] : ''; td.style.padding='6px'; td.style.borderBottom='1px solid #f1f1f1'; tr.appendChild(td); });
+              resultCols.forEach(k => { const td = document.createElement('td'); const v = (r.flatResults && typeof r.flatResults[k] !== 'undefined') ? r.flatResults[k] : ((r.resultsObj && typeof r.resultsObj[k] !== 'undefined') ? r.resultsObj[k] : ''); td.textContent = v || ''; td.style.padding='6px'; td.style.borderBottom='1px solid #f1f1f1'; tr.appendChild(td); });
               previewBody.appendChild(tr);
             });
             previewCount.textContent = json.count || rows.length || 0;
