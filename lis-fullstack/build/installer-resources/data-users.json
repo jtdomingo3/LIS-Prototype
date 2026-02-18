@@ -1,12 +1,6 @@
-[
-  {
-    "id": "25fc4222-be90-41f1-90d3-4b386094ae49",
-    "name": "Admin User",
-    "email": "admin@lab.com",
-    "password": "$2a$12$AlN29oHiezfBggE7VTFv7uq2tsA5c1Nrak2c0Yiay3cuVnkHvI0yq",
-    "role": "Admin",
-    "status": "Active",
-    "createdAt": "2026-02-18T09:39:41.774Z",
-    "lastLogin": null
-  }
-]
+{
+  "v": 1,
+  "iv": "2haybtbimRyNCSI0",
+  "tag": "J7pjyf6I4qKNcpXfC7gPvA==",
+  "data": "iJwmQ/vEe0FePyNYqJAGG0HqilhWETthR9o1BgCev1pJZ7NZg86S/2pCuHVk8LFu1vLYdgBOG/8J9AkG+LoOBo3z9qzPuN3enQlZE3WL1nznQX4dBUjYAhXojdnPuMzohsMoxJ00tQslnL4lw0VuJMdjKwsU1Ea+8yS5LNOvUF/pQ8tFCctwT7RX2nmpHVI5pStSKRYUbMiXPUW7/tpz3khOrHM9cHF+rjk63sZHtHn3C49LI8fLKPXeLqjJ88KTUBZYRnWXMPVT3vaY8GPDPBvI78mIAYqVfit+e5AwUZfvHRmxhI89PeIHcg2EXS6Zy2Mrnf9ksqQ9bJ1pXHG3NO7GO8pDYSj/j9J21wysYnPPSkOTVhz8TcYpgfAY1MX68It9b1byiBwm8L9BDamOIHkKqdK1"
+}
