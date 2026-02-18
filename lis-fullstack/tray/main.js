@@ -37,8 +37,11 @@ let tray = null;
 let mainWindow = null;
 let logBuffer = [];
 
-// Ensure proper taskbar grouping on Windows
-try { app.setAppUserModelId && app.setAppUserModelId('com.gezyne.lis-server'); } catch (e) {}
+// Ensure proper taskbar grouping on Windows and set a clear app name
+try {
+  app.setAppUserModelId && app.setAppUserModelId('com.gezyne.lis-server');
+  try { app.name = 'Gezyne LIS Server'; } catch (e) {}
+} catch (e) {}
 
 function runServiceCommand(cmd, cb) {
   // Use sc to control Windows service
@@ -61,6 +64,7 @@ function createMainWindow() {
   mainWindow = new BrowserWindow({
     width: 800,
     height: 560,
+    title: 'Gezyne LIS Server',
     icon: winIcon || undefined,
     webPreferences: {
       nodeIntegration: true,
@@ -230,7 +234,7 @@ function createTray() {
   if (!icon || icon.isEmpty()) icon = nativeImage.createFromPath(assetsIcon);
   if (!icon || icon.isEmpty()) icon = nativeImage.createFromNamedImage('shell32_3', [16,16]);
   tray = new Tray(icon);
-  tray.setToolTip('Gezyne LIS');
+  tray.setToolTip('Gezyne LIS Server');
   // double-click the tray icon to open the UI
   tray.on('double-click', () => {
     try {
