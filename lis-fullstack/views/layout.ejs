@@ -853,8 +853,9 @@
                                         </div>
                 </div>
             </div>
+            <% } %>
 
-            <!-- Alert Messages -->
+            <!-- Alert Messages (render for both guests and authenticated users) -->
             <% if (typeof success_msg !== 'undefined' && success_msg) { %>
             <div class="alert alert-success active"><%= success_msg %></div>
             <% } %>
@@ -863,7 +864,6 @@
             <% } %>
             <% if (typeof info !== 'undefined' && info) { %>
             <div class="alert alert-info active"><%= info %></div>
-            <% } %>
             <% } %>
 
             <!-- Page Content -->
