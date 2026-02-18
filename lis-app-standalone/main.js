@@ -62,6 +62,27 @@ async function createWindow() {
     mainWindow.webContents.openDevTools({ mode: 'detach' });
   }
 
+  // Track and handle main-window renderer crashes: attempt one reload,
+  // then open the server URL in the external browser and quit the app.
+  if (!mainWindow._crashCount) mainWindow._crashCount = 0;
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    console.error('[Main] main render-process-gone:', details && details.reason, details);
+    try {
+      const prev = mainWindow._crashCount || 0;
+      mainWindow._crashCount = prev + 1;
+      if (prev < 1) {
+        console.log('[Main] attempting single reload of main window after crash');
+        try { if (!mainWindow.isDestroyed()) mainWindow.reload(); } catch (e) {}
+        return;
+      }
+      console.warn('[Main] main renderer crashed repeatedly; opening externally and quitting');
+      try { shell.openExternal(config.SERVER_URL); } catch (e) {}
+      try { app.quit(); } catch (e) {}
+    } catch (e) { console.error('[Main] error handling main render-process-gone:', e && e.message); }
+  });
+  mainWindow.on('unresponsive', () => { console.error('[Main] main window became unresponsive'); });
+  mainWindow.webContents.on('crashed', () => { console.error('[Main] main renderer crashed'); });
+
   // services
   pageCache = new PageCache(cacheDir);
   operationQueue = new OperationQueue(dataDir);
@@ -303,6 +324,26 @@ function openChildWindow(url) {
     child.loadURL(url).catch(() => {});
     child.once('ready-to-show', () => { try { child.show(); } catch {} });
     try { if (process && process.argv && process.argv.includes('--dev')) child.webContents.openDevTools({ mode: 'detach' }); } catch (e) {}
+    // Track child renderer crashes for this URL: attempt a reload once, then open externally and close.
+    if (!openChildWindow._crashCounts) openChildWindow._crashCounts = new Map();
+    child.webContents.on('render-process-gone', (_event, details) => {
+      console.error('[Main] child render-process-gone:', details && details.reason, details);
+      try {
+        const key = url;
+        const prev = openChildWindow._crashCounts.get(key) || 0;
+        openChildWindow._crashCounts.set(key, prev + 1);
+        if (prev < 1) {
+          console.log('[Main] attempting single reload of child window after crash');
+          try { if (!child.isDestroyed()) child.reload(); } catch (e) {}
+          return;
+        }
+        console.warn('[Main] child crashed repeatedly; opening externally and closing child');
+        try { shell.openExternal(key); } catch (e) {}
+        try { if (!child.isDestroyed()) child.close(); } catch (e) {}
+      } catch (e) { console.error('[Main] error handling child render-process-gone:', e && e.message); }
+    });
+    child.on('unresponsive', () => { console.error('[Main] child window became unresponsive'); });
+    child.webContents.on('crashed', () => { console.error('[Main] child renderer crashed'); });
     child.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
       console.error('[Main] child window failed to load:', errorCode, errorDescription, validatedURL);
       try {
