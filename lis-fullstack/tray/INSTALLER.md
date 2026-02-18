@@ -5,6 +5,7 @@ This document explains how to produce a Windows NSIS installer for **Gezyne LIS 
 ## Overview
 
 We package two parts:
+
 - Server: a single packaged EXE (created via `pkg`) and its runtime assets under `../dist`.
 - Tray: an Electron tray app that launches/controls the server, built and packaged with `electron-builder` (NSIS target).
 
@@ -20,6 +21,7 @@ The tray's `electron-builder` config must include server `../dist` as `extraReso
 - `makensis` (included with electron-builder NSIS runtime on CI; locally ensure you have NSIS available if needed)
 
 ## Key files in repo
+
 - `lis-fullstack/scripts/make-dist-data.js` — generates `build/installer-resources/data-users.json` (admin-only) and `data.json`.
 - `lis-fullstack/seed.js` — seeder used by server (should be configured to respect installer-provided data when present).
 - `lis-fullstack/tray/scripts/generate-icon.js` — builds `build/icon.ico` from a PNG source.
@@ -45,6 +47,7 @@ node scripts/make-dist-data.js
 # or via package.json script:
 npm run prepare-dist-data
 ```
+
 This creates `build/installer-resources/data-users.json` with admin credentials and an empty `data.json`.
 
 3. Generate icon for tray
@@ -53,6 +56,7 @@ This creates `build/installer-resources/data-users.json` with admin credentials 
 cd lis-fullstack/tray
 npm run generate-icon
 ```
+
 This writes `tray/build/icon.ico` (and other build assets). Confirm the file exists:
 
 ```powershell
@@ -146,20 +150,21 @@ This copies the builder's `resources/build` folder into the installed app's `res
 ## Common issues & fixes
 
 - Missing `icon.ico` in installed resources
+
   - Confirm `tray/build/icon.ico` existed before running `npm run dist:win`.
   - Use `extraResources` to copy the `build` folder (``{ from: "build", to: "build", filter: ["**/*"] }``).
   - Optionally add NSIS section to copy files during install.
-
 - NSIS makensis errors
+
   - Use nsDialogs constructs — avoid runtime `${If}` macros unsupported by the embedded makensis. Test `makensis` locally to debug syntax issues.
-
 - pkg warnings about native modules
+
   - `pkg` cannot embed large native-subtree directories (e.g., puppeteer/.local-chromium). Ship those directories next to the EXE in `../dist` or exclude their functionality.
-
 - In-app header icon broken
-  - Web `<img>` doesn't reliably read `.ico`. Use `ipcMain.handle('get-app-icon')` to provide a PNG data URL (via `nativeImage.toPNG()`/`toDataURL()`) and set it in renderer.
 
+  - Web `<img>` doesn't reliably read `.ico`. Use `ipcMain.handle('get-app-icon')` to provide a PNG data URL (via `nativeImage.toPNG()`/`toDataURL()`) and set it in renderer.
 - Logs not showing in installed environment
+
   - PM2 may run as a different user or have different `PM2_HOME`. Use `pm2 jlist` and tail `pm_out_log_path`/`pm_err_log_path`. Also check project-local `logs/` folder.
 
 ## Signing and distribution
@@ -205,11 +210,3 @@ Get-ChildItem "$env:LOCALAPPDATA\Programs\Gezyne LIS Server\resources\build" -Re
 2. Run `npm run dist:win` and watch logs for `extraResources` copy messages.
 3. Inspect `dist/win-unpacked/resources/build` — if `icon.ico` missing, electron-builder didn't include it; re-check `extraResources.from` paths (they are relative to `tray` package working directory at build time).
 4. As a last resort, add an NSIS copy section (`installer.nsh`) to copy `$EXEDIR\resources\build\icon.ico` to `$INSTDIR\resources\build\icon.ico` on install.
-
----
-
-If you want, I can now:
-- Run a local build and verify `dist/win-unpacked\resources\build\icon.ico` exists, or
-- Add the NSIS install-time copy snippet to `tray/build/installer.nsh` so the installer guarantees `icon.ico` is present after installation.
-
-Which action should I take next?
