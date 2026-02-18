@@ -45,6 +45,7 @@
     '  <span id="lis-status-text">Connecting…</span>',
     '  <span class="lis-pending-badge" id="lis-badge" style="display:none"></span>',
     '  <button class="lis-sync-btn" id="lis-sync-btn" style="display:none">Sync Now</button>',
+    '  <button class="lis-refresh-btn" id="lis-refresh-btn" title="Refresh">⟲</button>',
     '</div>',
   ].join('\n');
   document.body.appendChild(bar);
@@ -53,6 +54,7 @@
   const text     = document.getElementById('lis-status-text');
   const badge    = document.getElementById('lis-badge');
   const syncBtn  = document.getElementById('lis-sync-btn');
+  const refreshBtn = document.getElementById('lis-refresh-btn');
 
   /* ==============================================================
    *  Toast helper
@@ -136,4 +138,11 @@
       syncBtn.textContent = 'Sync Now';
     });
   });
+
+  // Refresh button — reloads the current page (useful in standalone app)
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', function () {
+      try { location.reload(); } catch (e) { console.error('[LIS] refresh failed', e); }
+    });
+  }
 })();
