@@ -175,22 +175,67 @@ function appendLog(line) {
 
 // If pm2/pm2 logs exist, tail them and append
 function watchPm2Logs() {
-  const outLog = path.join(PROJECT_ROOT, 'logs', 'pm2-out.log');
-  const errLog = path.join(PROJECT_ROOT, 'logs', 'pm2-error.log');
-  [outLog, errLog].forEach((p) => {
-    if (!fs.existsSync(p)) return;
-    try { const txt = fs.readFileSync(p, 'utf8'); if (txt) appendLog(`[pm2:${path.basename(p)}] ` + txt.split('\n').slice(-200).join('\n')); } catch (e) {}
-    fs.watchFile(p, { interval: 1000 }, (curr, prev) => {
-      if (curr.size > prev.size) {
+  const watched = new Set();
+
+  function tailFile(p) {
+    if (!p || watched.has(p)) return;
+    watched.add(p);
+    try {
+      if (!fs.existsSync(p)) return;
+      const txt = fs.readFileSync(p, 'utf8');
+      if (txt) appendLog(`[pm2:${path.basename(p)}] ` + txt.split('\n').slice(-200).join('\n'));
+    } catch (e) {}
+    try {
+      fs.watchFile(p, { interval: 1000 }, (curr, prev) => {
+        if (curr.size > prev.size) {
+          try {
+            const s = fs.createReadStream(p, { start: prev.size, end: curr.size });
+            let buf = '';
+            s.on('data', (d) => { buf += d.toString(); });
+            s.on('end', () => { appendLog(`[pm2:${path.basename(p)}] ` + buf); });
+          } catch (e) {}
+        }
+      });
+    } catch (e) {}
+  }
+
+  if (pm2Available) {
+    // Try to locate pm2-managed process log paths using `pm2 jlist`
+    exec('pm2 jlist', { cwd: PROJECT_ROOT }, (err, stdout) => {
+      if (!err && stdout) {
         try {
-          const s = fs.createReadStream(p, { start: prev.size, end: curr.size });
-          let buf = '';
-          s.on('data', (d) => { buf += d.toString(); });
-          s.on('end', () => { appendLog(`[pm2:${path.basename(p)}] ` + buf); });
+          const list = JSON.parse(stdout);
+          for (const proc of list) {
+            const env = proc.pm2_env || proc.pm2_env;
+            if (!env) continue;
+            const name = env.name || '';
+            // match expected process name used by ecosystem (lis-app)
+            if (name && name.toLowerCase().includes('lis-app')) {
+              tailFile(env.pm_out_log_path);
+              tailFile(env.pm_err_log_path);
+            }
+          }
         } catch (e) {}
       }
+
+      // Fallbacks: project-local logs and default pm2 home logs
+      tailFile(path.join(PROJECT_ROOT, 'logs', 'pm2-out.log'));
+      tailFile(path.join(PROJECT_ROOT, 'logs', 'pm2-error.log'));
+      try {
+        const pm2Home = process.env.PM2_HOME || path.join(os.homedir(), '.pm2', 'logs');
+        if (fs.existsSync(pm2Home) && fs.lstatSync(pm2Home).isDirectory()) {
+          const files = fs.readdirSync(pm2Home);
+          for (const f of files) {
+            if (f.toLowerCase().includes('lis-app') && f.toLowerCase().endsWith('.log')) tailFile(path.join(pm2Home, f));
+          }
+        }
+      } catch (e) {}
     });
-  });
+  } else {
+    // No pm2 available; watch project-local logs
+    tailFile(path.join(PROJECT_ROOT, 'logs', 'pm2-out.log'));
+    tailFile(path.join(PROJECT_ROOT, 'logs', 'pm2-error.log'));
+  }
 }
 
 function checkServerUp() {
