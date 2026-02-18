@@ -37,6 +37,9 @@ let tray = null;
 let mainWindow = null;
 let logBuffer = [];
 
+// Ensure proper taskbar grouping on Windows
+try { app.setAppUserModelId && app.setAppUserModelId('com.gezyne.lis-server'); } catch (e) {}
+
 function runServiceCommand(cmd, cb) {
   // Use sc to control Windows service
   exec(cmd, (err, stdout, stderr) => {
@@ -54,19 +57,18 @@ function detectPm2(cb) {
 
 function createMainWindow() {
   if (mainWindow) return mainWindow;
+  const winIcon = findAppIcon();
   mainWindow = new BrowserWindow({
     width: 800,
     height: 560,
+    icon: winIcon || undefined,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false
     }
   });
-  // set window icon to project build icon to match app
-  try {
-    const winIcon = findAppIcon();
-    if (winIcon) mainWindow.setIcon(winIcon);
-  } catch (e) {}
+  // also ensure icon is set after creation
+  try { if (winIcon) mainWindow.setIcon(winIcon); } catch (e) {}
   mainWindow.loadFile(path.join(__dirname, 'ui.html'));
   mainWindow.on('close', (e) => {
     // hide instead of close
@@ -221,12 +223,10 @@ function buildContextMenu(isUp) {
 
 function createTray() {
   // Prefer a bundled tray icon if present. Use the .ico in build to avoid pixelation.
-  // Prefer a bundled tray icon if present. Use the .ico in build to avoid pixelation.
-  const buildIco = findAppIcon();
+  const nativeIcon = findAppIcon();
   const localIcon = path.join(__dirname, 'icon.png');
   const assetsIcon = path.join(__dirname, '..', 'assets', 'gezyne-logo.png');
-  let icon = nativeImage.createFromPath(buildIco || '');
-  if (!icon || icon.isEmpty()) icon = nativeImage.createFromPath(localIcon);
+  let icon = nativeIcon || nativeImage.createFromPath(localIcon);
   if (!icon || icon.isEmpty()) icon = nativeImage.createFromPath(assetsIcon);
   if (!icon || icon.isEmpty()) icon = nativeImage.createFromNamedImage('shell32_3', [16,16]);
   tray = new Tray(icon);
@@ -260,14 +260,25 @@ function createTray() {
 // Return first existing icon path across common dev/packaged locations
 function findAppIcon() {
   const candidates = [
+    path.join(process.resourcesPath || '', 'build', 'icon.ico'),
+    path.join(process.resourcesPath || '', 'icon.ico'),
+    path.join(process.resourcesPath || '', 'app', 'build', 'icon.ico'),
     path.join(__dirname, '..', 'build', 'icon.ico'),           // dev: tray/build/icon.ico
     path.join(__dirname, 'build', 'icon.ico'),                 // alt: tray/build/icon.ico when executed from other cwd
-    path.join(process.resourcesPath || '', 'app', 'build', 'icon.ico'), // packaged inside asar unpack
-    path.join(process.resourcesPath || '', 'build', 'icon.ico'),
-    path.join(PROJECT_ROOT, 'build', 'icon.ico')
+    path.join(PROJECT_ROOT, 'build', 'icon.ico'),
+    path.join(__dirname, '..', 'assets', 'gezyne-logo.png')
   ];
   for (const p of candidates) {
-    try { if (p && fs.existsSync(p)) return p; } catch (e) {}
+    try {
+      if (p && fs.existsSync(p)) {
+        try {
+          const img = nativeImage.createFromPath(p);
+          if (img && !img.isEmpty()) return img;
+        } catch (e) {
+          // fallthrough to continue searching
+        }
+      }
+    } catch (e) {}
   }
   return null;
 }
@@ -353,6 +364,20 @@ ipcMain.on('exit-app', (e) => {
 
 ipcMain.on('request-logs', (e) => {
   e.sender.send('log-update', logBuffer.join('\n'));
+});
+
+// Provide app icon as data URL to renderer so UI img tags can display it reliably
+ipcMain.handle('get-app-icon', async () => {
+  try {
+    const img = findAppIcon();
+    if (!img) return null;
+    // If findAppIcon returned a path string (older fallback), ensure nativeImage
+    const native = typeof img === 'string' ? nativeImage.createFromPath(img) : img;
+    if (!native || native.isEmpty()) return null;
+    return native.toDataURL();
+  } catch (e) {
+    return null;
+  }
 });
 
 ipcMain.handle('save-logs', async () => {

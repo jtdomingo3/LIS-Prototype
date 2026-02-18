@@ -18,8 +18,8 @@
   "devDependencies": {
     "electron": "^28.1.0",
     "electron-builder": "^24.9.1",
-    "png-to-ico": "^3.0.0",
-    "sharp": "^0.32.5"
+    "png-to-ico": "^3.0.1",
+    "sharp": "^0.32.6"
   },
   "build": {
     "appId": "com.gezyne.lis-standalone",
@@ -34,7 +34,9 @@
       "!node_modules/.cache/**"
     ],
     "win": {
-      "target": ["nsis"],
+      "target": [
+        "nsis"
+      ],
       "icon": "build/icon.ico"
     },
     "nsis": {

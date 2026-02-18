@@ -37,3 +37,13 @@ ipcRenderer.on('server-address', (event, data) => {
   if (data && data.host && data.port) el.textContent = `Server: http://${data.host}:${data.port}`;
   else el.textContent = 'Server: --';
 });
+
+// request the app icon from main and set the header image
+ipcRenderer.invoke('get-app-icon').then((dataUrl) => {
+  try {
+    if (dataUrl) {
+      const img = document.getElementById('logo');
+      if (img) img.src = dataUrl;
+    }
+  } catch (e) {}
+}).catch(() => {});

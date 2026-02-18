@@ -1,12 +1,12 @@
 [
   {
-    "id": "4aef4c58-f5a5-4ae4-bbf9-9b265324d678",
+    "id": "25fc4222-be90-41f1-90d3-4b386094ae49",
     "name": "Admin User",
     "email": "admin@lab.com",
-    "password": "$2a$12$tZlWahl3lRFHIAB851KXEu91ksf.DgsS8ak5AXOyQopXUcxnQ64SG",
+    "password": "$2a$12$AlN29oHiezfBggE7VTFv7uq2tsA5c1Nrak2c0Yiay3cuVnkHvI0yq",
     "role": "Admin",
     "status": "Active",
-    "createdAt": "2026-02-18T08:38:09.501Z",
+    "createdAt": "2026-02-18T09:39:41.774Z",
     "lastLogin": null
   }
 ]
