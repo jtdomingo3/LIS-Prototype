@@ -1,0 +1,77 @@
+{
+  "name": "lis-tray",
+  "version": "1.0.0",
+  "description": "Tray launcher for Gezyne LIS: open browser, control service",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "generate-icon": "node ./scripts/generate-icon.js",
+    "build": "electron-builder",
+    "dist:win": "npm run generate-icon && electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "^28.1.0",
+    "electron-builder": "^26.7.0",
+    "png-to-ico": "^3.0.0",
+    "sharp": "^0.32.5"
+  },
+  "build": {
+    "appId": "com.gezyne.lis-server",
+    "productName": "Gezyne LIS Server",
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!dist/**",
+      "!node_modules/.cache/**"
+    ],
+    "extraResources": [
+      {
+        "from": "../dist",
+        "to": "server",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "../build/installer-resources",
+        "to": "installer-resources",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "build",
+        "to": "build",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "../ecosystem.config.js",
+        "to": ".",
+        "filter": ["ecosystem.config.js"]
+      }
+    ],
+    "asarUnpack": [
+      "build/icon.ico"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "license": "build/TERMS.txt",
+      "oneClick": false,
+      "perMachine": true,
+      "allowElevation": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "include": "build/installer.nsh"
+    }
+  }
+}

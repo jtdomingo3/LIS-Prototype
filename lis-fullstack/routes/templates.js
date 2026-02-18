@@ -58,13 +58,6 @@ async function getStaticResultTemplates() {
       'blood-typing.ejs',
       'dengue-duo.ejs',
       'blood-chemistry.ejs',
-      'blood-chemistry-sgpt-sgot.ejs',
-      'blood-chemistry-bun-crea.ejs',
-      'blood-chemistry-lipid-profile.ejs',
-      'blood-chemistry-electrolytes.ejs',
-      'blood-chemistry-hba1c.ejs',
-      'blood-chemistry-albumin.ejs',
-      'blood-chemistry-blood-sugar.ejs',
       'thyroid-panel.ejs',
       'pregnancy-test.ejs',
       'pt-aptt.ejs',
@@ -73,13 +66,13 @@ async function getStaticResultTemplates() {
       'hematology.ejs',
       'serology.ejs',
       'ultrasound-abd-kubp-hbt.ejs',
-      'echocardiography-2d.ejs'
-      , 'ultrasound-transvaginal.ejs'
-      , 'ultrasound-biophysical.ejs'
-      , 'ultrasound-1st-trimester-obstetrics.ejs'
-        , 'ultrasound-pelvic.ejs'
-        , 'ultrasound-pelvic-biometry.ejs'
-        , 'drugtest.ejs'
+      'echocardiography-2d.ejs',
+      'ultrasound-transvaginal.ejs',
+      'ultrasound-biophysical.ejs',
+      'ultrasound-1st-trimester-obstetrics.ejs',
+      'ultrasound-pelvic.ejs',
+      'ultrasound-pelvic-biometry.ejs',
+      'drugtest.ejs'
     ];
     const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
     return files.map(f => {

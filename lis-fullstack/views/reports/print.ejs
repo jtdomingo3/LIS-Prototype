@@ -67,8 +67,14 @@
           });
         }
       } catch (e) { console.error('Signature injection error', e); }
-      // Print after we injected signatures
-      try { window.print(); } catch (e) {}
+      // Print after we injected signatures — unless the server asked us
+      // to suppress automatic printing (used by the standalone app).
+      try {
+        var suppress = <%= (typeof suppressPrint !== 'undefined' && suppressPrint) ? 'true' : 'false' %>;
+        if (!suppress) {
+          window.print();
+        }
+      } catch (e) {}
     })();
   </script>
 </body>

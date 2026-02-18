@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Gezyne LIS — Settings</title>
+  <style>
+    body{font-family:Segoe UI,Arial;margin:18px;color:#111}
+    label{display:block;margin-top:12px;font-weight:600}
+    input{width:100%;padding:8px;margin-top:6px;border:1px solid #ccc;border-radius:6px}
+    .row{display:flex;gap:8px;margin-top:18px}
+    button{padding:8px 12px;border-radius:6px;border:none;cursor:pointer}
+    .btn-save{background:#10b981;color:#fff}
+    .btn-close{background:#ef4444;color:#fff}
+    p.note{color:#666;font-size:13px;margin-top:8px}
+  </style>
+</head>
+<body>
+  <h2>Standalone Settings</h2>
+  <div>
+    <label for="serverUrl">Server URL</label>
+    <input id="serverUrl" placeholder="http://your-server:3000" />
+    <p class="note">Change the remote LIS server address. Leave blank to use built-in default.</p>
+
+    <label for="printerName">Local Thermal Printer Name</label>
+    <input id="printerName" placeholder="Printer name (optional)" />
+    <p class="note">When set, thermal-print calls will include this printer name so the server can target the local printer.</p>
+
+    <div class="row">
+      <button class="btn-save" id="saveBtn">Save</button>
+      <button class="btn-close" id="closeBtn">Close</button>
+    </div>
+  </div>
+
+  <script src="settings.js"></script>
+</body>
+</html>

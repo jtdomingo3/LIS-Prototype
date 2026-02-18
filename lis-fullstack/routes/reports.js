@@ -9,25 +9,53 @@ const path = require('path');
 const pdf = require('html-pdf');
 const os = require('os');
 const ExcelJS = require('exceljs');
-let puppeteer;
-try {
-  puppeteer = require('puppeteer');
-} catch (e) {
-  console.warn('Puppeteer not installed; PDF rendering will use html-pdf fallback.');
-}
 const { requireAuth, canAccessPatient } = require('../middleware/auth');
 const { logReportError } = require('../lib/reportLogger');
+const reportGenerator = require('../lib/reportGenerator');
+const { getResultTemplate } = require('../lib/templateResolver');
 
-// Helper to inline logo as base64 data URI for reliable PDF rendering
+// user reports directory (pre-generated PDFs written here)
+const userReportsDir = reportGenerator.reportsDir;
+
+// Helper to inline logo as base64 data URI for reliable PDF rendering (cached)
+let _cachedInlineLogo;
 function getInlineLogo() {
+  if (typeof _cachedInlineLogo !== 'undefined') return _cachedInlineLogo;
   try {
     const p = path.join(__dirname, '..', 'assets', 'gezyne-logo.png');
     const buf = fs.readFileSync(p);
-    return 'data:image/png;base64,' + buf.toString('base64');
+    _cachedInlineLogo = 'data:image/png;base64,' + buf.toString('base64');
   } catch (err) {
     console.warn('Inline logo read failed:', err && err.message);
-    return null;
+    _cachedInlineLogo = null;
   }
+  return _cachedInlineLogo;
+}
+
+// Flatten nested results object into dot-notated flat map
+function flattenResults(obj, prefix = '') {
+  const out = {};
+  try {
+    if (obj == null) return out;
+    if (typeof obj !== 'object' || Array.isArray(obj)) {
+      out[prefix || 'results'] = obj;
+      return out;
+    }
+    for (const k of Object.keys(obj)) {
+      const v = obj[k];
+      const key = prefix ? (prefix + '.' + k) : k;
+      if (v != null && typeof v === 'object' && !Array.isArray(v)) {
+        const nested = flattenResults(v, key);
+        Object.assign(out, nested);
+      } else {
+        out[key] = v;
+      }
+    }
+  } catch (e) {
+    // fallback: stringify
+    out[prefix || 'results'] = String(obj);
+  }
+  return out;
 }
 
 // uses centralized logger in lib/reportLogger.js
@@ -35,56 +63,34 @@ function getInlineLogo() {
 // GET /reports - Reports page
 router.get('/', requireAuth, canAccessPatient, async (req, res) => {
   try {
-    // Get all completed or released tests for report generation
+    // Find the most recent completed/released test and redirect to its preview
     const allTests = await Test.find({});
-    const completedTests = Array.isArray(allTests) ? allTests.filter(t => t && (t.status === 'Completed' || t.status === 'Released')) : [];
-    
-    // Manually populate patient data and sort by testDate
-    let testsWithPatients = [];
-    if (Array.isArray(completedTests)) {
-      testsWithPatients = await Promise.all(
-        completedTests
-          .sort((a, b) => new Date(b.testDate) - new Date(a.testDate))
-          .map(async (test) => {
-            const patient = await Patient.findById(test.patient);
-            return {
-              id: test.id || test._id,
-              testId: test.testId,
-              testDate: test.testDate,
-              testType: test.testType || '',
-              template: test.template || '',
-              patient: patient ? {
-                firstName: patient.firstName,
-                lastName: patient.lastName,
-                patientId: patient.patientId
-              } : null
-            };
-          })
-      );
+    const completedTests = Array.isArray(allTests)
+      ? allTests.filter(t => t && (t.status === 'Completed' || t.status === 'Released'))
+      : [];
+    completedTests.sort((a, b) => new Date(b.testDate || b.createdAt) - new Date(a.testDate || a.createdAt));
+
+    if (completedTests.length) {
+      const mostRecent = completedTests[0];
+      return res.redirect(`/reports/preview/${mostRecent.id || mostRecent._id}`);
     }
 
-    // Also provide a lightweight list for client-side navigation/filtering
-    const testsForNav = testsWithPatients.map(t => ({
-      id: t.id,
-      testId: t.testId,
-      patientName: t.patient ? `${t.patient.firstName || ''} ${t.patient.lastName || ''}`.trim() : '',
-      testType: t.testType || t.template || '',
-      testDate: t.testDate || null
-    }));
-
-    res.render('reports/index', {
-      title: 'Generate & View Reports',
-      tests: testsWithPatients,
-      testsForNav
+    // No completed tests — show a simple message
+    return res.render('reports/preview', {
+      title: 'Report Preview',
+      test: null,
+      currentDate: new Date().toLocaleDateString(),
+      renderedResultHtml: null,
+      testsForNav: [],
+      prevId: null,
+      nextId: null,
+      filterQuery: ''
     });
 
   } catch (error) {
     console.error('Reports page error:', error);
-    req.flash('error_msg', 'Error loading reports page');
-    res.render('reports/index', {
-      title: 'Generate & View Reports',
-      tests: []
-    });
+    req.flash('error_msg', 'Error loading reports');
+    res.redirect('/dashboard');
   }
 });
 
@@ -103,7 +109,7 @@ router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) =
       return res.redirect('/reports');
     }
 
-    // Manually populate patient, requestedBy, and performedBy
+    // Populate only the current test's patient (fast — single lookup)
     const patient = await Patient.findById(test.patient);
     const requestedBy = await User.findById(test.requestedBy);
     const performedBy = await User.findById(test.performedBy);
@@ -116,133 +122,93 @@ router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) =
       performedBy: performedBy ? { name: performedBy.name } : null
     };
 
-    // If user objects are not present, fall back to names stored in test.results
     if ((!populatedTest.requestedBy || !populatedTest.requestedBy.name) && populatedTest.results && populatedTest.results.requestedByName) {
-      populatedTest.requestedBy = {
-        name: populatedTest.results.requestedByName,
-        license: populatedTest.results.requestedByLicense || null
-      };
+      populatedTest.requestedBy = { name: populatedTest.results.requestedByName, license: populatedTest.results.requestedByLicense || null };
     }
-
     if ((!populatedTest.performedBy || !populatedTest.performedBy.name) && populatedTest.results && populatedTest.results.performedByName) {
-      populatedTest.performedBy = {
-        name: populatedTest.results.performedByName,
-        license: populatedTest.results.performedByLicense || null
-      };
+      populatedTest.performedBy = { name: populatedTest.results.performedByName, license: populatedTest.results.performedByLicense || null };
     }
 
-    // Determine specific result template for this test and render it to HTML
-    const template = getResultTemplate(populatedTest);
-    const viewPath = `reports/results/${template}`;
-
-    // Inline logo for preview/template rendering (helps PDF renderer later)
-    const inlineLogo = getInlineLogo();
-
-    // --- NEW: build navigation list for prev/next and client-side filtering ---
+    // Build navigation list — lightweight: read patient names from a single
+    // in-memory scan of the patients array, NOT one-by-one async lookups.
     const allTests = await Test.find({});
-    const completedSorted = Array.isArray(allTests) ? allTests.filter(t => t && (t.status === 'Completed' || t.status === 'Released')) : [];
-    // sort by testDate (newest first)
+    const completedSorted = Array.isArray(allTests)
+      ? allTests.filter(t => t && (t.status === 'Completed' || t.status === 'Released'))
+      : [];
     completedSorted.sort((a, b) => new Date(b.testDate || b.createdAt) - new Date(a.testDate || a.createdAt));
 
-    const testsForNav = await Promise.all(completedSorted.map(async (t) => {
-      const p = t.patient ? await Patient.findById(t.patient) : null;
-      return {
-        id: t.id || t._id,
-        testId: t.testId,
-        testType: t.testType || t.template || '',
-        patientName: p ? `${p.firstName || ''} ${p.lastName || ''}`.trim() : (t.patientName || ''),
-        testDate: t.testDate || t.createdAt || null
-      };
+    // Build a patient-id → name map from in-memory DB (one scan, not N async calls)
+    const allPatients = await Patient.find ? await Patient.find({}) : [];
+    const patientMap = {};
+    (Array.isArray(allPatients) ? allPatients : []).forEach(p => {
+      const pid = p.id || p._id;
+      if (pid) patientMap[pid] = `${p.lastName || ''}, ${p.firstName || ''}`.replace(/^,\s*/, '').replace(/,\s*$/, '').trim();
+    });
+
+    const testsForNav = completedSorted.map(t => ({
+      id: t.id || t._id,
+      testId: t.testId,
+      testType: t.testType || t.template || '',
+      patientName: t.patient ? (patientMap[t.patient] || '') : '',
+      testDate: t.testDate || t.createdAt || null
     }));
 
     const currentIndex = testsForNav.findIndex(tn => String(tn.id) === String(test.id || test._id));
-    const prevId = (currentIndex > 0) ? testsForNav[currentIndex - 1].id : null;
-    const nextId = (currentIndex >= 0 && currentIndex < testsForNav.length - 1) ? testsForNav[currentIndex + 1].id : null;
-    // --- END NEW ---
+    let prevId = (currentIndex > 0) ? testsForNav[currentIndex - 1].id : null;
+    let nextId = (currentIndex >= 0 && currentIndex < testsForNav.length - 1) ? testsForNav[currentIndex + 1].id : null;
 
-    // If filter params are provided, compute prev/next within the filtered list server-side too
-    try {
-      const fp = req.query.filterPatient || null;
-      const ft = req.query.filterTestType || null;
-      const fd = req.query.filterDate || null;
-      if (fp || ft || fd) {
-        const filteredServer = testsForNav.filter(tn => {
-          if (fp && ((tn.patientName || '') !== fp)) return false;
-          if (ft && ((tn.testType || '') !== ft)) return false;
-          if (fd) {
-            const d = tn.testDate ? new Date(tn.testDate).toISOString().slice(0,10) : '';
-            if (d !== fd) return false;
-          }
+    // filtered prev/next
+    const fp = req.query.filterPatient || null;
+    const ft = req.query.filterTestType || null;
+    const fd = req.query.filterDate || null;
+    if (fp || ft || fd) {
+      try {
+        const filtered = testsForNav.filter(tn => {
+          if (fp && (tn.patientName || '') !== fp) return false;
+          if (ft && (tn.testType || '') !== ft) return false;
+          if (fd) { const d = tn.testDate ? new Date(tn.testDate).toISOString().slice(0,10) : ''; if (d !== fd) return false; }
           return true;
         });
-
-        if (Array.isArray(filteredServer) && filteredServer.length) {
-          const curIdx = filteredServer.findIndex(tn => String(tn.id) === String(test.id || test._id));
-          if (curIdx !== -1) {
-            // override prev/next with filtered navigation
-            const fPrev = curIdx > 0 ? filteredServer[curIdx - 1].id : null;
-            const fNext = curIdx < filteredServer.length - 1 ? filteredServer[curIdx + 1].id : null;
-            // assign only if found (preserve previous nulls otherwise)
-            if (fPrev) prevId = fPrev;
-            if (fNext) nextId = fNext;
-          }
+        const ci = filtered.findIndex(tn => String(tn.id) === String(test.id || test._id));
+        if (ci !== -1) {
+          prevId = ci > 0 ? filtered[ci - 1].id : null;
+          nextId = ci < filtered.length - 1 ? filtered[ci + 1].id : null;
         }
-      }
-    } catch (e) {
-      console.warn('Error computing server-side filtered prev/next:', e && e.message);
+      } catch (e) {}
     }
 
-    // Render the result template without layout into an HTML string,
-    // then wrap it with the print wrapper so preview iframe gets full HTML+styles
-    const renderOptions = { title: 'Result Preview', test: populatedTest, layout: false, inlineLogo };
-    // Use res.render callback to capture template HTML
-    res.render(viewPath, renderOptions, (err, renderedHtml) => {
-      if (err) {
-        console.error('Error rendering result template for preview:', err);
-        logReportError(err, 'render preview result template');
-      }
+    // Render the result partial + print wrapper HTML for the preview iframe srcdoc
+    const template = getResultTemplate(populatedTest);
+    const inlineLogo = getInlineLogo();
 
-      // Render the print wrapper which includes styles and print layout
-        const printOptions = { title: 'Print Report', test: populatedTest, currentDate: new Date().toLocaleDateString(), renderedResultHtml: renderedHtml, layout: false, inlineLogo };
-        return res.render('reports/print', printOptions, (err2, finalHtml) => {
-        if (err2) {
-          console.error('Error rendering print wrapper for preview:', err2);
-          logReportError(err2, 'render print wrapper for preview');
-          // fall back to the raw rendered template if wrapper fails
-            // include incoming filter query string so links preserve filters
-            const qparts = [];
-            if (req.query.filterPatient) qparts.push('filterPatient=' + encodeURIComponent(req.query.filterPatient));
-            if (req.query.filterTestType) qparts.push('filterTestType=' + encodeURIComponent(req.query.filterTestType));
-            if (req.query.filterDate) qparts.push('filterDate=' + encodeURIComponent(req.query.filterDate));
-            const filterQuery = qparts.length ? ('?' + qparts.join('&')) : '';
-            return res.render('reports/preview', {
-              title: 'Report Preview',
-              test: populatedTest,
-              currentDate: new Date().toLocaleDateString(),
-              renderedResultHtml: renderedHtml || null,
-              testsForNav,
-              prevId,
-              nextId,
-              filterQuery
-            });
-        }
+    const qparts = [];
+    if (req.query.filterPatient) qparts.push('filterPatient=' + encodeURIComponent(req.query.filterPatient));
+    if (req.query.filterTestType) qparts.push('filterTestType=' + encodeURIComponent(req.query.filterTestType));
+    if (req.query.filterDate) qparts.push('filterDate=' + encodeURIComponent(req.query.filterDate));
+    const filterQuery = qparts.length ? ('?' + qparts.join('&')) : '';
 
-        // finalHtml contains the full HTML (with styles) suitable for iframe srcdoc
-          const qparts = [];
-          if (req.query.filterPatient) qparts.push('filterPatient=' + encodeURIComponent(req.query.filterPatient));
-          if (req.query.filterTestType) qparts.push('filterTestType=' + encodeURIComponent(req.query.filterTestType));
-          if (req.query.filterDate) qparts.push('filterDate=' + encodeURIComponent(req.query.filterDate));
-          const filterQuery = qparts.length ? ('?' + qparts.join('&')) : '';
-          return res.render('reports/preview', {
-            title: 'Report Preview',
-            test: populatedTest,
-            currentDate: new Date().toLocaleDateString(),
-            renderedResultHtml: finalHtml || renderedHtml || null,
-            testsForNav,
-            prevId,
-            nextId,
-            filterQuery
-          });
+    // Render result template → HTML string (callback, no layout)
+    res.render(`reports/results/${template}`, { title: 'Result', test: populatedTest, layout: false, inlineLogo }, (err, renderedHtml) => {
+      if (err) { console.error('Error rendering result template for preview:', err); }
+
+      // Wrap with print layout
+      res.render('reports/print', {
+        title: 'Print Report', test: populatedTest,
+        currentDate: new Date().toLocaleDateString(),
+        renderedResultHtml: renderedHtml, layout: false, inlineLogo
+      }, (err2, finalHtml) => {
+        if (err2) { console.error('Error rendering print wrapper for preview:', err2); }
+
+        return res.render('reports/preview', {
+          title: 'Report Preview',
+          test: populatedTest,
+          currentDate: new Date().toLocaleDateString(),
+          renderedResultHtml: finalHtml || renderedHtml || null,
+          testsForNav,
+          prevId,
+          nextId,
+          filterQuery
+        });
       });
     });
 
@@ -253,88 +219,8 @@ router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) =
   }
 });
 
-// Helper to map test types to result template (images removed — templates drive views)
-function getResultTemplate(test) {
-  const type = (test && test.testType ? String(test.testType) : '').toLowerCase();
-  // default template
-  let template = 'blood-chemistry';
-
-  if (type.includes('fecal occult') || type.includes('fecal-occult') || type.includes('fecaloccult')) {
-    template = 'fecal-occult-blood';
-  } else if (type.includes('fecal') || type.includes('fecalysis')) {
-    template = 'fecalysis';
-  } else if (type.includes('urinal') || type.includes('urinalysis')) {
-    template = 'urinalysis';
-  } else if (type.includes('blood typing') || type.includes('blood-typing') || type.includes('bloodtyping')) {
-    template = 'blood-typing';
-  } else if (type.includes('pregnan') || type.includes('pregnancy')) {
-    template = 'pregnancy-test';
-  } else if (type.includes('drug') || type.includes('drugtest')) {
-    template = 'drugtest';
-  } else if (type.includes('dengue')) {
-    template = 'dengue-duo';
-  } else if (type.includes('esr') || type.includes('erythrocyte') || type.includes('erythrocyte sedimentation')) {
-    template = 'esr';
-  } else if (type.includes('lipid') || type.includes('lipid profile') || type.includes('lipid-profile')) {
-    template = 'blood-chemistry-lipid-profile';
-  } else if (type.includes('ecg') || type.includes('electrocardio') || type.includes('electrocardiogram')) {
-    template = 'ecg';
-  } else if (type.includes('echo') || type.includes('echocardiograph') || type.includes('echocardiography') || /2d\s*echo/.test(type)) {
-    template = 'echocardiography-2d';
-  } else if (type.includes('albumin') || type.includes('\balb\b')) {
-    template = 'blood-chemistry-albumin';
-  } else if (type.includes('sgpt') || type.includes('sgot') || /sgpt\s*\/?\s*sgot/.test(type) || type.includes('sgpt sgot')) {
-    template = 'blood-chemistry-sgpt-sgot';
-  } else if (type.includes('electrolyte') || type.includes('electrolytes') || type.includes('sodium') || type.includes('potassium') || type.includes('chloride')) {
-    template = 'blood-chemistry-electrolytes';
-  } else if (type.includes('bun') || type.includes('creatinine') || type.includes('crea')) {
-    template = 'blood-chemistry-bun-crea';
-  } else if (/blood sugar|blood-sugar|sugar|fbs|rbs|1st hour|2nd hour/.test(type)) {
-    template = 'blood-chemistry-blood-sugar';
-  } else if (type.includes('hba1c') || type.includes('hb a1c') || type.includes('hb-a1c') || type.includes('hba 1c')) {
-    template = 'blood-chemistry-hba1c';
-  } else if (type.includes('bleeding') || type.includes('clotting') || type.includes('ct & bt') || type.includes('ct & bt') || type.includes('ct') && type.includes('bt')) {
-    template = 'ct-bt';
-  } else if (/\b(?:pt|prothrombin|pt-aptt|ptaptt)\b/.test(type)) {
-    template = 'pt-aptt';
-  } else if (type.includes('blood') || type.includes('chem')) {
-    template = 'blood-chemistry';
-  } else if (type.includes('xray') || type.includes('x-ray') || type.includes('x ray')) {
-    template = 'xray';
-  } else if (type.includes('hemato') || type.includes('hematology') || type.includes('cbc')) {
-    template = 'hematology';
-  } else if (type.includes('thyroid') || type.includes('thyroid panel') || type.includes('thyroid-panel')) {
-    template = 'thyroid-panel';
-  } else if (type.includes('serol') || type.includes('serology')) {
-    template = 'serology';
-  } else if (type.includes('ultrasound-abd-kubp-hbt') || type.includes('ultrasound abd kubp hbt')) {
-    template = 'ultrasound-abd-kubp-hbt';
-  } else if (/(?:1st|first|2nd|second|3rd|third|trimester)/i.test(type)) {
-    template = 'ultrasound-1st-trimester-obstetrics';
-  } else if (type.includes('transvaginal') || type.includes('ultrasound-transvaginal')) {
-    template = 'ultrasound-transvaginal';
-  } else if (type.includes('pelvic-biometry') || type.includes('pelvic biometry') || type.includes('ultrasound-pelvic-biometry') || /pelvic[_\-\s]?biometry/.test(type)) {
-    template = 'ultrasound-pelvic-biometry';
-  } else if (type.includes('pelvic') || type.includes('ultrasound-pelvic')) {
-    template = 'ultrasound-pelvic';
-  } else if (type.includes('biophysical') || type.includes('ultrasound-biophysical')) {
-    template = 'ultrasound-biophysical';
-  }
-
-  // Allow overriding with explicit `template` field on test
-  if (test && test.template && typeof test.template === 'string') {
-    // Log when an explicit template override is used
-    console.log(`getResultTemplate override: test.template present -> using explicit template='${test.template}'`);
-    template = test.template;
-  }
-
-  // Debug: report which template was selected for this test type
-  try {
-    console.log(`getResultTemplate: type='${type}', selected='${template}'`);
-  } catch (e) {}
-
-  return template;
-}
+// getResultTemplate is imported from lib/templateResolver.js above
+// (kept as comment for reference — the function lives in lib/templateResolver.js)
 
 // GET /reports/result/:testId - Render result template for a test
 router.get('/result/:testId', requireAuth, canAccessPatient, async (req, res) => {
@@ -384,7 +270,7 @@ router.get('/result/:testId', requireAuth, canAccessPatient, async (req, res) =>
   }
 });
 
-// GET /reports/pdf/:testId - Generate PDF report
+// GET /reports/pdf/:testId - Serve pre-generated PDF (or generate on-demand if missing)
 router.get('/pdf/:testId', requireAuth, canAccessPatient, async (req, res) => {
   try {
     const test = await Test.findById(req.params.testId);
@@ -399,135 +285,34 @@ router.get('/pdf/:testId', requireAuth, canAccessPatient, async (req, res) => {
       return res.redirect('/reports');
     }
 
-    // When generating a report, ensure completedAt is set so reception will map to Releasing.
-    // Do NOT set completedAt for Doctor's Check-up or Registration (those should not go to Releasing).
-    if (!test.completedAt && (test.results && String(test.results).trim()) && test.testType !== "Doctor's Check-up" && test.testType !== 'Registration') {
+    // Ensure completedAt is set for reception workflow
+    if (!test.completedAt && test.results && String(test.results).trim() && test.testType !== "Doctor's Check-up" && test.testType !== 'Registration') {
       await Test.findByIdAndUpdate(test.id, { completedAt: new Date() }, { new: true });
       test.completedAt = new Date();
     }
 
-    // Manually populate patient and users
-    const patient = test.patient ? await Patient.findById(test.patient) : null;
-    const requestedBy = test.requestedBy ? await User.findById(test.requestedBy) : null;
-    const performedBy = test.performedBy ? await User.findById(test.performedBy) : null;
+    // Check for pre-generated PDF in user's Documents/LIS/reports
+    const pdfPath = reportGenerator.getReportPath(test);
 
-    const isRequestedByMedical = requestedBy && (requestedBy.role === 'Radiologist' || requestedBy.role === 'Doctor' || requestedBy.role === 'Pathologist');
-    const populatedTest = {
-      ...test,
-      patient: patient ? patient.toJSON() : null,
-      requestedBy: isRequestedByMedical ? { name: requestedBy.name, role: requestedBy.role } : null,
-      performedBy: performedBy ? { name: performedBy.name } : null
-    };
+    // If PDF doesn't exist yet, generate it now (one-time cost)
+    if (!reportGenerator.reportExists(test)) {
+      console.log(`[reports] PDF not found for testId=${test.testId}, generating on-demand...`);
+      await reportGenerator.generatePdfForTest(test);
+    }
 
-    // Determine specific result template and render it to HTML without layout
-    const template = getResultTemplate(populatedTest);
-    const viewPath = `reports/results/${template}`;
-    const renderOptions = { title: 'Result PDF', test: populatedTest, layout: false };
+    // Serve the file from disk
+    if (fs.existsSync(pdfPath)) {
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=${path.basename(pdfPath)}`);
+      return fs.createReadStream(pdfPath).pipe(res);
+    }
 
-    const inlineLogo = getInlineLogo();
-    return res.render(viewPath, Object.assign({}, renderOptions, { inlineLogo }), async (err, renderedHtml) => {
-      if (err) {
-        console.error('Error rendering result template for PDF:', err);
-        logReportError(err, 'render pdf result template');
-        req.flash('error_msg', 'Error generating PDF');
-        return res.redirect('/reports');
-      }
-
-      // Render the print wrapper with the rendered result HTML so PDF matches the print view
-      const inlineLogo2 = getInlineLogo();
-      res.render('reports/print', { title: 'Print Report', test: populatedTest, currentDate: new Date().toLocaleDateString(), renderedResultHtml: renderedHtml, layout: false, inlineLogo: inlineLogo2 }, async (err2, finalHtml) => {
-        if (err2) {
-          console.error('Error rendering print wrapper for PDF:', err2);
-          logReportError(err2, 'render print wrapper for pdf');
-          req.flash('error_msg', 'Error generating PDF');
-          return res.redirect('/reports');
-        }
-
-        // Ensure asset URLs are absolute so the PDF renderer can fetch them
-        const baseUrl = req.protocol + '://' + req.get('host');
-        let htmlForPdf = finalHtml.replace(/(href=|src=|url\()\s*["']?\/assets\//g, function(m) {
-          return m.replace('/assets/', baseUrl + '/assets/');
-        });
-
-        // Try Puppeteer first (headless Chromium) for pixel-perfect rendering
-        if (puppeteer) {
-          try {
-            const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
-            const page = await browser.newPage();
-            await page.setContent(htmlForPdf, { waitUntil: 'networkidle0' });
-            const pdfBuffer = await page.pdf({ format: 'Letter', printBackground: true, margin: { top: '0.4in', right: '0.4in', bottom: '0.4in', left: '0.4in' } });
-            await browser.close();
-            // Verify the renderer returned a PDF buffer (starts with %PDF-)
-            const pdfBuf = Buffer.isBuffer(pdfBuffer) ? pdfBuffer : Buffer.from(pdfBuffer);
-            const header = pdfBuf && pdfBuf.length ? pdfBuf.toString('utf8', 0, 5) : null;
-            if (header !== '%PDF-') {
-              const tmpHtml = path.join(os.tmpdir(), `lab_report_html_${populatedTest.testId}.html`);
-              try { fs.writeFileSync(tmpHtml, htmlForPdf, 'utf8'); console.warn('Puppeteer produced non-PDF output; wrote HTML to', tmpHtml); } catch (werr) { console.warn('Failed writing debug HTML from puppeteer fallback:', werr && werr.message); }
-              logReportError(new Error('Puppeteer did not return a PDF buffer'), `puppeteer pdf header check for ${populatedTest.testId}`);
-              req.flash('error_msg', 'Error generating PDF (renderer produced invalid output)');
-              return res.redirect('/reports');
-            }
-
-            res.setHeader('Content-Type', 'application/pdf');
-            res.setHeader('Content-Disposition', `attachment; filename=Lab_Report_${populatedTest.testId}_${populatedTest.patient ? populatedTest.patient.lastName : 'patient'}.pdf`);
-            if (process.env.DEBUG_PDF) {
-              try {
-                const tmpPath = path.join(os.tmpdir(), `lab_report_${populatedTest.testId}.pdf`);
-                fs.writeFileSync(tmpPath, pdfBuffer);
-                console.log('Wrote debug PDF to', tmpPath);
-              } catch (werr) {
-                console.warn('Failed writing debug PDF:', werr && werr.message);
-              }
-            }
-            return res.end(pdfBuffer);
-          } catch (puErr) {
-            console.error('Puppeteer PDF generation failed, falling back to html-pdf:', puErr);
-          }
-        }
-
-        // Fallback to html-pdf
-        const options = {
-          width: '8.5in',
-          height: '11in',
-          border: '0.4in'
-        };
-
-        pdf.create(htmlForPdf, options).toBuffer((err3, buffer) => {
-          if (err3) {
-            console.error('PDF generation error:', err3);
-            logReportError(err3, 'html-pdf create');
-            req.flash('error_msg', 'Error generating PDF');
-            return res.redirect('/reports');
-          }
-          // Verify buffer looks like PDF
-          const bufFallback = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer);
-          const hdr = bufFallback && bufFallback.length ? bufFallback.toString('utf8', 0, 5) : null;
-          if (hdr !== '%PDF-') {
-            const tmpHtml = path.join(os.tmpdir(), `lab_report_html_fallback_${populatedTest.testId}.html`);
-            try { fs.writeFileSync(tmpHtml, htmlForPdf, 'utf8'); console.warn('html-pdf produced non-PDF output; wrote HTML to', tmpHtml); } catch (werr) { console.warn('Failed writing debug HTML from html-pdf fallback:', werr && werr.message); }
-            logReportError(new Error('html-pdf did not return a PDF buffer'), `html-pdf header check for ${populatedTest.testId}`);
-            req.flash('error_msg', 'Error generating PDF (renderer produced invalid output)');
-            return res.redirect('/reports');
-          }
-
-          res.setHeader('Content-Type', 'application/pdf');
-          res.setHeader('Content-Disposition', `attachment; filename=Lab_Report_${populatedTest.testId}_${populatedTest.patient ? populatedTest.patient.lastName : 'patient'}.pdf`);
-          if (process.env.DEBUG_PDF) {
-            try {
-              const tmpPath = path.join(os.tmpdir(), `lab_report_fallback_${populatedTest.testId}.pdf`);
-              fs.writeFileSync(tmpPath, buffer);
-              console.log('Wrote debug fallback PDF to', tmpPath);
-            } catch (werr) {
-              console.warn('Failed writing debug fallback PDF:', werr && werr.message);
-            }
-          }
-          return res.end(buffer);
-        });
-      });
-    });
+    // If we still don't have the file, something went wrong
+    req.flash('error_msg', 'Error generating PDF report');
+    return res.redirect('/reports');
 
   } catch (error) {
-    console.error('PDF generation error:', error);
+    console.error('PDF serve error:', error);
     req.flash('error_msg', 'Error generating PDF');
     res.redirect('/reports');
   }
@@ -567,24 +352,36 @@ router.get('/print/:testId', requireAuth, canAccessPatient, async (req, res) => 
     // Render the result template without layout to get its HTML
     const inlineLogo = getInlineLogo();
     res.render(viewPath, { title: 'Result Print', test: populatedTest, layout: false, inlineLogo }, (err, renderedHtml) => {
-      if (err) {
-        console.error('Error rendering result template for print:', err);
-        // fallback to previous print view if rendering fails
-        return res.render('reports/print', {
-          title: 'Print Report',
-          test: populatedTest,
-          currentDate: new Date().toLocaleDateString(),
-          layout: 'print'
-        });
+      if (testType) {
+        const ttLower = String(testType).toLowerCase().trim();
+        if (/^blood\s*chemistry$/.test(ttLower)) {
+          // For Blood Chemistry, match by testId prefix (BC) primarily,
+          // with a fallback to testType/template name containing blood/chemistry.
+          testsRaw = (testsRaw || []).filter(t => {
+            const tid = String(t.testId || '').toUpperCase();
+            const candidate = String(t.testType || t.template || '').toLowerCase().trim();
+            if (tid && tid.startsWith('BC')) return true;
+            if (candidate.indexOf('blood') !== -1 && candidate.indexOf('chemistry') !== -1) return true;
+            if (candidate.indexOf('blood-chemistry') !== -1) return true;
+            return false;
+          });
+        } else {
+          const ttLowerLoose = ttLower;
+          testsRaw = (testsRaw || []).filter(t => {
+            const candidate = String(t.testType || t.template || '').toLowerCase().trim();
+            return candidate.includes(ttLowerLoose) || ttLowerLoose.includes(candidate);
+          });
+        }
       }
 
       return res.render('reports/print', {
-        title: 'Print Report',
-        test: populatedTest,
-        currentDate: new Date().toLocaleDateString(),
-        renderedResultHtml: renderedHtml,
-        layout: 'print'
-      });
+                title: 'Print Report',
+                test: populatedTest,
+                currentDate: new Date().toLocaleDateString(),
+                renderedResultHtml: renderedHtml,
+                layout: 'print',
+               suppressPrint: !!req.query.suppressPrint
+            });
     });
 
   } catch (error) {
@@ -642,7 +439,16 @@ router.get('/print-multiple', requireAuth, canAccessPatient, async (req, res) =>
             resolve(html);
           });
         });
-        renderedParts.push(html);
+        // If suppressPrint was requested, remove inline print triggers from each part
+        let sanitized = html;
+        if (req.query && req.query.suppressPrint) {
+          try {
+            sanitized = String(html)
+              .replace(/setTimeout\s*\(\s*(?:function\s*\(\)\s*\{\s*window\.print\s*\(\s*\)\s*;?\s*\}|window\.print)\s*,\s*\d+\s*\)\s*;?/g, '')
+              .replace(/window\.print\s*\(\s*\)\s*;?/g, '');
+          } catch (e) { /* ignore */ }
+        }
+        renderedParts.push(sanitized);
       } catch (renderErr) {
         console.error('Failed to render template for test', t.id || t._id, renderErr && renderErr.message);
         logReportError(renderErr, `render-multiple ${t.id || t._id}`);
@@ -652,7 +458,7 @@ router.get('/print-multiple', requireAuth, canAccessPatient, async (req, res) =>
 
     // Join each rendered report with a page-break
     const concatenated = renderedParts.join('\n<div style="page-break-after:always;"></div>\n');
-    return res.render('reports/print', { title: 'Print Reports', renderedResultHtml: concatenated, layout: false });
+    return res.render('reports/print', { title: 'Print Reports', renderedResultHtml: concatenated, layout: false, suppressPrint: !!req.query.suppressPrint });
 
   } catch (err) {
     console.error('Print multiple error:', err);
@@ -676,8 +482,32 @@ router.get('/worksheet', requireAuth, canAccessPatient, async (req, res) => {
       const all = await Test.find({});
       types = Array.from(new Set((all || []).map(t => t.testType || '').filter(Boolean)));
     }
-    types = (types || []).filter(Boolean).sort();
-    res.render('reports/worksheet', { title: 'Worksheet Export', types });
+    // Normalize and collapse blood-chemistry variant templates into a single "Blood Chemistry" choice
+    const normalized = [];
+    let sawBloodChem = false;
+    (types || []).forEach(t => {
+      if (!t) return;
+      const s = String(t).trim();
+      const low = s.toLowerCase();
+      // Treat Blood Chemistry and common variant labels (BUN/Creat, creatinine, SGPT/SGOT, lipid, hba1c, albumin, blood sugar, etc.)
+      // as a single "Blood Chemistry" choice so they don't appear separately in the dropdown.
+      if (/^blood[\s-]*chemistry/.test(low) || low.indexOf('blood-chemistry') !== -1 || /(bun\b|\bbun\b|creat(inine)?|creat\/?creat|sgpt|sgot|lipid|hba1c|albumin|blood\s*urea|blood\s*sugar)/.test(low)) {
+        sawBloodChem = true;
+        return; // skip variant entries
+      }
+      normalized.push(s);
+    });
+    if (sawBloodChem) normalized.push('Blood Chemistry');
+    const finalTypes = Array.from(new Set(normalized)).filter(Boolean).sort();
+    // collect unique companies from patients for the Patient Export dropdown
+    let companies = [];
+    try {
+      const allPatients = await Patient.find({});
+      companies = Array.from(new Set((allPatients || []).map(p => String(p.company || '').trim()).filter(Boolean))).sort();
+    } catch (e) {
+      companies = [];
+    }
+    res.render('reports/worksheet', { title: 'Worksheet Export', types: finalTypes, companies });
   } catch (err) {
     console.error('Worksheet page error:', err);
     req.flash('error_msg', 'Error loading worksheet page');
@@ -729,22 +559,24 @@ router.post('/worksheet/download', requireAuth, canAccessPatient, async (req, re
     // sort in-memory by testDate ascending
     testsRaw = (testsRaw || []).sort((a, b) => new Date(a.testDate || a.createdAt) - new Date(b.testDate || b.createdAt));
 
-    // collect rows and dynamic result keys
+    // collect rows and dynamic flattened result keys
     const rows = [];
     const resultKeys = new Set();
     for (const t of testsRaw) {
       const p = t.patient ? await Patient.findById(t.patient) : null;
       const requestedBy = t.requestedBy ? await User.findById(t.requestedBy) : null;
       const performedBy = t.performedBy ? await User.findById(t.performedBy) : null;
-      const resultsObj = (t.results && typeof t.results === 'object') ? t.results : (t.results ? { results: String(t.results) } : {});
-      Object.keys(resultsObj).forEach(k => resultKeys.add(k));
+      const resultsObjRaw = (t.results && typeof t.results === 'object') ? t.results : (t.results ? { results: String(t.results) } : {});
+      const flatResults = flattenResults(resultsObjRaw);
+      Object.keys(flatResults).forEach(k => resultKeys.add(k));
       const isRequestedByMedical = requestedBy && (requestedBy.role === 'Radiologist' || requestedBy.role === 'Doctor' || requestedBy.role === 'Pathologist');
       rows.push({
         testId: t.testId || (t.id || t._id) || '',
         testType: t.testType || t.template || '',
         testDate: t.testDate ? new Date(t.testDate) : null,
         patient: p ? p.toJSON() : null,
-        resultsObj,
+        resultsObj: resultsObjRaw,
+        flatResults,
         requestedBy: isRequestedByMedical ? { name: requestedBy.name } : (t.requestedByName ? { name: t.requestedByName } : null),
         performedBy: performedBy ? { name: performedBy.name, license: performedBy.license || null } : (t.performedByName ? { name: t.performedByName, license: t.performedByLicense || null } : null)
       });
@@ -780,7 +612,11 @@ router.post('/worksheet/download', requireAuth, canAccessPatient, async (req, re
         r.performedBy ? r.performedBy.license || '' : '',
         r.requestedBy ? r.requestedBy.name : ''
       ];
-      const resultVals = resultCols.map(k => (r.resultsObj && typeof r.resultsObj[k] !== 'undefined') ? r.resultsObj[k] : '');
+      const resultVals = resultCols.map(k => {
+        if (r.flatResults && typeof r.flatResults[k] !== 'undefined') return r.flatResults[k];
+        if (r.resultsObj && typeof r.resultsObj[k] !== 'undefined') return r.resultsObj[k];
+        return '';
+      });
       const rowVals = base.concat(resultVals).map(escapeCsvCell).join(',');
       lines.push(rowVals);
     }
@@ -885,11 +721,24 @@ router.post('/worksheet/preview', requireAuth, canAccessPatient, async (req, res
     let testsRaw = await Test.find(q);
     if (!allData) {
       if (testType) {
-        const ttLower = String(testType).toLowerCase();
-        testsRaw = (testsRaw || []).filter(t => {
-          const candidate = String(t.testType || t.template || '').toLowerCase();
-          return candidate === ttLower;
-        });
+        const ttLower = String(testType).toLowerCase().trim();
+        if (/^blood\s*chemistry$/.test(ttLower)) {
+          // match any test whose testId starts with BC, or whose type/template indicates blood chemistry
+          testsRaw = (testsRaw || []).filter(t => {
+            const tid = String(t.testId || '').toUpperCase();
+            const candidate = String(t.testType || t.template || '').toLowerCase().trim();
+            if (tid && tid.startsWith('BC')) return true;
+            if (candidate.indexOf('blood') !== -1 && candidate.indexOf('chemistry') !== -1) return true;
+            if (candidate.indexOf('blood-chemistry') !== -1) return true;
+            return false;
+          });
+        } else {
+          const ttLowerEq = ttLower;
+          testsRaw = (testsRaw || []).filter(t => {
+            const candidate = String(t.testType || t.template || '').toLowerCase();
+            return candidate === ttLowerEq;
+          });
+        }
       }
       if (dateFrom) {
         const from = new Date(dateFrom);
@@ -909,14 +758,15 @@ router.post('/worksheet/preview', requireAuth, canAccessPatient, async (req, res
     }
     testsRaw = (testsRaw || []).sort((a, b) => new Date(a.testDate || a.createdAt) - new Date(b.testDate || b.createdAt));
 
-    // build preview rows (minimal patient info + date/time + performedBy + results object)
+    // build preview rows (minimal patient info + date/time + performedBy + flattened results)
     const previewRows = [];
     const resultKeys = new Set();
     for (const t of testsRaw) {
       const p = t.patient ? await Patient.findById(t.patient) : null;
       const performedBy = t.performedBy ? await User.findById(t.performedBy) : null;
-      const resultsObj = (t.results && typeof t.results === 'object') ? t.results : (t.results ? { results: String(t.results) } : {});
-      Object.keys(resultsObj).forEach(k => resultKeys.add(k));
+      const resultsObjRaw = (t.results && typeof t.results === 'object') ? t.results : (t.results ? { results: String(t.results) } : {});
+      const flatResults = flattenResults(resultsObjRaw);
+      Object.keys(flatResults).forEach(k => resultKeys.add(k));
       previewRows.push({
         testId: t.testId || t.id || t._id || '',
         testType: t.testType || t.template || '',
@@ -926,7 +776,8 @@ router.post('/worksheet/preview', requireAuth, canAccessPatient, async (req, res
         firstName: p ? (p.firstName || '') : '',
         lastName: p ? (p.lastName || '') : '',
         signatory: performedBy ? (performedBy.name || '') : (t.performedByName || ''),
-        resultsObj
+        resultsObj: resultsObjRaw,
+        flatResults
       });
     }
 
@@ -936,5 +787,184 @@ router.post('/worksheet/preview', requireAuth, canAccessPatient, async (req, res
   } catch (err) {
     console.error('Worksheet preview error:', err);
     return res.status(500).json({ error: 'Error generating preview' });
+  }
+});
+
+// --- Patient export (separate from test worksheet export)
+// GET /reports/patient-export - render patient export UI (reuse worksheet view with flag)
+router.get('/patient-export', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    // reuse worksheet view; frontend should check `patientExport` to show patient-specific controls
+    return res.render('reports/worksheet', { title: 'Patient Export', types: [], patientExport: true });
+  } catch (err) {
+    console.error('Patient export page error:', err);
+    req.flash('error_msg', 'Error loading patient export page');
+    res.redirect('/reports');
+  }
+});
+
+// POST /reports/patient-export/download - Download patient data filtered by date/company/philhealth
+router.post('/patient-export/download', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const { dateFrom, dateTo, company, philhealth, format } = req.body || {};
+    let patients = await Patient.find({});
+
+    if (dateFrom) {
+      const from = new Date(dateFrom);
+      patients = (patients || []).filter(p => new Date(p.createdAt) >= from);
+    }
+    if (dateTo) {
+      const end = new Date(dateTo);
+      end.setHours(23,59,59,999);
+      patients = (patients || []).filter(p => new Date(p.createdAt) <= end);
+    }
+    if (company && String(company).trim()) {
+      const comp = String(company).toLowerCase().trim();
+      patients = (patients || []).filter(p => (String(p.company || '').toLowerCase().indexOf(comp) !== -1));
+    }
+    if (philhealth === 'yes') {
+      patients = (patients || []).filter(p => !!p.philhealthConsent);
+    } else if (philhealth === 'no') {
+      patients = (patients || []).filter(p => !p.philhealthConsent);
+    }
+
+    // Build headers for patient export
+    const headers = ['Patient ID','Patient Code','First Name','Middle Name','Last Name','Full Name','DOB','Age','Age Manual','Sex','Phone','Email','Address','Physician','Requested Tests','Required Areas','Company','PhilHealth Consent','PhilHealth ID','Created At','Created By','Updated At','Payment History (raw)'];
+
+    function escapeCsvCell(v) {
+      if (v === null || typeof v === 'undefined') return '';
+      const s = String(v);
+      if (s.includes('"') || s.includes(',') || s.includes('\n')) {
+        return '"' + s.replace(/"/g,'""') + '"';
+      }
+      return s;
+    }
+
+    const lines = [headers.map(escapeCsvCell).join(',')];
+    for (const p of (patients || [])) {
+      const pj = (p && typeof p.toJSON === 'function') ? p.toJSON() : (p || {});
+      const row = [
+        pj.patientId || '', pj.patientCode || '', pj.firstName || '', pj.middleName || '', pj.lastName || '', pj.fullName || '',
+        pj.dateOfBirth ? (new Date(pj.dateOfBirth)).toLocaleDateString() : '',
+        (pj.age !== undefined && pj.age !== null) ? pj.age : '', pj.ageManual || '', pj.sex || pj.gender || '',
+        pj.phone || '', pj.email || '', pj.address || '', pj.physician || '',
+        Array.isArray(pj.requestedTests) ? pj.requestedTests.join('; ') : (pj.requestedTests || ''),
+        Array.isArray(pj.requiredAreas) ? pj.requiredAreas.join('; ') : (pj.requiredAreas || ''),
+        pj.company || '', pj.philhealthConsent ? 'yes' : 'no', pj.philhealthId || '',
+        pj.createdAt ? (new Date(pj.createdAt)).toLocaleString() : '', pj.createdBy || '', pj.updatedAt ? (new Date(pj.updatedAt)).toLocaleString() : '',
+        pj.paymentHistory && pj.paymentHistory.length ? JSON.stringify(pj.paymentHistory) : ''
+      ];
+      lines.push(row.map(escapeCsvCell).join(','));
+    }
+
+    const filenameBase = `patient_export_${(new Date()).toISOString().slice(0,19).replace(/[:T]/g,'-')}`;
+    const fmt = (format || '').toLowerCase();
+
+    if (fmt === 'xlsx') {
+      const workbook = new ExcelJS.Workbook();
+      const ws = workbook.addWorksheet('Patient Export');
+      const cols = headers.map(h => ({ header: h, key: h, width: Math.min(50, Math.max(12, String(h).length + 6)) }));
+      ws.columns = cols;
+      for (const p of (patients || [])) {
+        const pj = (p && typeof p.toJSON === 'function') ? p.toJSON() : (p || {});
+        const rowVals = [
+          pj.patientId || '', pj.patientCode || '', pj.firstName || '', pj.middleName || '', pj.lastName || '', pj.fullName || '',
+          pj.dateOfBirth ? (new Date(pj.dateOfBirth)).toLocaleDateString() : '',
+          (pj.age !== undefined && pj.age !== null) ? pj.age : '', pj.ageManual || '', pj.sex || pj.gender || '',
+          pj.phone || '', pj.email || '', pj.address || '', pj.physician || '',
+          Array.isArray(pj.requestedTests) ? pj.requestedTests.join('; ') : (pj.requestedTests || ''),
+          Array.isArray(pj.requiredAreas) ? pj.requiredAreas.join('; ') : (pj.requiredAreas || ''),
+          pj.company || '', pj.philhealthConsent ? 'yes' : 'no', pj.philhealthId || '',
+          pj.createdAt ? (new Date(pj.createdAt)).toLocaleString() : '', pj.createdBy || '', pj.updatedAt ? (new Date(pj.updatedAt)).toLocaleString() : '',
+          pj.paymentHistory && pj.paymentHistory.length ? JSON.stringify(pj.paymentHistory) : ''
+        ];
+        const rowObj = {};
+        headers.forEach((h, i) => { rowObj[h] = rowVals[i]; });
+        ws.addRow(rowObj);
+      }
+      ws.views = [{ state: 'frozen', ySplit: 1 }];
+      ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: headers.length } };
+      const buffer = await workbook.xlsx.writeBuffer();
+      res.setHeader('Content-Disposition', `attachment; filename="${filenameBase}.xlsx"`);
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      return res.send(Buffer.from(buffer));
+    }
+
+    if (fmt === 'excel') {
+      let html = '<table border="1"><thead><tr>';
+      headers.forEach(h => html += `<th>${String(h).replace(/</g,'&lt;')}</th>`);
+      html += '</tr></thead><tbody>';
+      for (const p of (patients || [])) {
+        const pj = (p && typeof p.toJSON === 'function') ? p.toJSON() : (p || {});
+        html += '<tr>';
+        const rowVals = [
+          pj.patientId || '', pj.patientCode || '', pj.firstName || '', pj.middleName || '', pj.lastName || '', pj.fullName || '',
+          pj.dateOfBirth ? (new Date(pj.dateOfBirth)).toLocaleDateString() : '',
+          (pj.age !== undefined && pj.age !== null) ? pj.age : '', pj.ageManual || '', pj.sex || pj.gender || '',
+          pj.phone || '', pj.email || '', pj.address || '', pj.physician || '',
+          Array.isArray(pj.requestedTests) ? pj.requestedTests.join('; ') : (pj.requestedTests || ''),
+          Array.isArray(pj.requiredAreas) ? pj.requiredAreas.join('; ') : (pj.requiredAreas || ''),
+          pj.company || '', pj.philhealthConsent ? 'yes' : 'no', pj.philhealthId || '',
+          pj.createdAt ? (new Date(pj.createdAt)).toLocaleString() : '', pj.createdBy || '', pj.updatedAt ? (new Date(pj.updatedAt)).toLocaleString() : '',
+          pj.paymentHistory && pj.paymentHistory.length ? JSON.stringify(pj.paymentHistory) : ''
+        ];
+        rowVals.forEach(v => { html += `<td>${String(v === undefined || v === null ? '' : v).replace(/</g,'&lt;')}</td>`; });
+        html += '</tr>';
+      }
+      html += '</tbody></table>';
+      res.setHeader('Content-Disposition', `attachment; filename="${filenameBase}.xls"`);
+      res.setHeader('Content-Type', 'application/vnd.ms-excel; charset=UTF-8');
+      return res.send(html);
+    }
+
+    // default CSV
+    res.setHeader('Content-Disposition', `attachment; filename="${filenameBase}.csv"`);
+    res.setHeader('Content-Type', 'text/csv; charset=UTF-8');
+    return res.send(lines.join('\n'));
+  } catch (error) {
+    console.error('Patient export error:', error);
+    req.flash('error_msg', 'Error generating patient export');
+    res.redirect('/reports');
+  }
+});
+
+// POST /reports/patient-export/preview - limited preview JSON of patients
+router.post('/patient-export/preview', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const { dateFrom, dateTo, company, philhealth, limit } = req.body || {};
+    let patients = await Patient.find({});
+    if (dateFrom) {
+      const from = new Date(dateFrom);
+      patients = (patients || []).filter(p => new Date(p.createdAt) >= from);
+    }
+    if (dateTo) {
+      const end = new Date(dateTo);
+      end.setHours(23,59,59,999);
+      patients = (patients || []).filter(p => new Date(p.createdAt) <= end);
+    }
+    if (company && String(company).trim()) {
+      const comp = String(company).toLowerCase().trim();
+      patients = (patients || []).filter(p => (String(p.company || '').toLowerCase().indexOf(comp) !== -1));
+    }
+    if (philhealth === 'yes') {
+      patients = (patients || []).filter(p => !!p.philhealthConsent);
+    } else if (philhealth === 'no') {
+      patients = (patients || []).filter(p => !p.philhealthConsent);
+    }
+
+    const previewRows = (patients || []).map(p => {
+      const pj = (p && typeof p.toJSON === 'function') ? p.toJSON() : (p || {});
+      return {
+        patientId: pj.patientId || '', patientCode: pj.patientCode || '', fullName: pj.fullName || '', firstName: pj.firstName || '', lastName: pj.lastName || '',
+        dob: pj.dateOfBirth ? (new Date(pj.dateOfBirth)).toISOString().slice(0,10) : '', age: pj.age || '', company: pj.company || '', philhealthConsent: !!pj.philhealthConsent,
+        createdAt: pj.createdAt ? (new Date(pj.createdAt)).toISOString() : '', createdBy: pj.createdBy || '', phone: pj.phone || '' , email: pj.email || ''
+      };
+    });
+
+    const max = Math.min(1000, parseInt(limit || '200', 10) || 200);
+    return res.json({ count: previewRows.length, rows: previewRows.slice(0, max) });
+  } catch (err) {
+    console.error('Patient preview error:', err);
+    return res.status(500).json({ error: 'Error generating patient preview' });
   }
 });

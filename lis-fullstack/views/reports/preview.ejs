@@ -1,6 +1,9 @@
 <div class="card">
   <h3>Report Preview</h3>
 
+<% if (!test) { %>
+  <p style="padding:20px; color:#888;">No completed test results yet.</p>
+<% } else { %>
   <!-- Navigation & Filters -->
   <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
     <div>
@@ -10,16 +13,19 @@
     </div>
 
     <div style="flex:1; display:flex; gap:8px; align-items:center;">
-      <select id="filterPatient" style="flex:2; min-width:300px; padding:8px;">
-        <option value="">-- All Patients --</option>
-        <% if (testsForNav && testsForNav.length) {
-            const patients = Array.from(new Set(testsForNav.map(t => t.patientName || '').filter(Boolean))); 
-           %>
-          <% patients.forEach(function(pn) { %>
-            <option value="<%= pn %>"><%= pn %></option>
-          <% }) %>
-        <% } %>
-      </select>
+      <div style="display:flex; flex-direction:column; gap:4px; flex:2; min-width:300px;">
+        <input id="patientSearch" type="text" placeholder="Type to search patients by name..." autocomplete="off" style="padding:8px; font-size:14px; border-radius:8px; border:1px solid #d0d7de;">
+        <select id="filterPatient" style="width:100%; padding:8px;">
+          <option value="">-- All Patients --</option>
+          <% if (testsForNav && testsForNav.length) {
+              const patients = Array.from(new Set(testsForNav.map(t => t.patientName || '').filter(Boolean))).sort((a,b) => a.localeCompare(b)); 
+             %>
+            <% patients.forEach(function(pn) { %>
+              <option value="<%= pn %>"><%= pn %></option>
+            <% }) %>
+          <% } %>
+        </select>
+      </div>
       <!-- Test type dropdown (based on templates/testType) -->
         <div style="display:flex; gap:8px; align-items:flex-start;">
           <div style="display:flex; flex-direction:column; gap:8px;">
@@ -41,11 +47,14 @@
       </div>
   </div>
 
-  <!-- Filtered results select (populated when Apply Filters is clicked) -->
+  <!-- Filtered results (checkbox list populated when filters change) -->
   <div style="margin-bottom:12px;">
-    <select id="filteredSelect" style="width:100%; padding:8px; display:block;">
-      <option value="">-- Filtered Results (Apply Filters) --</option>
-    </select>
+    <div id="filteredContainer" style="width:100%; padding:8px; border:1px solid #e0e0e0; border-radius:6px; max-height:130px; overflow:auto; background:#fff;">
+      <label style="display:block; margin-bottom:8px;"><input type="checkbox" id="filteredSelectAll"> <strong>Select all visible</strong></label>
+      <div id="filteredList" style="display:block;">
+        <!-- items injected here: each item contains a checkbox and a one-line label -->
+      </div>
+    </div>
     <div style="margin-top:6px; text-align:right;">
       <span id="filteredPager" style="margin-left:12px; font-weight:600;"></span>
     </div>
@@ -91,9 +100,44 @@
   window.currentTestId = '<%= test.id %>';
 
   (function(){
+    // Patient search -> filter patient select options
+    (function(){
+      const searchInput = document.getElementById('patientSearch');
+      const selectEl = document.getElementById('filterPatient');
+      if (!searchInput || !selectEl) return;
+
+      function filterPatientOptions() {
+        const q = String(searchInput.value || '').toLowerCase().trim();
+        let visibleCount = 0;
+        for (let i = 0; i < selectEl.options.length; i++) {
+          const opt = selectEl.options[i];
+          if (!opt.value) { opt.hidden = false; visibleCount++; continue; }
+          const txt = (opt.text || '').toLowerCase();
+          const match = q === '' || txt.indexOf(q) !== -1;
+          opt.hidden = !match;
+          if (match) visibleCount++;
+        }
+        if (q !== '' && visibleCount > 1) selectEl.size = Math.min(8, visibleCount);
+        else selectEl.size = 1;
+
+        if (q !== '' && visibleCount === 1) {
+          for (let i = 0; i < selectEl.options.length; i++) {
+            const opt = selectEl.options[i];
+            if (!opt.hidden && opt.value) {
+              selectEl.value = opt.value;
+              selectEl.dispatchEvent(new Event('change'));
+              break;
+            }
+          }
+        }
+      }
+
+      searchInput.addEventListener('input', filterPatientOptions);
+      selectEl.addEventListener('change', function(){ selectEl.size = 1; });
+    })();
+
     const tests = window.testsForNav || [];
     const patientInput = document.getElementById('filterPatient');
-    const testTypeSelect = document.getElementById('filterTestType');
     const testTypeToggle = document.getElementById('filterTestTypeToggle');
     const testTypeList = document.getElementById('filterTestTypeList');
     const dateFilter = document.getElementById('filterDate');
@@ -118,9 +162,7 @@
 
     function applyParamsToNavLinks(){
       const qs = getQueryString();
-      // find prev/next anchors and append query string
       Array.from(document.querySelectorAll('a[href^="/reports/preview/"]')).forEach(a => {
-        // strip existing params then append
         const base = a.href.split('?')[0];
         a.href = base + qs;
       });
@@ -139,7 +181,6 @@
           });
         }
         if (fd) dateFilter.value = fd;
-        // update select-all checkbox after initializing selections
         try { if (typeof updateSelectAllState === 'function') updateSelectAllState(); } catch(e) {}
     }
 
@@ -147,7 +188,6 @@
       const p = (patientInput.value || '').toLowerCase();
       const selTypes = getSelectedTestTypes().map(s => (s || '').toLowerCase());
       const fd = (dateFilter.value || '');
-      // patient select uses exact match when specified
       if (p && ((t.patientName || '').toLowerCase() !== p)) return false;
       if (selTypes.length && selTypes.indexOf(((t.testType||'').toLowerCase()) ) === -1) return false;
       if (fd && (t.testDate ? new Date(t.testDate).toISOString().slice(0,10) !== fd : true)) return false;
@@ -162,11 +202,9 @@
     readParamsToInputs();
     applyParamsToNavLinks();
     const filteredPager = document.getElementById('filteredPager');
-    // debounce timer to allow multi-filtering before auto-navigation
     let debounceTimer = null;
 
     function updatePager(){
-      // If any filter is active, use filtered IDs, otherwise use full tests list
       const anyFilter = !!(patientInput.value || getSelectedTestTypes().length || dateFilter.value);
       const ids = anyFilter ? getFilteredIds() : tests.map(t => t.id);
       const total = ids.length || 0;
@@ -180,43 +218,71 @@
       }
     }
 
-    // populate filtered select only if filters were present in URL on load
-    if (patientInput.value || getSelectedTestTypes().length || dateFilter.value) {
-      populateFilteredSelect();
-    }
-    // always update pager after initial setup
-    updatePager();
+    // populate filtered list
+    const filteredList = document.getElementById('filteredList');
+    const filteredSelectAll = document.getElementById('filteredSelectAll');
 
-    // update nav links, pager and filtered list when inputs change (auto-apply)
+    function populateFilteredList(){
+      if (!filteredList) return;
+      while (filteredList.firstChild) filteredList.removeChild(filteredList.firstChild);
+      const filtered = tests.filter(matchesFilters);
+      filtered.forEach(t => {
+        const date = t.testDate ? new Date(t.testDate).toLocaleDateString() : '';
+        const id = t.id;
+        const labelText = (t.testId || '') + ' - ' + (t.patientName || 'Unknown') + ' - ' + (t.testType || '') + (date ? (' ('+date+')') : '');
+
+        const row = document.createElement('div');
+        row.style.display = 'flex';
+        row.style.alignItems = 'center';
+        row.style.padding = '6px 8px';
+        row.style.borderBottom = '1px solid #f0f0f0';
+
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.className = 'filteredItemCheckbox';
+        cb.setAttribute('data-id', id);
+        cb.style.marginRight = '8px';
+
+        const label = document.createElement('span');
+        label.textContent = labelText;
+        label.style.flex = '1';
+        label.style.cursor = 'pointer';
+        label.style.whiteSpace = 'nowrap';
+        label.style.overflow = 'hidden';
+        label.style.textOverflow = 'ellipsis';
+
+        label.addEventListener('click', function(){
+          // open in the main preview area (update iframe below)
+          renderTestInPlace(id, getQueryString());
+        });
+
+        row.appendChild(cb);
+        row.appendChild(label);
+        filteredList.appendChild(row);
+      });
+      if (filteredSelectAll) filteredSelectAll.checked = false;
+    }
+
+    // wire filters to update
     function onFilterChange(){
-      // Update UI immediately
-      populateFilteredSelect();
+      populateFilteredList();
       setUrlParams();
       applyParamsToNavLinks();
       updatePager();
-      // Debounce navigation so user can choose multiple filters quickly
       if (debounceTimer) clearTimeout(debounceTimer);
       const ids = getFilteredIds();
-      // Navigation policy:
-      // - If exactly one filtered result, navigate to it.
-      // - If multiple results and the current test is among them, do NOT navigate (stay on current preview).
-      // - If multiple results and current test is NOT among them, do NOT auto-navigate to avoid disruptive refresh.
-      if (!ids) return;
-      if (ids.length === 1) {
-        const only = ids[0];
-        if (only !== window.currentTestId) {
-          debounceTimer = setTimeout(() => {
-            const qs = getQueryString();
-            renderTestInPlace(only, qs);
-          }, 400);
-        }
+      if (!ids || !ids.length) return;
+      if (ids.indexOf(window.currentTestId) === -1) {
+        debounceTimer = setTimeout(() => {
+          const qs = getQueryString();
+          renderTestInPlace(ids[0], qs);
+        }, 400);
       }
-      // otherwise do nothing (keep current preview) to avoid refreshing when multiple matches
     }
-    // patientInput: respond to input and change; dateFilter: change; testTypeCheckboxes: change
+
     [patientInput].forEach(el => el.addEventListener('input', onFilterChange));
     [patientInput, dateFilter].forEach(el => el.addEventListener('change', onFilterChange));
-    // wire checkbox changes (update select-all state when any checkbox changes)
+
     function updateSelectAllState(){
       const boxes = Array.from(document.querySelectorAll('.filterTestTypeCheckbox'));
       const selAll = document.getElementById('filterTestTypeSelectAll');
@@ -229,7 +295,6 @@
       onFilterChange();
     }));
 
-    // wire select-all checkbox
     const selectAllBox = document.getElementById('filterTestTypeSelectAll');
     if (selectAllBox) {
       selectAllBox.addEventListener('change', function(){
@@ -239,7 +304,6 @@
       });
     }
 
-    // wire the dropdown toggle for the checkbox list
     if (testTypeToggle && testTypeList) {
       testTypeToggle.addEventListener('click', function(e){
         e.stopPropagation();
@@ -247,7 +311,6 @@
         testTypeList.style.display = showing ? 'none' : 'block';
         testTypeToggle.textContent = showing ? 'All Test Types ▾' : 'All Test Types ▴';
       });
-      // close when clicking outside
       document.addEventListener('click', function(evt){
         if (!testTypeList.contains(evt.target) && !testTypeToggle.contains(evt.target)) {
           testTypeList.style.display = 'none';
@@ -257,66 +320,62 @@
     }
 
     clearBtn.addEventListener('click', function(){
-      // cancel any pending auto-navigation
-      if (debounceTimer) {
-        clearTimeout(debounceTimer);
-        debounceTimer = null;
-      }
+      if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; }
       patientInput.value = '';
-      // clear checkboxes and select-all
+      var psBox = document.getElementById('patientSearch'); if (psBox) { psBox.value = ''; }
+      for (var i = 0; i < patientInput.options.length; i++) patientInput.options[i].hidden = false;
+      patientInput.size = 1;
       Array.from(document.querySelectorAll('.filterTestTypeCheckbox')).forEach(cb => cb.checked = false);
       try { const sa = document.getElementById('filterTestTypeSelectAll'); if (sa) sa.checked = false; } catch(e) {}
       dateFilter.value = '';
-      // clear filtered select options
-      while (filteredSelect.options.length > 1) filteredSelect.remove(1);
-      filteredSelect.selectedIndex = 0;
+      const fl = document.getElementById('filteredList'); if (fl) while (fl.firstChild) fl.removeChild(fl.firstChild);
+      try { const fsa = document.getElementById('filteredSelectAll'); if (fsa) fsa.checked = false; } catch(e) {}
       history.replaceState(null, '', window.location.pathname);
       applyParamsToNavLinks();
-      // repopulate and update pager
-      populateFilteredSelect();
+      populateFilteredList();
       updatePager();
     });
 
     printBtn.addEventListener('click', function(){
-      const ids = getFilteredIds();
-      if (!ids || !ids.length) {
-        alert('No tests match the current filter');
-        return;
+      const checked = Array.from(document.querySelectorAll('.filteredItemCheckbox')).filter(cb => cb.checked).map(cb => cb.getAttribute('data-id'));
+      let ids = checked.filter(Boolean);
+      if (!ids.length) {
+        const allFiltered = getFilteredIds();
+        if (!allFiltered || !allFiltered.length) { alert('No tests match the current filter'); return; }
+        if (!confirm('No tests selected. Print all filtered results?')) return;
+        ids = allFiltered;
       }
       const url = '/reports/print-multiple?ids=' + encodeURIComponent(ids.join(','));
-      window.open(url, '_blank');
+      // If running inside the Electron standalone app, request the main
+      // process to open the print preview (generates PDF and opens system viewer).
+      if (window.lisApp && typeof window.lisApp.printPreview === 'function') {
+        // Ensure we pass an absolute URL; the main process needs a full origin.
+        let fullUrl = (url && url[0] === '/') ? (window.location.origin + url) : url;
+        // Tell the server to suppress any automatic `window.print()` when
+        // rendering inside the hidden source window — we open the generated
+        // PDF ourselves via the system viewer.
+        if (fullUrl && fullUrl.indexOf('suppressPrint=1') === -1) {
+          fullUrl += (fullUrl.indexOf('?') === -1) ? '?suppressPrint=1' : '&suppressPrint=1';
+        }
+        window.lisApp.printPreview(fullUrl);
+      } else {
+        // Fallback for browser/server mode
+        window.open(url, '_blank');
+      }
     });
 
-    // Filtered select element (auto-open on change)
-    const filteredSelect = document.getElementById('filteredSelect');
-
-    function populateFilteredSelect(){
-      // clear existing
-      while (filteredSelect.options.length > 1) filteredSelect.remove(1);
-      const filtered = tests.filter(matchesFilters);
-      filtered.forEach(t => {
-        const opt = document.createElement('option');
-        const date = t.testDate ? new Date(t.testDate).toLocaleDateString() : '';
-        opt.value = t.id;
-        opt.text = (t.testId || '') + ' - ' + (t.patientName || 'Unknown') + ' - ' + (t.testType || '') + (date ? (' ('+date+')') : '');
-        filteredSelect.appendChild(opt);
+    if (filteredSelectAll) {
+      filteredSelectAll.addEventListener('change', function(){
+        const checked = filteredSelectAll.checked;
+        Array.from(document.querySelectorAll('.filteredItemCheckbox')).forEach(cb => cb.checked = checked);
       });
-      if (filtered.length === 0) {
-        filteredSelect.selectedIndex = 0;
-      } else {
-        filteredSelect.selectedIndex = 1;
-      }
     }
 
-    function setUrlParams(){
-      const qs = getQueryString();
-      const newUrl = window.location.pathname + qs;
-      history.replaceState(null, '', newUrl);
-    }
+    // clicking an item updates the main preview iframe (no floating overlay)
 
-    // (Apply is automatic on change)
+    function setUrlParams(){ const qs = getQueryString(); const newUrl = window.location.pathname + qs; history.replaceState(null, '', newUrl); }
 
-    // render a test preview in-place (without full page reload) when possible
+    // render a test preview in-place (without full page reload)
     const resultFrame = document.getElementById('resultFrame');
     const elPatientName = document.getElementById('patientName');
     const elPatientPatientId = document.getElementById('patientPatientId');
@@ -329,106 +388,44 @@
     function renderTestInPlace(id, qs) {
       qs = qs || '';
       const t = tests.find(x => String(x.id) === String(id));
-      if (!t) {
-        // fallback to full navigation when test data isn't available client-side
-        window.location.href = '/reports/preview/' + id + qs;
-        return;
-      }
-      // update iframe
+      if (!t) { window.location.href = '/reports/preview/' + id + qs; return; }
       if (resultFrame) resultFrame.src = '/reports/result/' + id + '?embedded=1' + (qs ? ('&' + qs.replace(/^\?/, '')) : '');
-      // update displayed metadata
       if (elPatientName) elPatientName.textContent = t.patientName || '';
       if (elPatientPatientId) elPatientPatientId.textContent = t.patientId || '';
       if (elDisplayTestId) elDisplayTestId.textContent = t.testId || '';
       if (elDisplayTestType) elDisplayTestType.textContent = t.testType || '';
       if (elDisplayTestDate) elDisplayTestDate.textContent = t.testDate ? new Date(t.testDate).toLocaleDateString() : '';
-      // update action links
       if (downloadPdf) downloadPdf.href = '/reports/pdf/' + id;
       if (printLink) printLink.href = '/reports/result/' + id + '?embedded=1&print=1';
-      // update history and current id
-      const newPath = '/reports/preview/' + id + qs;
-      try { history.replaceState(null, '', newPath); } catch (e) {}
-      window.currentTestId = id;
-      // update pager and prev/next links according to current filters
-      applyParamsToNavLinks();
-      updatePager();
-      // adjust prev/next anchors to point to next/prev within the current filtered set (if anchors exist)
+      const newPath = '/reports/preview/' + id + qs; try { history.replaceState(null, '', newPath); } catch (e) {}
+      window.currentTestId = id; applyParamsToNavLinks(); updatePager();
       const anyFilter = !!(patientInput.value || getSelectedTestTypes().length || dateFilter.value);
       const ids = anyFilter ? getFilteredIds() : tests.map(tt => tt.id);
       const idx = ids.indexOf(id);
-      if (prevBtn && prevBtn.tagName === 'A') {
-        if (idx > 0) prevBtn.href = '/reports/preview/' + ids[idx-1] + getQueryString();
-        else prevBtn.removeAttribute('href');
-      }
-      if (nextBtn && nextBtn.tagName === 'A') {
-        if (idx !== -1 && idx < ids.length - 1) nextBtn.href = '/reports/preview/' + ids[idx+1] + getQueryString();
-        else nextBtn.removeAttribute('href');
-      }
+      if (prevBtn && prevBtn.tagName === 'A') { if (idx > 0) prevBtn.href = '/reports/preview/' + ids[idx-1] + getQueryString(); else prevBtn.removeAttribute('href'); }
+      if (nextBtn && nextBtn.tagName === 'A') { if (idx !== -1 && idx < ids.length - 1) nextBtn.href = '/reports/preview/' + ids[idx+1] + getQueryString(); else nextBtn.removeAttribute('href'); }
     }
 
-    // auto-open when the filtered-select value changes (preserve filters)
-    filteredSelect.addEventListener('change', function(){
-      const v = filteredSelect.value;
-      if (!v) return;
-      const qs = getQueryString();
-      renderTestInPlace(v, qs);
-    });
-    // also allow double-click to open (backwards compatibility)
-    filteredSelect.addEventListener('dblclick', function(){
-      const v = filteredSelect.value;
-      if (v) {
-        const qs = getQueryString();
-        renderTestInPlace(v, qs);
-      }
-    });
-
-    // Prev/Next should move within the filtered set when filters are applied
+    // Prev/Next navigation
     const prevBtn = document.getElementById('prevBtn');
     const nextBtn = document.getElementById('nextBtn');
     function navigateWithinFiltered(direction){
-      const ids = getFilteredIds();
-      if (!ids || !ids.length) return false;
-      const cur = window.currentTestId;
-      let idx = ids.indexOf(cur);
-      let targetIndex;
-      if (idx === -1) {
-        // current preview not in filtered set: choose sensible start
-        targetIndex = (direction === 'prev') ? (ids.length - 1) : 0;
-      } else {
-        targetIndex = (direction === 'prev') ? (idx - 1) : (idx + 1);
-      }
-      // if target out of bounds, do nothing
-      if (targetIndex < 0 || targetIndex >= ids.length) return false;
-      const targetId = ids[targetIndex];
-      const qs = getQueryString();
-      renderTestInPlace(targetId, qs);
-      return true;
+      const ids = getFilteredIds(); if (!ids || !ids.length) return false; const cur = window.currentTestId; let idx = ids.indexOf(cur); let targetIndex;
+      if (idx === -1) targetIndex = (direction === 'prev') ? (ids.length - 1) : 0; else targetIndex = (direction === 'prev') ? (idx - 1) : (idx + 1);
+      if (targetIndex < 0 || targetIndex >= ids.length) return false; const targetId = ids[targetIndex]; const qs = getQueryString(); renderTestInPlace(targetId, qs); return true;
     }
 
     if (prevBtn) {
-      prevBtn.addEventListener('click', function(e){
-        e.preventDefault();
-        // try to navigate within filtered set; if not possible, fall back to server href (only if present)
-        const handled = navigateWithinFiltered('prev');
-        if (!handled) {
-          const href = prevBtn.getAttribute && prevBtn.getAttribute('href');
-          if (href) {
-            window.location.href = href;
-          }
-        }
-      });
+      prevBtn.addEventListener('click', function(e){ e.preventDefault(); const handled = navigateWithinFiltered('prev'); if (!handled) { const href = prevBtn.getAttribute && prevBtn.getAttribute('href'); if (href) window.location.href = href; } });
     }
     if (nextBtn) {
-      nextBtn.addEventListener('click', function(e){
-        e.preventDefault();
-        const handled = navigateWithinFiltered('next');
-        if (!handled) {
-          const href = nextBtn.getAttribute && nextBtn.getAttribute('href');
-          if (href) {
-            window.location.href = href;
-          }
-        }
-      });
+      nextBtn.addEventListener('click', function(e){ e.preventDefault(); const handled = navigateWithinFiltered('next'); if (!handled) { const href = nextBtn.getAttribute && nextBtn.getAttribute('href'); if (href) window.location.href = href; } });
     }
+
+    // initial populate if filters present
+    if (patientInput.value || getSelectedTestTypes().length || dateFilter.value) populateFilteredList();
+    updatePager();
+
   })();
 </script>
+<% } /* end if test */ %>

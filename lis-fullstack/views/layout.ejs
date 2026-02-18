@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
     <title><%= title %> - LIS</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="/assets/icon-192x192.png">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#10b981">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         * {
@@ -755,7 +760,7 @@
         <% if (typeof sessionUser !== 'undefined' && sessionUser) { %>
         <div class="sidebar">
             <div class="brand">
-                <img src="/assets/gezyne-logo.png" alt="Gezyne Clinical Laboratory" class="brand-logo">
+                <img src="<%= typeof inlineLogo !== 'undefined' && inlineLogo ? inlineLogo : '/assets/gezyne-logo.png' %>" alt="Gezyne Clinical Laboratory" class="brand-logo">
                 <div class="brand-text">Gezyne Clinical Laboratory</div>
             </div>
             <% const perms = (sessionUser && sessionUser.permissions) ? sessionUser.permissions : {}; %>
@@ -848,8 +853,9 @@
                                         </div>
                 </div>
             </div>
+            <% } %>
 
-            <!-- Alert Messages -->
+            <!-- Alert Messages (render for both guests and authenticated users) -->
             <% if (typeof success_msg !== 'undefined' && success_msg) { %>
             <div class="alert alert-success active"><%= success_msg %></div>
             <% } %>
@@ -858,7 +864,6 @@
             <% } %>
             <% if (typeof info !== 'undefined' && info) { %>
             <div class="alert alert-info active"><%= info %></div>
-            <% } %>
             <% } %>
 
             <!-- Page Content -->

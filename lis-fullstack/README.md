@@ -14,40 +14,37 @@ A full-stack web application for managing laboratory operations, built with Node
 
 ## Prerequisites
 
-- Node.js (v14 or higher)
+- Node.js (v18 or higher)
 - npm
 
 ## Installation
 
 1. Clone the repository:
+
 ```bash
 git clone <repository-url>
 cd lis-fullstack
 ```
 
 2. Install dependencies:
+
 ```bash
 npm install
 ```
 
 3. Seed the database with sample data:
+
 ```bash
 node seed.js
 ```
 
-4. Start the server:
+4. Start the server (development):
+
 ```bash
 node server.js
 ```
 
 5. Open your browser and navigate to `http://localhost:3000`
-
-## Default Login Credentials
-
-- **Admin**: admin@lab.com / password123
-- **Doctor**: sarah@lab.com / password123
-- **Technician**: mike@lab.com / password123
-- **Receptionist**: jane@lab.com / password123
 
 ## Project Structure
 
@@ -75,14 +72,17 @@ lis-fullstack/
 ## API Endpoints
 
 ### Authentication
+
 - `GET /login` - Login page
 - `POST /login` - Authenticate user
 - `POST /logout` - Logout user
 
 ### Dashboard
+
 - `GET /` - Dashboard with statistics
 
 ### Patients
+
 - `GET /patients` - List all patients
 - `GET /patients/new` - New patient form
 - `POST /patients` - Create patient
@@ -92,6 +92,7 @@ lis-fullstack/
 - `DELETE /patients/:id` - Delete patient
 
 ### Tests
+
 - `GET /tests` - List all tests
 - `GET /tests/new` - New test form
 - `POST /tests` - Create test
@@ -101,10 +102,12 @@ lis-fullstack/
 - `DELETE /tests/:id` - Delete test
 
 ### Reports
+
 - `GET /reports` - Generate reports
 - `GET /reports/download/:id` - Download PDF report
 
 ### Templates
+
 - `GET /templates` - List templates
 - `GET /templates/new` - New template form
 - `POST /templates` - Create template
@@ -113,6 +116,7 @@ lis-fullstack/
 - `DELETE /templates/:id` - Delete template
 
 ### Users (Admin only)
+
 - `GET /users` - List all users
 - `GET /users/new` - New user form
 - `POST /users` - Create user
@@ -141,17 +145,33 @@ nodemon server.js
 
 ## Production Deployment
 
-1. Set environment variables:
-```bash
-export PORT=3000
-export NODE_ENV=production
-```
+Recommended production options
 
-2. Use a process manager like PM2:
-```bash
-npm install -g pm2
-pm2 start server.js --name "lis-app"
-```
+- Run under PM2 (recommended): the repo includes `ecosystem.config.js` used to start the app in production mode.
+
+  Linux/macOS example:
+
+  ```bash
+  export PORT=3000
+  export NODE_ENV=production
+  npm install -g pm2
+  pm2 start ecosystem.config.js --env production
+  pm2 save
+  ```
+
+  Windows PowerShell example (current session):
+
+  ```powershell
+  $env:PORT = '3000'
+  $env:NODE_ENV = 'production'
+  npm install -g pm2
+  pm2 start ecosystem.config.js --env production
+  pm2 save
+  ```
+- Native Windows launcher: see `START_ON_WINDOWS.md`. The project ships `scripts/start-lis.ps1` which is compiled into `dist/start-lis.exe` (via `ps2exe`) and prefers PM2 when available. The launcher forces `NODE_ENV=production`, runs `pm2 save` and opens `pm2 monit` so you can watch status.
+- Packaged single EXE (optional): use `pkg` to produce `dist/laboratory-information-system.exe`. See package.json `pkg` config — note that large native assets (Chromium for Puppeteer, Sharp libs) often must be shipped alongside the EXE.
+
+If you plan to run PM2 as a Windows service so saved processes resurrect on reboot, consider `pm2-windows-service` or NSSM (instructions in `START_ON_WINDOWS.md`).
 
 ## License
 

@@ -9,6 +9,68 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 
 
 const DEFAULT_BACKUP_DIR = path.join(os.homedir(), 'Documents', 'LIS', 'backup');
 
+const ENV_FILE = path.join(__dirname, '..', '.env');
+
+function parseEnvContent(content) {
+  const lines = String(content || '').split(/\r?\n/);
+  return lines.map((line) => {
+    const m = line.match(/^([^#=\s]+)=(.*)$/);
+    if (m) {
+      const key = m[1].trim();
+      let value = m[2] || '';
+      value = value.trim();
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+        value = value.slice(1, -1);
+      }
+      return { type: 'kv', key, value, raw: line };
+    }
+    return { type: 'other', raw: line };
+  });
+}
+
+function readEnvFileEntries() {
+  try {
+    const raw = fs.existsSync(ENV_FILE) ? fs.readFileSync(ENV_FILE, 'utf8') : '';
+    return parseEnvContent(raw);
+  } catch (e) {
+    console.error('Failed to read .env:', e);
+    return [];
+  }
+}
+
+function writeEnvFile(updatedValues) {
+  try {
+    const raw = fs.existsSync(ENV_FILE) ? fs.readFileSync(ENV_FILE, 'utf8') : '';
+    const entries = parseEnvContent(raw);
+    const seen = new Set();
+    const outLines = entries.map((entry) => {
+      if (entry.type === 'kv') {
+        const k = entry.key;
+        if (Object.prototype.hasOwnProperty.call(updatedValues, k)) {
+          seen.add(k);
+          const v = String(updatedValues[k] || '');
+          const needsQuotes = /\s/.test(v) || v.includes('#') || v.includes('"');
+          const outV = needsQuotes ? `"${v.replace(/"/g, '\\"') }"` : v;
+          return `${k}=${outV}`;
+        }
+        return entry.raw;
+      }
+      return entry.raw;
+    });
+    Object.keys(updatedValues).forEach((k) => {
+      if (!seen.has(k)) {
+        const v = String(updatedValues[k] || '');
+        const needsQuotes = /\s/.test(v) || v.includes('#') || v.includes('"');
+        const outV = needsQuotes ? `"${v.replace(/"/g, '\\"') }"` : v;
+        outLines.push(`${k}=${outV}`);
+      }
+    });
+    fs.writeFileSync(ENV_FILE, outLines.join(os.EOL), 'utf8');
+  } catch (e) {
+    throw e;
+  }
+}
+
 function performBackup(destDir) {
   const DATA_FILE = path.join(__dirname, '..', 'data.json');
   const dir = destDir && String(destDir).length ? destDir : DEFAULT_BACKUP_DIR;
@@ -19,11 +81,49 @@ function performBackup(destDir) {
   return dest;
 }
 
+function performUserBackup(destDir) {
+  const USERS_FILE = path.join(__dirname, '..', 'data-users.json');
+  const dir = destDir && String(destDir).length ? destDir : DEFAULT_BACKUP_DIR;
+  fs.mkdirSync(dir, { recursive: true });
+  const ts = new Date().toISOString().replace(/[:.]/g, '-');
+  const dest = path.join(dir, `backup_users_${ts}.json`);
+  if (fs.existsSync(USERS_FILE)) {
+    fs.copyFileSync(USERS_FILE, dest);
+  } else {
+    // write an empty array backup if file missing
+    fs.writeFileSync(dest, JSON.stringify([], null, 2), 'utf8');
+  }
+  return dest;
+}
+
+function getPreferredNetworkAddress() {
+  try {
+    const nets = os.networkInterfaces();
+    for (const name of Object.keys(nets)) {
+      for (const iface of nets[name]) {
+        if (iface && iface.family === 'IPv4' && !iface.internal) {
+          return iface.address;
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Error getting network address:', e);
+  }
+  return '127.0.0.1';
+}
+
 // Only allow authenticated users; editing flags restricted to Admins
 router.get('/', requireAuth, (req, res) => {
   const featureFlags = req.app.locals.featureFlags || {};
   const backupConfig = req.app.locals.backupConfig || { enabled: false, frequency: 'daily', path: DEFAULT_BACKUP_DIR };
-  res.render('settings', { title: 'Settings', featureFlags, backupConfig });
+  // load persistent settings from data.json
+  let settings = {};
+  try { const data = global.db.read(); settings = data.settings || {}; } catch (e) { settings = {}; }
+  const networkAddress = getPreferredNetworkAddress();
+  const networkPort = (req && req.socket && req.socket.localPort) ? req.socket.localPort : (process.env.PORT || req.app && req.app.locals && req.app.locals.port || 3000);
+  const networkUrl = `${networkAddress}:${networkPort}`;
+  const envEntries = readEnvFileEntries();
+  res.render('settings', { title: 'Settings', featureFlags, backupConfig, settings, networkAddress, networkPort, networkUrl, envEntries });
 });
 
 router.post('/', requireAuth, canManageUsers, (req, res) => {
@@ -41,6 +141,36 @@ router.post('/', requireAuth, canManageUsers, (req, res) => {
     const frequency = flags.backupFrequency || 'daily';
     const backupPath = flags.backupPath || DEFAULT_BACKUP_DIR;
     req.app.locals.backupConfig = { enabled: autoBackup, frequency, path: backupPath };
+
+    // Persist backup config into data.json so it survives restarts
+    try {
+      const data = global.db.read();
+      data.backupConfig = { enabled: autoBackup, frequency, path: backupPath };
+      global.db.write(data);
+      req.app.locals.backupConfig = data.backupConfig;
+    } catch (e) {
+      console.error('Failed to persist backup config:', e);
+    }
+
+    // Persist GEZYNE / analyzer path in app data so it's preserved across restarts
+    try {
+      const data = global.db.read();
+      data.settings = data.settings || {};
+      data.settings.gezynePath = flags.gezynePath || '';
+      global.db.write(data);
+      req.app.locals.settings = data.settings;
+    } catch (e) {
+      console.error('Failed to persist settings:', e);
+    }
+    // Ensure feature flags remain enabled by default (UI visibility shouldn't be controlled here)
+    try {
+      req.app.locals.featureFlags = req.app.locals.featureFlags || {};
+      req.app.locals.featureFlags.tests = true;
+      req.app.locals.featureFlags.reports = true;
+      req.app.locals.featureFlags.templates = true;
+      req.app.locals.featureFlags.users = true;
+      req.app.locals.featureFlags.worksheet = true;
+    } catch (e) {}
 
     // Frequency -> milliseconds
     const frequencyToMs = (f) => {
@@ -73,6 +203,25 @@ router.post('/', requireAuth, canManageUsers, (req, res) => {
     }
 
     req.flash('success_msg', 'Settings updated');
+    // handle .env updates (fields named env_<KEY> in the form)
+    try {
+      const envUpdates = {};
+      Object.keys(req.body || {}).forEach((k) => {
+        if (k && k.indexOf('env_') === 0) {
+          const key = k.slice(4);
+          envUpdates[key] = req.body[k];
+        }
+      });
+      if (Object.keys(envUpdates).length) {
+        writeEnvFile(envUpdates);
+        Object.keys(envUpdates).forEach((kk) => { process.env[kk] = envUpdates[kk]; });
+        req.flash('success_msg', `${Object.keys(envUpdates).length} environment value(s) updated`);
+      }
+    } catch (e) {
+      console.error('Failed to update .env:', e);
+      req.flash('error_msg', 'Failed to update .env file');
+    }
+
     return res.redirect('/settings');
   } catch (e) {
     req.flash('error_msg', 'Failed to update settings');
@@ -110,6 +259,18 @@ router.post('/backup', requireAuth, canManageUsers, (req, res) => {
   return res.redirect('/settings');
 });
 
+// Manual backup endpoint (user data)
+router.post('/backup-users', requireAuth, canManageUsers, (req, res) => {
+  try {
+    const dest = performUserBackup(req.body && req.body.backupPath ? req.body.backupPath : null);
+    req.flash('success_msg', `User backup saved: ${dest}`);
+  } catch (e) {
+    console.error('Manual user backup error:', e);
+    req.flash('error_msg', `User backup failed: ${e && e.message ? e.message : String(e)}`);
+  }
+  return res.redirect('/settings');
+});
+
 // Restore endpoint (upload JSON file)
 router.post('/restore', requireAuth, canManageUsers, upload.single('backupFile'), (req, res) => {
   try {
@@ -127,6 +288,27 @@ router.post('/restore', requireAuth, canManageUsers, upload.single('backupFile')
   } catch (e) {
     console.error('Restore error:', e);
     req.flash('error_msg', `Restore failed: ${e && e.message ? e.message : String(e)}`);
+  }
+  return res.redirect('/settings');
+});
+
+// Restore endpoint for user data (upload JSON file)
+router.post('/restore-users', requireAuth, canManageUsers, upload.single('backupFileUsers'), (req, res) => {
+  try {
+    if (!req.file) {
+      req.flash('error_msg', 'No file uploaded');
+      return res.redirect('/settings');
+    }
+    const parsed = JSON.parse(req.file.buffer.toString('utf8'));
+    const USERS_FILE = path.join(__dirname, '..', 'data-users.json');
+    // backup current before overwrite
+    performUserBackup();
+    // normalize to array/object as originally stored
+    fs.writeFileSync(USERS_FILE, JSON.stringify(parsed, null, 2), 'utf8');
+    req.flash('success_msg', 'User restore completed (previous user data backed up)');
+  } catch (e) {
+    console.error('User restore error:', e);
+    req.flash('error_msg', `User restore failed: ${e && e.message ? e.message : String(e)}`);
   }
   return res.redirect('/settings');
 });
@@ -155,6 +337,26 @@ router.post('/clear', requireAuth, canManageUsers, (req, res) => {
   } catch (e) {
     console.error('Clear data error:', e);
     req.flash('error_msg', `Clear data failed: ${e && e.message ? e.message : String(e)}`);
+  }
+  return res.redirect('/settings');
+});
+
+// Clear user data endpoint (backs up current users, preserves Admin users)
+router.post('/clear-users', requireAuth, canManageUsers, (req, res) => {
+  try {
+    const USERS_FILE = path.join(__dirname, '..', 'data-users.json');
+    const raw = fs.existsSync(USERS_FILE) ? fs.readFileSync(USERS_FILE, 'utf8') : '[]';
+    let parsed;
+    try { parsed = JSON.parse(raw || '[]'); } catch (e) { parsed = []; }
+    // backup current before clearing
+    performUserBackup();
+
+    const filtered = Array.isArray(parsed) ? parsed.filter(u => u && u.role === 'Admin') : [];
+    fs.writeFileSync(USERS_FILE, JSON.stringify(filtered, null, 2), 'utf8');
+    req.flash('success_msg', 'User data cleared (admin users preserved). Backup created.');
+  } catch (e) {
+    console.error('Clear user data error:', e);
+    req.flash('error_msg', `Clear user data failed: ${e && e.message ? e.message : String(e)}`);
   }
   return res.redirect('/settings');
 });

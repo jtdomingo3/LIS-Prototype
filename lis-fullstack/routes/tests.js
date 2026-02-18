@@ -8,9 +8,123 @@ const sseEmitter = require('../lib/sseEmitter');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
+const os = require('os');
 
 // multer for handling multipart/form-data file uploads in memory
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+
+// Analyzer mapping: analyzer ITEM codes -> form field names
+const ANALYZER_MAP = {
+  CHOL: 'cholesterol',
+  CREA: 'creatinine',
+  FBS: 'fbs',
+  HDLC: 'hdl',
+  SGPT: 'sgpt',
+  TG: 'tg',
+  UA: 'uricAcid',
+  UREA: 'bun',
+  LDL: 'ldl',
+  VLDL: 'vldl',
+  HBA1C: 'hba1c',
+  ALB: 'alb',
+  SODIUM: 'sodium',
+  POTASSIUM: 'potassium',
+  CHLORIDE: 'chloride'
+};
+
+async function loadMdbReader() {
+  try {
+    let MDBReader;
+    try {
+      const mod = require('mdb-reader');
+      MDBReader = mod && mod.default ? mod.default : mod;
+    } catch (e) {
+      const mod = await import('mdb-reader');
+      MDBReader = mod && mod.default ? mod.default : mod;
+    }
+    return MDBReader;
+  } catch (e) {
+    throw new Error('mdb-reader not available: ' + e.message);
+  }
+}
+
+// GET /tests/:id/analyzer/capture - read analyzer DB/export and return mapped results
+router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
+  try {
+    const test = await Test.findById(req.params.id);
+    if (!test) return res.status(404).json({ error: 'Test not found' });
+    const patient = test.patient ? await Patient.findById(test.patient) : null;
+
+    // Determine gezyne folder from app settings, env, or default relative path
+    const gezynePath = (req.app && req.app.locals && req.app.locals.settings && req.app.locals.settings.gezynePath)
+      ? req.app.locals.settings.gezynePath
+      : (process.env.GEZYNE_PATH || path.resolve(__dirname, '..', '..', 'new-gezyne'));
+    const mdbFile = path.join(gezynePath, 'DataBase', 'Analyser.MDB');
+    if (!fs.existsSync(mdbFile)) return res.json({ error: 'Analyzer MDB not found at ' + mdbFile });
+
+    const MDBReader = await loadMdbReader();
+    const buf = fs.readFileSync(mdbFile);
+    const reader = new MDBReader(buf);
+    const tables = reader.getTableNames();
+
+    // collect patient records matching name tokens
+    const nameTokens = [];
+    if (patient) {
+      if (patient.firstName) nameTokens.push(String(patient.firstName).toLowerCase());
+      if (patient.lastName) nameTokens.push(String(patient.lastName).toLowerCase());
+      if (patient.fullName) nameTokens.push(String(patient.fullName).toLowerCase());
+    }
+
+    const patientTables = tables.filter(t => /^PATIENT/i.test(t));
+    const matchingPatients = [];
+    for (const t of patientTables) {
+      try {
+        const table = reader.getTable(t);
+        const rows = table.getData({ start: 0, length: 500 });
+        for (const r of rows) {
+          const joined = Object.values(r).join(' ').toLowerCase();
+          if (nameTokens.length === 0 || nameTokens.every(tok => joined.includes(tok))) {
+            matchingPatients.push({ table: t, row: r });
+          }
+        }
+      } catch (e) {}
+    }
+
+    // Collect recent CHECK_RESULT* rows
+    const checkTables = tables.filter(t => /^CHECK_RESULT/i.test(t));
+    const checkRows = [];
+    for (const t of checkTables) {
+      try {
+        const table = reader.getTable(t);
+        const rows = table.getData({ start: 0, length: 1000 });
+        for (const r of rows) checkRows.push(Object.assign({ __table: t }, r));
+      } catch (e) {}
+    }
+
+    // Build mapping of latest item -> result
+    const latestByItem = {};
+    for (const r of checkRows) {
+      try {
+        const code = (r.ITEM || r.Item || r.item || '').toString().toUpperCase();
+        const val = (r.RESULT || r.Result || r.result || null);
+        if (!code) continue;
+        if (!latestByItem[code]) latestByItem[code] = { value: val, row: r };
+      } catch (e) {}
+    }
+
+    // Map to form names
+    const mapped = {};
+    for (const code of Object.keys(latestByItem)) {
+      const field = ANALYZER_MAP[code];
+      if (field) mapped[field] = latestByItem[code].value;
+    }
+
+    res.json({ patients: matchingPatients.slice(0,50), checkCount: checkRows.length, mapped });
+  } catch (err) {
+    console.error('Analyzer capture error', err);
+    res.json({ error: String(err) });
+  }
+});
 
 
 // GET /tests - List all tests
@@ -30,7 +144,19 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
   const allPatients = await Patient.find({});
 
     // Available test types for filter dropdown
-    const availableTestTypes = Array.isArray(allTests) ? Array.from(new Set(allTests.map(t => (t.testType || '').toString()).filter(Boolean))).sort() : [];
+    // Collapse blood-chemistry variants (including BUN/Creat and common synonyms)
+    const rawTypes = Array.isArray(allTests) ? allTests.map(t => (t.testType || '').toString()).filter(Boolean) : [];
+    let sawBloodChem = false;
+    const mapped = rawTypes.map(s => {
+      const low = String(s || '').toLowerCase();
+      if (/^blood[\s-]*chemistry/.test(low) || low.indexOf('blood-chemistry') !== -1 || /(bun\b|creat(inine)?|creat\/?creat|sgpt|sgot|lipid|hba1c|albumin|blood\s*urea|blood\s*sugar)/.test(low)) {
+        sawBloodChem = true;
+        return null; // collapse into single Blood Chemistry entry
+      }
+      return String(s).trim();
+    }).filter(Boolean);
+    if (sawBloodChem) mapped.push('Blood Chemistry');
+    const availableTestTypes = Array.from(new Set(mapped)).filter(Boolean).sort();
 
     // Apply search filter
     if (searchQuery) {
@@ -65,10 +191,22 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
       allTests = allTests.filter(t => ((t.status || '').toString().toLowerCase() === sf));
     }
 
-    // Apply testType filter (substring match)
+    // Apply testType filter (substring match) with special handling for Blood Chemistry
     if (typeFilter) {
-      const tf = typeFilter.toString().toLowerCase();
-      allTests = allTests.filter(t => (t.testType || '').toString().toLowerCase().includes(tf));
+      const tf = typeFilter.toString().toLowerCase().trim();
+      if (/^blood\s*chemistry$/.test(tf)) {
+        allTests = allTests.filter(t => {
+          const tid = String(t.testId || '').toUpperCase();
+          const candidate = String(t.testType || t.template || '').toLowerCase().trim();
+          if (tid && tid.startsWith('BC')) return true;
+          if (candidate.indexOf('blood') !== -1 && candidate.indexOf('chemistry') !== -1) return true;
+          if (/(bun\b|creat(inine)?|creat\/?creat|sgpt|sgot|lipid|hba1c|albumin|blood\s*urea|blood\s*sugar)/.test(candidate)) return true;
+          return false;
+        });
+      } else {
+        const tfEq = tf;
+        allTests = allTests.filter(t => (t.testType || '').toString().toLowerCase().includes(tfEq));
+      }
     }
 
     // Date filter (match testDate or createdAt YYYY-MM-DD)
@@ -148,13 +286,6 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       'dengue-duo.ejs',
       'thyroid-panel.ejs',
       'blood-chemistry.ejs',
-      'blood-chemistry-sgpt-sgot.ejs',
-      'blood-chemistry-bun-crea.ejs',
-      'blood-chemistry-lipid-profile.ejs',
-      'blood-chemistry-electrolytes.ejs',
-      'blood-chemistry-hba1c.ejs',
-      'blood-chemistry-albumin.ejs',
-      'blood-chemistry-blood-sugar.ejs',
       'pt-aptt.ejs',
       'xray.ejs',
       'ecg.ejs',
@@ -330,6 +461,8 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       if (/fecal|fecalysis|stool/.test(s)) return 'FA';
       if (/urinal|urine|urinalysis/.test(s)) return 'UA';
       if (/pregnan|pregnancy/.test(s)) return 'PT';
+      // Prothrombin / APTT (coagulation) tests should use their own APT prefix
+      if (/\b(?:pt|prothrombin|pt-aptt|ptaptt|aptt)\b/.test(s)) return 'APT';
       // Specific clinical tests -> unique prefixes
       if (/blood\s*typing|blood-typing|bloodtyping/.test(s)) return 'BT';
       if (/hematology|hemato|cbc/.test(s)) return 'HM';
@@ -337,7 +470,8 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       if (/\besr\b|erythrocyte/.test(s)) return 'ESR';
       if (/dengue/.test(s)) return 'DG';
       if (/(ct[-_\s]*&?\s*bt|ct[-_\s]*bt|ct[-_\s]*and[-_\s]*bt|bleeding|clotting)/.test(s)) return 'CTBT';
-      if (/blood|chemistry|pt|aptt|bun|crea|sgpt|sgot|lipid|hba1c|albumin|blood\s*sugar|chemistry/.test(s)) return 'BC';
+      // Blood chemistry group (exclude PT/APTT which are coagulation tests)
+      if (/(?:blood|chemistry|bun|crea|sgpt|sgot|lipid|hba1c|albumin|blood\s*sugar)/.test(s)) return 'BC';
       return 'T';
     };
 
@@ -1927,6 +2061,28 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
     }
 
     const updated = await Test.findByIdAndUpdate(req.params.id, updateData, { new: true });
+    // Auto-apply profile signatures for any selected signatory fields (e.g., mtSelect, doctorSelect, pathSelect)
+    try {
+      const sigRoutes = require('./signatures');
+      if (sigRoutes && typeof sigRoutes.applyProfileSignatureIfEnabled === 'function') {
+        // scan form fields for keys that end with 'Select' (signatory_select uses '<prefix>Select')
+        for (const key of Object.keys(req.body || {})) {
+          try {
+            if (/Select$/.test(key)) {
+              const uid = req.body[key];
+              if (uid && uid !== '__manual__') {
+                await sigRoutes.applyProfileSignatureIfEnabled(updated, uid);
+              }
+            }
+          } catch (e) { console.warn('Auto-apply signature iteration error for key', key, e); }
+        }
+        // backward-compat: also try performedBy if present
+        if (performedBy) {
+          try { await sigRoutes.applyProfileSignatureIfEnabled(updated, performedBy); } catch (e) {}
+        }
+      }
+    } catch (e) { console.warn('Auto-apply signature failed', e); }
+
     try {
       console.log('Saved results for test', req.params.id, 'results keys:', updated && updated.results ? Object.keys(updated.results) : null);
     } catch (e) {}
@@ -1967,23 +2123,18 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
       'pregnancy-test.ejs',
       'dengue-duo.ejs',
       'blood-chemistry.ejs',
-      'blood-chemistry-sgpt-sgot.ejs',
-      'blood-chemistry-bun-crea.ejs',
-      'blood-chemistry-electrolytes.ejs',
-      'blood-chemistry-hba1c.ejs',
-      'blood-chemistry-albumin.ejs',
       'pt-aptt.ejs',
       'xray.ejs',
       'ecg.ejs',
       'hematology.ejs',
       'serology.ejs',
       'ultrasound-abd-kubp-hbt.ejs',
-      'echocardiography-2d.ejs'
-      , 'ultrasound-transvaginal.ejs'
-      , 'ultrasound-biophysical.ejs'
-      , 'ultrasound-1st-trimester-obstetrics.ejs'
-      , 'drugtest.ejs'
-      , 'ultrasound-pelvic.ejs'
+      'echocardiography-2d.ejs',
+      'ultrasound-transvaginal.ejs',
+      'ultrasound-biophysical.ejs',
+      'ultrasound-1st-trimester-obstetrics.ejs',
+      'drugtest.ejs',
+      'ultrasound-pelvic.ejs'
     ];
     const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
     const staticTemplates = files.map(f => {

@@ -18,6 +18,16 @@
     <% } %>
     <input type="file" name="signature" accept="image/png,image/*" />
 
+    <label>Auto-apply signature</label>
+    <% const as = user.autoSignature || { enabled:false, until:null }; const now = new Date(); const until = as && as.until ? new Date(as.until) : null; %>
+    <select name="autoSignatureOption">
+      <option value="off" <% if (!as.enabled) { %>selected<% } %>>Off</option>
+      <option value="1day" <% if (as.enabled && until && (until - now) > 0 && (until - now) <= 24*3600*1000) { %>selected<% } %>>1 day</option>
+      <option value="1week" <% if (as.enabled && until && (until - now) > 0 && (until - now) <= 7*24*3600*1000) { %>selected<% } %>>1 week</option>
+      <option value="1month" <% if (as.enabled && until && (until - now) > 0 && (until - now) <= 31*24*3600*1000) { %>selected<% } %>>1 month</option>
+      <option value="permanent" <% if (as.enabled && !as.until) { %>selected<% } %>>Always</option>
+    </select>
+
     <hr />
     <h4>Change Password (optional)</h4>
     <label>New password</label>

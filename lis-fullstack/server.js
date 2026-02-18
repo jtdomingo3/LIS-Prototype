@@ -172,17 +172,6 @@ function verifyStartupRequirements() {
   if (!fs.existsSync(publicDir)) optionalWarnings.push({ path: publicDir, reason: 'static public folder not found; some static assets may be missing' });
   if (!fs.existsSync(assetsDir)) optionalWarnings.push({ path: assetsDir, reason: 'assets folder not found; logos/sounds may be missing' });
 
-  // Check for Puppeteer local Chromium (common packaging issue)
-  try {
-    const puppeteerPkg = require.resolve('puppeteer');
-    const puppeteerChromium = path.join(__dirname, 'node_modules', 'puppeteer', '.local-chromium');
-    if (!fs.existsSync(puppeteerChromium)) {
-      optionalWarnings.push({ path: puppeteerChromium, reason: 'puppeteer installed but bundled Chromium not found; Puppeteer-based features will fail unless a system browser is used' });
-    }
-  } catch (e) {
-    // puppeteer not installed - that's fine if you don't use it
-  }
-
   if (required.length || optionalWarnings.length) {
     console.error('\n=== LIS Startup Validation ===');
     if (required.length) {
@@ -194,7 +183,7 @@ function verifyStartupRequirements() {
     if (optionalWarnings.length) {
       console.warn('\nWarnings:');
       optionalWarnings.forEach(w => console.warn(` - ${w.path}: ${w.reason}`));
-      console.warn('\nAction: these may be optional but can affect features. For Puppeteer, install Chromium or configure Puppeteer to use a system browser.');
+      console.warn('\nAction: these may be optional but can affect features.');
     }
     console.error('=== End validation ===\n');
   }
@@ -341,6 +330,16 @@ app.use((req, res, next) => {
   next();
 });
 
+// Pre-compute inline logo as base64 data URI so every view has it
+// (ensures logo is embedded when page is saved to desktop or used offline)
+try {
+  const _logoBuffer = fs.readFileSync(path.join(__dirname, 'assets', 'gezyne-logo.png'));
+  app.locals.inlineLogo = 'data:image/png;base64,' + _logoBuffer.toString('base64');
+} catch (e) {
+  console.warn('Could not inline logo:', e.message);
+  app.locals.inlineLogo = '/assets/gezyne-logo.png'; // fallback to relative path
+}
+
 // Feature flags (temporary toggles for UI visibility)
 app.locals.featureFlags = {
   tests: true,
@@ -355,8 +354,41 @@ app.use((req, res, next) => {
   // Allow session-level overrides for temporary (Apply) changes
   const sessionFlags = (req.session && req.session.featureFlags) ? req.session.featureFlags : {};
   res.locals.featureFlags = Object.assign({}, app.locals.featureFlags, sessionFlags);
+  // expose backupConfig from app.locals (may have been persisted)
+  res.locals.backupConfig = app.locals.backupConfig || { enabled: false, frequency: 'daily', path: path.join(os.homedir(), 'Documents', 'LIS', 'backup') };
   next();
 });
+
+// Restore persisted backup config and start auto-backup interval if enabled
+try {
+  const data = global.db.read();
+  const bc = data && data.backupConfig ? data.backupConfig : null;
+  if (bc) {
+    app.locals.backupConfig = bc;
+    if (bc.enabled) {
+      const frequencyToMs = (f) => {
+        const day = 24 * 60 * 60 * 1000;
+        switch ((f || '').toLowerCase()) {
+          case 'daily': return day;
+          case 'weekly': return 7 * day;
+          case 'monthly': return 30 * day;
+          default: const m = Number(f); return (isNaN(m) ? 60 : Math.max(1, m)) * 60 * 1000;
+        }
+      };
+      const ms = frequencyToMs(bc.frequency);
+      app.locals.backupIntervalId = setInterval(() => {
+        try {
+          const DATA_FILE = path.join(__dirname, 'data.json');
+          const dir = bc.path && String(bc.path).length ? bc.path : path.join(os.homedir(), 'Documents', 'LIS', 'backup');
+          fs.mkdirSync(dir, { recursive: true });
+          const ts = new Date().toISOString().replace(/[:.]/g, '-');
+          const dest = path.join(dir, `backup_${ts}.json`);
+          fs.copyFileSync(DATA_FILE, dest);
+        } catch (e) { console.error('Auto-backup failed:', e); }
+      }, ms);
+    }
+  }
+} catch (e) { /* ignore startup backup restore errors */ }
 
 // Server-side result highlighting helper (for PDFs / serverside renders where client JS may not run)
 function escapeHtml(str) {
@@ -562,4 +594,14 @@ app.listen(PORT, HOST, () => {
   lines.push('='.repeat(72));
 
   console.log(lines.join('\n'));
+
+  // Background: generate any missing PDF reports into Documents/LIS/reports
+  try {
+    const reportGenerator = require('./lib/reportGenerator');
+    reportGenerator.generateAllMissing().catch(e => {
+      console.error('[startup] report generation scan error:', e && e.message);
+    });
+  } catch (e) {
+    console.warn('[startup] could not run report generation scan:', e && e.message);
+  }
 });

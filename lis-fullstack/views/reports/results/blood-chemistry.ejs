@@ -15,14 +15,15 @@
   .results-frame{ width:100%; border:2px solid #000; border-collapse:collapse; margin-top:6px; box-sizing:border-box }
   .results-frame td{ padding:6px; vertical-align:middle; border-bottom:1px solid #000 }
   .results-frame th{ padding:8px; text-align:left; border-bottom:2px solid #000; font-weight:700 }
-  .blood-results th{ padding:4px 8px; font-size:10px; font-weight:700 }
-  .blood-results td{ padding:4px 8px; font-size:10px }
+  .blood-results th{ padding:4px 8px; font-size:inherit; font-weight:700 }
+  .blood-results td{ padding:4px 8px; font-size:inherit }
+  .blood-results{ font-size:10px }
   .results-frame th, .results-frame td { border-right:1px solid #000 }
   .results-frame th:last-child, .results-frame td:last-child { border-right:none }
   .flag { display:inline-block; min-width:18px; margin-left:6px; color:#d00; font-weight:700 }
   .results-frame .center{ text-align:center }
-  .signatures{ display:flex; justify-content:space-between; margin-top:24px }
-  .sig{ position:relative; text-align:center; width:32%; min-height:90px }
+  .signatures{ display:flex; justify-content:space-between; margin-top:48px }
+  .sig{ position:relative; text-align:center; width:32%; min-height:95px }
   .signature-overlay{ position:absolute; left:50%; transform:translateX(-50%) scale(1); transform-origin:center; max-width:60%; pointer-events:none; z-index:2 }
   .watermark{ position:absolute; left:50%; top:44%; transform:translate(-50%,-50%); width:52%; opacity:0.06; pointer-events:none; z-index:0 }
   .report-container{ position:relative; z-index:1 }
@@ -83,139 +84,99 @@
          return '';
        }
     %>
-    <div class="results-columns" style="display:flex; gap:10px;">
-      <table class="results-frame blood-results" style="width:50%;">
-        <tr>
-          <th style="width:45%">TEST</th>
-          <th style="width:20%">RESULT</th>
-          <th style="width:15%">UNIT</th>
-          <th style="width:20%">REFERENCE</th>
-        </tr>
-        <tr>
-          <td>FBS</td>
-          <td class="center" style="font-weight:700"><%= test && test.results && test.results.fbs ? test.results.fbs : '' %><span class="flag"><%= flagValue(test && test.results && test.results.fbs,70,110) %></span></td>
-          <td class="center">mg/dL</td>
-          <td class="center">70.00 - 110.00</td>
-        </tr>
-        <tr>
-          <td>RBS</td>
-          <td class="center" style="font-weight:700"><%= test && test.results && test.results.rbs ? test.results.rbs : '' %><span class="flag"><%= flagValue(test && test.results && test.results.rbs,80,130) %></span></td>
-          <td class="center">mg/dL</td>
-          <td class="center">80.00 - 130.00</td>
-        </tr>
-        <tr>
-          <td>1st Hour</td>
-          <td class="center" style="font-weight:700"><%= test && test.results && test.results.firstHour ? test.results.firstHour : '' %><span class="flag"><%= flagValue(test && test.results && test.results.firstHour,90,140) %></span></td>
-          <td class="center">mg/dL</td>
-          <td class="center">90.00 - 140.00</td>
-        </tr>
-        <tr>
-          <td>2nd Hour</td>
-          <td class="center" style="font-weight:700"><%= test && test.results && test.results.secondHour ? test.results.secondHour : '' %><span class="flag"><%= flagValue(test && test.results && test.results.secondHour,80,120) %></span></td>
-          <td class="center">mg/dL</td>
-          <td class="center">80.00 - 120.00</td>
-        </tr>
-        <tr>
-          <td>Cholesterol</td>
-          <td class="center" style="font-weight:700"><%= test && test.results && test.results.cholesterol ? test.results.cholesterol : '' %><span class="flag"><%= flagValue(test && test.results && test.results.cholesterol,0,200) %></span></td>
-          <td class="center">mg/dL</td>
-          <td class="center">0.00 - 200.00</td>
-        </tr>
-        <tr>
-          <td>Triglyceride</td>
-          <td class="center" style="font-weight:700"><%= test && test.results && test.results.tg ? test.results.tg : '' %><span class="flag"><%= flagValue(test && test.results && test.results.tg,60,150) %></span></td>
-          <td class="center">mg/dL</td>
-          <td class="center">60.00 - 150.00</td>
-        </tr>
-        <tr>
-          <td>HDL-C</td>
-          <td class="center" style="font-weight:700"><%= test && test.results && test.results.hdl ? test.results.hdl : '' %><span class="flag"><%= flagValue(test && test.results && test.results.hdl,35,80) %></span></td>
-          <td class="center">mg/dL</td>
-          <td class="center">35.00 - 80.00</td>
-        </tr>
-        <tr>
-          <td>LDL</td>
-          <td class="center" style="font-weight:700"><%= test && test.results && test.results.ldl ? test.results.ldl : '' %><span class="flag"><%= flagValue(test && test.results && test.results.ldl,66,178) %></span></td>
-          <td class="center">mg/dL</td>
-          <td class="center">66.00 - 178.00</td>
-        </tr>
-        <tr>
-          <td>VLDL</td>
-          <td class="center" style="font-weight:700"><%= test && test.results && test.results.vldl ? test.results.vldl : '' %><span class="flag"><%= flagValue(test && test.results && test.results.vldl,0,30) %></span></td>
-          <td class="center">mg/dL</td>
-          <td class="center">0.00 - 30.00</td>
-        </tr>
-        <tr>
-          <td>Uric Acid</td>
-          <td class="center" style="font-weight:700"><%= test && test.results && test.results.uricAcid ? test.results.uricAcid : '' %><span class="flag"><%= flagValue(test && test.results && test.results.uricAcid,2.4,5.7) %></span></td>
-          <td class="center">mg/dL</td>
-          <td class="center">2.40 - 5.70</td>
-        </tr>
-      </table>
+    <% 
+      // unified analyte definitions (label, key, unit, ref display, min, max)
+      const analyteDefs = [
+        { key:'fbs', label:'FBS', unit:'mg/dL', ref:'70.00 - 110.00', min:70, max:110 },
+        { key:'rbs', label:'RBS', unit:'mg/dL', ref:'80.00 - 130.00', min:80, max:130 },
+        { key:'firstHour', label:'1st Hour', unit:'mg/dL', ref:'90.00 - 140.00', min:90, max:140 },
+        { key:'secondHour', label:'2nd Hour', unit:'mg/dL', ref:'80.00 - 120.00', min:80, max:120 },
+        { key:'cholesterol', label:'Cholesterol', unit:'mg/dL', ref:'0.00 - 200.00', min:0, max:200 },
+        { key:'tg', label:'Triglyceride', unit:'mg/dL', ref:'60.00 - 150.00', min:60, max:150 },
+        { key:'hdl', label:'HDL-C', unit:'mg/dL', ref:'35.00 - 80.00', min:35, max:80 },
+        { key:'ldl', label:'LDL', unit:'mg/dL', ref:'66.00 - 178.00', min:66, max:178 },
+        { key:'vldl', label:'VLDL', unit:'mg/dL', ref:'0.00 - 30.00', min:0, max:30 },
+        { key:'uricAcid', label:'Uric Acid', unit:'mg/dL', ref:'2.40 - 5.70', min:2.4, max:5.7 },
+        { key:'creatinine', label:'Creatinine', unit:'mg/dL', ref:'0.50 - 1.00', min:0.5, max:1.0 },
+        { key:'bun', label:'BUN', unit:'mg/dL', ref:'4.67 - 23.36', min:4.67, max:23.36 },
+        { key:'sgpt', label:'SGPT (ALT)', unit:'U/L', ref:'0.00 - 32.00', min:0, max:32 },
+        { key:'sgot', label:'SGOT (AST)', unit:'U/L', ref:'0.00 - 31.00', min:0, max:31 },
+        { key:'sodium', label:'Sodium', unit:'mmol/L', ref:'136.00 - 148.00', min:136, max:148 },
+        { key:'potassium', label:'Potassium', unit:'mmol/L', ref:'3.50 - 5.10', min:3.5, max:5.1 },
+        { key:'chloride', label:'Chloride', unit:'mmol/L', ref:'98.00 - 107.00', min:98, max:107 },
+        { key:'hba1c', label:'HbA1c', unit:'%', ref:'4.00 - 6.50', min:4, max:6.5 },
+        { key:'alb', label:'ALB', unit:'g/L', ref:'3.00 - 6.00', min:3, max:6 }
+      ];
 
-      <table class="results-frame blood-results" style="width:50%;">
-        <tr>
-          <th style="width:45%">TEST</th>
-          <th style="width:20%">RESULT</th>
-          <th style="width:15%">UNIT</th>
-          <th style="width:20%">REFERENCE</th>
-        </tr>
-        <tr>
-          <td>Creatinine</td>
-          <td class="center" style="font-weight:700"><%= test && test.results && test.results.creatinine ? test.results.creatinine : '' %><span class="flag"><%= flagValue(test && test.results && test.results.creatinine,0.5,1.0) %></span></td>
-          <td class="center">mg/dL</td>
-          <td class="center">0.50 - 1.00</td>
-        </tr>
-        <tr>
-          <td>BUN</td>
-          <td class="center" style="font-weight:700"><%= test && test.results && test.results.bun ? test.results.bun : '' %><span class="flag"><%= flagValue(test && test.results && test.results.bun,4.67,23.36) %></span></td>
-          <td class="center">mg/dL</td>
-          <td class="center">4.67 - 23.36</td>
-        </tr>
-        <tr>
-          <td>SGPT (ALT)</td>
-          <td class="center" style="font-weight:700"><%= test && test.results && test.results.sgpt ? test.results.sgpt : '' %><span class="flag"><%= flagValue(test && test.results && test.results.sgpt,0,32) %></span></td>
-          <td class="center">U/L</td>
-          <td class="center">0.00 - 32.00</td>
-        </tr>
-        <tr>
-          <td>SGOT (AST)</td>
-          <td class="center" style="font-weight:700"><%= test && test.results && test.results.sgot ? test.results.sgot : '' %><span class="flag"><%= flagValue(test && test.results && test.results.sgot,0,31) %></span></td>
-          <td class="center">U/L</td>
-          <td class="center">0.00 - 31.00</td>
-        </tr>
-        <tr>
-          <td>Sodium</td>
-          <td class="center" style="font-weight:700"><%= test && test.results && test.results.sodium ? test.results.sodium : '' %><span class="flag"><%= flagValue(test && test.results && test.results.sodium,136,148) %></span></td>
-          <td class="center">mmol/L</td>
-          <td class="center">136.00 - 148.00</td>
-        </tr>
-        <tr>
-          <td>Potassium</td>
-          <td class="center" style="font-weight:700"><%= test && test.results && test.results.potassium ? test.results.potassium : '' %><span class="flag"><%= flagValue(test && test.results && test.results.potassium,3.5,5.1) %></span></td>
-          <td class="center">mmol/L</td>
-          <td class="center">3.50 - 5.10</td>
-        </tr>
-        <tr>
-          <td>Chloride</td>
-          <td class="center" style="font-weight:700"><%= test && test.results && test.results.chloride ? test.results.chloride : '' %><span class="flag"><%= flagValue(test && test.results && test.results.chloride,98,107) %></span></td>
-          <td class="center">mmol/L</td>
-          <td class="center">98.00 - 107.00</td>
-        </tr>
-        <tr>
-          <td>HbA1c</td>
-          <td class="center" style="font-weight:700"><%= test && test.results && test.results.hba1c ? test.results.hba1c : '' %><span class="flag"><%= flagValue(test && test.results && test.results.hba1c,4,6.5) %></span></td>
-          <td class="center">%</td>
-          <td class="center">4.00 - 6.50</td>
-        </tr>
-        <tr>
-          <td>ALB</td>
-          <td class="center" style="font-weight:700"><%= test && test.results && test.results.alb ? test.results.alb : '' %><span class="flag"><%= flagValue(test && test.results && test.results.alb,3,6) %></span></td>
-          <td class="center">g/L</td>
-          <td class="center">3.00 - 6.00</td>
-        </tr>
-      </table>
-    </div>
+      function presentValue(r, k){ return r && r[k] !== undefined && String(r[k]).trim() !== '' ? String(r[k]) : null; }
+      const results = (test && test.results) ? test.results : {};
+      const present = analyteDefs.map(a => ({...a, value: presentValue(results, a.key)})).filter(a => a.value !== null);
+      const count = present.length;
+    %>
+
+    <% if (count === 0) { %>
+      <div class="results-columns">
+        <p class="normal-small">No analytes available for this test.</p>
+      </div>
+    <% } else if (count <= 6) { %>
+      <% /* single centered larger table for up to 6 analytes */ %>
+      <div style="width:100%; display:flex; justify-content:center;">
+          <table class="results-frame blood-results" style="width:90%; font-size:<%= (count <= 3 ? '20px' : '14px') %>;">
+          <tr>
+            <th style="width:50%">TEST</th>
+            <th style="width:20%">RESULT</th>
+            <th style="width:15%">UNIT</th>
+            <th style="width:15%; white-space:nowrap">REFERENCE</th>
+          </tr>
+          <% present.forEach(function(a){ %>
+            <tr>
+              <td><%= a.label %></td>
+              <td class="center" style="font-weight:700"><%= a.value %><span class="flag"><%= flagValue(a.value, a.min, a.max) %></span></td>
+              <td class="center"><%= a.unit %></td>
+              <td class="center" style="white-space:nowrap"><%= a.ref %></td>
+            </tr>
+          <% }); %>
+        </table>
+      </div>
+    <% } else { %>
+      <% /* split into two columns */ %>
+      <% const mid = Math.ceil(count/2); const left = present.slice(0, mid); const right = present.slice(mid); %>
+      <div class="results-columns" style="display:flex; gap:10px;">
+        <table class="results-frame blood-results" style="width:50%; font-size:<%= (count > 6 && count <= 10 ? '13px' : '10px') %>;">
+          <tr>
+            <th style="width:45%">TEST</th>
+            <th style="width:20%">RESULT</th>
+            <th style="width:15%">UNIT</th>
+            <th style="width:20%">REFERENCE</th>
+          </tr>
+          <% left.forEach(function(a){ %>
+            <tr>
+              <td><%= a.label %></td>
+              <td class="center" style="font-weight:700"><%= a.value %><span class="flag"><%= flagValue(a.value, a.min, a.max) %></span></td>
+              <td class="center"><%= a.unit %></td>
+              <td class="center" style="<%= a.key === 'sodium' ? 'white-space:nowrap' : '' %>"><%= a.ref %></td>
+            </tr>
+          <% }); %>
+        </table>
+
+        <table class="results-frame blood-results" style="width:50%; font-size:<%= (count > 6 && count <= 10 ? '13px' : '10px') %>;">
+          <tr>
+            <th style="width:45%">TEST</th>
+            <th style="width:20%">RESULT</th>
+            <th style="width:15%">UNIT</th>
+            <th style="width:20%">REFERENCE</th>
+          </tr>
+          <% right.forEach(function(a){ %>
+            <tr>
+              <td><%= a.label %></td>
+              <td class="center" style="font-weight:700"><%= a.value %><span class="flag"><%= flagValue(a.value, a.min, a.max) %></span></td>
+              <td class="center"><%= a.unit %></td>
+              <td class="center" style="<%= a.key === 'sodium' ? 'white-space:nowrap' : '' %>"><%= a.ref %></td>
+            </tr>
+          <% }); %>
+        </table>
+      </div>
+    <% } %>
 
     <% function findSigFor(displayName){
          if (!displayName) return null;
@@ -238,7 +199,8 @@
         %>
         <% if (_performedSig && _performedSig.filename) { %>
           <% const p = _performedSig.placement || { x:0, y:-56, scale:1 }; %>
-          <img src="/assets/signature/<%= _performedSig.filename %>" class="signature-overlay" style="left:50%; top:<%= p.y %>px; transform:translateX(-50%) scale(<%= p.scale %>); max-height:96px;" alt="signature" />
+          <% const _offset = 18; %>
+          <img src="/assets/signature/<%= _performedSig.filename %>" class="signature-overlay" style="left:50%; top:<%= (p.y + _offset) %>px; transform:translateX(-50%) scale(<%= p.scale %>); max-height:96px;" alt="signature" />
         <% } %>
         <div class="normal-small"><% if (test && test.results && test.results.performedByLicense) { %><strong>Lic. No. <%= test.results.performedByLicense %></strong><% } %></div>
         <div>Medical Technologist</div>
@@ -252,7 +214,8 @@
         %>
         <% if (_validatedSig && _validatedSig.filename) { %>
           <% const p = _validatedSig.placement ? _validatedSig.placement : { x:0, y:-72, scale:1 }; if(p && (typeof p.y === 'undefined' || p.y === 0)){ p.y = -72; } if(p && (typeof p.scale === 'undefined' || p.scale === 1)){ p.scale = 1.25; } %>
-          <img src="/assets/signature/<%= _validatedSig.filename %>" class="signature-overlay" style="top:<%= p.y %>px; transform:translateX(-50%) scale(<%= p.scale %>); max-height:96px;" alt="signature" />
+          <% const _offset = 18; %>
+          <img src="/assets/signature/<%= _validatedSig.filename %>" class="signature-overlay" style="top:<%= (p.y + _offset) %>px; transform:translateX(-50%) scale(<%= p.scale %>); max-height:96px;" alt="signature" />
         <% } %>
         <div class="normal-small"><% if (test && test.results && test.results.validatedByLicense) { %><strong>Lic. No. <%= test.results.validatedByLicense %></strong><% } %></div>
         <div>Validated By</div>
@@ -266,7 +229,8 @@
         %>
         <% if (_requestedSig && _requestedSig.filename) { %>
           <% const p = _requestedSig.placement ? _requestedSig.placement : { x:0, y:0, scale:1 }; if(p && (typeof p.scale === 'undefined' || p.scale === 1)){ p.scale = 1.25; } %>
-          <img src="/assets/signature/<%= _requestedSig.filename %>" class="signature-overlay" style="top:<%= p.y %>px; transform:translateX(-50%) scale(<%= p.scale %>); max-height:96px;" alt="signature" />
+          <% const _offset = 18; %>
+          <img src="/assets/signature/<%= _requestedSig.filename %>" class="signature-overlay" style="top:<%= (p.y + _offset) %>px; transform:translateX(-50%) scale(<%= p.scale %>); max-height:96px;" alt="signature" />
         <% } %>
         <div class="normal-small"><% if (test && test.results && test.results.requestedByLicense) { %><strong>Lic. No. <%= test.results.requestedByLicense %></strong><% } %></div>
         <div>Pathologist</div>

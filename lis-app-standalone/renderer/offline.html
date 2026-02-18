@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gezyne LIS — Offline</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+      color: #e2e8f0;
+    }
+
+    .container {
+      text-align: center;
+      padding: 48px 32px;
+      max-width: 520px;
+    }
+
+    .icon-ring {
+      width: 96px; height: 96px;
+      margin: 0 auto 28px;
+      border-radius: 50%;
+      background: rgba(239, 68, 68, 0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: pulse-ring 2s ease-in-out infinite;
+    }
+    .icon-ring .icon { font-size: 48px; }
+
+    @keyframes pulse-ring {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,.3); }
+      50%      { box-shadow: 0 0 0 20px rgba(239,68,68,0); }
+    }
+
+    h1 {
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: #f1f5f9;
+    }
+
+    .subtitle {
+      font-size: 15px;
+      line-height: 1.7;
+      color: #94a3b8;
+      margin-bottom: 8px;
+    }
+
+    .server-url {
+      display: inline-block;
+      margin: 12px 0 24px;
+      padding: 6px 16px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 6px;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 14px;
+      color: #60a5fa;
+      word-break: break-all;
+    }
+
+    .tips {
+      text-align: left;
+      background: rgba(255,255,255,.04);
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-bottom: 28px;
+    }
+    .tips h3 {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #64748b;
+      margin-bottom: 12px;
+    }
+    .tips ul {
+      list-style: none;
+      padding: 0;
+    }
+    .tips li {
+      padding: 4px 0;
+      font-size: 14px;
+      color: #cbd5e1;
+    }
+    .tips li::before {
+      content: '•';
+      color: #60a5fa;
+      margin-right: 8px;
+      font-weight: bold;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 12px 28px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(37,99,235,.35);
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(37,99,235,.45); }
+    .btn-secondary {
+      background: rgba(255,255,255,.08);
+      color: #94a3b8;
+      border: 1px solid rgba(255,255,255,.1);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,.12); color: #e2e8f0; }
+
+    #status-text {
+      margin-top: 20px;
+      font-size: 13px;
+      color: #64748b;
+      min-height: 20px;
+    }
+    #status-text.success { color: #34d399; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon-ring">
+      <span class="icon">🔌</span>
+    </div>
+
+    <h1>Cannot Connect to Server</h1>
+
+    <p class="subtitle">
+      The LIS server is not reachable right now.<br>
+      No cached pages are available for this section yet.
+    </p>
+
+    <div class="server-url" id="serverUrl">Loading…</div>
+
+    <div class="tips">
+      <h3>Troubleshooting</h3>
+      <ul>
+        <li>Check that the server PC is turned on</li>
+        <li>Verify the network cable or Wi-Fi connection</li>
+        <li>Make sure the LIS server software is running</li>
+        <li>Visit pages while online first to enable offline access</li>
+      </ul>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" onclick="retry()">
+        &#x21bb;&ensp;Retry Connection
+      </button>
+      <button class="btn btn-secondary" onclick="showQueue()">
+        Pending Queue
+      </button>
+    </div>
+
+    <div id="status-text"></div>
+  </div>
+
+  <script>
+    const statusEl = document.getElementById('status-text');
+    const serverEl = document.getElementById('serverUrl');
+
+    // Populate server URL
+    if (window.lisApp) {
+      window.lisApp.getStatus().then(data => {
+        serverEl.textContent = data.serverUrl || '—';
+        if (data.pendingCount > 0) {
+          statusEl.textContent = data.pendingCount + ' operation(s) waiting to sync';
+        }
+      });
+
+      // Auto-retry when network comes back
+      window.lisApp.onNetworkStatus(data => {
+        if (data.online) {
+          statusEl.textContent = 'Connection restored! Loading…';
+          statusEl.className = 'success';
+          window.lisApp.retryConnection();
+        }
+      });
+    }
+
+    async function retry() {
+      statusEl.textContent = 'Connecting…';
+      statusEl.className = '';
+      try {
+        const result = await window.lisApp.retryConnection();
+        if (result.online) {
+          statusEl.textContent = 'Connected! Loading…';
+          statusEl.className = 'success';
+        } else {
+          statusEl.textContent = 'Server still unreachable. Please try again.';
+        }
+      } catch {
+        statusEl.textContent = 'Connection failed.';
+      }
+    }
+
+    async function showQueue() {
+      if (!window.lisApp) return;
+      const queue = await window.lisApp.getQueue();
+      const pending = queue.filter(o => o.status === 'pending');
+      if (!pending.length) {
+        alert('No pending operations in the queue.');
+        return;
+      }
+      let msg = 'Pending operations (' + pending.length + '):\n\n';
+      pending.forEach((op, i) => {
+        msg += (i + 1) + '. ' + (op.method || 'POST') + ' ' + op.url + '\n';
+        msg += '   Saved: ' + new Date(op.createdAt).toLocaleString() + '\n\n';
+      });
+      alert(msg);
+    }
+  </script>
+</body>
+</html>

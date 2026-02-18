@@ -7,7 +7,7 @@
       <select name="patient" required>
         <% if (patients && patients.length) { %>
           <% patients.forEach(p => { %>
-            <option value="<%= p.id %>" <%= test.patient && test.patient.id === p.id ? 'selected' : '' %>><%= p.firstName %> <%= p.lastName %> (<%= p.patientId %>)</option>
+            <option value="<%= p.id %>" <%= test.patient && test.patient.id === p.id ? 'selected' : '' %>><%= p.lastName %>, <%= p.firstName %> (<%= p.patientId %>)</option>
           <% }) %>
         <% } %>
       </select>

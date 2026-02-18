@@ -1,5 +1,7 @@
 const { v4: uuidv4 } = require('uuid');
+const fs = require('fs');
 const { logReportError } = require('../lib/reportLogger');
+const reportGenerator = require('../lib/reportGenerator');
 
 class Test {
   constructor(data) {
@@ -76,6 +78,23 @@ class Test {
       tests[index] = this;
     }
     global.db.saveTests(tests);
+    // After persisting, if the test is Completed/Released and has results, regenerate PDF
+    try {
+      const lockedStates = new Set(['Completed', 'Released']);
+      if (lockedStates.has(this.status) && this.results) {
+        // generate asynchronously — do not block save
+        const testRef = this;
+        setImmediate(async () => {
+          try {
+            await reportGenerator.generatePdfForTest(testRef);
+            console.log(`[Test.save] auto-generated PDF for testId=${testRef.testId || testRef.id}`);
+          } catch (e) {
+            try { logReportError(e, 'auto-generate-pdf'); } catch (er) {}
+          }
+        });
+      }
+    } catch (e) {}
+
     return this;
   }
 
@@ -185,6 +204,23 @@ class Test {
       test.updatedAt = incoming.updatedAt;
       global.db.saveTests(tests);
       console.log(`[DEBUG Test.findOneAndUpdate] id=${test.id} afterStatus=${test.status} updatedAt=${test.updatedAt}`);
+
+      // Auto-generate PDF if test is Completed/Released and has results
+      try {
+        const lockedStates2 = new Set(['Completed', 'Released']);
+        if (lockedStates2.has(test.status) && test.results) {
+          const testRef = new Test(test);
+          setImmediate(async () => {
+            try {
+              await reportGenerator.generatePdfForTest(testRef);
+              console.log(`[Test.findOneAndUpdate] auto-generated PDF for testId=${testRef.testId || testRef.id}`);
+            } catch (e) {
+              try { logReportError(e, 'auto-generate-pdf-findOneAndUpdate'); } catch (er) {}
+            }
+          });
+        }
+      } catch (e) {}
+
       return options.new !== false ? new Test(test) : new Test(test);
     }
 

@@ -11,6 +11,8 @@ class User {
     this.status = data.status || 'Active';
     this.licenseNumber = data.licenseNumber || null;
     this.signature = data.signature || null;
+    // auto signature settings: { enabled: Boolean, until: ISOString|null }
+    this.autoSignature = data.autoSignature || { enabled: false, until: null };
     this.permissions = data.permissions || {};
     this.createdAt = data.createdAt || new Date();
     this.lastLogin = data.lastLogin || null;
@@ -32,6 +34,7 @@ class User {
   // Convert to plain object (without password)
   toJSON() {
     const obj = { ...this };
+    obj.autoSignature = this.autoSignature || { enabled: false, until: null };
     delete obj.password;
     return obj;
   }
@@ -50,6 +53,7 @@ class User {
       role: this.role,
       licenseNumber: this.licenseNumber,
       signature: this.signature,
+      autoSignature: this.autoSignature,
       permissions: this.permissions,
       status: this.status,
       createdAt: this.createdAt,
