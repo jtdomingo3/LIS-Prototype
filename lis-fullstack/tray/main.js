@@ -266,7 +266,12 @@ function buildContextMenu(isUp) {
   }
 
   items.push({ type: 'separator' });
-  items.push({ label: 'Quit', click: () => { app.quit(); } });
+  items.push({ label: 'Quit', click: () => {
+    // ensure any child server started by tray is killed
+    try { if (serverChild && serverChild.pid) process.kill(serverChild.pid); } catch (e) {}
+    app.isQuitting = true;
+    app.quit();
+  } });
   return Menu.buildFromTemplate(items);
 }
 
@@ -448,6 +453,8 @@ ipcMain.handle('save-logs', async () => {
 });
 
 app.on('window-all-closed', (e) => {
-  // keep app running in tray
-  e.preventDefault();
+  // Only prevent quitting when not explicitly quitting.
+  if (!app.isQuitting) {
+    e.preventDefault();
+  }
 });
