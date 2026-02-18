@@ -81,6 +81,21 @@ function performBackup(destDir) {
   return dest;
 }
 
+function performUserBackup(destDir) {
+  const USERS_FILE = path.join(__dirname, '..', 'data-users.json');
+  const dir = destDir && String(destDir).length ? destDir : DEFAULT_BACKUP_DIR;
+  fs.mkdirSync(dir, { recursive: true });
+  const ts = new Date().toISOString().replace(/[:.]/g, '-');
+  const dest = path.join(dir, `backup_users_${ts}.json`);
+  if (fs.existsSync(USERS_FILE)) {
+    fs.copyFileSync(USERS_FILE, dest);
+  } else {
+    // write an empty array backup if file missing
+    fs.writeFileSync(dest, JSON.stringify([], null, 2), 'utf8');
+  }
+  return dest;
+}
+
 function getPreferredNetworkAddress() {
   try {
     const nets = os.networkInterfaces();
@@ -244,6 +259,18 @@ router.post('/backup', requireAuth, canManageUsers, (req, res) => {
   return res.redirect('/settings');
 });
 
+// Manual backup endpoint (user data)
+router.post('/backup-users', requireAuth, canManageUsers, (req, res) => {
+  try {
+    const dest = performUserBackup(req.body && req.body.backupPath ? req.body.backupPath : null);
+    req.flash('success_msg', `User backup saved: ${dest}`);
+  } catch (e) {
+    console.error('Manual user backup error:', e);
+    req.flash('error_msg', `User backup failed: ${e && e.message ? e.message : String(e)}`);
+  }
+  return res.redirect('/settings');
+});
+
 // Restore endpoint (upload JSON file)
 router.post('/restore', requireAuth, canManageUsers, upload.single('backupFile'), (req, res) => {
   try {
@@ -261,6 +288,27 @@ router.post('/restore', requireAuth, canManageUsers, upload.single('backupFile')
   } catch (e) {
     console.error('Restore error:', e);
     req.flash('error_msg', `Restore failed: ${e && e.message ? e.message : String(e)}`);
+  }
+  return res.redirect('/settings');
+});
+
+// Restore endpoint for user data (upload JSON file)
+router.post('/restore-users', requireAuth, canManageUsers, upload.single('backupFileUsers'), (req, res) => {
+  try {
+    if (!req.file) {
+      req.flash('error_msg', 'No file uploaded');
+      return res.redirect('/settings');
+    }
+    const parsed = JSON.parse(req.file.buffer.toString('utf8'));
+    const USERS_FILE = path.join(__dirname, '..', 'data-users.json');
+    // backup current before overwrite
+    performUserBackup();
+    // normalize to array/object as originally stored
+    fs.writeFileSync(USERS_FILE, JSON.stringify(parsed, null, 2), 'utf8');
+    req.flash('success_msg', 'User restore completed (previous user data backed up)');
+  } catch (e) {
+    console.error('User restore error:', e);
+    req.flash('error_msg', `User restore failed: ${e && e.message ? e.message : String(e)}`);
   }
   return res.redirect('/settings');
 });
@@ -289,6 +337,26 @@ router.post('/clear', requireAuth, canManageUsers, (req, res) => {
   } catch (e) {
     console.error('Clear data error:', e);
     req.flash('error_msg', `Clear data failed: ${e && e.message ? e.message : String(e)}`);
+  }
+  return res.redirect('/settings');
+});
+
+// Clear user data endpoint (backs up current users, preserves Admin users)
+router.post('/clear-users', requireAuth, canManageUsers, (req, res) => {
+  try {
+    const USERS_FILE = path.join(__dirname, '..', 'data-users.json');
+    const raw = fs.existsSync(USERS_FILE) ? fs.readFileSync(USERS_FILE, 'utf8') : '[]';
+    let parsed;
+    try { parsed = JSON.parse(raw || '[]'); } catch (e) { parsed = []; }
+    // backup current before clearing
+    performUserBackup();
+
+    const filtered = Array.isArray(parsed) ? parsed.filter(u => u && u.role === 'Admin') : [];
+    fs.writeFileSync(USERS_FILE, JSON.stringify(filtered, null, 2), 'utf8');
+    req.flash('success_msg', 'User data cleared (admin users preserved). Backup created.');
+  } catch (e) {
+    console.error('Clear user data error:', e);
+    req.flash('error_msg', `Clear user data failed: ${e && e.message ? e.message : String(e)}`);
   }
   return res.redirect('/settings');
 });

@@ -66,5 +66,21 @@
     <form method="POST" action="/settings/clear" onsubmit="return confirm('Are you sure? This will remove non-admin data after creating a backup.');" style="display:inline-block;margin-left:12px;">
       <button type="submit" class="button btn-warning">Clear All Non-Admin Data</button>
     </form>
+
+    <hr/>
+    <h4>User Data Backup / Restore</h4>
+    <form method="POST" action="/settings/backup-users" style="display:inline-block;margin-right:12px;">
+      <input type="hidden" name="backupPath" value="<%= (backupConfig && backupConfig.path) || '' %>" />
+      <button type="submit" class="button btn-primary">Create User Backup Now</button>
+    </form>
+
+    <form method="POST" action="/settings/restore-users" enctype="multipart/form-data" style="display:inline-block;">
+      <input type="file" name="backupFileUsers" accept=".json" required />
+      <button type="submit" class="button btn-danger">Restore Users from File</button>
+    </form>
+
+    <form method="POST" action="/settings/clear-users" onsubmit="return confirm('Are you sure? This will remove non-admin users after creating a backup.');" style="display:inline-block;margin-left:12px;">
+      <button type="submit" class="button btn-warning">Clear Non-Admin Users</button>
+    </form>
   </div>
 </div>
