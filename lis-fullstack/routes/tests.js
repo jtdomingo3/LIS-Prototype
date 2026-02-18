@@ -144,7 +144,19 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
   const allPatients = await Patient.find({});
 
     // Available test types for filter dropdown
-    const availableTestTypes = Array.isArray(allTests) ? Array.from(new Set(allTests.map(t => (t.testType || '').toString()).filter(Boolean))).sort() : [];
+    // Collapse blood-chemistry variants (including BUN/Creat and common synonyms)
+    const rawTypes = Array.isArray(allTests) ? allTests.map(t => (t.testType || '').toString()).filter(Boolean) : [];
+    let sawBloodChem = false;
+    const mapped = rawTypes.map(s => {
+      const low = String(s || '').toLowerCase();
+      if (/^blood[\s-]*chemistry/.test(low) || low.indexOf('blood-chemistry') !== -1 || /(bun\b|creat(inine)?|creat\/?creat|sgpt|sgot|lipid|hba1c|albumin|blood\s*urea|blood\s*sugar)/.test(low)) {
+        sawBloodChem = true;
+        return null; // collapse into single Blood Chemistry entry
+      }
+      return String(s).trim();
+    }).filter(Boolean);
+    if (sawBloodChem) mapped.push('Blood Chemistry');
+    const availableTestTypes = Array.from(new Set(mapped)).filter(Boolean).sort();
 
     // Apply search filter
     if (searchQuery) {
@@ -179,10 +191,22 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
       allTests = allTests.filter(t => ((t.status || '').toString().toLowerCase() === sf));
     }
 
-    // Apply testType filter (substring match)
+    // Apply testType filter (substring match) with special handling for Blood Chemistry
     if (typeFilter) {
-      const tf = typeFilter.toString().toLowerCase();
-      allTests = allTests.filter(t => (t.testType || '').toString().toLowerCase().includes(tf));
+      const tf = typeFilter.toString().toLowerCase().trim();
+      if (/^blood\s*chemistry$/.test(tf)) {
+        allTests = allTests.filter(t => {
+          const tid = String(t.testId || '').toUpperCase();
+          const candidate = String(t.testType || t.template || '').toLowerCase().trim();
+          if (tid && tid.startsWith('BC')) return true;
+          if (candidate.indexOf('blood') !== -1 && candidate.indexOf('chemistry') !== -1) return true;
+          if (/(bun\b|creat(inine)?|creat\/?creat|sgpt|sgot|lipid|hba1c|albumin|blood\s*urea|blood\s*sugar)/.test(candidate)) return true;
+          return false;
+        });
+      } else {
+        const tfEq = tf;
+        allTests = allTests.filter(t => (t.testType || '').toString().toLowerCase().includes(tfEq));
+      }
     }
 
     // Date filter (match testDate or createdAt YYYY-MM-DD)
