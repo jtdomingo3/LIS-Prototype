@@ -10,6 +10,9 @@
     "build:exe": "pkg . --out-path dist",
     "build:exe:icon": "node ./scripts/build-exe-with-icon.js",
     "build:launcher": "node ./scripts/build-launcher.js",
+    "service:install": "node ./scripts/register-service.js install",
+    "service:uninstall": "node ./scripts/register-service.js uninstall",
+    "tray": "cd tray && npm install && npm start",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
@@ -43,7 +46,8 @@
     "multer": "^2.0.2",
     "puppeteer": "^24.35.0",
     "sharp": "^0.34.5",
-    "uuid": "^9.0.0"
+    "uuid": "^9.0.0",
+    "node-windows": "^1.0.0"
   },
   "devDependencies": {
     "jimp": "^0.16.1",

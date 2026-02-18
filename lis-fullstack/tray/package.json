@@ -1,0 +1,12 @@
+{
+  "name": "lis-tray",
+  "version": "1.0.0",
+  "description": "Tray launcher for Gezyne LIS: open browser, control service",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^28.1.0"
+  }
+}
