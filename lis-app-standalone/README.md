@@ -2,7 +2,7 @@
 
 **Standalone desktop client for Gezyne Clinical Laboratory LIS** with offline support.
 
-This Electron-based app connects to your LIS server (`http://192.168.31.86:3000`) and provides the **exact same UI** — but if the network goes down, it keeps working:
+This Electron-based app connects to your LIS server and provides the **exact same UI** — but if the network goes down, it keeps working:
 
 - ✅ View recently visited pages (cached locally)
 - ✅ Encode patient data (queued for sync)
@@ -26,7 +26,7 @@ npm install
 npm start
 ```
 
-The desktop app will launch and connect to `http://192.168.31.86:3000`.
+The desktop app will launch and connect to the server configured in the app Settings.
 
 ### Change Server Address
 
@@ -51,7 +51,7 @@ module.exports = {
 │                                                     │
 │   ┌──────────────┐    ┌───────────────────────┐     │
 │   │ BrowserWindow │───>│  LIS Server (remote)  │     │
-│   │  (Same UI)   │    │  192.168.31.86:3000   │     │
+│   │  (Same UI)   │    │  <your-server>:3000   │     │
 │   └──────┬───────┘    └───────────────────────┘     │
 │          │                                          │
 │          │  When offline:                           │

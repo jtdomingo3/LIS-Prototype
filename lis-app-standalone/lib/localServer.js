@@ -22,11 +22,13 @@ function createLocalServer(pageCache, operationQueue, config) {
   const handleMutation = (req, res) => {
     // NEVER intercept auth routes — redirect them to the real server
     if (req.path === '/login' || req.path === '/logout' || req.path === '/') {
-      return res.redirect(config.SERVER_URL + req.originalUrl);
+      if (config.SERVER_URL) return res.redirect(config.SERVER_URL + req.originalUrl);
+      // No server configured — respond with service unavailable so client stays local
+      return res.status(503).send('Server not configured');
     }
 
     // Build the real server URL this operation should eventually hit
-    const serverUrl = `${config.SERVER_URL}${req.originalUrl}`;
+    const serverUrl = config.SERVER_URL ? `${config.SERVER_URL}${req.originalUrl}` : req.originalUrl;
 
     operationQueue.add({
       method: req.query._method || req.method,
@@ -63,15 +65,18 @@ function createLocalServer(pageCache, operationQueue, config) {
 
     if (html) {
       // Rewrite static asset URLs to point to the real server so Electron's
-      // HTTP cache can serve them (images, CSS, JS, fonts).
-      html = html.replace(
-        /(<(?:img|script|source|video|audio)[^>]*\s+src=["'])\/(?!\/)/gi,
-        `$1${config.SERVER_URL}/`,
-      );
-      html = html.replace(
-        /(<link[^>]*\s+href=["'])\/(?!\/)/gi,
-        `$1${config.SERVER_URL}/`,
-      );
+      // HTTP cache can serve them (images, CSS, JS, fonts). Only rewrite
+      // when a real server is configured; otherwise keep local paths.
+      if (config.SERVER_URL) {
+        html = html.replace(
+          /(<(?:img|script|source|video|audio)[^>]*\s+src=["'])\/(?!\/)/gi,
+          `$1${config.SERVER_URL}/`,
+        );
+        html = html.replace(
+          /(<link[^>]*\s+href=["'])\/(?!\/)/gi,
+          `$1${config.SERVER_URL}/`,
+        );
+      }
 
       // If the user just performed an offline action, inject a success banner
       if (req.query.offline_queued === '1') {

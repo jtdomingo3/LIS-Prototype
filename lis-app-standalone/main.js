@@ -48,9 +48,16 @@ function saveUserSettings(newSettings = {}) {
     fs.writeFileSync(settingsFilePath(), JSON.stringify(userSettings, null, 2), 'utf8');
     if (newSettings.serverUrl) {
       config.SERVER_URL = newSettings.serverUrl;
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        try { mainWindow.loadURL(config.SERVER_URL); } catch (e) {}
-      }
+      // apply and start network monitor/request interception
+      try { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(config.SERVER_URL); } catch (e) {}
+      // start network monitor in background (no await)
+      startNetworkMonitor().catch(() => {});
+    } else if (Object.prototype.hasOwnProperty.call(newSettings, 'serverUrl') && !newSettings.serverUrl) {
+      // user cleared server url — stop monitor and go offline
+      config.SERVER_URL = '';
+      stopNetworkMonitor().catch(() => {});
+      isOnline = false;
+      sendStatus();
     }
   } catch (e) { console.warn('[Main] saveUserSettings failed', e && e.message); }
 }
@@ -73,6 +80,46 @@ function openSettingsWindow() {
   sw.loadFile(path.join(__dirname, 'renderer', 'settings.html'));
   global._settingsWindow = sw;
   sw.on('closed', () => { global._settingsWindow = null; });
+}
+
+async function stopNetworkMonitor() {
+  try {
+    if (networkMonitor) {
+      try { networkMonitor.stop(); } catch (e) {}
+      networkMonitor = null;
+    }
+  } catch (e) { console.warn('[Main] stopNetworkMonitor failed', e && e.message); }
+}
+
+async function startNetworkMonitor() {
+  try {
+    await stopNetworkMonitor();
+    if (!config.SERVER_URL) return;
+    networkMonitor = new NetworkMonitor(config.SERVER_URL, config.PING_INTERVAL);
+    isOnline = await networkMonitor.checkOnce();
+    console.log('[Main] initial network check:', isOnline ? 'ONLINE' : 'OFFLINE');
+
+    networkMonitor.on('status-change', async (online) => {
+      const wasOnline = isOnline;
+      isOnline = online;
+      sendStatus();
+
+      if (online && !wasOnline) {
+        console.log('[Main] connection restored — syncing queue…');
+        const synced = await syncEngine.processQueue();
+        sendStatus();
+        if (synced > 0 && mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('sync-complete', { synced });
+          setTimeout(() => {
+            if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(config.SERVER_URL);
+          }, 1500);
+        }
+      }
+    });
+
+    networkMonitor.start();
+    setupRequestInterceptor();
+  } catch (e) { console.error('[Main] startNetworkMonitor failed', e && e.message); }
 }
 
 async function createWindow() {
@@ -141,32 +188,8 @@ async function createWindow() {
   localServer = createLocalServer(pageCache, operationQueue, config);
 
   if (config.SERVER_URL) {
-    networkMonitor = new NetworkMonitor(config.SERVER_URL, config.PING_INTERVAL);
-    isOnline = await networkMonitor.checkOnce();
-    console.log('[Main] initial network check:', isOnline ? 'ONLINE' : 'OFFLINE');
-
-    networkMonitor.on('status-change', async (online) => {
-      const wasOnline = isOnline;
-      isOnline = online;
-      sendStatus();
-
-      if (online && !wasOnline) {
-        console.log('[Main] connection restored — syncing queue…');
-        const synced = await syncEngine.processQueue();
-        sendStatus();
-        if (synced > 0 && mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('sync-complete', { synced });
-          setTimeout(() => {
-            if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(config.SERVER_URL);
-          }, 1500);
-        }
-      }
-    });
-
-    networkMonitor.start();
-
-    // Only intercept requests when a server URL is configured
-    setupRequestInterceptor();
+    // start monitor via helper (ensures consistent wiring)
+    startNetworkMonitor().catch(() => {});
   } else {
     console.log('[Main] no SERVER_URL configured — starting in offline mode');
     isOnline = false;
