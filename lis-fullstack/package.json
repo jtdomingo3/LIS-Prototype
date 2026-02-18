@@ -49,7 +49,7 @@
     "puppeteer": "^24.35.0",
     "sharp": "^0.34.5",
     "uuid": "^9.0.0",
-    "node-windows": "^1.0.0"
+    "node-windows": "*"
   },
   "devDependencies": {
     "jimp": "^0.16.1",
