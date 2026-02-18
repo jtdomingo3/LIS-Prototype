@@ -463,7 +463,9 @@ router.get('/worksheet', requireAuth, canAccessPatient, async (req, res) => {
       if (!t) return;
       const s = String(t).trim();
       const low = s.toLowerCase();
-      if (/^blood[\s-]*chemistry/.test(low) || low.indexOf('blood-chemistry') !== -1) {
+      // Treat Blood Chemistry and common variant labels (BUN/Creat, creatinine, SGPT/SGOT, lipid, hba1c, albumin, blood sugar, etc.)
+      // as a single "Blood Chemistry" choice so they don't appear separately in the dropdown.
+      if (/^blood[\s-]*chemistry/.test(low) || low.indexOf('blood-chemistry') !== -1 || /(bun\b|\bbun\b|creat(inine)?|creat\/?creat|sgpt|sgot|lipid|hba1c|albumin|blood\s*urea|blood\s*sugar)/.test(low)) {
         sawBloodChem = true;
         return; // skip variant entries
       }
