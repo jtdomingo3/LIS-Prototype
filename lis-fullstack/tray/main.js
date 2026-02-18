@@ -64,8 +64,8 @@ function createMainWindow() {
   });
   // set window icon to project build icon to match app
   try {
-    const winIcon = path.join(PROJECT_ROOT, 'build', 'icon.ico');
-    if (fs.existsSync(winIcon)) mainWindow.setIcon(winIcon);
+    const winIcon = findAppIcon();
+    if (winIcon) mainWindow.setIcon(winIcon);
   } catch (e) {}
   mainWindow.loadFile(path.join(__dirname, 'ui.html'));
   mainWindow.on('close', (e) => {
@@ -221,13 +221,14 @@ function buildContextMenu(isUp) {
 
 function createTray() {
   // Prefer a bundled tray icon if present. Use the .ico in build to avoid pixelation.
-  const buildIco = path.join(__dirname, '..', 'build', 'icon.ico');
+  // Prefer a bundled tray icon if present. Use the .ico in build to avoid pixelation.
+  const buildIco = findAppIcon();
   const localIcon = path.join(__dirname, 'icon.png');
   const assetsIcon = path.join(__dirname, '..', 'assets', 'gezyne-logo.png');
-  let icon = nativeImage.createFromPath(buildIco);
-  if (icon.isEmpty()) icon = nativeImage.createFromPath(localIcon);
-  if (icon.isEmpty()) icon = nativeImage.createFromPath(assetsIcon);
-  if (icon.isEmpty()) icon = nativeImage.createFromNamedImage('shell32_3', [16,16]);
+  let icon = nativeImage.createFromPath(buildIco || '');
+  if (!icon || icon.isEmpty()) icon = nativeImage.createFromPath(localIcon);
+  if (!icon || icon.isEmpty()) icon = nativeImage.createFromPath(assetsIcon);
+  if (!icon || icon.isEmpty()) icon = nativeImage.createFromNamedImage('shell32_3', [16,16]);
   tray = new Tray(icon);
   tray.setToolTip('Gezyne LIS');
   // double-click the tray icon to open the UI
@@ -254,6 +255,21 @@ function createTray() {
     tray.setContextMenu(buildContextMenu(isUp));
     try { tray.setTitle(isUp ? 'LIS: Up' : 'LIS: Down'); } catch (e) {}
   }, 5000);
+}
+
+// Return first existing icon path across common dev/packaged locations
+function findAppIcon() {
+  const candidates = [
+    path.join(__dirname, '..', 'build', 'icon.ico'),           // dev: tray/build/icon.ico
+    path.join(__dirname, 'build', 'icon.ico'),                 // alt: tray/build/icon.ico when executed from other cwd
+    path.join(process.resourcesPath || '', 'app', 'build', 'icon.ico'), // packaged inside asar unpack
+    path.join(process.resourcesPath || '', 'build', 'icon.ico'),
+    path.join(PROJECT_ROOT, 'build', 'icon.ico')
+  ];
+  for (const p of candidates) {
+    try { if (p && fs.existsSync(p)) return p; } catch (e) {}
+  }
+  return null;
 }
 
 app.whenReady().then(() => {
