@@ -46,6 +46,7 @@
     '  <span class="lis-pending-badge" id="lis-badge" style="display:none"></span>',
     '  <button class="lis-sync-btn" id="lis-sync-btn" style="display:none">Sync Now</button>',
     '  <button class="lis-refresh-btn" id="lis-refresh-btn" title="Refresh">⟲</button>',
+    '  <button class="lis-settings-btn" id="lis-settings-btn" title="Settings">⚙</button>',
     '</div>',
   ].join('\n');
   document.body.appendChild(bar);
@@ -145,4 +146,40 @@
       try { location.reload(); } catch (e) { console.error('[LIS] refresh failed', e); }
     });
   }
+
+  // Settings button — open the settings window in the Electron host
+  const settingsBtn = document.getElementById('lis-settings-btn');
+  if (settingsBtn) {
+    settingsBtn.addEventListener('click', function () {
+      if (window.lisApp && typeof window.lisApp.openSettings === 'function') {
+        window.lisApp.openSettings();
+      }
+    });
+  }
+
+  // Patch fetch so thermal-print requests include the local printer override (if set)
+  (function patchFetchForPrinterOverride() {
+    if (!window.fetch || !window.lisApp) return;
+    const _origFetch = window.fetch.bind(window);
+    window.fetch = async function(input, init) {
+      try {
+        const targetUrl = (typeof input === 'string') ? input : (input && input.url ? input.url : '');
+        if (targetUrl && targetUrl.indexOf('/patients/thermal-print') !== -1) {
+          try {
+            const settings = await window.lisApp.getSettings();
+            const printer = settings && (settings.printerName || settings.printer);
+            if (printer) {
+              let bodyObj = {};
+              if (init && init.body) {
+                try { bodyObj = JSON.parse(init.body); } catch(_) {}
+              }
+              bodyObj.printer = printer;
+              init = Object.assign({}, init || {}, { body: JSON.stringify(bodyObj), headers: Object.assign({}, init && init.headers, { 'Content-Type': 'application/json' }) });
+            }
+          } catch (e) { /* ignore */ }
+        }
+      } catch (e) {}
+      return _origFetch(input, init);
+    };
+  })();
 })();

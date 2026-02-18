@@ -27,6 +27,54 @@ let userDataPath = null;
 let cacheDir = null;
 let dataDir = null;
 
+// persisted user settings (stored in userData/settings.json)
+let userSettings = {};
+function settingsFilePath() {
+  return path.join(userDataPath || app.getPath('userData'), 'settings.json');
+}
+function loadUserSettings() {
+  try {
+    const p = settingsFilePath();
+    if (fs.existsSync(p)) {
+      userSettings = JSON.parse(fs.readFileSync(p, 'utf8') || '{}');
+      // apply server override if present
+      if (userSettings.serverUrl) config.SERVER_URL = userSettings.serverUrl;
+    }
+  } catch (e) { console.warn('[Main] loadUserSettings failed', e && e.message); userSettings = {}; }
+}
+function saveUserSettings(newSettings = {}) {
+  try {
+    userSettings = Object.assign({}, userSettings, newSettings);
+    fs.writeFileSync(settingsFilePath(), JSON.stringify(userSettings, null, 2), 'utf8');
+    if (newSettings.serverUrl) {
+      config.SERVER_URL = newSettings.serverUrl;
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        try { mainWindow.loadURL(config.SERVER_URL); } catch (e) {}
+      }
+    }
+  } catch (e) { console.warn('[Main] saveUserSettings failed', e && e.message); }
+}
+
+function openSettingsWindow() {
+  if (!mainWindow) return;
+  if (global._settingsWindow && !global._settingsWindow.isDestroyed()) {
+    global._settingsWindow.focus();
+    return;
+  }
+  const sw = new BrowserWindow({
+    width: 520,
+    height: 360,
+    parent: mainWindow,
+    modal: false,
+    resizable: false,
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true }
+  });
+  sw.removeMenu();
+  sw.loadFile(path.join(__dirname, 'renderer', 'settings.html'));
+  global._settingsWindow = sw;
+  sw.on('closed', () => { global._settingsWindow = null; });
+}
+
 async function createWindow() {
   userDataPath = app.getPath('userData');
   cacheDir = path.join(userDataPath, 'page-cache');
@@ -34,6 +82,9 @@ async function createWindow() {
 
   try { if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true }); } catch(e) {}
   try { if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true }); } catch(e) {}
+
+  // load persisted settings and apply overrides before services start
+  loadUserSettings();
 
   // load application icon if available
   try {
@@ -76,7 +127,7 @@ async function createWindow() {
         return;
       }
       console.warn('[Main] main renderer crashed repeatedly; opening externally and quitting');
-      try { shell.openExternal(config.SERVER_URL); } catch (e) {}
+      try { if (config.SERVER_URL) shell.openExternal(config.SERVER_URL); } catch (e) {}
       try { app.quit(); } catch (e) {}
     } catch (e) { console.error('[Main] error handling main render-process-gone:', e && e.message); }
   });
@@ -89,36 +140,44 @@ async function createWindow() {
   syncEngine = new SyncEngine(operationQueue, config);
   localServer = createLocalServer(pageCache, operationQueue, config);
 
-  networkMonitor = new NetworkMonitor(config.SERVER_URL, config.PING_INTERVAL);
-  isOnline = await networkMonitor.checkOnce();
-  console.log('[Main] initial network check:', isOnline ? 'ONLINE' : 'OFFLINE');
+  if (config.SERVER_URL) {
+    networkMonitor = new NetworkMonitor(config.SERVER_URL, config.PING_INTERVAL);
+    isOnline = await networkMonitor.checkOnce();
+    console.log('[Main] initial network check:', isOnline ? 'ONLINE' : 'OFFLINE');
 
-  networkMonitor.on('status-change', async (online) => {
-    const wasOnline = isOnline;
-    isOnline = online;
-    sendStatus();
-
-    if (online && !wasOnline) {
-      console.log('[Main] connection restored — syncing queue…');
-      const synced = await syncEngine.processQueue();
+    networkMonitor.on('status-change', async (online) => {
+      const wasOnline = isOnline;
+      isOnline = online;
       sendStatus();
-      if (synced > 0 && mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('sync-complete', { synced });
-        setTimeout(() => {
-          if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(config.SERVER_URL);
-        }, 1500);
+
+      if (online && !wasOnline) {
+        console.log('[Main] connection restored — syncing queue…');
+        const synced = await syncEngine.processQueue();
+        sendStatus();
+        if (synced > 0 && mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('sync-complete', { synced });
+          setTimeout(() => {
+            if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(config.SERVER_URL);
+          }, 1500);
+        }
       }
-    }
-  });
+    });
 
-  networkMonitor.start();
+    networkMonitor.start();
 
-  setupRequestInterceptor();
+    // Only intercept requests when a server URL is configured
+    setupRequestInterceptor();
+  } else {
+    console.log('[Main] no SERVER_URL configured — starting in offline mode');
+    isOnline = false;
+    // open settings so user can configure server
+    try { setTimeout(openSettingsWindow, 300); } catch (e) {}
+  }
 
   mainWindow.webContents.on('did-finish-load', async () => {
     try {
       const url = mainWindow.webContents.getURL();
-      if (url.startsWith(config.SERVER_URL)) {
+      if (config.SERVER_URL && url.startsWith(config.SERVER_URL)) {
         const html = await mainWindow.webContents.executeJavaScript('document.documentElement.outerHTML');
         const urlObj = new URL(url);
         pageCache.store(urlObj.pathname + (urlObj.search || ''), html);
@@ -138,7 +197,7 @@ async function createWindow() {
 
   mainWindow.webContents.on('did-fail-load', (_event, _code, _desc, validatedURL, isMainFrame) => {
     if (!isMainFrame) return;
-    if (validatedURL && validatedURL.startsWith(config.SERVER_URL)) {
+    if (config.SERVER_URL && validatedURL && validatedURL.startsWith(config.SERVER_URL)) {
       const urlObj = new URL(validatedURL);
       const urlPath = urlObj.pathname + (urlObj.search || '');
       loadOfflinePage(urlPath);
@@ -167,6 +226,14 @@ async function createWindow() {
  *  Navigation helpers
  * ================================================================== */
 async function loadApp() {
+  if (!config.SERVER_URL) {
+    console.log('[Main] no SERVER_URL configured — showing offline UI and settings');
+    try { openSettingsWindow(); } catch (e) {}
+    isOnline = false;
+    loadOfflinePage('/');
+    return;
+  }
+
   try {
     await mainWindow.loadURL(config.SERVER_URL);
     isOnline = true;
@@ -272,13 +339,32 @@ function sendStatus() {
 /* ==================================================================
  *  IPC handlers
  * ================================================================== */
-ipcMain.handle('get-status', () => ({ online: isOnline, pendingCount: operationQueue.countPending(), serverUrl: config.SERVER_URL, cachedPages: pageCache.list().length }));
+ipcMain.handle('get-status', () => ({ online: isOnline, pendingCount: operationQueue.countPending(), serverUrl: config.SERVER_URL, serverConfigured: !!config.SERVER_URL, cachedPages: pageCache.list().length }));
 ipcMain.handle('get-queue', () => operationQueue.getAll());
 ipcMain.handle('queue-operation', (_e, operation) => { operationQueue.add(operation); return { success: true, pendingCount: operationQueue.countPending() }; });
 ipcMain.handle('force-sync', async () => { if (!isOnline) return { success: false, reason: 'offline' }; const synced = await syncEngine.processQueue(); sendStatus(); return { success: true, synced }; });
-ipcMain.handle('retry-connection', async () => { const online = await networkMonitor.checkOnce(); if (online && mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(config.SERVER_URL); return { online }; });
+ipcMain.handle('retry-connection', async () => {
+  if (!config.SERVER_URL) return { online: false, reason: 'no-server-configured' };
+  if (!networkMonitor) networkMonitor = new NetworkMonitor(config.SERVER_URL, config.PING_INTERVAL);
+  const online = await networkMonitor.checkOnce();
+  if (online && mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(config.SERVER_URL);
+  return { online };
+});
 ipcMain.handle('clear-cache', () => { pageCache.clear(); return { success: true }; });
-ipcMain.handle('go-online', () => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(config.SERVER_URL); });
+ipcMain.handle('go-online', () => { if (!config.SERVER_URL) return { success: false, reason: 'no-server-configured' }; if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(config.SERVER_URL); return { success: true }; });
+
+// Settings IPC
+ipcMain.handle('get-settings', () => {
+  return Object.assign({}, userSettings, { serverUrl: config.SERVER_URL });
+});
+ipcMain.handle('set-settings', (_e, settings) => {
+  saveUserSettings(settings || {});
+  return { success: true };
+});
+ipcMain.handle('open-settings', () => {
+  openSettingsWindow();
+  return { success: true };
+});
 
 /* ==================================================================
  *  Print preview and child windows
@@ -378,6 +464,7 @@ function createTray() {
     tray = new Tray(trayIcon);
     const contextMenu = Menu.buildFromTemplate([
       { label: 'Open Gezyne LIS', click: () => mainWindow && mainWindow.show() },
+      { label: 'Settings', click: () => openSettingsWindow() },
       { type: 'separator' },
       { label: 'Quit', click: () => app.quit() },
     ]);

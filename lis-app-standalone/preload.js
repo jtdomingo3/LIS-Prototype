@@ -18,6 +18,11 @@ contextBridge.exposeInMainWorld('lisApp', {
   goOnline:         ()      => ipcRenderer.invoke('go-online'),
   printPreview:     (url)   => ipcRenderer.invoke('print-preview', { url }),
 
+  /* ── settings API (added) ───────────────────────────────────── */
+  getSettings:      ()      => ipcRenderer.invoke('get-settings'),
+  setSettings:      (s)     => ipcRenderer.invoke('set-settings', s),
+  openSettings:     ()      => ipcRenderer.invoke('open-settings'),
+
   /* ── event listeners ─────────────────────────────────────────── */
   onNetworkStatus: (callback) => {
     ipcRenderer.on('network-status', (_event, data) => callback(data));
