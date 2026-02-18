@@ -1,7 +1,26 @@
 <div class="page active">
   <div class="card">
     <h3>Settings</h3>
+    <div class="field">
+      <label>Network Address</label>
+      <input type="text" readonly value="<%= (typeof networkUrl !== 'undefined' && networkUrl) ? networkUrl : ((typeof networkAddress !== 'undefined' && networkAddress) ? networkAddress : 'Unavailable') %>" />
+      <p class="note">Use this address (address:port) to access the server from other devices on the network.</p>
+    </div>
     <form method="POST" action="/settings">
+      <h4>Environment (.env)</h4>
+      <% if (envEntries && envEntries.length) { %>
+        <% envEntries.forEach(function(e) { %>
+          <% if (e.type === 'kv') { %>
+            <div class="field">
+              <label><%= e.key %></label>
+              <input type="text" name="env_<%= e.key %>" value="<%= e.value %>" />
+            </div>
+          <% } %>
+        <% }); %>
+        <p class="note">Updating these values will modify the project's <strong>.env</strong> file. Only users with appropriate permissions can change them.</p>
+      <% } else { %>
+        <p class="note">No .env entries found.</p>
+      <% } %>
       <h4>Data Backup</h4>
       <div class="field" style="display:flex;align-items:center;gap:8px;">
         <input type="checkbox" name="autoBackup" <%= (backupConfig && backupConfig.enabled) ? 'checked' : '' %> />

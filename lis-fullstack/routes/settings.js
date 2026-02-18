@@ -9,6 +9,68 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 
 
 const DEFAULT_BACKUP_DIR = path.join(os.homedir(), 'Documents', 'LIS', 'backup');
 
+const ENV_FILE = path.join(__dirname, '..', '.env');
+
+function parseEnvContent(content) {
+  const lines = String(content || '').split(/\r?\n/);
+  return lines.map((line) => {
+    const m = line.match(/^([^#=\s]+)=(.*)$/);
+    if (m) {
+      const key = m[1].trim();
+      let value = m[2] || '';
+      value = value.trim();
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+        value = value.slice(1, -1);
+      }
+      return { type: 'kv', key, value, raw: line };
+    }
+    return { type: 'other', raw: line };
+  });
+}
+
+function readEnvFileEntries() {
+  try {
+    const raw = fs.existsSync(ENV_FILE) ? fs.readFileSync(ENV_FILE, 'utf8') : '';
+    return parseEnvContent(raw);
+  } catch (e) {
+    console.error('Failed to read .env:', e);
+    return [];
+  }
+}
+
+function writeEnvFile(updatedValues) {
+  try {
+    const raw = fs.existsSync(ENV_FILE) ? fs.readFileSync(ENV_FILE, 'utf8') : '';
+    const entries = parseEnvContent(raw);
+    const seen = new Set();
+    const outLines = entries.map((entry) => {
+      if (entry.type === 'kv') {
+        const k = entry.key;
+        if (Object.prototype.hasOwnProperty.call(updatedValues, k)) {
+          seen.add(k);
+          const v = String(updatedValues[k] || '');
+          const needsQuotes = /\s/.test(v) || v.includes('#') || v.includes('"');
+          const outV = needsQuotes ? `"${v.replace(/"/g, '\\"') }"` : v;
+          return `${k}=${outV}`;
+        }
+        return entry.raw;
+      }
+      return entry.raw;
+    });
+    Object.keys(updatedValues).forEach((k) => {
+      if (!seen.has(k)) {
+        const v = String(updatedValues[k] || '');
+        const needsQuotes = /\s/.test(v) || v.includes('#') || v.includes('"');
+        const outV = needsQuotes ? `"${v.replace(/"/g, '\\"') }"` : v;
+        outLines.push(`${k}=${outV}`);
+      }
+    });
+    fs.writeFileSync(ENV_FILE, outLines.join(os.EOL), 'utf8');
+  } catch (e) {
+    throw e;
+  }
+}
+
 function performBackup(destDir) {
   const DATA_FILE = path.join(__dirname, '..', 'data.json');
   const dir = destDir && String(destDir).length ? destDir : DEFAULT_BACKUP_DIR;
@@ -19,6 +81,22 @@ function performBackup(destDir) {
   return dest;
 }
 
+function getPreferredNetworkAddress() {
+  try {
+    const nets = os.networkInterfaces();
+    for (const name of Object.keys(nets)) {
+      for (const iface of nets[name]) {
+        if (iface && iface.family === 'IPv4' && !iface.internal) {
+          return iface.address;
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Error getting network address:', e);
+  }
+  return '127.0.0.1';
+}
+
 // Only allow authenticated users; editing flags restricted to Admins
 router.get('/', requireAuth, (req, res) => {
   const featureFlags = req.app.locals.featureFlags || {};
@@ -26,7 +104,11 @@ router.get('/', requireAuth, (req, res) => {
   // load persistent settings from data.json
   let settings = {};
   try { const data = global.db.read(); settings = data.settings || {}; } catch (e) { settings = {}; }
-  res.render('settings', { title: 'Settings', featureFlags, backupConfig, settings });
+  const networkAddress = getPreferredNetworkAddress();
+  const networkPort = (req && req.socket && req.socket.localPort) ? req.socket.localPort : (process.env.PORT || req.app && req.app.locals && req.app.locals.port || 3000);
+  const networkUrl = `${networkAddress}:${networkPort}`;
+  const envEntries = readEnvFileEntries();
+  res.render('settings', { title: 'Settings', featureFlags, backupConfig, settings, networkAddress, networkPort, networkUrl, envEntries });
 });
 
 router.post('/', requireAuth, canManageUsers, (req, res) => {
@@ -106,6 +188,25 @@ router.post('/', requireAuth, canManageUsers, (req, res) => {
     }
 
     req.flash('success_msg', 'Settings updated');
+    // handle .env updates (fields named env_<KEY> in the form)
+    try {
+      const envUpdates = {};
+      Object.keys(req.body || {}).forEach((k) => {
+        if (k && k.indexOf('env_') === 0) {
+          const key = k.slice(4);
+          envUpdates[key] = req.body[k];
+        }
+      });
+      if (Object.keys(envUpdates).length) {
+        writeEnvFile(envUpdates);
+        Object.keys(envUpdates).forEach((kk) => { process.env[kk] = envUpdates[kk]; });
+        req.flash('success_msg', `${Object.keys(envUpdates).length} environment value(s) updated`);
+      }
+    } catch (e) {
+      console.error('Failed to update .env:', e);
+      req.flash('error_msg', 'Failed to update .env file');
+    }
+
     return res.redirect('/settings');
   } catch (e) {
     req.flash('error_msg', 'Failed to update settings');
