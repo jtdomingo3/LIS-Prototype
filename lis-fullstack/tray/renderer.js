@@ -30,3 +30,10 @@ ipcRenderer.on('log-update', (event, data) => {
 
 // request periodic logs
 setInterval(() => ipcRenderer.send('request-logs'), 2000);
+
+ipcRenderer.on('server-address', (event, data) => {
+  const el = document.getElementById('address');
+  if (!el) return;
+  if (data && data.host && data.port) el.textContent = `Server: http://${data.host}:${data.port}`;
+  else el.textContent = 'Server: --';
+});

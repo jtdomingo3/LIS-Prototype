@@ -31,6 +31,7 @@ const SERVER_SCRIPT = path.join(PROJECT_ROOT, 'server.js');
 let serviceInstalled = false;
 let serverChild = null;
 let serverAutoStarted = false;
+let pm2Available = false;
 
 let tray = null;
 let mainWindow = null;
@@ -41,6 +42,13 @@ function runServiceCommand(cmd, cb) {
   exec(cmd, (err, stdout, stderr) => {
     if (err) return cb(err, stdout || stderr);
     cb(null, stdout);
+  });
+}
+
+function detectPm2(cb) {
+  exec('pm2 -v', (err) => {
+    pm2Available = !err;
+    cb && cb(pm2Available);
   });
 }
 
@@ -75,6 +83,8 @@ function createMainWindow() {
   // send recent logs on ready
   mainWindow.webContents.on('did-finish-load', () => {
     mainWindow.webContents.send('log-update', logBuffer.join('\n'));
+    // send server address info
+    try { mainWindow.webContents.send('server-address', { host: HOST, port: PORT }); } catch (e) {}
   });
   return mainWindow;
 }
@@ -91,6 +101,8 @@ function checkServiceExists(cb) {
   });
 }
 
+// prefer PM2 if available; detection will be run during app startup to avoid races
+
 function startServerDirect(cb) {
   if (serverChild) return cb && cb(null, 'already running');
   try {
@@ -105,6 +117,35 @@ function startServerDirect(cb) {
     serverChild = null;
     cb && cb(e);
   }
+}
+
+function startViaPm2(cb) {
+  // start using ecosystem.config.js
+  exec('pm2 start ecosystem.config.js --env production', { cwd: PROJECT_ROOT }, (err, stdout, stderr) => {
+    if (err) return cb && cb(err, stdout || stderr);
+    // save the process list so pm2 resurrects on reboot
+    exec('pm2 save', { cwd: PROJECT_ROOT }, (e) => {
+      if (e) appendLog('[pm2] pm2 save failed: ' + String(e));
+      appendLog('[pm2] started via ecosystem.config.js');
+      cb && cb(null, stdout || 'pm2 started');
+    });
+  });
+}
+
+function stopViaPm2(cb) {
+  exec('pm2 stop lis-app', { cwd: PROJECT_ROOT }, (err, stdout, stderr) => {
+    if (err) return cb && cb(err, stdout || stderr);
+    appendLog('[pm2] stopped lis-app');
+    cb && cb(null, stdout || 'pm2 stopped');
+  });
+}
+
+function restartViaPm2(cb) {
+  exec('pm2 restart lis-app', { cwd: PROJECT_ROOT }, (err, stdout, stderr) => {
+    if (err) return cb && cb(err, stdout || stderr);
+    appendLog('[pm2] restarted lis-app');
+    cb && cb(null, stdout || 'pm2 restarted');
+  });
 }
 
 function stopServerDirect(cb) {
@@ -199,8 +240,11 @@ function createTray() {
   });
 
   // initial menu
-  // detect service presence then set menu
-  checkServiceExists((err, exists) => { serviceInstalled = !!exists; if (serviceInstalled) watchPm2Logs(); checkServerUp().then(isUp => tray.setContextMenu(buildContextMenu(isUp))); });
+  // detect pm2 and service presence then set menu (run pm2 detection first to avoid races)
+  detectPm2((avail) => {
+    pm2Available = !!avail;
+    checkServiceExists((err, exists) => { serviceInstalled = !!exists; if (serviceInstalled) watchPm2Logs(); checkServerUp().then(isUp => tray.setContextMenu(buildContextMenu(isUp))); });
+  });
 
   // update every 5s
   setInterval(async () => {
@@ -222,42 +266,56 @@ app.whenReady().then(() => {
     try { mainWindow.setMenuBarVisibility(false); mainWindow.setAutoHideMenuBar(true); } catch (e) {}
     mainWindow.show();
   }
-  // Auto-start server when tray launches (service if present, else spawn)
+  // Auto-start server when tray launches (detect pm2 first, then prefer pm2 > service > direct spawn)
   try {
-    checkServiceExists((err, exists) => {
-      serviceInstalled = !!exists;
-      if (serviceInstalled) {
-        appendLog('[tray] PM2/service detected; attempting to start service...');
-        runServiceCommand(`sc start ${SERVICE_NAME}`, (err2) => {
-          if (err2) appendLog('[tray] Failed to start service: ' + String(err2));
-          else appendLog('[tray] Service start requested');
-          // watch logs if pm2 is used
-          watchPm2Logs();
-          serverAutoStarted = true;
-        });
-      } else {
-        appendLog('[tray] No service detected; spawning server directly...');
-        startServerDirect((err3, out) => {
-          if (err3) appendLog('[tray] Failed to spawn server: ' + String(err3)); else appendLog('[tray] ' + out);
-          serverAutoStarted = true;
-        });
-      }
+    detectPm2((pm2Found) => {
+      pm2Available = !!pm2Found;
+      appendLog('[tray] pm2 detection: ' + (pm2Available ? 'available' : 'not available'));
+      checkServiceExists((err, exists) => {
+        serviceInstalled = !!exists;
+        if (pm2Available) {
+          appendLog('[tray] PM2 available; starting via pm2...');
+          startViaPm2((errp, outp) => {
+            if (errp) appendLog('[tray] pm2 start failed: ' + String(errp));
+            else appendLog('[tray] ' + String(outp));
+            watchPm2Logs();
+            serverAutoStarted = true;
+          });
+        } else if (serviceInstalled) {
+          appendLog('[tray] Windows service detected; attempting to start service...');
+          runServiceCommand(`sc start ${SERVICE_NAME}`, (err2) => {
+            if (err2) appendLog('[tray] Failed to start service: ' + String(err2));
+            else appendLog('[tray] Service start requested');
+            watchPm2Logs();
+            serverAutoStarted = true;
+          });
+        } else {
+          appendLog('[tray] No service detected; spawning server directly...');
+          startServerDirect((err3, out) => {
+            if (err3) appendLog('[tray] Failed to spawn server: ' + String(err3)); else appendLog('[tray] ' + out);
+            serverAutoStarted = true;
+          });
+        }
+      });
     });
   } catch (e) { appendLog('[tray] Auto-start failed: ' + String(e)); }
 });
 
 // IPC handlers from renderer
 ipcMain.on('start-server', (e) => {
+  if (pm2Available) return startViaPm2((err, out) => { if (err) e.sender.send('log-update', `pm2 start failed: ${String(err)}`); else e.sender.send('log-update', String(out)); });
   if (serviceInstalled) return runServiceCommand(`sc start ${SERVICE_NAME}`, (err) => { if (err) e.sender.send('log-update', `Start service failed: ${String(err)}`); else e.sender.send('log-update', 'Service start requested'); });
   startServerDirect((err, out) => { if (err) e.sender.send('log-update', `Start failed: ${String(err)}`); else e.sender.send('log-update', out); });
 });
 
 ipcMain.on('stop-server', (e) => {
+  if (pm2Available) return stopViaPm2((err, out) => { if (err) e.sender.send('log-update', `pm2 stop failed: ${String(err)}`); else e.sender.send('log-update', String(out)); });
   if (serviceInstalled) return runServiceCommand(`sc stop ${SERVICE_NAME}`, (err) => { if (err) e.sender.send('log-update', `Stop service failed: ${String(err)}`); else e.sender.send('log-update', 'Service stop requested'); });
   stopServerDirect((err, out) => { if (err) e.sender.send('log-update', `Stop failed: ${String(err)}`); else e.sender.send('log-update', out); });
 });
 
 ipcMain.on('restart-server', (e) => {
+  if (pm2Available) return restartViaPm2((err, out) => { if (err) e.sender.send('log-update', `pm2 restart failed: ${String(err)}`); else e.sender.send('log-update', String(out)); });
   if (serviceInstalled) return runServiceCommand(`sc stop ${SERVICE_NAME} && sc start ${SERVICE_NAME}`, (err) => { if (err) e.sender.send('log-update', `Restart failed: ${String(err)}`); else e.sender.send('log-update', 'Service restart requested'); });
   stopServerDirect(() => startServerDirect((err, out) => { if (err) e.sender.send('log-update', `Restart failed: ${String(err)}`); else e.sender.send('log-update', out); }));
 });
