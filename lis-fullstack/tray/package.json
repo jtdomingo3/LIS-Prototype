@@ -4,9 +4,60 @@
   "description": "Tray launcher for Gezyne LIS: open browser, control service",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "build": "electron-builder",
+    "dist:win": "electron-builder --win nsis"
   },
   "devDependencies": {
-    "electron": "^28.1.0"
+    "electron": "^28.1.0",
+    "electron-builder": "^26.7.0"
+  },
+  "build": {
+    "appId": "com.gezyne.lis-server",
+    "productName": "Gezyne LIS Server",
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!dist/**",
+      "!node_modules/.cache/**"
+    ],
+    "extraResources": [
+      {
+        "from": "../dist",
+        "to": "server",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "../build/installer-resources",
+        "to": "installer-resources",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "../ecosystem.config.js",
+        "to": ".",
+        "filter": ["ecosystem.config.js"]
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowElevation": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "include": "build/installer.nsh"
+    }
   }
 }

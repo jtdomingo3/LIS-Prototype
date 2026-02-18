@@ -8,6 +8,7 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "build:exe": "pkg . --out-path dist",
+    "prepare-dist-data": "node ./scripts/make-dist-data.js",
     "build:exe:icon": "node ./scripts/build-exe-with-icon.js",
     "build:launcher": "node ./scripts/build-launcher.js",
     "service:install": "node ./scripts/register-service.js install",

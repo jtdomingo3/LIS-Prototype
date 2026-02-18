@@ -1,0 +1,12 @@
+[
+  {
+    "id": "4aef4c58-f5a5-4ae4-bbf9-9b265324d678",
+    "name": "Admin User",
+    "email": "admin@lab.com",
+    "password": "$2a$12$tZlWahl3lRFHIAB851KXEu91ksf.DgsS8ak5AXOyQopXUcxnQ64SG",
+    "role": "Admin",
+    "status": "Active",
+    "createdAt": "2026-02-18T08:38:09.501Z",
+    "lastLogin": null
+  }
+]
