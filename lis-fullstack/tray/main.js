@@ -209,8 +209,13 @@ function createTray() {
 app.whenReady().then(() => {
   createTray();
   // open UI on start
+  // hide default app menu (File/Edit/View...) so it doesn't appear
+  try { Menu.setApplicationMenu(null); } catch (e) {}
   createMainWindow();
-  mainWindow.show();
+  if (mainWindow) {
+    try { mainWindow.setMenuBarVisibility(false); mainWindow.setAutoHideMenuBar(true); } catch (e) {}
+    mainWindow.show();
+  }
 });
 
 // IPC handlers from renderer
@@ -237,8 +242,33 @@ ipcMain.on('hide-window', (e) => {
   if (mainWindow) mainWindow.hide();
 });
 
+ipcMain.on('exit-app', (e) => {
+  // ensure any child server started by tray is killed
+  try { if (serverChild && serverChild.pid) process.kill(serverChild.pid); } catch (e) {}
+  app.isQuitting = true;
+  app.quit();
+});
+
 ipcMain.on('request-logs', (e) => {
   e.sender.send('log-update', logBuffer.join('\n'));
+});
+
+ipcMain.handle('save-logs', async () => {
+  try {
+    const docs = path.join(os.homedir(), 'Documents');
+    const targetDir = path.join(docs, 'LIS', 'logs');
+    fs.mkdirSync(targetDir, { recursive: true });
+    const now = new Date();
+    const ts = now.toISOString().replace(/[:.]/g, '-');
+    const fname = `lis-logs-${ts}.log`;
+    const fpath = path.join(targetDir, fname);
+    fs.writeFileSync(fpath, logBuffer.join('\n'), 'utf8');
+    // open folder containing the logs
+    try { await require('electron').shell.openPath(targetDir); } catch (e) {}
+    return { ok: true, path: fpath };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
 });
 
 app.on('window-all-closed', (e) => {

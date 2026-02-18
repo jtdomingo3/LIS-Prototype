@@ -13,11 +13,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helv
 h2 { margin: 0 0 4px 0; font-size:1.2rem; font-weight:700; color:var(--black); }
 .controls { margin: 12px 0 16px 0; }
 .controls button { margin-right: 8px; padding: 10px 14px; border: none; border-radius:6px; cursor:pointer; color:var(--white); font-weight:600 }
-.controls button#start { background: linear-gradient(180deg,var(--green),var(--green-dark)); }
-.controls button#stop { background: linear-gradient(180deg,#e74c3c,#c0392b); }
-.controls button#restart { background: linear-gradient(180deg,var(--orange),#d68910); }
-.controls button#open { background: #222; }
-.controls button#hide { background: #888; }
+.controls button#start { background: linear-gradient(180deg,var(--green),var(--green-dark)); color: #fff; }
+.controls button#stop { background: linear-gradient(180deg,#e74c3c,#c0392b); color: #fff; }
+.controls button#restart { background: linear-gradient(180deg,var(--orange),#d68910); color: #fff; }
+.controls button#open { background: linear-gradient(180deg,var(--green),var(--green-dark)); color: #fff; }
+.controls button#hide { background: #888; color: #fff; }
+/* Save logs button: black with white text */
+.controls button#save { background: #222; color: #fff; }
+/* Exit app button: red with white text */
+.controls button#exit { background: linear-gradient(180deg,#e74c3c,#c0392b); color: #fff; }
 .controls button:active{ transform:translateY(1px); }
 .logs { background: #0b0b0b; color: #a6f3c7; padding: 12px; height: 360px; overflow: auto; white-space: pre-wrap; border-radius:6px; box-shadow:inset 0 1px 0 rgba(255,255,255,0.02); }
 .container h3{ margin-top: 14px; margin-bottom:8px; color:var(--muted); }
