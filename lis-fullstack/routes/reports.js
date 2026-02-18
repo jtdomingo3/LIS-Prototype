@@ -326,26 +326,26 @@ router.get('/print/:testId', requireAuth, canAccessPatient, async (req, res) => 
     // Render the result template without layout to get its HTML
     const inlineLogo = getInlineLogo();
     res.render(viewPath, { title: 'Result Print', test: populatedTest, layout: false, inlineLogo }, (err, renderedHtml) => {
-      if (err) {
-        console.error('Error rendering result template for print:', err);
-        // fallback to previous print view if rendering fails
-        return res.render('reports/print', {
-          title: 'Print Report',
-          test: populatedTest,
-          currentDate: new Date().toLocaleDateString(),
-          layout: 'print'
-        });
-      }
-
-      // If the caller requested suppression of automatic in-page printing
-      // (used by the standalone app), strip inline print calls from the
-      // rendered HTML so they cannot trigger the Electron print dialog.
-      if (req.query && req.query.suppressPrint) {
-        try {
-          renderedHtml = String(renderedHtml)
-            .replace(/setTimeout\s*\(\s*(?:function\s*\(\)\s*\{\s*window\.print\s*\(\s*\)\s*;?\s*\}|window\.print)\s*,\s*\d+\s*\)\s*;?/g, '')
-            .replace(/window\.print\s*\(\s*\)\s*;?/g, '');
-        } catch (e) { /* ignore sanitize errors */ }
+      if (testType) {
+        const ttLower = String(testType).toLowerCase().trim();
+        if (/^blood\s*chemistry$/.test(ttLower)) {
+          // For Blood Chemistry, match by testId prefix (BC) primarily,
+          // with a fallback to testType/template name containing blood/chemistry.
+          testsRaw = (testsRaw || []).filter(t => {
+            const tid = String(t.testId || '').toUpperCase();
+            const candidate = String(t.testType || t.template || '').toLowerCase().trim();
+            if (tid && tid.startsWith('BC')) return true;
+            if (candidate.indexOf('blood') !== -1 && candidate.indexOf('chemistry') !== -1) return true;
+            if (candidate.indexOf('blood-chemistry') !== -1) return true;
+            return false;
+          });
+        } else {
+          const ttLowerLoose = ttLower;
+          testsRaw = (testsRaw || []).filter(t => {
+            const candidate = String(t.testType || t.template || '').toLowerCase().trim();
+            return candidate.includes(ttLowerLoose) || ttLowerLoose.includes(candidate);
+          });
+        }
       }
 
       return res.render('reports/print', {
@@ -456,8 +456,22 @@ router.get('/worksheet', requireAuth, canAccessPatient, async (req, res) => {
       const all = await Test.find({});
       types = Array.from(new Set((all || []).map(t => t.testType || '').filter(Boolean)));
     }
-    types = (types || []).filter(Boolean).sort();
-    res.render('reports/worksheet', { title: 'Worksheet Export', types });
+    // Normalize and collapse blood-chemistry variant templates into a single "Blood Chemistry" choice
+    const normalized = [];
+    let sawBloodChem = false;
+    (types || []).forEach(t => {
+      if (!t) return;
+      const s = String(t).trim();
+      const low = s.toLowerCase();
+      if (/^blood[\s-]*chemistry/.test(low) || low.indexOf('blood-chemistry') !== -1) {
+        sawBloodChem = true;
+        return; // skip variant entries
+      }
+      normalized.push(s);
+    });
+    if (sawBloodChem) normalized.push('Blood Chemistry');
+    const finalTypes = Array.from(new Set(normalized)).filter(Boolean).sort();
+    res.render('reports/worksheet', { title: 'Worksheet Export', types: finalTypes });
   } catch (err) {
     console.error('Worksheet page error:', err);
     req.flash('error_msg', 'Error loading worksheet page');
@@ -665,11 +679,24 @@ router.post('/worksheet/preview', requireAuth, canAccessPatient, async (req, res
     let testsRaw = await Test.find(q);
     if (!allData) {
       if (testType) {
-        const ttLower = String(testType).toLowerCase();
-        testsRaw = (testsRaw || []).filter(t => {
-          const candidate = String(t.testType || t.template || '').toLowerCase();
-          return candidate === ttLower;
-        });
+        const ttLower = String(testType).toLowerCase().trim();
+        if (/^blood\s*chemistry$/.test(ttLower)) {
+          // match any test whose testId starts with BC, or whose type/template indicates blood chemistry
+          testsRaw = (testsRaw || []).filter(t => {
+            const tid = String(t.testId || '').toUpperCase();
+            const candidate = String(t.testType || t.template || '').toLowerCase().trim();
+            if (tid && tid.startsWith('BC')) return true;
+            if (candidate.indexOf('blood') !== -1 && candidate.indexOf('chemistry') !== -1) return true;
+            if (candidate.indexOf('blood-chemistry') !== -1) return true;
+            return false;
+          });
+        } else {
+          const ttLowerEq = ttLower;
+          testsRaw = (testsRaw || []).filter(t => {
+            const candidate = String(t.testType || t.template || '').toLowerCase();
+            return candidate === ttLowerEq;
+          });
+        }
       }
       if (dateFrom) {
         const from = new Date(dateFrom);
