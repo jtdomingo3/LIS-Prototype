@@ -5,7 +5,7 @@
   <title>Print Preview — Gezyne LIS</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; overflow: hidden; background: #1e1e1e; }
+    html, body { height: 100%; background: #2a2a2a; font-family: 'Segoe UI', Tahoma, sans-serif; }
 
     /* ── toolbar ──────────────────────────────────── */
     .toolbar {
@@ -20,7 +20,6 @@
       z-index: 100;
       box-shadow: 0 2px 8px rgba(0,0,0,.4);
       color: #e2e8f0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
     .toolbar .title {
       font-weight: 600;
@@ -29,11 +28,6 @@
       display: flex;
       align-items: center;
       gap: 8px;
-    }
-    .toolbar .title img {
-      height: 24px;
-      width: 24px;
-      border-radius: 4px;
     }
     .toolbar button {
       padding: 8px 20px;
@@ -63,30 +57,64 @@
     }
     .btn-close:hover { background: rgba(239,68,68,.3); }
 
-    /* ── PDF viewer area ─────────────────────────── */
-    .pdf-container {
+    /* ── pages container (scrollable) ─────────────── */
+    .pages {
       position: fixed;
       top: 52px; left: 0; right: 0; bottom: 0;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
     }
-    .pdf-container embed,
-    .pdf-container iframe {
-      width: 100%;
-      height: 100%;
-      border: none;
+    .pages canvas {
+      display: block;
+      background: #fff;
+      box-shadow: 0 2px 12px rgba(0,0,0,.5);
+      max-width: 90%;
+    }
+    .loading {
+      color: #94a3b8;
+      text-align: center;
+      margin-top: 60px;
+      font-size: 16px;
+    }
+    .error {
+      color: #f87171;
+      text-align: center;
+      margin-top: 60px;
+      font-size: 14px;
     }
 
-    /* ── fallback message ────────────────────────── */
-    .fallback {
-      display: none;
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      text-align: center;
-      color: #94a3b8;
-      font-family: 'Segoe UI', sans-serif;
+    /* ── print styles ────────────────────────────── */
+    @media print {
+      .toolbar, .loading, .error { display: none !important; }
+      html, body {
+        background: #fff;
+        height: auto;
+        overflow: visible;
+      }
+      .pages {
+        position: static;
+        padding: 0;
+        gap: 0;
+        overflow: visible;
+        display: block;
+      }
+      .pages canvas {
+        display: block;
+        box-shadow: none;
+        max-width: none;
+        width: 100% !important;
+        height: auto !important;
+        page-break-after: always;
+        margin: 0;
+      }
+      .pages canvas:last-child {
+        page-break-after: auto;
+      }
     }
-    .fallback h2 { font-size: 20px; margin-bottom: 12px; color: #e2e8f0; }
-    .fallback p { font-size: 14px; line-height: 1.6; }
   </style>
 </head>
 <body>
@@ -96,57 +124,85 @@
       <span>📄 Print Preview</span>
     </div>
     <button class="btn-save" onclick="savePdf()">💾 Save PDF</button>
-    <button class="btn-print" onclick="printPdf()">🖨️ Print</button>
+    <button class="btn-print" onclick="printDoc()">🖨️ Print</button>
     <button class="btn-close" onclick="window.close()">✕ Close</button>
   </div>
 
-  <!-- PDF display -->
-  <div class="pdf-container" id="pdfContainer">
-    <div class="fallback" id="fallback">
-      <h2>PDF Preview</h2>
-      <p>Generating preview…</p>
-    </div>
+  <!-- Rendered PDF pages -->
+  <div class="pages" id="pages">
+    <div class="loading" id="loading">Rendering preview…</div>
   </div>
 
+  <!-- pdf.js — renders PDF pages as canvas elements (HTML, not a plugin) -->
+  <script src="../node_modules/pdfjs-dist/build/pdf.min.js"></script>
   <script>
-    // Read the PDF path passed via query string
-    const params = new URLSearchParams(window.location.search);
+    // Point to the worker file so pdf.js can parse PDFs efficiently
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      '../node_modules/pdfjs-dist/build/pdf.worker.min.js';
+
+    const params  = new URLSearchParams(location.search);
     const pdfPath = params.get('pdf');
-    const reportUrl = params.get('reportUrl');
 
-    if (pdfPath && window.lisAppPrint) {
-      // Use file:// protocol to load the local PDF
-      const fileUrl = 'file:///' + pdfPath.replace(/\\/g, '/');
+    /* ── Render all PDF pages to <canvas> elements ─────────── */
+    (async function renderPreview() {
+      const container = document.getElementById('pages');
+      const loadingEl = document.getElementById('loading');
 
-      // Embed using iframe (Electron's Chromium PDF viewer)
-      const container = document.getElementById('pdfContainer');
-      const embed = document.createElement('embed');
-      embed.src = fileUrl + '#toolbar=1&navpanes=0&scrollbar=1&view=FitH';
-      embed.type = 'application/pdf';
-      container.insertBefore(embed, container.firstChild);
-
-      // Show fallback if embed fails
-      embed.addEventListener('error', () => {
-        document.getElementById('fallback').style.display = 'block';
-      });
-    } else {
-      document.getElementById('fallback').style.display = 'block';
-    }
-
-    // Toolbar actions — open PDF in the system's default viewer for proper
-    // print preview with paper size, margins, borders etc.
-    async function printPdf() {
-      if (window.lisAppPrint && pdfPath) {
-        await window.lisAppPrint.print(pdfPath, reportUrl || '');
+      if (!pdfPath || !window.lisAppPrint) {
+        loadingEl.textContent = 'No PDF data available.';
+        loadingEl.className   = 'error';
+        return;
       }
+
+      try {
+        // Read the PDF binary via IPC (preload is sandboxed, no direct fs access)
+        const pdfData = await window.lisAppPrint.readPdfFile(pdfPath);
+        if (!pdfData) throw new Error('Could not read PDF file');
+
+        const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+        loadingEl.remove();
+
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page     = await pdf.getPage(i);
+          const scale    = 2;   // 2x for crisp print output
+          const viewport = page.getViewport({ scale });
+
+          const canvas   = document.createElement('canvas');
+          canvas.width   = viewport.width;
+          canvas.height  = viewport.height;
+
+          // Keep aspect ratio via CSS
+          canvas.style.aspectRatio = viewport.width + ' / ' + viewport.height;
+
+          container.appendChild(canvas);
+
+          await page.render({
+            canvasContext: canvas.getContext('2d'),
+            viewport,
+          }).promise;
+        }
+      } catch (err) {
+        console.error('PDF render error:', err);
+        loadingEl.textContent = 'Failed to render preview: ' + err.message;
+        loadingEl.className   = 'error';
+      }
+    })();
+
+    /* ── Toolbar actions ──────────────────────────────────────── */
+
+    /** Print — calls the native print dialog on this HTML page.
+     *  Because the content is pure HTML/canvas (not a PDF plugin),
+     *  Chromium can generate a proper print preview. */
+    function printDoc() {
+      window.print();
     }
 
+    /** Save a copy of the PDF to a user-chosen location */
     async function savePdf() {
       if (window.lisAppPrint && pdfPath) {
         const result = await window.lisAppPrint.savePdf(pdfPath);
-        if (result.success) {
-          // Brief visual feedback
-          const btn = document.querySelector('.btn-save');
+        if (result && result.success) {
+          const btn  = document.querySelector('.btn-save');
           const orig = btn.textContent;
           btn.textContent = '✓ Saved!';
           setTimeout(() => { btn.textContent = orig; }, 2000);

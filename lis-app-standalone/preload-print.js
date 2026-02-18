@@ -13,7 +13,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 // Expose print-specific API only
 contextBridge.exposeInMainWorld('lisAppPrint', {
-  // Print using the original report URL (HTML) so the OS print dialog has a preview
-  print:    (pdfPath, reportUrl) => ipcRenderer.invoke('print-pdf', { pdfPath, reportUrl }),
-  savePdf:  (sourcePath)         => ipcRenderer.invoke('save-pdf', { sourcePath }),
+  /** Read a local PDF file via IPC and return its binary data as Uint8Array.
+   *  We must use IPC because sandboxed preloads cannot require('fs'). */
+  readPdfFile: (filePath) => ipcRenderer.invoke('read-pdf-file', { filePath }),
+  savePdf:     (sourcePath) => ipcRenderer.invoke('save-pdf', { sourcePath }),
 });

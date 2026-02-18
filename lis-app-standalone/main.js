@@ -29,6 +29,13 @@ const { OperationQueue }  = require('./lib/operationQueue');
 const { SyncEngine }      = require('./lib/syncEngine');
 const { createLocalServer } = require('./lib/localServer');
 
+/* ── Single-instance lock ─────────────────────────────────────────── */
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  // Another instance is already running — quit this one silently
+  app.quit();
+}
+
 /* ── app-wide state ───────────────────────────────────────────────── */
 let mainWindow    = null;
 let tray          = null;
@@ -433,14 +440,12 @@ function openPrintPreviewWindow(url) {
           nodeIntegration: false,
           contextIsolation: true,
           partition: 'persist:lis',
-          plugins: true,
         },
       });
 
-      // Load the custom print preview HTML that embeds the PDF
-      // Pass both the PDF path (for preview) and the original report URL (for printing)
+      // Load the custom print preview HTML — renders PDF pages as canvases via pdf.js
       previewWin.loadFile(path.join(__dirname, 'renderer', 'print-preview.html'), {
-        query: { pdf: pdfPath, reportUrl: url },
+        query: { pdf: pdfPath },
       });
 
       // Clean up temp PDF after a delay when the preview window closes
@@ -476,67 +481,17 @@ ipcMain.handle('print-preview', async (_e, { url }) => {
   return { success: true };
 });
 
-/* ── IPC: print — load the original report URL (HTML) so print preview works ── */
-ipcMain.handle('print-pdf', async (_event, { pdfPath, reportUrl }) => {
+/* ── IPC: read a PDF file from disk (preload is sandboxed, no fs) ── */
+ipcMain.handle('read-pdf-file', async (_e, { filePath }) => {
   try {
-    // Prefer the original report URL (HTML) — Chromium can preview HTML pages.
-    // Fall back to the PDF path only if no report URL is available.
-    const urlToLoad = reportUrl
-      || (pdfPath && fs.existsSync(pdfPath)
-           ? 'file:///' + pdfPath.replace(/\\/g, '/')
-           : null);
-
-    if (!urlToLoad) {
-      return { success: false, error: 'Nothing to print' };
+    if (filePath && fs.existsSync(filePath)) {
+      const buffer = fs.readFileSync(filePath);
+      return new Uint8Array(buffer);
     }
-
-    const printWin = new BrowserWindow({
-      width: 800,
-      height: 1100,
-      show: false,
-      webPreferences: {
-        preload: path.join(__dirname, 'preload-print.js'),
-        nodeIntegration: false,
-        contextIsolation: true,
-        partition: 'persist:lis',
-        plugins: true,
-      },
-    });
-
-    printWin.loadURL(urlToLoad);
-
-    // Suppress the report template's own window.print() (setTimeout 300ms)
-    printWin.webContents.on('dom-ready', () => {
-      printWin.webContents.executeJavaScript('window.print = function(){}; void 0;').catch(() => {});
-    });
-
-    printWin.webContents.on('did-finish-load', async () => {
-      // Double-suppress and give the page time to render
-      await printWin.webContents.executeJavaScript('window.print = function(){}; void 0;').catch(() => {});
-      await new Promise(r => setTimeout(r, 800));
-
-      printWin.webContents.print(
-        { silent: false, printBackground: true },
-        (success, failureReason) => {
-          if (!success && failureReason !== 'cancelled') {
-            console.error('[Print] printing failed:', failureReason);
-          }
-          printWin.close();
-        },
-      );
-    });
-
-    // Safety: if the page fails to load, clean up
-    printWin.webContents.on('did-fail-load', () => {
-      console.error('[Print] print window failed to load');
-      try { printWin.close(); } catch {}
-    });
-
-    return { success: true };
   } catch (e) {
-    console.error('[Print] print-pdf failed:', e);
-    return { success: false, error: e.message };
+    console.error('[Print] read-pdf-file failed:', e);
   }
+  return null;
 });
 
 /* ── IPC: save the PDF to a user-chosen location ─────────────────── */
@@ -580,6 +535,14 @@ function createTray() {
 app.whenReady().then(() => {
   createWindow();
   createTray();
+});
+
+// When a second instance tries to launch, focus the existing window
+app.on('second-instance', () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
 });
 
 app.on('window-all-closed', () => {
