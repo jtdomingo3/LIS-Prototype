@@ -1,0 +1,42 @@
+{
+  "name": "lis-app-standalone",
+  "version": "1.0.0",
+  "description": "Standalone desktop client for Gezyne LIS with offline support",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:dir": "electron-builder --dir"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "electron": "^28.1.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.gezyne.lis-standalone",
+    "productName": "Gezyne LIS",
+    "win": {
+      "target": "nsis",
+      "icon": "assets/gezyne-logo.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!dist/**",
+      "!node_modules/.cache/**"
+    ]
+  },
+  "author": "Gezyne Clinical Laboratory",
+  "license": "MIT"
+}
