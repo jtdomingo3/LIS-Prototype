@@ -471,7 +471,15 @@ router.get('/worksheet', requireAuth, canAccessPatient, async (req, res) => {
     });
     if (sawBloodChem) normalized.push('Blood Chemistry');
     const finalTypes = Array.from(new Set(normalized)).filter(Boolean).sort();
-    res.render('reports/worksheet', { title: 'Worksheet Export', types: finalTypes });
+    // collect unique companies from patients for the Patient Export dropdown
+    let companies = [];
+    try {
+      const allPatients = await Patient.find({});
+      companies = Array.from(new Set((allPatients || []).map(p => String(p.company || '').trim()).filter(Boolean))).sort();
+    } catch (e) {
+      companies = [];
+    }
+    res.render('reports/worksheet', { title: 'Worksheet Export', types: finalTypes, companies });
   } catch (err) {
     console.error('Worksheet page error:', err);
     req.flash('error_msg', 'Error loading worksheet page');
@@ -743,5 +751,184 @@ router.post('/worksheet/preview', requireAuth, canAccessPatient, async (req, res
   } catch (err) {
     console.error('Worksheet preview error:', err);
     return res.status(500).json({ error: 'Error generating preview' });
+  }
+});
+
+// --- Patient export (separate from test worksheet export)
+// GET /reports/patient-export - render patient export UI (reuse worksheet view with flag)
+router.get('/patient-export', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    // reuse worksheet view; frontend should check `patientExport` to show patient-specific controls
+    return res.render('reports/worksheet', { title: 'Patient Export', types: [], patientExport: true });
+  } catch (err) {
+    console.error('Patient export page error:', err);
+    req.flash('error_msg', 'Error loading patient export page');
+    res.redirect('/reports');
+  }
+});
+
+// POST /reports/patient-export/download - Download patient data filtered by date/company/philhealth
+router.post('/patient-export/download', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const { dateFrom, dateTo, company, philhealth, format } = req.body || {};
+    let patients = await Patient.find({});
+
+    if (dateFrom) {
+      const from = new Date(dateFrom);
+      patients = (patients || []).filter(p => new Date(p.createdAt) >= from);
+    }
+    if (dateTo) {
+      const end = new Date(dateTo);
+      end.setHours(23,59,59,999);
+      patients = (patients || []).filter(p => new Date(p.createdAt) <= end);
+    }
+    if (company && String(company).trim()) {
+      const comp = String(company).toLowerCase().trim();
+      patients = (patients || []).filter(p => (String(p.company || '').toLowerCase().indexOf(comp) !== -1));
+    }
+    if (philhealth === 'yes') {
+      patients = (patients || []).filter(p => !!p.philhealthConsent);
+    } else if (philhealth === 'no') {
+      patients = (patients || []).filter(p => !p.philhealthConsent);
+    }
+
+    // Build headers for patient export
+    const headers = ['Patient ID','Patient Code','First Name','Middle Name','Last Name','Full Name','DOB','Age','Age Manual','Sex','Phone','Email','Address','Physician','Requested Tests','Required Areas','Company','PhilHealth Consent','PhilHealth ID','Created At','Created By','Updated At','Payment History (raw)'];
+
+    function escapeCsvCell(v) {
+      if (v === null || typeof v === 'undefined') return '';
+      const s = String(v);
+      if (s.includes('"') || s.includes(',') || s.includes('\n')) {
+        return '"' + s.replace(/"/g,'""') + '"';
+      }
+      return s;
+    }
+
+    const lines = [headers.map(escapeCsvCell).join(',')];
+    for (const p of (patients || [])) {
+      const pj = (p && typeof p.toJSON === 'function') ? p.toJSON() : (p || {});
+      const row = [
+        pj.patientId || '', pj.patientCode || '', pj.firstName || '', pj.middleName || '', pj.lastName || '', pj.fullName || '',
+        pj.dateOfBirth ? (new Date(pj.dateOfBirth)).toLocaleDateString() : '',
+        (pj.age !== undefined && pj.age !== null) ? pj.age : '', pj.ageManual || '', pj.sex || pj.gender || '',
+        pj.phone || '', pj.email || '', pj.address || '', pj.physician || '',
+        Array.isArray(pj.requestedTests) ? pj.requestedTests.join('; ') : (pj.requestedTests || ''),
+        Array.isArray(pj.requiredAreas) ? pj.requiredAreas.join('; ') : (pj.requiredAreas || ''),
+        pj.company || '', pj.philhealthConsent ? 'yes' : 'no', pj.philhealthId || '',
+        pj.createdAt ? (new Date(pj.createdAt)).toLocaleString() : '', pj.createdBy || '', pj.updatedAt ? (new Date(pj.updatedAt)).toLocaleString() : '',
+        pj.paymentHistory && pj.paymentHistory.length ? JSON.stringify(pj.paymentHistory) : ''
+      ];
+      lines.push(row.map(escapeCsvCell).join(','));
+    }
+
+    const filenameBase = `patient_export_${(new Date()).toISOString().slice(0,19).replace(/[:T]/g,'-')}`;
+    const fmt = (format || '').toLowerCase();
+
+    if (fmt === 'xlsx') {
+      const workbook = new ExcelJS.Workbook();
+      const ws = workbook.addWorksheet('Patient Export');
+      const cols = headers.map(h => ({ header: h, key: h, width: Math.min(50, Math.max(12, String(h).length + 6)) }));
+      ws.columns = cols;
+      for (const p of (patients || [])) {
+        const pj = (p && typeof p.toJSON === 'function') ? p.toJSON() : (p || {});
+        const rowVals = [
+          pj.patientId || '', pj.patientCode || '', pj.firstName || '', pj.middleName || '', pj.lastName || '', pj.fullName || '',
+          pj.dateOfBirth ? (new Date(pj.dateOfBirth)).toLocaleDateString() : '',
+          (pj.age !== undefined && pj.age !== null) ? pj.age : '', pj.ageManual || '', pj.sex || pj.gender || '',
+          pj.phone || '', pj.email || '', pj.address || '', pj.physician || '',
+          Array.isArray(pj.requestedTests) ? pj.requestedTests.join('; ') : (pj.requestedTests || ''),
+          Array.isArray(pj.requiredAreas) ? pj.requiredAreas.join('; ') : (pj.requiredAreas || ''),
+          pj.company || '', pj.philhealthConsent ? 'yes' : 'no', pj.philhealthId || '',
+          pj.createdAt ? (new Date(pj.createdAt)).toLocaleString() : '', pj.createdBy || '', pj.updatedAt ? (new Date(pj.updatedAt)).toLocaleString() : '',
+          pj.paymentHistory && pj.paymentHistory.length ? JSON.stringify(pj.paymentHistory) : ''
+        ];
+        const rowObj = {};
+        headers.forEach((h, i) => { rowObj[h] = rowVals[i]; });
+        ws.addRow(rowObj);
+      }
+      ws.views = [{ state: 'frozen', ySplit: 1 }];
+      ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: headers.length } };
+      const buffer = await workbook.xlsx.writeBuffer();
+      res.setHeader('Content-Disposition', `attachment; filename="${filenameBase}.xlsx"`);
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      return res.send(Buffer.from(buffer));
+    }
+
+    if (fmt === 'excel') {
+      let html = '<table border="1"><thead><tr>';
+      headers.forEach(h => html += `<th>${String(h).replace(/</g,'&lt;')}</th>`);
+      html += '</tr></thead><tbody>';
+      for (const p of (patients || [])) {
+        const pj = (p && typeof p.toJSON === 'function') ? p.toJSON() : (p || {});
+        html += '<tr>';
+        const rowVals = [
+          pj.patientId || '', pj.patientCode || '', pj.firstName || '', pj.middleName || '', pj.lastName || '', pj.fullName || '',
+          pj.dateOfBirth ? (new Date(pj.dateOfBirth)).toLocaleDateString() : '',
+          (pj.age !== undefined && pj.age !== null) ? pj.age : '', pj.ageManual || '', pj.sex || pj.gender || '',
+          pj.phone || '', pj.email || '', pj.address || '', pj.physician || '',
+          Array.isArray(pj.requestedTests) ? pj.requestedTests.join('; ') : (pj.requestedTests || ''),
+          Array.isArray(pj.requiredAreas) ? pj.requiredAreas.join('; ') : (pj.requiredAreas || ''),
+          pj.company || '', pj.philhealthConsent ? 'yes' : 'no', pj.philhealthId || '',
+          pj.createdAt ? (new Date(pj.createdAt)).toLocaleString() : '', pj.createdBy || '', pj.updatedAt ? (new Date(pj.updatedAt)).toLocaleString() : '',
+          pj.paymentHistory && pj.paymentHistory.length ? JSON.stringify(pj.paymentHistory) : ''
+        ];
+        rowVals.forEach(v => { html += `<td>${String(v === undefined || v === null ? '' : v).replace(/</g,'&lt;')}</td>`; });
+        html += '</tr>';
+      }
+      html += '</tbody></table>';
+      res.setHeader('Content-Disposition', `attachment; filename="${filenameBase}.xls"`);
+      res.setHeader('Content-Type', 'application/vnd.ms-excel; charset=UTF-8');
+      return res.send(html);
+    }
+
+    // default CSV
+    res.setHeader('Content-Disposition', `attachment; filename="${filenameBase}.csv"`);
+    res.setHeader('Content-Type', 'text/csv; charset=UTF-8');
+    return res.send(lines.join('\n'));
+  } catch (error) {
+    console.error('Patient export error:', error);
+    req.flash('error_msg', 'Error generating patient export');
+    res.redirect('/reports');
+  }
+});
+
+// POST /reports/patient-export/preview - limited preview JSON of patients
+router.post('/patient-export/preview', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const { dateFrom, dateTo, company, philhealth, limit } = req.body || {};
+    let patients = await Patient.find({});
+    if (dateFrom) {
+      const from = new Date(dateFrom);
+      patients = (patients || []).filter(p => new Date(p.createdAt) >= from);
+    }
+    if (dateTo) {
+      const end = new Date(dateTo);
+      end.setHours(23,59,59,999);
+      patients = (patients || []).filter(p => new Date(p.createdAt) <= end);
+    }
+    if (company && String(company).trim()) {
+      const comp = String(company).toLowerCase().trim();
+      patients = (patients || []).filter(p => (String(p.company || '').toLowerCase().indexOf(comp) !== -1));
+    }
+    if (philhealth === 'yes') {
+      patients = (patients || []).filter(p => !!p.philhealthConsent);
+    } else if (philhealth === 'no') {
+      patients = (patients || []).filter(p => !p.philhealthConsent);
+    }
+
+    const previewRows = (patients || []).map(p => {
+      const pj = (p && typeof p.toJSON === 'function') ? p.toJSON() : (p || {});
+      return {
+        patientId: pj.patientId || '', patientCode: pj.patientCode || '', fullName: pj.fullName || '', firstName: pj.firstName || '', lastName: pj.lastName || '',
+        dob: pj.dateOfBirth ? (new Date(pj.dateOfBirth)).toISOString().slice(0,10) : '', age: pj.age || '', company: pj.company || '', philhealthConsent: !!pj.philhealthConsent,
+        createdAt: pj.createdAt ? (new Date(pj.createdAt)).toISOString() : '', createdBy: pj.createdBy || '', phone: pj.phone || '' , email: pj.email || ''
+      };
+    });
+
+    const max = Math.min(1000, parseInt(limit || '200', 10) || 200);
+    return res.json({ count: previewRows.length, rows: previewRows.slice(0, max) });
+  } catch (err) {
+    console.error('Patient preview error:', err);
+    return res.status(500).json({ error: 'Error generating patient preview' });
   }
 });

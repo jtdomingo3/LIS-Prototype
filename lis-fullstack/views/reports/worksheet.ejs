@@ -138,6 +138,97 @@
         });
       })();
     </script>
+    
+      <!-- Patient Export Section -->
+      <hr style="margin:18px 0" />
+      <h3>Patient Export</h3>
+      <form id="patientForm" action="/reports/patient-export/download" method="POST">
+        <div class="form-row">
+          <label>Date From</label>
+          <input type="date" name="dateFrom" />
+          <label>Date To</label>
+          <input type="date" name="dateTo" />
+        </div>
+
+        <div class="form-row">
+          <label>Company</label>
+          <select name="company">
+            <option value="">-- Any --</option>
+            <% if (typeof companies !== 'undefined' && companies && companies.length) { companies.forEach(function(cmp){ %>
+              <option value="<%= cmp %>"><%= cmp %></option>
+            <% }) } %>
+          </select>
+          <label>PhilHealth</label>
+          <select name="philhealth">
+            <option value="">-- Any --</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <label>Format</label>
+          <select name="format">
+            <option value="csv">CSV</option>
+            <option value="xlsx">Excel (.xlsx)</option>
+          </select>
+        </div>
+
+        <div class="actions">
+          <button type="submit" class="button btn-primary">Download Patients</button>
+          <button type="button" id="patientPreviewBtn" class="button">Preview</button>
+        </div>
+      </form>
+
+      <div id="patientPreviewArea" style="width:100%;margin:12px auto;display:none">
+        <h4>Patient Preview (<span id="patientPreviewCount">0</span> rows)</h4>
+        <div style="overflow:auto;max-height:300px;border:1px solid #ddd;background:#fff;padding:8px">
+          <table id="patientPreviewTable" style="border-collapse:collapse;width:auto;min-width:max-content">
+            <thead>
+              <tr id="patientPreviewHead"></tr>
+            </thead>
+            <tbody id="patientPreviewBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <script>
+        (function(){
+          const pForm = document.getElementById('patientForm');
+          const pPreviewBtn = document.getElementById('patientPreviewBtn');
+          const pPreviewArea = document.getElementById('patientPreviewArea');
+          const pPreviewCount = document.getElementById('patientPreviewCount');
+          const pPreviewHead = document.getElementById('patientPreviewHead');
+          const pPreviewBody = document.getElementById('patientPreviewBody');
+
+          function serializeForm(f){ const data = {}; new FormData(f).forEach((v,k)=>{ data[k]=v; }); return data; }
+
+          pPreviewBtn.addEventListener('click', async function(){
+            const data = serializeForm(pForm);
+            try{
+              pPreviewBtn.disabled = true; pPreviewBtn.textContent = 'Loading...';
+              const resp = await fetch('/reports/patient-export/preview', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({}, data, { limit: 500 }))
+              });
+              if (!resp.ok) throw new Error('Preview failed');
+              const json = await resp.json();
+              pPreviewHead.innerHTML = ''; pPreviewBody.innerHTML = '';
+              if (!json || !Array.isArray(json.rows)) { pPreviewArea.style.display = 'none'; alert('No preview data'); return; }
+              const rows = json.rows;
+              const headers = ['Patient ID','Patient Code','Full Name','DOB','Age','Company','PhilHealth','Phone','Email','Created At','Created By'];
+              headers.forEach(h=>{ const th = document.createElement('th'); th.textContent = h; th.style.borderBottom='1px solid #ccc'; th.style.padding='6px'; pPreviewHead.appendChild(th); });
+              rows.forEach(r=>{
+                const tr = document.createElement('tr');
+                const vals = [r.patientId,r.patientCode,r.fullName,r.dob,r.age,r.company,(r.philhealthConsent ? 'yes' : 'no'),r.phone,r.email,r.createdAt,r.createdBy];
+                vals.forEach(v=>{ const td = document.createElement('td'); td.textContent = v || ''; td.style.padding='6px'; td.style.borderBottom='1px solid #f1f1f1'; tr.appendChild(td); });
+                pPreviewBody.appendChild(tr);
+              });
+              pPreviewCount.textContent = json.count || rows.length || 0; pPreviewArea.style.display = 'block';
+            } catch(e){ console.error(e); alert('Preview failed'); }
+            finally{ pPreviewBtn.disabled = false; pPreviewBtn.textContent = 'Preview'; }
+          });
+        })();
+      </script>
   </div>
 </body>
 </html>
