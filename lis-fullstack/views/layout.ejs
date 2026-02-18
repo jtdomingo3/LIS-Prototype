@@ -340,6 +340,30 @@
             font-size: 0.9em;
         }
 
+        /* Text-only pagination links (no button borders) */
+        .page-link {
+            background: transparent;
+            border: none;
+            padding: 0 8px;
+            margin: 0 4px;
+            color: var(--primary-black);
+            text-decoration: none;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-block;
+            line-height: 1;
+        }
+
+        .page-link:hover {
+            color: var(--secondary-green-dark);
+            text-decoration: underline;
+        }
+
+        .page-link.active {
+            color: var(--secondary-green);
+            text-decoration: underline;
+        }
+
         /* Tables */
         table {
             width: 100%;

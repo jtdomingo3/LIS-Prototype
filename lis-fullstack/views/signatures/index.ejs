@@ -61,7 +61,7 @@
   <% if (typeof totalPages !== 'undefined' && totalPages > 1) { %>
     <div class="flex-between mt-20">
       <% if (hasPrevPage) { %>
-        <a href="?page=<%= prevPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&priority=<%= encodeURIComponent(priorityFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="button btn-secondary">Previous</a>
+        <a href="?page=<%= prevPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&priority=<%= encodeURIComponent(priorityFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link">Previous</a>
       <% } %>
 
       <div>
@@ -71,14 +71,20 @@
           let start = Math.max(1, currentPage - half);
           let end = Math.min(totalPages, start + maxDisplay - 1);
           start = Math.max(1, end - maxDisplay + 1);
+          if (totalPages > maxDisplay && start > 1) { %>
+            <a href="?page=1&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&priority=<%= encodeURIComponent(priorityFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link">First</a>
+        <% }
           for (let p = start; p <= end; p++) {
         %>
-          <a href="?page=<%= p %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&priority=<%= encodeURIComponent(priorityFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="button btn-small <%= p === currentPage ? 'btn-primary' : 'btn-secondary' %>"><%= p %></a>
+          <a href="?page=<%= p %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&priority=<%= encodeURIComponent(priorityFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link <%= p === currentPage ? 'active' : '' %>"><%= p %></a>
+        <% } 
+          if (totalPages > maxDisplay && end < totalPages) { %>
+            <a href="?page=<%= totalPages %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&priority=<%= encodeURIComponent(priorityFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link">Last</a>
         <% } %>
       </div>
 
       <% if (hasNextPage) { %>
-        <a href="?page=<%= nextPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&priority=<%= encodeURIComponent(priorityFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="button btn-secondary">Next</a>
+        <a href="?page=<%= nextPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&priority=<%= encodeURIComponent(priorityFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link">Next</a>
       <% } %>
     </div>
   <% } %>
