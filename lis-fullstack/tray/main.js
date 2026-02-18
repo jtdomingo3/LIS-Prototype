@@ -30,6 +30,7 @@ const SERVER_SCRIPT = path.join(PROJECT_ROOT, 'server.js');
 
 let serviceInstalled = false;
 let serverChild = null;
+let serverAutoStarted = false;
 
 let tray = null;
 let mainWindow = null;
@@ -65,6 +66,11 @@ function createMainWindow() {
       e.preventDefault();
       mainWindow.hide();
     }
+  });
+  // hide window when minimized (send to tray)
+  mainWindow.on('minimize', (e) => {
+    e.preventDefault();
+    mainWindow.hide();
   });
   // send recent logs on ready
   mainWindow.webContents.on('did-finish-load', () => {
@@ -216,6 +222,28 @@ app.whenReady().then(() => {
     try { mainWindow.setMenuBarVisibility(false); mainWindow.setAutoHideMenuBar(true); } catch (e) {}
     mainWindow.show();
   }
+  // Auto-start server when tray launches (service if present, else spawn)
+  try {
+    checkServiceExists((err, exists) => {
+      serviceInstalled = !!exists;
+      if (serviceInstalled) {
+        appendLog('[tray] PM2/service detected; attempting to start service...');
+        runServiceCommand(`sc start ${SERVICE_NAME}`, (err2) => {
+          if (err2) appendLog('[tray] Failed to start service: ' + String(err2));
+          else appendLog('[tray] Service start requested');
+          // watch logs if pm2 is used
+          watchPm2Logs();
+          serverAutoStarted = true;
+        });
+      } else {
+        appendLog('[tray] No service detected; spawning server directly...');
+        startServerDirect((err3, out) => {
+          if (err3) appendLog('[tray] Failed to spawn server: ' + String(err3)); else appendLog('[tray] ' + out);
+          serverAutoStarted = true;
+        });
+      }
+    });
+  } catch (e) { appendLog('[tray] Auto-start failed: ' + String(e)); }
 });
 
 // IPC handlers from renderer
