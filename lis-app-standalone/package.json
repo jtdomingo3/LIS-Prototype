@@ -7,8 +7,9 @@
     "start": "electron .",
     "dev": "electron . --dev",
     "build": "electron-builder",
-    "build:win": "electron-builder --win",
-    "build:dir": "electron-builder --dir"
+    "dist:win": "electron-builder --win nsis",
+    "dist:dir": "electron-builder --dir",
+    "generate-icon": "node build/generate-icon.js"
   },
   "dependencies": {
     "express": "^4.18.2",
@@ -16,27 +17,33 @@
   },
   "devDependencies": {
     "electron": "^28.1.0",
-    "electron-builder": "^24.9.1"
+    "electron-builder": "^24.9.1",
+    "png-to-ico": "^3.0.0",
+    "sharp": "^0.32.5"
   },
   "build": {
     "appId": "com.gezyne.lis-standalone",
     "productName": "Gezyne LIS",
-    "win": {
-      "target": "nsis",
-      "icon": "assets/gezyne-logo.png"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true
-    },
     "directories": {
+      "buildResources": "build",
       "output": "dist"
     },
     "files": [
       "**/*",
       "!dist/**",
       "!node_modules/.cache/**"
-    ]
+    ],
+    "win": {
+      "target": ["nsis"],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
   },
   "author": "Gezyne Clinical Laboratory",
   "license": "MIT"

@@ -14,3 +14,5 @@ lis-fullstack/logs/report-errors.log
 # Ignore uploaded e-signatures stored by the app
 lis-fullstack/assets/signature/
 new-gezyne/
+lis-app-standalone/dist
+lis-fullstack/scripts
