@@ -398,9 +398,20 @@ async function createWindow() {
       if (config.SERVER_URL && currentSessionEmail) {
         const base = config.SERVER_URL.replace(/\/$/, '');
         if (url === base + '/' || url === base) {
-          console.log('[Main] session lost on real server — switching to local server');
-          mainWindow.loadURL(`http://127.0.0.1:${config.LOCAL_PORT}/`);
-          return;
+          try {
+            const isLoginPage = await mainWindow.webContents.executeJavaScript(
+              "!!(document.querySelector('form[action=\"/login\"]') || document.querySelector('input[name=\"email\"]'))"
+            );
+            if (isLoginPage) {
+              console.log('[Main] session lost on real server — switching to local server');
+              mainWindow.loadURL(`http://127.0.0.1:${config.LOCAL_PORT}/`);
+              return;
+            } else {
+              console.log('[Main] landed on server root but no login form detected — staying with real server');
+            }
+          } catch (e) {
+            console.warn('[Main] login detection failed, not switching to local server:', e && e.message);
+          }
         }
       }
     } catch (e) { /* ignore */ }
