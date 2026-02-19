@@ -75,6 +75,27 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   /* ── Feature flags (match server defaults) ─────────────────────── */
   app.locals.featureFlags = { tests: true, reports: true, templates: true, users: true, worksheet: true };
 
+  /* ── Result highlighting helper (used by report templates) ─────── */
+  function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function highlightResult(text) {
+    if (text == null) return '';
+    var s = String(text);
+    var containsTags = /<\/?[a-z][\s\S]*>/i.test(s);
+    if (!containsTags) {
+      var out = escapeHtml(s);
+      out = out.replace(/\b(Positive|Reactive|trace)\b/gi, function(m){ return '<span class="result-highlight">'+m+'</span>'; });
+      out = out.replace(/(\+{1,4})/g, function(m){ return '<span class="result-highlight">'+m+'</span>'; });
+      return out;
+    }
+    var escaped = s;
+    escaped = escaped.replace(/\b(Positive|Reactive|trace)\b/gi, function(m){ return '<span class="result-highlight">'+m+'</span>'; });
+    escaped = escaped.replace(/(\+{1,4})/g, function(m){ return '<span class="result-highlight">'+m+'</span>'; });
+    return escaped;
+  }
+
   /* ── Auto-login middleware — seamlessly restore session on offline
    *  transition so the user doesn't see a login page when the server
    *  goes down. The main process sets _autoLoginEmail via
@@ -161,6 +182,8 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     const sessionFlags = (req.session && req.session.featureFlags) ? req.session.featureFlags : {};
     res.locals.featureFlags = Object.assign({}, app.locals.featureFlags, sessionFlags);
     res.locals.backupConfig = { enabled: false, frequency: 'daily', path: '' };
+    // expose highlight helper used by report templates
+    try { res.locals.hl = highlightResult; } catch (e) { /* ignore */ }
     next();
   });
 
