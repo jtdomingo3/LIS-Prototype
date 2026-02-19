@@ -251,6 +251,8 @@ async function createWindow() {
   operationQueue = new OperationQueue(dataDir);
   // DataStore will persist the full synced DB into Documents/LIS/app_sync/data.json
   try { dataStore = new DataStore(); } catch (e) { dataStore = null; }
+  // Attach DataStore to operationQueue so replaceTempId can update stored records
+  try { if (operationQueue && dataStore) operationQueue.dataStore = dataStore; } catch (e) {}
   syncEngine = new SyncEngine(operationQueue, config, dataStore);
   localServer = createLocalServer(pageCache, operationQueue, config, dataStore);
 
@@ -701,8 +703,13 @@ ipcMain.handle('drop-offline-data', async () => {
         try { dataStore.setMeta('lastFullSync', new Date().toISOString()); } catch (e) {}
       }
       if (operationQueue && typeof operationQueue.clearAll === 'function') operationQueue.clearAll();
+      // Clear page cache so any cached server HTML won't be served
+      try { if (pageCache && typeof pageCache.clear === 'function') pageCache.clear(); } catch (e) {}
       sendStatus();
-      return { success: true, imported: (Array.isArray(fetched.patients) ? fetched.patients.length : 0) };
+      const importedCount = (Array.isArray(fetched.patients) ? fetched.patients.length : 0);
+      // Notify renderer that full-sync-like replacement completed so it can reload
+      try { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('full-sync-end', { success: true, imported: importedCount, datastore: dataStore ? dataStore.info() : null }); } catch (e) {}
+      return { success: true, imported: importedCount };
     } catch (e) {
       console.error('[Main] failed to apply fetched server data', e && e.message);
       return { success: false, reason: e && e.message };

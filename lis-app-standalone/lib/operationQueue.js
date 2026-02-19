@@ -166,6 +166,36 @@ class OperationQueue {
     }
 
     if (changed) this._save();
+    // If a DataStore is attached, attempt to update stored records that
+    // were created locally with the temporary id so they map to the
+    // server-assigned id. This prevents duplicates after full-sync.
+    try {
+      if (this.dataStore && typeof this.dataStore.getCollection === 'function') {
+        const ds = this.dataStore;
+        const updateColl = (name) => {
+          const items = ds.getCollection(name) || [];
+          let collChanged = false;
+          for (let i = 0; i < items.length; i++) {
+            const it = items[i];
+            if (!it) continue;
+            try {
+              if (it.id === oldId) { it.id = newId; collChanged = true; }
+              // For tests, update patient references
+              if (name === 'tests' && it.patient === oldId) { it.patient = newId; collChanged = true; }
+              // For patients, there may be fields referencing patientCode — leave as is
+            } catch (e) {}
+          }
+          if (collChanged) {
+            try { ds.setCollection(name, items); } catch (e) {}
+            changed = true;
+          }
+        };
+        ['patients', 'tests', 'templates', 'users'].forEach(updateColl);
+        if (changed) {
+          try { if (typeof ds._save === 'function') ds._save(); } catch (e) {}
+        }
+      }
+    } catch (e) {}
     return changed;
   }
 

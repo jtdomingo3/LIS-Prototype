@@ -433,12 +433,38 @@ class SyncEngine {
           console.log(`[Sync] _replay response: status=${status} bodyLen=${responseBody.length}`);
           if (status >= 200 && status < 300) {
             resolve({ status, body: responseBody });
-          } else if (status >= 300 && status < 400) {
-            // Shouldn't happen with redirect:'manual', but just in case
-            resolve({ status, body: responseBody });
-          } else {
-            reject(new Error(`Server returned ${status}: ${responseBody.slice(0, 200)}`));
+            return;
           }
+
+          // Handle 3xx as success fallback
+          if (status >= 300 && status < 400) {
+            resolve({ status, body: responseBody });
+            return;
+          }
+
+          // Heuristic: treat DELETE -> 404 as success (resource already removed)
+          try {
+            if (status === 404 && op && op.body && ((op.body && (op.body._method === 'DELETE' || op.body._method === 'delete')) || (op.method && op.method.toUpperCase() === 'DELETE'))) {
+              console.log('[Sync] 404 on DELETE — treating as success (resource already absent)');
+              resolve({ status: 404, body: responseBody, ok: true, reason: 'not-found-treated-as-synced' });
+              return;
+            }
+          } catch (e) {}
+
+          // Heuristic: some result-entry forms POST to /tests/:id but server expects /tests/:id/results
+          try {
+            if (status === 404 && op && op.url && /\/tests\/[0-9a-fA-F-]{8,36}$/.test(op.url) && op.body && (op.body.esr_value || op.body.result || op.body.specimen || op.body.esr)) {
+              const altUrl = op.url.replace(/\/$/, '') + '/results';
+              console.log('[Sync] 404 when posting results — attempting fallback to', altUrl);
+              // Try alternate endpoint once
+              const tryAlt = Object.assign({}, op, { url: altUrl });
+              // perform a lightweight attempt using same request encoding
+              this._replay(net, tryAlt).then(r => resolve(r)).catch(err => reject(new Error(`Server returned ${status}: ${responseBody.slice(0,200)}; fallback failed: ${err && err.message}`)));
+              return;
+            }
+          } catch (e) {}
+
+          reject(new Error(`Server returned ${status}: ${responseBody.slice(0, 200)}`));
         });
       });
 

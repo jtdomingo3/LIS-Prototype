@@ -307,12 +307,24 @@
 
   // Manual download button — explicit full data download
   if (downloadBtn) {
-    downloadBtn.addEventListener('click', function () {
+    downloadBtn.addEventListener('click', async function () {
       downloadBtn.textContent = '⬇';
       downloadBtn.disabled = true;
       progressWrap.style.display = 'block';
       progressBar.style.width = '0%';
-      window.lisApp.fullSync().then(function (result) {
+      try {
+        // Try to refresh connection status first so fullSync has best chance
+        try {
+          const rc = await window.lisApp.retryConnection();
+          if (rc && rc.online) {
+            // give a small delay for UI to update
+            await new Promise(r => setTimeout(r, 200));
+          }
+        } catch (e) { /* ignore retry errors and proceed to fullSync attempt */ }
+
+        // Always attempt fullSync (even if retry reports offline) so an explicit
+        // user-triggered download will try to fetch latest server data.
+        const result = await window.lisApp.fullSync();
         downloadBtn.disabled = false;
         downloadBtn.textContent = '⬇';
         progressWrap.style.display = 'none';
@@ -322,12 +334,12 @@
         } else {
           showToast('Full sync failed: ' + (result && result.reason ? result.reason : 'unknown'), 4000);
         }
-      }).catch(function () {
+      } catch (e) {
         downloadBtn.disabled = false;
         downloadBtn.textContent = '⬇';
         progressWrap.style.display = 'none';
-        showToast('Full sync error', 4000);
-      });
+        showToast('Full sync error: ' + (e && e.message ? e.message : 'unknown'), 4000);
+      }
     });
   }
 
