@@ -34,6 +34,14 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   app.use(express.urlencoded({ extended: true }));
   app.use(express.json());
 
+  // Support HTML form method overrides (POST with ?_method=PUT/DELETE or hidden _method field)
+  try {
+    const methodOverride = require('method-override');
+    app.use(methodOverride('_method'));
+  } catch (e) {
+    console.warn('[LocalServer] method-override not available:', e && e.message);
+  }
+
   /* ── Static assets (served from copied server assets) ─────────── */
   app.use('/assets', express.static(path.join(__dirname, '..', 'server-assets')));
   app.use(express.static(path.join(__dirname, '..', 'server-public')));

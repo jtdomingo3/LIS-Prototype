@@ -27,7 +27,8 @@
     "jimp": "^1.6.0",
     "multer": "^2.0.2",
     "pdfjs-dist": "^3.11.174",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "method-override": "^3.0.0"
   },
   "devDependencies": {
     "electron": "^28.1.0",
