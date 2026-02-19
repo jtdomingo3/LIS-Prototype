@@ -149,8 +149,21 @@
   transform: translateY(0);
 }
 
-/* ── add bottom padding to the page so the status bar doesn't
- *    overlap content ──────────────────────────────────────────── */
-body {
-  padding-bottom: 38px !important;
+/* ── status bar spacing — only add page padding when the host page needs it.
+ *    inject.js will toggle `html.lis-status-offset` so we don't create an
+ *    unwanted vertical scrollbar on full-height pages. */
+:root { --lis-status-height: 34px; }
+
+html.lis-status-offset body {
+  padding-bottom: var(--lis-status-height) !important;
 }
+
+/* Hide the root scrollbar visually (doesn't disable scrolling inside the app's
+   own scrollable containers). */
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  background: transparent;
+}    
+

@@ -92,6 +92,23 @@
   ].join('\n');
   document.body.appendChild(bar);
 
+  // Ensure we only add page padding for the status-bar when the page would
+  // otherwise be non-scrollable — avoids introducing an extra scrollbar.
+  function updateStatusBarOffset() {
+    try {
+      const needsOffset = document.documentElement.scrollHeight <= window.innerHeight;
+      if (needsOffset) document.documentElement.classList.add('lis-status-offset');
+      else document.documentElement.classList.remove('lis-status-offset');
+    } catch (e) { /* ignore */ }
+  }
+
+  // Re-evaluate on load/resize and when DOM changes (covers dynamic pages)
+  updateStatusBarOffset();
+  window.addEventListener('resize', updateStatusBarOffset);
+  window.addEventListener('load', () => setTimeout(updateStatusBarOffset, 50));
+  new MutationObserver(() => { setTimeout(updateStatusBarOffset, 60); })
+    .observe(document.documentElement, { childList: true, subtree: true, attributes: true });
+
   const dot      = document.getElementById('lis-dot');
   const text     = document.getElementById('lis-status-text');
   const badge    = document.getElementById('lis-badge');
