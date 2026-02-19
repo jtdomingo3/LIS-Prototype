@@ -316,8 +316,10 @@
         retryBtn.disabled = false;
         retryBtn.textContent = 'Connect';
         if (res && res.online) {
-          showToast('Connection restored — loading server UI', 3000);
-          setTimeout(function () { try { location.href = res.serverUrl || '/'; } catch (e) {} }, 600);
+          showToast('Connection restored — data syncing in background', 3000);
+          // Stay on local server; background sync will update data.
+          // Trigger a full-sync so the user gets fresh data.
+          maybeAutoFullSync(true);
         } else {
           showToast('Server not reachable', 3000);
         }

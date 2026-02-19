@@ -127,6 +127,24 @@ async function startNetworkMonitor() {
           }
         } catch (e) { /* ignore */ }
       }
+
+      // When going offline, immediately redirect the user from the real
+      // server URL to the equivalent local-server URL.  This way the user
+      // never notices the real server went away — auto-login on the local
+      // server creates a session transparently.
+      if (!online && wasOnline) {
+        try {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            const currentUrl = mainWindow.webContents.getURL();
+            const base = config.SERVER_URL ? config.SERVER_URL.replace(/\/$/, '') : '';
+            if (base && currentUrl.startsWith(base)) {
+              const urlPath = currentUrl.slice(base.length) || '/';
+              console.log('[Main] going offline — switching to local server:', urlPath);
+              mainWindow.loadURL(`http://127.0.0.1:${config.LOCAL_PORT}${urlPath}`);
+            }
+          }
+        } catch (e) { /* ignore */ }
+      }
     });
 
     networkMonitor.start();
@@ -353,6 +371,20 @@ async function createWindow() {
   // Detect navigation to dashboard (post-login) and trigger a full-sync
   mainWindow.webContents.on('did-navigate', async (_event, url) => {
     try {
+      // ── Session-loss detection: if the user lands on the real server's
+      //    login page while we have a tracked user, the server must have
+      //    restarted and lost its sessions.  Redirect to the local server
+      //    so the auto-login middleware creates a new session seamlessly.
+      if (config.SERVER_URL && currentSessionEmail) {
+        const base = config.SERVER_URL.replace(/\/$/, '');
+        if (url === base + '/' || url === base) {
+          console.log('[Main] session lost on real server — switching to local server');
+          mainWindow.loadURL(`http://127.0.0.1:${config.LOCAL_PORT}/`);
+          return;
+        }
+      }
+    } catch (e) { /* ignore */ }
+    try {
       if (!config.AUTO_FULLSYNC_ON_LOGIN) return;
       if (!config.SERVER_URL) return;
       const base = config.SERVER_URL.replace(/\/$/, '');
@@ -415,6 +447,19 @@ function setupRequestInterceptor() {
   const ses = session.fromPartition('persist:lis');
 
   ses.webRequest.onBeforeRequest({ urls: [`${config.SERVER_URL}/*`] }, (details, callback) => {
+    // Track explicit logout so we can clear auto-login state
+    try {
+      if (details.method === 'POST') {
+        const urlObj = new URL(details.url);
+        if (urlObj.pathname === '/logout') {
+          currentSessionEmail = null;
+          if (localServer && localServer.setAutoLoginEmail) localServer.setAutoLoginEmail(null);
+          try { saveUserSettings({ lastUserEmail: '' }); } catch (e) {}
+          console.log('[Main] explicit logout detected — cleared auto-login');
+        }
+      }
+    } catch (e) { /* ignore */ }
+
     if (isOnline) return callback({});
 
     // When offline, redirect ALL requests to the local server which now
@@ -520,14 +565,24 @@ ipcMain.handle('retry-connection', async () => {
   if (!config.SERVER_URL) return { online: false, reason: 'no-server-configured' };
   if (!networkMonitor) networkMonitor = new NetworkMonitor(config.SERVER_URL, config.PING_INTERVAL);
   const online = await networkMonitor.checkOnce();
-  if (online && mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(config.SERVER_URL);
+  isOnline = online;
+  sendStatus();
+  // Don't force-load the real server URL here — the user stays on the
+  // local server. If the server is back, the status bar will update to
+  // "Connected" and background sync will keep data up to date.
   return { online };
 });
 ipcMain.handle('datastore-info', () => {
   try { return dataStore ? dataStore.info() : { exists: false, reason: 'no-datastore' }; } catch (e) { return { exists: false, error: e && e.message }; }
 });
 ipcMain.handle('clear-cache', () => { pageCache.clear(); return { success: true }; });
-ipcMain.handle('go-online', () => { if (!config.SERVER_URL) return { success: false, reason: 'no-server-configured' }; if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(config.SERVER_URL); return { success: true }; });
+ipcMain.handle('go-online', () => {
+  if (!config.SERVER_URL) return { success: false, reason: 'no-server-configured' };
+  // Don't force-load real server — stay on local server to prevent logout
+  // after server restarts.  Trigger a sync check instead.
+  if (networkMonitor) networkMonitor.checkOnce().then(online => { isOnline = online; sendStatus(); }).catch(() => {});
+  return { success: true };
+});
 
 // Settings IPC
 ipcMain.handle('get-settings', () => {
