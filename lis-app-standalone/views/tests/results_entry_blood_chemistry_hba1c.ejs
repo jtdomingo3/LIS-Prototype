@@ -1,0 +1,54 @@
+<div class="card">
+  <h3>Enter Blood Chemistry - HbA1c Result - <%= test.testId %></h3>
+
+  <form action="/tests/<%= test.id %>/results" method="POST">
+    <input type="hidden" name="_method" value="POST">
+
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;">
+      <div class="form-row" style="margin:0;">
+        <label>Date</label>
+        <input type="date" name="entryDate" value="<%= test && test.testDate ? (new Date(test.testDate)).toISOString().slice(0,10) : (new Date()).toISOString().slice(0,10) %>" readonly>
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>Time Requested</label>
+        <input type="time" name="timeRequested" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '') %>">
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>Time Released</label>
+        <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (new Date()).toTimeString().slice(0,5) %>">
+      </div>
+    </div>
+
+    <div class="form-row" style="display:flex;gap:12px;align-items:center;">
+      <div style="flex:1;">
+        <label>HbA1c</label>
+        <input type="number" step="0.01" name="hba1c" placeholder="%" value="<%= test.results && test.results.hba1c ? test.results.hba1c : '' %>">
+      </div>
+      <div style="flex:1;">
+        <label>Reference (optional)</label>
+        <input type="text" name="hba1c_ref" placeholder="e.g. 4.00-6.50" value="<%= test.results && test.results.hba1c_ref ? test.results.hba1c_ref : '' %>">
+      </div>
+    </div>
+
+    <div style="margin-top:8px;" class="form-row">
+      <label>Note (appears below report table)</label>
+      <textarea name="note" rows="3" style="width:100%"><%= test.results && test.results.note ? test.results.note : '' %></textarea>
+    </div>
+
+    <hr>
+    <h4>Signatures / Performers</h4>
+    <%- include('../partials/signatory_select', { prefix: 'mt', label: 'Medical Technologist', role: 'Medical Technologist', nameInput: 'mtName', licenseInput: 'mtLicense', existingName: (test.results && test.results.performedByName) ? test.results.performedByName : '', existingLicense: (test.results && test.results.performedByLicense) ? test.results.performedByLicense : '' }) %>
+
+    <hr>
+    <h4>Validation</h4>
+    <%- include('../partials/signatory_select', { prefix: 'validated', label: '2nd Medical Technologist (Validator)', role: 'Medical Technologist', nameInput: 'validatedByName', licenseInput: 'validatedByLicense', existingName: (test.results && test.results.validatedByName) ? test.results.validatedByName : '', existingLicense: (test.results && test.results.validatedByLicense) ? test.results.validatedByLicense : '' }) %>
+
+    <%- include('../partials/signatory_select', { prefix: 'path', label: 'Pathologist', role: 'Pathologist', nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (test.results && test.results.requestedByName) ? test.results.requestedByName : '', existingLicense: (test.results && test.results.requestedByLicense) ? test.results.requestedByLicense : '' }) %>
+
+    <div class="form-row mt-12">
+      <a href="/tests/<%= test.id %>" class="button btn-secondary">Cancel</a>
+      <button class="button btn-primary">Save Result</button>
+    </div>
+  </form>
+
+</div>

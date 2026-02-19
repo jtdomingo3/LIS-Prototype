@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <title><%= title %> - LIS</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="/assets/icon-192x192.png">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#10b981">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-black: #1a1a1a;
+            --primary-black-dark: #0f0f0f;
+            --secondary-green: #10b981;
+            --secondary-green-dark: #059669;
+            --accent-orange: #f97316;
+            --accent-orange-light: #fb923c;
+            --text-white: #ffffff;
+            --text-light: #e5e7eb;
+            --text-gray: #9ca3af;
+            --bg-light: #f5f5f5;
+            --border-gray: #d1d5db;
+            --success: #10b981;
+            --warning: #f97316;
+            --danger: #ef4444;
+            --info: #3b82f6;
+            /* Slightly smaller base font for a tighter UI; adjust 13-15 to taste */
+            font-size: 14px;
+        }
+
+        html {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-light);
+            color: var(--primary-black);
+            line-height: 1.6;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            width: 260px;
+            background: linear-gradient(135deg, var(--primary-black) 0%, var(--primary-black-dark) 100%);
+            color: var(--text-white);
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.3);
+            z-index: 100;
+        }
+
+        .sidebar h2 {
+            margin-bottom: 30px;
+            font-size: 1.6em;
+            text-align: center;
+            border-bottom: 3px solid var(--secondary-green);
+            padding-bottom: 15px;
+            color: var(--accent-orange);
+        }
+
+        /* Branding in sidebar */
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 18px;
+            padding-bottom: 8px;
+            border-bottom: 3px solid var(--secondary-green);
+        }
+
+        .brand-logo {
+            width: 48px;
+            height: 48px;
+            object-fit: contain;
+            border-radius: 6px;
+            background: white;
+            padding: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+        }
+
+        .brand-text {
+            color: var(--accent-orange);
+            font-weight: 700;
+            font-size: 1.05em;
+            text-align: left;
+            line-height: 1;
+        }
+
+        .nav-item {
+            padding: 14px 16px;
+            margin: 10px 0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            border-left: 4px solid transparent;
+            color: var(--text-light);
+            text-decoration: none;
+            display: block;
+        }
+
+        .nav-item:hover {
+            background-color: rgba(16, 185, 129, 0.15);
+            border-left-color: var(--secondary-green);
+            transform: translateX(5px);
+            color: var(--secondary-green);
+        }
+
+        .nav-item.active {
+            background-color: var(--secondary-green);
+            border-left-color: var(--accent-orange);
+            color: var(--text-white);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .logout-btn {
+            margin-top: 30px;
+            padding: 12px;
+            background: var(--accent-orange);
+            color: var(--text-white);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .logout-emoji {
+            font-size: 1.05em;
+            line-height: 1;
+        }
+
+        .logout-text {
+            white-space: nowrap;
+        }
+
+        .logout-btn:hover {
+            background: var(--accent-orange-light);
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+        }
+
+        /* When sidebar is collapsed show icon-only logout */
+        .sidebar.collapsed .logout-btn {
+            width: 48px;
+            padding: 8px;
+            justify-content: center;
+        }
+
+        .sidebar.collapsed .logout-text {
+            display: none;
+        }
+
+        .sidebar.collapsed .logout-emoji {
+            font-size: 1.15em;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-light);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            background: var(--text-white);
+            padding: 20px 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            border-left: 5px solid var(--secondary-green);
+        }
+
+        h1 {
+            font-size: 2.2em;
+            color: var(--primary-black);
+            background: linear-gradient(135deg, var(--primary-black) 0%, var(--secondary-green) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .user-info {
+            text-align: right;
+        }
+
+        .user-info p {
+            margin: 5px 0;
+            color: var(--text-gray);
+            font-size: 0.95em;
+        }
+
+        .user-info p:first-child {
+            color: var(--secondary-green);
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        /* Page Sections */
+        .page {
+            display: none;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--primary-black);
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 11px 14px;
+            border: 2px solid var(--border-gray);
+            border-radius: 8px;
+            font-size: 1em;
+            transition: all 0.3s;
+            font-family: inherit;
+            background-color: var(--text-white);
+            color: var(--primary-black);
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--secondary-green);
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .button {
+            padding: 12px 22px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.95em;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--secondary-green) 0%, var(--secondary-green-dark) 100%);
+            color: var(--text-white);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--text-gray);
+            color: var(--text-white);
+        }
+
+        .btn-secondary:hover {
+            background: #6b7280;
+        }
+
+        .btn-success {
+            background: var(--secondary-green);
+            color: var(--text-white);
+        }
+
+        .btn-success:hover {
+            background: var(--secondary-green-dark);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: var(--text-white);
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-orange {
+            background: var(--accent-orange);
+            color: var(--text-white);
+        }
+
+        .btn-orange:hover {
+            background: var(--accent-orange-light);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(249, 115, 22, 0.4);
+        }
+
+        .btn-small {
+            padding: 7px 13px;
+            font-size: 0.9em;
+        }
+
+        /* Text-only pagination links (no button borders) */
+        .page-link {
+            background: transparent;
+            border: none;
+            padding: 0 8px;
+            margin: 0 4px;
+            color: var(--primary-black);
+            text-decoration: none;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-block;
+            line-height: 1;
+        }
+
+        .page-link:hover {
+            color: var(--secondary-green-dark);
+            text-decoration: underline;
+        }
+
+        .page-link.active {
+            color: var(--secondary-green);
+            text-decoration: underline;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--text-white);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        th {
+            background: linear-gradient(135deg, var(--primary-black) 0%, var(--secondary-green) 100%);
+            color: var(--text-white);
+            padding: 16px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 13px 16px;
+            border-bottom: 1px solid var(--border-gray);
+        }
+
+        tr:hover {
+            background-color: #f9fafb;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--text-white);
+            border-radius: 12px;
+            padding: 28px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            border: 1px solid var(--border-gray);
+            border-left: 5px solid var(--secondary-green);
+        }
+
+        .card h3 {
+            margin-bottom: 22px;
+            color: var(--primary-black);
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card h3::before {
+            content: '';
+            width: 4px;
+            height: 28px;
+            background: linear-gradient(180deg, var(--secondary-green) 0%, var(--accent-orange) 100%);
+            border-radius: 2px;
+        }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--secondary-green-dark);
+        }
+
+        .badge-warning {
+            background: rgba(249, 115, 22, 0.15);
+            color: #b45309;
+        }
+
+        .badge-danger {
+            background: rgba(239, 68, 68, 0.15);
+            color: #991b1b;
+        }
+
+        .badge-info {
+            background: rgba(59, 130, 246, 0.15);
+            color: #1e40af;
+        }
+
+        /* Alert */
+        .alert {
+            padding: 14px 18px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+            border-left: 5px solid transparent;
+            font-weight: 500;
+        }
+
+        .alert.active {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .alert-success {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--secondary-green-dark);
+            border-left-color: var(--secondary-green);
+        }
+
+        .alert-error {
+            background: rgba(239, 68, 68, 0.1);
+            color: #991b1b;
+            border-left-color: var(--danger);
+        }
+
+        .alert-info {
+            background: rgba(59, 130, 246, 0.1);
+            color: #1e40af;
+            border-left-color: var(--info);
+        }
+
+        /* Utility */
+        .text-center {
+            text-align: center;
+        }
+
+        .mt-20 {
+            margin-top: 20px;
+        }
+
+        .mb-20 {
+            margin-bottom: 20px;
+        }
+
+        .flex {
+            display: flex;
+            gap: 10px;
+        }
+
+        .flex-between {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Search */
+        .search-box {
+            padding: 12px 16px;
+            border: 2px solid var(--border-gray);
+            border-radius: 8px;
+            width: 100%;
+            margin-bottom: 20px;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: var(--secondary-green);
+            box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+        }
+
+        /* Filter form used on listing pages (patients/tests) */
+        .filter-form {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        .filter-form .filter-select {
+            height: 40px;
+            padding: 0 10px;
+            font-size: 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border-gray);
+            background: #fff;
+        }
+        .filter-form .search-box {
+            flex: 1;
+            width: auto;
+            max-width: 720px;
+            margin-bottom: 0;
+            height: 44px;
+            padding: 8px 12px;
+        }
+        .filter-form .filter-select {
+            width: 160px;
+        }
+
+        .filter-form .filter-actions {
+            display: inline-flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .filter-form .filter-actions .button {
+            height: 40px;
+            padding: 0 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Stats Container */
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--text-white);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            border-left: 5px solid var(--secondary-green);
+            transition: all 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+        }
+
+        .stat-card h4 {
+            color: var(--text-gray);
+            font-size: 0.95em;
+            margin: 0 0 12px 0;
+            font-weight: 600;
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            background: linear-gradient(135deg, var(--secondary-green) 0%, var(--accent-orange) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 0;
+        }
+
+        .stat-card.orange {
+            border-left-color: var(--accent-orange);
+        }
+
+        .stat-card.orange .stat-number {
+            /* Use clipped gradient text for orange cards to match style and keep number visible */
+            background: linear-gradient(135deg, var(--accent-orange) 0%, var(--accent-orange-light) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Action Buttons */
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                /* allow the sidebar to size naturally on small screens (no forced max-height)
+                   the mobile off-canvas behavior is handled by the 900px breakpoint rules */
+                width: 100%;
+                padding: 10px;
+            }
+
+            .main-content {
+                padding: 15px;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            h1 {
+                font-size: 1.5em;
+            }
+
+            .stats-container {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            }
+        }
+
+        /* Sidebar / hamburger */
+        .hamburger {
+            /* visible on desktop and mobile (script decides behavior) */
+            display: inline-block;
+            background: transparent;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 8px 10px;
+            border-radius: 6px;
+            color: var(--primary-black);
+        }
+
+        .sidebar-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.25s ease, visibility 0.25s ease;
+            z-index: 140;
+        }
+
+        @media (max-width: 900px) {
+            /* Hide the sidebar by default on smaller screens and enable hamburger */
+            .sidebar {
+                position: fixed;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 260px;
+                transform: translateX(-110%);
+                transition: transform 0.25s ease;
+                z-index: 200;
+                overflow-y: auto;
+                box-shadow: 6px 0 20px rgba(0,0,0,0.3);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .hamburger {
+                display: inline-block;
+            }
+
+            .main-content {
+                padding: 20px;
+            }
+
+            .sidebar-backdrop.active {
+                opacity: 1;
+                visibility: visible;
+            }
+        }
+
+        /* Collapsed sidebar (desktop) */
+        .sidebar.collapsed {
+            width: 72px;
+            padding: 12px 8px;
+        }
+
+        .sidebar.collapsed h2 {
+            display: none;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-emoji {
+            font-size: 1.1em;
+            width: 28px;
+            text-align: center;
+        }
+
+        .nav-text {
+            display: inline-block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sidebar.collapsed .nav-text {
+            display: none;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+        }
+
+        input[type="checkbox"] {
+            width: auto;
+            margin-right: 8px;
+            cursor: pointer;
+        }
+    </style>
+    
+    <!-- Styles injected from individual views (via express-ejs-layouts extractStyles) -->
+    <%- style %>
+
+    </head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <% if (typeof sessionUser !== 'undefined' && sessionUser) { %>
+        <div class="sidebar">
+            <div class="brand">
+                <img src="<%= typeof inlineLogo !== 'undefined' && inlineLogo ? inlineLogo : '/assets/gezyne-logo.png' %>" alt="Gezyne Clinical Laboratory" class="brand-logo">
+                <div class="brand-text">Gezyne Clinical Laboratory</div>
+            </div>
+            <% const perms = (sessionUser && sessionUser.permissions) ? sessionUser.permissions : {}; %>
+            <% const dashboardRoles = new Set(['Admin','Manager','Owner']); %>
+            <% if (dashboardRoles.has(sessionUser.role) || perms.dashboard) { %>
+            <a href="/dashboard" class="nav-item <%= title.includes('Dashboard') ? 'active' : '' %>"><span class="nav-emoji">📊</span><span class="nav-text">Dashboard</span></a>
+            <% } %>
+            <% if (sessionUser.role === 'Admin' || perms.patients) { %>
+            <a href="/patients" class="nav-item <%= title.includes('Patient') ? 'active' : '' %>"><span class="nav-emoji">👥</span><span class="nav-text">Patients</span></a>
+            <% } %>
+            <% if (sessionUser.role === 'Admin' || perms.reception) { %>
+            <a href="/reception" class="nav-item <%= title.includes('Reception') ? 'active' : '' %>"><span class="nav-emoji">🏥</span><span class="nav-text">Reception</span></a>
+            <% } %>
+            <% if (!featureFlags || featureFlags.tests) { %>
+            <% if (sessionUser.role === 'Admin' || perms.tests) { %>
+            <a href="/tests" class="nav-item <%= title.includes('Test') ? 'active' : '' %>"><span class="nav-emoji">🧪</span><span class="nav-text">Tests & Results</span></a>
+            <% } %>
+            <% } %>
+            <% if (!featureFlags || featureFlags.reports) { %>
+            <% if (sessionUser.role === 'Admin' || perms.reports) { %>
+            <a href="/reports" class="nav-item <%= title.includes('Report') ? 'active' : '' %>"><span class="nav-emoji">📋</span><span class="nav-text">Reports</span></a>
+            <% } %>
+            <% } %>
+            <!-- Signature area: allows users to upload e-signatures for documents where their name appears -->
+            <a href="/signatures" class="nav-item <%= title.includes('Signature') ? 'active' : '' %>"><span class="nav-emoji">✍️</span><span class="nav-text">Signature</span></a>
+            <% if (!featureFlags || featureFlags.worksheet) { %>
+            <% if (sessionUser.role === 'Admin' || perms.worksheet) { %>
+            <a href="/reports/worksheet" class="nav-item <%= title.includes('Worksheet') ? 'active' : '' %>"><span class="nav-emoji">📊</span><span class="nav-text">Worksheet</span></a>
+            <% } %>
+            <% } %>
+            <% if (!featureFlags || featureFlags.templates) { %>
+            <% if (sessionUser.role === 'Admin' || perms.templates) { %>
+            <a href="/templates" class="nav-item <%= title.includes('Template') ? 'active' : '' %>"><span class="nav-emoji">📄</span><span class="nav-text">Templates</span></a>
+            <% } %>
+            <% } %>
+            <% if ((sessionUser.role === 'Admin' || perms.users) && (!featureFlags || featureFlags.users)) { %>
+            <a href="/users" class="nav-item <%= title.includes('User') ? 'active' : '' %>"><span class="nav-emoji">👤</span><span class="nav-text">Users</span></a>
+            <% } %>
+            <form action="/logout" method="POST" style="margin-top: 30px;">
+                <button type="submit" class="logout-btn" title="Logout"><i class="fa fa-power-off logout-emoji" aria-hidden="true"></i><span class="logout-text">Logout</span></button>
+            </form>
+            <a href="/settings" class="nav-item" style="margin-top:8px;"><span class="nav-emoji">⚙️</span><span class="nav-text">Settings</span></a>
+            <button type="button" class="nav-item" id="fullscreenBtn" onclick="toggleFullscreen()" style="margin-top:4px;border:none;width:100%;text-align:left;background:transparent;cursor:pointer;"><span class="nav-emoji">⛶</span><span class="nav-text">Fullscreen</span></button>
+        </div>
+        <% } %>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <% if (typeof sessionUser !== 'undefined' && sessionUser) { %>
+            <!-- Header -->
+            <div class="header">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <button id="sidebarToggle" class="hamburger" aria-label="Toggle menu">☰</button>
+                    <h1><%= title %></h1>
+                </div>
+                <div style="display:flex; align-items:center; gap:14px;">
+                    <div id="notificationWidget" style="position:relative;">
+                        <button id="notifBtn" title="Notifications" style="background:transparent;border:none;padding:0 6px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+                            <i class="fa fa-bell" style="color:#f3c623;font-size:1.25em;"></i>
+                            <span id="notifConn" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ef4444;box-shadow:0 0 4px rgba(0,0,0,0.15);" title="Disconnected"></span>
+                            <span id="notifBadge" style="display:inline-block;min-width:20px;height:20px;line-height:20px;padding:0 6px;border-radius:10px;background:var(--danger);color:white;font-size:0.85em;text-align:center;visibility:hidden;">0</span>
+                        </button>
+                        <div id="notifDropdown" style="position:absolute;right:0;top:36px;min-width:320px;background:var(--text-white);border:1px solid var(--border-gray);border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.12);display:none;z-index:999;padding:10px;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:12px;">
+                                <strong>Notifications</strong>
+                                <div style="display:flex;align-items:center;gap:10px;">
+                                    <small style="color:var(--text-gray);font-size:0.85em;">Auto-refresh: <label style="cursor:pointer;display:inline-block;margin-left:6px;"><input id="notifAutoRefresh" type="checkbox" style="vertical-align:middle;"/> Enable</label></small>
+                                    <small style="color:var(--text-gray);font-size:0.85em;">Mute sound: <label style="cursor:pointer;display:inline-block;margin-left:6px;"><input id="notifMute" type="checkbox" style="vertical-align:middle;"/> </label></small>
+                                </div>
+                            </div>
+                            <div id="notifList" style="max-height:220px;overflow:auto;"></div>
+                            <div style="text-align:right;margin-top:8px;"><button id="clearNotifs" class="button btn-small">Clear</button></div>
+                        </div>
+                    </div>
+                    <audio id="notifSound" preload="auto">
+                        <source src="/assets/notificaiton_ringtone.mp3" type="audio/mpeg">
+                    </audio>
+                                        <div class="user-info" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                                                <div style="display:flex;align-items:center;gap:8px;">
+                                                                                                        <p style="margin:0;">Welcome, <a href="/users/profile" style="color:inherit;text-decoration:none;font-weight:600;"><%= sessionUser ? sessionUser.name : '' %></a></p>
+                                                                                                        <a href="/users/profile" class="button btn-small" style="padding:6px 8px;margin-left:6px;display:inline-flex;align-items:center;justify-content:center;" title="Profile">
+                                                                                                                <!-- Faceless man / user silhouette icon (simple, no external deps) -->
+                                                                                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+                                                                                                                    <path d="M12 12c2.761 0 5-2.239 5-5s-2.239-5-5-5-5 2.239-5 5 2.239 5 5 5z" fill="currentColor" opacity="0.9" />
+                                                                                                                    <path d="M2.5 21c0-3.59 3.91-6.5 8.5-6.5s8.5 2.91 8.5 6.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.9" />
+                                                                                                                </svg>
+                                                                                                        </a>
+                                                </div>
+                                                <p style="margin:0;"><span id="currentDate"><%= new Date().toLocaleDateString() %></span>&nbsp;<span id="currentTime"><%= new Date().toLocaleTimeString() %></span></p>
+                                        </div>
+                </div>
+            </div>
+            <% } %>
+
+            <!-- Alert Messages (render for both guests and authenticated users) -->
+            <% if (typeof success_msg !== 'undefined' && success_msg) { %>
+            <div class="alert alert-success active"><%= success_msg %></div>
+            <% } %>
+            <% if (typeof error_msg !== 'undefined' && error_msg) { %>
+            <div class="alert alert-error active"><%= error_msg %></div>
+            <% } %>
+            <% if (typeof info !== 'undefined' && info) { %>
+            <div class="alert alert-info active"><%= info %></div>
+            <% } %>
+
+            <!-- Page Content -->
+            <%- body %>
+        </div>
+    </div>
+
+    <div id="sidebarBackdrop" class="sidebar-backdrop" tabindex="-1"></div>
+
+    <script>
+        // Update date and time every second
+        function updateTime() {
+            const now = new Date();
+            const timeEl = document.getElementById('currentTime');
+            const dateEl = document.getElementById('currentDate');
+            if (timeEl) timeEl.textContent = now.toLocaleTimeString();
+            if (dateEl) dateEl.textContent = now.toLocaleDateString();
+        }
+        setInterval(updateTime, 1000);
+
+        // Auto-hide alerts after 4 seconds
+        setTimeout(() => {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                alert.classList.remove('active');
+            });
+        }, 4000);
+
+        // Sidebar toggle for mobile
+        (function() {
+            const toggle = document.getElementById('sidebarToggle');
+            const sidebar = document.querySelector('.sidebar');
+            const backdrop = document.getElementById('sidebarBackdrop');
+
+            if (!toggle || !sidebar) return;
+
+            function openSidebar() {
+                sidebar.classList.add('open');
+                if (backdrop) backdrop.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeSidebar() {
+                sidebar.classList.remove('open');
+                if (backdrop) backdrop.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+
+            toggle.addEventListener('click', (e) => {
+                // On desktop, collapse/expand the sidebar. On mobile, open/close off-canvas.
+                if (window.innerWidth > 900) {
+                    sidebar.classList.toggle('collapsed');
+                    // persist preference
+                    if (sidebar.classList.contains('collapsed')) {
+                        try { localStorage.setItem('sidebar-collapsed', '1'); } catch(e) {}
+                    } else {
+                        try { localStorage.removeItem('sidebar-collapsed'); } catch(e) {}
+                    }
+                } else {
+                    if (sidebar.classList.contains('open')) {
+                        closeSidebar();
+                    } else {
+                        openSidebar();
+                    }
+                }
+            });
+
+            if (backdrop) {
+                backdrop.addEventListener('click', closeSidebar);
+            }
+
+            // Close on Esc
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeSidebar();
+            });
+
+            // Restore persisted collapsed state on load
+            try {
+                if (window.innerWidth > 900 && localStorage.getItem('sidebar-collapsed')) {
+                    sidebar.classList.add('collapsed');
+                }
+            } catch (e) {}
+
+            // Ensure classes are consistent on resize
+            window.addEventListener('resize', () => {
+                if (window.innerWidth > 900) {
+                    // desktop: remove mobile open/backdrop
+                    sidebar.classList.remove('open');
+                    if (backdrop) backdrop.classList.remove('active');
+                    document.body.style.overflow = '';
+                    // apply persisted collapsed state
+                    try {
+                        if (localStorage.getItem('sidebar-collapsed')) sidebar.classList.add('collapsed');
+                    } catch (e) {}
+                } else {
+                    // mobile: remove collapsed so off-canvas works predictably
+                    sidebar.classList.remove('collapsed');
+                }
+            });
+        })();
+
+        // ===== Global SSE Notifications =====
+        (function(){
+            const sound = document.getElementById('notifSound');
+            const badge = document.getElementById('notifBadge');
+            const btn = document.getElementById('notifBtn');
+            const dropdown = document.getElementById('notifDropdown');
+            const list = document.getElementById('notifList');
+            const clearBtn = document.getElementById('clearNotifs');
+            const autoRefreshCheckbox = document.getElementById('notifAutoRefresh');
+            const muteCheckbox = document.getElementById('notifMute');
+
+            if (!badge || !btn || !dropdown) return;
+
+            // Only enable SSE on a small set of real-time views to avoid system delays.
+            // Keep SSE active only for: /dashboard, /patients, /reception (and their subpaths).
+            try {
+                const path = (window.location && window.location.pathname) ? window.location.pathname : '/';
+                const sseAllowed = ['/dashboard', '/patients', '/reception'];
+                const isAllowed = sseAllowed.some(p => path === p || path.startsWith(p + '/'));
+                if (!isAllowed) {
+                    // Mark connection as disabled and skip SSE setup entirely (no reconnects)
+                    const connEl = document.getElementById('notifConn');
+                    if (connEl) { connEl.style.background = '#ef4444'; connEl.title = 'SSE disabled on this page'; }
+                    return;
+                }
+            } catch (e) { /* if anything goes wrong, fall back to original behavior */ }
+
+            // restore preferences (default: auto-refresh enabled)
+            try {
+                const v = localStorage.getItem('notif-auto-refresh');
+                if (v === '1' || v === null) autoRefreshCheckbox.checked = true;
+                else autoRefreshCheckbox.checked = false;
+            } catch(e){}
+            try { if (localStorage.getItem('notif-muted') === '1') muteCheckbox.checked = true; } catch(e){}
+
+            function showBadge(count){
+                try {
+                    if (!count || count <= 0) { badge.style.visibility = 'hidden'; badge.textContent = '0'; }
+                    else { badge.style.visibility = 'visible'; badge.textContent = String(count); }
+                } catch(e){}
+            }
+
+            // notifications stored in sessionStorage for this tab
+            function getNotifs(){ try { return JSON.parse(sessionStorage.getItem('notifs') || '[]'); } catch(e){ return []; } }
+            function setNotifs(n){ try { sessionStorage.setItem('notifs', JSON.stringify(n || [])); } catch(e){} }
+
+            function prependNotif(txt){
+                const n = getNotifs();
+                n.unshift({ text: txt, time: new Date().toISOString() });
+                setNotifs(n.slice(0,50));
+                renderList();
+                showBadge(n.length);
+            }
+
+            function renderList(){
+                const n = getNotifs();
+                list.innerHTML = n.map(it => `<div style="padding:8px;border-bottom:1px solid var(--border-gray);font-size:0.9em;"><div style="font-weight:600">${escapeHtml(it.text)}</div><div style="color:var(--text-gray);font-size:0.8em;margin-top:6px">${new Date(it.time).toLocaleString()}</div></div>`).join('') || '<div style="color:var(--text-gray);padding:8px">No notifications</div>';
+            }
+
+            function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+            btn.addEventListener('click', function(e){ e.preventDefault(); dropdown.style.display = (dropdown.style.display === 'block') ? 'none' : 'block'; renderList(); });
+            clearBtn && clearBtn.addEventListener('click', function(){ setNotifs([]); renderList(); showBadge(0); });
+
+            autoRefreshCheckbox && autoRefreshCheckbox.addEventListener('change', function(){ try { localStorage.setItem('notif-auto-refresh', this.checked ? '1' : '0'); } catch(e){} });
+            muteCheckbox && muteCheckbox.addEventListener('change', function(){ try { localStorage.setItem('notif-muted', this.checked ? '1' : '0'); } catch(e){} });
+
+            // Initial render
+            renderList(); showBadge(getNotifs().length);
+
+            // SSE connection
+            let es = null;
+            const connEl = document.getElementById('notifConn');
+            function setConn(status){ try { if (connEl) { connEl.style.background = status ? '#10b981' : '#ef4444'; connEl.title = status ? 'Connected' : 'Disconnected'; } } catch(e){} }
+            function indicateConnecting(){ try { if (connEl) { connEl.style.background = '#f59e0b'; connEl.title = 'Connecting...'; } } catch(e){} }
+
+            // initialize as disconnected until EventSource opens
+            setConn(false);
+
+            function connect(){
+                try {
+                    indicateConnecting();
+                    const url = '/reception/assigned-events';
+                    es = new EventSource(url);
+                    es.onopen = function(){ console.log('[SSE] connected'); setConn(true); };
+                    es.onmessage = function(ev){
+                        try {
+                            const data = ev.data ? JSON.parse(ev.data) : null;
+                            if (!data) return;
+                            // ignore handshake/init messages
+                            if (data.init && data.serverTime) return;
+                            let text = '';
+                            if (data.message) {
+                                text = data.message;
+                            } else if (data.action === 'patient_created') {
+                                text = `New patient added: ${data.patientName || ''}`;
+                                if (data.patientIdLabel) text += ` (ID: ${data.patientIdLabel})`;
+                                else if (data.patientCode) text += ` (Code: ${data.patientCode})`;
+                            } else if (data.action === 'assigned') {
+                                if (Array.isArray(data.tests) && data.tests.length) {
+                                    const ids = data.tests.map(t => t.testId || t.id || '').filter(Boolean).join(', ');
+                                    text = `Assigned tests: ${ids}`;
+                                } else {
+                                    text = `Assigned: ${data.testId || ''}`;
+                                }
+                            } else if (data.action === 'complete') {
+                                // completion emitted from Reception (collection step)
+                                text = `Collection Completed: ${data.testId || ''}`;
+                            } else if (data.action === 'result_encoded' || data.action === 'test_completed') {
+                                // explicit result-encoding / test completed from Tests & Results
+                                text = `Test Completed (results encoded): ${data.testId || ''}`;
+                            } else if (data.action === 'advert') {
+                                text = `Kiosk advertisement updated: ${data.ad || ''}`;
+                            } else if (data.action === 'debug') {
+                                text = data.message || data.msg || 'Debug event';
+                            } else {
+                                text = (data.action ? (data.action + ': ') : '') + (data.testId || JSON.stringify(data));
+                            }
+                            prependNotif(text);
+                            // play sound (best-effort) unless muted
+                            try {
+                                const muted = (function(){ try { return localStorage.getItem('notif-muted') === '1'; } catch(e){ return false; } })();
+                                if (!muted && sound && typeof sound.play === 'function') { sound.currentTime = 0; sound.play().catch(()=>{}); }
+                            } catch(e){}
+                            // auto-refresh across tabs if user enabled
+                            try {
+                                // Treat missing setting as enabled by default (legacy behavior)
+                                const v = localStorage.getItem('notif-auto-refresh');
+                                const enabled = (v === '1' || v === null || (autoRefreshCheckbox && autoRefreshCheckbox.checked));
+                                if (enabled) {
+                                    try {
+                                        const muted = (function(){ try { return localStorage.getItem('notif-muted') === '1'; } catch(e){ return false; } })();
+                                        // If we have a sound element and not muted, attempt to play and wait for play to start
+                                        if (!muted && sound && typeof sound.play === 'function') {
+                                            try {
+                                                // restart sound and attempt play
+                                                sound.currentTime = 0;
+                                                const p = sound.play();
+                                                if (p && typeof p.then === 'function') {
+                                                    p.then(() => { setTimeout(() => { window.location.reload(); }, 400); }).catch(() => { window.location.reload(); });
+                                                } else {
+                                                    // play returned synchronously (older browsers) — reload shortly after starting
+                                                    setTimeout(() => { window.location.reload(); }, 400);
+                                                }
+                                            } catch (e) { window.location.reload(); }
+                                        } else {
+                                            // muted or no sound -> just reload
+                                            setTimeout(() => { window.location.reload(); }, 600);
+                                        }
+                                    } catch (e) { setTimeout(() => { window.location.reload(); }, 600); }
+                                }
+                            } catch(e){}
+                        } catch (e) { console.warn('[SSE] message parse error', e); }
+                    };
+                    es.onerror = function(err){ console.warn('[SSE] error, will attempt reconnect', err); try { es.close(); } catch(e){}; es = null; setConn(false); setTimeout(connect, 3000); };
+                } catch (e) { console.warn('[SSE] connect failed', e); setTimeout(connect, 3000); }
+            }
+            // Defer SSE connection until the user stays on the page for 3s.
+            // If user switches tab/loses visibility, cancel the pending connect and close any open connection.
+            let sseDeferredTimer = null;
+            function scheduleSSEConnect(delay = 3000) {
+                if (!('EventSource' in window)) return;
+                try { clearTimeout(sseDeferredTimer); } catch(e){}
+                sseDeferredTimer = setTimeout(() => {
+                    try {
+                        if (document.visibilityState === 'visible') connect();
+                    } catch (e) { console.warn('[SSE] deferred connect failed', e); }
+                }, delay);
+            }
+
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    // schedule connect after 3s of being visible
+                    scheduleSSEConnect(3000);
+                } else {
+                    // cancel pending connect and close any existing connection
+                    try { clearTimeout(sseDeferredTimer); } catch(e){}
+                    try { if (es) { es.close(); es = null; setConn(false); } } catch (e) {}
+                }
+            });
+
+            // Kick off initial schedule when page loads (will connect after 5s if still visible)
+            if (document.visibilityState === 'visible') scheduleSSEConnect(3000);
+        })();
+
+        // Attempt to enter fullscreen when ?fullscreen=1 is present (best-effort).
+        (function() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                if (params.get('fullscreen') === '1') {
+                    function enterFullScreen() {
+                        const el = document.documentElement;
+                        if (el.requestFullscreen) el.requestFullscreen();
+                        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+                        else if (el.msRequestFullscreen) el.msRequestFullscreen();
+                    }
+                    // Try immediately; browsers may block if not a user gesture.
+                    try { enterFullScreen(); } catch (e) {}
+                    // As a fallback attach a one-time click handler to complete fullscreen.
+                    document.addEventListener('click', enterFullScreen, { once: true });
+                }
+            } catch (e) {}
+        })();
+
+        // Universal fullscreen toggle for sidebar button
+        function toggleFullscreen() {
+            const fsBtn = document.getElementById('fullscreenBtn');
+            const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+            
+            if (isFullscreen) {
+                // Exit fullscreen
+                if (document.exitFullscreen) document.exitFullscreen();
+                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+                else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+                else if (document.msExitFullscreen) document.msExitFullscreen();
+                if (fsBtn) fsBtn.querySelector('.nav-text').textContent = 'Fullscreen';
+            } else {
+                // Enter fullscreen
+                const el = document.documentElement;
+                if (el.requestFullscreen) el.requestFullscreen();
+                else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+                else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
+                else if (el.msRequestFullscreen) el.msRequestFullscreen();
+                if (fsBtn) fsBtn.querySelector('.nav-text').textContent = 'Exit Fullscreen';
+            }
+        }
+
+        // Update button text on fullscreen change
+        document.addEventListener('fullscreenchange', updateFsButton);
+        document.addEventListener('webkitfullscreenchange', updateFsButton);
+        document.addEventListener('mozfullscreenchange', updateFsButton);
+        document.addEventListener('MSFullscreenChange', updateFsButton);
+        
+        function updateFsButton() {
+            const fsBtn = document.getElementById('fullscreenBtn');
+            if (!fsBtn) return;
+            const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+            fsBtn.querySelector('.nav-text').textContent = isFullscreen ? 'Exit Fullscreen' : 'Fullscreen';
+        }
+</script>
+
+    <script src="/assets/button-guard.js"></script>
+    <!-- Scripts injected from individual views (via express-ejs-layouts extractScripts) -->
+    <%- script %>
+</body>
+</html>

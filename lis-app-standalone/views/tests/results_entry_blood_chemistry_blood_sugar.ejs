@@ -1,0 +1,67 @@
+<div class="card">
+  <h3>Enter Blood Chemistry - Blood Sugar Results - <%= test.testId %></h3>
+
+  <form action="/tests/<%= test.id %>/results" method="POST">
+    <input type="hidden" name="_method" value="POST">
+
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;">
+      <div class="form-row" style="margin:0;">
+        <label>Date</label>
+        <input type="date" name="entryDate" value="<%= test && test.testDate ? (new Date(test.testDate)).toISOString().slice(0,10) : (new Date()).toISOString().slice(0,10) %>" readonly>
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>Time Requested</label>
+        <input type="time" name="timeRequested" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '') %>">
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>Time Released</label>
+        <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (new Date()).toTimeString().slice(0,5) %>">
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+      <div style="flex:1;min-width:180px;">
+        <label>FBS (mg/dL)</label>
+        <input type="text" name="fbs" placeholder="mg/dL" value="<%= test.results && test.results.fbs ? test.results.fbs : '' %>">
+      </div>
+      <div style="flex:1;min-width:180px;">
+        <label>RBS (mg/dL)</label>
+        <input type="text" name="rbs" placeholder="mg/dL" value="<%= test.results && test.results.rbs ? test.results.rbs : '' %>">
+      </div>
+      <div style="flex:1;min-width:180px;">
+        <label>1st Hour (mg/dL)</label>
+        <input type="text" name="firstHour" placeholder="mg/dL" value="<%= test.results && test.results.firstHour ? test.results.firstHour : '' %>">
+      </div>
+      <div style="flex:1;min-width:180px;">
+        <label>2nd Hour (mg/dL)</label>
+        <input type="text" name="secondHour" placeholder="mg/dL" value="<%= test.results && test.results.secondHour ? test.results.secondHour : '' %>">
+      </div>
+    </div>
+
+    <div style="margin-top:8px;" class="form-row">
+      <label>Optional: Reference Values (e.g. 70-110) - leave blank to use defaults</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <input type="text" name="fbs_ref" placeholder="FBS ref" style="flex:1;min-width:140px" value="<%= test.results && test.results.fbs_ref ? test.results.fbs_ref : '' %>">
+        <input type="text" name="rbs_ref" placeholder="RBS ref" style="flex:1;min-width:140px" value="<%= test.results && test.results.rbs_ref ? test.results.rbs_ref : '' %>">
+        <input type="text" name="firstHour_ref" placeholder="1st Hour ref" style="flex:1;min-width:140px" value="<%= test.results && test.results.firstHour_ref ? test.results.firstHour_ref : '' %>">
+        <input type="text" name="secondHour_ref" placeholder="2nd Hour ref" style="flex:1;min-width:140px" value="<%= test.results && test.results.secondHour_ref ? test.results.secondHour_ref : '' %>">
+      </div>
+    </div>
+
+    <hr>
+    <h4>Signatures / Performers</h4>
+    <%- include('../partials/signatory_select', { prefix: 'mt', label: 'Medical Technologist', role: 'Medical Technologist', nameInput: 'mtName', licenseInput: 'mtLicense', existingName: (test.results && test.results.performedByName) ? test.results.performedByName : '', existingLicense: (test.results && test.results.performedByLicense) ? test.results.performedByLicense : '' }) %>
+
+    <hr>
+    <h4>Validation</h4>
+    <%- include('../partials/signatory_select', { prefix: 'validated', label: '2nd Medical Technologist (Validator)', role: 'Medical Technologist', nameInput: 'validatedByName', licenseInput: 'validatedByLicense', existingName: (test.results && test.results.validatedByName) ? test.results.validatedByName : '', existingLicense: (test.results && test.results.validatedByLicense) ? test.results.validatedByLicense : '' }) %>
+
+    <%- include('../partials/signatory_select', { prefix: 'path', label: 'Pathologist', role: 'Pathologist', nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (test.results && test.results.requestedByName) ? test.results.requestedByName : '', existingLicense: (test.results && test.results.requestedByLicense) ? test.results.requestedByLicense : '' }) %>
+
+    <div class="form-row mt-12">
+      <a href="/tests/<%= test.id %>" class="button btn-secondary">Cancel</a>
+      <button class="button btn-primary">Save Results</button>
+    </div>
+  </form>
+
+</div>

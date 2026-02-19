@@ -1,31 +1,51 @@
 /**
- * LocalServer — A tiny Express server on localhost that serves cached pages
- *               and queues form submissions when the app is offline.
+ * LocalServer — Full offline Express server for the standalone Electron app.
  *
- * When a user is offline:
- *   GET  /* → serve cached HTML for the requested path
- *   POST /* → queue the operation, redirect back with a success banner
+ * When the real server is unreachable, this local server renders the same
+ * EJS views using data from the DataStore (Documents/LIS/app_sync/data.json).
+ * It supports:
+ *   - Session-based authentication (login/logout using downloaded user accounts)
+ *   - All main routes: dashboard, patients, reception, tests, reports, etc.
+ *   - Mutation queueing: POST/PUT/DELETE operations are saved to the
+ *     OperationQueue for replay when the connection is restored.
  */
 const express = require('express');
+const session = require('express-session');
+const flash = require('connect-flash');
 const path = require('path');
+const { createOfflineDb } = require('./offlineDb');
 
 function createLocalServer(pageCache, operationQueue, config, dataStore) {
   const app = express();
 
-  // Body parsers (same as the real server)
+  /* ── View engine ──────────────────────────────────────────────── */
+  app.set('view engine', 'ejs');
+  app.set('views', path.join(__dirname, '..', 'views'));
+
+  /* ── Body parsers ─────────────────────────────────────────────── */
   app.use(express.urlencoded({ extended: true }));
   app.use(express.json());
 
-  // CORS middleware: allow the Electron app's origin (the configured SERVER_URL)
-  // and localhost. This avoids browser CORS errors when the renderer is
-  // redirected to the local server for API calls while offline.
+  /* ── Static assets (served from copied server assets) ─────────── */
+  app.use('/assets', express.static(path.join(__dirname, '..', 'server-assets')));
+  app.use(express.static(path.join(__dirname, '..', 'server-public')));
+
+  /* ── Session + flash ──────────────────────────────────────────── */
+  app.use(session({
+    secret: 'lis-offline-standalone-secret',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { maxAge: 24 * 60 * 60 * 1000 }, // 24h
+  }));
+  app.use(flash());
+
+  /* ── CORS middleware ──────────────────────────────────────────── */
   app.use((req, res, next) => {
     try {
       const origin = req.get('Origin') || '';
       const allowed = [];
       if (config && config.SERVER_URL) allowed.push(config.SERVER_URL.replace(/\/$/, ''));
       allowed.push(`http://127.0.0.1:${config.LOCAL_PORT}`);
-      // Permit the request origin if it matches allowed, else allow all for local dev
       const allowOrigin = allowed.includes(origin) ? origin : '*';
       res.setHeader('Access-Control-Allow-Origin', allowOrigin);
       res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -36,45 +56,38 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     next();
   });
 
-  /* ────────────────────────────────────────────────────────────────
-   * POST / PUT / DELETE — Queue the mutation and redirect back
-   * ──────────────────────────────────────────────────────────────── */
-  const handleMutation = (req, res) => {
-    // NEVER intercept auth routes — redirect them to the real server
-    if (req.path === '/login' || req.path === '/logout' || req.path === '/') {
-      if (config.SERVER_URL) return res.redirect(config.SERVER_URL + req.originalUrl);
-      // No server configured — respond with service unavailable so client stays local
-      return res.status(503).send('Server not configured');
-    }
+  /* ── Make flash messages & user available to all views ─────────── */
+  app.use((req, res, next) => {
+    res.locals.success_msg = req.flash('success_msg');
+    res.locals.error_msg = req.flash('error_msg');
+    res.locals.user = req.session && req.session.user ? req.session.user : null;
+    // Offline indicator for views
+    res.locals.offlineMode = true;
+    next();
+  });
 
-    // Build the real server URL this operation should eventually hit
-    const serverUrl = config.SERVER_URL ? `${config.SERVER_URL}${req.originalUrl}` : req.originalUrl;
+  /* ── Wire up global.db so route models can use it ─────────────── */
+  if (dataStore) {
+    const offlineDb = createOfflineDb(dataStore);
+    global.db = offlineDb;
+  }
 
-    operationQueue.add({
-      method: req.query._method || req.method,
-      url: serverUrl,
-      body: req.body || {},
-      timestamp: new Date().toISOString(),
+  /* ── SSE shim (no-op while offline) ───────────────────────────── */
+  app.get('/reception/assigned-events', (req, res) => {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
     });
+    res.write('data: {"type":"connected","offline":true}\n\n');
+    // Keep connection open but don't send events
+    const interval = setInterval(() => {
+      try { res.write(': keepalive\n\n'); } catch (e) { clearInterval(interval); }
+    }, 30000);
+    req.on('close', () => clearInterval(interval));
+  });
 
-    // Redirect back to the referring page (or home) with a notification flag
-    const referer = req.get('Referer') || '/';
-    let refPath = '/';
-    try { refPath = new URL(referer).pathname; } catch { refPath = '/'; }
-
-    res.redirect(`${refPath}?offline_queued=1`);
-  };
-
-  app.post('*', handleMutation);
-  app.put('*', handleMutation);
-  app.delete('*', handleMutation);
-
-  /* ────────────────────────────────────────────────────────────────
-   * GET — Serve cached pages
-   * ──────────────────────────────────────────────────────────────── */
-  // Lightweight API shim: serve JSON from the DataStore when available.
-  // This enables the renderer to fetch lists and single records while
-  // offline (the UI expects standard API endpoints like `/patients`).
+  /* ── Export endpoint (JSON API for DataStore data) ────────────── */
   if (dataStore) {
     app.get('/export/data.json', (req, res) => {
       try {
@@ -83,92 +96,92 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
           patients: dataStore.getCollection('patients') || [],
           tests: dataStore.getCollection('tests') || [],
           templates: dataStore.getCollection('templates') || [],
-          counters: dataStore.getCollection('counters') || {},
+          counters: dataStore._data.counters || {},
         };
         return res.json(out);
       } catch (e) { return res.status(500).send('datastore-error'); }
     });
-
-    app.get('/patients', (req, res) => res.json(dataStore.getCollection('patients') || []));
-    app.get('/patients/:id', (req, res) => {
-      const id = req.params.id;
-      const pt = (dataStore.getCollection('patients') || []).find(p => p.id === id || p.patientId === id);
-      if (!pt) return res.status(404).send('not found');
-      return res.json(pt);
-    });
-
-    app.get('/users', (req, res) => res.json(dataStore.getCollection('users') || []));
-    app.get('/users/:id', (req, res) => {
-      const u = (dataStore.getCollection('users') || []).find(x => x.id === req.params.id);
-      if (!u) return res.status(404).send('not found');
-      return res.json(u);
-    });
   }
 
-  app.get('*', (req, res) => {
-    // Strip the offline_queued flag for cache lookup
-    const lookupPath = req.path;
-    let html = pageCache.get(lookupPath);
+  /* ══════════════════════════════════════════════════════════════
+   *  Mount the real server routes
+   *  They use global.db + models (which read global.db) so they
+   *  work transparently with our DataStore-backed shim.
+   * ══════════════════════════════════════════════════════════════ */
+  try {
+    const authRoutes = require('../routes/auth');
+    app.use('/', authRoutes);
+  } catch (e) { console.error('[LocalServer] failed to load auth routes:', e && e.message); }
 
-    if (!html) {
-      // Fallback: try common variations (with/without trailing slash)
-      html = pageCache.get(lookupPath.replace(/\/$/, ''))
-          || pageCache.get(lookupPath + '/');
-    }
+  try {
+    const dashboardRoutes = require('../routes/dashboard');
+    app.use('/dashboard', dashboardRoutes);
+  } catch (e) { console.error('[LocalServer] failed to load dashboard routes:', e && e.message); }
 
-    if (html) {
-      // Rewrite static asset URLs to point to the real server so Electron's
-      // HTTP cache can serve them (images, CSS, JS, fonts). Only rewrite
-      // when a real server is configured; otherwise keep local paths.
-      if (config.SERVER_URL) {
-        html = html.replace(
-          /(<(?:img|script|source|video|audio)[^>]*\s+src=["'])\/(?!\/)/gi,
-          `$1${config.SERVER_URL}/`,
-        );
-        html = html.replace(
-          /(<link[^>]*\s+href=["'])\/(?!\/)/gi,
-          `$1${config.SERVER_URL}/`,
-        );
-      }
+  try {
+    const patientRoutes = require('../routes/patients');
+    app.use('/patients', patientRoutes);
+  } catch (e) { console.error('[LocalServer] failed to load patient routes:', e && e.message); }
 
-      // If the user just performed an offline action, inject a success banner
-      if (req.query.offline_queued === '1') {
-        const pendingCount = operationQueue.countPending();
-        const banner = `
-<div id="lis-offline-toast"
-     style="position:fixed;top:0;left:0;right:0;padding:14px 20px;
-            background:linear-gradient(90deg,#f59e0b,#d97706);color:#fff;
-            text-align:center;z-index:999999;font-family:'Segoe UI',sans-serif;
-            font-size:14px;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.25);
-            display:flex;align-items:center;justify-content:center;gap:8px;">
-  <span style="font-size:18px;">&#9888;</span>
-  Saved offline — will sync when connection is restored.
-  <span style="background:rgba(255,255,255,.25);padding:2px 10px;border-radius:10px;font-size:12px;">
-    ${pendingCount} pending
-  </span>
-  <button onclick="this.parentElement.remove()"
-          style="margin-left:auto;background:none;border:none;color:#fff;
-                 font-size:20px;cursor:pointer;line-height:1;">&times;</button>
-</div>
-<script>setTimeout(function(){var t=document.getElementById('lis-offline-toast');if(t)t.remove();},6000);</script>`;
-        html = html.replace(/<body[^>]*>/i, (match) => match + banner);
-      }
+  try {
+    const receptionRoutes = require('../routes/reception');
+    app.use('/reception', receptionRoutes);
+  } catch (e) { console.error('[LocalServer] failed to load reception routes:', e && e.message); }
 
-      res.type('html').send(html);
-    } else {
-      // No cache — show the offline fallback page
-      res.sendFile(path.join(__dirname, '..', 'renderer', 'offline.html'));
+  try {
+    const testRoutes = require('../routes/tests');
+    app.use('/tests', testRoutes);
+  } catch (e) { console.error('[LocalServer] failed to load test routes:', e && e.message); }
+
+  try {
+    const reportRoutes = require('../routes/reports');
+    app.use('/reports', reportRoutes);
+  } catch (e) { console.error('[LocalServer] failed to load report routes:', e && e.message); }
+
+  try {
+    const templateRoutes = require('../routes/templates');
+    app.use('/templates', templateRoutes);
+  } catch (e) { console.error('[LocalServer] failed to load template routes:', e && e.message); }
+
+  try {
+    const userRoutes = require('../routes/users');
+    app.use('/users', userRoutes);
+  } catch (e) { console.error('[LocalServer] failed to load user routes:', e && e.message); }
+
+  try {
+    const settingsRoutes = require('../routes/settings');
+    app.use('/settings', settingsRoutes);
+  } catch (e) { console.error('[LocalServer] failed to load settings routes:', e && e.message); }
+
+  try {
+    const signaturesRoutes = require('../routes/signatures');
+    app.use('/signatures', signaturesRoutes);
+  } catch (e) { console.error('[LocalServer] failed to load signatures routes:', e && e.message); }
+
+  /* ── 404 handler ──────────────────────────────────────────────── */
+  app.use((req, res) => {
+    try {
+      res.status(404).render('404', { title: 'Page Not Found' });
+    } catch (e) {
+      res.status(404).send('Page not found');
     }
   });
 
-  /* ────────────────────────────────────────────────────────────────
-   * Start listening (only on loopback)
-   * ──────────────────────────────────────────────────────────────── */
+  /* ── Error handler ────────────────────────────────────────────── */
+  app.use((err, req, res, next) => {
+    console.error('[LocalServer] unhandled error:', err && err.stack ? err.stack : err);
+    try {
+      res.status(500).render('500', { title: 'Server Error', error: err || {} });
+    } catch (e) {
+      res.status(500).send('Internal Server Error');
+    }
+  });
+
+  /* ── Start listening (loopback only) ──────────────────────────── */
   const server = app.listen(config.LOCAL_PORT, '127.0.0.1', () => {
-    console.log(`[LocalServer] offline cache server on http://127.0.0.1:${config.LOCAL_PORT}`);
+    console.log(`[LocalServer] offline server on http://127.0.0.1:${config.LOCAL_PORT}`);
   });
 
-  // Graceful error handling (port in use, etc.)
   server.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
       console.warn(`[LocalServer] port ${config.LOCAL_PORT} in use — retrying on ${config.LOCAL_PORT + 1}`);

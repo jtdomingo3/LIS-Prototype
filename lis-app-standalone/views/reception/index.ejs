@@ -1,0 +1,67 @@
+<div class="card reception-card">
+  <h3>Reception - Areas</h3>
+  <p>Quick overview of reception areas and current queue counts.</p>
+
+  <style>
+    .reception-card { position:relative; padding:22px; border-radius:12px; box-shadow: 0 6px 18px rgba(17,24,39,0.06); }
+    .reception-card:before { content:""; position:absolute; left:12px; top:12px; bottom:12px; width:8px; border-radius:8px; background: linear-gradient(180deg, #10b981 0%, #059669 100%); box-shadow: 0 2px 6px rgba(5,102,105,0.06); }
+    .reception-card > h3, .reception-card > p { margin-left:18px; }
+    .area-grid-container { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-top:16px; }
+    @media screen and (max-width: 768px) { .area-grid-container { grid-template-columns: 1fr !important; } }
+    .area-tile { box-sizing:border-box; position:relative; padding:16px 18px 16px 56px; background:#fff; border-radius:12px; border:1px solid #e9edf0; box-shadow:0 6px 18px rgba(15,23,42,0.04); min-height:120px; }
+    .area-tile .accent { position:absolute; left:10px; top:12px; bottom:12px; width:10px; border-radius:8px; background:linear-gradient(180deg,#16a34a,#059669); box-shadow:0 3px 8px rgba(5,102,105,0.08); }
+    .area-tile h4 { margin:0 0 8px 0; font-size:0.95em; }
+    .area-tile .count { font-size:1.6em; font-weight:700; margin-top:6px; }
+    .area-tile .actions { margin-top:10px; }
+  </style>
+
+  <div class="area-grid-container">
+    <% 
+      const roomLabelMap = (function(){
+        try {
+          const d1 = (typeof DOCTOR_1_NAME !== 'undefined' && DOCTOR_1_NAME) ? `Doctor's Check-up - ${DOCTOR_1_NAME}` : "Doctor's Check-up - Dr. Lorenzo";
+          const d2 = (typeof DOCTOR_2_NAME !== 'undefined' && DOCTOR_2_NAME) ? `Doctor's Check-up - ${DOCTOR_2_NAME}` : "Doctor's Check-up - Dr. Arcilla";
+          const out = {};
+          out[d1] = `Doctor's Check-up — ${DOCTOR_1_NAME || 'Dr. Lorenzo'}`;
+          out[d2] = `Doctor's Check-up — ${DOCTOR_2_NAME || 'Dr. Arcilla'}`;
+          return out;
+        } catch (e) { return {}; }
+      })();
+      (areas.slice ? areas.slice(0,10) : areas).forEach(area => { 
+        const displayName = roomLabelMap[area.name] || String(area.name).replace(/\s*-\s*[AB]$/i, "");
+    %>
+      <div class="area-tile">
+        <span class="accent"></span>
+        <h4><%= displayName %></h4>
+        <div class="count"><%= area.count %></div>
+        <div class="actions">
+          <a href="/reception/area/<%= encodeURIComponent(area.name) %>" class="button btn-primary btn-small">View Queue</a>
+        </div>
+      </div>
+    <% }) %>
+  </div>
+
+  <div style="margin-top:14px;">
+    <a href="/reception/assigned?kiosk=1" target="_blank" rel="noopener" class="button btn-secondary">Open Patient Queue Display (new tab)</a>
+  </div>
+
+  <div style="margin-top:14px; max-width:900px;">
+    <% const success = (typeof flash !== 'undefined' && flash && flash.success_msg) ? flash.success_msg : (typeof success_msg !== 'undefined' ? success_msg : null); %>
+    <% const error = (typeof flash !== 'undefined' && flash && flash.error_msg) ? flash.error_msg : (typeof error_msg !== 'undefined' ? error_msg : null); %>
+    <% if (success) { %>
+      <div style="padding:8px; background:#ecffef; border:1px solid #d1f7d6; border-radius:8px; margin-bottom:8px; color:#064e2a;"><%= success %></div>
+    <% } %>
+    <% if (error) { %>
+      <div style="padding:8px; background:#fff0f0; border:1px solid #ffd6d6; border-radius:8px; margin-bottom:8px; color:#7a0b0b;"><%= error %></div>
+    <% } %>
+
+    <form action="/reception/advert" method="POST">
+      <label for="adText" style="display:block; font-weight:700; margin-bottom:6px;">Kiosk Advertisement (marquee text shown on kiosk)</label>
+      <textarea id="adText" name="ad" rows="3" style="width:100%; padding:8px; border-radius:8px; border:1px solid #e5e7eb;"><%= (typeof ad !== 'undefined' && ad) ? ad : '' %></textarea>
+      <div style="margin-top:8px;">
+        <button type="submit" class="button btn-primary btn-small">Save Advertisement</button>
+        <a href="/reception/assigned?kiosk=1" target="_blank" rel="noopener" class="button btn-secondary btn-small">Open Kiosk</a>
+      </div>
+    </form>
+  </div>
+</div>

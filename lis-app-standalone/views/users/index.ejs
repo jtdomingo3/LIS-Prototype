@@ -1,0 +1,40 @@
+<div class="card">
+  <h3>User Management</h3>
+
+  <div class="flex-between mb-20">
+    <a href="/users/new" class="button btn-primary">+ Add New User</a>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Role</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (users && users.length) { %>
+        <% users.forEach(u => { %>
+          <tr>
+            <td><%= u.name %></td>
+            <td><%= u.email %></td>
+            <td><span class="badge"><%= u.role %></span></td>
+            <td><span class="badge"><%= u.status %></span></td>
+            <td class="action-buttons">
+              <a href="/users/<%= u.id %>" class="button btn-orange btn-small">View</a>
+              <a href="/users/<%= u.id %>/edit" class="button btn-success btn-small">Edit</a>
+              <form action="/users/<%= u.id %>?_method=DELETE" method="POST" style="display:inline-block;">
+                <button type="submit" class="button btn-danger btn-small">Delete</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      <% } else { %>
+        <tr><td colspan="5">No users found.</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>

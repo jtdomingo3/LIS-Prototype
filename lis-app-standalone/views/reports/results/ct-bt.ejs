@@ -1,0 +1,157 @@
+<style>
+  @page { size: Letter; margin: 0.25in; }
+  body { margin:0; padding:0; box-sizing:border-box; }
+  *, *:before, *:after { box-sizing:inherit; }
+  .report-page{ position:relative; width:100%; max-width:calc(8.5in - 0.5in); margin:0 auto; padding:8px; font-family: 'Times New Roman', Times, serif; color:#000 }
+  .header{ display:flex; align-items:flex-start; gap:12px }
+  .logo{ width:72px; height:auto; margin-right:8px }
+  .lab-title{ text-align:center; flex:1; min-width:0 }
+  .lab-title h1{ margin:0; font-size:22px; color:#009957; letter-spacing:1px }
+  .lab-sub{ font-size:10px; margin-top:4px; color:#009957 }
+  .patient-box{ margin-top:8px; width:100%; border-collapse:collapse; font-size:12px }
+  .patient-box td{ padding:4px 6px; border:1px solid #000; box-sizing:border-box }
+  .section-title{ text-align:center; margin:12px 0; font-size:20px; font-weight:bold }
+  .results-frame{ width:100%; border:2px solid #000; border-collapse:collapse; margin-top:6px; box-sizing:border-box }
+  .results-frame th, .results-frame td{ border:1px solid #000; padding:8px; vertical-align:middle }
+  /* tighten column widths so RESULT stays on one line */
+  .test-col{ width:30%; padding:12px; font-size:20px; font-weight:700; text-align:left; padding-left:18px }
+  .value-col{ width:40%; padding:12px; font-size:24px; font-weight:900; text-align:center; white-space:nowrap; }
+  .ref-col{ width:30%; padding:12px; font-size:18px; text-align:center; vertical-align:middle }
+  .signatures{ display:flex; justify-content:space-between; margin-top:48px }
+  .sig{ text-align:center; width:32%; position:relative; min-height:80px }
+  .signature-overlay{ position:absolute; left:50%; transform:translateX(-50%) scale(1); transform-origin:center; max-width:60%; opacity:1; z-index:2 }
+  .watermark{ position:absolute; left:50%; top:44%; transform:translate(-50%,-50%); width:52%; opacity:0.06; pointer-events:none; z-index:0 }
+  .report-container{ position:relative; z-index:1 }
+</style>
+
+<%- include('./_highlight') %>
+
+<div class="report-page">
+  <div class="report-container">
+    <div class="header">
+      <div>
+        <img src="<%= inlineLogo || '/assets/gezyne-logo.png' %>" class="logo" alt="logo">
+      </div>
+      <div class="lab-title">
+        <h1>GEZYNE CLINICAL LABORATORY</h1>
+        <div class="lab-sub">0330 VERGEL DE DIOS ST POBLACION PLARIDEL</div>
+        <div class="lab-sub">NEAR MUNICIPAL BASKETBALL COURT</div>
+        <div class="lab-sub">0917-649-0807 / 0960-390-0921 / 795-5007</div>
+        <div class="lab-sub">Lic. No. 03-435-15CL-20</div>
+      </div>	
+      <div style="min-width:180px; font-size:12px; text-align:right">
+        <table style="border-collapse:collapse; width:100%; font-size:12px">
+          <tr><td style="border:1px solid #000; padding:4px">Date:</td><td style="border:1px solid #000; padding:4px"><%= test && test.testDate ? (new Date(test.testDate)).toLocaleDateString() : new Date().toLocaleDateString() %></td></tr>
+          <tr><td style="border:1px solid #000; padding:4px">Time Requested:</td><td style="border:1px solid #000; padding:4px"><%= test && test.testDate ? (new Date(test.testDate)).toLocaleTimeString() : '' %></td></tr>
+          <tr><td style="border:1px solid #000; padding:4px">Time Released:</td><td style="border:1px solid #000; padding:4px"><%= test && test.completedAt ? (new Date(test.completedAt)).toLocaleTimeString() : '' %></td></tr>
+        </table>
+      </div>
+    </div>
+
+    <table class="patient-box">
+      <tr>
+        <td style="width:20%">Patient's Reference No. :</td>
+        <td style="width:30%"><strong><%= test && test.testId ? test.testId : '' %></strong></td>
+        <td style="width:15%">DOB:</td>
+        <td style="width:15%"><strong><%= test && test.patient && test.patient.dateOfBirth ? (new Date(test.patient.dateOfBirth)).toLocaleDateString() : '' %></strong></td>
+        <td style="width:10%">Sex:</td>
+        <td style="width:10%"><strong><%= test && test.patient && test.patient.sex ? test.patient.sex : '' %></strong></td>
+      </tr>
+      <tr>
+        <td>Name:</td>
+        <td colspan="3"><strong><%= test && test.patient ? (test.patient.lastName + ', ' + test.patient.firstName) : '' %></strong></td>
+        <td>Age:</td>
+        <td><strong><%= test && test.patient && test.patient.dateOfBirth ? Math.max(0, new Date().getFullYear() - new Date(test.patient.dateOfBirth).getFullYear()) : (test && test.patient && test.patient.ageManual ? test.patient.ageManual : '') %></strong></td>
+      </tr>
+      <tr>
+        <td>Physician:</td>
+        <td colspan="5"><strong><%= (test && test.patient && (test.patient.physician || test.patient.physicianName)) ? (test.patient.physician || test.patient.physicianName) : '' %></strong></td>
+      </tr>
+    </table>
+
+    <div class="section-title">CT &amp; BT</div>
+
+    <table class="results-frame">
+      <tr>
+        <th style="width:45%; font-weight:700; text-align:center">TEST</th>
+        <th style="width:30%; font-weight:700; text-align:center">RESULT</th>
+        <th style="width:25%; font-weight:700; text-align:center">REFERENCE</th>
+      </tr>
+
+      <tr>
+        <td class="test-col">BLEEDING TIME</td>
+        <td class="value-col">
+          <% if (test && test.results && typeof test.results.bleeding_time !== 'undefined') { %>
+            <%= String(test.results.bleeding_time) %>
+            <% if (test.results.bleeding_flag) { %> (<span style="color:#c00; font-weight:700;"><%= test.results.bleeding_flag %></span>) <% } %>
+          <% } %>
+        </td>
+        <td class="ref-col">1-5 minutes</td>
+      </tr>
+
+      <tr>
+        <td class="test-col">CLOTTING TIME</td>
+        <td class="value-col">
+          <% if (test && test.results && typeof test.results.clotting_time !== 'undefined') { %>
+            <%= String(test.results.clotting_time) %>
+            <% if (test.results.clotting_flag) { %> (<span style="color:#c00; font-weight:700;"><%= test.results.clotting_flag %></span>) <% } %>
+          <% } %>
+        </td>
+        <td class="ref-col">2-7 minutes</td>
+      </tr>
+
+    </table>
+
+    <%
+      function findSigFor(displayName){
+        var sigs = (test && test.results && test.results.signatures) ? test.results.signatures : {};
+        for(var k in sigs){ if(sigs[k] && sigs[k].name === displayName) return sigs[k]; }
+        return null;
+      }
+    %>
+
+    <div class="signatures">
+      <div class="sig">
+        <div style="border-top:1px solid #000; height:0; margin-bottom:8px"></div>
+        <% var displayName = (test && test.results && test.results.performedByName) || (test && test.performedBy && test.performedBy.name) || '' %>
+        <% var sig = findSigFor(displayName); var p = (sig && sig.placement) ? sig.placement : {x:0,y:0,scale:1}; if(p && (typeof p.scale === 'undefined' || p.scale === 1)){ p.scale = 1.25; } %>
+        <% if (sig && sig.filename) { %>
+          <img src="/assets/signature/<%= sig.filename %>" class="signature-overlay" style="top:<%= p.y %>px; transform:translateX(-50%) scale(<%= typeof p.scale!=='undefined'?p.scale:1 %>); max-height:96px;" />
+        <% } %>
+        <div style="font-weight:700"><strong><%= displayName %></strong></div>
+        <div style="font-size:11px"><% if (test && test.results && test.results.performedByLicense) { %><strong>Lic. No. <%= test.results.performedByLicense %></strong><% } %></div>
+        <div>Medical Technologist</div>
+      </div>
+
+      <div class="sig">
+        <div style="border-top:1px solid #000; height:0; margin-bottom:8px"></div>
+        <% var displayName = (test && test.results && test.results.validatedByName) || '' %>
+        <% var sig = findSigFor(displayName); var p = (sig && sig.placement) ? sig.placement : {x:0,y:0,scale:1}; if(p && (typeof p.scale === 'undefined' || p.scale === 1)){ p.scale = 1.25; } %>
+        <% if (sig && sig.filename) { %>
+          <img src="/assets/signature/<%= sig.filename %>" class="signature-overlay" style="top:<%= p.y %>px; transform:translateX(-50%) scale(<%= typeof p.scale!=='undefined'?p.scale:1 %>); max-height:96px;" />
+        <% } %>
+        <div style="font-weight:700"><strong><%= displayName %></strong></div>
+        <div style="font-size:11px"><% if (test && test.results && test.results.validatedByLicense) { %><strong>Lic. No. <%= test.results.validatedByLicense %></strong><% } %></div>
+        <div>Validated By</div>
+      </div>
+
+      <div class="sig">
+        <div style="border-top:1px solid #000; height:0; margin-bottom:8px"></div>
+        <% var displayName = (test && test.results && test.results.requestedByName) || (test && test.requestedBy && test.requestedBy.name) || '' %>
+        <% var sig = findSigFor(displayName); var p = (sig && sig.placement) ? sig.placement : {x:0,y:0,scale:1}; if(p && (typeof p.scale === 'undefined' || p.scale === 1)){ p.scale = 1.25; } %>
+        <% if (sig && sig.filename) { %>
+          <img src="/assets/signature/<%= sig.filename %>" class="signature-overlay" style="top:<%= p.y %>px; transform:translateX(-50%) scale(<%= typeof p.scale!=='undefined'?p.scale:1 %>); max-height:96px;" />
+        <% } %>
+        <div style="font-weight:700"><strong><%= displayName %></strong></div>
+        <div style="font-size:11px"><% if (test && test.results && test.results.requestedByLicense) { %><strong>Lic. No. <%= test.results.requestedByLicense %></strong><% } %></div>
+        <div>Pathologist</div>
+      </div>
+    </div>
+  </div>
+
+  <img class="watermark" src="<%= inlineLogo || '/assets/gezyne-logo.png' %>" alt="" />
+</div>
+
+<% if (typeof print !== 'undefined' && print) { %>
+  <script>setTimeout(function(){ window.print(); }, 300);</script>
+<% } %>

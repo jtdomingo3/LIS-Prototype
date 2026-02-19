@@ -1,0 +1,148 @@
+<style>
+  @page { size: Letter; margin: 0.25in; }
+  body { margin:0; padding:0; box-sizing:border-box; }
+  .report-page{ position:relative; width:100%; max-width:calc(8.5in - 0.5in); margin:0 auto; padding:8px; font-family: 'Times New Roman', Times, serif; color:#000 }
+  .header{ display:flex; align-items:flex-start; gap:12px }
+  .logo{ width:72px; height:auto; margin-right:8px }
+  .lab-title{ text-align:center; flex:1 }
+  .lab-title h1{ margin:0; font-size:22px; color:#009957 }
+  .lab-sub{ font-size:10px; margin-top:4px; color:#009957 }
+  .patient-box{ margin-top:8px; width:100%; border-collapse:collapse; font-size:12px }
+  .patient-box td{ padding:4px 6px; border:1px solid #000 }
+  .section-title{ text-align:center; margin:11px 0; font-size:16px; font-weight:bold }
+  .results-frame{ width:100%; border:2px solid #000; border-collapse:collapse; margin-top:6px }
+  .results-frame th, .results-frame td{ border:1px solid #000; padding:8px; vertical-align:middle }
+  .result-label{ text-align:left; width:50% }
+  .result-value{ text-align:center; font-weight:700 }
+  .flag{ color:#d00; margin-left:6px; font-weight:700 }
+  .result-value { color: #000 }
+  .note-value { color: #d00; font-weight:normal }
+  .watermark{ position:absolute; left:50%; top:44%; transform:translate(-50%,-50%); width:52%; opacity:0.06; pointer-events:none; z-index:0 }
+  .signatures{ display:flex; justify-content:space-between; margin-top:24px }
+  .sig{ text-align:center; width:32%; position:relative; min-height:80px }
+  .signature-overlay{ position:absolute; left:50%; transform:translateX(-50%) scale(1); transform-origin:center; max-width:60%; max-height:96px; opacity:1; z-index:2 }
+</style>
+
+<%- include('./_highlight') %>
+
+<div class="report-page">
+  <div class="header">
+    <div><img src="<%= inlineLogo || '/assets/gezyne-logo.png' %>" class="logo" alt="logo"></div>
+    <div class="lab-title">
+        <h1>GEZYNE CLINICAL LABORATORY</h1>
+        <div class="lab-sub">0330 VERGEL DE DIOS ST POBLACION PLARIDEL</div>
+        <div class="lab-sub">NEAR MUNICIPAL BASKETBALL COURT</div>
+        <div class="lab-sub">0917-649-0807 / 0960-390-0921 / 795-5007</div>
+        <div class="lab-sub">Lic. No. 03-435-15CL-20</div>
+      </div>
+    <div style="min-width:160px; font-size:12px; text-align:right">
+      <table style="border-collapse:collapse; width:100%; font-size:12px">
+        <tr><td style="border:1px solid #000; padding:4px">Date:</td><td style="border:1px solid #000; padding:4px"><%= test && test.testDate ? (new Date(test.testDate)).toLocaleDateString() : new Date().toLocaleDateString() %></td></tr>
+        <tr><td style="border:1px solid #000; padding:4px">Time Requested:</td><td style="border:1px solid #000; padding:4px"><%= test && test.testDate ? (new Date(test.testDate)).toLocaleTimeString() : '' %></td></tr>
+        <tr><td style="border:1px solid #000; padding:4px">Time Released:</td><td style="border:1px solid #000; padding:4px"><%= test && test.completedAt ? (new Date(test.completedAt)).toLocaleTimeString() : '' %></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <table class="patient-box">
+      <tr>
+        <td style="width:20%">Patient's Reference No. :</td>
+        <td style="width:30%"><strong><%= test && test.testId ? test.testId : '' %></strong></td>
+        <td style="width:15%">DOB:</td>
+        <td style="width:15%"><strong><%= test && test.patient && test.patient.dateOfBirth ? (new Date(test.patient.dateOfBirth)).toLocaleDateString() : '' %></strong></td>
+        <td style="width:10%">Sex:</td>
+        <td style="width:10%"><strong><%= test && test.patient && test.patient.sex ? test.patient.sex : '' %></strong></td>
+      </tr>
+      <tr>
+        <td>Name:</td>
+        <td colspan="3"><strong><%= test && test.patient ? (test.patient.lastName + ', ' + test.patient.firstName) : '' %></strong></td>
+        <td>Age:</td>
+        <td><strong><%= test && test.patient && test.patient.dateOfBirth ? Math.max(0, new Date().getFullYear() - new Date(test.patient.dateOfBirth).getFullYear()) : (test && test.patient && test.patient.ageManual ? test.patient.ageManual : '') %></strong></td>
+      </tr>
+      <tr>
+        <td>Physician:</td>
+        <td colspan="5"><strong><%= (test && test.patient && (test.patient.physician || test.patient.physicianName)) ? (test.patient.physician || test.patient.physicianName) : '' %></strong></td>
+      </tr>
+    </table>
+
+  <div class="section-title">BLOOD CHEMISTRY - BUN / CREATININE</div>
+
+  <% function flagValue(val, min, max) { if (val===undefined||val===null||String(val).trim()==='') return ''; const n=parseFloat(String(val).replace(/[^0-9.+-eE]/g,'')); if (isNaN(n)) return ''; if (typeof min==='number'&&!isNaN(min)&&n<min) return 'L'; if (typeof max==='number'&&!isNaN(max)&&n>max) return 'H'; return ''; } %>
+
+  <table class="results-frame">
+    <tr>
+      <th style="width:60%">TEST</th>
+      <th style="width:20%">RESULT</th>
+      <th style="width:20%">REFERENCE</th>
+    </tr>
+    <% if (test && test.results && test.results.creatinine && String(test.results.creatinine).trim()) { %>
+    <tr>
+      <td class="result-label">Creatinine</td>
+      <td class="result-value"><%= test.results.creatinine %><span class="flag"><%= flagValue((test.results.creatinine_numeric !== undefined ? test.results.creatinine_numeric : test.results.creatinine),0.5,1.0) %></span></td>
+      <td class="reference-value" style="text-align:center">0.50 - 1.00 mg/dL</td>
+    </tr>
+    <% } %>
+
+    <% if (test && test.results && test.results.bun && String(test.results.bun).trim()) { %>
+    <tr>
+      <td class="result-label">BUN</td>
+      <td class="result-value"><%= test.results.bun %><span class="flag"><%= flagValue((test.results.bun_numeric !== undefined ? test.results.bun_numeric : test.results.bun),4.67,23.36) %></span></td>
+      <td class="reference-value" style="text-align:center">4.67 - 23.36 mg/dL</td>
+    </tr>
+    <% } %>
+  </table>
+
+  <% if (test && test.results && test.results.note && String(test.results.note).trim()) { %>
+  <div style="margin-top:12px; font-size:12px"><strong>NOTE:</strong> <span class="note-value"><%= test.results.note %></span></div>
+  <% } %>
+
+  <div class="signatures" style="margin-top:36px">
+    <%
+      function findSigFor(displayName){
+        var sigs = (test && test.results && test.results.signatures) ? test.results.signatures : {};
+        for(var k in sigs){ if(sigs[k] && sigs[k].name === displayName) return sigs[k]; }
+        return null;
+      }
+    %>
+
+    <div class="sig">
+      <div style="border-top:1px solid #000; height:10px; margin-bottom:6px"></div>
+      <% var displayName = (test && test.results && test.results.performedByName) || (test && test.performedBy && test.performedBy.name) || '' %>
+      <% var sig = findSigFor(displayName); var p = (sig && sig.placement) ? sig.placement : {x:0,y:-72,scale:1}; if(p && (typeof p.y === 'undefined' || p.y === 0)){ p.y = -72; } if(p && (typeof p.scale === 'undefined' || p.scale === 1)){ p.scale = 1.25; } %>
+      <% if (sig && sig.filename) { %>
+        <img src="/assets/signature/<%= sig.filename %>" class="signature-overlay" style="top:<%= p.y %>px; transform:translateX(-50%) scale(<%= typeof p.scale!=='undefined'?p.scale:1 %>); max-height:96px;" />
+      <% } %>
+      <div style="font-weight:700"><strong><%= displayName %></strong></div>
+      <div><% if (test && test.results && test.results.performedByLicense) { %><strong>Lic. No. <%= test.results.performedByLicense %></strong><% } %></div>
+      <div>Medical Technologist</div>
+    </div>
+    <div class="sig">
+      <div style="border-top:1px solid #000; height:10px; margin-bottom:6px"></div>
+      <% var displayName = (test && test.results && test.results.validatedByName) || '' %>
+      <% var sig = findSigFor(displayName); var p = (sig && sig.placement) ? sig.placement : {x:0,y:-72,scale:1}; if(p && (typeof p.y === 'undefined' || p.y === 0)){ p.y = -72; } if(p && (typeof p.scale === 'undefined' || p.scale === 1)){ p.scale = 1.25; } %>
+      <% if (sig && sig.filename) { %>
+        <img src="/assets/signature/<%= sig.filename %>" class="signature-overlay" style="top:<%= p.y %>px; transform:translateX(-50%) scale(<%= typeof p.scale!=='undefined'?p.scale:1 %>); max-height:96px;" />
+      <% } %>
+      <div style="font-weight:700"><strong><%= displayName %></strong></div>
+      <div><% if (test && test.results && test.results.validatedByLicense) { %><strong>Lic. No. <%= test.results.validatedByLicense %></strong><% } %></div>
+      <div>Validated By</div>
+    </div>
+    <div class="sig">
+      <div style="border-top:1px solid #000; height:10px; margin-bottom:6px"></div>
+      <% var displayName = (test && test.results && test.results.requestedByName) || (test && test.requestedBy && test.requestedBy.name) || '' %>
+      <% var sig = findSigFor(displayName); var p = (sig && sig.placement) ? sig.placement : {x:0,y:0,scale:1}; if(p && (typeof p.scale === 'undefined' || p.scale === 1)){ p.scale = 1.25; } %>
+      <% if (sig && sig.filename) { %>
+        <img src="/assets/signature/<%= sig.filename %>" class="signature-overlay" style="top:<%= p.y %>px; transform:translateX(-50%) scale(<%= typeof p.scale!=='undefined'?p.scale:1 %>); max-height:96px;" />
+      <% } %>
+      <div style="font-weight:700"><strong><%= displayName %></strong></div>
+      <div><% if (test && test.results && test.results.requestedByLicense) { %><strong>Lic. No. <%= test.results.requestedByLicense %></strong><% } %></div>
+      <div>Pathologist</div>
+    </div>
+  </div>
+
+  <img class="watermark" src="<%= inlineLogo || '/assets/gezyne-logo.png' %>" alt="" />
+</div>
+
+<% if (typeof print !== 'undefined' && print) { %>
+  <script>setTimeout(function(){ window.print(); }, 300);</script>
+<% } %>

@@ -1,0 +1,215 @@
+<div class="card">
+  <h3>Enter Drug Test Results - <%= test.testId %></h3>
+
+  <form action="/tests/<%= test.id || test._id %>/results" method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="_method" value="POST">
+    <div>
+      <label>Serial:</label>
+      <input type="text" name="serial" value="NB126997" />
+      <label>CCF No.:</label>
+      <input type="text" name="ccfNo" value="202511290286" />
+    </div>
+
+    <div>
+      <label>Name</label>
+      <input type="text" name="name" value="<%= (test && test.patient && (test.patient.firstName || '') + ' ' + (test.patient.lastName || '')) || '' %>" required />
+      <label>Gender</label>
+      <select name="gender">
+        <option value="MALE">MALE</option>
+        <option value="FEMALE">FEMALE</option>
+        <option value="OTHER">OTHER</option>
+      </select>
+    </div>
+
+    <div>
+      <label>Transaction Date Time</label>
+      <input type="datetime-local" name="transactionDateTime" value="<%= new Date().toISOString().slice(0,16) %>" />
+      <label>Report Date Time</label>
+      <input type="datetime-local" name="reportDateTime" value="<%= new Date().toISOString().slice(0,16) %>" />
+    </div>
+
+    <div>
+      <label>Purpose</label>
+      <input type="text" name="purpose" value="EMPLOYMENT" />
+    </div>
+
+    <h3>Drugs / Metabolites</h3>
+    <table>
+      <thead><tr><th>Drug/Metabolite</th><th>Result</th><th>Remarks</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><input type="hidden" name="drugNames[]" value="METHAMPHETAMINE" />METHAMPHETAMINE</td>
+          <td>
+            <select name="drugResults[]">
+              <option value="NEGATIVE">NEGATIVE</option>
+              <option value="POSITIVE">POSITIVE</option>
+            </select>
+          </td>
+          <td>
+            <select name="drugRemarks[]">
+              <option value="PASSED">PASSED</option>
+              <option value="FAILED">FAILED</option>
+            </select>
+          </td>
+        </tr>
+        <tr>
+          <td><input type="hidden" name="drugNames[]" value="TETRAHYDROCANNABINOL" />TETRAHYDROCANNABINOL</td>
+          <td>
+            <select name="drugResults[]">
+              <option value="NEGATIVE">NEGATIVE</option>
+              <option value="POSITIVE">POSITIVE</option>
+            </select>
+          </td>
+          <td>
+            <select name="drugRemarks[]">
+              <option value="PASSED">PASSED</option>
+              <option value="FAILED">FAILED</option>
+            </select>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Photo (optional)</h3>
+    <input type="file" id="photoInput" name="photoFile" accept="image/*" />
+    <label><input type="checkbox" id="cropSquare" /> Crop to square</label>
+    <div id="previewWrap" style="width:120px;height:120px;border:1px solid #ccc;overflow:hidden;margin:8px 0"><img id="previewImg" style="width:100%;height:100%;object-fit:cover;display:none" /></div>
+    <!-- photoData hidden removed; file uploaded as `photoFile` and processed server-side -->
+
+    <div>
+      <label>Analyst</label>
+      <%- include('../partials/signatory_select', { prefix: 'analyst', label: 'Analyst', role: 'Medical Technologist', nameInput: 'analyst', licenseInput: 'analystLicense', existingName: (test && test.results && test.results.analyst) ? test.results.analyst : 'MS. NICOLE S. RAMOS', existingLicense: (test && test.results && test.results.analystLicense) ? test.results.analystLicense : '' }) %>
+      <label>Head of Laboratory</label>
+      <%- include('../partials/signatory_select', { prefix: 'headLab', label: 'Head of Laboratory', role: 'Pathologist', nameInput: 'headLab', licenseInput: 'headLabLicense', existingName: (test && test.results && test.results.headLab) ? test.results.headLab : 'DR. BERNADETTE R. ESPIRITU', existingLicense: (test && test.results && test.results.headLabLicense) ? test.results.headLabLicense : '' }) %>
+    </div>
+
+    <div class="form-row mt-12">
+      <a href="/tests/<%= test.id || test._id %>" class="button btn-secondary">Cancel</a>
+      <button class="button btn-primary" type="submit">Save Results</button>
+    </div>
+  </form>
+</div>
+
+<script>
+// Client-side crop editor with adjustable border and compression settings
+window.croppedBlob = null;
+const fileInput = document.getElementById('photoInput');
+const previewImg = document.getElementById('previewImg');
+// create lightweight editor UI
+const editorWrap = document.createElement('div');
+editorWrap.style.marginTop = '8px';
+editorWrap.innerHTML = `
+  <div id="editorControls" style="display:none;margin-bottom:8px">
+    <button type="button" id="toggleEditor">Edit Crop</button>
+    <label style="margin-left:8px">Crop size: <input id="cropSize" type="range" min="20" max="100" value="80"></label>
+    <label style="margin-left:8px">Quality: <input id="qualityRange" type="range" min="40" max="95" value="75"></label>
+    <label style="margin-left:8px">Max dim: <input id="maxDim" type="number" value="800" style="width:80px"></label>
+  </div>
+  <canvas id="editorCanvas" width="480" height="480" style="display:none;border:1px solid #ccc;max-width:100%"></canvas>
+`;
+const previewWrap = document.getElementById('previewWrap');
+previewWrap.parentNode.insertBefore(editorWrap, previewWrap.nextSibling);
+
+const editorControls = document.getElementById('editorControls');
+const editorCanvas = document.getElementById('editorCanvas');
+const ctx = editorCanvas.getContext('2d');
+const toggleEditor = document.getElementById('toggleEditor');
+const cropSizeInput = document.getElementById('cropSize');
+const qualityInput = document.getElementById('qualityRange');
+const maxDimInput = document.getElementById('maxDim');
+
+let imgObj = null;
+let imageDrawScale = 1;
+let imageOffsetX = 0, imageOffsetY = 0;
+let cropRect = { x: 0, y: 0, w: 100, h: 100 };
+let dragging = false, dragOffsetX = 0, dragOffsetY = 0;
+
+function drawEditor() {
+  if (!imgObj) return;
+  const cw = editorCanvas.width, ch = editorCanvas.height;
+  ctx.clearRect(0,0,cw,ch);
+  ctx.drawImage(imgObj, imageOffsetX, imageOffsetY, imgObj.width*imageDrawScale, imgObj.height*imageDrawScale);
+  ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(0,0,cw,ch);
+  ctx.clearRect(cropRect.x, cropRect.y, cropRect.w, cropRect.h);
+  ctx.strokeStyle = '#0f9'; ctx.lineWidth = 2; ctx.strokeRect(cropRect.x+0.5, cropRect.y+0.5, cropRect.w-1, cropRect.h-1);
+}
+
+function fitImageToCanvas(image) {
+  const cw = editorCanvas.width, ch = editorCanvas.height;
+  const scale = Math.min(cw / image.width, ch / image.height);
+  imageDrawScale = scale;
+  imageOffsetX = Math.round((cw - image.width * scale) / 2);
+  imageOffsetY = Math.round((ch - image.height * scale) / 2);
+  const pct = parseInt(cropSizeInput.value,10) / 100;
+  const size = Math.round(Math.min(cw, ch) * pct);
+  cropRect.w = cropRect.h = size;
+  cropRect.x = Math.round((cw - size)/2);
+  cropRect.y = Math.round((ch - size)/2);
+}
+
+function loadImageToEditor(file) {
+  return new Promise((resolve,reject)=>{
+    const r = new FileReader();
+    r.onload = function(ev){ const im = new Image(); im.onload = function(){ imgObj = im; fitImageToCanvas(im); drawEditor(); resolve(); }; im.onerror = reject; im.src = ev.target.result; };
+    r.onerror = reject; r.readAsDataURL(file);
+  });
+}
+
+fileInput.addEventListener('change', async function(){
+  const f = fileInput.files && fileInput.files[0];
+  if (!f) { previewImg.style.display='none'; editorControls.style.display='none'; return; }
+  previewImg.src = URL.createObjectURL(f); previewImg.style.display='block';
+  editorControls.style.display='block'; await loadImageToEditor(f);
+});
+
+editorCanvas.addEventListener('mousedown', function(e){
+  const r = editorCanvas.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top;
+  if (x >= cropRect.x && x <= cropRect.x+cropRect.w && y >= cropRect.y && y <= cropRect.y+cropRect.h) { dragging = true; dragOffsetX = x - cropRect.x; dragOffsetY = y - cropRect.y; }
+});
+window.addEventListener('mousemove', function(e){ if (!dragging) return; const r = editorCanvas.getBoundingClientRect(); const x = e.clientX - r.left, y = e.clientY - r.top; cropRect.x = Math.max(0, Math.min(editorCanvas.width - cropRect.w, x - dragOffsetX)); cropRect.y = Math.max(0, Math.min(editorCanvas.height - cropRect.h, y - dragOffsetY)); drawEditor(); });
+window.addEventListener('mouseup', function(){ dragging=false; });
+
+cropSizeInput.addEventListener('input', function(){ const pct = parseInt(cropSizeInput.value,10)/100; const size = Math.round(Math.min(editorCanvas.width, editorCanvas.height) * pct); const cx = cropRect.x + cropRect.w/2, cy = cropRect.y + cropRect.h/2; cropRect.w = cropRect.h = size; cropRect.x = Math.max(0, Math.min(editorCanvas.width - cropRect.w, Math.round(cx - size/2))); cropRect.y = Math.max(0, Math.min(editorCanvas.height - cropRect.h, Math.round(cy - size/2))); drawEditor(); });
+
+toggleEditor.addEventListener('click', function(){ const visible = editorCanvas.style.display === 'block'; editorCanvas.style.display = visible ? 'none' : 'block'; toggleEditor.textContent = visible ? 'Edit Crop' : 'Close Editor'; });
+
+async function produceCroppedBlob(file) {
+  if (!file) return null;
+  try {
+    if (!imgObj) {
+      return await new Promise((resolve,reject)=>{
+        const reader = new FileReader(); reader.onload = function(ev){ const im=new Image(); im.onload=function(){ const size = Math.min(im.width, im.height); const sx=Math.floor((im.width-size)/2), sy=Math.floor((im.height-size)/2); const maxDim = parseInt(maxDimInput.value,10) || 800; const scale = Math.min(1, maxDim/size); const dst = document.createElement('canvas'); dst.width = Math.round(size*scale); dst.height = Math.round(size*scale); dst.getContext('2d').drawImage(im, sx, sy, size, size, 0,0, dst.width, dst.height); dst.toBlob(b=>resolve(b),'image/jpeg', (parseInt(qualityInput.value,10)||75)/100); }; im.src=ev.target.result; }; reader.readAsDataURL(file); });
+    }
+    const sx = Math.max(0, Math.round((cropRect.x - imageOffsetX) / imageDrawScale));
+    const sy = Math.max(0, Math.round((cropRect.y - imageOffsetY) / imageDrawScale));
+    const sw = Math.max(1, Math.round(cropRect.w / imageDrawScale));
+    const sh = Math.max(1, Math.round(cropRect.h / imageDrawScale));
+    const maxDim = parseInt(maxDimInput.value,10) || 800;
+    const scale = Math.min(1, maxDim / Math.max(sw, sh));
+    const dstW = Math.max(1, Math.round(sw * scale));
+    const dstH = Math.max(1, Math.round(sh * scale));
+    const tmp = document.createElement('canvas'); tmp.width = dstW; tmp.height = dstH; const tctx = tmp.getContext('2d'); tctx.drawImage(imgObj, sx, sy, sw, sh, 0, 0, dstW, dstH);
+    const blob = await new Promise((res,rej)=> tmp.toBlob(res, 'image/jpeg', (parseInt(qualityInput.value,10)||75)/100));
+    return blob;
+  } catch (e) { console.error('produceCroppedBlob error', e); return null; }
+}
+
+const theForm = document.querySelector('form');
+theForm.addEventListener('submit', async function(e){
+  e.preventDefault();
+  try {
+    const fd = new FormData(theForm);
+    const file = fileInput.files && fileInput.files[0];
+    if (file) {
+      const blob = await produceCroppedBlob(file);
+      if (blob) fd.set('photoFile', blob, 'photo.jpg');
+    }
+    const res = await fetch(theForm.action, { method: 'POST', body: fd, credentials: 'same-origin' });
+    if (res.redirected) window.location = res.url; else window.location = '/tests/<%= test.id || test._id %>';
+  } catch (err) {
+    console.error('Submit failed', err);
+    theForm.submit();
+  }
+});
+</script>
+

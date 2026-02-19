@@ -1,0 +1,384 @@
+<div class="card">
+  <h3><%= areaName %> - Queue</h3>
+  <p>Manage patients assigned to this area. Use the tabs to switch between the queue and specimen assignments.</p>
+
+  <div style="margin-top:12px; display:flex; gap:8px;">
+    <button id="tabQueue" class="button btn-small btn-primary">Queue</button>
+    <button id="tabSpecimens" class="button btn-small">Specimens</button>
+  </div>
+
+  <div id="queuePane" style="margin-top:12px;">
+    <!-- Create & assign removed: new patients are auto-created and assigned to Payment Area on encoding -->
+    <% if (!tests || tests.length === 0) { %>
+      <p class="text-center">No tests currently assigned to this area.</p>
+    <% } else { %>
+      <table style="width:100%; margin-top:12px;">
+        <thead>
+          <tr>
+            <th>Patient</th>
+            <th>Tests</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% // Unified rendering: server provides aggregated rows for every area in `tests`.
+             tests.forEach(row => { %>
+            <tr>
+              <td>
+                <strong><%= row.patient ? (row.patient.firstName + ' ' + row.patient.lastName) : 'Unknown' %></strong>
+                <% if (row.patient && row.patient.patientCode) { %>
+                  <div style="font-size:0.85em; color:var(--text-gray);">Code: <%= String(row.patient.patientCode).slice(-5) %></div>
+                <% } else { %>
+                  <div style="font-size:0.85em; color:var(--danger);">(Not encoded)</div>
+                <% } %>
+              </td>
+              <td>
+                <ul style="margin:0 0 0 12px; padding:0; list-style:disc;">
+                  <% if (Array.isArray(row.tests) && row.tests.length) {
+                       row.tests.forEach(t => {
+                         // Render a single collapsed row for Blood Chemistry tests (group variants)
+                         const tt = (t.testType || '').toString().toLowerCase();
+                         const isBloodChem = /blood\s*chemistry|blood-chemistry|^bc\b/i.test(tt) || (Array.isArray(t.requestedTests) && t.requestedTests.length > 1 && t.requestedTests.every(r=>/(blood|chemistry|bun|crea|sgpt|sgot|lipid|hba1c|albumin|blood[-_\s]?sugar)/i.test(String(r.key||r.label||''))));
+                         if (isBloodChem) {
+                           const label = (t.testType && t.testType.toString()) ? (t.testType.toString()) : 'Blood Chemistry'; %>
+                            <li style="margin-bottom:4px;"><%= label.replace(/-/g,' ').replace(/\b\w/g, function(ch){return ch.toUpperCase();}) %>
+                               <div style="margin-top:4px; font-size:0.85em;">
+                                <% if (areaName !== 'Payment Area') { %>
+                                 <form action="/reception/assign" method="POST" style="display:inline-block; margin-right:6px;">
+                                   <input type="hidden" name="testId" value="<%= t.id %>">
+                                   <select name="area" required style="margin-right:6px;">
+                                     <% areas.forEach(a => { %>
+                                       <option value="<%= a %>" <%= a === areaName ? 'selected' : '' %>><%= a %></option>
+                                     <% }) %>
+                                   </select>
+                                   <input type="text" name="specimen" placeholder="Specimen # (optional)" style="margin-right:6px;" <%= row.patientEncoded ? '' : 'disabled' %>>
+                                   <button class="button btn-primary btn-small" <%= row.patientEncoded ? '' : 'disabled' %>>Assign</button>
+                                 </form>
+                                <% } %>
+                               </div>
+                             </li>
+                         <% } else {
+                           // use area-specific requested list when available, otherwise fall back to whole test type
+                           const areaList = Array.isArray(t._areaRequested) && t._areaRequested.length ? t._areaRequested : (Array.isArray(t.requestedTests) ? t.requestedTests : []);
+                           if (areaList.length) {
+                             areaList.forEach(rt => { const amt = Number(rt.amount || 0); %>
+                              <li style="margin-bottom:4px;"><%= (rt.label || '').replace(/-/g,' ').replace(/\b\w/g, function(ch){return ch.toUpperCase();}) %> <span style="color:var(--text-gray);">(<%= rt.lab || 'clinical' %>)</span>
+                                 <div style="margin-top:4px; font-size:0.85em;">
+                                  <% if (areaName !== 'Payment Area') { %>
+                                   <form action="/reception/assign" method="POST" style="display:inline-block; margin-right:6px;">
+                                     <input type="hidden" name="testId" value="<%= t.id %>">
+                                     <select name="area" required style="margin-right:6px;">
+                                       <% areas.forEach(a => { %>
+                                         <option value="<%= a %>" <%= a === areaName ? 'selected' : '' %>><%= a %></option>
+                                       <% }) %>
+                                     </select>
+                                     <input type="text" name="specimen" placeholder="Specimen # (optional)" style="margin-right:6px;" <%= row.patientEncoded ? '' : 'disabled' %>>
+                                     <button class="button btn-primary btn-small" <%= row.patientEncoded ? '' : 'disabled' %>>Assign</button>
+                                   </form>
+                                  <% } %>
+                                   <!-- per-test View/Delete removed; use patient-level actions in Action column -->
+                                 </div>
+                               </li>
+                             <% })
+                           } else {
+                             const singleLabel = (t.testType || 'Test').toString().replace(/-/g,' ').replace(/\b\w/g, function(ch){return ch.toUpperCase();}); %>
+                             <li style="margin-bottom:4px;"><%= singleLabel %>
+                               <div style="margin-top:4px; font-size:0.85em;">
+                                 <% if (areaName !== 'Payment Area') { %>
+                                 <form action="/reception/assign" method="POST" style="display:inline-block; margin-right:6px;">
+                                   <input type="hidden" name="testId" value="<%= t.id %>">
+                                   <select name="area" required style="margin-right:6px;">
+                                     <% areas.forEach(a => { %>
+                                       <option value="<%= a %>" <%= a === areaName ? 'selected' : '' %>><%= a %></option>
+                                     <% }) %>
+                                   </select>
+                                   <input type="text" name="specimen" placeholder="Specimen # (optional)" style="margin-right:6px;" <%= row.patientEncoded ? '' : 'disabled' %>>
+                                   <button class="button btn-primary btn-small" <%= row.patientEncoded ? '' : 'disabled' %>>Assign</button>
+                                 </form>
+                                 <% } %>
+                                 <!-- per-test View/Delete removed; use patient-level actions in Action column -->
+                               </div>
+                             </li>
+                           <% }
+                         }
+                       })
+                     } else { %>
+                       <li>No tests</li>
+                     <% } %>
+                </ul>
+              </td>
+              <td>
+                <% if (areaName === 'Payment Area') { %>
+                  <form action="/reception/complete" method="POST" class="complete-form" style="display:inline-block; margin-left:6px;">
+                    <input type="hidden" name="patientId" value="<%= row.patient ? row.patient.id : '' %>">
+                    <input type="hidden" name="testIds" value="<%= (row.testIds || []).join(',') %>">
+                    <input type="hidden" name="area" value="<%= areaName %>">
+                    <div style="display:flex; gap:8px; align-items:center;">
+                      <div>
+                        <label style="display:block; font-size:0.85em;">Clinical Lab Amount</label>
+                        <input type="number" name="amount_clinical" class="payment-amount" step="0.01" min="0" placeholder="Clinical" style="width:140px; margin-right:6px;" value="<%= (row.clinicalTotal || 0).toFixed(2) %>">
+                      </div>
+                      <div>
+                        <label style="display:block; font-size:0.85em;">X-ray Lab Amount</label>
+                        <input type="number" name="amount_xray" class="payment-amount" step="0.01" min="0" placeholder="X-ray" style="width:140px; margin-right:6px;" value="<%= (row.xrayTotal || 0).toFixed(2) %>">
+                      </div>
+                      <div style="align-self:flex-end;">
+                        <button type="submit" class="button btn-success btn-small payment-submit" title="Mark complete" onclick="return paymentSubmitFallback(this)">Mark Complete</button>
+                      </div>
+                    </div>
+                  </form>
+                  <form action="/reception/delete" method="POST" class="delete-form" style="display:inline-block; margin-left:6px;" onsubmit="return confirm('Delete these tests from the queue?');">
+                    <input type="hidden" name="testId" value="<%= (row.testIds && row.testIds.length ? row.testIds[0] : '') %>">
+                    <input type="hidden" name="area" value="<%= areaName %>">
+                    <button type="submit" class="button btn-danger btn-small" title="Delete">Delete</button>
+                  </form>
+                <% } else { %>
+                  <!-- For non-payment areas show a single patient-level Mark Complete button -->
+                  <form action="/reception/complete" method="POST" class="complete-form" style="display:inline-block; margin-left:6px;">
+                    <input type="hidden" name="patientId" value="<%= row.patient ? row.patient.id : '' %>">
+                    <input type="hidden" name="area" value="<%= areaName %>">
+                    <button type="submit" class="button btn-success btn-small" title="Mark Complete">Mark Complete</button>
+                  </form>
+                  <form action="/reception/delete" method="POST" class="delete-form" style="display:inline-block; margin-left:6px;" onsubmit="return confirm('Delete these tests from the queue?');">
+                    <input type="hidden" name="testId" value="<%= (row.testIds && row.testIds.length ? row.testIds[0] : '') %>">
+                    <input type="hidden" name="area" value="<%= areaName %>">
+                    <button type="submit" class="button btn-danger btn-small" title="Delete">Delete</button>
+                  </form>
+                <% } %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+
+  <div id="specimensPane" style="margin-top:12px; display:none;">
+    <% if (!specimens || specimens.length === 0) { %>
+      <p class="text-center">No specimens assigned for this area yet.</p>
+    <% } else { %>
+      <table style="width:100%; margin-top:12px;">
+        <thead>
+          <tr>
+            <th>Test ID</th>
+            <th>Specimen #</th>
+            <th>Patient</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% specimens.forEach(s => { %>
+            <tr>
+              <td><%= s.testId %></td>
+              <td><%= s.specimen %></td>
+              <td><%= s.patient ? s.patient.firstName + ' ' + s.patient.lastName : 'Unknown' %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+
+  <div style="margin-top:14px;">
+    <a href="/reception" class="button btn-secondary">Back to Areas</a>
+  </div>
+
+  <script>
+    (function(){
+      const tabQueue = document.getElementById('tabQueue');
+      const tabSpecimens = document.getElementById('tabSpecimens');
+      const queuePane = document.getElementById('queuePane');
+      const specimensPane = document.getElementById('specimensPane');
+      tabQueue.addEventListener('click', () => { queuePane.style.display='block'; specimensPane.style.display='none'; tabQueue.classList.add('btn-primary'); tabSpecimens.classList.remove('btn-primary'); });
+      tabSpecimens.addEventListener('click', () => { queuePane.style.display='none'; specimensPane.style.display='block'; tabSpecimens.classList.add('btn-primary'); tabQueue.classList.remove('btn-primary'); });
+    })();
+
+    // AJAX handlers for complete/delete to avoid navigation and keep on same area page
+    (function(){
+      console.debug('[DEBUG] reception area script init');
+      try {
+        document.addEventListener('DOMContentLoaded', () => {
+          console.debug('[DEBUG] DOMContentLoaded, .complete-form count=', document.querySelectorAll('.complete-form').length);
+        });
+        // also log immediately in case script runs after DOM is ready
+        console.debug('[DEBUG] immediate .complete-form count=', document.querySelectorAll('.complete-form').length);
+      } catch (e) {
+        console.warn('[DEBUG] failed to attach debug listeners', e);
+      }
+      function serializeForm(form) {
+        const data = new URLSearchParams();
+        for (const el of form.elements) {
+          if (!el.name) continue;
+          if ((el.type === 'checkbox' || el.type === 'radio') && !el.checked) continue;
+          data.append(el.name, el.value);
+        }
+        return data;
+      }
+
+      // Fallback submit helper for Payment Area button clicks.
+      // Validates that at least one lab amount (clinical or x-ray) is a positive number,
+      // logs debugging info, and triggers a programmatic submit which will be intercepted
+      // by the AJAX submit handler above.
+      function paymentSubmitFallback(btn) {
+        try {
+          const form = btn && btn.closest ? btn.closest('form') : null;
+          if (!form) return true;
+          const amtInputs = Array.from(form.querySelectorAll('.payment-amount'));
+          if (amtInputs.length) {
+            let anyValid = false;
+            for (const inp of amtInputs) {
+              const raw = inp.value;
+              const parsed = parseFloat(String(raw).replace(/[,\s]/g, ''));
+              const htmlValid = typeof inp.checkValidity === 'function' ? inp.checkValidity() : true;
+              const valid = htmlValid && Number.isFinite(parsed) && parsed > 0;
+              console.debug('[DEBUG] paymentSubmitFallback', { name: inp.name, raw, parsed, htmlValid, valid });
+              if (valid) { anyValid = true; break; }
+            }
+            if (!anyValid) {
+              alert('Please enter a valid positive amount for Clinical and/or X-ray before marking complete.');
+              return false;
+            }
+          }
+          // Trigger form submission programmatically so the AJAX handler runs.
+          if (typeof form.requestSubmit === 'function') form.requestSubmit(); else form.submit();
+          // Prevent default click action (we already submitted programmatically)
+          return false;
+        } catch (e) {
+          console.error('paymentSubmitFallback error', e);
+          return true;
+        }
+      }
+
+      // Enable/disable Payment Area submit buttons based on amount inputs in the same form.
+      // If at least one lab amount is a valid positive number, enable submit.
+      document.querySelectorAll('form').forEach(form => {
+        const inputs = Array.from(form.querySelectorAll('.payment-amount'));
+        if (!inputs.length) return;
+        const btn = form.querySelector('.payment-submit');
+        function parseAmount(v) {
+          if (v === null || v === undefined) return NaN;
+          try { return parseFloat(String(v).replace(/[,\s]/g, '')); } catch (e) { return NaN; }
+        }
+        function update() {
+          let anyValid = false;
+          for (const input of inputs) {
+            const raw = input.value;
+            const amt = parseAmount(raw);
+            let htmlValid = true;
+            try { htmlValid = typeof input.checkValidity === 'function' ? input.checkValidity() : true; } catch (e) { htmlValid = true; }
+            const valid = htmlValid && Number.isFinite(amt) && amt > 0;
+            if (valid) { anyValid = true; break; }
+          }
+          if (btn) btn.disabled = !anyValid;
+          console.debug('[DEBUG] payment-amount form update', { formAction: form.action, anyValid, buttonDisabled: btn ? btn.disabled : null });
+        }
+        ['input','change','blur'].forEach(ev => inputs.forEach(i => i.addEventListener(ev, update)));
+        setTimeout(update, 0);
+      });
+
+      // handle complete (AJAX) — use URLSearchParams and mimic the working delete flow
+      document.querySelectorAll('.complete-form').forEach(form => {
+        // normal submit interception
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          console.debug('[DEBUG] complete-form submit triggered for form action=', form.action);
+          const btn = form.querySelector('button[type="submit"]');
+          if (btn) btn.disabled = true;
+
+          // use URLSearchParams directly (fetch will set Content-Type correctly)
+          let bodyParams = null;
+          try { bodyParams = serializeForm(form); } catch (serr) { console.warn('serializeForm failed', serr); bodyParams = new URLSearchParams(); }
+          console.debug('[DEBUG] body to send=', bodyParams.toString());
+
+          let resp;
+          try {
+            resp = await fetch(form.action, {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+              },
+              body: bodyParams
+            });
+            console.debug('[DEBUG] fetch completed, status=', resp.status);
+          } catch (err) {
+            if (btn) btn.disabled = false;
+            console.error('Network error completing test', err);
+            alert('Network error marking complete');
+            return;
+          }
+
+          if (btn) btn.disabled = false;
+          let json = null;
+          try { json = await resp.json(); } catch (e) { /* ignore parse errors */ }
+          console.debug('[DEBUG] parsed json response=', json);
+          if (!resp.ok) {
+            const msg = (json && json.message) ? json.message : 'Error marking complete';
+            alert(msg);
+            return;
+          }
+          // remove the row from the table so next patient shows up
+          const row = form.closest('tr');
+          if (row) row.remove();
+          if (json && json.message) {
+            const note = document.createElement('div');
+            note.className = 'alert alert-success active';
+            note.textContent = json.message;
+            const main = document.querySelector('.main-content') || document.body;
+            main.insertBefore(note, main.firstChild);
+            setTimeout(() => note.classList.remove('active'), 3000);
+            try { localStorage.setItem('reception:updated', String(Date.now())); } catch (e) { }
+          }
+        });
+
+        // safety: prevent silent failures if browser validation/disabled state blocks click
+        const submitBtn = form.querySelector('button[type="submit"]');
+        if (submitBtn) {
+          submitBtn.addEventListener('click', (ev) => {
+            // if button is disabled when clicked, stop native behavior to avoid confusion
+            if (submitBtn.disabled) {
+              ev.preventDefault();
+              ev.stopImmediatePropagation();
+            }
+          });
+        }
+      });
+
+      // handle delete
+      document.querySelectorAll('.delete-form').forEach(form => {
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          if (!confirm('Delete this test from the queue?')) return;
+          const btn = form.querySelector('button[type="submit"]');
+          btn.disabled = true;
+          const resp = await fetch(form.action, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+            body: serializeForm(form)
+          }).catch(err => ({ ok: false, error: err }));
+          btn.disabled = false;
+          if (!resp || !resp.ok) {
+            alert('Error deleting test');
+            return;
+          }
+          const json = await resp.json().catch(() => null);
+          const row = form.closest('tr');
+          if (row) row.remove();
+          if (json && json.message) {
+            const note = document.createElement('div');
+            note.className = 'alert alert-success active';
+            note.textContent = json.message;
+            document.querySelector('.main-content').insertBefore(note, document.querySelector('.main-content').firstChild);
+            setTimeout(() => note.classList.remove('active'), 3000);
+            try {
+              // notify other tabs via localStorage so kiosk/assigned views refresh immediately
+              localStorage.setItem('reception:updated', String(Date.now()));
+            } catch (e) { }
+          }
+        });
+      });
+    })();
+  </script>
+
+</div>

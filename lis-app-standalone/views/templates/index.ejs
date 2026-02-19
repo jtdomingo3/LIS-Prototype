@@ -1,0 +1,47 @@
+<div class="card">
+  <h3>Report Templates</h3>
+
+  <div class="flex-between mb-20">
+    <a href="/templates/new" class="button btn-primary">+ Create New Template</a>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Template Name</th>
+        <th>Test Type</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% 
+        // Filter out sample-image templates and size placeholders (Full letter / Half letter)
+        const visibleTemplates = (templates || []).filter(t => {
+          const name = (t.name || '').toLowerCase();
+          // exclude explicit size placeholders
+          if (name === 'full letter' || name === 'half letter') return false;
+          // exclude names that look like image filenames (hex groups separated by spaces or dashes)
+          const compact = name.replace(/[-\s]/g, '');
+          if (/^[0-9a-f]{20,}$/.test(compact)) return false;
+          return true;
+        });
+      %>
+      <% if (visibleTemplates && visibleTemplates.length) { %>
+        <% visibleTemplates.forEach(t => { %>
+          <tr>
+            <td><%= t.name %></td>
+            <td><%= t.testType %></td>
+            <td class="action-buttons">
+              <a href="/templates/<%= t.id %>" class="button btn-success btn-small">View</a>
+              <% if (!t.isStatic) { %>
+                <a href="/templates/<%= t.id %>/edit" class="button btn-orange btn-small">Edit</a>
+              <% } %>
+            </td>
+          </tr>
+        <% }) %>
+      <% } else { %>
+        <tr><td colspan="3">No templates found.</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>

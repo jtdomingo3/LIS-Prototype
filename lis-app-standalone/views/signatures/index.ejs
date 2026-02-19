@@ -1,0 +1,91 @@
+<div class="card">
+  <h3>Signatures</h3>
+  <form method="GET" action="/signatures" style="display:flex; gap:8px; margin-bottom:12px; align-items:center;">
+    <input type="text" name="search" placeholder="Search test id / patient / type..." value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>" style="flex:1; min-width:360px; padding:8px; height:44px; box-sizing:border-box;">
+    <input type="date" name="date" onchange="this.form.submit()" value="<%= typeof dateFilter !== 'undefined' ? dateFilter : '' %>" style="width:170px; height:44px; padding:6px; box-sizing:border-box;">
+    <select name="type" onchange="this.form.submit()" style="width:220px; padding:8px;">
+      <option value="">-- All Test Types --</option>
+      <% (availableTestTypes || []).forEach(function(tt){ %>
+        <option value="<%= tt %>" <%= (typeof typeFilter !== 'undefined' && typeFilter === tt) ? 'selected' : '' %>><%= tt %></option>
+      <% }) %>
+    </select>
+    
+    <a href="/signatures" class="button btn-secondary">Clear</a>
+  </form>
+
+  <% if (tests && tests.length) { %>
+    <table>
+      <thead>
+        <tr>
+          <th>Test ID</th>
+          <th>Patient</th>
+          <th>Type</th>
+          <th>Date</th>
+          <th>Signature</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% tests.forEach(t => { %>
+          <tr>
+            <td><a href="/tests/<%= t.id %>"><%= t.testId || t.id %></a></td>
+            <td><%= t.patient ? (t.patient.lastName + ', ' + t.patient.firstName) : 'Unknown' %></td>
+            <td><%= t.testType || t.template || '' %></td>
+            <td><%= t.testDate ? new Date(t.testDate).toLocaleDateString() : (t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '') %></td>
+            <td>
+              <% const sigs = (t.results && t.results.signatures) ? t.results.signatures : {}; %>
+              <% const uid = currentUser && (currentUser.id || currentUser._id) ? String(currentUser.id || currentUser._id) : (currentUser && currentUser.email ? currentUser.email : null); %>
+              <% if (uid && sigs[uid] && sigs[uid].filename) { %>
+                <div>Signed by <%= sigs[uid].name %> <small>(<%= new Date(sigs[uid].uploadedAt).toLocaleString() %>)</small></div>
+                <div><img src="/assets/signature/<%= sigs[uid].filename %>" alt="signature" style="max-height:48px;border:1px solid #eee;padding:4px;background:#fff;" /></div>
+              <% } else { %>
+                <div>-</div>
+              <% } %>
+            </td>
+            <td style="white-space:nowrap">
+              <% if (!(uid && sigs[uid] && sigs[uid].filename)) { %>
+                <form action="/signatures/<%= t.id %>/sign" method="POST" style="display:inline-block;margin:0;">
+                  <button class="button btn-primary btn-small">Apply My Signature</button>
+                </form>
+              <% } %>
+              <a href="/reports/preview/<%= t.id %>" target="_blank" class="button btn-orange btn-small">Report</a>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } else { %>
+    <p>No signable tests found.</p>
+  <% } %>
+  
+  <% if (typeof totalPages !== 'undefined' && totalPages > 1) { %>
+    <div class="flex-between mt-20">
+      <% if (hasPrevPage) { %>
+        <a href="?page=<%= prevPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&priority=<%= encodeURIComponent(priorityFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link">Previous</a>
+      <% } %>
+
+      <div>
+        <% 
+          const maxDisplay = 10;
+          const half = Math.floor(maxDisplay/2);
+          let start = Math.max(1, currentPage - half);
+          let end = Math.min(totalPages, start + maxDisplay - 1);
+          start = Math.max(1, end - maxDisplay + 1);
+          if (totalPages > maxDisplay && start > 1) { %>
+            <a href="?page=1&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&priority=<%= encodeURIComponent(priorityFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link">First</a>
+        <% }
+          for (let p = start; p <= end; p++) {
+        %>
+          <a href="?page=<%= p %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&priority=<%= encodeURIComponent(priorityFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link <%= p === currentPage ? 'active' : '' %>"><%= p %></a>
+        <% } 
+          if (totalPages > maxDisplay && end < totalPages) { %>
+            <a href="?page=<%= totalPages %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&priority=<%= encodeURIComponent(priorityFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link">Last</a>
+        <% } %>
+      </div>
+
+      <% if (hasNextPage) { %>
+        <a href="?page=<%= nextPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&priority=<%= encodeURIComponent(priorityFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link">Next</a>
+      <% } %>
+    </div>
+  <% } %>
+</div>

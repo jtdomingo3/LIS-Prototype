@@ -262,26 +262,22 @@ async function createWindow() {
     injectClientScripts();
   });
 
-  // Prevent top-level navigations to API/JSON endpoints from loading raw
-  // responses in the main frame. When the user or app attempts to navigate to
-  // an API path (e.g. `/patients`, `/export/data.json`) while offline or the
-  // server is unreachable, block the navigation and show the offline UI.
+  // When offline, intercept all main-frame navigations to the server and
+  // redirect them to the local offline server instead. The local server now
+  // renders full EJS pages so users can navigate the entire app offline.
   mainWindow.webContents.on('will-navigate', (event, targetUrl) => {
     try {
       if (!config.SERVER_URL) return;
-      // Only intervene when we're currently offline. When online let the
-      // navigation proceed so the renderer loads the server-provided HTML.
+      // When online, let the navigation go to the real server
       if (isOnline) return;
       const base = config.SERVER_URL.replace(/\/$/, '');
       if (!targetUrl || !targetUrl.startsWith(base)) return;
-      const path = targetUrl.slice(base.length) || '/';
-      const apiPrefixRe = /^\/(api|export|patients|users|tests|reports|reception|templates|signatures|auth)(\/|$)/i;
-      const looksLikeApi = apiPrefixRe.test(path) || path.toLowerCase().endsWith('.json');
-      if (looksLikeApi) {
-        event.preventDefault();
-        console.log('[Main] blocked main-frame navigation to API path, loading offline UI instead:', path);
-        try { loadOfflinePage(path); } catch (e) {}
-      }
+      const urlPath = targetUrl.slice(base.length) || '/';
+      event.preventDefault();
+      console.log('[Main] offline — redirecting navigation to local server:', urlPath);
+      try {
+        mainWindow.loadURL(`http://127.0.0.1:${config.LOCAL_PORT}${urlPath}`);
+      } catch (e) { loadOfflinePage(urlPath); }
     } catch (e) { /* ignore */ }
   });
 
@@ -370,11 +366,9 @@ async function loadApp() {
 }
 
 function loadOfflinePage(urlPath) {
-  if (pageCache.has(urlPath) || pageCache.has(urlPath.split('?')[0])) {
-    mainWindow.loadURL(`http://127.0.0.1:${config.LOCAL_PORT}${urlPath}`);
-  } else {
-    mainWindow.loadFile(path.join(__dirname, 'renderer', 'offline.html'));
-  }
+  // The local server now renders full EJS pages with DataStore data,
+  // so always redirect there for offline viewing.
+  mainWindow.loadURL(`http://127.0.0.1:${config.LOCAL_PORT}${urlPath}`);
 }
 
 /* ==================================================================
@@ -385,69 +379,34 @@ function setupRequestInterceptor() {
 
   ses.webRequest.onBeforeRequest({ urls: [`${config.SERVER_URL}/*`] }, (details, callback) => {
     if (isOnline) return callback({});
+
+    // When offline, redirect ALL requests to the local server which now
+    // renders full EJS pages and serves DataStore-backed JSON endpoints.
     try {
-      const urlPath = new URL(details.url).pathname;
-      // When offline, avoid letting the app navigate to the server's /logout
-      // route (which would log the user out). Allow viewing the login page
-      // or the root, but block logout attempts and route them to the local UI.
-      if (urlPath === '/login' || urlPath === '/') {
-        console.log('[Intercept] allowing auth route through (offline):', details.method, urlPath);
-        return callback({});
-      }
-      if (urlPath === '/logout') {
-        console.log('[Intercept] blocking logout while offline:', details.method, urlPath);
-        return callback({ redirectURL: `http://127.0.0.1:${config.LOCAL_PORT}/` });
-      }
-    } catch { return callback({}); }
-
-    if (details.method !== 'GET') {
-      const body = parseUploadData(details.uploadData);
-      operationQueue.add({ method: details.method, url: details.url, body, timestamp: new Date().toISOString() });
-      callback({ cancel: true });
-      const referer = details.referrer || details.url;
-      let refPath = '/';
-      try { refPath = new URL(referer).pathname; } catch { }
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.loadURL(`http://127.0.0.1:${config.LOCAL_PORT}${refPath}?offline_queued=1`);
-      }
-      return;
-    }
-
-    if (details.resourceType === 'mainFrame') {
       const urlObj = new URL(details.url);
       const urlPath = urlObj.pathname + (urlObj.search || '');
-      // Avoid loading raw API JSON pages into the main window. If the path looks
-      // like an API/export/json route, redirect to the local server root (which
-      // will serve cached HTML or the offline page) instead of the JSON endpoint.
-      const apiPrefixRe = /^\/(api|export|patients|users|tests|reports|reception|templates|signatures|auth)(\/|$)/i;
-      const looksLikeApi = apiPrefixRe.test(urlPath) || urlPath.toLowerCase().endsWith('.json');
-      if (looksLikeApi) {
-        // Redirect to local root so the app UI is shown, not raw JSON
-        callback({ redirectURL: `http://127.0.0.1:${config.LOCAL_PORT}/` });
+
+      // For non-GET methods (POST/PUT/DELETE), queue the operation
+      if (details.method !== 'GET') {
+        const body = parseUploadData(details.uploadData);
+        operationQueue.add({ method: details.method, url: details.url, body, timestamp: new Date().toISOString() });
+        // Redirect to local server so the route handler processes the form
+        // (which will also save to DataStore for offline mutations)
+        callback({ redirectURL: `http://127.0.0.1:${config.LOCAL_PORT}${urlPath}` });
         return;
       }
+
+      // Skip static asset extensions — let Electron cache handle those
+      if (/\.(js|css|png|jpg|jpeg|svg|woff2?|ico|map|mp3|mp4|webp|ttf|eot)$/i.test(urlPath)) {
+        return callback({});
+      }
+
+      // Redirect all GET requests to the local server
+      console.log('[Intercept] offline — redirecting to local server:', details.method, urlPath);
       callback({ redirectURL: `http://127.0.0.1:${config.LOCAL_PORT}${urlPath}` });
-      return;
+    } catch (e) {
+      callback({});
     }
-
-    // For other GET requests while offline, redirect API/fetch requests to
-    // the local server so the renderer can fetch JSON from the DataStore.
-    if (details.method === 'GET') {
-      try {
-        const urlObj = new URL(details.url);
-        const urlPath = urlObj.pathname + (urlObj.search || '');
-        // Skip static asset extensions — let Electron cache handle those
-        if (/\.(js|css|png|jpg|jpeg|svg|woff2?|ico|map|mp3|mp4|webp|ttf|eot)$/i.test(urlPath)) {
-          return callback({});
-        }
-        // Avoid redirecting auth routes
-        if (urlPath === '/login' || urlPath === '/logout' || urlPath === '/') return callback({});
-        // Redirect to local server (it will serve cached pages or DataStore JSON)
-        return callback({ redirectURL: `http://127.0.0.1:${config.LOCAL_PORT}${urlPath}` });
-      } catch (e) { return callback({}); }
-    }
-
-    callback({});
   });
 }
 

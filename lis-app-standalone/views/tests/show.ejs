@@ -1,0 +1,46 @@
+<div class="card">
+  <h3>Test Details</h3>
+
+  <div class="card">
+    <p><strong>Test ID:</strong> <%= test.testId %></p>
+    <p><strong>Patient:</strong> <%= test.patient ? (test.patient.firstName + ' ' + test.patient.lastName) : 'Unknown' %></p>
+    <p><strong>Test Type:</strong> <%= test.testType %></p>
+    <p><strong>Date:</strong> <%= test.testDate ? new Date(test.testDate).toLocaleDateString() : '' %></p>
+    <p><strong>Status:</strong> <span class="badge"><%= test.status %></span></p>
+    <p><strong>Requested By:</strong> <%= test.requestedBy ? test.requestedBy.name : 'N/A' %></p>
+    <p><strong>Performed By:</strong> <%= test.performedBy ? test.performedBy.name : 'N/A' %></p>
+    <p><strong>Results:</strong>
+      <pre style="white-space:pre-wrap;"><% if (test.results && typeof test.results === 'object') { %><%= JSON.stringify(test.results, null, 2) %><% } else { %><%= test.results || 'No results' %><% } %></pre>
+    </p>
+  </div>
+
+  <div class="action-buttons mt-20">
+    <a href="/tests/<%= test.id %>/edit" class="button btn-primary">Edit</a>
+    <% 
+      const isDoctor = String(test.testType || '').toLowerCase().includes('doctor') || (Array.isArray(test.requestedTests) && test.requestedTests.some(rr => String(rr && (rr.label || rr.key) || '').toLowerCase().includes('doctor')));
+      const isSendout = String(test.status || '').toLowerCase() === 'sendout' || (Array.isArray(test.requestedTests) && test.requestedTests.some(rr => {
+        try { const lab = String(rr.lab || '').toLowerCase(); const lbl = String(rr.label || '').toLowerCase(); return lab === 'external' || lbl.includes('send out') || lbl.includes('sendout') || lbl.includes('for send'); } catch (e) { return false; }
+      }));
+      const hasResults = (test.results && (typeof test.results === 'object' ? Object.keys(test.results).length > 0 : String(test.results).trim().length > 0));
+      // Consider Released or presence of completedAt as report-eligible as well
+      const statusStr = String(test.status || '').toLowerCase();
+      const isCompleted = (statusStr === 'completed' || statusStr === 'released' || Boolean(test.completedAt));
+      const showReport = hasResults || isCompleted;
+    %>
+    <% 
+      // normalize test type for additional CT/BT detection
+      const tt = String(test.testType || '').toLowerCase();
+      const basicMatch = (/fecalysis/i.test(test.testType) || /(fecal\s*occult|fecal-occult|fecaloccult)/i.test(test.testType) || /urinalysis/i.test(test.testType) || /hemato|hematology|cbc/i.test(test.testType) || /(blood\s*typing|blood-typing|bloodtyping)/i.test(test.testType) || /serol|serology/i.test(test.testType) || /thyroid|thyroid\s*panel|thyroid-panel/i.test(test.testType) || /pregnan|pregnancy|pregnancy\s*test/i.test(test.testType) || /dengue/i.test(test.testType) || /pt|prothrombin|pt-aptt|ptaptt/i.test(test.testType) || /blood|blood\s*chemistry|blood-chemistry|bun|crea|creatinine/i.test(test.testType) || /(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(test.testType) || /(bleeding|clotting|ct\s*&?\s*bt|ct\s*and\s*bt|ct\s*bt|ctbt)/i.test(test.testType) || /(x-?ray|xray|radiograph)/i.test(test.testType) || /(ecg|electrocardio|electrocardiogram)/i.test(test.testType) || /(echo|echocardiograph|echocardiography|2d\s*echo|2decho)/i.test(test.testType) || /(ultra|ultrasound)/i.test(test.testType) || /(drug\s*test|drugtest)/i.test(test.testType));
+      const isCtBt = (tt.indexOf('ct') !== -1 && tt.indexOf('bt') !== -1) || /ct\s*[\/&]?\s*bt|ctbt/i.test(test.testType);
+      if (!isDoctor && !isSendout && test.testType && (basicMatch || isCtBt)) { %>
+        <a href="/tests/<%= test.id %>/results" class="button btn-success">Enter Results</a>
+    <% } %>
+    <% if (showReport) { %>
+      <a href="/reports/preview/<%= test.id %>" class="button btn-orange" target="_blank">View Report</a>
+    <% } %>
+    <a href="/tests" class="button btn-secondary">Back to Tests</a>
+    <form action="/tests/<%= test.id %>?_method=DELETE" method="POST" style="display:inline-block;">
+      <button class="button btn-danger">Delete</button>
+    </form>
+  </div>
+</div>

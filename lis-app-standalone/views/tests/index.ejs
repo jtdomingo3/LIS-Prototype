@@ -1,0 +1,107 @@
+<div class="card">
+  <h3>Test & Results Management</h3>
+
+  <div class="flex-between mb-20">
+    <div class="flex">
+      <a href="/tests/new" class="button btn-primary">+ Create New Test</a>
+    </div>
+    <div>
+      <form method="GET" action="/tests" style="display:flex; gap:8px; align-items:center;">
+        <select name="status" style="padding:0 12px; height:44px; font-size:14px; width:220px; box-sizing:border-box; border-radius:8px; border:1px solid #d0d7de; background:#fff;" onchange="this.form.submit();">
+          <option value="">All Statuses</option>
+          <option value="Payment Area" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Payment Area') ? 'selected' : '' %>>Payment Area</option>
+          <option value="Extraction Area" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Extraction Area') ? 'selected' : '' %>>Extraction Area</option>
+          <option value="Pending" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Pending') ? 'selected' : '' %>>Pending</option>
+          <option value="Awaiting" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Awaiting') ? 'selected' : '' %>>Awaiting</option>
+          <option value="In Progress" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'In Progress') ? 'selected' : '' %>>In Progress</option>
+          <option value="Completed" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Completed') ? 'selected' : '' %>>Completed</option>
+        </select>
+        <input type="text" name="search" class="search-box" placeholder="Search tests by patient name or ID..." value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>" style="height:44px; padding:10px 14px; font-size:14px; min-width:240px; flex:1; box-sizing:border-box; border-radius:8px; border:1px solid #d0d7de; margin:0 8px;">
+        <input type="date" name="date" onchange="this.form.submit();" value="<%= typeof dateFilter !== 'undefined' ? dateFilter : '' %>" style="height:44px; padding:6px;">
+        <select name="testType" style="padding:0 12px; height:44px; font-size:14px; width:220px; box-sizing:border-box; border-radius:8px; border:1px solid #d0d7de; background:#fff;" onchange="this.form.submit();">
+          <option value="">All Test Types</option>
+          <% if (Array.isArray(availableTestTypes)) { availableTestTypes.forEach(function(tt){ %>
+            <option value="<%= tt %>" <%= (typeof typeFilter !== 'undefined' && typeFilter === tt) ? 'selected' : '' %>><%= tt %></option>
+          <% }) } %>
+        </select>
+        <a href="/tests" class="button btn-secondary" style="height:44px; display:inline-flex; align-items:center; padding:0 14px; border-radius:8px;">Clear Filter</a>
+      </form>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Test ID</th>
+        <th>Patient</th>
+        <th>Test Type</th>
+        <th>Date</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (tests && tests.length) { %>
+        <% tests.forEach(test => { %>
+          <tr>
+            <td><%= test.testId %></td>
+            <td><%= test.patient ? (test.patient.firstName + ' ' + test.patient.lastName) : 'Unknown' %></td>
+            <td><%= test.testType %></td>
+            <td><%= test.testDate ? new Date(test.testDate).toLocaleDateString() : '' %></td>
+            <td><span class="badge <%= test.status === 'Completed' ? 'badge-success' : (test.status === 'In Progress' ? 'badge-warning' : '') %>"><%= test.status %></span></td>
+            <td class="action-buttons">
+              <% 
+                const isDoctor = String(test.testType || '').toLowerCase().includes('doctor') || (Array.isArray(test.requestedTests) && test.requestedTests.some(rr => String(rr && (rr.label || rr.key) || '').toLowerCase().includes('doctor')));
+                const isSendout = String(test.status || '').toLowerCase() === 'sendout' || (Array.isArray(test.requestedTests) && test.requestedTests.some(rr => {
+                  try { const lab = String(rr.lab || '').toLowerCase(); const lbl = String(rr.label || '').toLowerCase(); return lab === 'external' || lbl.includes('send out') || lbl.includes('sendout') || lbl.includes('for send'); } catch (e) { return false; }
+                }));
+              %>
+              <% if (!isDoctor && !isSendout) { %>
+                <a href="/tests/<%= test.id %>/results" class="button btn-primary btn-small">Enter Result</a>
+              <% } %>
+              <a href="/tests/<%= test.id %>" class="button btn-orange btn-small">View</a>
+              <% if (test.status === 'Completed') { %>
+                <a href="/reports/preview/<%= test.id %>" class="button btn-orange btn-small">Report</a>
+              <% } %>
+            </td>
+          </tr>
+        <% }) %>
+      <% } else { %>
+        <tr><td colspan="6">No tests found.</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+
+  <% if (typeof totalPages !== 'undefined' && totalPages > 1) { %>
+    <div class="flex-between mt-20">
+      <% if (hasPrevPage) { %>
+        <a href="?page=<%= prevPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link">Previous</a>
+      <% } %>
+
+      <div>
+        <% 
+          const maxDisplay = 10;
+          const half = Math.floor(maxDisplay/2);
+          let start = Math.max(1, currentPage - half);
+          let end = Math.min(totalPages, start + maxDisplay - 1);
+          start = Math.max(1, end - maxDisplay + 1);
+          // Show First when there are more pages than maxDisplay and the window doesn't include page 1
+          if (totalPages > maxDisplay && start > 1) { %>
+            <a href="?page=1&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link">First</a>
+        <% }
+          for (let p = start; p <= end; p++) {
+        %>
+          <a href="?page=<%= p %>&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link <%= p === currentPage ? 'active' : '' %>"><%= p %></a>
+        <% } 
+          // Show Last when there are more pages than maxDisplay and the window doesn't include the last page
+          if (totalPages > maxDisplay && end < totalPages) { %>
+            <a href="?page=<%= totalPages %>&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link">Last</a>
+        <% } %>
+      </div>
+
+      <% if (hasNextPage) { %>
+        <a href="?page=<%= nextPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link">Next</a>
+      <% } %>
+    </div>
+  <% } %>
+</div>

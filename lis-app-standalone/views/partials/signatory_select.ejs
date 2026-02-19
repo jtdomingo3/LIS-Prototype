@@ -1,0 +1,84 @@
+<div class="signatory-block">
+  <div class="form-row">
+    <label><%= label %></label>
+    <select name="<%= prefix %>Select" class="signatory-select" data-name-input="<%= nameInput %>" data-license-input="<%= licenseInput %>">
+      <option value="">-- Select user --</option>
+      <% 
+        var filteredUsers = (typeof allUsers !== 'undefined' && allUsers) ? allUsers : [];
+        if (typeof role !== 'undefined' && role) {
+          try {
+            if (Array.isArray(role)) {
+              filteredUsers = filteredUsers.filter(function(u){ return role.indexOf((u.role || '')) !== -1; });
+            } else if (typeof role === 'string' && role.indexOf(',') !== -1) {
+              var rolesArr = role.split(',').map(function(x){ return x.trim(); });
+              filteredUsers = filteredUsers.filter(function(u){ return rolesArr.indexOf((u.role || '')) !== -1; });
+            } else {
+              filteredUsers = filteredUsers.filter(function(u){ return (u.role || '') === role; });
+            }
+          } catch (e) { /* ignore filter errors */ }
+        }
+        if (filteredUsers && filteredUsers.length) {
+          filteredUsers.forEach(function(u){ %>
+            <option value="<%= u.id %>" data-name="<%= u.name %>" data-license="<%= u.licenseNumber || '' %>" data-designation="<%= u.role || '' %>" <%= (existingName && existingName === u.name) ? 'selected' : '' %> <%= (filteredUsers.length === 1 && !existingName) ? 'selected' : '' %>><%= u.name %> (<%= u.role %>)</option>
+      <%  });
+        }
+      %>
+      <option value="__manual__">Manual entry</option>
+    </select>
+  </div>
+  <div class="form-row">
+    <label>Name</label>
+    <input type="text" name="<%= nameInput %>" value="<%= existingName || '' %>" class="signatory-name-input">
+  </div>
+  <div class="form-row">
+    <label>License</label>
+    <input type="text" name="<%= licenseInput %>" value="<%= existingLicense || '' %>" class="signatory-license-input">
+  </div>
+</div>
+
+<script>
+;(function(){
+  try {
+    const container = document.currentScript && document.currentScript.parentNode || document.body;
+    const selects = container.querySelectorAll('.signatory-select');
+    selects.forEach(sel => {
+      function onChange(){
+        const nameKey = sel.getAttribute('data-name-input');
+        const licenseKey = sel.getAttribute('data-license-input');
+        const nameInput = container.querySelector(`[name="${nameKey}"]`);
+        const licenseInput = container.querySelector(`[name="${licenseKey}"]`);
+        const opt = sel.options[sel.selectedIndex];
+        if (!nameInput || !licenseInput) return;
+        if (opt && opt.value && opt.value !== '__manual__'){
+          const n = opt.getAttribute('data-name') || '';
+          const l = opt.getAttribute('data-license') || '';
+          nameInput.value = n;
+          licenseInput.value = l;
+        } else if (opt && opt.value === '__manual__'){
+          nameInput.value = '';
+          licenseInput.value = '';
+          nameInput.focus();
+        }
+      }
+      sel.addEventListener('change', onChange);
+      // trigger to apply selected option on load
+      onChange();
+      // if only one option (excluding placeholder/manual) and inputs empty, populate them
+      try {
+        const nonEmptyOpts = Array.from(sel.options).filter(o=>o.value && o.value !== '' && o.value !== '__manual__');
+        if (nonEmptyOpts.length === 1) {
+          const only = nonEmptyOpts[0];
+          const nameKey = sel.getAttribute('data-name-input');
+          const licenseKey = sel.getAttribute('data-license-input');
+          const nameInput = container.querySelector(`[name="${nameKey}"]`);
+          const licenseInput = container.querySelector(`[name="${licenseKey}"]`);
+          if (nameInput && licenseInput && !nameInput.value && !licenseInput.value) {
+            sel.value = only.value;
+            onChange();
+          }
+        }
+      } catch (e) { /* ignore */ }
+    });
+  } catch (e) { console.error('signatory_select init error', e); }
+})();
+</script>

@@ -1,0 +1,27 @@
+<div class="card">
+  <h3>Create New Template</h3>
+
+  <form action="/templates" method="POST">
+    <div class="form-group">
+      <label>Template Name</label>
+      <input type="text" name="name" value="<%= template.name || '' %>" required>
+    </div>
+
+    <div class="form-group">
+      <label>Test Type</label>
+      <input type="text" name="testType" value="<%= template.testType || '' %>" required>
+    </div>
+
+    <div class="form-group">
+      <label>Fields (JSON array or one field per line)</label>
+      <textarea name="fields" placeholder='[{"name":"Hemoglobin","type":"number"},...]' rows="6"><%= template.fields && Array.isArray(template.fields) ? JSON.stringify(template.fields, null, 2) : (template.fields || '') %></textarea>
+    </div>
+
+    <div class="form-group">
+      <label>Footer Notes</label>
+      <textarea name="footerNotes"><%= template.footerNotes || '' %></textarea>
+    </div>
+
+    <button class="button btn-primary">Create Template</button>
+  </form>
+</div>

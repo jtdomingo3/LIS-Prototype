@@ -1,0 +1,51 @@
+<div class="card">
+  <h3>Enter Fecal Occult Blood Test Results - <%= test.testId %></h3>
+
+  <form action="/tests/<%= test.id %>/results" method="POST">
+    <input type="hidden" name="_method" value="POST">
+
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;">
+      <div class="form-row" style="margin:0;">
+        <label>Date</label>
+        <input type="date" name="entryDate" value="<%= test && test.testDate ? (new Date(test.testDate)).toISOString().slice(0,10) : (new Date()).toISOString().slice(0,10) %>" readonly>
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>Time Requested</label>
+        <input type="time" name="timeRequested" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '') %>">
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>Time Released</label>
+        <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (new Date()).toTimeString().slice(0,5) %>">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label>Specimen</label>
+      <input type="text" name="specimen" value="Stool" readonly>
+    </div>
+
+    <div class="form-row">
+      <label>Result</label>
+      <select name="result" required>
+        <option value="">-- Select Result --</option>
+        <option value="Negative" <%= test.results && test.results.result === 'Negative' ? 'selected' : '' %>>Negative</option>
+        <option value="Positive" <%= test.results && test.results.result === 'Positive' ? 'selected' : '' %>>Positive</option>
+      </select>
+    </div>
+
+    <hr>
+    <h4>Signatures / Performers</h4>
+    <%- include('../partials/signatory_select', { prefix: 'mt', label: 'Medical Technologist', role: 'Medical Technologist', nameInput: 'mtName', licenseInput: 'mtLicense', existingName: (test.results && test.results.performedByName) ? test.results.performedByName : '', existingLicense: (test.results && test.results.performedByLicense) ? test.results.performedByLicense : '' }) %>
+
+    <hr>
+    <h4>Validation</h4>
+    <%- include('../partials/signatory_select', { prefix: 'validated', label: '2nd Medical Technologist (Validator)', role: 'Medical Technologist', nameInput: 'validatedByName', licenseInput: 'validatedByLicense', existingName: (test.results && test.results.validatedByName) ? test.results.validatedByName : '', existingLicense: (test.results && test.results.validatedByLicense) ? test.results.validatedByLicense : '' }) %>
+
+    <%- include('../partials/signatory_select', { prefix: 'path', label: 'Pathologist', role: 'Pathologist', nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (test.results && test.results.requestedByName) ? test.results.requestedByName : '', existingLicense: (test.results && test.results.requestedByLicense) ? test.results.requestedByLicense : '' }) %>
+
+    <div class="form-row mt-12">
+      <a href="/tests/<%= test.id %>" class="button btn-secondary">Cancel</a>
+      <button class="button btn-primary">Save Results</button>
+    </div>
+  </form>
+</div>

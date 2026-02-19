@@ -528,10 +528,24 @@ app.get('/export/data.json', (req, res) => {
   try {
     if (!req.session || !req.session.user) return res.status(401).send('Authentication required');
     const data = db.read();
-    // do not expose user passwords if present
-    if (Array.isArray(data.users)) {
-      data.users = data.users.map(u => ({ id: u.id || u.email, name: u.name || u.email, email: u.email, role: u.role || '' }));
-    }
+    // Include user accounts WITH hashed passwords so the standalone app
+    // can authenticate users offline.  Passwords are already bcrypt-hashed
+    // so they are safe to transmit over the local network.
+    // Users are stored in a separate file (data-users.json), so we always
+    // pull them via getUsers() and merge them into the export.
+    const allUsers = db.getUsers();
+    data.users = allUsers.map(u => ({
+      id: u.id || u.email,
+      name: u.name || u.email,
+      email: u.email,
+      password: u.password,  // bcrypt hash — needed for offline auth
+      role: u.role || '',
+      status: u.status || 'Active',
+      permissions: u.permissions || {},
+      licenseNumber: u.licenseNumber || null,
+      signature: u.signature || null,
+      autoSignature: u.autoSignature || { enabled: false, until: null },
+    }));
     res.json(data);
   } catch (e) {
     console.error('export/data.json failed:', e && e.message);

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Print Report</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 30px; }
+    h1 { color: #10b981; }
+    .section { margin-bottom: 20px; }
+  </style>
+  <style>
+    /* Signature overlay styling applied globally to reports */
+    .signature-overlay { position:absolute; pointer-events:none; left:50%; transform-origin:center; }
+    .signatures .sig { position:relative }
+  </style>
+</head>
+<body>
+  <% if (renderedResultHtml) { %>
+    <div id="rendered-result"><%- renderedResultHtml %></div>
+  <% } else { %>
+    <h1>Laboratory Test Report</h1>
+    <div class="section">
+      <h3>Patient</h3>
+      <% if (test.patient) { %>
+        <p><strong>Name:</strong> <%= test.patient.firstName %> <%= test.patient.lastName %></p>
+        <p><strong>Patient ID:</strong> <%= test.patient.patientId %></p>
+      <% } %>
+    </div>
+    <div class="section">
+      <h3>Test</h3>
+      <p><strong>Test ID:</strong> <%= test.testId %></p>
+      <p><strong>Type:</strong> <%= test.testType %></p>
+      <p><strong>Date:</strong> <%= test.testDate ? new Date(test.testDate).toLocaleDateString() : '' %></p>
+    </div>
+    <div class="section">
+      <h3>Results</h3>
+      <pre style="white-space:pre-wrap;"><%= test.results || 'No results' %></pre>
+    </div>
+  <% } %>
+  <script>
+    (function(){
+      try {
+        const sigs = <%- JSON.stringify(typeof test !== 'undefined' && test && test.results && test.results.signatures ? test.results.signatures : {}) %> || {};
+        const keys = Object.keys(sigs || {});
+        if (keys.length) {
+          keys.forEach(uid => {
+            const s = sigs[uid];
+            if (!s || !s.name || !s.filename) return;
+            // find matching signature blocks by comparing text
+            document.querySelectorAll('.signatures .sig').forEach(el => {
+              const text = (el.textContent || el.innerText || '').replace(/\s+/g,' ').trim();
+              if (!text) return;
+              if (text.indexOf(String(s.name).trim()) !== -1) {
+                  // don't append if server-side template already rendered an overlay
+                  if (el.querySelector && el.querySelector('.signature-overlay')) return;
+                  const p = (s.placement) ? s.placement : { x:0, y:-56, scale:1.25 };
+                const img = document.createElement('img');
+                img.src = '/assets/signature/' + s.filename;
+                img.className = 'signature-overlay';
+                img.style.top = (p.y || -56) + 'px';
+                img.style.transform = 'translateX(-50%) scale(' + (p.scale || 1) + ')';
+                img.style.maxHeight = '96px';
+                el.style.position = el.style.position || 'relative';
+                el.appendChild(img);
+              }
+            });
+          });
+        }
+      } catch (e) { console.error('Signature injection error', e); }
+      // Print after we injected signatures — unless the server asked us
+      // to suppress automatic printing (used by the standalone app).
+      try {
+        var suppress = <%= (typeof suppressPrint !== 'undefined' && suppressPrint) ? 'true' : 'false' %>;
+        if (!suppress) {
+          window.print();
+        }
+      } catch (e) {}
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,103 @@
+<div class="card">
+  <h3>Enter X-Ray Results - <%= test.testId %></h3>
+
+  <form action="/tests/<%= test.id %>/results" method="POST">
+    <input type="hidden" name="_method" value="POST">
+
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+      <div class="form-row" style="margin:0;">
+        <label>Date</label>
+        <input type="date" name="entryDate" value="<%= test && test.testDate ? (new Date(test.testDate)).toISOString().slice(0,10) : (new Date()).toISOString().slice(0,10) %>" readonly>
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>Time Requested</label>
+        <input type="time" name="timeRequested" value="<%= test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '' %>">
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>Time Released</label>
+        <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (new Date()).toTimeString().slice(0,5) %>">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label>Case Number</label>
+      <input type="text" name="caseNumber" placeholder="Enter case number (assigned by radtech)" value="<%= test && test.caseNumber ? test.caseNumber : (test && test.results && test.results.caseNumber ? test.results.caseNumber : '') %>">
+    </div>
+
+    <div class="form-row">
+      <label>Examination (short)</label>
+      <input type="text" name="examination" placeholder="e.g. SKULL AP/LAT + WATERS" value="<%= test && (test.examination || test.examinationName) ? (test.examination || test.examinationName) : (test && test.results && test.results.examination ? test.results.examination : '') %>">
+    </div>
+
+      <div style="margin-top:8px">
+      <label>Examination / Findings (paragraphs)</label>
+      <div style="margin-bottom:6px; display:flex; gap:8px; align-items:center;">
+        <button type="button" class="button btn-small" onclick="wrapSelection('<b>','</b>')">B</button>
+        <button type="button" class="button btn-small" onclick="wrapSelection('<i>','</i>')"><em>I</em></button>
+        <button type="button" class="button btn-small" onclick="wrapSelection('<u>','</u>')">U</button>
+        <button type="button" class="button btn-small" onclick="insertParagraph()">Insert Paragraph</button>
+        <label style="margin-left:12px">Font:</label>
+        <select name="paragraphsFontFamily">
+          <option value="Times New Roman" <%= test.results && test.results.paragraphs_font_family==='Times New Roman' ? 'selected' : '' %>>Times New Roman</option>
+          <option value="Courier New" <%= (test.results && test.results.paragraphs_font_family==='Courier New') || (!test.results || !test.results.paragraphs_font_family) ? 'selected' : '' %>>Courier New</option>
+          <option value="Arial" <%= test.results && test.results.paragraphs_font_family==='Arial' ? 'selected' : '' %>>Arial</option>
+          <option value="Georgia" <%= test.results && test.results.paragraphs_font_family==='Georgia' ? 'selected' : '' %>>Georgia</option>
+          <option value="Garamond" <%= test.results && test.results.paragraphs_font_family==='Garamond' ? 'selected' : '' %>>Garamond</option>
+          <option value="Calibri" <%= test.results && test.results.paragraphs_font_family==='Calibri' ? 'selected' : '' %>>Calibri</option>
+        </select>
+        <label>Size:</label>
+        <select name="paragraphsFontSize">
+          <option value="14px" <%= (!test.results || !test.results.paragraphs_font_size || test.results.paragraphs_font_size==='14px') ? 'selected' : '' %>>14px</option>
+          <option value="16px" <%= test.results && test.results.paragraphs_font_size==='16px' ? 'selected' : '' %>>16px</option>
+          <option value="18px" <%= test.results && test.results.paragraphs_font_size==='18px' ? 'selected' : '' %>>18px</option>
+        </select>
+      </div>
+      <% 
+        var _rawEdit = (test && test.results && (test.results.paragraphs || test.results.result)) ? (test.results.paragraphs || test.results.result) : '';
+        var _editValue = _rawEdit;
+        if (_editValue && /<\/?[a-z][\s\S]*>/i.test(_editValue)) {
+          _editValue = _editValue.replace(/<br\s*\/?\s*>/gi, '\n');
+          _editValue = _editValue.replace(/<\/p>\s*<p[^>]*>/gi, '\n\n');
+          _editValue = _editValue.replace(/<\/?p[^>]*>/gi, '');
+          _editValue = _editValue.replace(/&nbsp;/g, ' ');
+          _editValue = _editValue.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+          _editValue = _editValue.trim();
+        }
+        var _defaultText = 'Enter findings here. This may be 2-3 paragraphs depending on the reading.\n\nDescribe radiographic findings, impressions, and recommendations.';
+      %>
+      <textarea id="paragraphs" name="paragraphs" rows="8" spellcheck="true" style="width:100%; font-family:inherit;"><%= _editValue && _editValue.length ? _editValue : _defaultText %></textarea>
+    </div>
+
+    <hr>
+    <h4>Signatures / Performers</h4>
+    <%- include('../partials/signatory_select', { prefix: 'mt', label: 'X-Ray Technologist', nameInput: 'mtName', licenseInput: 'mtLicense', existingName: (test.results && test.results.performedByName) ? test.results.performedByName : '', existingLicense: (test.results && test.results.performedByLicense) ? test.results.performedByLicense : '' }) %>
+
+    <%- include('../partials/signatory_select', { prefix: 'path', label: 'Radiologist', nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (test.results && test.results.requestedByName) ? test.results.requestedByName : '', existingLicense: (test.results && test.results.requestedByLicense) ? test.results.requestedByLicense : '' }) %>
+
+    <div class="form-row mt-12">
+      <a href="/tests/<%= test.id %>" class="button btn-secondary">Cancel</a>
+      <button class="button btn-primary">Save Results</button>
+    </div>
+  </form>
+
+  <script>
+    function wrapSelection(openTag, closeTag) {
+      var ta = document.getElementById('paragraphs');
+      var start = ta.selectionStart;
+      var end = ta.selectionEnd;
+      var selected = ta.value.substring(start, end);
+      var newText = openTag + selected + closeTag;
+      ta.value = ta.value.substring(0, start) + newText + ta.value.substring(end);
+      ta.focus();
+      ta.selectionStart = start + openTag.length;
+      ta.selectionEnd = start + openTag.length + selected.length;
+    }
+    function insertParagraph(){
+      var ta = document.getElementById('paragraphs');
+      var pos = ta.selectionStart || ta.value.length;
+      var p = '<p>New paragraph...</p>';
+      ta.value = ta.value.substring(0,pos) + p + ta.value.substring(pos);
+      ta.focus();
+    }
+  </script>
+</div>

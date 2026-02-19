@@ -1,0 +1,209 @@
+<div class="stats-container">
+    <div class="stat-card">
+        <h4>👥 Total Patients</h4>
+        <p class="stat-number"><%= stats.totalPatients %></p>
+    </div>
+    <div class="stat-card orange">
+        <h4>⏳ Pending Tests</h4>
+        <p class="stat-number"><%= stats.pendingTests %></p>
+    </div>
+    <div class="stat-card">
+        <h4>✅ Completed Tests</h4>
+        <p class="stat-number"><%= stats.completedTests %></p>
+    </div>
+    <div class="stat-card orange">
+        <h4>🔄 In Progress</h4>
+        <p class="stat-number"><%= stats.activeTests %></p>
+    </div>
+    <div class="stat-card">
+        <h4>📤 Released Tests</h4>
+        <p class="stat-number"><%= stats.releasedTests %></p>
+    </div>
+</div>
+
+<div class="sales-columns" style="margin-top:12px; display:flex; gap:12px;">
+    <div style="flex:1; display:flex; flex-direction:column; gap:12px;">
+        <div class="stat-card">
+            <h4>💰 Total Sales</h4>
+            <p class="stat-number">₱<%= (typeof stats.totalSales !== 'undefined' ? Number(stats.totalSales).toFixed(2) : '0.00') %></p>
+        </div>
+        <div style="display:flex; gap:12px;">
+            <div style="flex:1;">
+                <div class="stat-card">
+                    <h4>🏥 Clinical Total</h4>
+                    <p class="stat-number">₱<%= (typeof stats.clinicalSales !== 'undefined' ? Number(stats.clinicalSales).toFixed(2) : '0.00') %></p>
+                </div>
+            </div>
+            <div style="flex:1;">
+                <div class="stat-card orange">
+                    <h4>🩻 X-ray Total</h4>
+                    <p class="stat-number">₱<%= (typeof stats.xraySales !== 'undefined' ? Number(stats.xraySales).toFixed(2) : '0.00') %></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div style="flex:1; display:flex; flex-direction:column; gap:12px;">
+        <div class="stat-card orange">
+            <h4>📅 Sales Today</h4>
+            <p class="stat-number">₱<%= (typeof stats.todaySales !== 'undefined' ? Number(stats.todaySales).toFixed(2) : '0.00') %></p>
+        </div>
+        <div style="display:flex; gap:12px;">
+            <div style="flex:1;">
+                <div class="stat-card">
+                    <h4>🏥 Clinical Today</h4>
+                    <p class="stat-number">₱<%= (typeof stats.clinicalToday !== 'undefined' ? Number(stats.clinicalToday).toFixed(2) : '0.00') %></p>
+                </div>
+            </div>
+            <div style="flex:1;">
+                <div class="stat-card orange">
+                    <h4>🩻 X-ray Today</h4>
+                    <p class="stat-number">₱<%= (typeof stats.xrayToday !== 'undefined' ? Number(stats.xrayToday).toFixed(2) : '0.00') %></p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div style="margin-top:12px; display:flex; justify-content:flex-end; align-items:center; gap:12px;">
+    <form method="get" action="/dashboard" style="display:flex; gap:8px; align-items:center;">
+        <label style="font-weight:bold;">SELECT DATE:</label>
+        <input type="date" name="date" value="<%= stats.selectedDate || '' %>" onchange="this.form.submit()" />
+        <a href="/dashboard?date=today" class="button" style="margin-left:8px;">TODAY</a>
+        <a href="/dashboard?date=yesterday" class="button">YESTERDAY</a>
+    </form>
+</div>
+
+<div class="card" style="margin-top:6px;">
+    <h3>TEST TOTALS</h3>
+    <% var entries = Object.entries(stats.testTotals || {}); entries.sort(function(a,b){return b[1]-a[1];}); %>
+    <% if (entries && entries.length) { %>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <div>
+                <button id="modeTotal" class="button">TOTAL</button>
+                <button id="modeSelected" class="button">SELECTED</button>
+                <button id="modeToday" class="button">TODAY</button>
+            </div>
+            <div style="color:#666; font-size:12px;">Hover bars to see exact values</div>
+        </div>
+        <div style="width:100%; max-height:520px; overflow:auto;">
+            <canvas id="testTotalsChart" height="520"></canvas>
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+        <script>
+            (function(){
+                try {
+                    const entries = <%- JSON.stringify(entries) %> || [];
+                    const selectedMap = <%- JSON.stringify(stats.testTotalsSelected || {}) %> || {};
+                    const todayMap = <%- JSON.stringify(stats.testTotalsToday || {}) %> || {};
+
+                    const labels = entries.map(e => String(e[0]).toUpperCase());
+                    const totals = entries.map(e => Number(e[1] || 0));
+                    const selected = entries.map(e => Number(selectedMap[e[0]] || 0));
+                    const today = entries.map(e => Number(todayMap[e[0]] || 0));
+
+                    // generate color per label (HSL wheel)
+                    function genColors(n){
+                        const colors = [];
+                        for(let i=0;i<n;i++){
+                            const hue = Math.round((i * 360 / Math.max(1,n)) % 360);
+                            colors.push(`hsl(${hue} 78% 52% / 0.9)`);
+                        }
+                        return colors;
+                    }
+
+                    const colors = genColors(labels.length);
+
+                    const canvas = document.getElementById('testTotalsChart');
+                    const itemHeight = 28; // px per bar
+                    const h = Math.max(200, Math.min(1600, labels.length * itemHeight));
+                    canvas.height = h;
+                    const ctx = canvas.getContext('2d');
+
+                    // initial mode: if URL has date= then default to SELECTED, else TOTAL
+                    const qs = window.location.search || '';
+                    let mode = qs.indexOf('date=') !== -1 ? 'SELECTED' : 'TOTAL';
+
+                    function datasetForMode(m){
+                        if (m === 'SELECTED') return selected;
+                        if (m === 'TODAY') return today;
+                        return totals;
+                    }
+
+                    const data = { labels: labels, datasets: [{ label: mode, data: datasetForMode(mode), backgroundColor: colors }] };
+
+                    const options = {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: { x: { beginAtZero: true }, y: { } },
+                        plugins: { tooltip: { enabled: true }, legend: { display: false } }
+                    };
+
+                    if (window._testTotalsChart) window._testTotalsChart.destroy();
+                    window._testTotalsChart = new Chart(ctx, { type: 'bar', data: data, options: options });
+
+                    // button handlers
+                    function setMode(m){
+                        mode = m;
+                        const ds = datasetForMode(mode);
+                        window._testTotalsChart.data.datasets[0].data = ds;
+                        window._testTotalsChart.data.datasets[0].label = mode;
+                        window._testTotalsChart.update();
+                        // visual active state
+                        document.getElementById('modeTotal').style.opacity = (mode==='TOTAL')?1:0.6;
+                        document.getElementById('modeSelected').style.opacity = (mode==='SELECTED')?1:0.6;
+                        document.getElementById('modeToday').style.opacity = (mode==='TODAY')?1:0.6;
+                    }
+
+                    document.getElementById('modeTotal').addEventListener('click', ()=> setMode('TOTAL'));
+                    document.getElementById('modeSelected').addEventListener('click', ()=> setMode('SELECTED'));
+                    document.getElementById('modeToday').addEventListener('click', ()=> setMode('TODAY'));
+
+                    // set initial visual state
+                    setMode(mode);
+
+                } catch (err) { console.warn('Chart render error', err); }
+            })();
+        </script>
+    <% } else { %>
+        <p>NO TEST TOTALS AVAILABLE</p>
+    <% } %>
+</div>
+
+<div class="card">
+    <h3>Recent Test Results</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Patient Name</th>
+                <th>Test Type</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% if (recentTests && recentTests.length > 0) { %>
+                <% recentTests.forEach(test => { %>
+                <tr>
+                    <td><strong><%= test.patient ? test.patient.firstName + ' ' + test.patient.lastName : 'Unknown' %></strong></td>
+                    <td><%= test.testType %></td>
+                    <td><%= new Date(test.testDate).toLocaleDateString() %></td>
+                    <td>
+                        <span class="badge <%= test.status === 'Completed' ? 'badge-success' : test.status === 'In Progress' ? 'badge-warning' : 'badge-info' %>">
+                            <%= test.status %>
+                        </span>
+                    </td>
+                    <td>
+                        <a href="/tests/<%= test.id %>" class="button btn-small btn-primary">View</a>
+                    </td>
+                </tr>
+                <% }); %>
+            <% } else { %>
+                <tr><td colspan="5" class="text-center">No tests yet</td></tr>
+            <% } %>
+        </tbody>
+    </table>
+</div>
+ 

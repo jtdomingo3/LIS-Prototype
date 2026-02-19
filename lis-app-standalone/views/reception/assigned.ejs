@@ -1,0 +1,620 @@
+<%# Professional Real-Time Kiosk Dashboard for Patient Queue Display %>
+<% const isKiosk = kiosk; %>
+
+<style>
+  /* Reset for kiosk mode */
+  <% if (isKiosk) { %>
+  body { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important; }
+  .sidebar, .navbar, nav, header { display: none !important; }
+  .main-content, .content { margin: 0 !important; padding: 0 !important; width: 100vw !important; max-width: 100vw !important; }
+  <% } %>
+
+  .kiosk-container {
+    min-height: 100vh;
+    padding: 20px;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+
+  .kiosk-header {
+    text-align: center;
+    margin-bottom: 24px;
+    padding: 16px;
+  }
+
+  .kiosk-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #fff;
+    margin: 0 0 8px 0;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  }
+
+  .kiosk-subtitle {
+    font-size: 1.1rem;
+    color: #94a3b8;
+    margin: 0;
+  }
+
+  .kiosk-time {
+    font-size: 1.5rem;
+    color: #10b981;
+    font-weight: 600;
+    margin-top: 8px;
+  }
+
+  .status-bar {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 20px;
+    font-size: 0.9rem;
+    color: #e2e8f0;
+  }
+
+  .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+
+  .status-dot.connected { background: #10b981; }
+  .status-dot.disconnected { background: #ef4444; animation: none; }
+  .status-dot.connecting { background: #f59e0b; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.1); }
+  }
+
+  /* Grid for areas */
+  .areas-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+
+  @media (max-width: 1400px) { .areas-grid { grid-template-columns: repeat(4, 1fr); } }
+  @media (max-width: 1100px) { .areas-grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 800px) { .areas-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 500px) { .areas-grid { grid-template-columns: 1fr; } }
+
+  .area-card {
+    background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    min-height: 180px;
+  }
+
+  .area-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 6px;
+    height: 100%;
+    background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+  }
+
+  .area-card.has-patients::before {
+    background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
+  }
+
+  .area-card.highlight {
+    animation: cardHighlight 1s ease;
+    box-shadow: 0 0 30px rgba(16, 185, 129, 0.5);
+  }
+
+  @keyframes cardHighlight {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+  }
+
+  .area-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    padding-left: 12px;
+  }
+
+  .area-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+    line-height: 1.3;
+  }
+
+  .area-count {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #fff;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 1rem;
+    font-weight: 700;
+    min-width: 36px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  }
+
+  .area-count.active {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+  }
+
+  .patient-display {
+    padding-left: 12px;
+  }
+
+  .patient-label {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .patient-number {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #0f172a;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 2px;
+  }
+
+  .patient-number.empty {
+    color: #cbd5e1;
+    font-size: 1.5rem;
+  }
+
+  .next-patient {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed #e2e8f0;
+    font-size: 0.85rem;
+    color: #64748b;
+  }
+
+  .next-patient strong {
+    color: #334155;
+  }
+
+  /* Footer controls */
+  .kiosk-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 12px 20px;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(10px);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .sound-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 25px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .sound-btn.disabled {
+    background: rgba(255,255,255,0.1);
+    color: #94a3b8;
+  }
+
+  .sound-btn.enabled {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+  }
+
+  .sound-btn:hover {
+    transform: translateY(-2px);
+  }
+
+  .footer-info {
+    color: #64748b;
+    font-size: 0.85rem;
+  }
+
+  /* Ensure content doesn't hide behind fixed footer */
+  .kiosk-container {
+    padding-bottom: 80px;
+  }
+</style>
+
+<div class="kiosk-container" id="kioskContainer">
+  <div class="kiosk-header">
+    <h1 class="kiosk-title">🏥 Patient Queue Display</h1>
+    <p class="kiosk-subtitle">Please proceed to your assigned area when your number is called</p>
+    <div class="kiosk-time" id="currentTime">--:--:--</div>
+  </div>
+
+  <div class="status-bar">
+    <div class="status-indicator">
+      <span class="status-dot connecting" id="statusDot"></span>
+      <span id="connectionStatus">Connecting...</span>
+    </div>
+    <div class="status-indicator">
+      <span>📅</span>
+      <span id="lastUpdate">--</span>
+    </div>
+  </div>
+
+  <div class="areas-grid" id="areasGrid">
+    <% areas.forEach((area, index) => { %>
+      <% const safeId = area.replace(/[^a-z0-9]/gi, '_'); %>
+      <% const patients = assignments[area] || []; %>
+      <% const hasPatients = patients.length > 0; %>
+      <div class="area-card <%= hasPatients ? 'has-patients' : '' %>" id="card-<%= safeId %>" data-area="<%= area %>">
+        <div class="area-header">
+          <h3 class="area-name"><%= area %></h3>
+          <span class="area-count <%= hasPatients ? 'active' : '' %>" id="count-<%= safeId %>"><%= patients.length %></span>
+        </div>
+        <div class="patient-display">
+          <div class="patient-label">Now Serving</div>
+          <div class="patient-number <%= !hasPatients ? 'empty' : '' %>" id="patient-<%= safeId %>">
+            <%= hasPatients ? (patients[0].patientCode ? patients[0].patientCode.split('-').pop() : patients[0].patientCode) : '—' %>
+          </div>
+          <% if (patients.length > 1) { %>
+          <div class="next-patient" id="next-<%= safeId %>">
+            Next: <strong><%= patients[1].patientCode ? patients[1].patientCode.split('-').pop() : patients[1].patientCode %></strong>
+          </div>
+          <% } else { %>
+          <div class="next-patient" id="next-<%= safeId %>" style="display:none;"></div>
+          <% } %>
+        </div>
+      </div>
+    <% }); %>
+  </div>
+</div>
+
+<div class="kiosk-footer">
+  <button class="sound-btn disabled" id="soundToggle" onclick="toggleSound()">
+    🔇 Click to Enable Sound
+  </button>
+  <div class="footer-info">
+    <span id="messageCount">0</span> updates received
+  </div>
+</div>
+
+<!-- Preload audio -->
+<audio id="notificationAudio" preload="auto">
+  <source src="/assets/new-notification.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+(function() {
+  'use strict';
+
+  // ===== CONFIGURATION =====
+  const CONFIG = {
+    SSE_URL: '/reception/assigned-events?kiosk=1',
+    DATA_URL: '/reception/assigned-data?kiosk=1',
+    RECONNECT_DELAY: 3000,
+    SOUND_SRC: '/assets/new-notification.mp3'
+  };
+
+  // ===== STATE =====
+  let eventSource = null;
+  let soundEnabled = false;
+  let audioContext = null;
+  let audioBuffer = null;
+  let messageCount = 0;
+  let lastDataHash = '';
+
+  // ===== DOM ELEMENTS =====
+  const statusDot = document.getElementById('statusDot');
+  const connectionStatus = document.getElementById('connectionStatus');
+  const lastUpdate = document.getElementById('lastUpdate');
+  const soundToggle = document.getElementById('soundToggle');
+  const messageCountEl = document.getElementById('messageCount');
+  const currentTimeEl = document.getElementById('currentTime');
+  const notificationAudio = document.getElementById('notificationAudio');
+
+  // ===== UTILITY FUNCTIONS =====
+  function updateTime() {
+    const now = new Date();
+    currentTimeEl.textContent = now.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      second: '2-digit',
+      hour12: true 
+    });
+  }
+
+  function setConnectionStatus(status) {
+    statusDot.className = 'status-dot ' + status;
+    switch(status) {
+      case 'connected':
+        connectionStatus.textContent = 'Live Connected';
+        break;
+      case 'disconnected':
+        connectionStatus.textContent = 'Disconnected - Reconnecting...';
+        break;
+      case 'connecting':
+        connectionStatus.textContent = 'Connecting...';
+        break;
+    }
+  }
+
+  function updateLastUpdate() {
+    const now = new Date();
+    lastUpdate.textContent = 'Updated: ' + now.toLocaleTimeString();
+  }
+
+  // ===== SOUND FUNCTIONS =====
+  async function initAudio() {
+    try {
+      // Create AudioContext
+      const AC = window.AudioContext || window.webkitAudioContext;
+      audioContext = new AC();
+
+      // Fetch and decode audio
+      const response = await fetch(CONFIG.SOUND_SRC);
+      if (response.ok) {
+        const arrayBuffer = await response.arrayBuffer();
+        audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        console.log('[Kiosk] Audio loaded and decoded successfully');
+        return true;
+      }
+    } catch (e) {
+      console.warn('[Kiosk] AudioContext init failed, using fallback:', e);
+    }
+    return false;
+  }
+
+  function playNotificationSound() {
+    if (!soundEnabled) return;
+
+    try {
+      // Try AudioContext first (better for rapid plays)
+      if (audioContext && audioBuffer) {
+        const source = audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(audioContext.destination);
+        source.start(0);
+        console.log('[Kiosk] Played notification via AudioContext');
+        return;
+      }
+
+      // Fallback to HTML Audio element
+      if (notificationAudio) {
+        notificationAudio.currentTime = 0;
+        notificationAudio.play().catch(e => console.warn('[Kiosk] Audio play failed:', e));
+        console.log('[Kiosk] Played notification via Audio element');
+      }
+    } catch (e) {
+      console.warn('[Kiosk] playNotificationSound error:', e);
+    }
+  }
+
+  window.toggleSound = async function() {
+    if (!soundEnabled) {
+      // Enable sound
+      const audioReady = await initAudio();
+      soundEnabled = true;
+      soundToggle.className = 'sound-btn enabled';
+      soundToggle.innerHTML = '🔔 Sound Enabled';
+      
+      // Play a test sound to confirm
+      setTimeout(() => {
+        playNotificationSound();
+      }, 100);
+      
+      console.log('[Kiosk] Sound enabled, AudioContext ready:', audioReady);
+    } else {
+      // Disable sound
+      soundEnabled = false;
+      soundToggle.className = 'sound-btn disabled';
+      soundToggle.innerHTML = '🔇 Click to Enable Sound';
+      console.log('[Kiosk] Sound disabled');
+    }
+  };
+
+  // ===== DATA UPDATE FUNCTIONS =====
+  function hashData(data) {
+    return JSON.stringify(data);
+  }
+
+  function updateUI(data) {
+    if (!data || !data.assignments) return;
+
+    const currentHash = hashData(data.assignments);
+    const hasChanges = lastDataHash !== '' && currentHash !== lastDataHash;
+    lastDataHash = currentHash;
+
+    // Update each area card
+    Object.keys(data.assignments).forEach(area => {
+      const safeId = area.replace(/[^a-z0-9]/gi, '_');
+      const patients = data.assignments[area] || [];
+      const hasPatients = patients.length > 0;
+
+      // Update count badge
+      const countEl = document.getElementById('count-' + safeId);
+      if (countEl) {
+        countEl.textContent = patients.length;
+        countEl.className = 'area-count' + (hasPatients ? ' active' : '');
+      }
+
+      // Update patient number
+      const patientEl = document.getElementById('patient-' + safeId);
+      if (patientEl) {
+        if (hasPatients) {
+          const code = patients[0].patientCode || '';
+          patientEl.textContent = code.includes('-') ? code.split('-').pop() : code;
+          patientEl.className = 'patient-number';
+        } else {
+          patientEl.textContent = '—';
+          patientEl.className = 'patient-number empty';
+        }
+      }
+
+      // Update next patient
+      const nextEl = document.getElementById('next-' + safeId);
+      if (nextEl) {
+        if (patients.length > 1) {
+          const nextCode = patients[1].patientCode || '';
+          nextEl.innerHTML = 'Next: <strong>' + (nextCode.includes('-') ? nextCode.split('-').pop() : nextCode) + '</strong>';
+          nextEl.style.display = 'block';
+        } else {
+          nextEl.style.display = 'none';
+        }
+      }
+
+      // Update card class
+      const cardEl = document.getElementById('card-' + safeId);
+      if (cardEl) {
+        cardEl.className = 'area-card' + (hasPatients ? ' has-patients' : '');
+        
+        // Highlight card if data changed
+        if (hasChanges) {
+          cardEl.classList.add('highlight');
+          setTimeout(() => cardEl.classList.remove('highlight'), 1000);
+        }
+      }
+    });
+
+    updateLastUpdate();
+
+    // Play sound if there were changes (not on initial load)
+    if (hasChanges) {
+      playNotificationSound();
+      console.log('[Kiosk] Data changed, notification played');
+    }
+  }
+
+  async function fetchData() {
+    try {
+      const response = await fetch(CONFIG.DATA_URL, { credentials: 'same-origin' });
+      if (response.ok) {
+        const data = await response.json();
+        updateUI(data);
+        return true;
+      }
+    } catch (e) {
+      console.warn('[Kiosk] fetchData error:', e);
+    }
+    return false;
+  }
+
+  // ===== SSE CONNECTION =====
+  function connectSSE() {
+    if (eventSource) {
+      try { eventSource.close(); } catch(e) {}
+    }
+
+    setConnectionStatus('connecting');
+    console.log('[Kiosk] Connecting to SSE:', CONFIG.SSE_URL);
+
+    try {
+      eventSource = new EventSource(CONFIG.SSE_URL);
+
+      eventSource.onopen = function() {
+        setConnectionStatus('connected');
+        console.log('[Kiosk] SSE connected');
+      };
+
+      eventSource.onmessage = function(event) {
+        messageCount++;
+        messageCountEl.textContent = messageCount;
+        console.log('[Kiosk] SSE message received:', event.data);
+
+        // Parse message
+        try {
+          const payload = JSON.parse(event.data);
+          
+          // Skip initial connection message for sound
+          if (payload.init) {
+            console.log('[Kiosk] Initial SSE handshake received');
+            return;
+          }
+
+          // Fetch fresh data and update UI
+          fetchData();
+          
+        } catch (e) {
+          console.warn('[Kiosk] Failed to parse SSE message:', e);
+          // Still try to fetch data even if parse failed
+          fetchData();
+        }
+      };
+
+      eventSource.onerror = function(err) {
+        console.warn('[Kiosk] SSE error:', err);
+        setConnectionStatus('disconnected');
+        
+        // Close and reconnect
+        try { eventSource.close(); } catch(e) {}
+        eventSource = null;
+        
+        setTimeout(connectSSE, CONFIG.RECONNECT_DELAY);
+      };
+
+    } catch (e) {
+      console.error('[Kiosk] Failed to create EventSource:', e);
+      setConnectionStatus('disconnected');
+      setTimeout(connectSSE, CONFIG.RECONNECT_DELAY);
+    }
+  }
+
+  // ===== INITIALIZATION =====
+  function init() {
+    console.log('[Kiosk] Initializing real-time dashboard...');
+
+    // Start clock
+    updateTime();
+    setInterval(updateTime, 1000);
+
+    // Initial data fetch to set hash baseline
+    fetchData().then(() => {
+      console.log('[Kiosk] Initial data loaded');
+    });
+
+    // Connect to SSE for real-time updates
+    connectSSE();
+
+    // Preload audio element
+    if (notificationAudio) {
+      notificationAudio.load();
+    }
+
+    console.log('[Kiosk] Dashboard initialized');
+  }
+
+  // Start when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>

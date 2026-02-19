@@ -1,0 +1,86 @@
+<div class="page active">
+  <div class="card">
+    <h3>Settings</h3>
+    <div class="field">
+      <label>Network Address</label>
+      <input type="text" readonly value="<%= (typeof networkUrl !== 'undefined' && networkUrl) ? networkUrl : ((typeof networkAddress !== 'undefined' && networkAddress) ? networkAddress : 'Unavailable') %>" />
+      <p class="note">Use this address (address:port) to access the server from other devices on the network.</p>
+    </div>
+    <form method="POST" action="/settings">
+      <h4>Environment (.env)</h4>
+      <% if (envEntries && envEntries.length) { %>
+        <% envEntries.forEach(function(e) { %>
+          <% if (e.type === 'kv') { %>
+            <div class="field">
+              <label><%= e.key %></label>
+              <input type="text" name="env_<%= e.key %>" value="<%= e.value %>" />
+            </div>
+          <% } %>
+        <% }); %>
+        <p class="note">Updating these values will modify the project's <strong>.env</strong> file. Only users with appropriate permissions can change them.</p>
+      <% } else { %>
+        <p class="note">No .env entries found.</p>
+      <% } %>
+      <h4>Data Backup</h4>
+      <div class="field" style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" name="autoBackup" <%= (backupConfig && backupConfig.enabled) ? 'checked' : '' %> />
+        <label style="margin:0;">Enable Auto Backup</label>
+      </div>
+      <div class="field">
+        <label>Frequency</label>
+        <select name="backupFrequency">
+          <option value="daily" <%= (backupConfig && backupConfig.frequency === 'daily') ? 'selected' : '' %>>Daily</option>
+          <option value="weekly" <%= (backupConfig && backupConfig.frequency === 'weekly') ? 'selected' : '' %>>Weekly</option>
+          <option value="monthly" <%= (backupConfig && backupConfig.frequency === 'monthly') ? 'selected' : '' %>>Monthly</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Backup Folder</label>
+        <input type="text" name="backupPath" placeholder="e.g. C:\\Users\\You\\Documents\\LIS\\backup" value="<%= (backupConfig && backupConfig.path) || '' %>" />
+        <p class="note">Default: My Documents\LIS\backup</p>
+      </div>
+
+      <div class="field">
+        <label>Analyzer Data Folder</label>
+        <input type="text" name="gezynePath" placeholder="e.g. C:\\path\\to\\new-gezyne or \\10.0.0.5\shared\new-gezyne" value="<%= (settings && settings.gezynePath) ? settings.gezynePath : (process.env.GEZYNE_PATH || '') %>" />
+        <p class="note">Path to the analyzer folder containing DataBase\Analyser.MDB. Can be a local path or UNC network path.</p>
+      </div>
+
+      <div class="mt-20">
+        <button type="submit" class="button btn-primary">Save</button>
+        <a href="/dashboard" class="button btn-secondary" style="margin-left:8px;">Cancel</a>
+      </div>
+    </form>
+    <hr/>
+    <h4>Manual Backup / Restore</h4>
+    <form method="POST" action="/settings/backup" style="display:inline-block;margin-right:12px;">
+      <input type="hidden" name="backupPath" value="<%= (backupConfig && backupConfig.path) || '' %>" />
+      <button type="submit" class="button btn-primary">Create Backup Now</button>
+    </form>
+
+    <form method="POST" action="/settings/restore" enctype="multipart/form-data" style="display:inline-block;">
+      <input type="file" name="backupFile" accept=".json" required />
+      <button type="submit" class="button btn-danger">Restore from File</button>
+    </form>
+
+    <form method="POST" action="/settings/clear" onsubmit="return confirm('Are you sure? This will remove non-admin data after creating a backup.');" style="display:inline-block;margin-left:12px;">
+      <button type="submit" class="button btn-warning">Clear All Non-Admin Data</button>
+    </form>
+
+    <hr/>
+    <h4>User Data Backup / Restore</h4>
+    <form method="POST" action="/settings/backup-users" style="display:inline-block;margin-right:12px;">
+      <input type="hidden" name="backupPath" value="<%= (backupConfig && backupConfig.path) || '' %>" />
+      <button type="submit" class="button btn-primary">Create User Backup Now</button>
+    </form>
+
+    <form method="POST" action="/settings/restore-users" enctype="multipart/form-data" style="display:inline-block;">
+      <input type="file" name="backupFileUsers" accept=".json" required />
+      <button type="submit" class="button btn-danger">Restore Users from File</button>
+    </form>
+
+    <form method="POST" action="/settings/clear-users" onsubmit="return confirm('Are you sure? This will remove non-admin users after creating a backup.');" style="display:inline-block;margin-left:12px;">
+      <button type="submit" class="button btn-warning">Clear Non-Admin Users</button>
+    </form>
+  </div>
+</div>

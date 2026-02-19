@@ -1,0 +1,150 @@
+<div class="card">
+    <h3>Add New Patient</h3>
+    <form action="/patients" method="POST">
+        <div class="form-group">
+            <label>First Name *</label>
+            <input type="text" name="firstName" value="<%= patient.firstName || '' %>" placeholder="Enter first name" required>
+        </div>
+        <div class="form-group">
+            <label>Middle Name</label>
+            <input type="text" name="middleName" value="<%= patient.middleName || '' %>" placeholder="Enter middle name (optional)">
+        </div>
+        <div class="form-group">
+            <label>Last Name *</label>
+            <input type="text" name="lastName" value="<%= patient.lastName || '' %>" placeholder="Enter last name" required>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Date of Birth</label>
+                <input id="dobInput" type="date" name="dateOfBirth" value="<%= patient.dateOfBirth ? new Date(patient.dateOfBirth).toISOString().split('T')[0] : '' %>">
+            </div>
+            <div class="form-group">
+                <label>Age</label>
+                <input id="ageInput" type="number" name="ageManual" value="<%= patient.ageManual || '' %>" placeholder="Enter age if DOB unknown">
+                <small class="muted">Age is auto-calculated when DOB is set. Clear DOB to enter age manually.</small>
+            </div>
+            <div class="form-group">
+                <label>Gender *</label>
+                <select name="gender" required>
+                    <option value="">Select Gender</option>
+                    <option value="Male" <%= patient.gender === 'Male' ? 'selected' : '' %>>Male</option>
+                    <option value="Female" <%= patient.gender === 'Female' ? 'selected' : '' %>>Female</option>
+                    <option value="Other" <%= patient.gender === 'Other' ? 'selected' : '' %>>Other</option>
+                </select>
+            </div>
+        </div>
+            
+        <div class="form-row">
+            <div class="form-group">
+                <label>Phone Number</label>
+                <input type="text" name="phone" value="<%= patient.phone || '' %>" placeholder="+63 (915) 000-0000">
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" name="email" value="<%= patient.email || '' %>" placeholder="patient@example.com">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Physician</label>
+            <input type="text" name="physician" value="<%= patient.physician || '' %>" placeholder="Referring physician or doctor's name">
+        </div>
+        <div class="form-group">
+            <label>Company (optional)</label>
+            <input type="text" name="company" value="<%= patient.company || '' %>" placeholder="Company / Employer (optional)">
+        </div>
+        <div class="form-group">
+            <label>Address</label>
+            <textarea name="address" placeholder="Street address, city, state, zip"><%= patient.address || '' %></textarea>
+        </div>
+
+        <div class="card" style="margin-top:12px;">
+            <h4>PhilHealth</h4>
+            <p>
+                The Gezyne Clinical Laboratory is an accredited PhilHealth provider. Coverage depends on the specific tests requested; some services may be fully covered while others may receive partial benefits. Please indicate whether the patient is a PhilHealth member.
+            </p>
+                <div style="margin-top:8px;">
+                    <div style="display:flex; gap:24px; align-items:center;">
+                        <label style="display:inline-flex; align-items:center; gap:8px; white-space:nowrap;">
+                            <input type="radio" name="philhealthConsent" id="philYes" value="1" <%= patient && patient.philhealthConsent ? 'checked' : '' %> >
+                            <span>Yes — apply PhilHealth benefits</span>
+                        </label>
+                        <label style="display:inline-flex; align-items:center; gap:8px; white-space:nowrap;">
+                            <input type="radio" name="philhealthConsent" id="philNo" value="0" <%= patient && patient.philhealthConsent ? '' : 'checked' %> >
+                            <span>No — not a PhilHealth member</span>
+                        </label>
+                    </div>
+                    <div id="philIdWrap" style="display:<%= patient && patient.philhealthConsent ? '' : 'none' %>; margin-top:12px;">
+                        <label style="display:block; margin-bottom:4px;">PhilHealth ID Number (optional)</label>
+                        <input id="philId" type="text" name="philhealthId" value="<%= patient && patient.philhealthId ? patient.philhealthId : '' %>" placeholder="e.g. 12-345678901-2">
+                    </div>
+                </div>
+        </div>
+
+                
+
+        <div class="form-row">
+            <a href="/patients" class="button btn-secondary">Back to Patients</a>
+            <button type="submit" class="button btn-primary">Save Patient</button>
+        </div>
+    </form>
+</div>
+<script>
+    (function(){
+        const dob = document.getElementById('dobInput');
+        const age = document.getElementById('ageInput');
+
+        function computeAgeFromDob(d) {
+            if (!d) return '';
+            const b = new Date(d);
+            if (isNaN(b.getTime())) return '';
+            const today = new Date();
+            let a = today.getFullYear() - b.getFullYear();
+            const m = today.getMonth() - b.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < b.getDate())) a--;
+            return a;
+        }
+
+        function onDobChange() {
+            const val = dob.value;
+            if (val) {
+                const calc = computeAgeFromDob(val);
+                age.value = calc;
+                age.setAttribute('readonly', 'readonly');
+            } else {
+                // allow manual age entry when DOB is cleared
+                age.removeAttribute('readonly');
+                // keep existing manual value if present
+            }
+        }
+
+        // initialize state
+        if (dob && age) {
+            onDobChange();
+            dob.addEventListener('change', onDobChange);
+        }
+    })();
+</script>
+<script>
+    (function(){
+        const philChk = document.getElementById('philChk');
+        const philIdWrap = document.getElementById('philIdWrap');
+        if (philChk && philIdWrap) {
+            philChk.addEventListener('change', function(){
+                if (philChk.checked) philIdWrap.style.display = '';
+                else philIdWrap.style.display = 'none';
+            });
+        }
+    })();
+</script>
+<script>
+    (function(){
+        const yes = document.getElementById('philYes');
+        const no = document.getElementById('philNo');
+        const wrap = document.getElementById('philIdWrap');
+        if (!yes || !no || !wrap) return;
+        function update(){ if (yes.checked) wrap.style.display = ''; else wrap.style.display = 'none'; }
+        yes.addEventListener('change', update);
+        no.addEventListener('change', update);
+        update();
+    })();
+</script>

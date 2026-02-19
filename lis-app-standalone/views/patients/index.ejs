@@ -1,0 +1,124 @@
+<div class="card">
+    <h3>Patient Management</h3>
+        <div style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
+                <div>
+                        <a href="/patients/new" class="button btn-primary">➕ Add New Patient</a>
+                </div>
+                <div style="flex:1; display:flex; justify-content:flex-start; gap:12px; align-items:center;">
+                    <form method="GET" action="/patients" class="filter-form" style="flex:1; display:flex; gap:8px; align-items:center;">
+                        <input type="text" name="search" class="search-box" placeholder="Search patients by name or ID..." value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>" style="flex:1;">
+
+                        <input type="date" name="date" class="filter-select" onchange="this.form.submit()" value="<%= typeof dateFilter !== 'undefined' ? dateFilter : '' %>">
+
+                        <select name="philhealth" class="filter-select" onchange="this.form.submit()">
+                            <option value="">PhilHealth</option>
+                            <option value="yes" <%= (typeof philhealthFilter !== 'undefined' && philhealthFilter === 'yes') ? 'selected' : '' %>>Yes</option>
+                            <option value="no" <%= (typeof philhealthFilter !== 'undefined' && philhealthFilter === 'no') ? 'selected' : '' %>>No</option>
+                        </select>
+
+                        <select name="company" class="filter-select" onchange="this.form.submit()">
+                            <option value="">All Companies</option>
+                            <% (availableCompanies || []).forEach(function(c){ %>
+                                <option value="<%= c %>" <%= (typeof companyFilter !== 'undefined' && companyFilter === c) ? 'selected' : '' %>><%= c %></option>
+                            <% }) %>
+                        </select>
+
+                        <div class="filter-actions">
+                            <a href="/patients" class="button btn-secondary">Clear</a>
+                        </div>
+                    </form>
+
+                    <div style="white-space:nowrap;">
+                        <button id="testPrintBtn" class="button btn-secondary">Test Print</button>
+                    </div>
+                </div>
+        </div>
+    <table>
+        <thead>
+            <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Age</th>
+                    <th>Gender</th>
+                    <th>Phone</th>
+                    <th>Company</th>
+                    <th>PhilHealth</th>
+                    <th>Actions</th>
+                </tr>
+        </thead>
+        <tbody id="patientsTable">
+            <% if (patients && patients.length > 0) { %>
+                <% patients.forEach(patient => { %>
+                <tr>
+                    <td><strong><%= patient.patientCode ? patient.patientCode.split('-').pop() : patient.patientId %></strong></td>
+                    <td><%= patient.firstName %> <%= patient.middleName ? patient.middleName + ' ' : '' %><%= patient.lastName %></td>
+                    <td><%= (patient.age !== null && patient.age !== undefined) ? patient.age : (patient.ageManual !== null && patient.ageManual !== undefined ? patient.ageManual : '') %></td>
+                    <td><%= patient.gender %></td>
+                    <td><%= patient.phone || 'N/A' %></td>
+                    <td><%= patient.company || '' %></td>
+                    <td><%= patient.philhealthConsent ? 'Yes' : 'No' %></td>
+                    <td class="action-buttons" style="flex-wrap:nowrap; white-space:nowrap; margin-top:0;">
+                        <% if (patient.hasTests) { %>
+                            <a href="/patients/<%= patient.id %>" class="button btn-small btn-primary">View</a>
+                        <% } else { %>
+                            <a href="/tests/new?patient=<%= patient.id %>" class="button btn-small btn-primary">Assign Test</a>
+                        <% } %>
+                        <a href="/patients/<%= patient.id %>/edit" class="button btn-small btn-orange">Edit</a>
+                        <form action="/patients/<%= patient.id %>?_method=DELETE" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this patient?')">
+                            <button type="submit" class="button btn-small btn-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                <% }); %>
+            <% } else { %>
+                <tr><td colspan="6" class="text-center">No patients found</td></tr>
+            <% } %>
+        </tbody>
+    </table>
+
+        <% if (totalPages > 1) { %>
+        <div class="flex-between mt-20">
+            <% if (hasPrevPage) { %>
+                <a href="/patients?page=<%= prevPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&philhealth=<%= encodeURIComponent(philhealthFilter || '') %>&company=<%= encodeURIComponent(companyFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link">Previous</a>
+            <% } %>
+
+            <div>
+                <% 
+                    const maxDisplay = 10;
+                    const half = Math.floor(maxDisplay/2);
+                    let start = Math.max(1, currentPage - half);
+                    let end = Math.min(totalPages, start + maxDisplay - 1);
+                    start = Math.max(1, end - maxDisplay + 1);
+                    if (totalPages > maxDisplay && start > 1) { %>
+                        <a href="/patients?page=1&search=<%= encodeURIComponent(searchQuery || '') %>&philhealth=<%= encodeURIComponent(philhealthFilter || '') %>&company=<%= encodeURIComponent(companyFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link">First</a>
+                <% }
+                    for (let p = start; p <= end; p++) {
+                %>
+                    <a href="/patients?page=<%= p %>&search=<%= encodeURIComponent(searchQuery || '') %>&philhealth=<%= encodeURIComponent(philhealthFilter || '') %>&company=<%= encodeURIComponent(companyFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link <%= p === currentPage ? 'active' : '' %>"><%= p %></a>
+                <% } 
+                    if (totalPages > maxDisplay && end < totalPages) { %>
+                        <a href="/patients?page=<%= totalPages %>&search=<%= encodeURIComponent(searchQuery || '') %>&philhealth=<%= encodeURIComponent(philhealthFilter || '') %>&company=<%= encodeURIComponent(companyFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link">Last</a>
+                <% } %>
+            </div>
+
+            <% if (hasNextPage) { %>
+                <a href="/patients?page=<%= nextPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&philhealth=<%= encodeURIComponent(philhealthFilter || '') %>&company=<%= encodeURIComponent(companyFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link">Next</a>
+            <% } %>
+        </div>
+        <% } %>
+</div>
+
+    <script>
+    // Test Print button: call server endpoint to run thermal test
+    document.getElementById('testPrintBtn').addEventListener('click', function() {
+        if (!confirm('Send a test print to the configured thermal printer?')) return;
+        this.disabled = true;
+        fetch('/patients/thermal-print', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ receipt: true }) })
+            .then(r => r.json())
+            .then(j => {
+                alert(j && j.success ? 'Print job sent.' : ('Print failed: ' + (j && j.error ? j.error : 'unknown')));
+            })
+            .catch(err => { alert('Print request failed: ' + err); })
+            .finally(() => { document.getElementById('testPrintBtn').disabled = false; });
+    });
+    </script>

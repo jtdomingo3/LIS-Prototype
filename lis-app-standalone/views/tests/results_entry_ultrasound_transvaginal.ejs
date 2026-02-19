@@ -1,0 +1,158 @@
+<div class="card">
+  <h3>Enter Transvaginal Ultrasound Results - <%= test.testId %></h3>
+
+  <form action="/tests/<%= test.id %>/results" method="POST">
+    <input type="hidden" name="_method" value="POST">
+
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+      <div class="form-row" style="margin:0;">
+        <label>Date</label>
+        <input type="date" name="entryDate" value="<%= test && test.testDate ? (new Date(test.testDate)).toISOString().slice(0,10) : (new Date()).toISOString().slice(0,10) %>" readonly>
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>Time Requested</label>
+        <input type="time" name="timeRequested" value="<%= test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '' %>">
+      </div>
+      <div class="form-row" style="margin:0;">
+        <label>Time Released</label>
+        <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (new Date()).toTimeString().slice(0,5) %>">
+      </div>
+    </div>
+
+    <div style="margin-top:8px">
+      <label>Section Title</label>
+      <input type="text" name="section_title" value="<%= test && test.results && test.results.section_title ? test.results.section_title : 'TRANSVAGINAL ULTRASOUND' %>">
+    </div>
+
+    <div class="form-row">
+      <label>GESTATIONAL SAC (length)</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" name="gestational_sac_length" placeholder="0.00" value="<%= test && test.results && test.results.gestational_sac_length ? test.results.gestational_sac_length : '' %>" style="width:120px"> 
+        <label style="margin:0">cm</label>
+        <input type="text" name="gestational_sac_age" placeholder="6w6d" value="<%= test && test.results && test.results.gestational_sac_age ? test.results.gestational_sac_age : '' %>" style="margin-left:8px; width:120px">
+      </div>
+    </div>
+
+    <div class="form-row" style="margin-top:8px">
+      <label>CRL</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="text" name="crl_length" placeholder="0.00" value="<%= test && test.results && test.results.crl_length ? test.results.crl_length : '' %>" style="width:120px">
+        <label style="margin:0">cm</label>
+        <input type="text" name="crl_age" placeholder="6w6d" value="<%= test && test.results && test.results.crl_age ? test.results.crl_age : '' %>" style="margin-left:8px; width:120px">
+      </div>
+    </div>
+
+    <div style="margin-top:8px">
+      <label>COMMENTS</label>
+      <div id="commentsList">
+        <% let commentEntries = [];
+           if (test && test.results && Array.isArray(test.results.comment_entries)) {
+             commentEntries = test.results.comment_entries;
+           } else if (test && test.results && (test.results.comment_yolk || test.results.comment_hemorrhage)) {
+             // back-compat fallback
+             if (test.results.comment_yolk) commentEntries.push({ sign: '-', text: test.results.comment_yolk });
+             if (test.results.comment_hemorrhage) commentEntries.push({ sign: '-', text: test.results.comment_hemorrhage });
+           } else {
+             commentEntries = [{ sign: '-', text: 'Yolk sac' }, { sign: '-', text: 'Hemorrhage' }];
+           }
+        %>
+        <% commentEntries.forEach(function(c, idx){ %>
+          <div class="comment-row" style="display:flex;gap:8px;align-items:center;margin-top:6px">
+            <select name="comment_sign[]" style="width:64px">
+              <option value="+" <%= c && c.sign === '+' ? 'selected' : '' %> >(+)</option>
+              <option value="-" <%= (!c || c.sign === '-' ) ? 'selected' : '' %> >(-)</option>
+            </select>
+            <input type="text" name="comment_text[]" placeholder="Comment" value="<%= c && c.text ? c.text : '' %>" style="flex:1">
+            <button type="button" class="button btn-small" onclick="removeCommentRow(this)">Remove</button>
+          </div>
+        <% }) %>
+      </div>
+      <div style="margin-top:8px">
+        <button type="button" class="button" onclick="addCommentRow()">Add Comment</button>
+      </div>
+    </div>
+
+    <div style="margin-top:8px">
+      <label>AVERAGE ULTRASOUND AGE</label>
+      <input type="text" name="average_ultrasound_age" placeholder="6w6d" value="<%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : '' %>">
+    </div>
+
+    <div style="margin-top:8px">
+      <label>FETAL HEART RATE</label>
+      <input type="text" name="fetal_heart_rate" placeholder="BPM" value="<%= test && test.results && test.results.fetal_heart_rate ? test.results.fetal_heart_rate : '' %>">
+    </div>
+
+    <div style="margin-top:8px">
+      <label>EXPECTED DATE OF DELIVERY</label>
+      <input type="date" name="expected_date_of_delivery" value="<%= test && test.results && test.results.expected_date_of_delivery ? (new Date(test.results.expected_date_of_delivery)).toISOString().slice(0,10) : '' %>">
+    </div>
+
+    <div style="margin-top:8px">
+      <label>OTHERS</label>
+      <input type="text" name="other" value="<%= test && test.results && test.results.other ? test.results.other : '' %>">
+    </div>
+
+    <div style="margin-top:8px">
+      <label>IMPRESSION</label>
+      <textarea name="impression" rows="4" style="width:100%"><%= test && test.results && test.results.impression ? test.results.impression : 'Enter impression here.' %></textarea>
+    </div>
+
+    <div style="margin-top:8px">
+      <label>Space between Impression and Footer</label>
+      <div>
+        <select name="impression_spacing" style="width:220px">
+          <option value="" <%= !(test && test.results && test.results.impression_spacing) ? 'selected' : '' %>>Default (template)</option>
+          <option value="12px" <%= test && test.results && test.results.impression_spacing==='12px' ? 'selected' : '' %>>12px</option>
+          <option value="24px" <%= test && test.results && test.results.impression_spacing==='24px' ? 'selected' : '' %>>24px</option>
+          <option value="36px" <%= test && test.results && test.results.impression_spacing==='36px' ? 'selected' : '' %>>36px</option>
+          <option value="48px" <%= test && test.results && test.results.impression_spacing==='48px' ? 'selected' : '' %>>48px</option>
+          <option value="72px" <%= test && test.results && test.results.impression_spacing==='72px' ? 'selected' : '' %>>72px</option>
+          <option value="96px" <%= test && test.results && test.results.impression_spacing==='96px' ? 'selected' : '' %>>96px</option>
+          <option value="120px" <%= test && test.results && test.results.impression_spacing==='120px' ? 'selected' : '' %>>120px</option>
+          <option value="180px" <%= test && test.results && test.results.impression_spacing==='180px' ? 'selected' : '' %>>180px</option>
+          <option value="240px" <%= test && test.results && test.results.impression_spacing==='240px' ? 'selected' : '' %>>240px</option>
+          <% if (test && test.results && test.results.impression_spacing && ['12px','24px','36px','48px','72px','96px','120px','180px','240px'].indexOf(test.results.impression_spacing) === -1) { %>
+            <option value="<%= test.results.impression_spacing %>" selected>Custom: <%= test.results.impression_spacing %></option>
+          <% } %>
+        </select>
+      </div>
+      <div style="font-size:12px;color:#666;margin-top:4px">Select a spacing value (examples: <strong>36px</strong>, <strong>2in</strong>); leave as <strong>Default</strong> to use the template's preset.</div>
+    </div>
+
+    <hr>
+    <h4>Signatures / Performers</h4>
+    <%- include('../partials/signatory_select', { prefix: 'path', label: 'Radiologist', role: 'Radiologist', nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (test.results && test.results.pathName) ? test.results.pathName : (test.results && test.results.doctorName ? test.results.doctorName : ''), existingLicense: (test.results && test.results.pathLicense) ? test.results.pathLicense : (test.results && test.results.doctorLicense ? test.results.doctorLicense : '') }) %>
+
+    <div class="form-row">
+      <label>Designation</label>
+      <input type="text" name="doctorDesignation" placeholder="e.g. MD, FPCR - Radiologist" value="<%= test.results && test.results.doctorDesignation ? test.results.doctorDesignation : 'Radiologist' %>">
+    </div>
+
+    <div class="form-row mt-12">
+      <a href="/tests/<%= test.id %>" class="button btn-secondary">Cancel</a>
+      <button class="button btn-primary">Save Results</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  function addCommentRow() {
+    const container = document.getElementById('commentsList');
+    const div = document.createElement('div');
+    div.className = 'comment-row';
+    div.style.cssText = 'display:flex;gap:8px;align-items:center;margin-top:6px';
+    div.innerHTML = `
+      <select name="comment_sign[]" style="width:64px">
+        <option value="+">(+)</option>
+        <option value="-" selected>(-)</option>
+      </select>
+      <input type="text" name="comment_text[]" placeholder="Comment" style="flex:1">
+      <button type="button" class="button btn-small" onclick="removeCommentRow(this)">Remove</button>
+    `;
+    container.appendChild(div);
+  }
+  function removeCommentRow(btn) {
+    const row = btn && btn.parentNode;
+    if (row && row.parentNode) row.parentNode.removeChild(row);
+  }
+</script>

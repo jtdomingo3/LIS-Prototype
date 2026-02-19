@@ -1,0 +1,58 @@
+<style>
+.result-highlight{ color:#c00; font-weight:700 }
+</style>
+<script>
+// Highlight certain result tokens (Positive, Reactive, trace, +/++/+++/++++)
+  (function(){
+    function shouldSkip(node){
+      return node && node.closest && node.closest('.result-highlight');
+    }
+
+    function highlightRoot(){
+      var root = document.querySelector('.report-page') || document.body;
+      if(!root) return;
+      var wordRe = /\b(Positive|Reactive|trace)\b/gi;
+      var plusRe = /(\+{1,4})/g; // match groups of plus signs
+
+      // iterate text nodes but merge small runs of adjacent text nodes to catch split tokens
+      var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+      var node;
+      var processed = new WeakSet();
+      while(node = walker.nextNode()){
+        if(!node.nodeValue || !node.parentNode) continue;
+        if(processed.has(node)) continue;
+        var parent = node.parentNode;
+        if(shouldSkip(parent)) continue;
+
+        // gather up to 6 adjacent text nodes (to handle splits inside elements)
+        var nodes = [node];
+        var n = node.nextSibling;
+        for(var i=0;i<5 && n && n.nodeType===3; i++){
+          nodes.push(n);
+          n = n.nextSibling;
+        }
+        var combined = nodes.map(function(t){ return t.nodeValue; }).join('');
+        if(!wordRe.test(combined) && !plusRe.test(combined)) continue;
+
+        // escape and replace matches
+        var esc = combined.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        esc = esc.replace(wordRe, function(m){ return '<span class="result-highlight">'+m+'</span>'; });
+        esc = esc.replace(plusRe, function(m){ return '<span class="result-highlight">'+m+'</span>'; });
+
+        var span = document.createElement('span');
+        span.innerHTML = esc;
+
+        // replace the first text node with span and remove the other merged nodes
+        parent.replaceChild(span, nodes[0]);
+        for(var j=1;j<nodes.length;j++){
+          try{ parent.removeChild(nodes[j]); }catch(e){}
+          processed.add(nodes[j]);
+        }
+        processed.add(nodes[0]);
+      }
+    }
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', highlightRoot);
+    else highlightRoot();
+  })();
+</script>
