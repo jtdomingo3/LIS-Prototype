@@ -10,6 +10,7 @@
  *     OperationQueue for replay when the connection is restored.
  */
 const express = require('express');
+const expressLayouts = require('express-ejs-layouts');
 const session = require('express-session');
 const flash = require('connect-flash');
 const path = require('path');
@@ -21,6 +22,10 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   /* ── View engine ──────────────────────────────────────────────── */
   app.set('view engine', 'ejs');
   app.set('views', path.join(__dirname, '..', 'views'));
+  app.use(expressLayouts);  // wraps views in layout.ejs (sidebar, CSS, etc.)
+  app.set('layout', 'layout');
+  app.set('layout extractScripts', true);
+  app.set('layout extractStyles', true);
 
   /* ── Body parsers ─────────────────────────────────────────────── */
   app.use(express.urlencoded({ extended: true }));
@@ -56,13 +61,58 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     next();
   });
 
+  /* ── Pre-compute inline logo as base64 data URI ───────────────── */
+  try {
+    const _logoBuffer = require('fs').readFileSync(path.join(__dirname, '..', 'server-assets', 'gezyne-logo.png'));
+    app.locals.inlineLogo = 'data:image/png;base64,' + _logoBuffer.toString('base64');
+  } catch (e) {
+    app.locals.inlineLogo = '/assets/gezyne-logo.png';
+  }
+
+  /* ── Feature flags (match server defaults) ─────────────────────── */
+  app.locals.featureFlags = { tests: true, reports: true, templates: true, users: true, worksheet: true };
+
   /* ── Make flash messages & user available to all views ─────────── */
   app.use((req, res, next) => {
     res.locals.success_msg = req.flash('success_msg');
     res.locals.error_msg = req.flash('error_msg');
-    res.locals.user = req.session && req.session.user ? req.session.user : null;
+    res.locals.error = req.flash('error');
+    const sessionUser = req.session && req.session.user ? req.session.user : null;
+    res.locals.user = sessionUser;
+    // layout.ejs checks `sessionUser` for the sidebar navigation
+    res.locals.sessionUser = sessionUser;
     // Offline indicator for views
     res.locals.offlineMode = true;
+    // Feature flags
+    const sessionFlags = (req.session && req.session.featureFlags) ? req.session.featureFlags : {};
+    res.locals.featureFlags = Object.assign({}, app.locals.featureFlags, sessionFlags);
+    res.locals.backupConfig = { enabled: false, frequency: 'daily', path: '' };
+    next();
+  });
+
+  /* ── Expose all users to views (for signatory dropdowns etc.) ──── */
+  app.use((req, res, next) => {
+    try {
+      const users = global.db && global.db.getUsers ? global.db.getUsers() : [];
+      res.locals.allUsers = (users || []).map(u => ({
+        id: u.id || u.email, name: u.name || u.email, email: u.email,
+        role: u.role || '', licenseNumber: u.licenseNumber || ''
+      }));
+    } catch (e) { res.locals.allUsers = []; }
+    next();
+  });
+
+  /* ── Expose doctor names & areas to views ──────────────────────── */
+  app.use((req, res, next) => {
+    // Read from environment or DataStore settings (fallback to empty)
+    const d1 = process.env.DOCTOR_1_NAME || '';
+    const d2 = process.env.DOCTOR_2_NAME || '';
+    res.locals.DOCTOR_1_NAME = d1;
+    res.locals.DOCTOR_2_NAME = d2;
+    const areas = [];
+    if (d1) areas.push("Doctor's Check-up - " + d1);
+    if (d2) areas.push("Doctor's Check-up - " + d2);
+    res.locals.DOCTOR_AREAS = areas;
     next();
   });
 

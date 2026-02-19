@@ -15,8 +15,25 @@
   if (window.__lisStatusInjected) return;
   window.__lisStatusInjected = true;
 
-  // Bail if the bridge isn't available (shouldn't happen, but be safe)
-  if (!window.lisApp) return;
+  // If the preload bridge isn't available yet, create a stub so the UI
+  // still renders.  The real bridge should always be present, but if for
+  // some reason it isn't (e.g. timing edge case), the status bar will
+  // still display — just without IPC functionality.
+  if (!window.lisApp) {
+    console.warn('[inject] window.lisApp not found — creating stub');
+    window.lisApp = {
+      getStatus: function () { return Promise.resolve({ online: false, pendingCount: 0 }); },
+      getQueue: function () { return Promise.resolve([]); },
+      fullSync: function () { return Promise.resolve({}); },
+      retryConnection: function () { return Promise.resolve({}); },
+      openSettings: function () { return Promise.resolve(); },
+      printPreview: function () {},
+      onNetworkStatus: function () {},
+      onSyncComplete: function () {},
+      onFullSyncProgress: function () {},
+      onFullSyncEnd: function () {},
+    };
+  }
 
   /* ==============================================================
    *  Intercept window.print() → open our PDF print preview instead
@@ -131,7 +148,6 @@
     }
     // hide retry when online
     if (retryBtn) retryBtn.style.display = online ? 'none' : retryBtn.style.display;
-    }
   }
 
   /* ==============================================================

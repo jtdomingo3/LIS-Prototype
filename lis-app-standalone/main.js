@@ -237,15 +237,14 @@ async function createWindow() {
   }
 
   mainWindow.webContents.on('did-finish-load', async () => {
+    // Always inject the status bar / client scripts first — before any async
+    // work that might hang or bail early and prevent the injection.
+    injectClientScripts();
+
     try {
       const url = mainWindow.webContents.getURL();
       if (config.SERVER_URL && url.startsWith(config.SERVER_URL)) {
         const html = await mainWindow.webContents.executeJavaScript('document.documentElement.outerHTML');
-        // If the loaded content is raw JSON (server returned JSON for a
-        // navigation) the renderer will show the JSON text in the main frame.
-        // Detect this case and reload to the server root so the app's HTML UI
-        // loads instead of a JSON payload. This avoids requiring the user to
-        // restart the app when the server was started after the standalone.
         try {
           const trimmed = (html || '').trim();
           if (trimmed && !trimmed.startsWith('<') && (trimmed.startsWith('{') || trimmed.startsWith('['))) {
@@ -258,8 +257,6 @@ async function createWindow() {
         pageCache.store(urlObj.pathname + (urlObj.search || ''), html);
       }
     } catch (e) { /* ignore */ }
-
-    injectClientScripts();
   });
 
   // When offline, intercept all main-frame navigations to the server and
