@@ -68,6 +68,29 @@ function saveUserSettings(newSettings = {}) {
   } catch (e) { console.warn('[Main] saveUserSettings failed', e && e.message); }
 }
 
+/** Create a timestamped backup of the current DataStore and pending queue. */
+function performBackup() {
+  try {
+    const backupRoot = path.join(userDataPath || app.getPath('userData'), 'backups');
+    try { if (!fs.existsSync(backupRoot)) fs.mkdirSync(backupRoot, { recursive: true }); } catch (e) {}
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    let out = [];
+    if (dataStore && dataStore.filePath && fs.existsSync(dataStore.filePath)) {
+      const dst = path.join(backupRoot, `data.json.${ts}.bak`);
+      try { fs.copyFileSync(dataStore.filePath, dst); out.push(dst); } catch (e) { console.warn('[Main] backup data copy failed', e && e.message); }
+    }
+    if (operationQueue && operationQueue.filePath && fs.existsSync(operationQueue.filePath)) {
+      const dstq = path.join(backupRoot, `pending-operations.json.${ts}.bak`);
+      try { fs.copyFileSync(operationQueue.filePath, dstq); out.push(dstq); } catch (e) { console.warn('[Main] backup queue copy failed', e && e.message); }
+    }
+    if (out.length) console.log('[Main] performBackup created:', out.join(', '));
+    return out;
+  } catch (e) {
+    console.warn('[Main] performBackup failed', e && e.message);
+    return null;
+  }
+}
+
 function openSettingsWindow() {
   if (!mainWindow) return;
   if (global._settingsWindow && !global._settingsWindow.isDestroyed()) {
@@ -133,7 +156,9 @@ async function startNetworkMonitor() {
         try {
           if (remaining === 0) {
             console.log('[Main] queue empty — triggering full-sync');
-            await syncEngine.fullSync(mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null);
+            // Clear page cache so cached server HTML won't be served
+            try { if (pageCache && typeof pageCache.clear === 'function') pageCache.clear(); } catch (e) {}
+            await syncEngine.fullSync(mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, { replace: true });
             sendStatus();
           }
         } catch (e) { console.error('[Main] post-reconnect full-sync failed:', e && e.message); }
@@ -702,13 +727,40 @@ ipcMain.handle('drop-offline-data', async () => {
         try { dataStore._save(); } catch (e) {}
         try { dataStore.setMeta('lastFullSync', new Date().toISOString()); } catch (e) {}
       }
+      // Recreate the in-memory offline DB so route handlers use fresh data
+      try {
+        const { createOfflineDb } = require('./lib/offlineDb');
+        if (typeof createOfflineDb === 'function' && dataStore) {
+          global.db = createOfflineDb(dataStore);
+          console.log('[Main] recreated global.db from DataStore after drop');
+        }
+      } catch (e) { console.warn('[Main] failed to recreate global.db', e && e.message); }
       if (operationQueue && typeof operationQueue.clearAll === 'function') operationQueue.clearAll();
       // Clear page cache so any cached server HTML won't be served
       try { if (pageCache && typeof pageCache.clear === 'function') pageCache.clear(); } catch (e) {}
       sendStatus();
       const importedCount = (Array.isArray(fetched.patients) ? fetched.patients.length : 0);
-      // Notify renderer that full-sync-like replacement completed so it can reload
-      try { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('full-sync-end', { success: true, imported: importedCount, datastore: dataStore ? dataStore.info() : null }); } catch (e) {}
+      // Notify renderer that full-sync-like replacement completed so it can reload.
+      // Then force a main-window reload (ignore cache) so the current page reflects
+      // the recreated `global.db` and cleared page cache.
+      try {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('full-sync-end', { success: true, imported: importedCount, datastore: dataStore ? dataStore.info() : null });
+          mainWindow.webContents.send('drop-offline-complete', { success: true, imported: importedCount });
+          // Give the renderer a brief moment to process the IPC, then reload
+          setTimeout(() => {
+            try {
+              if (mainWindow && !mainWindow.isDestroyed()) {
+                if (typeof mainWindow.webContents.reloadIgnoringCache === 'function') {
+                  mainWindow.webContents.reloadIgnoringCache();
+                } else if (typeof mainWindow.webContents.reload === 'function') {
+                  mainWindow.webContents.reload();
+                }
+              }
+            } catch (e) { /* ignore reload errors */ }
+          }, 250);
+        }
+      } catch (e) {}
       return { success: true, imported: importedCount };
     } catch (e) {
       console.error('[Main] failed to apply fetched server data', e && e.message);

@@ -208,7 +208,7 @@ class SyncEngine {
     /** Attempt a full download of server data.json into the local DataStore.
      *  Returns an object { success: boolean, reason?: string, imported?: number }
      */
-    async fullSync(progressSender) {
+    async fullSync(progressSender, opts) {
       if (!this.config || !this.config.SERVER_URL) return { success: false, reason: 'no-server-url' };
       if (!this.dataStore) return { success: false, reason: 'no-datastore' };
 
@@ -256,15 +256,20 @@ class SyncEngine {
         if (!result) throw lastErr || new Error('no-data');
         if (!result || typeof result !== 'object') return { success: false, reason: 'invalid-json' };
 
-        // Merge known collections (best-effort)
+        // Merge known collections (best-effort) or replace when requested
         const collections = ['users', 'patients', 'tests', 'templates', 'counters'];
         let imported = 0;
         for (const col of collections) {
           if (Array.isArray(result[col])) {
-            this.dataStore.mergeCollection(col, result[col]);
+            if (opts && opts.replace) {
+              // Replace on-disk collection entirely to ensure authoritative server state
+              this.dataStore.setCollection(col, result[col]);
+            } else {
+              this.dataStore.mergeCollection(col, result[col]);
+            }
             imported += result[col].length;
           } else if (result[col] && typeof result[col] === 'object' && col === 'counters') {
-            this.dataStore.setCollection(col, result[col]);
+            if (opts && opts.replace) this.dataStore.setCollection(col, result[col]); else this.dataStore.setCollection(col, result[col]);
           }
         }
         const now = new Date().toISOString();
