@@ -534,12 +534,40 @@ class SyncEngine {
       // Only handle known collections where local temp IDs exist
       if (!['patients','tests','templates','users'].includes(collection)) return;
 
-      const localId = this._findLocalIdForOp(op, collection);
+      // Prefer deterministic mapping when server echoed back a client_id in JSON response
+      let clientId = null;
+      try {
+        if (replayResult && replayResult.body) {
+          const raw = typeof replayResult.body === 'string' ? replayResult.body.trim() : replayResult.body;
+          if (raw) {
+            const parsed = (typeof raw === 'string' && (raw.startsWith('{') || raw.startsWith('['))) ? JSON.parse(raw) : raw;
+            if (parsed) {
+              if (Array.isArray(parsed) && parsed.length) {
+                clientId = parsed[0] && (parsed[0].client_id || parsed[0].clientId) ? (parsed[0].client_id || parsed[0].clientId) : clientId;
+              } else if (parsed.client_id || parsed.clientId) {
+                clientId = parsed.client_id || parsed.clientId;
+              }
+            }
+          }
+        }
+      } catch (e) { /* ignore parse errors */ }
+
+      let localId = null;
+      if (clientId && this.dataStore) {
+        try {
+          const items = this.dataStore.getCollection(collection) || [];
+          const found = items.find(i => i && (i.client_id === clientId || i.clientId === clientId));
+          if (found) localId = found.id;
+        } catch (e) { /* ignore */ }
+      }
+
+      // Fallback to heuristics when no client_id match
+      if (!localId) localId = this._findLocalIdForOp(op, collection);
+
       if (!localId) {
         console.log(`[Sync] no matching local ${collection} record found for queued operation; server id=${serverId}`);
         return;
       }
-
       if (localId === serverId) return;
       const replaced = this.queue.replaceTempId(localId, serverId);
       if (replaced) console.log(`[Sync] mapped local ${collection} id ${localId} -> server id ${serverId}`);
@@ -550,32 +578,38 @@ class SyncEngine {
 
   _extractServerIdFromReplay(replayResult) {
     try {
-      // Redirect case: net.request emits 'redirect' with redirectUrl => returned as redirectTo
-      if (replayResult && replayResult.redirectTo) {
-        try {
-          const p = new URL(replayResult.redirectTo).pathname || '';
-          const segs = p.replace(/\/$/,'').split('/').filter(Boolean);
-          if (segs.length) return segs[segs.length - 1];
-        } catch (e) { /* ignore */ }
-      }
-
-      // Body may contain JSON with the created object or id
+      // Prefer JSON body first (most reliable source for created id)
       if (replayResult && replayResult.body) {
         const body = (typeof replayResult.body === 'string') ? replayResult.body.trim() : replayResult.body;
         if (typeof body === 'string' && (body.startsWith('{') || body.startsWith('['))) {
           try {
             const parsed = JSON.parse(body);
-            if (!parsed) return null;
-            if (Array.isArray(parsed)) {
-              if (parsed.length && parsed[0] && (parsed[0].id || parsed[0]._id)) return parsed[0].id || parsed[0]._id;
-              return null;
+            if (parsed) {
+              if (Array.isArray(parsed) && parsed.length && (parsed[0].id || parsed[0]._id)) return parsed[0].id || parsed[0]._id;
+              if (parsed.id) return parsed.id;
+              if (parsed._id) return parsed._id;
+              if (parsed && parsed.success && (parsed.id || parsed._id)) return parsed.id || parsed._id;
             }
-            if (parsed.id) return parsed.id;
-            if (parsed._id) return parsed._id;
-            // Some endpoints return { success: true, id: '...' }
-            if (parsed && parsed.success && (parsed.id || parsed._id)) return parsed.id || parsed._id;
           } catch (e) { /* ignore JSON parse errors */ }
         }
+      }
+
+      // Redirect fallback: only accept a redirect segment that *looks like* an ID
+      // (UUID-like or server testId).  Do NOT accept generic redirects like /patients/new or /tests.
+      if (replayResult && replayResult.redirectTo) {
+        try {
+          const p = new URL(replayResult.redirectTo).pathname || '';
+          const segs = p.replace(/\/$/,'').split('/').filter(Boolean);
+          if (segs.length) {
+            const uuidLike = /^[0-9a-fA-F-]{8,36}$/; // matches UUID-ish segments
+            const testIdLike = /^[A-Z]{1,5}\d{1,}$/i;   // matches BT0000001 or similar server-assigned short ids
+            // scan segments from right-to-left for a plausible id
+            for (let i = segs.length - 1; i >= 0; i--) {
+              const s = segs[i];
+              if (uuidLike.test(s) || testIdLike.test(s)) return s;
+            }
+          }
+        } catch (e) { /* ignore URL parse errors */ }
       }
     } catch (e) { /* ignore */ }
     return null;

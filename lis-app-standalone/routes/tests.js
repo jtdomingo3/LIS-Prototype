@@ -563,6 +563,7 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
           requestedTests: bloodItems,
           awaitingOnly: awaitingOnly
         };
+        if (req.body && req.body.client_id) payload.client_id = req.body.client_id;
         const t = new Test(payload);
         await t.save();
         createdTests.push(t);
@@ -588,6 +589,7 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
           requestedTests: [rt],
           awaitingOnly: awaitingOnly
         };
+        if (req.body && req.body.client_id) payload.client_id = req.body.client_id;
         // If this single requested item is a doctor-only request and no other non-doctor items
         // are present for this patient creation flow, queue directly to doctor's checkup.
         try {
@@ -628,6 +630,7 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
         priority: (priority && String(priority).trim()) ? priority : 'Normal',
         requestedBy: req.session.user.id
       };
+      if (req.body && req.body.client_id) payload.client_id = req.body.client_id;
       // If the form requested a Send Out but no detailed requestedTests were provided
       // (single testType path), attach a normalized For Send Out requested item so
       // the Payment Area processing can route it to the internal 'Sendout' area.

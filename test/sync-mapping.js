@@ -26,22 +26,39 @@ const { SyncEngine } = require('../lis-app-standalone/lib/syncEngine');
   // Queue a dependent op that references the local patient id (e.g. assign test)
   const testOp = q.add({ method: 'POST', url: 'https://example.test/tests', body: { patient: 'local-temp-123', testType: 'CBC' }, timestamp: new Date().toISOString() });
 
-  // Simulate server response for create -> redirected to server id
-  const replayResult = { redirectTo: 'https://example.test/patients/server-999' };
+  // 1) Positive case: server redirects to a resource id -> should map
+  // use a UUID-like id for positive mapping scenario
+  const serverUuid = '123e4567-e89b-12d3-a456-426614174000';
+  const replayResultOk = { redirectTo: `https://example.test/patients/${serverUuid}` };
+  await sync._handleReplayResult(createOp, replayResultOk);
+  let patients = ds.getCollection('patients');
+  let queued = q.getAll();
+  let mappedPatient = patients.find(p => p.id === serverUuid);
+  let stillLocal = patients.find(p => p.id === 'local-temp-123');
+  let updatedTestOp = queued.find(o => o.url.endsWith('/tests'));
+  const pass1 = !!mappedPatient && !stillLocal && updatedTestOp && updatedTestOp.body && updatedTestOp.body.patient === serverUuid;
 
-  // Invoke the handler that should map temp -> server id
-  await sync._handleReplayResult(createOp, replayResult);
+  // 2) Negative case: server responds with redirect to '/patients/new' -> must NOT map
+  // reset queue/data to initial state
+  q.clearAll();
+  const freshLocal = { id: 'local-temp-123', firstName: 'Alice', lastName: 'Smith', phone: '09170001111', createdAt: new Date().toISOString() };
+  ds.setCollection('patients', [freshLocal]);
+  console.log('DEBUG after reset patients collection:', ds.getCollection('patients'));
+  const createOp2 = q.add({ method: 'POST', url: 'https://example.test/patients', body: { firstName: 'Alice', lastName: 'Smith', phone: '09170001111' }, timestamp: new Date().toISOString() });
+  const testOp2 = q.add({ method: 'POST', url: 'https://example.test/tests', body: { patient: 'local-temp-123', testType: 'CBC' }, timestamp: new Date().toISOString() });
 
-  const patients = ds.getCollection('patients');
-  const queued = q.getAll();
+  const replayResultNew = { redirectTo: 'https://example.test/patients/new' };
+  await sync._handleReplayResult(createOp2, replayResultNew);
+  patients = ds.getCollection('patients');
+  queued = q.getAll();
+  const stillLocalAfter = patients.find(p => p.id === 'local-temp-123');
+  const mappedIncorrect = patients.find(p => p.id === 'new');
+  const updatedTestOp2 = queued.find(o => o.url.endsWith('/tests'));
+  const pass2 = !!stillLocalAfter && !mappedIncorrect && updatedTestOp2 && updatedTestOp2.body && updatedTestOp2.body.patient === 'local-temp-123';
 
-  const mappedPatient = patients.find(p => p.id === 'server-999');
-  const stillLocal = patients.find(p => p.id === 'local-temp-123');
-  const updatedTestOp = queued.find(o => o.url.endsWith('/tests'));
-
-  const pass = !!mappedPatient && !stillLocal && updatedTestOp && updatedTestOp.body && updatedTestOp.body.patient === 'server-999';
-
-  console.log('mapping result ->', pass ? 'PASS' : 'FAIL');
+  const pass = pass1 && pass2;
+  console.log('mapping positive-case ->', pass1 ? 'PASS' : 'FAIL');
+  console.log('mapping negative-case (no map) ->', pass2 ? 'PASS' : 'FAIL');
   console.log('patients in datastore:', patients);
   console.log('queued operations:', queued);
 

@@ -377,6 +377,7 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       requiredAreas: finalRequiredAreas,
       // preserve selected tests for extraction/medtech visibility (detailed objects)
       requestedTests: requestedTestsDetailed,
+      client_id: (req.body && req.body.client_id) ? req.body.client_id : undefined,
       createdBy: req.session.user.id
     });
 

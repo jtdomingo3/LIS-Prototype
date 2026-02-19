@@ -5,11 +5,11 @@
   "users": [],
   "patients": [
     {
-      "id": "server-999",
+      "id": "local-temp-123",
       "firstName": "Alice",
       "lastName": "Smith",
       "phone": "09170001111",
-      "createdAt": "2026-02-19T07:47:16.540Z"
+      "createdAt": "2026-02-19T08:11:40.948Z"
     }
   ],
   "tests": [],

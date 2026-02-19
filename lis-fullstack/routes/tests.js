@@ -563,6 +563,7 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
           requestedTests: bloodItems,
           awaitingOnly: awaitingOnly
         };
+        if (req.body && req.body.client_id) payload.client_id = req.body.client_id;
         const t = new Test(payload);
         await t.save();
         createdTests.push(t);
@@ -675,6 +676,12 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
     try {
       sseEmitter.emit('update', { action: 'assigned', patientId: patient, tests: createdTests.map(ct => ({ testId: ct.testId, id: ct.id, testType: ct.testType })), time: (new Date()).toISOString() });
     } catch (e) { console.warn('SSE emit failed', e); }
+
+    // If this request is from the standalone sync engine, return JSON with created ids + client_id
+    if (req.headers['x-lis-sync-email'] || req.headers['x-lis-sync-hash']) {
+      const created = createdTests.map(ct => ({ id: ct.id, testId: ct.testId || null, client_id: ct.client_id || null }));
+      return res.json(created);
+    }
 
     // If UI requested printing after assign, invoke print helper once for the patient with all created tests
     try {

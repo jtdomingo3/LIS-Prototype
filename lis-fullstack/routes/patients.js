@@ -377,6 +377,7 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       requiredAreas: finalRequiredAreas,
       // preserve selected tests for extraction/medtech visibility (detailed objects)
       requestedTests: requestedTestsDetailed,
+      client_id: (req.body && req.body.client_id) ? req.body.client_id : undefined,
       createdBy: req.session.user.id
     });
 
@@ -390,6 +391,13 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
 
     // Patient saved — tests will be assigned from patient management. Printing is manual.
     req.flash('success_msg', `Patient ${firstName} ${middleName ? middleName + ' ' : ''}${lastName} added successfully!`);
+
+    // If this request came from the standalone sync engine (hash-based headers),
+    // return JSON including the created id and client_id so the client can map records deterministically.
+    if (req.headers['x-lis-sync-email'] || req.headers['x-lis-sync-hash']) {
+      return res.json({ success: true, id: patient.id, client_id: req.body && req.body.client_id ? req.body.client_id : null });
+    }
+
     // Stay on the new patient form so users can continue adding patients
     res.redirect('/patients/new');
 

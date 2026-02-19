@@ -1,6 +1,6 @@
 [
   {
-    "id": "ed636450-c514-4863-afce-c80b700c470d",
+    "id": "9dac08f5-6d5b-43ea-a848-08201a44ff02",
     "method": "POST",
     "url": "https://example.test/patients",
     "body": {
@@ -8,22 +8,22 @@
       "lastName": "Smith",
       "phone": "09170001111"
     },
-    "timestamp": "2026-02-19T07:47:16.541Z",
+    "timestamp": "2026-02-19T08:11:40.949Z",
     "status": "pending",
-    "createdAt": "2026-02-19T07:47:16.541Z",
+    "createdAt": "2026-02-19T08:11:40.949Z",
     "attempts": 0
   },
   {
-    "id": "cbff402c-ea91-4716-a4cb-8eb6d6a586c8",
+    "id": "db6bad21-90fd-44bc-9786-e8ed40369304",
     "method": "POST",
     "url": "https://example.test/tests",
     "body": {
-      "patient": "server-999",
+      "patient": "local-temp-123",
       "testType": "CBC"
     },
-    "timestamp": "2026-02-19T07:47:16.544Z",
+    "timestamp": "2026-02-19T08:11:40.953Z",
     "status": "pending",
-    "createdAt": "2026-02-19T07:47:16.544Z",
+    "createdAt": "2026-02-19T08:11:40.953Z",
     "attempts": 0
   }
 ]

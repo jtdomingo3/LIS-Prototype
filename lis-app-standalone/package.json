@@ -9,7 +9,8 @@
     "build": "electron-builder",
     "dist:win": "electron-builder --win nsis",
     "dist:dir": "electron-builder --dir",
-    "generate-icon": "node build/generate-icon.js"
+    "generate-icon": "node build/generate-icon.js",
+    "test": "node ../test/e2e-offline-sync.js && node ../test/sync-mapping.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

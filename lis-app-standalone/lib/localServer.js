@@ -156,6 +156,10 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
       const base = config.SERVER_URL.replace(/\/$/, '');
       const serverUrl = base + reqPath;
 
+      // Ensure a deterministic client-generated id for offline-created records
+      if (req.body && !req.body.client_id) {
+        try { req.body.client_id = require('crypto').randomUUID(); } catch (e) { req.body.client_id = 'cli-' + Date.now(); }
+      }
       // Queue with the request body for later replay
       if (operationQueue) {
         operationQueue.add({

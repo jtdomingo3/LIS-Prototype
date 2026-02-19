@@ -1,0 +1,32 @@
+{
+  "__meta": {
+    "lastFullSync": null
+  },
+  "users": [],
+  "patients": [
+    {
+      "id": "123e4567-e89b-12d3-a456-426614174100",
+      "client_id": "cid-p-1",
+      "firstName": "Gally",
+      "lastName": "Morales",
+      "phone": "09170001111",
+      "createdAt": "2026-02-19T08:11:41.010Z"
+    }
+  ],
+  "tests": [
+    {
+      "id": "123e4567-e89b-12d3-a456-426614174200",
+      "client_id": "cid-t-1",
+      "patient": "123e4567-e89b-12d3-a456-426614174100",
+      "testType": "Blood Typing",
+      "status": "Payment Area",
+      "createdAt": "2026-02-19T08:11:41.010Z",
+      "results": {
+        "specimen": "Whole Blood",
+        "result": "B+"
+      }
+    }
+  ],
+  "templates": [],
+  "counters": {}
+}
