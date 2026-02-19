@@ -117,6 +117,58 @@ class OperationQueue {
     return [...this.operations];
   }
 
+  /** Replace occurrences of a temporary id with a server id across all pending operations.
+   *  Performs deep replacement in `op.body` (objects/arrays/strings) and in `op.url`.
+   *  Returns true if any replacement was made.
+   */
+  replaceTempId(oldId, newId) {
+    if (!oldId || !newId) return false;
+    let changed = false;
+    const replaceInValue = (val) => {
+      if (val == null) return val;
+      // convert to string and replace occurrences when primitive
+      if (typeof val === 'string') {
+        if (val.indexOf(oldId) !== -1) {
+          changed = true;
+          return val.split(oldId).join(newId);
+        }
+        return val;
+      }
+      if (typeof val === 'number' || typeof val === 'boolean') return val;
+      if (Array.isArray(val)) {
+        return val.map(v => replaceInValue(v));
+      }
+      if (typeof val === 'object') {
+        const out = {};
+        Object.keys(val).forEach(k => { out[k] = replaceInValue(val[k]); });
+        return out;
+      }
+      return val;
+    };
+
+    for (let i = 0; i < this.operations.length; i++) {
+      const op = this.operations[i];
+      // url replacement
+      if (op && op.url && typeof op.url === 'string' && op.url.indexOf(oldId) !== -1) {
+        op.url = op.url.split(oldId).join(newId);
+        changed = true;
+      }
+      // body replacement (deep)
+      try {
+        if (op && op.body) {
+          const newBody = replaceInValue(op.body);
+          // Only assign if changed to avoid extra saves
+          op.body = newBody;
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    if (changed) this._save();
+    return changed;
+  }
+
   markSynced(id) {
     const op = this.operations.find(o => o.id === id);
     if (op) {

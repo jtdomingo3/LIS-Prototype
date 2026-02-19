@@ -67,6 +67,14 @@
       <button type="submit" class="button btn-warning">Clear All Non-Admin Data</button>
     </form>
 
+    <form method="POST" action="/settings/discard-local-changes" onsubmit="return confirm('Discard ALL local pending changes and replace local data with server data? This cannot be undone.');" style="display:inline-block;margin-left:12px;">
+      <button type="submit" class="button btn-danger">Discard Local Changes & Sync</button>
+    </form>
+
+    <form method="POST" action="/settings/drop-offline-data" onsubmit="return confirm('This will DROP all local offline data and replace it with the server copy. This is destructive and cannot be undone. Continue?');" style="display:inline-block;margin-left:12px;">
+      <button type="submit" class="button btn-danger">Drop Offline Data & Replace From Server</button>
+    </form>
+
     <hr/>
     <h4>User Data Backup / Restore</h4>
     <form method="POST" action="/settings/backup-users" style="display:inline-block;margin-right:12px;">

@@ -1002,6 +1002,16 @@
 
             if (!badge || !btn || !dropdown) return;
 
+            // Disable SSE when running in standalone offline-mode (local server serving pages)
+            const OFFLINE = <%= (typeof offlineMode !== 'undefined' && offlineMode) ? 'true' : 'false' %>;
+            if (OFFLINE) {
+                try {
+                    const connEl = document.getElementById('notifConn');
+                    if (connEl) { connEl.style.background = '#9ca3af'; connEl.title = 'Offline — SSE disabled'; }
+                } catch (e) {}
+                return;
+            }
+
             // Only enable SSE on a small set of real-time views to avoid system delays.
             // Keep SSE active only for: /dashboard, /patients, /reception (and their subpaths).
             try {

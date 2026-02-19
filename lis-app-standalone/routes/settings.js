@@ -271,6 +271,81 @@ router.post('/backup-users', requireAuth, canManageUsers, (req, res) => {
   return res.redirect('/settings');
 });
 
+// Drop all offline data and fully replace from the real server (destructive)
+router.post('/drop-offline-data', requireAuth, canManageUsers, async (req, res) => {
+  try {
+    // Backup current data first
+    performBackup();
+
+    const cfg = req.app && req.app.locals && req.app.locals.config;
+    const ds = req.app && req.app.locals && req.app.locals.dataStore;
+    const oq = req.app && req.app.locals && req.app.locals.operationQueue;
+    if (!cfg || !ds) {
+      req.flash('error_msg', 'Missing local configuration or datastore — cannot perform force sync');
+      return res.redirect('/settings');
+    }
+
+    const { SyncEngine } = require('../lib/syncEngine');
+    const engine = new SyncEngine(oq, cfg, ds);
+
+    // Try to authenticate then fetch server export (same candidate URLs as SyncEngine.fullSync)
+    try {
+      await engine._ensureServerAuth();
+    } catch (e) { /* ignore auth errors - fetch may still work via hash headers */ }
+
+    const { net } = require('electron');
+    const base = cfg.SERVER_URL ? cfg.SERVER_URL.replace(/\/$/, '') : null;
+    if (!base) {
+      req.flash('error_msg', 'Server URL not configured — cannot fetch authoritative data');
+      return res.redirect('/settings');
+    }
+    const candidateUrls = [base + '/export/data.json', base + '/data.json'];
+    let fetched = null;
+    let lastErr = null;
+    for (const url of candidateUrls) {
+      try {
+        fetched = await engine._fetchJson(net, url);
+        if (fetched) break;
+      } catch (e) { lastErr = e; }
+    }
+
+    if (!fetched || typeof fetched !== 'object') {
+      req.flash('error_msg', `Failed to fetch server data: ${lastErr && lastErr.message ? lastErr.message : 'no-data'}`);
+      return res.redirect('/settings');
+    }
+
+    // Replace local DataStore content completely with server data (destructive)
+    try {
+      // Overwrite known collections
+      if (Array.isArray(fetched.users)) ds.setCollection('users', fetched.users);
+      if (Array.isArray(fetched.patients)) ds.setCollection('patients', fetched.patients);
+      if (Array.isArray(fetched.tests)) ds.setCollection('tests', fetched.tests);
+      if (Array.isArray(fetched.templates)) ds.setCollection('templates', fetched.templates);
+      if (fetched.counters && typeof fetched.counters === 'object') {
+        ds._data.counters = fetched.counters;
+      }
+      // persist
+      try { ds._save(); } catch (e) { /* ignore save errors */ }
+
+      // Clear any pending offline operations: they are now invalid against server state
+      try { if (oq && typeof oq.clearAll === 'function') oq.clearAll(); } catch (e) { console.error('Failed to clear operation queue after overwrite', e); }
+
+      // update lastFullSync meta
+      try { ds.setMeta('lastFullSync', new Date().toISOString()); } catch (e) {}
+
+      req.flash('success_msg', 'Local offline data replaced with server data. Pending operations cleared.');
+    } catch (e) {
+      console.error('Failed to overwrite DataStore with fetched server data', e);
+      req.flash('error_msg', `Failed to apply server data: ${e && e.message ? e.message : String(e)}`);
+    }
+
+  } catch (e) {
+    console.error('drop-offline-data handler error:', e);
+    req.flash('error_msg', `Failed to drop offline data: ${e && e.message ? e.message : String(e)}`);
+  }
+  return res.redirect('/settings');
+});
+
 // Restore endpoint (upload JSON file)
 router.post('/restore', requireAuth, canManageUsers, upload.single('backupFile'), (req, res) => {
   try {
@@ -357,6 +432,48 @@ router.post('/clear-users', requireAuth, canManageUsers, (req, res) => {
   } catch (e) {
     console.error('Clear user data error:', e);
     req.flash('error_msg', `Clear user data failed: ${e && e.message ? e.message : String(e)}`);
+  }
+  return res.redirect('/settings');
+});
+
+// Discard local changes and fully sync from the real server
+router.post('/discard-local-changes', requireAuth, canManageUsers, async (req, res) => {
+  try {
+    // Backup current data first
+    performBackup();
+
+    // Clear pending operation queue (if available)
+    try {
+      const oq = req.app && req.app.locals && req.app.locals.operationQueue;
+      if (oq && typeof oq.clearAll === 'function') {
+        oq.clearAll();
+      }
+    } catch (e) {
+      console.error('Failed to clear operation queue:', e && e.message);
+    }
+
+    // Attempt a full sync from the server into the local DataStore (best-effort)
+    try {
+      const ds = req.app && req.app.locals && req.app.locals.dataStore;
+      const cfg = req.app && req.app.locals && req.app.locals.config;
+      const oq = req.app && req.app.locals && req.app.locals.operationQueue;
+      if (!ds || !cfg) throw new Error('no-datastore-or-config');
+      const { SyncEngine } = require('../lib/syncEngine');
+      const engine = new SyncEngine(oq, cfg, ds);
+      const result = await engine.fullSync();
+      if (!result || !result.success) {
+        const reason = result && result.reason ? result.reason : 'unknown';
+        req.flash('error_msg', `Full sync failed: ${reason}`);
+        return res.redirect('/settings');
+      }
+      req.flash('success_msg', `Discarded local changes and synced ${result.imported || 0} records from server`);
+    } catch (e) {
+      console.error('Full sync error:', e && e.message);
+      req.flash('error_msg', `Discard failed: ${e && e.message ? e.message : String(e)}`);
+    }
+  } catch (e) {
+    console.error('Discard-local-changes handler error:', e && e.message);
+    req.flash('error_msg', `Discard failed: ${e && e.message ? e.message : String(e)}`);
   }
   return res.redirect('/settings');
 });

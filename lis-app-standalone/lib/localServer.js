@@ -75,6 +75,17 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   /* ── Feature flags (match server defaults) ─────────────────────── */
   app.locals.featureFlags = { tests: true, reports: true, templates: true, users: true, worksheet: true };
 
+  // Expose useful objects to route handlers (operationQueue, dataStore, config)
+  try {
+    app.locals.operationQueue = operationQueue;
+  } catch (e) {}
+  try {
+    app.locals.dataStore = dataStore;
+  } catch (e) {}
+  try {
+    app.locals.config = config;
+  } catch (e) {}
+
   /* ── Result highlighting helper (used by report templates) ─────── */
   function escapeHtml(str) {
     if (str == null) return '';

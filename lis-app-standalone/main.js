@@ -651,6 +651,65 @@ ipcMain.handle('open-settings', () => {
   return { success: true };
 });
 
+// Discard local queued changes and attempt full-sync (triggered from renderer settings)
+ipcMain.handle('discard-local-changes', async () => {
+  try {
+    // Backup current data
+    try { performBackup(); } catch (e) { console.warn('[Main] backup before discard failed', e && e.message); }
+    // Clear pending queue
+    try { if (operationQueue && typeof operationQueue.clearAll === 'function') operationQueue.clearAll(); } catch (e) { console.error('[Main] failed to clear operation queue', e); }
+    // Attempt full-sync to refresh local datastore
+    try {
+      if (!config.SERVER_URL) return { success: false, reason: 'no-server-configured' };
+      const res = await syncEngine.fullSync(mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null);
+      sendStatus();
+      return Object.assign({ success: true }, res || {});
+    } catch (e) {
+      console.error('[Main] discard-local-changes fullSync failed', e && e.message);
+      return { success: false, reason: e && e.message };
+    }
+  } catch (e) {
+    console.error('[Main] discard-local-changes failed', e && e.message);
+    return { success: false, reason: e && e.message };
+  }
+});
+
+// Drop offline data and replace with server export (destructive)
+ipcMain.handle('drop-offline-data', async () => {
+  try {
+    try { performBackup(); } catch (e) { console.warn('[Main] backup before drop failed', e && e.message); }
+    if (!config.SERVER_URL) return { success: false, reason: 'no-server-configured' };
+    const engine = syncEngine;
+    const { net } = require('electron');
+    const base = config.SERVER_URL.replace(/\/$/, '');
+    const candidateUrls = [base + '/export/data.json', base + '/data.json'];
+    let fetched = null;
+    let lastErr = null;
+    for (const url of candidateUrls) {
+      try { fetched = await engine._fetchJson(net, url); if (fetched) break; } catch (e) { lastErr = e; }
+    }
+    if (!fetched || typeof fetched !== 'object') return { success: false, reason: (lastErr && lastErr.message) ? lastErr.message : 'no-data' };
+    // Overwrite DataStore
+    try {
+      if (dataStore) {
+        if (Array.isArray(fetched.users)) dataStore.setCollection('users', fetched.users);
+        if (Array.isArray(fetched.patients)) dataStore.setCollection('patients', fetched.patients);
+        if (Array.isArray(fetched.tests)) dataStore.setCollection('tests', fetched.tests);
+        if (Array.isArray(fetched.templates)) dataStore.setCollection('templates', fetched.templates);
+        if (fetched.counters && typeof fetched.counters === 'object') { dataStore._data.counters = fetched.counters; }
+        try { dataStore._save(); } catch (e) {}
+        try { dataStore.setMeta('lastFullSync', new Date().toISOString()); } catch (e) {}
+      }
+      if (operationQueue && typeof operationQueue.clearAll === 'function') operationQueue.clearAll();
+      sendStatus();
+      return { success: true, imported: (Array.isArray(fetched.patients) ? fetched.patients.length : 0) };
+    } catch (e) {
+      console.error('[Main] failed to apply fetched server data', e && e.message);
+      return { success: false, reason: e && e.message };
+    }
+  } catch (e) { console.error('[Main] drop-offline-data failed', e && e.message); return { success: false, reason: e && e.message }; }
+});
+
 // Credential capture — securely store login credentials for server re-auth
 ipcMain.handle('save-credentials', (_e, { email, password }) => {
   try {

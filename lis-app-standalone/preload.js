@@ -31,6 +31,9 @@ contextBridge.exposeInMainWorld('lisApp', {
   fullSync:         ()      => ipcRenderer.invoke('full-sync'),
   getDataStoreInfo: ()      => ipcRenderer.invoke('datastore-info'),
   saveCredentials:  (email, password) => ipcRenderer.invoke('save-credentials', { email, password }),
+  // local data management
+  discardLocalChanges: () => ipcRenderer.invoke('discard-local-changes'),
+  dropOfflineData:     () => ipcRenderer.invoke('drop-offline-data'),
 
   /* ── event listeners ─────────────────────────────────────────── */
   onNetworkStatus: (callback) => {
