@@ -79,7 +79,7 @@ function openSettingsWindow() {
     parent: mainWindow,
     modal: false,
     resizable: false,
-    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true }
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, partition: 'persist:lis' }
   });
   sw.removeMenu();
   sw.loadFile(path.join(__dirname, 'renderer', 'settings.html'));
@@ -706,8 +706,10 @@ function createTray() {
 }
 
 app.on('window-all-closed', () => {
-  if (networkMonitor) networkMonitor.stop();
-  if (localServer) localServer.close();
+  // Ensure all network timers and full-sync intervals are stopped
+  // so the Node event loop can exit cleanly before quitting.
+  try { stopNetworkMonitor().catch(() => {}); } catch (e) { if (networkMonitor) try { networkMonitor.stop(); } catch {} }
+  try { if (localServer) localServer.close(); } catch (e) {}
   app.quit();
 });
 
