@@ -352,7 +352,17 @@ class SyncEngine {
 
     for (const op of pending) {
       try {
-        await this._replayWithRetry(net, op);
+        // replay and capture server response so we can map temp -> server IDs
+        const replayResult = await this._replayWithRetry(net, op);
+
+        // Attempt to map any server-assigned id back to locally-created records
+        try {
+          await this._handleReplayResult(op, replayResult);
+        } catch (e) {
+          console.warn('[Sync] _handleReplayResult failed:', e && e.message);
+        }
+
+        // Mark the queue entry as synced (after mapping so dependent ops are updated)
         this.queue.markSynced(op.id);
         synced++;
         console.log(`[Sync] ✓ ${op.method} ${op.url}`);
@@ -499,6 +509,155 @@ class SyncEngine {
       }
       throw e;
     }
+  }
+
+  /* ── After replay, attempt to map server-assigned IDs back to local temp IDs
+   *     so subsequent queued operations referencing temporary IDs are updated
+   *     and the local DataStore does not end up with duplicate records. */
+  async _handleReplayResult(op, replayResult) {
+    try {
+      if (!op || !replayResult) return;
+      // Only care about POST-created resources (collection-level POSTs)
+      const method = (op.method || 'POST').toString().toUpperCase();
+      if (method !== 'POST') return;
+      let pathname = '';
+      try { pathname = new URL(op.url).pathname || ''; } catch (e) { pathname = String(op.url || ''); }
+      const segs = pathname.replace(/\/$/,'').split('/').filter(Boolean);
+      if (!segs.length) return;
+
+      const serverId = this._extractServerIdFromReplay(replayResult);
+      if (!serverId) return;
+
+      const collection = (segs.length === 1) ? segs[0] : null; // e.g. 'patients' or 'tests'
+      if (!collection) return;
+
+      // Only handle known collections where local temp IDs exist
+      if (!['patients','tests','templates','users'].includes(collection)) return;
+
+      const localId = this._findLocalIdForOp(op, collection);
+      if (!localId) {
+        console.log(`[Sync] no matching local ${collection} record found for queued operation; server id=${serverId}`);
+        return;
+      }
+
+      if (localId === serverId) return;
+      const replaced = this.queue.replaceTempId(localId, serverId);
+      if (replaced) console.log(`[Sync] mapped local ${collection} id ${localId} -> server id ${serverId}`);
+    } catch (e) {
+      console.warn('[Sync] _handleReplayResult error:', e && e.message);
+    }
+  }
+
+  _extractServerIdFromReplay(replayResult) {
+    try {
+      // Redirect case: net.request emits 'redirect' with redirectUrl => returned as redirectTo
+      if (replayResult && replayResult.redirectTo) {
+        try {
+          const p = new URL(replayResult.redirectTo).pathname || '';
+          const segs = p.replace(/\/$/,'').split('/').filter(Boolean);
+          if (segs.length) return segs[segs.length - 1];
+        } catch (e) { /* ignore */ }
+      }
+
+      // Body may contain JSON with the created object or id
+      if (replayResult && replayResult.body) {
+        const body = (typeof replayResult.body === 'string') ? replayResult.body.trim() : replayResult.body;
+        if (typeof body === 'string' && (body.startsWith('{') || body.startsWith('['))) {
+          try {
+            const parsed = JSON.parse(body);
+            if (!parsed) return null;
+            if (Array.isArray(parsed)) {
+              if (parsed.length && parsed[0] && (parsed[0].id || parsed[0]._id)) return parsed[0].id || parsed[0]._id;
+              return null;
+            }
+            if (parsed.id) return parsed.id;
+            if (parsed._id) return parsed._id;
+            // Some endpoints return { success: true, id: '...' }
+            if (parsed && parsed.success && (parsed.id || parsed._id)) return parsed.id || parsed._id;
+          } catch (e) { /* ignore JSON parse errors */ }
+        }
+      }
+    } catch (e) { /* ignore */ }
+    return null;
+  }
+
+  _findLocalIdForOp(op, collection) {
+    try {
+      if (!this.dataStore) return null;
+      const col = this.dataStore.getCollection(collection) || [];
+      const body = op.body || {};
+      const opTs = op.createdAt ? (new Date(op.createdAt)).getTime() : null;
+
+      if (collection === 'patients') {
+        // Prefer exact unique matches (patientId, patientCode, phone, email)
+        if (body.patientId) {
+          const found = col.find(p => String(p.patientId) === String(body.patientId));
+          if (found) return found.id;
+        }
+        if (body.patientCode) {
+          const found = col.find(p => String(p.patientCode) === String(body.patientCode));
+          if (found) return found.id;
+        }
+        if (body.phone) {
+          const found = col.find(p => p.phone && String(p.phone) === String(body.phone));
+          if (found) return found.id;
+        }
+        if (body.email) {
+          const found = col.find(p => p.email && String(p.email).toLowerCase() === String(body.email).toLowerCase());
+          if (found) return found.id;
+        }
+        // Fallback: match by name + createdAt proximity
+        if (body.firstName && body.lastName) {
+          const candidates = col.filter(p => (String(p.firstName || '').toLowerCase() === String(body.firstName || '').toLowerCase()) && (String(p.lastName || '').toLowerCase() === String(body.lastName || '').toLowerCase()));
+          if (candidates.length === 1) return candidates[0].id;
+          if (candidates.length > 1 && opTs) {
+            let best = null; let bestDiff = Infinity;
+            for (const c of candidates) {
+              if (!c.createdAt) continue;
+              const diff = Math.abs(opTs - (new Date(c.createdAt)).getTime());
+              if (diff < bestDiff) { bestDiff = diff; best = c; }
+            }
+            if (best && bestDiff < 15000) return best.id;
+          }
+        }
+      }
+
+      if (collection === 'tests') {
+        // If op.body.patient references the local patient id, prefer newest test for that patient near the op timestamp
+        if (body.patient) {
+          const candidates = col.filter(t => String(t.patient) === String(body.patient));
+          if (candidates.length === 1) return candidates[0].id;
+          if (candidates.length > 0 && opTs) {
+            let best = null; let bestDiff = Infinity;
+            for (const c of candidates) {
+              if (!c.createdAt) continue;
+              const diff = Math.abs(opTs - (new Date(c.createdAt)).getTime());
+              if (diff < bestDiff) { bestDiff = diff; best = c; }
+            }
+            if (best && bestDiff < 15000) return best.id;
+          }
+        }
+        // Fallback: match by testType + time proximity
+        if (body.testType) {
+          const cand = col.find(t => String(t.testType || '').toLowerCase() === String(body.testType || '').toLowerCase() && t.createdAt && opTs && Math.abs(opTs - (new Date(t.createdAt)).getTime()) < 20000);
+          if (cand) return cand.id;
+        }
+      }
+
+      // Generic fallback: match by createdAt proximity alone
+      if (opTs) {
+        let best = null; let bestDiff = Infinity;
+        for (const c of col) {
+          if (!c.createdAt) continue;
+          const diff = Math.abs(opTs - (new Date(c.createdAt)).getTime());
+          if (diff < bestDiff) { bestDiff = diff; best = c; }
+        }
+        if (best && bestDiff < 10000) return best.id;
+      }
+    } catch (e) {
+      console.warn('[Sync] _findLocalIdForOp error:', e && e.message);
+    }
+    return null;
   }
 }
 

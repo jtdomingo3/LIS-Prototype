@@ -1,0 +1,18 @@
+{
+  "__meta": {
+    "lastFullSync": null
+  },
+  "users": [],
+  "patients": [
+    {
+      "id": "server-999",
+      "firstName": "Alice",
+      "lastName": "Smith",
+      "phone": "09170001111",
+      "createdAt": "2026-02-19T07:47:16.540Z"
+    }
+  ],
+  "tests": [],
+  "templates": [],
+  "counters": {}
+}

@@ -1,0 +1,29 @@
+[
+  {
+    "id": "ed636450-c514-4863-afce-c80b700c470d",
+    "method": "POST",
+    "url": "https://example.test/patients",
+    "body": {
+      "firstName": "Alice",
+      "lastName": "Smith",
+      "phone": "09170001111"
+    },
+    "timestamp": "2026-02-19T07:47:16.541Z",
+    "status": "pending",
+    "createdAt": "2026-02-19T07:47:16.541Z",
+    "attempts": 0
+  },
+  {
+    "id": "cbff402c-ea91-4716-a4cb-8eb6d6a586c8",
+    "method": "POST",
+    "url": "https://example.test/tests",
+    "body": {
+      "patient": "server-999",
+      "testType": "CBC"
+    },
+    "timestamp": "2026-02-19T07:47:16.544Z",
+    "status": "pending",
+    "createdAt": "2026-02-19T07:47:16.544Z",
+    "attempts": 0
+  }
+]
