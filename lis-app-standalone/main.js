@@ -30,6 +30,7 @@ let tray = null;
 let userDataPath = null;
 let cacheDir = null;
 let dataDir = null;
+let currentSessionEmail = null;
 
 // persisted user settings (stored in userData/settings.json)
 let userSettings = {};
@@ -116,18 +117,15 @@ async function startNetworkMonitor() {
         console.log('[Main] connection restored — syncing queue…');
         const synced = await syncEngine.processQueue();
         sendStatus();
+        // Stay on current page — do NOT force-reload to the server URL.
+        // The user keeps working on the local server seamlessly. When they
+        // explicitly click "Connect" or "Refresh" they will switch to the
+        // real server.  Background full-sync keeps data up-to-date.
         try {
-          // Always reload the main window to the configured server when the
-          // connection is restored so the renderer re-attaches to the real
-          // server origin (this prevents stale offline routing and login
-          // failures that require restarting the app).
           if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.webContents.send('sync-complete', { synced });
-            setTimeout(() => {
-              try { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(config.SERVER_URL); } catch (e) {}
-            }, 1000);
           }
-        } catch (e) { /* ignore reload errors */ }
+        } catch (e) { /* ignore */ }
       }
     });
 
@@ -165,6 +163,7 @@ async function createWindow() {
 
   // load persisted settings and apply overrides before services start
   loadUserSettings();
+  currentSessionEmail = userSettings.lastUserEmail || null;
 
   // load application icon if available
   try {
@@ -226,6 +225,11 @@ async function createWindow() {
   syncEngine = new SyncEngine(operationQueue, config, dataStore);
   localServer = createLocalServer(pageCache, operationQueue, config, dataStore);
 
+  // Activate auto-login on the local server so offline transitions are seamless
+  if (currentSessionEmail && localServer && localServer.setAutoLoginEmail) {
+    localServer.setAutoLoginEmail(currentSessionEmail);
+  }
+
   if (config.SERVER_URL) {
     // start monitor via helper (ensures consistent wiring)
     startNetworkMonitor().catch(() => {});
@@ -240,6 +244,42 @@ async function createWindow() {
     // Always inject the status bar / client scripts first — before any async
     // work that might hang or bail early and prevent the injection.
     injectClientScripts();
+
+    // ── Track the logged-in user for seamless offline auto-login ─────
+    try {
+      const userName = await mainWindow.webContents.executeJavaScript(
+        '(function(){ try { var el = document.querySelector(\'a[href="/users/profile"]\'); return el ? el.textContent.trim() : null; } catch(e){ return null; } })()'
+      );
+      if (userName && dataStore) {
+        const users = dataStore.getCollection('users') || [];
+        const match = users.find(u => u.name && u.name.trim() === userName);
+        if (match && match.email && match.email !== currentSessionEmail) {
+          currentSessionEmail = match.email;
+          try { saveUserSettings({ lastUserEmail: currentSessionEmail }); } catch (e) {}
+          if (localServer && localServer.setAutoLoginEmail) localServer.setAutoLoginEmail(currentSessionEmail);
+          console.log('[Main] tracked logged-in user:', currentSessionEmail);
+        }
+      }
+    } catch (e) { /* ignore user tracking errors */ }
+
+    // ── Detect explicit logout (landed on login page with no session) ──
+    try {
+      const currentUrl = mainWindow.webContents.getURL();
+      const localBase = `http://127.0.0.1:${config.LOCAL_PORT}`;
+      // If on login page of real server or local server
+      const isServerRoot = config.SERVER_URL && currentUrl === config.SERVER_URL.replace(/\/$/, '') + '/';
+      const isLocalRoot = currentUrl === localBase + '/';
+      if (isServerRoot || isLocalRoot) {
+        // Check if the page is actually the login page (has login form)
+        const hasLoginForm = await mainWindow.webContents.executeJavaScript(
+          '!!(document.querySelector(\'form[action="/login"]\') || document.querySelector(\'input[name="email"]\'))'
+        );
+        // Only clear auto-login if user explicitly logged out (no auto-login
+        // email means they arrived here naturally)
+        // We DON'T clear auto-login here — the auto-login middleware will
+        // redirect them away from the login page via requireGuest.
+      }
+    } catch (e) { /* ignore */ }
 
     try {
       const url = mainWindow.webContents.getURL();
@@ -385,6 +425,11 @@ function setupRequestInterceptor() {
 
       // For non-GET methods (POST/PUT/DELETE), queue the operation
       if (details.method !== 'GET') {
+        // Don't queue auth operations (login/logout) — they are local-only
+        if (urlPath === '/login' || urlPath === '/logout') {
+          callback({ redirectURL: `http://127.0.0.1:${config.LOCAL_PORT}${urlPath}` });
+          return;
+        }
         const body = parseUploadData(details.uploadData);
         operationQueue.add({ method: details.method, url: details.url, body, timestamp: new Date().toISOString() });
         // Redirect to local server so the route handler processes the form

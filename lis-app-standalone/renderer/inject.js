@@ -198,7 +198,7 @@
 
   // Sync-complete toast
   window.lisApp.onSyncComplete(function (data) {
-    showToast('✓ Synced ' + data.synced + ' operation(s) — refreshing…', 3000);
+    showToast('✓ Synced ' + data.synced + ' operation(s)', 3000);
   });
 
   // Full-sync progress events from main

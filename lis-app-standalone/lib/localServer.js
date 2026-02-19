@@ -19,6 +19,9 @@ const { createOfflineDb } = require('./offlineDb');
 function createLocalServer(pageCache, operationQueue, config, dataStore) {
   const app = express();
 
+  /* ── Auto-login state (set by main process for seamless transitions) ── */
+  let _autoLoginEmail = null;
+
   /* ── View engine ──────────────────────────────────────────────── */
   app.set('view engine', 'ejs');
   app.set('views', path.join(__dirname, '..', 'views'));
@@ -71,6 +74,38 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
 
   /* ── Feature flags (match server defaults) ─────────────────────── */
   app.locals.featureFlags = { tests: true, reports: true, templates: true, users: true, worksheet: true };
+
+  /* ── Auto-login middleware — seamlessly restore session on offline
+   *  transition so the user doesn't see a login page when the server
+   *  goes down. The main process sets _autoLoginEmail via
+   *  server.setAutoLoginEmail(email). ──────────────────────────────── */
+  app.use((req, res, next) => {
+    try {
+      if (_autoLoginEmail && req.session && !req.session.user) {
+        const users = global.db && global.db.getUsers ? global.db.getUsers() : [];
+        const user = users.find(u => u.email && u.email.toLowerCase() === _autoLoginEmail.toLowerCase());
+        if (user) {
+          req.session.user = {
+            id: user.id || user.email,
+            name: user.name || user.email,
+            email: user.email,
+            role: user.role || 'User',
+            permissions: user.permissions || {},
+            signature: user.signature || null,
+            licenseNumber: user.licenseNumber || '',
+          };
+          console.log('[LocalServer] auto-login:', user.email);
+        }
+      }
+    } catch (e) { /* ignore auto-login errors */ }
+    next();
+  });
+
+  /* ── Clear auto-login on explicit logout ───────────────────────── */
+  app.post('/logout', (req, res, next) => {
+    _autoLoginEmail = null;
+    next(); // let the real logout route handle session destroy + redirect
+  });
 
   /* ── Make flash messages & user available to all views ─────────── */
   app.use((req, res, next) => {
@@ -241,6 +276,10 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
       console.error('[LocalServer] error:', err);
     }
   });
+
+  /* ── Expose auto-login setter for main process ────────────────── */
+  server.setAutoLoginEmail = (email) => { _autoLoginEmail = email || null; };
+  server.getAutoLoginEmail = () => _autoLoginEmail;
 
   return server;
 }
