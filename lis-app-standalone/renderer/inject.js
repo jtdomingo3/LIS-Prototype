@@ -51,6 +51,28 @@
   };
 
   /* ==============================================================
+   *  Capture login credentials for server re-authentication
+   *  Works on both the real server and local offline server login pages.
+   * ============================================================== */
+  (function captureLoginCredentials() {
+    try {
+      var form = document.querySelector('form[action="/login"]');
+      if (!form) return;
+      form.addEventListener('submit', function () {
+        try {
+          var emailInput = form.querySelector('input[name="email"]');
+          var passwordInput = form.querySelector('input[name="password"]');
+          if (emailInput && passwordInput && emailInput.value && passwordInput.value) {
+            if (window.lisApp && typeof window.lisApp.saveCredentials === 'function') {
+              window.lisApp.saveCredentials(emailInput.value, passwordInput.value);
+            }
+          }
+        } catch (e) { /* ignore credential capture errors */ }
+      });
+    } catch (e) { /* ignore */ }
+  })();
+
+  /* ==============================================================
    *  Status bar DOM
    * ============================================================== */
   const bar = document.createElement('div');
@@ -122,15 +144,23 @@
         bar.className = 'lis-syncing';
         dot.className = 'lis-status-dot syncing';
         text.textContent = 'Downloading data…';
+      } else if (pending > 0) {
+        bar.className   = 'lis-syncing';
+        dot.className   = 'lis-status-dot syncing';
+        text.textContent = 'Connected — ' + pending + ' change' + (pending > 1 ? 's' : '') + ' pending sync';
       } else {
         bar.className   = 'lis-online';
         dot.className   = 'lis-status-dot online';
-        text.textContent = lastFullSync ? 'Connected — data up to date' : 'Connected — no local data';
+        text.textContent = lastFullSync ? 'Connected — all changes synced' : 'Connected — no local data';
       }
     } else {
       bar.className   = 'lis-offline';
       dot.className   = 'lis-status-dot offline';
-      text.textContent = 'Offline Mode — data is saved locally';
+      if (pending > 0) {
+        text.textContent = 'Offline Mode — ' + pending + ' change' + (pending > 1 ? 's' : '') + ' not synced to server';
+      } else {
+        text.textContent = 'Offline Mode — data is saved locally';
+      }
       // show Connect button when offline so users can retry connecting
       if (retryBtn) retryBtn.style.display = 'inline-block';
     }
@@ -138,7 +168,7 @@
     // Pending badge
     if (pending > 0) {
       badge.style.display = 'inline';
-      badge.textContent   = pending + ' pending sync';
+      badge.textContent   = '⚠ ' + pending + ' unsynced';
       syncBtn.style.display = online ? 'inline-block' : 'none';
       downloadBtn.style.display = 'inline-block';
     } else {
@@ -190,15 +220,17 @@
   }
 
   // Live status changes from main process
-  window.lisApp.onNetworkStatus(updateUI);
   window.lisApp.onNetworkStatus(function (data) {
     updateUI(data);
-    maybeAutoFullSync(data && data.online);
+    // main.js already handles processQueue + fullSync on reconnect,
+    // so don't trigger duplicate fullSync from the renderer
   });
 
   // Sync-complete toast
   window.lisApp.onSyncComplete(function (data) {
-    showToast('✓ Synced ' + data.synced + ' operation(s)', 3000);
+    showToast('✓ Synced ' + data.synced + ' change' + (data.synced > 1 ? 's' : '') + ' to server', 3000);
+    // Refresh status to update the unsynced count
+    window.lisApp.getStatus().then(updateUI).catch(function () {});
   });
 
   // Full-sync progress events from main

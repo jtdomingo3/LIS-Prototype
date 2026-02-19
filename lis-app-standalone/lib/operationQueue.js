@@ -6,12 +6,21 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const os = require('os');
 
 class OperationQueue {
   constructor(dataDir) {
     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
     this.filePath = path.join(dataDir, 'pending-operations.json');
+
+    // Mirror pending operations to Documents/LIS/offline_changes/ for visibility.
+    // If this file exists, there are unsynced changes. When empty, file is removed.
+    const homedir = os.homedir();
+    this.mirrorDir = path.join(homedir, 'Documents', 'LIS', 'offline_changes');
+    this.mirrorPath = path.join(this.mirrorDir, 'pending.json');
+
     this.operations = this._load();
+    this._syncMirror(); // ensure mirror reflects current state on startup
   }
 
   /* ── persistence ──────────────────────────────────────────────── */
@@ -27,6 +36,44 @@ class OperationQueue {
     try {
       fs.writeFileSync(this.filePath, JSON.stringify(this.operations, null, 2));
     } catch (e) { console.error('[Queue] save error:', e); }
+    this._syncMirror();
+  }
+
+  /**
+   * Mirror pending operations to Documents/LIS/offline_changes/pending.json.
+   * If there are pending ops, the file is written; if all synced, the file
+   * is removed. Presence of this file = unsynced changes exist.
+   */
+  _syncMirror() {
+    try {
+      const pending = this.getPending();
+      if (pending.length > 0) {
+        if (!fs.existsSync(this.mirrorDir)) fs.mkdirSync(this.mirrorDir, { recursive: true });
+        const mirrorData = {
+          lastUpdated: new Date().toISOString(),
+          count: pending.length,
+          operations: pending.map(op => ({
+            id: op.id,
+            method: op.method,
+            url: op.url,
+            createdAt: op.createdAt,
+            status: op.status,
+          })),
+        };
+        fs.writeFileSync(this.mirrorPath, JSON.stringify(mirrorData, null, 2), 'utf8');
+      } else {
+        // All synced — remove the mirror file
+        try { if (fs.existsSync(this.mirrorPath)) fs.unlinkSync(this.mirrorPath); } catch (e) {}
+        // Remove directory if empty
+        try {
+          if (fs.existsSync(this.mirrorDir) && fs.readdirSync(this.mirrorDir).length === 0) {
+            fs.rmdirSync(this.mirrorDir);
+          }
+        } catch (e) {}
+      }
+    } catch (e) {
+      console.error('[Queue] mirror sync error:', e && e.message);
+    }
   }
 
   /* ── public API ───────────────────────────────────────────────── */

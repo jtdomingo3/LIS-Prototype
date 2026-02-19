@@ -116,6 +116,7 @@ async function startNetworkMonitor() {
       if (online && !wasOnline) {
         console.log('[Main] connection restored — syncing queue…');
         const synced = await syncEngine.processQueue();
+        const remaining = operationQueue ? operationQueue.countPending() : 0;
         sendStatus();
         // Stay on current page — do NOT force-reload to the server URL.
         // The user keeps working on the local server seamlessly. When they
@@ -123,9 +124,18 @@ async function startNetworkMonitor() {
         // real server.  Background full-sync keeps data up-to-date.
         try {
           if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('sync-complete', { synced });
+            mainWindow.webContents.send('sync-complete', { synced, remaining });
           }
         } catch (e) { /* ignore */ }
+
+        // After replaying the queue, trigger a full-sync to pull fresh data
+        try {
+          if (remaining === 0) {
+            console.log('[Main] queue empty — triggering full-sync');
+            await syncEngine.fullSync(mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null);
+            sendStatus();
+          }
+        } catch (e) { console.error('[Main] post-reconnect full-sync failed:', e && e.message); }
       }
 
       // When going offline, immediately redirect the user from the real
@@ -243,6 +253,15 @@ async function createWindow() {
   syncEngine = new SyncEngine(operationQueue, config, dataStore);
   localServer = createLocalServer(pageCache, operationQueue, config, dataStore);
 
+  // Load stored credentials for server re-authentication during sync
+  if (userSettings._syncEmail && userSettings._syncPassword) {
+    syncEngine.setCredentials(userSettings._syncEmail, userSettings._syncPassword);
+  }
+  // Always set the auto-login email so hash-based auth fallback works
+  if (currentSessionEmail) {
+    syncEngine.setAutoLoginEmail(currentSessionEmail);
+  }
+
   // Activate auto-login on the local server so offline transitions are seamless
   if (currentSessionEmail && localServer && localServer.setAutoLoginEmail) {
     localServer.setAutoLoginEmail(currentSessionEmail);
@@ -275,6 +294,7 @@ async function createWindow() {
           currentSessionEmail = match.email;
           try { saveUserSettings({ lastUserEmail: currentSessionEmail }); } catch (e) {}
           if (localServer && localServer.setAutoLoginEmail) localServer.setAutoLoginEmail(currentSessionEmail);
+          if (syncEngine) syncEngine.setAutoLoginEmail(currentSessionEmail);
           console.log('[Main] tracked logged-in user:', currentSessionEmail);
         }
       }
@@ -595,6 +615,25 @@ ipcMain.handle('set-settings', (_e, settings) => {
 ipcMain.handle('open-settings', () => {
   openSettingsWindow();
   return { success: true };
+});
+
+// Credential capture — securely store login credentials for server re-auth
+ipcMain.handle('save-credentials', (_e, { email, password }) => {
+  try {
+    saveUserSettings({ _syncEmail: email, _syncPassword: password });
+    if (syncEngine) syncEngine.setCredentials(email, password);
+    if (syncEngine) syncEngine.setAutoLoginEmail(email);
+    // Also update the session email for auto-login
+    if (email && email !== currentSessionEmail) {
+      currentSessionEmail = email;
+      saveUserSettings({ lastUserEmail: email });
+      if (localServer && localServer.setAutoLoginEmail) localServer.setAutoLoginEmail(email);
+    }
+    console.log('[Main] stored credentials for server re-auth:', email);
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e && e.message };
+  }
 });
 
 /* ==================================================================

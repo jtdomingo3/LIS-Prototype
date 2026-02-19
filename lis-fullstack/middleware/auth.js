@@ -2,13 +2,39 @@
 const requireAuth = (req, res, next) => {
   if (req.session && req.session.user) {
     return next();
-  } else {
-    try {
-      console.warn(`[auth] requireAuth blocked - no session user for ${req.method} ${req.originalUrl}`);
-    } catch (e) {}
-    req.flash('error_msg', 'Please log in to access this page');
-    return res.redirect('/');
   }
+
+  // Fallback: hash-based auth from standalone app sync requests.
+  // If X-LIS-Sync-Email + X-LIS-Sync-Hash headers are present, verify
+  // the bcrypt hash matches the stored user password and create a session.
+  try {
+    const syncEmail = req.headers['x-lis-sync-email'];
+    const syncHash  = req.headers['x-lis-sync-hash'];
+    if (syncEmail && syncHash && global.db) {
+      const allUsers = typeof global.db.getUsers === 'function' ? global.db.getUsers() : [];
+      const matchUser = allUsers.find(u => u.email && u.email.toLowerCase() === syncEmail.toLowerCase());
+      if (matchUser && matchUser.password && matchUser.password === syncHash) {
+        // Create a session for this user so subsequent middleware works
+        req.session.user = {
+          id: matchUser.id || matchUser.email,
+          name: matchUser.name || matchUser.email,
+          email: matchUser.email,
+          role: matchUser.role || 'User',
+          permissions: matchUser.permissions || {},
+          signature: matchUser.signature || null,
+          licenseNumber: matchUser.licenseNumber || '',
+        };
+        console.log(`[auth] requireAuth accepted hash-based auth for ${syncEmail}`);
+        return next();
+      }
+    }
+  } catch (e) { /* ignore hash auth errors */ }
+
+  try {
+    console.warn(`[auth] requireAuth blocked - no session user for ${req.method} ${req.originalUrl}`);
+  } catch (e) {}
+  req.flash('error_msg', 'Please log in to access this page');
+  return res.redirect('/');
 };
 
 // Middleware to check if user is not authenticated (for login page)

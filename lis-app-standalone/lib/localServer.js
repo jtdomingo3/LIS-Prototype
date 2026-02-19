@@ -101,6 +101,45 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     next();
   });
 
+  /* ── Mutation queueing middleware ─────────────────────────────────
+   *  When the user makes changes on the local server (offline), we
+   *  need to queue the same mutation for replay to the real server
+   *  when connectivity is restored.  This captures POST/PUT/DELETE
+   *  requests (excluding auth routes) and adds them to the operation
+   *  queue with the real server URL.
+   * ──────────────────────────────────────────────────────────────── */
+  app.use((req, res, next) => {
+    try {
+      // Only queue mutations (POST/PUT/DELETE)
+      if (req.method === 'GET' || req.method === 'OPTIONS' || req.method === 'HEAD') return next();
+      // Need a server URL to construct the replay target
+      if (!config || !config.SERVER_URL) return next();
+      // Skip auth routes — login/logout are local-only
+      const reqPath = req.path || req.url || '';
+      if (reqPath === '/' || reqPath === '/login' || reqPath === '/logout') return next();
+      // Skip export/sync endpoints
+      if (reqPath.startsWith('/export/')) return next();
+
+      // Build the real server URL for this request
+      const base = config.SERVER_URL.replace(/\/$/, '');
+      const serverUrl = base + reqPath;
+
+      // Queue with the request body for later replay
+      if (operationQueue) {
+        operationQueue.add({
+          method: 'POST', // HTML forms always POST with ?_method for PUT/DELETE
+          url: serverUrl,
+          body: req.body || {},
+          timestamp: new Date().toISOString(),
+        });
+        console.log('[LocalServer] queued mutation for server:', req.method, reqPath);
+      }
+    } catch (e) {
+      console.error('[LocalServer] mutation queue error:', e && e.message);
+    }
+    next();
+  });
+
   /* ── Clear auto-login on explicit logout ───────────────────────── */
   app.post('/logout', (req, res, next) => {
     _autoLoginEmail = null;
@@ -280,6 +319,8 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   /* ── Expose auto-login setter for main process ────────────────── */
   server.setAutoLoginEmail = (email) => { _autoLoginEmail = email || null; };
   server.getAutoLoginEmail = () => _autoLoginEmail;
+  /* ── Expose operationQueue getter for status checks ────────────── */
+  server.getOperationQueue = () => operationQueue;
 
   return server;
 }

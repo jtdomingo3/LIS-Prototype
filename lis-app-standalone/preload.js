@@ -30,6 +30,7 @@ contextBridge.exposeInMainWorld('lisApp', {
   openSettings:     ()      => ipcRenderer.invoke('open-settings'),
   fullSync:         ()      => ipcRenderer.invoke('full-sync'),
   getDataStoreInfo: ()      => ipcRenderer.invoke('datastore-info'),
+  saveCredentials:  (email, password) => ipcRenderer.invoke('save-credentials', { email, password }),
 
   /* ── event listeners ─────────────────────────────────────────── */
   onNetworkStatus: (callback) => {

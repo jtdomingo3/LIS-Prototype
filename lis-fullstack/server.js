@@ -253,6 +253,36 @@ app.use(session({
 
 app.use(flash());
 
+// ── Hash-based session bootstrap for standalone app sync requests ──
+// If the request has X-LIS-Sync-Email + X-LIS-Sync-Hash headers and no
+// active session, verify the hash against stored user passwords and
+// create a session automatically.  This runs BEFORE any route-specific
+// auth middleware so req.session.user is available everywhere.
+app.use((req, res, next) => {
+  try {
+    // Skip if session already exists
+    if (req.session && req.session.user) return next();
+    const syncEmail = req.headers['x-lis-sync-email'];
+    const syncHash  = req.headers['x-lis-sync-hash'];
+    if (!syncEmail || !syncHash) return next();
+    const allUsers = global.db && typeof global.db.getUsers === 'function' ? global.db.getUsers() : [];
+    const matchUser = allUsers.find(u => u.email && u.email.toLowerCase() === syncEmail.toLowerCase());
+    if (matchUser && matchUser.password && matchUser.password === syncHash) {
+      req.session.user = {
+        id: matchUser.id || matchUser.email,
+        name: matchUser.name || matchUser.email,
+        email: matchUser.email,
+        role: matchUser.role || 'User',
+        permissions: matchUser.permissions || {},
+        signature: matchUser.signature || null,
+        licenseNumber: matchUser.licenseNumber || '',
+      };
+      console.log('[auth] hash-based session bootstrap for', syncEmail);
+    }
+  } catch (e) { /* ignore */ }
+  next();
+});
+
 // Diagnostic: log when reception complete is hit at the top-level (after session is available)
 app.use((req, res, next) => {
   try {
@@ -523,10 +553,31 @@ app.use('/reception', receptionRoutes);
 app.use('/settings', settingsRoutes);
 app.use('/signatures', signaturesRoutes);
 
-// Export endpoint for full-sync (requires authenticated session)
+// Export endpoint for full-sync (requires authenticated session or sync token)
 app.get('/export/data.json', (req, res) => {
   try {
-    if (!req.session || !req.session.user) return res.status(401).send('Authentication required');
+    // Primary auth: session-based
+    let authorized = !!(req.session && req.session.user);
+
+    // Fallback auth: hash-based sync token from the standalone app.
+    // The standalone app sends X-LIS-Sync-Email + X-LIS-Sync-Hash headers.
+    // We verify the email exists and the stored bcrypt hash matches.
+    if (!authorized) {
+      const syncEmail = req.headers['x-lis-sync-email'];
+      const syncHash  = req.headers['x-lis-sync-hash'];
+      if (syncEmail && syncHash) {
+        try {
+          const allUsers = db.getUsers();
+          const matchUser = allUsers.find(u => u.email && u.email.toLowerCase() === syncEmail.toLowerCase());
+          if (matchUser && matchUser.password && matchUser.password === syncHash) {
+            authorized = true;
+            console.log('[export] hash-based auth accepted for', syncEmail);
+          }
+        } catch (e) { /* ignore auth check errors */ }
+      }
+    }
+
+    if (!authorized) return res.status(401).send('Authentication required');
     const data = db.read();
     // Include user accounts WITH hashed passwords so the standalone app
     // can authenticate users offline.  Passwords are already bcrypt-hashed
