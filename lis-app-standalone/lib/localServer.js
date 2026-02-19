@@ -9,7 +9,7 @@
 const express = require('express');
 const path = require('path');
 
-function createLocalServer(pageCache, operationQueue, config) {
+function createLocalServer(pageCache, operationQueue, config, dataStore) {
   const app = express();
 
   // Body parsers (same as the real server)
@@ -52,6 +52,39 @@ function createLocalServer(pageCache, operationQueue, config) {
   /* ────────────────────────────────────────────────────────────────
    * GET — Serve cached pages
    * ──────────────────────────────────────────────────────────────── */
+  // Lightweight API shim: serve JSON from the DataStore when available.
+  // This enables the renderer to fetch lists and single records while
+  // offline (the UI expects standard API endpoints like `/patients`).
+  if (dataStore) {
+    app.get('/export/data.json', (req, res) => {
+      try {
+        const out = {
+          users: dataStore.getCollection('users') || [],
+          patients: dataStore.getCollection('patients') || [],
+          tests: dataStore.getCollection('tests') || [],
+          templates: dataStore.getCollection('templates') || [],
+          counters: dataStore.getCollection('counters') || {},
+        };
+        return res.json(out);
+      } catch (e) { return res.status(500).send('datastore-error'); }
+    });
+
+    app.get('/patients', (req, res) => res.json(dataStore.getCollection('patients') || []));
+    app.get('/patients/:id', (req, res) => {
+      const id = req.params.id;
+      const pt = (dataStore.getCollection('patients') || []).find(p => p.id === id || p.patientId === id);
+      if (!pt) return res.status(404).send('not found');
+      return res.json(pt);
+    });
+
+    app.get('/users', (req, res) => res.json(dataStore.getCollection('users') || []));
+    app.get('/users/:id', (req, res) => {
+      const u = (dataStore.getCollection('users') || []).find(x => x.id === req.params.id);
+      if (!u) return res.status(404).send('not found');
+      return res.json(u);
+    });
+  }
+
   app.get('*', (req, res) => {
     // Strip the offline_queued flag for cache lookup
     const lookupPath = req.path;

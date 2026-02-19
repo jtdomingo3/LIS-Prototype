@@ -5,6 +5,12 @@
  */
 const { contextBridge, ipcRenderer } = require('electron');
 
+// Diagnostic flag/log so pages can detect whether preload actually ran.
+try {
+  console.log('[preload] preload.js running (contextBridge will expose APIs)');
+  try { globalThis.__preloadLoaded = true; } catch (e) { /* ignore */ }
+} catch (e) { /* ignore */ }
+
 contextBridge.exposeInMainWorld('lisApp', {
   /* ── queries ─────────────────────────────────────────────────── */
   getStatus:        ()      => ipcRenderer.invoke('get-status'),
@@ -22,6 +28,8 @@ contextBridge.exposeInMainWorld('lisApp', {
   getSettings:      ()      => ipcRenderer.invoke('get-settings'),
   setSettings:      (s)     => ipcRenderer.invoke('set-settings', s),
   openSettings:     ()      => ipcRenderer.invoke('open-settings'),
+  fullSync:         ()      => ipcRenderer.invoke('full-sync'),
+  getDataStoreInfo: ()      => ipcRenderer.invoke('datastore-info'),
 
   /* ── event listeners ─────────────────────────────────────────── */
   onNetworkStatus: (callback) => {
@@ -29,5 +37,11 @@ contextBridge.exposeInMainWorld('lisApp', {
   },
   onSyncComplete: (callback) => {
     ipcRenderer.on('sync-complete', (_event, data) => callback(data));
+  },
+  onFullSyncProgress: (callback) => {
+    ipcRenderer.on('full-sync-progress', (_event, data) => callback(data));
+  },
+  onFullSyncEnd: (callback) => {
+    ipcRenderer.on('full-sync-end', (_event, data) => callback(data));
   },
 });

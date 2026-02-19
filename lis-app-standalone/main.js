@@ -10,6 +10,7 @@ const os = require('os');
 const { PageCache } = require('./lib/pageCache');
 const { OperationQueue } = require('./lib/operationQueue');
 const { SyncEngine } = require('./lib/syncEngine');
+const { DataStore } = require('./lib/dataStore');
 const { NetworkMonitor } = require('./lib/networkMonitor');
 const { createLocalServer } = require('./lib/localServer');
 const config = require('./lib/config');
@@ -18,9 +19,12 @@ let mainWindow = null;
 let pageCache = null;
 let operationQueue = null;
 let syncEngine = null;
+let dataStore = null;
 let localServer = null;
 let networkMonitor = null;
 let isOnline = false;
+let fullSyncTimer = null;
+let lastLoginSyncAt = null;
 let appIcon = null;
 let tray = null;
 let userDataPath = null;
@@ -88,6 +92,7 @@ async function stopNetworkMonitor() {
       try { networkMonitor.stop(); } catch (e) {}
       networkMonitor = null;
     }
+    if (fullSyncTimer) { clearInterval(fullSyncTimer); fullSyncTimer = null; }
   } catch (e) { console.warn('[Main] stopNetworkMonitor failed', e && e.message); }
 }
 
@@ -104,6 +109,9 @@ async function startNetworkMonitor() {
       isOnline = online;
       sendStatus();
 
+      // Manage periodic full-sync timer
+      try { updateFullSyncTimer(isOnline); } catch (e) {}
+
       if (online && !wasOnline) {
         console.log('[Main] connection restored — syncing queue…');
         const synced = await syncEngine.processQueue();
@@ -119,7 +127,26 @@ async function startNetworkMonitor() {
 
     networkMonitor.start();
     setupRequestInterceptor();
+    // ensure periodic sync timer reflects current network state
+    try { updateFullSyncTimer(isOnline); } catch (e) {}
   } catch (e) { console.error('[Main] startNetworkMonitor failed', e && e.message); }
+}
+
+function updateFullSyncTimer(online) {
+  try {
+    if (fullSyncTimer) { clearInterval(fullSyncTimer); fullSyncTimer = null; }
+    if (!online) return;
+    const interval = parseInt(config.FULL_SYNC_INTERVAL || 0, 10) || 0;
+    if (interval <= 0) return;
+    fullSyncTimer = setInterval(async () => {
+      try {
+        if (!syncEngine || !mainWindow || mainWindow.isDestroyed()) return;
+        console.log('[Main] periodic full-sync triggered');
+        await syncEngine.fullSync(mainWindow.webContents);
+        sendStatus();
+      } catch (e) { console.error('[Main] periodic full-sync failed', e && e.message); }
+    }, interval);
+  } catch (e) { console.error('[Main] updateFullSyncTimer failed', e && e.message); }
 }
 
 async function createWindow() {
@@ -184,8 +211,10 @@ async function createWindow() {
   // services
   pageCache = new PageCache(cacheDir);
   operationQueue = new OperationQueue(dataDir);
-  syncEngine = new SyncEngine(operationQueue, config);
-  localServer = createLocalServer(pageCache, operationQueue, config);
+  // DataStore will persist the full synced DB into Documents/LIS/app_sync/data.json
+  try { dataStore = new DataStore(); } catch (e) { dataStore = null; }
+  syncEngine = new SyncEngine(operationQueue, config, dataStore);
+  localServer = createLocalServer(pageCache, operationQueue, config, dataStore);
 
   if (config.SERVER_URL) {
     // start monitor via helper (ensures consistent wiring)
@@ -240,6 +269,32 @@ async function createWindow() {
     } catch (e) {
       return { action: 'allow' };
     }
+  });
+
+  // Detect navigation to dashboard (post-login) and trigger a full-sync
+  mainWindow.webContents.on('did-navigate', async (_event, url) => {
+    try {
+      if (!config.AUTO_FULLSYNC_ON_LOGIN) return;
+      if (!config.SERVER_URL) return;
+      const base = config.SERVER_URL.replace(/\/$/, '');
+      if (!url || !url.startsWith(base)) return;
+      const path = url.slice(base.length) || '/';
+      // when server redirects to /dashboard after login, trigger an immediate full-sync
+      if (path.startsWith('/dashboard')) {
+        const LAST_MIN = 5 * 60 * 1000;
+        const now = Date.now();
+        if (lastLoginSyncAt && (now - lastLoginSyncAt) < LAST_MIN) return; // avoid repeats
+        lastLoginSyncAt = now;
+        try {
+          console.log('[Main] detected dashboard navigation — running full-sync');
+          const res = await syncEngine.fullSync(mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null);
+          sendStatus();
+          if (res && res.success) {
+            try { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('full-sync-end', res); } catch (e) {}
+          }
+        } catch (e) { console.error('[Main] login-triggered full-sync failed', e && e.message); }
+      }
+    } catch (e) { /* ignore */ }
   });
 
   loadApp();
@@ -312,6 +367,23 @@ function setupRequestInterceptor() {
       return;
     }
 
+    // For other GET requests while offline, redirect API/fetch requests to
+    // the local server so the renderer can fetch JSON from the DataStore.
+    if (details.method === 'GET') {
+      try {
+        const urlObj = new URL(details.url);
+        const urlPath = urlObj.pathname + (urlObj.search || '');
+        // Skip static asset extensions — let Electron cache handle those
+        if (/\.(js|css|png|jpg|jpeg|svg|woff2?|ico|map|mp3|mp4|webp|ttf|eot)$/i.test(urlPath)) {
+          return callback({});
+        }
+        // Avoid redirecting auth routes
+        if (urlPath === '/login' || urlPath === '/logout' || urlPath === '/') return callback({});
+        // Redirect to local server (it will serve cached pages or DataStore JSON)
+        return callback({ redirectURL: `http://127.0.0.1:${config.LOCAL_PORT}${urlPath}` });
+      } catch (e) { return callback({}); }
+    }
+
     callback({});
   });
 }
@@ -362,16 +434,33 @@ function sendStatus() {
 /* ==================================================================
  *  IPC handlers
  * ================================================================== */
-ipcMain.handle('get-status', () => ({ online: isOnline, pendingCount: operationQueue.countPending(), serverUrl: config.SERVER_URL, serverConfigured: !!config.SERVER_URL, cachedPages: pageCache.list().length }));
+ipcMain.handle('get-status', () => ({ online: isOnline, pendingCount: operationQueue.countPending(), serverUrl: config.SERVER_URL, serverConfigured: !!config.SERVER_URL, cachedPages: pageCache.list().length, lastFullSync: dataStore ? dataStore.getMeta('lastFullSync') : null }));
 ipcMain.handle('get-queue', () => operationQueue.getAll());
 ipcMain.handle('queue-operation', (_e, operation) => { operationQueue.add(operation); return { success: true, pendingCount: operationQueue.countPending() }; });
 ipcMain.handle('force-sync', async () => { if (!isOnline) return { success: false, reason: 'offline' }; const synced = await syncEngine.processQueue(); sendStatus(); return { success: true, synced }; });
+ipcMain.handle('full-sync', async () => {
+  if (!config.SERVER_URL) return { success: false, reason: 'no-server-configured' };
+  try {
+    // Notify renderer that full-sync is starting
+    try { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('full-sync-progress', { phase: 'start' }); } catch (e) {}
+    const res = await syncEngine.fullSync(mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null);
+    sendStatus();
+    // include datastore info when available
+    const dsInfo = dataStore ? dataStore.info() : null;
+    // notify renderer that full-sync ended
+    try { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('full-sync-end', Object.assign({}, res || {}, { datastore: dsInfo })); } catch (e) {}
+    return Object.assign({}, res || {}, { datastore: dsInfo });
+  } catch (e) { return { success: false, reason: e && e.message } }
+});
 ipcMain.handle('retry-connection', async () => {
   if (!config.SERVER_URL) return { online: false, reason: 'no-server-configured' };
   if (!networkMonitor) networkMonitor = new NetworkMonitor(config.SERVER_URL, config.PING_INTERVAL);
   const online = await networkMonitor.checkOnce();
   if (online && mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(config.SERVER_URL);
   return { online };
+});
+ipcMain.handle('datastore-info', () => {
+  try { return dataStore ? dataStore.info() : { exists: false, reason: 'no-datastore' }; } catch (e) { return { exists: false, error: e && e.message }; }
 });
 ipcMain.handle('clear-cache', () => { pageCache.clear(); return { success: true }; });
 ipcMain.handle('go-online', () => { if (!config.SERVER_URL) return { success: false, reason: 'no-server-configured' }; if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(config.SERVER_URL); return { success: true }; });

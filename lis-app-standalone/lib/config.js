@@ -21,4 +21,8 @@ module.exports = {
   // ── Sync ───────────────────────────────────────────────────────────
   // Maximum retry attempts for each queued operation
   MAX_SYNC_RETRIES: 3,
+  // How often (ms) to run a background full data sync when online (0 to disable)
+  FULL_SYNC_INTERVAL: 15 * 60 * 1000,
+  // Automatically attempt a full-sync after a successful login (redirect to /dashboard)
+  AUTO_FULLSYNC_ON_LOGIN: true,
 };

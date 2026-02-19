@@ -31,6 +31,13 @@
   animation: lis-pulse 2.5s ease-in-out infinite;
 }
 
+/* syncing state (indeterminate download) */
+#lis-status-bar.lis-syncing {
+  background: linear-gradient(90deg, #2563eb, #1e40af);
+  color: #fff;
+  animation: lis-pulse 2.5s ease-in-out infinite;
+}
+
 @keyframes lis-pulse {
   0%, 100% { opacity: 1; }
   50%      { opacity: .85; }
@@ -59,6 +66,27 @@
   background: #fbbf24;
   box-shadow: 0 0 6px #fbbf24;
   animation: lis-blink 1s ease-in-out infinite;
+}
+.lis-status-dot.syncing {
+  background: #93c5fd;
+  box-shadow: 0 0 8px #93c5fd;
+  animation: lis-blink 1s ease-in-out infinite;
+}
+
+/* progress bar inside status bar */
+#lis-sync-progress-wrap {
+  width: 220px;
+  height: 6px;
+  background: rgba(255,255,255,0.12);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-left: 10px;
+}
+#lis-sync-progress {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg,#60a5fa,#3b82f6);
+  transition: width .25s ease;
 }
 @keyframes lis-blink {
   0%, 100% { opacity: 1; }

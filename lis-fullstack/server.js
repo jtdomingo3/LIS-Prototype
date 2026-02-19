@@ -523,6 +523,22 @@ app.use('/reception', receptionRoutes);
 app.use('/settings', settingsRoutes);
 app.use('/signatures', signaturesRoutes);
 
+// Export endpoint for full-sync (requires authenticated session)
+app.get('/export/data.json', (req, res) => {
+  try {
+    if (!req.session || !req.session.user) return res.status(401).send('Authentication required');
+    const data = db.read();
+    // do not expose user passwords if present
+    if (Array.isArray(data.users)) {
+      data.users = data.users.map(u => ({ id: u.id || u.email, name: u.name || u.email, email: u.email, role: u.role || '' }));
+    }
+    res.json(data);
+  } catch (e) {
+    console.error('export/data.json failed:', e && e.message);
+    res.status(500).send('Export failed');
+  }
+});
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).render('404', { title: 'Page Not Found' });
@@ -603,5 +619,22 @@ app.listen(PORT, HOST, () => {
     });
   } catch (e) {
     console.warn('[startup] could not run report generation scan:', e && e.message);
+  }
+});
+
+// Development-friendly public data endpoint (ONLY enabled in development
+// or when ALLOW_PUBLIC_DATA_EXPORT=1 is set). This is convenient for local
+// electron clients during testing. Do NOT enable in production unless you
+// understand the implications.
+app.get('/data.json', (req, res) => {
+  const allow = (process.env.NODE_ENV === 'development') || (process.env.ALLOW_PUBLIC_DATA_EXPORT === '1');
+  if (!allow) return res.status(404).send('Not found');
+  try {
+    const data = db.read();
+    console.log('[export] served /data.json public snapshot');
+    res.json(data);
+  } catch (e) {
+    console.error('[export] public /data.json failed:', e && e.message);
+    res.status(500).send('Export failed');
   }
 });
