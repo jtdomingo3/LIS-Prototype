@@ -16,6 +16,26 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   app.use(express.urlencoded({ extended: true }));
   app.use(express.json());
 
+  // CORS middleware: allow the Electron app's origin (the configured SERVER_URL)
+  // and localhost. This avoids browser CORS errors when the renderer is
+  // redirected to the local server for API calls while offline.
+  app.use((req, res, next) => {
+    try {
+      const origin = req.get('Origin') || '';
+      const allowed = [];
+      if (config && config.SERVER_URL) allowed.push(config.SERVER_URL.replace(/\/$/, ''));
+      allowed.push(`http://127.0.0.1:${config.LOCAL_PORT}`);
+      // Permit the request origin if it matches allowed, else allow all for local dev
+      const allowOrigin = allowed.includes(origin) ? origin : '*';
+      res.setHeader('Access-Control-Allow-Origin', allowOrigin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+      if (req.method === 'OPTIONS') return res.sendStatus(204);
+    } catch (e) { /* ignore */ }
+    next();
+  });
+
   /* ────────────────────────────────────────────────────────────────
    * POST / PUT / DELETE — Queue the mutation and redirect back
    * ──────────────────────────────────────────────────────────────── */

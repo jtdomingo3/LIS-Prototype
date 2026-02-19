@@ -47,6 +47,7 @@
     '  <button class="lis-sync-btn" id="lis-sync-btn" style="display:none">Sync Now</button>',
     '  <button class="lis-download-btn" id="lis-download-btn" title="Download data" style="display:none">⬇</button>',
     '  <button class="lis-refresh-btn" id="lis-refresh-btn" title="Refresh">⟲</button>',
+    '  <button class="lis-retry-btn" id="lis-retry-btn" title="Connect" style="display:none">Connect</button>',
     '  <button class="lis-settings-btn" id="lis-settings-btn" title="Settings">⚙</button>',
     '</div>',
   ].join('\n');
@@ -58,6 +59,7 @@
   const syncBtn  = document.getElementById('lis-sync-btn');
   const downloadBtn = document.getElementById('lis-download-btn');
   const refreshBtn = document.getElementById('lis-refresh-btn');
+  const retryBtn = document.getElementById('lis-retry-btn');
 
   // progress UI (hidden until needed)
   const progressWrap = document.createElement('div');
@@ -112,6 +114,8 @@
       bar.className   = 'lis-offline';
       dot.className   = 'lis-status-dot offline';
       text.textContent = 'Offline Mode — data is saved locally';
+      // show Connect button when offline so users can retry connecting
+      if (retryBtn) retryBtn.style.display = 'inline-block';
     }
 
     // Pending badge
@@ -124,6 +128,9 @@
       badge.style.display   = 'none';
       syncBtn.style.display = 'none';
       downloadBtn.style.display = online ? 'inline-block' : 'none';
+    }
+    // hide retry when online
+    if (retryBtn) retryBtn.style.display = online ? 'none' : retryBtn.style.display;
     }
   }
 
@@ -280,6 +287,29 @@
   if (refreshBtn) {
     refreshBtn.addEventListener('click', function () {
       try { location.reload(); } catch (e) { console.error('[LIS] refresh failed', e); }
+    });
+  }
+
+  // Connect/Retry button — try to re-establish connection to configured server
+  if (retryBtn) {
+    retryBtn.addEventListener('click', async function () {
+      try {
+        retryBtn.disabled = true;
+        retryBtn.textContent = 'Connecting…';
+        const res = await window.lisApp.retryConnection();
+        retryBtn.disabled = false;
+        retryBtn.textContent = 'Connect';
+        if (res && res.online) {
+          showToast('Connection restored — loading server UI', 3000);
+          setTimeout(function () { try { location.href = res.serverUrl || '/'; } catch (e) {} }, 600);
+        } else {
+          showToast('Server not reachable', 3000);
+        }
+      } catch (e) {
+        retryBtn.disabled = false;
+        retryBtn.textContent = 'Connect';
+        showToast('Connection attempt failed', 3000);
+      }
     });
   }
 

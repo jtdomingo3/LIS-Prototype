@@ -116,12 +116,18 @@ async function startNetworkMonitor() {
         console.log('[Main] connection restored — syncing queue…');
         const synced = await syncEngine.processQueue();
         sendStatus();
-        if (synced > 0 && mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('sync-complete', { synced });
-          setTimeout(() => {
-            if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(config.SERVER_URL);
-          }, 1500);
-        }
+        try {
+          // Always reload the main window to the configured server when the
+          // connection is restored so the renderer re-attaches to the real
+          // server origin (this prevents stale offline routing and login
+          // failures that require restarting the app).
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('sync-complete', { synced });
+            setTimeout(() => {
+              try { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(config.SERVER_URL); } catch (e) {}
+            }, 1000);
+          }
+        } catch (e) { /* ignore reload errors */ }
       }
     });
 
@@ -184,7 +190,11 @@ async function createWindow() {
   mainWindow.once('ready-to-show', () => mainWindow.show());
 
   if (process.argv.includes('--dev')) {
-    mainWindow.webContents.openDevTools({ mode: 'detach' });
+    try {
+      mainWindow.webContents.once('dom-ready', () => {
+        try { mainWindow.webContents.openDevTools({ mode: 'detach' }); } catch (e) {}
+      });
+    } catch (e) { /* ignore */ }
   }
 
   // Track and handle main-window renderer crashes: attempt one reload,
@@ -231,12 +241,48 @@ async function createWindow() {
       const url = mainWindow.webContents.getURL();
       if (config.SERVER_URL && url.startsWith(config.SERVER_URL)) {
         const html = await mainWindow.webContents.executeJavaScript('document.documentElement.outerHTML');
+        // If the loaded content is raw JSON (server returned JSON for a
+        // navigation) the renderer will show the JSON text in the main frame.
+        // Detect this case and reload to the server root so the app's HTML UI
+        // loads instead of a JSON payload. This avoids requiring the user to
+        // restart the app when the server was started after the standalone.
+        try {
+          const trimmed = (html || '').trim();
+          if (trimmed && !trimmed.startsWith('<') && (trimmed.startsWith('{') || trimmed.startsWith('['))) {
+            console.warn('[Main] detected JSON document loaded in main frame — redirecting to server root');
+            try { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(config.SERVER_URL); } catch (e) {}
+            return;
+          }
+        } catch (e) { /* ignore parsing errors */ }
         const urlObj = new URL(url);
         pageCache.store(urlObj.pathname + (urlObj.search || ''), html);
       }
     } catch (e) { /* ignore */ }
 
     injectClientScripts();
+  });
+
+  // Prevent top-level navigations to API/JSON endpoints from loading raw
+  // responses in the main frame. When the user or app attempts to navigate to
+  // an API path (e.g. `/patients`, `/export/data.json`) while offline or the
+  // server is unreachable, block the navigation and show the offline UI.
+  mainWindow.webContents.on('will-navigate', (event, targetUrl) => {
+    try {
+      if (!config.SERVER_URL) return;
+      // Only intervene when we're currently offline. When online let the
+      // navigation proceed so the renderer loads the server-provided HTML.
+      if (isOnline) return;
+      const base = config.SERVER_URL.replace(/\/$/, '');
+      if (!targetUrl || !targetUrl.startsWith(base)) return;
+      const path = targetUrl.slice(base.length) || '/';
+      const apiPrefixRe = /^\/(api|export|patients|users|tests|reports|reception|templates|signatures|auth)(\/|$)/i;
+      const looksLikeApi = apiPrefixRe.test(path) || path.toLowerCase().endsWith('.json');
+      if (looksLikeApi) {
+        event.preventDefault();
+        console.log('[Main] blocked main-frame navigation to API path, loading offline UI instead:', path);
+        try { loadOfflinePage(path); } catch (e) {}
+      }
+    } catch (e) { /* ignore */ }
   });
 
   mainWindow.webContents.on('before-input-event', (event, input) => {
@@ -341,9 +387,16 @@ function setupRequestInterceptor() {
     if (isOnline) return callback({});
     try {
       const urlPath = new URL(details.url).pathname;
-      if (urlPath === '/login' || urlPath === '/logout' || urlPath === '/') {
-        console.log('[Intercept] allowing auth route through:', details.method, urlPath);
+      // When offline, avoid letting the app navigate to the server's /logout
+      // route (which would log the user out). Allow viewing the login page
+      // or the root, but block logout attempts and route them to the local UI.
+      if (urlPath === '/login' || urlPath === '/') {
+        console.log('[Intercept] allowing auth route through (offline):', details.method, urlPath);
         return callback({});
+      }
+      if (urlPath === '/logout') {
+        console.log('[Intercept] blocking logout while offline:', details.method, urlPath);
+        return callback({ redirectURL: `http://127.0.0.1:${config.LOCAL_PORT}/` });
       }
     } catch { return callback({}); }
 
@@ -363,6 +416,16 @@ function setupRequestInterceptor() {
     if (details.resourceType === 'mainFrame') {
       const urlObj = new URL(details.url);
       const urlPath = urlObj.pathname + (urlObj.search || '');
+      // Avoid loading raw API JSON pages into the main window. If the path looks
+      // like an API/export/json route, redirect to the local server root (which
+      // will serve cached HTML or the offline page) instead of the JSON endpoint.
+      const apiPrefixRe = /^\/(api|export|patients|users|tests|reports|reception|templates|signatures|auth)(\/|$)/i;
+      const looksLikeApi = apiPrefixRe.test(urlPath) || urlPath.toLowerCase().endsWith('.json');
+      if (looksLikeApi) {
+        // Redirect to local root so the app UI is shown, not raw JSON
+        callback({ redirectURL: `http://127.0.0.1:${config.LOCAL_PORT}/` });
+        return;
+      }
       callback({ redirectURL: `http://127.0.0.1:${config.LOCAL_PORT}${urlPath}` });
       return;
     }
