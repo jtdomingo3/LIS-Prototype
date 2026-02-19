@@ -55,11 +55,13 @@ class SyncEngine {
 
     return new Promise((resolve) => {
       try {
+        const sess = session.fromPartition('persist:lis');
+        const { BrowserWindow } = require('electron');
         const req = net.request({
           method: 'POST',
           url: loginUrl,
-          session: session.fromPartition('persist:lis'),
-          redirect: 'follow',
+          session: sess,
+          redirect: 'manual', // handle redirects after cookie persistence
         });
         req.setHeader('Content-Type', 'application/x-www-form-urlencoded');
         const body = new URLSearchParams({
@@ -68,23 +70,132 @@ class SyncEngine {
         }).toString();
 
         let responseBody = '';
-        req.on('response', (res) => {
+        req.on('response', async (res) => {
           res.on('data', (chunk) => { responseBody += chunk.toString(); });
-          res.on('end', () => {
-            // A successful login typically redirects (302) to /dashboard
-            if (res.statusCode < 400) {
-              console.log('[Sync] authenticated with server (status ' + res.statusCode + ')');
-              resolve(true);
-            } else {
-              console.warn('[Sync] server auth returned', res.statusCode);
-              resolve(false);
+          res.on('end', async () => {
+            // Log headers for debugging
+            try { console.log('[Sync] login response headers:', res.headers); } catch (e) {}
+
+            if (res.statusCode >= 400) {
+              console.warn('[Sync] server auth returned', res.statusCode, responseBody.slice(0,200));
+              return resolve(false);
             }
+
+            // Verify that a session cookie was set in the persist:lis partition
+            try {
+              const cookies = await sess.cookies.get({ name: 'connect.sid' });
+              if (cookies && cookies.length) {
+                console.log('[Sync] authenticated with server and session cookie set (connect.sid)');
+                return resolve(true);
+              }
+              // Fallback: accept any cookie as sign of session establishment
+              const anyCookies = await sess.cookies.get({});
+              if (anyCookies && anyCookies.length) {
+                console.log('[Sync] authenticated with server — cookies present');
+                return resolve(true);
+              }
+            } catch (e) {
+              console.warn('[Sync] cookie check failed:', e && e.message);
+            }
+
+            // No session cookie -> attempt renderer-based login (hidden BrowserWindow)
+            console.log('[Sync] no session cookie after net login — attempting hidden renderer login fallback');
+            try {
+              const { BrowserWindow } = require('electron');
+              const win = new BrowserWindow({ show: false, webPreferences: { partition: 'persist:lis', nodeIntegration: false, contextIsolation: true } });
+              try {
+                // Load login page in hidden window
+                await win.loadURL(loginUrl);
+                // Fill and submit the login form if present
+                const submitJs = `(function(){ try {
+                  var e = document.querySelector('input[name="email"]');
+                  var p = document.querySelector('input[name="password"]');
+                  if (!e || !p) return { ok:false, err:'no-form' };
+                  e.value = ${JSON.stringify(this._credentials.email)};
+                  p.value = ${JSON.stringify(this._credentials.password)};
+                  var f = document.querySelector('form[action="/login"]') || document.querySelector('form');
+                  if (f) { f.submit(); return { ok:true, method:'form' }; }
+                  var btn = document.querySelector('button[type="submit"]') || document.querySelector('input[type="submit"]');
+                  if (btn) { btn.click(); return { ok:true, method:'button' }; }
+                  return { ok:false, err:'no-submit' };
+                } catch(e){ return { ok:false, err: String(e) }; } })()`;
+                try { await win.webContents.executeJavaScript(submitJs, true); } catch (e) { /* ignore exec errors */ }
+
+                // Poll for cookie set (give server time to redirect and set cookie)
+                const start = Date.now();
+                let found = false;
+                while ((Date.now() - start) < 8000) {
+                  try {
+                    const cookies2 = await sess.cookies.get({ name: 'connect.sid' });
+                    if (cookies2 && cookies2.length) { found = true; break; }
+                  } catch (e) { /* ignore */ }
+                  await new Promise(r => setTimeout(r, 400));
+                }
+                try { if (!win.isDestroyed()) win.close(); } catch (e) {}
+                if (found) {
+                  console.log('[Sync] renderer login set session cookie (connect.sid)');
+                  return resolve(true);
+                }
+              } catch (e) {
+                try { if (!win.isDestroyed()) win.close(); } catch (ee) {}
+                console.warn('[Sync] renderer login attempt failed:', e && e.message);
+              }
+            } catch (e) {
+              console.warn('[Sync] renderer login fallback error:', e && e.message);
+            }
+
+            // Still no cookie -> treat as auth failure
+            console.warn('[Sync] login did not result in persisted session cookie; status', res.statusCode);
+            resolve(false);
           });
         });
-        req.on('error', (err) => {
+
+        req.on('error', async (err) => {
           console.error('[Sync] server auth request failed:', err && err.message);
+          // Try renderer fallback on request errors (e.g., Redirect was cancelled)
+          try {
+            console.log('[Sync] attempting renderer login fallback after net error');
+            const win = new BrowserWindow({ show: false, webPreferences: { partition: 'persist:lis', nodeIntegration: false, contextIsolation: true } });
+            try {
+              await win.loadURL(loginUrl);
+              const submitJs = `(function(){ try {
+                var e = document.querySelector('input[name="email"]');
+                var p = document.querySelector('input[name="password"]');
+                if (!e || !p) return { ok:false, err:'no-form' };
+                e.value = ${JSON.stringify(this._credentials.email)};
+                p.value = ${JSON.stringify(this._credentials.password)};
+                var f = document.querySelector('form[action="/login"]') || document.querySelector('form');
+                if (f) { f.submit(); return { ok:true, method:'form' }; }
+                var btn = document.querySelector('button[type="submit"]') || document.querySelector('input[type="submit"]');
+                if (btn) { btn.click(); return { ok:true, method:'button' }; }
+                return { ok:false, err:'no-submit' };
+              } catch(e){ return { ok:false, err: String(e) }; } })()`;
+              try { await win.webContents.executeJavaScript(submitJs, true); } catch (e) {}
+
+              const start = Date.now();
+              let found = false;
+              while ((Date.now() - start) < 8000) {
+                try {
+                  const cookies2 = await sess.cookies.get({ name: 'connect.sid' });
+                  if (cookies2 && cookies2.length) { found = true; break; }
+                } catch (e) { }
+                await new Promise(r => setTimeout(r, 400));
+              }
+              try { if (!win.isDestroyed()) win.close(); } catch (e) {}
+              if (found) {
+                console.log('[Sync] renderer login set session cookie (connect.sid) after net error');
+                return resolve(true);
+              }
+            } catch (e) {
+              try { if (!win.isDestroyed()) win.close(); } catch (ee) {}
+              console.warn('[Sync] renderer login attempt failed after net error:', e && e.message);
+            }
+          } catch (e) {
+            console.warn('[Sync] renderer login fallback error after net error:', e && e.message);
+          }
           resolve(false);
         });
+
         req.write(body);
         req.end();
       } catch (e) {

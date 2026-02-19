@@ -25,6 +25,7 @@ let networkMonitor = null;
 let isOnline = false;
 let fullSyncTimer = null;
 let lastLoginSyncAt = null;
+let lastSessionAuthAt = 0;
 let appIcon = null;
 let tray = null;
 let userDataPath = null;
@@ -403,10 +404,32 @@ async function createWindow() {
               "!!(document.querySelector('form[action=\"/login\"]') || document.querySelector('input[name=\"email\"]'))"
             );
             if (isLoginPage) {
-              console.log('[Main] session lost on real server — switching to local server');
-              mainWindow.loadURL(`http://127.0.0.1:${config.LOCAL_PORT}/`);
-              return;
-            } else {
+                  // Debounce repeated re-auth attempts
+                  const now = Date.now();
+                  if (now - lastSessionAuthAt < 10000) {
+                    console.log('[Main] recent re-auth attempt in last 10s — skipping');
+                    return;
+                  }
+                  lastSessionAuthAt = now;
+                  console.log('[Main] session lost on real server — attempting re-auth before switching to local server');
+                  try {
+                    // Try to re-authenticate using stored credentials (SyncEngine)
+                    const authPromise = (syncEngine && typeof syncEngine._ensureServerAuth === 'function') ? syncEngine._ensureServerAuth() : Promise.resolve(false);
+                    // Timeout the auth attempt to avoid hanging the UI (8s)
+                    const timeout = new Promise(r => setTimeout(() => r(false), 8000));
+                    const authOk = await Promise.race([authPromise, timeout]);
+                    if (authOk) {
+                      console.log('[Main] re-auth succeeded — staying on real server');
+                      // reload root so session-backed redirects will occur
+                      try { if (mainWindow && !mainWindow.isDestroyed()) await mainWindow.loadURL(config.SERVER_URL); } catch (e) {}
+                      lastSessionAuthAt = Date.now();
+                      return;
+                    }
+                  } catch (e) { console.warn('[Main] re-auth attempt failed:', e && e.message); }
+                  console.log('[Main] switching to local server after failed re-auth');
+                  mainWindow.loadURL(`http://127.0.0.1:${config.LOCAL_PORT}/`);
+                  return;
+                } else {
               console.log('[Main] landed on server root but no login form detected — staying with real server');
             }
           } catch (e) {
