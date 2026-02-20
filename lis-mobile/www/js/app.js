@@ -9,6 +9,17 @@
     } catch (e) { /* ignore */ }
   }
 
+  function logDebug(msg) {
+    try {
+      const el = document.getElementById('debug-log');
+      if (el) {
+        el.textContent = (el.textContent ? (el.textContent + '\n') : '') + String(msg);
+        el.scrollTop = el.scrollHeight;
+      }
+    } catch (e) {}
+    try { console.log(msg); } catch (e) {}
+  }
+
   function updateServerDisplay() {
     const el = document.getElementById('current-server');
     const input = document.getElementById('server-url-input');
@@ -89,35 +100,96 @@
     const iframe = document.getElementById('remote-frame');
     const splash = document.getElementById('splash');
     const serverTestResult = document.getElementById('server-test-result');
+    const hero = document.getElementById('hero');
+    const settingsPanel = document.getElementById('settings-panel');
+    const settingsFab = document.getElementById('open-settings-fab');
+    const openMainBtn = document.getElementById('open-main');
 
-    serverTestResult.textContent = 'Loading…';
-    splash.style.display = 'flex';
-    iframe.style.display = 'none';
+    // Defensive guards
+    if (!iframe) { console.warn('loadServerInIframe: no iframe element found'); return; }
+    if (!splash) { console.warn('loadServerInIframe: no splash element found'); }
+    if (!serverTestResult) console.warn('loadServerInIframe: no server-test-result element');
+
+    try {
+      if (serverTestResult) serverTestResult.textContent = 'Loading…';
+      if (splash) splash.style.display = 'flex';
+      iframe.style.display = 'none';
+    } catch (e) { console.warn('UI update failed', e); }
 
     let fired = false;
     const onLoad = () => {
       fired = true;
-      serverTestResult.textContent = 'Loaded';
-      splash.style.display = 'none';
-      iframe.style.display = 'block';
-      iframe.removeEventListener('load', onLoad);
-      clearTimeout(checkTimer);
+      logDebug('iframe load event fired for ' + url);
+      // verify the iframe actually has content (not an about:blank blocked frame)
+      let looksEmpty = false;
+      try {
+        const doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
+        const href = (doc && doc.location) ? String(doc.location.href) : '';
+        if (!href || href === 'about:blank') {
+          looksEmpty = true;
+        } else if (doc && doc.body && doc.body.childElementCount === 0) {
+          looksEmpty = true;
+        }
+      } catch (e) {
+        // cross-origin access throws — that's OK, treat as non-empty (we can't inspect)
+        logDebug('iframe content is cross-origin (expected for remote server)');
+      }
+
+      if (looksEmpty) {
+        logDebug('iframe appears empty/blocked, falling back');
+        try { iframe.removeEventListener('load', onLoad); } catch (e) {}
+        try { clearTimeout(checkTimer); } catch (e) {}
+        try { if (splash) splash.style.display = 'none'; } catch (e) {}
+        try { iframe.style.display = 'none'; } catch (e) {}
+        try { if (serverTestResult) serverTestResult.textContent = 'Embedding blocked — opening in app browser'; } catch (e) {}
+        try {
+          // Open inside the Cordova WebView (replace app shell) so the server
+          // loads in-app rather than the system browser or separate window.
+          if (window.cordova && cordova.InAppBrowser) cordova.InAppBrowser.open(url, '_self', 'location=yes');
+          else window.location.href = url;
+        } catch (err) { console.error('fallback open failed', err); }
+        return;
+      }
+
+      try {
+        if (serverTestResult) serverTestResult.textContent = 'Loaded';
+        if (splash) splash.style.display = 'none';
+        iframe.style.display = 'block';
+        // hide hero and settings when server is successfully embedded
+        try { if (hero) { hero.classList.remove('hero-visible'); hero.classList.add('hero-hidden'); } } catch (e) {}
+        try { if (settingsPanel) settingsPanel.style.display = 'none'; } catch (e) {}
+        try { if (settingsFab) settingsFab.style.display = 'none'; } catch (e) {}
+        try { if (openMainBtn) openMainBtn.style.display = 'none'; } catch (e) {}
+      } catch (e) { console.warn('Error showing iframe', e); }
+      try { iframe.removeEventListener('load', onLoad); } catch (e) {}
+      try { clearTimeout(checkTimer); } catch (e) {}
     };
 
     iframe.addEventListener('load', onLoad);
-    iframe.src = url;
+    logDebug('setting iframe.src -> ' + url);
+    try { iframe.src = url; }
+    catch (e) { logDebug('setting iframe.src failed: ' + String(e)); }
 
     // if iframe doesn't load within 5s, assume embedding blocked — fallback to InAppBrowser
     const checkTimer = setTimeout(()=>{
       if (!fired) {
-        iframe.removeEventListener('load', onLoad);
-        splash.style.display = 'none';
-        iframe.style.display = 'none';
-        serverTestResult.textContent = 'Embedding blocked — opening in app browser';
-        if (window.cordova && cordova.InAppBrowser) {
-          cordova.InAppBrowser.open(url, '_blank', 'location=yes,toolbar=yes');
-        } else {
-          window.location.href = url;
+        logDebug('iframe did not fire load — falling back to in-app browser for ' + url);
+        try { iframe.removeEventListener('load', onLoad); } catch (e) {}
+        try { if (splash) splash.style.display = 'none'; } catch (e) {}
+        try { iframe.style.display = 'none'; } catch (e) {}
+        try { if (serverTestResult) serverTestResult.textContent = 'Embedding blocked — opening in app browser'; } catch (e) {}
+        // open via InAppBrowser if available, otherwise open externally
+        try {
+          // Replace the current Cordova WebView with the remote server
+          // so the server runs inside the app. If InAppBrowser isn't
+          // available, navigate the window to the URL directly.
+          if (window.cordova && cordova.InAppBrowser) {
+            cordova.InAppBrowser.open(url, '_self', 'location=yes');
+          } else {
+            window.location.href = url;
+          }
+        } catch (err) {
+          console.error('fallback open failed', err);
         }
       }
     }, 5000);
@@ -187,6 +259,27 @@
       openRemoteBtn.addEventListener('click', ()=> {
         if (!SERVER_URL) { alert('Server URL not set — open Settings to configure.'); return; }
         loadServerInIframe(SERVER_URL);
+      });
+    }
+
+    // Main hero open button
+    const openMainBtn = document.getElementById('open-main');
+    if (openMainBtn) {
+      openMainBtn.addEventListener('click', ()=>{
+        if (!SERVER_URL) { document.getElementById('settings-panel').style.display = 'block'; alert('Please set the server in Settings'); return; }
+        loadServerInIframe(SERVER_URL);
+      });
+    }
+
+    // persistent settings FAB (top-level) handler
+    const settingsFab = document.getElementById('open-settings-fab');
+    if (settingsFab) {
+      settingsFab.addEventListener('click', ()=>{
+        try {
+          const p = document.getElementById('settings-panel');
+          if (!p) return;
+          p.style.display = (p.style.display === 'block') ? 'none' : 'block';
+        } catch (e) { console.warn('open-settings-fab handler failed', e); }
       });
     }
 
@@ -274,10 +367,13 @@
       openSystemBtn.addEventListener('click', ()=>{
         const url = document.getElementById('server-url-input').value.trim() || SERVER_URL;
         if (!url) { alert('Server URL not set'); return; }
+        // Load the server inside the app WebView (replace app shell) instead
+        // of launching an external browser. Use InAppBrowser with '_self'
+        // when available; otherwise navigate the window location.
         if (window.cordova && cordova.InAppBrowser) {
-          cordova.InAppBrowser.open(url, '_system');
+          cordova.InAppBrowser.open(url, '_self', 'location=yes');
         } else {
-          window.open(url, '_blank');
+          window.location.href = url;
         }
       });
     }
@@ -304,16 +400,25 @@
     window.addEventListener('online', networkChange);
     window.addEventListener('offline', networkChange);
 
-    // if server reachable, open it immediately (simple wrapper behaviour)
+    // Update status and UI but do not auto-open server anymore.
     updateStatus(navigator.onLine ? 'online' : 'offline', await window.LISOperationQueue.length(), 0);
     await refreshPendingUI();
 
-    // Auto-open server (attempt to embed; don't pre-flight with fetch because CORS can block the probe)
-    if (SERVER_URL && SERVER_URL.trim()) {
-      // Try to embed directly — iframe load/fallback handles blocked embedding
-      loadServerInIframe(SERVER_URL);
-      return;
-    }
+    // Hide debug log by default in the improved UI
+    try { const dbg = document.getElementById('debug-log'); if (dbg) dbg.style.display = 'none'; } catch (e) {}
+
+    // reflect server presence in hero button state
+    try {
+      const heroNote = document.getElementById('hero-note');
+      const openMain = document.getElementById('open-main');
+      if (SERVER_URL && SERVER_URL.trim()) {
+        if (heroNote) heroNote.textContent = 'Server set — press Open server';
+        if (openMain) openMain.disabled = false;
+      } else {
+        if (heroNote) heroNote.textContent = 'Set server in Settings — then tap Open server';
+        if (openMain) openMain.disabled = true;
+      }
+    } catch (e) {}
 
     if (navigator.onLine) await trySync();
   }

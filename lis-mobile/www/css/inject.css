@@ -155,6 +155,22 @@ html.lis-status-offset body {
   padding-bottom: var(--lis-status-height) !important;
 }
 
+/* hide the legacy green status bar for the app shell UI */
+#lis-status-bar { display: none !important; }
+
+/* hero/logo/button styles */
+#hero { padding: 18px; }
+#logo-wrap { margin-bottom: 12px; }
+.btn-open { background: linear-gradient(90deg,#059669,#10b981); color: #fff; border-radius: 10px; box-shadow: 0 8px 24px rgba(16,185,129,0.18); border: none; }
+.btn-open:disabled { opacity: .5; cursor: default; }
+
+/* settings FAB */
+#open-settings-fab { display: inline-flex; align-items:center; justify-content:center; }
+
+/* When server iframe is visible, move hero out of screen smoothly */
+.hero-hidden { transform: translateY(-140%); opacity: 0; transition: transform .35s ease, opacity .25s ease; }
+.hero-visible { transform: translateY(0); opacity: 1; transition: transform .35s ease, opacity .25s ease; }
+
 html::-webkit-scrollbar,
 body::-webkit-scrollbar {
   width: 0;

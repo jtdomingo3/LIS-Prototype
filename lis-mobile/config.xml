@@ -11,6 +11,25 @@
         <resource-file src="res/xml/network_security_config.xml" target="app/src/main/res/xml/network_security_config.xml" />
     </platform>
     <preference name="AndroidPersistentFileLocation" value="Internal" />
+    <preference name="AndroidInsecureFileModeEnabled" value="true" />
+    <preference name="scheme" value="http" />
+    <preference name="hostname" value="localhost" />
+    <preference name="android-compileSdkVersion" value="36" />
+    <preference name="android-targetSdkVersion" value="36" />
+    <preference name="android-buildToolsVersion" value="36.1.0" />
+    <!-- Copy app icon from www assets into Android mipmap folders so launcher shows custom icon -->
+    <platform name="android">
+        <resource-file src="../lis-app-standalone/build/gezyne-logo.png" target="app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png" />
+        <resource-file src="../lis-app-standalone/build/gezyne-logo.png" target="app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png" />
+        <resource-file src="../lis-app-standalone/build/gezyne-logo.png" target="app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png" />
+        <resource-file src="../lis-app-standalone/build/gezyne-logo.png" target="app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png" />
+        <resource-file src="../lis-app-standalone/build/gezyne-logo.png" target="app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png" />
+        <resource-file src="../lis-app-standalone/build/gezyne-logo.png" target="app/src/main/res/mipmap-mdpi/ic_launcher_background.png" />
+        <resource-file src="../lis-app-standalone/build/gezyne-logo.png" target="app/src/main/res/mipmap-hdpi/ic_launcher_background.png" />
+        <resource-file src="../lis-app-standalone/build/gezyne-logo.png" target="app/src/main/res/mipmap-xhdpi/ic_launcher_background.png" />
+        <resource-file src="../lis-app-standalone/build/gezyne-logo.png" target="app/src/main/res/mipmap-xxhdpi/ic_launcher_background.png" />
+        <resource-file src="../lis-app-standalone/build/gezyne-logo.png" target="app/src/main/res/mipmap-xxxhdpi/ic_launcher_background.png" />
+    </platform>
     <plugin name="cordova-plugin-whitelist" spec="^1.3.4" />
     <plugin name="cordova-plugin-network-information" spec="^3.0.0" />
     <plugin name="cordova-plugin-file" spec="^6.0.2" />

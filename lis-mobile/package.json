@@ -9,7 +9,7 @@
     "prepare": "cordova prepare"
   },
   "devDependencies": {
-    "cordova-android": "^11.0.0",
+    "cordova-android": "^14.0.1",
     "cordova-plugin-file": "^6.0.2",
     "cordova-plugin-inappbrowser": "^5.0.0",
     "cordova-plugin-network-information": "^3.0.0",
