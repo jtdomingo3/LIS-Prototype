@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='utf-8'?>
+<widget id="com.gezyne.lis.mobile" version="0.1.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+    <feature name="NetworkStatus">
+        <param name="android-package" value="org.apache.cordova.networkinformation.NetworkManager" />
+    </feature>
+    <feature name="File">
+        <param name="android-package" value="org.apache.cordova.file.FileUtils" />
+        <param name="onload" value="true" />
+    </feature>
+    <allow-navigation href="cdvfile:*" />
+    <feature name="InAppBrowser">
+        <param name="android-package" value="org.apache.cordova.inappbrowser.InAppBrowser" />
+    </feature>
+    <name>LIS Mobile</name>
+    <description>Offline-capable LIS mobile app (Cordova)</description>
+    <author email="dev@example.com" href="https://example.com">LIS Team</author>
+    <content src="index.html" />
+    <allow-navigation href="*" />
+    <access origin="*" />
+    <allow-intent href="market:*" />
+    <resource-file src="res/xml/network_security_config.xml" target="app/src/main/res/xml/network_security_config.xml" />
+    <preference name="loglevel" value="DEBUG" />
+    <preference name="AndroidPersistentFileLocation" value="Internal" />
+</widget>

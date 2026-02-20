@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+  <!-- Development-friendly: allow cleartext for local/dev servers -->
+  <base-config cleartextTrafficPermitted="true" />
+  <!-- You can restrict to specific domains for production by using domain-config -->
+  <domain-config cleartextTrafficPermitted="true">
+    <domain includeSubdomains="true">192.168.31.86</domain>
+  </domain-config>
+</network-security-config>
