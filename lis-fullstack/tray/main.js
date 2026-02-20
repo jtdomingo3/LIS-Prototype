@@ -26,7 +26,34 @@ function getLocalIp() {
 const HOST = getLocalIp();
 const URL = `http://${HOST}:${PORT}`;
 const PROJECT_ROOT = path.join(__dirname, '..');
-const SERVER_SCRIPT = path.join(PROJECT_ROOT, 'server.js');
+
+// Determine where the server entrypoint lives in dev vs packaged installer
+let SERVER_DIR = PROJECT_ROOT;
+let SERVER_SCRIPT = path.join(SERVER_DIR, 'server.js');
+let SERVER_IS_EXE = false;
+
+(function locateServer() {
+  const candidates = [
+    path.join(PROJECT_ROOT, 'server.js'),
+    path.join(PROJECT_ROOT, 'server', 'server.js'),
+    path.join(process.resourcesPath || '', 'server.js'),
+    path.join(process.resourcesPath || '', 'server', 'server.js'),
+    path.join(PROJECT_ROOT, '..', 'server.js')
+  ];
+  for (const c of candidates) {
+    try { if (fs.existsSync(c)) { SERVER_SCRIPT = c; SERVER_DIR = path.dirname(c); return; } } catch (e) {}
+  }
+  // fallback: packaged EXE names we might bundle in installer
+  const exeCandidates = [
+    path.join(PROJECT_ROOT, 'laboratory-information-system.exe'),
+    path.join(process.resourcesPath || '', 'laboratory-information-system.exe'),
+    path.join(PROJECT_ROOT, 'GezyneLIS.exe'),
+    path.join(process.resourcesPath || '', 'GezyneLIS.exe')
+  ];
+  for (const e of exeCandidates) {
+    try { if (fs.existsSync(e)) { SERVER_SCRIPT = e; SERVER_DIR = path.dirname(e); SERVER_IS_EXE = true; return; } } catch (err) {}
+  }
+})();
 
 let serviceInstalled = false;
 let serverChild = null;
@@ -112,28 +139,56 @@ function checkServiceExists(cb) {
 function startServerDirect(cb) {
   if (serverChild) return cb && cb(null, 'already running');
   try {
-    // Spawn using system `node` executable; requires node on PATH or bundled EXE alternative
-    // capture stdout/stderr for log streaming
-    serverChild = spawn('node', [SERVER_SCRIPT], { cwd: PROJECT_ROOT, detached: false, stdio: ['ignore', 'pipe', 'pipe'] });
+    // spawn packaged exe when present; otherwise run `node server.js`
+    if (SERVER_IS_EXE) {
+      serverChild = spawn(SERVER_SCRIPT, [], { cwd: SERVER_DIR, detached: false, stdio: ['ignore', 'pipe', 'pipe'] });
+    } else {
+      serverChild = spawn('node', [SERVER_SCRIPT], { cwd: SERVER_DIR, detached: false, stdio: ['ignore', 'pipe', 'pipe'] });
+    }
     serverChild.on('exit', () => { serverChild = null; appendLog('[server] exited'); });
     if (serverChild.stdout) serverChild.stdout.on('data', (d) => appendLog(d.toString()));
     if (serverChild.stderr) serverChild.stderr.on('data', (d) => appendLog('[ERR] ' + d.toString()));
-    cb && cb(null, `started pid=${serverChild.pid}`);
+    cb && cb(null, `started pid=${serverChild && serverChild.pid}`);
   } catch (e) {
     serverChild = null;
     cb && cb(e);
   }
-}
+} 
 
 function startViaPm2(cb) {
-  // start using ecosystem.config.js
-  exec('pm2 start ecosystem.config.js --env production', { cwd: PROJECT_ROOT }, (err, stdout, stderr) => {
-    if (err) return cb && cb(err, stdout || stderr);
-    // save the process list so pm2 resurrects on reboot
-    exec('pm2 save', { cwd: PROJECT_ROOT }, (e) => {
-      if (e) appendLog('[pm2] pm2 save failed: ' + String(e));
-      appendLog('[pm2] started via ecosystem.config.js');
-      cb && cb(null, stdout || 'pm2 started');
+  // locate ecosystem.config.js in likely locations and pass absolute path to pm2
+  const cfgCandidates = [
+    path.join(PROJECT_ROOT, 'ecosystem.config.js'),
+    path.join(PROJECT_ROOT, '..', 'ecosystem.config.js'),
+    path.join(process.resourcesPath || '', 'ecosystem.config.js')
+  ];
+  const cfg = cfgCandidates.find(p => { try { return fs.existsSync(p); } catch { return false; } }) || path.join(PROJECT_ROOT, 'ecosystem.config.js');
+
+  exec(`pm2 start "${cfg}" --env production`, { cwd: path.dirname(cfg) }, (err, stdout, stderr) => {
+    if (!err) {
+      exec('pm2 save', { cwd: path.dirname(cfg) }, (e) => {
+        if (e) appendLog('[pm2] pm2 save failed: ' + String(e));
+        appendLog('[pm2] started via ' + cfg);
+        cb && cb(null, stdout || 'pm2 started');
+      });
+      return;
+    }
+
+    // If pm2 failed because the configured script wasn't found in the packaged layout,
+    // try to start the packaged EXE directly (fallback).
+    const stderrText = String(stderr || err || stdout || '');
+    appendLog('[pm2] start failed: ' + stderrText.trim());
+
+    // fallback: if we have a packaged EXE, ask pm2 to run it directly
+    if (!SERVER_IS_EXE) return cb && cb(err, stdout || stderr);
+
+    appendLog('[pm2] Attempting fallback: start packaged EXE via pm2');
+    const exePath = SERVER_SCRIPT; // should point to the EXE by locateServer logic
+    exec(`pm2 start "${exePath}" --name lis-app --interpreter none --env production`, { cwd: SERVER_DIR }, (err2, out2, errOut2) => {
+      if (err2) return cb && cb(err2, out2 || errOut2 || stderrText);
+      exec('pm2 save', { cwd: SERVER_DIR }, (e2) => { if (e2) appendLog('[pm2] pm2 save failed: ' + String(e2)); });
+      appendLog('[pm2] started packaged EXE via pm2: ' + exePath);
+      cb && cb(null, out2 || 'pm2 started exe');
     });
   });
 }
@@ -221,6 +276,10 @@ function watchPm2Logs() {
       // Fallbacks: project-local logs and default pm2 home logs
       tailFile(path.join(PROJECT_ROOT, 'logs', 'pm2-out.log'));
       tailFile(path.join(PROJECT_ROOT, 'logs', 'pm2-error.log'));
+      // also check per-user writable logs (used by packaged ecosystem.config.js)
+      const userLogs = path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'Gezyne LIS Server', 'logs');
+      tailFile(path.join(userLogs, 'pm2-out.log'));
+      tailFile(path.join(userLogs, 'pm2-error.log'));
       try {
         const pm2Home = process.env.PM2_HOME || path.join(os.homedir(), '.pm2', 'logs');
         if (fs.existsSync(pm2Home) && fs.lstatSync(pm2Home).isDirectory()) {
@@ -354,29 +413,67 @@ app.whenReady().then(() => {
       appendLog('[tray] pm2 detection: ' + (pm2Available ? 'available' : 'not available'));
       checkServiceExists((err, exists) => {
         serviceInstalled = !!exists;
+
+        // helper fallback that attempts a direct spawn and sets serverAutoStarted on success
+        function tryFallbackDirect() {
+          appendLog('[tray] attempting direct spawn fallback...');
+          startServerDirect((errF, outF) => {
+            if (errF) appendLog('[tray] fallback spawn failed: ' + String(errF));
+            else {
+              appendLog('[tray] fallback spawn success: ' + outF);
+              serverAutoStarted = true;
+            }
+          });
+        }
+
         if (pm2Available) {
           appendLog('[tray] PM2 available; starting via pm2...');
           startViaPm2((errp, outp) => {
-            if (errp) appendLog('[tray] pm2 start failed: ' + String(errp));
-            else appendLog('[tray] ' + String(outp));
+            if (errp) {
+              appendLog('[tray] pm2 start failed: ' + String(errp));
+              // fall back to direct spawn when pm2 start fails
+              tryFallbackDirect();
+            } else {
+              appendLog('[tray] ' + String(outp));
+              serverAutoStarted = true;
+            }
             watchPm2Logs();
-            serverAutoStarted = true;
           });
         } else if (serviceInstalled) {
           appendLog('[tray] Windows service detected; attempting to start service...');
           runServiceCommand(`sc start ${SERVICE_NAME}`, (err2) => {
-            if (err2) appendLog('[tray] Failed to start service: ' + String(err2));
-            else appendLog('[tray] Service start requested');
+            if (err2) {
+              appendLog('[tray] Failed to start service: ' + String(err2));
+              // fallback to direct spawn
+              tryFallbackDirect();
+            } else {
+              appendLog('[tray] Service start requested');
+              serverAutoStarted = true;
+            }
             watchPm2Logs();
-            serverAutoStarted = true;
           });
         } else {
           appendLog('[tray] No service detected; spawning server directly...');
           startServerDirect((err3, out) => {
-            if (err3) appendLog('[tray] Failed to spawn server: ' + String(err3)); else appendLog('[tray] ' + out);
-            serverAutoStarted = true;
+            if (err3) appendLog('[tray] Failed to spawn server: ' + String(err3));
+            else {
+              appendLog('[tray] ' + out);
+              serverAutoStarted = true;
+            }
           });
         }
+
+        // safety: if nothing has started after a short delay, attempt a direct spawn
+        setTimeout(async () => {
+          if (serverAutoStarted) return;
+          const isUp = await checkServerUp();
+          if (!isUp) {
+            appendLog('[tray] Auto-start fallback: server still down; attempting direct spawn');
+            tryFallbackDirect();
+          } else {
+            serverAutoStarted = true; // server already reachable
+          }
+        }, 4000);
       });
     });
   } catch (e) { appendLog('[tray] Auto-start failed: ' + String(e)); }
