@@ -34,6 +34,7 @@
       <div class="form-row"><label>VLDL</label><input type="text" name="vldl" value="<%= test.results && test.results.vldl ? test.results.vldl : '' %>" placeholder="0-30 mg/dL" title="Reference: 0.00 - 30.00 mg/dL"></div>
       <div class="form-row"><label>Uric Acid</label><input type="text" name="uricAcid" value="<%= test.results && test.results.uricAcid ? test.results.uricAcid : '' %>" placeholder="2.4-5.7 mg/dL" title="Reference: 2.40 - 5.70 mg/dL"></div>
       <div class="form-row"><label>Creatinine</label><input type="text" name="creatinine" value="<%= test.results && test.results.creatinine ? test.results.creatinine : '' %>" placeholder="0.5-1.0 mg/dL" title="Reference: 0.50 - 1.00 mg/dL"></div>
+      <div class="form-row"><label>Urea</label><input type="text" name="urea" value="<%= test.results && test.results.urea ? test.results.urea : '' %>" placeholder="10-50 mg/dL" title="Reference: 10.00 - 50.00 mg/dL"></div>
       <div class="form-row"><label>BUN</label><input type="text" name="bun" value="<%= test.results && test.results.bun ? test.results.bun : '' %>" placeholder="4.7-23.4 mg/dL" title="Reference: 4.67 - 23.36 mg/dL"></div>
       <div class="form-row"><label>SGPT (ALT)</label><input type="text" name="sgpt" value="<%= test.results && test.results.sgpt ? test.results.sgpt : '' %>" placeholder="0-32 U/L" title="Reference: 0.00 - 32.00 U/L"></div>
       <div class="form-row"><label>SGOT (AST)</label><input type="text" name="sgot" value="<%= test.results && test.results.sgot ? test.results.sgot : '' %>" placeholder="0-31 U/L" title="Reference: 0.00 - 31.00 U/L"></div>
@@ -63,6 +64,8 @@
 
 <script>
   (function(){
+    const ANALYZER_MAP = <%- JSON.stringify(ANALYZER_MAP) %>;
+
     const btn = document.getElementById('captureFromAnalyzer');
     if (!btn) return;
     btn.addEventListener('click', async () => {
@@ -70,16 +73,67 @@
       try {
         const res = await fetch(`/tests/<%= test.id %>/analyzer/capture`);
         const json = await res.json();
+        console.log('analyzer response', json);
         if (json.error) { alert('Analyzer error: ' + json.error); return; }
-        const mapped = json.mapped || {};
-        // Fill inputs by name from mapped fields
-        Object.keys(mapped).forEach(k => {
-          try { const el = document.querySelector(`[name="${k}"]`); if (el) el.value = mapped[k]; } catch(e){}
-        });
+
+        if (json.rows && json.rows.length) {
+          showAnalyzerPicker(json.rows);
+          return;
+        }
+
+        if ((!json.rows || json.rows.length === 0) && (!json.mapped || Object.keys(json.mapped).length === 0)) {
+          alert('Analyzer returned no data');
+        }
+
+        applyMapped(json.mapped || {});
         alert('Prefilled results from analyzer (review before saving)');
       } catch (err) {
+        console.error('capture error', err);
         alert('Failed to capture: ' + err.message);
-      } finally { btn.disabled = false; btn.textContent = 'Capture from Analyzer'; }
+      } finally {
+        btn.disabled = false; btn.textContent = 'Capture from Analyzer';
+      }
     });
+
+    function applyMapped(mapped) {
+      Object.keys(mapped).forEach(k => {
+        const el = document.querySelector(`[name="${k}"]`);
+        if (el) el.value = mapped[k];
+      });
+    }
+
+    function showAnalyzerPicker(rows) {
+      const modal = document.createElement('div');
+      modal.style = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;';
+      const box = document.createElement('div');
+      box.style = 'background:#fff;margin:4rem auto;max-width:90%;max-height:80%;overflow:auto;padding:1rem;';
+
+      const tbl = document.createElement('table');
+      tbl.border = 1;
+      const cols = Object.keys(rows[0]);
+      const hdr = tbl.insertRow();
+      cols.forEach(c => hdr.insertCell().textContent = c);
+      rows.forEach(r => {
+        const tr = tbl.insertRow();
+        cols.forEach(c => tr.insertCell().textContent = r[c]);
+        tr.style.cursor = 'pointer';
+        tr.addEventListener('click', () => {
+          const mapped = {};
+          Object.keys(r).forEach(code => {
+            const field = ANALYZER_MAP[code];
+            if (field) mapped[field] = r[code];
+          });
+          applyMapped(mapped);
+          document.body.removeChild(modal);
+        });
+      });
+      box.appendChild(tbl);
+      const cancel = document.createElement('button');
+      cancel.textContent = 'Cancel';
+      cancel.addEventListener('click', () => document.body.removeChild(modal));
+      box.appendChild(cancel);
+      modal.appendChild(box);
+      document.body.appendChild(modal);
+    }
   })();
 </script>
