@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
+const { dataFile } = require('../lib/dataPath');
 
-const DATA_FILE = path.join(__dirname, '..', 'data.json');
+const DATA_FILE = dataFile('data.json');
 
 function safeNum(v) { const n = Number(v); return isNaN(n) ? 0 : n; }
 

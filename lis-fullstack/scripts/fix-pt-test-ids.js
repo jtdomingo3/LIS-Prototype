@@ -1,10 +1,11 @@
 const fs = require('fs');
 const path = require('path');
+const { dataFile } = require('../lib/dataPath');
 
 // One-off script to fix tests whose type is PT/APTT (coagulation) but have BC-prefixed testId.
 // This will reassign them to the APT prefix. Usage: node scripts/fix-pt-test-ids.js
 
-const DATA_FILE = path.join(__dirname, '..', 'data.json');
+const DATA_FILE = dataFile('data.json');
 
 function loadData() {
   return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));

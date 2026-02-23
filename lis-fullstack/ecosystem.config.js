@@ -34,14 +34,19 @@ const perUserLogs = (process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPD
 const logsDir = fs.existsSync(pm2HomeLogs) ? pm2HomeLogs : perUserLogs;
 try { fs.mkdirSync(logsDir, { recursive: true }); } catch (e) { /* ignore */ }
 
+const baseEnv = {
+  NODE_ENV: 'production',
+  PORT: 3000
+};
+if (process.env.DATA_DIR) {
+  baseEnv.DATA_DIR = process.env.DATA_DIR;
+}
 const appDef = {
   name: 'lis-app',
   script: script,
   cwd: serverCwd,
-  env: {
-    NODE_ENV: 'production',
-    PORT: 3000
-  },
+  env: baseEnv,
+  env_production: baseEnv, // so `--env production` has something to apply
   watch: false,
   error_file: path.join(logsDir, 'pm2-error.log'),
   out_file: path.join(logsDir, 'pm2-out.log'),

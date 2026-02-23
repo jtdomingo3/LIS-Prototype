@@ -11,6 +11,8 @@ const fs = require('fs');
 const os = require('os');
 const expressLayouts = require('express-ejs-layouts');
 const { logReportError } = require('./lib/reportLogger');
+// helper for locating writable data files (data.json, data-users.json, etc.)
+const { dataFile } = require('./lib/dataPath');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -18,8 +20,10 @@ const PORT = process.env.PORT || 3000;
 // Default to listening on all interfaces so the server is reachable from other devices on the network.
 // If you prefer localhost-only, set HOST=127.0.0.1 before starting.
 const HOST = process.env.HOST || '0.0.0.0';
-const DATA_FILE = path.join(__dirname, 'data.json');
-const USERS_FILE = path.join(__dirname, 'data-users.json');
+// data files live in a directory determined by dataPath.getDataDir();
+const DATA_FILE = dataFile('data.json');
+const USERS_FILE = dataFile('data-users.json');
+console.log('[server] using DATA_FILE', DATA_FILE, 'USERS_FILE', USERS_FILE, 'DATA_DIR', path.dirname(DATA_FILE));
 const crypto = require('crypto');
 const USER_DATA_KEY = process.env.DATA_USERS_KEY || process.env.USER_DATA_KEY || null;
 
@@ -33,8 +37,20 @@ if (!fs.existsSync(DATA_FILE)) {
     // persistent counters for per-test-type IDs
     counters: {}
   };
-  fs.writeFileSync(DATA_FILE, JSON.stringify(initialData, null, 2));
-}
+  // ensure parent directory exists (DATA_DIR may not have been created yet)
+  try {
+    fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
+  } catch (e) {
+    console.error('[server] failed to create data directory', path.dirname(DATA_FILE), e);
+  }
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(initialData, null, 2));
+  } catch (e) {
+    console.error('[server] initial write to DATA_FILE failed', DATA_FILE, e);
+    throw e;
+  }
+} // end ensure data file exists (location may vary when packaged)
+
 
 // Ensure users file exists
 if (!fs.existsSync(USERS_FILE)) {
@@ -408,7 +424,7 @@ try {
       const ms = frequencyToMs(bc.frequency);
       app.locals.backupIntervalId = setInterval(() => {
         try {
-          const DATA_FILE = path.join(__dirname, 'data.json');
+          const DATA_FILE = dataFile('data.json');
           const dir = bc.path && String(bc.path).length ? bc.path : path.join(os.homedir(), 'Documents', 'LIS', 'backup');
           fs.mkdirSync(dir, { recursive: true });
           const ts = new Date().toISOString().replace(/[:.]/g, '-');

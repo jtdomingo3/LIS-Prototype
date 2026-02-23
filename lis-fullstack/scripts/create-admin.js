@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { dataFile } = require('../lib/dataPath');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 
@@ -9,9 +10,9 @@ async function main() {
   const password = args.password || args.p || 'admin123';
   const name = args.name || args.n || 'Administrator';
 
-  const dataFile = path.join(__dirname, '..', 'data.json');
-  if (!fs.existsSync(dataFile)) {
-    console.error('data.json not found at', dataFile);
+  const dataFilePath = dataFile('data.json');
+  if (!fs.existsSync(dataFilePath)) {
+    console.error('data.json not found at', dataFilePath);
     process.exit(1);
   }
 
@@ -43,7 +44,7 @@ async function main() {
   };
 
   data.users.push(user);
-  fs.writeFileSync(dataFile, JSON.stringify(data, null, 2));
+  fs.writeFileSync(dataFilePath, JSON.stringify(data, null, 2));
   console.log('Admin user created:', email);
 }
 

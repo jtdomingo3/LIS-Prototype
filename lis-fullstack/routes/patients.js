@@ -115,8 +115,9 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
     // Fallback: prefer reading the file-based DB `data.json` directly when available
     try {
       const testsCountByPatient = {};
-      // try file DB first
-      const dbPath = pathMod.join(__dirname, '..', 'data.json');
+      // try file DB first (handle packaged path)
+      const { dataFile } = require('../lib/dataPath');
+      const dbPath = dataFile('data.json');
       let fileTests = null;
       try {
         const raw = fs.readFileSync(dbPath, 'utf8');

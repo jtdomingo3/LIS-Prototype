@@ -1,10 +1,11 @@
 const fs = require('fs');
 const path = require('path');
+const { dataFile } = require('../lib/dataPath');
 
 // Migrate coagulation tests that were mistakenly assigned PT-prefixed IDs
 // to the proper APT prefix. Usage: node scripts/migrate-pt-to-apt.js
 
-const DATA_FILE = path.join(__dirname, '..', 'data.json');
+const DATA_FILE = dataFile('data.json');
 
 function loadData() { return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); }
 function saveData(d) { fs.writeFileSync(DATA_FILE, JSON.stringify(d, null, 2), 'utf8'); }

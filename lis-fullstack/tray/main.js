@@ -79,6 +79,14 @@ function runServiceCommand(cmd, cb) {
 }
 
 function detectPm2(cb) {
+  // avoid using pm2 when we’re running a packaged executable – environment
+  // variables (DATA_DIR) don’t propagate reliably and pm2 can keep restarting
+  // the process inside the snapshot.  Direct spawn is simpler and more
+  // predictable for the Windows installer.
+  if (SERVER_IS_EXE) {
+    pm2Available = false;
+    return cb && cb(false);
+  }
   exec('pm2 -v', (err) => {
     pm2Available = !err;
     cb && cb(pm2Available);
@@ -139,11 +147,17 @@ function checkServiceExists(cb) {
 function startServerDirect(cb) {
   if (serverChild) return cb && cb(null, 'already running');
   try {
+    // compute data directory via the helper; computeDataDir will either call
+    // into lib/dataPath (when available) or fall back to ProgramData.
+    const dataDir = computeDataDir();
+    console.log('[tray] startServerDirect using DATA_DIR', dataDir);
+    const env = Object.assign({}, process.env, { DATA_DIR: dataDir });
+
     // spawn packaged exe when present; otherwise run `node server.js`
     if (SERVER_IS_EXE) {
-      serverChild = spawn(SERVER_SCRIPT, [], { cwd: SERVER_DIR, detached: false, stdio: ['ignore', 'pipe', 'pipe'] });
+      serverChild = spawn(SERVER_SCRIPT, [], { cwd: SERVER_DIR, detached: false, stdio: ['ignore', 'pipe', 'pipe'], env });
     } else {
-      serverChild = spawn('node', [SERVER_SCRIPT], { cwd: SERVER_DIR, detached: false, stdio: ['ignore', 'pipe', 'pipe'] });
+      serverChild = spawn('node', [SERVER_SCRIPT], { cwd: SERVER_DIR, detached: false, stdio: ['ignore', 'pipe', 'pipe'], env });
     }
     serverChild.on('exit', () => { serverChild = null; appendLog('[server] exited'); });
     if (serverChild.stdout) serverChild.stdout.on('data', (d) => appendLog(d.toString()));
@@ -153,9 +167,34 @@ function startServerDirect(cb) {
     serverChild = null;
     cb && cb(e);
   }
-} 
+}
+
+// compute the directory the server will use for data, mirroring the
+// logic in lib/dataPath.js but without requiring the helper (which isn't
+// included in the tray ASAR).  This allows the tray to create/migrate the
+// folder ahead of time and avoids crashes when the module is absent.
+function computeDataDir() {
+  try {
+    const { getDataDir } = require('../lib/dataPath');
+    return getDataDir();
+  } catch (err) {
+    // module not available (packaged tray); fall back to ProgramData
+    const programDataBase = process.env.PROGRAMDATA || path.join('C:', 'ProgramData');
+    const d = path.join(programDataBase, 'GezyneLIS');
+    try { fs.mkdirSync(d, { recursive: true }); } catch (_) {}
+    return d;
+  }
+}
 
 function startViaPm2(cb) {
+  // ensure the data directory exists/migrated before pm2 spins up the server.
+  try {
+    const chosen = computeDataDir();
+    console.log('[tray] pm2 startup will use DATA_DIR', chosen);
+  } catch (err) {
+    console.error('[tray] failed to prepare data dir for pm2', err);
+  }
+
   // locate ecosystem.config.js in likely locations and pass absolute path to pm2
   const cfgCandidates = [
     path.join(PROJECT_ROOT, 'ecosystem.config.js'),
@@ -164,7 +203,11 @@ function startViaPm2(cb) {
   ];
   const cfg = cfgCandidates.find(p => { try { return fs.existsSync(p); } catch { return false; } }) || path.join(PROJECT_ROOT, 'ecosystem.config.js');
 
-  exec(`pm2 start "${cfg}" --env production`, { cwd: path.dirname(cfg) }, (err, stdout, stderr) => {
+  // include DATA_DIR in the environment for pm2-launched processes as well
+  const programDataBase = process.env.PROGRAMDATA || path.join('C:', 'ProgramData');
+  const dataDir = path.join(programDataBase, 'GezyneLIS');
+  const pm2Env = Object.assign({}, process.env, { DATA_DIR: dataDir });
+  exec(`pm2 start "${cfg}" --env production`, { cwd: path.dirname(cfg), env: pm2Env }, (err, stdout, stderr) => {
     if (!err) {
       exec('pm2 save', { cwd: path.dirname(cfg) }, (e) => {
         if (e) appendLog('[pm2] pm2 save failed: ' + String(e));
@@ -184,7 +227,7 @@ function startViaPm2(cb) {
 
     appendLog('[pm2] Attempting fallback: start packaged EXE via pm2');
     const exePath = SERVER_SCRIPT; // should point to the EXE by locateServer logic
-    exec(`pm2 start "${exePath}" --name lis-app --interpreter none --env production`, { cwd: SERVER_DIR }, (err2, out2, errOut2) => {
+    exec(`pm2 start "${exePath}" --name lis-app --interpreter none --env production`, { cwd: SERVER_DIR, env: pm2Env }, (err2, out2, errOut2) => {
       if (err2) return cb && cb(err2, out2 || errOut2 || stderrText);
       exec('pm2 save', { cwd: SERVER_DIR }, (e2) => { if (e2) appendLog('[pm2] pm2 save failed: ' + String(e2)); });
       appendLog('[pm2] started packaged EXE via pm2: ' + exePath);
