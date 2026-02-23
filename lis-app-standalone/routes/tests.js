@@ -138,16 +138,22 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
         const rows = table.getData({ start: 0, length: 500 });
         for (const r of rows) {
           const joined = Object.values(r).join(' ').toLowerCase();
-          if (nameTokens.length === 0 || nameTokens.every(tok => joined.includes(tok))) {
+          if (nameTokens.length === 0 || nameTokens.some(tok => joined.includes(tok))) {
             matchingPatients.push({ table: t, row: r });
           }
         }
       } catch (e) {}
     }
+    console.log('[analyzer] matchingPatients count', matchingPatients.length);
+    const patientIds = new Set();
+    matchingPatients.forEach(mp => {
+      if (mp.row && mp.row.ID) patientIds.add(String(mp.row.ID));
+    });
+    console.log('[analyzer] patientIds', Array.from(patientIds));
 
     // Collect recent CHECK_RESULT* rows
     const checkTables = tables.filter(t => /^CHECK_RESULT/i.test(t));
-    const checkRows = [];
+    let checkRows = [];
     for (const t of checkTables) {
       try {
         const table = reader.getTable(t);
@@ -155,10 +161,35 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
         for (const r of rows) checkRows.push(Object.assign({ __table: t }, r));
       } catch (e) {}
     }
+    console.log('[analyzer] raw checkRows count', checkRows.length);
+    // try narrowing by patientIds if available; check both PATIENTID and ID
+    // fields on checkRows since exports vary.
+    let filteredRows = checkRows;
+    if (patientIds.size > 0) {
+      const beforeCount = filteredRows.length;
+      filteredRows = filteredRows.filter(r => {
+        const pid = r.PATIENTID || r['PATIENT_ID'] || r.ID;
+        return patientIds.has(String(pid));
+      });
+      console.log('[analyzer] filtered checkRows by patientIds, new count', filteredRows.length, 'from', beforeCount);
+    }
+    // no automatic date filter; we let the picker display all candidate runs
+    // and the operator chooses which one to import.
+    // (keeping previous code commented out for reference)
+    // if (test && test.testDate) {
+    //   const want = new Date(test.testDate).toISOString().slice(0,10);
+    //   const before = filteredRows.length;
+    //   filteredRows = filteredRows.filter(r => {
+    //     const d = r.DATE || r.Date || r.date;
+    //     if (!d) return false;
+    //     try { return new Date(d).toISOString().slice(0,10) === want; } catch(e) { return false; }
+    //   });
+    //   console.log('[analyzer] filtered by testDate', want, 'new count', filteredRows.length, 'from', before);
+    // }
 
     // Build mapping of latest item -> result
     const latestByItem = {};
-    for (const r of checkRows) {
+    for (const r of filteredRows) {
       try {
         const code = (r.ITEM || r.Item || r.item || '').toString().toUpperCase();
         const val = (r.RESULT || r.Result || r.result || null);
@@ -174,7 +205,23 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
       if (field) mapped[field] = latestByItem[code].value;
     }
 
-    res.json({ patients: matchingPatients.slice(0,50), checkCount: checkRows.length, mapped });
+    let rowsToSend = filteredRows;
+    console.log('[analyzer] returning rows count', rowsToSend.length);
+    if (rowsToSend.length === 0) {
+      console.log('[analyzer] no rows matched patient/date filter');
+    }
+    console.log('[analyzer] sample filtered row keys', Object.keys(filteredRows[0] || {}));
+    rowsToSend = rowsToSend.map(r => {
+      let dt = r.CHECK_DATE || r.CHECKDATE || r.CHECK_DATE || r.DATE || r.Date || r.date;
+      if (dt && dt instanceof Date) dt = dt.toISOString();
+      return {
+        DATE: dt || null,
+        ITEM: r.ITEM || r.Item || r.item,
+        RESULT: r.RESULT || r.Result || r.result,
+        UNIT: r.UNIT || r.Unit || r.unit
+      };
+    });
+    res.json({ patients: matchingPatients.slice(0,50), checkCount: checkRows.length, mapped, rows: rowsToSend });
     console.log('[analyzer] capture handler completed, returning', Object.keys(mapped));
   } catch (err) {
     console.error('Analyzer capture error', err);

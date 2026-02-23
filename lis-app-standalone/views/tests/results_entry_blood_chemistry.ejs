@@ -69,10 +69,18 @@
     const btn = document.getElementById('captureFromAnalyzer');
     if (!btn) return;
     btn.addEventListener('click', async () => {
+      console.log('capture button clicked');
       btn.disabled = true; btn.textContent = 'Capturing...';
       try {
-        const res = await fetch(`/tests/<%= test.id %>/analyzer/capture`);
-        const json = await res.json();
+        const res = await fetch(`/tests/<%= test.id %>/analyzer/capture`, { credentials: 'same-origin' });
+        const text = await res.text();
+        console.log('raw analyzer response text', text.slice(0,1000));
+        let json;
+        try {
+          json = JSON.parse(text);
+        } catch(e) {
+          throw new Error('failed to parse JSON: ' + e.message);
+        }
         console.log('analyzer response', json);
         if (json.error) { alert('Analyzer error: ' + json.error); return; }
 
@@ -81,8 +89,12 @@
           return;
         }
 
-        if ((!json.rows || json.rows.length === 0) && (!json.mapped || Object.keys(json.mapped).length === 0)) {
-          alert('Analyzer returned no data');
+        if (!json.rows || json.rows.length === 0) {
+          alert('Analyzer returned no rows.  The export may be empty or mis‑located.');
+        }
+        if (!json.rows || json.rows.length === 0) {
+          applyMapped(json.mapped || {});
+          return;
         }
 
         applyMapped(json.mapped || {});
@@ -103,37 +115,89 @@
     }
 
     function showAnalyzerPicker(rows) {
+      const dateKey = rows.length && (rows[0].DATE !== undefined ? 'DATE' : (rows[0].Date !== undefined ? 'Date' : (rows[0].date !== undefined ? 'date' : null)));
+      const groups = {};
+      rows.forEach(r => {
+        let d = dateKey ? r[dateKey] : null;
+        if (d) {
+          try { d = new Date(d).toISOString().slice(0,10); } catch(e) {}
+        }
+        d = d || 'unknown';
+        if (!groups[d]) groups[d] = [];
+        groups[d].push(r);
+      });
       const modal = document.createElement('div');
       modal.style = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;';
       const box = document.createElement('div');
-      box.style = 'background:#fff;margin:4rem auto;max-width:90%;max-height:80%;overflow:auto;padding:1rem;';
+      box.style = 'background:#fff;margin:2rem auto;max-width:90%;max-height:90%;overflow:auto;padding:1rem;position:relative;';
+      const cancel = document.createElement('button');
+      cancel.textContent = 'Cancel';
+      cancel.style = 'position:absolute;top:8px;right:8px;';
+      cancel.addEventListener('click', () => document.body.removeChild(modal));
+      box.appendChild(cancel);
+      const header = document.createElement('div');
+      header.style = 'margin-bottom:0.5rem;font-weight:600;';
+      header.textContent = `Choose a run date (${Object.keys(groups).length} dates, ${rows.length} records)`;
+      box.appendChild(header);
 
-      const tbl = document.createElement('table');
-      tbl.border = 1;
-      const cols = Object.keys(rows[0]);
-      const hdr = tbl.insertRow();
-      cols.forEach(c => hdr.insertCell().textContent = c);
-      rows.forEach(r => {
-        const tr = tbl.insertRow();
-        cols.forEach(c => tr.insertCell().textContent = r[c]);
+      const summary = document.createElement('table');
+      summary.border = 1;
+      summary.style = 'width:100%;border-collapse:collapse;margin-bottom:1rem;';
+      const hdr = summary.insertRow();
+      ['Date','Count'].forEach(h => {
+        const cell = hdr.insertCell();
+        cell.textContent = h;
+        cell.style.fontWeight = 'bold';
+      });
+      Object.keys(groups).sort().reverse().forEach(d => {
+        const tr = summary.insertRow();
         tr.style.cursor = 'pointer';
-        tr.addEventListener('click', () => {
+        tr.insertCell().textContent = d;
+        tr.insertCell().textContent = groups[d].length;
+        tr.addEventListener('click', () => showGroupDetails(d, groups[d]));
+      });
+      box.appendChild(summary);
+      function showGroupDetails(date, groupRows) {
+        const existing = box.querySelector('#analyzerDetail');
+        if (existing) existing.remove();
+        const details = document.createElement('div');
+        details.id = 'analyzerDetail';
+        const title = document.createElement('h3');
+        title.textContent = 'Results for ' + date;
+        details.appendChild(title);
+        const t = document.createElement('table');
+        t.border = 1;
+        t.style = 'width:100%;border-collapse:collapse;';
+        const hrow = t.insertRow();
+        ['ITEM','RESULT','UNIT'].forEach(c => {
+          const cell = hrow.insertCell();
+          cell.textContent = c;
+          cell.style.fontWeight = 'bold';
+        });
+        groupRows.forEach(r => {
+          const tr = t.insertRow();
+          tr.insertCell().textContent = r.ITEM || r.Item || r.item || '';
+          tr.insertCell().textContent = r.RESULT || r.Result || r.result || '';
+          tr.insertCell().textContent = r.UNIT || r.Unit || r.unit || '';
+        });
+        details.appendChild(t);
+        const btn = document.createElement('button');
+        btn.textContent = 'Use these results';
+        btn.addEventListener('click', () => {
           const mapped = {};
-          Object.keys(r).forEach(code => {
+          groupRows.forEach(r => {
+            const code = (r.ITEM || r.Item || r.item || '').toString().toUpperCase();
             const field = ANALYZER_MAP[code];
-            if (field) mapped[field] = r[code];
+            if (field) mapped[field] = r.RESULT || r.Result || r.result || '';
           });
           applyMapped(mapped);
           document.body.removeChild(modal);
         });
-      });
-      box.appendChild(tbl);
-      const cancel = document.createElement('button');
-      cancel.textContent = 'Cancel';
-      cancel.addEventListener('click', () => document.body.removeChild(modal));
-      box.appendChild(cancel);
-      modal.appendChild(box);
+        details.appendChild(btn);
+        box.appendChild(details);
+      }
       document.body.appendChild(modal);
+      modal.appendChild(box);
     }
   })();
 </script>

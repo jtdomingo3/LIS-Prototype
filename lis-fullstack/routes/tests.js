@@ -13,20 +13,27 @@ const os = require('os');
 // multer for handling multipart/form-data file uploads in memory
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
-// Analyzer mapping: analyzer ITEM codes -> form field names
+// Analyzer mapping: analyzer ITEM codes -> form field names.  Note that
+// some exports use UREA while others use BUN; we keep both so they don't
+// overwrite each other.  Additional codes (SGOT, RBS, CALCIUM) are also
+// supported so the capture is as complete as possible.
 const ANALYZER_MAP = {
   CHOL: 'cholesterol',
   CREA: 'creatinine',
   FBS: 'fbs',
+  RBS: 'rbs',           // random blood sugar
   HDLC: 'hdl',
   SGPT: 'sgpt',
+  SGOT: 'sgot',         // added AST
   TG: 'tg',
   UA: 'uricAcid',
-  UREA: 'bun',
+  UREA: 'urea',         // keep as separate from BUN
+  BUN: 'bun',
   LDL: 'ldl',
   VLDL: 'vldl',
   HBA1C: 'hba1c',
   ALB: 'alb',
+  CALCIUM: 'calcium',   // occasionally present
   SODIUM: 'sodium',
   POTASSIUM: 'potassium',
   CHLORIDE: 'chloride'
@@ -56,10 +63,23 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
     if (!test) return res.status(404).json({ error: 'Test not found' });
     const patient = test.patient ? await Patient.findById(test.patient) : null;
 
-    // Determine gezyne folder from app settings, env, or default relative path
-    const gezynePath = (req.app && req.app.locals && req.app.locals.settings && req.app.locals.settings.gezynePath)
-      ? req.app.locals.settings.gezynePath
-      : (process.env.GEZYNE_PATH || path.resolve(__dirname, '..', '..', 'new-gezyne'));
+    // Determine gezyne folder from app settings, persistent settings, env, or default
+    let gezynePath = null;
+    if (req.app && req.app.locals && req.app.locals.settings && req.app.locals.settings.gezynePath) {
+      gezynePath = req.app.locals.settings.gezynePath;
+    } else {
+      // try to read from data.json directly in case settings haven't been loaded yet
+      try {
+        const data = global.db.read();
+        if (data && data.settings && data.settings.gezynePath) {
+          gezynePath = data.settings.gezynePath;
+          req.app.locals.settings = req.app.locals.settings || {};
+          req.app.locals.settings.gezynePath = gezynePath;
+        }
+      } catch (e) {}
+      gezynePath = gezynePath || (process.env.GEZYNE_PATH || path.resolve(__dirname, '..', '..', 'new-gezyne'));
+    }
+    console.log('[analyzer] using gezynePath value', gezynePath);
     // resolve target mdb file flexibly
     let mdbFile = null;
     function findMDB(start) {
@@ -137,16 +157,26 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
         const rows = table.getData({ start: 0, length: 500 });
         for (const r of rows) {
           const joined = Object.values(r).join(' ').toLowerCase();
-          if (nameTokens.length === 0 || nameTokens.every(tok => joined.includes(tok))) {
+          // use lenient matching: if any token matches we'll include the row. this
+          // avoids failing when only first or last name is present or order is
+          // swapped.
+          if (nameTokens.length === 0 || nameTokens.some(tok => joined.includes(tok))) {
             matchingPatients.push({ table: t, row: r });
           }
         }
       } catch (e) {}
     }
+    console.log('[analyzer] matchingPatients count', matchingPatients.length);
+    // extract ID values from patient rows for filtering
+    const patientIds = new Set();
+    matchingPatients.forEach(mp => {
+      if (mp.row && mp.row.ID) patientIds.add(String(mp.row.ID));
+    });
+    console.log('[analyzer] patientIds', Array.from(patientIds));
 
     // Collect recent CHECK_RESULT* rows
     const checkTables = tables.filter(t => /^CHECK_RESULT/i.test(t));
-    const checkRows = [];
+    let checkRows = [];
     for (const t of checkTables) {
       try {
         const table = reader.getTable(t);
@@ -155,11 +185,44 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
       } catch (e) {}
     }
 
-    // Build mapping of latest item -> result
+    console.log('[analyzer] raw checkRows count', checkRows.length);
+    // try narrowing by patientIds if we were able to determine any (from
+    // PATIENT* tables). the value used in CHECK_RESULT rows appears under
+    // different keys depending on the analyzer export; r.PATIENTID is the one
+    // we observed, but some rows may also provide r.ID which is ambiguous.
+    // we don’t rely on name filtering anymore as those fields typically don’t
+    // contain anything useful.
+    let filteredRows = checkRows;
+    if (patientIds.size > 0) {
+      const beforeCount = filteredRows.length;
+      filteredRows = filteredRows.filter(r => {
+        const pid = r.PATIENTID || r['PATIENT_ID'] || r.ID;
+        return patientIds.has(String(pid));
+      });
+      console.log('[analyzer] filtered checkRows by patientIds, new count', filteredRows.length, 'from', beforeCount);
+    }
+    // no automatic date filtering; user will choose the run manually in the
+    // popup.  keeping the code here as comment in case automatic mode is ever
+    // desired again.
+    // if (test && test.testDate) {
+    //   const want = new Date(test.testDate).toISOString().slice(0,10);
+    //   const before = filteredRows.length;
+    //   filteredRows = filteredRows.filter(r => {
+    //     const d = r.DATE || r.Date || r.date;
+    //     if (!d) return false;
+    //     try { return new Date(d).toISOString().slice(0,10) === want; } catch(e) { return false; }
+    //   });
+    //   console.log('[analyzer] filtered by testDate', want, 'new count', filteredRows.length, 'from', before);
+    // }
+
+    // Build mapping of latest item -> result (from filtered rows)
     const latestByItem = {};
-    for (const r of checkRows) {
+    for (const r of filteredRows) {
       try {
-        const code = (r.ITEM || r.Item || r.item || '').toString().toUpperCase();
+        // normalize code: remove spaces, dashes, other punctuation so e.g. "LDL-C" or
+        // "VLDL/C" become matchable to our mapping keys.
+        let code = (r.ITEM || r.Item || r.item || '').toString().toUpperCase();
+        code = code.replace(/[^A-Z0-9]/g, '');
         const val = (r.RESULT || r.Result || r.result || null);
         if (!code) continue;
         if (!latestByItem[code]) latestByItem[code] = { value: val, row: r };
@@ -172,8 +235,84 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
       const field = ANALYZER_MAP[code];
       if (field) mapped[field] = latestByItem[code].value;
     }
+    // if we only received urea but not bun, derive BUN using standard conversion
+    let derived = [];
+    if (mapped.urea && !mapped.bun) {
+      const u = parseFloat(mapped.urea);
+      if (!isNaN(u)) {
+        mapped.bun = String(Math.round(u * 0.467 * 100) / 100);
+        derived.push('BUN');
+      }
+    }
+    // always compute LDL and VLDL from lipid profile if we have TG (and HDL/Chol for LDL)
+    if (mapped.tg) {
+      const tg = parseFloat(mapped.tg);
+      if (!isNaN(tg)) {
+        const vcalc = Math.round((tg / 5.0) * 100) / 100;
+        if ((!mapped.vldl || mapped.vldl === '') || String(mapped.vldl) !== String(vcalc)) {
+          mapped.vldl = String(vcalc);
+          derived.push('VLDL');
+        }
+      }
+      if (mapped.cholesterol && mapped.hdl) {
+        const tc = parseFloat(mapped.cholesterol);
+        const hdl = parseFloat(mapped.hdl);
+        if (!isNaN(tc) && !isNaN(hdl)) {
+          const lcalc = Math.round((tc - hdl - (tg / 5.0)) * 100) / 100;
+          if (( !mapped.ldl || mapped.ldl === '' ) || String(mapped.ldl) !== String(lcalc)) {
+            mapped.ldl = String(lcalc);
+            derived.push('LDL');
+          }
+        }
+      }
+    }
+    if (derived.length) {
+      console.log('[analyzer] derived values for', derived);
+    }
 
-    res.json({ patients: matchingPatients.slice(0,50), checkCount: checkRows.length, mapped });
+    // diagnostics: which codes we actually saw vs mapping keys
+    const seenCodes = Object.keys(latestByItem);
+    const allMapKeys = Object.keys(ANALYZER_MAP);
+    const missingCodes = allMapKeys.filter(k => !seenCodes.includes(k));
+    console.log('[analyzer] seen codes', seenCodes.sort());
+    console.log('[analyzer] missing mapped codes (not in export)', missingCodes.sort());
+
+    // send only whatever we filtered; do not fall back to full data (it was
+    // confusing when the date wasn’t found in the MDB). log when empty so the
+    // caller can diagnose missing export.
+    let rowsToSend = filteredRows;
+    console.log('[analyzer] returning rows count', rowsToSend.length);
+    if (rowsToSend.length === 0) {
+      console.log('[analyzer] no rows matched patient/date filter');
+    }
+    console.log('[analyzer] sample filtered row keys', Object.keys(filteredRows[0] || {}));
+    if (filteredRows.length > 0) {
+      console.log('[analyzer] sample filtered row object', filteredRows[0]);
+      // list all unique ITEM codes present
+      const codes = new Set(filteredRows.map(r => (r.ITEM||r.Item||r.item||'').toString().toUpperCase()));
+      console.log('[analyzer] unique ITEM codes', Array.from(codes).sort());
+    }
+    // map
+    rowsToSend = rowsToSend.map(r => {
+      // date may appear under a few different names in MDB export
+      let dt = r.CHECK_DATE || r.CHECKDATE || r.CHECK_DATE || r.DATE || r.Date || r.date;
+      // some monthly tables omit a separate date column; the ID often encodes YYYYMMDD
+      if (!dt && r.ID) {
+        const idstr = String(r.ID);
+        const m = idstr.match(/^(\d{4})(\d{2})(\d{2})/);
+        if (m) {
+          dt = `${m[1]}-${m[2]}-${m[3]}T00:00:00.000Z`;
+        }
+      }
+      if (dt && dt instanceof Date) dt = dt.toISOString();
+      return {
+        DATE: dt || null,
+        ITEM: r.ITEM || r.Item || r.item,
+        RESULT: r.RESULT || r.Result || r.result,
+        UNIT: r.UNIT || r.Unit || r.unit
+      };
+    });
+    res.json({ patients: matchingPatients.slice(0,50), checkCount: checkRows.length, mapped, rows: rowsToSend });
   } catch (err) {
     console.error('Analyzer capture error', err);
     res.json({ error: String(err) });
