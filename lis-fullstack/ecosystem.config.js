@@ -36,7 +36,11 @@ try { fs.mkdirSync(logsDir, { recursive: true }); } catch (e) { /* ignore */ }
 
 const baseEnv = {
   NODE_ENV: 'production',
-  PORT: 3000
+  PORT: 3000,
+  // disable the background startup report generation scan by default when
+  // running under PM2/production. individual environments can still override
+  // this by unsetting or setting to '0'.
+  DISABLE_REPORT_GENERATION: '1'
 };
 if (process.env.DATA_DIR) {
   baseEnv.DATA_DIR = process.env.DATA_DIR;

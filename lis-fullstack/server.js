@@ -693,13 +693,22 @@ app.listen(PORT, HOST, () => {
   console.log(lines.join('\n'));
 
   // Background: generate any missing PDF reports into Documents/LIS/reports
-  try {
-    const reportGenerator = require('./lib/reportGenerator');
-    reportGenerator.generateAllMissing().catch(e => {
-      console.error('[startup] report generation scan error:', e && e.message);
-    });
-  } catch (e) {
-    console.warn('[startup] could not run report generation scan:', e && e.message);
+  // Can be disabled in environments where report generation is unwanted (e.g. CI, headless
+  // containers, or when the reports directory is mounted read‑only). To skip the startup scan
+  // set either DISABLE_REPORT_GENERATION=1 or SKIP_REPORT_GENERATION=1 before launching.
+  const skipReportStartup = (process.env.DISABLE_REPORT_GENERATION === '1') ||
+                            (process.env.SKIP_REPORT_GENERATION === '1');
+  if (!skipReportStartup) {
+    try {
+      const reportGenerator = require('./lib/reportGenerator');
+      reportGenerator.generateAllMissing().catch(e => {
+        console.error('[startup] report generation scan error:', e && e.message);
+      });
+    } catch (e) {
+      console.warn('[startup] could not run report generation scan:', e && e.message);
+    }
+  } else {
+    console.log('[startup] skipping report generation (DISABLE_REPORT_GENERATION=1)');
   }
 });
 
