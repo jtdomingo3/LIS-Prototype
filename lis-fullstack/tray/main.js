@@ -5,6 +5,46 @@ const fs = require('fs');
 const os = require('os');
 const http = require('http');
 
+// ensure only a single instance of the tray helper can run at once.  If a
+// second instance is launched we let the first one handle the request; the
+// second exits immediately.  When the first instance receives the
+// `second-instance` event we restart ourselves so that re-running the
+// executable behaves like "restart and run" as requested by the user.
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  // another instance is running - immediately quit this one; prevent any
+  // further initialization or UI creation by exiting the process.
+  console.log('[tray] second-instance startup: exiting new copy');
+  // give Electron a moment to clean up
+  app.quit();
+  process.exit(0);
+} else {
+  // guard against recursive relaunch loops.  once we start handling a
+  // second-instance event we ignore further ones until the app actually
+  // exits.
+  let secondInstanceHandled = false;
+  app.on('second-instance', () => {
+    if (secondInstanceHandled) return;
+    secondInstanceHandled = true;
+    console.log('[tray] second-instance detected, relaunching');
+    try { appendLog('[tray] second-instance detected, relaunching'); } catch (e) {}
+    app.relaunch();
+    // exit on next tick to allow relaunch to spawn cleanly
+    setImmediate(() => app.exit(0));
+  });
+}
+
+// global error handler to suppress harmless "Object has been destroyed"
+process.on('uncaughtException', (err) => {
+  if (err && String(err).includes('Object has been destroyed')) {
+    // ignore
+    return;
+  }
+  // otherwise let it print so we can diagnose
+  console.error('[tray] uncaught exception', err);
+});
+
+
 const SERVICE_NAME = 'GezyneLIS';
 const PORT = process.env.PORT || 3000;
 
@@ -123,9 +163,11 @@ function createMainWindow() {
   });
   // send recent logs on ready
   mainWindow.webContents.on('did-finish-load', () => {
-    mainWindow.webContents.send('log-update', logBuffer.join('\n'));
-    // send server address info
-    try { mainWindow.webContents.send('server-address', { host: HOST, port: PORT }); } catch (e) {}
+    if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+      mainWindow.webContents.send('log-update', logBuffer.join('\n'));
+      // send server address info
+      try { mainWindow.webContents.send('server-address', { host: HOST, port: PORT }); } catch (e) {}
+    }
   });
   return mainWindow;
 }
