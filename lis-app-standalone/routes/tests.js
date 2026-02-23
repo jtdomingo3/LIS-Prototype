@@ -50,6 +50,7 @@ async function loadMdbReader() {
 
 // GET /tests/:id/analyzer/capture - read analyzer DB/export and return mapped results
 router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
+  console.log('[analyzer] capture handler invoked for', req.params.id);
   try {
     const test = await Test.findById(req.params.id);
     if (!test) return res.status(404).json({ error: 'Test not found' });
@@ -59,12 +60,66 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
     const gezynePath = (req.app && req.app.locals && req.app.locals.settings && req.app.locals.settings.gezynePath)
       ? req.app.locals.settings.gezynePath
       : (process.env.GEZYNE_PATH || path.resolve(__dirname, '..', '..', 'new-gezyne'));
-    const mdbFile = path.join(gezynePath, 'DataBase', 'Analyser.MDB');
-    if (!fs.existsSync(mdbFile)) return res.json({ error: 'Analyzer MDB not found at ' + mdbFile });
+    let mdbFile = null;
+    function findMDB(start) {
+      try {
+        const entries = fs.readdirSync(start, { withFileTypes: true });
+        for (const e of entries) {
+          if (e.isFile() && /Analyser\.MDB$/i.test(e.name)) {
+            return path.join(start, e.name);
+          }
+          if (e.isDirectory()) {
+            const found = findMDB(path.join(start, e.name));
+            if (found) return found;
+          }
+        }
+      } catch (e) { return null; }
+      return null;
+    }
+    if (fs.existsSync(gezynePath)) {
+      const stat = fs.statSync(gezynePath);
+      if (stat.isFile() && /Analyser\.MDB$/i.test(gezynePath)) {
+        mdbFile = gezynePath;
+      } else if (stat.isDirectory()) {
+        const attempt = path.join(gezynePath, 'DataBase', 'Analyser.MDB');
+        if (fs.existsSync(attempt)) {
+          mdbFile = attempt;
+        } else {
+          mdbFile = findMDB(gezynePath);
+        }
+      }
+    }
+    console.log('[analyzer] resolved mdb path', mdbFile);
+    if (!mdbFile || !fs.existsSync(mdbFile)) {
+      const msg = 'Analyzer MDB not found under ' + gezynePath +
+                  '. please set correct path in Settings (gezynePath) or via GEZYNE_PATH env var';
+      return res.json({ error: msg });
+    }
 
     const MDBReader = await loadMdbReader();
-    const buf = fs.readFileSync(mdbFile);
-    const reader = new MDBReader(buf);
+    console.log('[analyzer] checking existence before read:', fs.existsSync(mdbFile));
+    try {
+      const fd = fs.openSync(mdbFile, 'r');
+      fs.closeSync(fd);
+      console.log('[analyzer] open succeeded');
+    } catch (err) {
+      console.error('[analyzer] open error', err && err.message);
+    }
+    let buf;
+    try {
+      buf = fs.readFileSync(mdbFile);
+      console.log('[analyzer] readFileSync succeeded, buffer length', buf && buf.length);
+    } catch (err) {
+      console.error('[analyzer] readFileSync failed', err && err.message);
+      throw err;
+    }
+    let reader;
+    try {
+      reader = new MDBReader(buf);
+    } catch (err) {
+      console.error('[analyzer] MDBReader construction failed', err && err.message);
+      throw err;
+    }
     const tables = reader.getTableNames();
 
     // collect patient records matching name tokens
@@ -120,6 +175,7 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
     }
 
     res.json({ patients: matchingPatients.slice(0,50), checkCount: checkRows.length, mapped });
+    console.log('[analyzer] capture handler completed, returning', Object.keys(mapped));
   } catch (err) {
     console.error('Analyzer capture error', err);
     res.json({ error: String(err) });
@@ -909,7 +965,8 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       title: `Enter ${test.testType} Results`,
       test: testForView,
       users,
-      nextCaseNumber
+      nextCaseNumber,
+      ANALYZER_MAP
     });
 
   } catch (err) {
