@@ -69,7 +69,8 @@ router.post('/login', requireGuest, async (req, res) => {
 
     // If user role is allowed for dashboard, send them there.
     if (allowedDashboardRoles.has(sessionUser.role)) {
-      return res.redirect('/dashboard?fullscreen=1');
+      // avoid forcing fullscreen on login
+      return res.redirect('/dashboard');
     }
 
     // Ordered destination preferences for non-dashboard users

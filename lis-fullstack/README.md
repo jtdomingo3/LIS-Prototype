@@ -155,6 +155,10 @@ highlighted earlier, but there are a few additional flags you may find useful:
   `start-lis.ps1` launcher set this flag to `1`, so no reports are generated on boot
   unless you explicitly unset it.*
 
+> **Note:** When editing the `.env` file manually a space on either side of the equals
+> sign is permitted, but older versions of the settings page ignored such entries. The
+> web UI now trims whitespace and will show every variable present in the file.
+
 ## Production Deployment
 
 Recommended production options

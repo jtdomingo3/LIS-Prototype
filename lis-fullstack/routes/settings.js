@@ -14,8 +14,10 @@ const ENV_FILE = path.join(__dirname, '..', '.env');
 
 function parseEnvContent(content) {
   const lines = String(content || '').split(/\r?\n/);
+  // support optional spaces around the '=' so entries such as
+  // "DISABLE_REPORT_GENERATION =1" are treated correctly.
   return lines.map((line) => {
-    const m = line.match(/^([^#=\s]+)=(.*)$/);
+    const m = line.match(/^([^#=\s]+)\s*=\s*(.*)$/);
     if (m) {
       const key = m[1].trim();
       let value = m[2] || '';
