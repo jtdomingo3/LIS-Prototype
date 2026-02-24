@@ -73,7 +73,11 @@
       console.log('capture button clicked');
       btn.disabled = true; btn.textContent = 'Capturing...';
       try {
-        const res = await fetch(`/tests/<%= test.id %>/analyzer/capture`, { credentials: 'same-origin' });
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 30000);
+        const res = await fetch(`/tests/<%= test.id %>/analyzer/capture`, { credentials: 'same-origin', signal: controller.signal });
+        clearTimeout(timer);
+        if (!res.ok) throw new Error('server returned ' + res.status);
         const text = await res.text();
         console.log('raw analyzer response text', text.slice(0,1000));
         let json;
@@ -86,19 +90,11 @@
         if (json.error) { alert('Analyzer error: ' + json.error); return; }
 
         if (json.rows && json.rows.length) {
-          showAnalyzerPicker(json.rows);
-          return;
+          showAnalyzerPicker(json.rows, json.patients || []);
+          return; // done
         }
 
-        // no rows returned for patient/date
-        if (!json.rows || json.rows.length === 0) {
-          alert('Analyzer returned no rows.  The export may be empty or mis‑located.');
-        }
-        if (!json.rows || json.rows.length === 0) {
-          applyMapped(json.mapped || {});
-          return;
-        }
-
+        // no rows, fall back to mapped
         applyMapped(json.mapped || {});
         alert('Prefilled results from analyzer (review before saving)');
       } catch (err) {
@@ -116,9 +112,11 @@
       });
     }
 
-    function showAnalyzerPicker(rows) {
+    function showAnalyzerPicker(rows, patients) {
       // determine date field for grouping
       const dateKey = rows.length && (rows[0].DATE !== undefined ? 'DATE' : (rows[0].Date !== undefined ? 'Date' : (rows[0].date !== undefined ? 'date' : null)));
+      // build a list of patient names from patient records
+      const patientNames = (patients || []).map(p => p.row && p.row.FIRST_NAME).filter(Boolean);
 
       // group rows by date (YYYY-MM-DD) so the user picks the correct batch
       const groups = {};
@@ -176,6 +174,54 @@
         const title = document.createElement('h3');
         title.textContent = 'Results for ' + date;
         details.appendChild(title);
+        
+        // filter patient info to show only those for this date group
+        const groupPatientIds = new Set(groupRows.map(r => r.PATIENT_ID).filter(Boolean));
+        console.log('[analyzer-picker] date:', date);
+        console.log('[analyzer-picker] groupRows count:', groupRows.length);
+        console.log('[analyzer-picker] sample row:', groupRows[0]);
+        console.log('[analyzer-picker] groupPatientIds:', Array.from(groupPatientIds));
+        console.log('[analyzer-picker] patients array length:', patients ? patients.length : 0);
+        console.log('[analyzer-picker] sample patient:', patients && patients[0]);
+        
+        const filteredPatients = (patients || [])
+          .filter(p => {
+            if (!p.row || !p.row.ID) return false;
+            const patientId = String(p.row.ID);
+            const matches = groupPatientIds.has(patientId);
+            if (matches) {
+              console.log('[analyzer-picker] MATCHED patient:', p.row.FIRST_NAME, 'ID:', patientId);
+            }
+            return matches;
+          });
+        
+        console.log('[analyzer-picker] filteredPatients count:', filteredPatients.length);
+        
+        if (filteredPatients && filteredPatients.length > 0) {
+          filteredPatients.forEach(fp => {
+            const pn = document.createElement('div');
+            pn.style = 'margin-bottom:0.5rem;font-weight:600;';
+            const name = fp.row.FIRST_NAME || 'Unknown';
+            const age = fp.row.AGE || '?';
+            const sex = fp.row.SEX || '?';
+            pn.textContent = `Patient: ${name}, Age: ${age}, Sex: ${sex}`;
+            details.appendChild(pn);
+          });
+        } else {
+          const pn = document.createElement('div');
+          pn.style = 'margin-bottom:0.5rem;font-style:italic;color:#666;';
+          pn.textContent = 'Patient information not available';
+          details.appendChild(pn);
+          
+          // Show debug info
+          if (groupPatientIds.size > 0) {
+            const debugInfo = document.createElement('div');
+            debugInfo.style = 'font-size:0.8em;color:#999;margin-top:0.3rem;';
+            debugInfo.textContent = `(Looking for IDs: ${Array.from(groupPatientIds).join(', ')})`;
+            details.appendChild(debugInfo);
+          }
+        }
+        
         const t = document.createElement('table');
         t.border = 1;
         t.style = 'width:100%;border-collapse:collapse;';

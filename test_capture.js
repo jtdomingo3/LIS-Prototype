@@ -26,6 +26,9 @@ const base = 'http://localhost:3000';
     });
     const json = await cap.json();
     console.log('capture resp', json);
+    if (json.patients) {
+      console.log('patients data', JSON.stringify(json.patients, null, 2));
+    }
   if (json.rows && json.rows.length) {
     const counts = {};
     json.rows.forEach(r => { const code = (r.ITEM||r.Item||r.item||'').toString().toUpperCase(); counts[code] = (counts[code]||0)+1; });

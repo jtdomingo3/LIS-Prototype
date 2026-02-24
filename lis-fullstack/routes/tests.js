@@ -148,31 +148,91 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
       if (patient.lastName) nameTokens.push(String(patient.lastName).toLowerCase());
       if (patient.fullName) nameTokens.push(String(patient.fullName).toLowerCase());
     }
+    console.log('[analyzer] searching with nameTokens', nameTokens);
+    console.log('[analyzer] patient object', patient ? {firstName: patient.firstName, lastName: patient.lastName, fullName: patient.fullName} : null);
 
     const patientTables = tables.filter(t => /^PATIENT/i.test(t));
+    console.log('[analyzer] patient tables found:', patientTables.length, 'recent ones:', patientTables.filter(t => t.includes('2025') || t.includes('2026')));
     const matchingPatients = [];
+    
+    // Determine date range for filtering: use test date if available, otherwise use current date
+    let targetDate = test && test.testDate ? new Date(test.testDate) : new Date();
+    const dateBefore = new Date(targetDate);
+    dateBefore.setDate(dateBefore.getDate() - 7); // 7 days before
+    const dateAfter = new Date(targetDate);
+    dateAfter.setDate(dateAfter.getDate() + 2); // 2 days after
+    console.log('[analyzer] filtering by date range:', dateBefore.toISOString().slice(0, 10), 'to', dateAfter.toISOString().slice(0, 10));
+    
+    // Determine which months to check based on date range
+    const monthsToCheck = new Set();
+    const cursorDate = new Date(dateBefore);
+    while (cursorDate <= dateAfter) {
+      const ym = cursorDate.toISOString().slice(0, 7).replace('-', ''); // YYYYMM
+      monthsToCheck.add(`PATIENTINFO${ym}`);
+      cursorDate.setMonth(cursorDate.getMonth() + 1);
+    }
+    console.log('[analyzer] checking patient tables:', Array.from(monthsToCheck));
+    
     for (const t of patientTables) {
       try {
+        // Only process tables in our date range OR tables with name matches
+        const isInDateRange = monthsToCheck.has(t);
+        
         const table = reader.getTable(t);
         const rows = table.getData({ start: 0, length: 500 });
+        let matchCount = 0;
+        
         for (const r of rows) {
-          const joined = Object.values(r).join(' ').toLowerCase();
-          // use lenient matching: if any token matches we'll include the row. this
-          // avoids failing when only first or last name is present or order is
-          // swapped.
-          if (nameTokens.length === 0 || nameTokens.some(tok => joined.includes(tok))) {
+          let shouldInclude = false;
+          
+          // Check date range if this table is in the target months
+          if (isInDateRange && r.COLLECT_DATE) {
+            try {
+              const collectDate = new Date(r.COLLECT_DATE);
+              if (collectDate >= dateBefore && collectDate <= dateAfter) {
+                shouldInclude = true;
+              }
+            } catch (e) {}
+          }
+          
+          // Also check for name matches
+          if (!shouldInclude && nameTokens.length > 0) {
+            const joined = Object.values(r).join(' ').toLowerCase();
+            shouldInclude = nameTokens.some(tok => joined.includes(tok));
+          }
+          
+          if (shouldInclude) {
             matchingPatients.push({ table: t, row: r });
+            matchCount++;
           }
         }
-      } catch (e) {}
+        
+        if (matchCount > 0) {
+          console.log(`[analyzer] ${t}: ${matchCount} matches${isInDateRange ? ' (date range)' : ' (name match)'} out of ${rows.length} rows`);
+        }
+      } catch (e) {
+        console.log(`[analyzer] error reading table ${t}:`, e.message);
+      }
     }
     console.log('[analyzer] matchingPatients count', matchingPatients.length);
+    if (matchingPatients.length > 0) {
+      console.log('[analyzer] sample matchingPatients (first 5):');
+      matchingPatients.slice(0, 5).forEach((mp, idx) => {
+        console.log(`  ${idx + 1}. ${mp.row.FIRST_NAME || '(no name)'} (ID: ${mp.row.ID}, Table: ${mp.table})`);
+      });
+    }
     // extract ID values from patient rows for filtering
     const patientIds = new Set();
     matchingPatients.forEach(mp => {
       if (mp.row && mp.row.ID) patientIds.add(String(mp.row.ID));
     });
-    console.log('[analyzer] patientIds', Array.from(patientIds));
+    console.log('[analyzer] patientIds count:', patientIds.size);
+    console.log('[analyzer] first 10 patientIds:', Array.from(patientIds).slice(0, 10));
+    // Also get recent patient IDs for 202601 table specifically
+    const recent202601 = matchingPatients.filter(mp => mp.table.includes('202601')).map(mp => mp.row.ID);
+    if (recent202601.length > 0) {
+      console.log('[analyzer] 202601 patient IDs:', recent202601);
+    }
 
     // Collect recent CHECK_RESULT* rows
     const checkTables = tables.filter(t => /^CHECK_RESULT/i.test(t));
@@ -305,14 +365,28 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
         }
       }
       if (dt && dt instanceof Date) dt = dt.toISOString();
+      // include patient ID so client can correlate with patient names
+      const pid = r.PATIENTID || r['PATIENT_ID'] || r.ID;
       return {
         DATE: dt || null,
         ITEM: r.ITEM || r.Item || r.item,
         RESULT: r.RESULT || r.Result || r.result,
-        UNIT: r.UNIT || r.Unit || r.unit
+        UNIT: r.UNIT || r.Unit || r.unit,
+        PATIENT_ID: pid ? String(pid) : null
       };
     });
-    res.json({ patients: matchingPatients.slice(0,50), checkCount: checkRows.length, mapped, rows: rowsToSend });
+    
+    // Only send patients that are actually referenced in the rows we're sending
+    const rowPatientIds = new Set(rowsToSend.map(r => r.PATIENT_ID).filter(Boolean));
+    const relevantPatients = matchingPatients.filter(mp => 
+      mp.row && mp.row.ID && rowPatientIds.has(String(mp.row.ID))
+    );
+    console.log('[analyzer] sending patients count:', relevantPatients.length, 'of', matchingPatients.length, 'matched');
+    if (relevantPatients.length > 0) {
+      console.log('[analyzer] sending patient sample:', relevantPatients[0]);
+    }
+    
+    res.json({ patients: relevantPatients, checkCount: checkRows.length, mapped, rows: rowsToSend });
   } catch (err) {
     console.error('Analyzer capture error', err);
     res.json({ error: String(err) });
