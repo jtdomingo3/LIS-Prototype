@@ -141,14 +141,49 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
     }
     const tables = reader.getTableNames();
 
-    // collect patient records matching name tokens
-    const nameTokens = [];
-    if (patient) {
-      if (patient.firstName) nameTokens.push(String(patient.firstName).toLowerCase());
-      if (patient.lastName) nameTokens.push(String(patient.lastName).toLowerCase());
-      if (patient.fullName) nameTokens.push(String(patient.fullName).toLowerCase());
-    }
-    console.log('[analyzer] searching with nameTokens', nameTokens);
+    // Helper function for strict name matching
+    // Analyzer stores names as "LASTNAME, FIRSTNAME" in FIRST_NAME field
+    // We need to match both parts with the LIS patient name
+    const isNameMatch = (analyzerFirstName, lisFirstName, lisLastName) => {
+      if (!analyzerFirstName) return false;
+      if (!lisFirstName && !lisLastName) return false;
+      
+      const normalized = String(analyzerFirstName).toLowerCase().trim();
+      const first = lisFirstName ? String(lisFirstName).toLowerCase().trim() : '';
+      const last = lisLastName ? String(lisLastName).toLowerCase().trim() : '';
+      
+      // Check if it matches "LASTNAME, FIRSTNAME" format
+      if (last && first) {
+        const expected1 = `${last}, ${first}`; // "felicia, romeo"
+        const expected2 = `${last},${first}`;  // "felicia,romeo" (no space)
+        if (normalized === expected1 || normalized === expected2) return true;
+      }
+      
+      // Check if it matches "FIRSTNAME LASTNAME" format
+      if (first && last) {
+        const expected3 = `${first} ${last}`; // "romeo felicia"
+        if (normalized === expected3) return true;
+      }
+      
+      // Check if both name parts appear in the field (partial match for minor typos)
+      // But require BOTH parts to be present, not just one
+      if (first && last) {
+        const hasFirst = normalized.includes(first);
+        const hasLast = normalized.includes(last);
+        // Only accept if BOTH parts are present
+        if (hasFirst && hasLast) {
+          // Additional check: ensure they're reasonably close (not too far apart)
+          const firstPos = normalized.indexOf(first);
+          const lastPos = normalized.indexOf(last);
+          const distance = Math.abs(firstPos - lastPos);
+          // If parts are within 20 chars of each other, likely same person
+          if (distance < 20) return true;
+        }
+      }
+      
+      return false;
+    };
+    
     console.log('[analyzer] patient object', patient ? {firstName: patient.firstName, lastName: patient.lastName, fullName: patient.fullName} : null);
 
     const patientTables = tables.filter(t => /^PATIENT/i.test(t));
@@ -175,7 +210,7 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
     
     for (const t of patientTables) {
       try {
-        // Only process tables in our date range OR tables with name matches
+        // Only process tables in our date range OR check for name matches
         const isInDateRange = monthsToCheck.has(t);
         
         const table = reader.getTable(t);
@@ -195,10 +230,9 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
             } catch (e) {}
           }
           
-          // Also check for name matches
-          if (!shouldInclude && nameTokens.length > 0) {
-            const joined = Object.values(r).join(' ').toLowerCase();
-            shouldInclude = nameTokens.some(tok => joined.includes(tok));
+          // Also check for strict name matches (only if we have patient name)
+          if (!shouldInclude && patient && (patient.firstName || patient.lastName)) {
+            shouldInclude = isNameMatch(r.FIRST_NAME, patient.firstName, patient.lastName);
           }
           
           if (shouldInclude) {
@@ -208,6 +242,7 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
         }
         
         if (matchCount > 0) {
+          console.log(`[analyzer] ${t}: ${matchCount} matches${isInDateRange ? ' (date range)' : ' (name match)'} out of ${rows.length} rows`);
           console.log(`[analyzer] ${t}: ${matchCount} matches${isInDateRange ? ' (date range)' : ' (name match)'} out of ${rows.length} rows`);
         }
       } catch (e) {
