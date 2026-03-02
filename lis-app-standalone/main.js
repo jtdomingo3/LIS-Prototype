@@ -7,6 +7,34 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 
+// Single-instance guard: only one copy of the standalone app may run.  If a
+// second instance is launched we exit immediately.  When the existing
+// instance detects the attempt we relaunch so that rerunning behaves like a
+// restart (matching the tray helper behaviour).
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  console.log('[standalone] another instance is running, exiting new copy');
+  app.quit();
+  process.exit(0);
+} else {
+  let secondHandled = false;
+  app.on('second-instance', () => {
+    if (secondHandled) return;
+    secondHandled = true;
+    console.log('[standalone] second-instance detected, relaunching');
+    try { /* might not be defined yet */ } catch {}
+    app.relaunch();
+    setImmediate(() => app.exit(0));
+  });
+}
+
+// ignore harmless destroyed-object errors thrown when a window closes during
+// shutdown (see tray/main.js for rationale)
+process.on('uncaughtException', (err) => {
+  if (err && String(err).includes('Object has been destroyed')) return;
+  console.error('[standalone] uncaught exception', err);
+});
+
 const { PageCache } = require('./lib/pageCache');
 const { OperationQueue } = require('./lib/operationQueue');
 const { SyncEngine } = require('./lib/syncEngine');

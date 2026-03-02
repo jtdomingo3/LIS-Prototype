@@ -13,20 +13,27 @@ const os = require('os');
 // multer for handling multipart/form-data file uploads in memory
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
-// Analyzer mapping: analyzer ITEM codes -> form field names
+// Analyzer mapping: analyzer ITEM codes -> form field names.  Note that
+// some exports use UREA while others use BUN; we keep both so they don't
+// overwrite each other.  Additional codes (SGOT, RBS, CALCIUM) are also
+// supported so the capture is as complete as possible.
 const ANALYZER_MAP = {
   CHOL: 'cholesterol',
   CREA: 'creatinine',
   FBS: 'fbs',
+  RBS: 'rbs',           // random blood sugar
   HDLC: 'hdl',
   SGPT: 'sgpt',
+  SGOT: 'sgot',         // added AST
   TG: 'tg',
   UA: 'uricAcid',
-  UREA: 'bun',
+  UREA: 'urea',         // keep as separate from BUN
+  BUN: 'bun',
   LDL: 'ldl',
   VLDL: 'vldl',
   HBA1C: 'hba1c',
   ALB: 'alb',
+  CALCIUM: 'calcium',   // occasionally present
   SODIUM: 'sodium',
   POTASSIUM: 'potassium',
   CHLORIDE: 'chloride'
@@ -50,6 +57,7 @@ async function loadMdbReader() {
 
 // GET /tests/:id/analyzer/capture - read analyzer DB/export and return mapped results
 router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
+  console.log('[analyzer] capture handler invoked for', req.params.id);
   try {
     const test = await Test.findById(req.params.id);
     if (!test) return res.status(404).json({ error: 'Test not found' });
@@ -59,15 +67,120 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
     const gezynePath = (req.app && req.app.locals && req.app.locals.settings && req.app.locals.settings.gezynePath)
       ? req.app.locals.settings.gezynePath
       : (process.env.GEZYNE_PATH || path.resolve(__dirname, '..', '..', 'new-gezyne'));
-    const mdbFile = path.join(gezynePath, 'DataBase', 'Analyser.MDB');
-    if (!fs.existsSync(mdbFile)) return res.json({ error: 'Analyzer MDB not found at ' + mdbFile });
+    let mdbFile = null;
+    function findMDB(start) {
+      try {
+        const entries = fs.readdirSync(start, { withFileTypes: true });
+        for (const e of entries) {
+          if (e.isFile() && /Analyser\.MDB$/i.test(e.name)) {
+            return path.join(start, e.name);
+          }
+          if (e.isDirectory()) {
+            const found = findMDB(path.join(start, e.name));
+            if (found) return found;
+          }
+        }
+      } catch (e) { return null; }
+      return null;
+    }
+    if (fs.existsSync(gezynePath)) {
+      const stat = fs.statSync(gezynePath);
+      if (stat.isFile() && /Analyser\.MDB$/i.test(gezynePath)) {
+        mdbFile = gezynePath;
+      } else if (stat.isDirectory()) {
+        const attempt = path.join(gezynePath, 'DataBase', 'Analyser.MDB');
+        if (fs.existsSync(attempt)) {
+          mdbFile = attempt;
+        } else {
+          mdbFile = findMDB(gezynePath);
+        }
+      }
+    }
+    console.log('[analyzer] resolved mdb path', mdbFile);
+    if (!mdbFile || !fs.existsSync(mdbFile)) {
+      const msg = 'Analyzer MDB not found under ' + gezynePath +
+                  '. please set correct path in Settings (gezynePath) or via GEZYNE_PATH env var';
+      return res.json({ error: msg });
+    }
 
     const MDBReader = await loadMdbReader();
-    const buf = fs.readFileSync(mdbFile);
-    const reader = new MDBReader(buf);
+    console.log('[analyzer] checking existence before read:', fs.existsSync(mdbFile));
+    try {
+      const fd = fs.openSync(mdbFile, 'r');
+      fs.closeSync(fd);
+      console.log('[analyzer] open succeeded');
+    } catch (err) {
+      console.error('[analyzer] open error', err && err.message);
+    }
+    let buf;
+    try {
+      buf = fs.readFileSync(mdbFile);
+      console.log('[analyzer] readFileSync succeeded, buffer length', buf && buf.length);
+    } catch (err) {
+      console.error('[analyzer] readFileSync failed', err && err.message);
+      throw err;
+    }
+    let reader;
+    try {
+      reader = new MDBReader(buf);
+    } catch (err) {
+      console.error('[analyzer] MDBReader construction failed', err && err.message);
+      throw err;
+    }
     const tables = reader.getTableNames();
 
-    // collect patient records matching name tokens
+    // Helper function for strict name matching
+    // Analyzer stores names as "LASTNAME, FIRSTNAME" in FIRST_NAME field
+    // We need to match both parts with the LIS patient name
+    const isNameMatch = (analyzerFirstName, lisFirstName, lisLastName) => {
+      if (!analyzerFirstName) return false;
+      if (!lisFirstName && !lisLastName) return false;
+      
+      const normalized = String(analyzerFirstName).toLowerCase().trim();
+      const first = lisFirstName ? String(lisFirstName).toLowerCase().trim() : '';
+      const last = lisLastName ? String(lisLastName).toLowerCase().trim() : '';
+      
+      if (last && first) {
+        const expected1 = `${last}, ${first}`;
+        const expected2 = `${last},${first}`;
+        if (normalized === expected1 || normalized === expected2) return true;
+      }
+      if (first && last) {
+        const expected3 = `${first} ${last}`;
+        if (normalized === expected3) return true;
+      }
+      if (first && last) {
+        const hasFirst = normalized.includes(first);
+        const hasLast = normalized.includes(last);
+        if (hasFirst && hasLast) {
+          const firstPos = normalized.indexOf(first);
+          const lastPos = normalized.indexOf(last);
+          const distance = Math.abs(firstPos - lastPos);
+          if (distance < 20) return true;
+        }
+      }
+      return false;
+    };
+
+    // date range based on test date
+    let targetDate = test && test.testDate ? new Date(test.testDate) : new Date();
+    const dateBefore = new Date(targetDate);
+    dateBefore.setDate(dateBefore.getDate() - 7);
+    const dateAfter = new Date(targetDate);
+    dateAfter.setDate(dateAfter.getDate() + 2);
+    console.log('[analyzer] filtering by date range:', dateBefore.toISOString().slice(0, 10), 'to', dateAfter.toISOString().slice(0, 10));
+
+    // months to inspect for patient tables
+    const monthsToCheck = new Set();
+    const cursorDate = new Date(dateBefore);
+    while (cursorDate <= dateAfter) {
+      const ym = cursorDate.toISOString().slice(0, 7).replace('-', '');
+      monthsToCheck.add(`PATIENTINFO${ym}`);
+      cursorDate.setMonth(cursorDate.getMonth() + 1);
+    }
+    console.log('[analyzer] checking patient tables:', Array.from(monthsToCheck));
+
+    // collect patient records matching name tokens or date range
     const nameTokens = [];
     if (patient) {
       if (patient.firstName) nameTokens.push(String(patient.firstName).toLowerCase());
@@ -81,18 +194,41 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
       try {
         const table = reader.getTable(t);
         const rows = table.getData({ start: 0, length: 500 });
+        let matchCount = 0;
         for (const r of rows) {
-          const joined = Object.values(r).join(' ').toLowerCase();
-          if (nameTokens.length === 0 || nameTokens.every(tok => joined.includes(tok))) {
-            matchingPatients.push({ table: t, row: r });
+          let shouldInclude = false;
+          const isInDateRange = monthsToCheck.has(t);
+          if (isInDateRange && r.COLLECT_DATE) {
+            try {
+              const collectDate = new Date(r.COLLECT_DATE);
+              if (collectDate >= dateBefore && collectDate <= dateAfter) {
+                shouldInclude = true;
+              }
+            } catch (e) {}
           }
+          if (!shouldInclude && patient && (patient.firstName || patient.lastName)) {
+            shouldInclude = isNameMatch(r.FIRST_NAME, patient.firstName, patient.lastName);
+          }
+          if (shouldInclude) {
+            matchingPatients.push({ table: t, row: r });
+            matchCount++;
+          }
+        }
+        if (matchCount > 0) {
+          console.log(`[analyzer] ${t}: ${matchCount} matches${isInDateRange ? ' (date range)' : ' (name match)'} out of ${rows.length} rows`);
         }
       } catch (e) {}
     }
+    console.log('[analyzer] matchingPatients count', matchingPatients.length);
+    const patientIds = new Set();
+    matchingPatients.forEach(mp => {
+      if (mp.row && mp.row.ID) patientIds.add(String(mp.row.ID));
+    });
+    console.log('[analyzer] patientIds', Array.from(patientIds));
 
     // Collect recent CHECK_RESULT* rows
     const checkTables = tables.filter(t => /^CHECK_RESULT/i.test(t));
-    const checkRows = [];
+    let checkRows = [];
     for (const t of checkTables) {
       try {
         const table = reader.getTable(t);
@@ -100,12 +236,40 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
         for (const r of rows) checkRows.push(Object.assign({ __table: t }, r));
       } catch (e) {}
     }
+    console.log('[analyzer] raw checkRows count', checkRows.length);
+    // try narrowing by patientIds if available; check both PATIENTID and ID
+    // fields on checkRows since exports vary.
+    let filteredRows = checkRows;
+    if (patientIds.size > 0) {
+      const beforeCount = filteredRows.length;
+      filteredRows = filteredRows.filter(r => {
+        const pid = r.PATIENTID || r['PATIENT_ID'] || r.ID;
+        return patientIds.has(String(pid));
+      });
+      console.log('[analyzer] filtered checkRows by patientIds, new count', filteredRows.length, 'from', beforeCount);
+    }
+    // no automatic date filter; we let the picker display all candidate runs
+    // and the operator chooses which one to import.
+    // (keeping previous code commented out for reference)
+    // if (test && test.testDate) {
+    //   const want = new Date(test.testDate).toISOString().slice(0,10);
+    //   const before = filteredRows.length;
+    //   filteredRows = filteredRows.filter(r => {
+    //     const d = r.DATE || r.Date || r.date;
+    //     if (!d) return false;
+    //     try { return new Date(d).toISOString().slice(0,10) === want; } catch(e) { return false; }
+    //   });
+    //   console.log('[analyzer] filtered by testDate', want, 'new count', filteredRows.length, 'from', before);
+    // }
 
-    // Build mapping of latest item -> result
+    // Build mapping of latest item -> result (from filtered rows)
     const latestByItem = {};
-    for (const r of checkRows) {
+    for (const r of filteredRows) {
       try {
-        const code = (r.ITEM || r.Item || r.item || '').toString().toUpperCase();
+        // normalize code: remove spaces, dashes, other punctuation so e.g. "LDL-C" or
+        // "VLDL/C" become matchable to our mapping keys.
+        let code = (r.ITEM || r.Item || r.item || '').toString().toUpperCase();
+        code = code.replace(/[^A-Z0-9]/g, '');
         const val = (r.RESULT || r.Result || r.result || null);
         if (!code) continue;
         if (!latestByItem[code]) latestByItem[code] = { value: val, row: r };
@@ -118,8 +282,93 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
       const field = ANALYZER_MAP[code];
       if (field) mapped[field] = latestByItem[code].value;
     }
+    // if we only received urea but not bun, derive BUN using standard conversion
+    let derived = [];
+    if (mapped.urea && !mapped.bun) {
+      const u = parseFloat(mapped.urea);
+      if (!isNaN(u)) {
+        mapped.bun = String(Math.round(u * 0.467 * 100) / 100);
+        derived.push('BUN');
+      }
+    }
+    // always compute LDL and VLDL from lipid profile if we have TG (and HDL/Chol for LDL)
+    if (mapped.tg) {
+      const tg = parseFloat(mapped.tg);
+      if (!isNaN(tg)) {
+        const vcalc = Math.round((tg / 5.0) * 100) / 100;
+        if ((!mapped.vldl || mapped.vldl === '') || String(mapped.vldl) !== String(vcalc)) {
+          mapped.vldl = String(vcalc);
+          derived.push('VLDL');
+        }
+      }
+      if (mapped.cholesterol && mapped.hdl) {
+        const tc = parseFloat(mapped.cholesterol);
+        const hdl = parseFloat(mapped.hdl);
+        if (!isNaN(tc) && !isNaN(hdl)) {
+          const lcalc = Math.round((tc - hdl - (tg / 5.0)) * 100) / 100;
+          if ((!mapped.ldl || mapped.ldl === '') || String(mapped.ldl) !== String(lcalc)) {
+            mapped.ldl = String(lcalc);
+            derived.push('LDL');
+          }
+        }
+      }
+    }
+    if (derived.length) {
+      console.log('[analyzer] derived values for', derived);
+    }
 
-    res.json({ patients: matchingPatients.slice(0,50), checkCount: checkRows.length, mapped });
+    // diagnostics: which codes we actually saw vs mapping keys
+    const seenCodes = Object.keys(latestByItem);
+    const allMapKeys = Object.keys(ANALYZER_MAP);
+    const missingCodes = allMapKeys.filter(k => !seenCodes.includes(k));
+    console.log('[analyzer] seen codes', seenCodes.sort());
+    console.log('[analyzer] missing mapped codes (not in export)', missingCodes.sort());
+
+    let rowsToSend = filteredRows;
+    console.log('[analyzer] returning rows count', rowsToSend.length);
+    if (rowsToSend.length === 0) {
+      console.log('[analyzer] no rows matched patient/date filter');
+    }
+    console.log('[analyzer] sample filtered row keys', Object.keys(filteredRows[0] || {}));
+    if (filteredRows.length > 0) {
+      console.log('[analyzer] sample filtered row object', filteredRows[0]);
+      const codes = new Set(filteredRows.map(r => (r.ITEM||r.Item||r.item||'').toString().toUpperCase()));
+      console.log('[analyzer] unique ITEM codes', Array.from(codes).sort());
+    }
+    // map
+    rowsToSend = rowsToSend.map(r => {
+      // date may appear under a few different names in MDB export
+      let dt = r.CHECK_DATE || r.CHECKDATE || r.CHECK_DATE || r.DATE || r.Date || r.date;
+      // some monthly tables omit a separate date column; the ID often encodes YYYYMMDD
+      if (!dt && r.ID) {
+        const idstr = String(r.ID);
+        const m = idstr.match(/^(\d{4})(\d{2})(\d{2})/);
+        if (m) {
+          dt = `${m[1]}-${m[2]}-${m[3]}T00:00:00.000Z`;
+        }
+      }
+      if (dt && dt instanceof Date) dt = dt.toISOString();
+      const pid = r.PATIENTID || r['PATIENT_ID'] || r.ID;
+      return {
+        DATE: dt || null,
+        ITEM: r.ITEM || r.Item || r.item,
+        RESULT: r.RESULT || r.Result || r.result,
+        UNIT: r.UNIT || r.Unit || r.unit,
+        PATIENT_ID: pid ? String(pid) : null
+      };
+    });
+    
+    const rowPatientIds = new Set(rowsToSend.map(r => r.PATIENT_ID).filter(Boolean));
+    const relevantPatients = matchingPatients.filter(mp => 
+      mp.row && mp.row.ID && rowPatientIds.has(String(mp.row.ID))
+    );
+    console.log('[analyzer] sending patients count:', relevantPatients.length, 'of', matchingPatients.length, 'matched');
+    if (relevantPatients.length > 0) {
+      console.log('[analyzer] sending patient sample:', relevantPatients[0]);
+    }
+    
+    res.json({ patients: relevantPatients, checkCount: checkRows.length, mapped, rows: rowsToSend });
+    console.log('[analyzer] capture handler completed, returning', Object.keys(mapped));
   } catch (err) {
     console.error('Analyzer capture error', err);
     res.json({ error: String(err) });
@@ -909,7 +1158,8 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       title: `Enter ${test.testType} Results`,
       test: testForView,
       users,
-      nextCaseNumber
+      nextCaseNumber,
+      ANALYZER_MAP
     });
 
   } catch (err) {

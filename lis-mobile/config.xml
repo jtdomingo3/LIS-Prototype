@@ -1,0 +1,44 @@
+<?xml version='1.0' encoding='utf-8'?>
+<widget id="com.gezyne.lis" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+    <name>Gezyne LIS</name>
+    <description>Gezyne Laboratory Information System — Mobile Client</description>
+    <author email="support@gezyne.com" href="https://gezyne.com">
+        Gezyne
+    </author>
+    <content src="index.html" />
+
+    <!-- Allow navigation to any server the user configures -->
+    <allow-navigation href="*" />
+    <allow-intent href="http://*/*" />
+    <allow-intent href="https://*/*" />
+
+    <!-- Android preferences -->
+    <preference name="Scheme" value="http" />
+    <preference name="Hostname" value="localhost" />
+    <preference name="AndroidPersistWebView" value="true" />
+    <preference name="KeepRunning" value="true" />
+    <preference name="LoadUrlTimeoutValue" value="60000" />
+    <preference name="android-minSdkVersion" value="24" />
+    <preference name="android-targetSdkVersion" value="35" />
+    <preference name="MixedContentMode" value="0" />
+    <preference name="Orientation" value="default" />
+    <preference name="StatusBarBackgroundColor" value="#1e3a5f" />
+    <preference name="StatusBarStyle" value="lightcontent" />
+    <preference name="SplashScreenDelay" value="3000" />
+    <preference name="AutoHideSplashScreen" value="true" />
+
+    <!-- Allow cleartext HTTP for local/dev servers -->
+    <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application">
+        <application android:usesCleartextTraffic="true" xmlns:android="http://schemas.android.com/apk/res/android" />
+    </edit-config>
+
+    <!-- Icons -->
+    <platform name="android">
+        <icon density="ldpi"    src="res/icons/android/ldpi.png" />
+        <icon density="mdpi"    src="res/icons/android/mdpi.png" />
+        <icon density="hdpi"    src="res/icons/android/hdpi.png" />
+        <icon density="xhdpi"   src="res/icons/android/xhdpi.png" />
+        <icon density="xxhdpi"  src="res/icons/android/xxhdpi.png" />
+        <icon density="xxxhdpi" src="res/icons/android/xxxhdpi.png" />
+    </platform>
+</widget>

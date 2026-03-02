@@ -143,6 +143,22 @@ npm install -g nodemon
 nodemon server.js
 ```
 
+## Environment Variables
+
+The server can be configured via environment variables. The most commonly used are already
+highlighted earlier, but there are a few additional flags you may find useful:
+
+- `DISABLE_REPORT_GENERATION=1` or `SKIP_REPORT_GENERATION=1`
+  disables the background startup scan that generates any missing PDF reports. This is
+  handy when running in CI, during automated tests, or on hosts where report creation
+  should be skipped.  *By default the PM2 ecosystem config and the Windows
+  `start-lis.ps1` launcher set this flag to `1`, so no reports are generated on boot
+  unless you explicitly unset it.*
+
+> **Note:** When editing the `.env` file manually a space on either side of the equals
+> sign is permitted, but older versions of the settings page ignored such entries. The
+> web UI now trims whitespace and will show every variable present in the file.
+
 ## Production Deployment
 
 Recommended production options

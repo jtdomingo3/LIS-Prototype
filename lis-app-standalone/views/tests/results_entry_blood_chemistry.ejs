@@ -34,6 +34,7 @@
       <div class="form-row"><label>VLDL</label><input type="text" name="vldl" value="<%= test.results && test.results.vldl ? test.results.vldl : '' %>" placeholder="0-30 mg/dL" title="Reference: 0.00 - 30.00 mg/dL"></div>
       <div class="form-row"><label>Uric Acid</label><input type="text" name="uricAcid" value="<%= test.results && test.results.uricAcid ? test.results.uricAcid : '' %>" placeholder="2.4-5.7 mg/dL" title="Reference: 2.40 - 5.70 mg/dL"></div>
       <div class="form-row"><label>Creatinine</label><input type="text" name="creatinine" value="<%= test.results && test.results.creatinine ? test.results.creatinine : '' %>" placeholder="0.5-1.0 mg/dL" title="Reference: 0.50 - 1.00 mg/dL"></div>
+      <div class="form-row"><label>Urea</label><input type="text" name="urea" value="<%= test.results && test.results.urea ? test.results.urea : '' %>" placeholder="10-50 mg/dL" title="Reference: 10.00 - 50.00 mg/dL"></div>
       <div class="form-row"><label>BUN</label><input type="text" name="bun" value="<%= test.results && test.results.bun ? test.results.bun : '' %>" placeholder="4.7-23.4 mg/dL" title="Reference: 4.67 - 23.36 mg/dL"></div>
       <div class="form-row"><label>SGPT (ALT)</label><input type="text" name="sgpt" value="<%= test.results && test.results.sgpt ? test.results.sgpt : '' %>" placeholder="0-32 U/L" title="Reference: 0.00 - 32.00 U/L"></div>
       <div class="form-row"><label>SGOT (AST)</label><input type="text" name="sgot" value="<%= test.results && test.results.sgot ? test.results.sgot : '' %>" placeholder="0-31 U/L" title="Reference: 0.00 - 31.00 U/L"></div>
@@ -63,23 +64,334 @@
 
 <script>
   (function(){
+    const ANALYZER_MAP = <%- JSON.stringify(ANALYZER_MAP) %>;
+
     const btn = document.getElementById('captureFromAnalyzer');
     if (!btn) return;
     btn.addEventListener('click', async () => {
+      console.log('capture button clicked');
       btn.disabled = true; btn.textContent = 'Capturing...';
       try {
-        const res = await fetch(`/tests/<%= test.id %>/analyzer/capture`);
-        const json = await res.json();
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 30000);
+        const res = await fetch(`/tests/<%= test.id %>/analyzer/capture`, { credentials: 'same-origin', signal: controller.signal });
+        clearTimeout(timer);
+        if (!res.ok) throw new Error('server returned ' + res.status);
+        const text = await res.text();
+        console.log('raw analyzer response text', text.slice(0,1000));
+        let json;
+        try {
+          json = JSON.parse(text);
+        } catch(e) {
+          throw new Error('failed to parse JSON: ' + e.message);
+        }
+        console.log('analyzer response', json);
         if (json.error) { alert('Analyzer error: ' + json.error); return; }
-        const mapped = json.mapped || {};
-        // Fill inputs by name from mapped fields
-        Object.keys(mapped).forEach(k => {
-          try { const el = document.querySelector(`[name="${k}"]`); if (el) el.value = mapped[k]; } catch(e){}
-        });
+
+        if (json.rows && json.rows.length) {
+          showAnalyzerPicker(json.rows, json.patients || []);
+          return; // done
+        }
+
+        // no rows, fall back to mapped
+        applyMapped(json.mapped || {});
         alert('Prefilled results from analyzer (review before saving)');
       } catch (err) {
+        console.error('capture error', err);
         alert('Failed to capture: ' + err.message);
-      } finally { btn.disabled = false; btn.textContent = 'Capture from Analyzer'; }
+      } finally {
+        btn.disabled = false; btn.textContent = 'Capture from Analyzer';
+      }
     });
-  })();
-</script>
+
+    function applyMapped(mapped) {
+      Object.keys(mapped).forEach(k => {
+        const el = document.querySelector(`[name="${k}"]`);
+        if (el) el.value = mapped[k];
+      });
+    }
+
+    function showAnalyzerPicker(rows, patients) {
+      // determine date field for grouping
+      const dateKey = rows.length && (rows[0].DATE !== undefined ? 'DATE' : (rows[0].Date !== undefined ? 'Date' : (rows[0].date !== undefined ? 'date' : null)));
+      // build a list of patient names from patient records
+      const patientNames = (patients || []).map(p => p.row && p.row.FIRST_NAME).filter(Boolean);
+
+      // group rows by date (YYYY-MM-DD) so the user picks the correct batch
+      const groups = {};
+      rows.forEach(r => {
+        let d = dateKey ? r[dateKey] : null;
+        if (d) {
+          try { d = new Date(d).toISOString().slice(0,10); } catch(e) {}
+        }
+        d = d || 'unknown';
+        if (!groups[d]) groups[d] = [];
+        groups[d].push(r);
+      });
+
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(4px);
+        animation: fadeIn 0.2s ease-out;
+      `;
+      
+      const box = document.createElement('div');
+      box.style.cssText = `
+        background: #fff;
+        max-width: 900px;
+        width: 90%;
+        max-height: 85vh;
+        overflow: hidden;
+        border-radius: 12px;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+        display: flex;
+        flex-direction: column;
+        animation: slideUp 0.3s ease-out;
+      `;
+      
+      // Header section
+      const headerSection = document.createElement('div');
+      headerSection.style.cssText = `
+        background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+        padding: 20px 24px;
+        border-bottom: 3px solid #10b981;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      `;
+      
+      const headerTitle = document.createElement('div');
+      headerTitle.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      `;
+      
+      const icon = document.createElement('i');
+      icon.className = 'fas fa-flask';
+      icon.style.cssText = `
+        color: #10b981;
+        font-size: 24px;
+      `;
+      
+      const title = document.createElement('h2');
+      title.style.cssText = `
+        color: #fff;
+        font-size: 1.4em;
+        font-weight: 600;
+        margin: 0;
+      `;
+      title.textContent = 'Analyzer Results';
+      
+      headerTitle.appendChild(icon);
+      headerTitle.appendChild(title);
+      
+      const cancel = document.createElement('button');
+      cancel.innerHTML = '<i class="fas fa-times"></i>';
+      cancel.style.cssText = `
+        background: #ef4444;
+        color: white;
+        border: none;
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+      `;
+      cancel.onmouseover = () => cancel.style.background = '#dc2626';
+      cancel.onmouseout = () => cancel.style.background = '#ef4444';
+      cancel.addEventListener('click', () => document.body.removeChild(modal));
+      
+      headerSection.appendChild(headerTitle);
+      headerSection.appendChild(cancel);
+      box.appendChild(headerSection);
+
+      // Content section
+      const contentSection = document.createElement('div');
+      contentSection.style.cssText = `
+        padding: 24px;
+        overflow-y: auto;
+        flex: 1;
+      `;
+      
+      // Subtitle
+      const subtitle = document.createElement('div');
+      subtitle.style.cssText = `
+        color: #6b7280;
+        margin-bottom: 20px;
+        font-size: 0.95em;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      `;
+      subtitle.innerHTML = `
+        <i class="fas fa-info-circle" style="color: #10b981;"></i>
+        <span>Choose a run date (${Object.keys(groups).length} dates, ${rows.length} records)</span>
+      `;
+      contentSection.appendChild(subtitle);
+
+      const summary = document.createElement('table');
+      summary.style.cssText = `
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        margin-bottom: 1rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        border-radius: 8px;
+        overflow: hidden;
+      `;
+      
+      const hdr = summary.insertRow();
+      hdr.style.cssText = `
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+      `;
+      ['Date','Count'].forEach((h, idx) => {
+        const cell = hdr.insertCell();
+        cell.textContent = h;
+        cell.style.cssText = `
+          font-weight: 600;
+          padding: 14px 16px;
+          text-align: ${idx === 1 ? 'center' : 'left'};
+          font-size: 0.95em;
+        `;
+      });
+      
+      Object.keys(groups).sort().reverse().forEach((d, idx) => {
+        const tr = summary.insertRow();
+        tr.style.cssText = `
+          cursor: pointer;
+          transition: all 0.2s;
+          background: ${idx % 2 === 0 ? '#fff' : '#f9fafb'};
+        `;
+        tr.onmouseover = () => {
+          tr.style.background = '#ecfdf5';
+          tr.style.transform = 'scale(1.01)';
+        };
+        tr.onmouseout = () => {
+          tr.style.background = idx % 2 === 0 ? '#fff' : '#f9fafb';
+          tr.style.transform = 'scale(1)';
+        };
+        
+        const dateCell = tr.insertCell();
+        dateCell.style.cssText = `
+          padding: 14px 16px;
+          font-weight: 500;
+          color: #1a1a1a;
+        `;
+        dateCell.innerHTML = `<i class="fas fa-calendar-day" style="color: #10b981; margin-right: 8px;"></i>${d}`;
+        
+        const countCell = tr.insertCell();
+        countCell.style.cssText = `
+          padding: 14px 16px;
+          text-align: center;
+        `;
+        countCell.innerHTML = `<span style="background: #10b981; color: white; padding: 4px 12px; border-radius: 12px; font-weight: 600; font-size: 0.9em;">${groups[d].length}</span>`;
+        
+        tr.addEventListener('click', () => showGroupDetails(d, groups[d]));
+      });
+      contentSection.appendChild(summary);
+      box.appendChild(contentSection);
+
+      function showGroupDetails(date, groupRows) {
+        // remove any existing detail pane
+        const existing = box.querySelector('#analyzerDetail');
+        if (existing) existing.remove();
+        
+        const details = document.createElement('div');
+        details.id = 'analyzerDetail';
+        details.style.cssText = `
+          border-top: 2px solid #e5e7eb;
+          display: flex;
+          flex-direction: column;
+          max-height: calc(85vh - 200px);
+          background: #f9fafb;
+        `;
+        
+        // Scrollable content area
+        const scrollContent = document.createElement('div');
+        scrollContent.style.cssText = `
+          flex: 1;
+          overflow-y: auto;
+          padding: 24px;
+        `;
+        
+        // Title section
+        const titleSection = document.createElement('div');
+        titleSection.style.cssText = `
+          background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+          color: white;
+          padding: 16px 20px;
+          border-radius: 8px;
+          margin-bottom: 20px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        `;
+        titleSection.innerHTML = `
+          <i class="fas fa-calendar-check" style="color: #10b981; font-size: 20px;"></i>
+          <h3 style="margin: 0; font-size: 1.2em;">Results for ${date}</h3>
+        `;
+        scrollContent.appendChild(titleSection);
+        
+        // filter patient info to show only those for this date group
+        const groupPatientIds = new Set(groupRows.map(r => r.PATIENT_ID).filter(Boolean));
+        console.log('[analyzer-picker] date:', date);
+        console.log('[analyzer-picker] groupRows count:', groupRows.length);
+        console.log('[analyzer-picker] sample row:', groupRows[0]);
+        console.log('[analyzer-picker] groupPatientIds:', Array.from(groupPatientIds));
+        console.log('[analyzer-picker] patients array length:', patients ? patients.length : 0);
+        console.log('[analyzer-picker] sample patient:', patients && patients[0]);
+        
+        const filteredPatients = (patients || [])
+          .filter(p => {
+            if (!p.row || !p.row.ID) return false;
+            const patientId = String(p.row.ID);
+            const matches = groupPatientIds.has(patientId);
+            if (matches) {
+              console.log('[analyzer-picker] MATCHED patient:', p.row.FIRST_NAME, 'ID:', patientId);
+            }
+            return matches;
+          });
+        
+        console.log('[analyzer-picker] filteredPatients count:', filteredPatients.length);
+        
+        // Patient info card
+        const patientCard = document.createElement('div');
+        patientCard.style.cssText = `
+          background: white;
+          border-radius: 8px;
+          padding: 16px 20px;
+          margin-bottom: 20px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          border-left: 4px solid #10b981;
+        `;
+        
+        if (filteredPatients && filteredPatients.length > 0) {
+          filteredPatients.forEach((fp, idx) => {
+            const pn = document.createElement('div');
+            pn.style.cssText = `
+              display: flex;
+              align-items: center;
+              gap: 16px;
+              ${idx > 0 ? 'margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;' : ''}
+            `;
+            const name = fp.row.FIRST_NAME || 'Unknown';
+            const age = fp.row.AGE || '?';
+            const sex = fp.row.SEX || '?';
+            pn.innerHTML = `
+              <i class="fas fa-user-circle" style="color: #10b981; font-size: 24px;"></i>
+              <div style="flex: 1;
+
+

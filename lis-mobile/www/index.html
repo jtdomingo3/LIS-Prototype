@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src * 'self' data: blob: 'unsafe-inline' 'unsafe-eval';
+                 connect-src * ws: wss:;
+                 img-src * data: blob:;
+                 style-src * 'unsafe-inline';
+                 script-src * 'unsafe-inline' 'unsafe-eval';" />
+  <title>Gezyne LIS</title>
+  <link rel="stylesheet" href="css/app.css" />
+</head>
+<body>
+
+  <!-- ─── Settings Screen ─── -->
+  <div id="settings-screen" class="screen">
+    <div class="settings-container">
+      <div class="settings-header">
+        <img src="img/logo.png" alt="Gezyne LIS" class="settings-logo" />
+        <h1>Gezyne LIS</h1>
+        <p class="subtitle">Laboratory Information System</p>
+      </div>
+
+      <div class="settings-form">
+        <label for="server-url">Server URL</label>
+        <input type="url" id="server-url" placeholder="http://192.168.31.86:3000/" autocomplete="off" />
+        <p class="hint">Enter the full URL of your LIS server (e.g. http://192.168.31.86:3000/)</p>
+
+        <button id="btn-connect" class="btn-primary">Connect</button>
+
+        <div id="connection-status" class="status hidden"></div>
+      </div>
+
+      <div class="settings-footer">
+        <p>v1.0.0</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── WebView Screen ─── -->
+  <div id="webview-screen" class="screen hidden">
+    <div id="toolbar">
+      <button id="btn-back" title="Back">&#9664;</button>
+      <button id="btn-forward" title="Forward">&#9654;</button>
+      <button id="btn-reload" title="Reload">&#8635;</button>
+      <span id="toolbar-title">Gezyne LIS</span>
+      <button id="btn-settings" title="Settings">&#9881;</button>
+    </div>
+    <div id="frame-container"></div>
+  </div>
+
+  <!-- ─── Loading Overlay ─── -->
+  <div id="loading-overlay" class="hidden">
+    <div class="spinner"></div>
+    <p>Connecting to server...</p>
+  </div>
+
+  <script src="cordova.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

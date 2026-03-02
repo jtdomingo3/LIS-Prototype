@@ -24,6 +24,10 @@ if (-not $Port) { $Port = 3000 }
 # Ensure the server runs in production mode by default when using this launcher
 if (-not $env:NODE_ENV) { $env:NODE_ENV = 'production' }
 
+# disable the startup report generation scan by default; the user can unset
+# or override this in their environment if desired
+if (-not $env:DISABLE_REPORT_GENERATION) { $env:DISABLE_REPORT_GENERATION = '1' }
+
 Write-Host "Starting Gezyne LIS (project: $projectDir)" -ForegroundColor Cyan
 Write-Host "Using port: $Port" -ForegroundColor Cyan
 

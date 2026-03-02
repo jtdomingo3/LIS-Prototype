@@ -5,6 +5,46 @@ const fs = require('fs');
 const os = require('os');
 const http = require('http');
 
+// ensure only a single instance of the tray helper can run at once.  If a
+// second instance is launched we let the first one handle the request; the
+// second exits immediately.  When the first instance receives the
+// `second-instance` event we restart ourselves so that re-running the
+// executable behaves like "restart and run" as requested by the user.
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  // another instance is running - immediately quit this one; prevent any
+  // further initialization or UI creation by exiting the process.
+  console.log('[tray] second-instance startup: exiting new copy');
+  // give Electron a moment to clean up
+  app.quit();
+  process.exit(0);
+} else {
+  // guard against recursive relaunch loops.  once we start handling a
+  // second-instance event we ignore further ones until the app actually
+  // exits.
+  let secondInstanceHandled = false;
+  app.on('second-instance', () => {
+    if (secondInstanceHandled) return;
+    secondInstanceHandled = true;
+    console.log('[tray] second-instance detected, relaunching');
+    try { appendLog('[tray] second-instance detected, relaunching'); } catch (e) {}
+    app.relaunch();
+    // exit on next tick to allow relaunch to spawn cleanly
+    setImmediate(() => app.exit(0));
+  });
+}
+
+// global error handler to suppress harmless "Object has been destroyed"
+process.on('uncaughtException', (err) => {
+  if (err && String(err).includes('Object has been destroyed')) {
+    // ignore
+    return;
+  }
+  // otherwise let it print so we can diagnose
+  console.error('[tray] uncaught exception', err);
+});
+
+
 const SERVICE_NAME = 'GezyneLIS';
 const PORT = process.env.PORT || 3000;
 
@@ -26,7 +66,34 @@ function getLocalIp() {
 const HOST = getLocalIp();
 const URL = `http://${HOST}:${PORT}`;
 const PROJECT_ROOT = path.join(__dirname, '..');
-const SERVER_SCRIPT = path.join(PROJECT_ROOT, 'server.js');
+
+// Determine where the server entrypoint lives in dev vs packaged installer
+let SERVER_DIR = PROJECT_ROOT;
+let SERVER_SCRIPT = path.join(SERVER_DIR, 'server.js');
+let SERVER_IS_EXE = false;
+
+(function locateServer() {
+  const candidates = [
+    path.join(PROJECT_ROOT, 'server.js'),
+    path.join(PROJECT_ROOT, 'server', 'server.js'),
+    path.join(process.resourcesPath || '', 'server.js'),
+    path.join(process.resourcesPath || '', 'server', 'server.js'),
+    path.join(PROJECT_ROOT, '..', 'server.js')
+  ];
+  for (const c of candidates) {
+    try { if (fs.existsSync(c)) { SERVER_SCRIPT = c; SERVER_DIR = path.dirname(c); return; } } catch (e) {}
+  }
+  // fallback: packaged EXE names we might bundle in installer
+  const exeCandidates = [
+    path.join(PROJECT_ROOT, 'laboratory-information-system.exe'),
+    path.join(process.resourcesPath || '', 'laboratory-information-system.exe'),
+    path.join(PROJECT_ROOT, 'GezyneLIS.exe'),
+    path.join(process.resourcesPath || '', 'GezyneLIS.exe')
+  ];
+  for (const e of exeCandidates) {
+    try { if (fs.existsSync(e)) { SERVER_SCRIPT = e; SERVER_DIR = path.dirname(e); SERVER_IS_EXE = true; return; } } catch (err) {}
+  }
+})();
 
 let serviceInstalled = false;
 let serverChild = null;
@@ -52,6 +119,14 @@ function runServiceCommand(cmd, cb) {
 }
 
 function detectPm2(cb) {
+  // avoid using pm2 when we’re running a packaged executable – environment
+  // variables (DATA_DIR) don’t propagate reliably and pm2 can keep restarting
+  // the process inside the snapshot.  Direct spawn is simpler and more
+  // predictable for the Windows installer.
+  if (SERVER_IS_EXE) {
+    pm2Available = false;
+    return cb && cb(false);
+  }
   exec('pm2 -v', (err) => {
     pm2Available = !err;
     cb && cb(pm2Available);
@@ -88,9 +163,11 @@ function createMainWindow() {
   });
   // send recent logs on ready
   mainWindow.webContents.on('did-finish-load', () => {
-    mainWindow.webContents.send('log-update', logBuffer.join('\n'));
-    // send server address info
-    try { mainWindow.webContents.send('server-address', { host: HOST, port: PORT }); } catch (e) {}
+    if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+      mainWindow.webContents.send('log-update', logBuffer.join('\n'));
+      // send server address info
+      try { mainWindow.webContents.send('server-address', { host: HOST, port: PORT }); } catch (e) {}
+    }
   });
   return mainWindow;
 }
@@ -112,28 +189,100 @@ function checkServiceExists(cb) {
 function startServerDirect(cb) {
   if (serverChild) return cb && cb(null, 'already running');
   try {
-    // Spawn using system `node` executable; requires node on PATH or bundled EXE alternative
-    // capture stdout/stderr for log streaming
-    serverChild = spawn('node', [SERVER_SCRIPT], { cwd: PROJECT_ROOT, detached: false, stdio: ['ignore', 'pipe', 'pipe'] });
+    // compute data directory via the helper; computeDataDir will either call
+    // into lib/dataPath (when available) or fall back to ProgramData.
+    const dataDir = computeDataDir();
+    console.log('[tray] startServerDirect using DATA_DIR', dataDir);
+    const env = Object.assign({}, process.env, { DATA_DIR: dataDir });
+
+    // spawn packaged exe when present; otherwise run `node server.js`
+    if (SERVER_IS_EXE) {
+      serverChild = spawn(SERVER_SCRIPT, [], { cwd: SERVER_DIR, detached: false, stdio: ['ignore', 'pipe', 'pipe'], env });
+    } else {
+      serverChild = spawn('node', [SERVER_SCRIPT], { cwd: SERVER_DIR, detached: false, stdio: ['ignore', 'pipe', 'pipe'], env });
+    }
     serverChild.on('exit', () => { serverChild = null; appendLog('[server] exited'); });
     if (serverChild.stdout) serverChild.stdout.on('data', (d) => appendLog(d.toString()));
     if (serverChild.stderr) serverChild.stderr.on('data', (d) => appendLog('[ERR] ' + d.toString()));
-    cb && cb(null, `started pid=${serverChild.pid}`);
+    cb && cb(null, `started pid=${serverChild && serverChild.pid}`);
   } catch (e) {
     serverChild = null;
     cb && cb(e);
   }
 }
 
+// compute the directory the server will use for data, mirroring the
+// logic in lib/dataPath.js but without requiring the helper (which isn't
+// included in the tray ASAR).  This allows the tray to create/migrate the
+// folder ahead of time and avoids crashes when the module is absent.
+function computeDataDir() {
+  // When pm2 is available the tray always launches the server with
+  // DATA_DIR = ProgramData\GezyneLIS.  We must use the same directory so
+  // that uploads / restores write to the location the server actually reads.
+  if (pm2Available) {
+    const programDataBase = process.env.PROGRAMDATA || path.join('C:', 'ProgramData');
+    const d = path.join(programDataBase, 'GezyneLIS');
+    try { fs.mkdirSync(d, { recursive: true }); } catch (_) {}
+    return d;
+  }
+  try {
+    const { getDataDir } = require('../lib/dataPath');
+    return getDataDir();
+  } catch (err) {
+    // module not available (packaged tray); fall back to ProgramData
+    const programDataBase = process.env.PROGRAMDATA || path.join('C:', 'ProgramData');
+    const d = path.join(programDataBase, 'GezyneLIS');
+    try { fs.mkdirSync(d, { recursive: true }); } catch (_) {}
+    return d;
+  }
+}
+
 function startViaPm2(cb) {
-  // start using ecosystem.config.js
-  exec('pm2 start ecosystem.config.js --env production', { cwd: PROJECT_ROOT }, (err, stdout, stderr) => {
-    if (err) return cb && cb(err, stdout || stderr);
-    // save the process list so pm2 resurrects on reboot
-    exec('pm2 save', { cwd: PROJECT_ROOT }, (e) => {
-      if (e) appendLog('[pm2] pm2 save failed: ' + String(e));
-      appendLog('[pm2] started via ecosystem.config.js');
-      cb && cb(null, stdout || 'pm2 started');
+  // ensure the data directory exists/migrated before pm2 spins up the server.
+  try {
+    const chosen = computeDataDir();
+    console.log('[tray] pm2 startup will use DATA_DIR', chosen);
+  } catch (err) {
+    console.error('[tray] failed to prepare data dir for pm2', err);
+  }
+
+  // locate ecosystem.config.js in likely locations and pass absolute path to pm2
+  const cfgCandidates = [
+    path.join(PROJECT_ROOT, 'ecosystem.config.js'),
+    path.join(PROJECT_ROOT, '..', 'ecosystem.config.js'),
+    path.join(process.resourcesPath || '', 'ecosystem.config.js')
+  ];
+  const cfg = cfgCandidates.find(p => { try { return fs.existsSync(p); } catch { return false; } }) || path.join(PROJECT_ROOT, 'ecosystem.config.js');
+
+  // include DATA_DIR in the environment for pm2-launched processes as well
+  const programDataBase = process.env.PROGRAMDATA || path.join('C:', 'ProgramData');
+  const dataDir = path.join(programDataBase, 'GezyneLIS');
+  const pm2Env = Object.assign({}, process.env, { DATA_DIR: dataDir });
+  exec(`pm2 start "${cfg}" --env production`, { cwd: path.dirname(cfg), env: pm2Env }, (err, stdout, stderr) => {
+    if (!err) {
+      exec('pm2 save', { cwd: path.dirname(cfg) }, (e) => {
+        if (e) appendLog('[pm2] pm2 save failed: ' + String(e));
+        appendLog('[pm2] started via ' + cfg);
+        cb && cb(null, stdout || 'pm2 started');
+      });
+      return;
+    }
+
+    // If pm2 failed because the configured script wasn't found in the packaged layout,
+    // try to start the packaged EXE directly (fallback).
+    const stderrText = String(stderr || err || stdout || '');
+    appendLog('[pm2] start failed: ' + stderrText.trim());
+
+    // fallback: if we have a packaged EXE, ask pm2 to run it directly
+    if (!SERVER_IS_EXE) return cb && cb(err, stdout || stderr);
+
+    appendLog('[pm2] Attempting fallback: start packaged EXE via pm2');
+    const exePath = SERVER_SCRIPT; // should point to the EXE by locateServer logic
+    exec(`pm2 start "${exePath}" --name lis-app --interpreter none --env production`, { cwd: SERVER_DIR, env: pm2Env }, (err2, out2, errOut2) => {
+      if (err2) return cb && cb(err2, out2 || errOut2 || stderrText);
+      exec('pm2 save', { cwd: SERVER_DIR }, (e2) => { if (e2) appendLog('[pm2] pm2 save failed: ' + String(e2)); });
+      appendLog('[pm2] started packaged EXE via pm2: ' + exePath);
+      cb && cb(null, out2 || 'pm2 started exe');
     });
   });
 }
@@ -221,6 +370,10 @@ function watchPm2Logs() {
       // Fallbacks: project-local logs and default pm2 home logs
       tailFile(path.join(PROJECT_ROOT, 'logs', 'pm2-out.log'));
       tailFile(path.join(PROJECT_ROOT, 'logs', 'pm2-error.log'));
+      // also check per-user writable logs (used by packaged ecosystem.config.js)
+      const userLogs = path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local'), 'Gezyne LIS Server', 'logs');
+      tailFile(path.join(userLogs, 'pm2-out.log'));
+      tailFile(path.join(userLogs, 'pm2-error.log'));
       try {
         const pm2Home = process.env.PM2_HOME || path.join(os.homedir(), '.pm2', 'logs');
         if (fs.existsSync(pm2Home) && fs.lstatSync(pm2Home).isDirectory()) {
@@ -253,6 +406,7 @@ function buildContextMenu(isUp) {
   const items = [];
   items.push({ label: 'Open UI', click: () => { createMainWindow(); mainWindow.show(); } });
   items.push({ label: isUp ? 'Open LIS (browser)' : 'Open LIS (server not ready)', click: () => shell.openExternal(URL) });
+  items.push({ label: 'Settings', click: () => { const w = createMainWindow(); w.show(); w.focus(); w.webContents.send('open-settings'); } });
   items.push({ type: 'separator' });
 
   if (serviceInstalled) {
@@ -354,29 +508,67 @@ app.whenReady().then(() => {
       appendLog('[tray] pm2 detection: ' + (pm2Available ? 'available' : 'not available'));
       checkServiceExists((err, exists) => {
         serviceInstalled = !!exists;
+
+        // helper fallback that attempts a direct spawn and sets serverAutoStarted on success
+        function tryFallbackDirect() {
+          appendLog('[tray] attempting direct spawn fallback...');
+          startServerDirect((errF, outF) => {
+            if (errF) appendLog('[tray] fallback spawn failed: ' + String(errF));
+            else {
+              appendLog('[tray] fallback spawn success: ' + outF);
+              serverAutoStarted = true;
+            }
+          });
+        }
+
         if (pm2Available) {
           appendLog('[tray] PM2 available; starting via pm2...');
           startViaPm2((errp, outp) => {
-            if (errp) appendLog('[tray] pm2 start failed: ' + String(errp));
-            else appendLog('[tray] ' + String(outp));
+            if (errp) {
+              appendLog('[tray] pm2 start failed: ' + String(errp));
+              // fall back to direct spawn when pm2 start fails
+              tryFallbackDirect();
+            } else {
+              appendLog('[tray] ' + String(outp));
+              serverAutoStarted = true;
+            }
             watchPm2Logs();
-            serverAutoStarted = true;
           });
         } else if (serviceInstalled) {
           appendLog('[tray] Windows service detected; attempting to start service...');
           runServiceCommand(`sc start ${SERVICE_NAME}`, (err2) => {
-            if (err2) appendLog('[tray] Failed to start service: ' + String(err2));
-            else appendLog('[tray] Service start requested');
+            if (err2) {
+              appendLog('[tray] Failed to start service: ' + String(err2));
+              // fallback to direct spawn
+              tryFallbackDirect();
+            } else {
+              appendLog('[tray] Service start requested');
+              serverAutoStarted = true;
+            }
             watchPm2Logs();
-            serverAutoStarted = true;
           });
         } else {
           appendLog('[tray] No service detected; spawning server directly...');
           startServerDirect((err3, out) => {
-            if (err3) appendLog('[tray] Failed to spawn server: ' + String(err3)); else appendLog('[tray] ' + out);
-            serverAutoStarted = true;
+            if (err3) appendLog('[tray] Failed to spawn server: ' + String(err3));
+            else {
+              appendLog('[tray] ' + out);
+              serverAutoStarted = true;
+            }
           });
         }
+
+        // safety: if nothing has started after a short delay, attempt a direct spawn
+        setTimeout(async () => {
+          if (serverAutoStarted) return;
+          const isUp = await checkServerUp();
+          if (!isUp) {
+            appendLog('[tray] Auto-start fallback: server still down; attempting direct spawn');
+            tryFallbackDirect();
+          } else {
+            serverAutoStarted = true; // server already reachable
+          }
+        }, 4000);
       });
     });
   } catch (e) { appendLog('[tray] Auto-start failed: ' + String(e)); }
@@ -448,6 +640,233 @@ ipcMain.handle('save-logs', async () => {
     try { await require('electron').shell.openPath(targetDir); } catch (e) {}
     return { ok: true, path: fpath };
   } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+});
+
+// ---- Restore handlers (Settings) ----
+
+// Resolve the data directory the server uses (mirrors computeDataDir / dataPath)
+function resolveDataFiles() {
+  const dataDir = computeDataDir();
+  appendLog('[settings] resolved data dir: ' + dataDir);
+  return {
+    dataDir,
+    dataFile: path.join(dataDir, 'data.json'),
+    usersFile: path.join(dataDir, 'data-users.json'),
+  };
+}
+
+// Helper: restart server asynchronously so uploads take effect
+function restartServerAsync() {
+  appendLog('[settings] restarting server to apply changes...');
+  if (pm2Available) {
+    restartViaPm2((err) => {
+      if (err) appendLog('[settings] pm2 restart failed: ' + String(err));
+      else appendLog('[settings] server restarted via pm2');
+    });
+  } else if (serviceInstalled) {
+    runServiceCommand(`sc stop ${SERVICE_NAME} && sc start ${SERVICE_NAME}`, (err) => {
+      if (err) appendLog('[settings] service restart failed: ' + String(err));
+      else appendLog('[settings] server restarted via service');
+    });
+  } else {
+    stopServerDirect(() => startServerDirect((err) => {
+      if (err) appendLog('[settings] direct restart failed: ' + String(err));
+      else appendLog('[settings] server restarted via direct spawn');
+    }));
+  }
+}
+
+// Restore users: seed the default admin account into data-users.json
+ipcMain.handle('restore-users', async () => {
+  try {
+    const bcrypt = require('bcryptjs');
+    const { v4: uuidv4 } = require('uuid');
+    const { usersFile, dataDir } = resolveDataFiles();
+
+    // ensure directory exists
+    fs.mkdirSync(dataDir, { recursive: true });
+
+    // read existing users (if any)
+    let existing = [];
+    try {
+      if (fs.existsSync(usersFile)) {
+        const raw = fs.readFileSync(usersFile, 'utf8');
+        existing = JSON.parse(raw);
+        if (!Array.isArray(existing)) existing = [];
+      }
+    } catch (e) { existing = []; }
+
+    // check if admin already exists
+    let admin = existing.find(u => u.email === 'admin@lab.com');
+    const hash = await bcrypt.hash('password123', 12);
+
+    if (!admin) {
+      admin = {
+        id: uuidv4(),
+        name: 'Admin User',
+        email: 'admin@lab.com',
+        password: hash,
+        role: 'Admin',
+        licenseNumber: null,
+        signature: null,
+        autoSignature: { enabled: false, until: null },
+        permissions: {
+          dashboard: true, patients: true, reception: true,
+          tests: true, reports: true, worksheet: true,
+          templates: true, users: true, delete: true
+        },
+        status: 'Active',
+        createdAt: new Date().toISOString(),
+        lastLogin: null
+      };
+      existing.push(admin);
+    } else {
+      // reset password and ensure admin role
+      admin.password = hash;
+      admin.role = 'Admin';
+      admin.status = 'Active';
+      admin.permissions = {
+        dashboard: true, patients: true, reception: true,
+        tests: true, reports: true, worksheet: true,
+        templates: true, users: true, delete: true
+      };
+    }
+
+    fs.writeFileSync(usersFile, JSON.stringify(existing, null, 2), 'utf8');
+    appendLog('[settings] Restored admin user in ' + usersFile);
+
+    // Also update the users array inside data.json if it exists
+    try {
+      const { dataFile: df } = resolveDataFiles();
+      if (fs.existsSync(df)) {
+        const data = JSON.parse(fs.readFileSync(df, 'utf8'));
+        if (data && Array.isArray(data.users)) {
+          const idx = data.users.findIndex(u => u.email === 'admin@lab.com');
+          const stripped = { id: admin.id, name: admin.name, email: admin.email, password: admin.password, role: admin.role, status: admin.status, createdAt: admin.createdAt, lastLogin: admin.lastLogin };
+          if (idx >= 0) data.users[idx] = stripped;
+          else data.users.push(stripped);
+          fs.writeFileSync(df, JSON.stringify(data, null, 2), 'utf8');
+        }
+      }
+    } catch (e) { appendLog('[settings] warning: could not update data.json users: ' + String(e)); }
+
+    // restart server so it picks up the new user data
+    restartServerAsync();
+    return { ok: true };
+  } catch (e) {
+    appendLog('[settings] restore-users failed: ' + String(e));
+    return { ok: false, error: String(e) };
+  }
+});
+
+// Restore data: reset data.json to empty initial structure
+ipcMain.handle('restore-data', async () => {
+  try {
+    const { dataFile: df, dataDir } = resolveDataFiles();
+
+    // ensure directory exists
+    fs.mkdirSync(dataDir, { recursive: true });
+
+    // backup current data.json before overwriting
+    if (fs.existsSync(df)) {
+      const ts = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupPath = path.join(dataDir, `data-backup-${ts}.json`);
+      try { fs.copyFileSync(df, backupPath); appendLog('[settings] backed up data.json to ' + backupPath); } catch (e) {}
+    }
+
+    const initialData = {
+      users: [],
+      patients: [],
+      tests: [],
+      templates: [],
+      counters: {}
+    };
+
+    fs.writeFileSync(df, JSON.stringify(initialData, null, 2), 'utf8');
+    appendLog('[settings] Restored data.json to empty initial state in ' + df);
+    return { ok: true };
+  } catch (e) {
+    appendLog('[settings] restore-data failed: ' + String(e));
+    return { ok: false, error: String(e) };
+  }
+});
+
+// Upload data.json: let user pick a JSON file and copy it as data.json
+ipcMain.handle('upload-data', async () => {
+  try {
+    const { dataFile: df, dataDir } = resolveDataFiles();
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'Select data.json to upload',
+      filters: [{ name: 'JSON Files', extensions: ['json'] }],
+      properties: ['openFile']
+    });
+    if (result.canceled || !result.filePaths || !result.filePaths.length) return { cancelled: true };
+
+    const srcPath = result.filePaths[0];
+
+    // validate JSON
+    const raw = fs.readFileSync(srcPath, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null) throw new Error('File is not a valid JSON object');
+
+    // ensure directory exists
+    fs.mkdirSync(dataDir, { recursive: true });
+
+    // backup current before overwriting
+    if (fs.existsSync(df)) {
+      const ts = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupPath = path.join(dataDir, `data-backup-${ts}.json`);
+      try { fs.copyFileSync(df, backupPath); appendLog('[settings] backed up data.json to ' + backupPath); } catch (e) {}
+    }
+
+    fs.writeFileSync(df, raw, 'utf8');
+    appendLog('[settings] Uploaded data.json from ' + srcPath + ' to ' + df);
+    // restart server so it picks up the new file
+    restartServerAsync();
+    return { ok: true };
+  } catch (e) {
+    appendLog('[settings] upload-data failed: ' + String(e));
+    return { ok: false, error: String(e) };
+  }
+});
+
+// Upload data-users.json: let user pick a JSON file and copy it as data-users.json
+ipcMain.handle('upload-users', async () => {
+  try {
+    const { usersFile, dataDir } = resolveDataFiles();
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'Select data-users.json to upload',
+      filters: [{ name: 'JSON Files', extensions: ['json'] }],
+      properties: ['openFile']
+    });
+    if (result.canceled || !result.filePaths || !result.filePaths.length) return { cancelled: true };
+
+    const srcPath = result.filePaths[0];
+
+    // validate JSON
+    const raw = fs.readFileSync(srcPath, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) throw new Error('Users file must be a JSON array');
+
+    // ensure directory exists
+    fs.mkdirSync(dataDir, { recursive: true });
+
+    // backup current before overwriting
+    if (fs.existsSync(usersFile)) {
+      const ts = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupPath = path.join(dataDir, `data-users-backup-${ts}.json`);
+      try { fs.copyFileSync(usersFile, backupPath); appendLog('[settings] backed up data-users.json to ' + backupPath); } catch (e) {}
+    }
+
+    fs.writeFileSync(usersFile, raw, 'utf8');
+    appendLog('[settings] Uploaded data-users.json from ' + srcPath + ' to ' + usersFile);
+    // restart server so it picks up the new file
+    restartServerAsync();
+    return { ok: true };
+  } catch (e) {
+    appendLog('[settings] upload-users failed: ' + String(e));
     return { ok: false, error: String(e) };
   }
 });

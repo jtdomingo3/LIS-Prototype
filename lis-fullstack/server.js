@@ -11,6 +11,8 @@ const fs = require('fs');
 const os = require('os');
 const expressLayouts = require('express-ejs-layouts');
 const { logReportError } = require('./lib/reportLogger');
+// helper for locating writable data files (data.json, data-users.json, etc.)
+const { dataFile } = require('./lib/dataPath');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -18,8 +20,10 @@ const PORT = process.env.PORT || 3000;
 // Default to listening on all interfaces so the server is reachable from other devices on the network.
 // If you prefer localhost-only, set HOST=127.0.0.1 before starting.
 const HOST = process.env.HOST || '0.0.0.0';
-const DATA_FILE = path.join(__dirname, 'data.json');
-const USERS_FILE = path.join(__dirname, 'data-users.json');
+// data files live in a directory determined by dataPath.getDataDir();
+const DATA_FILE = dataFile('data.json');
+const USERS_FILE = dataFile('data-users.json');
+console.log('[server] using DATA_FILE', DATA_FILE, 'USERS_FILE', USERS_FILE, 'DATA_DIR', path.dirname(DATA_FILE));
 const crypto = require('crypto');
 const USER_DATA_KEY = process.env.DATA_USERS_KEY || process.env.USER_DATA_KEY || null;
 
@@ -33,8 +37,20 @@ if (!fs.existsSync(DATA_FILE)) {
     // persistent counters for per-test-type IDs
     counters: {}
   };
-  fs.writeFileSync(DATA_FILE, JSON.stringify(initialData, null, 2));
-}
+  // ensure parent directory exists (DATA_DIR may not have been created yet)
+  try {
+    fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
+  } catch (e) {
+    console.error('[server] failed to create data directory', path.dirname(DATA_FILE), e);
+  }
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(initialData, null, 2));
+  } catch (e) {
+    console.error('[server] initial write to DATA_FILE failed', DATA_FILE, e);
+    throw e;
+  }
+} // end ensure data file exists (location may vary when packaged)
+
 
 // Ensure users file exists
 if (!fs.existsSync(USERS_FILE)) {
@@ -408,7 +424,7 @@ try {
       const ms = frequencyToMs(bc.frequency);
       app.locals.backupIntervalId = setInterval(() => {
         try {
-          const DATA_FILE = path.join(__dirname, 'data.json');
+          const DATA_FILE = dataFile('data.json');
           const dir = bc.path && String(bc.path).length ? bc.path : path.join(os.homedir(), 'Documents', 'LIS', 'backup');
           fs.mkdirSync(dir, { recursive: true });
           const ts = new Date().toISOString().replace(/[:.]/g, '-');
@@ -553,6 +569,76 @@ app.use('/reception', receptionRoutes);
 app.use('/settings', settingsRoutes);
 app.use('/signatures', signaturesRoutes);
 
+// ---- Unauthenticated restore endpoints (for fresh installs with no user data) ----
+const bcryptRestore = require('bcryptjs');
+const { v4: uuidRestore } = require('uuid');
+
+// POST /api/restore/users – seeds the default admin account
+app.post('/api/restore/users', async (req, res) => {
+  try {
+    let existing = [];
+    try { existing = db.getUsers(); if (!Array.isArray(existing)) existing = []; } catch (e) { existing = []; }
+
+    let admin = existing.find(u => u.email === 'admin@lab.com');
+    const hash = await bcryptRestore.hash('password123', 12);
+
+    if (!admin) {
+      admin = {
+        id: uuidRestore(),
+        name: 'Admin User',
+        email: 'admin@lab.com',
+        password: hash,
+        role: 'Admin',
+        licenseNumber: null,
+        signature: null,
+        autoSignature: { enabled: false, until: null },
+        permissions: {
+          dashboard: true, patients: true, reception: true,
+          tests: true, reports: true, worksheet: true,
+          templates: true, users: true, delete: true
+        },
+        status: 'Active',
+        createdAt: new Date().toISOString(),
+        lastLogin: null
+      };
+      existing.push(admin);
+    } else {
+      admin.password = hash;
+      admin.role = 'Admin';
+      admin.status = 'Active';
+      admin.permissions = { dashboard: true, patients: true, reception: true, tests: true, reports: true, worksheet: true, templates: true, users: true, delete: true };
+    }
+
+    db.saveUsers(existing);
+    console.log('[restore] Admin user seeded via /api/restore/users');
+    res.json({ ok: true, message: 'Default admin user restored successfully.' });
+  } catch (e) {
+    console.error('[restore] /api/restore/users failed:', e);
+    res.status(500).json({ ok: false, error: String(e) });
+  }
+});
+
+// POST /api/restore/data – resets data.json to empty initial structure
+app.post('/api/restore/data', (req, res) => {
+  try {
+    // backup before reset
+    try {
+      const ts = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupPath = dataFile(`data-backup-${ts}.json`);
+      fs.copyFileSync(DATA_FILE, backupPath);
+      console.log('[restore] backed up data.json to', backupPath);
+    } catch (e) {}
+
+    const initialData = { users: [], patients: [], tests: [], templates: [], counters: {} };
+    db.write(initialData);
+    console.log('[restore] data.json reset via /api/restore/data');
+    res.json({ ok: true, message: 'Data reset to empty database' });
+  } catch (e) {
+    console.error('[restore] /api/restore/data failed:', e);
+    res.status(500).json({ ok: false, error: String(e) });
+  }
+});
+
 // Export endpoint for full-sync (requires authenticated session or sync token)
 app.get('/export/data.json', (req, res) => {
   try {
@@ -677,13 +763,22 @@ app.listen(PORT, HOST, () => {
   console.log(lines.join('\n'));
 
   // Background: generate any missing PDF reports into Documents/LIS/reports
-  try {
-    const reportGenerator = require('./lib/reportGenerator');
-    reportGenerator.generateAllMissing().catch(e => {
-      console.error('[startup] report generation scan error:', e && e.message);
-    });
-  } catch (e) {
-    console.warn('[startup] could not run report generation scan:', e && e.message);
+  // Can be disabled in environments where report generation is unwanted (e.g. CI, headless
+  // containers, or when the reports directory is mounted read‑only). To skip the startup scan
+  // set either DISABLE_REPORT_GENERATION=1 or SKIP_REPORT_GENERATION=1 before launching.
+  const skipReportStartup = (process.env.DISABLE_REPORT_GENERATION === '1') ||
+                            (process.env.SKIP_REPORT_GENERATION === '1');
+  if (!skipReportStartup) {
+    try {
+      const reportGenerator = require('./lib/reportGenerator');
+      reportGenerator.generateAllMissing().catch(e => {
+        console.error('[startup] report generation scan error:', e && e.message);
+      });
+    } catch (e) {
+      console.warn('[startup] could not run report generation scan:', e && e.message);
+    }
+  } else {
+    console.log('[startup] skipping report generation (DISABLE_REPORT_GENERATION=1)');
   }
 });
 

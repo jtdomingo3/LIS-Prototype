@@ -4,6 +4,7 @@ const { canManageUsers, requireAuth } = require('../middleware/auth');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { dataFile } = require('../lib/dataPath');
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
@@ -13,8 +14,10 @@ const ENV_FILE = path.join(__dirname, '..', '.env');
 
 function parseEnvContent(content) {
   const lines = String(content || '').split(/\r?\n/);
+  // support optional spaces around the '=' so entries such as
+  // "DISABLE_REPORT_GENERATION =1" are treated correctly.
   return lines.map((line) => {
-    const m = line.match(/^([^#=\s]+)=(.*)$/);
+    const m = line.match(/^([^#=\s]+)\s*=\s*(.*)$/);
     if (m) {
       const key = m[1].trim();
       let value = m[2] || '';
@@ -72,7 +75,7 @@ function writeEnvFile(updatedValues) {
 }
 
 function performBackup(destDir) {
-  const DATA_FILE = path.join(__dirname, '..', 'data.json');
+  const DATA_FILE = dataFile('data.json');
   const dir = destDir && String(destDir).length ? destDir : DEFAULT_BACKUP_DIR;
   fs.mkdirSync(dir, { recursive: true });
   const ts = new Date().toISOString().replace(/[:.]/g, '-');
@@ -82,7 +85,7 @@ function performBackup(destDir) {
 }
 
 function performUserBackup(destDir) {
-  const USERS_FILE = path.join(__dirname, '..', 'data-users.json');
+  const USERS_FILE = dataFile('data-users.json');
   const dir = destDir && String(destDir).length ? destDir : DEFAULT_BACKUP_DIR;
   fs.mkdirSync(dir, { recursive: true });
   const ts = new Date().toISOString().replace(/[:.]/g, '-');
@@ -280,7 +283,7 @@ router.post('/restore', requireAuth, canManageUsers, upload.single('backupFile')
     }
     // Validate JSON first
     const parsed = JSON.parse(req.file.buffer.toString('utf8'));
-    const DATA_FILE = path.join(__dirname, '..', 'data.json');
+    const DATA_FILE = dataFile('data.json');
     // backup current before overwrite
     performBackup();
     fs.writeFileSync(DATA_FILE, JSON.stringify(parsed, null, 2), 'utf8');
@@ -300,7 +303,7 @@ router.post('/restore-users', requireAuth, canManageUsers, upload.single('backup
       return res.redirect('/settings');
     }
     const parsed = JSON.parse(req.file.buffer.toString('utf8'));
-    const USERS_FILE = path.join(__dirname, '..', 'data-users.json');
+    const USERS_FILE = dataFile('data-users.json');
     // backup current before overwrite
     performUserBackup();
     // normalize to array/object as originally stored
@@ -316,7 +319,7 @@ router.post('/restore-users', requireAuth, canManageUsers, upload.single('backup
 // Clear data endpoint (backs up current data, preserves Admin users)
 router.post('/clear', requireAuth, canManageUsers, (req, res) => {
   try {
-    const DATA_FILE = path.join(__dirname, '..', 'data.json');
+    const DATA_FILE = dataFile('data.json');
     const raw = fs.readFileSync(DATA_FILE, 'utf8');
     const parsed = JSON.parse(raw || '{}');
     // backup current before clearing
@@ -344,7 +347,7 @@ router.post('/clear', requireAuth, canManageUsers, (req, res) => {
 // Clear user data endpoint (backs up current users, preserves Admin users)
 router.post('/clear-users', requireAuth, canManageUsers, (req, res) => {
   try {
-    const USERS_FILE = path.join(__dirname, '..', 'data-users.json');
+    const USERS_FILE = dataFile('data-users.json');
     const raw = fs.existsSync(USERS_FILE) ? fs.readFileSync(USERS_FILE, 'utf8') : '[]';
     let parsed;
     try { parsed = JSON.parse(raw || '[]'); } catch (e) { parsed = []; }

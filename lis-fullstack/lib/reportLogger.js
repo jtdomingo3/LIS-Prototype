@@ -3,7 +3,10 @@ const path = require('path');
 
 function logReportError(err, context) {
   try {
-    const logsDir = path.join(__dirname, '..', 'logs');
+    // store logs alongside data files so that packaged executables don't try to
+    // write inside the snapshot (which triggers "Cannot mkdir in a snapshot").
+    const { getDataDir } = require('./dataPath');
+    const logsDir = path.join(getDataDir(), 'logs');
     if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
     const file = path.join(logsDir, 'report-errors.log');
     const timestamp = new Date().toISOString();

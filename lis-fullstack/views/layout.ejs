@@ -1006,6 +1006,15 @@
             // Keep SSE active only for: /dashboard, /patients, /reception (and their subpaths).
             try {
                 const path = (window.location && window.location.pathname) ? window.location.pathname : '/';
+                // **don't open a stream on the new‑patient form** – a reload wipes the form
+                if (path === '/patients/new' || path.startsWith('/patients/new?')) {
+                    const connEl = document.getElementById('notifConn');
+                    if (connEl) {
+                        connEl.style.background = '#ef4444';
+                        connEl.title = 'SSE disabled on new patient form';
+                    }
+                    return;
+                }
                 const sseAllowed = ['/dashboard', '/patients', '/reception'];
                 const isAllowed = sseAllowed.some(p => path === p || path.startsWith(p + '/'));
                 if (!isAllowed) {
