@@ -20,8 +20,52 @@
       <button id="restart">Restart</button>
       <button id="open">Open LIS</button>
       <button id="save">Save Logs</button>
+      <button id="settings">Settings</button>
       <button id="hide">Hide to Tray</button>
       <button id="exit">Exit App</button>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal-overlay" style="display:none;">
+      <div class="modal-box">
+        <div class="modal-header">
+          <h3>Settings</h3>
+          <button id="settings-close" class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="settings-section">
+            <h4>Restore</h4>
+            <p class="hint">Use these options when a fresh install has no user data and you cannot log in.</p>
+            <div class="settings-row">
+              <div class="settings-item">
+                <button id="restore-users" class="btn-restore">Restore Users</button>
+                <span class="desc">Seeds the default admin account</span>
+              </div>
+              <div class="settings-item">
+                <button id="restore-data" class="btn-restore btn-restore-warn">Restore Data</button>
+                <span class="desc">Resets data.json to an empty database<br>(patients, tests, templates cleared)</span>
+              </div>
+            </div>
+            <div id="restore-status" class="restore-status"></div>
+          </div>
+          <hr class="section-divider">
+          <div class="settings-section">
+            <h4>Upload</h4>
+            <p class="hint">Import an existing data or users file to replace current server data.</p>
+            <div class="settings-row">
+              <div class="settings-item">
+                <button id="upload-data" class="btn-restore btn-upload">Upload data.json</button>
+                <span class="desc">Replace data.json with a file from disk<br>(patients, tests, templates, etc.)</span>
+              </div>
+              <div class="settings-item">
+                <button id="upload-users" class="btn-restore btn-upload">Upload data-users.json</button>
+                <span class="desc">Replace data-users.json with a file<br>from disk (user accounts)</span>
+              </div>
+            </div>
+            <div id="upload-status" class="restore-status"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <h3>Server Logs</h3>

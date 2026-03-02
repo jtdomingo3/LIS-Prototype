@@ -216,6 +216,15 @@ function startServerDirect(cb) {
 // included in the tray ASAR).  This allows the tray to create/migrate the
 // folder ahead of time and avoids crashes when the module is absent.
 function computeDataDir() {
+  // When pm2 is available the tray always launches the server with
+  // DATA_DIR = ProgramData\GezyneLIS.  We must use the same directory so
+  // that uploads / restores write to the location the server actually reads.
+  if (pm2Available) {
+    const programDataBase = process.env.PROGRAMDATA || path.join('C:', 'ProgramData');
+    const d = path.join(programDataBase, 'GezyneLIS');
+    try { fs.mkdirSync(d, { recursive: true }); } catch (_) {}
+    return d;
+  }
   try {
     const { getDataDir } = require('../lib/dataPath');
     return getDataDir();
@@ -397,6 +406,7 @@ function buildContextMenu(isUp) {
   const items = [];
   items.push({ label: 'Open UI', click: () => { createMainWindow(); mainWindow.show(); } });
   items.push({ label: isUp ? 'Open LIS (browser)' : 'Open LIS (server not ready)', click: () => shell.openExternal(URL) });
+  items.push({ label: 'Settings', click: () => { const w = createMainWindow(); w.show(); w.focus(); w.webContents.send('open-settings'); } });
   items.push({ type: 'separator' });
 
   if (serviceInstalled) {
@@ -630,6 +640,233 @@ ipcMain.handle('save-logs', async () => {
     try { await require('electron').shell.openPath(targetDir); } catch (e) {}
     return { ok: true, path: fpath };
   } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+});
+
+// ---- Restore handlers (Settings) ----
+
+// Resolve the data directory the server uses (mirrors computeDataDir / dataPath)
+function resolveDataFiles() {
+  const dataDir = computeDataDir();
+  appendLog('[settings] resolved data dir: ' + dataDir);
+  return {
+    dataDir,
+    dataFile: path.join(dataDir, 'data.json'),
+    usersFile: path.join(dataDir, 'data-users.json'),
+  };
+}
+
+// Helper: restart server asynchronously so uploads take effect
+function restartServerAsync() {
+  appendLog('[settings] restarting server to apply changes...');
+  if (pm2Available) {
+    restartViaPm2((err) => {
+      if (err) appendLog('[settings] pm2 restart failed: ' + String(err));
+      else appendLog('[settings] server restarted via pm2');
+    });
+  } else if (serviceInstalled) {
+    runServiceCommand(`sc stop ${SERVICE_NAME} && sc start ${SERVICE_NAME}`, (err) => {
+      if (err) appendLog('[settings] service restart failed: ' + String(err));
+      else appendLog('[settings] server restarted via service');
+    });
+  } else {
+    stopServerDirect(() => startServerDirect((err) => {
+      if (err) appendLog('[settings] direct restart failed: ' + String(err));
+      else appendLog('[settings] server restarted via direct spawn');
+    }));
+  }
+}
+
+// Restore users: seed the default admin account into data-users.json
+ipcMain.handle('restore-users', async () => {
+  try {
+    const bcrypt = require('bcryptjs');
+    const { v4: uuidv4 } = require('uuid');
+    const { usersFile, dataDir } = resolveDataFiles();
+
+    // ensure directory exists
+    fs.mkdirSync(dataDir, { recursive: true });
+
+    // read existing users (if any)
+    let existing = [];
+    try {
+      if (fs.existsSync(usersFile)) {
+        const raw = fs.readFileSync(usersFile, 'utf8');
+        existing = JSON.parse(raw);
+        if (!Array.isArray(existing)) existing = [];
+      }
+    } catch (e) { existing = []; }
+
+    // check if admin already exists
+    let admin = existing.find(u => u.email === 'admin@lab.com');
+    const hash = await bcrypt.hash('password123', 12);
+
+    if (!admin) {
+      admin = {
+        id: uuidv4(),
+        name: 'Admin User',
+        email: 'admin@lab.com',
+        password: hash,
+        role: 'Admin',
+        licenseNumber: null,
+        signature: null,
+        autoSignature: { enabled: false, until: null },
+        permissions: {
+          dashboard: true, patients: true, reception: true,
+          tests: true, reports: true, worksheet: true,
+          templates: true, users: true, delete: true
+        },
+        status: 'Active',
+        createdAt: new Date().toISOString(),
+        lastLogin: null
+      };
+      existing.push(admin);
+    } else {
+      // reset password and ensure admin role
+      admin.password = hash;
+      admin.role = 'Admin';
+      admin.status = 'Active';
+      admin.permissions = {
+        dashboard: true, patients: true, reception: true,
+        tests: true, reports: true, worksheet: true,
+        templates: true, users: true, delete: true
+      };
+    }
+
+    fs.writeFileSync(usersFile, JSON.stringify(existing, null, 2), 'utf8');
+    appendLog('[settings] Restored admin user in ' + usersFile);
+
+    // Also update the users array inside data.json if it exists
+    try {
+      const { dataFile: df } = resolveDataFiles();
+      if (fs.existsSync(df)) {
+        const data = JSON.parse(fs.readFileSync(df, 'utf8'));
+        if (data && Array.isArray(data.users)) {
+          const idx = data.users.findIndex(u => u.email === 'admin@lab.com');
+          const stripped = { id: admin.id, name: admin.name, email: admin.email, password: admin.password, role: admin.role, status: admin.status, createdAt: admin.createdAt, lastLogin: admin.lastLogin };
+          if (idx >= 0) data.users[idx] = stripped;
+          else data.users.push(stripped);
+          fs.writeFileSync(df, JSON.stringify(data, null, 2), 'utf8');
+        }
+      }
+    } catch (e) { appendLog('[settings] warning: could not update data.json users: ' + String(e)); }
+
+    // restart server so it picks up the new user data
+    restartServerAsync();
+    return { ok: true };
+  } catch (e) {
+    appendLog('[settings] restore-users failed: ' + String(e));
+    return { ok: false, error: String(e) };
+  }
+});
+
+// Restore data: reset data.json to empty initial structure
+ipcMain.handle('restore-data', async () => {
+  try {
+    const { dataFile: df, dataDir } = resolveDataFiles();
+
+    // ensure directory exists
+    fs.mkdirSync(dataDir, { recursive: true });
+
+    // backup current data.json before overwriting
+    if (fs.existsSync(df)) {
+      const ts = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupPath = path.join(dataDir, `data-backup-${ts}.json`);
+      try { fs.copyFileSync(df, backupPath); appendLog('[settings] backed up data.json to ' + backupPath); } catch (e) {}
+    }
+
+    const initialData = {
+      users: [],
+      patients: [],
+      tests: [],
+      templates: [],
+      counters: {}
+    };
+
+    fs.writeFileSync(df, JSON.stringify(initialData, null, 2), 'utf8');
+    appendLog('[settings] Restored data.json to empty initial state in ' + df);
+    return { ok: true };
+  } catch (e) {
+    appendLog('[settings] restore-data failed: ' + String(e));
+    return { ok: false, error: String(e) };
+  }
+});
+
+// Upload data.json: let user pick a JSON file and copy it as data.json
+ipcMain.handle('upload-data', async () => {
+  try {
+    const { dataFile: df, dataDir } = resolveDataFiles();
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'Select data.json to upload',
+      filters: [{ name: 'JSON Files', extensions: ['json'] }],
+      properties: ['openFile']
+    });
+    if (result.canceled || !result.filePaths || !result.filePaths.length) return { cancelled: true };
+
+    const srcPath = result.filePaths[0];
+
+    // validate JSON
+    const raw = fs.readFileSync(srcPath, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null) throw new Error('File is not a valid JSON object');
+
+    // ensure directory exists
+    fs.mkdirSync(dataDir, { recursive: true });
+
+    // backup current before overwriting
+    if (fs.existsSync(df)) {
+      const ts = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupPath = path.join(dataDir, `data-backup-${ts}.json`);
+      try { fs.copyFileSync(df, backupPath); appendLog('[settings] backed up data.json to ' + backupPath); } catch (e) {}
+    }
+
+    fs.writeFileSync(df, raw, 'utf8');
+    appendLog('[settings] Uploaded data.json from ' + srcPath + ' to ' + df);
+    // restart server so it picks up the new file
+    restartServerAsync();
+    return { ok: true };
+  } catch (e) {
+    appendLog('[settings] upload-data failed: ' + String(e));
+    return { ok: false, error: String(e) };
+  }
+});
+
+// Upload data-users.json: let user pick a JSON file and copy it as data-users.json
+ipcMain.handle('upload-users', async () => {
+  try {
+    const { usersFile, dataDir } = resolveDataFiles();
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'Select data-users.json to upload',
+      filters: [{ name: 'JSON Files', extensions: ['json'] }],
+      properties: ['openFile']
+    });
+    if (result.canceled || !result.filePaths || !result.filePaths.length) return { cancelled: true };
+
+    const srcPath = result.filePaths[0];
+
+    // validate JSON
+    const raw = fs.readFileSync(srcPath, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) throw new Error('Users file must be a JSON array');
+
+    // ensure directory exists
+    fs.mkdirSync(dataDir, { recursive: true });
+
+    // backup current before overwriting
+    if (fs.existsSync(usersFile)) {
+      const ts = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupPath = path.join(dataDir, `data-users-backup-${ts}.json`);
+      try { fs.copyFileSync(usersFile, backupPath); appendLog('[settings] backed up data-users.json to ' + backupPath); } catch (e) {}
+    }
+
+    fs.writeFileSync(usersFile, raw, 'utf8');
+    appendLog('[settings] Uploaded data-users.json from ' + srcPath + ' to ' + usersFile);
+    // restart server so it picks up the new file
+    restartServerAsync();
+    return { ok: true };
+  } catch (e) {
+    appendLog('[settings] upload-users failed: ' + String(e));
     return { ok: false, error: String(e) };
   }
 });

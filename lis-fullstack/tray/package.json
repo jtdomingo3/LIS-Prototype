@@ -15,6 +15,10 @@
     "png-to-ico": "^3.0.0",
     "sharp": "^0.32.5"
   },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "uuid": "^9.0.1"
+  },
   "build": {
     "appId": "com.gezyne.lis-server",
     "productName": "Gezyne LIS Server",
@@ -52,7 +56,9 @@
       {
         "from": "../ecosystem.config.js",
         "to": ".",
-        "filter": ["ecosystem.config.js"]
+        "filter": [
+          "ecosystem.config.js"
+        ]
       }
     ],
     "asarUnpack": [

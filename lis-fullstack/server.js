@@ -569,6 +569,76 @@ app.use('/reception', receptionRoutes);
 app.use('/settings', settingsRoutes);
 app.use('/signatures', signaturesRoutes);
 
+// ---- Unauthenticated restore endpoints (for fresh installs with no user data) ----
+const bcryptRestore = require('bcryptjs');
+const { v4: uuidRestore } = require('uuid');
+
+// POST /api/restore/users – seeds the default admin account
+app.post('/api/restore/users', async (req, res) => {
+  try {
+    let existing = [];
+    try { existing = db.getUsers(); if (!Array.isArray(existing)) existing = []; } catch (e) { existing = []; }
+
+    let admin = existing.find(u => u.email === 'admin@lab.com');
+    const hash = await bcryptRestore.hash('password123', 12);
+
+    if (!admin) {
+      admin = {
+        id: uuidRestore(),
+        name: 'Admin User',
+        email: 'admin@lab.com',
+        password: hash,
+        role: 'Admin',
+        licenseNumber: null,
+        signature: null,
+        autoSignature: { enabled: false, until: null },
+        permissions: {
+          dashboard: true, patients: true, reception: true,
+          tests: true, reports: true, worksheet: true,
+          templates: true, users: true, delete: true
+        },
+        status: 'Active',
+        createdAt: new Date().toISOString(),
+        lastLogin: null
+      };
+      existing.push(admin);
+    } else {
+      admin.password = hash;
+      admin.role = 'Admin';
+      admin.status = 'Active';
+      admin.permissions = { dashboard: true, patients: true, reception: true, tests: true, reports: true, worksheet: true, templates: true, users: true, delete: true };
+    }
+
+    db.saveUsers(existing);
+    console.log('[restore] Admin user seeded via /api/restore/users');
+    res.json({ ok: true, message: 'Default admin user restored successfully.' });
+  } catch (e) {
+    console.error('[restore] /api/restore/users failed:', e);
+    res.status(500).json({ ok: false, error: String(e) });
+  }
+});
+
+// POST /api/restore/data – resets data.json to empty initial structure
+app.post('/api/restore/data', (req, res) => {
+  try {
+    // backup before reset
+    try {
+      const ts = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupPath = dataFile(`data-backup-${ts}.json`);
+      fs.copyFileSync(DATA_FILE, backupPath);
+      console.log('[restore] backed up data.json to', backupPath);
+    } catch (e) {}
+
+    const initialData = { users: [], patients: [], tests: [], templates: [], counters: {} };
+    db.write(initialData);
+    console.log('[restore] data.json reset via /api/restore/data');
+    res.json({ ok: true, message: 'Data reset to empty database' });
+  } catch (e) {
+    console.error('[restore] /api/restore/data failed:', e);
+    res.status(500).json({ ok: false, error: String(e) });
+  }
+});
+
 // Export endpoint for full-sync (requires authenticated session or sync token)
 app.get('/export/data.json', (req, res) => {
   try {
