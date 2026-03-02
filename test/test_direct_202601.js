@@ -1,4 +1,4 @@
-const mod = require('./lis-fullstack/node_modules/mdb-reader');
+const mod = require('mdb-reader');
 const MDBReader = mod && mod.default ? mod.default : mod;
 const fs = require('fs');
 

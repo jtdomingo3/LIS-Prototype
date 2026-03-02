@@ -1,4 +1,4 @@
-const MDBReader = require('./lis-fullstack/node_modules/mdb-reader');
+const MDBReader = require('mdb-reader');
 const fs = require('fs');
 const path = require('path');
 
