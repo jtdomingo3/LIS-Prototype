@@ -9,7 +9,7 @@ import { ReportService } from '../../../core/services/report.service';
   imports: [CommonModule, FormsModule],
   template: `
     <div class="page-header">
-      <h1>📊 Worksheet Export</h1>
+      <h1>Worksheet Export</h1>
     </div>
 
     <div class="card form-section">

@@ -120,15 +120,22 @@ export interface DashboardStats {
     completed: number;
     released: number;
     totalSales: number;
-    todaySales: number;
     clinicalSales: number;
     xraySales: number;
-    clinicalToday: number;
-    xrayToday: number;
     testTotals: Record<string, number>;
     testTotalsSelected: Record<string, number>;
-    testTotalsToday: Record<string, number>;
     selectedDate: string;
+  };
+  dateStats: {
+    totalPatients: number;
+    totalTests: number;
+    pending: number;
+    inProgress: number;
+    completed: number;
+    released: number;
+    totalSales: number;
+    clinicalSales: number;
+    xraySales: number;
   };
   statusBreakdown: Record<string, number>;
   typeBreakdown: Record<string, number>;

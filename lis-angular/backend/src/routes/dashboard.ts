@@ -54,8 +54,30 @@ router.get('/', requirePermission('dashboard'), (req: Request, res: Response) =>
     const released = statusCounts['Released'] || 0;
     const totalTests = Object.values(statusCounts).reduce((a, b) => a + b, 0);
 
+    // Date-filtered status counts
+    let dateTests = 0, datePending = 0, dateInProgress = 0, dateCompleted = 0, dateReleased = 0, datePatients = 0;
+    try {
+      const dRows = db.prepare(`
+        SELECT status FROM tests
+        WHERE date(COALESCE(test_date, created_at)) = ?
+      `).all(selectedDateStr) as any[];
+      dateTests = dRows.length;
+      for (const r of dRows) {
+        const st = r.status || 'Pending';
+        if (st === 'Pending') datePending++;
+        else if (st === 'In Progress' || st === 'Extraction Area') dateInProgress++;
+        else if (st === 'Completed') dateCompleted++;
+        else if (st === 'Released') dateReleased++;
+      }
+      const dpRow = db.prepare(`
+        SELECT COUNT(DISTINCT patient_id) as cnt FROM tests
+        WHERE date(COALESCE(test_date, created_at)) = ?
+      `).get(selectedDateStr) as any;
+      datePatients = dpRow?.cnt || 0;
+    } catch (e) { /* ignore */ }
+
     // Sales totals from payment_history in patients table
-    let totalSales = 0, todaySales = 0, clinicalSales = 0, xraySales = 0, clinicalToday = 0, xrayToday = 0;
+    let totalSales = 0, dateSales = 0, clinicalSales = 0, xraySales = 0, dateClinical = 0, dateXray = 0;
     try {
       const allPatients = db.prepare('SELECT payment_history FROM patients').all() as { payment_history: string }[];
       for (const row of allPatients) {
@@ -72,23 +94,21 @@ router.get('/', requirePermission('dashboard'), (req: Request, res: Response) =>
             clinicalSales += clin;
             xraySales += xray;
             if (ts.toISOString().slice(0, 10) === selectedDateStr) {
-              todaySales += entryTotal;
-              clinicalToday += clin;
-              xrayToday += xray;
+              dateSales += entryTotal;
+              dateClinical += clin;
+              dateXray += xray;
             }
           }
         }
       }
     } catch (e) { /* ignore */ }
 
-    // Test type totals for Chart.js (total, selected day, today)
+    // Test type totals for Chart.js (total and selected day)
     const testTotals: Record<string, number> = {};
     const testTotalsSelected: Record<string, number> = {};
-    const testTotalsToday: Record<string, number> = {};
     
     try {
       const allTests = db.prepare('SELECT test_type, test_date, created_at, requested_tests FROM tests').all() as any[];
-      const todayStr = new Date().toISOString().slice(0, 10);
       for (const t of allTests) {
         const requestedTests = JSON.parse(t.requested_tests || '[]');
         const candidates = requestedTests.length === 0
@@ -104,9 +124,6 @@ router.get('/', requirePermission('dashboard'), (req: Request, res: Response) =>
           const dtStr = dt ? new Date(dt).toISOString().slice(0, 10) : '';
           if (dtStr === selectedDateStr) {
             testTotalsSelected[key] = (testTotalsSelected[key] || 0) + 1;
-          }
-          if (dtStr === todayStr) {
-            testTotalsToday[key] = (testTotalsToday[key] || 0) + 1;
           }
         }
       }
@@ -145,15 +162,22 @@ router.get('/', requirePermission('dashboard'), (req: Request, res: Response) =>
         completed,
         released,
         totalSales: Math.round(totalSales * 100) / 100,
-        todaySales: Math.round(todaySales * 100) / 100,
         clinicalSales: Math.round(clinicalSales * 100) / 100,
         xraySales: Math.round(xraySales * 100) / 100,
-        clinicalToday: Math.round(clinicalToday * 100) / 100,
-        xrayToday: Math.round(xrayToday * 100) / 100,
         testTotals,
         testTotalsSelected,
-        testTotalsToday,
         selectedDate: selectedDateStr,
+      },
+      dateStats: {
+        totalPatients: datePatients,
+        totalTests: dateTests,
+        pending: datePending,
+        inProgress: dateInProgress,
+        completed: dateCompleted,
+        released: dateReleased,
+        totalSales: Math.round(dateSales * 100) / 100,
+        clinicalSales: Math.round(dateClinical * 100) / 100,
+        xraySales: Math.round(dateXray * 100) / 100,
       },
       statusBreakdown: statusCounts,
       typeBreakdown,

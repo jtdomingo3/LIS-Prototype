@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, OnDestroy, signal, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal, computed, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { DashboardService } from '../../core/services/dashboard.service';
@@ -14,9 +14,9 @@ Chart.register(...registerables);
   template: `
     <div class="page-header">
       <h1>Dashboard</h1>
-      <div class="date-controls">
-        <button class="btn btn-sm" (click)="setDate('yesterday')">YESTERDAY</button>
-        <button class="btn btn-sm" (click)="setDate('today')">TODAY</button>
+      <div class="global-filters">
+        <button class="btn btn-sm" [class.active]="mode() === 'total'" (click)="setMode('total')">TOTAL</button>
+        <button class="btn btn-sm" [class.active]="mode() === 'date' && dateFilter() === todayStr" (click)="setMode('today')">TODAY</button>
         <input type="date" [value]="dateFilter()" (change)="onDateChange($event)" class="date-filter" />
       </div>
     </div>
@@ -24,30 +24,39 @@ Chart.register(...registerables);
     @if (loading()) {
       <div class="loading">Loading dashboard...</div>
     } @else if (stats()) {
+      <!-- Active filter label -->
+      <div class="filter-label">
+        @if (mode() === 'total') {
+          <span class="badge badge-total">Showing all-time totals</span>
+        } @else {
+          <span class="badge badge-date">Filtered: {{ dateFilter() }}</span>
+        }
+      </div>
+
       <!-- Row 1: Test count cards -->
       <div class="stats-row">
         <div class="stat-card">
-          <div class="stat-value">{{ stats()!.stats.totalPatients }}</div>
-          <div class="stat-label">Total Patients</div>
+          <div class="stat-value">{{ activeStats().totalPatients }}</div>
+          <div class="stat-label">{{ mode() === 'total' ? 'Total Patients' : 'Patients' }}</div>
         </div>
         <div class="stat-card">
-          <div class="stat-value">{{ stats()!.stats.totalTests }}</div>
-          <div class="stat-label">Total Tests</div>
+          <div class="stat-value">{{ activeStats().totalTests }}</div>
+          <div class="stat-label">{{ mode() === 'total' ? 'Total Tests' : 'Tests' }}</div>
         </div>
         <div class="stat-card stat-pending">
-          <div class="stat-value">{{ stats()!.stats.pending }}</div>
+          <div class="stat-value">{{ activeStats().pending }}</div>
           <div class="stat-label">Pending</div>
         </div>
         <div class="stat-card stat-progress">
-          <div class="stat-value">{{ stats()!.stats.inProgress }}</div>
+          <div class="stat-value">{{ activeStats().inProgress }}</div>
           <div class="stat-label">In Progress</div>
         </div>
         <div class="stat-card stat-completed">
-          <div class="stat-value">{{ stats()!.stats.completed }}</div>
+          <div class="stat-value">{{ activeStats().completed }}</div>
           <div class="stat-label">Completed</div>
         </div>
         <div class="stat-card stat-released">
-          <div class="stat-value">{{ stats()!.stats.released }}</div>
+          <div class="stat-value">{{ activeStats().released }}</div>
           <div class="stat-label">Released</div>
         </div>
       </div>
@@ -55,28 +64,16 @@ Chart.register(...registerables);
       <!-- Row 2: Sales Summary -->
       <div class="stats-row sales-row">
         <div class="stat-card sales-card">
-          <div class="stat-value sales-value">₱{{ formatMoney(stats()!.stats.totalSales) }}</div>
-          <div class="stat-label">Total Sales</div>
+          <div class="stat-value sales-value">₱{{ formatMoney(activeStats().totalSales) }}</div>
+          <div class="stat-label">{{ mode() === 'total' ? 'Total Sales' : 'Sales' }}</div>
         </div>
         <div class="stat-card sales-card">
-          <div class="stat-value sales-value">₱{{ formatMoney(stats()!.stats.clinicalSales) }}</div>
+          <div class="stat-value sales-value">₱{{ formatMoney(activeStats().clinicalSales) }}</div>
           <div class="stat-label">Clinical Sales</div>
         </div>
         <div class="stat-card sales-card">
-          <div class="stat-value sales-value">₱{{ formatMoney(stats()!.stats.xraySales) }}</div>
+          <div class="stat-value sales-value">₱{{ formatMoney(activeStats().xraySales) }}</div>
           <div class="stat-label">X-ray Sales</div>
-        </div>
-        <div class="stat-card sales-card today">
-          <div class="stat-value sales-value">₱{{ formatMoney(stats()!.stats.todaySales) }}</div>
-          <div class="stat-label">Today Sales</div>
-        </div>
-        <div class="stat-card sales-card today">
-          <div class="stat-value sales-value">₱{{ formatMoney(stats()!.stats.clinicalToday) }}</div>
-          <div class="stat-label">Clinical Today</div>
-        </div>
-        <div class="stat-card sales-card today">
-          <div class="stat-value sales-value">₱{{ formatMoney(stats()!.stats.xrayToday) }}</div>
-          <div class="stat-label">X-ray Today</div>
         </div>
       </div>
 
@@ -84,11 +81,6 @@ Chart.register(...registerables);
       <div class="card chart-section">
         <div class="chart-header">
           <h3>Tests by Type</h3>
-          <div class="chart-toggles">
-            <button class="btn btn-sm" [class.active]="chartMode() === 'total'" (click)="setChartMode('total')">TOTAL</button>
-            <button class="btn btn-sm" [class.active]="chartMode() === 'selected'" (click)="setChartMode('selected')">SELECTED</button>
-            <button class="btn btn-sm" [class.active]="chartMode() === 'today'" (click)="setChartMode('today')">TODAY</button>
-          </div>
         </div>
         <div class="chart-container">
           <canvas #chartCanvas></canvas>
@@ -126,7 +118,14 @@ Chart.register(...registerables);
     }
   `,
   styles: [`
-    .date-controls { display: flex; gap: 0.5rem; align-items: center; }
+    .global-filters { display: flex; gap: 0.5rem; align-items: center; }
+    .global-filters .btn.active { background: #10b981; color: white; }
+
+    .filter-label { margin-bottom: 1rem; }
+    .badge { padding: 4px 12px; border-radius: 14px; font-size: 0.8rem; font-weight: 600; }
+    .badge-total { background: #dbeafe; color: #1e40af; }
+    .badge-date { background: #d1fae5; color: #065f46; }
+
     .stats-row {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -147,9 +146,7 @@ Chart.register(...registerables);
     .stat-released { border-left-color: #6366f1; }
 
     .sales-card { border-left-color: #10b981; }
-    .sales-card.today { border-left-color: #f97316; }
     .sales-value { font-size: 1.4rem; color: #059669; }
-    .sales-card.today .sales-value { color: #ea580c; }
 
     .date-filter {
       padding: 0.4rem 0.75rem; border: 1px solid #d1d5db;
@@ -158,8 +155,6 @@ Chart.register(...registerables);
 
     .chart-section { margin-bottom: 1.5rem; }
     .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-    .chart-toggles { display: flex; gap: 0.5rem; }
-    .chart-toggles .btn.active { background: #10b981; color: white; }
     .chart-container { position: relative; height: 350px; width: 100%; }
 
     .loading { text-align: center; padding: 3rem; color: #6b7280; }
@@ -182,19 +177,23 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   stats = signal<DashboardStats | null>(null);
   loading = signal(true);
   dateFilter = signal(new Date().toISOString().slice(0, 10));
-  chartMode = signal<'total' | 'selected' | 'today'>('total');
+  mode = signal<'total' | 'date'>('total');
+  todayStr = new Date().toISOString().slice(0, 10);
+
+  /** Computed: pick all-time stats or date-filtered stats based on mode */
+  activeStats = computed(() => {
+    const s = this.stats();
+    if (!s) return { totalPatients: 0, totalTests: 0, pending: 0, inProgress: 0, completed: 0, released: 0, totalSales: 0, clinicalSales: 0, xraySales: 0 };
+    return this.mode() === 'total' ? s.stats : s.dateStats;
+  });
 
   private chart: Chart | null = null;
-
-  objectKeys = Object.keys;
 
   ngOnInit() {
     this.loadStats();
   }
 
-  ngAfterViewInit() {
-    // Chart will be created after data loads
-  }
+  ngAfterViewInit() {}
 
   ngOnDestroy() {
     if (this.chart) {
@@ -203,26 +202,28 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  setDate(preset: string) {
-    if (preset === 'today') {
-      this.dateFilter.set(new Date().toISOString().slice(0, 10));
-    } else if (preset === 'yesterday') {
-      const d = new Date();
-      d.setDate(d.getDate() - 1);
-      this.dateFilter.set(d.toISOString().slice(0, 10));
+  setMode(m: 'total' | 'date' | 'today') {
+    if (m === 'today') {
+      this.todayStr = new Date().toISOString().slice(0, 10);
+      this.dateFilter.set(this.todayStr);
+      this.mode.set('date');
+      this.loadStats();
+    } else {
+      this.mode.set(m);
+      if (m === 'date') {
+        this.loadStats();
+      } else {
+        // total mode — just re-render chart
+        this.updateChart();
+      }
     }
-    this.loadStats();
   }
 
   onDateChange(event: Event) {
     const value = (event.target as HTMLInputElement).value;
     this.dateFilter.set(value);
+    this.mode.set('date');
     this.loadStats();
-  }
-
-  setChartMode(mode: 'total' | 'selected' | 'today') {
-    this.chartMode.set(mode);
-    this.updateChart();
   }
 
   formatMoney(val: number): string {
@@ -230,7 +231,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private loadStats() {
-    // Destroy chart before hiding canvas (loading hides the @if block)
     if (this.chart) {
       this.chart.destroy();
       this.chart = null;
@@ -240,7 +240,6 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
       next: (data) => {
         this.stats.set(data);
         this.loading.set(false);
-        // Wait for view to render then create/update chart
         setTimeout(() => this.updateChart(), 150);
       },
       error: () => this.loading.set(false),
@@ -251,12 +250,7 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
     const s = this.stats();
     if (!s || !this.chartCanvas) return;
 
-    const mode = this.chartMode();
-    let dataMap: Record<string, number>;
-    if (mode === 'total') dataMap = s.stats.testTotals || {};
-    else if (mode === 'selected') dataMap = s.stats.testTotalsSelected || {};
-    else dataMap = s.stats.testTotalsToday || {};
-
+    const dataMap = this.mode() === 'total' ? (s.stats.testTotals || {}) : (s.stats.testTotalsSelected || {});
     const labels = Object.keys(dataMap).sort();
     const values = labels.map(l => dataMap[l] || 0);
 

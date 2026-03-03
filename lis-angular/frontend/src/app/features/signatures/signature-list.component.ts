@@ -10,7 +10,7 @@ import { SignatureService } from '../../core/services/signature.service';
   imports: [CommonModule, RouterLink, FormsModule],
   template: `
     <div class="page-header">
-      <h1>✍️ Signatures</h1>
+      <h1>Signatures</h1>
     </div>
 
     <!-- Filters -->
