@@ -17,7 +17,7 @@ interface AreaInfo {
   template: `
     <div class="page-header">
       <h1>Reception</h1>
-      <a routerLink="/reception/kiosk" target="_blank" class="btn btn-primary">Open Patient Queue Display</a>
+      <a routerLink="/kiosk" target="_blank" class="btn btn-primary">Open Patient Queue Display</a>
     </div>
 
     @if (loading()) {

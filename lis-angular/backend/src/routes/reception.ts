@@ -22,6 +22,7 @@ const DOCTOR_2_NAME = process.env.DOCTOR_2_NAME || "Doctor's Check-up 2";
 const DISPLAY_AREAS = [
   'Payment Area',
   'Sendout',
+  'Collection Area',
   'Extraction Area',
   'Drug Test',
   'Ultrasound',
@@ -33,16 +34,25 @@ const DISPLAY_AREAS = [
   DOCTOR_2_NAME,
 ];
 
+// Kiosk display areas: hide internal queues (Sendout, Collection Area)
+const KIOSK_AREAS = DISPLAY_AREAS.filter(
+  a => !['Sendout', 'Collection Area'].includes(a)
+);
+
 /**
  * Map test type to its target area after Payment Area (matches original reception.js)
  */
 function mapTestToArea(testType: string): string {
   const lower = (testType || '').toLowerCase();
 
+  // Urine / stool tests => Collection Area (no extraction needed)
+  if (['urinalysis', 'fecalysis', 'pregnancy test', 'fecal occult blood', 'fobt'].some(t => lower.includes(t))) {
+    return 'Collection Area';
+  }
+
   // Lab tests that need extraction
   if (['blood chemistry', 'hematology', 'serology', 'esr', 'ct-bt', 'blood typing',
-       'pregnancy test', 'dengue duo', 'thyroid panel', 'pt-aptt', 'fecal occult blood',
-       'urinalysis', 'fecalysis'].some(t => lower.includes(t))) {
+       'dengue duo', 'thyroid panel', 'pt-aptt'].some(t => lower.includes(t))) {
     return 'Extraction Area';
   }
   if (lower.includes('drug') && lower.includes('test')) return 'Drug Test';
@@ -51,7 +61,7 @@ function mapTestToArea(testType: string): string {
   if (lower.includes('ultrasound')) return 'Ultrasound';
   if (lower.includes('2d echo') || lower.includes('echocardiography')) return '2D Echo';
   if (lower.includes('ecg')) return 'ECG';
-  if (lower.includes('sendout')) return 'Sendout';
+  if (lower.includes('sendout') || lower.includes('send out') || lower.includes('send-out')) return 'Sendout';
 
   // Default: extraction
   return 'Extraction Area';
@@ -377,14 +387,14 @@ router.get('/advert', (req: Request, res: Response) => {
 });
 
 /**
- * GET /api/reception/kiosk - Kiosk data (areas with patient codes)
+ * GET /api/reception/kiosk - Kiosk data (areas with patient codes) - no auth required
  */
 router.get('/kiosk', (req: Request, res: Response) => {
   try {
     const { tests } = TestModel.findAll({ limit: 10000 });
 
     const areaData: Record<string, string[]> = {};
-    DISPLAY_AREAS.forEach(a => areaData[a] = []);
+    KIOSK_AREAS.forEach(a => areaData[a] = []);
 
     for (const test of tests) {
       const status = test.status || 'Pending';

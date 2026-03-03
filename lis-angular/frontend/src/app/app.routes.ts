@@ -57,6 +57,10 @@ export const routes: Routes = [
     ],
   },
   {
+    path: 'kiosk',
+    loadComponent: () => import('./features/reception/kiosk/kiosk.component').then(m => m.KioskComponent),
+  },
+  {
     path: 'reception',
     canActivate: [authGuard, permissionGuard('reception')],
     children: [
@@ -67,10 +71,6 @@ export const routes: Routes = [
       {
         path: 'area/:name',
         loadComponent: () => import('./features/reception/area-queue/area-queue.component').then(m => m.AreaQueueComponent),
-      },
-      {
-        path: 'kiosk',
-        loadComponent: () => import('./features/reception/kiosk/kiosk.component').then(m => m.KioskComponent),
       },
     ],
   },
