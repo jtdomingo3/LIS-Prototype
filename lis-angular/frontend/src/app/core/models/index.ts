@@ -119,9 +119,27 @@ export interface DashboardStats {
     inProgress: number;
     completed: number;
     released: number;
+    totalSales: number;
+    todaySales: number;
+    clinicalSales: number;
+    xraySales: number;
+    clinicalToday: number;
+    xrayToday: number;
+    testTotals: Record<string, number>;
+    testTotalsSelected: Record<string, number>;
+    testTotalsToday: Record<string, number>;
+    selectedDate: string;
   };
   statusBreakdown: Record<string, number>;
   typeBreakdown: Record<string, number>;
+  recentTests: Array<{
+    id: string;
+    testId: string;
+    testType: string;
+    status: string;
+    testDate: string;
+    patient: { firstName: string; lastName: string } | null;
+  }>;
   date: string;
 }
 

@@ -68,6 +68,10 @@ export const routes: Routes = [
         path: 'area/:name',
         loadComponent: () => import('./features/reception/area-queue/area-queue.component').then(m => m.AreaQueueComponent),
       },
+      {
+        path: 'kiosk',
+        loadComponent: () => import('./features/reception/kiosk/kiosk.component').then(m => m.KioskComponent),
+      },
     ],
   },
   {
@@ -75,10 +79,23 @@ export const routes: Routes = [
     canActivate: [authGuard, permissionGuard('reports')],
     children: [
       {
+        path: '',
+        loadComponent: () => import('./features/reports/report-list/report-list.component').then(m => m.ReportListComponent),
+      },
+      {
+        path: 'worksheet',
+        loadComponent: () => import('./features/reports/worksheet/worksheet.component').then(m => m.WorksheetComponent),
+      },
+      {
         path: ':id',
         loadComponent: () => import('./features/reports/report-preview/report-preview.component').then(m => m.ReportPreviewComponent),
       },
     ],
+  },
+  {
+    path: 'signatures',
+    canActivate: [authGuard, permissionGuard('reports')],
+    loadComponent: () => import('./features/signatures/signature-list.component').then(m => m.SignatureListComponent),
   },
   {
     path: 'templates',

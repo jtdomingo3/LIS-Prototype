@@ -40,6 +40,16 @@ import { AuthService } from '../../../core/services/auth.service';
             <span class="nav-emoji">📋</span><span class="nav-text">Reports</span>
           </a>
         }
+        @if (auth.hasPermission('reports')) {
+          <a routerLink="/signatures" routerLinkActive="active" class="nav-item">
+            <span class="nav-emoji">✍️</span><span class="nav-text">Signatures</span>
+          </a>
+        }
+        @if (auth.hasPermission('worksheet')) {
+          <a routerLink="/reports/worksheet" routerLinkActive="active" class="nav-item">
+            <span class="nav-emoji">📊</span><span class="nav-text">Worksheet</span>
+          </a>
+        }
         @if (auth.hasPermission('templates')) {
           <a routerLink="/templates" routerLinkActive="active" class="nav-item">
             <span class="nav-emoji">📄</span><span class="nav-text">Templates</span>

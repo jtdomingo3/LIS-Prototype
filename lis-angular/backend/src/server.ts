@@ -45,6 +45,8 @@ import templateRoutes from './routes/templates';
 import dashboardRoutes from './routes/dashboard';
 import receptionRoutes from './routes/reception';
 import settingsRoutes from './routes/settings';
+import reportRoutes from './routes/reports';
+import signatureRoutes from './routes/signatures';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
@@ -103,6 +105,8 @@ app.use('/api/templates', templateRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/reception', receptionRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/signatures', signatureRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

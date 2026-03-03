@@ -66,6 +66,7 @@ export interface PatientListOptions {
   search?: string;
   date?: string;
   company?: string;
+  philhealth?: string;
   sortBy?: string;
   sortOrder?: 'ASC' | 'DESC';
 }
@@ -94,6 +95,14 @@ export const PatientModel = {
     if (options.company) {
       where += ' AND LOWER(company) = LOWER(?)';
       params.push(options.company);
+    }
+
+    if (options.philhealth) {
+      if (options.philhealth.toLowerCase() === 'yes') {
+        where += ' AND philhealth_consent = 1';
+      } else if (options.philhealth.toLowerCase() === 'no') {
+        where += ' AND (philhealth_consent = 0 OR philhealth_consent IS NULL)';
+      }
     }
 
     const sortBy = options.sortBy || 'created_at';

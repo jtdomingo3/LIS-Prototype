@@ -11,6 +11,22 @@ sseEmitter.setMaxListeners(100);
 // Export for use in other routes
 export { sseEmitter };
 
+// In-memory advertisement text for kiosk
+let kioskAdText = '';
+
+// Define all reception areas as in the original app
+const DISPLAY_AREAS = [
+  'Payment Area',
+  'Extraction Area',
+  'Drug Test',
+  'Ultrasound',
+  '2D Echo',
+  'X-ray',
+  'ECG',
+  'Releasing of Result',
+  "Doctor's Check-up",
+];
+
 /**
  * GET /api/reception - Reception overview: areas with patient/test counts
  */
@@ -18,27 +34,34 @@ router.get('/', requireAuth, requirePermission('reception'), (req: Request, res:
   try {
     // Get all non-released, non-completed tests
     const { tests } = TestModel.findAll({ limit: 10000 });
-    const activeTests = tests.filter(t => !['Released', 'Completed'].includes(t.status));
 
-    // Group by area/status
-    const areas: Record<string, { count: number; patients: Set<string> }> = {};
+    // Count unique patients per area
+    const areaCounts: Record<string, Set<string>> = {};
+    DISPLAY_AREAS.forEach(a => areaCounts[a] = new Set());
 
-    for (const test of activeTests) {
-      const area = test.status || 'Pending';
-      if (!areas[area]) {
-        areas[area] = { count: 0, patients: new Set() };
+    for (const test of tests) {
+      const status = test.status || 'Pending';
+      // Map test status to display area
+      if (areaCounts[status]) {
+        areaCounts[status].add(test.patient_id);
       }
-      areas[area].count++;
-      areas[area].patients.add(test.patient_id);
     }
 
-    const areaSummary = Object.entries(areas).map(([name, data]) => ({
+    const areas = DISPLAY_AREAS.map(name => ({
       name,
-      testCount: data.count,
-      patientCount: data.patients.size,
+      testCount: 0,
+      patientCount: areaCounts[name]?.size || 0,
+      count: areaCounts[name]?.size || 0,
     }));
 
-    return res.json({ areas: areaSummary });
+    // Also count actual test counts per area
+    for (const test of tests) {
+      const status = test.status || 'Pending';
+      const area = areas.find(a => a.name === status);
+      if (area) area.testCount++;
+    }
+
+    return res.json({ areas, ad: kioskAdText });
   } catch (err: any) {
     console.error('[reception] overview error:', err);
     return res.status(500).json({ error: 'Failed to load reception data' });
@@ -238,6 +261,53 @@ router.get('/assigned-data', requireAuth, (req: Request, res: Response) => {
   } catch (err: any) {
     console.error('[reception] assigned-data error:', err);
     return res.status(500).json({ error: 'Failed to load assigned data' });
+  }
+});
+
+/**
+ * POST /api/reception/advert - Save advertisement text
+ */
+router.post('/advert', requireAuth, requirePermission('reception'), (req: Request, res: Response) => {
+  try {
+    kioskAdText = req.body.text || '';
+    return res.json({ message: 'Advertisement saved', ad: kioskAdText });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to save advertisement' });
+  }
+});
+
+/**
+ * GET /api/reception/advert - Get advertisement text
+ */
+router.get('/advert', (req: Request, res: Response) => {
+  return res.json({ ad: kioskAdText });
+});
+
+/**
+ * GET /api/reception/kiosk - Kiosk data (areas with patient codes)
+ */
+router.get('/kiosk', (req: Request, res: Response) => {
+  try {
+    const { tests } = TestModel.findAll({ limit: 10000 });
+
+    const areaData: Record<string, string[]> = {};
+    DISPLAY_AREAS.forEach(a => areaData[a] = []);
+
+    for (const test of tests) {
+      const status = test.status || 'Pending';
+      if (areaData[status]) {
+        const patient = PatientModel.findById(test.patient_id);
+        const code = patient?.patient_code || patient?.patient_id || test.patient_id;
+        if (!areaData[status].includes(code)) {
+          areaData[status].push(code);
+        }
+      }
+    }
+
+    return res.json({ areas: areaData, ad: kioskAdText });
+  } catch (err: any) {
+    console.error('[reception] kiosk error:', err);
+    return res.status(500).json({ error: 'Failed to load kiosk data' });
   }
 });
 

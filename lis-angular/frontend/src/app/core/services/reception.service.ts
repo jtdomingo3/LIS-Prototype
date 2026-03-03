@@ -49,6 +49,18 @@ export class ReceptionService {
     return this.http.get<{ areas: Record<string, any[]> }>(`${this.apiUrl}/assigned-data`);
   }
 
+  saveAdvert(text: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/advert`, { text });
+  }
+
+  getAdvert(): Observable<{ text: string }> {
+    return this.http.get<{ text: string }>(`${this.apiUrl}/advert`);
+  }
+
+  getKiosk(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/kiosk`);
+  }
+
   /**
    * SSE connection for live updates.
    * Returns an EventSource — caller is responsible for closing it.

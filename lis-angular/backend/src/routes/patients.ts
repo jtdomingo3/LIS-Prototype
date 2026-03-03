@@ -12,7 +12,7 @@ router.use(requireAuth);
  */
 router.get('/', requirePermission('patients'), (req: Request, res: Response) => {
   try {
-    const { page, limit, search, date, company, sortBy, sortOrder } = req.query;
+    const { page, limit, search, date, company, philhealth, sortBy, sortOrder } = req.query;
 
     const result = PatientModel.findAll({
       page: page ? parseInt(page as string) : 1,
@@ -20,15 +20,36 @@ router.get('/', requirePermission('patients'), (req: Request, res: Response) => 
       search: search as string,
       date: date as string,
       company: company as string,
+      philhealth: philhealth as string,
       sortBy: sortBy as string,
       sortOrder: (sortOrder as 'ASC' | 'DESC') || 'DESC',
     });
 
+    const pg = page ? parseInt(page as string) : 1;
+    const lim = limit ? parseInt(limit as string) : 50;
+    const totalPages = Math.max(1, Math.ceil(result.total / lim));
+
+    // Get available companies for filter dropdown
+    let availableCompanies: string[] = [];
+    try {
+      const { getDb } = require('../db/connection');
+      const db = getDb();
+      const rows = db.prepare("SELECT DISTINCT company FROM patients WHERE company IS NOT NULL AND company != '' ORDER BY company").all() as { company: string }[];
+      availableCompanies = rows.map((r: any) => r.company);
+    } catch (e) { /* ignore */ }
+
     return res.json({
       patients: result.patients,
       total: result.total,
-      page: page ? parseInt(page as string) : 1,
-      limit: limit ? parseInt(limit as string) : 50,
+      page: pg,
+      limit: lim,
+      availableCompanies,
+      pagination: {
+        totalPages,
+        page: pg,
+        limit: lim,
+        total: result.total,
+      },
     });
   } catch (err: any) {
     console.error('[patients] list error:', err);
