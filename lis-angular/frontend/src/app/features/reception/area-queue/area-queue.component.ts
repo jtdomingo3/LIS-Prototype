@@ -18,7 +18,7 @@ interface PatientEntry {
   template: `
     <div class="page-header">
       <h1>{{ areaName() }} Queue</h1>
-      <a routerLink="/reception" class="btn">← Back</a>
+      <a routerLink="/reception" class="btn btn-outline">← Back</a>
     </div>
 
     @if (loading()) {

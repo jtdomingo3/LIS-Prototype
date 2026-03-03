@@ -16,7 +16,7 @@ import { getFieldConfig, ResultSection } from './result-field-config';
     } @else if (test()) {
       <div class="page-header">
         <h1>Enter Results — {{ test()!.test_type | titlecase }}</h1>
-        <a [routerLink]="['/tests', test()!.id]" class="btn">← Back to Test</a>
+        <a [routerLink]="['/tests', test()!.id]" class="btn btn-outline">← Back to Test</a>
       </div>
 
       <div class="card">
@@ -117,7 +117,7 @@ import { getFieldConfig, ResultSection } from './result-field-config';
             <button type="submit" class="btn btn-primary" [disabled]="saving()">
               {{ saving() ? 'Saving...' : 'Save Results' }}
             </button>
-            <a [routerLink]="['/tests', test()!.id]" class="btn">Cancel</a>
+            <a [routerLink]="['/tests', test()!.id]" class="btn btn-outline">Cancel</a>
           </div>
         </form>
       </div>

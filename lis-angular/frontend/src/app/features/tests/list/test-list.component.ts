@@ -60,7 +60,7 @@ import { Test } from '../../../core/models';
               <td><span class="badge" [class]="'badge-' + t.status">{{ t.status }}</span></td>
               <td>{{ t.created_at | date:'shortDate' }}</td>
               <td class="action-cell">
-                <a [routerLink]="['/tests', t.id]" class="btn btn-sm">View</a>
+                <a [routerLink]="['/tests', t.id]" class="btn btn-sm btn-primary">View</a>
                 <a [routerLink]="['/tests', t.id, 'results']" class="btn btn-sm btn-secondary">Enter Result</a>
                 @if (t.status === 'Completed' || t.status === 'Released') {
                   <a [routerLink]="['/reports', t.id]" class="btn btn-sm btn-primary">Report</a>

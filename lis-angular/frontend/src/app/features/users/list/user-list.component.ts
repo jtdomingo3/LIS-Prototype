@@ -36,7 +36,7 @@ import { User } from '../../../core/models';
               <td><span class="badge" [class]="u.active ? 'badge-completed' : 'badge-pending'">{{ u.active ? 'Active' : 'Inactive' }}</span></td>
               <td>{{ u.last_login ? (u.last_login | date:'short') : 'Never' }}</td>
               <td>
-                <a [routerLink]="['/users', u.id, 'edit']" class="btn btn-sm">Edit</a>
+                <a [routerLink]="['/users', u.id, 'edit']" class="btn btn-sm btn-warning">Edit</a>
                 <button class="btn btn-sm btn-danger" (click)="deleteUser(u)" [disabled]="u.role === 'admin'">Delete</button>
               </td>
             </tr>

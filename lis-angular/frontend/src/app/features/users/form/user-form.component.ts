@@ -11,7 +11,7 @@ import { UserService } from '../../../core/services/user.service';
   template: `
     <div class="page-header">
       <h1>{{ isEdit() ? 'Edit User' : 'New User' }}</h1>
-      <a routerLink="/users" class="btn">← Back</a>
+      <a routerLink="/users" class="btn btn-outline">← Back</a>
     </div>
 
     <div class="card">
@@ -74,7 +74,7 @@ import { UserService } from '../../../core/services/user.service';
           @if (isEdit()) {
             <button type="button" class="btn btn-warning" (click)="resetPassword()">Reset Password</button>
           }
-          <a routerLink="/users" class="btn">Cancel</a>
+          <a routerLink="/users" class="btn btn-outline">Cancel</a>
         </div>
       </form>
     </div>

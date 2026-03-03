@@ -13,7 +13,7 @@ import { Patient } from '../../../core/models';
   template: `
     <div class="page-header">
       <h1>New Test Order</h1>
-      <a routerLink="/tests" class="btn">← Back</a>
+      <a routerLink="/tests" class="btn btn-outline">← Back</a>
     </div>
 
     <div class="card">
@@ -67,7 +67,7 @@ import { Patient } from '../../../core/models';
           <button type="submit" class="btn btn-primary" [disabled]="saving()">
             {{ saving() ? 'Creating...' : 'Create Test' + (selectedTypes.length > 1 ? 's' : '') }}
           </button>
-          <a routerLink="/tests" class="btn">Cancel</a>
+          <a routerLink="/tests" class="btn btn-outline">Cancel</a>
         </div>
       </form>
     </div>

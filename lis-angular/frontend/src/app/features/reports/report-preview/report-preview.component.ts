@@ -14,14 +14,14 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
     } @else if (errorMsg()) {
       <div class="error-box">
         <p>{{ errorMsg() }}</p>
-        <a routerLink="/reports" class="btn">← Back to Reports</a>
+        <a routerLink="/reports" class="btn btn-outline">← Back to Reports</a>
       </div>
     } @else {
       <div class="page-header no-print">
         <h1>Report Preview</h1>
         <div class="header-actions">
           <button class="btn btn-primary" (click)="print()">🖨 Print</button>
-          <a routerLink="/reports" class="btn">← Back</a>
+          <a routerLink="/reports" class="btn btn-outline">← Back</a>
         </div>
       </div>
 

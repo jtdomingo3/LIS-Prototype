@@ -11,7 +11,7 @@ import { TemplateService } from '../../../core/services/template.service';
   template: `
     <div class="page-header">
       <h1>{{ isEdit() ? 'Edit Template' : 'New Template' }}</h1>
-      <a routerLink="/templates" class="btn">← Back</a>
+      <a routerLink="/templates" class="btn btn-outline">← Back</a>
     </div>
 
     <div class="card">
@@ -57,7 +57,7 @@ import { TemplateService } from '../../../core/services/template.service';
           <button type="submit" class="btn btn-primary" [disabled]="saving()">
             {{ saving() ? 'Saving...' : (isEdit() ? 'Update Template' : 'Create Template') }}
           </button>
-          <a routerLink="/templates" class="btn">Cancel</a>
+          <a routerLink="/templates" class="btn btn-outline">Cancel</a>
         </div>
       </form>
     </div>

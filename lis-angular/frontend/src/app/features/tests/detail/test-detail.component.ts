@@ -24,7 +24,7 @@ import { Test, Patient } from '../../../core/models';
           @if (test()!.status === 'released') {
             <a [routerLink]="['/reports', test()!.id]" class="btn">View Report</a>
           }
-          <a routerLink="/tests" class="btn">← Back</a>
+          <a routerLink="/tests" class="btn btn-outline">← Back</a>
         </div>
       </div>
 

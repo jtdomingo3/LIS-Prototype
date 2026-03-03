@@ -15,8 +15,8 @@ import { Patient, Test } from '../../../core/models';
       <div class="page-header">
         <h1>{{ patient()!.first_name }} {{ patient()!.last_name }}</h1>
         <div class="header-actions">
-          <a [routerLink]="['/patients', patient()!.id, 'edit']" class="btn">Edit</a>
-          <a routerLink="/patients" class="btn">← Back</a>
+          <a [routerLink]="['/patients', patient()!.id, 'edit']" class="btn btn-sm btn-warning">Edit</a>
+          <a routerLink="/patients" class="btn btn-sm btn-outline">← Back</a>
         </div>
       </div>
 
@@ -57,7 +57,7 @@ import { Patient, Test } from '../../../core/models';
                     <td><span class="badge" [class]="'badge-' + t.status">{{ t.status }}</span></td>
                     <td>{{ t.created_at | date:'shortDate' }}</td>
                     <td class="action-cell">
-                      <a [routerLink]="['/tests', t.id]" class="btn btn-sm">View</a>
+                      <a [routerLink]="['/tests', t.id]" class="btn btn-sm btn-primary">View</a>
                       @if (t.status === 'Completed' || t.status === 'Released') {
                         <a [routerLink]="['/reports', t.id]" class="btn btn-sm btn-primary">Report</a>
                       }

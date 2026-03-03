@@ -36,7 +36,7 @@ import { Template } from '../../../core/models';
                 <td>v{{ t.version || 1 }}</td>
                 <td>{{ t.updated_at | date:'shortDate' }}</td>
                 <td>
-                  <a [routerLink]="['/templates', t.id, 'edit']" class="btn btn-sm">Edit</a>
+                  <a [routerLink]="['/templates', t.id, 'edit']" class="btn btn-sm btn-warning">Edit</a>
                   <button class="btn btn-sm btn-danger" (click)="deleteTemplate(t)">Delete</button>
                 </td>
               </tr>

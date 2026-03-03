@@ -112,6 +112,12 @@ a {
   box-shadow: 0 6px 16px rgba(249, 115, 22, 0.4);
 }
 
+.btn-outline {
+  background: none;
+  border: 1px solid #374151;
+  color: #374151;
+}
+
 .btn-secondary, .btn-outline {
   background: transparent;
   border: 1px solid var(--border-gray);

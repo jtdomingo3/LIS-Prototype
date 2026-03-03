@@ -11,7 +11,7 @@ import { PatientService } from '../../../core/services/patient.service';
   template: `
     <div class="page-header">
       <h1>{{ isEdit() ? 'Edit Patient' : 'New Patient' }}</h1>
-      <a routerLink="/patients" class="btn">← Back</a>
+      <a routerLink="/patients" class="btn btn-outline">← Back</a>
     </div>
 
     <div class="card">
@@ -95,7 +95,7 @@ import { PatientService } from '../../../core/services/patient.service';
           <button type="submit" class="btn btn-primary" [disabled]="saving()">
             {{ saving() ? 'Saving...' : (isEdit() ? 'Update Patient' : 'Create Patient') }}
           </button>
-          <a routerLink="/patients" class="btn">Cancel</a>
+          <a routerLink="/patients" class="btn btn-outline">Cancel</a>
         </div>
       </form>
     </div>
