@@ -60,7 +60,7 @@ import { Test } from '../../../core/models';
               <td><span class="badge" [class]="'badge-' + t.status">{{ t.status }}</span></td>
               <td>{{ t.created_at | date:'shortDate' }}</td>
               <td class="action-cell">
-                <a [routerLink]="['/tests', t.id]" class="btn btn-sm btn-primary">View</a>
+                <!-- view link removed as requested -->
                 <a [routerLink]="['/tests', t.id, 'results']" class="btn btn-sm btn-secondary">Enter Result</a>
                 @if (t.status === 'Completed' || t.status === 'Released') {
                   <a [routerLink]="['/reports', t.id]" class="btn btn-sm btn-primary">Report</a>
@@ -84,7 +84,7 @@ import { Test } from '../../../core/models';
   styles: [`
     .filter-bar { display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
     .search-input { flex: 1; min-width: 200px; }
-    .filter-select { width: 160px; }
+    .filter-select { width: 150px; }
     .pagination { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; }
     .text-center { text-align: center; color: #6b7280; padding: 2rem !important; }
     .action-cell { display: flex; gap: 0.35rem; flex-wrap: wrap; }
