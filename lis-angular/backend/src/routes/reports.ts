@@ -3,6 +3,7 @@ import { TestModel } from '../models/Test';
 import { PatientModel } from '../models/Patient';
 import { requireAuth, requirePermission } from '../middleware/auth';
 import { getDb } from '../db/connection';
+import { renderReportHtml } from '../lib/reportHtmlRenderer';
 
 const router = Router();
 
@@ -100,22 +101,8 @@ router.get('/', requirePermission('reports'), (req: Request, res: Response) => {
 });
 
 /**
- * GET /api/reports/:id - Get a single report (test + patient)
- */
-router.get('/:id', requirePermission('reports'), (req: Request, res: Response) => {
-  try {
-    const test = TestModel.findById(req.params.id);
-    if (!test) return res.status(404).json({ error: 'Test not found' });
-    const patient = PatientModel.findById(test.patient_id);
-    return res.json({ test, patient });
-  } catch (err: any) {
-    console.error('[reports] get error:', err);
-    return res.status(500).json({ error: 'Failed to get report' });
-  }
-});
-
-/**
  * GET /api/reports/worksheet/types - Get available test types for worksheet dropdown
+ * NOTE: Must be defined BEFORE /:id routes to avoid being captured by :id param
  */
 router.get('/worksheet/types', requirePermission('reports'), (_req: Request, res: Response) => {
   try {
@@ -131,6 +118,42 @@ router.get('/worksheet/types', requirePermission('reports'), (_req: Request, res
   } catch (err: any) {
     console.error('[reports] worksheet types error:', err);
     return res.status(500).json({ error: 'Failed to get types' });
+  }
+});
+
+/**
+ * GET /api/reports/:id/html - Render formatted report HTML (for preview / print / PDF)
+ */
+router.get('/:id/html', requirePermission('reports'), (req: Request, res: Response) => {
+  try {
+    const test = TestModel.findById(req.params.id);
+    if (!test) return res.status(404).send('<h1>Not found</h1>');
+    const patient = PatientModel.findById(test.patient_id) || {} as any;
+    const protocol = req.protocol;
+    const host = req.get('host') || 'localhost:3020';
+    const baseUrl = `${protocol}://${host}`;
+    const printMode = req.query.print === '1';
+    const html = renderReportHtml(test as any, patient as any, baseUrl, { print: printMode });
+    res.setHeader('Content-Type', 'text/html; charset=UTF-8');
+    return res.send(html);
+  } catch (err: any) {
+    console.error('[reports] html render error:', err);
+    return res.status(500).send('<h1>Failed to render report</h1>');
+  }
+});
+
+/**
+ * GET /api/reports/:id - Get a single report (test + patient)
+ */
+router.get('/:id', requirePermission('reports'), (req: Request, res: Response) => {
+  try {
+    const test = TestModel.findById(req.params.id);
+    if (!test) return res.status(404).json({ error: 'Test not found' });
+    const patient = PatientModel.findById(test.patient_id);
+    return res.json({ test, patient });
+  } catch (err: any) {
+    console.error('[reports] get error:', err);
+    return res.status(500).json({ error: 'Failed to get report' });
   }
 });
 

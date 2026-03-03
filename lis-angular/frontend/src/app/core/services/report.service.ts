@@ -29,6 +29,11 @@ export class ReportService {
     return this.http.get<any>(`${this.apiUrl}/${id}`);
   }
 
+  getReportHtml(id: string, print = false): Observable<string> {
+    const url = `${this.apiUrl}/${id}/html${print ? '?print=1' : ''}`;
+    return this.http.get(url, { responseType: 'text' });
+  }
+
   getWorksheetTypes(): Observable<{ types: string[] }> {
     return this.http.get<{ types: string[] }>(`${this.apiUrl}/worksheet/types`);
   }
