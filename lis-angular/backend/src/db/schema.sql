@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS tests (
   requested_tests     TEXT NOT NULL DEFAULT '[]',   -- JSON array
   awaiting_only       INTEGER NOT NULL DEFAULT 0,
   status_history      TEXT NOT NULL DEFAULT '[]',   -- JSON array
+  payment_history      TEXT NOT NULL DEFAULT '{}',   -- JSON object for payments
   created_at          TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at          TEXT NOT NULL DEFAULT (datetime('now')),
   FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE

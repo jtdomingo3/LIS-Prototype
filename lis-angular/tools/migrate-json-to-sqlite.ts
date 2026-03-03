@@ -234,8 +234,8 @@ function migrate() {
       specimen_numbers, assigned_doctor_id, assigned_doctor_name,
       results, notes, priority, requested_by, performed_by,
       completed_at, requested_tests, awaiting_only, status_history,
-      created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      payment_history, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   let testCount = 0;
@@ -286,6 +286,7 @@ function migrate() {
           t.performedBy || null,
           t.completedAt || null,
           JSON.stringify(t.requestedTests || []),
+          JSON.stringify(t.paymentHistory || {}),
           t.awaitingOnly ? 1 : 0,
           JSON.stringify(t.statusHistory || []),
           t.createdAt || new Date().toISOString(),

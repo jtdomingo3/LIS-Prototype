@@ -64,6 +64,18 @@ export function initializeDb(): void {
   });
 
   transaction();
+
+  // ensure new columns are added on existing databases
+  try {
+    const cols = database.prepare("PRAGMA table_info(tests)").all() as { name: string }[];
+    if (!cols.find(c => c.name === 'payment_history')) {
+      console.log('[DB] adding missing payment_history column to tests');
+      database.prepare("ALTER TABLE tests ADD COLUMN payment_history TEXT NOT NULL DEFAULT '{}'").run();
+    }
+  } catch (err: any) {
+    console.warn('[DB] migration check failed:', err.message);
+  }
+
   console.log('[DB] SQLite database initialized at', absoluteDbPath);
 }
 
