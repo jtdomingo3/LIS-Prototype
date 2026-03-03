@@ -38,6 +38,7 @@ import { Test } from '../../../core/models';
           <option value="serology">Serology</option>
           <option value="miscellaneous">Miscellaneous</option>
         </select>
+        <button class="btn btn-sm" (click)="clearFilters()">Clear</button>
       </div>
 
       <table class="table">
@@ -83,8 +84,8 @@ import { Test } from '../../../core/models';
   `,
   styles: [`
     .filter-bar { display: flex; gap: 0.75rem; margin-bottom: 1rem; flex-wrap: wrap; }
-    .search-input { flex: 1; min-width: 200px; }
-    .filter-select { width: 150px; }
+    .search-input { flex: 1; min-width: 200px; height: 2.8rem; }
+    .filter-select { width: 150px; height: 2.8rem; }
     .pagination { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; }
     .text-center { text-align: center; color: #6b7280; padding: 2rem !important; }
     .action-cell { display: flex; gap: 0.35rem; flex-wrap: wrap; }
@@ -139,5 +140,13 @@ export class TestListComponent implements OnInit {
       next: () => this.loadTests(),
       error: (err) => alert(err.error?.error || 'Failed to delete test')
     });
+  }
+
+  clearFilters() {
+    this.search = '';
+    this.statusFilter = '';
+    this.typeFilter = '';
+    this.page.set(1);
+    this.loadTests();
   }
 }

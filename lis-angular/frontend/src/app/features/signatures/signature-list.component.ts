@@ -82,7 +82,9 @@ import { SignatureService } from '../../core/services/signature.service';
   `,
   styles: [`
     .filter-bar { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
-    .filter-bar input, .filter-bar select { max-width: 220px; }
+    /* match search input width/height from tests list */
+    .filter-bar input, .filter-bar select { height: 2.8rem; }
+    .filter-bar input[type="text"] { flex: 1; min-width: 200px; }
     table { width: 100%; border-collapse: collapse; }
     th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #e5e7eb; }
     th { background: #f9fafb; font-weight: 600; color: #374151; }
