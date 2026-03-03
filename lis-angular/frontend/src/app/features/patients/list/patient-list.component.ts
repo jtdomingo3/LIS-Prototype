@@ -19,13 +19,13 @@ import { Patient } from '../../../core/models';
       <div class="filter-bar">
         <input type="text" [(ngModel)]="search" (input)="onSearch()"
           placeholder="Search by name, ID, or phone..." class="form-control search-input" />
-        <input type="date" [(ngModel)]="dateFilter" (change)="loadPatients()" class="form-control date-input" />
-        <select [(ngModel)]="philhealthFilter" (change)="loadPatients()" class="form-control filter-select">
+        <input type="date" [(ngModel)]="dateFilter" (change)="onFilterChange()" class="form-control date-input" />
+        <select [(ngModel)]="philhealthFilter" (change)="onFilterChange()" class="form-control filter-select">
           <option value="">PhilHealth</option>
           <option value="yes">Yes</option>
           <option value="no">No</option>
         </select>
-        <select [(ngModel)]="companyFilter" (change)="loadPatients()" class="form-control filter-select">
+        <select [(ngModel)]="companyFilter" (change)="onFilterChange()" class="form-control filter-select">
           <option value="">All Companies</option>
           @for (c of availableCompanies(); track c) {
             <option [value]="c">{{ c }}</option>
@@ -135,6 +135,11 @@ export class PatientListComponent implements OnInit {
     this.dateFilter = '';
     this.philhealthFilter = '';
     this.companyFilter = '';
+    this.page.set(1);
+    this.loadPatients();
+  }
+
+  onFilterChange() {
     this.page.set(1);
     this.loadPatients();
   }
