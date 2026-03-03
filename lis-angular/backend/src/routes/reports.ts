@@ -414,17 +414,32 @@ router.post('/patient-export/preview', requirePermission('reports'), (req: Reque
       where += ' AND (philhealth_consent = 0 OR philhealth_consent IS NULL)';
     }
 
-    const rows = db.prepare(`SELECT * FROM patients ${where} ORDER BY created_at DESC LIMIT 200`).all(...params) as any[];
-    const previewRows = rows.map((r: any) => ({
-      patientId: r.patient_id,
-      patientCode: r.patient_code,
-      firstName: r.first_name,
-      lastName: r.last_name,
-      company: r.company || '',
-      philhealthConsent: !!r.philhealth_consent,
-      phone: r.phone || '',
-      createdAt: r.created_at,
-    }));
+    // if date filters are provided we want patients who have tests in that range
+    let query = `SELECT DISTINCT p.* FROM patients p`;
+    if (dateFrom || dateTo) {
+      query += ' JOIN tests t ON t.patient_id = p.id';
+    }
+    const rows = db.prepare(`${query} ${where} ORDER BY p.created_at DESC LIMIT 200`).all(...params) as any[];
+    // to include testType within selected date range we may need the parameters
+    const dateStart = dateFrom || null;
+    const dateEnd = dateTo || null;
+    const previewRows = rows.map((r: any) => {
+      let testType = '';
+      if (dateStart && dateEnd) {
+        const tr = db.prepare(`SELECT test_type FROM tests WHERE patient_id = ? AND DATE(test_date) BETWEEN DATE(?) AND DATE(?) ORDER BY test_date LIMIT 1`).get(r.id, dateStart, dateEnd) as any;
+        if (tr && tr.test_type) testType = tr.test_type;
+      }
+      return {
+        patientId: r.patient_id,
+        firstName: r.first_name,
+        lastName: r.last_name,
+        company: r.company || '',
+        philhealthConsent: !!r.philhealth_consent,
+        phone: r.phone || '',
+        createdAt: r.created_at,
+        testType,
+      };
+    });
 
     return res.json({ count: previewRows.length, rows: previewRows });
   } catch (err: any) {
@@ -462,9 +477,13 @@ router.post('/patient-export/download', requirePermission('reports'), (req: Requ
       where += ' AND (philhealth_consent = 0 OR philhealth_consent IS NULL)';
     }
 
-    const rows = db.prepare(`SELECT * FROM patients ${where} ORDER BY created_at DESC`).all(...params) as any[];
+    let query = `SELECT DISTINCT p.* FROM patients p`;
+    if (dateFrom || dateTo) {
+      query += ' JOIN tests t ON t.patient_id = p.id';
+    }
+    const rows = db.prepare(`${query} ${where} ORDER BY p.created_at DESC`).all(...params) as any[];
 
-    const headers = ['Patient ID', 'Patient Code', 'First Name', 'Middle Name', 'Last Name', 'DOB', 'Gender', 'Phone', 'Email', 'Address', 'Company', 'PhilHealth Consent', 'PhilHealth ID', 'Physician', 'Created At'];
+    const headers = ['Patient ID', 'First Name', 'Middle Name', 'Last Name', 'DOB', 'Gender', 'Phone', 'Email', 'Address', 'Company', 'PhilHealth Consent', 'PhilHealth ID', 'Physician', 'Created At', 'Test Type'];
 
     function escapeCsv(v: any) {
       if (v === null || v === undefined) return '';
@@ -475,11 +494,17 @@ router.post('/patient-export/download', requirePermission('reports'), (req: Requ
 
     const lines = [headers.map(escapeCsv).join(',')];
     for (const r of rows) {
+      // compute a testType if within date filter
+      let testType = '';
+      if (dateFrom && dateTo) {
+        const tr = db.prepare(`SELECT test_type FROM tests WHERE patient_id = ? AND DATE(test_date) BETWEEN DATE(?) AND DATE(?) ORDER BY test_date LIMIT 1`).get(r.id, dateFrom, dateTo) as any;
+        if (tr && tr.test_type) testType = tr.test_type;
+      }
       const vals = [
-        r.patient_id, r.patient_code, r.first_name, r.middle_name || '', r.last_name,
+        r.patient_id, r.first_name, r.middle_name || '', r.last_name,
         r.date_of_birth || '', r.gender || '', r.phone || '', r.email || '', r.address || '',
-        r.company || '', r.philhealth_consent ? 'Yes' : 'No', r.philhealth_id || '',
-        r.physician || '', r.created_at || '',
+        r.company || '', r.philhealth_consent ? 'Yes' : 'No', r.philhealth_id || '', r.physician || '', r.created_at || '',
+        testType,
       ];
       lines.push(vals.map(escapeCsv).join(','));
     }

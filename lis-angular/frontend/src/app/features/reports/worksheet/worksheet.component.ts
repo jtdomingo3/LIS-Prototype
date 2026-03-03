@@ -71,6 +71,23 @@ import { ReportService } from '../../../core/services/report.service';
     <div class="card form-section" style="margin-top: 2rem;">
       <h3>Patient Export</h3>
       <div class="form-row">
+        <label>Company</label>
+        <select [(ngModel)]="ptCompany" class="form-control">
+          <option value="">All companies</option>
+          @for (c of ptCompanies(); track c) {
+            <option [value]="c">{{ c }}</option>
+          }
+        </select>
+      </div>
+      <div class="form-row">
+        <label>PhilHealth</label>
+        <select [(ngModel)]="ptPhilhealth" class="form-control">
+          <option value="">Any</option>
+          <option value="yes">Yes</option>
+          <option value="no">No</option>
+        </select>
+      </div>
+      <div class="form-row">
         <label>Date From</label>
         <input type="date" [(ngModel)]="ptDateFrom" class="form-control" />
       </div>
@@ -135,8 +152,12 @@ export class WorksheetComponent implements OnInit {
   worksheetError = signal('');          // display message if types cannot be loaded
   dateFrom = '';
   dateTo = '';
+  // patient export filters
   ptDateFrom = '';
   ptDateTo = '';
+  ptCompany = '';
+  ptPhilhealth = '';
+  ptCompanies = signal<string[]>([]);   // dropdown options
   ptPreviewData = signal<any[]>([]);
   ptPreviewColumns = signal<string[]>([]);
 
@@ -149,6 +170,9 @@ export class WorksheetComponent implements OnInit {
           // auto-select first type so user can immediately preview
           this.testType = types[0];
         }
+        // populate patient company dropdown
+        const comps = res.companies || [];
+        this.ptCompanies.set(comps);
       },
       error: (err) => {
         console.error('Failed to load worksheet types', err);
@@ -211,6 +235,8 @@ export class WorksheetComponent implements OnInit {
     this.reportService.patientExportPreview({
       dateFrom: this.ptDateFrom || undefined,
       dateTo: this.ptDateTo || undefined,
+      company: this.ptCompany || undefined,
+      philhealth: this.ptPhilhealth || undefined,
     }).subscribe({
       next: (res: any) => {
         const rows = res.rows || [];
@@ -226,6 +252,8 @@ export class WorksheetComponent implements OnInit {
     this.reportService.patientExportDownload({
       dateFrom: this.ptDateFrom || undefined,
       dateTo: this.ptDateTo || undefined,
+      company: this.ptCompany || undefined,
+      philhealth: this.ptPhilhealth || undefined,
     }).subscribe({
       next: (blob) => this.saveBlob(blob, 'patient-export.csv'),
     });

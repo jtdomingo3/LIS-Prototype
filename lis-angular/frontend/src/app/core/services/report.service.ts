@@ -53,8 +53,8 @@ export class ReportService {
     return this.http.post(`${this.apiUrl}/print-multiple`, { ids }, { responseType: 'text' });
   }
 
-  getWorksheetTypes(): Observable<{ types: string[] }> {
-    return this.http.get<{ types: string[] }>(`${this.apiUrl}/worksheet/types`);
+  getWorksheetTypes(): Observable<{ types: string[]; companies: string[] }> {
+    return this.http.get<{ types: string[]; companies: string[] }>(`${this.apiUrl}/worksheet/types`);
   }
 
   worksheetPreview(data: { testType: string; dateFrom?: string; dateTo?: string }): Observable<any> {
@@ -65,11 +65,12 @@ export class ReportService {
     return this.http.post(`${this.apiUrl}/worksheet/download`, data, { responseType: 'blob' });
   }
 
-  patientExportPreview(data: { dateFrom?: string; dateTo?: string }): Observable<any> {
+  // include optional company/philhealth fields for patient export filters
+  patientExportPreview(data: { dateFrom?: string; dateTo?: string; company?: string; philhealth?: string; }): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/patient-export/preview`, data);
   }
 
-  patientExportDownload(data: { dateFrom?: string; dateTo?: string }): Observable<Blob> {
+  patientExportDownload(data: { dateFrom?: string; dateTo?: string; company?: string; philhealth?: string; }): Observable<Blob> {
     return this.http.post(`${this.apiUrl}/patient-export/download`, data, { responseType: 'blob' });
   }
 }
