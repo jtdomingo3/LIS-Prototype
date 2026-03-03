@@ -153,7 +153,13 @@ export const TestModel = {
 
   findById(id: string): Test | null {
     const db = getDb();
-    const row = db.prepare('SELECT * FROM tests WHERE id = ?').get(id) as TestRow | undefined;
+    const row = db.prepare(`
+      SELECT t.*, p.first_name AS patient_first_name, p.middle_name AS patient_middle_name,
+             p.last_name AS patient_last_name
+      FROM tests t
+      LEFT JOIN patients p ON p.id = t.patient_id
+      WHERE t.id = ?
+    `).get(id) as TestRow | undefined;
     return row ? rowToTest(row) : null;
   },
 
