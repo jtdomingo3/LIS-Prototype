@@ -1,0 +1,17 @@
+{
+  "name": "lis-angular",
+  "version": "1.0.0",
+  "description": "Laboratory Information System — Angular + Express + SQLite",
+  "private": true,
+  "scripts": {
+    "start": "concurrently -n backend,frontend -c blue,green \"npm run start:backend\" \"npm run start:frontend\"",
+    "start:backend": "cd backend && npm run dev",
+    "start:frontend": "cd frontend && npx ng serve --open",
+    "install:all": "cd backend && npm install && cd ../frontend && npm install && cd ../tools && npm install",
+    "build": "cd backend && npm run build && cd ../frontend && npx ng build",
+    "migrate": "cd tools && npx ts-node migrate-json-to-sqlite.ts"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
