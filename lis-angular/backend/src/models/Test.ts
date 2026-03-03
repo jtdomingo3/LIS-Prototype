@@ -47,10 +47,14 @@ interface TestRow {
   payment_history: string;
   created_at: string;
   updated_at: string;
+  // joined patient info (if using JOIN in queries)
+  patient_first_name?: string | null;
+  patient_middle_name?: string | null;
+  patient_last_name?: string | null;
 }
 
 function rowToTest(row: TestRow): Test {
-  return {
+  const base: any = {
     ...row,
     specimen_numbers: JSON.parse(row.specimen_numbers || '{}'),
     results: JSON.parse(row.results || '{}'),
@@ -58,6 +62,22 @@ function rowToTest(row: TestRow): Test {
     status_history: JSON.parse(row.status_history || '[]'),
     payment_history: JSON.parse(row.payment_history || '{}'),
   };
+
+  // compute patient_name if joined columns are present
+  if (row.patient_last_name || row.patient_first_name || row.patient_middle_name) {
+    // format Lastname, Firstname Middle
+    const parts: string[] = [];
+    if (row.patient_last_name) parts.push(row.patient_last_name);
+    const sub: string[] = [];
+    if (row.patient_first_name) sub.push(row.patient_first_name);
+    if (row.patient_middle_name) sub.push(row.patient_middle_name);
+    if (sub.length) {
+      parts.push(sub.join(' '));
+    }
+    base.patient_name = parts.join(', ').trim();
+  }
+
+  return base as Test;
 }
 
 export interface TestListOptions {
@@ -79,13 +99,15 @@ export const TestModel = {
     const limit = options.limit || 50;
     const offset = (page - 1) * limit;
 
+    // base where clause on tests table
     let where = 'WHERE 1=1';
     const params: any[] = [];
 
     if (options.search) {
-      where += ' AND (t.test_id LIKE ? OR t.test_type LIKE ?)';
+      // search both test fields and patient name/code
+      where += ' AND (t.test_id LIKE ? OR t.test_type LIKE ? OR p.first_name LIKE ? OR p.last_name LIKE ? OR p.patient_code LIKE ?)';
       const s = `%${options.search}%`;
-      params.push(s, s);
+      params.push(s, s, s, s, s);
     }
 
     if (options.status) {
@@ -111,8 +133,17 @@ export const TestModel = {
     const sortBy = options.sortBy ? `t.${options.sortBy}` : 't.created_at';
     const sortOrder = options.sortOrder || 'DESC';
 
-    const countRow = db.prepare(`SELECT COUNT(*) as count FROM tests t ${where}`).get(...params) as { count: number };
-    const rows = db.prepare(`SELECT t.* FROM tests t ${where} ORDER BY ${sortBy} ${sortOrder} LIMIT ? OFFSET ?`).all(...params, limit, offset) as TestRow[];
+    // count query (no join needed since filtering by patient won't change total?)
+    const countRow = db.prepare(`SELECT COUNT(*) as count FROM tests t LEFT JOIN patients p ON p.id = t.patient_id ${where}`).get(...params) as { count: number };
+
+    const rows = db.prepare(`
+      SELECT t.*, p.first_name AS patient_first_name, p.middle_name AS patient_middle_name, p.last_name AS patient_last_name
+      FROM tests t
+      LEFT JOIN patients p ON p.id = t.patient_id
+      ${where}
+      ORDER BY ${sortBy} ${sortOrder}
+      LIMIT ? OFFSET ?
+    `).all(...params, limit, offset) as TestRow[];
 
     return {
       tests: rows.map(rowToTest),

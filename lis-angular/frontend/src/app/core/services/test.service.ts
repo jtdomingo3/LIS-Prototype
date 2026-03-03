@@ -22,8 +22,14 @@ export class TestService {
     sortOrder?: string;
   } = {}): Observable<{ tests: Test[]; total: number; page: number; limit: number; pagination?: { totalPages: number } }> {
     let params = new HttpParams();
+    // backend understands both camelCase (`testType`) and snake_case (`test_type`)
     Object.entries(options).forEach(([key, value]) => {
-      if (value) params = params.set(key, value.toString());
+      if (!value) return;
+      // translate test_type -> testType as well
+      if (key === 'test_type') {
+        params = params.set('testType', value.toString());
+      }
+      params = params.set(key, value.toString());
     });
 
     return this.http.get<{ tests: Test[]; total: number; page: number; limit: number }>(this.apiUrl, { params });

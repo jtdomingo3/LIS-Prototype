@@ -48,7 +48,18 @@ function getTestPrefix(testType: string): string {
  */
 router.get('/', requirePermission('tests'), (req: Request, res: Response) => {
   try {
-    const { page, limit, search, status, testType, date, patientId, sortBy, sortOrder } = req.query;
+    // accept both camelCase and snake_case parameters for compatibility with Angular client
+  const {
+    page,
+    limit,
+    search,
+    status,
+    date,
+    patientId,
+    sortBy,
+    sortOrder,
+  } = req.query as any;
+  const testType = (req.query.testType || req.query.test_type) as string;
 
     const result = TestModel.findAll({
       page: page ? parseInt(page as string) : 1,
