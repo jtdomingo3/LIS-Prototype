@@ -3,11 +3,11 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap, catchError, of } from 'rxjs';
 import { User, LoginResponse, UserPermissions } from '../models';
-import { environment } from '../../../environments/environment';
+import { AppConfigService } from './app-config.service';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly apiUrl = `${environment.apiUrl}/auth`;
+  private get apiUrl() { return `${this.config.apiUrl}/auth`; }
 
   // Reactive signals for auth state
   private currentUserSignal = signal<User | null>(null);
@@ -16,7 +16,7 @@ export class AuthService {
   readonly currentUser = this.currentUserSignal.asReadonly();
   readonly isAuthenticated = computed(() => !!this.tokenSignal());
 
-  constructor(private http: HttpClient, private router: Router) {
+  constructor(private http: HttpClient, private router: Router, private config: AppConfigService) {
     // Restore from localStorage on init
     const savedToken = localStorage.getItem('lis_token');
     const savedUser = localStorage.getItem('lis_user');

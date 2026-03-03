@@ -35,20 +35,20 @@ import { PatientService } from '../../../core/services/patient.service';
 
         <div class="form-row">
           <div class="form-group">
+            <label class="form-label">Date of Birth</label>
+            <input type="date" class="form-control" [(ngModel)]="form.date_of_birth" name="date_of_birth" (change)="onDobChange()" />
+          </div>
+          <div class="form-group">
             <label class="form-label">Age</label>
-            <input type="number" class="form-control" [(ngModel)]="form.age" name="age" min="0" max="150" />
+            <input type="text" class="form-control" [(ngModel)]="form.age_manual" name="age_manual" placeholder="Auto from DOB" />
           </div>
           <div class="form-group">
-            <label class="form-label">Sex</label>
-            <select class="form-control" [(ngModel)]="form.sex" name="sex">
+            <label class="form-label">Gender *</label>
+            <select class="form-control" [(ngModel)]="form.gender" name="gender">
               <option value="">Select</option>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
             </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Birthday</label>
-            <input type="date" class="form-control" [(ngModel)]="form.birthday" name="birthday" />
           </div>
         </div>
 
@@ -58,29 +58,37 @@ import { PatientService } from '../../../core/services/patient.service';
             <input type="tel" class="form-control" [(ngModel)]="form.phone" name="phone" />
           </div>
           <div class="form-group">
-            <label class="form-label">Email</label>
-            <input type="email" class="form-control" [(ngModel)]="form.email" name="email" />
-          </div>
-          <div class="form-group">
             <label class="form-label">Company / Source</label>
             <input type="text" class="form-control" [(ngModel)]="form.company" name="company" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Physician</label>
+            <input type="text" class="form-control" [(ngModel)]="form.physician" name="physician" />
           </div>
         </div>
 
         <div class="form-group">
           <label class="form-label">Address</label>
-          <input type="text" class="form-control" [(ngModel)]="form.address" name="address" />
+          <textarea class="form-control" [(ngModel)]="form.address" name="address" rows="2"></textarea>
         </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Physician</label>
-            <input type="text" class="form-control" [(ngModel)]="form.physician" name="physician" />
+        <!-- PhilHealth Section -->
+        <div class="form-group philhealth-section">
+          <label class="form-label">PhilHealth</label>
+          <div class="radio-group">
+            <label class="radio-label">
+              <input type="radio" name="philhealth" [value]="1" [(ngModel)]="form.philhealth_consent" /> Yes
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="philhealth" [value]="0" [(ngModel)]="form.philhealth_consent" /> No
+            </label>
           </div>
-          <div class="form-group">
-            <label class="form-label">Room / Bed</label>
-            <input type="text" class="form-control" [(ngModel)]="form.room" name="room" />
-          </div>
+          @if (form.philhealth_consent === 1) {
+            <div class="form-group" style="margin-top: 0.5rem;">
+              <label class="form-label">PhilHealth ID</label>
+              <input type="text" class="form-control" [(ngModel)]="form.philhealth_id" name="philhealth_id" placeholder="Enter PhilHealth ID" />
+            </div>
+          }
         </div>
 
         <div class="form-actions">
@@ -93,8 +101,13 @@ import { PatientService } from '../../../core/services/patient.service';
     </div>
   `,
   styles: [`
-    .form-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+    .form-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem; }
+    .form-group { margin-bottom: 0.75rem; }
+    .form-label { display: block; font-weight: 600; margin-bottom: 0.25rem; font-size: 0.85rem; color: #374151; }
     .form-actions { margin-top: 1.5rem; display: flex; gap: 0.75rem; }
+    .radio-group { display: flex; gap: 1.5rem; margin-top: 0.25rem; }
+    .radio-label { display: flex; align-items: center; gap: 0.4rem; cursor: pointer; font-size: 0.9rem; }
+    .philhealth-section { margin-top: 0.5rem; padding: 1rem; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb; }
     @media (max-width: 768px) { .form-row { grid-template-columns: 1fr; } }
   `]
 })
@@ -110,9 +123,10 @@ export class PatientFormComponent implements OnInit {
 
   form: any = {
     first_name: '', middle_name: '', last_name: '',
-    age: null, sex: '', birthday: '',
-    phone: '', email: '', company: '',
-    address: '', physician: '', room: ''
+    date_of_birth: '', age_manual: '', gender: '',
+    phone: '', company: '', physician: '',
+    address: '',
+    philhealth_consent: 0, philhealth_id: ''
   };
 
   ngOnInit() {
@@ -124,11 +138,29 @@ export class PatientFormComponent implements OnInit {
         next: (res) => {
           const p = res.patient;
           Object.keys(this.form).forEach(key => {
-            if (p[key] !== undefined) this.form[key] = p[key] ?? '';
+            if (p[key] !== undefined && p[key] !== null) this.form[key] = p[key];
           });
+          // Map legacy fields
+          if (!this.form.date_of_birth && p['birthday']) this.form.date_of_birth = p['birthday'];
+          if (!this.form.gender && p['sex']) this.form.gender = p['sex'];
+          if (!this.form.age_manual && p['age']) this.form.age_manual = p['age'];
+          this.form.philhealth_consent = p.philhealth_consent ? 1 : 0;
         },
         error: () => this.error.set('Failed to load patient')
       });
+    }
+  }
+
+  onDobChange() {
+    if (this.form.date_of_birth) {
+      const today = new Date();
+      const birth = new Date(this.form.date_of_birth);
+      if (!isNaN(birth.getTime())) {
+        let age = today.getFullYear() - birth.getFullYear();
+        const m = today.getMonth() - birth.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+        this.form.age_manual = String(age);
+      }
     }
   }
 

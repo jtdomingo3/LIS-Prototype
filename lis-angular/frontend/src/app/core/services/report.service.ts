@@ -1,13 +1,13 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from '../../../environments/environment';
+import { AppConfigService } from './app-config.service';
 
 @Injectable({ providedIn: 'root' })
 export class ReportService {
-  private readonly apiUrl = `${environment.apiUrl}/reports`;
+  private get apiUrl() { return `${this.config.apiUrl}/reports`; }
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private config: AppConfigService) {}
 
   getAll(options: {
     search?: string;

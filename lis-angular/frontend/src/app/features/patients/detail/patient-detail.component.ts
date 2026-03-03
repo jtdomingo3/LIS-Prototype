@@ -24,16 +24,16 @@ import { Patient, Test } from '../../../core/models';
         <div class="card">
           <h3>Patient Info</h3>
           <dl>
+            <dt>Patient ID</dt><dd>{{ patient()!.patient_id }}</dd>
             <dt>Patient Code</dt><dd>{{ patient()!.patient_code }}</dd>
             <dt>Full Name</dt><dd>{{ patient()!.first_name }} {{ patient()!.middle_name || '' }} {{ patient()!.last_name }}</dd>
-            <dt>Age / Sex</dt><dd>{{ patient()!.age || '—' }} / {{ patient()!.sex || '—' }}</dd>
-            <dt>Birthday</dt><dd>{{ patient()!.birthday || '—' }}</dd>
+            <dt>Age / Gender</dt><dd>{{ patient()!.age_manual || patient()!.age || '—' }} / {{ patient()!.gender || patient()!.sex || '—' }}</dd>
+            <dt>Date of Birth</dt><dd>{{ patient()!.date_of_birth || patient()!.birthday || '—' }}</dd>
             <dt>Phone</dt><dd>{{ patient()!.phone || '—' }}</dd>
-            <dt>Email</dt><dd>{{ patient()!.email || '—' }}</dd>
             <dt>Address</dt><dd>{{ patient()!.address || '—' }}</dd>
             <dt>Company</dt><dd>{{ patient()!.company || '—' }}</dd>
             <dt>Physician</dt><dd>{{ patient()!.physician || '—' }}</dd>
-            <dt>Room</dt><dd>{{ patient()!.room || '—' }}</dd>
+            <dt>PhilHealth</dt><dd>{{ patient()!.philhealth_consent ? 'Yes — ' + (patient()!.philhealth_id || 'No ID') : 'No' }}</dd>
             <dt>Registered</dt><dd>{{ patient()!.created_at | date:'medium' }}</dd>
           </dl>
         </div>
@@ -56,7 +56,12 @@ import { Patient, Test } from '../../../core/models';
                     <td>{{ t.test_type }}</td>
                     <td><span class="badge" [class]="'badge-' + t.status">{{ t.status }}</span></td>
                     <td>{{ t.created_at | date:'shortDate' }}</td>
-                    <td><a [routerLink]="['/tests', t.id]" class="btn btn-sm">View</a></td>
+                    <td class="action-cell">
+                      <a [routerLink]="['/tests', t.id]" class="btn btn-sm">View</a>
+                      @if (t.status === 'Completed' || t.status === 'Released') {
+                        <a [routerLink]="['/reports', t.id]" class="btn btn-sm btn-primary">Report</a>
+                      }
+                    </td>
                   </tr>
                 }
               </tbody>
@@ -79,6 +84,7 @@ import { Patient, Test } from '../../../core/models';
     .empty { text-align: center; padding: 2rem; color: #9ca3af; }
     .header-actions { display: flex; gap: 0.5rem; }
     .loading { text-align: center; padding: 3rem; color: #6b7280; }
+    .action-cell { display: flex; gap: 0.35rem; }
   `]
 })
 export class PatientDetailComponent implements OnInit {

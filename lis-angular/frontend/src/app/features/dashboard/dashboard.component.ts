@@ -230,13 +230,18 @@ export class DashboardComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private loadStats() {
+    // Destroy chart before hiding canvas (loading hides the @if block)
+    if (this.chart) {
+      this.chart.destroy();
+      this.chart = null;
+    }
     this.loading.set(true);
     this.dashboardService.getStats(this.dateFilter()).subscribe({
       next: (data) => {
         this.stats.set(data);
         this.loading.set(false);
         // Wait for view to render then create/update chart
-        setTimeout(() => this.updateChart(), 100);
+        setTimeout(() => this.updateChart(), 150);
       },
       error: () => this.loading.set(false),
     });

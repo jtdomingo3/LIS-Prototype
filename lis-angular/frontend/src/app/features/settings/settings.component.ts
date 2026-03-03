@@ -2,7 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { environment } from '../../../environments/environment';
+import { AppConfigService } from '../../core/services/app-config.service';
 
 @Component({
   selector: 'app-settings',
@@ -67,7 +67,8 @@ import { environment } from '../../../environments/environment';
 })
 export class SettingsComponent implements OnInit {
   private http = inject(HttpClient);
-  private api = environment.apiUrl + '/settings';
+  private cfg = inject(AppConfigService);
+  private get api() { return this.cfg.apiUrl + '/settings'; }
 
   settings: Record<string, string> = {};
   loading = signal(true);

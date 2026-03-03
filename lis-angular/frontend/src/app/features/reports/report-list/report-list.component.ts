@@ -50,10 +50,10 @@ import { ReportService } from '../../../core/services/report.service';
             @for (r of reports(); track r.id) {
               <tr>
                 <td><input type="checkbox" [(ngModel)]="r.selected" /></td>
-                <td>{{ r.test_id || r.id?.substring(0, 8) }}</td>
-                <td>{{ r.patient_name || '—' }}</td>
-                <td>{{ r.test_type }}</td>
-                <td>{{ r.test_date | date:'mediumDate' }}</td>
+                <td>{{ r.testId || r.test_id || r.id?.substring(0, 8) }}</td>
+                <td>{{ r.patientName || r.patient_name || '—' }}</td>
+                <td>{{ r.testType || r.test_type }}</td>
+                <td>{{ (r.testDate || r.test_date) | date:'mediumDate' }}</td>
                 <td>
                   <span class="badge" [class]="'badge-' + r.status">{{ r.status }}</span>
                 </td>
@@ -123,7 +123,8 @@ export class ReportListComponent implements OnInit {
       limit: 25,
     }).subscribe({
       next: (res: any) => {
-        this.reports.set((res.reports || []).map((r: any) => ({ ...r, selected: false })));
+        const items = res.reports || res.tests || [];
+        this.reports.set(items.map((r: any) => ({ ...r, selected: false })));
         if (res.availableTestTypes) this.availableTestTypes.set(res.availableTestTypes);
         this.totalPages.set(res.pagination?.totalPages || 1);
         this.loading.set(false);

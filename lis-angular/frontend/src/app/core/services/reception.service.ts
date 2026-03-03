@@ -2,13 +2,13 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Test } from '../models';
-import { environment } from '../../../environments/environment';
+import { AppConfigService } from './app-config.service';
 
 @Injectable({ providedIn: 'root' })
 export class ReceptionService {
-  private readonly apiUrl = `${environment.apiUrl}/reception`;
+  private get apiUrl() { return `${this.config.apiUrl}/reception`; }
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private config: AppConfigService) {}
 
   getOverview(): Observable<{ areas: Record<string, number> }> {
     return this.http.get<any>(this.apiUrl);
@@ -23,7 +23,7 @@ export class ReceptionService {
   }
 
   subscribeEvents(): EventSource {
-    return new EventSource(`${environment.apiUrl}/reception/events`);
+    return new EventSource(`${this.config.apiUrl}/reception/events`);
   }
 
   assignTest(data: {
@@ -61,12 +61,16 @@ export class ReceptionService {
     return this.http.get<any>(`${this.apiUrl}/kiosk`);
   }
 
+  deleteFromQueue(data: { testIds: string[]; area: string }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/delete`, data);
+  }
+
   /**
    * SSE connection for live updates.
    * Returns an EventSource — caller is responsible for closing it.
    */
   connectSSE(): EventSource {
     const token = localStorage.getItem('lis_token');
-    return new EventSource(`${environment.apiUrl}/reception/events`);
+    return new EventSource(`${this.config.apiUrl}/reception/events`);
   }
 }

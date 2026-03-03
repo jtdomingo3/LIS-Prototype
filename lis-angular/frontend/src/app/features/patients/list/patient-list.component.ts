@@ -50,7 +50,7 @@ import { Patient } from '../../../core/models';
         <tbody>
           @for (p of patients(); track p.id) {
             <tr>
-              <td><strong>{{ p.patient_code || p.patient_id }}</strong></td>
+              <td><strong>{{ p.patient_id || '—' }}</strong></td>
               <td>{{ p.last_name }}, {{ p.first_name }} {{ p.middle_name || '' }}</td>
               <td>{{ getAge(p) }}</td>
               <td>{{ (p.gender || p.sex || '—') | uppercase }}</td>
@@ -65,6 +65,7 @@ import { Patient } from '../../../core/models';
               </td>
               <td class="actions-cell">
                 <a [routerLink]="['/patients', p.id]" class="btn btn-sm">View</a>
+                <a [routerLink]="['/tests/new']" [queryParams]="{patientId: p.id}" class="btn btn-sm btn-primary">Assign Test</a>
                 <a [routerLink]="['/patients', p.id, 'edit']" class="btn btn-sm">Edit</a>
                 <button class="btn btn-sm btn-danger" (click)="deletePatient(p)">Delete</button>
               </td>
@@ -91,8 +92,11 @@ import { Patient } from '../../../core/models';
     .search-input { flex: 1; min-width: 200px; }
     .date-input { width: 160px; }
     .filter-select { width: 150px; }
-    .pagination { display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; flex-wrap: wrap; }
-    .pagination .btn.active { background: #10b981; color: white; }
+    .pagination { display: flex; align-items: center; justify-content: center; gap: 0.25rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; flex-wrap: wrap; }
+    .pagination .btn { background: none; border: none; color: #374151; cursor: pointer; padding: 4px 10px; font-size: 0.85rem; }
+    .pagination .btn:hover:not([disabled]) { color: #10b981; text-decoration: underline; }
+    .pagination .btn.active { background: #10b981; color: white; border-radius: 4px; font-weight: 700; }
+    .pagination .btn[disabled] { color: #d1d5db; cursor: default; }
     .text-center { text-align: center; color: #6b7280; padding: 2rem !important; }
     .badge { padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; }
     .badge-green { background: #d1fae5; color: #065f46; }

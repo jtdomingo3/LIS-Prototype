@@ -20,6 +20,7 @@ export interface Test {
   requested_tests: any[];
   awaiting_only: number;
   status_history: any[];
+  payment_history: Record<string, any>;
   created_at: string;
   updated_at: string;
 }
@@ -43,6 +44,7 @@ interface TestRow {
   requested_tests: string;
   awaiting_only: number;
   status_history: string;
+  payment_history: string;
   created_at: string;
   updated_at: string;
 }
@@ -54,6 +56,7 @@ function rowToTest(row: TestRow): Test {
     results: JSON.parse(row.results || '{}'),
     requested_tests: JSON.parse(row.requested_tests || '[]'),
     status_history: JSON.parse(row.status_history || '[]'),
+    payment_history: JSON.parse(row.payment_history || '{}'),
   };
 }
 
@@ -146,8 +149,8 @@ export const TestModel = {
         specimen_numbers, assigned_doctor_id, assigned_doctor_name,
         results, notes, priority, requested_by, performed_by,
         completed_at, requested_tests, awaiting_only, status_history,
-        created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        payment_history, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       id,
       data.test_id || null,
@@ -167,6 +170,7 @@ export const TestModel = {
       JSON.stringify(data.requested_tests || []),
       data.awaiting_only ? 1 : 0,
       JSON.stringify(data.status_history || []),
+      JSON.stringify(data.payment_history || {}),
       data.created_at || now,
       data.updated_at || now
     );
@@ -200,7 +204,7 @@ export const TestModel = {
       values.push(data.awaiting_only ? 1 : 0);
     }
 
-    const jsonFields = ['specimen_numbers', 'results', 'requested_tests', 'status_history'] as const;
+    const jsonFields = ['specimen_numbers', 'results', 'requested_tests', 'status_history', 'payment_history'] as const;
     for (const field of jsonFields) {
       if ((data as any)[field] !== undefined) {
         fields.push(`${field} = ?`);

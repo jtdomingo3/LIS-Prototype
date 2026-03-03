@@ -59,8 +59,13 @@ import { Test } from '../../../core/models';
               <td>{{ t.test_type }}</td>
               <td><span class="badge" [class]="'badge-' + t.status">{{ t.status }}</span></td>
               <td>{{ t.created_at | date:'shortDate' }}</td>
-              <td>
+              <td class="action-cell">
                 <a [routerLink]="['/tests', t.id]" class="btn btn-sm">View</a>
+                <a [routerLink]="['/tests', t.id, 'results']" class="btn btn-sm btn-secondary">Enter Result</a>
+                @if (t.status === 'Completed' || t.status === 'Released') {
+                  <a [routerLink]="['/reports', t.id]" class="btn btn-sm btn-primary">Report</a>
+                }
+                <button class="btn btn-sm btn-danger" (click)="deleteTest(t)">Delete</button>
               </td>
             </tr>
           } @empty {
@@ -82,6 +87,11 @@ import { Test } from '../../../core/models';
     .filter-select { width: 160px; }
     .pagination { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; }
     .text-center { text-align: center; color: #6b7280; padding: 2rem !important; }
+    .action-cell { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+    .btn-danger { background: #ef4444; color: white; border-color: #ef4444; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-secondary { background: #6b7280; color: white; border-color: #6b7280; }
+    .btn-secondary:hover { background: #4b5563; }
   `]
 })
 export class TestListComponent implements OnInit {
@@ -120,6 +130,14 @@ export class TestListComponent implements OnInit {
     this.testService.getAll(params).subscribe(res => {
       this.tests.set(res.tests);
       this.totalPages.set(res.pagination?.totalPages || 1);
+    });
+  }
+
+  deleteTest(t: any) {
+    if (!confirm(`Delete test "${t.test_id}"? This cannot be undone.`)) return;
+    this.testService.delete(t.id).subscribe({
+      next: () => this.loadTests(),
+      error: (err) => alert(err.error?.error || 'Failed to delete test')
     });
   }
 }

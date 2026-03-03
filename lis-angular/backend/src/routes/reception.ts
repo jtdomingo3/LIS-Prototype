@@ -14,9 +14,14 @@ export { sseEmitter };
 // In-memory advertisement text for kiosk
 let kioskAdText = '';
 
+// Configurable Doctor names from env (matches original app)
+const DOCTOR_1_NAME = process.env.DOCTOR_1_NAME || "Doctor's Check-up 1";
+const DOCTOR_2_NAME = process.env.DOCTOR_2_NAME || "Doctor's Check-up 2";
+
 // Define all reception areas as in the original app
 const DISPLAY_AREAS = [
   'Payment Area',
+  'Sendout',
   'Extraction Area',
   'Drug Test',
   'Ultrasound',
@@ -24,8 +29,33 @@ const DISPLAY_AREAS = [
   'X-ray',
   'ECG',
   'Releasing of Result',
-  "Doctor's Check-up",
+  DOCTOR_1_NAME,
+  DOCTOR_2_NAME,
 ];
+
+/**
+ * Map test type to its target area after Payment Area (matches original reception.js)
+ */
+function mapTestToArea(testType: string): string {
+  const lower = (testType || '').toLowerCase();
+
+  // Lab tests that need extraction
+  if (['blood chemistry', 'hematology', 'serology', 'esr', 'ct-bt', 'blood typing',
+       'pregnancy test', 'dengue duo', 'thyroid panel', 'pt-aptt', 'fecal occult blood',
+       'urinalysis', 'fecalysis'].some(t => lower.includes(t))) {
+    return 'Extraction Area';
+  }
+  if (lower.includes('drug') && lower.includes('test')) return 'Drug Test';
+  if (lower.includes('drugtest')) return 'Drug Test';
+  if (lower.includes('x-ray') || lower === 'xray') return 'X-ray';
+  if (lower.includes('ultrasound')) return 'Ultrasound';
+  if (lower.includes('2d echo') || lower.includes('echocardiography')) return '2D Echo';
+  if (lower.includes('ecg')) return 'ECG';
+  if (lower.includes('sendout')) return 'Sendout';
+
+  // Default: extraction
+  return 'Extraction Area';
+}
 
 /**
  * GET /api/reception - Reception overview: areas with patient/test counts
@@ -154,7 +184,7 @@ router.post('/assign', requireAuth, requirePermission('reception'), (req: Reques
  */
 router.post('/complete', requireAuth, requirePermission('reception'), (req: Request, res: Response) => {
   try {
-    const { testIds, patientId, area, nextArea } = req.body;
+    const { testIds, patientId, area, nextArea, clinicalAmount, xrayAmount } = req.body;
 
     if ((!testIds || testIds.length === 0) && !patientId) {
       return res.status(400).json({ error: 'testIds or patientId is required' });
@@ -163,7 +193,6 @@ router.post('/complete', requireAuth, requirePermission('reception'), (req: Requ
     let testsToUpdate: string[] = testIds || [];
 
     if (patientId && (!testIds || testIds.length === 0)) {
-      // Get all tests for this patient in the specified area
       const patientTests = TestModel.findByPatientId(patientId);
       testsToUpdate = patientTests
         .filter(t => t.status === area)
@@ -175,10 +204,25 @@ router.post('/complete', requireAuth, requirePermission('reception'), (req: Requ
       const test = TestModel.findById(testId);
       if (!test) continue;
 
-      const newStatus = nextArea || 'Completed';
+      // Determine next status
+      let newStatus: string;
+      if (nextArea) {
+        newStatus = nextArea;
+      } else if (area === 'Payment Area') {
+        // After payment, route each test to its appropriate area
+        newStatus = mapTestToArea(test.test_type);
+      } else if (area === 'Releasing of Result') {
+        newStatus = 'Released';
+      } else if (area === DOCTOR_1_NAME || area === DOCTOR_2_NAME) {
+        newStatus = 'Checked';
+      } else {
+        // Non-payment areas: move to Awaiting (for result entry)
+        newStatus = 'Awaiting';
+      }
+
       const updateData: any = {
         status: newStatus,
-        status_history: [...test.status_history, {
+        status_history: [...(test.status_history || []), {
           from: test.status,
           to: newStatus,
           user: req.user?.userId,
@@ -186,6 +230,16 @@ router.post('/complete', requireAuth, requirePermission('reception'), (req: Requ
           timestamp: new Date().toISOString(),
         }],
       };
+
+      // Record payment amounts
+      if (area === 'Payment Area' && (clinicalAmount || xrayAmount)) {
+        updateData.payment_history = {
+          ...(test.payment_history || {}),
+          clinicalAmount: clinicalAmount || 0,
+          xrayAmount: xrayAmount || 0,
+          paidAt: new Date().toISOString(),
+        };
+      }
 
       if (newStatus === 'Completed' || newStatus === 'Released') {
         if (!test.completed_at) {
@@ -204,6 +258,45 @@ router.post('/complete', requireAuth, requirePermission('reception'), (req: Requ
   } catch (err: any) {
     console.error('[reception] complete error:', err);
     return res.status(500).json({ error: 'Failed to complete tests' });
+  }
+});
+
+/**
+ * POST /api/reception/delete - Remove test(s) from a queue area (reset to Pending)
+ */
+router.post('/delete', requireAuth, requirePermission('reception'), (req: Request, res: Response) => {
+  try {
+    const { testIds, area } = req.body;
+    if (!testIds || testIds.length === 0) {
+      return res.status(400).json({ error: 'testIds required' });
+    }
+
+    const updated: any[] = [];
+    for (const testId of testIds) {
+      const test = TestModel.findById(testId);
+      if (!test) continue;
+
+      const updateData: any = {
+        status: 'Pending',
+        status_history: [...(test.status_history || []), {
+          from: test.status,
+          to: 'Pending',
+          user: req.user?.userId,
+          area: area,
+          action: 'deleted_from_queue',
+          timestamp: new Date().toISOString(),
+        }],
+      };
+
+      const result = TestModel.update(testId, updateData);
+      if (result) updated.push(result);
+    }
+
+    sseEmitter.emit('test-update', { type: 'delete', tests: updated, area });
+    return res.json({ updated, count: updated.length });
+  } catch (err: any) {
+    console.error('[reception] delete error:', err);
+    return res.status(500).json({ error: 'Failed to delete from queue' });
   }
 });
 

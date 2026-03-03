@@ -1,0 +1,5 @@
+{
+  "apiUrl": "http://localhost:3020/api",
+  "appName": "Gezyne Clinical Laboratory",
+  "kioskRefreshInterval": 15000
+}

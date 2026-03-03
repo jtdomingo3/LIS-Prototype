@@ -2,13 +2,13 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Patient, Test } from '../models';
-import { environment } from '../../../environments/environment';
+import { AppConfigService } from './app-config.service';
 
 @Injectable({ providedIn: 'root' })
 export class PatientService {
-  private readonly apiUrl = `${environment.apiUrl}/patients`;
+  private get apiUrl() { return `${this.config.apiUrl}/patients`; }
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private config: AppConfigService) {}
 
   getAll(options: {
     page?: number;

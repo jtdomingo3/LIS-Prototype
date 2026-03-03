@@ -2,13 +2,13 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Template } from '../models';
-import { environment } from '../../../environments/environment';
+import { AppConfigService } from './app-config.service';
 
 @Injectable({ providedIn: 'root' })
 export class TemplateService {
-  private readonly apiUrl = `${environment.apiUrl}/templates`;
+  private get apiUrl() { return `${this.config.apiUrl}/templates`; }
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private config: AppConfigService) {}
 
   getAll(includeInactive = false): Observable<{ templates: Template[] }> {
     const url = includeInactive ? `${this.apiUrl}?all=true` : this.apiUrl;
