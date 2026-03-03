@@ -101,6 +101,97 @@ router.get('/', requirePermission('reports'), (req: Request, res: Response) => {
 });
 
 /**
+ * GET /api/reports/nav - Lightweight navigation list (all completed/released tests)
+ * Returns minimal data for client-side filtering & navigation — no pagination.
+ */
+router.get('/nav', requirePermission('reports'), (_req: Request, res: Response) => {
+  try {
+    const db = getDb();
+    const rows = db.prepare(`
+      SELECT t.id, t.test_id, t.test_type, t.test_date, t.created_at,
+             p.first_name, p.last_name, p.patient_code
+      FROM tests t
+      LEFT JOIN patients p ON t.patient_id = p.id
+      WHERE t.status IN ('Completed', 'Released')
+      ORDER BY t.created_at DESC
+    `).all() as any[];
+
+    const items = rows.map((r: any) => ({
+      id: r.id,
+      testId: r.test_id || '',
+      testType: r.test_type || '',
+      testDate: r.test_date || r.created_at || '',
+      patientName: r.first_name ? `${r.last_name}, ${r.first_name}` : 'Unknown',
+      patientCode: r.patient_code || '',
+    }));
+
+    // unique patient names (sorted) for dropdown
+    const patientSet = new Set<string>();
+    items.forEach((i: any) => { if (i.patientName && i.patientName !== 'Unknown') patientSet.add(i.patientName); });
+    const patients = Array.from(patientSet).sort();
+
+    // unique test types
+    const typeSet = new Set<string>();
+    items.forEach((i: any) => { if (i.testType) typeSet.add(i.testType); });
+    const testTypes = Array.from(typeSet).sort();
+
+    return res.json({ items, patients, testTypes, total: items.length });
+  } catch (err: any) {
+    console.error('[reports] nav error:', err);
+    return res.status(500).json({ error: 'Failed to get nav list' });
+  }
+});
+
+/**
+ * POST /api/reports/print-multiple - Render concatenated HTML for multiple reports
+ * Body: { ids: string[] }
+ */
+router.post('/print-multiple', requirePermission('reports'), (req: Request, res: Response) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'ids array required' });
+    }
+
+    const protocol = req.protocol;
+    const host = req.get('host') || 'localhost:3020';
+    const baseUrl = `${protocol}://${host}`;
+
+    const pages: string[] = [];
+    for (const id of ids) {
+      const test = TestModel.findById(id);
+      if (!test) continue;
+      const patient = PatientModel.findById(test.patient_id) || {} as any;
+      const html = renderReportHtml(test as any, patient as any, baseUrl, { print: false });
+      // Extract just the body content (strip the full document wrapper)
+      const bodyMatch = html.match(/<body>([\s\S]*)<\/body>/i);
+      pages.push(bodyMatch ? bodyMatch[1] : html);
+    }
+
+    // Combine pages with page-break dividers
+    const combined = pages.join('\n<div style="page-break-after:always;"></div>\n');
+
+    // Wrap in a single document
+    const fullHtml = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Print Reports</title>
+<style>
+@page { size: Letter; margin: 0.25in; }
+body { margin:0; padding:0; font-family:'Times New Roman',Times,serif; }
+</style>
+</head><body>
+${combined}
+<script>setTimeout(function(){ window.print(); },500);</script>
+</body></html>`;
+
+    res.setHeader('Content-Type', 'text/html; charset=UTF-8');
+    return res.send(fullHtml);
+  } catch (err: any) {
+    console.error('[reports] print-multiple error:', err);
+    return res.status(500).send('<h1>Failed to render reports</h1>');
+  }
+});
+
+/**
  * GET /api/reports/worksheet/types - Get available test types for worksheet dropdown
  * NOTE: Must be defined BEFORE /:id routes to avoid being captured by :id param
  */

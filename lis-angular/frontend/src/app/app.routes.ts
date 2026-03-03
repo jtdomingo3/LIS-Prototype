@@ -86,10 +86,6 @@ export const routes: Routes = [
         path: 'worksheet',
         loadComponent: () => import('./features/reports/worksheet/worksheet.component').then(m => m.WorksheetComponent),
       },
-      {
-        path: ':id',
-        loadComponent: () => import('./features/reports/report-preview/report-preview.component').then(m => m.ReportPreviewComponent),
-      },
     ],
   },
   {

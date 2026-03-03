@@ -1,153 +1,494 @@
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal, computed, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { ReportService } from '../../../core/services/report.service';
+import { RouterLink } from '@angular/router';
+import { ReportService, NavItem } from '../../../core/services/report.service';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
 @Component({
   selector: 'app-report-list',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   template: `
     <div class="page-header">
-      <h1>Reports</h1>
+      <h1>Report Preview</h1>
       <div class="actions">
         <a routerLink="/reports/worksheet" class="btn btn-secondary">📊 Worksheet Export</a>
       </div>
     </div>
 
-    <!-- Filters -->
-    <div class="card filter-bar">
-      <input type="text" [(ngModel)]="search" placeholder="Search patient, test ID..." class="form-control" (keyup.enter)="loadReports()" />
-      <select [(ngModel)]="testTypeFilter" class="form-control" (change)="loadReports()">
-        <option value="">All Test Types</option>
-        @for (t of availableTestTypes(); track t) {
-          <option [value]="t">{{ t }}</option>
-        }
-      </select>
-      <input type="date" [(ngModel)]="dateFilter" class="form-control" (change)="loadReports()" />
-      <button class="btn btn-secondary" (click)="clearFilters()">Clear</button>
-      <button class="btn btn-primary" (click)="loadReports()">Filter</button>
+    <!-- Filters & Navigation -->
+    <div class="card filter-section">
+      <div class="nav-row">
+        <button class="btn btn-nav" [disabled]="!prevId()" (click)="goToPrev()">← Previous</button>
+        <button class="btn btn-nav" [disabled]="!nextId()" (click)="goToNext()">Next →</button>
+
+        <div class="search-group">
+          <input type="text"
+            class="form-control search-input"
+            placeholder="Search by patient name, test ID..."
+            [(ngModel)]="searchText"
+            (input)="onFilterChange()" />
+          <select class="form-control patient-select" [(ngModel)]="filterPatient" (change)="onFilterChange()">
+            <option value="">-- All Patients --</option>
+            @for (p of patients(); track p) {
+              <option [value]="p">{{ p }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <div class="dropdown-container" (click)="$event.stopPropagation()">
+            <button class="btn btn-dropdown" (click)="testTypeDropdownOpen = !testTypeDropdownOpen">
+              {{ selectedTestTypesLabel() }} ▾
+            </button>
+            @if (testTypeDropdownOpen) {
+              <div class="dropdown-menu">
+                <label class="dropdown-item">
+                  <input type="checkbox" [checked]="allTestTypesSelected()" (change)="toggleAllTestTypes($event)" /> Select All
+                </label>
+                @for (t of testTypes(); track t) {
+                  <label class="dropdown-item">
+                    <input type="checkbox" [checked]="isTestTypeSelected(t)" (change)="toggleTestType(t)" /> {{ t }}
+                  </label>
+                }
+              </div>
+            }
+          </div>
+          <input type="date" class="form-control date-input" [(ngModel)]="filterDate" (change)="onFilterChange()" />
+          <button class="btn btn-secondary btn-sm-action" (click)="clearFilters()">Clear Filters</button>
+          <button class="btn btn-print-filtered" (click)="printFiltered()">🖨 Print Filtered</button>
+        </div>
+      </div>
+
+      <!-- Filtered counter + Select All -->
+      <div class="filtered-section">
+        <label class="select-all-label">
+          <input type="checkbox" [checked]="allVisibleChecked()" (change)="toggleAllVisible($event)" />
+          <strong>Select all visible</strong>
+        </label>
+        <div class="pager">{{ currentIndexDisplay() }} / {{ filteredItems().length }}</div>
+      </div>
     </div>
 
-    @if (loading()) {
+    @if (loadingNav()) {
       <div class="loading">Loading reports...</div>
+    } @else if (!currentItem()) {
+      <div class="card" style="padding:2rem; text-align:center; color:#6b7280;">No completed reports found.</div>
     } @else {
-      <div class="card">
-        <table class="table">
-          <thead>
-            <tr>
-              <th><input type="checkbox" (change)="toggleAll($event)" /></th>
-              <th>Test ID</th>
-              <th>Patient</th>
-              <th>Test Type</th>
-              <th>Date</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (r of reports(); track r.id) {
-              <tr>
-                <td><input type="checkbox" [(ngModel)]="r.selected" /></td>
-                <td>{{ r.testId || r.test_id || r.id?.substring(0, 8) }}</td>
-                <td>{{ r.patientName || r.patient_name || '—' }}</td>
-                <td>{{ r.testType || r.test_type }}</td>
-                <td>{{ (r.testDate || r.test_date) | date:'mediumDate' }}</td>
-                <td>
-                  <span class="badge" [class]="'badge-' + r.status">{{ r.status }}</span>
-                </td>
-                <td>
-                  <a [routerLink]="['/reports', r.id]" class="btn btn-sm btn-primary">View Report</a>
-                </td>
-              </tr>
-            } @empty {
-              <tr><td colspan="7" class="text-center">No reports found</td></tr>
-            }
-          </tbody>
-        </table>
+      <!-- Action Buttons -->
+      <div class="report-actions">
+        <button class="btn btn-success" (click)="downloadPdf()">📥 Download PDF</button>
+        <button class="btn btn-danger" (click)="printCurrent()">🖨 Print</button>
+      </div>
 
-        <!-- Pagination -->
-        <div class="pagination">
-          <button class="btn btn-sm" [disabled]="page() <= 1" (click)="goToPage(1)">First</button>
-          <button class="btn btn-sm" [disabled]="page() <= 1" (click)="goToPage(page() - 1)">Previous</button>
-          <span class="page-info">Page {{ page() }} of {{ totalPages() }}</span>
-          <button class="btn btn-sm" [disabled]="page() >= totalPages()" (click)="goToPage(page() + 1)">Next</button>
-          <button class="btn btn-sm" [disabled]="page() >= totalPages()" (click)="goToPage(totalPages())">Last</button>
+      <!-- Patient & Test Info -->
+      <div class="card info-card">
+        <div class="info-row">
+          <div class="info-section">
+            <strong>Patient Information</strong>
+            <div>Name: {{ currentItem()!.patientName }}</div>
+            <div>Patient ID: {{ currentItem()!.patientCode }}</div>
+          </div>
+          <div class="info-section">
+            <strong>Test Information</strong>
+            <div>Test ID: {{ currentItem()!.testId }}</div>
+            <div>Test Type: <span class="text-teal">{{ currentItem()!.testType }}</span></div>
+            <div>Date: <span class="text-teal">{{ currentItem()!.testDate | date:'dd/MM/yyyy' }}</span></div>
+          </div>
+          <div class="info-section">
+            <strong>Results</strong>
+          </div>
         </div>
+      </div>
+
+      <!-- Report iframe -->
+      <div class="iframe-wrapper">
+        @if (loadingHtml()) {
+          <div class="loading">Loading report...</div>
+        }
+        <iframe
+          #reportFrame
+          [src]="iframeSrc()"
+          frameborder="0"
+          class="report-iframe"
+          [class.hidden]="loadingHtml()"
+          (load)="onIframeLoad()">
+        </iframe>
       </div>
     }
   `,
   styles: [`
-    .filter-bar { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
-    .filter-bar input, .filter-bar select { max-width: 220px; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid #e5e7eb; }
-    th { background: #f9fafb; font-weight: 600; color: #374151; }
-    .badge { padding: 3px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
-    .badge-completed { background: #d1fae5; color: #065f46; }
-    .badge-released { background: #dbeafe; color: #1e40af; }
-    .badge-pending { background: #fef3c7; color: #92400e; }
-    .badge-in-progress { background: #e0e7ff; color: #3730a3; }
-    .pagination { display: flex; gap: 0.5rem; align-items: center; justify-content: center; padding: 1rem 0; }
-    .page-info { font-weight: 500; color: #374151; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .page-header h1 { font-size: 1.25rem; font-weight: 600; margin: 0; }
+    .filter-section { padding: 1rem; }
+
+    .nav-row {
+      display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: flex-start;
+    }
+    .btn-nav {
+      padding: 8px 16px; font-weight: 600; background: #6b7280; color: white;
+      border: none; border-radius: 4px; cursor: pointer;
+    }
+    .btn-nav:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-nav:hover:not(:disabled) { background: #4b5563; }
+
+    .search-group {
+      display: flex; flex-direction: column; gap: 0.4rem; flex: 1; min-width: 220px; max-width: 400px;
+    }
+    .search-input { width: 100%; }
+    .patient-select { width: 100%; }
+
+    .filter-group {
+      display: flex; gap: 0.5rem; align-items: flex-start; flex-wrap: wrap; margin-left: auto;
+    }
+
+    .dropdown-container { position: relative; }
+    .btn-dropdown {
+      padding: 7px 14px; border: 1px solid #d1d5db; border-radius: 6px; background: white;
+      cursor: pointer; white-space: nowrap; font-size: 0.875rem;
+    }
+    .dropdown-menu {
+      position: absolute; top: 100%; left: 0; z-index: 100; min-width: 200px;
+      background: white; border: 1px solid #d1d5db; border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-height: 280px; overflow-y: auto;
+    }
+    .dropdown-item {
+      display: flex; align-items: center; gap: 6px; padding: 6px 12px; cursor: pointer;
+      font-size: 0.85rem; white-space: nowrap;
+    }
+    .dropdown-item:hover { background: #f3f4f6; }
+
+    .date-input { max-width: 160px; }
+
+    .btn-sm-action {
+      padding: 7px 14px; font-size: 0.85rem;
+    }
+    .btn-print-filtered {
+      background: #1d4ed8; color: white; border: none; padding: 7px 14px;
+      border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem;
+    }
+    .btn-print-filtered:hover { background: #1e40af; }
+
+    .btn-danger {
+      background: #dc2626; color: white; border: none; padding: 7px 16px;
+      border-radius: 6px; cursor: pointer; font-weight: 600;
+    }
+    .btn-danger:hover { background: #b91c1c; }
+    .btn-success {
+      background: #10b981; color: white; border: none; padding: 7px 16px;
+      border-radius: 6px; cursor: pointer; font-weight: 600;
+    }
+    .btn-success:hover { background: #059669; }
+
+    .filtered-section {
+      display: flex; justify-content: space-between; align-items: center;
+      padding-top: 0.75rem; margin-top: 0.75rem; border-top: 1px solid #e5e7eb;
+    }
+    .select-all-label {
+      display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; cursor: pointer;
+    }
+    .pager { font-weight: 600; color: #374151; font-size: 0.9rem; }
+
+    .report-actions {
+      display: flex; gap: 0.5rem; justify-content: flex-end; margin-bottom: 0.5rem;
+    }
+
+    .info-card { padding: 1rem 1.25rem; font-size: 0.9rem; line-height: 1.6; }
+    .info-row { display: flex; gap: 2rem; flex-wrap: wrap; }
+    .info-section { min-width: 200px; }
+    .text-teal { color: #10b981; }
+
+    .iframe-wrapper {
+      background: #e5e7eb; border-radius: 6px; padding: 1rem;
+      display: flex; justify-content: center; min-height: 600px; position: relative;
+    }
+    .report-iframe {
+      width: 8.5in; min-height: 11in; background: white; border: none;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    }
+    .report-iframe.hidden { opacity: 0; position: absolute; }
+
     .loading { text-align: center; padding: 3rem; color: #6b7280; }
-    .text-center { text-align: center; }
-    .btn-sm { padding: 4px 12px; font-size: 0.85rem; }
+
+    @media print {
+      .page-header, .filter-section, .report-actions, .info-card { display: none !important; }
+      .iframe-wrapper { background: none; padding: 0; }
+      .report-iframe { box-shadow: none; width: 100%; min-height: 100vh; }
+    }
   `]
 })
-export class ReportListComponent implements OnInit {
+export class ReportListComponent implements OnInit, OnDestroy {
   private reportService = inject(ReportService);
+  private sanitizer = inject(DomSanitizer);
 
-  reports = signal<any[]>([]);
-  availableTestTypes = signal<string[]>([]);
-  loading = signal(true);
-  page = signal(1);
-  totalPages = signal(1);
+  @ViewChild('reportFrame') frameRef!: ElementRef<HTMLIFrameElement>;
 
-  search = '';
-  testTypeFilter = '';
-  dateFilter = '';
+  // Nav data
+  allItems = signal<NavItem[]>([]);
+  patients = signal<string[]>([]);
+  testTypes = signal<string[]>([]);
+  loadingNav = signal(true);
+
+  // Filters
+  searchText = '';
+  filterPatient = '';
+  filterDate = '';
+  selectedTestTypes = new Set<string>();
+  testTypeDropdownOpen = false;
+
+  // Current state
+  currentId = signal<string>('');
+  loadingHtml = signal(false);
+  iframeSrc = signal<SafeResourceUrl>('about:blank');
+  private blobUrl: string | null = null;
+
+  // Checked items (for Print Filtered)
+  checkedIds = new Set<string>();
+
+  // Computed — filtered list based on search/filters
+  filteredItems = computed(() => {
+    let items = this.allItems();
+    const search = this.searchText.toLowerCase().trim();
+    const patient = this.filterPatient;
+    const date = this.filterDate;
+    const types = this.selectedTestTypes;
+
+    if (search) {
+      items = items.filter(i =>
+        i.patientName.toLowerCase().includes(search) ||
+        i.testId.toLowerCase().includes(search) ||
+        i.testType.toLowerCase().includes(search)
+      );
+    }
+    if (patient) {
+      items = items.filter(i => i.patientName === patient);
+    }
+    if (types.size > 0 && types.size < this.testTypes().length) {
+      items = items.filter(i => types.has(i.testType));
+    }
+    if (date) {
+      items = items.filter(i => {
+        const d = i.testDate ? i.testDate.substring(0, 10) : '';
+        return d === date;
+      });
+    }
+    return items;
+  });
+
+  currentItem = computed(() => {
+    const id = this.currentId();
+    return this.filteredItems().find(i => i.id === id) || null;
+  });
+
+  currentIndex = computed(() => {
+    return this.filteredItems().findIndex(i => i.id === this.currentId());
+  });
+
+  currentIndexDisplay = computed(() => {
+    const idx = this.currentIndex();
+    return idx >= 0 ? idx + 1 : 0;
+  });
+
+  prevId = computed(() => {
+    const idx = this.currentIndex();
+    const items = this.filteredItems();
+    return idx > 0 ? items[idx - 1].id : null;
+  });
+
+  nextId = computed(() => {
+    const idx = this.currentIndex();
+    const items = this.filteredItems();
+    return idx >= 0 && idx < items.length - 1 ? items[idx + 1].id : null;
+  });
+
+  allVisibleChecked = computed(() => {
+    const items = this.filteredItems();
+    if (items.length === 0) return false;
+    return items.every(i => this.checkedIds.has(i.id));
+  });
+
+  selectedTestTypesLabel = computed(() => {
+    if (this.selectedTestTypes.size === 0 || this.selectedTestTypes.size === this.testTypes().length) return 'All Test Types';
+    if (this.selectedTestTypes.size === 1) return Array.from(this.selectedTestTypes)[0];
+    return `${this.selectedTestTypes.size} types`;
+  });
+
+  allTestTypesSelected = computed(() => {
+    return this.selectedTestTypes.size === 0 || this.selectedTestTypes.size === this.testTypes().length;
+  });
+
+  // ── Lifecycle ──
 
   ngOnInit() {
-    this.loadReports();
-  }
+    this.reportService.getNav().subscribe({
+      next: (data) => {
+        this.allItems.set(data.items);
+        this.patients.set(data.patients);
+        this.testTypes.set(data.testTypes);
+        this.loadingNav.set(false);
 
-  loadReports() {
-    this.loading.set(true);
-    this.reportService.getAll({
-      search: this.search || undefined,
-      testType: this.testTypeFilter || undefined,
-      date: this.dateFilter || undefined,
-      page: this.page(),
-      limit: 25,
-    }).subscribe({
-      next: (res: any) => {
-        const items = res.reports || res.tests || [];
-        this.reports.set(items.map((r: any) => ({ ...r, selected: false })));
-        if (res.availableTestTypes) this.availableTestTypes.set(res.availableTestTypes);
-        this.totalPages.set(res.pagination?.totalPages || 1);
-        this.loading.set(false);
+        // Navigate to the first (most recent) report
+        if (data.items.length > 0) {
+          this.navigateTo(data.items[0].id);
+        }
       },
-      error: () => this.loading.set(false),
+      error: () => this.loadingNav.set(false),
     });
   }
 
-  goToPage(p: number) {
-    this.page.set(p);
-    this.loadReports();
+  ngOnDestroy() {
+    this.revokeBlobUrl();
+  }
+
+  // ── Navigation ──
+
+  navigateTo(id: string) {
+    if (id === this.currentId()) return;
+    this.currentId.set(id);
+    this.loadReportHtml(id);
+  }
+
+  goToPrev() {
+    const prev = this.prevId();
+    if (prev) this.navigateTo(prev);
+  }
+
+  goToNext() {
+    const next = this.nextId();
+    if (next) this.navigateTo(next);
+  }
+
+  // ── Filters ──
+
+  onFilterChange() {
+    // If current item is no longer in filtered list, navigate to first filtered item
+    const items = this.filteredItems();
+    if (items.length > 0 && !items.find(i => i.id === this.currentId())) {
+      this.navigateTo(items[0].id);
+    }
   }
 
   clearFilters() {
-    this.search = '';
-    this.testTypeFilter = '';
-    this.dateFilter = '';
-    this.page.set(1);
-    this.loadReports();
+    this.searchText = '';
+    this.filterPatient = '';
+    this.filterDate = '';
+    this.selectedTestTypes.clear();
+    this.onFilterChange();
   }
 
-  toggleAll(event: Event) {
+  toggleTestType(t: string) {
+    if (this.selectedTestTypes.has(t)) {
+      this.selectedTestTypes.delete(t);
+    } else {
+      this.selectedTestTypes.add(t);
+    }
+    this.onFilterChange();
+  }
+
+  toggleAllTestTypes(event: Event) {
+    this.selectedTestTypes.clear();
+    this.onFilterChange();
+  }
+
+  isTestTypeSelected(t: string): boolean {
+    return this.selectedTestTypes.has(t);
+  }
+
+  // ── Checkboxes ──
+
+  toggleAllVisible(event: Event) {
     const checked = (event.target as HTMLInputElement).checked;
-    this.reports.update(list => list.map(r => ({ ...r, selected: checked })));
+    for (const item of this.filteredItems()) {
+      if (checked) {
+        this.checkedIds.add(item.id);
+      } else {
+        this.checkedIds.delete(item.id);
+      }
+    }
+  }
+
+  // ── HTML Loading ──
+
+  private loadReportHtml(id: string) {
+    this.loadingHtml.set(true);
+    this.reportService.getReportHtml(id).subscribe({
+      next: (html) => {
+        this.revokeBlobUrl();
+        const blob = new Blob([html], { type: 'text/html; charset=UTF-8' });
+        this.blobUrl = URL.createObjectURL(blob);
+        this.iframeSrc.set(this.sanitizer.bypassSecurityTrustResourceUrl(this.blobUrl));
+        this.loadingHtml.set(false);
+      },
+      error: () => this.loadingHtml.set(false),
+    });
+  }
+
+  private revokeBlobUrl() {
+    if (this.blobUrl) {
+      URL.revokeObjectURL(this.blobUrl);
+      this.blobUrl = null;
+    }
+  }
+
+  onIframeLoad() {
+    try {
+      const doc = this.frameRef?.nativeElement?.contentDocument;
+      if (doc?.body) {
+        const h = doc.body.scrollHeight + 40;
+        this.frameRef.nativeElement.style.minHeight = h + 'px';
+      }
+    } catch { /* cross-origin — ignore */ }
+  }
+
+  // ── Print / Download ──
+
+  printCurrent() {
+    try {
+      const frame = this.frameRef?.nativeElement;
+      if (frame?.contentWindow) {
+        frame.contentWindow.focus();
+        frame.contentWindow.print();
+        return;
+      }
+    } catch { /* fallback */ }
+    window.print();
+  }
+
+  printFiltered() {
+    const checked = Array.from(this.checkedIds);
+    let ids: string[];
+    if (checked.length > 0) {
+      ids = checked;
+    } else {
+      // Print all filtered items
+      ids = this.filteredItems().map(i => i.id);
+    }
+    if (ids.length === 0) return;
+
+    this.reportService.printMultiple(ids).subscribe({
+      next: (html) => {
+        const blob = new Blob([html], { type: 'text/html; charset=UTF-8' });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+      },
+      error: (err) => console.error('[reports] print-multiple error', err),
+    });
+  }
+
+  downloadPdf() {
+    // Open the HTML report in a new window — user can Ctrl+P → Save as PDF
+    const id = this.currentId();
+    if (!id) return;
+    this.reportService.getReportHtml(id, true).subscribe({
+      next: (html) => {
+        const blob = new Blob([html], { type: 'text/html; charset=UTF-8' });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+      },
+      error: (err) => console.error('[reports] download-pdf error', err),
+    });
   }
 }

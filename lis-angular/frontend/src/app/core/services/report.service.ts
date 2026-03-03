@@ -3,6 +3,15 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { AppConfigService } from './app-config.service';
 
+export interface NavItem {
+  id: string;
+  testId: string;
+  testType: string;
+  testDate: string;
+  patientName: string;
+  patientCode: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ReportService {
   private get apiUrl() { return `${this.config.apiUrl}/reports`; }
@@ -32,6 +41,16 @@ export class ReportService {
   getReportHtml(id: string, print = false): Observable<string> {
     const url = `${this.apiUrl}/${id}/html${print ? '?print=1' : ''}`;
     return this.http.get(url, { responseType: 'text' });
+  }
+
+  /** Lightweight nav list — all completed tests for client-side filtering */
+  getNav(): Observable<{ items: NavItem[]; patients: string[]; testTypes: string[]; total: number }> {
+    return this.http.get<any>(`${this.apiUrl}/nav`);
+  }
+
+  /** Concatenated HTML for printing multiple reports */
+  printMultiple(ids: string[]): Observable<string> {
+    return this.http.post(`${this.apiUrl}/print-multiple`, { ids }, { responseType: 'text' });
   }
 
   getWorksheetTypes(): Observable<{ types: string[] }> {
