@@ -261,8 +261,13 @@ router.post('/worksheet/preview', requirePermission('reports'), (req: Request, r
 
     if (!allData) {
       if (testType) {
-        where += ' AND LOWER(t.test_type) LIKE LOWER(?)';
-        params.push(`%${testType}%`);
+        if (testType.toLowerCase() === 'blood chemistry') {
+          where += ' AND LOWER(t.test_type) LIKE ?';
+          params.push('%blood%chemistry%');
+        } else {
+          where += ' AND LOWER(t.test_type) LIKE LOWER(?)';
+          params.push(`%${testType}%`);
+        }
       }
       if (dateFrom) {
         where += ' AND DATE(t.test_date) >= DATE(?)';
@@ -320,8 +325,13 @@ router.post('/worksheet/download', requirePermission('reports'), (req: Request, 
 
     if (!allData) {
       if (testType) {
-        where += ' AND LOWER(t.test_type) LIKE LOWER(?)';
-        params.push(`%${testType}%`);
+        if (testType.toLowerCase() === 'blood chemistry') {
+          where += ' AND LOWER(t.test_type) LIKE ?';
+          params.push('%blood%chemistry%');
+        } else {
+          where += ' AND LOWER(t.test_type) LIKE LOWER(?)';
+          params.push(`%${testType}%`);
+        }
       }
       if (dateFrom) {
         where += ' AND DATE(t.test_date) >= DATE(?)';

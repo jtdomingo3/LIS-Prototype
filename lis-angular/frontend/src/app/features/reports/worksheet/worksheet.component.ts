@@ -164,7 +164,22 @@ export class WorksheetComponent implements OnInit {
   ngOnInit() {
     this.reportService.getWorksheetTypes().subscribe({
       next: (res) => {
-        const types = res.types || [];
+        let types = res.types || [];
+        // collapse only blood chemistry variants into single entry (ignore blood-typing)
+        const normalized: string[] = [];
+        let sawChem = false;
+        for (const t of types) {
+          const lc = t.toLowerCase().trim();
+          if (lc.includes('blood') && lc.includes('chemistry')) {
+            if (!sawChem) {
+              normalized.push('blood chemistry');
+              sawChem = true;
+            }
+          } else {
+            normalized.push(t);
+          }
+        }
+        types = normalized;
         this.testTypes.set(types);
         if (types.length && !this.testType) {
           // auto-select first type so user can immediately preview
