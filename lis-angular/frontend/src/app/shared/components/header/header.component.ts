@@ -100,6 +100,8 @@ import { AuthService } from '../../../core/services/auth.service';
       color: white;
       border-radius: 6px;
       transition: all 0.3s;
+      border: none;             /* remove any border */
+      box-shadow: none;         /* drop the shadow/border look */
     }
 
     .profile-btn:hover {

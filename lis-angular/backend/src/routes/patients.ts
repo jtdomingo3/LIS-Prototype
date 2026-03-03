@@ -14,7 +14,7 @@ router.get('/', requirePermission('patients'), (req: Request, res: Response) => 
   try {
     const { page, limit, search, date, company, philhealth, sortBy, sortOrder } = req.query;
 
-    const result = PatientModel.findAll({
+    let patientsData = PatientModel.findAll({
       page: page ? parseInt(page as string) : 1,
       limit: limit ? parseInt(limit as string) : 50,
       search: search as string,
@@ -24,6 +24,14 @@ router.get('/', requirePermission('patients'), (req: Request, res: Response) => 
       sortBy: sortBy as string,
       sortOrder: (sortOrder as 'ASC' | 'DESC') || 'DESC',
     });
+
+    // mark whether each patient already has tests
+    const patientsWithFlag = patientsData.patients.map(p => {
+      const tests = TestModel.findByPatientId(p.id);
+      return { ...p, hasTests: tests.length > 0 };
+    });
+
+    const result = { ...patientsData, patients: patientsWithFlag };
 
     const pg = page ? parseInt(page as string) : 1;
     const lim = limit ? parseInt(limit as string) : 50;

@@ -64,9 +64,11 @@ import { Patient } from '../../../core/models';
                 }
               </td>
               <td class="actions-cell">
-                <a [routerLink]="['/patients', p.id]" class="btn btn-sm">View</a>
-                <a [routerLink]="['/tests/new']" [queryParams]="{patientId: p.id}" class="btn btn-sm btn-primary">Assign Test</a>
-                <a [routerLink]="['/patients', p.id, 'edit']" class="btn btn-sm">Edit</a>
+                <a [routerLink]="['/patients', p.id]" class="btn btn-sm btn-primary">View</a>
+                @if (!p.hasTests) {
+                  <a [routerLink]="['/tests/new']" [queryParams]="{patientId: p.id}" class="btn btn-sm btn-primary">Assign Test</a>
+                }
+                <a [routerLink]="['/patients', p.id, 'edit']" class="btn btn-sm btn-warning">Edit</a>
                 <button class="btn btn-sm btn-danger" (click)="deletePatient(p)">Delete</button>
               </td>
             </tr>

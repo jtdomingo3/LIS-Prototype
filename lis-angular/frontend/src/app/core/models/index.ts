@@ -43,6 +43,8 @@ export interface Patient {
   address: string | null;
   physician: string | null;
   company: string | null;
+  // flag for whether the patient already has one or more tests
+  hasTests?: boolean;
   philhealth_consent: number;
   philhealth_id: string | null;
   required_areas: string[];
