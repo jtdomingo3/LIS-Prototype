@@ -27,9 +27,9 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
           <input type="text"
             class="form-control search-input"
             placeholder="Search by patient name, test ID..."
-            [(ngModel)]="searchText"
-            (input)="onFilterChange()" />
-          <select class="form-control patient-select" [(ngModel)]="filterPatient" (change)="onFilterChange()">
+            [ngModel]="searchText()"
+            (ngModelChange)="searchText.set($event); onFilterChange()" />
+          <select class="form-control patient-select" [ngModel]="filterPatient()" (ngModelChange)="filterPatient.set($event); onFilterChange()">
             <option value="">-- All Patients --</option>
             @for (p of patients(); track p) {
               <option [value]="p">{{ p }}</option>
@@ -55,7 +55,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
               </div>
             }
           </div>
-          <input type="date" class="form-control date-input" [(ngModel)]="filterDate" (change)="onFilterChange()" />
+          <input type="date" class="form-control date-input" [ngModel]="filterDate()" (ngModelChange)="filterDate.set($event); onFilterChange()" />
           <button class="btn btn-secondary btn-sm-action" (click)="clearFilters()">Clear Filters</button>
           <button class="btn btn-print-filtered" (click)="printFiltered()">🖨 Print Filtered</button>
         </div>
@@ -230,10 +230,10 @@ export class ReportListComponent implements OnInit, OnDestroy {
   loadingNav = signal(true);
 
   // Filters
-  searchText = '';
-  filterPatient = '';
-  filterDate = '';
-  selectedTestTypes = new Set<string>();
+  searchText = signal('');
+  filterPatient = signal('');
+  filterDate = signal('');
+  selectedTestTypes = signal<Set<string>>(new Set<string>());
   testTypeDropdownOpen = false;
 
   // Current state
@@ -248,10 +248,10 @@ export class ReportListComponent implements OnInit, OnDestroy {
   // Computed — filtered list based on search/filters
   filteredItems = computed(() => {
     let items = this.allItems();
-    const search = this.searchText.toLowerCase().trim();
-    const patient = this.filterPatient;
-    const date = this.filterDate;
-    const types = this.selectedTestTypes;
+    const search = this.searchText().toLowerCase().trim();
+    const patient = this.filterPatient();
+    const date = this.filterDate();
+    const types = this.selectedTestTypes();
 
     if (search) {
       items = items.filter(i =>
@@ -308,13 +308,15 @@ export class ReportListComponent implements OnInit, OnDestroy {
   });
 
   selectedTestTypesLabel = computed(() => {
-    if (this.selectedTestTypes.size === 0 || this.selectedTestTypes.size === this.testTypes().length) return 'All Test Types';
-    if (this.selectedTestTypes.size === 1) return Array.from(this.selectedTestTypes)[0];
-    return `${this.selectedTestTypes.size} types`;
+    const set = this.selectedTestTypes();
+    if (set.size === 0 || set.size === this.testTypes().length) return 'All Test Types';
+    if (set.size === 1) return Array.from(set)[0];
+    return `${set.size} types`;
   });
 
   allTestTypesSelected = computed(() => {
-    return this.selectedTestTypes.size === 0 || this.selectedTestTypes.size === this.testTypes().length;
+    const set = this.selectedTestTypes();
+    return set.size === 0 || set.size === this.testTypes().length;
   });
 
   // ── Lifecycle ──
@@ -369,36 +371,40 @@ export class ReportListComponent implements OnInit, OnDestroy {
   }
 
   clearFilters() {
-    this.searchText = '';
-    this.filterPatient = '';
-    this.filterDate = '';
-    this.selectedTestTypes.clear();
+    this.searchText.set('');
+    this.filterPatient.set('');
+    this.filterDate.set('');
+    this.selectedTestTypes.set(new Set<string>());
     this.onFilterChange();
   }
 
   toggleTestType(t: string) {
-    if (this.selectedTestTypes.has(t)) {
-      this.selectedTestTypes.delete(t);
-    } else {
-      this.selectedTestTypes.add(t);
-    }
+    this.selectedTestTypes.update(set => {
+      const next = new Set(set);
+      if (next.has(t)) {
+        next.delete(t);
+      } else {
+        next.add(t);
+      }
+      return next;
+    });
     this.onFilterChange();
   }
 
   toggleAllTestTypes(event: Event) {
     const checked = (event.target as HTMLInputElement).checked;
-    if (checked) {
-      // Select all types
-      this.testTypes().forEach(t => this.selectedTestTypes.add(t));
-    } else {
-      // Clear means "all visible" (same as no filter)
-      this.selectedTestTypes.clear();
-    }
+    this.selectedTestTypes.update(set => {
+      const next = new Set<string>();
+      if (checked) {
+        this.testTypes().forEach(t => next.add(t));
+      }
+      return next;
+    });
     this.onFilterChange();
   }
 
   isTestTypeSelected(t: string): boolean {
-    return this.selectedTestTypes.has(t);
+    return this.selectedTestTypes().has(t);
   }
 
   // ── Checkboxes ──
