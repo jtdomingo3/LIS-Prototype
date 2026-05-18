@@ -61,10 +61,11 @@
     const raw = (attrLabel || el.textContent || el.innerText || el.value || '').replace(/[→←↶↷]/g, '').trim();
     if (!raw) return false;
     const txt = raw.replace(/\s+/g, ' ').toLowerCase();
-    const exceptions = ['previous','next','print','print filtered','download','clear filter','clear filters', 'all test types', 'Open Patient Queue Display (new tab)', 'preview'];
-    const esc = exceptions.map(function(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }).join('|');
-    const re = new RegExp('\\b(' + esc + ')\\b');
-    return re.test(txt);
+    const exceptions = ['previous','next','print','print filtered','download','clear filter','clear filters', 'all test types', 'patient queue display', 'preview', 'fullscreen'];
+    for (let i=0; i<exceptions.length; i++) {
+      if (txt.indexOf(exceptions[i]) !== -1) return true;
+    }
+    return false;
   }
 
   // Global click guard for buttons/inputs

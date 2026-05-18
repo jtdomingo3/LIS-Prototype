@@ -708,6 +708,45 @@ app.get('/export/data.json', (req, res) => {
   }
 });
 
+// Fullscreen persistent shell
+app.get('/shell', (req, res) => {
+  const targetUrl = req.query.url || '/dashboard';
+  res.send(`<!DOCTYPE html>
+<html lang="en" style="margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#000;">
+<head>
+  <meta charset="UTF-8">
+  <title>Gezyne LIS - Fullscreen</title>
+</head>
+<body style="margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#000;">
+  <iframe src="${escapeHtml(targetUrl)}" style="width:100%; height:100%; border:none; margin:0; padding:0; display:block;"></iframe>
+  <script>
+    function enterFS() {
+      const el = document.documentElement;
+      const p = el.requestFullscreen ? el.requestFullscreen() : (el.webkitRequestFullscreen ? el.webkitRequestFullscreen() : Promise.reject());
+      if (p && p.catch) p.catch(() => {});
+    }
+    // Attempt immediately and on first click
+    enterFS();
+    document.addEventListener('click', enterFS, {once:true, capture:true});
+    
+    // Listen for fullscreen exit via Escape key to sync iframe location back to main window
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement) {
+         try {
+           const iframe = document.querySelector('iframe');
+           if (iframe && iframe.contentWindow) {
+             window.location.href = iframe.contentWindow.location.href;
+           } else {
+             window.location.href = '/dashboard';
+           }
+         } catch(e){ window.location.href = '/dashboard'; }
+      }
+    });
+  </script>
+</body>
+</html>`);
+});
+
 // Shortcut for kiosk
 app.get('/kiosk', (req, res) => {
   res.redirect('/reception/assigned?kiosk=1');

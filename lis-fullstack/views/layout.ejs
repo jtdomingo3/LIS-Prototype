@@ -1247,11 +1247,14 @@
             if (document.visibilityState === 'visible') scheduleSSEConnect(3000);
         })();
 
-        // Attempt to enter fullscreen when ?fullscreen=1 is present (best-effort).
+        // Attempt to restore persistent fullscreen on load
         (function() {
             try {
                 const params = new URLSearchParams(window.location.search);
-                if (params.get('fullscreen') === '1') {
+                const shouldBeFullscreen = params.get('fullscreen') === '1' || localStorage.getItem('keepFullscreen') === '1';
+                
+                if (shouldBeFullscreen) {
+                    localStorage.setItem('keepFullscreen', '1'); // ensure it's saved
                     function enterFullScreen() {
                         const el = document.documentElement;
                         if (el.requestFullscreen) el.requestFullscreen();
@@ -1260,34 +1263,14 @@
                     }
                     // Try immediately; browsers may block if not a user gesture.
                     try { enterFullScreen(); } catch (e) {}
-                    // As a fallback attach a one-time click handler to complete fullscreen.
-                    document.addEventListener('click', enterFullScreen, { once: true });
+                    // As a fallback attach a one-time capturing click handler to seamlessly re-enter fullscreen on user's first interaction
+                    document.addEventListener('click', enterFullScreen, { once: true, capture: true });
                 }
             } catch (e) {}
         })();
 
         // Universal fullscreen toggle for sidebar button
-        function toggleFullscreen() {
-            const fsBtn = document.getElementById('fullscreenBtn');
-            const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
-            
-            if (isFullscreen) {
-                // Exit fullscreen
-                if (document.exitFullscreen) document.exitFullscreen();
-                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-                else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
-                else if (document.msExitFullscreen) document.msExitFullscreen();
-                if (fsBtn) fsBtn.querySelector('.nav-text').textContent = 'Fullscreen';
-            } else {
-                // Enter fullscreen
-                const el = document.documentElement;
-                if (el.requestFullscreen) el.requestFullscreen();
-                else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-                else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
-                else if (el.msRequestFullscreen) el.msRequestFullscreen();
-                if (fsBtn) fsBtn.querySelector('.nav-text').textContent = 'Exit Fullscreen';
-            }
-        }
+        function toggleFullscreen() { const inShell = (window.top !== window.self); if (inShell) { try { if (window.top.document.exitFullscreen) window.top.document.exitFullscreen(); else if (window.top.document.webkitExitFullscreen) window.top.document.webkitExitFullscreen(); } catch(e){} window.top.location.href = window.location.href; } else { localStorage.setItem('keepFullscreen', '1'); window.location.href = '/shell?url=' + encodeURIComponent(window.location.pathname + window.location.search); } }
 
         // Update button text on fullscreen change
         document.addEventListener('fullscreenchange', updateFsButton);
@@ -1295,12 +1278,7 @@
         document.addEventListener('mozfullscreenchange', updateFsButton);
         document.addEventListener('MSFullscreenChange', updateFsButton);
         
-        function updateFsButton() {
-            const fsBtn = document.getElementById('fullscreenBtn');
-            if (!fsBtn) return;
-            const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
-            fsBtn.querySelector('.nav-text').textContent = isFullscreen ? 'Exit Fullscreen' : 'Fullscreen';
-        }
+        function updateFsButton() { const fsBtn = document.getElementById('fullscreenBtn'); if (!fsBtn) return; const inShell = (window.top !== window.self); const isFullscreen = inShell || !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement); fsBtn.querySelector('.nav-text').textContent = isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'; }
 </script>
 
     <script src="/assets/button-guard.js"></script>
