@@ -189,20 +189,32 @@ router.post('/', requireAuth, canManageUsers, (req, res) => {
       }
     };
 
-    // Manage interval timer (store id in app.locals)
-    if (req.app.locals.backupIntervalId) {
-      clearInterval(req.app.locals.backupIntervalId);
-      req.app.locals.backupIntervalId = null;
+    // Manage timeout timer (store id in app.locals)
+    if (req.app.locals.backupTimeoutId) {
+      clearTimeout(req.app.locals.backupTimeoutId);
+      req.app.locals.backupTimeoutId = null;
     }
     if (autoBackup) {
-      const ms = frequencyToMs(frequency);
-      req.app.locals.backupIntervalId = setInterval(() => {
-        try {
-          performBackup(backupPath);
-        } catch (e) {
-          console.error('Auto-backup failed:', e);
+      function scheduleNextBackup() {
+        const now = new Date();
+        let target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 15, 0, 0, 0);
+        if (now.getTime() >= target.getTime()) {
+          target.setDate(target.getDate() + 1);
         }
-      }, ms);
+        const msUntilNext = target.getTime() - now.getTime();
+        req.app.locals.backupTimeoutId = setTimeout(() => {
+          try {
+            performBackup(backupPath);
+            performUserBackup(backupPath);
+            console.log(`[backup] Auto-backup completed successfully at ${new Date().toLocaleString()}`);
+          } catch (e) {
+            console.error('[backup] Auto-backup failed:', e);
+          }
+          scheduleNextBackup();
+        }, msUntilNext);
+        console.log(`[backup] Next auto-backup scheduled for ${target.toLocaleString()}`);
+      }
+      scheduleNextBackup();
     }
 
     req.flash('success_msg', 'Settings updated');

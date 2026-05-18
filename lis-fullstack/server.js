@@ -401,40 +401,58 @@ app.use((req, res, next) => {
   const sessionFlags = (req.session && req.session.featureFlags) ? req.session.featureFlags : {};
   res.locals.featureFlags = Object.assign({}, app.locals.featureFlags, sessionFlags);
   // expose backupConfig from app.locals (may have been persisted)
-  res.locals.backupConfig = app.locals.backupConfig || { enabled: false, frequency: 'daily', path: path.join(os.homedir(), 'Documents', 'LIS', 'backup') };
+  res.locals.backupConfig = app.locals.backupConfig || { enabled: true, frequency: 'daily', path: path.join(os.homedir(), 'Documents', 'LIS', 'backup') };
   next();
 });
 
 // Restore persisted backup config and start auto-backup interval if enabled
 try {
   const data = global.db.read();
-  const bc = data && data.backupConfig ? data.backupConfig : null;
-  if (bc) {
-    app.locals.backupConfig = bc;
-    if (bc.enabled) {
-      const frequencyToMs = (f) => {
-        const day = 24 * 60 * 60 * 1000;
-        switch ((f || '').toLowerCase()) {
-          case 'daily': return day;
-          case 'weekly': return 7 * day;
-          case 'monthly': return 30 * day;
-          default: const m = Number(f); return (isNaN(m) ? 60 : Math.max(1, m)) * 60 * 1000;
-        }
-      };
-      const ms = frequencyToMs(bc.frequency);
-      app.locals.backupIntervalId = setInterval(() => {
+  const bc = data && data.backupConfig ? data.backupConfig : { enabled: true, frequency: 'daily', path: path.join(os.homedir(), 'Documents', 'LIS', 'backup') };
+  app.locals.backupConfig = bc;
+  if (bc.enabled) {
+    const dir = bc.path && String(bc.path).length ? bc.path : path.join(os.homedir(), 'Documents', 'LIS', 'backup');
+    
+    function scheduleNextBackup() {
+      const now = new Date();
+      // Target 3:00 PM today (local time)
+      let target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 15, 0, 0, 0);
+      
+      // If it's already past 3 PM, schedule for tomorrow 3 PM
+      if (now.getTime() >= target.getTime()) {
+        target.setDate(target.getDate() + 1);
+      }
+      
+      const msUntilNext = target.getTime() - now.getTime();
+      
+      app.locals.backupTimeoutId = setTimeout(() => {
         try {
-          const DATA_FILE = dataFile('data.json');
-          const dir = bc.path && String(bc.path).length ? bc.path : path.join(os.homedir(), 'Documents', 'LIS', 'backup');
           fs.mkdirSync(dir, { recursive: true });
           const ts = new Date().toISOString().replace(/[:.]/g, '-');
-          const dest = path.join(dir, `backup_${ts}.json`);
-          fs.copyFileSync(DATA_FILE, dest);
-        } catch (e) { console.error('Auto-backup failed:', e); }
-      }, ms);
+          
+          const DATA_FILE = dataFile('data.json');
+          if (fs.existsSync(DATA_FILE)) {
+            fs.copyFileSync(DATA_FILE, path.join(dir, `data_${ts}.json`));
+          }
+          
+          const USERS_FILE = dataFile('data-users.json');
+          if (fs.existsSync(USERS_FILE)) {
+            fs.copyFileSync(USERS_FILE, path.join(dir, `users_${ts}.json`));
+          }
+          console.log(`[backup] Auto-backup completed successfully at ${new Date().toLocaleString()}`);
+        } catch (e) {
+          console.error('[backup] Auto-backup failed:', e);
+        }
+        // Reschedule the next one
+        scheduleNextBackup();
+      }, msUntilNext);
+      
+      console.log(`[backup] Next auto-backup scheduled for ${target.toLocaleString()}`);
     }
+    
+    scheduleNextBackup();
   }
-} catch (e) { /* ignore startup backup restore errors */ }
+} catch (e) { console.error('[backup] Startup backup error:', e); }
 
 // Server-side result highlighting helper (for PDFs / serverside renders where client JS may not run)
 function escapeHtml(str) {
