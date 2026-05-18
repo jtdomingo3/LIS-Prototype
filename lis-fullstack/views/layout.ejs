@@ -944,13 +944,13 @@
             <% } %>
 
             <!-- Alert Messages (render for both guests and authenticated users) -->
-            <% if (typeof success_msg !== 'undefined' && success_msg) { %>
+            <% if (typeof success_msg !== 'undefined' && success_msg && success_msg.length > 0) { %>
             <div class="alert alert-success active"><%= success_msg %></div>
             <% } %>
-            <% if (typeof error_msg !== 'undefined' && error_msg) { %>
+            <% if (typeof error_msg !== 'undefined' && error_msg && error_msg.length > 0) { %>
             <div class="alert alert-error active"><%= error_msg %></div>
             <% } %>
-            <% if (typeof info !== 'undefined' && info) { %>
+            <% if (typeof info !== 'undefined' && info && info.length > 0) { %>
             <div class="alert alert-info active"><%= info %></div>
             <% } %>
 

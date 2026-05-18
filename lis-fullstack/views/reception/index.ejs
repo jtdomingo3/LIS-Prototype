@@ -118,10 +118,10 @@
   <div style="margin-top:14px; max-width:900px;">
     <% const success = (typeof flash !== 'undefined' && flash && flash.success_msg) ? flash.success_msg : (typeof success_msg !== 'undefined' ? success_msg : null); %>
     <% const error = (typeof flash !== 'undefined' && flash && flash.error_msg) ? flash.error_msg : (typeof error_msg !== 'undefined' ? error_msg : null); %>
-    <% if (success) { %>
+    <% if (success && success.length > 0) { %>
       <div style="padding:8px; background:#ecffef; border:1px solid #d1f7d6; border-radius:8px; margin-bottom:8px; color:#064e2a;"><%= success %></div>
     <% } %>
-    <% if (error) { %>
+    <% if (error && error.length > 0) { %>
       <div style="padding:8px; background:#fff0f0; border:1px solid #ffd6d6; border-radius:8px; margin-bottom:8px; color:#7a0b0b;"><%= error %></div>
     <% } %>
 
