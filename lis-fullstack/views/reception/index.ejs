@@ -3,16 +3,86 @@
   <p>Quick overview of reception areas and current queue counts.</p>
 
   <style>
-    .reception-card { position:relative; padding:22px; border-radius:12px; box-shadow: 0 6px 18px rgba(17,24,39,0.06); }
-    .reception-card:before { content:""; position:absolute; left:12px; top:12px; bottom:12px; width:8px; border-radius:8px; background: linear-gradient(180deg, #10b981 0%, #059669 100%); box-shadow: 0 2px 6px rgba(5,102,105,0.06); }
-    .reception-card > h3, .reception-card > p { margin-left:18px; }
-    .area-grid-container { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-top:16px; }
-    @media screen and (max-width: 768px) { .area-grid-container { grid-template-columns: 1fr !important; } }
-    .area-tile { box-sizing:border-box; position:relative; padding:16px 18px 16px 56px; background:#fff; border-radius:12px; border:1px solid #e9edf0; box-shadow:0 6px 18px rgba(15,23,42,0.04); min-height:120px; }
-    .area-tile .accent { position:absolute; left:10px; top:12px; bottom:12px; width:10px; border-radius:8px; background:linear-gradient(180deg,#16a34a,#059669); box-shadow:0 3px 8px rgba(5,102,105,0.08); }
-    .area-tile h4 { margin:0 0 8px 0; font-size:0.95em; }
-    .area-tile .count { font-size:1.6em; font-weight:700; margin-top:6px; }
-    .area-tile .actions { margin-top:10px; }
+    .reception-card { 
+      position:relative; 
+      padding:32px; 
+      border-radius:16px; 
+      box-shadow: 0 4px 24px rgba(0,0,0,0.04); 
+      background: var(--text-white);
+      border: 1px solid var(--border-gray);
+      margin-bottom: 28px;
+    }
+    .reception-card:before { 
+      content:""; 
+      position:absolute; 
+      left:0; 
+      top:0; 
+      bottom:0; 
+      width:6px; 
+      border-radius:16px 0 0 16px; 
+      background: linear-gradient(180deg, var(--secondary-green) 0%, var(--secondary-green-dark) 100%); 
+    }
+    .reception-card > h3, .reception-card > p { margin-left: 8px; }
+    .reception-card > h3 { font-size: 1.5em; color: var(--primary-black); margin-bottom: 6px; letter-spacing: -0.3px; }
+    .reception-card > p { color: var(--text-gray); margin-bottom: 24px; }
+    
+    .area-grid-container { 
+      display:grid; 
+      grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); 
+      gap:20px; 
+      margin-top:16px; 
+    }
+    
+    .area-tile { 
+      box-sizing:border-box; 
+      position:relative; 
+      padding:24px 20px 24px 24px; 
+      background: var(--text-white); 
+      border-radius:16px; 
+      border: 1px solid var(--border-gray); 
+      box-shadow: 0 4px 16px rgba(0,0,0,0.02); 
+      min-height:140px; 
+      display: flex;
+      flex-direction: column;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+    }
+    .area-tile:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 12px 28px rgba(0,0,0,0.06);
+      border-color: #cbd5e1;
+    }
+    .area-tile .accent { 
+      position:absolute; 
+      left:0; 
+      top:0; 
+      bottom:0; 
+      width:6px; 
+      background:linear-gradient(180deg, var(--secondary-green), var(--secondary-green-dark)); 
+    }
+    .area-tile h4 { 
+      margin:0 0 12px 0; 
+      font-size:0.9em; 
+      color: var(--text-gray);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+    .area-tile .count { 
+      font-size:2.4em; 
+      font-weight:700; 
+      margin: 0; 
+      color: var(--primary-black);
+      line-height: 1.1;
+      letter-spacing: -1px;
+    }
+    .area-tile .actions { 
+      margin-top: auto; 
+      padding-top: 16px;
+    }
+    .area-tile .actions .button {
+      width: 100%;
+    }
   </style>
 
   <div class="area-grid-container">
@@ -57,7 +127,7 @@
 
     <form action="/reception/advert" method="POST">
       <label for="adText" style="display:block; font-weight:700; margin-bottom:6px;">Kiosk Advertisement (marquee text shown on kiosk)</label>
-      <textarea id="adText" name="ad" rows="3" style="width:100%; padding:8px; border-radius:8px; border:1px solid #e5e7eb;"><%= (typeof ad !== 'undefined' && ad) ? ad : '' %></textarea>
+      <textarea id="adText" name="ad" rows="3"><%= (typeof ad !== 'undefined' && ad) ? ad : '' %></textarea>
       <div style="margin-top:8px;">
         <button type="submit" class="button btn-primary btn-small">Save Advertisement</button>
         <a href="/reception/assigned?kiosk=1" target="_blank" rel="noopener" class="button btn-secondary btn-small">Open Kiosk</a>

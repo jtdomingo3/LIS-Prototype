@@ -690,6 +690,11 @@ app.get('/export/data.json', (req, res) => {
   }
 });
 
+// Shortcut for kiosk
+app.get('/kiosk', (req, res) => {
+  res.redirect('/reception/assigned?kiosk=1');
+});
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).render('404', { title: 'Page Not Found' });
