@@ -3,7 +3,7 @@ import { TestModel } from '../models/Test';
 import { PatientModel } from '../models/Patient';
 import { requireAuth, requirePermission } from '../middleware/auth';
 import { getDb } from '../db/connection';
-import { renderReportHtml } from '../lib/reportHtmlRenderer';
+import { renderReportHtml, SHARED_CSS } from '../lib/reportHtmlRenderer';
 
 const router = Router();
 
@@ -148,9 +148,11 @@ router.get('/nav', requirePermission('reports'), (_req: Request, res: Response) 
  */
 router.post('/print-multiple', requirePermission('reports'), (req: Request, res: Response) => {
   try {
-    const { ids } = req.body;
-    if (!ids || !Array.isArray(ids) || ids.length === 0) {
-      return res.status(400).json({ error: 'ids array required' });
+    const rawIds = req.body.ids || req.body['ids[]'];
+    const ids: string[] = Array.isArray(rawIds) ? rawIds as string[] : rawIds ? [rawIds as string] : [];
+
+    if (ids.length === 0) {
+      return res.status(400).send('<h1>No report IDs provided</h1>');
     }
 
     const protocol = req.protocol;
@@ -162,7 +164,7 @@ router.post('/print-multiple', requirePermission('reports'), (req: Request, res:
       const test = TestModel.findById(id);
       if (!test) continue;
       const patient = PatientModel.findById(test.patient_id) || {} as any;
-      const html = renderReportHtml(test as any, patient as any, baseUrl, { print: false });
+      const html = renderReportHtml(test as any, patient as any, baseUrl, { print: false, inlineImages: false });
       // Extract just the body content (strip the full document wrapper)
       const bodyMatch = html.match(/<body>([\s\S]*)<\/body>/i);
       pages.push(bodyMatch ? bodyMatch[1] : html);
@@ -175,7 +177,7 @@ router.post('/print-multiple', requirePermission('reports'), (req: Request, res:
     const fullHtml = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Print Reports</title>
 <style>
-@page { size: Letter; margin: 0.25in; }
+${SHARED_CSS}
 body { margin:0; padding:0; font-family:'Times New Roman',Times,serif; }
 </style>
 </head><body>
@@ -187,6 +189,12 @@ ${combined}
     return res.send(fullHtml);
   } catch (err: any) {
     console.error('[reports] print-multiple error:', err);
+    try {
+      require('fs').writeFileSync(
+        require('path').join(__dirname, '..', '..', 'error_log.txt'),
+        `Error: ${err?.stack || err}\nBody: ${JSON.stringify(req.body, null, 2)}\nQuery: ${JSON.stringify(req.query, null, 2)}\nHeaders: ${JSON.stringify(req.headers, null, 2)}\n`
+      );
+    } catch (_) {}
     return res.status(500).send('<h1>Failed to render reports</h1>');
   }
 });
@@ -198,7 +206,7 @@ ${combined}
  */
 router.get('/print-multiple-get', requirePermission('reports'), (req: Request, res: Response) => {
   try {
-    const raw = req.query['ids[]'];
+    const raw = req.query['ids[]'] || req.query.ids;
     const ids: string[] = Array.isArray(raw) ? raw as string[] : raw ? [raw as string] : [];
 
     if (ids.length === 0) {
@@ -214,7 +222,7 @@ router.get('/print-multiple-get', requirePermission('reports'), (req: Request, r
       const test = TestModel.findById(id);
       if (!test) continue;
       const patient = PatientModel.findById(test.patient_id) || {} as any;
-      const html = renderReportHtml(test as any, patient as any, baseUrl, { print: false });
+      const html = renderReportHtml(test as any, patient as any, baseUrl, { print: false, inlineImages: false });
       const bodyMatch = html.match(/<body>([\s\S]*)<\/body>/i);
       pages.push(bodyMatch ? bodyMatch[1] : html);
     }
@@ -224,7 +232,7 @@ router.get('/print-multiple-get', requirePermission('reports'), (req: Request, r
     const fullHtml = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Print Reports</title>
 <style>
-@page { size: Letter; margin: 0.25in; }
+${SHARED_CSS}
 body { margin:0; padding:0; font-family:'Times New Roman',Times,serif; }
 </style>
 </head><body>

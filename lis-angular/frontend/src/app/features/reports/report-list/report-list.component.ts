@@ -243,7 +243,7 @@ export class ReportListComponent implements OnInit, OnDestroy {
   private blobUrl: string | null = null;
 
   // Checked items (for Print Filtered)
-  checkedIds = new Set<string>();
+  checkedIds = signal<Set<string>>(new Set<string>());
 
   // Computed — filtered list based on search/filters
   filteredItems = computed(() => {
@@ -304,7 +304,8 @@ export class ReportListComponent implements OnInit, OnDestroy {
   allVisibleChecked = computed(() => {
     const items = this.filteredItems();
     if (items.length === 0) return false;
-    return items.every(i => this.checkedIds.has(i.id));
+    const set = this.checkedIds();
+    return items.every(i => set.has(i.id));
   });
 
   selectedTestTypesLabel = computed(() => {
@@ -411,13 +412,17 @@ export class ReportListComponent implements OnInit, OnDestroy {
 
   toggleAllVisible(event: Event) {
     const checked = (event.target as HTMLInputElement).checked;
-    for (const item of this.filteredItems()) {
-      if (checked) {
-        this.checkedIds.add(item.id);
-      } else {
-        this.checkedIds.delete(item.id);
+    this.checkedIds.update(set => {
+      const next = new Set(set);
+      for (const item of this.filteredItems()) {
+        if (checked) {
+          next.add(item.id);
+        } else {
+          next.delete(item.id);
+        }
       }
-    }
+      return next;
+    });
   }
 
   // ── HTML Loading ──
@@ -456,16 +461,19 @@ export class ReportListComponent implements OnInit, OnDestroy {
   // ── Print / Download ──
 
   printFiltered() {
-    const checked = Array.from(this.checkedIds);
+    const checked = Array.from(this.checkedIds());
     const ids = checked.length > 0
       ? checked
       : this.filteredItems().map(i => i.id);
     if (ids.length === 0) return;
 
-    // Open print-multiple directly in new tab — server auto-triggers window.print()
-    const url = this.reportService.getPrintMultipleUrl(ids);
-    const win = window.open(url, '_blank');
-    if (!win) window.location.href = url;
+    if (ids.length > 150) {
+      const ok = confirm(`You are about to print ${ids.length} reports. Printing a very large number of reports at once may take some time and slow down your browser. Do you want to continue?`);
+      if (!ok) return;
+    }
+
+    // Use dynamic POST form to avoid HTTP 431 (Request Header Fields Too Large)
+    this.reportService.printMultiplePost(ids);
   }
 
   /** Open current report in new tab — server auto-triggers window.print() */

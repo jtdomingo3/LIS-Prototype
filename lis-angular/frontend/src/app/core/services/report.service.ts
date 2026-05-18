@@ -58,16 +58,45 @@ export class ReportService {
     return `${this.config.apiUrl}/reports/${id}/html?print=1&token=${encodeURIComponent(token)}`;
   }
 
-  /**
-   * Returns a direct URL that loads multiple reports for printing.
-   * Requires the ids as a query param (GET version, server must support it)
-   * or falls back to blob for the POST version.
-   */
   getPrintMultipleUrl(ids: string[]): string {
     const token = this.auth.token || '';
     const qs = ids.map(id => `ids[]=${encodeURIComponent(id)}`).join('&');
     return `${this.config.apiUrl}/reports/print-multiple-get?${qs}&token=${encodeURIComponent(token)}`;
   }
+
+  /**
+   * Safe multi-report printing via dynamic HTML form POST.
+   * This prevents HTTP 431 "Request Header Fields Too Large" errors
+   * when trying to print a large list of filtered reports.
+   */
+  printMultiplePost(ids: string[]): void {
+    const token = this.auth.token || '';
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `${this.config.apiUrl}/reports/print-multiple`;
+    form.target = '_blank';
+
+    // Add token parameter for authorization
+    const tokenInput = document.createElement('input');
+    tokenInput.type = 'hidden';
+    tokenInput.name = 'token';
+    tokenInput.value = token;
+    form.appendChild(tokenInput);
+
+    // Add each ID as an ids[] field
+    for (const id of ids) {
+      const idInput = document.createElement('input');
+      idInput.type = 'hidden';
+      idInput.name = 'ids[]';
+      idInput.value = id;
+      form.appendChild(idInput);
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+  }
+
 
   /** Lightweight nav list — all completed tests for client-side filtering */
   getNav(): Observable<{ items: NavItem[]; patients: string[]; testTypes: string[]; total: number }> {

@@ -133,7 +133,7 @@ interface PatientRow {
 
 // ── shared CSS ─────────────────────────────────────────────────────────
 
-const SHARED_CSS = `
+export const SHARED_CSS = `
 @page { size: Letter; margin: 0.25in; }
 body { margin:0; padding:0; box-sizing:border-box; font-family: 'Times New Roman', Times, serif; color:#000; font-size:12px; }
 *, *:before, *:after { box-sizing:inherit; }
@@ -182,8 +182,8 @@ body { margin:0; padding:0; box-sizing:border-box; font-family: 'Times New Roman
 
 // ── header + patient info ──────────────────────────────────────────────
 
-function renderHeader(test: TestRow, patient: PatientRow, baseUrl: string): string {
-  const logo = getInlineLogo() || `${baseUrl}/assets/gezyne-logo.png`;
+function renderHeader(test: TestRow, patient: PatientRow, baseUrl: string, inlineImages = true): string {
+  const logo = inlineImages ? (getInlineLogo() || `${baseUrl}/assets/gezyne-logo.png`) : `${baseUrl}/assets/gezyne-logo.png`;
   const sex = esc(patient.gender || '');
   const dob = fmtDate(patient.date_of_birth);
   const age = calcAge(patient.date_of_birth, patient.age_manual);
@@ -243,12 +243,11 @@ function findSig(results: any, displayName: string) {
   return null;
 }
 
-function renderSigBlock(name: string, license: string, role: string, results: any, baseUrl: string): string {
+function renderSigBlock(name: string, license: string, role: string, results: any, baseUrl: string, inlineImages = true): string {
   const sig = findSig(results, name);
   let sigImg = '';
   if (sig?.filename) {
-    const dataUri = getSignatureDataUri(sig.filename);
-    const src = dataUri || `${baseUrl}/assets/signature/${sig.filename}`;
+    const src = inlineImages ? (getSignatureDataUri(sig.filename) || `${baseUrl}/assets/signature/${sig.filename}`) : `${baseUrl}/assets/signature/${sig.filename}`;
     const p = sig.placement || { x: 0, y: -56, scale: 1.25 };
     sigImg = `<img src="${src}" class="signature-overlay" style="top:${p.y || -56}px; transform:translateX(-50%) scale(${p.scale || 1.25}); max-height:96px;" alt="signature">`;
   }
@@ -262,7 +261,7 @@ function renderSigBlock(name: string, license: string, role: string, results: an
     </div>`;
 }
 
-function renderSignatures(results: any, baseUrl: string): string {
+function renderSignatures(results: any, baseUrl: string, inlineImages = true): string {
   const r = results || {};
   const performedName = r.performedByName || '';
   const performedLic = r.performedByLicense || '';
@@ -273,16 +272,16 @@ function renderSignatures(results: any, baseUrl: string): string {
 
   return `
     <div class="signatures">
-      ${renderSigBlock(performedName, performedLic, 'Medical Technologist', results, baseUrl)}
-      ${renderSigBlock(validatedName, validatedLic, 'Validated By', results, baseUrl)}
-      ${renderSigBlock(requestedName, requestedLic, 'Pathologist', results, baseUrl)}
+      ${renderSigBlock(performedName, performedLic, 'Medical Technologist', results, baseUrl, inlineImages)}
+      ${renderSigBlock(validatedName, validatedLic, 'Validated By', results, baseUrl, inlineImages)}
+      ${renderSigBlock(requestedName, requestedLic, 'Pathologist', results, baseUrl, inlineImages)}
     </div>`;
 }
 
 // ── watermark ──────────────────────────────────────────────────────────
 
-function renderWatermark(baseUrl: string): string {
-  const logo = getInlineLogo() || `${baseUrl}/assets/gezyne-logo.png`;
+function renderWatermark(baseUrl: string, inlineImages = true): string {
+  const logo = inlineImages ? (getInlineLogo() || `${baseUrl}/assets/gezyne-logo.png`) : `${baseUrl}/assets/gezyne-logo.png`;
   return `<img class="watermark" src="${logo}" alt="">`;
 }
 
@@ -742,16 +741,17 @@ export function renderReportHtml(
   test: TestRow,
   patient: PatientRow,
   baseUrl: string,
-  options?: { print?: boolean }
+  options?: { print?: boolean; inlineImages?: boolean }
 ): string {
   const results = typeof test.results === 'string' ? JSON.parse(test.results) : (test.results || {});
   const template = getResultTemplate({ test_type: test.test_type, template: test.template });
   const sex = patient.gender || '';
+  const inlineImages = options?.inlineImages !== false; // defaults to true for single page standalone preview compatibility
 
-  const header = renderHeader(test, patient, baseUrl);
+  const header = renderHeader(test, patient, baseUrl, inlineImages);
   const body = renderBody(template, results, sex, test.test_type || '');
-  const sigs = renderSignatures(results, baseUrl);
-  const watermark = renderWatermark(baseUrl);
+  const sigs = renderSignatures(results, baseUrl, inlineImages);
+  const watermark = renderWatermark(baseUrl, inlineImages);
 
   const page = `
 <div class="report-page">

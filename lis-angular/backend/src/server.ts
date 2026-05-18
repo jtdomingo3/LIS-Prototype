@@ -218,7 +218,7 @@ app.use(limiter);
 
 // Body parsing
 app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb', parameterLimit: 100000 }));
 
 // Serve static assets (signatures, images, etc.)
 app.use('/assets', express.static(path.join(__dirname, '..', 'assets')));

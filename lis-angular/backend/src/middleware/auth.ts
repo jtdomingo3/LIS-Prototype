@@ -31,6 +31,8 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
     token = authHeader.split(' ')[1];
   } else if (req.query.token) {
     token = req.query.token as string;
+  } else if (req.body && req.body.token) {
+    token = req.body.token as string;
   }
 
   if (!token) {
