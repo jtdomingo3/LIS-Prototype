@@ -29,7 +29,7 @@ import { Template } from '../../../core/models';
         <div class="loading-state">Loading templates…</div>
       } @else if (filteredTemplates().length === 0) {
         <div class="empty-state">
-          <div class="empty-icon">🧾</div>
+          <i class="fa fa-file-alt empty-icon"></i>
           <p>No templates found.</p>
           <a routerLink="/templates/new" class="btn btn-primary">Create your first template</a>
         </div>
@@ -73,7 +73,7 @@ import { Template } from '../../../core/models';
                     <div class="action-group">
                       <a [routerLink]="['/templates', t.id, 'edit']" class="btn btn-small btn-outline">✏️ Edit</a>
                       @if (t.is_active) {
-                        <button class="btn btn-small btn-danger" (click)="deactivate(t)">Deactivate</button>
+                        <button class="btn btn-small btn-outline-danger" (click)="deactivate(t)">Deactivate</button>
                       } @else {
                         <button class="btn btn-small btn-success" (click)="activate(t)">Activate</button>
                       }
@@ -110,13 +110,11 @@ import { Template } from '../../../core/models';
     }
     .toggle-inactive input { width: auto; margin: 0; cursor: pointer; }
 
-    .loading-state, .empty-state {
+    .loading-state {
       text-align: center;
       padding: 3rem;
       color: #6b7280;
     }
-    .empty-icon { font-size: 3rem; margin-bottom: 0.75rem; }
-    .empty-state p { margin-bottom: 1rem; }
 
     .inactive-row { opacity: 0.55; }
     .sub-text { font-size: 0.78rem; color: #9ca3af; margin-top: 2px; }

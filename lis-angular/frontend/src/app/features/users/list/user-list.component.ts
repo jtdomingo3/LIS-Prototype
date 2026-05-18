@@ -36,12 +36,22 @@ import { User } from '../../../core/models';
               <td><span class="badge" [class]="u.active ? 'badge-completed' : 'badge-pending'">{{ u.active ? 'Active' : 'Inactive' }}</span></td>
               <td>{{ u.last_login ? (u.last_login | date:'short') : 'Never' }}</td>
               <td>
-                <a [routerLink]="['/users', u.id, 'edit']" class="btn btn-sm btn-warning">Edit</a>
-                <button class="btn btn-sm btn-danger" (click)="deleteUser(u)" [disabled]="u.role === 'admin'">Delete</button>
+                <div class="table-actions">
+                  <a [routerLink]="['/users', u.id, 'edit']" class="btn btn-sm btn-outline-orange">Edit</a>
+                  <button class="btn btn-sm btn-outline-danger" (click)="deleteUser(u)" [disabled]="u.role === 'admin'">Delete</button>
+                </div>
               </td>
             </tr>
           } @empty {
-            <tr><td colspan="6" class="text-center">No users found</td></tr>
+            <tr>
+              <td colspan="6" class="text-center">
+                <div class="empty-state">
+                  <i class="fa fa-user-shield empty-icon"></i>
+                  <p>No users found</p>
+                  <span>Add a new user to get started.</span>
+                </div>
+              </td>
+            </tr>
           }
         </tbody>
       </table>
@@ -49,8 +59,6 @@ import { User } from '../../../core/models';
   `,
   styles: [`
     .text-center { text-align: center; color: #6b7280; padding: 2rem !important; }
-    .btn-danger { background: #ef4444; color: white; }
-    .btn-danger:hover { background: #dc2626; }
   `]
 })
 export class UserListComponent implements OnInit {

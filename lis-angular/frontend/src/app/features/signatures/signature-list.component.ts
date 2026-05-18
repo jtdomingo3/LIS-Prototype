@@ -58,14 +58,24 @@ import { SignatureService } from '../../core/services/signature.service';
                   }
                 </td>
                 <td class="actions-cell">
-                  @if (!t.has_signature) {
-                    <button class="btn btn-sm btn-primary" (click)="applySignature(t)">Apply My Signature</button>
-                  }
-                  <a [routerLink]="['/reports', t.id]" class="btn btn-sm btn-secondary">View Report</a>
+                  <div class="table-actions">
+                    @if (!t.has_signature) {
+                      <button class="btn btn-sm btn-primary" (click)="applySignature(t)">Apply Signature</button>
+                    }
+                    <a [routerLink]="['/reports', t.id]" class="btn btn-sm btn-outline">View Report</a>
+                  </div>
                 </td>
               </tr>
             } @empty {
-              <tr><td colspan="7" class="text-center">No tests requiring your signature</td></tr>
+              <tr>
+                <td colspan="7" class="text-center">
+                  <div class="empty-state">
+                    <i class="fa fa-pen-nib empty-icon"></i>
+                    <p>No tests requiring your signature</p>
+                    <span>All caught up!</span>
+                  </div>
+                </td>
+              </tr>
             }
           </tbody>
         </table>

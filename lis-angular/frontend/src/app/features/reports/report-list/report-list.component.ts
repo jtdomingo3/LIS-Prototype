@@ -164,10 +164,10 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
       padding: 7px 14px; font-size: 0.85rem;
     }
     .btn-print-filtered {
-      background: #1d4ed8; color: white; border: none; padding: 7px 14px;
+      background: #10b981; color: white; border: none; padding: 7px 14px;
       border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem;
     }
-    .btn-print-filtered:hover { background: #1e40af; }
+    .btn-print-filtered:hover { background: #059669; }
 
     .btn-danger {
       background: #dc2626; color: white; border: none; padding: 7px 16px;

@@ -36,7 +36,7 @@ import { AuthService } from '../../../core/services/auth.service';
           </a>
         }
         @if (auth.hasPermission('reports')) {
-          <a routerLink="/reports" routerLinkActive="active" class="nav-item">
+          <a routerLink="/reports" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" class="nav-item">
             <span class="nav-emoji">📋</span><span class="nav-text">Reports</span>
           </a>
         }
@@ -170,9 +170,9 @@ import { AuthService } from '../../../core/services/auth.service';
     .logout-btn {
       margin-top: 8px;
       padding: 12px;
-      background: #f97316;
-      color: #fff;
-      border: none;
+      background: transparent;
+      color: #f97316;
+      border: 1px solid rgba(249, 115, 22, 0.4);
       border-radius: 8px;
       cursor: pointer;
       width: 100%;
@@ -186,9 +186,10 @@ import { AuthService } from '../../../core/services/auth.service';
     }
 
     .logout-btn:hover {
-      background: #fb923c;
+      background: rgba(249, 115, 22, 0.1);
       transform: scale(1.02);
-      box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+      border-color: #f97316;
+      box-shadow: 0 4px 12px rgba(249, 115, 22, 0.15);
     }
   `]
 })

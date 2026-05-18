@@ -60,17 +60,25 @@ import { Test } from '../../../core/models';
               <td>{{ t.test_type }}</td>
               <td><span class="badge" [class]="'badge-' + t.status">{{ t.status }}</span></td>
               <td>{{ t.created_at | date:'shortDate' }}</td>
-              <td class="action-cell">
+              <td class="table-actions">
                 <!-- view link removed as requested -->
-                <a [routerLink]="['/tests', t.id, 'results']" class="btn btn-sm btn-secondary">Enter Result</a>
+                <a [routerLink]="['/tests', t.id, 'results']" class="btn btn-sm btn-outline">Enter Result</a>
                 @if (t.status === 'Completed' || t.status === 'Released') {
                   <a [routerLink]="['/reports', t.id]" class="btn btn-sm btn-primary">Report</a>
                 }
-                <button class="btn btn-sm btn-danger" (click)="deleteTest(t)">Delete</button>
+                <button class="btn btn-sm btn-outline-danger" (click)="deleteTest(t)">Delete</button>
               </td>
             </tr>
           } @empty {
-            <tr><td colspan="6" class="text-center">No tests found</td></tr>
+            <tr>
+              <td colspan="6" class="text-center">
+                <div class="empty-state">
+                  <i class="fa fa-vials empty-icon"></i>
+                  <p>No tests found</p>
+                  <span>Assign a new test to a patient.</span>
+                </div>
+              </td>
+            </tr>
           }
         </tbody>
       </table>
@@ -88,11 +96,6 @@ import { Test } from '../../../core/models';
     .filter-select { width: 150px; height: 2.8rem; }
     .pagination { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; }
     .text-center { text-align: center; color: #6b7280; padding: 2rem !important; }
-    .action-cell { display: flex; gap: 0.35rem; flex-wrap: wrap; }
-    .btn-danger { background: #ef4444; color: white; border-color: #ef4444; }
-    .btn-danger:hover { background: #dc2626; }
-    .btn-secondary { background: #6b7280; color: white; border-color: #6b7280; }
-    .btn-secondary:hover { background: #4b5563; }
   `]
 })
 export class TestListComponent implements OnInit {

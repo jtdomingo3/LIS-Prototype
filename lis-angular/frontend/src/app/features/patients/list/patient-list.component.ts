@@ -64,16 +64,26 @@ import { Patient } from '../../../core/models';
                 }
               </td>
               <td class="actions-cell">
-                <a [routerLink]="['/patients', p.id]" class="btn btn-sm btn-primary">View</a>
-                @if (!p.hasTests) {
-                  <a [routerLink]="['/tests/new']" [queryParams]="{patientId: p.id}" class="btn btn-sm btn-primary">Assign Test</a>
-                }
-                <a [routerLink]="['/patients', p.id, 'edit']" class="btn btn-sm btn-warning">Edit</a>
-                <button class="btn btn-sm btn-danger" (click)="deletePatient(p)">Delete</button>
+                <div class="table-actions">
+                  <a [routerLink]="['/patients', p.id]" class="btn btn-sm btn-primary">View</a>
+                  @if (!p.hasTests) {
+                    <a [routerLink]="['/tests/new']" [queryParams]="{patientId: p.id}" class="btn btn-sm btn-primary">Assign Test</a>
+                  }
+                  <a [routerLink]="['/patients', p.id, 'edit']" class="btn btn-sm btn-outline-orange">Edit</a>
+                  <button class="btn btn-sm btn-outline-danger" (click)="deletePatient(p)">Delete</button>
+                </div>
               </td>
             </tr>
           } @empty {
-            <tr><td colspan="8" class="text-center">No patients found</td></tr>
+            <tr>
+              <td colspan="8" class="text-center">
+                <div class="empty-state">
+                  <i class="fa fa-users empty-icon"></i>
+                  <p>No patients found</p>
+                  <span>Adjust your filters or add a new patient.</span>
+                </div>
+              </td>
+            </tr>
           }
         </tbody>
       </table>
@@ -103,8 +113,6 @@ import { Patient } from '../../../core/models';
     .badge { padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; }
     .badge-green { background: #d1fae5; color: #065f46; }
     .badge-gray { background: #f3f4f6; color: #6b7280; }
-    .btn-danger { background: #ef4444; color: white; border-color: #ef4444; }
-    .btn-danger:hover { background: #dc2626; }
     .actions-cell { white-space: nowrap; }
   `]
 })

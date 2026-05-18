@@ -35,13 +35,23 @@ import { Template } from '../../../core/models';
                 <td>{{ t.test_type }}</td>
                 <td>v{{ t.version || 1 }}</td>
                 <td>{{ t.updated_at | date:'shortDate' }}</td>
-                <td>
-                  <a [routerLink]="['/templates', t.id, 'edit']" class="btn btn-sm btn-warning">Edit</a>
-                  <button class="btn btn-sm btn-danger" (click)="deleteTemplate(t)">Delete</button>
+                <td class="actions-cell">
+                  <div class="table-actions">
+                    <a [routerLink]="['/templates', t.id, 'edit']" class="btn btn-sm btn-outline-orange">Edit</a>
+                    <button class="btn btn-sm btn-outline-danger" (click)="deleteTemplate(t)">Delete</button>
+                  </div>
                 </td>
               </tr>
             } @empty {
-              <tr><td colspan="5" class="text-center">No templates found</td></tr>
+              <tr>
+                <td colspan="5" class="text-center">
+                  <div class="empty-state">
+                    <i class="fa fa-file-alt empty-icon"></i>
+                    <p>No templates found</p>
+                    <span>Create a new report template to get started.</span>
+                  </div>
+                </td>
+              </tr>
             }
           </tbody>
         </table>
@@ -50,9 +60,8 @@ import { Template } from '../../../core/models';
   `,
   styles: [`
     .text-center { text-align: center; color: #6b7280; padding: 2rem !important; }
-    .btn-danger { background: #ef4444; color: white; }
-    .btn-danger:hover { background: #dc2626; }
     .loading { text-align: center; padding: 3rem; color: #6b7280; }
+    .actions-cell { white-space: nowrap; }
   `]
 })
 export class TemplateListComponent implements OnInit {

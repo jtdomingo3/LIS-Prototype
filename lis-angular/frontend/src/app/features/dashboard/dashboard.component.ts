@@ -128,9 +128,17 @@ Chart.register(...registerables);
 
     .stats-row {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
       gap: 1rem;
       margin-bottom: 1.5rem;
+    }
+    @media (min-width: 1024px) {
+      .stats-row {
+        grid-template-columns: repeat(6, 1fr);
+      }
+      .sales-row {
+        grid-template-columns: repeat(3, 1fr);
+      }
     }
 
     .stat-card {
