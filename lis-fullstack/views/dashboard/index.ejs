@@ -69,8 +69,8 @@
     <form method="get" action="/dashboard" style="display:flex; gap:8px; align-items:center;">
         <label style="font-weight:bold;">SELECT DATE:</label>
         <input type="date" name="date" value="<%= stats.selectedDate || '' %>" onchange="this.form.submit()" />
-        <a href="/dashboard?date=today" class="button" style="margin-left:8px;">TODAY</a>
-        <a href="/dashboard?date=yesterday" class="button">YESTERDAY</a>
+        <a href="/dashboard?date=today" class="button btn-secondary" style="margin-left:8px;">TODAY</a>
+        <a href="/dashboard?date=yesterday" class="button btn-secondary">YESTERDAY</a>
     </form>
 </div>
 
@@ -80,9 +80,9 @@
     <% if (entries && entries.length) { %>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
             <div>
-                <button id="modeTotal" class="button">TOTAL</button>
-                <button id="modeSelected" class="button">SELECTED</button>
-                <button id="modeToday" class="button">TODAY</button>
+                <button id="modeTotal" class="button btn-secondary">TOTAL</button>
+                <button id="modeSelected" class="button btn-secondary">SELECTED</button>
+                <button id="modeToday" class="button btn-secondary">TODAY</button>
             </div>
             <div style="color:#666; font-size:12px;">Hover bars to see exact values</div>
         </div>
