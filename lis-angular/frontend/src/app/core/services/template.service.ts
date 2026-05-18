@@ -15,6 +15,16 @@ export class TemplateService {
     return this.http.get<{ templates: Template[] }>(url);
   }
 
+  /**
+   * Fetch active templates whose test_type matches exactly (case-insensitive).
+   * Returns empty array if none found — callers fall back to hardcoded config.
+   */
+  getByTestType(testType: string): Observable<{ templates: Template[] }> {
+    return this.http.get<{ templates: Template[] }>(
+      `${this.apiUrl}?testType=${encodeURIComponent(testType)}`
+    );
+  }
+
   getById(id: string): Observable<{ template: Template }> {
     return this.http.get<{ template: Template }>(`${this.apiUrl}/${id}`);
   }

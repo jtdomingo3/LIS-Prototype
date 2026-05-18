@@ -8,11 +8,24 @@ router.use(requireAuth);
 
 /**
  * GET /api/templates - List all templates
+ * Query params:
+ *   all=true         — include inactive templates
+ *   testType=string  — filter by test_type (case-insensitive)
  */
 router.get('/', requirePermission('templates'), (req: Request, res: Response) => {
   try {
     const activeOnly = req.query.all !== 'true';
-    const templates = TemplateModel.findAll(activeOnly);
+    const testType = req.query.testType as string | undefined;
+
+    let templates = TemplateModel.findAll(activeOnly);
+
+    if (testType) {
+      const lower = testType.toLowerCase().trim();
+      templates = templates.filter(t =>
+        t.test_type && t.test_type.toLowerCase().trim() === lower
+      );
+    }
+
     return res.json({ templates });
   } catch (err: any) {
     console.error('[templates] list error:', err);

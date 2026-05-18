@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { AppConfigService } from './app-config.service';
+import { AuthService } from './auth.service';
 
 export interface NavItem {
   id: string;
@@ -16,7 +17,11 @@ export interface NavItem {
 export class ReportService {
   private get apiUrl() { return `${this.config.apiUrl}/reports`; }
 
-  constructor(private http: HttpClient, private config: AppConfigService) {}
+  constructor(
+    private http: HttpClient,
+    private config: AppConfigService,
+    private auth: AuthService
+  ) {}
 
   getAll(options: {
     search?: string;
@@ -41,6 +46,27 @@ export class ReportService {
   getReportHtml(id: string, print = false): Observable<string> {
     const url = `${this.apiUrl}/${id}/html${print ? '?print=1' : ''}`;
     return this.http.get(url, { responseType: 'text' });
+  }
+
+  /**
+   * Returns a direct URL to open in a new tab for print/PDF.
+   * The server adds window.print() auto-trigger when print=1.
+   * No blob creation needed — the tab loads the report and auto-prints.
+   */
+  getPrintUrl(id: string): string {
+    const token = this.auth.token || '';
+    return `${this.config.apiUrl}/reports/${id}/html?print=1&token=${encodeURIComponent(token)}`;
+  }
+
+  /**
+   * Returns a direct URL that loads multiple reports for printing.
+   * Requires the ids as a query param (GET version, server must support it)
+   * or falls back to blob for the POST version.
+   */
+  getPrintMultipleUrl(ids: string[]): string {
+    const token = this.auth.token || '';
+    const qs = ids.map(id => `ids[]=${encodeURIComponent(id)}`).join('&');
+    return `${this.config.apiUrl}/reports/print-multiple-get?${qs}&token=${encodeURIComponent(token)}`;
   }
 
   /** Lightweight nav list — all completed tests for client-side filtering */

@@ -78,8 +78,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
     } @else {
       <!-- Action Buttons -->
       <div class="report-actions">
-        <button class="btn btn-success" (click)="downloadPdf()">📥 Download PDF</button>
-        <button class="btn btn-danger" (click)="printCurrent()">🖨 Print</button>
+        <button class="btn btn-success" (click)="printReport()">🖨 Print / Save PDF</button>
       </div>
 
       <!-- Patient & Test Info -->
@@ -387,7 +386,14 @@ export class ReportListComponent implements OnInit, OnDestroy {
   }
 
   toggleAllTestTypes(event: Event) {
-    this.selectedTestTypes.clear();
+    const checked = (event.target as HTMLInputElement).checked;
+    if (checked) {
+      // Select all types
+      this.testTypes().forEach(t => this.selectedTestTypes.add(t));
+    } else {
+      // Clear means "all visible" (same as no filter)
+      this.selectedTestTypes.clear();
+    }
     this.onFilterChange();
   }
 
@@ -443,52 +449,31 @@ export class ReportListComponent implements OnInit, OnDestroy {
 
   // ── Print / Download ──
 
-  printCurrent() {
-    try {
-      const frame = this.frameRef?.nativeElement;
-      if (frame?.contentWindow) {
-        frame.contentWindow.focus();
-        frame.contentWindow.print();
-        return;
-      }
-    } catch { /* fallback */ }
-    window.print();
-  }
-
   printFiltered() {
     const checked = Array.from(this.checkedIds);
-    let ids: string[];
-    if (checked.length > 0) {
-      ids = checked;
-    } else {
-      // Print all filtered items
-      ids = this.filteredItems().map(i => i.id);
-    }
+    const ids = checked.length > 0
+      ? checked
+      : this.filteredItems().map(i => i.id);
     if (ids.length === 0) return;
 
-    this.reportService.printMultiple(ids).subscribe({
-      next: (html) => {
-        const blob = new Blob([html], { type: 'text/html; charset=UTF-8' });
-        const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
-        setTimeout(() => URL.revokeObjectURL(url), 60000);
-      },
-      error: (err) => console.error('[reports] print-multiple error', err),
-    });
+    // Open print-multiple directly in new tab — server auto-triggers window.print()
+    const url = this.reportService.getPrintMultipleUrl(ids);
+    const win = window.open(url, '_blank');
+    if (!win) window.location.href = url;
   }
 
-  downloadPdf() {
-    // Open the HTML report in a new window — user can Ctrl+P → Save as PDF
+  /** Open current report in new tab — server auto-triggers window.print() */
+  printReport() {
     const id = this.currentId();
     if (!id) return;
-    this.reportService.getReportHtml(id, true).subscribe({
-      next: (html) => {
-        const blob = new Blob([html], { type: 'text/html; charset=UTF-8' });
-        const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
-        setTimeout(() => URL.revokeObjectURL(url), 60000);
-      },
-      error: (err) => console.error('[reports] download-pdf error', err),
-    });
+    const url = this.reportService.getPrintUrl(id);
+    const win = window.open(url, '_blank');
+    if (!win) window.location.href = url;
   }
+
+  // Legacy aliases kept for any lingering template references
+  openPrintView() { this.printReport(); }
+  downloadPdf()   { this.printReport(); }
+  printCurrent()  { this.printReport(); }
+
 }

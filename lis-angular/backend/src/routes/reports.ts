@@ -192,6 +192,56 @@ ${combined}
 });
 
 /**
+ * GET /api/reports/print-multiple-get?ids[]=id1&ids[]=id2
+ * Same as POST /print-multiple but as a GET so it can be opened directly in a new tab.
+ * The browser auto-triggers window.print() on load.
+ */
+router.get('/print-multiple-get', requirePermission('reports'), (req: Request, res: Response) => {
+  try {
+    const raw = req.query['ids[]'];
+    const ids: string[] = Array.isArray(raw) ? raw as string[] : raw ? [raw as string] : [];
+
+    if (ids.length === 0) {
+      return res.status(400).send('<h1>No report IDs provided</h1>');
+    }
+
+    const protocol = req.protocol;
+    const host = req.get('host') || 'localhost:3020';
+    const baseUrl = `${protocol}://${host}`;
+
+    const pages: string[] = [];
+    for (const id of ids) {
+      const test = TestModel.findById(id);
+      if (!test) continue;
+      const patient = PatientModel.findById(test.patient_id) || {} as any;
+      const html = renderReportHtml(test as any, patient as any, baseUrl, { print: false });
+      const bodyMatch = html.match(/<body>([\s\S]*)<\/body>/i);
+      pages.push(bodyMatch ? bodyMatch[1] : html);
+    }
+
+    const combined = pages.join('\n<div style="page-break-after:always;"></div>\n');
+
+    const fullHtml = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Print Reports</title>
+<style>
+@page { size: Letter; margin: 0.25in; }
+body { margin:0; padding:0; font-family:'Times New Roman',Times,serif; }
+</style>
+</head><body>
+${combined}
+<script>setTimeout(function(){ window.print(); },500);</script>
+</body></html>`;
+
+    res.setHeader('Content-Type', 'text/html; charset=UTF-8');
+    return res.send(fullHtml);
+  } catch (err: any) {
+    console.error('[reports] print-multiple-get error:', err);
+    return res.status(500).send('<h1>Failed to render reports</h1>');
+  }
+});
+
+
+/**
  * GET /api/reports/worksheet/types - Get available test types for worksheet dropdown
  * NOTE: Must be defined BEFORE /:id routes to avoid being captured by :id param
  */

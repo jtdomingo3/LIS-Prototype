@@ -20,10 +20,13 @@ initializeDb();
 (async () => {
   try {
     if (UserModel.count() === 0) {
+      // Use env var or generate a random secure password (shown once in logs)
+      const defaultPassword = process.env.DEFAULT_ADMIN_PASSWORD ||
+        Math.random().toString(36).slice(-10) + Math.random().toString(36).toUpperCase().slice(-4) + '!';
       await UserModel.create({
         name: 'Admin User',
         email: 'admin@lab.com',
-        password: 'password123',
+        password: defaultPassword,
         role: 'Admin',
         permissions: {
           dashboard: true, patients: true, reception: true,
@@ -31,7 +34,12 @@ initializeDb();
           templates: true, users: true, delete: true,
         },
       });
-      console.log('[seed] Default admin created: admin@lab.com / password123');
+      if (process.env.DEFAULT_ADMIN_PASSWORD) {
+        console.log('[seed] Default admin created: admin@lab.com (password from DEFAULT_ADMIN_PASSWORD env var)');
+      } else {
+        console.log(`[seed] Default admin created: admin@lab.com / ${defaultPassword}`);
+        console.log('[seed] ⚠️  Save this password now — it will not be shown again.');
+      }
     }
   } catch (e: any) {
     console.error('[seed] Auto-seed error:', e.message);

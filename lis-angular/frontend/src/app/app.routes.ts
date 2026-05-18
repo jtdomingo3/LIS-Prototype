@@ -99,15 +99,15 @@ export const routes: Routes = [
     children: [
       {
         path: '',
-        loadComponent: () => import('./features/templates/list/template-list.component').then(m => m.TemplateListComponent),
+        loadComponent: () => import('./features/templates/template-list/template-list.component').then(m => m.TemplateListComponent),
       },
       {
         path: 'new',
-        loadComponent: () => import('./features/templates/form/template-form.component').then(m => m.TemplateFormComponent),
+        loadComponent: () => import('./features/templates/template-form/template-form.component').then(m => m.TemplateFormComponent),
       },
       {
         path: ':id/edit',
-        loadComponent: () => import('./features/templates/form/template-form.component').then(m => m.TemplateFormComponent),
+        loadComponent: () => import('./features/templates/template-form/template-form.component').then(m => m.TemplateFormComponent),
       },
     ],
   },

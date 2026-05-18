@@ -1,6 +1,10 @@
 /**
  * Shared helper to determine which result template to use for a given test.
  * Ported from lis-fullstack/lib/templateResolver.js
+ *
+ * BUG FIX: Specific test types (hematology, xray, thyroid, serology) are now
+ * matched BEFORE the generic 'blood/chem' catch-all that was incorrectly
+ * routing them to blood-chemistry.
  */
 
 export function getResultTemplate(test: { test_type?: string; template?: string }): string {
@@ -45,8 +49,7 @@ export function getResultTemplate(test: { test_type?: string; template?: string 
     template = 'ct-bt';
   } else if (/\b(?:pt|prothrombin|pt-aptt|ptaptt)\b/.test(type)) {
     template = 'pt-aptt';
-  } else if (type.includes('blood') || type.includes('chem')) {
-    template = 'blood-chemistry';
+  // ── Specific named types — MUST come BEFORE the generic 'blood/chem' catch-all ──
   } else if (type.includes('xray') || type.includes('x-ray') || type.includes('x ray')) {
     template = 'xray';
   } else if (type.includes('hemato') || type.includes('hematology') || type.includes('cbc')) {
@@ -67,6 +70,9 @@ export function getResultTemplate(test: { test_type?: string; template?: string 
     template = 'ultrasound-pelvic';
   } else if (type.includes('biophysical')) {
     template = 'ultrasound-biophysical';
+  // ── Generic blood/chem fallback — LAST after all specific tests ──
+  } else if (type.includes('blood') || type.includes('chem')) {
+    template = 'blood-chemistry';
   }
 
   // Allow overriding with explicit template field

@@ -62,7 +62,8 @@ export const RESULT_FIELD_CONFIG: ResultFieldConfig = {
         { name: 'protein', label: 'Protein', type: 'select', options: SEMI_QUANT },
         { name: 'bilirubin', label: 'Bilirubin', type: 'select', options: SEMI_QUANT },
         { name: 'urobilinogen', label: 'Urobilinogen', type: 'select', options: ['Normal', ...SEMI_QUANT] },
-        { name: 'leukocytes', label: 'Leukocytes', type: 'select', options: SEMI_QUANT },
+        // key = 'leukocyte' (no 's') — matches renderer r.leukocyte
+        { name: 'leukocyte', label: 'Leukocyte', type: 'select', options: SEMI_QUANT },
         { name: 'nitrite', label: 'Nitrite', type: 'select', options: ['Negative', 'Positive'] },
         { name: 'ketones', label: 'Ketones', type: 'select', options: SEMI_QUANT },
         { name: 'blood', label: 'Blood', type: 'select', options: SEMI_QUANT },
@@ -71,14 +72,15 @@ export const RESULT_FIELD_CONFIG: ResultFieldConfig = {
     {
       title: 'Microscopic',
       fields: [
-        { name: 'rbcMicro', label: 'RBC (/HPF)', type: 'text', placeholder: '0-3', reference: '0-3/HPF' },
-        { name: 'wbcMicro', label: 'WBC (/HPF)', type: 'text', placeholder: '0-5', reference: '0-5/HPF' },
-        { name: 'epithelialCells', label: 'Epithelial Cells', type: 'text' },
-        { name: 'mucusThreads', label: 'Mucus Threads', type: 'text' },
+        // keys match renderer: r.rbc, r.wbc, r.epithelial, r.mucus
+        { name: 'rbc', label: 'RBC (/HPF)', type: 'text', placeholder: '0-3', reference: '0-3/HPF' },
+        { name: 'wbc', label: 'WBC (/HPF)', type: 'text', placeholder: '0-5', reference: '0-5/HPF' },
+        { name: 'epithelial', label: 'Epithelial Cells', type: 'text' },
+        { name: 'mucus', label: 'Mucus Threads', type: 'text' },
         { name: 'bacteria', label: 'Bacteria', type: 'text' },
         { name: 'crystals', label: 'Crystals', type: 'text' },
         { name: 'casts', label: 'Casts', type: 'text' },
-        { name: 'amorphous', label: 'Amorphous', type: 'text' },
+        { name: 'amorphous', label: 'Amorphous Crystals', type: 'text' },
         { name: 'yeastCells', label: 'Yeast Cells', type: 'text' },
         { name: 'others', label: 'Others', type: 'text' },
       ]
@@ -161,21 +163,18 @@ export const RESULT_FIELD_CONFIG: ResultFieldConfig = {
       ]
     },
     {
-      title: 'Chemical',
-      fields: [
-        { name: 'occultBlood', label: 'Occult Blood', type: 'select', options: ['Negative', 'Positive'] },
-        { name: 'pH', label: 'pH', type: 'text' },
-      ]
-    },
-    {
       title: 'Microscopic',
       fields: [
-        { name: 'rbc', label: 'RBC', type: 'text' },
-        { name: 'wbc', label: 'WBC', type: 'text' },
+        { name: 'rbc', label: 'RBC (/hpf)', type: 'text' },
+        { name: 'wbc', label: 'WBC (/hpf)', type: 'text' },
         { name: 'bacteria', label: 'Bacteria', type: 'text' },
         { name: 'fatGlobules', label: 'Fat Globules', type: 'text' },
         { name: 'yeastCells', label: 'Yeast Cells', type: 'text' },
-        { name: 'parasites', label: 'Parasites', type: 'text' },
+        // key = 'ovaParasite' — matches renderer r.ovaParasite
+        { name: 'ovaParasite', label: 'Ova / Parasite', type: 'text' },
+        { name: 'ovaSpecies', label: 'Species (if any)', type: 'text' },
+        { name: 'muscleFibers', label: 'Muscle Fibers', type: 'text' },
+        { name: 'pusCells', label: 'Pus Cells', type: 'text' },
         { name: 'others', label: 'Others', type: 'text' },
       ]
     }
@@ -184,19 +183,18 @@ export const RESULT_FIELD_CONFIG: ResultFieldConfig = {
   serology: [
     {
       fields: [
+        // keys match renderer keys: hbsag, antiHbs, antiHcv, antiHavIgm, vdrl, hiv, typhidotIgm, typhidotIgg, aso, rfLatex, crp
         { name: 'hbsag', label: 'HBsAg', type: 'select', options: ['Non-Reactive', 'Reactive'] },
         { name: 'antiHbs', label: 'Anti-HBs', type: 'select', options: ['Non-Reactive', 'Reactive'] },
         { name: 'antiHcv', label: 'Anti-HCV', type: 'select', options: ['Non-Reactive', 'Reactive'] },
-        { name: 'antiHav', label: 'Anti-HAV (IgM)', type: 'select', options: ['Negative', 'Positive'] },
+        { name: 'antiHavIgm', label: 'Anti-HAV (IgM)', type: 'select', options: ['Negative', 'Positive'] },
         { name: 'vdrl', label: 'VDRL / RPR', type: 'select', options: ['Non-Reactive', 'Reactive'] },
-        { name: 'typhidot', label: 'Typhidot', type: 'select', options: ['Negative', 'Positive'] },
-        { name: 'dengueNs1', label: 'Dengue NS1 Ag', type: 'select', options: ['Negative', 'Positive'] },
-        { name: 'dengueIgG', label: 'Dengue IgG', type: 'select', options: ['Negative', 'Positive'] },
-        { name: 'dengueIgM', label: 'Dengue IgM', type: 'select', options: ['Negative', 'Positive'] },
-        { name: 'pregnancyTest', label: 'Pregnancy Test (hCG)', type: 'select', options: ['Negative', 'Positive'] },
-        { name: 'aso', label: 'ASO', type: 'text' },
+        { name: 'hiv', label: 'HIV Screening', type: 'select', options: ['Non-Reactive', 'Reactive'] },
+        { name: 'typhidotIgm', label: 'Typhidot IgM', type: 'select', options: ['Negative', 'Positive'] },
+        { name: 'typhidotIgg', label: 'Typhidot IgG', type: 'select', options: ['Negative', 'Positive'] },
+        { name: 'aso', label: 'ASO (Titer)', type: 'text' },
+        { name: 'rfLatex', label: 'RF Latex', type: 'text' },
         { name: 'crp', label: 'CRP', type: 'text' },
-        { name: 'raPF', label: 'RA / RF', type: 'text' },
         { name: 'remarks', label: 'Remarks', type: 'textarea' },
       ]
     }
@@ -322,7 +320,8 @@ export const RESULT_FIELD_CONFIG: ResultFieldConfig = {
   esr: [
     {
       fields: [
-        { name: 'esrResult', label: 'ESR (mm/hr)', type: 'text', reference: 'Male 0-15, Female 0-20 mm/hr' },
+        // key = 'esr' — matches renderer: r.esr
+        { name: 'esr', label: 'ESR (mm/hr)', type: 'text', reference: 'Male 0-15, Female 0-20 mm/hr' },
         { name: 'method', label: 'Method', type: 'text', placeholder: 'Westergren' },
       ]
     }
