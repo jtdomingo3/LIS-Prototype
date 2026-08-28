@@ -1,6 +1,4 @@
 <div class="card">
-  <h3>Edit Test</h3>
-
   <form action="/tests/<%= test.id %>?_method=PUT" method="POST">
     <div class="form-group">
       <label>Patient</label>
@@ -34,10 +32,7 @@
 
     <!-- Status is managed automatically and removed from the form -->
 
-    <div class="form-group">
-      <label>Results</label>
-      <textarea name="results"><%= test.results || '' %></textarea>
-    </div>
+
 
     <div class="form-row">
       <a href="/tests/<%= test.id %>" class="button btn-secondary">Back to Test</a>
