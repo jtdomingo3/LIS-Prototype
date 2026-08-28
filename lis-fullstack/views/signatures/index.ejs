@@ -1,5 +1,4 @@
 <div class="card">
-  <h3>Signatures</h3>
   <form method="GET" action="/signatures" style="display:flex; gap:8px; margin-bottom:12px; align-items:center;">
     <input type="text" name="search" placeholder="Search test id / patient / type..." value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>" style="flex:1; min-width:360px; padding:8px; height:44px; box-sizing:border-box;">
     <input type="date" name="date" onchange="this.form.submit()" value="<%= typeof dateFilter !== 'undefined' ? dateFilter : '' %>" style="width:170px; height:44px; padding:6px; box-sizing:border-box;">

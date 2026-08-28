@@ -513,7 +513,7 @@ router.get('/worksheet', requireAuth, canAccessPatient, async (req, res) => {
     } catch (e) {
       companies = [];
     }
-    res.render('reports/worksheet', { title: 'Worksheet Export', types: finalTypes, companies });
+    res.render('reports/worksheet', { title: 'Worksheet', types: finalTypes, companies });
   } catch (err) {
     console.error('Worksheet page error:', err);
     req.flash('error_msg', 'Error loading worksheet page');
