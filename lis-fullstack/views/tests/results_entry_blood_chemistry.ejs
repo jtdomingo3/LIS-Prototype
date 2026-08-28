@@ -15,6 +15,29 @@
         <label style="font-weight:600;">Time Released</label>
         <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (new Date()).toTimeString().slice(0,5) %>">
       </div>
+      <% 
+        let testRemarks = '';
+        if (typeof test !== 'undefined' && test) {
+          if (typeof test.remarks === 'string' && test.remarks.trim()) {
+            testRemarks = test.remarks.trim();
+          } else if (typeof test.remark === 'string' && test.remark.trim()) {
+            testRemarks = test.remark.trim();
+          } else if (Array.isArray(test.requestedTests) && test.requestedTests.length) {
+            const rems = test.requestedTests.map(rt => (rt.remarks || rt.remark || '').trim()).filter(Boolean);
+            if (rems.length) testRemarks = Array.from(new Set(rems)).join(', ');
+          }
+          if (!testRemarks && test.results && typeof test.results.remarks === 'string' && test.results.remarks.trim()) {
+            testRemarks = test.results.remarks.trim();
+          }
+        }
+      %>
+      <% if (testRemarks) { %>
+        <div style="margin-left:12px; padding:6px 12px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; color:#1e40af; font-size:0.85em; display:inline-flex; align-items:center; gap:6px;">
+          <strong style="color:#1d4ed8;">Remarks:</strong>
+          <span><%= testRemarks %></span>
+        </div>
+      <% } %>
+
       <div style="margin-left:auto;">
         <button type="button" id="captureFromAnalyzer" class="button btn-success">Capture from Analyzer</button>
       </div>
