@@ -56,6 +56,9 @@
   // EXCLUSION: buttons we should NOT guard (text-match, case-insensitive)
   function isExcludedButton(el){
     if (!el) return false;
+    // Exempt all buttons on Dashboard page
+    if (typeof window !== 'undefined' && window.location && window.location.pathname && (window.location.pathname === '/dashboard' || window.location.pathname === '/')) return true;
+    if (el.closest && el.closest('.dashboard-container, #dashboardView, [data-page="dashboard"]')) return true;
     if (el.classList && el.classList.contains('no-guard')) return true;
     if (el.getAttribute && (el.getAttribute('data-no-guard') === '1' || el.getAttribute('data-no-guard') === 'true')) return true;
     // prefer explicit attributes (aria-label/title/data-label), fallback to text/value
@@ -63,7 +66,7 @@
     const raw = (attrLabel || el.textContent || el.innerText || el.value || '').replace(/[→←↶↷]/g, '').trim();
     if (!raw) return false;
     const txt = raw.replace(/\s+/g, ' ').toLowerCase();
-    const exceptions = ['previous','next','print','print filtered','download','clear filter','clear filters', 'all test types', 'patient queue display', 'preview', 'fullscreen', 'create new template', 'edit', 'view', 'clear reception queue', 'clear queue', 'clear queues'];
+    const exceptions = ['previous','next','print','print filtered','download','clear filter','clear filters', 'all test types', 'patient queue display', 'preview', 'fullscreen', 'create new template', 'edit', 'view', 'clear reception queue', 'clear queue', 'clear queues', 'total', 'selected', 'today', 'yesterday', 'monthly', 'daily', 'hourly'];
     for (let i=0; i<exceptions.length; i++) {
       if (txt.indexOf(exceptions[i]) !== -1) return true;
     }

@@ -47,10 +47,13 @@ router.get('/', requireAuth, async (req, res) => {
   // Compute sales totals and trend timelines from patient paymentHistory
   let totalSales = 0;
   let todaySales = 0;
+  let monthSales = 0;
   let clinicalSales = 0;
   let xraySales = 0;
   let clinicalToday = 0;
   let xrayToday = 0;
+  let clinicalMonth = 0;
+  let xrayMonth = 0;
 
   const daysMap = {};
   const monthsMap = {};
@@ -80,6 +83,13 @@ router.get('/', requireAuth, async (req, res) => {
             totalSales += entryTotal;
             clinicalSales += clin;
             xraySales += xray;
+
+            // Monthly Sales calculation (for the selected month)
+            if (ts.getFullYear() === selectedStart.getFullYear() && ts.getMonth() === selectedStart.getMonth()) {
+              monthSales += entryTotal;
+              clinicalMonth += clin;
+              xrayMonth += xray;
+            }
 
             // Daily trend grouping (YYYY-MM-DD)
             const dKey = ts.toISOString().slice(0, 10);
@@ -135,6 +145,21 @@ router.get('/', requireAuth, async (req, res) => {
     const label = d.toLocaleString('en-US', { month: 'short' });
     const data = monthsMap[key] || { total: 0, clinical: 0, xray: 0 };
     salesTrendMonthly.push({ label, total: data.total, clinical: data.clinical, xray: data.xray });
+  }
+
+  // Format Overall All-Time Trend (All recorded months)
+  const allMonthKeys = Object.keys(monthsMap).sort();
+  const salesTrendOverall = [];
+  if (allMonthKeys.length === 0) {
+    salesTrendOverall.push({ label: 'Current', total: totalSales, clinical: clinicalSales, xray: xraySales });
+  } else {
+    for (const mKey of allMonthKeys) {
+      const [y, m] = mKey.split('-');
+      const d = new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1);
+      const label = d.toLocaleString('en-US', { month: 'short', year: '2-digit' });
+      const data = monthsMap[mKey] || { total: 0, clinical: 0, xray: 0 };
+      salesTrendOverall.push({ label, total: data.total, clinical: data.clinical, xray: data.xray });
+    }
   }
 
   // Format Hourly Trend (24 Hours for selected day)
@@ -226,8 +251,8 @@ router.get('/', requireAuth, async (req, res) => {
         completedTests,
         activeTests,
         releasedTests,
-        totalSales, todaySales, clinicalSales, xraySales, clinicalToday, xrayToday,
-        salesTrendDaily, salesTrendMonthly, salesTrendHourly,
+        totalSales, todaySales, monthSales, clinicalSales, xraySales, clinicalToday, xrayToday, clinicalMonth, xrayMonth,
+        salesTrendDaily, salesTrendMonthly, salesTrendHourly, salesTrendOverall,
         testTotals, testTotalsToday, testTotalsSelected, selectedDate: (selectedDate ? (new Date(selectedDate)).toISOString().slice(0,10) : null)
       },
       recentTests
