@@ -1894,6 +1894,19 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
 
       if (note) resultsObj.note = String(note).trim();
 
+      // Merge any extra dynamically added fields from dbTemplate
+      const extraFields = { ...req.body };
+      delete extraFields._csrf;
+      delete extraFields.submitBtn;
+      delete extraFields.performedBy;
+      delete extraFields.mtName;
+      delete extraFields.mtLicense;
+      delete extraFields.pathName;
+      delete extraFields.pathLicense;
+      delete extraFields.patient;
+      
+      resultsObj = { ...extraFields, ...resultsObj };
+
       console.log('DEBUG: blood chemistry fallback matched, results keys:', Object.keys(resultsObj));
 
     } else if (/(ecg|electrocardio|electrocardiogram)/i.test(test.testType)) {

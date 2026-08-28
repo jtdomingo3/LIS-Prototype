@@ -86,7 +86,7 @@
     %>
     <% 
       // unified analyte definitions (label, key, unit, ref display, min, max)
-      const analyteDefs = [
+      let analyteDefs = [
         { key:'fbs', label:'FBS', unit:'mg/dL', ref:'70.00 - 110.00', min:70, max:110 },
         { key:'rbs', label:'RBS', unit:'mg/dL', ref:'80.00 - 130.00', min:80, max:130 },
         { key:'firstHour', label:'1st Hour', unit:'mg/dL', ref:'90.00 - 140.00', min:90, max:140 },
@@ -108,6 +108,47 @@
         { key:'hba1c', label:'HbA1c', unit:'%', ref:'4.00 - 6.50', min:4, max:6.5 },
         { key:'alb', label:'ALB', unit:'g/L', ref:'3.00 - 6.00', min:3, max:6 }
       ];
+
+      if (typeof dbTemplate !== 'undefined' && dbTemplate && dbTemplate.fields && dbTemplate.fields.length) {
+        analyteDefs = analyteDefs.map(def => {
+          const dbField = dbTemplate.fields.find(f => f.name && f.name.toLowerCase() === def.label.toLowerCase());
+          if (dbField) {
+            def.ref = dbField.normalValues || def.ref;
+            def.unit = dbField.unit || def.unit;
+            if (dbField.normalValues) {
+              const parts = String(dbField.normalValues).split(/[\-–—]/);
+              if (parts.length === 2) {
+                def.min = parseFloat(parts[0]);
+                def.max = parseFloat(parts[1]);
+              }
+            }
+          }
+          return def;
+        });
+
+        dbTemplate.fields.forEach(f => {
+          const exists = analyteDefs.find(def => def.label.toLowerCase() === (f.name || '').toLowerCase());
+          if (!exists) {
+            let min = NaN, max = NaN;
+            if (f.normalValues) {
+              const parts = String(f.normalValues).split(/[\-–—]/);
+              if (parts.length === 2) {
+                min = parseFloat(parts[0]);
+                max = parseFloat(parts[1]);
+              }
+            }
+            analyteDefs.push({
+              key: f.name.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+              label: f.name,
+              unit: f.unit || '',
+              ref: f.normalValues || '',
+              min: min,
+              max: max
+            });
+          }
+        });
+      }
+
 
       function presentValue(r, k){ return r && r[k] !== undefined && String(r[k]).trim() !== '' ? String(r[k]) : null; }
       const results = (test && test.results) ? test.results : {};

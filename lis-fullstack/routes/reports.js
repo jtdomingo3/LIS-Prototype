@@ -179,6 +179,7 @@ router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) =
 
     // Render the result partial + print wrapper HTML for the preview iframe srcdoc
     const template = getResultTemplate(populatedTest);
+    const dbTemplate = await Template.findOne({ testType: populatedTest.testType, isActive: true }) || await Template.findOne({ testType: populatedTest.template, isActive: true });
     const inlineLogo = getInlineLogo();
 
     const qparts = [];
@@ -188,7 +189,7 @@ router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) =
     const filterQuery = qparts.length ? ('?' + qparts.join('&')) : '';
 
     // Render result template → HTML string (callback, no layout)
-    res.render(`reports/results/${template}`, { title: 'Result', test: populatedTest, layout: false, inlineLogo }, (err, renderedHtml) => {
+    res.render(`reports/results/${template}`, { title: 'Result', test: populatedTest, dbTemplate, layout: false, inlineLogo }, (err, renderedHtml) => {
       if (err) { console.error('Error rendering result template for preview:', err); }
 
       // Wrap with print layout
@@ -250,6 +251,8 @@ router.get('/result/:testId', requireAuth, canAccessPatient, async (req, res) =>
     };
 
     const template = getResultTemplate(populatedTest);
+    const dbTemplate = await Template.findOne({ testType: populatedTest.testType, isActive: true }) || await Template.findOne({ testType: populatedTest.template, isActive: true });
+    
     // Render the matching template view under reports/results
     // allow embedding without layout when requested (used by preview iframe)
     const useLayout = req.query.embedded ? false : 'print';
@@ -258,6 +261,7 @@ router.get('/result/:testId', requireAuth, canAccessPatient, async (req, res) =>
     return res.render(`reports/results/${template}`, {
       title: 'Result',
       test: populatedTest,
+      dbTemplate: dbTemplate,
       layout: useLayout,
       print: autoPrint,
       inlineLogo
@@ -347,11 +351,12 @@ router.get('/print/:testId', requireAuth, canAccessPatient, async (req, res) => 
 
     // Render the specific result template into HTML, then render the print wrapper
     const template = getResultTemplate(populatedTest);
+    const dbTemplate = await Template.findOne({ testType: populatedTest.testType, isActive: true }) || await Template.findOne({ testType: populatedTest.template, isActive: true });
     const viewPath = `reports/results/${template}`;
 
     // Render the result template without layout to get its HTML
     const inlineLogo = getInlineLogo();
-    res.render(viewPath, { title: 'Result Print', test: populatedTest, layout: false, inlineLogo }, (err, renderedHtml) => {
+    res.render(viewPath, { title: 'Result Print', test: populatedTest, dbTemplate, layout: false, inlineLogo }, (err, renderedHtml) => {
       if (testType) {
         const ttLower = String(testType).toLowerCase().trim();
         if (/^blood\s*chemistry$/.test(ttLower)) {
@@ -431,10 +436,11 @@ router.get('/print-multiple', requireAuth, canAccessPatient, async (req, res) =>
       };
 
       const template = getResultTemplate(populatedTest);
+      const dbTemplate = await Template.findOne({ testType: populatedTest.testType, isActive: true }) || await Template.findOne({ testType: populatedTest.template, isActive: true });
       // Render each template into HTML (no layout)
       try {
         const html = await new Promise((resolve, reject) => {
-          res.render(`reports/results/${template}`, { title: 'Result', test: populatedTest, layout: false, inlineLogo: getInlineLogo() }, (err, html) => {
+          res.render(`reports/results/${template}`, { title: 'Result', test: populatedTest, dbTemplate, layout: false, inlineLogo: getInlineLogo() }, (err, html) => {
             if (err) return reject(err);
             resolve(html);
           });

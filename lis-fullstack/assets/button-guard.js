@@ -61,7 +61,7 @@
     const raw = (attrLabel || el.textContent || el.innerText || el.value || '').replace(/[→←↶↷]/g, '').trim();
     if (!raw) return false;
     const txt = raw.replace(/\s+/g, ' ').toLowerCase();
-    const exceptions = ['previous','next','print','print filtered','download','clear filter','clear filters', 'all test types', 'patient queue display', 'preview', 'fullscreen'];
+    const exceptions = ['previous','next','print','print filtered','download','clear filter','clear filters', 'all test types', 'patient queue display', 'preview', 'fullscreen', 'create new template', 'edit', 'view'];
     for (let i=0; i<exceptions.length; i++) {
       if (txt.indexOf(exceptions[i]) !== -1) return true;
     }
@@ -72,7 +72,8 @@
   document.addEventListener('click', function(ev){
     const el = ev.target.closest('button, input[type="submit"], input[type="button"], .button');
     if (!el) return;
-    // Respect explicit exclusions (Previous/Next/Print/Download/Clear Filter)
+    // Respect explicit exclusions
+    if (el.classList.contains('no-guard')) return;
     if (isExcludedButton(el)) return;
     // If already loading, prevent duplicate actions
     if (el.disabled || el.dataset.__loading === '1') {

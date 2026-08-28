@@ -88,6 +88,60 @@
          return '';
        }
     %>
+    <% 
+      const defaultRefs = {
+        'rbc': { ref: '3.8-5.8', min: 3.8, max: 5.8 },
+        'hemoglobinMale': { ref: '130-160', min: 130, max: 160 },
+        'hemoglobinFemale': { ref: '120-140', min: 120, max: 140 },
+        'hematocritMale': { ref: '0.38-0.49', min: 0.38, max: 0.49 },
+        'hematocritFemale': { ref: '0.36-0.44', min: 0.36, max: 0.44 },
+        'mcv': { ref: '83.0-98.0', min: 83, max: 98 },
+        'mch': { ref: '27.0-32.2', min: 27, max: 32.2 },
+        'mchc': { ref: '31.8-33.7', min: 31.8, max: 33.7 },
+        'wbc': { ref: '5.0-10.0', min: 5, max: 10 },
+        'neutrophils': { ref: '43.0-76.0', min: 43, max: 76 },
+        'lymphocyte': { ref: '17.0-48.0', min: 17, max: 48 },
+        'monocyte': { ref: '0-10.0', min: 0, max: 10 },
+        'eosinophils': { ref: '0.5-5.0', min: 0.5, max: 5 },
+        'basophils': { ref: '0-1', min: 0, max: 1 },
+        'platelets': { ref: '150-350', min: 150, max: 350 }
+      };
+
+      if (typeof dbTemplate !== 'undefined' && dbTemplate && dbTemplate.fields && dbTemplate.fields.length) {
+        dbTemplate.fields.forEach(f => {
+          const keyMap = {
+            'RBC ct.': 'rbc',
+            'Hemoglobin (Male)': 'hemoglobinMale',
+            'Hemoglobin (Female)': 'hemoglobinFemale',
+            'Hematocrit (Male)': 'hematocritMale',
+            'Hematocrit (Female)': 'hematocritFemale',
+            'MCV': 'mcv',
+            'MCH': 'mch',
+            'MCHC': 'mchc',
+            'WBC ct.': 'wbc',
+            'Neutrophils': 'neutrophils',
+            'Lymphocyte': 'lymphocyte',
+            'Monocyte': 'monocyte',
+            'Eosinophils': 'eosinophils',
+            'Basophils': 'basophils',
+            'Platelet ct.': 'platelets'
+          };
+          const key = keyMap[f.name];
+          if (key && f.normalValues) {
+            defaultRefs[key].ref = f.normalValues;
+            const parts = String(f.normalValues).split(/[\-–—]/);
+            if (parts.length === 2) {
+              defaultRefs[key].min = parseFloat(parts[0]);
+              defaultRefs[key].max = parseFloat(parts[1]);
+            }
+          }
+        });
+      }
+
+      function getRef(k) { return defaultRefs[k] ? defaultRefs[k].ref : ''; }
+      function getMin(k) { return defaultRefs[k] ? defaultRefs[k].min : NaN; }
+      function getMax(k) { return defaultRefs[k] ? defaultRefs[k].max : NaN; }
+    %>
     <% var _sex = String((test && test.patient && test.patient.sex) || '').toLowerCase(); %>
 
     <table class="results-frame">
@@ -97,27 +151,27 @@
             <div class="col">
               <table class="inner-table">
                 <tr><th style="width:50%"></th><th style="width:15%">Result</th><th style="width:35%">Normal Values</th></tr>
-                <tr><td>RBC ct. (x 10^6/µL)</td><td style="text-align:center"><strong><%= test && test.results && test.results.rbc ? test.results.rbc : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.rbc,3.8,5.8) %></span></td><td class="normal-small" style="text-align:right">3.8-5.8</td></tr>
+                <tr><td>RBC ct. (x 10^6/µL)</td><td style="text-align:center"><strong><%= test && test.results && test.results.rbc ? test.results.rbc : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.rbc, getMin('rbc'), getMax('rbc')) %></span></td><td class="normal-small" style="text-align:right"><%= getRef('rbc') %></td></tr>
                 <tr>
                   <td>Hemoglobin (g/dL)</td>
                   <td style="text-align:center">
                     <div style="display:flex; flex-direction:column; align-items:center;">
                       <div style="min-height:18px; display:flex; align-items:center; justify-content:center;">
                         <% if (_sex === 'male') { %>
-                          <strong><%= test && test.results && test.results.hemoglobin ? test.results.hemoglobin : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.hemoglobin,130,160) %></span>
+                          <strong><%= test && test.results && test.results.hemoglobin ? test.results.hemoglobin : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.hemoglobin, getMin('hemoglobinMale'), getMax('hemoglobinMale')) %></span>
                         <% } else { %>&nbsp;<% } %>
                       </div>
                       <div style="min-height:18px; display:flex; align-items:center; justify-content:center; margin-top:4px;">
                         <% if (_sex === 'female') { %>
-                          <strong><%= test && test.results && test.results.hemoglobin ? test.results.hemoglobin : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.hemoglobin,120,140) %></span>
+                          <strong><%= test && test.results && test.results.hemoglobin ? test.results.hemoglobin : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.hemoglobin, getMin('hemoglobinFemale'), getMax('hemoglobinFemale')) %></span>
                         <% } else { %>&nbsp;<% } %>
                       </div>
                     </div>
                   </td>
                   <td class="normal-small">
                     <div style="display:flex; flex-direction:column; align-items:flex-end;">
-                      <div style="white-space:nowrap">Male&nbsp;&nbsp;130-160</div>
-                      <div style="white-space:nowrap; margin-top:4px;">Female&nbsp;&nbsp;120-140</div>
+                      <div style="white-space:nowrap">Male&nbsp;&nbsp;<%= getRef('hemoglobinMale') %></div>
+                      <div style="white-space:nowrap; margin-top:4px;">Female&nbsp;&nbsp;<%= getRef('hemoglobinFemale') %></div>
                     </div>
                   </td>
                 </tr>
@@ -127,39 +181,39 @@
                     <div style="display:flex; flex-direction:column; align-items:center;">
                       <div style="min-height:18px; display:flex; align-items:center; justify-content:center;">
                         <% if (_sex === 'male') { %>
-                          <strong><%= test && test.results && test.results.hematocrit ? test.results.hematocrit : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.hematocrit,0.38,0.49) %></span>
+                          <strong><%= test && test.results && test.results.hematocrit ? test.results.hematocrit : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.hematocrit, getMin('hematocritMale'), getMax('hematocritMale')) %></span>
                         <% } else { %>&nbsp;<% } %>
                       </div>
                       <div style="min-height:18px; display:flex; align-items:center; justify-content:center; margin-top:4px;">
                         <% if (_sex === 'female') { %>
-                          <strong><%= test && test.results && test.results.hematocrit ? test.results.hematocrit : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.hematocrit,0.36,0.44) %></span>
+                          <strong><%= test && test.results && test.results.hematocrit ? test.results.hematocrit : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.hematocrit, getMin('hematocritFemale'), getMax('hematocritFemale')) %></span>
                         <% } else { %>&nbsp;<% } %>
                       </div>
                     </div>
                   </td>
                   <td class="normal-small">
                     <div style="display:flex; flex-direction:column; align-items:flex-end;">
-                      <div style="white-space:nowrap">Male&nbsp;&nbsp;0.38-0.49</div>
-                      <div style="white-space:nowrap; margin-top:4px;">Female&nbsp;&nbsp;0.36-0.44</div>
+                      <div style="white-space:nowrap">Male&nbsp;&nbsp;<%= getRef('hematocritMale') %></div>
+                      <div style="white-space:nowrap; margin-top:4px;">Female&nbsp;&nbsp;<%= getRef('hematocritFemale') %></div>
                     </div>
                   </td>
                 </tr>
-                <tr><td>MCV (µm^3)</td><td style="text-align:center"><strong><%= test && test.results && test.results.mcv ? test.results.mcv : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.mcv,83,98) %></span></td><td class="normal-small" style="text-align:right">83.0-98.0</td></tr>
-                <tr><td>MCH (pg)</td><td style="text-align:center"><strong><%= test && test.results && test.results.mch ? test.results.mch : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.mch,27,32.2) %></span></td><td class="normal-small" style="text-align:right">27.0-32.2</td></tr>
-                <tr><td>MCHC (g/dL)</td><td style="text-align:center"><strong><%= test && test.results && test.results.mchc ? test.results.mchc : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.mchc,31.8,33.7) %></span></td><td class="normal-small" style="text-align:right">31.8-33.7</td></tr>
+                <tr><td>MCV (µm^3)</td><td style="text-align:center"><strong><%= test && test.results && test.results.mcv ? test.results.mcv : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.mcv, getMin('mcv'), getMax('mcv')) %></span></td><td class="normal-small" style="text-align:right"><%= getRef('mcv') %></td></tr>
+                <tr><td>MCH (pg)</td><td style="text-align:center"><strong><%= test && test.results && test.results.mch ? test.results.mch : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.mch, getMin('mch'), getMax('mch')) %></span></td><td class="normal-small" style="text-align:right"><%= getRef('mch') %></td></tr>
+                <tr><td>MCHC (g/dL)</td><td style="text-align:center"><strong><%= test && test.results && test.results.mchc ? test.results.mchc : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.mchc, getMin('mchc'), getMax('mchc')) %></span></td><td class="normal-small" style="text-align:right"><%= getRef('mchc') %></td></tr>
               </table>
             </div>
 
             <div class="col">
               <table class="inner-table">
                 <tr><th style="width:50%"></th><th style="width:15%">Result</th><th style="width:35%">Normal Values</th></tr>
-                <tr><td>WBC ct.(x10^9/L)</td><td style="text-align:center"><strong><%= test && test.results && test.results.wbc ? test.results.wbc : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.wbc,5,10) %></span></td><td class="normal-small" style="text-align:right">5.0-10.0</td></tr>
-                <tr><td>Neutrophils (%)</td><td style="text-align:center"><strong><%= test && test.results && test.results.neutrophils ? test.results.neutrophils : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.neutrophils,43,76) %></span></td><td class="normal-small" style="text-align:right">43.0-76.0</td></tr>
-                <tr><td>Lymphocyte (%)</td><td style="text-align:center"><strong><%= test && test.results && test.results.lymphocyte ? test.results.lymphocyte : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.lymphocyte,17,48) %></span></td><td class="normal-small" style="text-align:right">17.0-48.0</td></tr>
-                <tr><td>Monocyte (%)</td><td style="text-align:center"><strong><%= test && test.results && test.results.monocyte ? test.results.monocyte : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.monocyte,0,10) %></span></td><td class="normal-small" style="text-align:right">0-10.0</td></tr>
-                <tr><td>Eosinophils (%)</td><td style="text-align:center"><strong><%= test && test.results && test.results.eosinophils ? test.results.eosinophils : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.eosinophils,0.5,5) %></span></td><td class="normal-small" style="text-align:right">0.5-5.0</td></tr>
-                <tr><td>Basophils (%)</td><td style="text-align:center"><strong><%= test && test.results && test.results.basophils ? test.results.basophils : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.basophils,0,1) %></span></td><td class="normal-small" style="text-align:right">0-1</td></tr>
-                <tr><td>Platelet ct.(x10^9/L)</td><td style="text-align:center"><strong><%= test && test.results && test.results.platelets ? test.results.platelets : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.platelets,150,350) %></span></td><td class="normal-small" style="text-align:right">150-350</td></tr>
+                <tr><td>WBC ct.(x10^9/L)</td><td style="text-align:center"><strong><%= test && test.results && test.results.wbc ? test.results.wbc : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.wbc, getMin('wbc'), getMax('wbc')) %></span></td><td class="normal-small" style="text-align:right"><%= getRef('wbc') %></td></tr>
+                <tr><td>Neutrophils (%)</td><td style="text-align:center"><strong><%= test && test.results && test.results.neutrophils ? test.results.neutrophils : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.neutrophils, getMin('neutrophils'), getMax('neutrophils')) %></span></td><td class="normal-small" style="text-align:right"><%= getRef('neutrophils') %></td></tr>
+                <tr><td>Lymphocyte (%)</td><td style="text-align:center"><strong><%= test && test.results && test.results.lymphocyte ? test.results.lymphocyte : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.lymphocyte, getMin('lymphocyte'), getMax('lymphocyte')) %></span></td><td class="normal-small" style="text-align:right"><%= getRef('lymphocyte') %></td></tr>
+                <tr><td>Monocyte (%)</td><td style="text-align:center"><strong><%= test && test.results && test.results.monocyte ? test.results.monocyte : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.monocyte, getMin('monocyte'), getMax('monocyte')) %></span></td><td class="normal-small" style="text-align:right"><%= getRef('monocyte') %></td></tr>
+                <tr><td>Eosinophils (%)</td><td style="text-align:center"><strong><%= test && test.results && test.results.eosinophils ? test.results.eosinophils : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.eosinophils, getMin('eosinophils'), getMax('eosinophils')) %></span></td><td class="normal-small" style="text-align:right"><%= getRef('eosinophils') %></td></tr>
+                <tr><td>Basophils (%)</td><td style="text-align:center"><strong><%= test && test.results && test.results.basophils ? test.results.basophils : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.basophils, getMin('basophils'), getMax('basophils')) %></span></td><td class="normal-small" style="text-align:right"><%= getRef('basophils') %></td></tr>
+                <tr><td>Platelet ct.(x10^9/L)</td><td style="text-align:center"><strong><%= test && test.results && test.results.platelets ? test.results.platelets : '' %></strong><span class="flag"><%= flagValue(test && test.results && test.results.platelets, getMin('platelets'), getMax('platelets')) %></span></td><td class="normal-small" style="text-align:right"><%= getRef('platelets') %></td></tr>
               </table>
             </div>
           </div>

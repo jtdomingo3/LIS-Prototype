@@ -68,17 +68,40 @@
     </table>
 
     <% 
+      const defaultRefs = {
+        'tsh': { ref: '0.30 - 4.20', min: 0.3, max: 4.2 },
+        'ft4': { ref: '12.0 - 22.0', min: 12.0, max: 22.0 },
+        'ft3': { ref: '2.80 - 7.10', min: 2.8, max: 7.1 }
+      };
+
+      if (typeof dbTemplate !== 'undefined' && dbTemplate && dbTemplate.fields && dbTemplate.fields.length) {
+        dbTemplate.fields.forEach(f => {
+          const keyMap = { 'TSH': 'tsh', 'FT4': 'ft4', 'FT3': 'ft3' };
+          const key = keyMap[f.name];
+          if (key && f.normalValues) {
+            defaultRefs[key].ref = f.normalValues;
+            const parts = String(f.normalValues).split(/[\-–—]/);
+            if (parts.length === 2) {
+              defaultRefs[key].min = parseFloat(parts[0]);
+              defaultRefs[key].max = parseFloat(parts[1]);
+            }
+          }
+        });
+      }
+
       function toNum(v){ if(v===undefined||v===null) return NaN; const s=String(v).replace(/[^0-9.+\-eE]/g,'').trim(); const n=parseFloat(s); return isNaN(n)?NaN:n }
       function flagNum(n,min,max){ if(isNaN(n)) return ''; if(typeof min==='number' && n<min) return 'L'; if(typeof max==='number' && n>max) return 'H'; return '' }
+      
       const tshVal = test && test.results && test.results.tsh ? test.results.tsh : '';
       const ft4Val = test && test.results && test.results.ft4 ? test.results.ft4 : '';
       const ft3Val = test && test.results && test.results.ft3 ? test.results.ft3 : '';
       const tshN = toNum(tshVal);
       const ft4N = toNum(ft4Val);
       const ft3N = toNum(ft3Val);
-      const tshFlag = flagNum(tshN, 0.30, 4.20);
-      const ft4Flag = flagNum(ft4N, 12.0, 22.0);
-      const ft3Flag = flagNum(ft3N, 2.80, 7.10);
+      
+      const tshFlag = flagNum(tshN, defaultRefs.tsh.min, defaultRefs.tsh.max);
+      const ft4Flag = flagNum(ft4N, defaultRefs.ft4.min, defaultRefs.ft4.max);
+      const ft3Flag = flagNum(ft3N, defaultRefs.ft3.min, defaultRefs.ft3.max);
       const hasThyroid = tshVal || ft4Val || ft3Val;
     %>
     <% if (hasThyroid) { %>
@@ -96,7 +119,7 @@
           <td>TSH</td>
           <td class="center" style="font-weight:700"><%= tshVal %> <% if (tshFlag) { %><span style="color:#c00; font-weight:700">(<%= tshFlag %>)</span><% } %></td>
           <td class="center">mIU/L</td>
-          <td class="center">0.30 - 4.20</td>
+          <td class="center"><%= defaultRefs.tsh.ref %></td>
         </tr>
         <% } %>
         <% if (ft4Val) { %>
@@ -104,7 +127,7 @@
           <td>FT4</td>
           <td class="center" style="font-weight:700"><%= ft4Val %> <% if (ft4Flag) { %><span style="color:#c00; font-weight:700">(<%= ft4Flag %>)</span><% } %></td>
           <td class="center">pmol/L</td>
-          <td class="center">12.0 - 22.0</td>
+          <td class="center"><%= defaultRefs.ft4.ref %></td>
         </tr>
         <% } %>
         <% if (ft3Val) { %>
@@ -112,7 +135,7 @@
           <td>FT3</td>
           <td class="center" style="font-weight:700"><%= ft3Val %> <% if (ft3Flag) { %><span style="color:#c00; font-weight:700">(<%= ft3Flag %>)</span><% } %></td>
           <td class="center">pmol/L</td>
-          <td class="center">2.80 - 7.10</td>
+          <td class="center"><%= defaultRefs.ft3.ref %></td>
         </tr>
         <% } %>
       </table>

@@ -44,6 +44,23 @@
       <div class="form-row"><label>Calcium</label><input type="text" name="calcium" value="<%= test.results && test.results.calcium ? test.results.calcium : '' %>" placeholder="8.5-10.2 mg/dL" title="Reference: 8.50 - 10.20 mg/dL"></div>
       <div class="form-row"><label>Hba1c</label><input type="text" name="hba1c" value="<%= test.results && test.results.hba1c ? test.results.hba1c : '' %>" placeholder="4.0-6.5 %" title="Reference: 4.00 - 6.50 %"></div>
       <div class="form-row"><label>ALB</label><input type="text" name="alb" value="<%= test.results && test.results.alb ? test.results.alb : '' %>" placeholder="3-6 g/L" title="Reference: 3.00 - 6.00 g/L"></div>
+      
+      <% 
+      if (typeof dbTemplate !== 'undefined' && dbTemplate && dbTemplate.fields && dbTemplate.fields.length) {
+        const hardcodedLabels = ['FBS', 'RBS', '1st Hour', '2nd Hour', 'Cholesterol', 'Triglyceride', 'HDL-C', 'LDL', 'VLDL', 'Uric Acid', 'Creatinine', 'Urea', 'BUN', 'SGPT (ALT)', 'SGOT (AST)', 'Sodium', 'Potassium', 'Chloride', 'Calcium', 'Hba1c', 'ALB'];
+        dbTemplate.fields.forEach(f => {
+          if (f.name && !hardcodedLabels.find(l => l.toLowerCase() === f.name.toLowerCase())) {
+            const safeKey = f.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+            const val = (test.results && test.results[safeKey] !== undefined) ? test.results[safeKey] : '';
+            const ph = f.normalValues ? f.normalValues + (f.unit ? ' ' + f.unit : '') : '';
+            const title = f.normalValues ? `Reference: ${f.normalValues} ${f.unit || ''}` : '';
+            %>
+            <div class="form-row"><label><%= f.name %></label><input type="text" name="<%= safeKey %>" value="<%= val %>" placeholder="<%= ph %>" title="<%= title %>"></div>
+            <%
+          }
+        });
+      }
+      %>
     </div>
 
     <hr>

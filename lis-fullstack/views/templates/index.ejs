@@ -1,20 +1,47 @@
+<style>
+  .templates-table td.action-buttons {
+    white-space: nowrap;
+  }
+  .template-field-count {
+    display: inline-block;
+    background: rgba(16,185,129,0.1);
+    color: var(--secondary-green-dark);
+    font-size: 0.82em;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: 4px;
+  }
+  .template-static-badge {
+    display: inline-block;
+    background: rgba(59,130,246,0.1);
+    color: #1e40af;
+    font-size: 0.78em;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-left: 6px;
+  }
+</style>
+
 <div class="card">
-  <h3>Report Templates</h3>
+  <h3><i class="fa fa-file-alt"></i> Report Templates</h3>
 
   <div class="flex-between mb-20">
-    <a href="/templates/new" class="button btn-primary">+ Create New Template</a>
+    <a href="/templates/new" class="button btn-primary no-guard"><i class="fa fa-plus-circle"></i> Create New Template</a>
   </div>
 
-  <table>
+  <table class="templates-table">
     <thead>
       <tr>
         <th>Template Name</th>
         <th>Test Type</th>
+        <th>Fields</th>
         <th>Actions</th>
       </tr>
     </thead>
     <tbody>
-      <% 
+      <%
         // Filter out sample-image templates and size placeholders (Full letter / Half letter)
         const visibleTemplates = (templates || []).filter(t => {
           const name = (t.name || '').toLowerCase();
@@ -29,18 +56,26 @@
       <% if (visibleTemplates && visibleTemplates.length) { %>
         <% visibleTemplates.forEach(t => { %>
           <tr>
-            <td><%= t.name %></td>
+            <td>
+              <%= t.name %>
+              <% if (t.isStatic) { %><span class="template-static-badge">Static</span><% } %>
+            </td>
             <td><%= t.testType %></td>
-            <td class="action-buttons">
-              <a href="/templates/<%= t.id %>" class="button btn-success btn-small">View</a>
-              <% if (!t.isStatic) { %>
-                <a href="/templates/<%= t.id %>/edit" class="button btn-orange btn-small">Edit</a>
+            <td>
+              <% if (t.fields && Array.isArray(t.fields) && t.fields.length) { %>
+                <span class="template-field-count"><%= t.fields.length %> fields</span>
+              <% } else { %>
+                <span style="color: var(--text-gray); font-size:0.9em;">—</span>
               <% } %>
+            </td>
+            <td class="action-buttons">
+              <a href="/templates/<%= t.id %>" class="button btn-success btn-small"><i class="fa fa-eye"></i> View</a>
+              <a href="/templates/<%= t.id %>/edit" class="button btn-orange btn-small"><i class="fa fa-edit"></i> Edit</a>
             </td>
           </tr>
         <% }) %>
       <% } else { %>
-        <tr><td colspan="3">No templates found.</td></tr>
+        <tr><td colspan="4" style="text-align:center; color:var(--text-gray); padding:24px;">No templates found. Create one to get started.</td></tr>
       <% } %>
     </tbody>
   </table>

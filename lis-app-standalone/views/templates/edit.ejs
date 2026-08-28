@@ -1,27 +1,545 @@
-<div class="card">
-  <h3>Edit Template</h3>
+<style>
+  .template-editor { max-width: 900px; }
 
-  <form action="/templates/<%= template.id %>?_method=PUT" method="POST">
-    <div class="form-group">
-      <label>Template Name</label>
-      <input type="text" name="name" value="<%= template.name || '' %>" required>
+  .template-editor .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--border-gray);
+  }
+  .template-editor .section-header h4 {
+    margin: 0;
+    font-size: 1.1em;
+    color: var(--primary-black);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .template-editor .section-header h4 i { color: var(--secondary-green); }
+
+  /* Field card */
+  .field-card {
+    background: #f9fafb;
+    border: 1px solid var(--border-gray);
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin-bottom: 12px;
+    position: relative;
+    transition: box-shadow 0.2s, border-color 0.2s, transform 0.15s;
+  }
+  .field-card:hover {
+    border-color: var(--secondary-green);
+    box-shadow: 0 2px 12px rgba(16, 185, 129, 0.12);
+  }
+  .field-card.dragging {
+    opacity: 0.5;
+    border-color: var(--accent-orange);
+    box-shadow: 0 4px 18px rgba(249, 115, 22, 0.2);
+    transform: scale(0.97);
+  }
+  .field-card .drag-handle {
+    position: absolute;
+    left: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: grab;
+    color: var(--text-gray);
+    font-size: 1.1em;
+    padding: 4px;
+    user-select: none;
+  }
+  .field-card .drag-handle:active { cursor: grabbing; }
+
+  .field-card .field-row {
+    display: grid;
+    grid-template-columns: 1fr 130px 100px 1fr;
+    gap: 10px;
+    align-items: end;
+    padding-left: 24px;
+  }
+  .field-card .field-row label {
+    font-size: 0.82em;
+    font-weight: 600;
+    color: var(--text-gray);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  .field-card .field-row input,
+  .field-card .field-row select {
+    padding: 8px 10px;
+    font-size: 0.92em;
+    border-radius: 6px;
+    border: 1.5px solid var(--border-gray);
+    background: white;
+    transition: border-color 0.2s;
+  }
+  .field-card .field-row input:focus,
+  .field-card .field-row select:focus {
+    border-color: var(--secondary-green);
+    box-shadow: 0 0 0 3px rgba(16,185,129,0.08);
+  }
+
+  /* Second row: normal values + required */
+  .field-card .field-row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 90px;
+    gap: 10px;
+    align-items: end;
+    padding-left: 24px;
+    margin-top: 8px;
+  }
+  .field-card .field-row-2 label {
+    font-size: 0.82em;
+    font-weight: 600;
+    color: var(--text-gray);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+  .field-card .field-row-2 input {
+    padding: 8px 10px;
+    font-size: 0.92em;
+    border-radius: 6px;
+    border: 1.5px solid var(--border-gray);
+    background: white;
+  }
+  .field-card .field-row-2 .checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-bottom: 4px;
+  }
+  .field-card .field-row-2 .checkbox-wrapper input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--secondary-green);
+  }
+
+  /* Remove button */
+  .field-card .remove-field-btn {
+    position: absolute;
+    right: 10px;
+    top: 10px;
+    background: transparent;
+    border: none;
+    color: var(--danger);
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 4px 6px;
+    border-radius: 4px;
+    transition: background 0.2s;
+    line-height: 1;
+  }
+  .field-card .remove-field-btn:hover {
+    background: rgba(239, 68, 68, 0.1);
+  }
+
+  /* Field number badge */
+  .field-card .field-number {
+    position: absolute;
+    right: 38px;
+    top: 10px;
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--secondary-green-dark);
+    font-size: 0.75em;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+
+  /* Add field button */
+  .add-field-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(16,185,129,0.15) 100%);
+    border: 2px dashed var(--secondary-green);
+    border-radius: 10px;
+    color: var(--secondary-green-dark);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s;
+    font-size: 0.95em;
+    width: 100%;
+    justify-content: center;
+  }
+  .add-field-btn:hover {
+    background: linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(16,185,129,0.25) 100%);
+    border-color: var(--secondary-green-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16,185,129,0.15);
+  }
+  .add-field-btn i { font-size: 1.1em; }
+
+  /* Empty state */
+  .fields-empty {
+    text-align: center;
+    padding: 32px 20px;
+    color: var(--text-gray);
+    background: #f9fafb;
+    border-radius: 10px;
+    border: 1px dashed var(--border-gray);
+  }
+  .fields-empty i { font-size: 2em; margin-bottom: 8px; display: block; color: var(--border-gray); }
+
+  /* Action bar */
+  .template-editor .action-bar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 2px solid var(--border-gray);
+  }
+  .template-editor .action-bar .button { min-width: 140px; text-align: center; }
+
+  /* Drop zone indicator */
+  .field-drop-indicator {
+    height: 3px;
+    background: var(--secondary-green);
+    border-radius: 2px;
+    margin: 4px 0;
+    display: none;
+    animation: pulseGreen 1s ease infinite;
+  }
+  @keyframes pulseGreen {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  /* Toast */
+  .template-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    color: white;
+    font-weight: 600;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+    z-index: 9999;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s;
+    pointer-events: none;
+  }
+  .template-toast.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .template-toast.success { background: var(--secondary-green); }
+  .template-toast.error { background: var(--danger); }
+
+  /* Responsive */
+  @media (max-width: 700px) {
+    .field-card .field-row { grid-template-columns: 1fr 1fr; }
+    .field-card .field-row-2 { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+
+<div class="card template-editor">
+  <h3><i class="fa fa-edit"></i> Edit Template</h3>
+
+  <form id="editTemplateForm" action="/templates/<%= template.id %>?_method=PUT" method="POST">
+    <!-- Basic Info -->
+    <div class="section-header">
+      <h4><i class="fa fa-info-circle"></i> Basic Information</h4>
     </div>
 
-    <div class="form-group">
-      <label>Test Type</label>
-      <input type="text" name="testType" value="<%= template.testType || '' %>" required>
+    <div class="form-row" style="margin-bottom: 20px;">
+      <div class="form-group" style="margin-bottom:0;">
+        <label>Template Name</label>
+        <input type="text" name="name" id="templateName" value="<%= template.name || '' %>" required placeholder="e.g. Complete Blood Count">
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label>Test Type</label>
+        <input type="text" name="testType" id="templateTestType" value="<%= template.testType || '' %>" required placeholder="e.g. Hematology">
+      </div>
     </div>
 
-    <div class="form-group">
-      <label>Fields (JSON array or one field per line)</label>
-      <textarea name="fields" rows="6"><%= template.fields && Array.isArray(template.fields) ? JSON.stringify(template.fields, null, 2) : (template.fields || '') %></textarea>
+    <!-- Fields Editor -->
+    <div class="section-header" style="margin-top: 24px;">
+      <h4><i class="fa fa-list-ul"></i> Test Fields</h4>
+      <span style="font-size:0.85em; color:var(--text-gray);">Drag to reorder &bull; <span id="fieldCount">0</span> fields</span>
     </div>
 
-    <div class="form-group">
-      <label>Footer Notes</label>
-      <textarea name="footerNotes"><%= template.footerNotes || '' %></textarea>
+    <div id="fieldsContainer">
+      <!-- Dynamic fields rendered by JS -->
     </div>
 
-    <button class="button btn-primary">Save Changes</button>
+    <div id="fieldsEmptyState" class="fields-empty" style="display:none;">
+      <i class="fa fa-flask"></i>
+      <p>No fields yet. Add test parameters below.</p>
+    </div>
+
+    <button type="button" class="add-field-btn" id="addFieldBtn" style="margin-top: 12px;">
+      <i class="fa fa-plus-circle"></i> Add New Test Field
+    </button>
+
+    <!-- Hidden input to hold the serialized fields JSON -->
+    <input type="hidden" name="fields" id="fieldsInput">
+
+    <!-- Footer Notes -->
+    <div class="section-header" style="margin-top: 28px;">
+      <h4><i class="fa fa-sticky-note"></i> Footer Notes</h4>
+    </div>
+    <div class="form-group">
+      <textarea name="footerNotes" rows="3" placeholder="Optional notes displayed at the bottom of the report..."><%= template.footerNotes || '' %></textarea>
+    </div>
+
+    <!-- Actions -->
+    <div class="action-bar">
+      <button type="submit" class="button btn-primary"><i class="fa fa-save"></i> Save Changes</button>
+      <a href="/templates" class="button btn-secondary"><i class="fa fa-arrow-left"></i> Back to Templates</a>
+      <button type="button" class="button btn-orange" id="previewJsonBtn" style="margin-left:auto;"><i class="fa fa-code"></i> Preview JSON</button>
+    </div>
   </form>
 </div>
+
+<!-- JSON Preview Modal -->
+<div id="jsonPreviewModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9998; justify-content:center; align-items:center;">
+  <div style="background:white; border-radius:12px; padding:24px; max-width:700px; width:90%; max-height:80vh; overflow-y:auto; box-shadow:0 8px 32px rgba(0,0,0,0.2);">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <h4 style="margin:0;"><i class="fa fa-code"></i> Fields JSON Preview</h4>
+      <button type="button" id="closeJsonModal" style="background:transparent; border:none; font-size:1.3em; cursor:pointer; color:var(--text-gray);">&times;</button>
+    </div>
+    <pre id="jsonPreviewContent" style="background:#1a1a1a; color:#10b981; padding:16px; border-radius:8px; font-size:0.88em; white-space:pre-wrap; word-wrap:break-word; max-height:60vh; overflow-y:auto;"></pre>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="templateToast" class="template-toast"></div>
+
+<script>
+(function() {
+  // Parse existing fields from template data
+  let fields = [];
+  try {
+    const raw = <%- JSON.stringify(template.fields && Array.isArray(template.fields) ? template.fields : []) %>;
+    fields = Array.isArray(raw) ? raw : [];
+  } catch(e) {
+    fields = [];
+  }
+
+  const container = document.getElementById('fieldsContainer');
+  const emptyState = document.getElementById('fieldsEmptyState');
+  const fieldCountEl = document.getElementById('fieldCount');
+  const fieldsInput = document.getElementById('fieldsInput');
+  const form = document.getElementById('editTemplateForm');
+
+  const fieldTypes = [
+    { value: 'text', label: 'Text' },
+    { value: 'number', label: 'Number' },
+    { value: 'select', label: 'Select / Dropdown' },
+    { value: 'textarea', label: 'Textarea' }
+  ];
+
+  function showToast(msg, type) {
+    const t = document.getElementById('templateToast');
+    t.textContent = msg;
+    t.className = 'template-toast ' + type;
+    setTimeout(() => t.classList.add('show'), 10);
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  function updateFieldCount() {
+    fieldCountEl.textContent = fields.length;
+    emptyState.style.display = fields.length === 0 ? 'block' : 'none';
+  }
+
+  function serializeFields() {
+    fieldsInput.value = JSON.stringify(fields);
+  }
+
+  function createFieldCard(field, index) {
+    const card = document.createElement('div');
+    card.className = 'field-card';
+    card.draggable = true;
+    card.dataset.index = index;
+
+    card.innerHTML = `
+      <span class="drag-handle" title="Drag to reorder"><i class="fa fa-grip-vertical"></i></span>
+      <span class="field-number">#${index + 1}</span>
+      <button type="button" class="remove-field-btn" title="Remove field"><i class="fa fa-trash"></i></button>
+      <div class="field-row">
+        <div>
+          <label>Field Name</label>
+          <input type="text" data-prop="name" value="${escapeAttr(field.name || '')}" placeholder="e.g. Hemoglobin" required>
+        </div>
+        <div>
+          <label>Type</label>
+          <select data-prop="type">
+            ${fieldTypes.map(ft => `<option value="${ft.value}" ${field.type === ft.value ? 'selected' : ''}>${ft.label}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label>Unit</label>
+          <input type="text" data-prop="unit" value="${escapeAttr(field.unit || '')}" placeholder="e.g. g/dL">
+        </div>
+        <div>
+          <label>Normal Values</label>
+          <input type="text" data-prop="normalValues" value="${escapeAttr(field.normalValues || '')}" placeholder="e.g. 12.0 - 16.0">
+        </div>
+      </div>
+      <div class="field-row-2">
+        <div>
+          <label>Options (for Select type, comma-separated)</label>
+          <input type="text" data-prop="options" value="${escapeAttr(field.options || '')}" placeholder="e.g. Positive,Negative,Reactive">
+        </div>
+        <div>
+          <label>Placeholder</label>
+          <input type="text" data-prop="placeholder" value="${escapeAttr(field.placeholder || '')}" placeholder="e.g. Enter value...">
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <div class="checkbox-wrapper">
+            <input type="checkbox" data-prop="required" ${field.required ? 'checked' : ''}>
+            <span style="font-size:0.88em; font-weight:600; color:var(--text-gray);">Required</span>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Bind input changes
+    card.querySelectorAll('input[data-prop], select[data-prop]').forEach(el => {
+      const prop = el.dataset.prop;
+      const evtType = el.type === 'checkbox' ? 'change' : 'input';
+      el.addEventListener(evtType, () => {
+        const idx = parseInt(card.dataset.index, 10);
+        if (el.type === 'checkbox') {
+          fields[idx][prop] = el.checked;
+        } else {
+          fields[idx][prop] = el.value;
+        }
+        serializeFields();
+      });
+    });
+
+    // Remove button
+    card.querySelector('.remove-field-btn').addEventListener('click', () => {
+      const idx = parseInt(card.dataset.index, 10);
+      fields.splice(idx, 1);
+      renderFields();
+      serializeFields();
+      showToast('Field removed', 'error');
+    });
+
+    // Drag and drop
+    card.addEventListener('dragstart', (e) => {
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', card.dataset.index);
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      document.querySelectorAll('.field-card').forEach(c => c.style.borderTop = '');
+    });
+    card.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const rect = card.getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      if (e.clientY < midY) {
+        card.style.borderTop = '3px solid var(--secondary-green)';
+        card.style.borderBottom = '';
+      } else {
+        card.style.borderBottom = '3px solid var(--secondary-green)';
+        card.style.borderTop = '';
+      }
+    });
+    card.addEventListener('dragleave', () => {
+      card.style.borderTop = '';
+      card.style.borderBottom = '';
+    });
+    card.addEventListener('drop', (e) => {
+      e.preventDefault();
+      card.style.borderTop = '';
+      card.style.borderBottom = '';
+      const fromIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
+      const toIndex = parseInt(card.dataset.index, 10);
+      if (fromIndex === toIndex) return;
+      const [moved] = fields.splice(fromIndex, 1);
+      fields.splice(toIndex, 0, moved);
+      renderFields();
+      serializeFields();
+      showToast('Field reordered', 'success');
+    });
+
+    return card;
+  }
+
+  function renderFields() {
+    container.innerHTML = '';
+    fields.forEach((field, idx) => {
+      container.appendChild(createFieldCard(field, idx));
+    });
+    updateFieldCount();
+  }
+
+  function escapeAttr(str) {
+    return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // Add new field
+  document.getElementById('addFieldBtn').addEventListener('click', () => {
+    fields.push({
+      name: '',
+      type: 'text',
+      unit: '',
+      normalValues: '',
+      options: '',
+      placeholder: '',
+      required: false
+    });
+    renderFields();
+    serializeFields();
+    // Scroll to new field
+    const cards = container.querySelectorAll('.field-card');
+    if (cards.length) {
+      cards[cards.length - 1].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Focus the name input
+      const nameInput = cards[cards.length - 1].querySelector('input[data-prop="name"]');
+      if (nameInput) setTimeout(() => nameInput.focus(), 300);
+    }
+    showToast('New field added', 'success');
+  });
+
+  // Serialize fields before submit
+  form.addEventListener('submit', (e) => {
+    serializeFields();
+    // Validate at least one field has a name
+    const validFields = fields.filter(f => f.name && f.name.trim());
+    if (validFields.length === 0) {
+      e.preventDefault();
+      showToast('Please add at least one field with a name', 'error');
+      return;
+    }
+    // Clean up empty fields
+    fieldsInput.value = JSON.stringify(validFields);
+  });
+
+  // JSON Preview
+  document.getElementById('previewJsonBtn').addEventListener('click', () => {
+    const modal = document.getElementById('jsonPreviewModal');
+    const content = document.getElementById('jsonPreviewContent');
+    content.textContent = JSON.stringify(fields, null, 2);
+    modal.style.display = 'flex';
+  });
+  document.getElementById('closeJsonModal').addEventListener('click', () => {
+    document.getElementById('jsonPreviewModal').style.display = 'none';
+  });
+  document.getElementById('jsonPreviewModal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) {
+      e.currentTarget.style.display = 'none';
+    }
+  });
+
+  // Initial render
+  renderFields();
+  serializeFields();
+})();
+</script>
