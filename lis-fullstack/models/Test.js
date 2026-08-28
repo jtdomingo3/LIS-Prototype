@@ -28,6 +28,8 @@ class Test {
     this.requestedTests = Array.isArray(data.requestedTests) ? data.requestedTests : (data.requestedTests || []);
     // Flag indicating test results have been released (cleared from Releasing of Result queue)
     this.released = !!data.released;
+    // Flag indicating test results are stashed (patient unavailable, held at reception)
+    this.stashed = !!data.stashed;
     // Flag indicating all requested tests are awaiting-only (no routing)
     this.awaitingOnly = !!data.awaitingOnly;
     // statusHistory: array of { from, to, user, area, timestamp }

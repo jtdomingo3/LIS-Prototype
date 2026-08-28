@@ -133,13 +133,23 @@
                     </form>
                   </div>
                 <% } else { %>
-                  <!-- For non-payment areas show Mark Complete and Delete stacked -->
+                  <!-- For non-payment areas show Mark Complete, Stash (if Releasing), and Delete stacked -->
                   <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end;">
                     <form action="/reception/complete" method="POST" class="complete-form" style="margin:0;">
                       <input type="hidden" name="patientId" value="<%= row.patient ? row.patient.id : '' %>">
+                      <input type="hidden" name="testIds" value="<%= (row.testIds || []).join(',') %>">
                       <input type="hidden" name="area" value="<%= areaName %>">
                       <button type="submit" class="button btn-success btn-small" title="Mark Complete" style="min-width:110px;">Mark Complete</button>
                     </form>
+                    <% if (areaName === 'Releasing of Result') { %>
+                      <form action="/reception/stash" method="POST" class="stash-form" style="margin:0;" data-confirm-title="Stash Patient Result" data-confirm-button="Yes, Stash Result" data-confirm="Stash results for this patient?\n\n• The patient will be moved to the Stashed Results section on Reception.\n• This queue count will decrease immediately.">
+                        <input type="hidden" name="patientId" value="<%= row.patient ? row.patient.id : '' %>">
+                        <input type="hidden" name="testIds" value="<%= (row.testIds || []).join(',') %>">
+                        <button type="submit" class="button btn-small no-guard" data-no-guard="1" style="min-width:110px; background:#f59e0b; color:white; border:none; padding: 6px 12px; font-weight:700; border-radius:6px; cursor:pointer;" title="Stash result if patient unavailable">
+                          <i class="fa fa-archive" style="margin-right:4px;"></i> Stash
+                        </button>
+                      </form>
+                    <% } %>
                     <form action="/reception/delete" method="POST" class="delete-form" style="margin:0;" onsubmit="return confirm('Delete these tests from the queue?');">
                       <input type="hidden" name="testId" value="<%= (row.testIds && row.testIds.length ? row.testIds[0] : '') %>">
                       <input type="hidden" name="area" value="<%= areaName %>">
