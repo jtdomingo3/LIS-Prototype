@@ -26,6 +26,8 @@ class Test {
     this.updatedAt = data.updatedAt || new Date();
     // Preserve requestedTests (array of { key,label,amount,lab }) when provided
     this.requestedTests = Array.isArray(data.requestedTests) ? data.requestedTests : (data.requestedTests || []);
+    // Flag indicating test results have been released (cleared from Releasing of Result queue)
+    this.released = !!data.released;
     // Flag indicating all requested tests are awaiting-only (no routing)
     this.awaitingOnly = !!data.awaitingOnly;
     // statusHistory: array of { from, to, user, area, timestamp }

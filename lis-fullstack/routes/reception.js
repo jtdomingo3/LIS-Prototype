@@ -54,17 +54,12 @@ let kioskAdText = '';
 //   (test.completedAt or non-empty test.results). Also, do NOT map Doctor's Check-up to Releasing.
 function mapAreaForTest(test) {
   if (!test || !test.status) return test && test.status ? test.status : null;
-  // Treat explicit 'Released' status as final Completed (do not map back to Releasing)
-  if (test.status === 'Released') return 'Completed';
+  // If explicitly released or released flag set, it is completely done (do not map to any active queue area)
+  if (test.released || test.status === 'Released') return 'Completed';
   if (test.status === 'Completed') {
-    // If a test has been released (finalized), keep it as Completed and do not
-    // map it back to the 'Releasing of Result' area.
-    if (test.released) return 'Completed';
     const hasResults = Boolean(test.completedAt || (test.results && String(test.results).trim()));
-    // Determine if this is a doctor's checkup based on testType or testType containing 'doctor'
     const isDoctorCheckup = test.testType && String(test.testType).toLowerCase().includes('doctor');
     const isRegistration = test.testType === 'Registration';
-    // Only send to Releasing when results exist and it's not Doctor's Check-up or Registration
     if (hasResults && !isDoctorCheckup && !isRegistration) return 'Releasing of Result';
     return 'Completed';
   }
@@ -416,6 +411,52 @@ router.post('/advert', requireAuth, async (req, res) => {
   } catch (e) {
     console.error('Failed to update kiosk ad', e);
     req.flash && req.flash('error_msg', 'Failed to update advertisement');
+    return res.redirect('/reception');
+  }
+});
+
+// POST /reception/clear-queues - Clear all active reception queues (admin only)
+router.post('/clear-queues', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const user = req.session && req.session.user;
+    if (!user || user.role !== 'Admin') {
+      req.flash('error_msg', 'Admin access required to clear reception queues');
+      return res.redirect('/reception');
+    }
+
+    const tests = (typeof global.db.getTests === 'function' ? global.db.getTests() : []) || [];
+    let count = 0;
+    const nowIso = new Date().toISOString();
+    const userName = (user && (user.name || user.username)) ? (user.name || user.username) : 'Admin';
+
+    for (let i = 0; i < tests.length; i++) {
+      const t = tests[i];
+      if (t) {
+        const prevStatus = t.status || null;
+        t.status = 'Released';
+        t.released = true;
+        if (!t.completedAt) t.completedAt = nowIso;
+        if (!Array.isArray(t.statusHistory)) t.statusHistory = [];
+        t.statusHistory.push({ from: prevStatus, to: 'Released', user: userName, area: 'Released', timestamp: nowIso });
+        t.updatedAt = nowIso;
+        count++;
+      }
+    }
+
+    // Save all updated tests to database ONCE in a single atomic operation
+    global.db.saveTests(tests);
+
+    console.log(`[RECEPTION] Admin ${userName} cleared ${count} test(s) from reception queues in bulk`);
+
+    try {
+      sseEmitter.emit('update', { action: 'clear_queues', time: nowIso });
+    } catch (e) { console.warn('SSE emit for clear_queues failed', e); }
+
+    req.flash('success_msg', `Successfully cleared all reception queues (${count} test(s) set to Released). Reception is ready for a fresh start!`);
+    return res.redirect('/reception');
+  } catch (err) {
+    console.error('Error clearing reception queues:', err);
+    req.flash('error_msg', 'Failed to clear reception queues');
     return res.redirect('/reception');
   }
 });

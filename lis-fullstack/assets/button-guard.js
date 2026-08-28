@@ -56,12 +56,14 @@
   // EXCLUSION: buttons we should NOT guard (text-match, case-insensitive)
   function isExcludedButton(el){
     if (!el) return false;
+    if (el.classList && el.classList.contains('no-guard')) return true;
+    if (el.getAttribute && (el.getAttribute('data-no-guard') === '1' || el.getAttribute('data-no-guard') === 'true')) return true;
     // prefer explicit attributes (aria-label/title/data-label), fallback to text/value
     const attrLabel = (el.getAttribute && (el.getAttribute('aria-label') || el.getAttribute('title') || el.getAttribute('data-label')));
     const raw = (attrLabel || el.textContent || el.innerText || el.value || '').replace(/[→←↶↷]/g, '').trim();
     if (!raw) return false;
     const txt = raw.replace(/\s+/g, ' ').toLowerCase();
-    const exceptions = ['previous','next','print','print filtered','download','clear filter','clear filters', 'all test types', 'patient queue display', 'preview', 'fullscreen', 'create new template', 'edit', 'view'];
+    const exceptions = ['previous','next','print','print filtered','download','clear filter','clear filters', 'all test types', 'patient queue display', 'preview', 'fullscreen', 'create new template', 'edit', 'view', 'clear reception queue', 'clear queue', 'clear queues'];
     for (let i=0; i<exceptions.length; i++) {
       if (txt.indexOf(exceptions[i]) !== -1) return true;
     }
