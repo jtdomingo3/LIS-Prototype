@@ -869,7 +869,7 @@
             <% } %>
             <% if (!featureFlags || featureFlags.reports) { %>
             <% if (sessionUser.role === 'Admin' || perms.reports) { %>
-            <a href="/reports" class="nav-item <%= title.includes('Report') ? 'active' : '' %>"><span class="nav-emoji">📋</span><span class="nav-text">Reports</span></a>
+            <a href="/reports" class="nav-item <%= (title.includes('Report') && !title.includes('Template')) ? 'active' : '' %>"><span class="nav-emoji">📋</span><span class="nav-text">Reports</span></a>
             <% } %>
             <% } %>
             <!-- Signature area: allows users to upload e-signatures for documents where their name appears -->
