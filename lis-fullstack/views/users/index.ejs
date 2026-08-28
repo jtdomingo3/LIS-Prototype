@@ -24,7 +24,7 @@
             <td class="action-buttons">
               <a href="/users/<%= u.id %>" class="button btn-orange btn-small">View</a>
               <a href="/users/<%= u.id %>/edit" class="button btn-success btn-small">Edit</a>
-              <form action="/users/<%= u.id %>?_method=DELETE" method="POST" style="display:inline-block;">
+              <form action="/users/<%= u.id %>?_method=DELETE" method="POST" style="display:inline-block;" onsubmit="return confirm('Are you sure you want to delete this user?');">
                 <button type="submit" class="button btn-danger btn-small">Delete</button>
               </form>
             </td>

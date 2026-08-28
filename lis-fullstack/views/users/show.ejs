@@ -9,8 +9,8 @@
 
   <div class="action-buttons">
     <a href="/users/<%= user.id %>/edit" class="button btn-primary">Edit</a>
-    <form action="/users/<%= user.id %>?_method=DELETE" method="POST" style="display:inline-block;">
-      <button class="button btn-danger" onclick="return confirm('Are you sure you want to delete this user?');">Delete</button>
+    <form action="/users/<%= user.id %>?_method=DELETE" method="POST" style="display:inline-block;" onsubmit="return confirm('Are you sure you want to delete this user?');">
+      <button type="submit" class="button btn-danger">Delete</button>
     </form>
     <% if (typeof currentUser !== 'undefined' && currentUser && currentUser.role === 'Admin') { %>
     <form action="/users/<%= user.id %>/reset-password" method="POST" style="display:inline-block;margin-left:8px;">

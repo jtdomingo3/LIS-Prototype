@@ -1292,6 +1292,91 @@
         function updateFsButton() { const fsBtn = document.getElementById('fullscreenBtn'); if (!fsBtn) return; const inShell = (window.top !== window.self); const isFullscreen = inShell || !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement); fsBtn.querySelector('.nav-text').textContent = isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'; }
 </script>
 
+    <!-- Global Custom Confirmation Modal -->
+    <div id="customConfirmModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15, 23, 42, 0.6); backdrop-filter:blur(4px); z-index:999999; align-items:center; justify-content:center;">
+      <div style="background:#ffffff; width:90%; max-width:420px; border-radius:16px; padding:28px; box-shadow:0 25px 50px -12px rgba(0, 0, 0, 0.25); text-align:center; border: 1px solid #e2e8f0;">
+        <div style="width:60px; height:60px; background:#fee2e2; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 18px; color:#ef4444; font-size:26px;">
+          <i class="fa fa-exclamation-triangle"></i>
+        </div>
+        <h3 id="customConfirmTitle" style="margin:0 0 10px; color:#0f172a; font-size:1.3rem; font-weight:700;">Confirm Action</h3>
+        <p id="customConfirmMessage" style="margin:0 0 24px; color:#64748b; font-size:0.95rem; line-height:1.5;">Are you sure you want to delete this item? This action cannot be undone.</p>
+        <div style="display:flex; gap:12px; justify-content:center;">
+          <button id="customConfirmCancelBtn" type="button" class="button btn-secondary" style="flex:1; padding:12px; font-weight:600; border-radius:10px;">Cancel</button>
+          <button id="customConfirmOkBtn" type="button" class="button btn-danger" style="flex:1; padding:12px; font-weight:600; border-radius:10px;">Yes, Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function() {
+        const modal = document.getElementById('customConfirmModal');
+        const msgEl = document.getElementById('customConfirmMessage');
+        const cancelBtn = document.getElementById('customConfirmCancelBtn');
+        const okBtn = document.getElementById('customConfirmOkBtn');
+        let pendingCallback = null;
+
+        function openConfirm(message, onConfirm) {
+          if (msgEl) msgEl.textContent = message || 'Are you sure you want to perform this action?';
+          pendingCallback = onConfirm;
+          if (modal) modal.style.display = 'flex';
+        }
+
+        function closeConfirm() {
+          if (modal) modal.style.display = 'none';
+          pendingCallback = null;
+        }
+
+        if (cancelBtn) cancelBtn.addEventListener('click', closeConfirm);
+        if (okBtn) {
+          okBtn.addEventListener('click', function() {
+            const cb = pendingCallback;
+            closeConfirm();
+            if (cb) cb();
+          });
+        }
+
+        if (modal) {
+          modal.addEventListener('click', function(e) {
+            if (e.target === modal) closeConfirm();
+          });
+        }
+
+        // Intercept form submissions using native confirm(...) or data-confirm
+        document.addEventListener('submit', function(e) {
+          const form = e.target;
+          if (!form) return;
+          if (form.dataset.__customConfirmed === '1') {
+            delete form.dataset.__customConfirmed;
+            return;
+          }
+
+          const onsubmitAttr = form.getAttribute('onsubmit') || '';
+          const dataConfirm = form.getAttribute('data-confirm');
+          let msg = dataConfirm;
+
+          if (!msg && onsubmitAttr.includes('confirm(')) {
+            const match = onsubmitAttr.match(/confirm\((['"])(.*?)\1\)/);
+            if (match && match[2]) {
+              msg = match[2];
+            }
+          }
+
+          if (msg) {
+            e.preventDefault();
+            e.stopPropagation();
+            openConfirm(msg, function() {
+              form.dataset.__customConfirmed = '1';
+              try { form.removeAttribute('onsubmit'); } catch(e){}
+              form.submit();
+            });
+            return false;
+          }
+        }, true);
+
+        window.showCustomConfirm = openConfirm;
+      })();
+    </script>
+
     <script src="/assets/button-guard.js"></script>
     <!-- Scripts injected from individual views (via express-ejs-layouts extractScripts) -->
     <%- script %>
