@@ -1079,7 +1079,18 @@
                     }
                     return;
                 }
-                const sseAllowed = ['/dashboard', '/patients', '/reception'];
+                
+                // **disable SSE on /tests/ subpaths** (Create New Test, View, Enter Result)
+                if (path.startsWith('/tests/')) {
+                    const connEl = document.getElementById('notifConn');
+                    if (connEl) {
+                        connEl.style.background = '#ef4444';
+                        connEl.title = 'SSE disabled on test forms/views';
+                    }
+                    return;
+                }
+
+                const sseAllowed = ['/dashboard', '/patients', '/reception', '/tests'];
                 const isAllowed = sseAllowed.some(p => path === p || path.startsWith(p + '/'));
                 if (!isAllowed) {
                     // Mark connection as disabled and skip SSE setup entirely (no reconnects)
