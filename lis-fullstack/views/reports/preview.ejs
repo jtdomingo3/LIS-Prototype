@@ -355,22 +355,29 @@
         if (!confirm('No tests selected. Print all filtered results?')) return;
         ids = allFiltered;
       }
-      const url = '/reports/print-multiple?ids=' + encodeURIComponent(ids.join(','));
-      // If running inside the Electron standalone app, request the main
-      // process to open the print preview (generates PDF and opens system viewer).
+      
+      // If running inside the Electron standalone app...
       if (window.lisApp && typeof window.lisApp.printPreview === 'function') {
-        // Ensure we pass an absolute URL; the main process needs a full origin.
+        const url = '/reports/print-multiple?ids=' + encodeURIComponent(ids.join(','));
         let fullUrl = (url && url[0] === '/') ? (window.location.origin + url) : url;
-        // Tell the server to suppress any automatic `window.print()` when
-        // rendering inside the hidden source window — we open the generated
-        // PDF ourselves via the system viewer.
         if (fullUrl && fullUrl.indexOf('suppressPrint=1') === -1) {
           fullUrl += (fullUrl.indexOf('?') === -1) ? '?suppressPrint=1' : '&suppressPrint=1';
         }
         window.lisApp.printPreview(fullUrl);
       } else {
-        // Fallback for browser/server mode
-        window.open(url, '_blank');
+        // Fallback for browser/server mode: Use a POST form to avoid URL length limits
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/reports/print-multiple';
+        form.target = '_blank';
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'ids';
+        input.value = ids.join(',');
+        form.appendChild(input);
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
       }
     });
 

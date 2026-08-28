@@ -396,10 +396,10 @@ router.get('/print/:testId', requireAuth, canAccessPatient, async (req, res) => 
   }
 });
 
-// GET /reports/print-multiple?ids=id1,id2,... - Print multiple filtered reports
-router.get('/print-multiple', requireAuth, canAccessPatient, async (req, res) => {
+// GET or POST /reports/print-multiple - Print multiple filtered reports
+router.all('/print-multiple', requireAuth, canAccessPatient, async (req, res) => {
   try {
-    let ids = req.query.ids;
+    let ids = req.body.ids || req.query.ids;
     if (!ids) {
       req.flash('error_msg', 'No tests specified for printing');
       return res.redirect('/reports');
