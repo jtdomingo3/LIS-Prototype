@@ -243,6 +243,48 @@ router.get('/', requireAuth, async (req, res) => {
         });
     }
 
+    // Patient Demographics & Membership Calculations
+    const ageMap = {};
+    const sexMap = { Male: 0, Female: 0, Other: 0 };
+    const philhealthMap = { Member: 0, 'Non-Member': 0 };
+
+    if (Array.isArray(allPatients)) {
+      for (const p of allPatients) {
+        // 1. Age (prefer computed age from DOB or manual age)
+        let pAge = (p.age !== null && p.age !== undefined) ? parseInt(p.age, 10) : null;
+        if ((pAge === null || isNaN(pAge)) && p.dateOfBirth) {
+          try {
+            const birth = new Date(p.dateOfBirth);
+            if (!isNaN(birth.getTime())) {
+              const now = new Date();
+              pAge = now.getFullYear() - birth.getFullYear();
+            }
+          } catch(e) {}
+        }
+        if (pAge !== null && !isNaN(pAge) && pAge >= 0 && pAge < 120) {
+          const ageLabel = `${pAge} yrs`;
+          ageMap[ageLabel] = (ageMap[ageLabel] || 0) + 1;
+        }
+
+        // 2. Sex / Gender
+        const g = (p.gender || p.sex || '').toString().trim();
+        if (/^male$/i.test(g) || /^m$/i.test(g)) sexMap.Male++;
+        else if (/^female$/i.test(g) || /^f$/i.test(g)) sexMap.Female++;
+        else if (g) sexMap.Other++;
+
+        // 3. PhilHealth Membership
+        const hasPhilhealth = (p.philhealthId && String(p.philhealthId).trim() !== '') || p.philhealthConsent;
+        if (hasPhilhealth) philhealthMap.Member++;
+        else philhealthMap['Non-Member']++;
+      }
+    }
+
+    // Top 10 Frequent Ages sorted by count descending
+    const topAges = Object.entries(ageMap)
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
     res.render('dashboard/index', {
       title: 'Dashboard',
       stats: {
@@ -253,7 +295,8 @@ router.get('/', requireAuth, async (req, res) => {
         releasedTests,
         totalSales, todaySales, monthSales, clinicalSales, xraySales, clinicalToday, xrayToday, clinicalMonth, xrayMonth,
         salesTrendDaily, salesTrendMonthly, salesTrendHourly, salesTrendOverall,
-        testTotals, testTotalsToday, testTotalsSelected, selectedDate: (selectedDate ? (new Date(selectedDate)).toISOString().slice(0,10) : null)
+        testTotals, testTotalsToday, testTotalsSelected, selectedDate: (selectedDate ? (new Date(selectedDate)).toISOString().slice(0,10) : null),
+        topAges, sexMap, philhealthMap
       },
       recentTests
     });

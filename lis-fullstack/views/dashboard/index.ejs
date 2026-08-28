@@ -418,7 +418,151 @@
             } catch(e) { console.warn('Sales trend chart error', e); }
         })();
     </script>
+<!-- Patient Demographics Section (3 Additional Graphs) -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 20px; margin-bottom: 24px;">
+    
+    <!-- 1. Top 10 Frequent Patient Ages (Bar Graph) -->
+    <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+        <h3 style="margin: 0 0 16px 0; font-size: 1.05em; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+            <i class="fa fa-users" style="color: #6366f1;"></i>
+            <span>Top 10 Frequent Patient Ages</span>
+        </h3>
+        <div style="width: 100%; height: 260px;">
+            <canvas id="topAgesChart" height="260"></canvas>
+        </div>
+    </div>
+
+    <!-- 2. Sex Distribution (Pie / Doughnut Graph) -->
+    <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+        <h3 style="margin: 0 0 16px 0; font-size: 1.05em; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+            <i class="fa fa-venus-mars" style="color: #ec4899;"></i>
+            <span>Sex Distribution</span>
+        </h3>
+        <div style="width: 100%; height: 260px; position: relative;">
+            <canvas id="sexChart" height="260"></canvas>
+        </div>
+    </div>
+
+    <!-- 3. PhilHealth Membership Status (Pie / Doughnut Graph) -->
+    <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+        <h3 style="margin: 0 0 16px 0; font-size: 1.05em; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+            <i class="fa fa-id-card" style="color: #059669;"></i>
+            <span>PhilHealth Membership</span>
+        </h3>
+        <div style="width: 100%; height: 260px; position: relative;">
+            <canvas id="philhealthChart" height="260"></canvas>
+        </div>
+    </div>
+
 </div>
+
+<script>
+    (function(){
+        try {
+            // Data from server
+            const topAges = <%- JSON.stringify(stats.topAges || []) %>;
+            const sexMap = <%- JSON.stringify(stats.sexMap || { Male: 0, Female: 0, Other: 0 }) %>;
+            const philhealthMap = <%- JSON.stringify(stats.philhealthMap || { Member: 0, 'Non-Member': 0 }) %>;
+
+            // 1. Top Ages Bar Chart
+            const agesCtx = document.getElementById('topAgesChart');
+            if (agesCtx) {
+                new Chart(agesCtx.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: topAges.length > 0 ? topAges.map(a => a.label) : ['No Data'],
+                        datasets: [{
+                            label: 'Number of Patients',
+                            data: topAges.length > 0 ? topAges.map(a => a.count) : [0],
+                            backgroundColor: '#6366f1',
+                            borderRadius: 6,
+                            maxBarThickness: 32
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (ctx) => `Patients: ${ctx.parsed.y}`
+                                }
+                            }
+                        },
+                        scales: {
+                            x: { grid: { display: false } },
+                            y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#f1f5f9' } }
+                        }
+                    }
+                });
+            }
+
+            // 2. Sex Doughnut Chart
+            const sexCtx = document.getElementById('sexChart');
+            if (sexCtx) {
+                const sexLabels = [];
+                const sexCounts = [];
+                const sexColors = [];
+                if (sexMap.Male > 0) { sexLabels.push('Male'); sexCounts.push(sexMap.Male); sexColors.push('#3b82f6'); }
+                if (sexMap.Female > 0) { sexLabels.push('Female'); sexCounts.push(sexMap.Female); sexColors.push('#ec4899'); }
+                if (sexMap.Other > 0) { sexLabels.push('Other'); sexCounts.push(sexMap.Other); sexColors.push('#94a3b8'); }
+                if (sexLabels.length === 0) { sexLabels.push('No Data'); sexCounts.push(1); sexColors.push('#cbd5e1'); }
+
+                new Chart(sexCtx.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: sexLabels,
+                        datasets: [{
+                            data: sexCounts,
+                            backgroundColor: sexColors,
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' }
+                        },
+                        cutout: '65%'
+                    }
+                });
+            }
+
+            // 3. PhilHealth Membership Doughnut Chart
+            const phCtx = document.getElementById('philhealthChart');
+            if (phCtx) {
+                const phLabels = ['PhilHealth Member', 'Non-Member'];
+                const phCounts = [philhealthMap.Member || 0, philhealthMap['Non-Member'] || 0];
+                const phColors = ['#10b981', '#cbd5e1'];
+
+                new Chart(phCtx.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: phLabels,
+                        datasets: [{
+                            data: phCounts,
+                            backgroundColor: phColors,
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom' }
+                        },
+                        cutout: '65%'
+                    }
+                });
+            }
+
+        } catch(e) { console.warn('Demographics chart error', e); }
+    })();
+</script>
 
 <!-- Recent Test Results -->
 <div class="card">
