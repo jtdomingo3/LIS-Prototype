@@ -636,13 +636,14 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       return { name: name.charAt(0).toUpperCase() + name.slice(1), testType: f.replace('.ejs','') };
     });
     templates = templates.concat(staticTemplates);
-    // Ensure trimester ultrasound static template is available in selection
-    try {
-      const exists = templates.some(t => (t.testType || '').toLowerCase() === 'ultrasound-trimester-obstetrics');
-      if (!exists) {
-        templates.push({ name: 'Ultrasound - Trimester Obstetrics', testType: 'ultrasound-trimester-obstetrics' });
-      }
-    } catch (e) {}
+    // Deduplicate templates by normalized testType/name
+    const seenTypes = new Set();
+    templates = (templates || []).filter(t => {
+      const k = String(t.testType || t.name || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+      if (!k || seenTypes.has(k)) return false;
+      seenTypes.add(k);
+      return true;
+    });
   } catch (e) {
     // ignore static templates on error
   }
