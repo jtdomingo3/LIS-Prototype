@@ -1,6 +1,6 @@
-# Laboratory Information System (LIS)
+# Laboratory Information System (LIS) v2.0.0
 
-A full-stack web application for managing laboratory operations, built with Node.js, Express, and file-based storage.
+A full-stack web application for managing laboratory operations, built with Node.js, Express, and central ProgramData storage.
 
 ## Features
 
@@ -159,36 +159,35 @@ highlighted earlier, but there are a few additional flags you may find useful:
 > sign is permitted, but older versions of the settings page ignored such entries. The
 > web UI now trims whitespace and will show every variable present in the file.
 
+## Building the Production Windows Installer (v2.0.0)
+
+To create a single-file executable Windows setup installer (`Gezyne LIS Server Setup 2.0.0.exe`):
+
+```powershell
+# 1. Build server executable & prepare seed data
+cd lis-fullstack
+npm run build:exe
+npm run prepare-dist-data
+
+# 2. Build Electron Tray NSIS Installer
+cd tray
+npm run dist:win
+```
+
+The compiled installer will be located in: `lis-fullstack/tray/dist/Gezyne LIS Server Setup 2.0.0.exe`
+
 ## Production Deployment
 
-Recommended production options
+Recommended production options:
 
-- Run under PM2 (recommended): the repo includes `ecosystem.config.js` used to start the app in production mode.
-
-  Linux/macOS example:
-
-  ```bash
-  export PORT=3000
-  export NODE_ENV=production
-  npm install -g pm2
-  pm2 start ecosystem.config.js --env production
-  pm2 save
-  ```
-
-  Windows PowerShell example (current session):
-
+- **Run under PM2 (recommended for server safety)**:
   ```powershell
-  $env:PORT = '3000'
-  $env:NODE_ENV = 'production'
   npm install -g pm2
   pm2 start ecosystem.config.js --env production
   pm2 save
   ```
-- Native Windows launcher: see `START_ON_WINDOWS.md`. The project ships `scripts/start-lis.ps1` which is compiled into `dist/start-lis.exe` (via `ps2exe`) and prefers PM2 when available. The launcher forces `NODE_ENV=production`, runs `pm2 save` and opens `pm2 monit` so you can watch status.
-- Packaged single EXE (optional): use `pkg` to produce `dist/laboratory-information-system.exe`. See package.json `pkg` config — note that large native assets (Chromium for Puppeteer, Sharp libs) often must be shipped alongside the EXE.
-
-If you plan to run PM2 as a Windows service so saved processes resurrect on reboot, consider `pm2-windows-service` or NSSM (instructions in `START_ON_WINDOWS.md`).
+- **Electron Tray Launcher**: Run `tray` or launch the installed `Gezyne LIS Server Setup 2.0.0.exe` for automated tray management and PM2 auto-start.
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License. Created for Gezyne Clinical Laboratory.

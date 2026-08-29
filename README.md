@@ -1,114 +1,98 @@
-# LIS Prototype
+# Gezyne Laboratory Information System (LIS) v2.0.0
 
-> **Laboratory Information System (LIS)** – a working proof‑of‑concept demonstrating
-> a browser‑based LIS server, an Electron desktop client, and a Cordova/Capacitor mobile
-> wrapper.  The repo collects several related projects that share business logic
-> and UI but target different deployment environments.
+> **Gezyne Clinical Laboratory - Laboratory Information System (LIS) v2.0.0** – A comprehensive clinical diagnostic and laboratory management platform featuring a full-stack Node.js/Express server, real-time patient queue displays (kiosk), PM2 process safety management, and Electron installer packaging for Windows.
 
 ---
 
-## 📁 Repository layout
+## 📁 Repository Layout
 
 ```
 .
 ├── README.md               # (this file)
-├── ads.json                # ad configuration used by the web UI
-├── lis-fullstack/          # full‑stack Node/Express server & web UI
-├── lis-app-standalone/     # Electron desktop client with offline cache
-├── lis-mobile/             # mobile wrapper (Cordova/Capacitor) for Android/iOS
-├── test/                   # utility scripts used for manual/automated testing
-└── ...                    # additional helper scripts & configuration
+├── ads.json                # Kiosk ad configuration used by the Queue Display
+├── lis-fullstack/          # Full-stack Express server, EJS views, PDF reports & Tray app
+│   ├── build/              # Bundled installer resources & seed templates
+│   ├── dist/               # Packaged standalone executable (via pkg)
+│   ├── scripts/            # Build, seed, encryption & setup scripts
+│   ├── tray/               # Electron Tray launcher & NSIS Installer (v2.0.0)
+│   └── server.js           # Core LIS Server entrypoint
+├── lis-app-standalone/     # Standalone Electron desktop client with offline cache
+├── lis-mobile/             # Mobile wrapper (Cordova/Capacitor) for Android/iOS
+└── test/                   # Integration, offline sync & diagnostic test scripts
 ```
-
-Each subdirectory is a self‑contained project; see its own `README.md` for
-component‑specific details.
 
 ---
 
-## 🚀 Getting started
+## 📦 Building the Windows Installer (v2.0.0)
 
-### 1. Full‑stack server (`lis-fullstack`)
-This is the heart of the prototype – a Node.js/Express app that uses a
-file‑based JSON store for data.  All other clients (browser, desktop, mobile)
-communicate with it over HTTP/HTTPS.
+To create a single-file executable Windows NSIS installer (`Gezyne LIS Server Setup 2.0.0.exe`):
+
+### 1. Build Server Executable & Prepare Seed Data
+```powershell
+cd "lis-fullstack"
+npm install
+
+# Build compiled server binary (output -> dist/laboratory-information-system.exe)
+npm run build:exe
+
+# Prepare initial admin seed & installer resources
+npm run prepare-dist-data
+```
+
+### 2. Build Electron Tray & NSIS Installer
+```powershell
+cd tray
+npm install
+
+# Build installer (output -> tray/dist/Gezyne LIS Server Setup 2.0.0.exe)
+npm run dist:win
+```
+
+Your completed installer will be output to:
+`lis-fullstack/tray/dist/Gezyne LIS Server Setup 2.0.0.exe`
+
+---
+
+## 🛡️ PM2 Process Management & Safety
+
+For production server safety, automatic crash recovery, and memory monitoring:
+
+```powershell
+# 1. Install PM2 globally on Windows
+npm install -g pm2
+
+# 2. (Optional) Configure automatic start on Windows boot
+npm install -g pm2-windows-startup
+pm2-startup install
+```
+
+When active, the Electron Tray app automatically detects PM2 and manages the LIS server via `ecosystem.config.js` (`lis-app`).
+
+---
+
+## 🚀 Development & Local Server Setup
 
 ```powershell
 cd "lis-fullstack"
-npm install          # install dependencies
-node seed.js         # optional: populate sample users, patients, tests
-npm start            # starts on http://localhost:3000
-```
-
-Once running open `http://localhost:3000` in your browser.  You can also use
-`nodemon server.js` for live reload during development.
-
-**Notes**
-- `data.json` is the database file; feel free to delete it and re‑run `seed.js`.
-- Environment variables such as `PORT`, `NODE_ENV` and the various
-  `DISABLE_REPORT_GENERATION` flags are honoured.  See
-  `lis-fullstack/README.md` for full configuration details.
-
-### 2. Desktop client (`lis-app-standalone`)
-An offline‑friendly Electron application that wraps the same UI and
-syncs to the server when connectivity returns.  It is useful for kiosks,
-remote clinics, or simply to test offline behaviour.
-
-```powershell
-cd lis-app-standalone
 npm install
-npm start            # launches the Electron app
+npm start            # Starts server on http://localhost:3000
 ```
 
-Change the target server by editing `lib/config.js` (modify `SERVER_URL`).
-Build an installer with `npm run build:win` (outputs to `dist/`).  Read
-`lis-app-standalone/README.md` for a full explanation of offline caching,
-operations queue, and architecture diagrams.
-
-### 3. Mobile client (`lis-mobile`)
-This directory contains the scaffolded Cordova/Capacitor project used to
-wrap the web UI for Android/iOS devices.  It is not as heavily featured as the
-desktop app and currently serves primarily as a container for the responsive
-web interface.
-
-To build you will need the usual Cordova/Capacitor toolchain:
-
-```bash
-cd lis-mobile
-npm install
-# add platforms, then build/run via cordova or npx cap commands
-```
-
-Refer to `lis-mobile/config.xml` and platform documentation for further
-instructions; no dedicated README is present in this repo, so consider this
-section a high‑level summary.
-
-### 4. Testing & utilities (`test/`)
-Several Node scripts under `test/` are used for manual data inspection,
-e2e offline sync trials, and other development chores.  The names are
-self‑descriptive; run them with `node` from the workspace root.
+Once running, access the LIS in your browser at `http://localhost:3000` or on your network IP (`http://<your-ip>:3000`).
 
 ---
 
-## 🛠 Development workflows
+## ✨ Key Features in v2.0.0
 
-- **Linting & formatting** – there is no enforced linter; you can run
-  `npm run lint` in individual projects if configured.
-- **Debugging** – attach VS Code or Chrome DevTools to `server.js` or the
-  Electron renderer as needed; source maps are generated by default.
-- **Version control** – `.gitignore` already excludes `node_modules/` and
-  `sample results/`.  If you accidentally commit one of these run the suggested
-  `git rm --cached` commands shown inside the ignore file comments.
+- 🏥 **Vibrant Patient Queue Kiosk**: Animated queue display (`/reception/assigned?kiosk=1`) optimized for TV displays and reception monitors.
+- 🔐 **Modern Split-View Login**: Bounded login interface displaying Gezyne Clinical Laboratory address, contact info, and Facebook page details.
+- 🔔 **Formatted SSE Notifications**: Real-time event notifications with clean icons for queue assignments, stashing, and test completions.
+- 📋 **Comprehensive Test Modules**: Hematology, Blood Chemistry, Urinalysis, Fecalysis, Serology, Thyroid Panel, PT/APTT, X-Ray, ECG, and Ultrasound.
+- 📁 **Centralized Data Storage**: Automatic data persistence to `C:\ProgramData\GezyneLIS` for multi-user Windows compatibility.
 
 ---
 
-## 📌 Additional notes
+## 📌 License
 
-- The prototype is permissively licensed under **MIT** (see `LICENSE`).
-- Feel free to fork, experiment, or reuse components in your own projects.
-- Contributions are welcome; if you add a new top‑level directory please update
-  this README accordingly.
+Licensed under the **MIT License**. Created for Gezyne Clinical Laboratory.
 
----
-
-_This README was automatically enhanced on March 2 2026 to provide a clearer
-overview of the repository and its multiple application targets._
