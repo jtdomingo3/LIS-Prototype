@@ -911,16 +911,18 @@
                             <span id="notifConn" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ef4444;box-shadow:0 0 4px rgba(0,0,0,0.15);" title="Disconnected"></span>
                             <span id="notifBadge" style="display:inline-block;min-width:20px;height:20px;line-height:20px;padding:0 6px;border-radius:10px;background:var(--danger);color:white;font-size:0.85em;text-align:center;visibility:hidden;">0</span>
                         </button>
-                        <div id="notifDropdown" style="position:absolute;right:0;top:36px;min-width:320px;background:var(--text-white);border:1px solid var(--border-gray);border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.12);display:none;z-index:999;padding:10px;">
-                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:12px;">
-                                <strong>Notifications</strong>
-                                <div style="display:flex;align-items:center;gap:10px;">
-                                    <small style="color:var(--text-gray);font-size:0.85em;">Auto-refresh: <label style="cursor:pointer;display:inline-block;margin-left:6px;"><input id="notifAutoRefresh" type="checkbox" style="vertical-align:middle;"/> Enable</label></small>
-                                    <small style="color:var(--text-gray);font-size:0.85em;">Mute sound: <label style="cursor:pointer;display:inline-block;margin-left:6px;"><input id="notifMute" type="checkbox" style="vertical-align:middle;"/> </label></small>
+                        <div id="notifDropdown" style="position:absolute;right:0;top:38px;min-width:350px;max-width:400px;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 12px 32px rgba(15,23,42,0.15);display:none;z-index:999;padding:14px;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #f1f5f9;">
+                                <strong style="font-size:0.95em;color:#0f172a;display:inline-flex;align-items:center;gap:6px;"><i class="fa fa-bell" style="color:#f59e0b;"></i> Notifications</strong>
+                                <div style="display:flex;align-items:center;gap:12px;">
+                                    <small style="color:#64748b;font-size:0.8em;">Auto-refresh: <label style="cursor:pointer;display:inline-block;margin-left:4px;"><input id="notifAutoRefresh" type="checkbox" style="vertical-align:middle;"/> Enable</label></small>
+                                    <small style="color:#64748b;font-size:0.8em;">Mute: <label style="cursor:pointer;display:inline-block;margin-left:4px;"><input id="notifMute" type="checkbox" style="vertical-align:middle;"/> </label></small>
                                 </div>
                             </div>
-                            <div id="notifList" style="max-height:220px;overflow:auto;"></div>
-                            <div style="text-align:right;margin-top:8px;"><button id="clearNotifs" class="button btn-small">Clear</button></div>
+                            <div id="notifList" style="max-height:280px;overflow-y:auto;border-radius:8px;"></div>
+                            <div style="text-align:right;margin-top:10px;padding-top:8px;border-top:1px solid #f1f5f9;">
+                                <button id="clearNotifs" class="button btn-small" style="padding:4px 12px;font-size:0.82em;background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;border-radius:6px;cursor:pointer;font-weight:600;">Clear Notifications</button>
+                            </div>
                         </div>
                     </div>
                     <audio id="notifSound" preload="auto">
@@ -1127,9 +1129,44 @@
                 showBadge(n.length);
             }
 
+            function formatNotifText(text) {
+                if (!text) return 'System Notification';
+                if (typeof text === 'string' && text.includes('{"serverTime":')) {
+                    try {
+                        const jsonStart = text.indexOf('{');
+                        const prefix = text.substring(0, jsonStart).replace(/:$/, '').trim();
+                        const parsed = JSON.parse(text.substring(jsonStart));
+                        if (parsed.action === 'stash') return '📥 Patient queue results stashed for quick release';
+                        if (parsed.action === 'release_stashed') return '📤 Stashed patient queue restored';
+                        if (parsed.action === 'clear_queues') return '🧹 Area queues cleared & numbers reset';
+                        if (parsed.action) {
+                            const actionName = parsed.action.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                            return `ℹ️ ${actionName}${parsed.testId ? ' (ID: ' + parsed.testId + ')' : ''}`;
+                        }
+                        if (prefix) return `ℹ️ ${prefix.replace(/\b\w/g, l => l.toUpperCase())}`;
+                    } catch(e) {}
+                }
+                return text;
+            }
+
             function renderList(){
                 const n = getNotifs();
-                list.innerHTML = n.map(it => `<div style="padding:8px;border-bottom:1px solid var(--border-gray);font-size:0.9em;"><div style="font-weight:600">${escapeHtml(it.text)}</div><div style="color:var(--text-gray);font-size:0.8em;margin-top:6px">${new Date(it.time).toLocaleString()}</div></div>`).join('') || '<div style="color:var(--text-gray);padding:8px">No notifications</div>';
+                if (!n || !n.length) {
+                    list.innerHTML = '<div style="color:#94a3b8;padding:16px;text-align:center;font-size:0.88em;"><i class="fa fa-info-circle" style="margin-right:6px;opacity:0.6;"></i>No notifications yet</div>';
+                    return;
+                }
+                list.innerHTML = n.map(it => {
+                    const cleanText = formatNotifText(it.text);
+                    const dt = new Date(it.time);
+                    const formattedTime = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    const formattedDate = dt.toLocaleDateString([], { month: 'short', day: 'numeric' });
+                    return `<div style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:0.88em;transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                        <div style="font-weight:600;color:#1e293b;line-height:1.4;">${escapeHtml(cleanText)}</div>
+                        <div style="color:#94a3b8;font-size:0.78em;margin-top:4px;display:flex;align-items:center;gap:6px;">
+                            <i class="fa fa-clock-o" style="font-size:0.85em;"></i> ${formattedDate}, ${formattedTime}
+                        </div>
+                    </div>`;
+                }).join('');
             }
 
             function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -1164,32 +1201,45 @@
                             if (!data) return;
                             // ignore handshake/init messages
                             if (data.init && data.serverTime) return;
+                            
                             let text = '';
                             if (data.message) {
                                 text = data.message;
+                            } else if (data.action === 'stash') {
+                                const details = data.patientName ? ` for ${data.patientName}` : '';
+                                text = `📥 Stashed ${data.count || ''} patient result(s)${details}`;
+                            } else if (data.action === 'release_stashed') {
+                                const details = data.patientName ? ` for ${data.patientName}` : '';
+                                text = `📤 Released ${data.count || ''} stashed result(s)${details}`;
+                            } else if (data.action === 'clear_queues') {
+                                text = `🧹 Area queues cleared & numbers reset`;
                             } else if (data.action === 'patient_created') {
-                                text = `New patient added: ${data.patientName || ''}`;
-                                if (data.patientIdLabel) text += ` (ID: ${data.patientIdLabel})`;
-                                else if (data.patientCode) text += ` (Code: ${data.patientCode})`;
-                            } else if (data.action === 'assigned') {
-                                if (Array.isArray(data.tests) && data.tests.length) {
-                                    const ids = data.tests.map(t => t.testId || t.id || '').filter(Boolean).join(', ');
-                                    text = `Assigned tests: ${ids}`;
-                                } else {
-                                    text = `Assigned: ${data.testId || ''}`;
-                                }
+                                text = `👤 New Patient Registered: ${data.patientName || 'Patient'}`;
+                                if (data.patientIdLabel) text += ` (${data.patientIdLabel})`;
+                                else if (data.patientCode) text += ` (${data.patientCode})`;
+                            } else if (data.action === 'assign' || data.action === 'assigned') {
+                                const pCode = data.patientCode || data.patientIdLabel || '';
+                                const testId = data.testId || (Array.isArray(data.tests) ? data.tests.map(t => t.testId || t.id).join(', ') : '');
+                                text = `📌 Patient assigned to ${data.area || 'Area'}: Test #${testId}`;
+                                if (pCode) text += ` (${pCode})`;
+                                if (data.assignedDoctor) text += ` • Dr. ${data.assignedDoctor}`;
                             } else if (data.action === 'complete') {
-                                // completion emitted from Reception (collection step)
-                                text = `Collection Completed: ${data.testId || ''}`;
+                                text = `✅ Specimen Collection Completed for Test #${data.testId || ''}`;
                             } else if (data.action === 'result_encoded' || data.action === 'test_completed') {
-                                // explicit result-encoding / test completed from Tests & Results
-                                text = `Test Completed (results encoded): ${data.testId || ''}`;
+                                text = `🧪 Test Results Encoded & Completed (ID: ${data.testId || ''})`;
+                            } else if (data.action === 'release') {
+                                text = `📄 Laboratory Result Released for Test #${data.testId || ''}`;
+                            } else if (data.action === 'delete') {
+                                text = `🗑️ Test #${data.testId || ''} removed from queue`;
                             } else if (data.action === 'advert') {
-                                text = `Kiosk advertisement updated: ${data.ad || ''}`;
+                                text = `📢 Kiosk Announcement Updated: ${data.ad || ''}`;
                             } else if (data.action === 'debug') {
-                                text = data.message || data.msg || 'Debug event';
+                                text = `⚙️ System Diagnostic: ${data.message || data.msg || 'OK'}`;
+                            } else if (data.action) {
+                                const cleanAction = data.action.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                                text = `ℹ️ ${cleanAction}${data.testId ? ' (ID: ' + data.testId + ')' : ''}`;
                             } else {
-                                text = (data.action ? (data.action + ': ') : '') + (data.testId || JSON.stringify(data));
+                                text = `ℹ️ System Event Notification`;
                             }
                             prependNotif(text);
                             // play sound (best-effort) unless muted

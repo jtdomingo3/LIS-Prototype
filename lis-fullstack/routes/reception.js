@@ -525,7 +525,7 @@ router.post('/stash', requireAuth, canAccessPatient, async (req, res) => {
     }
 
     try {
-      sseEmitter.emit('update', { action: 'stash', time: nowIso });
+      sseEmitter.emit('update', { action: 'stash', count, patientName, time: nowIso });
     } catch (e) {}
 
     req.flash('success_msg', `Stashed ${count} result(s) for ${patientName || 'patient'}. Held in Reception Stashed section.`);
@@ -611,7 +611,7 @@ router.post('/release-stashed', requireAuth, canAccessPatient, async (req, res) 
 
     // Emit a quiet background SSE update (does NOT alert/ring the kiosk audio!)
     try {
-      sseEmitter.emit('update', { action: 'release_stashed', quiet: true, time: nowIso });
+      sseEmitter.emit('update', { action: 'release_stashed', quiet: true, count, patientName, time: nowIso });
     } catch (e) {}
 
     req.flash('success_msg', `Successfully released ${count} stashed result(s) for ${patientName || 'patient'}.`);
