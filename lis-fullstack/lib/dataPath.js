@@ -75,22 +75,23 @@ function getDataDir() {
       console.error('[dataPath] migration from userDir failed:', err);
     }
 
-    // also copy installer-resources or exe seed files if needed
+    // Seed initial installer resources (empty data.json + default admin data-users.json) if needed
     try {
       const execDir = path.dirname(process.execPath);
-      const candidates = [
-        path.join(execDir, 'installer-resources', 'data.json'),
-        path.join(execDir, 'data.json')
-      ];
-      for (const oldFile of candidates) {
-        if (fs.existsSync(oldFile) && !fs.existsSync(pdData)) {
-          fs.copyFileSync(oldFile, pdData);
-          console.log('[dataPath] seeded programdata from', oldFile);
-          break;
-        }
+      const resDir = path.join(execDir, 'installer-resources');
+      const seedData = path.join(resDir, 'data.json');
+      const seedUsers = path.join(resDir, 'data-users.json');
+
+      if (fs.existsSync(seedData) && !fs.existsSync(pdData)) {
+        fs.copyFileSync(seedData, pdData);
+        console.log('[dataPath] seeded clean data.json from installer-resources');
+      }
+      if (fs.existsSync(seedUsers) && !fs.existsSync(pdUsers)) {
+        fs.copyFileSync(seedUsers, pdUsers);
+        console.log('[dataPath] seeded default admin data-users.json from installer-resources');
       }
     } catch (err) {
-      console.error('[dataPath] seed migration failed:', err);
+      console.error('[dataPath] seed resource initialization failed:', err);
     }
 
     // ensure pdDir is writable

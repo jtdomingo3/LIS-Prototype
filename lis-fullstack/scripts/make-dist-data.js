@@ -19,6 +19,11 @@ async function make() {
     password: hash,
     role: 'Admin',
     status: 'Active',
+    permissions: {
+      dashboard: true, patients: true, reception: true,
+      tests: true, reports: true, worksheet: true,
+      templates: true, users: true, delete: true
+    },
     createdAt: now,
     lastLogin: null
   };

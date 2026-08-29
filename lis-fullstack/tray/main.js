@@ -239,52 +239,58 @@ function computeDataDir() {
   }
 }
 
+let isPm2Starting = false;
+
 function startViaPm2(cb) {
-  // ensure the data directory exists/migrated before pm2 spins up the server.
+  if (isPm2Starting) return cb && cb(null, 'PM2 start in progress');
+  isPm2Starting = true;
+
   try {
     const chosen = computeDataDir();
-    console.log('[tray] pm2 startup will use DATA_DIR', chosen);
+    console.log('[tray] pm2 startup using DATA_DIR', chosen);
   } catch (err) {
     console.error('[tray] failed to prepare data dir for pm2', err);
   }
 
-  // locate ecosystem.config.js in likely locations and pass absolute path to pm2
   const cfgCandidates = [
     path.join(PROJECT_ROOT, 'ecosystem.config.js'),
     path.join(PROJECT_ROOT, '..', 'ecosystem.config.js'),
-    path.join(process.resourcesPath || '', 'ecosystem.config.js')
+    path.join(process.resourcesPath || '', 'ecosystem.config.js'),
+    path.join(process.resourcesPath || '', 'server', 'ecosystem.config.js')
   ];
   const cfg = cfgCandidates.find(p => { try { return fs.existsSync(p); } catch { return false; } }) || path.join(PROJECT_ROOT, 'ecosystem.config.js');
 
-  // include DATA_DIR in the environment for pm2-launched processes as well
   const programDataBase = process.env.PROGRAMDATA || path.join('C:', 'ProgramData');
-  const dataDir = path.join(programDataBase, 'GezyneLIS');
+  const dataDir = process.env.DATA_DIR || path.join(programDataBase, 'GezyneLIS');
   const pm2Env = Object.assign({}, process.env, { DATA_DIR: dataDir });
-  exec(`pm2 start "${cfg}" --env production`, { cwd: path.dirname(cfg), env: pm2Env }, (err, stdout, stderr) => {
-    if (!err) {
-      exec('pm2 save', { cwd: path.dirname(cfg) }, (e) => {
-        if (e) appendLog('[pm2] pm2 save failed: ' + String(e));
-        appendLog('[pm2] started via ' + cfg);
-        cb && cb(null, stdout || 'pm2 started');
-      });
-      return;
+
+  // First check if lis-app is already registered in PM2 to avoid process 0 / duplicate start errors
+  exec('pm2 jlist', { cwd: path.dirname(cfg), env: pm2Env }, (jerr, jout) => {
+    let existsInPm2 = false;
+    if (!jerr && jout) {
+      try {
+        const procs = JSON.parse(jout);
+        if (Array.isArray(procs)) {
+          existsInPm2 = procs.some(p => p && p.name && String(p.name).toLowerCase() === 'lis-app');
+        }
+      } catch (e) {}
     }
 
-    // If pm2 failed because the configured script wasn't found in the packaged layout,
-    // try to start the packaged EXE directly (fallback).
-    const stderrText = String(stderr || err || stdout || '');
-    appendLog('[pm2] start failed: ' + stderrText.trim());
+    const command = existsInPm2 ? 'pm2 restart lis-app --update-env' : `pm2 start "${cfg}" --env production`;
+    exec(command, { cwd: path.dirname(cfg), env: pm2Env }, (err, stdout, stderr) => {
+      isPm2Starting = false;
+      if (!err) {
+        exec('pm2 save', { cwd: path.dirname(cfg) }, () => {});
+        appendLog('[pm2] Server started via PM2 (' + (existsInPm2 ? 'restarted' : 'started') + ')');
+        return cb && cb(null, stdout || 'PM2 started');
+      }
 
-    // fallback: if we have a packaged EXE, ask pm2 to run it directly
-    if (!SERVER_IS_EXE) return cb && cb(err, stdout || stderr);
+      const stderrText = String(stderr || err || stdout || '').trim();
+      appendLog('[pm2] PM2 start notice: ' + stderrText);
 
-    appendLog('[pm2] Attempting fallback: start packaged EXE via pm2');
-    const exePath = SERVER_SCRIPT; // should point to the EXE by locateServer logic
-    exec(`pm2 start "${exePath}" --name lis-app --interpreter none --env production`, { cwd: SERVER_DIR, env: pm2Env }, (err2, out2, errOut2) => {
-      if (err2) return cb && cb(err2, out2 || errOut2 || stderrText);
-      exec('pm2 save', { cwd: SERVER_DIR }, (e2) => { if (e2) appendLog('[pm2] pm2 save failed: ' + String(e2)); });
-      appendLog('[pm2] started packaged EXE via pm2: ' + exePath);
-      cb && cb(null, out2 || 'pm2 started exe');
+      // Fallback: spawn server directly so the system is guaranteed to start
+      appendLog('[pm2] Falling back to direct process spawn for 100% uptime');
+      startServerDirect(cb);
     });
   });
 }

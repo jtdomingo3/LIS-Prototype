@@ -1,12 +1,23 @@
 [
   {
-    "id": "030574fd-a582-4a06-bb35-a4d95d4a4f82",
+    "id": "54a830af-7bd5-45b9-8ddf-bd67c43d11db",
     "name": "Admin User",
     "email": "admin@lab.com",
-    "password": "$2a$12$1NopqI8SG4eWPA4FFyiqu.8jQ.DESVQxHApu68LiNWJwJUYW/nX8u",
+    "password": "$2a$12$//K8PReSy5NOQNK763m9UODiJy/LMrFxZReotdmjfMD8NAgBut28u",
     "role": "Admin",
     "status": "Active",
-    "createdAt": "2026-02-20T13:55:46.614Z",
+    "permissions": {
+      "dashboard": true,
+      "patients": true,
+      "reception": true,
+      "tests": true,
+      "reports": true,
+      "worksheet": true,
+      "templates": true,
+      "users": true,
+      "delete": true
+    },
+    "createdAt": "2026-08-29T00:56:54.364Z",
     "lastLogin": null
   }
 ]

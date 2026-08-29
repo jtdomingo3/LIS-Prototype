@@ -64,7 +64,6 @@
       "views/**/*",
       "public/**/*",
       "assets/**/*",
-      "data.json",
       "lib/**/*",
       "routes/**/*",
       "templates/**/*"
