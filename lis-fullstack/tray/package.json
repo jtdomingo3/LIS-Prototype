@@ -1,6 +1,6 @@
 {
   "name": "lis-tray",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Tray launcher for Gezyne LIS: open browser, control service",
   "main": "main.js",
   "scripts": {

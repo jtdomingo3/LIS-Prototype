@@ -48,19 +48,55 @@ process.on('uncaughtException', (err) => {
 const SERVICE_NAME = 'GezyneLIS';
 const PORT = process.env.PORT || 3000;
 
-function getLocalIp() {
-  // prefer explicit HOST env var if provided
-  if (process.env.HOST) return process.env.HOST;
+function getNetworkAddresses() {
+  const port = process.env.PORT || 3000;
   const nets = os.networkInterfaces();
+  const all = [];
+  const physical = [];
+
   for (const name of Object.keys(nets)) {
-    for (const net of nets[name]) {
+    const isVirtualName = /virtual|vbox|vmware|vethernet|wsl|docker|loopback|bluetooth|hyper-v/i.test(name);
+    for (const net of nets[name] || []) {
       if (net.family === 'IPv4' && !net.internal) {
-        // skip docker/virtual adapters with local-only addresses like 169.254
-        if (net.address && !net.address.startsWith('169.254')) return net.address;
+        const addr = net.address;
+        if (!addr || addr.startsWith('169.254')) continue;
+        const isVirtualIp = addr.startsWith('192.168.56.'); // Common VirtualBox Host-Only IP range
+        const isVirtual = isVirtualName || isVirtualIp;
+        
+        const item = {
+          name,
+          address: addr,
+          url: `http://${addr}:${port}`,
+          isVirtual
+        };
+        all.push(item);
+        if (!isVirtual) {
+          physical.push(item);
+        }
       }
     }
   }
-  return 'localhost';
+
+  // Preferred network LAN address: first non-virtual IPv4, else first available IPv4, else 127.0.0.1
+  const primaryNet = physical.length > 0 ? physical[0] : (all.length > 0 ? all[0] : null);
+  const networkIp = primaryNet ? primaryNet.address : (process.env.HOST || 'localhost');
+
+  return {
+    port,
+    localUrl: `http://localhost:${port}`,
+    localHostIp: '127.0.0.1',
+    networkUrl: `http://${networkIp}:${port}`,
+    networkIp: networkIp,
+    primaryName: primaryNet ? primaryNet.name : 'Local Network',
+    allAddresses: all,
+    hasMultiple: all.length > 1
+  };
+}
+
+function getLocalIp() {
+  if (process.env.HOST) return process.env.HOST;
+  const netInfo = getNetworkAddresses();
+  return netInfo.networkIp;
 }
 
 const HOST = getLocalIp();
@@ -167,8 +203,16 @@ function createMainWindow() {
   mainWindow.webContents.on('did-finish-load', () => {
     if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
       mainWindow.webContents.send('log-update', logBuffer.join('\n'));
-      // send server address info
-      try { mainWindow.webContents.send('server-address', { host: HOST, port: PORT }); } catch (e) {}
+      // send server address info and status
+      try {
+        const addrInfo = getNetworkAddresses();
+        mainWindow.webContents.send('server-address', addrInfo);
+        checkServerUp().then(isUp => {
+          if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+            mainWindow.webContents.send('server-status', { isUp, status: isUp ? 'online' : 'offline' });
+          }
+        });
+      } catch (e) {}
     }
   });
   return mainWindow;
@@ -460,17 +504,33 @@ function createTray() {
   // detect pm2 and service presence then set menu (run pm2 detection first to avoid races)
   detectPm2((avail) => {
     pm2Available = !!avail;
-    checkServiceExists((err, exists) => { serviceInstalled = !!exists; if (serviceInstalled) watchPm2Logs(); checkServerUp().then(isUp => tray.setContextMenu(buildContextMenu(isUp))); });
+    watchPm2Logs(); // Always start log tailing
+    checkServiceExists((err, exists) => {
+      serviceInstalled = !!exists;
+      checkServerUp().then(isUp => tray.setContextMenu(buildContextMenu(isUp)));
+    });
   });
 
-  // update every 5s
+  // update every 3s
   setInterval(async () => {
     // re-check service presence periodically in case installer registered it
-    checkServiceExists((err, exists) => { if (exists && !serviceInstalled) { serviceInstalled = true; watchPm2Logs(); } else serviceInstalled = !!exists; });
+    checkServiceExists((err, exists) => {
+      if (exists && !serviceInstalled) {
+        serviceInstalled = true;
+        watchPm2Logs();
+      } else serviceInstalled = !!exists;
+    });
     const isUp = await checkServerUp();
     tray.setContextMenu(buildContextMenu(isUp));
     try { tray.setTitle(isUp ? 'LIS: Up' : 'LIS: Down'); } catch (e) {}
-  }, 5000);
+    try {
+      if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+        const addrInfo = getNetworkAddresses();
+        mainWindow.webContents.send('server-address', addrInfo);
+        mainWindow.webContents.send('server-status', { isUp, status: isUp ? 'online' : 'offline' });
+      }
+    } catch (e) {}
+  }, 3000);
 }
 
 // Return first existing icon path across common dev/packaged locations
@@ -618,6 +678,70 @@ ipcMain.on('exit-app', (e) => {
 
 ipcMain.on('request-logs', (e) => {
   e.sender.send('log-update', logBuffer.join('\n'));
+});
+
+ipcMain.on('run-log-command', (e, rawCmd) => {
+  const cmd = String(rawCmd || '').trim();
+  if (!cmd) return;
+
+  appendLog(`$ ${cmd}`);
+
+  // Built-in commands
+  if (cmd.toLowerCase() === 'help' || cmd.toLowerCase() === '?') {
+    appendLog('[terminal] Available Commands:');
+    appendLog('  • pm2 status          - Check status of PM2 managed processes');
+    appendLog('  • pm2 restart lis-app - Restart the PM2 server application');
+    appendLog('  • pm2 logs            - Display PM2 logs');
+    appendLog('  • pm2 list            - List running PM2 processes');
+    appendLog('  • start / stop        - Control the LIS server process');
+    appendLog('  • clear / cls         - Clear log terminal output view');
+    appendLog('  • ip                  - List all local & network IP addresses');
+    appendLog('  • <command>           - Execute CLI command in server environment');
+    return;
+  }
+
+  if (cmd.toLowerCase() === 'clear' || cmd.toLowerCase() === 'cls') {
+    logBuffer = [];
+    appendLog('[terminal] Log view cleared');
+    return;
+  }
+
+  if (cmd.toLowerCase() === 'ip') {
+    const net = getNetworkAddresses();
+    appendLog(`[terminal] Local URL:   ${net.localUrl}`);
+    appendLog(`[terminal] Network URL: ${net.networkUrl}`);
+    if (net.allAddresses && net.allAddresses.length) {
+      net.allAddresses.forEach(a => {
+        appendLog(`  • ${a.name}: http://${a.address}:${net.port} ${a.isVirtual ? '(Virtual)' : '(LAN)'}`);
+      });
+    }
+    return;
+  }
+
+  if (cmd.toLowerCase() === 'start') {
+    if (pm2Available) return startViaPm2();
+    if (serviceInstalled) return runServiceCommand(`sc start ${SERVICE_NAME}`, () => {});
+    return startServerDirect();
+  }
+
+  if (cmd.toLowerCase() === 'stop') {
+    if (pm2Available) return stopViaPm2();
+    if (serviceInstalled) return runServiceCommand(`sc stop ${SERVICE_NAME}`, () => {});
+    return stopServerDirect();
+  }
+
+  // Execute shell / CLI command
+  exec(cmd, { cwd: SERVER_DIR, timeout: 30000, env: process.env }, (err, stdout, stderr) => {
+    if (stdout && stdout.trim()) {
+      appendLog(stdout.trim());
+    }
+    if (stderr && stderr.trim()) {
+      appendLog(`[ERR] ${stderr.trim()}`);
+    }
+    if (err && !stdout && !stderr) {
+      appendLog(`[ERR] Command failed: ${err.message}`);
+    }
+  });
 });
 
 // Provide app icon as data URL to renderer so UI img tags can display it reliably

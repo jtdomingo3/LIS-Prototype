@@ -1,65 +1,111 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Gezyne LIS - Tray UI</title>
+  <title>Gezyne LIS - Server Control Center</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="container">
-    <div class="header">
-      <img id="logo" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="Gezyne" />
-      <div>
-        <h2>Gezyne LIS - Server</h2>
-        <div id="address" class="address">Server: --</div>
+    <!-- Top Header -->
+    <header class="header">
+      <div class="brand">
+        <img id="logo" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="Gezyne LIS Logo" />
+        <div class="brand-info">
+          <h2>Gezyne LIS Server</h2>
+          <span class="subtitle">Laboratory Information System Manager</span>
+        </div>
       </div>
+      <div id="status-badge" class="status-badge status-offline">
+        <span class="status-dot"></span>
+        <span id="status-text">Server Stopped</span>
+      </div>
+    </header>
+
+    <!-- Address Cards (Host & Network) -->
+    <section class="address-section">
+      <div class="address-card">
+        <div class="card-header">
+          <span class="card-icon">💻</span>
+          <span class="card-title">Local Server (Host)</span>
+        </div>
+        <div class="card-body">
+          <span id="addr-local" class="addr-value">http://localhost:3000</span>
+          <div class="card-actions">
+            <button id="copy-local" class="btn-sm btn-outline" title="Copy Local URL">📋 Copy</button>
+            <button id="open-local" class="btn-sm btn-primary" title="Open in Browser">↗ Open</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="address-card">
+        <div class="card-header">
+          <span class="card-icon">🌐</span>
+          <span class="card-title">Network Server (LAN Client)</span>
+        </div>
+        <div class="card-body">
+          <span id="addr-network" class="addr-value">http://--:3000</span>
+          <div class="card-actions">
+            <button id="copy-network" class="btn-sm btn-outline" title="Copy Network URL">📋 Copy</button>
+            <button id="open-network" class="btn-sm btn-primary" title="Open in Browser">↗ Open</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Multi-Interface Dropdown if present -->
+    <div id="multi-ip-box" class="multi-ip-box" style="display:none;">
+      <label for="multi-ip-select">Additional Network Interfaces:</label>
+      <select id="multi-ip-select" class="multi-ip-select"></select>
     </div>
+
+    <!-- Controls Toolbar -->
     <div class="controls">
-      <button id="start">Start</button>
-      <button id="stop">Stop</button>
-      <button id="restart">Restart</button>
-      <button id="open">Open LIS</button>
-      <button id="save">Save Logs</button>
-      <button id="settings">Settings</button>
-      <button id="hide">Hide to Tray</button>
-      <button id="exit">Exit App</button>
+      <button id="start" class="btn btn-success">▶ Start</button>
+      <button id="stop" class="btn btn-danger">⏹ Stop</button>
+      <button id="restart" class="btn btn-warning">🔄 Restart</button>
+      <button id="open" class="btn btn-accent">🌐 Open LIS</button>
+      <button id="save" class="btn btn-secondary">💾 Save Logs</button>
+      <button id="settings" class="btn btn-secondary">⚙️ Settings</button>
+      <button id="hide" class="btn btn-ghost">📥 Hide to Tray</button>
+      <button id="exit" class="btn btn-danger-ghost">❌ Exit App</button>
     </div>
 
     <!-- Settings Modal -->
     <div id="settings-modal" class="modal-overlay" style="display:none;">
       <div class="modal-box">
         <div class="modal-header">
-          <h3>Settings</h3>
+          <h3>Server Settings & Maintenance</h3>
           <button id="settings-close" class="modal-close">&times;</button>
         </div>
         <div class="modal-body">
           <div class="settings-section">
-            <h4>Restore</h4>
-            <p class="hint">Use these options when a fresh install has no user data and you cannot log in.</p>
+            <h4>Database Restore</h4>
+            <p class="hint">Use these recovery tools if user data is missing or after a fresh installation.</p>
             <div class="settings-row">
               <div class="settings-item">
-                <button id="restore-users" class="btn-restore">Restore Users</button>
-                <span class="desc">Seeds the default admin account</span>
+                <button id="restore-users" class="btn-restore">Restore Default Users</button>
+                <span class="desc">Seeds default admin account (admin@lab.com / password123)</span>
               </div>
               <div class="settings-item">
-                <button id="restore-data" class="btn-restore btn-restore-warn">Restore Data</button>
-                <span class="desc">Resets data.json to an empty database<br>(patients, tests, templates cleared)</span>
+                <button id="restore-data" class="btn-restore btn-restore-warn">Reset Data Database</button>
+                <span class="desc">Resets data.json to an empty initial state</span>
               </div>
             </div>
             <div id="restore-status" class="restore-status"></div>
           </div>
           <hr class="section-divider">
           <div class="settings-section">
-            <h4>Upload</h4>
-            <p class="hint">Import an existing data or users file to replace current server data.</p>
+            <h4>Data Upload & Import</h4>
+            <p class="hint">Import existing server JSON backup files into the active server instance.</p>
             <div class="settings-row">
               <div class="settings-item">
                 <button id="upload-data" class="btn-restore btn-upload">Upload data.json</button>
-                <span class="desc">Replace data.json with a file from disk<br>(patients, tests, templates, etc.)</span>
+                <span class="desc">Replace patients, tests, & templates</span>
               </div>
               <div class="settings-item">
                 <button id="upload-users" class="btn-restore btn-upload">Upload data-users.json</button>
-                <span class="desc">Replace data-users.json with a file<br>from disk (user accounts)</span>
+                <span class="desc">Replace user accounts database</span>
               </div>
             </div>
             <div id="upload-status" class="restore-status"></div>
@@ -68,8 +114,32 @@
       </div>
     </div>
 
-    <h3>Server Logs</h3>
-    <pre id="logs" class="logs">Starting...</pre>
+    <!-- Server Logs & Terminal Console -->
+    <section class="console-section">
+      <div class="console-header">
+        <div class="console-title">
+          <span class="console-icon">💻</span>
+          <span>Server Logs & Interactive Terminal</span>
+        </div>
+        <div class="console-actions">
+          <label class="autoscroll-label">
+            <input type="checkbox" id="autoscroll-toggle" checked /> Auto-scroll
+          </label>
+          <button id="copy-logs" class="btn-sm btn-ghost" title="Copy all logs">📋 Copy Logs</button>
+          <button id="clear-logs" class="btn-sm btn-ghost" title="Clear console view">🧹 Clear</button>
+        </div>
+      </div>
+
+      <div class="console-body">
+        <pre id="logs" class="logs">Starting server log monitor...</pre>
+      </div>
+
+      <div class="console-input-bar">
+        <span class="prompt-symbol">$</span>
+        <input type="text" id="cmd-input" placeholder="Type command (e.g. pm2 status, pm2 restart, help, cls)..." autocomplete="off" spellcheck="false" />
+        <button id="cmd-send" class="btn-send">Run</button>
+      </div>
+    </section>
   </div>
 
   <script src="renderer.js"></script>
