@@ -85,8 +85,12 @@ let SERVER_IS_EXE = false;
   }
   // fallback: packaged EXE names we might bundle in installer
   const exeCandidates = [
+    path.join(process.resourcesPath || '', 'server', 'laboratory-information-system.exe'),
+    path.join(PROJECT_ROOT, 'dist', 'laboratory-information-system.exe'),
     path.join(PROJECT_ROOT, 'laboratory-information-system.exe'),
     path.join(process.resourcesPath || '', 'laboratory-information-system.exe'),
+    path.join(process.resourcesPath || '', 'server', 'GezyneLIS.exe'),
+    path.join(PROJECT_ROOT, 'dist', 'GezyneLIS.exe'),
     path.join(PROJECT_ROOT, 'GezyneLIS.exe'),
     path.join(process.resourcesPath || '', 'GezyneLIS.exe')
   ];
@@ -119,17 +123,15 @@ function runServiceCommand(cmd, cb) {
 }
 
 function detectPm2(cb) {
-  // avoid using pm2 when we’re running a packaged executable – environment
-  // variables (DATA_DIR) don’t propagate reliably and pm2 can keep restarting
-  // the process inside the snapshot.  Direct spawn is simpler and more
-  // predictable for the Windows installer.
-  if (SERVER_IS_EXE) {
-    pm2Available = false;
-    return cb && cb(false);
-  }
-  exec('pm2 -v', (err) => {
-    pm2Available = !err;
-    cb && cb(pm2Available);
+  exec('pm2 -v', (err, stdout) => {
+    if (!err && stdout && String(stdout).trim().length > 0) {
+      pm2Available = true;
+      return cb && cb(true);
+    }
+    exec('npx pm2 -v', (err2, stdout2) => {
+      pm2Available = (!err2 && !!stdout2 && String(stdout2).trim().length > 0);
+      return cb && cb(pm2Available);
+    });
   });
 }
 

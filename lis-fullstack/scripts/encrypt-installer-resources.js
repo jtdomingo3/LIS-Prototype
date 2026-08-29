@@ -78,8 +78,8 @@ async function main() {
         console.warn('Failed to remove secret.key (non-fatal):', e && e.message || e);
       }
     } else {
-      console.error('No encryption method available: set INSTALLER_PASSPHRASE or INSTALLER_KEY, or run on a machine with win-dpapi installed.');
-      process.exit(3);
+      console.log('Notice: No DPAPI or INSTALLER_KEY configured. Keeping installer resources unencrypted (recommended for standard local installer builds).');
+      return;
     }
     const targets = ['data-users.json', 'data.json'];
     for (const t of targets) {

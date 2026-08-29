@@ -14,9 +14,11 @@ if (!fs.existsSync(path.join(serverCwd, 'server.js')) && fs.existsSync(path.join
   serverCwd = path.join(serverCwd, 'server');
 }
 
-// detect packaged exe (installer places binaries under resources/server)
+// detect packaged exe (installer places binaries under resources/server or dist/)
 const exeCandidates = [
+  path.join(__dirname, 'dist', 'laboratory-information-system.exe'),
   path.join(__dirname, 'server', 'laboratory-information-system.exe'),
+  path.join(__dirname, 'laboratory-information-system.exe'),
   path.join(__dirname, 'server', 'start-lis.exe'),
   path.join(__dirname, 'server', 'GezyneLIS.exe')
 ];
