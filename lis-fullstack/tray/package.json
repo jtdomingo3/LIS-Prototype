@@ -42,25 +42,6 @@
         ]
       },
       {
-        "from": "..",
-        "to": "server",
-        "filter": [
-          "server.js",
-          "package.json",
-          "views/**/*",
-          "public/**/*",
-          "assets/**/*",
-          "lib/**/*",
-          "routes/**/*",
-          "models/**/*",
-          "node_modules/**/*",
-          "!dist/**",
-          "!tray/**",
-          "!build/**",
-          "!.git/**"
-        ]
-      },
-      {
         "from": "../build/installer-resources",
         "to": "installer-resources",
         "filter": [

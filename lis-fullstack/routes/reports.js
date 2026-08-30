@@ -565,13 +565,26 @@ router.post('/worksheet/download', requireAuth, canAccessPatient, async (req, re
     // sort in-memory by testDate ascending
     testsRaw = (testsRaw || []).sort((a, b) => new Date(a.testDate || a.createdAt) - new Date(b.testDate || b.createdAt));
 
+    // Pre-build patient and user lookup maps in memory for O(1) instantaneous lookup
+    const allPatients = await Patient.find();
+    const patientMap = new Map();
+    for (const p of allPatients) {
+      if (p && p.id) patientMap.set(p.id, p);
+    }
+
+    const allUsers = await User.find();
+    const userMap = new Map();
+    for (const u of allUsers) {
+      if (u && u.id) userMap.set(u.id, u);
+    }
+
     // collect rows and dynamic flattened result keys
     const rows = [];
     const resultKeys = new Set();
     for (const t of testsRaw) {
-      const p = t.patient ? await Patient.findById(t.patient) : null;
-      const requestedBy = t.requestedBy ? await User.findById(t.requestedBy) : null;
-      const performedBy = t.performedBy ? await User.findById(t.performedBy) : null;
+      const p = t.patient ? patientMap.get(t.patient) : null;
+      const requestedBy = t.requestedBy ? userMap.get(t.requestedBy) : null;
+      const performedBy = t.performedBy ? userMap.get(t.performedBy) : null;
       const resultsObjRaw = (t.results && typeof t.results === 'object') ? t.results : (t.results ? { results: String(t.results) } : {});
       const flatResults = flattenResults(resultsObjRaw);
       Object.keys(flatResults).forEach(k => resultKeys.add(k));
@@ -764,12 +777,25 @@ router.post('/worksheet/preview', requireAuth, canAccessPatient, async (req, res
     }
     testsRaw = (testsRaw || []).sort((a, b) => new Date(a.testDate || a.createdAt) - new Date(b.testDate || b.createdAt));
 
+    // Pre-build patient and user lookup maps in memory for O(1) instantaneous lookup
+    const allPatients = await Patient.find();
+    const patientMap = new Map();
+    for (const p of allPatients) {
+      if (p && p.id) patientMap.set(p.id, p);
+    }
+
+    const allUsers = await User.find();
+    const userMap = new Map();
+    for (const u of allUsers) {
+      if (u && u.id) userMap.set(u.id, u);
+    }
+
     // build preview rows (minimal patient info + date/time + performedBy + flattened results)
     const previewRows = [];
     const resultKeys = new Set();
     for (const t of testsRaw) {
-      const p = t.patient ? await Patient.findById(t.patient) : null;
-      const performedBy = t.performedBy ? await User.findById(t.performedBy) : null;
+      const p = t.patient ? patientMap.get(t.patient) : null;
+      const performedBy = t.performedBy ? userMap.get(t.performedBy) : null;
       const resultsObjRaw = (t.results && typeof t.results === 'object') ? t.results : (t.results ? { results: String(t.results) } : {});
       const flatResults = flattenResults(resultsObjRaw);
       Object.keys(flatResults).forEach(k => resultKeys.add(k));

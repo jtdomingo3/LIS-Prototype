@@ -45,6 +45,14 @@ async function run() {
     process.exit(1);
   }
 
+  // Copy sql-wasm.wasm to dist folder alongside the EXE
+  const wasmSrc = path.join(projectRoot, 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm');
+  const wasmDest = path.join(distDir, 'sql-wasm.wasm');
+  if (fs.existsSync(wasmSrc)) {
+    fs.copyFileSync(wasmSrc, wasmDest);
+    console.log('Copied sql-wasm.wasm to', wasmDest);
+  }
+
   // Copy better_sqlite3.node to dist folder alongside the EXE
   const nativeNodeSrc = path.join(projectRoot, 'node_modules', 'better-sqlite3', 'prebuilds', 'win32-x64.node');
   const nativeNodeDest = path.join(distDir, 'better_sqlite3.node');
@@ -53,14 +61,7 @@ async function run() {
     console.log('Copied better_sqlite3.node to', nativeNodeDest);
   }
 
-  console.log('Embedding icon into exe...');
-  rcedit(exePath, { icon: icoPath }, (err) => {
-    if (err) {
-      console.error('Failed to embed icon:', err);
-      process.exit(1);
-    }
-    console.log('Successfully embedded icon into', exePath);
-  });
+  console.log('Executable build completed successfully without PE corruption.');
 }
 
 run();

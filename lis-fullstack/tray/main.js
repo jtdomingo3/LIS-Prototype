@@ -308,24 +308,14 @@ function startViaPm2(cb) {
   const dataDir = process.env.DATA_DIR || path.join(programDataBase, 'GezyneLIS');
   const pm2Env = Object.assign({}, process.env, { DATA_DIR: dataDir });
 
-  // First check if lis-app is already registered in PM2 to avoid process 0 / duplicate start errors
-  exec('pm2 jlist', { cwd: path.dirname(cfg), env: pm2Env }, (jerr, jout) => {
-    let existsInPm2 = false;
-    if (!jerr && jout) {
-      try {
-        const procs = JSON.parse(jout);
-        if (Array.isArray(procs)) {
-          existsInPm2 = procs.some(p => p && p.name && String(p.name).toLowerCase() === 'lis-app');
-        }
-      } catch (e) {}
-    }
-
-    const command = existsInPm2 ? 'pm2 restart lis-app --update-env' : `pm2 start "${cfg}" --env production`;
+  // Force clean reload from ecosystem configuration to ensure binary paths and env are up to date
+  exec(`pm2 delete lis-app`, { cwd: path.dirname(cfg), env: pm2Env }, () => {
+    const command = `pm2 start "${cfg}" --env production`;
     exec(command, { cwd: path.dirname(cfg), env: pm2Env }, (err, stdout, stderr) => {
       isPm2Starting = false;
       if (!err) {
         exec('pm2 save', { cwd: path.dirname(cfg) }, () => {});
-        appendLog('[pm2] Server started via PM2 (' + (existsInPm2 ? 'restarted' : 'started') + ')');
+        appendLog('[pm2] Server started via PM2 (reloaded config)');
         return cb && cb(null, stdout || 'PM2 started');
       }
 
@@ -348,10 +338,23 @@ function stopViaPm2(cb) {
 }
 
 function restartViaPm2(cb) {
-  exec('pm2 restart lis-app', { cwd: PROJECT_ROOT }, (err, stdout, stderr) => {
-    if (err) return cb && cb(err, stdout || stderr);
-    appendLog('[pm2] restarted lis-app');
-    cb && cb(null, stdout || 'pm2 restarted');
+  const cfgCandidates = [
+    path.join(PROJECT_ROOT, 'ecosystem.config.js'),
+    path.join(PROJECT_ROOT, '..', 'ecosystem.config.js'),
+    path.join(process.resourcesPath || '', 'ecosystem.config.js'),
+    path.join(process.resourcesPath || '', 'server', 'ecosystem.config.js')
+  ];
+  const cfg = cfgCandidates.find(p => { try { return fs.existsSync(p); } catch { return false; } }) || path.join(PROJECT_ROOT, 'ecosystem.config.js');
+  const programDataBase = process.env.PROGRAMDATA || path.join('C:', 'ProgramData');
+  const dataDir = process.env.DATA_DIR || path.join(programDataBase, 'GezyneLIS');
+  const pm2Env = Object.assign({}, process.env, { DATA_DIR: dataDir });
+
+  exec(`pm2 delete lis-app`, { cwd: path.dirname(cfg), env: pm2Env }, () => {
+    exec(`pm2 start "${cfg}" --env production`, { cwd: path.dirname(cfg), env: pm2Env }, (err, stdout, stderr) => {
+      if (err) return cb && cb(err, stdout || stderr);
+      appendLog('[pm2] restarted lis-app with fresh configuration');
+      cb && cb(null, stdout || 'pm2 restarted');
+    });
   });
 }
 

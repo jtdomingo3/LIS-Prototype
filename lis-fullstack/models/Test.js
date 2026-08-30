@@ -119,6 +119,11 @@ class Test {
 
   // Static methods
   static async findById(id) {
+    if (!id) return null;
+    if (global.db && typeof global.db.getTestById === 'function') {
+      const test = global.db.getTestById(id);
+      return test ? new Test(test) : null;
+    }
     const tests = global.db.getTests();
     const test = tests.find(t => t.id === id);
     return test ? new Test(test) : null;

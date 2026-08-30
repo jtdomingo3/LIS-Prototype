@@ -50,6 +50,7 @@
     "node-windows": "*",
     "puppeteer": "^24.35.0",
     "sharp": "^0.34.5",
+    "sql.js": "^1.14.2",
     "uuid": "^9.0.0"
   },
   "devDependencies": {

@@ -106,6 +106,11 @@ class Patient {
 
   // Static methods
   static async findById(id) {
+    if (!id) return null;
+    if (global.db && typeof global.db.getPatientById === 'function') {
+      const patient = global.db.getPatientById(id);
+      return patient ? new Patient(patient) : null;
+    }
     const patients = global.db.getPatients();
     const patient = patients.find(p => p.id === id);
     return patient ? new Patient(patient) : null;
