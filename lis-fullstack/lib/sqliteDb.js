@@ -14,6 +14,8 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 
+const SCHEMA_VERSION = 1;
+
 function getNativeBindingPath() {
   const isPkg = !!process.pkg;
   const execDir = isPkg ? path.dirname(process.execPath) : path.join(__dirname, '..');
