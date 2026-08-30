@@ -24,7 +24,7 @@
     "nodejs",
     "mongodb"
   ],
-  "author": "Your Name",
+  "author": "Gezyne-Jamir Software Tech",
   "license": "MIT",
   "dependencies": {
     "bcryptjs": "^2.4.3",
