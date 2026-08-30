@@ -115,8 +115,9 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
     // Fallback: prefer reading the file-based DB `data.json` directly when available
     try {
       const testsCountByPatient = {};
-      // try file DB first
-      const dbPath = pathMod.join(__dirname, '..', 'data.json');
+      // try file DB first (handle packaged path)
+      const { dataFile } = require('../lib/dataPath');
+      const dbPath = dataFile('data.json');
       let fileTests = null;
       try {
         const raw = fs.readFileSync(dbPath, 'utf8');
@@ -391,6 +392,13 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
 
     // Patient saved — tests will be assigned from patient management. Printing is manual.
     req.flash('success_msg', `Patient ${firstName} ${middleName ? middleName + ' ' : ''}${lastName} added successfully!`);
+
+    // If this request came from the standalone sync engine (hash-based headers),
+    // return JSON including the created id and client_id so the client can map records deterministically.
+    if (req.headers['x-lis-sync-email'] || req.headers['x-lis-sync-hash']) {
+      return res.json({ success: true, id: patient.id, client_id: req.body && req.body.client_id ? req.body.client_id : null });
+    }
+
     // Stay on the new patient form so users can continue adding patients
     res.redirect('/patients/new');
 
@@ -409,13 +417,18 @@ router.post('/thermal-print', requireAuth, canAccessPatient, (req, res) => {
   try {
     const { spawnSync } = require('child_process');
     const pathMod = require('path');
+    const fsMod = require('fs');
     const scriptPath = pathMod.join(__dirname, '..', 'scripts', 'thermal_test.js');
+    if (!fsMod.existsSync(scriptPath)) {
+      return res.status(404).json({ success: false, error: 'thermal_test.js not found' });
+    }
 
     // Build args: call Node with the script and --receipt
     const args = [scriptPath, '--receipt'];
     if (req.body && req.body.printer) args.push('--printer', req.body.printer);
 
-    const proc = spawnSync(process.execPath, args, { cwd: pathMod.join(__dirname, '..'), encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 });
+    const spawnEnv = Object.assign({}, process.env, { ELECTRON_RUN_AS_NODE: '1' });
+    const proc = spawnSync(process.execPath, args, { cwd: pathMod.join(__dirname, '..'), encoding: 'utf8', maxBuffer: 10 * 1024 * 1024, env: spawnEnv });
     // append log
     try {
       const entry = {

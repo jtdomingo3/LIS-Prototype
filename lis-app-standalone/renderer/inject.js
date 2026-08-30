@@ -1,30 +1,44 @@
 /**
- * inject.js — Injected into every page loaded in the BrowserWindow.
+ * inject.js — State-of-the-art Client Injected Status Bar & Sync Bridge
  *
- * Creates:
- *   1. A persistent status bar at the bottom (online/offline indicator)
- *   2. A toast notification system for sync events
- *   3. Intercepts window.print() to use our PDF print preview
- *
- * Uses `window.lisApp` (exposed by preload.js).
+ * Provides:
+ *   1. Glassmorphic floating status pill at the bottom (Online / Offline / SQLite DataStore)
+ *   2. Real-time sync progress, pending queue counter, quick-sync trigger
+ *   3. Modern toast notification system for sync events
+ *   4. Intercepts window.print() to route to PDF print preview
  */
 (function () {
   'use strict';
 
-  // Guard against double injection (page reload, etc.)
   if (window.__lisStatusInjected) return;
   window.__lisStatusInjected = true;
 
-  // If the preload bridge isn't available yet, create a stub so the UI
-  // still renders.  The real bridge should always be present, but if for
-  // some reason it isn't (e.g. timing edge case), the status bar will
-  // still display — just without IPC functionality.
+  /* ── Neutralize auto-fullscreen and clear persistent fullscreen flags ─ */
+  try {
+    localStorage.removeItem('keepFullscreen');
+    localStorage.removeItem('kioskFullscreen');
+    // If inside /shell wrapper, redirect immediately to target url
+    if (window.location.pathname === '/shell') {
+      var target = new URLSearchParams(window.location.search).get('url') || '/dashboard';
+      window.location.replace(target);
+      return;
+    }
+    // Prevent DOM elements from forcing HTML5 fullscreen on button clicks
+    if (document && document.documentElement) {
+      document.documentElement.requestFullscreen = function () { return Promise.resolve(); };
+      document.documentElement.webkitRequestFullscreen = function () { return Promise.resolve(); };
+      document.documentElement.mozRequestFullScreen = function () { return Promise.resolve(); };
+      document.documentElement.msRequestFullscreen = function () { return Promise.resolve(); };
+    }
+  } catch (e) { }
+
   if (!window.lisApp) {
     console.warn('[inject] window.lisApp not found — creating stub');
     window.lisApp = {
       getStatus: function () { return Promise.resolve({ online: false, pendingCount: 0 }); },
       getQueue: function () { return Promise.resolve([]); },
       fullSync: function () { return Promise.resolve({}); },
+      forceSync: function () { return Promise.resolve({}); },
       retryConnection: function () { return Promise.resolve({}); },
       openSettings: function () { return Promise.resolve(); },
       printPreview: function () {},
@@ -35,13 +49,10 @@
     };
   }
 
-  /* ==============================================================
-   *  Intercept window.print() → open our PDF print preview instead
-   * ============================================================== */
+  /* ── Intercept window.print() → open PDF preview ─────────────── */
   var _origPrint = window.print;
   window.print = function () {
     try {
-      // Send the current page URL to the main process for PDF preview
       var url = window.location.href;
       window.lisApp.printPreview(url);
     } catch (e) {
@@ -50,10 +61,7 @@
     }
   };
 
-  /* ==============================================================
-   *  Capture login credentials for server re-authentication
-   *  Works on both the real server and local offline server login pages.
-   * ============================================================== */
+  /* ── Capture login credentials for server re-auth ─────────────── */
   (function captureLoginCredentials() {
     try {
       var form = document.querySelector('form[action="/login"]');
@@ -67,364 +75,221 @@
               window.lisApp.saveCredentials(emailInput.value, passwordInput.value);
             }
           }
-        } catch (e) { /* ignore credential capture errors */ }
+        } catch (e) { }
       });
-    } catch (e) { /* ignore */ }
+    } catch (e) { }
   })();
 
-  /* ==============================================================
-   *  Status bar DOM
-   * ============================================================== */
-  const bar = document.createElement('div');
+  /* ── Create Status Bar DOM ────────────────────────────────────── */
+  var bar = document.createElement('div');
   bar.id = 'lis-status-bar';
   bar.className = 'lis-online';
   bar.innerHTML = [
     '<div class="lis-status-content">',
-    '  <span class="lis-status-dot online" id="lis-dot"></span>',
-    '  <span id="lis-status-text">Connecting…</span>',
-    '  <span class="lis-pending-badge" id="lis-badge" style="display:none"></span>',
-    '  <button class="lis-sync-btn" id="lis-sync-btn" style="display:none">Sync Now</button>',
-    '  <button class="lis-download-btn" id="lis-download-btn" title="Download data" style="display:none">⬇</button>',
-    '  <button class="lis-refresh-btn" id="lis-refresh-btn" title="Refresh">⟲</button>',
-    '  <button class="lis-retry-btn" id="lis-retry-btn" title="Connect" style="display:none">Connect</button>',
-    '  <button class="lis-settings-btn" id="lis-settings-btn" title="Settings">⚙</button>',
+    '  <div class="lis-status-left">',
+    '    <div class="lis-status-indicator" id="lis-status-pill">',
+    '      <span class="lis-status-dot online" id="lis-dot"></span>',
+    '      <span id="lis-status-text">Connected</span>',
+    '    </div>',
+    '    <span class="lis-pending-badge" id="lis-badge" style="display:none" title="Pending offline changes">',
+    '      <span id="lis-badge-count">0</span> pending',
+    '    </span>',
+    '    <div id="lis-sync-progress-wrap">',
+    '      <div id="lis-sync-progress"></div>',
+    '    </div>',
+    '  </div>',
+    '  <div class="lis-status-right">',
+    '    <button class="lis-btn lis-btn-primary" id="lis-sync-btn" style="display:none">',
+    '      <span>⟳</span> Sync Now',
+    '    </button>',
+    '    <button class="lis-btn" id="lis-retry-btn" style="display:none">',
+    '      <span>⚡</span> Connect',
+    '    </button>',
+    '    <button class="lis-btn lis-btn-icon" id="lis-refresh-btn" title="Refresh page">⟲</button>',
+    '    <button class="lis-btn lis-btn-icon" id="lis-settings-btn" title="Settings & SQLite Storage">⚙</button>',
+    '  </div>',
     '</div>',
   ].join('\n');
   document.body.appendChild(bar);
 
-  // Ensure we only add page padding for the status-bar when the page would
-  // otherwise be non-scrollable — avoids introducing an extra scrollbar.
-  function updateStatusBarOffset() {
-    try {
-      const needsOffset = document.documentElement.scrollHeight <= window.innerHeight;
-      if (needsOffset) document.documentElement.classList.add('lis-status-offset');
-      else document.documentElement.classList.remove('lis-status-offset');
-    } catch (e) { /* ignore */ }
-  }
+  /* ── Create Toast Notification DOM ────────────────────────────── */
+  var toast = document.createElement('div');
+  toast.id = 'lis-sync-toast';
+  toast.innerHTML = [
+    '<div class="lis-toast-icon" id="lis-toast-icon">✓</div>',
+    '<div class="lis-toast-body">',
+    '  <div class="lis-toast-title" id="lis-toast-title">Sync Complete</div>',
+    '  <div class="lis-toast-desc" id="lis-toast-desc">Offline records synchronized successfully.</div>',
+    '</div>',
+  ].join('\n');
+  document.body.appendChild(toast);
 
-  // Re-evaluate on load/resize and when DOM changes (covers dynamic pages)
-  updateStatusBarOffset();
-  window.addEventListener('resize', updateStatusBarOffset);
-  window.addEventListener('load', () => setTimeout(updateStatusBarOffset, 50));
-  new MutationObserver(() => { setTimeout(updateStatusBarOffset, 60); })
-    .observe(document.documentElement, { childList: true, subtree: true, attributes: true });
+  var toastTimer = null;
+  function showToast(title, desc, isError) {
+    var iconEl = document.getElementById('lis-toast-icon');
+    var titleEl = document.getElementById('lis-toast-title');
+    var descEl = document.getElementById('lis-toast-desc');
 
-  const dot      = document.getElementById('lis-dot');
-  const text     = document.getElementById('lis-status-text');
-  const badge    = document.getElementById('lis-badge');
-  const syncBtn  = document.getElementById('lis-sync-btn');
-  const downloadBtn = document.getElementById('lis-download-btn');
-  const refreshBtn = document.getElementById('lis-refresh-btn');
-  const retryBtn = document.getElementById('lis-retry-btn');
-
-  // progress UI (hidden until needed)
-  const progressWrap = document.createElement('div');
-  progressWrap.id = 'lis-sync-progress-wrap';
-  progressWrap.style.display = 'none';
-  progressWrap.innerHTML = '<div id="lis-sync-progress"></div>';
-  bar.appendChild(progressWrap);
-  const progressBar = progressWrap.querySelector('#lis-sync-progress');
-
-  /* ==============================================================
-   *  Toast helper
-   * ============================================================== */
-  function showToast(message, durationMs) {
-    let toast = document.getElementById('lis-sync-toast');
-    if (!toast) {
-      toast = document.createElement('div');
-      toast.id = 'lis-sync-toast';
-      document.body.appendChild(toast);
+    if (titleEl) titleEl.textContent = title || 'Notification';
+    if (descEl) descEl.textContent = desc || '';
+    if (iconEl) {
+      iconEl.textContent = isError ? '✕' : '✓';
+      iconEl.className = 'lis-toast-icon' + (isError ? ' error' : '');
     }
-    toast.textContent = message;
-    toast.className = 'show';
-    clearTimeout(toast._timer);
-    toast._timer = setTimeout(() => { toast.className = ''; }, durationMs || 4000);
+    toast.className = isError ? 'toast-error show' : 'show';
+
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () {
+      toast.className = '';
+    }, 4500);
   }
 
-  /* ==============================================================
-   *  Update the bar based on status data
-   * ============================================================== */
-  function updateUI(data) {
+  /* ── Status elements ──────────────────────────────────────────── */
+  var dotEl = document.getElementById('lis-dot');
+  var textEl = document.getElementById('lis-status-text');
+  var badgeEl = document.getElementById('lis-badge');
+  var badgeCountEl = document.getElementById('lis-badge-count');
+  var syncBtn = document.getElementById('lis-sync-btn');
+  var retryBtn = document.getElementById('lis-retry-btn');
+  var refreshBtn = document.getElementById('lis-refresh-btn');
+  var settingsBtn = document.getElementById('lis-settings-btn');
+  var progressWrap = document.getElementById('lis-sync-progress-wrap');
+  var progressBar = document.getElementById('lis-sync-progress');
+
+  function updateStatus(data) {
     if (!data) return;
+    var online = data.online;
+    var count = data.pendingCount || 0;
 
-    const online  = data.online;
-    const pending = data.pendingCount || 0;
-    const lastFullSync = data.lastFullSync || null;
-
-    // expose lastFullSync for use in auto-sync logic
-    window.__lis_lastFullSync = lastFullSync;
-
-    // Dot + text
     if (online) {
-      // if a full-sync is active, show syncing state
-      if (window.__lis_fullSyncActive) {
-        bar.className = 'lis-syncing';
-        dot.className = 'lis-status-dot syncing';
-        text.textContent = 'Downloading data…';
-      } else if (pending > 0) {
-        bar.className   = 'lis-syncing';
-        dot.className   = 'lis-status-dot syncing';
-        text.textContent = 'Connected — ' + pending + ' change' + (pending > 1 ? 's' : '') + ' pending sync';
-      } else {
-        bar.className   = 'lis-online';
-        dot.className   = 'lis-status-dot online';
-        text.textContent = lastFullSync ? 'Connected — all changes synced' : 'Connected — no local data';
-      }
+      bar.className = 'lis-online';
+      dotEl.className = 'lis-status-dot online';
+      textEl.textContent = 'Connected (SQLite DB)';
+      if (retryBtn) retryBtn.style.display = 'none';
+      if (syncBtn) syncBtn.style.display = count > 0 ? 'inline-flex' : 'none';
     } else {
-      bar.className   = 'lis-offline';
-      dot.className   = 'lis-status-dot offline';
-      if (pending > 0) {
-        text.textContent = 'Offline Mode — ' + pending + ' change' + (pending > 1 ? 's' : '') + ' not synced to server';
-      } else {
-        text.textContent = 'Offline Mode — data is saved locally';
-      }
-      // show Connect button when offline so users can retry connecting
-      if (retryBtn) retryBtn.style.display = 'inline-block';
+      bar.className = 'lis-offline';
+      dotEl.className = 'lis-status-dot offline';
+      textEl.textContent = 'Offline Mode (Local SQLite)';
+      if (retryBtn) retryBtn.style.display = 'inline-flex';
+      if (syncBtn) syncBtn.style.display = 'none';
     }
 
-    // Pending badge
-    if (pending > 0) {
-      badge.style.display = 'inline';
-      badge.textContent   = '⚠ ' + pending + ' unsynced';
-      syncBtn.style.display = online ? 'inline-block' : 'none';
-      downloadBtn.style.display = 'inline-block';
+    if (count > 0) {
+      badgeEl.style.display = 'inline-flex';
+      badgeCountEl.textContent = count;
     } else {
-      badge.style.display   = 'none';
-      syncBtn.style.display = 'none';
-      downloadBtn.style.display = online ? 'inline-block' : 'none';
-    }
-    // hide retry when online
-    if (retryBtn) retryBtn.style.display = online ? 'none' : retryBtn.style.display;
-  }
-
-  /* ==============================================================
-   *  Wire up events
-   * ============================================================== */
-
-  // Initial status
-  window.lisApp.getStatus().then(updateUI).catch(() => {});
-
-  // Auto-trigger full-sync when connection becomes available
-  async function maybeAutoFullSync(online) {
-    try {
-      if (!online) return;
-      // don't run multiple times concurrently
-      if (window.__lis_fullSyncActive) return;
-      // if we already have a recent sync (within 5 minutes), skip
-      const last = window.__lis_lastFullSync ? new Date(window.__lis_lastFullSync) : null;
-      const FIVE_MIN = 5 * 60 * 1000;
-      if (last && (Date.now() - last.getTime()) < FIVE_MIN) return;
-
-      // mark active and update UI
-      window.__lis_fullSyncActive = true;
-      updateUI({ online: true, pendingCount: badge && badge.textContent ? parseInt(badge.textContent,10) : 0, lastFullSync: window.__lis_lastFullSync });
-      const res = await window.lisApp.fullSync();
-      window.__lis_fullSyncActive = false;
-
-      // update lastFullSync and UI from response
-      if (res && res.lastFullSync) window.__lis_lastFullSync = res.lastFullSync;
-      updateUI({ online: true, pendingCount: badge && badge.textContent ? parseInt(badge.textContent,10) : 0, lastFullSync: window.__lis_lastFullSync });
-
-      if (res && res.success) {
-        showToast('✓ Full data synced (' + (res.imported || 0) + ' records)', 4000);
-      } else {
-        showToast('Full sync failed: ' + (res && res.reason ? res.reason : 'unknown'), 5000);
-      }
-    } catch (e) {
-      window.__lis_fullSyncActive = false;
-      showToast('Full sync error: ' + (e && e.message ? e.message : String(e)), 5000);
+      badgeEl.style.display = 'none';
     }
   }
 
-  // Live status changes from main process
-  window.lisApp.onNetworkStatus(function (data) {
-    updateUI(data);
-    // main.js already handles processQueue + fullSync on reconnect,
-    // so don't trigger duplicate fullSync from the renderer
-  });
+  // Initial status query
+  window.lisApp.getStatus().then(updateStatus).catch(function () {});
 
-  // Sync-complete toast
+  // Listen for main-process updates
+  window.lisApp.onNetworkStatus(updateStatus);
+
   window.lisApp.onSyncComplete(function (data) {
-    showToast('✓ Synced ' + data.synced + ' change' + (data.synced > 1 ? 's' : '') + ' to server', 3000);
-    // Refresh status to update the unsynced count
-    window.lisApp.getStatus().then(updateUI).catch(function () {});
+    var synced = data.synced || 0;
+    var remaining = data.remaining || 0;
+    if (synced > 0) {
+      showToast('Sync Successful', 'Synced ' + synced + ' offline operation' + (synced === 1 ? '' : 's') + ' to server.');
+    }
+    window.lisApp.getStatus().then(updateStatus).catch(function () {});
   });
 
-  // Full-sync progress events from main
-  if (window.lisApp.onFullSyncProgress) {
-    window.lisApp.onFullSyncProgress(function (p) {
-      try {
-        if (!p) return;
-        if (p.phase === 'start') {
-          progressWrap.style.display = 'block';
-          progressBar.style.width = '0%';
-        } else if (p.phase === 'progress') {
-          if (p.total) {
-            const pct = Math.min(100, Math.round((p.loaded / p.total) * 100));
-            progressBar.style.width = pct + '%';
-          } else {
-            progressBar.style.width = '60%';
-          }
-        } else if (p.phase === 'complete') {
-          progressBar.style.width = '100%';
-          setTimeout(() => { progressWrap.style.display = 'none'; }, 600);
-        } else if (p.phase === 'error') {
-          // Defer showing transient errors until final result to avoid
-          // flashing an error toast when a renderer-fallback or retry
-          // subsequently succeeds. Store the reason for later.
-          progressWrap.style.display = 'none';
-          window.__lis_fullSyncError = p.reason || 'unknown';
-        }
-      } catch (e) {}
-    });
-  }
+  window.lisApp.onFullSyncProgress(function (data) {
+    if (!data) return;
+    if (data.phase === 'start') {
+      bar.className = 'lis-syncing';
+      dotEl.className = 'lis-status-dot syncing';
+      textEl.textContent = 'Syncing SQLite DB…';
+      if (progressWrap) progressWrap.style.display = 'block';
+      if (progressBar) progressBar.style.width = '10%';
+    } else if (data.phase === 'progress' && data.total && data.loaded) {
+      var pct = Math.min(100, Math.round((data.loaded / data.total) * 100));
+      if (progressBar) progressBar.style.width = pct + '%';
+    } else if (data.phase === 'complete') {
+      if (progressWrap) progressWrap.style.display = 'none';
+      window.lisApp.getStatus().then(updateStatus).catch(function () {});
+      showToast('Database Synchronized', 'Downloaded and updated ' + (data.imported || 0) + ' records.');
+    } else if (data.phase === 'error') {
+      if (progressWrap) progressWrap.style.display = 'none';
+      window.lisApp.getStatus().then(updateStatus).catch(function () {});
+      showToast('Sync Warning', data.reason || 'Could not complete database sync.', true);
+    }
+  });
 
-  if (window.lisApp.onFullSyncEnd) {
-    window.lisApp.onFullSyncEnd(function (res) {
-      try {
-        progressWrap.style.display = 'none';
+  window.lisApp.onFullSyncEnd(function (data) {
+    if (progressWrap) progressWrap.style.display = 'none';
+    window.lisApp.getStatus().then(updateStatus).catch(function () {});
+  });
+
+  /* ── Interactive Actions ──────────────────────────────────────── */
+  if (syncBtn) {
+    syncBtn.addEventListener('click', function () {
+      syncBtn.disabled = true;
+      syncBtn.innerHTML = '<span>⏳</span> Syncing…';
+      window.lisApp.forceSync().then(function (res) {
+        syncBtn.disabled = false;
+        syncBtn.innerHTML = '<span>⟳</span> Sync Now';
         if (res && res.success) {
-          showToast('✓ Full data synced (' + (res.imported || 0) + ' records)', 4000);
-          window.__lis_fullSyncError = null;
-          setTimeout(function () { location.reload(); }, 1200);
-        } else if (res && res.reason) {
-          // Final failure — prefer explicit `res.reason` over any transient
-          // progress error stored earlier.
-          const reason = res.reason || window.__lis_fullSyncError || 'unknown';
-          showToast('Full sync failed: ' + reason, 5000);
-          window.__lis_fullSyncError = null;
+          showToast('Sync Finished', 'Processed pending queue.');
         }
-      } catch (e) {}
+      }).catch(function (err) {
+        syncBtn.disabled = false;
+        syncBtn.innerHTML = '<span>⟳</span> Sync Now';
+        showToast('Sync Failed', (err && err.message) || 'Error syncing', true);
+      });
     });
   }
 
-  // Manual sync button — trigger full data download with progress
-  syncBtn.addEventListener('click', function () {
-    syncBtn.textContent = 'Downloading…';
-    syncBtn.disabled = true;
-    progressWrap.style.display = 'block';
-    progressBar.style.width = '0%';
-    window.lisApp.fullSync().then(function (result) {
-      syncBtn.disabled = false;
-      syncBtn.textContent = 'Sync Now';
-      progressWrap.style.display = 'none';
-      if (result && result.success) {
-        showToast('✓ Full data synced (' + (result.imported || 0) + ' records)', 4000);
-        setTimeout(function () { location.reload(); }, 1200);
-      } else {
-        showToast('Full sync failed: ' + (result && result.reason ? result.reason : 'unknown'), 4000);
-      }
-    }).catch(function () {
-      syncBtn.disabled = false;
-      syncBtn.textContent = 'Sync Now';
-      progressWrap.style.display = 'none';
-      showToast('Full sync error', 4000);
-    });
-  });
-
-  // Manual download button — explicit full data download
-  if (downloadBtn) {
-    downloadBtn.addEventListener('click', async function () {
-      downloadBtn.textContent = '⬇';
-      downloadBtn.disabled = true;
-      progressWrap.style.display = 'block';
-      progressBar.style.width = '0%';
-      try {
-        // Try to refresh connection status first so fullSync has best chance
-        try {
-          const rc = await window.lisApp.retryConnection();
-          if (rc && rc.online) {
-            // give a small delay for UI to update
-            await new Promise(r => setTimeout(r, 200));
-          }
-        } catch (e) { /* ignore retry errors and proceed to fullSync attempt */ }
-
-        // Always attempt fullSync (even if retry reports offline) so an explicit
-        // user-triggered download will try to fetch latest server data.
-        const result = await window.lisApp.fullSync();
-        downloadBtn.disabled = false;
-        downloadBtn.textContent = '⬇';
-        progressWrap.style.display = 'none';
-        if (result && result.success) {
-          showToast('✓ Full data synced (' + (result.imported || 0) + ' records)', 4000);
-          setTimeout(function () { location.reload(); }, 1200);
+  if (retryBtn) {
+    retryBtn.addEventListener('click', function () {
+      retryBtn.disabled = true;
+      retryBtn.innerHTML = '<span>⏳</span> Connecting…';
+      window.lisApp.retryConnection().then(function (res) {
+        retryBtn.disabled = false;
+        retryBtn.innerHTML = '<span>⚡</span> Connect';
+        if (res && res.online) {
+          showToast('Connected', 'Server connection established.');
         } else {
-          showToast('Full sync failed: ' + (result && result.reason ? result.reason : 'unknown'), 4000);
+          showToast('Connection Offline', 'Server still unreachable.', true);
         }
-      } catch (e) {
-        downloadBtn.disabled = false;
-        downloadBtn.textContent = '⬇';
-        progressWrap.style.display = 'none';
-        showToast('Full sync error: ' + (e && e.message ? e.message : 'unknown'), 4000);
-      }
+      }).catch(function () {
+        retryBtn.disabled = false;
+        retryBtn.innerHTML = '<span>⚡</span> Connect';
+      });
     });
   }
 
-  // Refresh button — reloads the current page (useful in standalone app)
+  if (badgeEl) {
+    badgeEl.addEventListener('click', function () {
+      if (window.lisApp.openSettings) window.lisApp.openSettings();
+    });
+  }
+
   if (refreshBtn) {
     refreshBtn.addEventListener('click', function () {
-      try { location.reload(); } catch (e) { console.error('[LIS] refresh failed', e); }
+      window.location.reload();
     });
   }
 
-  // Connect/Retry button — try to re-establish connection to configured server
-  if (retryBtn) {
-    retryBtn.addEventListener('click', async function () {
-      try {
-        retryBtn.disabled = true;
-        retryBtn.textContent = 'Connecting…';
-        const res = await window.lisApp.retryConnection();
-        retryBtn.disabled = false;
-        retryBtn.textContent = 'Connect';
-        if (res && res.online) {
-          showToast('Connection restored — data syncing in background', 3000);
-          // Stay on local server; background sync will update data.
-          // Trigger a full-sync so the user gets fresh data.
-          maybeAutoFullSync(true);
-        } else {
-          showToast('Server not reachable', 3000);
-        }
-      } catch (e) {
-        retryBtn.disabled = false;
-        retryBtn.textContent = 'Connect';
-        showToast('Connection attempt failed', 3000);
-      }
-    });
-  }
-
-  // Settings button — open the settings window in the Electron host
-  const settingsBtn = document.getElementById('lis-settings-btn');
   if (settingsBtn) {
     settingsBtn.addEventListener('click', function () {
-      if (window.lisApp && typeof window.lisApp.openSettings === 'function') {
-        window.lisApp.openSettings();
-      }
+      if (window.lisApp.openSettings) window.lisApp.openSettings();
     });
   }
 
-  // Patch fetch so thermal-print requests include the local printer override (if set)
-  (function patchFetchForPrinterOverride() {
-    if (!window.fetch || !window.lisApp) return;
-    const _origFetch = window.fetch.bind(window);
-    window.fetch = async function(input, init) {
-      try {
-        const targetUrl = (typeof input === 'string') ? input : (input && input.url ? input.url : '');
-        if (targetUrl && targetUrl.indexOf('/patients/thermal-print') !== -1) {
-          try {
-            const settings = await window.lisApp.getSettings();
-            const printer = settings && (settings.printerName || settings.printer);
-            if (printer) {
-              let bodyObj = {};
-              if (init && init.body) {
-                try { bodyObj = JSON.parse(init.body); } catch(_) {}
-              }
-              bodyObj.printer = printer;
-              init = Object.assign({}, init || {}, { body: JSON.stringify(bodyObj), headers: Object.assign({}, init && init.headers, { 'Content-Type': 'application/json' }) });
-            }
-          } catch (e) { /* ignore */ }
-        }
-      } catch (e) {}
-      return _origFetch(input, init);
-    };
-  })();
+  // Ensure body doesn't overlap status bar on short pages
+  function checkOffset() {
+    try {
+      var isScrollable = document.documentElement.scrollHeight > window.innerHeight;
+      if (!isScrollable) {
+        document.documentElement.classList.add('lis-status-offset');
+      }
+    } catch (e) {}
+  }
+  window.addEventListener('resize', checkOffset);
+  setTimeout(checkOffset, 300);
 })();

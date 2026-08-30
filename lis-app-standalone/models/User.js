@@ -28,7 +28,6 @@ class User {
 
   // Compare password
   async comparePassword(candidatePassword) {
-    if (!this.password) return false;  // no hash stored — offline sync may not have included it yet
     return await bcrypt.compare(candidatePassword, this.password);
   }
 
@@ -71,17 +70,33 @@ class User {
 
   // Static methods
   static async findById(id) {
+    if (!id) return null;
+    if (global.db && typeof global.db.getUserById === 'function') {
+      const user = global.db.getUserById(id);
+      return user ? new User(user) : null;
+    }
     const users = global.db.getUsers();
     const user = users.find(u => u.id === id);
     return user ? new User(user) : null;
   }
 
   static async findOne(query) {
+    if (!query) return null;
+    if (query.email && global.db && typeof global.db.getUserByEmail === 'function') {
+      const user = global.db.getUserByEmail(query.email);
+      return user ? new User(user) : null;
+    }
+    if ((query._id || query.id) && global.db && typeof global.db.getUserById === 'function') {
+      const user = global.db.getUserById(query._id || query.id);
+      return user ? new User(user) : null;
+    }
     const users = global.db.getUsers();
     let user = null;
 
     if (query.email) {
       user = users.find(u => u.email === query.email);
+    } else if (query._id || query.id) {
+      user = users.find(u => u.id === (query._id || query.id));
     }
 
     return user ? new User(user) : null;

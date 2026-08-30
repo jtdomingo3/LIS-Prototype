@@ -103,8 +103,12 @@ function performBackup() {
     try { if (!fs.existsSync(backupRoot)) fs.mkdirSync(backupRoot, { recursive: true }); } catch (e) {}
     const ts = new Date().toISOString().replace(/[:.]/g, '-');
     let out = [];
-    if (dataStore && dataStore.filePath && fs.existsSync(dataStore.filePath)) {
-      const dst = path.join(backupRoot, `data.json.${ts}.bak`);
+    if (dataStore && dataStore.sqlitePath && fs.existsSync(dataStore.sqlitePath)) {
+      const dst = path.join(backupRoot, `lis-data.db.${ts}.bak`);
+      try { fs.copyFileSync(dataStore.sqlitePath, dst); out.push(dst); } catch (e) { console.warn('[Main] backup sqlite copy failed', e && e.message); }
+    } else if (dataStore && dataStore.filePath && fs.existsSync(dataStore.filePath)) {
+      const ext = path.extname(dataStore.filePath) || '.json';
+      const dst = path.join(backupRoot, `data${ext}.${ts}.bak`);
       try { fs.copyFileSync(dataStore.filePath, dst); out.push(dst); } catch (e) { console.warn('[Main] backup data copy failed', e && e.message); }
     }
     if (operationQueue && operationQueue.filePath && fs.existsSync(operationQueue.filePath)) {
@@ -126,11 +130,15 @@ function openSettingsWindow() {
     return;
   }
   const sw = new BrowserWindow({
-    width: 520,
-    height: 360,
+    width: 780,
+    height: 620,
+    minWidth: 680,
+    minHeight: 520,
     parent: mainWindow,
     modal: false,
-    resizable: false,
+    resizable: true,
+    title: 'Gezyne LIS — Standalone Settings & Diagnostics',
+    icon: appIcon || undefined,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, partition: 'persist:lis' }
   });
   sw.removeMenu();
@@ -269,6 +277,15 @@ async function createWindow() {
   });
 
   mainWindow.once('ready-to-show', () => mainWindow.show());
+
+  // Prevent web pages from forcing full screen on button clicks
+  mainWindow.webContents.on('enter-html-full-screen', () => {
+    try {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.setFullScreen(false);
+      }
+    } catch (e) {}
+  });
 
   if (process.argv.includes('--dev')) {
     try {
@@ -810,6 +827,45 @@ ipcMain.handle('save-credentials', (_e, { email, password }) => {
       if (localServer && localServer.setAutoLoginEmail) localServer.setAutoLoginEmail(email);
     }
     console.log('[Main] stored credentials for server re-auth:', email);
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e && e.message };
+  }
+});
+
+// Perform manual backup of SQLite DB and queue
+ipcMain.handle('perform-backup', async () => {
+  try {
+    const files = performBackup();
+    return { success: !!(files && files.length), files: files || [] };
+  } catch (e) {
+    return { success: false, error: e && e.message };
+  }
+});
+
+// Delete specific queued mutation
+ipcMain.handle('delete-queue-item', async (_e, id) => {
+  try {
+    if (!operationQueue || !id) return { success: false, reason: 'invalid-id' };
+    const initialLen = operationQueue.operations.length;
+    operationQueue.operations = operationQueue.operations.filter(o => o.id !== id);
+    if (operationQueue.operations.length !== initialLen) {
+      operationQueue._save();
+      sendStatus();
+      return { success: true, pendingCount: operationQueue.countPending() };
+    }
+    return { success: false, reason: 'not-found' };
+  } catch (e) {
+    return { success: false, error: e && e.message };
+  }
+});
+
+// Clear all pending operations
+ipcMain.handle('clear-queue', async () => {
+  try {
+    if (!operationQueue) return { success: false, reason: 'no-queue' };
+    operationQueue.clearAll();
+    sendStatus();
     return { success: true };
   } catch (e) {
     return { success: false, error: e && e.message };

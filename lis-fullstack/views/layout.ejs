@@ -1194,13 +1194,13 @@
                     indicateConnecting();
                     const url = '/reception/assigned-events';
                     es = new EventSource(url);
-                    es.onopen = function(){ console.log('[SSE] connected'); setConn(true); };
+                    es.onopen = function(){ console.log('[SSE] connected'); setConn(true); sseRetryDelay = 3000; };
                     es.onmessage = function(ev){
                         try {
                             const data = ev.data ? JSON.parse(ev.data) : null;
                             if (!data) return;
-                            // ignore handshake/init messages
-                            if (data.init && data.serverTime) return;
+                            // ignore handshake/init/offline keepalive messages
+                            if (data.init || data.offline || data.type === 'connected' || data.type === 'ping' || data.keepalive || data.serverTime) return;
                             
                             let text = '';
                             if (data.message) {
@@ -1247,39 +1247,32 @@
                                 const muted = (function(){ try { return localStorage.getItem('notif-muted') === '1'; } catch(e){ return false; } })();
                                 if (!muted && sound && typeof sound.play === 'function') { sound.currentTime = 0; sound.play().catch(()=>{}); }
                             } catch(e){}
-                            // auto-refresh across tabs if user enabled
+                            // auto-refresh across tabs ONLY if user explicitly enabled it and not filling forms
                             try {
-                                // Treat missing setting as enabled by default (legacy behavior)
+                                const isUserEditing = document.activeElement && (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName) || document.activeElement.isContentEditable);
+                                const isEditingPage = window.location.pathname.includes('/new') || window.location.pathname.includes('/edit') || window.location.pathname.includes('/results');
                                 const v = localStorage.getItem('notif-auto-refresh');
-                                const enabled = (v === '1' || v === null || (autoRefreshCheckbox && autoRefreshCheckbox.checked));
-                                if (enabled) {
-                                    try {
-                                        const muted = (function(){ try { return localStorage.getItem('notif-muted') === '1'; } catch(e){ return false; } })();
-                                        // If we have a sound element and not muted, attempt to play and wait for play to start
-                                        if (!muted && sound && typeof sound.play === 'function') {
-                                            try {
-                                                // restart sound and attempt play
-                                                sound.currentTime = 0;
-                                                const p = sound.play();
-                                                if (p && typeof p.then === 'function') {
-                                                    p.then(() => { setTimeout(() => { window.location.reload(); }, 400); }).catch(() => { window.location.reload(); });
-                                                } else {
-                                                    // play returned synchronously (older browsers) — reload shortly after starting
-                                                    setTimeout(() => { window.location.reload(); }, 400);
-                                                }
-                                            } catch (e) { window.location.reload(); }
-                                        } else {
-                                            // muted or no sound -> just reload
-                                            setTimeout(() => { window.location.reload(); }, 600);
-                                        }
-                                    } catch (e) { setTimeout(() => { window.location.reload(); }, 600); }
+                                const enabled = (v === '1' || (autoRefreshCheckbox && autoRefreshCheckbox.checked));
+                                if (enabled && !isUserEditing && !isEditingPage) {
+                                    setTimeout(() => { try { window.location.reload(); } catch (e) {} }, 800);
                                 }
                             } catch(e){}
                         } catch (e) { console.warn('[SSE] message parse error', e); }
                     };
-                    es.onerror = function(err){ console.warn('[SSE] error, will attempt reconnect', err); try { es.close(); } catch(e){}; es = null; setConn(false); setTimeout(connect, 3000); };
-                } catch (e) { console.warn('[SSE] connect failed', e); setTimeout(connect, 3000); }
+                    es.onerror = function(err){
+                        try { es.close(); } catch(e){};
+                        es = null;
+                        setConn(false);
+                        sseRetryDelay = Math.min(30000, sseRetryDelay * 1.5);
+                        setTimeout(() => { if (document.visibilityState === 'visible') connect(); }, sseRetryDelay);
+                    };
+                } catch (e) {
+                    setConn(false);
+                    sseRetryDelay = Math.min(30000, sseRetryDelay * 1.5);
+                    setTimeout(() => { if (document.visibilityState === 'visible') connect(); }, sseRetryDelay);
+                }
             }
+            let sseRetryDelay = 3000;
             // Defer SSE connection until the user stays on the page for 3s.
             // If user switches tab/loses visibility, cancel the pending connect and close any open connection.
             let sseDeferredTimer = null;
@@ -1308,30 +1301,26 @@
             if (document.visibilityState === 'visible') scheduleSSEConnect(3000);
         })();
 
-        // Attempt to restore persistent fullscreen on load
-        (function() {
+        // Clean up any legacy keepFullscreen flag
+        try { localStorage.removeItem('keepFullscreen'); } catch (e) {}
+
+        // Standard native fullscreen toggle (no auto-fullscreen or shell redirects)
+        function toggleFullscreen() {
             try {
-                const params = new URLSearchParams(window.location.search);
-                const shouldBeFullscreen = params.get('fullscreen') === '1' || localStorage.getItem('keepFullscreen') === '1';
-                
-                if (shouldBeFullscreen) {
-                    localStorage.setItem('keepFullscreen', '1'); // ensure it's saved
-                    function enterFullScreen() {
-                        const el = document.documentElement;
-                        if (el.requestFullscreen) el.requestFullscreen();
-                        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-                        else if (el.msRequestFullscreen) el.msRequestFullscreen();
-                    }
-                    // Try immediately; browsers may block if not a user gesture.
-                    try { enterFullScreen(); } catch (e) {}
-                    // As a fallback attach a one-time capturing click handler to seamlessly re-enter fullscreen on user's first interaction
-                    document.addEventListener('click', enterFullScreen, { once: true, capture: true });
+                if (document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement) {
+                    if (document.exitFullscreen) document.exitFullscreen();
+                    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+                    else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+                    else if (document.msExitFullscreen) document.msExitFullscreen();
+                } else {
+                    const el = document.documentElement;
+                    if (el.requestFullscreen) el.requestFullscreen();
+                    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+                    else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
+                    else if (el.msRequestFullscreen) el.msRequestFullscreen();
                 }
             } catch (e) {}
-        })();
-
-        // Universal fullscreen toggle for sidebar button
-        function toggleFullscreen() { const inShell = (window.top !== window.self); if (inShell) { try { if (window.top.document.exitFullscreen) window.top.document.exitFullscreen(); else if (window.top.document.webkitExitFullscreen) window.top.document.webkitExitFullscreen(); } catch(e){} window.top.location.href = window.location.href; } else { localStorage.setItem('keepFullscreen', '1'); window.location.href = '/shell?url=' + encodeURIComponent(window.location.pathname + window.location.search); } }
+        }
 
         // Update button text on fullscreen change
         document.addEventListener('fullscreenchange', updateFsButton);
@@ -1339,7 +1328,13 @@
         document.addEventListener('mozfullscreenchange', updateFsButton);
         document.addEventListener('MSFullscreenChange', updateFsButton);
         
-        function updateFsButton() { const fsBtn = document.getElementById('fullscreenBtn'); if (!fsBtn) return; const inShell = (window.top !== window.self); const isFullscreen = inShell || !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement); fsBtn.querySelector('.nav-text').textContent = isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'; }
+        function updateFsButton() {
+            const fsBtn = document.getElementById('fullscreenBtn');
+            if (!fsBtn) return;
+            const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+            const textEl = fsBtn.querySelector('.nav-text');
+            if (textEl) textEl.textContent = isFullscreen ? 'Exit Fullscreen' : 'Fullscreen';
+        }
 </script>
 
     <!-- Global Custom Confirmation Modal -->

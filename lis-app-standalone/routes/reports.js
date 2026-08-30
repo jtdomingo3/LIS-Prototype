@@ -179,6 +179,7 @@ router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) =
 
     // Render the result partial + print wrapper HTML for the preview iframe srcdoc
     const template = getResultTemplate(populatedTest);
+    const dbTemplate = await Template.findOne({ testType: populatedTest.testType, isActive: true }) || await Template.findOne({ testType: populatedTest.template, isActive: true });
     const inlineLogo = getInlineLogo();
 
     const qparts = [];
@@ -188,7 +189,7 @@ router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) =
     const filterQuery = qparts.length ? ('?' + qparts.join('&')) : '';
 
     // Render result template → HTML string (callback, no layout)
-    res.render(`reports/results/${template}`, { title: 'Result', test: populatedTest, layout: false, inlineLogo }, (err, renderedHtml) => {
+    res.render(`reports/results/${template}`, { title: 'Result', test: populatedTest, dbTemplate, layout: false, inlineLogo }, (err, renderedHtml) => {
       if (err) { console.error('Error rendering result template for preview:', err); }
 
       // Wrap with print layout
@@ -250,6 +251,8 @@ router.get('/result/:testId', requireAuth, canAccessPatient, async (req, res) =>
     };
 
     const template = getResultTemplate(populatedTest);
+    const dbTemplate = await Template.findOne({ testType: populatedTest.testType, isActive: true }) || await Template.findOne({ testType: populatedTest.template, isActive: true });
+    
     // Render the matching template view under reports/results
     // allow embedding without layout when requested (used by preview iframe)
     const useLayout = req.query.embedded ? false : 'print';
@@ -258,6 +261,7 @@ router.get('/result/:testId', requireAuth, canAccessPatient, async (req, res) =>
     return res.render(`reports/results/${template}`, {
       title: 'Result',
       test: populatedTest,
+      dbTemplate: dbTemplate,
       layout: useLayout,
       print: autoPrint,
       inlineLogo
@@ -347,11 +351,12 @@ router.get('/print/:testId', requireAuth, canAccessPatient, async (req, res) => 
 
     // Render the specific result template into HTML, then render the print wrapper
     const template = getResultTemplate(populatedTest);
+    const dbTemplate = await Template.findOne({ testType: populatedTest.testType, isActive: true }) || await Template.findOne({ testType: populatedTest.template, isActive: true });
     const viewPath = `reports/results/${template}`;
 
     // Render the result template without layout to get its HTML
     const inlineLogo = getInlineLogo();
-    res.render(viewPath, { title: 'Result Print', test: populatedTest, layout: false, inlineLogo }, (err, renderedHtml) => {
+    res.render(viewPath, { title: 'Result Print', test: populatedTest, dbTemplate, layout: false, inlineLogo }, (err, renderedHtml) => {
       if (testType) {
         const ttLower = String(testType).toLowerCase().trim();
         if (/^blood\s*chemistry$/.test(ttLower)) {
@@ -391,10 +396,10 @@ router.get('/print/:testId', requireAuth, canAccessPatient, async (req, res) => 
   }
 });
 
-// GET /reports/print-multiple?ids=id1,id2,... - Print multiple filtered reports
-router.get('/print-multiple', requireAuth, canAccessPatient, async (req, res) => {
+// GET or POST /reports/print-multiple - Print multiple filtered reports
+router.all('/print-multiple', requireAuth, canAccessPatient, async (req, res) => {
   try {
-    let ids = req.query.ids;
+    let ids = req.body.ids || req.query.ids;
     if (!ids) {
       req.flash('error_msg', 'No tests specified for printing');
       return res.redirect('/reports');
@@ -431,10 +436,11 @@ router.get('/print-multiple', requireAuth, canAccessPatient, async (req, res) =>
       };
 
       const template = getResultTemplate(populatedTest);
+      const dbTemplate = await Template.findOne({ testType: populatedTest.testType, isActive: true }) || await Template.findOne({ testType: populatedTest.template, isActive: true });
       // Render each template into HTML (no layout)
       try {
         const html = await new Promise((resolve, reject) => {
-          res.render(`reports/results/${template}`, { title: 'Result', test: populatedTest, layout: false, inlineLogo: getInlineLogo() }, (err, html) => {
+          res.render(`reports/results/${template}`, { title: 'Result', test: populatedTest, dbTemplate, layout: false, inlineLogo: getInlineLogo() }, (err, html) => {
             if (err) return reject(err);
             resolve(html);
           });
@@ -507,7 +513,7 @@ router.get('/worksheet', requireAuth, canAccessPatient, async (req, res) => {
     } catch (e) {
       companies = [];
     }
-    res.render('reports/worksheet', { title: 'Worksheet Export', types: finalTypes, companies });
+    res.render('reports/worksheet', { title: 'Worksheet', types: finalTypes, companies });
   } catch (err) {
     console.error('Worksheet page error:', err);
     req.flash('error_msg', 'Error loading worksheet page');
@@ -559,13 +565,26 @@ router.post('/worksheet/download', requireAuth, canAccessPatient, async (req, re
     // sort in-memory by testDate ascending
     testsRaw = (testsRaw || []).sort((a, b) => new Date(a.testDate || a.createdAt) - new Date(b.testDate || b.createdAt));
 
+    // Pre-build patient and user lookup maps in memory for O(1) instantaneous lookup
+    const allPatients = await Patient.find();
+    const patientMap = new Map();
+    for (const p of allPatients) {
+      if (p && p.id) patientMap.set(p.id, p);
+    }
+
+    const allUsers = await User.find();
+    const userMap = new Map();
+    for (const u of allUsers) {
+      if (u && u.id) userMap.set(u.id, u);
+    }
+
     // collect rows and dynamic flattened result keys
     const rows = [];
     const resultKeys = new Set();
     for (const t of testsRaw) {
-      const p = t.patient ? await Patient.findById(t.patient) : null;
-      const requestedBy = t.requestedBy ? await User.findById(t.requestedBy) : null;
-      const performedBy = t.performedBy ? await User.findById(t.performedBy) : null;
+      const p = t.patient ? patientMap.get(t.patient) : null;
+      const requestedBy = t.requestedBy ? userMap.get(t.requestedBy) : null;
+      const performedBy = t.performedBy ? userMap.get(t.performedBy) : null;
       const resultsObjRaw = (t.results && typeof t.results === 'object') ? t.results : (t.results ? { results: String(t.results) } : {});
       const flatResults = flattenResults(resultsObjRaw);
       Object.keys(flatResults).forEach(k => resultKeys.add(k));
@@ -758,12 +777,25 @@ router.post('/worksheet/preview', requireAuth, canAccessPatient, async (req, res
     }
     testsRaw = (testsRaw || []).sort((a, b) => new Date(a.testDate || a.createdAt) - new Date(b.testDate || b.createdAt));
 
+    // Pre-build patient and user lookup maps in memory for O(1) instantaneous lookup
+    const allPatients = await Patient.find();
+    const patientMap = new Map();
+    for (const p of allPatients) {
+      if (p && p.id) patientMap.set(p.id, p);
+    }
+
+    const allUsers = await User.find();
+    const userMap = new Map();
+    for (const u of allUsers) {
+      if (u && u.id) userMap.set(u.id, u);
+    }
+
     // build preview rows (minimal patient info + date/time + performedBy + flattened results)
     const previewRows = [];
     const resultKeys = new Set();
     for (const t of testsRaw) {
-      const p = t.patient ? await Patient.findById(t.patient) : null;
-      const performedBy = t.performedBy ? await User.findById(t.performedBy) : null;
+      const p = t.patient ? patientMap.get(t.patient) : null;
+      const performedBy = t.performedBy ? userMap.get(t.performedBy) : null;
       const resultsObjRaw = (t.results && typeof t.results === 'object') ? t.results : (t.results ? { results: String(t.results) } : {});
       const flatResults = flattenResults(resultsObjRaw);
       Object.keys(flatResults).forEach(k => resultKeys.add(k));

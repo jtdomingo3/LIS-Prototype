@@ -1,48 +1,87 @@
 <div class="card">
-  <h3>Enter Blood Chemistry Results - <%= test.testId %></h3>
-
   <form action="/tests/<%= test.id %>/results" method="POST">
     <input type="hidden" name="_method" value="POST">
 
-    <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap;padding:12px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
       <div class="form-row" style="margin:0;">
-        <label>Date</label>
+        <label style="font-weight:600;">Date</label>
         <input type="date" name="entryDate" value="<%= test && test.testDate ? (new Date(test.testDate)).toISOString().slice(0,10) : (new Date()).toISOString().slice(0,10) %>" readonly>
       </div>
       <div class="form-row" style="margin:0;">
-        <label>Time Requested</label>
+        <label style="font-weight:600;">Time Requested</label>
         <input type="time" name="timeRequested" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '') %>">
       </div>
       <div class="form-row" style="margin:0;">
-        <label>Time Released</label>
+        <label style="font-weight:600;">Time Released</label>
         <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (new Date()).toTimeString().slice(0,5) %>">
       </div>
+      <% 
+        let testRemarks = '';
+        if (typeof test !== 'undefined' && test) {
+          if (typeof test.remarks === 'string' && test.remarks.trim()) {
+            testRemarks = test.remarks.trim();
+          } else if (typeof test.remark === 'string' && test.remark.trim()) {
+            testRemarks = test.remark.trim();
+          } else if (Array.isArray(test.requestedTests) && test.requestedTests.length) {
+            const rems = test.requestedTests.map(rt => (rt.remarks || rt.remark || '').trim()).filter(Boolean);
+            if (rems.length) testRemarks = Array.from(new Set(rems)).join(', ');
+          }
+          if (!testRemarks && test.results && typeof test.results.remarks === 'string' && test.results.remarks.trim()) {
+            testRemarks = test.results.remarks.trim();
+          }
+        }
+      %>
+      <% if (testRemarks) { %>
+        <div style="margin-left:12px; padding:6px 12px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; color:#1e40af; font-size:0.85em; display:inline-flex; align-items:center; gap:6px;">
+          <strong style="color:#1d4ed8;">Remarks:</strong>
+          <span><%= testRemarks %></span>
+        </div>
+      <% } %>
+
       <div style="margin-left:auto;">
-        <button type="button" id="captureFromAnalyzer" class="button btn-outline">Capture from Analyzer</button>
+        <button type="button" id="captureFromAnalyzer" class="button btn-success">Capture from Analyzer</button>
       </div>
     </div>
 
-    <div class="grid-2">
-      <div class="form-row"><label>FBS</label><input type="text" name="fbs" value="<%= test.results && test.results.fbs ? test.results.fbs : '' %>" placeholder="70-110 mg/dL" title="Reference: 70.00 - 110.00 mg/dL"></div>
-      <div class="form-row"><label>RBS</label><input type="text" name="rbs" value="<%= test.results && test.results.rbs ? test.results.rbs : '' %>" placeholder="80-130 mg/dL" title="Reference: 80.00 - 130.00 mg/dL"></div>
-      <div class="form-row"><label>1st Hour</label><input type="text" name="firstHour" value="<%= test.results && test.results.firstHour ? test.results.firstHour : '' %>" placeholder="90-140 mg/dL" title="Reference: 90.00 - 140.00 mg/dL"></div>
-      <div class="form-row"><label>2nd Hour</label><input type="text" name="secondHour" value="<%= test.results && test.results.secondHour ? test.results.secondHour : '' %>" placeholder="80-120 mg/dL" title="Reference: 80.00 - 120.00 mg/dL"></div>
-      <div class="form-row"><label>Cholesterol</label><input type="text" name="cholesterol" value="<%= test.results && test.results.cholesterol ? test.results.cholesterol : '' %>" placeholder="0-200 mg/dL" title="Reference: 0.00 - 200.00 mg/dL"></div>
-      <div class="form-row"><label>Triglyceride</label><input type="text" name="tg" value="<%= test.results && test.results.tg ? test.results.tg : '' %>" placeholder="60-150 mg/dL" title="Reference: 60.00 - 150.00 mg/dL"></div>
-      <div class="form-row"><label>HDL-C</label><input type="text" name="hdl" value="<%= test.results && test.results.hdl ? test.results.hdl : '' %>" placeholder="35-80 mg/dL" title="Reference: 35.00 - 80.00 mg/dL"></div>
-      <div class="form-row"><label>LDL</label><input type="text" name="ldl" value="<%= test.results && test.results.ldl ? test.results.ldl : '' %>" placeholder="66-178 mg/dL" title="Reference: 66.00 - 178.00 mg/dL"></div>
-      <div class="form-row"><label>VLDL</label><input type="text" name="vldl" value="<%= test.results && test.results.vldl ? test.results.vldl : '' %>" placeholder="0-30 mg/dL" title="Reference: 0.00 - 30.00 mg/dL"></div>
-      <div class="form-row"><label>Uric Acid</label><input type="text" name="uricAcid" value="<%= test.results && test.results.uricAcid ? test.results.uricAcid : '' %>" placeholder="2.4-5.7 mg/dL" title="Reference: 2.40 - 5.70 mg/dL"></div>
-      <div class="form-row"><label>Creatinine</label><input type="text" name="creatinine" value="<%= test.results && test.results.creatinine ? test.results.creatinine : '' %>" placeholder="0.5-1.0 mg/dL" title="Reference: 0.50 - 1.00 mg/dL"></div>
-      <div class="form-row"><label>Urea</label><input type="text" name="urea" value="<%= test.results && test.results.urea ? test.results.urea : '' %>" placeholder="10-50 mg/dL" title="Reference: 10.00 - 50.00 mg/dL"></div>
-      <div class="form-row"><label>BUN</label><input type="text" name="bun" value="<%= test.results && test.results.bun ? test.results.bun : '' %>" placeholder="4.7-23.4 mg/dL" title="Reference: 4.67 - 23.36 mg/dL"></div>
-      <div class="form-row"><label>SGPT (ALT)</label><input type="text" name="sgpt" value="<%= test.results && test.results.sgpt ? test.results.sgpt : '' %>" placeholder="0-32 U/L" title="Reference: 0.00 - 32.00 U/L"></div>
-      <div class="form-row"><label>SGOT (AST)</label><input type="text" name="sgot" value="<%= test.results && test.results.sgot ? test.results.sgot : '' %>" placeholder="0-31 U/L" title="Reference: 0.00 - 31.00 U/L"></div>
-      <div class="form-row"><label>Sodium</label><input type="text" name="sodium" value="<%= test.results && test.results.sodium ? test.results.sodium : '' %>" placeholder="136-148 mmol/L" title="Reference: 136.00 - 148.00 mmol/L"></div>
-      <div class="form-row"><label>Potassium</label><input type="text" name="potassium" value="<%= test.results && test.results.potassium ? test.results.potassium : '' %>" placeholder="3.5-5.1 mmol/L" title="Reference: 3.50 - 5.10 mmol/L"></div>
-      <div class="form-row"><label>Chloride</label><input type="text" name="chloride" value="<%= test.results && test.results.chloride ? test.results.chloride : '' %>" placeholder="98-107 mmol/L" title="Reference: 98.00 - 107.00 mmol/L"></div>
-      <div class="form-row"><label>Hba1c</label><input type="text" name="hba1c" value="<%= test.results && test.results.hba1c ? test.results.hba1c : '' %>" placeholder="4.0-6.5 %" title="Reference: 4.00 - 6.50 %"></div>
-      <div class="form-row"><label>ALB</label><input type="text" name="alb" value="<%= test.results && test.results.alb ? test.results.alb : '' %>" placeholder="3-6 g/L" title="Reference: 3.00 - 6.00 g/L"></div>
+    <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 12px 20px; margin-bottom: 20px;">
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">FBS</label><input type="text" name="fbs" value="<%= test.results && test.results.fbs ? test.results.fbs : '' %>" placeholder="70-110 mg/dL" title="Reference: 70.00 - 110.00 mg/dL"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">RBS</label><input type="text" name="rbs" value="<%= test.results && test.results.rbs ? test.results.rbs : '' %>" placeholder="80-130 mg/dL" title="Reference: 80.00 - 130.00 mg/dL"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">1st Hour</label><input type="text" name="firstHour" value="<%= test.results && test.results.firstHour ? test.results.firstHour : '' %>" placeholder="90-140 mg/dL" title="Reference: 90.00 - 140.00 mg/dL"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">2nd Hour</label><input type="text" name="secondHour" value="<%= test.results && test.results.secondHour ? test.results.secondHour : '' %>" placeholder="80-120 mg/dL" title="Reference: 80.00 - 120.00 mg/dL"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">Cholesterol</label><input type="text" name="cholesterol" value="<%= test.results && test.results.cholesterol ? test.results.cholesterol : '' %>" placeholder="0-200 mg/dL" title="Reference: 0.00 - 200.00 mg/dL"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">Triglyceride</label><input type="text" name="tg" value="<%= test.results && test.results.tg ? test.results.tg : '' %>" placeholder="60-150 mg/dL" title="Reference: 60.00 - 150.00 mg/dL"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">HDL-C</label><input type="text" name="hdl" value="<%= test.results && test.results.hdl ? test.results.hdl : '' %>" placeholder="35-80 mg/dL" title="Reference: 35.00 - 80.00 mg/dL"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">LDL</label><input type="text" name="ldl" value="<%= test.results && test.results.ldl ? test.results.ldl : '' %>" placeholder="66-178 mg/dL" title="Reference: 66.00 - 178.00 mg/dL"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">VLDL</label><input type="text" name="vldl" value="<%= test.results && test.results.vldl ? test.results.vldl : '' %>" placeholder="0-30 mg/dL" title="Reference: 0.00 - 30.00 mg/dL"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">Uric Acid</label><input type="text" name="uricAcid" value="<%= test.results && test.results.uricAcid ? test.results.uricAcid : '' %>" placeholder="2.4-5.7 mg/dL" title="Reference: 2.40 - 5.70 mg/dL"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">Creatinine</label><input type="text" name="creatinine" value="<%= test.results && test.results.creatinine ? test.results.creatinine : '' %>" placeholder="0.5-1.0 mg/dL" title="Reference: 0.50 - 1.00 mg/dL"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">Urea</label><input type="text" name="urea" value="<%= test.results && test.results.urea ? test.results.urea : '' %>" placeholder="10-50 mg/dL" title="Reference: 10.00 - 50.00 mg/dL"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">BUN</label><input type="text" name="bun" value="<%= test.results && test.results.bun ? test.results.bun : '' %>" placeholder="4.7-23.4 mg/dL" title="Reference: 4.67 - 23.36 mg/dL"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">SGPT (ALT)</label><input type="text" name="sgpt" value="<%= test.results && test.results.sgpt ? test.results.sgpt : '' %>" placeholder="0-32 U/L" title="Reference: 0.00 - 32.00 U/L"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">SGOT (AST)</label><input type="text" name="sgot" value="<%= test.results && test.results.sgot ? test.results.sgot : '' %>" placeholder="0-31 U/L" title="Reference: 0.00 - 31.00 U/L"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">Sodium</label><input type="text" name="sodium" value="<%= test.results && test.results.sodium ? test.results.sodium : '' %>" placeholder="136-148 mmol/L" title="Reference: 136.00 - 148.00 mmol/L"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">Potassium</label><input type="text" name="potassium" value="<%= test.results && test.results.potassium ? test.results.potassium : '' %>" placeholder="3.5-5.1 mmol/L" title="Reference: 3.50 - 5.10 mmol/L"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">Chloride</label><input type="text" name="chloride" value="<%= test.results && test.results.chloride ? test.results.chloride : '' %>" placeholder="98-107 mmol/L" title="Reference: 98.00 - 107.00 mmol/L"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">Calcium</label><input type="text" name="calcium" value="<%= test.results && test.results.calcium ? test.results.calcium : '' %>" placeholder="8.5-10.2 mg/dL" title="Reference: 8.50 - 10.20 mg/dL"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">Hba1c</label><input type="text" name="hba1c" value="<%= test.results && test.results.hba1c ? test.results.hba1c : '' %>" placeholder="4.0-6.5 %" title="Reference: 4.00 - 6.50 %"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">ALB</label><input type="text" name="alb" value="<%= test.results && test.results.alb ? test.results.alb : '' %>" placeholder="3-6 g/L" title="Reference: 3.00 - 6.00 g/L"></div>
+      
+      <% 
+      if (typeof dbTemplate !== 'undefined' && dbTemplate && dbTemplate.fields && dbTemplate.fields.length) {
+        const hardcodedLabels = ['FBS', 'RBS', '1st Hour', '2nd Hour', 'Cholesterol', 'Triglyceride', 'HDL-C', 'LDL', 'VLDL', 'Uric Acid', 'Creatinine', 'Urea', 'BUN', 'SGPT (ALT)', 'SGOT (AST)', 'Sodium', 'Potassium', 'Chloride', 'Calcium', 'Hba1c', 'ALB'];
+        dbTemplate.fields.forEach(f => {
+          if (f.name && !hardcodedLabels.find(l => l.toLowerCase() === f.name.toLowerCase())) {
+            const safeKey = f.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+            const val = (test.results && test.results[safeKey] !== undefined) ? test.results[safeKey] : '';
+            const ph = f.normalValues ? f.normalValues + (f.unit ? ' ' + f.unit : '') : '';
+            const title = f.normalValues ? `Reference: ${f.normalValues} ${f.unit || ''}` : '';
+            %>
+            <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;"><%= f.name %></label><input type="text" name="<%= safeKey %>" value="<%= val %>" placeholder="<%= ph %>" title="<%= title %>"></div>
+            <%
+          }
+        });
+      }
+      %>
     </div>
 
     <hr>
@@ -61,6 +100,39 @@
     </div>
   </form>
 </div>
+
+<style>
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      max-height: 0;
+    }
+    to {
+      opacity: 1;
+      max-height: 2000px;
+    }
+  }
+</style>
 
 <script>
   (function(){
@@ -392,6 +464,204 @@
             const sex = fp.row.SEX || '?';
             pn.innerHTML = `
               <i class="fas fa-user-circle" style="color: #10b981; font-size: 24px;"></i>
-              <div style="flex: 1;
+              <div style="flex: 1;">
+                <div style="font-weight: 600; color: #1a1a1a; font-size: 1.05em;">${name}</div>
+                <div style="display: flex; gap: 16px; margin-top: 4px; font-size: 0.9em; color: #6b7280;">
+                  <span><i class="fas fa-birthday-cake" style="margin-right: 4px;"></i>Age: ${age}</span>
+                  <span><i class="fas fa-venus-mars" style="margin-right: 4px;"></i>Sex: ${sex}</span>
+                </div>
+              </div>
+            `;
+            patientCard.appendChild(pn);
+          });
+        } else {
+          patientCard.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px; color: #9ca3af;">
+              <i class="fas fa-exclamation-triangle" style="font-size: 20px;"></i>
+              <div>
+                <div style="font-weight: 500;">Patient information not available</div>
+                ${groupPatientIds.size > 0 ? `<div style="font-size: 0.85em; margin-top: 4px;">Looking for IDs: ${Array.from(groupPatientIds).join(', ')}</div>` : ''}
+              </div>
+            </div>
+          `;
+        }
+        scrollContent.appendChild(patientCard);
+        
+        // Results table
+        const tableContainer = document.createElement('div');
+        tableContainer.style.cssText = `
+          background: white;
+          border-radius: 8px;
+          overflow: hidden;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          margin-bottom: 20px;
+        `;
+        
+        const t = document.createElement('table');
+        t.style.cssText = `
+          width: 100%;
+          border-collapse: collapse;
+        `;
+        
+        const hrow = t.insertRow();
+        hrow.style.cssText = `
+          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+          color: white;
+        `;
+        ['ITEM','RESULT','UNIT'].forEach((c, idx) => {
+          const cell = hrow.insertCell();
+          cell.textContent = c;
+          cell.style.cssText = `
+            font-weight: 600;
+            padding: 14px 16px;
+            text-align: ${idx === 1 ? 'center' : 'left'};
+            font-size: 0.95em;
+          `;
+        });
+        
+        groupRows.forEach((r, idx) => {
+          const tr = t.insertRow();
+          tr.style.cssText = `
+            background: ${idx % 2 === 0 ? '#fff' : '#f9fafb'};
+            transition: background 0.2s;
+          `;
+          tr.onmouseover = () => tr.style.background = '#ecfdf5';
+          tr.onmouseout = () => tr.style.background = idx % 2 === 0 ? '#fff' : '#f9fafb';
+          
+          const itemCell = tr.insertCell();
+          itemCell.style.cssText = 'padding: 12px 16px; font-weight: 500; color: #1a1a1a;';
+          itemCell.textContent = r.ITEM || r.Item || r.item || '';
+          
+          const resultCell = tr.insertCell();
+          resultCell.style.cssText = 'padding: 12px 16px; text-align: center; font-weight: 600; color: #10b981;';
+          resultCell.textContent = r.RESULT || r.Result || r.result || '';
+          
+          const unitCell = tr.insertCell();
+          unitCell.style.cssText = 'padding: 12px 16px; color: #6b7280;';
+          unitCell.textContent = r.UNIT || r.Unit || r.unit || '';
+        });
+        
+        tableContainer.appendChild(t);
+        scrollContent.appendChild(tableContainer);
+        
+        // Add scrollContent to details
+        details.appendChild(scrollContent);
+        
+        // Action buttons (fixed at bottom)
+        const buttonContainer = document.createElement('div');
+        buttonContainer.style.cssText = `
+          display: flex;
+          gap: 12px;
+          justify-content: flex-end;
+          padding: 16px 24px;
+          background: white;
+          border-top: 2px solid #e5e7eb;
+          box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+        `;
+        
+        const cancelBtn = document.createElement('button');
+        cancelBtn.innerHTML = '<i class="fas fa-times" style="margin-right: 8px;"></i>Cancel';
+        cancelBtn.style.cssText = `
+          background: #ef4444;
+          color: white;
+          border: none;
+          padding: 12px 24px;
+          border-radius: 8px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-size: 0.95em;
+          display: flex;
+          align-items: center;
+        `;
+        cancelBtn.onmouseover = () => {
+          cancelBtn.style.background = '#dc2626';
+          cancelBtn.style.transform = 'translateY(-2px)';
+          cancelBtn.style.boxShadow = '0 6px 16px rgba(239, 68, 68, 0.4)';
+        };
+        cancelBtn.onmouseout = () => {
+          cancelBtn.style.background = '#ef4444';
+          cancelBtn.style.transform = 'translateY(0)';
+          cancelBtn.style.boxShadow = 'none';
+        };
+        cancelBtn.addEventListener('click', () => {
+          const existing = box.querySelector('#analyzerDetail');
+          if (existing) existing.remove();
+        });
+        
+        const btn = document.createElement('button');
+        btn.innerHTML = '<i class="fas fa-check-circle" style="margin-right: 8px;"></i>Use these results';
+        btn.style.cssText = `
+          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+          color: white;
+          border: none;
+          padding: 12px 24px;
+          border-radius: 8px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+          font-size: 0.95em;
+          display: flex;
+          align-items: center;
+        `;
+        btn.onmouseover = () => {
+          btn.style.transform = 'translateY(-2px)';
+          btn.style.boxShadow = '0 6px 16px rgba(16, 185, 129, 0.4)';
+        };
+        btn.onmouseout = () => {
+          btn.style.transform = 'translateY(0)';
+          btn.style.boxShadow = 'none';
+        };
+        btn.addEventListener('click', () => {
+          const mapped = {};
+          groupRows.forEach(r => {
+            const code = (r.ITEM || r.Item || r.item || '').toString().toUpperCase();
+            const field = ANALYZER_MAP[code];
+            if (field) mapped[field] = r.RESULT || r.Result || r.result || '';
+          });
+          // client‑side derivations (mirror server logic)
+          const derived = [];
+          if (mapped.urea && !mapped.bun) {
+            const u = parseFloat(mapped.urea);
+            if (!isNaN(u)) {
+              mapped.bun = String(Math.round(u * 0.467 * 100) / 100);
+              derived.push('BUN');
+            }
+          }
+          if (mapped.tg) {
+            const tg = parseFloat(mapped.tg);
+            if (!isNaN(tg)) {
+              const vcalc = Math.round((tg / 5.0) * 100) / 100;
+              if ((!mapped.vldl || mapped.vldl === '') || String(mapped.vldl) !== String(vcalc)) {
+                mapped.vldl = String(vcalc);
+                derived.push('VLDL');
+              }
+            }
+            if (mapped.cholesterol && mapped.hdl) {
+              const tc = parseFloat(mapped.cholesterol);
+              const hdl = parseFloat(mapped.hdl);
+              if (!isNaN(tc) && !isNaN(hdl)) {
+                const lcalc = Math.round((tc - hdl - (tg / 5.0)) * 100) / 100;
+                if ((!mapped.ldl || mapped.ldl === '') || String(mapped.ldl) !== String(lcalc)) {
+                  mapped.ldl = String(lcalc);
+                  derived.push('LDL');
+                }
+              }
+            }
+          }
+          if (derived.length) console.log('client derived', derived);
+          applyMapped(mapped);
+          document.body.removeChild(modal);
+        });
+        
+        buttonContainer.appendChild(cancelBtn);
+        buttonContainer.appendChild(btn);
+        details.appendChild(buttonContainer);
+        box.appendChild(details);
+      }
 
-
+      document.body.appendChild(modal);
+      modal.appendChild(box);
+    }
+  })();
+</script>

@@ -1,41 +1,552 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>Gezyne LIS — Settings</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gezyne LIS — Settings & Storage</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    body{font-family:Segoe UI,Arial;margin:18px;color:#111}
-    label{display:block;margin-top:12px;font-weight:600}
-    input{width:100%;padding:8px;margin-top:6px;border:1px solid #ccc;border-radius:6px}
-    .row{display:flex;gap:8px;margin-top:18px}
-    button{padding:8px 12px;border-radius:6px;border:none;cursor:pointer}
-    .btn-save{background:#10b981;color:#fff}
-    .btn-close{background:#ef4444;color:#fff}
-    .btn-discard{background:#f59e0b;color:#fff}
-    .btn-drop{background:#7f1d1d;color:#fff}
-    p.note{color:#666;font-size:13px;margin-top:8px}
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #f1f5f9;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* ── Header ─────────────────────────────────────────────── */
+    .app-header {
+      height: 56px;
+      background: #1e293b;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+    }
+
+    .app-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 15px;
+      color: #ffffff;
+    }
+
+    .badge-ver {
+      font-size: 11px;
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 600;
+    }
+
+    /* ── Main Layout ────────────────────────────────────────── */
+    .main-body {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ── Sidebar Tabs ───────────────────────────────────────── */
+    .nav-sidebar {
+      width: 220px;
+      background: rgba(15, 23, 42, 0.95);
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 16px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      color: #94a3b8;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .nav-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: #f1f5f9;
+    }
+
+    .nav-item.active {
+      background: linear-gradient(135deg, rgba(37, 99, 235, 0.25), rgba(37, 99, 235, 0.1));
+      color: #60a5fa;
+      border: 1px solid rgba(96, 165, 250, 0.3);
+    }
+
+    /* ── Tab Content ────────────────────────────────────────── */
+    .content-area {
+      flex: 1;
+      padding: 24px 28px;
+      overflow-y: auto;
+      background: #0b0f19;
+    }
+
+    .tab-pane {
+      display: none;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .tab-pane.active {
+      display: flex;
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 4px;
+      letter-spacing: -0.3px;
+    }
+
+    .section-desc {
+      font-size: 13px;
+      color: #94a3b8;
+      line-height: 1.5;
+    }
+
+    /* ── Form Controls ──────────────────────────────────────── */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #cbd5e1;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: #ffffff;
+      outline: none;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    input[type="text"]:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    }
+
+    .help-text {
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    /* ── Stat Cards Grid ────────────────────────────────────── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 12px;
+    }
+
+    .stat-card {
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stat-num {
+      font-size: 20px;
+      font-weight: 800;
+      color: #38bdf8;
+    }
+
+    .stat-lbl {
+      font-size: 11px;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Card Containers ────────────────────────────────────── */
+    .card-panel {
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .card-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+    }
+
+    .card-label {
+      color: #94a3b8;
+      font-weight: 500;
+    }
+
+    .card-val {
+      font-weight: 600;
+      color: #f1f5f9;
+      font-family: 'Consolas', monospace;
+      font-size: 12px;
+      max-width: 320px;
+      word-break: break-all;
+      text-align: right;
+    }
+
+    /* ── Table for Queue ────────────────────────────────────── */
+    .table-wrap {
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      overflow: hidden;
+      max-height: 260px;
+      overflow-y: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      text-align: left;
+    }
+
+    th {
+      background: rgba(15, 23, 42, 0.8);
+      color: #94a3b8;
+      font-weight: 600;
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    td {
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: #cbd5e1;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    /* ── Buttons ────────────────────────────────────────────── */
+    .btn {
+      padding: 9px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+      outline: none;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+    }
+
+    .btn-emerald {
+      background: linear-gradient(135deg, #059669, #047857);
+      color: #fff;
+    }
+
+    .btn-emerald:hover {
+      background: linear-gradient(135deg, #10b981, #059669);
+    }
+
+    .btn-warning {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .btn-warning:hover {
+      background: rgba(245, 158, 11, 0.25);
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.25);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #cbd5e1;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.14);
+      color: #fff;
+    }
+
+    .btn-sm {
+      padding: 4px 8px;
+      font-size: 11px;
+      border-radius: 6px;
+    }
+
+    /* ── Footer Action Bar ──────────────────────────────────── */
+    .app-footer {
+      height: 60px;
+      background: #1e293b;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 12px;
+      padding: 0 24px;
+    }
+
+    .feedback-msg {
+      margin-right: auto;
+      font-size: 12px;
+      font-weight: 500;
+      color: #34d399;
+    }
+
+    .feedback-msg.error {
+      color: #f87171;
+    }
   </style>
 </head>
 <body>
-  <h2>Standalone Settings</h2>
-  <div>
-    <label for="serverUrl">Server URL</label>
-    <input id="serverUrl" placeholder="http://your-server:3000" />
-    <p class="note">Change the remote LIS server address. Leave blank to use built-in default.</p>
+  <div class="app-header">
+    <div class="app-title">
+      <span>⚙ Gezyne LIS Desktop Settings</span>
+      <span class="badge-ver">v2.1 SQLite</span>
+    </div>
+    <button class="btn btn-secondary btn-sm" id="closeHeaderBtn">✕</button>
+  </div>
 
-    <label for="printerName">Local Thermal Printer Name</label>
-    <input id="printerName" placeholder="Printer name (optional)" />
-    <p class="note">When set, thermal-print calls will include this printer name so the server can target the local printer.</p>
-
-    <div class="row">
-      <button class="btn-save" id="saveBtn">Save</button>
-      <button class="btn-close" id="closeBtn">Close</button>
+  <div class="main-body">
+    <!-- Sidebar Navigation -->
+    <div class="nav-sidebar">
+      <div class="nav-item active" data-tab="tab-server">
+        <span>🌐</span> Server Connection
+      </div>
+      <div class="nav-item" data-tab="tab-printer">
+        <span>🖨️</span> Hardware & Printer
+      </div>
+      <div class="nav-item" data-tab="tab-storage">
+        <span>🗄️</span> SQLite Database
+      </div>
+      <div class="nav-item" data-tab="tab-sync">
+        <span>🔄</span> Sync & Maintenance
+      </div>
+      <div class="nav-item" data-tab="tab-queue">
+        <span>📋</span> Pending Queue
+      </div>
     </div>
 
-    <div class="row" style="margin-top:12px">
-      <button class="btn-discard" id="discardBtn">Discard Local Changes & Sync</button>
-      <button class="btn-drop" id="dropBtn">Drop Offline Data & Replace From Server</button>
+    <!-- Content Area -->
+    <div class="content-area">
+      <!-- Tab: Server Connection -->
+      <div class="tab-pane active" id="tab-server">
+        <div>
+          <div class="section-title">Remote Server Configuration</div>
+          <div class="section-desc">Configure the central LIS server address. The standalone app will automatically synchronize with this server when online.</div>
+        </div>
+
+        <div class="form-group">
+          <label for="serverUrl">Central Server URL</label>
+          <div style="display:flex; gap:10px;">
+            <input type="text" id="serverUrl" placeholder="http://192.168.1.100:3000" />
+            <button class="btn btn-secondary" id="testConnBtn">Test</button>
+          </div>
+          <div class="help-text">Enter the HTTP/HTTPS IP and port of the main LIS server (e.g., http://192.168.1.50:3000).</div>
+        </div>
+
+        <div class="card-panel">
+          <div class="card-row">
+            <span class="card-label">Local Server Offline Fallback</span>
+            <span class="card-val" id="localPort">http://127.0.0.1:30099</span>
+          </div>
+          <div class="card-row">
+            <span class="card-label">Last Full Database Sync</span>
+            <span class="card-val" id="lastSyncTime">Never</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Printer & Hardware -->
+      <div class="tab-pane" id="tab-printer">
+        <div>
+          <div class="section-title">Thermal Printer & Barcode Options</div>
+          <div class="section-desc">Manage local thermal POS printer mapping for patient receipt slips and barcode labels.</div>
+        </div>
+
+        <div class="form-group">
+          <label for="printerName">Local Thermal Printer Name</label>
+          <input type="text" id="printerName" placeholder="e.g. POS-80 or XP-58" />
+          <div class="help-text">When configured, thermal-print commands will target this hardware device directly.</div>
+        </div>
+      </div>
+
+      <!-- Tab: SQLite Storage -->
+      <div class="tab-pane" id="tab-storage">
+        <div>
+          <div class="section-title">SQLite Database Health & Statistics</div>
+          <div class="section-desc">Persistent local database powering fast and reliable offline data storage.</div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-num" id="statPatients">0</span>
+            <span class="stat-lbl">Patients</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-num" id="statTests">0</span>
+            <span class="stat-lbl">Tests</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-num" id="statUsers">0</span>
+            <span class="stat-lbl">Users</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-num" id="statTemplates">0</span>
+            <span class="stat-lbl">Templates</span>
+          </div>
+        </div>
+
+        <div class="card-panel">
+          <div class="card-row">
+            <span class="card-label">Database File</span>
+            <span class="card-val" id="dbFilePath">Documents/LIS/app-sync/lis-data.db</span>
+          </div>
+          <div class="card-row">
+            <span class="card-label">Database Engine</span>
+            <span class="card-val" id="dbEngine">sql.js (WebAssembly SQLite)</span>
+          </div>
+          <div class="card-row">
+            <span class="card-label">File Size</span>
+            <span class="card-val" id="dbFileSize">0 KB</span>
+          </div>
+        </div>
+
+        <div>
+          <button class="btn btn-emerald" id="backupBtn">
+            <span>💾</span> Backup SQLite Database Now
+          </button>
+        </div>
+      </div>
+
+      <!-- Tab: Sync & Maintenance -->
+      <div class="tab-pane" id="tab-sync">
+        <div>
+          <div class="section-title">Data Sync & Conflict Actions</div>
+          <div class="section-desc">Maintenance tools to resolve sync conflicts or re-download the central database.</div>
+        </div>
+
+        <div class="card-panel">
+          <div>
+            <div style="font-weight:700; font-size:14px; margin-bottom:4px; color:#fbbf24;">Discard Local Unsynced Changes</div>
+            <div class="section-desc" style="margin-bottom:12px;">Discards pending offline operations and refreshes local database from the server.</div>
+            <button class="btn btn-warning" id="discardBtn">Discard & Pull Server Data</button>
+          </div>
+        </div>
+
+        <div class="card-panel">
+          <div>
+            <div style="font-weight:700; font-size:14px; margin-bottom:4px; color:#f87171;">Drop & Replace Offline Database</div>
+            <div class="section-desc" style="margin-bottom:12px;">Destructive: Overwrites the local SQLite database entirely with the latest server export. Creates an automatic backup first.</div>
+            <button class="btn btn-danger" id="dropBtn">Drop & Replace from Server</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Pending Queue -->
+      <div class="tab-pane" id="tab-queue">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div class="section-title">Offline Operations Queue</div>
+            <div class="section-desc">Mutations captured while offline waiting to be replayed to the server.</div>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="refreshQueueBtn">⟲ Refresh</button>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Method</th>
+                <th>Target URL</th>
+                <th>Created At</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="queueTbody">
+              <tr>
+                <td colspan="5" style="text-align:center; color:#64748b; padding:20px;">No pending operations in queue.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div>
+          <button class="btn btn-danger btn-sm" id="clearQueueBtn">Clear Entire Queue</button>
+        </div>
+      </div>
     </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="app-footer">
+    <div class="feedback-msg" id="feedbackMsg"></div>
+    <button class="btn btn-secondary" id="closeBtn">Close</button>
+    <button class="btn btn-primary" id="saveBtn">Save Settings</button>
   </div>
 
   <script src="settings.js"></script>

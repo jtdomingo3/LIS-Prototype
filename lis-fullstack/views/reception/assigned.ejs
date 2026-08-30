@@ -552,9 +552,9 @@
         try {
           const payload = JSON.parse(event.data);
           
-          // Skip initial connection message for sound
-          if (payload.init) {
-            console.log('[Kiosk] Initial SSE handshake received');
+          // Skip initial connection and offline heartbeat messages
+          if (payload.init || payload.offline || payload.type === 'connected' || payload.keepalive) {
+            console.log('[Kiosk] SSE handshake/offline message ignored');
             return;
           }
 

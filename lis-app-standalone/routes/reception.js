@@ -54,17 +54,14 @@ let kioskAdText = '';
 //   (test.completedAt or non-empty test.results). Also, do NOT map Doctor's Check-up to Releasing.
 function mapAreaForTest(test) {
   if (!test || !test.status) return test && test.status ? test.status : null;
-  // Treat explicit 'Released' status as final Completed (do not map back to Releasing)
-  if (test.status === 'Released') return 'Completed';
+  // If stashed (patient unavailable), hold in stashed section
+  if (test.stashed || test.status === 'Stashed') return 'Stashed';
+  // If explicitly released or released flag set, it is completely done (do not map to any active queue area)
+  if (test.released || test.status === 'Released') return 'Completed';
   if (test.status === 'Completed') {
-    // If a test has been released (finalized), keep it as Completed and do not
-    // map it back to the 'Releasing of Result' area.
-    if (test.released) return 'Completed';
     const hasResults = Boolean(test.completedAt || (test.results && String(test.results).trim()));
-    // Determine if this is a doctor's checkup based on testType or testType containing 'doctor'
     const isDoctorCheckup = test.testType && String(test.testType).toLowerCase().includes('doctor');
     const isRegistration = test.testType === 'Registration';
-    // Only send to Releasing when results exist and it's not Doctor's Check-up or Registration
     if (hasResults && !isDoctorCheckup && !isRegistration) return 'Releasing of Result';
     return 'Completed';
   }
@@ -184,9 +181,38 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
       delete c._seen;
     }
 
+    // Build stashed results list grouped by patient
+    const stashedByPatient = {};
+    if (Array.isArray(allTests)) {
+      const allPatients = global.db.getPatients() || [];
+      const patientsById = Object.fromEntries((allPatients || []).map(p => [p.id, p]));
+      for (const t of allTests) {
+        if (mapAreaForTest(t) === 'Stashed') {
+          const pid = t.patient;
+          if (!pid) continue;
+          if (!stashedByPatient[pid]) {
+            stashedByPatient[pid] = {
+              patient: patientsById[pid] || { id: pid, firstName: 'Unknown', lastName: '' },
+              testIds: [],
+              testNames: [],
+              stashedAt: t.updatedAt || t.testDate || new Date()
+            };
+          }
+          stashedByPatient[pid].testIds.push(t.id);
+          const tName = (t.testType || 'Test').toString().replace(/-/g,' ').replace(/\b\w/g, ch=>ch.toUpperCase());
+          if (!stashedByPatient[pid].testNames.includes(tName)) {
+            stashedByPatient[pid].testNames.push(tName);
+          }
+        }
+      }
+    }
+    const stashedList = Object.values(stashedByPatient);
+
     res.render('reception/index', {
       title: 'Reception',
       areas: counts,
+      stashedCount: stashedList.length,
+      stashedList: stashedList,
       ad: kioskAdText
     });
   } catch (err) {
@@ -417,6 +443,183 @@ router.post('/advert', requireAuth, async (req, res) => {
     console.error('Failed to update kiosk ad', e);
     req.flash && req.flash('error_msg', 'Failed to update advertisement');
     return res.redirect('/reception');
+  }
+});
+
+// POST /reception/clear-queues - Clear all active reception queues (admin only)
+router.post('/clear-queues', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const user = req.session && req.session.user;
+    if (!user || user.role !== 'Admin') {
+      req.flash('error_msg', 'Admin access required to clear reception queues');
+      return res.redirect('/reception');
+    }
+
+    const tests = (typeof global.db.getTests === 'function' ? global.db.getTests() : []) || [];
+    let count = 0;
+    const nowIso = new Date().toISOString();
+    const userName = (user && (user.name || user.username)) ? (user.name || user.username) : 'Admin';
+
+    for (let i = 0; i < tests.length; i++) {
+      const t = tests[i];
+      if (t) {
+        const prevStatus = t.status || null;
+        t.status = 'Released';
+        t.released = true;
+        if (!t.completedAt) t.completedAt = nowIso;
+        if (!Array.isArray(t.statusHistory)) t.statusHistory = [];
+        t.statusHistory.push({ from: prevStatus, to: 'Released', user: userName, area: 'Released', timestamp: nowIso });
+        t.updatedAt = nowIso;
+        count++;
+      }
+    }
+
+    // Save all updated tests to database ONCE in a single atomic operation
+    global.db.saveTests(tests);
+
+    console.log(`[RECEPTION] Admin ${userName} cleared ${count} test(s) from reception queues in bulk`);
+
+    try {
+      sseEmitter.emit('update', { action: 'clear_queues', time: nowIso });
+    } catch (e) { console.warn('SSE emit for clear_queues failed', e); }
+
+    req.flash('success_msg', `Successfully cleared all reception queues (${count} test(s) set to Released). Reception is ready for a fresh start!`);
+    return res.redirect('/reception');
+  } catch (err) {
+    console.error('Error clearing reception queues:', err);
+    req.flash('error_msg', 'Failed to clear reception queues');
+    return res.redirect('/reception');
+  }
+});
+
+// POST /reception/stash - Stash results when patient is unavailable
+router.post('/stash', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const { patientId, testIds } = req.body;
+    const user = req.session && req.session.user;
+    const userName = user ? (user.name || user.username) : 'System';
+    const nowIso = new Date().toISOString();
+
+    const idsToStash = Array.isArray(testIds) ? testIds : (testIds ? String(testIds).split(',').map(s => s.trim()).filter(Boolean) : []);
+    const allTests = await Test.find({});
+    let count = 0;
+    let patientName = '';
+
+    for (const t of allTests) {
+      const matchPatient = patientId && String(t.patient) === String(patientId);
+      const matchId = idsToStash.includes(String(t.id));
+      if (matchPatient || matchId) {
+        if (mapAreaForTest(t) === 'Releasing of Result' || t.status === 'Completed') {
+          t.stashed = true;
+          t.status = 'Stashed';
+          t.updatedAt = nowIso;
+          t.addStatusEntry({ from: 'Releasing of Result', to: 'Stashed', user: userName, area: 'Stashed', timestamp: nowIso });
+          await t.save();
+          count++;
+          if (t.patient && !patientName) {
+            const p = await Patient.findById(t.patient);
+            if (p) patientName = `${p.firstName} ${p.lastName}`;
+          }
+        }
+      }
+    }
+
+    try {
+      sseEmitter.emit('update', { action: 'stash', count, patientName, time: nowIso });
+    } catch (e) {}
+
+    req.flash('success_msg', `Stashed ${count} result(s) for ${patientName || 'patient'}. Held in Reception Stashed section.`);
+    return res.redirect('/reception/area/Releasing%20of%20Result');
+  } catch (err) {
+    console.error('Error stashing results:', err);
+    req.flash('error_msg', 'Failed to stash results');
+    return res.redirect('/reception');
+  }
+});
+
+// GET /reception/stashed - Dedicated page for stashed results
+router.get('/stashed', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const allTestsRaw = await Test.find({});
+    const allTests = Array.isArray(allTestsRaw) ? allTestsRaw : [];
+    const allPatients = global.db.getPatients() || [];
+    const patientsById = Object.fromEntries((allPatients || []).map(p => [p.id, p]));
+
+    const stashedByPatient = {};
+    for (const t of allTests) {
+      if (mapAreaForTest(t) === 'Stashed') {
+        const pid = t.patient;
+        if (!pid) continue;
+        if (!stashedByPatient[pid]) {
+          stashedByPatient[pid] = {
+            patient: patientsById[pid] || { id: pid, firstName: 'Unknown', lastName: '' },
+            testIds: [],
+            testNames: [],
+            stashedAt: t.updatedAt || t.testDate || new Date()
+          };
+        }
+        stashedByPatient[pid].testIds.push(t.id);
+        const tName = (t.testType || 'Test').toString().replace(/-/g,' ').replace(/\b\w/g, ch=>ch.toUpperCase());
+        if (!stashedByPatient[pid].testNames.includes(tName)) {
+          stashedByPatient[pid].testNames.push(tName);
+        }
+      }
+    }
+
+    const stashedList = Object.values(stashedByPatient);
+    res.render('reception/stashed', {
+      title: 'Stashed Results',
+      stashedList: stashedList
+    });
+  } catch (err) {
+    console.error('Error rendering stashed page:', err);
+    req.flash('error_msg', 'Failed to load stashed results page');
+    return res.redirect('/reception');
+  }
+});
+
+// POST /reception/release-stashed - Release stashed results without triggering kiosk audio call
+router.post('/release-stashed', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const { patientId, testIds, redirectUrl } = req.body;
+    const user = req.session && req.session.user;
+    const userName = user ? (user.name || user.username) : 'System';
+    const nowIso = new Date().toISOString();
+
+    const idsToRelease = Array.isArray(testIds) ? testIds : (testIds ? String(testIds).split(',').map(s => s.trim()).filter(Boolean) : []);
+    const allTests = await Test.find({});
+    let count = 0;
+    let patientName = '';
+
+    for (const t of allTests) {
+      const matchPatient = patientId && String(t.patient) === String(patientId);
+      const matchId = idsToRelease.includes(String(t.id));
+      if (matchPatient || matchId) {
+        t.stashed = false;
+        t.status = 'Released';
+        t.released = true;
+        t.updatedAt = nowIso;
+        t.addStatusEntry({ from: 'Stashed', to: 'Released', user: userName, area: 'Released', timestamp: nowIso });
+        await t.save();
+        count++;
+        if (t.patient && !patientName) {
+          const p = await Patient.findById(t.patient);
+          if (p) patientName = `${p.firstName} ${p.lastName}`;
+        }
+      }
+    }
+
+    // Emit a quiet background SSE update (does NOT alert/ring the kiosk audio!)
+    try {
+      sseEmitter.emit('update', { action: 'release_stashed', quiet: true, count, patientName, time: nowIso });
+    } catch (e) {}
+
+    req.flash('success_msg', `Successfully released ${count} stashed result(s) for ${patientName || 'patient'}.`);
+    return res.redirect(redirectUrl || '/reception/stashed');
+  } catch (err) {
+    console.error('Error releasing stashed results:', err);
+    req.flash('error_msg', 'Failed to release stashed results');
+    return res.redirect(redirectUrl || '/reception/stashed');
   }
 });
 

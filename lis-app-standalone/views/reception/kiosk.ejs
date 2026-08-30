@@ -8,7 +8,8 @@
   <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png">
   <link rel="apple-touch-icon" sizes="192x192" href="/assets/icon-192x192.png">
   <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#10b981">
+  <meta name="theme-color" content="#0d9488">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
   <style>
     * {
@@ -42,30 +43,52 @@
     }
 
     :root {
-      /* Brand Colors */
-      --brand-black: #1a1a1a;
-      --brand-black-dark: #0f0f0f;
-      --brand-black-light: #2d2d2d;
+      /* Vibrant Cheerful Color Palette */
+      --brand-black: #1e293b;
+      --brand-black-dark: #0f172a;
+      --brand-black-light: #334155;
       --brand-white: #ffffff;
-      --brand-white-off: #f5f5f5;
-      --brand-gray-light: #f8f9fa;
-      --brand-green: #10b981;
-      --brand-green-dark: #059669;
+      --brand-white-off: #fefefe;
+      --brand-gray-light: #f1f5f9;
+      --brand-green: #059669;
+      --brand-green-dark: #047857;
       --brand-green-light: #34d399;
       --brand-orange: #f97316;
       --brand-orange-dark: #ea580c;
-      --brand-orange-light: #fb923c;
-  --brand-navy: #0b3d91;
+      --brand-orange-light: #fdba74;
+      --brand-navy: #1e40af;
+      --brand-teal: #0d9488;
+      --brand-teal-border: #99f6e4;
+      --accent-blue: #3b82f6;
+      --accent-purple: #8b5cf6;
+      --accent-pink: #ec4899;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --accent-sky: #0ea5e9;
+      --accent-indigo: #6366f1;
+      --accent-lime: #84cc16;
       /* Utility */
-      --text-dark: #1a1a1a;
-      --text-muted: #6b7280;
-      --border-light: #e5e7eb;
-      --border-subtle: rgba(0, 0, 0, 0.08);
+      --text-dark: #1e293b;
+      --text-muted: #475569;
+      --text-soft: #94a3b8;
+      --border-light: #e2e8f0;
+      --border-subtle: rgba(0, 0, 0, 0.06);
+      --shadow-card: 0 2px 8px rgba(0,0,0,0.06), 0 8px 20px rgba(0,0,0,0.04);
+      --shadow-card-active: 0 4px 12px rgba(0,0,0,0.08), 0 12px 32px rgba(0,0,0,0.06);
+    }
+
+    /* Slow-moving animated gradient background */
+    @keyframes bgShift {
+      0%   { background-position: 0% 50%; }
+      50%  { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
     }
 
     body {
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      background: var(--brand-gray-light);
+      font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #e0f2fe 0%, #f0fdf4 25%, #fef3c7 50%, #fce7f3 75%, #e0e7ff 100%);
+      background-size: 400% 400%;
+      animation: bgShift 20s ease infinite;
       min-height: calc((100vh - var(--taskbar-offset)) / var(--zoom-scale));
       overflow-x: hidden;
       color: var(--text-dark);
@@ -76,59 +99,76 @@
       padding: 24px;
     }
 
-    /* Header */
+    /* ===== Header ===== */
     .kiosk-header {
       text-align: center;
-      margin-bottom: 24px;
-      padding: 20px;
-      background: var(--brand-white);
-      border-radius: 16px;
-      border: 1px solid var(--border-light);
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      margin-bottom: 20px;
+      padding: 22px 28px;
+      background: linear-gradient(135deg, #ffffff 0%, #ecfdf5 40%, #eff6ff 100%);
+      border-radius: 20px;
+      border: 1px solid rgba(59,130,246,0.15);
+      box-shadow: 0 4px 20px rgba(59,130,246,0.08), 0 8px 32px rgba(0,0,0,0.04);
     }
 
     .kiosk-title {
       font-size: 2.8rem;
-      font-weight: 700;
-      color: var(--brand-green-dark);
-      margin: 0 0 8px 0;
-      font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      letter-spacing: 0.2px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #047857 0%, #1e40af 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin: 0 0 4px 0;
+      font-family: 'Inter', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      letter-spacing: -0.3px;
     }
-    /* Title row contains logo + stacked title text */
+
     .kiosk-title-row { display: flex; align-items: center; justify-content: center; gap: 18px; }
     .kiosk-title-stack { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-  .kiosk-logo { width: 120px; height: auto; border-radius: 8px; box-shadow: 0 6px 18px rgba(5,150,105,0.08); object-fit: cover; }
-  .kiosk-title span { color: var(--brand-green); }
+
+    .kiosk-logo {
+      width: 110px;
+      height: auto;
+      border-radius: 14px;
+      box-shadow: 0 4px 16px rgba(5,150,105,0.15), 0 2px 6px rgba(0,0,0,0.08);
+      object-fit: cover;
+      border: 3px solid rgba(5,150,105,0.2);
+    }
+
+    .kiosk-title span { color: var(--brand-green); }
 
     .kiosk-subtitle {
-      font-size: 1.25rem;
-      color: var(--brand-black);
-      margin: 8px 0 0 0;
-      font-weight: 600;
-      letter-spacing: 0.2px;
+      font-size: 1.2rem;
+      color: var(--accent-blue);
+      margin: 4px 0 0 0;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
     }
 
     .kiosk-time {
-      font-size: 2rem;
-      color: var(--brand-orange);
-      font-weight: 700;
-      margin-top: 12px;
+      font-size: 2.2rem;
+      background: linear-gradient(135deg, #f97316 0%, #f43f5e 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-weight: 800;
+      margin-top: 10px;
       font-variant-numeric: tabular-nums;
+      letter-spacing: 1px;
     }
     .kiosk-date {
       font-size: 1rem;
-      color: var(--text-muted);
-      margin-top: 6px;
+      color: var(--accent-purple);
+      margin-top: 4px;
       font-weight: 600;
     }
 
-    /* Status Bar */
+    /* ===== Status Bar ===== */
     .status-bar {
       display: flex;
       justify-content: center;
-      gap: 32px;
-      margin-bottom: 24px;
+      gap: 16px;
+      margin-bottom: 20px;
       flex-wrap: wrap;
     }
 
@@ -137,47 +177,49 @@
       align-items: center;
       gap: 8px;
       color: var(--text-muted);
-      font-size: 1rem;
-      background: var(--brand-white);
-      padding: 10px 20px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(8px);
+      padding: 8px 18px;
       border-radius: 50px;
-      border: 1px solid var(--border-light);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      border: 1px solid rgba(99,102,241,0.12);
+      box-shadow: 0 2px 8px rgba(99,102,241,0.06);
     }
 
     .status-dot {
-      width: 12px;
-      height: 12px;
+      width: 10px;
+      height: 10px;
       border-radius: 50%;
       animation: pulse 2s infinite;
     }
 
     .status-dot.connected {
-      background: var(--brand-green);
-      box-shadow: 0 0 12px var(--brand-green);
+      background: #22c55e;
+      box-shadow: 0 0 10px rgba(34,197,94,0.5);
     }
 
     .status-dot.disconnected {
       background: #ef4444;
-      box-shadow: 0 0 12px #ef4444;
+      box-shadow: 0 0 8px #ef4444;
       animation: none;
     }
 
     .status-dot.connecting {
       background: var(--brand-orange);
-      box-shadow: 0 0 12px var(--brand-orange);
+      box-shadow: 0 0 8px var(--brand-orange);
     }
 
     @keyframes pulse {
       0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.7; transform: scale(1.1); }
+      50% { opacity: 0.6; transform: scale(1.2); }
     }
 
-    /* Areas Grid */
+    /* ===== Areas Grid ===== */
     .areas-grid {
       display: grid;
       grid-template-columns: repeat(5, 1fr);
-      gap: 20px;
+      gap: 18px;
       max-width: 1800px;
       margin: 0 auto;
     }
@@ -201,12 +243,11 @@
       html { height: calc((100% - var(--taskbar-offset)) / var(--zoom-scale)); overflow: hidden; }
       body { height: calc((100vh - var(--taskbar-offset)) / var(--zoom-scale)); min-height: auto; overflow: hidden; }
       .kiosk-container { display: flex; flex-direction: column; height: calc((100vh - var(--taskbar-offset)) / var(--zoom-scale)); padding: 12px; padding-bottom: 12px; box-sizing: border-box; }
-      .kiosk-header { padding: 12px; margin-bottom: 12px; }
+      .kiosk-header { padding: 12px; margin-bottom: 10px; }
   .kiosk-title { font-size: 2.4rem; }
   .kiosk-title-stack { display: flex; flex-direction: column; gap: 4px; align-items: center; text-align: center; }
   .kiosk-title { margin: 0; }
-  /* Slightly larger subtitle but tightened spacing under the main title */
-  .kiosk-subtitle { font-size: 1.15rem; margin: 0; color: var(--text-muted); font-weight: 600; }
+  .kiosk-subtitle { font-size: 1.05rem; margin: 0; color: var(--text-muted); font-weight: 600; }
       .kiosk-time { font-size: 1.4rem; margin-top: 8px; }
       .kiosk-date { font-size: 0.95rem; }
 
@@ -254,80 +295,99 @@
       .footer-controls .sound-btn, .footer-controls .control-btn { padding: 8px 12px; }
     }
 
-    /* Area Card */
+    /* ===== Per-card color accents (10 unique vibrant colors) ===== */
+    .area-card:nth-child(10n+1)  { --card-accent: #059669; --card-accent-light: #d1fae5; --card-accent-glow: rgba(5,150,105,0.15); }
+    .area-card:nth-child(10n+2)  { --card-accent: #3b82f6; --card-accent-light: #dbeafe; --card-accent-glow: rgba(59,130,246,0.15); }
+    .area-card:nth-child(10n+3)  { --card-accent: #f97316; --card-accent-light: #ffedd5; --card-accent-glow: rgba(249,115,22,0.15); }
+    .area-card:nth-child(10n+4)  { --card-accent: #8b5cf6; --card-accent-light: #ede9fe; --card-accent-glow: rgba(139,92,246,0.15); }
+    .area-card:nth-child(10n+5)  { --card-accent: #ec4899; --card-accent-light: #fce7f3; --card-accent-glow: rgba(236,72,153,0.15); }
+    .area-card:nth-child(10n+6)  { --card-accent: #0ea5e9; --card-accent-light: #e0f2fe; --card-accent-glow: rgba(14,165,233,0.15); }
+    .area-card:nth-child(10n+7)  { --card-accent: #f59e0b; --card-accent-light: #fef3c7; --card-accent-glow: rgba(245,158,11,0.15); }
+    .area-card:nth-child(10n+8)  { --card-accent: #6366f1; --card-accent-light: #e0e7ff; --card-accent-glow: rgba(99,102,241,0.15); }
+    .area-card:nth-child(10n+9)  { --card-accent: #14b8a6; --card-accent-light: #ccfbf1; --card-accent-glow: rgba(20,184,166,0.15); }
+    .area-card:nth-child(10n+10) { --card-accent: #f43f5e; --card-accent-light: #ffe4e6; --card-accent-glow: rgba(244,63,94,0.15); }
+
+    /* ===== Area Card ===== */
     .area-card {
       background: var(--brand-white);
-      border-radius: 16px;
+      border-radius: 18px;
       padding: 20px;
-      border: 2px solid var(--border-light);
+      border: 1.5px solid var(--border-light);
       transition: all 0.3s ease;
       position: relative;
       overflow: hidden;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+      box-shadow: var(--shadow-card);
     }
 
+    /* Left accent stripe — colored per card */
     .area-card::before {
       content: '';
       position: absolute;
       top: 0;
       left: 0;
-      right: 0;
-      height: 4px;
-      background: var(--border-light);
-      border-radius: 16px 16px 0 0;
+      bottom: 0;
+      width: 5px;
+      background: var(--card-accent, #cbd5e1);
+      border-radius: 18px 0 0 18px;
+      opacity: 0.5;
+      transition: opacity 0.3s ease;
     }
 
     .area-card.has-patients::before {
-      background: linear-gradient(90deg, var(--brand-green), var(--brand-green-light));
+      opacity: 1;
+      background: var(--card-accent);
     }
 
     .area-card.has-patients {
-      border-color: var(--brand-green);
-      box-shadow: 0 4px 20px rgba(16, 185, 129, 0.15);
+      border-color: var(--card-accent);
+      box-shadow: 0 4px 16px var(--card-accent-glow), 0 8px 28px rgba(0,0,0,0.05);
+      background: linear-gradient(135deg, var(--brand-white) 0%, var(--card-accent-light) 100%);
     }
 
     .area-card.highlight {
-      animation: highlightPulse 1s ease;
+      animation: highlightPulse 1.2s ease;
     }
 
     @keyframes highlightPulse {
-      0% { transform: scale(1); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04); }
-      50% { transform: scale(1.02); box-shadow: 0 8px 40px rgba(249, 115, 22, 0.3); border-color: var(--brand-orange); }
-      100% { transform: scale(1); box-shadow: 0 4px 20px rgba(16, 185, 129, 0.15); }
+      0% { transform: scale(1); box-shadow: var(--shadow-card); }
+      30% { transform: scale(1.03); box-shadow: 0 8px 40px var(--card-accent-glow, rgba(249,115,22,0.25)); }
+      100% { transform: scale(1); box-shadow: var(--shadow-card-active); }
     }
 
     .area-header {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
+      padding-left: 8px;
     }
 
     .area-name {
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       font-weight: 700;
       color: var(--brand-black);
       margin: 0;
       line-height: 1.3;
+      letter-spacing: -0.1px;
     }
 
     .area-count {
       background: var(--brand-gray-light);
-      color: var(--text-muted);
-      font-size: 0.9rem;
+      color: var(--text-soft);
+      font-size: 0.85rem;
       font-weight: 700;
       padding: 4px 12px;
       border-radius: 20px;
-      min-width: 36px;
+      min-width: 34px;
       text-align: center;
       border: 1px solid var(--border-light);
     }
 
     .area-count.active {
-      background: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-green-dark) 100%);
+      background: var(--card-accent, var(--brand-green));
       color: var(--brand-white);
-      border-color: var(--brand-green);
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+      border-color: transparent;
+      box-shadow: 0 3px 10px var(--card-accent-glow, rgba(5,150,105,0.25));
     }
 
     .area-content {
@@ -336,55 +396,55 @@
     }
 
     .now-serving-label {
-      font-size: 0.85rem;
-      color: var(--brand-orange);
+      font-size: 0.78rem;
+      color: var(--card-accent, var(--brand-green));
       text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 8px;
-      font-weight: 600;
+      letter-spacing: 1.5px;
+      margin-bottom: 6px;
+      font-weight: 700;
     }
 
     .patient-number {
-      /* Increased default size for better visibility */
       font-size: 5rem;
       font-weight: 800;
-      color: var(--text-muted);
+      color: #d1d5db;
       line-height: 1;
       margin-bottom: 8px;
       font-variant-numeric: tabular-nums;
+      letter-spacing: 2px;
     }
 
-    /* When an area has patients, show the number in black (not green) per request */
+    /* Active patient number */
     .area-card.has-patients .patient-number {
       color: var(--brand-black);
-      /* remove green glow to keep the look clean and high-contrast */
       text-shadow: none;
     }
 
     .patient-number.empty {
-      color: var(--border-light);
+      color: #e2e8f0;
       font-size: 2rem;
+      letter-spacing: 0;
     }
 
     .next-patient {
       font-size: 0.9rem;
       color: var(--text-muted);
-      margin-top: 8px;
-      padding-top: 8px;
-      border-top: 1px solid var(--border-light);
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--border-light);
     }
 
     .next-patient strong {
-      color: var(--brand-orange);
+      color: var(--card-accent, var(--brand-green));
     }
 
-    /* Next list grid (5 rows x 2 columns) */
+    /* ===== Next list grid ===== */
     .next-label {
-      font-size: 0.85rem;
-      color: var(--brand-green);
+      font-size: 0.8rem;
+      color: var(--card-accent, var(--brand-green));
       margin-bottom: 8px;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 1px;
       font-weight: 700;
     }
 
@@ -392,7 +452,7 @@
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       grid-template-rows: repeat(5, auto);
-      gap: 8px;
+      gap: 6px;
       max-width: 260px;
       max-height: 220px;
       overflow: hidden;
@@ -400,38 +460,40 @@
     }
 
     .next-item {
-      background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+      background: var(--card-accent-light, #f8fafc);
       color: var(--brand-black);
-      padding: 8px 10px;
+      padding: 6px 10px;
       border-radius: 8px;
-      font-weight: 800;
-      font-size: 1.05rem; /* slightly larger for readability */
+      font-weight: 700;
+      font-size: 1rem;
       text-align: center;
-      box-shadow: 0 6px 18px rgba(2,6,23,0.06);
+      border: 1px solid rgba(0,0,0,0.05);
       font-variant-numeric: tabular-nums;
     }
 
-    /* Footer */
+    /* ===== Footer ===== */
     .kiosk-footer {
       position: fixed;
       bottom: 0;
       left: 0;
       right: 0;
-      background: var(--brand-white);
-      backdrop-filter: blur(10px);
-      padding: 16px 24px;
+      background: rgba(255,255,255,0.92);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      padding: 14px 24px;
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 24px;
-      border-top: 3px solid var(--brand-green);
-      box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05);
+      gap: 20px;
+      border-top: 3px solid transparent;
+      border-image: linear-gradient(90deg, #059669, #3b82f6, #8b5cf6, #ec4899, #f97316) 1;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
       transition: transform 0.3s ease, opacity 0.3s ease;
     }
 
     .footer-controls {
       display: flex;
-      gap: 12px;
+      gap: 10px;
       align-items: center;
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
@@ -465,53 +527,53 @@
     }
 
     .sound-btn {
-      background: var(--brand-gray-light);
+      background: var(--brand-white);
       color: var(--text-muted);
-      border: 2px solid var(--border-light);
-      padding: 12px 24px;
+      border: 1.5px solid var(--border-light);
+      padding: 10px 20px;
       border-radius: 50px;
-      font-size: 1rem;
+      font-size: 0.92rem;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.3s ease;
+      transition: all 0.25s ease;
     }
 
     .sound-btn:hover {
-      background: var(--brand-white);
-      border-color: var(--brand-orange);
+      background: linear-gradient(135deg, #ecfdf5, #eff6ff);
+      border-color: var(--accent-blue);
       color: var(--brand-black);
-      transform: translateY(-2px);
+      transform: translateY(-1px);
     }
 
     .sound-btn.enabled {
-      background: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-green-dark) 100%);
+      background: linear-gradient(135deg, #059669 0%, #0d9488 100%);
       color: var(--brand-white);
-      border-color: var(--brand-green);
-      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+      border-color: transparent;
+      box-shadow: 0 4px 14px rgba(5,150,105,0.3);
     }
 
     .footer-info {
-      color: var(--text-muted);
-      font-size: 0.95rem;
+      color: var(--text-soft);
+      font-size: 0.88rem;
     }
 
     .footer-info strong {
-      color: var(--brand-orange);
+      color: var(--accent-blue);
     }
 
-    /* Marquee / advertisement - fixed so it stays visible when footer is hidden */
+    /* ===== Marquee ===== */
     .kiosk-marquee {
       position: fixed;
       left: 0;
       right: 0;
-      bottom: 84px; /* sits above footer by default */
+      bottom: 84px;
       z-index: 1150;
       width: 100%;
       overflow: hidden;
       white-space: nowrap;
       box-sizing: border-box;
       padding: 8px 16px;
-      background: linear-gradient(90deg, rgba(16,185,129,0.06), rgba(11,61,145,0.03));
+      background: linear-gradient(90deg, rgba(59,130,246,0.06), rgba(139,92,246,0.04), rgba(236,72,153,0.04));
       border-radius: 8px 8px 0 0;
       margin: 0 auto;
       max-width: 1600px;
@@ -520,7 +582,6 @@
       font-size: 1.25rem;
     }
 
-    /* When footer is hidden, move marquee closer to bottom */
     body.footer-hidden .kiosk-marquee { bottom: 12px; }
 
     .kiosk-marquee .marquee-inner {
@@ -538,7 +599,6 @@
     .kiosk-container {
       padding-bottom: 100px;
     }
-    /* When footer is hidden reduce bottom padding so grid can use more space */
     body.footer-hidden .kiosk-container {
       padding-bottom: 24px;
     }
@@ -553,20 +613,21 @@
     .control-btn {
       background: transparent;
       color: var(--text-muted);
-      border: 2px solid var(--border-light);
+      border: 1.5px solid var(--border-light);
       padding: 10px 18px;
       border-radius: 50px;
-      font-size: 0.95rem;
+      font-size: 0.92rem;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.25s ease;
     }
 
     .control-btn:hover {
-      background: var(--brand-white-off);
-      color: var(--brand-black);
+      background: linear-gradient(135deg, #eff6ff, #faf5ff);
+      color: var(--accent-indigo);
+      border-color: var(--accent-indigo);
     }
-    /* Floating handle shown when footer is hidden so user can restore it */
+
     .footer-handle {
       position: fixed;
       bottom: 12px;
@@ -575,9 +636,9 @@
       display: none;
       padding: 10px 14px;
       border-radius: 999px;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
       background: var(--brand-white);
-      border: 2px solid var(--border-light);
+      border: 1.5px solid var(--border-light);
       color: var(--text-muted);
       cursor: pointer;
     }
@@ -641,7 +702,7 @@
         <img src="<%= typeof inlineLogo !== 'undefined' && inlineLogo ? inlineLogo : '/assets/gezyne-logo.png' %>" alt="Gezyne logo" class="kiosk-logo">
         <div class="kiosk-title-stack">
           <h1 class="kiosk-title">Gezyne Clinical Laboratory</h1>
-          <h2 class="kiosk-subtitle">Patient Queue Display</h2>
+          <h2 class="kiosk-subtitle"><i class="fas fa-plus-circle" style="margin-right:6px;font-size:0.9em;opacity:0.7;"></i>Patient Queue Display</h2>
           <div class="kiosk-time" id="currentTime">--:--:--</div>
           <div class="kiosk-date" id="currentDate">---- -- ----</div>
         </div>
@@ -670,7 +731,7 @@
             <span class="area-count <%= hasPatients ? 'active' : '' %>" id="count-<%= safeId %>"><%= patients.length %></span>
           </div>
           <div class="area-content">
-            <div class="now-serving-label">Now Serving</div>
+            <div class="now-serving-label"><i class="fas fa-user-check" style="margin-right:5px;font-size:0.85em;"></i>Now Serving</div>
             <% if (hasPatients) { %>
             <div class="patient-number" id="patient-<%= safeId %>">
               <%= patients[0].patientCode ? patients[0].patientCode.split('-').pop() : patients[0].testId %>
@@ -700,12 +761,12 @@
   <div class="kiosk-footer">
     <div class="footer-controls">
       <button class="sound-btn" id="soundToggle" onclick="toggleSound()">
-        🔇 Click to Enable Sound
+        <i class="fas fa-volume-mute"></i> Click to Enable Sound
       </button>
-      <button class="sound-btn" id="speechToggle" onclick="toggleSpeech()">🗣️ Enable Speech</button>
+      <button class="sound-btn" id="speechToggle" onclick="toggleSpeech()"><i class="fas fa-microphone-slash"></i> Enable Speech</button>
       <!-- Server TTS is now always enabled; UI for selecting TTS removed -->
-      <button class="control-btn" id="footerToggle" onclick="toggleFooter()">⤢ Hide Panel</button>
-      <button class="control-btn" id="fullscreenToggle" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+      <button class="control-btn" id="footerToggle" onclick="toggleFooter()"><i class="fas fa-chevron-down"></i> Hide Panel</button>
+      <button class="control-btn" id="fullscreenToggle" onclick="toggleFullscreen()"><i class="fas fa-expand"></i> Fullscreen</button>
     </div>
     <div class="footer-info">
       <strong id="messageCount">0</strong> updates received
@@ -713,7 +774,7 @@
   </div>
 
   <!-- Small floating handle to restore the footer when it's hidden -->
-  <button id="footerHandle" class="control-btn footer-handle" onclick="toggleFooter()" aria-label="Show Panel">⬆ Show Panel</button>
+  <button id="footerHandle" class="control-btn footer-handle" onclick="toggleFooter()" aria-label="Show Panel"><i class="fas fa-chevron-up"></i> Show Panel</button>
 
   <!-- Preload audio -->
   <audio id="notificationAudio" preload="auto">
@@ -788,10 +849,10 @@
       try {
         if (!fullscreenToggle) return;
         if (isFullscreenActive()) {
-          fullscreenToggle.textContent = '⤫ Exit Fullscreen';
+          fullscreenToggle.innerHTML = '<i class="fas fa-compress"></i> Exit Fullscreen';
           fullscreenToggle.className = 'control-btn enabled';
         } else {
-          fullscreenToggle.textContent = '⛶ Fullscreen';
+          fullscreenToggle.innerHTML = '<i class="fas fa-expand"></i> Fullscreen';
           fullscreenToggle.className = 'control-btn';
         }
       } catch (e) { /* ignore */ }
@@ -910,13 +971,13 @@
       statusDot.className = 'status-dot ' + status;
       switch(status) {
         case 'connected':
-          connectionStatus.textContent = '🟢 Live Connected';
+          connectionStatus.textContent = 'Live Connected';
           break;
         case 'disconnected':
-          connectionStatus.textContent = '🔴 Disconnected - Reconnecting...';
+          connectionStatus.textContent = 'Disconnected - Reconnecting...';
           break;
         case 'connecting':
-          connectionStatus.textContent = '🟡 Connecting...';
+          connectionStatus.textContent = 'Connecting...';
           break;
       }
     }
@@ -934,11 +995,11 @@
       if (hidden) {
         kioskFooter.classList.add('hidden');
         document.body.classList.add('footer-hidden');
-        if (footerToggle) footerToggle.innerHTML = '⬆ Show Panel';
+        if (footerToggle) footerToggle.innerHTML = '<i class="fas fa-chevron-up"></i> Show Panel';
       } else {
         kioskFooter.classList.remove('hidden');
         document.body.classList.remove('footer-hidden');
-        if (footerToggle) footerToggle.innerHTML = '⤢ Hide Panel';
+        if (footerToggle) footerToggle.innerHTML = '<i class="fas fa-chevron-down"></i> Hide Panel';
       }
     }
 
@@ -1175,7 +1236,7 @@
       try {
         speechEnabled = !speechEnabled;
         if (speechToggle) {
-          speechToggle.textContent = speechEnabled ? '🗣️ Speech Enabled' : '🗣️ Enable Speech';
+          speechToggle.innerHTML = speechEnabled ? '<i class="fas fa-microphone"></i> Speech Enabled' : '<i class="fas fa-microphone-slash"></i> Enable Speech';
           speechToggle.className = speechEnabled ? 'sound-btn enabled' : 'sound-btn';
         }
         try { localStorage.setItem(SPEECH_KEY, speechEnabled ? '1' : '0'); } catch (e) {}
@@ -1197,7 +1258,7 @@
         const v = localStorage.getItem(SPEECH_KEY);
         if (v === '1') {
           speechEnabled = true;
-          if (speechToggle) { speechToggle.textContent = '🗣️ Speech Enabled'; speechToggle.className = 'sound-btn enabled'; }
+          if (speechToggle) { speechToggle.innerHTML = '<i class="fas fa-microphone"></i> Speech Enabled'; speechToggle.className = 'sound-btn enabled'; }
         }
         // restore persisted speech rate if present
         try {
@@ -1235,7 +1296,7 @@
         const audioReady = await initAudio();
         soundEnabled = true;
         soundToggle.className = 'sound-btn enabled';
-        soundToggle.innerHTML = '🔔 Sound Enabled';
+        soundToggle.innerHTML = '<i class="fas fa-volume-up"></i> Sound Enabled';
         
         // Play test sound
         setTimeout(() => playNotificationSound(), 100);
@@ -1244,7 +1305,7 @@
       } else {
         soundEnabled = false;
         soundToggle.className = 'sound-btn';
-        soundToggle.innerHTML = '🔇 Click to Enable Sound';
+        soundToggle.innerHTML = '<i class="fas fa-volume-mute"></i> Click to Enable Sound';
         console.log('[Kiosk] Sound disabled');
       }
     };
@@ -1419,8 +1480,8 @@
           try {
             const payload = JSON.parse(event.data);
             
-            if (payload.init) {
-              console.log('[Kiosk] Initial SSE handshake');
+            if (payload.init || payload.offline || payload.type === 'connected' || payload.keepalive) {
+              console.log('[Kiosk] SSE handshake/offline message ignored');
               return;
             }
 

@@ -22,6 +22,24 @@ router.post('/login', requireGuest, async (req, res) => {
       return res.redirect('/');
     }
 
+    // If there are no users in the system yet, allow the first login
+    // attempt to seed an admin account using the supplied credentials. This
+    // helps recover from a wiped database or first-run after install.
+    const totalUsers = await User.countDocuments();
+    if (totalUsers === 0) {
+      console.log('[auth] no users found, creating initial admin', email);
+      const admin = new User({
+        name: 'Admin User',
+        email: email.toLowerCase(),
+        password,
+        role: 'Admin',
+        status: 'Active'
+      });
+      await admin.save();
+      // continue with this newly created user
+      req.flash('success_msg', 'Initial administrator account created.');
+    }
+
     // Find user
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
@@ -69,7 +87,7 @@ router.post('/login', requireGuest, async (req, res) => {
 
     // If user role is allowed for dashboard, send them there.
     if (allowedDashboardRoles.has(sessionUser.role)) {
-      // avoid forcing fullscreen on login
+      // explicit fullscreen query removed so login no longer auto‑maximises
       return res.redirect('/dashboard');
     }
 

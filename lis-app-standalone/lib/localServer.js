@@ -249,11 +249,12 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive',
     });
-    res.write('data: {"type":"connected","offline":true}\n\n');
-    // Keep connection open but don't send events
+    res.write(': sse-connected-offline\n\n');
+    res.write('data: {"init":true,"offline":true}\n\n');
+    // Keep connection open with periodic heartbeat comment
     const interval = setInterval(() => {
       try { res.write(': keepalive\n\n'); } catch (e) { clearInterval(interval); }
-    }, 30000);
+    }, 25000);
     req.on('close', () => clearInterval(interval));
   });
 

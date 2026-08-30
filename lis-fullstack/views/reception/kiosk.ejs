@@ -1480,8 +1480,8 @@
           try {
             const payload = JSON.parse(event.data);
             
-            if (payload.init) {
-              console.log('[Kiosk] Initial SSE handshake');
+            if (payload.init || payload.offline || payload.type === 'connected' || payload.keepalive) {
+              console.log('[Kiosk] SSE handshake/offline message ignored');
               return;
             }
 

@@ -417,13 +417,18 @@ router.post('/thermal-print', requireAuth, canAccessPatient, (req, res) => {
   try {
     const { spawnSync } = require('child_process');
     const pathMod = require('path');
+    const fsMod = require('fs');
     const scriptPath = pathMod.join(__dirname, '..', 'scripts', 'thermal_test.js');
+    if (!fsMod.existsSync(scriptPath)) {
+      return res.status(404).json({ success: false, error: 'thermal_test.js not found' });
+    }
 
     // Build args: call Node with the script and --receipt
     const args = [scriptPath, '--receipt'];
     if (req.body && req.body.printer) args.push('--printer', req.body.printer);
 
-    const proc = spawnSync(process.execPath, args, { cwd: pathMod.join(__dirname, '..'), encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 });
+    const spawnEnv = Object.assign({}, process.env, { ELECTRON_RUN_AS_NODE: '1' });
+    const proc = spawnSync(process.execPath, args, { cwd: pathMod.join(__dirname, '..'), encoding: 'utf8', maxBuffer: 10 * 1024 * 1024, env: spawnEnv });
     // append log
     try {
       const entry = {

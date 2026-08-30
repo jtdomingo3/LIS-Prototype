@@ -3,87 +3,123 @@
 <head>
   <meta charset="UTF-8">
   <title>Print Preview — Gezyne LIS</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; background: #2a2a2a; font-family: 'Segoe UI', Tahoma, sans-serif; }
+    html, body { height: 100%; background: #0f172a; font-family: 'Inter', -apple-system, sans-serif; color: #f1f5f9; }
 
     /* ── toolbar ──────────────────────────────────── */
     .toolbar {
       position: fixed;
       top: 0; left: 0; right: 0;
-      height: 52px;
-      background: linear-gradient(90deg, #1a1a2e 0%, #16213e 100%);
+      height: 56px;
+      background: rgba(30, 41, 59, 0.92);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
       display: flex;
       align-items: center;
-      padding: 0 16px;
-      gap: 10px;
+      padding: 0 20px;
+      gap: 12px;
       z-index: 100;
-      box-shadow: 0 2px 8px rgba(0,0,0,.4);
-      color: #e2e8f0;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
     }
     .toolbar .title {
-      font-weight: 600;
-      font-size: 15px;
+      font-weight: 700;
+      font-size: 14px;
       margin-right: auto;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
+      color: #ffffff;
+    }
+    .zoom-controls {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(15, 23, 42, 0.6);
+      padding: 4px 8px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 12px;
+      color: #94a3b8;
     }
     .toolbar button {
-      padding: 8px 20px;
+      padding: 8px 16px;
       border: none;
-      border-radius: 6px;
+      border-radius: 8px;
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
       transition: all .2s;
     }
+    .toolbar button:hover { transform: translateY(-1px); }
     .btn-print {
-      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
       color: #fff;
-      box-shadow: 0 2px 8px rgba(37,99,235,.35);
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.35);
     }
-    .btn-print:hover { background: linear-gradient(135deg, #60a5fa, #3b82f6); }
+    .btn-print:hover { background: linear-gradient(135deg, #3b82f6, #2563eb); }
     .btn-save {
-      background: rgba(255,255,255,.1);
+      background: rgba(255, 255, 255, 0.1);
       color: #cbd5e1;
-      border: 1px solid rgba(255,255,255,.15);
+      border: 1px solid rgba(255, 255, 255, 0.15);
     }
-    .btn-save:hover { background: rgba(255,255,255,.2); color: #fff; }
+    .btn-save:hover { background: rgba(255, 255, 255, 0.2); color: #fff; }
     .btn-close {
-      background: rgba(239,68,68,.15);
+      background: rgba(239, 68, 68, 0.15);
       color: #f87171;
-      border: 1px solid rgba(239,68,68,.2);
+      border: 1px solid rgba(239, 68, 68, 0.2);
     }
-    .btn-close:hover { background: rgba(239,68,68,.3); }
+    .btn-close:hover { background: rgba(239, 68, 68, 0.3); }
+    .btn-zoom {
+      background: transparent;
+      border: none;
+      color: #cbd5e1;
+      padding: 4px 8px;
+      font-size: 12px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn-zoom:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
 
     /* ── pages container (scrollable) ─────────────── */
     .pages {
       position: fixed;
-      top: 52px; left: 0; right: 0; bottom: 0;
+      top: 56px; left: 0; right: 0; bottom: 0;
       overflow-y: auto;
-      padding: 24px;
+      padding: 32px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 16px;
+      gap: 24px;
+      background: #090d16;
     }
     .pages canvas {
       display: block;
       background: #fff;
-      box-shadow: 0 2px 12px rgba(0,0,0,.5);
-      max-width: 90%;
+      border-radius: 4px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+      max-width: 95%;
+      transition: transform 0.2s ease;
     }
     .loading {
       color: #94a3b8;
       text-align: center;
-      margin-top: 60px;
-      font-size: 16px;
+      margin-top: 80px;
+      font-size: 15px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
     }
     .error {
       color: #f87171;
       text-align: center;
-      margin-top: 60px;
+      margin-top: 80px;
       font-size: 14px;
     }
 
@@ -101,6 +137,7 @@
         gap: 0;
         overflow: visible;
         display: block;
+        background: #fff;
       }
       .pages canvas {
         display: block;
@@ -121,27 +158,56 @@
   <!-- Toolbar -->
   <div class="toolbar">
     <div class="title">
-      <span>📄 Print Preview</span>
+      <span>📄 Laboratory Report Preview</span>
     </div>
-    <button class="btn-save" onclick="savePdf()">💾 Save PDF</button>
-    <button class="btn-print" onclick="printDoc()">🖨️ Print</button>
+
+    <div class="zoom-controls">
+      <button class="btn-zoom" onclick="changeZoom(-0.15)">−</button>
+      <span id="zoomLabel">100%</span>
+      <button class="btn-zoom" onclick="changeZoom(0.15)">+</button>
+      <button class="btn-zoom" onclick="resetZoom()">Reset</button>
+    </div>
+
+    <button class="btn-save" onclick="savePdf()"><span>💾</span> Save PDF</button>
+    <button class="btn-print" onclick="printDoc()"><span>🖨️</span> Print Report</button>
     <button class="btn-close" onclick="window.close()">✕ Close</button>
   </div>
 
   <!-- Rendered PDF pages -->
   <div class="pages" id="pages">
-    <div class="loading" id="loading">Rendering preview…</div>
+    <div class="loading" id="loading">
+      <span>Rendering high-resolution print preview…</span>
+    </div>
   </div>
 
-  <!-- pdf.js — renders PDF pages as canvas elements (HTML, not a plugin) -->
+  <!-- pdf.js -->
   <script src="../node_modules/pdfjs-dist/build/pdf.min.js"></script>
   <script>
-    // Point to the worker file so pdf.js can parse PDFs efficiently
     pdfjsLib.GlobalWorkerOptions.workerSrc =
       '../node_modules/pdfjs-dist/build/pdf.worker.min.js';
 
     const params  = new URLSearchParams(location.search);
     const pdfPath = params.get('pdf');
+    let currentZoom = 1.0;
+
+    function updateZoomDisplay() {
+      document.getElementById('zoomLabel').textContent = Math.round(currentZoom * 100) + '%';
+      const canvases = document.querySelectorAll('#pages canvas');
+      canvases.forEach(c => {
+        c.style.transform = `scale(${currentZoom})`;
+        c.style.transformOrigin = 'top center';
+      });
+    }
+
+    function changeZoom(delta) {
+      currentZoom = Math.max(0.5, Math.min(2.5, currentZoom + delta));
+      updateZoomDisplay();
+    }
+
+    function resetZoom() {
+      currentZoom = 1.0;
+      updateZoomDisplay();
+    }
 
     /* ── Render all PDF pages to <canvas> elements ─────────── */
     (async function renderPreview() {
@@ -149,15 +215,14 @@
       const loadingEl = document.getElementById('loading');
 
       if (!pdfPath || !window.lisAppPrint) {
-        loadingEl.textContent = 'No PDF data available.';
+        loadingEl.textContent = 'No PDF report data available.';
         loadingEl.className   = 'error';
         return;
       }
 
       try {
-        // Read the PDF binary via IPC (preload is sandboxed, no direct fs access)
         const pdfData = await window.lisAppPrint.readPdfFile(pdfPath);
-        if (!pdfData) throw new Error('Could not read PDF file');
+        if (!pdfData) throw new Error('Could not read report file from temporary storage');
 
         const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
         loadingEl.remove();
@@ -170,8 +235,6 @@
           const canvas   = document.createElement('canvas');
           canvas.width   = viewport.width;
           canvas.height  = viewport.height;
-
-          // Keep aspect ratio via CSS
           canvas.style.aspectRatio = viewport.width + ' / ' + viewport.height;
 
           container.appendChild(canvas);
@@ -183,29 +246,23 @@
         }
       } catch (err) {
         console.error('PDF render error:', err);
-        loadingEl.textContent = 'Failed to render preview: ' + err.message;
+        loadingEl.textContent = 'Failed to render report preview: ' + err.message;
         loadingEl.className   = 'error';
       }
     })();
 
-    /* ── Toolbar actions ──────────────────────────────────────── */
-
-    /** Print — calls the native print dialog on this HTML page.
-     *  Because the content is pure HTML/canvas (not a PDF plugin),
-     *  Chromium can generate a proper print preview. */
     function printDoc() {
       window.print();
     }
 
-    /** Save a copy of the PDF to a user-chosen location */
     async function savePdf() {
       if (window.lisAppPrint && pdfPath) {
         const result = await window.lisAppPrint.savePdf(pdfPath);
         if (result && result.success) {
           const btn  = document.querySelector('.btn-save');
-          const orig = btn.textContent;
-          btn.textContent = '✓ Saved!';
-          setTimeout(() => { btn.textContent = orig; }, 2000);
+          const orig = btn.innerHTML;
+          btn.innerHTML = '<span>✓</span> Saved!';
+          setTimeout(() => { btn.innerHTML = orig; }, 2000);
         }
       }
     }

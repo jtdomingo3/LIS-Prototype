@@ -26,6 +26,10 @@ class Test {
     this.updatedAt = data.updatedAt || new Date();
     // Preserve requestedTests (array of { key,label,amount,lab }) when provided
     this.requestedTests = Array.isArray(data.requestedTests) ? data.requestedTests : (data.requestedTests || []);
+    // Flag indicating test results have been released (cleared from Releasing of Result queue)
+    this.released = !!data.released;
+    // Flag indicating test results are stashed (patient unavailable, held at reception)
+    this.stashed = !!data.stashed;
     // Flag indicating all requested tests are awaiting-only (no routing)
     this.awaitingOnly = !!data.awaitingOnly;
     // statusHistory: array of { from, to, user, area, timestamp }
@@ -115,6 +119,11 @@ class Test {
 
   // Static methods
   static async findById(id) {
+    if (!id) return null;
+    if (global.db && typeof global.db.getTestById === 'function') {
+      const test = global.db.getTestById(id);
+      return test ? new Test(test) : null;
+    }
     const tests = global.db.getTests();
     const test = tests.find(t => t.id === id);
     return test ? new Test(test) : null;

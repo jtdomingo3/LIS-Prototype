@@ -14,8 +14,10 @@ const ENV_FILE = path.join(__dirname, '..', '.env');
 
 function parseEnvContent(content) {
   const lines = String(content || '').split(/\r?\n/);
+  // support optional spaces around the '=' so entries such as
+  // "DISABLE_REPORT_GENERATION =1" are treated correctly.
   return lines.map((line) => {
-    const m = line.match(/^([^#=\s]+)=(.*)$/);
+    const m = line.match(/^([^#=\s]+)\s*=\s*(.*)$/);
     if (m) {
       const key = m[1].trim();
       let value = m[2] || '';
@@ -73,27 +75,32 @@ function writeEnvFile(updatedValues) {
 }
 
 function performBackup(destDir) {
-  const DATA_FILE = dataFile('data.json');
   const dir = destDir && String(destDir).length ? destDir : DEFAULT_BACKUP_DIR;
   fs.mkdirSync(dir, { recursive: true });
   const ts = new Date().toISOString().replace(/[:.]/g, '-');
   const dest = path.join(dir, `backup_${ts}.json`);
-  fs.copyFileSync(DATA_FILE, dest);
+  const data = global.db ? global.db.read() : {};
+  fs.writeFileSync(dest, JSON.stringify(data, null, 2), 'utf8');
+
+  // Also backup raw SQLite file if it exists
+  try {
+    const dbFile = dataFile('lis-data.db');
+    if (fs.existsSync(dbFile)) {
+      const dbDest = path.join(dir, `backup_db_${ts}.db`);
+      fs.copyFileSync(dbFile, dbDest);
+    }
+  } catch (e) {}
+
   return dest;
 }
 
 function performUserBackup(destDir) {
-  const USERS_FILE = dataFile('data-users.json');
   const dir = destDir && String(destDir).length ? destDir : DEFAULT_BACKUP_DIR;
   fs.mkdirSync(dir, { recursive: true });
   const ts = new Date().toISOString().replace(/[:.]/g, '-');
   const dest = path.join(dir, `backup_users_${ts}.json`);
-  if (fs.existsSync(USERS_FILE)) {
-    fs.copyFileSync(USERS_FILE, dest);
-  } else {
-    // write an empty array backup if file missing
-    fs.writeFileSync(dest, JSON.stringify([], null, 2), 'utf8');
-  }
+  const users = global.db ? global.db.getUsers() : [];
+  fs.writeFileSync(dest, JSON.stringify(users, null, 2), 'utf8');
   return dest;
 }
 
@@ -187,20 +194,32 @@ router.post('/', requireAuth, canManageUsers, (req, res) => {
       }
     };
 
-    // Manage interval timer (store id in app.locals)
-    if (req.app.locals.backupIntervalId) {
-      clearInterval(req.app.locals.backupIntervalId);
-      req.app.locals.backupIntervalId = null;
+    // Manage timeout timer (store id in app.locals)
+    if (req.app.locals.backupTimeoutId) {
+      clearTimeout(req.app.locals.backupTimeoutId);
+      req.app.locals.backupTimeoutId = null;
     }
     if (autoBackup) {
-      const ms = frequencyToMs(frequency);
-      req.app.locals.backupIntervalId = setInterval(() => {
-        try {
-          performBackup(backupPath);
-        } catch (e) {
-          console.error('Auto-backup failed:', e);
+      function scheduleNextBackup() {
+        const now = new Date();
+        let target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 15, 0, 0, 0);
+        if (now.getTime() >= target.getTime()) {
+          target.setDate(target.getDate() + 1);
         }
-      }, ms);
+        const msUntilNext = target.getTime() - now.getTime();
+        req.app.locals.backupTimeoutId = setTimeout(() => {
+          try {
+            performBackup(backupPath);
+            performUserBackup(backupPath);
+            console.log(`[backup] Auto-backup completed successfully at ${new Date().toLocaleString()}`);
+          } catch (e) {
+            console.error('[backup] Auto-backup failed:', e);
+          }
+          scheduleNextBackup();
+        }, msUntilNext);
+        console.log(`[backup] Next auto-backup scheduled for ${target.toLocaleString()}`);
+      }
+      scheduleNextBackup();
     }
 
     req.flash('success_msg', 'Settings updated');
@@ -272,81 +291,6 @@ router.post('/backup-users', requireAuth, canManageUsers, (req, res) => {
   return res.redirect('/settings');
 });
 
-// Drop all offline data and fully replace from the real server (destructive)
-router.post('/drop-offline-data', requireAuth, canManageUsers, async (req, res) => {
-  try {
-    // Backup current data first
-    performBackup();
-
-    const cfg = req.app && req.app.locals && req.app.locals.config;
-    const ds = req.app && req.app.locals && req.app.locals.dataStore;
-    const oq = req.app && req.app.locals && req.app.locals.operationQueue;
-    if (!cfg || !ds) {
-      req.flash('error_msg', 'Missing local configuration or datastore — cannot perform force sync');
-      return res.redirect('/settings');
-    }
-
-    const { SyncEngine } = require('../lib/syncEngine');
-    const engine = new SyncEngine(oq, cfg, ds);
-
-    // Try to authenticate then fetch server export (same candidate URLs as SyncEngine.fullSync)
-    try {
-      await engine._ensureServerAuth();
-    } catch (e) { /* ignore auth errors - fetch may still work via hash headers */ }
-
-    const { net } = require('electron');
-    const base = cfg.SERVER_URL ? cfg.SERVER_URL.replace(/\/$/, '') : null;
-    if (!base) {
-      req.flash('error_msg', 'Server URL not configured — cannot fetch authoritative data');
-      return res.redirect('/settings');
-    }
-    const candidateUrls = [base + '/export/data.json', base + '/data.json'];
-    let fetched = null;
-    let lastErr = null;
-    for (const url of candidateUrls) {
-      try {
-        fetched = await engine._fetchJson(net, url);
-        if (fetched) break;
-      } catch (e) { lastErr = e; }
-    }
-
-    if (!fetched || typeof fetched !== 'object') {
-      req.flash('error_msg', `Failed to fetch server data: ${lastErr && lastErr.message ? lastErr.message : 'no-data'}`);
-      return res.redirect('/settings');
-    }
-
-    // Replace local DataStore content completely with server data (destructive)
-    try {
-      // Overwrite known collections
-      if (Array.isArray(fetched.users)) ds.setCollection('users', fetched.users);
-      if (Array.isArray(fetched.patients)) ds.setCollection('patients', fetched.patients);
-      if (Array.isArray(fetched.tests)) ds.setCollection('tests', fetched.tests);
-      if (Array.isArray(fetched.templates)) ds.setCollection('templates', fetched.templates);
-      if (fetched.counters && typeof fetched.counters === 'object') {
-        ds._data.counters = fetched.counters;
-      }
-      // persist
-      try { ds._save(); } catch (e) { /* ignore save errors */ }
-
-      // Clear any pending offline operations: they are now invalid against server state
-      try { if (oq && typeof oq.clearAll === 'function') oq.clearAll(); } catch (e) { console.error('Failed to clear operation queue after overwrite', e); }
-
-      // update lastFullSync meta
-      try { ds.setMeta('lastFullSync', new Date().toISOString()); } catch (e) {}
-
-      req.flash('success_msg', 'Local offline data replaced with server data. Pending operations cleared.');
-    } catch (e) {
-      console.error('Failed to overwrite DataStore with fetched server data', e);
-      req.flash('error_msg', `Failed to apply server data: ${e && e.message ? e.message : String(e)}`);
-    }
-
-  } catch (e) {
-    console.error('drop-offline-data handler error:', e);
-    req.flash('error_msg', `Failed to drop offline data: ${e && e.message ? e.message : String(e)}`);
-  }
-  return res.redirect('/settings');
-});
-
 // Restore endpoint (upload JSON file)
 router.post('/restore', requireAuth, canManageUsers, upload.single('backupFile'), (req, res) => {
   try {
@@ -356,10 +300,9 @@ router.post('/restore', requireAuth, canManageUsers, upload.single('backupFile')
     }
     // Validate JSON first
     const parsed = JSON.parse(req.file.buffer.toString('utf8'));
-    const DATA_FILE = dataFile('data.json');
     // backup current before overwrite
     performBackup();
-    fs.writeFileSync(DATA_FILE, JSON.stringify(parsed, null, 2), 'utf8');
+    global.db.write(parsed);
     req.flash('success_msg', 'Restore completed (previous data backed up)');
   } catch (e) {
     console.error('Restore error:', e);
@@ -376,11 +319,9 @@ router.post('/restore-users', requireAuth, canManageUsers, upload.single('backup
       return res.redirect('/settings');
     }
     const parsed = JSON.parse(req.file.buffer.toString('utf8'));
-    const USERS_FILE = dataFile('data-users.json');
     // backup current before overwrite
     performUserBackup();
-    // normalize to array/object as originally stored
-    fs.writeFileSync(USERS_FILE, JSON.stringify(parsed, null, 2), 'utf8');
+    global.db.saveUsers(Array.isArray(parsed) ? parsed : [parsed]);
     req.flash('success_msg', 'User restore completed (previous user data backed up)');
   } catch (e) {
     console.error('User restore error:', e);
@@ -389,27 +330,20 @@ router.post('/restore-users', requireAuth, canManageUsers, upload.single('backup
   return res.redirect('/settings');
 });
 
-// Clear data endpoint (backs up current data, preserves Admin users)
+// Clear data endpoint (backs up current data, resets patients, tests, templates)
 router.post('/clear', requireAuth, canManageUsers, (req, res) => {
   try {
-    const DATA_FILE = dataFile('data.json');
-    const raw = fs.readFileSync(DATA_FILE, 'utf8');
-    const parsed = JSON.parse(raw || '{}');
     // backup current before clearing
     performBackup();
-
-    const newData = {};
-    Object.keys(parsed).forEach((k) => {
-      if (k === 'users') {
-        newData.users = Array.isArray(parsed.users) ? parsed.users.filter(u => u && u.role === 'Admin') : [];
-      } else if (Array.isArray(parsed[k])) {
-        newData[k] = [];
-      } else {
-        newData[k] = {};
-      }
+    const current = global.db.read();
+    global.db.write({
+      patients: [],
+      tests: [],
+      templates: [],
+      counters: {},
+      settings: current.settings || {}
     });
-    fs.writeFileSync(DATA_FILE, JSON.stringify(newData, null, 2), 'utf8');
-    req.flash('success_msg', 'Data cleared (admin users preserved). Backup created.');
+    req.flash('success_msg', 'Data cleared. Backup created.');
   } catch (e) {
     console.error('Clear data error:', e);
     req.flash('error_msg', `Clear data failed: ${e && e.message ? e.message : String(e)}`);
@@ -420,61 +354,14 @@ router.post('/clear', requireAuth, canManageUsers, (req, res) => {
 // Clear user data endpoint (backs up current users, preserves Admin users)
 router.post('/clear-users', requireAuth, canManageUsers, (req, res) => {
   try {
-    const USERS_FILE = path.join(__dirname, '..', 'data-users.json');
-    const raw = fs.existsSync(USERS_FILE) ? fs.readFileSync(USERS_FILE, 'utf8') : '[]';
-    let parsed;
-    try { parsed = JSON.parse(raw || '[]'); } catch (e) { parsed = []; }
     // backup current before clearing
     performUserBackup();
-
-    const filtered = Array.isArray(parsed) ? parsed.filter(u => u && u.role === 'Admin') : [];
-    fs.writeFileSync(USERS_FILE, JSON.stringify(filtered, null, 2), 'utf8');
+    const users = (global.db.getUsers() || []).filter(u => u && u.role === 'Admin');
+    global.db.saveUsers(users);
     req.flash('success_msg', 'User data cleared (admin users preserved). Backup created.');
   } catch (e) {
     console.error('Clear user data error:', e);
     req.flash('error_msg', `Clear user data failed: ${e && e.message ? e.message : String(e)}`);
-  }
-  return res.redirect('/settings');
-});
-
-// Discard local changes and fully sync from the real server
-router.post('/discard-local-changes', requireAuth, canManageUsers, async (req, res) => {
-  try {
-    // Backup current data first
-    performBackup();
-
-    // Clear pending operation queue (if available)
-    try {
-      const oq = req.app && req.app.locals && req.app.locals.operationQueue;
-      if (oq && typeof oq.clearAll === 'function') {
-        oq.clearAll();
-      }
-    } catch (e) {
-      console.error('Failed to clear operation queue:', e && e.message);
-    }
-
-    // Attempt a full sync from the server into the local DataStore (best-effort)
-    try {
-      const ds = req.app && req.app.locals && req.app.locals.dataStore;
-      const cfg = req.app && req.app.locals && req.app.locals.config;
-      const oq = req.app && req.app.locals && req.app.locals.operationQueue;
-      if (!ds || !cfg) throw new Error('no-datastore-or-config');
-      const { SyncEngine } = require('../lib/syncEngine');
-      const engine = new SyncEngine(oq, cfg, ds);
-      const result = await engine.fullSync();
-      if (!result || !result.success) {
-        const reason = result && result.reason ? result.reason : 'unknown';
-        req.flash('error_msg', `Full sync failed: ${reason}`);
-        return res.redirect('/settings');
-      }
-      req.flash('success_msg', `Discarded local changes and synced ${result.imported || 0} records from server`);
-    } catch (e) {
-      console.error('Full sync error:', e && e.message);
-      req.flash('error_msg', `Discard failed: ${e && e.message ? e.message : String(e)}`);
-    }
-  } catch (e) {
-    console.error('Discard-local-changes handler error:', e && e.message);
-    req.flash('error_msg', `Discard failed: ${e && e.message ? e.message : String(e)}`);
   }
   return res.redirect('/settings');
 });

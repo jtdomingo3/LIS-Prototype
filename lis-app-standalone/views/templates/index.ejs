@@ -25,10 +25,8 @@
 </style>
 
 <div class="card">
-  <h3><i class="fa fa-file-alt"></i> Report Templates</h3>
-
   <div class="flex-between mb-20">
-    <a href="/templates/new" class="button btn-primary"><i class="fa fa-plus-circle"></i> Create New Template</a>
+    <a href="/templates/new" class="button btn-primary no-guard"><i class="fa fa-plus-circle"></i> Create New Template</a>
   </div>
 
   <table class="templates-table">
@@ -70,9 +68,7 @@
             </td>
             <td class="action-buttons">
               <a href="/templates/<%= t.id %>" class="button btn-success btn-small"><i class="fa fa-eye"></i> View</a>
-              <% if (!t.isStatic) { %>
-                <a href="/templates/<%= t.id %>/edit" class="button btn-orange btn-small"><i class="fa fa-edit"></i> Edit</a>
-              <% } %>
+              <a href="/templates/<%= t.id %>/edit" class="button btn-orange btn-small"><i class="fa fa-edit"></i> Edit</a>
             </td>
           </tr>
         <% }) %>

@@ -1,11 +1,10 @@
 /**
  * preload.js — Context bridge between the Electron main process and the
- *              renderer (web page).  Exposes `window.lisApp` with safe
- *              IPC wrappers the injected status-bar script can use.
+ *              renderer (web page). Exposes `window.lisApp` with safe
+ *              IPC wrappers the injected status-bar and UI components use.
  */
 const { contextBridge, ipcRenderer } = require('electron');
 
-// Diagnostic flag/log so pages can detect whether preload actually ran.
 try {
   console.log('[preload] preload.js running (contextBridge will expose APIs)');
   try { globalThis.__preloadLoaded = true; } catch (e) { /* ignore */ }
@@ -15,6 +14,7 @@ contextBridge.exposeInMainWorld('lisApp', {
   /* ── queries ─────────────────────────────────────────────────── */
   getStatus:        ()      => ipcRenderer.invoke('get-status'),
   getQueue:         ()      => ipcRenderer.invoke('get-queue'),
+  getDataStoreInfo: ()      => ipcRenderer.invoke('datastore-info'),
 
   /* ── actions ─────────────────────────────────────────────────── */
   queueOperation:   (op)    => ipcRenderer.invoke('queue-operation', op),
@@ -24,16 +24,17 @@ contextBridge.exposeInMainWorld('lisApp', {
   goOnline:         ()      => ipcRenderer.invoke('go-online'),
   printPreview:     (url)   => ipcRenderer.invoke('print-preview', { url }),
 
-  /* ── settings API (added) ───────────────────────────────────── */
+  /* ── settings & database management ─────────────────────────── */
   getSettings:      ()      => ipcRenderer.invoke('get-settings'),
   setSettings:      (s)     => ipcRenderer.invoke('set-settings', s),
   openSettings:     ()      => ipcRenderer.invoke('open-settings'),
   fullSync:         ()      => ipcRenderer.invoke('full-sync'),
-  getDataStoreInfo: ()      => ipcRenderer.invoke('datastore-info'),
   saveCredentials:  (email, password) => ipcRenderer.invoke('save-credentials', { email, password }),
-  // local data management
-  discardLocalChanges: () => ipcRenderer.invoke('discard-local-changes'),
-  dropOfflineData:     () => ipcRenderer.invoke('drop-offline-data'),
+  discardLocalChanges: ()   => ipcRenderer.invoke('discard-local-changes'),
+  dropOfflineData:     ()   => ipcRenderer.invoke('drop-offline-data'),
+  performBackup:       ()   => ipcRenderer.invoke('perform-backup'),
+  deleteQueueItem:     (id) => ipcRenderer.invoke('delete-queue-item', id),
+  clearQueue:          ()   => ipcRenderer.invoke('clear-queue'),
 
   /* ── event listeners ─────────────────────────────────────────── */
   onNetworkStatus: (callback) => {
@@ -48,4 +49,7 @@ contextBridge.exposeInMainWorld('lisApp', {
   onFullSyncEnd: (callback) => {
     ipcRenderer.on('full-sync-end', (_event, data) => callback(data));
   },
+  onDropOfflineComplete: (callback) => {
+    ipcRenderer.on('drop-offline-complete', (_event, data) => callback(data));
+  }
 });

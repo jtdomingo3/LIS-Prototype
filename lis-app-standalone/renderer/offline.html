@@ -3,228 +3,337 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gezyne LIS — Offline</title>
+  <title>Gezyne LIS — Offline Mode</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       display: flex;
       align-items: center;
       justify-content: center;
       min-height: 100vh;
-      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
-      color: #e2e8f0;
+      background: radial-gradient(circle at 50% 20%, #1e293b 0%, #0f172a 60%, #090d16 100%);
+      color: #f1f5f9;
+      padding: 24px;
+      overflow-x: hidden;
     }
 
     .container {
+      width: 100%;
+      max-width: 580px;
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 24px;
+      padding: 40px 36px;
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 4px 20px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       text-align: center;
-      padding: 48px 32px;
-      max-width: 520px;
+      position: relative;
     }
 
-    .icon-ring {
-      width: 96px; height: 96px;
-      margin: 0 auto 28px;
-      border-radius: 50%;
-      background: rgba(239, 68, 68, 0.15);
+    .radar-box {
+      width: 100px;
+      height: 100px;
+      margin: 0 auto 24px;
+      position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
-      animation: pulse-ring 2s ease-in-out infinite;
     }
-    .icon-ring .icon { font-size: 48px; }
 
-    @keyframes pulse-ring {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,.3); }
-      50%      { box-shadow: 0 0 0 20px rgba(239,68,68,0); }
+    .radar-circle {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      animation: radar-pulse 2.4s ease-out infinite;
+    }
+
+    .radar-circle:nth-child(2) {
+      animation-delay: 0.8s;
+    }
+
+    .radar-icon {
+      position: relative;
+      z-index: 2;
+      width: 54px;
+      height: 54px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      box-shadow: 0 8px 24px rgba(245, 158, 11, 0.4);
+    }
+
+    @keyframes radar-pulse {
+      0% { transform: scale(0.6); opacity: 1; }
+      100% { transform: scale(1.6); opacity: 0; }
     }
 
     h1 {
-      font-size: 26px;
-      font-weight: 700;
-      margin-bottom: 12px;
-      color: #f1f5f9;
+      font-size: 24px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
     }
 
     .subtitle {
-      font-size: 15px;
-      line-height: 1.7;
+      font-size: 14px;
+      line-height: 1.6;
       color: #94a3b8;
-      margin-bottom: 8px;
+      margin-bottom: 24px;
     }
 
-    .server-url {
-      display: inline-block;
-      margin: 12px 0 24px;
-      padding: 6px 16px;
-      background: rgba(255,255,255,.06);
-      border: 1px solid rgba(255,255,255,.1);
-      border-radius: 6px;
-      font-family: 'Consolas', 'Courier New', monospace;
-      font-size: 14px;
-      color: #60a5fa;
-      word-break: break-all;
-    }
-
-    .tips {
+    .diag-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
       text-align: left;
-      background: rgba(255,255,255,.04);
-      border-radius: 10px;
-      padding: 20px 24px;
-      margin-bottom: 28px;
-    }
-    .tips h3 {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
       font-size: 13px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
+    }
+
+    .diag-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .diag-label {
       color: #64748b;
-      margin-bottom: 12px;
+      font-weight: 500;
     }
-    .tips ul {
-      list-style: none;
-      padding: 0;
-    }
-    .tips li {
-      padding: 4px 0;
-      font-size: 14px;
+
+    .diag-val {
+      font-weight: 600;
+      font-family: 'Consolas', monospace;
       color: #cbd5e1;
+      font-size: 12px;
     }
-    .tips li::before {
-      content: '•';
-      color: #60a5fa;
-      margin-right: 8px;
-      font-weight: bold;
+
+    .badge-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 2px 8px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .badge-offline {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .badge-sqlite {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
     }
 
     .actions {
       display: flex;
-      gap: 12px;
-      justify-content: center;
-      flex-wrap: wrap;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
     }
 
     .btn {
-      padding: 12px 28px;
+      padding: 12px 20px;
+      border-radius: 10px;
       border: none;
-      border-radius: 8px;
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 600;
       cursor: pointer;
-      transition: all .2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      text-decoration: none;
     }
-    .btn-primary {
-      background: linear-gradient(135deg, #3b82f6, #2563eb);
-      color: #fff;
-      box-shadow: 0 4px 14px rgba(37,99,235,.35);
-    }
-    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(37,99,235,.45); }
-    .btn-secondary {
-      background: rgba(255,255,255,.08);
-      color: #94a3b8;
-      border: 1px solid rgba(255,255,255,.1);
-    }
-    .btn-secondary:hover { background: rgba(255,255,255,.12); color: #e2e8f0; }
 
-    #status-text {
-      margin-top: 20px;
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #ffffff;
+      box-shadow: 0 4px 16px rgba(37, 99, 235, 0.35);
+      width: 100%;
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      box-shadow: 0 6px 22px rgba(37, 99, 235, 0.45);
+    }
+
+    .btn-emerald {
+      background: linear-gradient(135deg, #059669, #047857);
+      color: #ffffff;
+      box-shadow: 0 4px 16px rgba(5, 150, 105, 0.35);
+      flex: 1;
+    }
+
+    .btn-emerald:hover {
+      background: linear-gradient(135deg, #10b981, #059669);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #cbd5e1;
+      flex: 1;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.14);
+      color: #ffffff;
+    }
+
+    #status-feedback {
+      margin-top: 16px;
       font-size: 13px;
-      color: #64748b;
+      color: #94a3b8;
       min-height: 20px;
     }
-    #status-text.success { color: #34d399; }
+    #status-feedback.success { color: #34d399; font-weight: 600; }
+    #status-feedback.error { color: #f87171; }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="icon-ring">
-      <span class="icon">🔌</span>
+    <div class="radar-box">
+      <div class="radar-circle"></div>
+      <div class="radar-circle"></div>
+      <div class="radar-icon">⚡</div>
     </div>
 
-    <h1>Cannot Connect to Server</h1>
-
+    <h1>Remote Server Offline</h1>
     <p class="subtitle">
-      The LIS server is not reachable right now.<br>
-      No cached pages are available for this section yet.
+      The central LIS server is currently unreachable. You can continue working uninterrupted in <strong>Local SQLite Offline Mode</strong>. All data and operations are saved safely on your device.
     </p>
 
-    <div class="server-url" id="serverUrl">Loading…</div>
-
-    <div class="tips">
-      <h3>Troubleshooting</h3>
-      <ul>
-        <li>Check that the server PC is turned on</li>
-        <li>Verify the network cable or Wi-Fi connection</li>
-        <li>Make sure the LIS server software is running</li>
-        <li>Visit pages while online first to enable offline access</li>
-      </ul>
+    <div class="diag-card">
+      <div class="diag-row">
+        <span class="diag-label">Server Connection</span>
+        <span class="badge-pill badge-offline" id="serverState">Disconnected</span>
+      </div>
+      <div class="diag-row">
+        <span class="diag-label">Target Server URL</span>
+        <span class="diag-val" id="serverUrl">—</span>
+      </div>
+      <div class="diag-row">
+        <span class="diag-label">Local Offline Engine</span>
+        <span class="badge-pill badge-sqlite">SQLite Database (ACID)</span>
+      </div>
+      <div class="diag-row">
+        <span class="diag-label">Pending Sync Queue</span>
+        <span class="diag-val" id="pendingCount">0 operations</span>
+      </div>
     </div>
 
     <div class="actions">
-      <button class="btn btn-primary" onclick="retry()">
-        &#x21bb;&ensp;Retry Connection
+      <button class="btn btn-primary" id="retryBtn" onclick="retryConnection()">
+        <span>⟳</span> Retry Server Connection
       </button>
-      <button class="btn btn-secondary" onclick="showQueue()">
-        Pending Queue
-      </button>
+
+      <div class="btn-row">
+        <button class="btn btn-emerald" onclick="openOfflineDashboard()">
+          <span>📊</span> Launch Offline App
+        </button>
+        <button class="btn btn-secondary" onclick="openSettings()">
+          <span>⚙</span> Settings
+        </button>
+      </div>
     </div>
 
-    <div id="status-text"></div>
+    <div id="status-feedback"></div>
   </div>
 
   <script>
-    const statusEl = document.getElementById('status-text');
+    const statusEl = document.getElementById('status-feedback');
     const serverEl = document.getElementById('serverUrl');
+    const pendingEl = document.getElementById('pendingCount');
+    const serverStateEl = document.getElementById('serverState');
+    const retryBtn = document.getElementById('retryBtn');
 
-    // Populate server URL
     if (window.lisApp) {
       window.lisApp.getStatus().then(data => {
-        serverEl.textContent = data.serverUrl || '—';
-        if (data.pendingCount > 0) {
-          statusEl.textContent = data.pendingCount + ' operation(s) waiting to sync';
+        if (data) {
+          serverEl.textContent = data.serverUrl || 'Not Configured';
+          pendingEl.textContent = (data.pendingCount || 0) + ' operation(s) waiting';
+          if (data.online) {
+            serverStateEl.textContent = 'Connected';
+            serverStateEl.className = 'badge-pill badge-sqlite';
+          }
         }
-      });
+      }).catch(() => {});
 
-      // Auto-retry when network comes back
       window.lisApp.onNetworkStatus(data => {
-        if (data.online) {
-          statusEl.textContent = 'Connection restored! Loading…';
+        if (data && data.online) {
+          statusEl.textContent = 'Connection restored! Loading server…';
           statusEl.className = 'success';
-          window.lisApp.retryConnection();
+          window.location.reload();
         }
       });
     }
 
-    async function retry() {
-      statusEl.textContent = 'Connecting…';
-      statusEl.className = '';
-      try {
-        const result = await window.lisApp.retryConnection();
-        if (result.online) {
-          statusEl.textContent = 'Connected! Loading…';
-          statusEl.className = 'success';
-        } else {
-          statusEl.textContent = 'Server still unreachable. Please try again.';
-        }
-      } catch {
-        statusEl.textContent = 'Connection failed.';
-      }
-    }
-
-    async function showQueue() {
+    async function retryConnection() {
       if (!window.lisApp) return;
-      const queue = await window.lisApp.getQueue();
-      const pending = queue.filter(o => o.status === 'pending');
-      if (!pending.length) {
-        alert('No pending operations in the queue.');
-        return;
+      retryBtn.disabled = true;
+      retryBtn.innerHTML = '<span>⏳</span> Checking Connection…';
+      statusEl.textContent = 'Testing connection to server…';
+      statusEl.className = '';
+
+      try {
+        const res = await window.lisApp.retryConnection();
+        retryBtn.disabled = false;
+        retryBtn.innerHTML = '<span>⟳</span> Retry Server Connection';
+        if (res && res.online) {
+          statusEl.textContent = 'Connected successfully! Launching…';
+          statusEl.className = 'success';
+          window.location.reload();
+        } else {
+          statusEl.textContent = 'Server is still unreachable. Local SQLite is active.';
+          statusEl.className = 'error';
+        }
+      } catch (e) {
+        retryBtn.disabled = false;
+        retryBtn.innerHTML = '<span>⟳</span> Retry Server Connection';
+        statusEl.textContent = 'Connection attempt failed.';
+        statusEl.className = 'error';
       }
-      let msg = 'Pending operations (' + pending.length + '):\n\n';
-      pending.forEach((op, i) => {
-        msg += (i + 1) + '. ' + (op.method || 'POST') + ' ' + op.url + '\n';
-        msg += '   Saved: ' + new Date(op.createdAt).toLocaleString() + '\n\n';
-      });
-      alert(msg);
+    }
+
+    function openOfflineDashboard() {
+      // Local server port default 30099
+      window.location.href = '/dashboard';
+    }
+
+    function openSettings() {
+      if (window.lisApp && window.lisApp.openSettings) {
+        window.lisApp.openSettings();
+      }
     }
   </script>
 </body>
