@@ -9,25 +9,27 @@ let serverCwd = __dirname;
 let script = 'server.js';
 let interpreter;
 
-// prefer node script in repo root
-if (!fs.existsSync(path.join(serverCwd, 'server.js')) && fs.existsSync(path.join(serverCwd, 'server', 'server.js'))) {
+if (fs.existsSync(path.join(serverCwd, 'server.js'))) {
+  script = 'server.js';
+} else if (fs.existsSync(path.join(serverCwd, 'server', 'server.js'))) {
   serverCwd = path.join(serverCwd, 'server');
-}
-
-// detect packaged exe (installer places binaries under resources/server or dist/)
-const exeCandidates = [
-  path.join(__dirname, 'dist', 'laboratory-information-system.exe'),
-  path.join(__dirname, 'server', 'laboratory-information-system.exe'),
-  path.join(__dirname, 'laboratory-information-system.exe'),
-  path.join(__dirname, 'server', 'start-lis.exe'),
-  path.join(__dirname, 'server', 'GezyneLIS.exe')
-];
-const exe = exeCandidates.find(p => { try { return fs.existsSync(p); } catch (e) { return false; } });
-if (exe) {
-  script = exe;
-  serverCwd = path.dirname(exe);
-  // tell pm2 to execute the binary directly
-  interpreter = 'none';
+  script = 'server.js';
+} else {
+  // detect packaged exe (installer places binaries under resources/server or dist/)
+  const exeCandidates = [
+    path.join(__dirname, 'server', 'laboratory-information-system.exe'),
+    path.join(__dirname, 'dist', 'laboratory-information-system.exe'),
+    path.join(__dirname, 'laboratory-information-system.exe'),
+    path.join(__dirname, 'server', 'start-lis.exe'),
+    path.join(__dirname, 'server', 'GezyneLIS.exe')
+  ];
+  const exe = exeCandidates.find(p => { try { return fs.existsSync(p); } catch (e) { return false; } });
+  if (exe) {
+    script = exe;
+    serverCwd = path.dirname(exe);
+    // tell pm2 to execute the binary directly
+    interpreter = 'none';
+  }
 }
 
 // Choose a writable log directory: prefer PM2_HOME logs, else per-user AppData.

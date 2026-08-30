@@ -45,6 +45,14 @@ async function run() {
     process.exit(1);
   }
 
+  // Copy better_sqlite3.node to dist folder alongside the EXE
+  const nativeNodeSrc = path.join(projectRoot, 'node_modules', 'better-sqlite3', 'prebuilds', 'win32-x64.node');
+  const nativeNodeDest = path.join(distDir, 'better_sqlite3.node');
+  if (fs.existsSync(nativeNodeSrc)) {
+    fs.copyFileSync(nativeNodeSrc, nativeNodeDest);
+    console.log('Copied better_sqlite3.node to', nativeNodeDest);
+  }
+
   console.log('Embedding icon into exe...');
   rcedit(exePath, { icon: icoPath }, (err) => {
     if (err) {

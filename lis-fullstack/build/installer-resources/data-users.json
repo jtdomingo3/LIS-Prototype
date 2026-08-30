@@ -1,9 +1,9 @@
 [
   {
-    "id": "7cafaa8b-12cf-405f-b46f-468144bec880",
+    "id": "7d0c36dc-3cbb-4a2d-b9fc-4f4daa7fee79",
     "name": "Admin User",
     "email": "admin@lab.com",
-    "password": "$2a$12$dBsXgXLLW7IvwJ2el5SDqOVUbeoROXJfCj85txEYmfnc9.8t5wxY.",
+    "password": "$2a$12$Zrr0Zpf/4CJPgbbKvg8b2O.ymL4u4HvWgVbmquWGpW2tTGfDn1duS",
     "role": "Admin",
     "status": "Active",
     "permissions": {
@@ -17,7 +17,7 @@
       "users": true,
       "delete": true
     },
-    "createdAt": "2026-08-29T00:58:36.871Z",
+    "createdAt": "2026-08-30T07:07:21.769Z",
     "lastLogin": null
   }
 ]

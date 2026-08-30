@@ -30,6 +30,7 @@ async function make() {
 
   const usersPath = path.join(OUT_DIR, 'data-users.json');
   const dataPath = path.join(OUT_DIR, 'data.json');
+  const dbPath = path.join(OUT_DIR, 'lis-data.db');
 
   fs.writeFileSync(usersPath, JSON.stringify([admin], null, 2), 'utf8');
 
@@ -41,6 +42,19 @@ async function make() {
     counters: {}
   };
   fs.writeFileSync(dataPath, JSON.stringify(initialData, null, 2), 'utf8');
+
+  // Create clean seed SQLite database
+  try {
+    if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
+    const { createDb } = require('../lib/sqliteDb');
+    const db = createDb(dbPath);
+    db.saveUsers([admin]);
+    db.write(initialData);
+    db.close();
+    console.log(' -', dbPath);
+  } catch (e) {
+    console.warn('Warning: could not create seed SQLite db in installer-resources:', e.message);
+  }
 
   console.log('Wrote installer resources to', OUT_DIR);
   console.log(' -', usersPath);

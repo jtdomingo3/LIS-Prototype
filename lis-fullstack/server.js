@@ -21,42 +21,16 @@ const PORT = process.env.PORT || 3000;
 // If you prefer localhost-only, set HOST=127.0.0.1 before starting.
 const HOST = process.env.HOST || '0.0.0.0';
 // data files live in a directory determined by dataPath.getDataDir();
-const DATA_FILE = dataFile('data.json');
-const USERS_FILE = dataFile('data-users.json');
-console.log('[server] using DATA_FILE', DATA_FILE, 'USERS_FILE', USERS_FILE, 'DATA_DIR', path.dirname(DATA_FILE));
+const DATA_DIR = require('./lib/dataPath').getDataDir();
+const SQLITE_FILE = path.join(DATA_DIR, 'lis-data.db');
+// Legacy JSON paths (used for migration and backward compatibility)
+const DATA_FILE = path.join(DATA_DIR, 'data.json');
+const USERS_FILE = path.join(DATA_DIR, 'data-users.json');
+console.log('[server] using SQLITE_FILE', SQLITE_FILE, 'DATA_DIR', DATA_DIR);
 const crypto = require('crypto');
 const USER_DATA_KEY = process.env.DATA_USERS_KEY || process.env.USER_DATA_KEY || null;
 
-// Initialize data file if it doesn't exist
-if (!fs.existsSync(DATA_FILE)) {
-  const initialData = {
-    users: [],
-    patients: [],
-    tests: [],
-    templates: [],
-    // persistent counters for per-test-type IDs
-    counters: {}
-  };
-  // ensure parent directory exists (DATA_DIR may not have been created yet)
-  try {
-    fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-  } catch (e) {
-    console.error('[server] failed to create data directory', path.dirname(DATA_FILE), e);
-  }
-  try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(initialData, null, 2));
-  } catch (e) {
-    console.error('[server] initial write to DATA_FILE failed', DATA_FILE, e);
-    throw e;
-  }
-} // end ensure data file exists (location may vary when packaged)
-
-
-// Ensure users file exists
-if (!fs.existsSync(USERS_FILE)) {
-  fs.writeFileSync(USERS_FILE, USER_DATA_KEY ? JSON.stringify([]) : JSON.stringify([], null, 2));
-}
-
+// Encryption helpers (kept for migration of encrypted data-users.json)
 function deriveKey(secret) {
   return crypto.createHash('sha256').update(String(secret)).digest();
 }
@@ -89,87 +63,45 @@ function decryptJson(raw) {
   return JSON.parse(dec.toString('utf8'));
 }
 
-// Simple file-based database functions with atomic write and merge protection
-const db = {
-  read: () => JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')),
-  write: (data) => {
-    try {
-      const dir = path.dirname(DATA_FILE);
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      const tmp = `${DATA_FILE}.tmp-${process.pid}-${Date.now()}`;
-      // create a timestamp on top-level to help detect staleness when needed
-      if (data && typeof data === 'object') data.__lastWrite = (new Date()).toISOString();
-      fs.writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf8');
-      try { fs.renameSync(tmp, DATA_FILE); } catch (e) {
-        // fallback to copy+unlink on platforms that behave differently
-        try { fs.copyFileSync(tmp, DATA_FILE); fs.unlinkSync(tmp); } catch (e2) { throw e2; }
-      }
-    } catch (e) {
-      console.error('DB write failed:', e);
-      throw e;
-    }
-  },
-  // Users stored separately in data-users.json (optional encrypted)
-  getUsers: () => {
-    try {
-      const raw = fs.readFileSync(USERS_FILE, 'utf8');
-      return decryptJson(raw);
-    } catch (e) {
-      return [];
-    }
-  },
-  saveUsers: (users) => {
-    try {
-      fs.writeFileSync(USERS_FILE, encryptJson(users), 'utf8');
-    } catch (e) {
-      console.error('Failed to write users file:', e);
-    }
-  },
-  getPatients: () => db.read().patients,
-  getTests: () => db.read().tests,
-  getTemplates: () => db.read().templates,
-  getCounters: () => db.read().counters || {},
-  savePatients: (patients) => { const data = db.read(); data.patients = patients; db.write(data); },
-  // saveTests now merges incoming tests with on-disk tests using `updatedAt` to avoid
-  // older writes overwriting newer changes when concurrent requests are processed.
-  saveTests: (tests) => {
-    try {
-      const disk = db.read();
-      const existing = Array.isArray(disk.tests) ? disk.tests : [];
-      const mergedMap = new Map();
+// ---- SQLite Database ----
+const { createDb } = require('./lib/sqliteDb');
+const { migrateJsonToSqlite } = require('./lib/migrateJsonToSqlite');
 
-      // seed with existing
-      for (const t of existing) {
-        if (t && t.id) mergedMap.set(t.id, t);
-      }
+// Ensure data directory exists
+try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch (e) {}
 
-      // overlay with incoming tests when newer (or absent on disk)
-      for (const t of (Array.isArray(tests) ? tests : [])) {
-        if (!t || !t.id) continue;
-        const cur = mergedMap.get(t.id);
-        const curTs = cur && cur.updatedAt ? Date.parse(cur.updatedAt) : 0;
-        const incomingTs = t.updatedAt ? Date.parse(t.updatedAt) : 0;
-        if (!cur || incomingTs >= curTs) {
-          mergedMap.set(t.id, t);
-        } else {
-          console.log(`[DB] skipping stale write for test id=${t.id} incoming=${new Date(incomingTs).toISOString()} disk=${new Date(curTs).toISOString()}`);
-        }
-      }
+// Create the SQLite database adapter (tables are auto-created)
+const db = createDb(SQLITE_FILE);
 
-      // Preserve any tests that existed on disk but were omitted from the incoming payload
-      const merged = Array.from(mergedMap.values());
-      const data = disk || { users: [], patients: [], tests: [], templates: [], counters: {} };
-      data.tests = merged;
-      db.write(data);
-    } catch (e) {
-      console.error('saveTests failed:', e);
-      // fallback to naive write if merge fails
-      const data = db.read(); data.tests = tests; db.write(data);
-    }
-  },
-  saveTemplates: (templates) => { const data = db.read(); data.templates = templates; db.write(data); },
-  saveCounters: (counters) => { const data = db.read(); data.counters = counters; db.write(data); }
-};
+// Auto-migrate from JSON if this is first startup with SQLite
+// (JSON files exist but SQLite DB has no data yet)
+(function autoMigrate() {
+  const hasJsonData = fs.existsSync(DATA_FILE);
+  const hasJsonUsers = fs.existsSync(USERS_FILE);
+  if (!hasJsonData && !hasJsonUsers) return; // fresh install, nothing to migrate
+
+  // Check if SQLite already has data (skip migration if so)
+  const existingPatients = db.getPatients();
+  const existingUsers = db.getUsers();
+  if (existingPatients.length > 0 || existingUsers.length > 0) {
+    console.log('[server] SQLite database already has data, skipping JSON migration');
+    return;
+  }
+
+  console.log('[server] Detected legacy JSON files, performing one-time migration to SQLite...');
+  const result = migrateJsonToSqlite(db, {
+    dataJsonPath: hasJsonData ? DATA_FILE : null,
+    usersJsonPath: hasJsonUsers ? USERS_FILE : null,
+    userDataKey: USER_DATA_KEY,
+    renameAfter: true
+  });
+
+  if (result.success) {
+    console.log('[server] JSON → SQLite migration completed successfully');
+  } else {
+    console.error('[server] JSON → SQLite migration had errors:', result.errors);
+  }
+})();
 
 // Make db available globally
 global.db = db;
@@ -184,7 +116,7 @@ function verifyStartupRequirements() {
   const assetsDir = path.join(__dirname, 'assets');
 
   if (!fs.existsSync(viewsDir)) required.push({ path: viewsDir, reason: 'EJS views are required to render pages (views folder missing)' });
-  if (!fs.existsSync(DATA_FILE)) required.push({ path: DATA_FILE, reason: 'data.json missing; used as the simple file DB' });
+  if (!fs.existsSync(SQLITE_FILE)) optionalWarnings.push({ path: SQLITE_FILE, reason: 'SQLite database not found; will be created on first run' });
   if (!fs.existsSync(publicDir)) optionalWarnings.push({ path: publicDir, reason: 'static public folder not found; some static assets may be missing' });
   if (!fs.existsSync(assetsDir)) optionalWarnings.push({ path: assetsDir, reason: 'assets folder not found; logos/sounds may be missing' });
 

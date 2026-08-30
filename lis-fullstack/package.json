@@ -1,6 +1,6 @@
 {
   "name": "laboratory-information-system",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "Full-stack Laboratory Information System with Node.js, Express, MongoDB",
   "main": "server.js",
   "bin": "server.js",
@@ -28,6 +28,7 @@
   "license": "MIT",
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^13.0.3",
     "bwip-js": "^4.8.0",
     "connect-flash": "^0.1.1",
     "cors": "^2.8.5",
@@ -46,10 +47,10 @@
     "method-override": "^3.0.0",
     "minimist": "^1.2.8",
     "multer": "^2.0.2",
+    "node-windows": "*",
     "puppeteer": "^24.35.0",
     "sharp": "^0.34.5",
-    "uuid": "^9.0.0",
-    "node-windows": "*"
+    "uuid": "^9.0.0"
   },
   "devDependencies": {
     "jimp": "^0.16.1",

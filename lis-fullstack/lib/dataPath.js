@@ -82,11 +82,18 @@ function getDataDir() {
       const seedData = path.join(resDir, 'data.json');
       const seedUsers = path.join(resDir, 'data-users.json');
 
-      if (fs.existsSync(seedData) && !fs.existsSync(pdData)) {
+      const seedDb = path.join(resDir, 'lis-data.db');
+      const pdDb = path.join(pdDir, 'lis-data.db');
+
+      if (fs.existsSync(seedDb) && !fs.existsSync(pdDb)) {
+        fs.copyFileSync(seedDb, pdDb);
+        console.log('[dataPath] seeded clean lis-data.db from installer-resources');
+      }
+      if (fs.existsSync(seedData) && !fs.existsSync(pdData) && !fs.existsSync(pdDb)) {
         fs.copyFileSync(seedData, pdData);
         console.log('[dataPath] seeded clean data.json from installer-resources');
       }
-      if (fs.existsSync(seedUsers) && !fs.existsSync(pdUsers)) {
+      if (fs.existsSync(seedUsers) && !fs.existsSync(pdUsers) && !fs.existsSync(pdDb)) {
         fs.copyFileSync(seedUsers, pdUsers);
         console.log('[dataPath] seeded default admin data-users.json from installer-resources');
       }

@@ -786,6 +786,7 @@ function resolveDataFiles() {
     dataDir,
     dataFile: path.join(dataDir, 'data.json'),
     usersFile: path.join(dataDir, 'data-users.json'),
+    dbFile: path.join(dataDir, 'lis-data.db')
   };
 }
 
@@ -810,12 +811,26 @@ function restartServerAsync() {
   }
 }
 
-// Restore users: seed the default admin account into data-users.json
+// Helper: import JSON into SQLite if available
+function importIntoSqlite(dbFile, jsonPath, type) {
+  try {
+    const { createDb } = require('../lib/sqliteDb');
+    const { importJsonFile } = require('../lib/migrateJsonToSqlite');
+    const sdb = createDb(dbFile);
+    importJsonFile(sdb, jsonPath, type);
+    sdb.close();
+    appendLog('[settings] Synced ' + type + ' into SQLite database');
+  } catch (e) {
+    appendLog('[settings] SQLite sync notice: ' + e.message);
+  }
+}
+
+// Restore users: seed the default admin account into data-users.json and SQLite DB
 ipcMain.handle('restore-users', async () => {
   try {
     const bcrypt = require('bcryptjs');
     const { v4: uuidv4 } = require('uuid');
-    const { usersFile, dataDir } = resolveDataFiles();
+    const { usersFile, dbFile, dataDir } = resolveDataFiles();
 
     // ensure directory exists
     fs.mkdirSync(dataDir, { recursive: true });
@@ -869,20 +884,20 @@ ipcMain.handle('restore-users', async () => {
     fs.writeFileSync(usersFile, JSON.stringify(existing, null, 2), 'utf8');
     appendLog('[settings] Restored admin user in ' + usersFile);
 
-    // Also update the users array inside data.json if it exists
+    // Also update SQLite database directly if it exists
     try {
-      const { dataFile: df } = resolveDataFiles();
-      if (fs.existsSync(df)) {
-        const data = JSON.parse(fs.readFileSync(df, 'utf8'));
-        if (data && Array.isArray(data.users)) {
-          const idx = data.users.findIndex(u => u.email === 'admin@lab.com');
-          const stripped = { id: admin.id, name: admin.name, email: admin.email, password: admin.password, role: admin.role, status: admin.status, createdAt: admin.createdAt, lastLogin: admin.lastLogin };
-          if (idx >= 0) data.users[idx] = stripped;
-          else data.users.push(stripped);
-          fs.writeFileSync(df, JSON.stringify(data, null, 2), 'utf8');
-        }
+      if (fs.existsSync(dbFile)) {
+        const { createDb } = require('../lib/sqliteDb');
+        const sdb = createDb(dbFile);
+        const currentUsers = sdb.getUsers() || [];
+        const idx = currentUsers.findIndex(u => u.email === 'admin@lab.com');
+        if (idx >= 0) currentUsers[idx] = admin;
+        else currentUsers.push(admin);
+        sdb.saveUsers(currentUsers);
+        sdb.close();
+        appendLog('[settings] Restored admin user in SQLite database ' + dbFile);
       }
-    } catch (e) { appendLog('[settings] warning: could not update data.json users: ' + String(e)); }
+    } catch (e) { appendLog('[settings] warning: could not update sqlite users: ' + String(e)); }
 
     // restart server so it picks up the new user data
     restartServerAsync();
@@ -893,19 +908,26 @@ ipcMain.handle('restore-users', async () => {
   }
 });
 
-// Restore data: reset data.json to empty initial structure
+// Restore data: reset database to empty initial structure
 ipcMain.handle('restore-data', async () => {
   try {
-    const { dataFile: df, dataDir } = resolveDataFiles();
+    const { dataFile: df, dbFile, dataDir } = resolveDataFiles();
 
     // ensure directory exists
     fs.mkdirSync(dataDir, { recursive: true });
 
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+
     // backup current data.json before overwriting
     if (fs.existsSync(df)) {
-      const ts = new Date().toISOString().replace(/[:.]/g, '-');
       const backupPath = path.join(dataDir, `data-backup-${ts}.json`);
       try { fs.copyFileSync(df, backupPath); appendLog('[settings] backed up data.json to ' + backupPath); } catch (e) {}
+    }
+
+    // backup SQLite db before resetting
+    if (fs.existsSync(dbFile)) {
+      const backupDbPath = path.join(dataDir, `lis-data-backup-${ts}.db`);
+      try { fs.copyFileSync(dbFile, backupDbPath); appendLog('[settings] backed up lis-data.db to ' + backupDbPath); } catch (e) {}
     }
 
     const initialData = {
@@ -917,7 +939,22 @@ ipcMain.handle('restore-data', async () => {
     };
 
     fs.writeFileSync(df, JSON.stringify(initialData, null, 2), 'utf8');
-    appendLog('[settings] Restored data.json to empty initial state in ' + df);
+
+    // Reset SQLite database directly
+    try {
+      if (fs.existsSync(dbFile)) {
+        const { createDb } = require('../lib/sqliteDb');
+        const sdb = createDb(dbFile);
+        sdb.write(initialData);
+        sdb.close();
+        appendLog('[settings] Reset SQLite database ' + dbFile);
+      }
+    } catch (e) {
+      appendLog('[settings] SQLite reset notice: ' + e.message);
+    }
+
+    appendLog('[settings] Restored database to empty initial state');
+    restartServerAsync();
     return { ok: true };
   } catch (e) {
     appendLog('[settings] restore-data failed: ' + String(e));
@@ -925,10 +962,10 @@ ipcMain.handle('restore-data', async () => {
   }
 });
 
-// Upload data.json: let user pick a JSON file and copy it as data.json
+// Upload data.json: let user pick a JSON file and import it
 ipcMain.handle('upload-data', async () => {
   try {
-    const { dataFile: df, dataDir } = resolveDataFiles();
+    const { dataFile: df, dbFile, dataDir } = resolveDataFiles();
     const result = await dialog.showOpenDialog(mainWindow, {
       title: 'Select data.json to upload',
       filters: [{ name: 'JSON Files', extensions: ['json'] }],
@@ -955,6 +992,10 @@ ipcMain.handle('upload-data', async () => {
 
     fs.writeFileSync(df, raw, 'utf8');
     appendLog('[settings] Uploaded data.json from ' + srcPath + ' to ' + df);
+
+    // Sync into SQLite
+    importIntoSqlite(dbFile, df, 'data');
+
     // restart server so it picks up the new file
     restartServerAsync();
     return { ok: true };
@@ -964,10 +1005,10 @@ ipcMain.handle('upload-data', async () => {
   }
 });
 
-// Upload data-users.json: let user pick a JSON file and copy it as data-users.json
+// Upload data-users.json: let user pick a JSON file and import it
 ipcMain.handle('upload-users', async () => {
   try {
-    const { usersFile, dataDir } = resolveDataFiles();
+    const { usersFile, dbFile, dataDir } = resolveDataFiles();
     const result = await dialog.showOpenDialog(mainWindow, {
       title: 'Select data-users.json to upload',
       filters: [{ name: 'JSON Files', extensions: ['json'] }],
@@ -994,6 +1035,10 @@ ipcMain.handle('upload-users', async () => {
 
     fs.writeFileSync(usersFile, raw, 'utf8');
     appendLog('[settings] Uploaded data-users.json from ' + srcPath + ' to ' + usersFile);
+
+    // Sync into SQLite
+    importIntoSqlite(dbFile, usersFile, 'users');
+
     // restart server so it picks up the new file
     restartServerAsync();
     return { ok: true };
