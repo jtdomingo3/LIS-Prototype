@@ -367,10 +367,19 @@ class SyncEngine {
         synced++;
         console.log(`[Sync] ✓ ${op.method} ${op.url}`);
       } catch (e) {
-        console.error(`[Sync] ✗ ${op.method} ${op.url} — ${e.message}`);
-        this.queue.markFailed(op.id, e.message, this.config.MAX_SYNC_RETRIES);
-        // Stop on first failure to preserve ordering guarantees
-        break;
+        const errMsg = (e && e.message) ? e.message : String(e);
+        console.error(`[Sync] ✗ ${op.method} ${op.url} — ${errMsg}`);
+        this.queue.markFailed(op.id, errMsg, this.config.MAX_SYNC_RETRIES);
+
+        // If the server connection dropped or refused, stop replaying to wait for connection
+        const isNetworkDrop = /ERR_CONNECTION|ERR_NAME|timeout|timed out|ECONNREFUSED|ENOTFOUND/i.test(errMsg);
+        if (isNetworkDrop) {
+          console.warn('[Sync] network connection lost during replay — stopping queue pass');
+          break;
+        }
+
+        // For application/server errors (e.g. 400 bad request, 409 conflict, already processed),
+        // continue processing subsequent independent operations so the queue doesn't stall.
       }
     }
 

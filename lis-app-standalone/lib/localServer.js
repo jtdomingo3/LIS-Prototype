@@ -175,13 +175,46 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
       }
       // Queue with the request body for later replay
       if (operationQueue) {
-        operationQueue.add({
+        const entry = operationQueue.add({
           method: 'POST', // HTML forms always POST with ?_method for PUT/DELETE
           url: serverUrl,
           body: req.body || {},
           timestamp: new Date().toISOString(),
         });
         console.log('[LocalServer] queued mutation for server:', req.method, reqPath, req.body && req.body.id ? ('id=' + req.body.id) : '');
+
+        // If creating tests, hook response finish to attach created test definitions to the queued op
+        if (reqPath === '/tests' && req.method === 'POST' && entry) {
+          const patientIdForTests = req.body && req.body.patient;
+          const origEnd = res.end;
+          res.end = function(...args) {
+            try {
+              if (global.db && patientIdForTests) {
+                const allTests = (typeof global.db.getTests === 'function' ? global.db.getTests() : []) || [];
+                const patientTests = allTests.filter(t => t && String(t.patient) === String(patientIdForTests));
+                if (patientTests.length) {
+                  entry.body.createdTests = patientTests.map(t => ({
+                    id: t.id,
+                    testId: t.testId,
+                    testType: t.testType,
+                    status: t.status,
+                    patient: t.patient,
+                    requestedTests: t.requestedTests,
+                    specimenNumbers: t.specimenNumbers,
+                    assignedDoctorId: t.assignedDoctorId,
+                    assignedDoctorName: t.assignedDoctorName,
+                    priority: t.priority,
+                    notes: t.notes,
+                    results: t.results,
+                    client_id: t.client_id || t.id
+                  }));
+                  operationQueue._save();
+                }
+              }
+            } catch (e) {}
+            return origEnd.apply(this, args);
+          };
+        }
       }
     } catch (e) {
       console.error('[LocalServer] mutation queue error:', e && e.message);

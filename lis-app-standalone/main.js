@@ -173,31 +173,8 @@ async function startNetworkMonitor() {
       // Manage periodic full-sync timer
       try { updateFullSyncTimer(isOnline); } catch (e) {}
 
-      if (online && !wasOnline) {
-        console.log('[Main] connection restored — syncing queue…');
-        const synced = await syncEngine.processQueue();
-        const remaining = operationQueue ? operationQueue.countPending() : 0;
-        sendStatus();
-        // Stay on current page — do NOT force-reload to the server URL.
-        // The user keeps working on the local server seamlessly. When they
-        // explicitly click "Connect" or "Refresh" they will switch to the
-        // real server.  Background full-sync keeps data up-to-date.
-        try {
-          if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('sync-complete', { synced, remaining });
-          }
-        } catch (e) { /* ignore */ }
-
-        // After replaying the queue, trigger a full-sync to pull fresh data
-        try {
-          if (remaining === 0) {
-            console.log('[Main] queue empty — triggering full-sync');
-            // Clear page cache so cached server HTML won't be served
-            try { if (pageCache && typeof pageCache.clear === 'function') pageCache.clear(); } catch (e) {}
-            await syncEngine.fullSync(mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, { replace: true });
-            sendStatus();
-          }
-        } catch (e) { console.error('[Main] post-reconnect full-sync failed:', e && e.message); }
+      if (online) {
+        triggerAutoSync().catch(() => {});
       }
 
       // When going offline, immediately redirect the user from the real
@@ -216,6 +193,13 @@ async function startNetworkMonitor() {
             }
           }
         } catch (e) { /* ignore */ }
+      }
+    });
+
+    networkMonitor.on('check', (online) => {
+      isOnline = online;
+      if (online && operationQueue && operationQueue.countPending() > 0) {
+        triggerAutoSync().catch(() => {});
       }
     });
 
@@ -594,17 +578,16 @@ function setupRequestInterceptor() {
       const urlObj = new URL(details.url);
       const urlPath = urlObj.pathname + (urlObj.search || '');
 
-      // For non-GET methods (POST/PUT/DELETE), queue the operation
+      // For non-GET methods (POST/PUT/DELETE), redirect to local server so the
+      // route handler executes the local mutation and queues it with deterministic IDs.
       if (details.method !== 'GET') {
         // Don't queue auth operations (login/logout) — they are local-only
         if (urlPath === '/login' || urlPath === '/logout') {
           callback({ redirectURL: `http://127.0.0.1:${config.LOCAL_PORT}${urlPath}` });
           return;
         }
-        const body = parseUploadData(details.uploadData);
-        operationQueue.add({ method: details.method, url: details.url, body, timestamp: new Date().toISOString() });
         // Redirect to local server so the route handler processes the form
-        // (which will also save to DataStore for offline mutations)
+        // and localServer middleware queues the mutation with exact IDs.
         callback({ redirectURL: `http://127.0.0.1:${config.LOCAL_PORT}${urlPath}` });
         return;
       }
@@ -687,15 +670,40 @@ ipcMain.handle('full-sync', async () => {
     return Object.assign({}, res || {}, { datastore: dsInfo });
   } catch (e) { return { success: false, reason: e && e.message } }
 });
+async function triggerAutoSync() {
+  try {
+    if (!isOnline || !syncEngine || !operationQueue) return;
+    const pending = operationQueue.countPending();
+    if (pending === 0 || syncEngine._syncing) return;
+    console.log(`[Main] triggerAutoSync starting — ${pending} pending operation(s)`);
+    const synced = await syncEngine.processQueue();
+    const remaining = operationQueue ? operationQueue.countPending() : 0;
+    sendStatus();
+    try {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('sync-complete', { synced, remaining });
+      }
+    } catch (e) {}
+    if (remaining === 0 && synced > 0) {
+      console.log('[Main] auto-sync completed all items — running full-sync');
+      try { if (pageCache && typeof pageCache.clear === 'function') pageCache.clear(); } catch (e) {}
+      await syncEngine.fullSync(mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, { replace: true });
+      sendStatus();
+    }
+  } catch (e) {
+    console.error('[Main] triggerAutoSync failed:', e && e.message);
+  }
+}
+
 ipcMain.handle('retry-connection', async () => {
   if (!config.SERVER_URL) return { online: false, reason: 'no-server-configured' };
   if (!networkMonitor) networkMonitor = new NetworkMonitor(config.SERVER_URL, config.PING_INTERVAL);
   const online = await networkMonitor.checkOnce();
   isOnline = online;
   sendStatus();
-  // Don't force-load the real server URL here — the user stays on the
-  // local server. If the server is back, the status bar will update to
-  // "Connected" and background sync will keep data up to date.
+  if (online) {
+    triggerAutoSync().catch(() => {});
+  }
   return { online };
 });
 ipcMain.handle('datastore-info', () => {
@@ -704,9 +712,13 @@ ipcMain.handle('datastore-info', () => {
 ipcMain.handle('clear-cache', () => { pageCache.clear(); return { success: true }; });
 ipcMain.handle('go-online', () => {
   if (!config.SERVER_URL) return { success: false, reason: 'no-server-configured' };
-  // Don't force-load real server — stay on local server to prevent logout
-  // after server restarts.  Trigger a sync check instead.
-  if (networkMonitor) networkMonitor.checkOnce().then(online => { isOnline = online; sendStatus(); }).catch(() => {});
+  if (networkMonitor) {
+    networkMonitor.checkOnce().then(online => {
+      isOnline = online;
+      sendStatus();
+      if (online) triggerAutoSync().catch(() => {});
+    }).catch(() => {});
+  }
   return { success: true };
 });
 
