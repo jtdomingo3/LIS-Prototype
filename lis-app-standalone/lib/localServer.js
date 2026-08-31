@@ -164,9 +164,14 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
       const base = config.SERVER_URL.replace(/\/$/, '');
       const serverUrl = base + reqPath;
 
-      // Ensure a deterministic client-generated id for offline-created records
-      if (req.body && !req.body.client_id) {
-        try { req.body.client_id = require('crypto').randomUUID(); } catch (e) { req.body.client_id = 'cli-' + Date.now(); }
+      // Ensure a deterministic client-generated id and UUID for offline-created records
+      if (req.body) {
+        if (!req.body.id && reqPath === '/patients' && req.method === 'POST') {
+          try { req.body.id = require('crypto').randomUUID(); } catch (e) { req.body.id = 'pat-' + Date.now(); }
+        }
+        if (!req.body.client_id) {
+          try { req.body.client_id = require('crypto').randomUUID(); } catch (e) { req.body.client_id = 'cli-' + Date.now(); }
+        }
       }
       // Queue with the request body for later replay
       if (operationQueue) {
@@ -176,7 +181,7 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
           body: req.body || {},
           timestamp: new Date().toISOString(),
         });
-        console.log('[LocalServer] queued mutation for server:', req.method, reqPath);
+        console.log('[LocalServer] queued mutation for server:', req.method, reqPath, req.body && req.body.id ? ('id=' + req.body.id) : '');
       }
     } catch (e) {
       console.error('[LocalServer] mutation queue error:', e && e.message);

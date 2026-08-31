@@ -360,6 +360,7 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
     }
 
     const patient = new Patient({
+      id: req.body.id || req.body._id || undefined,
       patientId,
       patientCode,
       firstName,
@@ -393,10 +394,12 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
     // Patient saved — tests will be assigned from patient management. Printing is manual.
     req.flash('success_msg', `Patient ${firstName} ${middleName ? middleName + ' ' : ''}${lastName} added successfully!`);
 
-    // If this request came from the standalone sync engine (hash-based headers),
+    // If this request came from the standalone sync engine or explicit JSON API client,
     // return JSON including the created id and client_id so the client can map records deterministically.
-    if (req.headers['x-lis-sync-email'] || req.headers['x-lis-sync-hash']) {
-      return res.json({ success: true, id: patient.id, client_id: req.body && req.body.client_id ? req.body.client_id : null });
+    const isSyncClient = !!(req.headers['x-lis-sync-email'] || req.headers['x-lis-sync-hash'] || req.headers['x-lis-sync-replay']);
+    const isExplicitJson = req.xhr || (req.headers['accept'] && req.headers['accept'].includes('application/json') && !req.headers['accept'].includes('text/html'));
+    if (isSyncClient || isExplicitJson) {
+      return res.json({ success: true, id: patient.id, client_id: patient.client_id || (req.body && req.body.client_id) || null, patientCode: patient.patientCode, patientId: patient.patientId });
     }
 
     // Stay on the new patient form so users can continue adding patients

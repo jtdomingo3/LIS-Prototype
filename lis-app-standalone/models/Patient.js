@@ -25,6 +25,7 @@ class Patient {
     this.company = data.company || '';
     this.philhealthConsent = !!data.philhealthConsent;
     this.philhealthId = data.philhealthId || '';
+    this.client_id = data.client_id || data.clientId || null;
     this.createdAt = data.createdAt || new Date();
     this.updatedAt = data.updatedAt || new Date();
     this.createdBy = data.createdBy;

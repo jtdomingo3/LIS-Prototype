@@ -401,6 +401,8 @@ class SyncEngine {
         request.setHeader('X-LIS-Sync-Email', hashAuth.email);
         request.setHeader('X-LIS-Sync-Hash', hashAuth.hash);
       }
+      request.setHeader('X-LIS-Sync-Replay', '1');
+      request.setHeader('Accept', 'application/json');
 
       // Encode body as URL-encoded form data (same as HTML form).
       // Use qs.stringify (same lib as Express's body parser) to correctly
@@ -621,6 +623,8 @@ class SyncEngine {
       const col = this.dataStore.getCollection(collection) || [];
       const body = op.body || {};
       const opTs = op.createdAt ? (new Date(op.createdAt)).getTime() : null;
+
+      if (body.id) return body.id;
 
       if (collection === 'patients') {
         // Prefer exact unique matches (patientId, patientCode, phone, email)

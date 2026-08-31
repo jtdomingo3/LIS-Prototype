@@ -1009,6 +1009,17 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
 
     req.flash('success_msg', `Tests created successfully!`);
 
+    const isSyncClient = !!(req.headers['x-lis-sync-email'] || req.headers['x-lis-sync-hash'] || req.headers['x-lis-sync-replay']);
+    const isExplicitJson = req.xhr || (req.headers['accept'] && req.headers['accept'].includes('application/json') && !req.headers['accept'].includes('text/html'));
+    if (isSyncClient || isExplicitJson) {
+      return res.json({
+        success: true,
+        tests: createdTests.map(t => ({ id: t.id, testId: t.testId, client_id: t.client_id || null })),
+        id: createdTests.length === 1 ? createdTests[0].id : (createdTests[0] ? createdTests[0].id : null),
+        client_id: req.body && req.body.client_id ? req.body.client_id : null
+      });
+    }
+
     // Determine where to redirect after creating/assigning tests.
     // Priority: explicit hidden `returnTo` form field -> query param -> Referer -> fallback '/tests'
     let returnTo = (req.body && req.body.returnTo) || req.query.returnTo || req.get('Referer') || '/tests';
