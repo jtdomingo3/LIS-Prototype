@@ -280,16 +280,4 @@
       if (window.lisApp.openSettings) window.lisApp.openSettings();
     });
   }
-
-  // Ensure body doesn't overlap status bar on short pages
-  function checkOffset() {
-    try {
-      var isScrollable = document.documentElement.scrollHeight > window.innerHeight;
-      if (!isScrollable) {
-        document.documentElement.classList.add('lis-status-offset');
-      }
-    } catch (e) {}
-  }
-  window.addEventListener('resize', checkOffset);
-  setTimeout(checkOffset, 300);
 })();

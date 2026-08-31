@@ -285,14 +285,30 @@
   color: #94a3b8;
 }
 
-/* ── Status bar page spacing ──────────────────────────────────── */
-html.lis-status-offset body {
-  padding-bottom: 56px !important;
+/* ── Viewport & Scroll Locking (Prevent outer body scroll & white gaps) ── */
+html,
+body {
+  height: 100% !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+.container {
+  height: 100% !important;
+  max-height: 100vh !important;
+  overflow: hidden !important;
+}
+
+.main-content {
+  padding-bottom: 76px !important;
+  box-sizing: border-box !important;
 }
 
 html::-webkit-scrollbar,
 body::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-  background: transparent;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
 }
