@@ -141,7 +141,6 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
         const plain = (p && typeof p.toJSON === 'function') ? p.toJSON() : p;
         return Object.assign({}, plain, { hasTests: !!testsCountByPatient[String(plain.id)] });
       });
-      console.log('DEBUG patients hasTests map:', testsCountByPatient);
     } catch (e) {
       console.warn('Failed to compute patient test flags:', e);
     }

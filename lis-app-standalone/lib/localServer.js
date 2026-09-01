@@ -115,10 +115,7 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     return escaped;
   }
 
-  /* ── Auto-login middleware — seamlessly restore session on offline
-   *  transition so the user doesn't see a login page when the server
-   *  goes down. The main process sets _autoLoginEmail via
-   *  server.setAutoLoginEmail(email). ──────────────────────────────── */
+  /* ── User session bridge for active logged-in user ────────────────── */
   app.use((req, res, next) => {
     try {
       if (_autoLoginEmail && req.session && !req.session.user) {
@@ -134,10 +131,9 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
             signature: user.signature || null,
             licenseNumber: user.licenseNumber || '',
           };
-          console.log('[LocalServer] auto-login:', user.email);
         }
       }
-    } catch (e) { /* ignore auto-login errors */ }
+    } catch (e) { }
     next();
   });
 

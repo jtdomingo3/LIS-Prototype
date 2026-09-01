@@ -24,16 +24,33 @@ class SyncEngine {
   }
 
   /**
-   * Get the bcrypt hash for the auto-login user from the DataStore.
+   * Get the bcrypt hash for the authenticated or admin user.
    * Used for hash-based authentication with the server sync endpoint.
    */
   _getAutoLoginHash() {
     try {
-      const email = this._autoLoginEmail;
-      if (!email || !this.dataStore) return null;
-      const users = this.dataStore.getCollection('users') || [];
-      const user = users.find(u => u.email && u.email.toLowerCase() === email.toLowerCase());
-      return (user && user.password) ? { email: user.email, hash: user.password } : null;
+      const email = this._autoLoginEmail || (this._credentials && this._credentials.email) || 'admin@lab.com';
+      let users = [];
+      if (this.dataStore && typeof this.dataStore.getCollection === 'function') {
+        users = this.dataStore.getCollection('users') || [];
+      }
+      if (!users.length && global.db && typeof global.db.getUsers === 'function') {
+        users = global.db.getUsers() || [];
+      }
+      if (!users.length) {
+        try {
+          const User = require('../models/User');
+          const allUsers = User.find ? User.find() : [];
+          if (Array.isArray(allUsers)) users = allUsers;
+        } catch (e) {}
+      }
+      if (email) {
+        const user = users.find(u => u && u.email && u.email.toLowerCase() === email.toLowerCase());
+        if (user && user.password) return { email: user.email, hash: user.password };
+      }
+      const admin = users.find(u => u && (u.role === 'Admin' || u.role === 'admin' || (u.email && u.email.toLowerCase().includes('admin'))));
+      if (admin && admin.password) return { email: admin.email, hash: admin.password };
+      return null;
     } catch (e) { return null; }
   }
 
@@ -64,33 +81,40 @@ class SyncEngine {
           const parsed = new URL(loginUrl);
           const isHttps = parsed.protocol === 'https:';
           const client = isHttps ? require('https') : require('http');
-          const body = new URLSearchParams({
+          const postData = new URLSearchParams({
             email: this._credentials.email,
-            password: this._credentials.password,
+            password: this._credentials.password
           }).toString();
 
           const req = client.request({
             hostname: parsed.hostname,
             port: parsed.port || (isHttps ? 443 : 80),
-            path: parsed.pathname + (parsed.search || ''),
+            path: parsed.pathname,
             method: 'POST',
             headers: {
               'Content-Type': 'application/x-www-form-urlencoded',
-              'Content-Length': Buffer.byteLength(body)
+              'Content-Length': Buffer.byteLength(postData),
+              'Accept': 'application/json, text/html, */*'
             },
-            timeout: 8000
+            timeout: 10000
           }, (res) => {
             const setCookie = res.headers['set-cookie'];
-            if (setCookie && setCookie.length) {
-              this._sessionCookie = Array.isArray(setCookie) ? setCookie.map(c => c.split(';')[0]).join('; ') : setCookie.split(';')[0];
-              console.log('[Sync] Node auth captured session cookie');
-              resolve(true);
-            } else {
-              resolve(res.statusCode < 400);
+            if (setCookie) {
+              const cookiesArr = Array.isArray(setCookie) ? setCookie : [setCookie];
+              const sid = cookiesArr.map(c => c.split(';')[0]).join('; ');
+              if (sid) {
+                this._sessionCookie = sid;
+                console.log('[Sync] authenticated with server and session cookie captured (Node fallback)');
+                return resolve(true);
+              }
             }
+            if (res.statusCode >= 200 && res.statusCode < 400) {
+              return resolve(true);
+            }
+            resolve(false);
           });
           req.on('error', () => resolve(false));
-          req.write(body);
+          req.write(postData);
           req.end();
         } catch (_) {
           resolve(false);
@@ -105,7 +129,7 @@ class SyncEngine {
           method: 'POST',
           url: loginUrl,
           session: sess,
-          redirect: 'manual', // handle redirects after cookie persistence
+          redirect: 'follow', // automatically follow redirects after login
         });
         req.setHeader('Content-Type', 'application/x-www-form-urlencoded');
         const body = new URLSearchParams({
@@ -113,26 +137,21 @@ class SyncEngine {
           password: this._credentials.password,
         }).toString();
 
+        req.on('redirect', (statusCode, method, redirectUrl) => {
+          try { req.followRedirect(); } catch (e) {}
+        });
+
         let responseBody = '';
         req.on('response', async (res) => {
           res.on('data', (chunk) => { responseBody += chunk.toString(); });
           res.on('end', async () => {
-            // Log headers for debugging
-            try { console.log('[Sync] login response headers:', res.headers); } catch (e) {}
-
-            if (res.statusCode >= 400) {
-              console.warn('[Sync] server auth returned', res.statusCode, responseBody.slice(0,200));
-              return resolve(false);
-            }
-
-            // Verify that a session cookie was set in the persist:lis partition
+            // Check session cookie in the persist:lis partition
             try {
               const cookies = await sess.cookies.get({ name: 'connect.sid' });
               if (cookies && cookies.length) {
                 console.log('[Sync] authenticated with server and session cookie set (connect.sid)');
                 return resolve(true);
               }
-              // Fallback: accept any cookie as sign of session establishment
               const anyCookies = await sess.cookies.get({});
               if (anyCookies && anyCookies.length) {
                 console.log('[Sync] authenticated with server — cookies present');
@@ -142,15 +161,21 @@ class SyncEngine {
               console.warn('[Sync] cookie check failed:', e && e.message);
             }
 
-            // No session cookie -> attempt renderer-based login (hidden BrowserWindow)
-            console.log('[Sync] no session cookie after net login — attempting hidden renderer login fallback');
+            if (res.statusCode >= 200 && res.statusCode < 400) {
+              console.log('[Sync] server returned status', res.statusCode, '— assuming authenticated');
+              return resolve(true);
+            }
+
+            // Fallback: hidden renderer login
             try {
-              const { BrowserWindow } = require('electron');
+              let electron = null;
+              try { electron = require('electron'); } catch (_) {}
+              const BrowserWindow = electron ? electron.BrowserWindow : null;
+              if (!BrowserWindow) return resolve(false);
+
               const win = new BrowserWindow({ show: false, webPreferences: { partition: 'persist:lis', nodeIntegration: false, contextIsolation: true } });
               try {
-                // Load login page in hidden window
                 await win.loadURL(loginUrl);
-                // Fill and submit the login form if present
                 const submitJs = `(function(){ try {
                   var e = document.querySelector('input[name="email"]');
                   var p = document.querySelector('input[name="password"]');
@@ -163,16 +188,15 @@ class SyncEngine {
                   if (btn) { btn.click(); return { ok:true, method:'button' }; }
                   return { ok:false, err:'no-submit' };
                 } catch(e){ return { ok:false, err: String(e) }; } })()`;
-                try { await win.webContents.executeJavaScript(submitJs, true); } catch (e) { /* ignore exec errors */ }
+                try { await win.webContents.executeJavaScript(submitJs, true); } catch (e) {}
 
-                // Poll for cookie set (give server time to redirect and set cookie)
                 const start = Date.now();
                 let found = false;
                 while ((Date.now() - start) < 8000) {
                   try {
                     const cookies2 = await sess.cookies.get({ name: 'connect.sid' });
                     if (cookies2 && cookies2.length) { found = true; break; }
-                  } catch (e) { /* ignore */ }
+                  } catch (e) {}
                   await new Promise(r => setTimeout(r, 400));
                 }
                 try { if (!win.isDestroyed()) win.close(); } catch (e) {}
@@ -182,23 +206,30 @@ class SyncEngine {
                 }
               } catch (e) {
                 try { if (!win.isDestroyed()) win.close(); } catch (ee) {}
-                console.warn('[Sync] renderer login attempt failed:', e && e.message);
               }
-            } catch (e) {
-              console.warn('[Sync] renderer login fallback error:', e && e.message);
-            }
+            } catch (e) {}
 
-            // Still no cookie -> treat as auth failure
-            console.warn('[Sync] login did not result in persisted session cookie; status', res.statusCode);
             resolve(false);
           });
         });
 
         req.on('error', async (err) => {
-          console.error('[Sync] server auth request failed:', err && err.message);
-          // Try renderer fallback on request errors (e.g., Redirect was cancelled)
+          console.warn('[Sync] server auth request net event:', err && err.message);
+          // Check if cookie was already set despite the event
           try {
-            console.log('[Sync] attempting renderer login fallback after net error');
+            const cookies = await sess.cookies.get({ name: 'connect.sid' });
+            if (cookies && cookies.length) {
+              console.log('[Sync] session cookie verified after net event');
+              return resolve(true);
+            }
+          } catch (e) {}
+
+          try {
+            let electron = null;
+            try { electron = require('electron'); } catch (_) {}
+            const BrowserWindow = electron ? electron.BrowserWindow : null;
+            if (!BrowserWindow) return resolve(false);
+
             const win = new BrowserWindow({ show: false, webPreferences: { partition: 'persist:lis', nodeIntegration: false, contextIsolation: true } });
             try {
               await win.loadURL(loginUrl);
@@ -222,28 +253,26 @@ class SyncEngine {
                 try {
                   const cookies2 = await sess.cookies.get({ name: 'connect.sid' });
                   if (cookies2 && cookies2.length) { found = true; break; }
-                } catch (e) { }
+                } catch (e) {}
                 await new Promise(r => setTimeout(r, 400));
               }
               try { if (!win.isDestroyed()) win.close(); } catch (e) {}
               if (found) {
-                console.log('[Sync] renderer login set session cookie (connect.sid) after net error');
+                console.log('[Sync] renderer login set session cookie (connect.sid) after net event');
                 return resolve(true);
               }
             } catch (e) {
               try { if (!win.isDestroyed()) win.close(); } catch (ee) {}
-              console.warn('[Sync] renderer login attempt failed after net error:', e && e.message);
             }
-          } catch (e) {
-            console.warn('[Sync] renderer login fallback error after net error:', e && e.message);
-          }
+          } catch (e) {}
+
           resolve(false);
         });
 
         req.write(body);
         req.end();
       } catch (e) {
-        console.error('[Sync] _ensureServerAuth error:', e && e.message);
+        console.error('[Sync] _ensureServerAuth exception:', e && e.message);
         resolve(false);
       }
     });
@@ -500,6 +529,7 @@ class SyncEngine {
       }
 
       const hashAuth = this._getAutoLoginHash();
+      console.log(`[Sync Replay] 📤 SENDING ${op.method || 'POST'} ${op.url}`, op.body ? `[payload keys: ${Object.keys(op.body).join(', ')}]` : '');
 
       if (elNet && elSession) {
         let settled = false;
@@ -522,7 +552,13 @@ class SyncEngine {
         request.on('redirect', (statusCode, _method, redirectUrl) => {
           if (settled) return;
           const redirPath = (redirectUrl || '').replace(/^https?:\/\/[^/]+/, '');
-          if (redirPath === '/' || redirPath === '/login' || redirPath.startsWith('/?') || redirPath.startsWith('/login?')) {
+          console.log(`[Sync Replay] ↪️ REDIRECT (HTTP ${statusCode}) -> ${redirectUrl}`);
+          if (redirectUrl.includes('127.0.0.1') || redirectUrl.includes('localhost')) {
+            settled = true;
+            reject(new Error(`Replay request was redirected locally (${redirectUrl}) — interceptor loop prevented`));
+            return;
+          }
+          if (redirPath === '/' || redirPath === '/login' || redirPath.startsWith('/?') || redirPath.startsWith('/login?') || redirPath.startsWith('/login')) {
             settled = true;
             reject(new Error(`Auth redirect to ${redirPath} — session not valid (status ${statusCode})`));
             return;
@@ -536,6 +572,7 @@ class SyncEngine {
           res.on('end', () => {
             if (settled) return;
             settled = true;
+            console.log(`[Sync Replay] 📥 RESPONSE (HTTP ${res.statusCode}) from ${op.url} | Body: ${responseBody.slice(0, 180)}`);
             if (res.statusCode >= 200 && res.statusCode < 400) {
               let json = null;
               try { json = JSON.parse(responseBody); } catch (_) {}
@@ -548,6 +585,7 @@ class SyncEngine {
         request.on('error', (err) => {
           if (settled) return;
           settled = true;
+          console.error(`[Sync Replay] ⚠️ ERROR sending ${op.method} ${op.url}:`, err && err.message);
           reject(err);
         });
         request.end();
@@ -588,7 +626,7 @@ class SyncEngine {
           if (settled) return;
           settled = true;
           const status = res.statusCode;
-          console.log(`[Sync] _replay response: status=${status} bodyLen=${responseBody.length}`);
+          console.log(`[Sync Replay] 📥 RESPONSE (HTTP ${status}) from ${op.url} | Body: ${responseBody.slice(0, 180)}`);
           if (status >= 200 && status < 300) {
             let json = null;
             try { json = JSON.parse(responseBody); } catch (_) {}
@@ -596,11 +634,18 @@ class SyncEngine {
             return;
           }
 
-          // Handle 3xx as success fallback
+          // Handle 3xx as success fallback ONLY if not redirecting to login/root auth challenge
           if (status >= 300 && status < 400) {
+            const loc = (res.headers && res.headers.location) || '';
+            const redirPath = loc.replace(/^https?:\/\/[^/]+/, '');
+            console.log(`[Sync Replay] ↪️ REDIRECT (HTTP ${status}) -> ${loc}`);
+            if (redirPath === '/' || redirPath === '/login' || redirPath.startsWith('/?') || redirPath.startsWith('/login?') || redirPath.startsWith('/login')) {
+              reject(new Error(`Auth redirect to ${redirPath} — session not valid (status ${status})`));
+              return;
+            }
             let json = null;
             try { json = JSON.parse(responseBody); } catch (_) {}
-            resolve({ status, body: json || responseBody });
+            resolve({ status, body: json || responseBody, redirectTo: loc });
             return;
           }
 

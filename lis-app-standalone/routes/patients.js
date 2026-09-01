@@ -141,7 +141,6 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
         const plain = (p && typeof p.toJSON === 'function') ? p.toJSON() : p;
         return Object.assign({}, plain, { hasTests: !!testsCountByPatient[String(plain.id)] });
       });
-      console.log('DEBUG patients hasTests map:', testsCountByPatient);
     } catch (e) {
       console.warn('Failed to compute patient test flags:', e);
     }
@@ -380,7 +379,7 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       // preserve selected tests for extraction/medtech visibility (detailed objects)
       requestedTests: requestedTestsDetailed,
       client_id: (req.body && req.body.client_id) ? req.body.client_id : undefined,
-      createdBy: req.session.user.id
+      createdBy: (req.session && req.session.user && req.session.user.id) ? req.session.user.id : 'admin'
     });
 
     await patient.save();
@@ -438,29 +437,25 @@ router.post('/thermal-print', requireAuth, canAccessPatient, (req, res) => {
         action: 'thermal_test_manual',
         user: req.session && req.session.user ? req.session.user.id : null,
         args: args,
-        exitCode: proc.status != null ? proc.status : null,
-        error: proc.error ? String(proc.error) : null,
-        stdout: proc.stdout || null,
-        stderr: proc.stderr || null,
-        timestamp: new Date().toISOString()
+        exitCode: proc.status,
+        stdout: (proc.stdout || '').toString(),
+        stderr: (proc.stderr || '').toString(),
+        time: new Date().toISOString()
       };
-      appendPrintLog(JSON.stringify(entry));
-    } catch (logErr) {
-      console.error('Failed to append print log:', logErr);
+      const logFile = pathMod.join(__dirname, '..', 'thermal_test.log');
+      fsMod.appendFileSync(logFile, JSON.stringify(entry) + '\n');
+    } catch (e) {
+      console.warn('Failed to append thermal test log', e);
     }
 
-    if (proc.error) {
-      console.error('Thermal print spawn error:', proc.error);
-      return res.status(500).json({ success: false, error: String(proc.error) });
+    if (proc.status === 0) {
+      return res.json({ success: true, message: 'Print job sent successfully', stdout: (proc.stdout || '').toString() });
+    } else {
+      return res.status(500).json({ success: false, error: 'Print test failed', stderr: (proc.stderr || '').toString(), stdout: (proc.stdout || '').toString() });
     }
-    if (proc.status !== 0) {
-      console.error('Thermal print failed:', proc.stderr || proc.stdout || proc.status);
-      return res.status(500).json({ success: false, error: proc.stderr || proc.stdout || ('Exit code: ' + proc.status) });
-    }
-    return res.json({ success: true, output: proc.stdout });
-  } catch (e) {
-    console.error('Thermal print handler error:', e);
-    return res.status(500).json({ success: false, error: String(e) });
+  } catch (err) {
+    console.error('Thermal test error:', err);
+    return res.status(500).json({ success: false, error: String(err && err.message ? err.message : err) });
   }
 });
 
@@ -599,25 +594,33 @@ router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
 router.delete('/:id', requireAuth, canAccessPatient, async (req, res) => {
   try {
     const Test = require('../models/Test');
-    
-    // Cascade delete any tests belonging to this patient
-    const associatedTests = await Test.find({ patient: req.params.id });
-    if (Array.isArray(associatedTests)) {
-      for (const t of associatedTests) {
+    const targetId = req.params.id;
+
+    // Resolve patient by any identifier (id, _id, patientId, patientCode)
+    let patient = await Patient.findById(targetId);
+    if (!patient) patient = await Patient.findOne({ patientId: targetId });
+    if (!patient) patient = await Patient.findOne({ patientCode: targetId });
+    if (!patient) patient = await Patient.findOne({ id: targetId });
+
+    const allTests = await Test.find();
+    if (patient) {
+      const patientTests = allTests.filter(t => t && (
+        t.patient === patient.id || 
+        t.patient === patient._id || 
+        t.patient === patient.patientId || 
+        t.patient === patient.patientCode ||
+        t.patient === targetId
+      ));
+      for (const t of patientTests) {
         await Test.findByIdAndDelete(t.id);
       }
-    }
-
-    let patient = await Patient.findByIdAndDelete(req.params.id);
-    if (!patient) {
-      // Also attempt by patientId or patientCode if ID didn't match UUID directly
-      const pByCode = await Patient.findOne({ patientId: req.params.id });
-      if (pByCode) patient = await Patient.findByIdAndDelete(pByCode.id);
-    }
-
-    if (!patient) {
-      req.flash('error_msg', 'Patient not found');
-      return res.redirect('/patients');
+      await Patient.findByIdAndDelete(patient.id);
+    } else {
+      const patientTests = allTests.filter(t => t && t.patient === targetId);
+      for (const t of patientTests) {
+        await Test.findByIdAndDelete(t.id);
+      }
+      await Patient.findByIdAndDelete(targetId);
     }
 
     req.flash('success_msg', 'Patient and associated tests deleted successfully');

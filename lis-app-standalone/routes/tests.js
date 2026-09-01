@@ -907,7 +907,7 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
           testDate: (new Date()).toISOString(),
           status: 'Payment Area',
           priority: (priority && String(priority).trim()) ? priority : 'Normal',
-          requestedBy: req.session.user.id,
+          requestedBy: (req.session && req.session.user && req.session.user.id) || 'admin',
           requestedTests: bloodItems,
           awaitingOnly: awaitingOnly
         };
@@ -933,7 +933,7 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
           testDate: (new Date()).toISOString(),
           status: 'Payment Area',
           priority: (priority && String(priority).trim()) ? priority : 'Normal',
-          requestedBy: req.session.user.id,
+          requestedBy: (req.session && req.session.user && req.session.user.id) || 'admin',
           requestedTests: [rt],
           awaitingOnly: awaitingOnly
         };
@@ -975,7 +975,7 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
         results,
         notes,
         priority: (priority && String(priority).trim()) ? priority : 'Normal',
-        requestedBy: req.session.user.id
+        requestedBy: (req.session && req.session.user && req.session.user.id) || 'admin'
       };
       // If the form requested a Send Out but no detailed requestedTests were provided
       // (single testType path), attach a normalized For Send Out requested item so

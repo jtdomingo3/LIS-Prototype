@@ -1444,7 +1444,15 @@
             openConfirm(msg, function() {
               form.dataset.__customConfirmed = '1';
               try { form.removeAttribute('onsubmit'); } catch(err){}
-              form.submit();
+              try {
+                if (typeof form.requestSubmit === 'function') {
+                  form.requestSubmit();
+                } else {
+                  HTMLFormElement.prototype.submit.call(form);
+                }
+              } catch(e) {
+                HTMLFormElement.prototype.submit.call(form);
+              }
             }, options);
             return false;
           }
