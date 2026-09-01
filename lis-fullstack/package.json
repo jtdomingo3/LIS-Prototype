@@ -1,6 +1,6 @@
 {
   "name": "laboratory-information-system",
-  "version": "2.1.2",
+  "version": "2.1.3",
   "description": "Full-stack Laboratory Information System with Node.js, Express, MongoDB",
   "main": "server.js",
   "bin": "server.js",

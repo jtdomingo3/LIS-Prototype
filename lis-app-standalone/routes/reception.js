@@ -789,6 +789,7 @@ router.get('/area/:name', requireAuth, canAccessPatient, async (req, res) => {
 
     // Load available doctors for assignment dropdown
     const users = await User.find({ role: 'Doctor' });
+    const AREAS = getAreas();
 
     res.render('reception/area', {
       title: `Reception - ${areaName}`,
@@ -858,6 +859,7 @@ router.post('/assign', requireAuth, canAccessPatient, async (req, res) => {
 
     // Restrict a patient to be assigned to only one active area at a time (ignore 'Releasing of Result')
     const existingTests = await Test.find({ patient: patientObj.id });
+    const AREAS = getAreas();
     if (Array.isArray(existingTests)) {
       const conflict = existingTests.find(t => t && t.status && AREAS.includes(t.status) && t.status !== 'Releasing of Result' && t.status !== area);
       if (conflict) {
