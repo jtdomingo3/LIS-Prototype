@@ -391,6 +391,9 @@
       <div class="nav-item" data-tab="tab-queue">
         <span>📋</span> Pending Queue
       </div>
+      <div class="nav-item" data-tab="tab-logs">
+        <span>📑</span> Application Logs
+      </div>
     </div>
 
     <!-- Content Area -->
@@ -419,6 +422,13 @@
           <div class="card-row">
             <span class="card-label">Last Full Database Sync</span>
             <span class="card-val" id="lastSyncTime">Never</span>
+          </div>
+          <div class="card-row" style="border-top:1px solid rgba(255,255,255,0.06); padding-top:10px; margin-top:4px;">
+            <span class="card-label">Application Diagnostics</span>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-emerald btn-sm" id="exportLogsFromConnBtn">💾 Export Logs (.log)</button>
+              <button class="btn btn-secondary btn-sm" id="jumpToLogsBtn">📑 View Live Logs</button>
+            </div>
           </div>
         </div>
       </div>
@@ -611,6 +621,32 @@
 
         <div>
           <button class="btn btn-danger btn-sm" id="clearQueueBtn">Clear Entire Queue</button>
+        </div>
+      </div>
+
+      <!-- Tab: Application Logs -->
+      <div class="tab-pane" id="tab-logs">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <div>
+            <div class="section-title">Application Diagnostics & Activity Logs</div>
+            <div class="section-desc">Live debug logs for offline queue, server synchronization, database health, and pipeline events.</div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-secondary btn-sm" id="refreshLogsBtn">⟲ Refresh</button>
+            <button class="btn btn-emerald btn-sm" id="exportLogsBtn">💾 Export Logs (.log)</button>
+            <button class="btn btn-danger btn-sm" id="clearLogsBtn">🗑️ Clear Logs</button>
+          </div>
+        </div>
+
+        <div class="card-panel" style="gap:8px;">
+          <div class="card-row">
+            <span class="card-label">Log File Location</span>
+            <span class="card-val" id="logFilePathVal">Documents/LIS/logs/application.log</span>
+          </div>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <pre id="logsPre" style="background:#0f172a; color:#38bdf8; padding:14px; border-radius:10px; font-family:Consolas, Monaco, monospace; font-size:11.5px; line-height:1.45; height:320px; overflow-y:auto; white-space:pre-wrap; word-break:break-all; border:1px solid rgba(255,255,255,0.1);">Loading application logs...</pre>
         </div>
       </div>
     </div>

@@ -21,7 +21,9 @@ const PORT = process.env.PORT || 3000;
 // If you prefer localhost-only, set HOST=127.0.0.1 before starting.
 const HOST = process.env.HOST || '0.0.0.0';
 // data files live in a directory determined by dataPath.getDataDir();
+const { initAppLogger } = require('./lib/appLogger');
 const DATA_DIR = require('./lib/dataPath').getDataDir();
+initAppLogger(DATA_DIR);
 const SQLITE_FILE = path.join(DATA_DIR, 'lis-data.db');
 // Legacy JSON paths (used for migration and backward compatibility)
 const DATA_FILE = path.join(DATA_DIR, 'data.json');

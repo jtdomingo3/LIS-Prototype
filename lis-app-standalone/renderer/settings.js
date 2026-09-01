@@ -62,6 +62,8 @@
       if (tabId === 'tab-storage' || tabId === 'tab-queue') {
         loadDataStoreInfo();
         loadQueue();
+      } else if (tabId === 'tab-logs') {
+        loadLogs();
       }
     });
   });
@@ -414,6 +416,93 @@
         loadQueue();
       } catch (e) {
         setFeedback('Failed to clear queue.', true);
+      }
+    });
+  }
+
+  // Application Logs
+  const logsPre = document.getElementById('logsPre');
+  const logFilePathVal = document.getElementById('logFilePathVal');
+  const refreshLogsBtn = document.getElementById('refreshLogsBtn');
+  const exportLogsBtn = document.getElementById('exportLogsBtn');
+  const clearLogsBtn = document.getElementById('clearLogsBtn');
+
+  async function loadLogs() {
+    if (!logsPre || !window.lisApp || typeof window.lisApp.getRecentLogs !== 'function') return;
+    try {
+      logsPre.textContent = 'Loading logs...';
+      const res = await window.lisApp.getRecentLogs();
+      if (res) {
+        if (logFilePathVal && res.path) logFilePathVal.textContent = res.path;
+        logsPre.textContent = res.logs || 'No logs recorded yet.';
+        logsPre.scrollTop = logsPre.scrollHeight;
+      }
+    } catch (e) {
+      logsPre.textContent = 'Failed to load logs: ' + e.message;
+    }
+  }
+
+  if (refreshLogsBtn) {
+    refreshLogsBtn.addEventListener('click', loadLogs);
+  }
+
+  if (exportLogsBtn) {
+    exportLogsBtn.addEventListener('click', async () => {
+      if (!window.lisApp || typeof window.lisApp.exportLogs !== 'function') return;
+      try {
+        exportLogsBtn.disabled = true;
+        const res = await window.lisApp.exportLogs();
+        exportLogsBtn.disabled = false;
+        if (res && res.success) {
+          setFeedback('Logs exported successfully to ' + res.path);
+        } else if (res && res.message && res.message !== 'Export canceled.') {
+          setFeedback(res.message, true);
+        }
+      } catch (e) {
+        exportLogsBtn.disabled = false;
+        setFeedback('Export error: ' + e.message, true);
+      }
+    });
+  }
+
+  const exportLogsFromConnBtn = document.getElementById('exportLogsFromConnBtn');
+  if (exportLogsFromConnBtn) {
+    exportLogsFromConnBtn.addEventListener('click', async () => {
+      if (!window.lisApp || typeof window.lisApp.exportLogs !== 'function') return;
+      try {
+        exportLogsFromConnBtn.disabled = true;
+        const res = await window.lisApp.exportLogs();
+        exportLogsFromConnBtn.disabled = false;
+        if (res && res.success) {
+          setFeedback('Logs exported successfully to ' + res.path);
+        } else if (res && res.message && res.message !== 'Export canceled.') {
+          setFeedback(res.message, true);
+        }
+      } catch (e) {
+        exportLogsFromConnBtn.disabled = false;
+        setFeedback('Export error: ' + e.message, true);
+      }
+    });
+  }
+
+  const jumpToLogsBtn = document.getElementById('jumpToLogsBtn');
+  if (jumpToLogsBtn) {
+    jumpToLogsBtn.addEventListener('click', () => {
+      const logsTab = document.querySelector('[data-tab="tab-logs"]');
+      if (logsTab) logsTab.click();
+    });
+  }
+
+  if (clearLogsBtn) {
+    clearLogsBtn.addEventListener('click', async () => {
+      if (!confirm('Are you sure you want to clear all application log files?')) return;
+      if (!window.lisApp || typeof window.lisApp.clearLogs !== 'function') return;
+      try {
+        await window.lisApp.clearLogs();
+        setFeedback('Application logs cleared.');
+        loadLogs();
+      } catch (e) {
+        setFeedback('Failed to clear logs: ' + e.message, true);
       }
     });
   }

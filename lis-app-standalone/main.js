@@ -6,6 +6,8 @@ const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, dialog, shell, ses
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const { initAppLogger } = require('./lib/appLogger');
+initAppLogger(path.join(os.homedir(), 'Documents', 'LIS'));
 
 // Single-instance guard: only one copy of the standalone app may run.  If a
 // second instance is launched we exit immediately.  When the existing
@@ -806,8 +808,55 @@ ipcMain.handle('unlock-app', (_e, { pin }) => {
 });
 
 ipcMain.handle('report-activity', () => {
-  if (!appLocked) lastActivityAt = Date.now();
+  lastActivityAt = Date.now();
   return { success: true };
+});
+
+// Application Logs & Diagnostics IPC
+ipcMain.handle('get-recent-logs', async () => {
+  try {
+    const { getRecentLogs, getLogPath } = require('./lib/appLogger');
+    return {
+      logs: getRecentLogs(300),
+      path: getLogPath()
+    };
+  } catch (e) {
+    return { logs: 'Error reading logs: ' + (e && e.message), path: '' };
+  }
+});
+
+ipcMain.handle('export-logs', async () => {
+  try {
+    const { getLogPath } = require('./lib/appLogger');
+    const logPath = getLogPath();
+    if (!fs.existsSync(logPath)) {
+      return { success: false, message: 'No log file found to export.' };
+    }
+    const defaultName = `gezyne-lis-logs-${new Date().toISOString().slice(0, 10)}.log`;
+    const targetWin = global._settingsWindow || mainWindow;
+    const res = await dialog.showSaveDialog(targetWin, {
+      title: 'Export Application Logs',
+      defaultPath: path.join(app.getPath('downloads') || app.getPath('documents'), defaultName),
+      filters: [{ name: 'Log Files', extensions: ['log', 'txt'] }]
+    });
+    if (res.canceled || !res.filePath) {
+      return { success: false, message: 'Export canceled.' };
+    }
+    fs.copyFileSync(logPath, res.filePath);
+    return { success: true, path: res.filePath, message: 'Logs exported to ' + res.filePath };
+  } catch (e) {
+    return { success: false, message: 'Export failed: ' + (e && e.message) };
+  }
+});
+
+ipcMain.handle('clear-logs', async () => {
+  try {
+    const { clearLogFile } = require('./lib/appLogger');
+    clearLogFile();
+    return { success: true };
+  } catch (e) {
+    return { success: false, message: e && e.message };
+  }
 });
 
 // Discard local queued changes and attempt full-sync (triggered from renderer settings)

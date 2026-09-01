@@ -120,18 +120,29 @@ function getPreferredNetworkAddress() {
   return '127.0.0.1';
 }
 
+const { getRecentLogs, getLogPath, clearLogFile } = require('../lib/appLogger');
+
 // Only allow authenticated users; editing flags restricted to Admins
 router.get('/', requireAuth, (req, res) => {
   const featureFlags = req.app.locals.featureFlags || {};
   const backupConfig = req.app.locals.backupConfig || { enabled: false, frequency: 'daily', path: DEFAULT_BACKUP_DIR };
   // load persistent settings from data.json
   let settings = {};
-  try { const data = global.db.read(); settings = data.settings || {}; } catch (e) { settings = {}; }
+  try {
+    if (global.db && typeof global.db.getSettings === 'function') {
+      settings = global.db.getSettings() || {};
+    } else {
+      const data = global.db.read();
+      settings = data.settings || {};
+    }
+  } catch (e) { settings = {}; }
   const networkAddress = getPreferredNetworkAddress();
   const networkPort = (req && req.socket && req.socket.localPort) ? req.socket.localPort : (process.env.PORT || req.app && req.app.locals && req.app.locals.port || 3000);
   const networkUrl = `${networkAddress}:${networkPort}`;
   const envEntries = readEnvFileEntries();
-  res.render('settings', { title: 'Settings', featureFlags, backupConfig, settings, networkAddress, networkPort, networkUrl, envEntries });
+  const recentLogs = getRecentLogs(200);
+  const logFilePath = getLogPath();
+  res.render('settings', { title: 'Settings', featureFlags, backupConfig, settings, networkAddress, networkPort, networkUrl, envEntries, recentLogs, logFilePath });
 });
 
 router.post('/', requireAuth, canManageUsers, (req, res) => {
@@ -383,6 +394,34 @@ router.post('/clear-users', requireAuth, canManageUsers, (req, res) => {
     req.flash('error_msg', `Clear user data failed: ${e && e.message ? e.message : String(e)}`);
   }
   return res.redirect('/settings');
+});
+
+// GET /settings/export-logs - download application log file
+router.get('/export-logs', requireAuth, (req, res) => {
+  try {
+    const p = getLogPath();
+    if (!fs.existsSync(p)) {
+      req.flash('error_msg', 'No log file found to download.');
+      return res.redirect('/settings');
+    }
+    const filename = `gezyne-lis-logs-${new Date().toISOString().slice(0,10)}.log`;
+    res.download(p, filename);
+  } catch (e) {
+    console.error('Export logs error:', e);
+    req.flash('error_msg', 'Failed to export logs: ' + e.message);
+    res.redirect('/settings');
+  }
+});
+
+// POST /settings/clear-logs - clear the application log file
+router.post('/clear-logs', requireAuth, canManageUsers, (req, res) => {
+  try {
+    clearLogFile();
+    req.flash('success_msg', 'Application logs cleared successfully.');
+  } catch (e) {
+    req.flash('error_msg', 'Failed to clear logs: ' + e.message);
+  }
+  res.redirect('/settings');
 });
 
 module.exports = router;

@@ -537,7 +537,7 @@ class SyncEngine {
       }
 
       const hashAuth = this._getAutoLoginHash();
-      console.log(`[Sync Replay] 📤 SENDING ${op.method || 'POST'} ${op.url}`, op.body ? `[payload keys: ${Object.keys(op.body).join(', ')}]` : '');
+      console.log(`[Sync Replay] -> [SEND] ${op.method || 'POST'} ${op.url}`, op.body ? `[payload keys: ${Object.keys(op.body).join(', ')}]` : '');
 
       if (elNet && elSession) {
         let settled = false;
@@ -560,15 +560,15 @@ class SyncEngine {
         request.on('redirect', (statusCode, _method, redirectUrl) => {
           if (settled) return;
           const redirPath = (redirectUrl || '').replace(/^https?:\/\/[^/]+/, '');
-          console.log(`[Sync Replay] ↪️ REDIRECT (HTTP ${statusCode}) -> ${redirectUrl}`);
+          console.log(`[Sync Replay] -> REDIRECT (HTTP ${statusCode}) -> ${redirectUrl}`);
           if (redirectUrl.includes('127.0.0.1') || redirectUrl.includes('localhost')) {
             settled = true;
-            reject(new Error(`Replay request was redirected locally (${redirectUrl}) — interceptor loop prevented`));
+            reject(new Error(`Replay request was redirected locally (${redirectUrl}) - interceptor loop prevented`));
             return;
           }
           if (redirPath === '/' || redirPath === '/login' || redirPath.startsWith('/?') || redirPath.startsWith('/login?') || redirPath.startsWith('/login')) {
             settled = true;
-            reject(new Error(`Auth redirect to ${redirPath} — session not valid (status ${statusCode})`));
+            reject(new Error(`Auth redirect to ${redirPath} - session not valid (status ${statusCode})`));
             return;
           }
           settled = true;
@@ -580,7 +580,7 @@ class SyncEngine {
           res.on('end', () => {
             if (settled) return;
             settled = true;
-            console.log(`[Sync Replay] 📥 RESPONSE (HTTP ${res.statusCode}) from ${op.url} | Body: ${responseBody.slice(0, 180)}`);
+            console.log(`[Sync Replay] <- [RESP] (HTTP ${res.statusCode}) from ${op.url} | Body: ${responseBody.slice(0, 180)}`);
             if (res.statusCode >= 200 && res.statusCode < 400) {
               let json = null;
               try { json = JSON.parse(responseBody); } catch (_) {}
@@ -593,7 +593,7 @@ class SyncEngine {
         request.on('error', (err) => {
           if (settled) return;
           settled = true;
-          console.error(`[Sync Replay] ⚠️ ERROR sending ${op.method} ${op.url}:`, err && err.message);
+          console.error(`[Sync Replay] [ERROR] sending ${op.method} ${op.url}:`, err && err.message);
           reject(err);
         });
         request.end();
@@ -634,7 +634,7 @@ class SyncEngine {
           if (settled) return;
           settled = true;
           const status = res.statusCode;
-          console.log(`[Sync Replay] 📥 RESPONSE (HTTP ${status}) from ${op.url} | Body: ${responseBody.slice(0, 180)}`);
+          console.log(`[Sync Replay] <- [RESP] (HTTP ${status}) from ${op.url} | Body: ${responseBody.slice(0, 180)}`);
           if (status >= 200 && status < 300) {
             let json = null;
             try { json = JSON.parse(responseBody); } catch (_) {}
@@ -646,9 +646,9 @@ class SyncEngine {
           if (status >= 300 && status < 400) {
             const loc = (res.headers && res.headers.location) || '';
             const redirPath = loc.replace(/^https?:\/\/[^/]+/, '');
-            console.log(`[Sync Replay] ↪️ REDIRECT (HTTP ${status}) -> ${loc}`);
+            console.log(`[Sync Replay] -> REDIRECT (HTTP ${status}) -> ${loc}`);
             if (redirPath === '/' || redirPath === '/login' || redirPath.startsWith('/?') || redirPath.startsWith('/login?') || redirPath.startsWith('/login')) {
-              reject(new Error(`Auth redirect to ${redirPath} — session not valid (status ${status})`));
+              reject(new Error(`Auth redirect to ${redirPath} - session not valid (status ${status})`));
               return;
             }
             let json = null;

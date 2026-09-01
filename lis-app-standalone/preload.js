@@ -46,6 +46,11 @@ contextBridge.exposeInMainWorld('lisApp', {
   unlockApp:           (pin)              => ipcRenderer.invoke('unlock-app', { pin }),
   reportActivity:      ()                 => ipcRenderer.invoke('report-activity'),
 
+  /* ── application logs & diagnostics ─────────────────────────── */
+  getRecentLogs:       ()                 => ipcRenderer.invoke('get-recent-logs'),
+  exportLogs:          ()                 => ipcRenderer.invoke('export-logs'),
+  clearLogs:           ()                 => ipcRenderer.invoke('clear-logs'),
+
   /* ── event listeners ─────────────────────────────────────────── */
   onNetworkStatus: (callback) => {
     ipcRenderer.on('network-status', (_event, data) => callback(data));
