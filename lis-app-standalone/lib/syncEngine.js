@@ -914,97 +914,156 @@ class SyncEngine {
     const sseUrl = `${base}/reception/assigned-events`;
     this._bridgeActive = true;
 
-    const connectStream = () => {
+    let electron = null;
+    try { electron = require('electron'); } catch (_) {}
+    const net = (electron && electron.net) ? electron.net : null;
+    const session = (electron && electron.session) ? electron.session : null;
+
+    const connectStream = async () => {
       if (!this._bridgeActive) return;
       try {
-        const parsed = new URL(sseUrl);
-        const isHttps = parsed.protocol === 'https:';
-        const client = isHttps ? require('https') : require('http');
+        if (net && session) {
+          // In Electron runtime: use net.request with persist:lis partition session cookies
+          const sess = session.fromPartition('persist:lis');
+          const req = net.request({
+            method: 'GET',
+            url: sseUrl,
+            session: sess,
+            useSessionCookies: true,
+          });
 
-        const headers = {
-          'Accept': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive'
-        };
+          req.setHeader('Accept', 'text/event-stream');
+          req.setHeader('Cache-Control', 'no-cache');
+          req.setHeader('Connection', 'keep-alive');
 
-        const authCreds = this._getAutoLoginHash();
-        if (authCreds) {
-          headers['X-Auto-Login-Email'] = authCreds.email;
-          headers['X-Auto-Login-Hash'] = authCreds.hash;
-        }
-
-        const req = client.request({
-          hostname: parsed.hostname,
-          port: parsed.port || (isHttps ? 443 : 80),
-          path: parsed.pathname + (parsed.search || ''),
-          method: 'GET',
-          headers: headers,
-          timeout: 0 // keep stream open
-        }, (res) => {
-          if (res.statusCode !== 200) {
-            console.warn(`[SyncBridge] Server SSE responded with HTTP ${res.statusCode} — retrying in 5s`);
-            res.resume();
-            this._scheduleBridgeReconnect(connectStream, 5000);
-            return;
+          const authCreds = this._getAutoLoginHash();
+          if (authCreds) {
+            req.setHeader('X-Auto-Login-Email', authCreds.email);
+            req.setHeader('X-Auto-Login-Hash', authCreds.hash);
           }
 
-          console.log('[SyncBridge] Connected to live server SSE stream:', sseUrl);
-          this._bridgeConnected = true;
-
-          let buffer = '';
-          res.on('data', (chunk) => {
-            buffer += chunk.toString('utf8');
-            const lines = buffer.split('\n\n');
-            buffer = lines.pop() || '';
-
-            for (const block of lines) {
-              const dataLine = block.split('\n').find(l => l.startsWith('data:'));
-              if (!dataLine) continue;
-              const rawData = dataLine.slice(5).trim();
-              if (!rawData) continue;
-
-              try {
-                const eventData = JSON.parse(rawData);
-                if (eventData && !eventData.init && !eventData.offline && eventData.type !== 'ping' && !eventData.keepalive) {
-                  console.log('[SyncBridge] Received live server event:', eventData.action || eventData.type || 'event');
-                  
-                  // 1. Forward event to local UI / kiosk
-                  if (typeof onEventCallback === 'function') {
-                    try { onEventCallback(eventData); } catch (e) {}
-                  }
-
-                  // 2. Trigger automatic background sync so local SQLite has the latest records
-                  this.scheduleAutoFullSync(webContents);
-                }
-              } catch (parseErr) {
-                // non-json or keepalive
-              }
+          req.on('response', (res) => {
+            if (res.statusCode === 302 || res.statusCode === 401) {
+              // Session expired on server; attempt background re-auth and reconnect
+              this._ensureServerAuth().catch(() => {});
+              this._scheduleBridgeReconnect(connectStream, 10000);
+              return;
             }
+
+            if (res.statusCode !== 200) {
+              this._scheduleBridgeReconnect(connectStream, 15000);
+              return;
+            }
+
+            console.log('[SyncBridge] Connected to live server SSE stream:', sseUrl);
+            this._bridgeConnected = true;
+
+            let buffer = '';
+            res.on('data', (chunk) => {
+              buffer += chunk.toString('utf8');
+              const lines = buffer.split('\n\n');
+              buffer = lines.pop() || '';
+
+              for (const block of lines) {
+                const dataLine = block.split('\n').find(l => l.startsWith('data:'));
+                if (!dataLine) continue;
+                const rawData = dataLine.slice(5).trim();
+                if (!rawData) continue;
+
+                try {
+                  const eventData = JSON.parse(rawData);
+                  if (eventData && !eventData.init && !eventData.offline && eventData.type !== 'ping' && !eventData.keepalive) {
+                    console.log('[SyncBridge] Received live server event:', eventData.action || eventData.type || 'event');
+                    
+                    // 1. Forward event to local UI / kiosk
+                    if (typeof onEventCallback === 'function') {
+                      try { onEventCallback(eventData); } catch (e) {}
+                    }
+
+                    // 2. Trigger automatic background sync so local SQLite has the latest records
+                    this.scheduleAutoFullSync(webContents);
+                  }
+                } catch (parseErr) {
+                  // non-json or keepalive
+                }
+              }
+            });
+
+            res.on('end', () => {
+              this._bridgeConnected = false;
+              this._scheduleBridgeReconnect(connectStream, 8000);
+            });
+
+            res.on('error', () => {
+              this._bridgeConnected = false;
+              this._scheduleBridgeReconnect(connectStream, 10000);
+            });
           });
 
-          res.on('end', () => {
-            console.log('[SyncBridge] Server SSE stream ended — reconnecting...');
+          req.on('error', () => {
             this._bridgeConnected = false;
-            this._scheduleBridgeReconnect(connectStream, 3000);
+            this._scheduleBridgeReconnect(connectStream, 15000);
           });
 
-          res.on('error', (err) => {
-            console.warn('[SyncBridge] Stream error:', err && err.message);
-            this._bridgeConnected = false;
-            this._scheduleBridgeReconnect(connectStream, 4000);
+          this._currentBridgeReq = req;
+          req.end();
+        } else {
+          // Node fallback (e.g. tests)
+          const parsed = new URL(sseUrl);
+          const isHttps = parsed.protocol === 'https:';
+          const client = isHttps ? require('https') : require('http');
+
+          const headers = {
+            'Accept': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive'
+          };
+          if (this._sessionCookie) headers['Cookie'] = this._sessionCookie;
+
+          const req = client.request({
+            hostname: parsed.hostname,
+            port: parsed.port || (isHttps ? 443 : 80),
+            path: parsed.pathname + (parsed.search || ''),
+            method: 'GET',
+            headers: headers,
+            timeout: 0
+          }, (res) => {
+            if (res.statusCode !== 200) {
+              res.resume();
+              this._scheduleBridgeReconnect(connectStream, 15000);
+              return;
+            }
+            this._bridgeConnected = true;
+            let buffer = '';
+            res.on('data', (chunk) => {
+              buffer += chunk.toString('utf8');
+              const lines = buffer.split('\n\n');
+              buffer = lines.pop() || '';
+              for (const block of lines) {
+                const dataLine = block.split('\n').find(l => l.startsWith('data:'));
+                if (!dataLine) continue;
+                const rawData = dataLine.slice(5).trim();
+                if (!rawData) continue;
+                try {
+                  const eventData = JSON.parse(rawData);
+                  if (eventData && !eventData.init && !eventData.offline && eventData.type !== 'ping' && !eventData.keepalive) {
+                    if (typeof onEventCallback === 'function') {
+                      try { onEventCallback(eventData); } catch (e) {}
+                    }
+                    this.scheduleAutoFullSync(webContents);
+                  }
+                } catch (e) {}
+              }
+            });
+            res.on('end', () => { this._bridgeConnected = false; this._scheduleBridgeReconnect(connectStream, 8000); });
+            res.on('error', () => { this._bridgeConnected = false; this._scheduleBridgeReconnect(connectStream, 10000); });
           });
-        });
-
-        req.on('error', (err) => {
-          // Expected when server is offline or unreachable
-          this._bridgeConnected = false;
-          this._scheduleBridgeReconnect(connectStream, 5000);
-        });
-
-        this._currentBridgeReq = req;
-        req.end();
+          req.on('error', () => { this._bridgeConnected = false; this._scheduleBridgeReconnect(connectStream, 15000); });
+          this._currentBridgeReq = req;
+          req.end();
+        }
       } catch (err) {
-        this._scheduleBridgeReconnect(connectStream, 6000);
+        this._scheduleBridgeReconnect(connectStream, 15000);
       }
     };
 
@@ -1034,11 +1093,15 @@ class SyncEngine {
       this._autoFullSyncTimer = null;
     }
     if (this._currentBridgeReq) {
-      try { this._currentBridgeReq.destroy(); } catch (e) {}
+      try {
+        if (typeof this._currentBridgeReq.abort === 'function') this._currentBridgeReq.abort();
+        else if (typeof this._currentBridgeReq.destroy === 'function') this._currentBridgeReq.destroy();
+      } catch (e) {}
       this._currentBridgeReq = null;
     }
   }
 }
 
 module.exports = { SyncEngine };
+
 

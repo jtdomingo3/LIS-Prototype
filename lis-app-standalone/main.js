@@ -1140,8 +1140,16 @@ function openPrintPreviewWindow(url) {
 
 function openChildWindow(url) {
   try {
-    const child = new BrowserWindow({ width: 1000, height: 800, icon: appIcon || undefined, webPreferences: { preload: path.join(__dirname, 'preload.js'), nodeIntegration: false, contextIsolation: true, partition: 'persist:lis' } });
-    child.loadURL(url).catch(() => {});
+    let targetUrl = url;
+    try {
+      const u = new URL(url);
+      u.searchParams.set('popup', '1');
+      targetUrl = u.toString();
+    } catch (e) {
+      targetUrl = url + (url.includes('?') ? '&' : '?') + 'popup=1';
+    }
+    const child = new BrowserWindow({ width: 1040, height: 850, title: 'Report Preview — Gezyne LIS', icon: appIcon || undefined, webPreferences: { preload: path.join(__dirname, 'preload.js'), nodeIntegration: false, contextIsolation: true, partition: 'persist:lis' } });
+    child.loadURL(targetUrl).catch(() => {});
     child.once('ready-to-show', () => { try { child.show(); } catch {} });
     try { if (process && process.argv && process.argv.includes('--dev')) child.webContents.openDevTools({ mode: 'detach' }); } catch (e) {}
     // Track child renderer crashes for this URL: attempt a reload once, then open externally and close.

@@ -766,10 +766,10 @@
             flex-wrap: wrap;
         }
 
-        /* Responsive & Preview/Popup Mode */
-        @media (max-width: 1180px) {
+        /* Responsive (Mobile & Small Screens <= 900px) */
+        @media (max-width: 900px) {
             .container { flex-direction: column; }
-            .main-content { padding: 20px 24px 60px 24px; width: 100%; max-width: 100%; box-sizing: border-box; }
+            .main-content { padding: 20px; width: 100%; max-width: 100%; box-sizing: border-box; }
             .header {
                 padding: 12px 20px;
                 margin-bottom: 24px;
@@ -795,9 +795,8 @@
             .sidebar-backdrop.active { opacity: 1; visibility: visible; }
         }
 
-        /* Dedicated popup / preview mode styling (when opened as small window) */
-        body.popup-mode .sidebar,
-        body.preview-mode .sidebar {
+        /* Auto-collapse in Child/Popup Preview Windows */
+        body.popup-window .sidebar {
             position: fixed;
             left: 0;
             top: 0;
@@ -808,25 +807,22 @@
             box-shadow: 8px 0 36px rgba(0,0,0,0.45);
             transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        body.popup-mode .sidebar.open,
-        body.preview-mode .sidebar.open {
+        body.popup-window .sidebar.open {
             transform: translateX(0);
         }
-        body.popup-mode .main-content,
-        body.preview-mode .main-content {
+        body.popup-window .main-content {
             padding: 16px 20px 48px 20px;
             width: 100%;
             max-width: 100%;
             box-sizing: border-box;
         }
-        body.popup-mode .hamburger,
-        body.preview-mode .hamburger {
+        body.popup-window .hamburger {
             display: inline-flex !important;
         }
 
         /* Sidebar toggle hamburger button */
         .hamburger {
-            display: inline-flex;
+            display: none;
             background: #ffffff;
             border: 1px solid #cbd5e1;
             font-size: 1.2rem;
@@ -841,6 +837,10 @@
             user-select: none;
         }
         
+        @media (max-width: 900px) {
+            .hamburger { display: inline-flex !important; }
+        }
+
         .hamburger:hover {
             background: var(--bg-light);
             border-color: #94a3b8;
@@ -1029,31 +1029,28 @@
             });
         }, 4000);
 
-        // Sidebar toggle for desktop & responsive / popup views
+        // Sidebar toggle for desktop & responsive mobile / popup views
         (function() {
             const toggle = document.getElementById('sidebarToggle');
             const sidebar = document.querySelector('.sidebar');
             const backdrop = document.getElementById('sidebarBackdrop');
 
-            // Detect if this is a popup, preview, or print window
+            // Detect if this window is a child popup / preview window
             try {
-                const path = window.location.pathname || '';
-                const isPopup = window.opener != null || 
+                const params = new URLSearchParams(window.location.search);
+                const isPopup = (window.opener != null) || 
                                 window.name === 'previewWin' || 
-                                path.includes('/preview') || 
-                                path.includes('/print') || 
-                                window.location.search.includes('popup=1') ||
-                                window.location.search.includes('kiosk=1') ||
-                                window.innerWidth <= 1180;
+                                params.has('popup') || 
+                                params.has('embedded');
                 if (isPopup) {
-                    document.body.classList.add('popup-mode');
+                    document.body.classList.add('popup-window');
                 }
-            } catch (e) {}
+            } catch(e) {}
 
             if (!toggle || !sidebar) return;
 
             function isNarrowScreen() {
-                return window.innerWidth <= 1180 || document.body.classList.contains('popup-mode');
+                return window.innerWidth <= 900 || document.body.classList.contains('popup-window');
             }
 
             function openSidebar() {
@@ -1095,21 +1092,12 @@
                 if (e.key === 'Escape') closeSidebar();
             });
 
-            // Restore persisted collapsed state on load for wide screens
-            try {
-                if (!isNarrowScreen() && localStorage.getItem('sidebar-collapsed')) {
-                    sidebar.classList.add('collapsed');
-                }
-            } catch (e) {}
-
             // Ensure classes are consistent on resize
             window.addEventListener('resize', () => {
-                if (window.innerWidth > 1180 && !document.body.classList.contains('popup-mode')) {
+                if (window.innerWidth > 900 && !document.body.classList.contains('popup-window')) {
                     sidebar.classList.remove('open');
                     if (backdrop) backdrop.classList.remove('active');
                     document.body.style.overflow = '';
-                    // mobile: remove collapsed so off-canvas works predictably
-                    sidebar.classList.remove('collapsed');
                 }
             });
         })();
