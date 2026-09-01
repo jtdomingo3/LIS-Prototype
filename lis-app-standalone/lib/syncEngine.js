@@ -525,7 +525,15 @@ class SyncEngine {
       try { qsLib = require('qs'); } catch (_) {}
       let encodedBody = '';
       if (op.body && typeof op.body === 'object' && Object.keys(op.body).length) {
-        encodedBody = qsLib ? qsLib.stringify(op.body, { arrayFormat: 'repeat', encode: true }) : new URLSearchParams(op.body).toString();
+        const normalized = {};
+        for (const [k, v] of Object.entries(op.body)) {
+          if (v !== null && typeof v === 'object') {
+            normalized[k] = JSON.stringify(v);
+          } else {
+            normalized[k] = v;
+          }
+        }
+        encodedBody = qsLib ? qsLib.stringify(normalized, { arrayFormat: 'repeat', encode: true }) : new URLSearchParams(normalized).toString();
       }
 
       const hashAuth = this._getAutoLoginHash();

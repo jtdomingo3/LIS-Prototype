@@ -191,7 +191,7 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
                 const allTests = (typeof global.db.getTests === 'function' ? global.db.getTests() : []) || [];
                 const patientTests = allTests.filter(t => t && String(t.patient) === String(patientIdForTests));
                 if (patientTests.length) {
-                  entry.body.createdTests = patientTests.map(t => ({
+                  entry.body.createdTests = JSON.stringify(patientTests.map(t => ({
                     id: t.id,
                     testId: t.testId,
                     testType: t.testType,
@@ -205,7 +205,7 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
                     notes: t.notes,
                     results: t.results,
                     client_id: t.client_id || t.id
-                  }));
+                  })));
                   operationQueue._save();
                 }
               }

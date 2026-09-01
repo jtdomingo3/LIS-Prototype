@@ -841,12 +841,14 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
     // If incoming request contains pre-created tests (from offline sync replay)
     let incomingList = null;
     if (req.body) {
-      if (Array.isArray(req.body.createdTests)) incomingList = req.body.createdTests;
-      else if (Array.isArray(req.body.tests)) incomingList = req.body.tests;
-      else if (typeof req.body.createdTests === 'string') {
+      if (typeof req.body.createdTests === 'string') {
         try { incomingList = JSON.parse(req.body.createdTests); } catch (_) {}
       } else if (typeof req.body.tests === 'string') {
         try { incomingList = JSON.parse(req.body.tests); } catch (_) {}
+      } else if (Array.isArray(req.body.createdTests)) {
+        incomingList = req.body.createdTests;
+      } else if (Array.isArray(req.body.tests)) {
+        incomingList = req.body.tests;
       } else if (req.body.createdTests && typeof req.body.createdTests === 'object') {
         incomingList = Object.values(req.body.createdTests);
       } else if (req.body.tests && typeof req.body.tests === 'object') {
@@ -854,14 +856,22 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       }
     }
 
+    // Filter out invalid or [object Object] string elements
+    if (Array.isArray(incomingList)) {
+      incomingList = incomingList.filter(item => item && typeof item === 'object' && typeof item !== 'string' && Object.keys(item).length > 0);
+      if (incomingList.length === 0) incomingList = null;
+    }
+
     if (Array.isArray(incomingList) && incomingList.length) {
       for (const item of incomingList) {
-        if (!item) continue;
+        if (!item || typeof item !== 'object') continue;
+        const inferredType = item.testType || (Array.isArray(item.requestedTests) && item.requestedTests[0] ? (item.requestedTests[0].label || item.requestedTests[0].key) : null) || testType || 'Test';
+        const prefix = getPrefixForLabel(inferredType);
         const payload = {
           id: item.id || undefined,
-          testId: item.testId || getNextTestId(getPrefixForLabel(item.testType || 'T')),
+          testId: item.testId || getNextTestId(prefix),
           patient: item.patient || patient,
-          testType: item.testType || testType || 'Test',
+          testType: inferredType,
           testDate: item.testDate || (new Date()).toISOString(),
           status: item.status || 'Payment Area',
           priority: item.priority || priority || 'Normal',
@@ -871,7 +881,9 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
           assignedDoctorId: item.assignedDoctorId || undefined,
           assignedDoctorName: item.assignedDoctorName || undefined,
           requestedBy: (req.session && req.session.user && req.session.user.id) || item.requestedBy,
-          requestedTests: Array.isArray(item.requestedTests) ? item.requestedTests : (requestedTestsDetailed || []),
+          requestedTests: (Array.isArray(item.requestedTests) && item.requestedTests.length)
+            ? item.requestedTests
+            : (inferredType !== 'Test' ? [{ key: inferredType, label: inferredType }] : (requestedTestsDetailed || [])),
           awaitingOnly: item.awaitingOnly !== undefined ? item.awaitingOnly : awaitingOnly,
           client_id: item.client_id || item.id || undefined
         };
@@ -907,7 +919,7 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
           testDate: (new Date()).toISOString(),
           status: 'Payment Area',
           priority: (priority && String(priority).trim()) ? priority : 'Normal',
-          requestedBy: (req.session && req.session.user && req.session.user.id) || 'admin',
+          requestedBy: req.session.user.id,
           requestedTests: bloodItems,
           awaitingOnly: awaitingOnly
         };
@@ -933,7 +945,7 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
           testDate: (new Date()).toISOString(),
           status: 'Payment Area',
           priority: (priority && String(priority).trim()) ? priority : 'Normal',
-          requestedBy: (req.session && req.session.user && req.session.user.id) || 'admin',
+          requestedBy: req.session.user.id,
           requestedTests: [rt],
           awaitingOnly: awaitingOnly
         };
@@ -975,7 +987,7 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
         results,
         notes,
         priority: (priority && String(priority).trim()) ? priority : 'Normal',
-        requestedBy: (req.session && req.session.user && req.session.user.id) || 'admin'
+        requestedBy: req.session.user.id
       };
       // If the form requested a Send Out but no detailed requestedTests were provided
       // (single testType path), attach a normalized For Send Out requested item so

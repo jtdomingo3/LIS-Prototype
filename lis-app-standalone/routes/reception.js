@@ -54,11 +54,11 @@ function getAreas() {
     'Ultrasound',
     '2D Echo',
     'X-ray',
-    'ECG',
-    'Releasing of Result'
+    'ECG'
   ];
   if (d1) list.push(doctorArea(d1));
   if (d2 && d2 !== d1) list.push(doctorArea(d2));
+  list.push('Releasing of Result');
   return list;
 }
 
@@ -94,13 +94,33 @@ function getTargetAreaForTest(t) {
   const d2 = getDoctor2Name();
   const d1Lower = d1.toLowerCase();
   const d2Lower = d2.toLowerCase();
+
+  const label = String(t.testType || '').toLowerCase();
+
+  // 1. Direct testType matching
+  if (label.includes('doctor')) {
+    if (d2 && label.includes(d2Lower)) return doctorArea(d2);
+    return doctorArea(d1);
+  }
+  if (label.includes('drug')) return 'Drug Test';
+  if (label.includes('2d') || label.includes('echocardiography') || label.includes('2d echo') || label === 'echo') return '2D Echo';
+  if (label.includes('ultrasound')) return 'Ultrasound';
+  if (label.includes('xray') || label.includes('x-ray')) return 'X-ray';
+  if (label.includes('ecg')) return 'ECG';
+  if (/send\s*out|for\s*send|sendout|send-out/.test(label)) return 'Sendout';
+  if (label.includes('fecal') || label.includes('pregnan') || label.includes('fob') || label.includes('pregnancy') || label.includes('urinal')) return null;
+  if (/blood|chemistry|bun|crea|creatinine|hematology|serology|pt|aptt|typing|dengue|esr|thyroid|ct-bt|cbc|hba1c/.test(label)) return 'Extraction Area';
+
+  // 2. Fallback to inspect requestedTests
   try {
     if (Array.isArray(t.requestedTests) && t.requestedTests.length) {
+      if (t.requestedTests.length === 1 && t.requestedTests[0]) {
+        return getTargetAreaForRequest(t.requestedTests[0]);
+      }
       for (const rr of t.requestedTests) {
         if (rr && rr.area) {
           const ra = String(rr.area || '').toLowerCase();
           if (ra.includes('send')) return 'Sendout';
-          // If the area mentions a doctor, map to the configured doctor area (try to detect specific doctor)
           if (ra.includes("dr.") || ra.includes('doctor')) {
             if (d2 && ra.includes(d2Lower)) return doctorArea(d2);
             return doctorArea(d1);
@@ -114,23 +134,7 @@ function getTargetAreaForTest(t) {
       if (anyTyping) return 'Extraction Area';
     }
   } catch (e) { console.warn('getTargetAreaForTest failed to inspect requestedTests', e); }
-  const label = String(t.testType || '').toLowerCase();
-  // If the testType indicates a doctor's checkup, map to configured doctor area
-  try {
-    if (label.includes('doctor')) {
-      if (d2 && label.includes(d2Lower)) return doctorArea(d2);
-      return doctorArea(d1);
-    }
-  } catch (e) {}
-  if (label.includes('2d') || label.includes('echocardiography') || label.includes('2d echo') || label === 'echo') return '2D Echo';
-  if (label.includes('ultrasound')) return 'Ultrasound';
-  if (label.includes('xray') || label.includes('x-ray')) return 'X-ray';
-  if (label.includes('ecg')) return 'ECG';
-  if (label.includes('drug')) return 'Drug Test';
-  // Explicit exclusions that should remain Awaiting (handled separately)
-  if (label.includes('fecal') || label.includes('pregnan') || label.includes('fob') || label.includes('pregnancy') || label.includes('urinal')) return null;
-  // Common blood/serology/hematology templates map to Extraction Area
-  if (/blood|chemistry|bun|crea|creatinine|hematology|serology|pt|aptt|typing|dengue|esr|thyroid|ct-bt|cbc|hba1c/.test(label)) return 'Extraction Area';
+
   return null;
 }
 
@@ -1057,11 +1061,11 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
       const remainingTests = [];
 
       for (const t of allPatientTests) {
+        if (!t) continue;
         const mapped = mapAreaForTest(t);
-        const matchId = ids.length && (ids.includes(t.testId) || ids.includes(t.id));
         const matchArea = mapped === area || t.status === area;
 
-        if (matchId || matchArea) {
+        if (matchArea) {
           currentAreaTests.push(t);
         } else {
           remainingTests.push(t);
