@@ -1306,14 +1306,15 @@
                                 const muted = (function(){ try { return localStorage.getItem('notif-muted') === '1'; } catch(e){ return false; } })();
                                 if (!muted && sound && typeof sound.play === 'function') { sound.currentTime = 0; sound.play().catch(()=>{}); }
                             } catch(e){}
-                            // auto-refresh across tabs ONLY if user explicitly enabled it and not filling forms
+                            // auto-refresh queue / list pages when live events arrive (unless user is actively typing)
                             try {
                                 const isUserEditing = document.activeElement && (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName) || document.activeElement.isContentEditable);
                                 const isEditingPage = window.location.pathname.includes('/new') || window.location.pathname.includes('/edit') || window.location.pathname.includes('/results');
+                                const isQueuePage = window.location.pathname === '/reception' || window.location.pathname.includes('/assigned') || window.location.pathname === '/dashboard' || window.location.pathname === '/';
                                 const v = localStorage.getItem('notif-auto-refresh');
-                                const enabled = (v === '1' || (autoRefreshCheckbox && autoRefreshCheckbox.checked));
+                                const enabled = (v === '1' || (autoRefreshCheckbox && autoRefreshCheckbox.checked) || isQueuePage);
                                 if (enabled && !isUserEditing && !isEditingPage) {
-                                    setTimeout(() => { try { window.location.reload(); } catch (e) {} }, 800);
+                                    setTimeout(() => { try { window.location.reload(); } catch (e) {} }, 1200);
                                 }
                             } catch(e){}
                         } catch (e) { console.warn('[SSE] message parse error', e); }
@@ -1508,7 +1509,7 @@
     </script>
 
     <script src="/assets/button-guard.js"></script>
-    <script src="/assets/smart-autocomplete.js"></script>
+    <script src="/assets/results-autocomplete.js"></script>
     <!-- Scripts injected from individual views (via express-ejs-layouts extractScripts) -->
     <%- script %>
 </body>

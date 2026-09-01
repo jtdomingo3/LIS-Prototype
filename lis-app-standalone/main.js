@@ -237,6 +237,17 @@ async function startNetworkMonitor() {
 
       if (online) {
         triggerAutoSync().catch(() => {});
+        if (syncEngine) {
+          syncEngine.startLiveEventBridge((eventData) => {
+            if (localServer && typeof localServer.broadcastEvent === 'function') {
+              localServer.broadcastEvent(eventData);
+            }
+          }, mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null);
+        }
+      } else {
+        if (syncEngine) {
+          syncEngine.stopLiveEventBridge();
+        }
       }
 
       // When going offline, immediately redirect the user from the real
@@ -267,6 +278,13 @@ async function startNetworkMonitor() {
 
     networkMonitor.start();
     setupRequestInterceptor();
+    if (isOnline && syncEngine) {
+      syncEngine.startLiveEventBridge((eventData) => {
+        if (localServer && typeof localServer.broadcastEvent === 'function') {
+          localServer.broadcastEvent(eventData);
+        }
+      }, mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null);
+    }
     // ensure periodic sync timer reflects current network state
     try { updateFullSyncTimer(isOnline); } catch (e) {}
   } catch (e) { console.error('[Main] startNetworkMonitor failed', e && e.message); }
@@ -419,6 +437,20 @@ async function createWindow() {
     // open settings so user can configure server
     try { setTimeout(openSettingsWindow, 300); } catch (e) {}
   }
+
+  // On page reload / navigation, perform fast simultaneous two-way sync
+  mainWindow.webContents.on('did-start-loading', () => {
+    try {
+      if (isOnline) {
+        if (operationQueue && operationQueue.countPending() > 0) {
+          triggerAutoSync().catch(() => {});
+        }
+        if (syncEngine) {
+          syncEngine.scheduleAutoFullSync(mainWindow.webContents, 200);
+        }
+      }
+    } catch (e) {}
+  });
 
   mainWindow.webContents.on('did-finish-load', async () => {
     // Always inject the status bar / client scripts first — before any async

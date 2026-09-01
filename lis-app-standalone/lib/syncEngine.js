@@ -883,6 +883,162 @@ class SyncEngine {
     }
     return null;
   }
+
+  /**
+   * Schedule a debounced background fullSync when remote events are received.
+   */
+  scheduleAutoFullSync(webContents, delay = 1200) {
+    try {
+      if (this._autoFullSyncTimer) clearTimeout(this._autoFullSyncTimer);
+      this._autoFullSyncTimer = setTimeout(async () => {
+        try {
+          if (this._syncing) return;
+          console.log('[SyncBridge] Triggering background fullSync on remote event...');
+          await this.fullSync(webContents);
+        } catch (err) {
+          console.warn('[SyncBridge] Background fullSync failed:', err && err.message);
+        }
+      }, delay);
+    } catch (e) {}
+  }
+
+  /**
+   * Start Live SSE Bridge connecting to the central LIS server.
+   * Forwards all real-time events to local windows and triggers background data sync.
+   */
+  startLiveEventBridge(onEventCallback, webContents) {
+    this.stopLiveEventBridge();
+    if (!this.config || !this.config.SERVER_URL) return;
+
+    const base = this.config.SERVER_URL.replace(/\/$/, '');
+    const sseUrl = `${base}/reception/assigned-events`;
+    this._bridgeActive = true;
+
+    const connectStream = () => {
+      if (!this._bridgeActive) return;
+      try {
+        const parsed = new URL(sseUrl);
+        const isHttps = parsed.protocol === 'https:';
+        const client = isHttps ? require('https') : require('http');
+
+        const headers = {
+          'Accept': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive'
+        };
+
+        const authCreds = this._getAutoLoginHash();
+        if (authCreds) {
+          headers['X-Auto-Login-Email'] = authCreds.email;
+          headers['X-Auto-Login-Hash'] = authCreds.hash;
+        }
+
+        const req = client.request({
+          hostname: parsed.hostname,
+          port: parsed.port || (isHttps ? 443 : 80),
+          path: parsed.pathname + (parsed.search || ''),
+          method: 'GET',
+          headers: headers,
+          timeout: 0 // keep stream open
+        }, (res) => {
+          if (res.statusCode !== 200) {
+            console.warn(`[SyncBridge] Server SSE responded with HTTP ${res.statusCode} — retrying in 5s`);
+            res.resume();
+            this._scheduleBridgeReconnect(connectStream, 5000);
+            return;
+          }
+
+          console.log('[SyncBridge] Connected to live server SSE stream:', sseUrl);
+          this._bridgeConnected = true;
+
+          let buffer = '';
+          res.on('data', (chunk) => {
+            buffer += chunk.toString('utf8');
+            const lines = buffer.split('\n\n');
+            buffer = lines.pop() || '';
+
+            for (const block of lines) {
+              const dataLine = block.split('\n').find(l => l.startsWith('data:'));
+              if (!dataLine) continue;
+              const rawData = dataLine.slice(5).trim();
+              if (!rawData) continue;
+
+              try {
+                const eventData = JSON.parse(rawData);
+                if (eventData && !eventData.init && !eventData.offline && eventData.type !== 'ping' && !eventData.keepalive) {
+                  console.log('[SyncBridge] Received live server event:', eventData.action || eventData.type || 'event');
+                  
+                  // 1. Forward event to local UI / kiosk
+                  if (typeof onEventCallback === 'function') {
+                    try { onEventCallback(eventData); } catch (e) {}
+                  }
+
+                  // 2. Trigger automatic background sync so local SQLite has the latest records
+                  this.scheduleAutoFullSync(webContents);
+                }
+              } catch (parseErr) {
+                // non-json or keepalive
+              }
+            }
+          });
+
+          res.on('end', () => {
+            console.log('[SyncBridge] Server SSE stream ended — reconnecting...');
+            this._bridgeConnected = false;
+            this._scheduleBridgeReconnect(connectStream, 3000);
+          });
+
+          res.on('error', (err) => {
+            console.warn('[SyncBridge] Stream error:', err && err.message);
+            this._bridgeConnected = false;
+            this._scheduleBridgeReconnect(connectStream, 4000);
+          });
+        });
+
+        req.on('error', (err) => {
+          // Expected when server is offline or unreachable
+          this._bridgeConnected = false;
+          this._scheduleBridgeReconnect(connectStream, 5000);
+        });
+
+        this._currentBridgeReq = req;
+        req.end();
+      } catch (err) {
+        this._scheduleBridgeReconnect(connectStream, 6000);
+      }
+    };
+
+    connectStream();
+  }
+
+  _scheduleBridgeReconnect(fn, delay) {
+    if (!this._bridgeActive) return;
+    if (this._bridgeReconnectTimer) clearTimeout(this._bridgeReconnectTimer);
+    this._bridgeReconnectTimer = setTimeout(() => {
+      if (this._bridgeActive) fn();
+    }, delay);
+  }
+
+  /**
+   * Stop the Live SSE Bridge.
+   */
+  stopLiveEventBridge() {
+    this._bridgeActive = false;
+    this._bridgeConnected = false;
+    if (this._bridgeReconnectTimer) {
+      clearTimeout(this._bridgeReconnectTimer);
+      this._bridgeReconnectTimer = null;
+    }
+    if (this._autoFullSyncTimer) {
+      clearTimeout(this._autoFullSyncTimer);
+      this._autoFullSyncTimer = null;
+    }
+    if (this._currentBridgeReq) {
+      try { this._currentBridgeReq.destroy(); } catch (e) {}
+      this._currentBridgeReq = null;
+    }
+  }
 }
 
 module.exports = { SyncEngine };
+

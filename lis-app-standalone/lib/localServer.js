@@ -287,20 +287,44 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     global.db = offlineDb;
   }
 
-  /* ── SSE shim (no-op while offline) ───────────────────────────── */
+  /* ── Active SSE Broadcaster for local windows & kiosk ───────── */
+  const localSseClients = new Set();
+
+  function broadcastEvent(eventData) {
+    if (!eventData) return;
+    const payload = `data: ${JSON.stringify(eventData)}\n\n`;
+    for (const client of localSseClients) {
+      try {
+        client.write(payload);
+      } catch (e) {
+        localSseClients.delete(client);
+      }
+    }
+  }
+
+  // Attach global broadcaster so route controllers can emit local events if needed
+  global.broadcastLocalEvent = broadcastEvent;
+
   app.get('/reception/assigned-events', (req, res) => {
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive',
     });
-    res.write(': sse-connected-offline\n\n');
-    res.write('data: {"init":true,"offline":true}\n\n');
-    // Keep connection open with periodic heartbeat comment
+
+    localSseClients.add(res);
+    res.write(': sse-connected-local\n\n');
+    res.write('data: {"init":true,"connected":true}\n\n');
+
+    // Keep connection alive with periodic heartbeat
     const interval = setInterval(() => {
       try { res.write(': keepalive\n\n'); } catch (e) { clearInterval(interval); }
     }, 25000);
-    req.on('close', () => clearInterval(interval));
+
+    req.on('close', () => {
+      clearInterval(interval);
+      localSseClients.delete(res);
+    });
   });
 
   /* ── Export endpoint (JSON API for DataStore data) ────────────── */
@@ -413,6 +437,8 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   server.getAutoLoginEmail = () => _autoLoginEmail;
   /* ── Expose operationQueue getter for status checks ────────────── */
   server.getOperationQueue = () => operationQueue;
+  /* ── Expose live event broadcaster for main/syncEngine ─────────── */
+  server.broadcastEvent = broadcastEvent;
 
   return server;
 }
