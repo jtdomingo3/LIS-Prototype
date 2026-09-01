@@ -1,9 +1,15 @@
 ; NSIS include fragment for Gezyne LIS Server installer
 ; This file is referenced by electron-builder via nsis.include
-; You can extend this to create service registration steps, copy extra resources,
-; or run the server executable with seed options after installation.
 
-; Example: copy installer-resources into installation folder
+!macro customInit
+  ; Terminate any running server and tray processes before unpacking files
+  nsExec::Exec 'taskkill /F /IM "Gezyne LIS Server.exe" /T'
+  nsExec::Exec 'taskkill /F /IM laboratory-information-system.exe /T'
+  nsExec::Exec 'taskkill /F /IM start-lis.exe /T'
+  nsExec::Exec 'cmd /c pm2 delete lis-app'
+  Sleep 1000
+!macroend
+
 !macro customInstall
   ; $INSTDIR is the installation directory
   SetOutPath "$INSTDIR"
@@ -11,7 +17,9 @@
   CopyFiles /SILENT "$INSTDIR\installer-resources\*" "$INSTDIR\"
 !macroend
 
-; Example uninstall cleanup can be added similarly
 !macro customUnInstall
-  ; no-op placeholder
+  nsExec::Exec 'taskkill /F /IM "Gezyne LIS Server.exe" /T'
+  nsExec::Exec 'taskkill /F /IM laboratory-information-system.exe /T'
+  nsExec::Exec 'taskkill /F /IM start-lis.exe /T'
+  nsExec::Exec 'cmd /c pm2 delete lis-app'
 !macroend
