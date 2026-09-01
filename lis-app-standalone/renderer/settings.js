@@ -17,6 +17,14 @@
   const queueTbody = document.getElementById('queueTbody');
   const feedbackEl = document.getElementById('feedbackMsg');
 
+  // Security elements
+  const lockTimeoutEl = document.getElementById('lockTimeoutSelect');
+  const currentPinEl = document.getElementById('currentPinInput');
+  const newPinEl = document.getElementById('newPinInput');
+  const confirmPinEl = document.getElementById('confirmPinInput');
+  const updatePinBtn = document.getElementById('updatePinBtn');
+  const manualLockBtn = document.getElementById('manualLockBtn');
+
   // Stats elements
   const statPatients = document.getElementById('statPatients');
   const statTests = document.getElementById('statTests');
@@ -65,6 +73,14 @@
       if (s) {
         if (s.serverUrl) serverEl.value = s.serverUrl;
         if (s.printerName || s.printer) printerEl.value = s.printerName || s.printer || '';
+      }
+
+      // Load security settings
+      if (typeof window.lisApp.getSecuritySettings === 'function') {
+        const sec = await window.lisApp.getSecuritySettings();
+        if (sec && sec.lockTimeout !== undefined && lockTimeoutEl) {
+          lockTimeoutEl.value = String(sec.lockTimeout);
+        }
       }
 
       const st = await window.lisApp.getStatus();
@@ -179,6 +195,58 @@
     });
   }
 
+  // Update PIN Passcode
+  if (updatePinBtn) {
+    updatePinBtn.addEventListener('click', async () => {
+      const currentPin = currentPinEl ? currentPinEl.value.trim() : '';
+      const newPin = newPinEl ? newPinEl.value.trim() : '';
+      const confirmPin = confirmPinEl ? confirmPinEl.value.trim() : '';
+
+      if (!currentPin) {
+        setFeedback('Please enter your current PIN (default is 0000).', true);
+        return;
+      }
+      if (!/^\d{4}$/.test(newPin)) {
+        setFeedback('New PIN must be exactly 4 numeric digits (e.g., 1234).', true);
+        return;
+      }
+      if (newPin !== confirmPin) {
+        setFeedback('New PIN and Confirm PIN do not match.', true);
+        return;
+      }
+
+      updatePinBtn.disabled = true;
+      updatePinBtn.textContent = 'Updating…';
+      try {
+        const res = await window.lisApp.changePin(currentPin, newPin);
+        updatePinBtn.disabled = false;
+        updatePinBtn.textContent = 'Update PIN Passcode';
+        if (res && res.success) {
+          setFeedback('✓ 4-digit PIN passcode updated successfully!');
+          if (currentPinEl) currentPinEl.value = '';
+          if (newPinEl) newPinEl.value = '';
+          if (confirmPinEl) confirmPinEl.value = '';
+        } else {
+          setFeedback('PIN update failed: ' + (res && res.reason ? res.reason : 'Incorrect current PIN'), true);
+        }
+      } catch (e) {
+        updatePinBtn.disabled = false;
+        updatePinBtn.textContent = 'Update PIN Passcode';
+        setFeedback('Error updating PIN: ' + e.message, true);
+      }
+    });
+  }
+
+  // Instant Manual Lock
+  if (manualLockBtn) {
+    manualLockBtn.addEventListener('click', async () => {
+      if (window.lisApp && typeof window.lisApp.lockApp === 'function') {
+        await window.lisApp.lockApp();
+        try { window.close(); } catch (_) {}
+      }
+    });
+  }
+
   // Save Settings
   if (saveBtn) {
     saveBtn.addEventListener('click', async () => {
@@ -190,6 +258,11 @@
           printerName: printerEl.value ? String(printerEl.value).trim() : ''
         };
         await window.lisApp.setSettings(newSettings);
+
+        if (lockTimeoutEl && typeof window.lisApp.setLockTimeout === 'function') {
+          await window.lisApp.setLockTimeout(lockTimeoutEl.value);
+        }
+
         setFeedback('✓ Settings saved successfully.');
         setTimeout(() => { try { window.close(); } catch (e) {} }, 600);
       } catch (e) {

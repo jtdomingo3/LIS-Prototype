@@ -96,6 +96,60 @@ function saveUserSettings(newSettings = {}) {
   } catch (e) { console.warn('[Main] saveUserSettings failed', e && e.message); }
 }
 
+// ── App Security & Inactivity Auto-Lock ──────────────────────────
+let appLocked = false;
+let lastActivityAt = Date.now();
+let lockCheckInterval = null;
+
+function getLockPin() {
+  return String(userSettings.lockPin || '0000').trim();
+}
+
+function getLockTimeoutMinutes() {
+  if (userSettings.lockTimeout === undefined) return 10; // Default 10 minutes
+  const parsed = parseInt(userSettings.lockTimeout, 10);
+  return isNaN(parsed) ? 10 : parsed;
+}
+
+function lockApp() {
+  if (appLocked) return;
+  appLocked = true;
+  console.log('[Security] Application locked due to inactivity or manual lock');
+  try {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('app-locked', { locked: true });
+    }
+  } catch (e) {}
+}
+
+function unlockApp(pin) {
+  const correctPin = getLockPin();
+  if (String(pin).trim() === correctPin) {
+    appLocked = false;
+    lastActivityAt = Date.now();
+    console.log('[Security] Application unlocked successfully');
+    try {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('app-unlocked');
+      }
+    } catch (e) {}
+    return { success: true };
+  }
+  return { success: false, reason: 'Incorrect PIN passcode. Try again.' };
+}
+
+function startLockCheckTimer() {
+  if (lockCheckInterval) clearInterval(lockCheckInterval);
+  lockCheckInterval = setInterval(() => {
+    const timeoutMin = getLockTimeoutMinutes();
+    if (timeoutMin <= 0 || appLocked) return; // 0 = never
+    const elapsedMinutes = (Date.now() - lastActivityAt) / (60 * 1000);
+    if (elapsedMinutes >= timeoutMin) {
+      lockApp();
+    }
+  }, 5000);
+}
+
 /** Create a timestamped backup of the current DataStore and pending queue. */
 function performBackup() {
   try {
@@ -130,10 +184,10 @@ function openSettingsWindow() {
     return;
   }
   const sw = new BrowserWindow({
-    width: 780,
-    height: 620,
-    minWidth: 680,
-    minHeight: 520,
+    width: 860,
+    height: 640,
+    minWidth: 720,
+    minHeight: 540,
     parent: mainWindow,
     modal: false,
     resizable: true,
@@ -420,10 +474,19 @@ async function createWindow() {
   });
 
   mainWindow.webContents.on('before-input-event', (event, input) => {
-    if (input.control && input.key.toLowerCase() === 'p' && input.type === 'keyDown') {
+    if (input.control && input.key.toLowerCase() === 'l' && input.type === 'keyDown') {
+      event.preventDefault();
+      lockApp();
+      return;
+    }
+    if (input.control && input.key.toLowerCase() === 'p' && input.type === 'keyDown' && !appLocked) {
       event.preventDefault();
       const url = mainWindow.webContents.getURL();
       openPrintPreviewWindow(url);
+      return;
+    }
+    if (!appLocked) {
+      lastActivityAt = Date.now();
     }
   });
 
@@ -661,6 +724,47 @@ ipcMain.handle('set-settings', (_e, settings) => {
 });
 ipcMain.handle('open-settings', () => {
   openSettingsWindow();
+  return { success: true };
+});
+
+// Security IPC Handlers
+ipcMain.handle('get-security-settings', () => ({
+  lockTimeout: getLockTimeoutMinutes(),
+  isLocked: appLocked,
+  hasDefaultPin: getLockPin() === '0000'
+}));
+
+ipcMain.handle('change-pin', (_e, { currentPin, newPin }) => {
+  const currentStored = getLockPin();
+  if (String(currentPin).trim() !== currentStored) {
+    return { success: false, reason: 'Current PIN is incorrect.' };
+  }
+  const cleanNew = String(newPin || '').trim();
+  if (!/^\d{4}$/.test(cleanNew)) {
+    return { success: false, reason: 'New PIN must be exactly 4 numeric digits.' };
+  }
+  saveUserSettings({ lockPin: cleanNew });
+  return { success: true };
+});
+
+ipcMain.handle('set-lock-timeout', (_e, { timeoutMinutes }) => {
+  const parsed = parseInt(timeoutMinutes, 10);
+  saveUserSettings({ lockTimeout: isNaN(parsed) ? 10 : parsed });
+  lastActivityAt = Date.now();
+  return { success: true, timeout: getLockTimeoutMinutes() };
+});
+
+ipcMain.handle('lock-app', () => {
+  lockApp();
+  return { success: true };
+});
+
+ipcMain.handle('unlock-app', (_e, { pin }) => {
+  return unlockApp(pin);
+});
+
+ipcMain.handle('report-activity', () => {
+  if (!appLocked) lastActivityAt = Date.now();
   return { success: true };
 });
 
@@ -1037,6 +1141,7 @@ function createTray() {
     tray = new Tray(trayIcon);
     const contextMenu = Menu.buildFromTemplate([
       { label: 'Open Gezyne LIS', click: () => mainWindow && mainWindow.show() },
+      { label: '🔒 Lock App (Ctrl+L)', click: () => lockApp() },
       { label: 'Settings', click: () => openSettingsWindow() },
       { type: 'separator' },
       { label: 'Quit', click: () => app.quit() },
@@ -1060,4 +1165,5 @@ app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) creat
 app.whenReady().then(() => {
   createWindow();
   createTray();
+  startLockCheckTimer();
 });

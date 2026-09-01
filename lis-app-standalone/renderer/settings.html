@@ -385,6 +385,9 @@
       <div class="nav-item" data-tab="tab-sync">
         <span>🔄</span> Sync & Maintenance
       </div>
+      <div class="nav-item" data-tab="tab-security">
+        <span>🔒</span> Security & Auto-Lock
+      </div>
       <div class="nav-item" data-tab="tab-queue">
         <span>📋</span> Pending Queue
       </div>
@@ -502,6 +505,64 @@
             <div style="font-weight:700; font-size:14px; margin-bottom:4px; color:#f87171;">Drop & Replace Offline Database</div>
             <div class="section-desc" style="margin-bottom:12px;">Destructive: Overwrites the local SQLite database entirely with the latest server export. Creates an automatic backup first.</div>
             <button class="btn btn-danger" id="dropBtn">Drop & Replace from Server</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: App Security & Auto-Lock -->
+      <div class="tab-pane" id="tab-security">
+        <div>
+          <div class="section-title">App Security & Screen Auto-Lock</div>
+          <div class="section-desc">Protect sensitive medical laboratory records with automatic screen locking and 4-digit PIN authentication.</div>
+        </div>
+
+        <div class="card-panel">
+          <div class="form-group">
+            <label for="lockTimeoutSelect">Auto Screen Timeout</label>
+            <select id="lockTimeoutSelect" style="width: 100%; background: #1e293b; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 10px; padding: 10px 14px; font-size: 13px; color: #ffffff; outline: none; font-family: inherit;">
+              <option value="1">1 minute</option>
+              <option value="5">5 minutes</option>
+              <option value="10" selected>10 minutes (Default)</option>
+              <option value="30">30 minutes</option>
+              <option value="60">1 hour</option>
+              <option value="120">2 hours</option>
+              <option value="0">Never (Disabled)</option>
+            </select>
+            <div class="help-text">When no user activity is detected for this duration, the application automatically locks with the PIN passcode.</div>
+          </div>
+        </div>
+
+        <div class="card-panel">
+          <div style="font-weight:700; font-size:14px; color:#38bdf8;">Change 4-Digit Security PIN</div>
+          <div class="section-desc">Enter your current PIN to authorize setting a new 4-digit numeric passcode.</div>
+          
+          <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px;">
+            <div class="form-group" style="flex: 1; min-width: 100px;">
+              <label for="currentPinInput">Current PIN</label>
+              <input type="password" id="currentPinInput" maxlength="4" placeholder="••••" style="text-align: center; font-size: 15px; letter-spacing: 4px;" />
+            </div>
+            <div class="form-group" style="flex: 1; min-width: 100px;">
+              <label for="newPinInput">New 4-Digit PIN</label>
+              <input type="password" id="newPinInput" maxlength="4" placeholder="••••" style="text-align: center; font-size: 15px; letter-spacing: 4px;" />
+            </div>
+            <div class="form-group" style="flex: 1; min-width: 100px;">
+              <label for="confirmPinInput">Confirm PIN</label>
+              <input type="password" id="confirmPinInput" maxlength="4" placeholder="••••" style="text-align: center; font-size: 15px; letter-spacing: 4px;" />
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-start; margin-top: 4px;">
+            <button class="btn btn-primary btn-sm" id="updatePinBtn" style="padding: 8px 16px;">Update PIN Passcode</button>
+          </div>
+        </div>
+
+        <div class="card-panel">
+          <div class="card-row">
+            <div>
+              <div style="font-weight:600; color:#f1f5f9;">Instant Manual Lock</div>
+              <div class="section-desc">Instantly lock the workstation when stepping away.</div>
+            </div>
+            <button class="btn btn-warning" id="manualLockBtn">🔒 Lock Application Now (Ctrl+L)</button>
           </div>
         </div>
       </div>
