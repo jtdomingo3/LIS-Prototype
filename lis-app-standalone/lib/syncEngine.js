@@ -54,13 +54,49 @@ class SyncEngine {
     const net = (electron && electron.net) ? electron.net : null;
     const session = (electron && electron.session) ? electron.session : null;
 
-    if (!net || !session) {
-      // In non-electron runtime, we don't have electron session partition, skip
-      return true;
-    }
-
     const base = this.config.SERVER_URL.replace(/\/$/, '');
     const loginUrl = base + '/login';
+
+    if (!net || !session) {
+      // In non-electron runtime, perform standard HTTP POST /login and store session cookie
+      return new Promise((resolve) => {
+        try {
+          const parsed = new URL(loginUrl);
+          const isHttps = parsed.protocol === 'https:';
+          const client = isHttps ? require('https') : require('http');
+          const body = new URLSearchParams({
+            email: this._credentials.email,
+            password: this._credentials.password,
+          }).toString();
+
+          const req = client.request({
+            hostname: parsed.hostname,
+            port: parsed.port || (isHttps ? 443 : 80),
+            path: parsed.pathname + (parsed.search || ''),
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Content-Length': Buffer.byteLength(body)
+            },
+            timeout: 8000
+          }, (res) => {
+            const setCookie = res.headers['set-cookie'];
+            if (setCookie && setCookie.length) {
+              this._sessionCookie = Array.isArray(setCookie) ? setCookie.map(c => c.split(';')[0]).join('; ') : setCookie.split(';')[0];
+              console.log('[Sync] Node auth captured session cookie');
+              resolve(true);
+            } else {
+              resolve(res.statusCode < 400);
+            }
+          });
+          req.on('error', () => resolve(false));
+          req.write(body);
+          req.end();
+        } catch (_) {
+          resolve(false);
+        }
+      });
+    }
 
     return new Promise((resolve) => {
       try {
@@ -343,6 +379,9 @@ class SyncEngine {
           const isHttps = parsed.protocol === 'https:';
           const client = isHttps ? require('https') : require('http');
           const headers = { 'Accept': 'application/json' };
+          if (this._sessionCookie) {
+            headers['Cookie'] = this._sessionCookie;
+          }
           const hashAuth = this._getAutoLoginHash();
           if (hashAuth) {
             headers['X-LIS-Sync-Email'] = hashAuth.email;
@@ -513,6 +552,9 @@ class SyncEngine {
         'Accept': 'application/json',
         'X-LIS-Sync-Replay': '1'
       };
+      if (this._sessionCookie) {
+        headers['Cookie'] = this._sessionCookie;
+      }
       if (hashAuth) {
         headers['X-LIS-Sync-Email'] = hashAuth.email;
         headers['X-LIS-Sync-Hash'] = hashAuth.hash;

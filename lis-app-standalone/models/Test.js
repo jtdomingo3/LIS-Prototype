@@ -45,6 +45,13 @@ class Test {
       try { this.completedAt = new Date().toISOString(); } catch (e) { this.completedAt = String(new Date()); }
     }
     const tests = global.db.getTests();
+    if (!this.testId) {
+      const maxNum = tests.reduce((max, t) => {
+        const n = parseInt((t.testId || 'T0').replace(/\D/g, '')) || 0;
+        return Math.max(max, n);
+      }, 0);
+      this.testId = 'T' + String(maxNum + 1).padStart(3, '0');
+    }
     const index = tests.findIndex(t => t.id === this.id);
     // Ensure initial statusHistory entry exists for new records
     if (index < 0) {

@@ -234,25 +234,13 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     saveTests(tests) {
       const arr = Array.isArray(tests) ? tests : [];
       sqlite.transaction(() => {
-        const incomingMap = new Map();
-        for (const t of arr) { if (t && t.id) incomingMap.set(t.id, t); }
-        const existing = parseRows(stmts.getAllTests.all());
-        const mergedMap = new Map();
-        for (const t of existing) { if (t && t.id) mergedMap.set(t.id, t); }
+        const incomingIds = new Set(arr.filter(t => t && t.id).map(t => t.id));
+        const existing = sqlite.prepare('SELECT id FROM tests').all();
+        for (const row of existing) {
+          if (!incomingIds.has(row.id)) sqlite.prepare('DELETE FROM tests WHERE id = ?').run(row.id);
+        }
         for (const t of arr) {
           if (!t || !t.id) continue;
-          const cur = mergedMap.get(t.id);
-          const curTs = cur && cur.updatedAt ? Date.parse(cur.updatedAt) : 0;
-          const incomingTs = t.updatedAt ? Date.parse(t.updatedAt) : 0;
-          if (!cur || incomingTs >= curTs) mergedMap.set(t.id, t);
-        }
-        if (arr.length < existing.length) {
-          for (const t of existing) {
-            if (t && t.id && !incomingMap.has(t.id)) mergedMap.delete(t.id);
-          }
-        }
-        stmts.deleteAllTests.run();
-        for (const t of mergedMap.values()) {
           stmts.upsertTest.run({
             id: t.id,
             testId: safeStr(t.testId),
@@ -564,25 +552,13 @@ function createSqlJsDb(SQL, dbPath) {
       const arr = Array.isArray(tests) ? tests : [];
       sqlite.run('BEGIN TRANSACTION;');
       try {
-        const incomingMap = new Map();
-        for (const t of arr) { if (t && t.id) incomingMap.set(t.id, t); }
-        const existing = parseRows(queryAll('SELECT json FROM tests ORDER BY createdAt DESC'));
-        const mergedMap = new Map();
-        for (const t of existing) { if (t && t.id) mergedMap.set(t.id, t); }
+        const incomingIds = new Set(arr.filter(t => t && t.id).map(t => t.id));
+        const existing = queryAll('SELECT id FROM tests');
+        for (const row of existing) {
+          if (!incomingIds.has(row.id)) sqlite.run('DELETE FROM tests WHERE id = ?', [row.id]);
+        }
         for (const t of arr) {
           if (!t || !t.id) continue;
-          const cur = mergedMap.get(t.id);
-          const curTs = cur && cur.updatedAt ? Date.parse(cur.updatedAt) : 0;
-          const incomingTs = t.updatedAt ? Date.parse(t.updatedAt) : 0;
-          if (!cur || incomingTs >= curTs) mergedMap.set(t.id, t);
-        }
-        if (arr.length < existing.length) {
-          for (const t of existing) {
-            if (t && t.id && !incomingMap.has(t.id)) mergedMap.delete(t.id);
-          }
-        }
-        sqlite.run('DELETE FROM tests;');
-        for (const t of mergedMap.values()) {
           sqlite.run(
             'INSERT OR REPLACE INTO tests (id, testId, patient, testType, status, updatedAt, createdAt, json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [t.id, safeStr(t.testId), safeStr(t.patient), safeStr(t.testType), safeStr(t.status), safeStr(t.updatedAt), safeStr(t.createdAt), JSON.stringify(t)]

@@ -839,8 +839,22 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
     };
 
     // If incoming request contains pre-created tests (from offline sync replay)
-    if (req.body && (Array.isArray(req.body.createdTests) || Array.isArray(req.body.tests))) {
-      const incomingList = req.body.createdTests || req.body.tests;
+    let incomingList = null;
+    if (req.body) {
+      if (Array.isArray(req.body.createdTests)) incomingList = req.body.createdTests;
+      else if (Array.isArray(req.body.tests)) incomingList = req.body.tests;
+      else if (typeof req.body.createdTests === 'string') {
+        try { incomingList = JSON.parse(req.body.createdTests); } catch (_) {}
+      } else if (typeof req.body.tests === 'string') {
+        try { incomingList = JSON.parse(req.body.tests); } catch (_) {}
+      } else if (req.body.createdTests && typeof req.body.createdTests === 'object') {
+        incomingList = Object.values(req.body.createdTests);
+      } else if (req.body.tests && typeof req.body.tests === 'object') {
+        incomingList = Object.values(req.body.tests);
+      }
+    }
+
+    if (Array.isArray(incomingList) && incomingList.length) {
       for (const item of incomingList) {
         if (!item) continue;
         const payload = {

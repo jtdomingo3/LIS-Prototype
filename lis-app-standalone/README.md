@@ -1,14 +1,14 @@
 # lis-app-standalone
 
-**Standalone desktop client for Gezyne Clinical Laboratory LIS** with offline support.
+**Independent Desktop Workstation Client for Gezyne Clinical Laboratory LIS** with Local-First SQLite Database and Automatic Two-Way Central Synchronization.
 
-This Electron-based app connects to your LIS server and provides the **exact same UI** — but if the network goes down, it keeps working:
+The standalone desktop application is a **100% independent, local-first workstation**. The UI is served entirely by an embedded local Express engine backed by a local SQLite database (`lis-data.db`).
 
-- ✅ View recently visited pages (cached locally)
-- ✅ Encode patient data (queued for sync)
-- ✅ Enter test results (queued for sync)
-- ✅ Print previously viewed reports (from cache)
-- ✅ Automatic sync when connection is restored
+- ⚡ **Local-First UI**: Instant responsiveness, zero lag, full offline functionality without server dependency.
+- 💾 **SQLite Storage (`lis-data.db`)**: High-performance local storage for patients, multi-department tests, and reception queues.
+- 🔄 **Auto-Sync Engine**: Background push of offline queued mutations and background pull of central database snapshots.
+- 🏥 **Reception Multi-Station Pipeline**: Offline progression across Payment, Extraction, Imaging (X-ray/Ultrasound/ECG/2D Echo), Doctor Consultation, and Results.
+- 🪪 **Deterministic ID Mapping**: Automatic translation and rewriting of offline temporary IDs to server-assigned IDs across pending operations and local tables.
 
 ---
 
@@ -16,7 +16,7 @@ This Electron-based app connects to your LIS server and provides the **exact sam
 
 ### Prerequisites
 - **Node.js 18+** installed on the workstation
-- The LIS server (`lis-fullstack`) running on the network
+- Optional: Central LIS server (`lis-fullstack`) running on the network for sync
 
 ### Install & Run
 
@@ -26,149 +26,149 @@ npm install
 npm start
 ```
 
-The desktop app will launch and connect to the server configured in the app Settings.
+For development with Electron DevTools enabled:
+```powershell
+npm run dev
+```
 
-### Change Server Address
+### Configuration
 
-Edit `lib/config.js` and update `SERVER_URL`:
+Edit `lib/config.js` or configure in the desktop settings modal:
 
 ```js
 module.exports = {
-  SERVER_URL: 'http://YOUR_SERVER_IP:3000',
-  // ...
+  SERVER_URL: 'http://127.0.0.1:3000', // Central LIS Server URL
+  LOCAL_PORT: 30099,                   // Embedded local server port
+  SYNC_INTERVAL: 15000,                // Background sync poll interval (ms)
+  MAX_SYNC_RETRIES: 3
 };
 ```
 
 ---
 
-## How It Works
-
-### Architecture
+## Architecture & Data Flow
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                  Electron App                       │
-│                                                     │
-│   ┌──────────────┐    ┌───────────────────────┐     │
-│   │ BrowserWindow │───>│  LIS Server (remote)  │     │
-│   │  (Same UI)   │    │  <your-server>:3000   │     │
-│   └──────┬───────┘    └───────────────────────┘     │
-│          │                                          │
-│          │  When offline:                           │
-│          │                                          │
-│   ┌──────▼───────┐    ┌───────────────────────┐     │
-│   │ Request      │───>│  Local Cache Server    │     │
-│   │ Interceptor  │    │  127.0.0.1:30099      │     │
-│   └──────────────┘    └───────┬───────────────┘     │
-│                               │                     │
-│   ┌────────────────┐   ┌──────▼─────────┐           │
-│   │ Network Monitor│   │ Page Cache     │           │
-│   │ (ping / 5sec) │   │ (HTML on disk) │           │
-│   └────────────────┘   └────────────────┘           │
-│                                                     │
-│   ┌────────────────┐   ┌────────────────┐           │
-│   │ Operation Queue│   │ Sync Engine    │           │
-│   │ (JSON on disk) │──>│ (auto-replay)  │           │
-│   └────────────────┘   └────────────────┘           │
-└─────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│                        Standalone Electron App                         │
+│                                                                        │
+│   ┌───────────────────┐               ┌────────────────────────────┐   │
+│   │   BrowserWindow   │◄─────────────►│    Local Express Engine    │   │
+│   │ (127.0.0.1:30099) │   Loopback    │    (Full MVC & Routes)     │   │
+│   └───────────────────┘   Navigation  └──────────────┬─────────────┘   │
+│                                                      │                 │
+│                                       ┌──────────────▼─────────────┐   │
+│                                       │     SQLite Database        │   │
+│                                       │       lis-data.db          │   │
+│                                       └──────────────┬─────────────┘   │
+│                                                      │                 │
+│   ┌───────────────────┐               ┌──────────────▼─────────────┐   │
+│   │  Network Monitor  │               │      Operation Queue       │   │
+│   │ (Ping / 5 seconds)│               │  (pending-operations.json) │   │
+│   └─────────┬─────────┘               └──────────────┬─────────────┘   │
+│             │                                        │                 │
+│             │ When Online                            │                 │
+│   ┌─────────▼────────────────────────────────────────▼─────────────┐   │
+│   │                       Sync Engine                              │   │
+│   │   • Pull: /export/data.json ──► Merge into local SQLite        │   │
+│   │   • Push: Replay queued mutations with ID mapping              │   │
+│   └──────────────────────────────────┬─────────────────────────────┘   │
+└──────────────────────────────────────┼─────────────────────────────────┘
+                                       │ HTTP / HTTPS
+                                       ▼
+                     ┌──────────────────────────────────┐
+                     │     Central LIS Server           │
+                     │    http://<server-ip>:3000       │
+                     └──────────────────────────────────┘
 ```
-
-### Online Mode
-1. The BrowserWindow loads pages directly from the LIS server
-2. Every page you visit is **cached locally** (HTML snapshot)
-3. A green status bar at the bottom shows "Connected to Server"
-
-### Offline Mode (automatic)
-1. Network monitor detects the server is unreachable
-2. Status bar turns **red** → "Offline Mode"
-3. **Page navigation** → cached pages are served from the local server
-4. **Form submissions** (create patient, enter results, etc.) are **intercepted and queued** to a local JSON file
-5. A yellow banner shows "Saved offline — will sync when connection is restored"
-
-### Sync (automatic)
-1. Network monitor detects the server is back
-2. Status bar shows syncing activity
-3. Queued operations (patient creation, result entry, etc.) are **replayed to the server** in the exact order they were performed
-4. Session cookies from the BrowserWindow are used for authentication
-5. Page refreshes to show the latest data from the server
 
 ---
 
-## Status Bar
+## 🧪 Testing Suite Guide
 
-The injected status bar at the bottom of every page shows:
+All automated tests are compiled in the root [`test/`](../test) directory. These suites cover offline functionality, reception pipelines, embedded HTTP routes, deterministic ID mapping, and live server synchronization.
 
-| State | Indicator | Actions |
-|-------|-----------|---------|
-| **Online** | 🟢 Green bar — "Connected to Server" | — |
-| **Online + pending** | 🟢 Green bar + "X pending sync" | **Sync Now** button |
-| **Offline** | 🔴 Red bar — "Offline Mode" | Data entry is queued |
+### 1. Running Offline Tests (Server Offline)
+
+Run the full offline test suite from the repository root:
+
+```bash
+node test/run-all-offline-tests.js
+```
+
+Or run directly inside `lis-app-standalone`:
+
+```bash
+npm test
+```
+
+#### Individual Offline Suites:
+
+| Suite | File Path | What It Tests |
+| :--- | :--- | :--- |
+| **Suite 1: CRUD** | [`test/standalone-offline-crud.test.js`](../test/standalone-offline-crud.test.js) | SQLite DataStore initialization, auto-counter sequences (`P001`, `T001`), Patient & Test models offline CRUD. |
+| **Suite 2: Pipeline** | [`test/standalone-offline-pipeline.test.js`](../test/standalone-offline-pipeline.test.js) | Reception multi-station pipeline offline (`Payment Area` ➔ `Extraction Area` / `X-ray` / `Doctor` ➔ `Completed`). |
+| **Suite 3: HTTP Routes** | [`test/standalone-offline-routes.test.js`](../test/standalone-offline-routes.test.js) | Embedded Express endpoints (`GET /patients`, `POST /patients`, `POST /tests`, `GET /dashboard`) and operation queuing. |
+| **Suite 4: ID Mapping** | [`test/standalone-offline-id-mapping.test.js`](../test/standalone-offline-id-mapping.test.js) | Deep replacement of temporary offline IDs across chained queued mutations and SQLite DataStore collections. |
 
 ---
 
-## File Structure
+### 2. Running Live Server Synchronization Tests (Server Online)
 
+Ensure the central LIS server is running on `http://127.0.0.1:3000`, then execute:
+
+```bash
+node test/standalone-live-sync.test.js
 ```
-lis-app-standalone/
-├── main.js                # Electron main process
-├── preload.js             # Context bridge (renderer ↔ main)
-├── package.json           # Dependencies & build config
-├── lib/
-│   ├── config.js          # Server URL, ports, intervals
-│   ├── networkMonitor.js  # Ping-based connectivity checker
-│   ├── pageCache.js       # HTML page cache (disk-backed)
-│   ├── operationQueue.js  # Pending mutations queue (JSON)
-│   ├── syncEngine.js      # Replays queue using Electron net
-│   └── localServer.js     # Express server for offline pages
-├── renderer/
-│   ├── offline.html       # Fallback when no cache is available
-│   ├── inject.css         # Status bar styles
-│   └── inject.js          # Status bar + event handlers
-└── README.md
-```
+
+#### What the Live Sync Test Verifies:
+1. **Connectivity Check**: `NetworkMonitor` detects server status.
+2. **Database Pull (`fullSync`)**: Downloads central snapshot into local SQLite (`lis-data.db`).
+3. **Offline Mutation Capture**: Creates patients, multi-department tests, and station advancements into `OperationQueue`.
+4. **Queue Replay (`processQueue`)**: Replays mutations sequentially to the live server with automatic authentication.
+5. **Round-Trip Verification**: Pulls a fresh snapshot from the server and verifies that the new records exist on the central database.
+
+---
+
+## Development Workflow for New Features
+
+When developing or modifying features in the standalone client:
+
+1. **Verify Offline First**:
+   Always run `node test/run-all-offline-tests.js` to ensure changes operate 100% offline without crashing or throwing unhandled database errors.
+2. **Check Queue Interception**:
+   Ensure new mutations in `routes/*.js` emit an operation via `req.app.locals.operationQueue.add({...})` with clean payloads.
+3. **Verify ID Resolution**:
+   If introducing new child entities, ensure `replaceTempId` in [`lib/operationQueue.js`](lib/operationQueue.js) maps foreign keys appropriately.
+4. **Verify Live Sync**:
+   Start the central server and run `node test/standalone-live-sync.test.js` to confirm two-way synchronization.
 
 ---
 
 ## Building an Installer
 
-```powershell
-# Build Windows installer (.exe)
-npm run build:win
+To build the standalone Windows installer package:
 
-# Output goes to dist/
+```powershell
+# Build NSIS Windows installer (.exe)
+npm run dist:win
+
+# Build unpacked executable directory
+npm run dist:dir
 ```
 
-The installer is created using `electron-builder`. You can customize the app icon by placing `icon.ico` in the `assets/` folder.
+Output installers are generated in the `dist/` directory.
 
 ---
 
-## Tips for Best Offline Experience
+## Data Storage Directory
 
-1. **Visit all important pages while online first** — the app caches each page as you navigate. Walk through: Dashboard → Patients → Tests → Reports
-2. **Login once** — session cookies are stored persistently, so the app remembers your login across restarts
-3. **Results entry offline** — enter results and they'll be queued. When back online, the results are submitted to the server
-4. **Print from cache** — previously viewed report pages can be printed offline via Ctrl+P
-
----
-
-## Limitations (v1)
-
-- **Multi-step operations**: Creating a patient offline and immediately creating a test for that patient may not work perfectly (the patient doesn't exist on the server yet until sync)
-- **File uploads**: Signatures and image uploads while offline are not supported — use these features when online
-- **Real-time features**: SSE notifications (reception kiosk) don't work offline
-- **Static assets**: Some CSS/images may not render perfectly offline if they weren't cached by the browser
-
----
-
-## Data Storage Location
-
-All local data is stored in Electron's user data directory:
+All local data is stored in the user data directory:
 
 ```
 %APPDATA%/lis-app-standalone/
-├── page-cache/          # Cached HTML pages
-│   ├── index.json       # URL → filename mapping
-│   └── *.html           # Cached page files
-└── data/
-    └── pending-operations.json  # Queued offline operations
+├── lis-data.db                    # Local SQLite Database
+├── data/
+│   └── pending-operations.json    # Queued offline mutations
+└── page-cache/                    # Cached HTML snapshots
 ```

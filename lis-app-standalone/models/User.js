@@ -20,7 +20,7 @@ class User {
 
   // Hash password before saving
   async hashPassword() {
-    if (this.password && !this.password.startsWith('$2a$')) {
+    if (this.password && !/^\$2[aby]\$/.test(this.password)) {
       const salt = await bcrypt.genSalt(12);
       this.password = await bcrypt.hash(this.password, salt);
     }

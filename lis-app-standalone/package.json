@@ -9,7 +9,7 @@
     "build": "electron-builder",
     "dist:win": "electron-builder --win nsis",
     "dist:dir": "electron-builder --dir",
-    "test": "node ../test/e2e-offline-sync.js && node ../test/sync-mapping.js && node test-sqlite-datastore.js && node test-integrated-sync.js"
+    "test": "node ../test/run-all-offline-tests.js && node test-sqlite-datastore.js && node test-integrated-sync.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
