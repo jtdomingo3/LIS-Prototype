@@ -35,3 +35,4 @@ test/tmp/
 tmp-e2e-offline/
 lis-fullstack/lis-data.db-shm
 lis-fullstack/lis-data.db-wal
+lis-fullstack/lis-data.db
