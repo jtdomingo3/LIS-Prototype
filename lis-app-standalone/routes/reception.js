@@ -27,12 +27,20 @@ function allowKioskOrAuth(req, res, next) {
 
 // Define helper functions for dynamic doctor area resolution
 function getDoctor1Name() {
+  try {
+    const s = global.db && typeof global.db.getSettings === 'function' ? global.db.getSettings() : null;
+    if (s && s.doctor1Name && String(s.doctor1Name).trim()) return String(s.doctor1Name).trim();
+  } catch (e) {}
   const env = (process.env.DOCTOR_1_NAME || '').trim();
   if (env && env !== 'undefined') return env;
   return 'Dr. Lorenzo';
 }
 
 function getDoctor2Name() {
+  try {
+    const s = global.db && typeof global.db.getSettings === 'function' ? global.db.getSettings() : null;
+    if (s && s.doctor2Name && String(s.doctor2Name).trim()) return String(s.doctor2Name).trim();
+  } catch (e) {}
   const env = (process.env.DOCTOR_2_NAME || '').trim();
   if (env && env !== 'undefined') return env;
   return 'Dr. Arcilla';
@@ -58,6 +66,17 @@ function getAreas() {
   ];
   if (d1) list.push(doctorArea(d1));
   if (d2 && d2 !== d1) list.push(doctorArea(d2));
+
+  // Also include any active doctor areas present in tests
+  try {
+    const allTests = (typeof global.db.getTests === 'function' ? global.db.getTests() : []) || [];
+    for (const t of allTests) {
+      if (t && t.status && String(t.status).toLowerCase().includes("doctor's check-up") && !list.includes(t.status)) {
+        list.push(t.status);
+      }
+    }
+  } catch (e) {}
+
   list.push('Releasing of Result');
   return list;
 }
@@ -99,6 +118,13 @@ function getTargetAreaForTest(t) {
 
   // 1. Direct testType matching
   if (label.includes('doctor')) {
+    const match = String(t.testType || '').match(/doctor(?:'?s)?\s*check-?up\s*[-–—:]\s*(.+)/i);
+    if (match && match[1] && match[1].trim()) {
+      return doctorArea(match[1].trim());
+    }
+    if (t.assignedDoctorName && String(t.assignedDoctorName).trim()) {
+      return doctorArea(t.assignedDoctorName.trim());
+    }
     if (d2 && label.includes(d2Lower)) return doctorArea(d2);
     return doctorArea(d1);
   }
@@ -122,6 +148,8 @@ function getTargetAreaForTest(t) {
           const ra = String(rr.area || '').toLowerCase();
           if (ra.includes('send')) return 'Sendout';
           if (ra.includes("dr.") || ra.includes('doctor')) {
+            const m = String(rr.label || rr.key || '').match(/doctor(?:'?s)?\s*check-?up\s*[-–—:]\s*(.+)/i);
+            if (m && m[1] && m[1].trim()) return doctorArea(m[1].trim());
             if (d2 && ra.includes(d2Lower)) return doctorArea(d2);
             return doctorArea(d1);
           }
@@ -1121,7 +1149,10 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
 
         const uniqAreas = Array.from(new Set(reqAreas));
         for (const cand of uniqAreas) {
-          const idx = AREAS.indexOf(cand);
+          let idx = AREAS.indexOf(cand);
+          if (idx < 0 && String(cand).toLowerCase().includes("doctor's check-up")) {
+            idx = AREAS.findIndex(a => String(a).toLowerCase().includes("doctor's check-up"));
+          }
           if (idx > currentIdx && idx < bestNextIdx) {
             bestNextIdx = idx;
             chosenNextArea = cand;
@@ -1138,9 +1169,15 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
                                   (Array.isArray(t.requestedTests) && t.requestedTests.some(rr => rr && /(fecal|pregnan|fob|urinal|pregnancy|fecalysis)/i.test(String(rr.label || ''))));
           const directTarget = getTargetAreaForTest(t);
 
-          if (chosenNextArea && directTarget === chosenNextArea) {
-            t.addStatusEntry({ from: t.status, to: chosenNextArea, user: req.session && req.session.user ? req.session.user.username : null, area: chosenNextArea, timestamp: (new Date()).toISOString() });
-            t.status = chosenNextArea;
+          const isDirectMatch = chosenNextArea && (
+            directTarget === chosenNextArea ||
+            (String(directTarget).toLowerCase().includes("doctor's check-up") && String(chosenNextArea).toLowerCase().includes("doctor's check-up"))
+          );
+
+          if (isDirectMatch) {
+            const targetStatus = directTarget || chosenNextArea;
+            t.addStatusEntry({ from: t.status, to: targetStatus, user: req.session && req.session.user ? req.session.user.username : null, area: targetStatus, timestamp: (new Date()).toISOString() });
+            t.status = targetStatus;
             await t.save();
             processed.push(t.testId || t.id);
             try { sseEmitter.emit('update', { action: 'complete', testId: t.testId, status: t.status, patient: t.patient, time: (new Date()).toISOString() }); } catch (e) {}

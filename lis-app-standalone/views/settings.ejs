@@ -21,6 +21,18 @@
       <% } else { %>
         <p class="note">No .env entries found.</p>
       <% } %>
+      <h4>Doctor Check-up Schedule</h4>
+      <div class="field">
+        <label>Primary Doctor on Duty (Doctor 1)</label>
+        <input type="text" name="doctor1Name" placeholder="e.g. Dr. Lorenzo" value="<%= (settings && settings.doctor1Name) || (typeof DOCTOR_1_NAME !== 'undefined' && DOCTOR_1_NAME) || process.env.DOCTOR_1_NAME || 'Dr. Lorenzo' %>" />
+        <p class="note">Name of the primary rotating doctor on duty for check-ups.</p>
+      </div>
+      <div class="field">
+        <label>Secondary Doctor on Duty (Doctor 2)</label>
+        <input type="text" name="doctor2Name" placeholder="e.g. Dr. Arcilla" value="<%= (settings && settings.doctor2Name) || (typeof DOCTOR_2_NAME !== 'undefined' && DOCTOR_2_NAME) || process.env.DOCTOR_2_NAME || 'Dr. Arcilla' %>" />
+        <p class="note">Name of the secondary doctor on duty (when 2 doctors are scheduled simultaneously).</p>
+      </div>
+
       <h4>Data Backup</h4>
       <div class="field" style="display:flex;align-items:center;gap:8px;">
         <input type="checkbox" name="autoBackup" <%= (backupConfig && backupConfig.enabled) ? 'checked' : '' %> />

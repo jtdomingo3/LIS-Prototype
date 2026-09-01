@@ -292,8 +292,15 @@ app.use((req, res, next) => {
 // Expose configured doctor names and derived doctor area labels to views dynamically
 app.use((req, res, next) => {
   try {
-    const d1 = (process.env.DOCTOR_1_NAME || '').trim() || 'Dr. Lorenzo';
-    const d2 = (process.env.DOCTOR_2_NAME || '').trim() || 'Dr. Arcilla';
+    let d1 = (process.env.DOCTOR_1_NAME || '').trim();
+    let d2 = (process.env.DOCTOR_2_NAME || '').trim();
+    try {
+      const s = global.db && typeof global.db.getSettings === 'function' ? global.db.getSettings() : null;
+      if (s && s.doctor1Name) d1 = s.doctor1Name.trim();
+      if (s && s.doctor2Name) d2 = s.doctor2Name.trim();
+    } catch (_) {}
+    d1 = d1 || 'Dr. Lorenzo';
+    d2 = d2 || 'Dr. Arcilla';
     res.locals.DOCTOR_1_NAME = d1;
     res.locals.DOCTOR_2_NAME = d2;
     const areas = [];

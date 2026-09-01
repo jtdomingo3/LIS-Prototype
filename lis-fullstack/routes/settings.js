@@ -160,13 +160,32 @@ router.post('/', requireAuth, canManageUsers, (req, res) => {
       console.error('Failed to persist backup config:', e);
     }
 
-    // Persist GEZYNE / analyzer path in app data so it's preserved across restarts
+    // Persist GEZYNE / analyzer path & doctor names in app data so it's preserved across restarts
     try {
-      const data = global.db.read();
-      data.settings = data.settings || {};
-      data.settings.gezynePath = flags.gezynePath || '';
-      global.db.write(data);
-      req.app.locals.settings = data.settings;
+      const doc1 = (flags.doctor1Name || '').trim() || 'Dr. Lorenzo';
+      const doc2 = (flags.doctor2Name || '').trim() || 'Dr. Arcilla';
+      const gezyne = flags.gezynePath || '';
+
+      if (global.db && typeof global.db.setSettings === 'function') {
+        const cur = global.db.getSettings() || {};
+        global.db.setSettings({
+          ...cur,
+          doctor1Name: doc1,
+          doctor2Name: doc2,
+          gezynePath: gezyne
+        });
+      } else {
+        const data = global.db.read();
+        data.settings = data.settings || {};
+        data.settings.doctor1Name = doc1;
+        data.settings.doctor2Name = doc2;
+        data.settings.gezynePath = gezyne;
+        global.db.write(data);
+      }
+      process.env.DOCTOR_1_NAME = doc1;
+      process.env.DOCTOR_2_NAME = doc2;
+      req.app.locals.DOCTOR_1_NAME = doc1;
+      req.app.locals.DOCTOR_2_NAME = doc2;
     } catch (e) {
       console.error('Failed to persist settings:', e);
     }
