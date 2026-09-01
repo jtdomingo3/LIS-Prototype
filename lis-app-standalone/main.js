@@ -394,22 +394,25 @@ async function createWindow() {
     } catch (e) { /* ignore */ }
   });
 
-  // When offline, intercept all main-frame navigations to the server and
-  // redirect them to the local offline server instead. The local server now
-  // renders full EJS pages so users can navigate the entire app offline.
+  // Intercept all main-frame navigations to ensure the app ALWAYS stays on the local server
   mainWindow.webContents.on('will-navigate', (event, targetUrl) => {
     try {
-      if (!config.SERVER_URL) return;
-      // When online, let the navigation go to the real server
-      if (isOnline) return;
-      const base = config.SERVER_URL.replace(/\/$/, '');
-      if (!targetUrl || !targetUrl.startsWith(base)) return;
-      const urlPath = targetUrl.slice(base.length) || '/';
-      event.preventDefault();
-      console.log('[Main] offline — redirecting navigation to local server:', urlPath);
-      try {
-        mainWindow.loadURL(`http://127.0.0.1:${config.LOCAL_PORT}${urlPath}`);
-      } catch (e) { loadOfflinePage(urlPath); }
+      if (!targetUrl) return;
+      const localBase = `http://127.0.0.1:${config.LOCAL_PORT}`;
+      if (targetUrl.startsWith(localBase)) {
+        // Allow all local navigations
+        return;
+      }
+      // If navigating to the central server or external link, redirect path to local server
+      if (config.SERVER_URL) {
+        const base = config.SERVER_URL.replace(/\/$/, '');
+        if (targetUrl.startsWith(base)) {
+          const urlPath = targetUrl.slice(base.length) || '/';
+          event.preventDefault();
+          console.log('[Main] Local-First: redirecting server link to local UI:', urlPath);
+          mainWindow.loadURL(`http://127.0.0.1:${config.LOCAL_PORT}${urlPath}`);
+        }
+      }
     } catch (e) { /* ignore */ }
   });
 
@@ -423,10 +426,9 @@ async function createWindow() {
 
   mainWindow.webContents.on('did-fail-load', (_event, _code, _desc, validatedURL, isMainFrame) => {
     if (!isMainFrame) return;
-    if (config.SERVER_URL && validatedURL && validatedURL.startsWith(config.SERVER_URL)) {
-      const urlObj = new URL(validatedURL);
-      const urlPath = urlObj.pathname + (urlObj.search || '');
-      loadOfflinePage(urlPath);
+    const localBase = `http://127.0.0.1:${config.LOCAL_PORT}`;
+    if (!validatedURL || !validatedURL.startsWith(localBase)) {
+      loadOfflinePage('/');
     }
   });
 
@@ -445,69 +447,22 @@ async function createWindow() {
     }
   });
 
-  // Detect navigation to dashboard (post-login) and trigger a full-sync
+  // Detect navigation to dashboard (post-login) and trigger a background full-sync if online
   mainWindow.webContents.on('did-navigate', async (_event, url) => {
     try {
-      // ── Session-loss detection: if the user lands on the real server's
-      //    login page while we have a tracked user, the server must have
-      //    restarted and lost its sessions.  Redirect to the local server
-      //    so the auto-login middleware creates a new session seamlessly.
-      if (config.SERVER_URL && currentSessionEmail) {
-        const base = config.SERVER_URL.replace(/\/$/, '');
-        if (url === base + '/' || url === base) {
-          try {
-            const isLoginPage = await mainWindow.webContents.executeJavaScript(
-              "!!(document.querySelector('form[action=\"/login\"]') || document.querySelector('input[name=\"email\"]'))"
-            );
-            if (isLoginPage) {
-                  // Debounce repeated re-auth attempts
-                  const now = Date.now();
-                  if (now - lastSessionAuthAt < 10000) {
-                    console.log('[Main] recent re-auth attempt in last 10s — skipping');
-                    return;
-                  }
-                  lastSessionAuthAt = now;
-                  console.log('[Main] session lost on real server — attempting re-auth before switching to local server');
-                  try {
-                    // Try to re-authenticate using stored credentials (SyncEngine)
-                    const authPromise = (syncEngine && typeof syncEngine._ensureServerAuth === 'function') ? syncEngine._ensureServerAuth() : Promise.resolve(false);
-                    // Timeout the auth attempt to avoid hanging the UI (8s)
-                    const timeout = new Promise(r => setTimeout(() => r(false), 8000));
-                    const authOk = await Promise.race([authPromise, timeout]);
-                    if (authOk) {
-                      console.log('[Main] re-auth succeeded — staying on real server');
-                      // reload root so session-backed redirects will occur
-                      try { if (mainWindow && !mainWindow.isDestroyed()) await mainWindow.loadURL(config.SERVER_URL); } catch (e) {}
-                      lastSessionAuthAt = Date.now();
-                      return;
-                    }
-                  } catch (e) { console.warn('[Main] re-auth attempt failed:', e && e.message); }
-                  console.log('[Main] switching to local server after failed re-auth');
-                  mainWindow.loadURL(`http://127.0.0.1:${config.LOCAL_PORT}/`);
-                  return;
-                } else {
-              console.log('[Main] landed on server root but no login form detected — staying with real server');
-            }
-          } catch (e) {
-            console.warn('[Main] login detection failed, not switching to local server:', e && e.message);
-          }
-        }
-      }
-    } catch (e) { /* ignore */ }
-    try {
       if (!config.AUTO_FULLSYNC_ON_LOGIN) return;
-      if (!config.SERVER_URL) return;
-      const base = config.SERVER_URL.replace(/\/$/, '');
-      if (!url || !url.startsWith(base)) return;
-      const path = url.slice(base.length) || '/';
-      // when server redirects to /dashboard after login, trigger an immediate full-sync
+      if (!config.SERVER_URL || !isOnline) return;
+      const localBase = `http://127.0.0.1:${config.LOCAL_PORT}`;
+      if (!url || !url.startsWith(localBase)) return;
+      const path = url.slice(localBase.length) || '/';
+      // when user visits /dashboard after login, trigger background sync
       if (path.startsWith('/dashboard')) {
         const LAST_MIN = 5 * 60 * 1000;
         const now = Date.now();
-        if (lastLoginSyncAt && (now - lastLoginSyncAt) < LAST_MIN) return; // avoid repeats
+        if (lastLoginSyncAt && (now - lastLoginSyncAt) < LAST_MIN) return;
         lastLoginSyncAt = now;
         try {
-          console.log('[Main] detected dashboard navigation — running full-sync');
+          console.log('[Main] Local-First: dashboard reached — running background full-sync');
           const res = await syncEngine.fullSync(mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null);
           sendStatus();
           if (res && res.success) {
@@ -525,29 +480,30 @@ async function createWindow() {
  *  Navigation helpers
  * ================================================================== */
 async function loadApp() {
-  if (!config.SERVER_URL) {
-    console.log('[Main] no SERVER_URL configured — showing offline UI and settings');
-    try { openSettingsWindow(); } catch (e) {}
-    isOnline = false;
-    loadOfflinePage('/');
-    return;
+  console.log(`[Main] Local-First: loading standalone UI on http://127.0.0.1:${config.LOCAL_PORT}`);
+  try {
+    await mainWindow.loadURL(`http://127.0.0.1:${config.LOCAL_PORT}/`);
+    sendStatus();
+  } catch (e) {
+    console.error('[Main] failed to load local server URL:', e && e.message);
   }
 
-  try {
-    await mainWindow.loadURL(config.SERVER_URL);
-    isOnline = true;
-    sendStatus();
-  } catch {
-    console.log('[Main] server unreachable on startup — loading offline');
-    isOnline = false;
-    loadOfflinePage('/');
+  // If server is configured and online, perform background sync
+  if (config.SERVER_URL && isOnline) {
+    setTimeout(async () => {
+      try {
+        console.log('[Main] online on startup — running background full-sync');
+        await syncEngine.fullSync(mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null);
+        sendStatus();
+      } catch (e) {
+        console.warn('[Main] startup full-sync failed:', e && e.message);
+      }
+    }, 1500);
   }
 }
 
 function loadOfflinePage(urlPath) {
-  // The local server now renders full EJS pages with DataStore data,
-  // so always redirect there for offline viewing.
-  mainWindow.loadURL(`http://127.0.0.1:${config.LOCAL_PORT}${urlPath}`);
+  mainWindow.loadURL(`http://127.0.0.1:${config.LOCAL_PORT}${urlPath || '/'}`);
 }
 
 /* ==================================================================
@@ -556,49 +512,19 @@ function loadOfflinePage(urlPath) {
 function setupRequestInterceptor() {
   const ses = session.fromPartition('persist:lis');
 
+  if (!config.SERVER_URL) return;
+
   ses.webRequest.onBeforeRequest({ urls: [`${config.SERVER_URL}/*`] }, (details, callback) => {
-    // Track explicit logout so we can clear auto-login state
-    try {
-      if (details.method === 'POST') {
-        const urlObj = new URL(details.url);
-        if (urlObj.pathname === '/logout') {
-          currentSessionEmail = null;
-          if (localServer && localServer.setAutoLoginEmail) localServer.setAutoLoginEmail(null);
-          try { saveUserSettings({ lastUserEmail: '' }); } catch (e) {}
-          console.log('[Main] explicit logout detected — cleared auto-login');
-        }
-      }
-    } catch (e) { /* ignore */ }
-
-    if (isOnline) return callback({});
-
-    // When offline, redirect ALL requests to the local server which now
-    // renders full EJS pages and serves DataStore-backed JSON endpoints.
     try {
       const urlObj = new URL(details.url);
       const urlPath = urlObj.pathname + (urlObj.search || '');
 
-      // For non-GET methods (POST/PUT/DELETE), redirect to local server so the
-      // route handler executes the local mutation and queues it with deterministic IDs.
-      if (details.method !== 'GET') {
-        // Don't queue auth operations (login/logout) — they are local-only
-        if (urlPath === '/login' || urlPath === '/logout') {
-          callback({ redirectURL: `http://127.0.0.1:${config.LOCAL_PORT}${urlPath}` });
-          return;
-        }
-        // Redirect to local server so the route handler processes the form
-        // and localServer middleware queues the mutation with exact IDs.
-        callback({ redirectURL: `http://127.0.0.1:${config.LOCAL_PORT}${urlPath}` });
-        return;
-      }
-
-      // Skip static asset extensions — let Electron cache handle those
-      if (/\.(js|css|png|jpg|jpeg|svg|woff2?|ico|map|mp3|mp4|webp|ttf|eot)$/i.test(urlPath)) {
+      // Allow background sync API requests to reach the server directly
+      if (urlPath.startsWith('/export/') || urlPath === '/data.json' || urlPath === '/api/sync') {
         return callback({});
       }
 
-      // Redirect all GET requests to the local server
-      console.log('[Intercept] offline — redirecting to local server:', details.method, urlPath);
+      // Route all web UI requests back to the fast local server
       callback({ redirectURL: `http://127.0.0.1:${config.LOCAL_PORT}${urlPath}` });
     } catch (e) {
       callback({});
