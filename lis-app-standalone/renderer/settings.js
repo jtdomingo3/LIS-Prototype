@@ -333,7 +333,7 @@
     });
   }
 
-  // Backup SQLite DB
+  // Backup GezyneLab DB
   if (backupBtn) {
     backupBtn.addEventListener('click', async () => {
       backupBtn.disabled = true;
@@ -341,7 +341,7 @@
       try {
         const res = await window.lisApp.performBackup();
         backupBtn.disabled = false;
-        backupBtn.innerHTML = '<span>💾</span> Backup SQLite Database Now';
+        backupBtn.innerHTML = '<span>💾</span> Backup GezyneLab Database Now';
         if (res && res.success) {
           setFeedback('✓ Backup created in Documents/GezyneLIS/backups');
         } else {
@@ -349,7 +349,7 @@
         }
       } catch (e) {
         backupBtn.disabled = false;
-        backupBtn.innerHTML = '<span>💾</span> Backup SQLite Database Now';
+        backupBtn.innerHTML = '<span>💾</span> Backup GezyneLab Database Now';
         setFeedback('Backup failed: ' + e.message, true);
       }
     });
@@ -380,7 +380,7 @@
   // Drop and replace from server
   if (dropBtn) {
     dropBtn.addEventListener('click', async () => {
-      if (!confirm('Warning: This will overwrite the local SQLite database with a fresh export from the server. Continue?')) return;
+      if (!confirm('Warning: This will overwrite the local GezyneLab database with a fresh export from the server. Continue?')) return;
       dropBtn.disabled = true;
       try {
         const res = await window.lisApp.dropOfflineData();

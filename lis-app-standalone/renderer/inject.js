@@ -106,7 +106,7 @@
     '      <span>⚡</span> Connect',
     '    </button>',
     '    <button class="lis-btn lis-btn-icon" id="lis-refresh-btn" title="Refresh page">⟲</button>',
-    '    <button class="lis-btn lis-btn-icon" id="lis-settings-btn" title="Settings & SQLite Storage">⚙</button>',
+    '    <button class="lis-btn lis-btn-icon" id="lis-settings-btn" title="Settings & GezyneLab DB Storage">⚙</button>',
     '  </div>',
     '</div>',
   ].join('\n');
@@ -164,13 +164,13 @@
     if (online) {
       bar.className = 'lis-online';
       dotEl.className = 'lis-status-dot online';
-      textEl.textContent = 'Connected (SQLite DB)';
+      textEl.textContent = 'Connected (GezyneLab DB)';
       if (retryBtn) retryBtn.style.display = 'none';
       if (syncBtn) syncBtn.style.display = count > 0 ? 'inline-flex' : 'none';
     } else {
       bar.className = 'lis-offline';
       dotEl.className = 'lis-status-dot offline';
-      textEl.textContent = 'Offline Mode (Local SQLite)';
+      textEl.textContent = 'Offline Mode (GezyneLab DB)';
       if (retryBtn) retryBtn.style.display = 'inline-flex';
       if (syncBtn) syncBtn.style.display = 'none';
     }
@@ -203,7 +203,7 @@
     if (data.phase === 'start') {
       bar.className = 'lis-syncing';
       dotEl.className = 'lis-status-dot syncing';
-      textEl.textContent = 'Syncing SQLite DB…';
+      textEl.textContent = 'Syncing GezyneLab DB…';
       if (progressWrap) progressWrap.style.display = 'block';
       if (progressBar) progressBar.style.width = '10%';
     } else if (data.phase === 'progress' && data.total && data.loaded) {
