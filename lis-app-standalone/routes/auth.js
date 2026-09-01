@@ -116,15 +116,19 @@ router.post('/login', requireGuest, async (req, res) => {
   }
 });
 
-// POST /logout - Logout
-router.post('/logout', (req, res) => {
-  req.session.destroy((err) => {
-    if (err) {
-      console.error('Logout error:', err);
-    }
+// Logout (GET and POST)
+const handleLogout = (req, res) => {
+  if (req.session) {
+    req.session.destroy((err) => {
+      if (err) console.error('Logout error:', err);
+      res.redirect('/');
+    });
+  } else {
     res.redirect('/');
-  });
-});
+  }
+};
+router.get('/logout', handleLogout);
+router.post('/logout', handleLogout);
 
 // GET /register - Register page (only for development/testing)
 if (process.env.NODE_ENV === 'development') {

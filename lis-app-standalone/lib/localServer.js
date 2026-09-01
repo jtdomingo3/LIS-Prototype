@@ -223,10 +223,12 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   });
 
   /* ── Clear auto-login on explicit logout ───────────────────────── */
-  app.post('/logout', (req, res, next) => {
+  const clearAutoLogin = (req, res, next) => {
     _autoLoginEmail = null;
-    next(); // let the real logout route handle session destroy + redirect
-  });
+    next();
+  };
+  app.get('/logout', clearAutoLogin);
+  app.post('/logout', clearAutoLogin);
 
   /* ── Make flash messages & user available to all views ─────────── */
   app.use((req, res, next) => {

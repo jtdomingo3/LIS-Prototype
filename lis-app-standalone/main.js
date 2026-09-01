@@ -297,7 +297,13 @@ async function createWindow() {
 
   // load persisted settings and apply overrides before services start
   loadUserSettings();
-  currentSessionEmail = userSettings.lastUserEmail || null;
+  currentSessionEmail = null; // Always require explicit login upon launching app
+
+  // Clear previous session partition cookies on startup so every launch starts at Login
+  try {
+    const sess = session.fromPartition('persist:lis');
+    if (sess) sess.clearStorageData({ storages: ['cookies'] }).catch(() => {});
+  } catch (e) {}
 
   // load application icon if available
   try {
@@ -377,14 +383,9 @@ async function createWindow() {
   if (userSettings._syncEmail && userSettings._syncPassword) {
     syncEngine.setCredentials(userSettings._syncEmail, userSettings._syncPassword);
   }
-  // Always set the auto-login email so hash-based auth fallback works
-  if (currentSessionEmail) {
-    syncEngine.setAutoLoginEmail(currentSessionEmail);
-  }
-
-  // Activate auto-login on the local server so offline transitions are seamless
-  if (currentSessionEmail && localServer && localServer.setAutoLoginEmail) {
-    localServer.setAutoLoginEmail(currentSessionEmail);
+  // Fresh launch starts with no pre-authenticated user session
+  if (localServer && localServer.setAutoLoginEmail) {
+    localServer.setAutoLoginEmail(null);
   }
 
   if (config.SERVER_URL) {
@@ -402,42 +403,30 @@ async function createWindow() {
     // work that might hang or bail early and prevent the injection.
     injectClientScripts();
 
-    // ── Track the logged-in user for seamless offline auto-login ─────
+    // ── Track the logged-in user only when actively authenticated ─────
     try {
-      const userName = await mainWindow.webContents.executeJavaScript(
-        '(function(){ try { var el = document.querySelector(\'a[href="/users/profile"]\'); return el ? el.textContent.trim() : null; } catch(e){ return null; } })()'
+      const isLoginPage = await mainWindow.webContents.executeJavaScript(
+        '!!(document.querySelector(\'form[action="/login"]\') || document.querySelector(\'input[name="email"]\'))'
       );
-      if (userName && dataStore) {
-        const users = dataStore.getCollection('users') || [];
-        const match = users.find(u => u.name && u.name.trim() === userName);
-        if (match && match.email && match.email !== currentSessionEmail) {
-          currentSessionEmail = match.email;
-          try { saveUserSettings({ lastUserEmail: currentSessionEmail }); } catch (e) {}
-          if (localServer && localServer.setAutoLoginEmail) localServer.setAutoLoginEmail(currentSessionEmail);
-          if (syncEngine) syncEngine.setAutoLoginEmail(currentSessionEmail);
-          console.log('[Main] tracked logged-in user:', currentSessionEmail);
+      if (isLoginPage) {
+        currentSessionEmail = null;
+        if (localServer && localServer.setAutoLoginEmail) localServer.setAutoLoginEmail(null);
+      } else {
+        const userName = await mainWindow.webContents.executeJavaScript(
+          '(function(){ try { var el = document.querySelector(\'a[href="/users/profile"]\'); return el ? el.textContent.trim() : null; } catch(e){ return null; } })()'
+        );
+        if (userName && dataStore) {
+          const users = dataStore.getCollection('users') || [];
+          const match = users.find(u => u.name && u.name.trim() === userName);
+          if (match && match.email && match.email !== currentSessionEmail) {
+            currentSessionEmail = match.email;
+            if (localServer && localServer.setAutoLoginEmail) localServer.setAutoLoginEmail(currentSessionEmail);
+            if (syncEngine) syncEngine.setAutoLoginEmail(currentSessionEmail);
+            console.log('[Main] tracked logged-in user:', currentSessionEmail);
+          }
         }
       }
     } catch (e) { /* ignore user tracking errors */ }
-
-    // ── Detect explicit logout (landed on login page with no session) ──
-    try {
-      const currentUrl = mainWindow.webContents.getURL();
-      const localBase = `http://127.0.0.1:${config.LOCAL_PORT}`;
-      // If on login page of real server or local server
-      const isServerRoot = config.SERVER_URL && currentUrl === config.SERVER_URL.replace(/\/$/, '') + '/';
-      const isLocalRoot = currentUrl === localBase + '/';
-      if (isServerRoot || isLocalRoot) {
-        // Check if the page is actually the login page (has login form)
-        const hasLoginForm = await mainWindow.webContents.executeJavaScript(
-          '!!(document.querySelector(\'form[action="/login"]\') || document.querySelector(\'input[name="email"]\'))'
-        );
-        // Only clear auto-login if user explicitly logged out (no auto-login
-        // email means they arrived here naturally)
-        // We DON'T clear auto-login here — the auto-login middleware will
-        // redirect them away from the login page via requireGuest.
-      }
-    } catch (e) { /* ignore */ }
 
     try {
       const url = mainWindow.webContents.getURL();
