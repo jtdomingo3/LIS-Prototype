@@ -92,11 +92,12 @@ router.post('/', requireAuth, canManageUsers, async (req, res) => {
       });
     }
 
-    // Build permissions object from nested form inputs
+    // Build permissions object from nested or flattened form inputs
     const permissionsRaw = req.body.permissions || {};
     const permissions = {};
     ['dashboard','patients','reception','tests','reports','worksheet','templates','users','delete'].forEach(k => {
-      permissions[k] = !!(permissionsRaw[k] === '1' || permissionsRaw[k] === 1 || permissionsRaw[k] === true || permissionsRaw[k] === 'on' || permissionsRaw[k]);
+      const val = (permissionsRaw && permissionsRaw[k] !== undefined) ? permissionsRaw[k] : (req.body[`permissions[${k}]`] !== undefined ? req.body[`permissions[${k}]`] : req.body[`permissions.${k}`]);
+      permissions[k] = !!(val === '1' || val === 1 || val === true || val === 'on' || val === 'true');
     });
 
     const user = new User({
@@ -299,11 +300,12 @@ router.put('/:id', requireAuth, canManageUsers, async (req, res) => {
       return res.redirect(`/users/${req.params.id}/edit`);
     }
 
-    // Build permissions object from nested form inputs
+    // Build permissions object from nested or flattened form inputs
     const permissionsRaw = req.body.permissions || {};
     const permissions = {};
     ['dashboard','patients','reception','tests','reports','worksheet','templates','users','delete'].forEach(k => {
-      permissions[k] = !!(permissionsRaw[k] === '1' || permissionsRaw[k] === 1 || permissionsRaw[k] === true || permissionsRaw[k] === 'on' || permissionsRaw[k]);
+      const val = (permissionsRaw && permissionsRaw[k] !== undefined) ? permissionsRaw[k] : (req.body[`permissions[${k}]`] !== undefined ? req.body[`permissions[${k}]`] : req.body[`permissions.${k}`]);
+      permissions[k] = !!(val === '1' || val === 1 || val === true || val === 'on' || val === 'true');
     });
 
     const updateData = {

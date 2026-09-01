@@ -2,11 +2,22 @@ const express = require('express');
 const router = express.Router();
 const Test = require('../models/Test');
 const Patient = require('../models/Patient');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, getUserHomeRoute } = require('../middleware/auth');
 
 // GET /dashboard - Dashboard page
 router.get('/', requireAuth, async (req, res) => {
   try {
+    const user = req.session && req.session.user;
+    const managementRoles = new Set(['Admin', 'Manager', 'Owner']);
+    let perms = (user && user.permissions) || {};
+    if (typeof perms === 'string') {
+      try { perms = JSON.parse(perms); } catch (_) { perms = {}; }
+    }
+    if (user && !managementRoles.has(user.role) && !perms.dashboard) {
+      const home = getUserHomeRoute(user);
+      return res.redirect(home !== '/dashboard' ? home : '/reception');
+    }
+
     // Get statistics
     const allPatients = await Patient.find({});
     const allTests = await Test.find({});

@@ -75,22 +75,6 @@
     <% }) %>
   </div>
 
-  <!-- Messages & Flash Alerts -->
-  <% const success = (typeof flash !== 'undefined' && flash && flash.success_msg) ? flash.success_msg : (typeof success_msg !== 'undefined' ? success_msg : null); %>
-  <% const error = (typeof flash !== 'undefined' && flash && flash.error_msg) ? flash.error_msg : (typeof error_msg !== 'undefined' ? error_msg : null); %>
-  <% if (success && success.length > 0) { %>
-    <div style="padding: 12px 16px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; margin-bottom: 20px; color: #15803d; font-weight: 600; display: flex; align-items: center; gap: 10px;">
-      <i class="fa fa-check-circle" style="font-size: 1.1em;"></i>
-      <span><%= success %></span>
-    </div>
-  <% } %>
-  <% if (error && error.length > 0) { %>
-    <div style="padding: 12px 16px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; margin-bottom: 20px; color: #b91c1c; font-weight: 600; display: flex; align-items: center; gap: 10px;">
-      <i class="fa fa-exclamation-triangle" style="font-size: 1.1em;"></i>
-      <span><%= error %></span>
-    </div>
-  <% } %>
-
 
 
   <!-- Admin Special Action Card -->

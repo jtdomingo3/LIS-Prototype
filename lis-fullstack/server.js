@@ -472,13 +472,22 @@ app.use((req, res, next) => {
       return res.redirect('/');
     }
 
-    const perms = sessionUser.permissions || {};
-    console.debug(`[auth-guard] sessionUser=${sessionUser.email} role=${sessionUser.role} perms=${JSON.stringify(perms)}`);
+    let perms = sessionUser.permissions || {};
+    if (typeof perms === 'string') {
+      try { perms = JSON.parse(perms); } catch (_) { perms = {}; }
+    }
+    const managementRoles = new Set(['Admin', 'Manager', 'Owner']);
+    const isManagement = managementRoles.has(sessionUser.role);
 
-    // Dashboard: allow any authenticated user (temporary easy fix)
+    // Dashboard: only allow management roles or explicit perms.dashboard
     if (mapping.perm === 'dashboard') {
-      console.debug('[auth-guard] allowing access to dashboard for authenticated user');
-      return next();
+      if (isManagement || perms.dashboard) {
+        console.debug('[auth-guard] allowing access to dashboard for management user');
+        return next();
+      }
+      const { getUserHomeRoute } = require('./middleware/auth');
+      const target = getUserHomeRoute(sessionUser);
+      return res.redirect(target !== '/dashboard' ? target : '/reception');
     }
 
     // Allow Admin role everywhere
@@ -492,10 +501,24 @@ app.use((req, res, next) => {
       return next();
     }
 
+    // Role-based baseline workflow access for laboratory personnel
+    const labRoles = new Set(['Medical Technologist', 'MedTech', 'Technician', 'Doctor', 'Staff', 'Receptionist', 'Encoder']);
+    if (labRoles.has(sessionUser.role)) {
+      if (['reception', 'patients', 'tests', 'reports', 'worksheet', 'templates'].includes(mapping.perm)) {
+        console.debug(`[auth-guard] allowing ${sessionUser.role} baseline workflow access to ${mapping.perm}`);
+        return next();
+      }
+    }
+
     // Not allowed
     console.warn(`[auth-guard] denying ${sessionUser.email} access to ${path} (required=${mapping.perm})`);
-    req.flash('error_msg', 'You do not have permission to access that page');
-    return res.redirect('/dashboard');
+    if (req.flash) req.flash('error_msg', 'You do not have permission to access that page');
+    const { getUserHomeRoute } = require('./middleware/auth');
+    const target = getUserHomeRoute(sessionUser);
+    if (target === path) {
+      return res.redirect('/users/profile');
+    }
+    return res.redirect(target);
   } catch (e) {
     return next();
   }
