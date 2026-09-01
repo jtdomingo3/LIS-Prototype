@@ -278,6 +278,200 @@
     color: #0f172a;
   }
 
+  /* Saved Accounts Dropdown (Browser-like Password Manager) */
+  .saved-accounts-container {
+    position: relative;
+  }
+
+  .saved-accounts-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background: #1e293b;
+    color: #f8fafc;
+    border: 1px solid #334155;
+    border-radius: 14px;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35), 0 4px 12px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    overflow: hidden;
+    display: none;
+    animation: dropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes dropdownFadeIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .saved-accounts-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    border-bottom: 1px solid #334155;
+    font-size: 0.78rem;
+    color: #94a3b8;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .saved-accounts-header .close-dropdown-btn {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  .saved-accounts-header .close-dropdown-btn:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .saved-accounts-list {
+    max-height: 220px;
+    overflow-y: auto;
+    list-style: none;
+    margin: 0;
+    padding: 4px 0;
+  }
+
+  .saved-account-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+  }
+
+  .saved-account-item:last-child {
+    border-bottom: none;
+  }
+
+  .saved-account-item:hover, .saved-account-item.active {
+    background: #334155;
+  }
+
+  .saved-account-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .saved-account-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+  }
+
+  .saved-account-texts {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .saved-account-name {
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: #f1f5f9;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .saved-account-email {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .saved-account-dots {
+    font-size: 0.85rem;
+    color: #64748b;
+    letter-spacing: 2px;
+    margin-top: -2px;
+  }
+
+  .saved-account-role-badge {
+    font-size: 0.68rem;
+    padding: 2px 7px;
+    border-radius: 12px;
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+    font-weight: 600;
+    margin-left: 6px;
+  }
+
+  .saved-account-delete-btn {
+    background: transparent;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+  }
+
+  .saved-account-delete-btn:hover {
+    color: #f87171;
+    background: rgba(239, 68, 68, 0.15);
+  }
+
+  .saved-accounts-footer {
+    padding: 8px 14px;
+    border-top: 1px solid #334155;
+    background: #0f172a;
+    font-size: 0.78rem;
+    color: #38bdf8;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .remember-me-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 12px 0 16px 0;
+    font-size: 0.88rem;
+    color: #64748b;
+  }
+
+  .remember-me-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .remember-me-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: #10b981;
+  }
+
   .login-submit-btn {
     width: 100%;
     padding: 14px 20px;
@@ -294,7 +488,7 @@
     gap: 10px;
     box-shadow: 0 4px 14px rgba(5, 150, 105, 0.3);
     transition: all 0.25s ease;
-    margin-top: 8px;
+    margin-top: 4px;
     margin-bottom: 20px;
   }
 
@@ -401,7 +595,7 @@
           <span class="lab-pill status-open"><i class="fas fa-clock"></i> Open Now</span>
           <span class="lab-pill"><i class="fas fa-chair"></i> Outdoor Seating</span>
           <span class="lab-pill"><i class="fas fa-tags"></i> Price Range: ₱₱</span>
-          <span class="lab-pill"><i class="fas fa-network-wired"></i> LIS System v2.0.0</span>
+          <span class="lab-pill"><i class="fas fa-network-wired"></i> LIS Standalone v2.0</span>
         </div>
       </div>
 
@@ -411,15 +605,29 @@
     <div class="login-form-panel">
       <div class="login-header-section">
         <h1 class="login-main-title">System Login</h1>
-        <p class="login-sub-title">Enter your credentials to access the Laboratory Information System</p>
+        <p class="login-sub-title">Enter your credentials or select a saved user account below</p>
       </div>
 
-      <form action="/login" method="POST">
-        <div class="input-group-custom">
+      <form action="/login" method="POST" id="loginForm" autocomplete="on">
+        <div class="input-group-custom saved-accounts-container">
           <label for="emailInput">Email Address</label>
           <div class="input-field-wrapper">
             <i class="fas fa-envelope field-icon"></i>
-            <input type="email" id="emailInput" name="email" placeholder="name@lab.com" required autofocus>
+            <input type="email" id="emailInput" name="email" placeholder="name@lab.com" required autofocus autocomplete="email">
+          </div>
+
+          <!-- Floating Saved Accounts / Passwords Manager Dropdown -->
+          <div class="saved-accounts-dropdown" id="savedAccountsDropdown">
+            <div class="saved-accounts-header">
+              <span><i class="fas fa-key" style="color:#f59e0b; margin-right:4px;"></i> Saved Accounts on this PC</span>
+              <button type="button" class="close-dropdown-btn" id="closeSavedDropdownBtn" title="Close">✕</button>
+            </div>
+            <ul class="saved-accounts-list" id="savedAccountsList">
+              <!-- Dynamically populated by JS -->
+            </ul>
+            <div class="saved-accounts-footer">
+              <i class="fas fa-shield-alt"></i> Click an account to auto-fill & login instantly
+            </div>
           </div>
         </div>
 
@@ -427,20 +635,28 @@
           <label for="passwordInput">Password</label>
           <div class="input-field-wrapper">
             <i class="fas fa-lock field-icon"></i>
-            <input type="password" id="passwordInput" name="password" placeholder="Enter your password" required>
+            <input type="password" id="passwordInput" name="password" placeholder="Enter your password" required autocomplete="current-password">
             <button type="button" class="toggle-pw-btn" id="togglePasswordBtn" title="Show/Hide Password">
               <i class="fas fa-eye" id="togglePasswordIcon"></i>
             </button>
           </div>
         </div>
 
-        <button type="submit" class="login-submit-btn">
-          <i class="fas fa-sign-in-alt"></i> Login to Dashboard
+        <div class="remember-me-wrapper">
+          <label class="remember-me-label" for="rememberMeCheck">
+            <input type="checkbox" id="rememberMeCheck">
+            <span>Remember password on this PC</span>
+          </label>
+          <span style="font-size:0.8em; color:#10b981;"><i class="fas fa-shield-alt"></i> Optional Quick Login</span>
+        </div>
+
+        <button type="submit" class="login-submit-btn" id="loginBtn">
+          <i class="fas fa-sign-in-alt"></i> Login to Workspace
         </button>
       </form>
 
       <div class="login-footer-info">
-        <i class="fas fa-shield-alt" style="color:#10b981;"></i> Secure Laboratory Information Management System
+        <i class="fas fa-shield-alt" style="color:#10b981;"></i> Secure Desktop LIS &bull; Offline-First System
       </div>
     </div>
 
@@ -453,6 +669,12 @@
     const toggleBtn = document.getElementById('togglePasswordBtn');
     const passwordInput = document.getElementById('passwordInput');
     const toggleIcon = document.getElementById('togglePasswordIcon');
+    const emailInput = document.getElementById('emailInput');
+    const loginForm = document.getElementById('loginForm');
+    const rememberMeCheck = document.getElementById('rememberMeCheck');
+    const dropdown = document.getElementById('savedAccountsDropdown');
+    const listEl = document.getElementById('savedAccountsList');
+    const closeBtn = document.getElementById('closeSavedDropdownBtn');
 
     if (toggleBtn && passwordInput && toggleIcon) {
       toggleBtn.addEventListener('click', function() {
@@ -468,5 +690,147 @@
         }
       });
     }
+
+    // Load saved accounts from localStorage (starts empty by default)
+    function getSavedAccounts() {
+      try {
+        const raw = localStorage.getItem('gezyne_saved_logins_v2');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) return parsed;
+        }
+      } catch (e) {}
+      return [];
+    }
+
+    function saveAccounts(accounts) {
+      try {
+        localStorage.setItem('gezyne_saved_logins_v2', JSON.stringify(accounts));
+      } catch (e) {}
+    }
+
+    function renderSavedAccounts(filterText = '') {
+      const accounts = getSavedAccounts();
+      if (!accounts || accounts.length === 0) {
+        if (dropdown) dropdown.style.display = 'none';
+        return;
+      }
+
+      const filtered = filterText 
+        ? accounts.filter(a => (a.email && a.email.toLowerCase().includes(filterText.toLowerCase())) || 
+                               (a.name && a.name.toLowerCase().includes(filterText.toLowerCase())))
+        : accounts;
+
+      if (!filtered.length) {
+        if (dropdown) dropdown.style.display = 'none';
+        return;
+      }
+
+      listEl.innerHTML = '';
+      filtered.forEach((acc) => {
+        const li = document.createElement('li');
+        li.className = 'saved-account-item';
+        
+        const initial = (acc.name || acc.email || 'U').charAt(0).toUpperCase();
+        const roleLabel = acc.role || 'Staff';
+        
+        li.innerHTML = `
+          <div class="saved-account-info">
+            <div class="saved-account-avatar">${initial}</div>
+            <div class="saved-account-texts">
+              <div class="saved-account-name">
+                ${acc.name || acc.email}
+                <span class="saved-account-role-badge">${roleLabel}</span>
+              </div>
+              <div class="saved-account-email">${acc.email}</div>
+              <div class="saved-account-dots">••••••••</div>
+            </div>
+          </div>
+          <button type="button" class="saved-account-delete-btn" title="Remove from this PC" data-email="${acc.email}">
+            ✕
+          </button>
+        `;
+
+        li.addEventListener('click', (e) => {
+          if (e.target.closest('.saved-account-delete-btn')) return;
+          emailInput.value = acc.email;
+          if (acc.pass) passwordInput.value = acc.pass;
+          dropdown.style.display = 'none';
+          passwordInput.focus();
+        });
+
+        const delBtn = li.querySelector('.saved-account-delete-btn');
+        if (delBtn) {
+          delBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const emailToDelete = delBtn.getAttribute('data-email');
+            const updated = getSavedAccounts().filter(a => a.email.toLowerCase() !== emailToDelete.toLowerCase());
+            saveAccounts(updated);
+            renderSavedAccounts(emailInput.value);
+          });
+        }
+
+        listEl.appendChild(li);
+      });
+
+      if (dropdown) dropdown.style.display = 'block';
+    }
+
+    // Show dropdown on input focus / click only if accounts exist
+    if (emailInput && dropdown) {
+      emailInput.addEventListener('focus', () => {
+        renderSavedAccounts(emailInput.value);
+      });
+
+      emailInput.addEventListener('input', () => {
+        renderSavedAccounts(emailInput.value);
+      });
+
+      if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+          dropdown.style.display = 'none';
+        });
+      }
+
+      // Close dropdown when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.saved-accounts-container')) {
+          dropdown.style.display = 'none';
+        }
+      });
+    }
+
+    // On Form Submit, record login ONLY if remember me was explicitly checked
+    if (loginForm && emailInput && passwordInput) {
+      loginForm.addEventListener('submit', () => {
+        const email = emailInput.value.trim().toLowerCase();
+        const pass = passwordInput.value;
+        if (!email) return;
+
+        const accounts = getSavedAccounts();
+        if (rememberMeCheck && rememberMeCheck.checked) {
+          const existingIdx = accounts.findIndex(a => a.email && a.email.toLowerCase() === email);
+          if (existingIdx >= 0) {
+            accounts[existingIdx].pass = pass;
+            accounts[existingIdx].lastUsed = Date.now();
+          } else {
+            const displayName = email.split('@')[0].toUpperCase();
+            accounts.unshift({
+              name: displayName,
+              email: email,
+              role: 'Staff',
+              pass: pass,
+              lastUsed: Date.now()
+            });
+          }
+          saveAccounts(accounts);
+        } else {
+          // If remember me is unchecked, remove this account from saved logins
+          const filtered = accounts.filter(a => a.email.toLowerCase() !== email);
+          saveAccounts(filtered);
+        }
+      });
+    }
+
   })();
 </script>
