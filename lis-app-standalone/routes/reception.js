@@ -25,24 +25,42 @@ function allowKioskOrAuth(req, res, next) {
   });
 }
 
-// Define the reception areas. Doctor names are configurable via environment variables
-// DOCTOR_1_NAME and DOCTOR_2_NAME (defaults kept for backwards compatibility).
-const DOCTOR_1_NAME = process.env.DOCTOR_1_NAME;
-const DOCTOR_2_NAME = process.env.DOCTOR_2_NAME;
-function doctorArea(name) { return `Doctor's Check-up - ${name}`; }
-const AREAS = [
-  'Payment Area',
-  'Sendout',
-  'Extraction Area',
-  'Drug Test',
-  'Ultrasound',
-  '2D Echo',
-  'X-ray',
-  'ECG',
-  'Releasing of Result',
-  doctorArea(DOCTOR_1_NAME),
-  doctorArea(DOCTOR_2_NAME)
-];
+// Define helper functions for dynamic doctor area resolution
+function getDoctor1Name() {
+  const env = (process.env.DOCTOR_1_NAME || '').trim();
+  if (env && env !== 'undefined') return env;
+  return 'Dr. Lorenzo';
+}
+
+function getDoctor2Name() {
+  const env = (process.env.DOCTOR_2_NAME || '').trim();
+  if (env && env !== 'undefined') return env;
+  return 'Dr. Arcilla';
+}
+
+function doctorArea(name) {
+  const clean = (name && String(name).trim() && String(name).trim() !== 'undefined') ? String(name).trim() : 'Dr. Lorenzo';
+  return `Doctor's Check-up - ${clean}`;
+}
+
+function getAreas() {
+  const d1 = getDoctor1Name();
+  const d2 = getDoctor2Name();
+  const list = [
+    'Payment Area',
+    'Sendout',
+    'Extraction Area',
+    'Drug Test',
+    'Ultrasound',
+    '2D Echo',
+    'X-ray',
+    'ECG',
+    'Releasing of Result'
+  ];
+  if (d1) list.push(doctorArea(d1));
+  if (d2 && d2 !== d1) list.push(doctorArea(d2));
+  return list;
+}
 
 // Simple in-memory advertisement text for kiosk marquee (editable from /reception)
 let kioskAdText = '';
@@ -72,6 +90,10 @@ function mapAreaForTest(test) {
 // This is used when deciding where to forward tests after payment or after completing a step.
 function getTargetAreaForTest(t) {
   if (!t) return null;
+  const d1 = getDoctor1Name();
+  const d2 = getDoctor2Name();
+  const d1Lower = d1.toLowerCase();
+  const d2Lower = d2.toLowerCase();
   try {
     if (Array.isArray(t.requestedTests) && t.requestedTests.length) {
       for (const rr of t.requestedTests) {
@@ -80,10 +102,8 @@ function getTargetAreaForTest(t) {
           if (ra.includes('send')) return 'Sendout';
           // If the area mentions a doctor, map to the configured doctor area (try to detect specific doctor)
           if (ra.includes("dr.") || ra.includes('doctor')) {
-            const d1 = String(DOCTOR_1_NAME || '').toLowerCase();
-            const d2 = String(DOCTOR_2_NAME || '').toLowerCase();
-            if (d2 && ra.includes(d2)) return doctorArea(DOCTOR_2_NAME);
-            return doctorArea(DOCTOR_1_NAME);
+            if (d2 && ra.includes(d2Lower)) return doctorArea(d2);
+            return doctorArea(d1);
           }
           return rr.area;
         }
@@ -98,13 +118,13 @@ function getTargetAreaForTest(t) {
   // If the testType indicates a doctor's checkup, map to configured doctor area
   try {
     if (label.includes('doctor')) {
-      const d2 = String(DOCTOR_2_NAME || '').toLowerCase();
-      if (d2 && label.includes(d2)) return doctorArea(DOCTOR_2_NAME);
-      return doctorArea(DOCTOR_1_NAME);
+      if (d2 && label.includes(d2Lower)) return doctorArea(d2);
+      return doctorArea(d1);
     }
   } catch (e) {}
-  if (label.includes('xray')) return 'X-ray';
-  if (label.includes('ultrasound') || label.includes('echo')) return 'Ultrasound';
+  if (label.includes('2d') || label.includes('echocardiography') || label.includes('2d echo') || label === 'echo') return '2D Echo';
+  if (label.includes('ultrasound')) return 'Ultrasound';
+  if (label.includes('xray') || label.includes('x-ray')) return 'X-ray';
   if (label.includes('ecg')) return 'ECG';
   if (label.includes('drug')) return 'Drug Test';
   // Explicit exclusions that should remain Awaiting (handled separately)
@@ -117,16 +137,18 @@ function getTargetAreaForTest(t) {
 // Determine target area for an individual requestedTests entry (rr)
 function getTargetAreaForRequest(rr) {
   if (!rr) return null;
+  const d1 = getDoctor1Name();
+  const d2 = getDoctor2Name();
+  const d1Lower = d1.toLowerCase();
+  const d2Lower = d2.toLowerCase();
   try {
     // Normalize legacy 'For Send Out' to internal 'Sendout' area
     if (rr.area) {
       const ra = String(rr.area || '').toLowerCase();
       if (ra.includes('send')) return 'Sendout';
       if (ra.includes("dr.") || ra.includes('doctor')) {
-        const d1 = String(DOCTOR_1_NAME || '').toLowerCase();
-        const d2 = String(DOCTOR_2_NAME || '').toLowerCase();
-        if (d2 && ra.includes(d2)) return doctorArea(DOCTOR_2_NAME);
-        return doctorArea(DOCTOR_1_NAME);
+        if (d2 && ra.includes(d2Lower)) return doctorArea(d2);
+        return doctorArea(d1);
       }
       return rr.area;
     }
@@ -134,7 +156,9 @@ function getTargetAreaForRequest(rr) {
     if (lab === 'xray') return 'X-ray';
     const label = String(rr.label || '').toLowerCase();
     if (label.includes('typing')) return 'Extraction Area';
-    if (label.includes('ultrasound') || label.includes('echo')) return 'Ultrasound';
+    if (label.includes('2d') || label.includes('echocardiography') || label.includes('2d echo') || label === 'echo') return '2D Echo';
+    if (label.includes('ultrasound')) return 'Ultrasound';
+    if (label.includes('xray') || label.includes('x-ray')) return 'X-ray';
     if (label.includes('ecg')) return 'ECG';
     if (label.includes('drug')) return 'Drug Test';
     if (label.includes('send')) return 'Sendout';
@@ -156,6 +180,7 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
       : [];
 
     // Build display areas (exclude internal-only areas like 'Sendout' from kiosk/dashboard tiles)
+    const AREAS = getAreas();
     const DISPLAY_AREAS = AREAS.filter(a => String(a).toLowerCase() !== 'sendout');
 
     // Count unique patients per area (deduplicate by patientCode) so dashboard shows patient counts
@@ -226,9 +251,6 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
 router.get('/assigned', allowKioskOrAuth, async (req, res) => {
   try {
     console.log('GET /reception/assigned called', { user: req.session && req.session.user ? req.session.user.username : null, kiosk: !!req.query && (req.query.kiosk === '1' || String(req.query.kiosk).toLowerCase() === 'true') });
-    // Diagnostic: show cookie header and session object to debug why user may be undefined
-    try { console.log('GET /reception/assigned headers.cookie:', req.headers && req.headers.cookie ? req.headers.cookie : null); } catch (e) {}
-    try { console.log('GET /reception/assigned session:', req.session ? JSON.stringify(Object.keys(req.session)) : null); } catch (e) { }
     const allTestsRaw = await Test.find({});
     const allTests = Array.isArray(allTestsRaw)
       ? allTestsRaw.slice().sort((a, b) => {
@@ -238,6 +260,7 @@ router.get('/assigned', allowKioskOrAuth, async (req, res) => {
         })
       : [];
     // For assigned (kiosk) view we expose DISPLAY_AREAS only (hide internal-only 'Sendout')
+    const AREAS = getAreas();
     const DISPLAY_AREAS = AREAS.filter(a => String(a).toLowerCase() !== 'sendout');
     const areaAssignments = {};
     for (const area of DISPLAY_AREAS) {
@@ -371,6 +394,7 @@ router.get('/assigned-data', allowKioskOrAuth, async (req, res) => {
         return aDate - bDate;
       })
     : [];
+      const AREAS = getAreas();
       const DISPLAY_AREAS = AREAS.filter(a => String(a).toLowerCase() !== 'sendout');
       const areaAssignments = {};
       for (const area of DISPLAY_AREAS) areaAssignments[area] = [];
@@ -950,6 +974,8 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
     } catch (e) {
       console.warn('Failed loading patient tests in /reception/complete', e);
     }
+
+    const AREAS = getAreas();
 
     if (area === 'Payment Area') {
       // Find all tests currently in Payment Area (or matching the submitted IDs)

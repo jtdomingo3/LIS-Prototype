@@ -262,14 +262,14 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
 
   /* ── Expose doctor names & areas to views ──────────────────────── */
   app.use((req, res, next) => {
-    // Read from environment or DataStore settings (fallback to empty)
-    const d1 = process.env.DOCTOR_1_NAME || '';
-    const d2 = process.env.DOCTOR_2_NAME || '';
+    // Read from environment or DataStore settings (fallback to clean defaults)
+    const d1 = (process.env.DOCTOR_1_NAME || '').trim() || 'Dr. Lorenzo';
+    const d2 = (process.env.DOCTOR_2_NAME || '').trim() || 'Dr. Arcilla';
     res.locals.DOCTOR_1_NAME = d1;
     res.locals.DOCTOR_2_NAME = d2;
     const areas = [];
     if (d1) areas.push("Doctor's Check-up - " + d1);
-    if (d2) areas.push("Doctor's Check-up - " + d2);
+    if (d2 && d2 !== d1) areas.push("Doctor's Check-up - " + d2);
     res.locals.DOCTOR_AREAS = areas;
     next();
   });

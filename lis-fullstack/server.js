@@ -289,21 +289,21 @@ app.use((req, res, next) => {
   next();
 });
 
-// Expose configured doctor names and derived doctor area labels to views
-const DOCTOR_1_NAME = process.env.DOCTOR_1_NAME || '';
-const DOCTOR_2_NAME = process.env.DOCTOR_2_NAME || '';
+// Expose configured doctor names and derived doctor area labels to views dynamically
 app.use((req, res, next) => {
   try {
-    res.locals.DOCTOR_1_NAME = DOCTOR_1_NAME;
-    res.locals.DOCTOR_2_NAME = DOCTOR_2_NAME;
+    const d1 = (process.env.DOCTOR_1_NAME || '').trim() || 'Dr. Lorenzo';
+    const d2 = (process.env.DOCTOR_2_NAME || '').trim() || 'Dr. Arcilla';
+    res.locals.DOCTOR_1_NAME = d1;
+    res.locals.DOCTOR_2_NAME = d2;
     const areas = [];
-    if (DOCTOR_1_NAME) areas.push(`Doctor's Check-up - ${DOCTOR_1_NAME}`);
-    if (DOCTOR_2_NAME) areas.push(`Doctor's Check-up - ${DOCTOR_2_NAME}`);
+    if (d1) areas.push(`Doctor's Check-up - ${d1}`);
+    if (d2 && d2 !== d1) areas.push(`Doctor's Check-up - ${d2}`);
     res.locals.DOCTOR_AREAS = areas;
   } catch (e) {
-    res.locals.DOCTOR_1_NAME = '';
-    res.locals.DOCTOR_2_NAME = '';
-    res.locals.DOCTOR_AREAS = [];
+    res.locals.DOCTOR_1_NAME = 'Dr. Lorenzo';
+    res.locals.DOCTOR_2_NAME = 'Dr. Arcilla';
+    res.locals.DOCTOR_AREAS = [`Doctor's Check-up - Dr. Lorenzo`, `Doctor's Check-up - Dr. Arcilla`];
   }
   next();
 });
