@@ -14,6 +14,7 @@ const { runReceptionPipelineTests } = require('./standalone-offline-pipeline.tes
 const { runLocalServerRouteTests } = require('./standalone-offline-routes.test');
 const { runQueueIdMappingTests } = require('./standalone-offline-id-mapping.test');
 const { runE2EAllFunctionsTest } = require('./standalone-offline-e2e-all-functions.test');
+const { runDeletionSyncTest } = require('./standalone-offline-deletion-sync.test');
 
 async function runAllOfflineTests() {
   console.log('====================================================');
@@ -28,11 +29,12 @@ async function runAllOfflineTests() {
     await runLocalServerRouteTests();
     await runQueueIdMappingTests();
     await runE2EAllFunctionsTest();
+    await runDeletionSyncTest();
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
     console.log('====================================================');
-    console.log(`🎉 ALL 5 OFFLINE TEST SUITES PASSED SUCCESSFULLY (${elapsed}s)`);
-    console.log('All offline capabilities (CRUD, Pipeline, Express, Results, Queue) are 100% verified!');
+    console.log(`🎉 ALL 6 OFFLINE TEST SUITES PASSED SUCCESSFULLY (${elapsed}s)`);
+    console.log('All offline capabilities (CRUD, Pipeline, Express, Results, Queue, Deletion) are 100% verified!');
     console.log('====================================================');
   } catch (err) {
     console.error('\n❌ TEST RUNNER TERMINATED WITH ERROR:', err);

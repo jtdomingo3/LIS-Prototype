@@ -598,22 +598,28 @@ router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
 // DELETE /patients/:id - Delete patient
 router.delete('/:id', requireAuth, canAccessPatient, async (req, res) => {
   try {
-    // Check if patient has any tests
     const Test = require('../models/Test');
-    const testCount = await Test.countDocuments({ patient: req.params.id });
-
-    if (testCount > 0) {
-      req.flash('error_msg', 'Cannot delete patient with existing test records');
-      return res.redirect('/patients');
+    
+    // Cascade delete any tests belonging to this patient
+    const associatedTests = await Test.find({ patient: req.params.id });
+    if (Array.isArray(associatedTests)) {
+      for (const t of associatedTests) {
+        await Test.findByIdAndDelete(t.id);
+      }
     }
 
-    const patient = await Patient.findByIdAndDelete(req.params.id);
+    let patient = await Patient.findByIdAndDelete(req.params.id);
+    if (!patient) {
+      const pByCode = await Patient.findOne({ patientId: req.params.id });
+      if (pByCode) patient = await Patient.findByIdAndDelete(pByCode.id);
+    }
+
     if (!patient) {
       req.flash('error_msg', 'Patient not found');
       return res.redirect('/patients');
     }
 
-    req.flash('success_msg', 'Patient deleted successfully');
+    req.flash('success_msg', 'Patient and associated tests deleted successfully');
     res.redirect('/patients');
 
   } catch (error) {

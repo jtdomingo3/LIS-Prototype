@@ -259,6 +259,16 @@ class SyncEngine {
       // Authenticate with the real server before fetching data
       await this._ensureServerAuth();
 
+      // Flush all pending offline mutations (including deletions) to the server before downloading
+      if (this.queue && this.queue.countPending() > 0) {
+        try {
+          console.log('[Sync] flushing pending queue operations before fullSync...');
+          await this.processQueue();
+        } catch (e) {
+          console.warn('[Sync] pre-fullSync queue flush warning:', e && e.message);
+        }
+      }
+
       const { net } = require('electron');
       // prefer authenticated export endpoint if available
       const base = this.config.SERVER_URL.replace(/\/$/, '');
@@ -494,7 +504,7 @@ class SyncEngine {
       if (elNet && elSession) {
         let settled = false;
         const request = elNet.request({
-          method: 'POST',
+          method: op.method || 'POST',
           url: op.url,
           session: elSession.fromPartition('persist:lis'),
           redirect: 'manual',
@@ -568,7 +578,7 @@ class SyncEngine {
         hostname: parsed.hostname,
         port: parsed.port || (isHttps ? 443 : 80),
         path: parsed.pathname + (parsed.search || ''),
-        method: 'POST',
+        method: op.method || 'POST',
         headers,
         timeout: 10000
       }, (res) => {

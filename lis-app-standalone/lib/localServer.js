@@ -160,9 +160,11 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
       // Skip export/sync endpoints
       if (reqPath.startsWith('/export/')) return next();
 
-      // Build the real server URL for this request
+      // Build the real server URL for this request preserving query parameters
       const base = config.SERVER_URL.replace(/\/$/, '');
-      const serverUrl = base + reqPath;
+      const queryString = (req.originalUrl && req.originalUrl.includes('?')) ? ('?' + req.originalUrl.split('?')[1]) : '';
+      const serverUrl = base + req.path + queryString;
+      const effectiveMethod = (req.query && req.query._method) ? req.query._method.toUpperCase() : (req.method || 'POST');
 
       // Ensure a deterministic client-generated id and UUID for offline-created records
       if (req.body) {
@@ -176,12 +178,12 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
       // Queue with the request body for later replay
       if (operationQueue) {
         const entry = operationQueue.add({
-          method: 'POST', // HTML forms always POST with ?_method for PUT/DELETE
+          method: effectiveMethod,
           url: serverUrl,
           body: req.body || {},
           timestamp: new Date().toISOString(),
         });
-        console.log('[LocalServer] queued mutation for server:', req.method, reqPath, req.body && req.body.id ? ('id=' + req.body.id) : '');
+        console.log('[LocalServer] queued mutation for server:', effectiveMethod, serverUrl, req.body && req.body.id ? ('id=' + req.body.id) : '');
 
         // If creating tests, hook response finish to attach created test definitions to the queued op
         if (reqPath === '/tests' && req.method === 'POST' && entry) {
