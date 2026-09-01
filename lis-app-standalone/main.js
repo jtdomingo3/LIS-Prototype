@@ -260,7 +260,10 @@ async function createWindow() {
     },
   });
 
-  mainWindow.once('ready-to-show', () => mainWindow.show());
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.maximize();
+    mainWindow.show();
+  });
 
   // Prevent web pages from forcing full screen on button clicks
   mainWindow.webContents.on('enter-html-full-screen', () => {
