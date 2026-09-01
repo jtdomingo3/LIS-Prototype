@@ -436,7 +436,7 @@ async function createWindow() {
     try {
       const u = new URL(url);
       const p = u.pathname || '';
-      if (p.startsWith('/reports/print') || p.startsWith('/reports/result') || p === '/reports/print-multiple') {
+      if (p.startsWith('/reports/print') || p.startsWith('/reports/result') || p.includes('print-multiple') || p.includes('/print')) {
         openPrintPreviewWindow(url);
         return { action: 'deny' };
       }
@@ -816,26 +816,81 @@ ipcMain.handle('clear-queue', async () => {
 function openPrintPreviewWindow(url) {
   if (openPrintPreviewWindow._busy) { console.log('[Print] already generating preview, skipping duplicate'); return; }
   openPrintPreviewWindow._busy = true;
-  console.log('[Print] opening print preview for:', url);
 
-  const sourceWin = new BrowserWindow({ width: 800, height: 1100, show: false, icon: appIcon || undefined, webPreferences: { preload: path.join(__dirname, 'preload-print.js'), nodeIntegration: false, contextIsolation: true, partition: 'persist:lis' } });
-  sourceWin.loadURL(url);
-  sourceWin.webContents.on('dom-ready', () => { sourceWin.webContents.executeJavaScript('window.print = function(){}; void 0;').catch(() => {}); });
+  // Normalize URL to local server loopback
+  let targetUrl = url;
+  try {
+    if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+      targetUrl = `http://127.0.0.1:${config.LOCAL_PORT}${targetUrl.startsWith('/') ? '' : '/'}${targetUrl}`;
+    } else if (config.SERVER_URL && targetUrl.startsWith(config.SERVER_URL.replace(/\/$/, ''))) {
+      targetUrl = targetUrl.replace(config.SERVER_URL.replace(/\/$/, ''), `http://127.0.0.1:${config.LOCAL_PORT}`);
+    }
+  } catch (_) {}
 
-  const stallTimer = setTimeout(() => { console.error('[Print] PDF generation stalled — forcing cleanup'); try { if (sourceWin && !sourceWin.isDestroyed()) sourceWin.close(); } catch {} openPrintPreviewWindow._busy = false; }, 30000);
+  console.log('[Print] opening print preview for:', targetUrl);
+
+  const sourceWin = new BrowserWindow({
+    width: 800,
+    height: 1100,
+    show: false,
+    icon: appIcon || undefined,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload-print.js'),
+      nodeIntegration: false,
+      contextIsolation: true,
+      partition: 'persist:lis'
+    }
+  });
+
+  sourceWin.loadURL(targetUrl);
+  sourceWin.webContents.on('dom-ready', () => {
+    sourceWin.webContents.executeJavaScript('window.print = function(){}; void 0;').catch(() => {});
+  });
+
+  const stallTimer = setTimeout(() => {
+    console.error('[Print] PDF generation stalled — forcing cleanup');
+    try { if (sourceWin && !sourceWin.isDestroyed()) sourceWin.close(); } catch {}
+    openPrintPreviewWindow._busy = false;
+  }, 30000);
 
   sourceWin.webContents.on('did-finish-load', async () => {
     await sourceWin.webContents.executeJavaScript('window.print = function(){}; void 0;').catch(() => {});
-    await new Promise(r => setTimeout(r, 800));
+    await new Promise(r => setTimeout(r, 600));
     try {
-      const pdfBuffer = await sourceWin.webContents.printToPDF({ printBackground: true, preferCSSPageSize: true, margins: { marginType: 'none' } });
-      sourceWin.close();
-      const tmpDir = path.join(userDataPath, 'temp-pdfs'); if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
+      const pdfBuffer = await sourceWin.webContents.printToPDF({
+        printBackground: true,
+        preferCSSPageSize: true,
+        margins: { marginType: 'none' }
+      });
+      try { sourceWin.close(); } catch {}
+      const tmpDir = path.join(userDataPath, 'temp-pdfs');
+      if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
       const pdfPath = path.join(tmpDir, `report-${Date.now()}.pdf`);
       fs.writeFileSync(pdfPath, pdfBuffer);
-      const openRes = await shell.openPath(pdfPath);
-      if (openRes) console.error('[Print] shell.openPath returned error:', openRes);
-      setTimeout(() => { try { fs.unlinkSync(pdfPath); } catch { } }, 120000);
+      console.log('[Print] PDF generated successfully at:', pdfPath);
+
+      // Open in-app dedicated print preview window with PDF.js viewer
+      const previewWin = new BrowserWindow({
+        width: 1020,
+        height: 900,
+        title: 'Print Preview — Gezyne LIS',
+        icon: appIcon || undefined,
+        backgroundColor: '#0f172a',
+        webPreferences: {
+          preload: path.join(__dirname, 'preload-print.js'),
+          nodeIntegration: false,
+          contextIsolation: true,
+        }
+      });
+      previewWin.loadFile(path.join(__dirname, 'renderer', 'print-preview.html'), {
+        query: { pdf: pdfPath }
+      });
+      previewWin.once('ready-to-show', () => {
+        try { previewWin.show(); } catch {}
+      });
+      previewWin.on('closed', () => {
+        setTimeout(() => { try { if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath); } catch {} }, 5000);
+      });
     } catch (err) {
       console.error('[Print] PDF generation failed:', err);
       try { sourceWin.close(); } catch {}
@@ -845,7 +900,12 @@ function openPrintPreviewWindow(url) {
     openPrintPreviewWindow._busy = false;
   });
 
-  sourceWin.webContents.on('did-fail-load', () => { console.error('[Print] source window failed to load'); try { sourceWin.close(); } catch {} openPrintPreviewWindow._busy = false; try { clearTimeout(stallTimer); } catch(e) {} });
+  sourceWin.webContents.on('did-fail-load', () => {
+    console.error('[Print] source window failed to load');
+    try { sourceWin.close(); } catch {}
+    openPrintPreviewWindow._busy = false;
+    try { clearTimeout(stallTimer); } catch(e) {}
+  });
 }
 
 function openChildWindow(url) {
@@ -886,7 +946,7 @@ function openChildWindow(url) {
       try {
         const u = new URL(newUrl);
         const p = u.pathname || '';
-        if (p.startsWith('/reports/print') || p.startsWith('/reports/result') || p === '/reports/print-multiple') { openPrintPreviewWindow(newUrl); return { action: 'deny' }; }
+        if (p.startsWith('/reports/print') || p.startsWith('/reports/result') || p.includes('print-multiple') || p.includes('/print')) { openPrintPreviewWindow(newUrl); return { action: 'deny' }; }
         openChildWindow(newUrl);
         return { action: 'deny' };
       } catch (e) { return { action: 'allow' }; }
@@ -897,7 +957,73 @@ function openChildWindow(url) {
 ipcMain.handle('print-preview', async (_e, { url }) => { openPrintPreviewWindow(url); return { success: true }; });
 ipcMain.handle('read-pdf-file', async (_e, { filePath }) => { try { if (filePath && fs.existsSync(filePath)) { const buffer = fs.readFileSync(filePath); return new Uint8Array(buffer); } } catch (e) { console.error('[Print] read-pdf-file failed:', e); } return null; });
 ipcMain.handle('save-pdf', async (_e, { sourcePath }) => { const result = await dialog.showSaveDialog(mainWindow, { title: 'Save Report PDF', defaultPath: 'LIS-Report.pdf', filters: [{ name: 'PDF', extensions: ['pdf'] }] }); if (!result.canceled && result.filePath) { fs.copyFileSync(sourcePath, result.filePath); return { success: true, path: result.filePath }; } return { success: false }; });
-ipcMain.handle('open-pdf', async (_e, { filePath }) => { try { if (filePath && fs.existsSync(filePath)) { const res = await shell.openPath(filePath); if (!res) return { success: true }; console.error('[Print] shell.openPath error:', res); } } catch (err) { console.error('[Print] open-pdf failed:', err); } return { success: false }; });
+ipcMain.handle('get-printers', async (event) => {
+  try {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win && !win.isDestroyed()) {
+      const printers = await win.webContents.getPrintersAsync();
+      return printers || [];
+    }
+  } catch (e) {
+    console.error('[Print] getPrintersAsync error:', e);
+  }
+  return [];
+});
+
+ipcMain.handle('print-silent', async (event, opts = {}) => {
+  try {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win && !win.isDestroyed()) {
+      const marginType = opts.margins || 'none';
+      const printOpts = {
+        silent: true,
+        deviceName: opts.printerName || undefined,
+        copies: parseInt(opts.copies, 10) || 1,
+        color: opts.color !== undefined ? !!opts.color : true,
+        landscape: opts.orientation === 'landscape',
+        printBackground: true,
+        margins: { marginType: marginType }
+      };
+      if (opts.pageSize && opts.pageSize !== 'Default') {
+        printOpts.pageSize = opts.pageSize;
+      }
+      if (opts.scaleFactor && !isNaN(opts.scaleFactor)) {
+        printOpts.scaleFactor = parseInt(opts.scaleFactor, 10);
+      }
+      return new Promise((resolve) => {
+        win.webContents.print(printOpts, (success, failureReason) => {
+          if (!success) console.warn('[Print] silent print result:', success, failureReason);
+          resolve({ success, failureReason });
+        });
+      });
+    }
+  } catch (e) {
+    console.error('[Print] print-silent error:', e);
+    return { success: false, error: e && e.message };
+  }
+  return { success: false };
+});
+
+ipcMain.handle('print-current-window', async (event) => {
+  try {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win && !win.isDestroyed()) {
+      win.webContents.print({ silent: false });
+      return { success: true };
+    }
+  } catch (e) { console.error('[Print] print-current-window error:', e); }
+  return { success: false };
+});
+ipcMain.handle('close-current-window', async (event) => {
+  try {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win && !win.isDestroyed()) {
+      win.close();
+      return { success: true };
+    }
+  } catch (e) { console.error('[Print] close-current-window error:', e); }
+  return { success: false };
+});
 
 /* ==================================================================
  *  System tray
