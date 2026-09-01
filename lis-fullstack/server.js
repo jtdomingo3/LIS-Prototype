@@ -592,8 +592,8 @@ app.post('/api/restore/data', (req, res) => {
 // Export endpoint for full-sync (requires authenticated session or sync token)
 app.get('/export/data.json', (req, res) => {
   try {
-    // Primary auth: session-based
-    let authorized = !!(req.session && req.session.user);
+    // Primary auth: session-based or configured public export
+    let authorized = !!(req.session && req.session.user) || (process.env.ALLOW_PUBLIC_DATA_EXPORT === '1');
 
     // Fallback auth: hash-based sync token from the standalone app.
     // The standalone app sends X-LIS-Sync-Email + X-LIS-Sync-Hash headers.

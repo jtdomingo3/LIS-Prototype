@@ -26,6 +26,9 @@ class Test {
     this.updatedAt = data.updatedAt || new Date();
     // Preserve requestedTests (array of { key,label,amount,lab }) when provided
     this.requestedTests = Array.isArray(data.requestedTests) ? data.requestedTests : (data.requestedTests || []);
+    this.paid = !!data.paid;
+    this.price = data.price !== undefined ? data.price : 0;
+    this.department = data.department || '';
     // Flag indicating test results have been released (cleared from Releasing of Result queue)
     this.released = !!data.released;
     // Flag indicating test results are stashed (patient unavailable, held at reception)
