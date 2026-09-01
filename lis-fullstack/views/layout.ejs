@@ -878,7 +878,7 @@
             <% } %>
             <% if (!featureFlags || featureFlags.tests) { %>
             <% if (sessionUser.role === 'Admin' || perms.tests) { %>
-            <a href="/tests" class="nav-item <%= title.includes('Test') ? 'active' : '' %>"><span class="nav-emoji">🧪</span><span class="nav-text">Tests & Results</span></a>
+            <a href="/tests" class="nav-item <%= ((title.includes('Test') || title.includes('Result')) && !title.includes('Reception')) ? 'active' : '' %>"><span class="nav-emoji">🧪</span><span class="nav-text">Tests & Results</span></a>
             <% } %>
             <% } %>
             <% if (!featureFlags || featureFlags.reports) { %>
