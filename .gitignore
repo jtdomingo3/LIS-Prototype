@@ -33,3 +33,4 @@ lis-app-standalone/tests/
 lis-app-standalone/test-offline-*.js
 test/tmp/
 tmp-e2e-offline/
+lis-fullstack/lis-data.db-shm
