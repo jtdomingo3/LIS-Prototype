@@ -269,6 +269,7 @@
       /* Make cards flexible and center content so sizes adapt better on TVs */
       .area-card { padding: 12px; display: flex; flex-direction: column; justify-content: space-between; }
       .area-content { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 8px 0; }
+      .area-card.releasing-card .area-content { justify-content: flex-start !important; padding: 2px 0 0 0 !important; }
       .area-header { margin-bottom: 8px; display: flex; gap: 8px; align-items: center; }
 
       /* Area name: clamp so it won't overflow; use ellipsis for very long names */
@@ -289,6 +290,8 @@
       .patient-number.empty { font-size: clamp(0.9rem, 2.8vw, 1.4rem); }
 
       .next-patient { font-size: clamp(0.7rem, 1.1vw, 0.9rem); }
+      .releasing-batch-list { gap: 3px 5px !important; max-height: calc(100% - 2px) !important; max-width: 100% !important; }
+      .releasing-batch-item { font-size: clamp(0.75rem, 1.15vw, 0.92rem) !important; padding: 3px 6px !important; }
 
       /* Smaller footer so more room for tiles */
       .kiosk-footer { padding: 8px 12px; }
@@ -448,27 +451,56 @@
       font-weight: 700;
     }
 
+    .area-card.releasing-card .area-content {
+      justify-content: flex-start;
+      padding: 2px 0 0 0;
+    }
+
     .next-list {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      grid-template-rows: repeat(5, auto);
       gap: 6px;
       max-width: 260px;
       max-height: 220px;
       overflow: hidden;
       margin: 0 auto;
+      width: 100%;
     }
 
-    .next-item {
+    .releasing-batch-list {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 4px 6px;
+      max-width: 280px;
+      width: 100%;
+      margin: 0 auto;
+      flex: 1 1 auto;
+      overflow: hidden;
+      align-content: start;
+      padding-top: 0;
+    }
+
+    .next-item,
+    .releasing-batch-item {
       background: var(--card-accent-light, #f8fafc);
       color: var(--brand-black);
-      padding: 6px 10px;
-      border-radius: 8px;
+      padding: 3.5px 6px;
+      border-radius: 7px;
       font-weight: 700;
-      font-size: 1rem;
+      font-size: 0.9rem;
       text-align: center;
       border: 1px solid rgba(0,0,0,0.05);
       font-variant-numeric: tabular-nums;
+      font-family: inherit;
+    }
+
+    .releasing-batch-empty {
+      grid-column: 1 / -1;
+      color: #cbd5e1;
+      font-size: 2.2rem;
+      font-weight: 700;
+      text-align: center;
+      padding: 16px 0;
     }
 
     /* ===== Footer ===== */
@@ -725,28 +757,41 @@
         <% const safeId = area.replace(/[^a-z0-9]/gi, '_'); %>
         <% const patients = assignments[area] || []; %>
         <% const hasPatients = patients.length > 0; %>
-        <div class="area-card <%= hasPatients ? 'has-patients' : '' %>" id="card-<%= safeId %>" data-area="<%= area %>">
+        <% const isReleasing = String(area).toLowerCase().includes('releas'); %>
+        <div class="area-card <%= hasPatients ? 'has-patients' : '' %> <%= isReleasing ? 'releasing-card' : '' %>" id="card-<%= safeId %>" data-area="<%= area %>">
           <div class="area-header">
             <h3 class="area-name"><%= area %></h3>
             <span class="area-count <%= hasPatients ? 'active' : '' %>" id="count-<%= safeId %>"><%= patients.length %></span>
           </div>
           <div class="area-content">
-            <div class="now-serving-label"><i class="fas fa-user-check" style="margin-right:5px;font-size:0.85em;"></i>Now Serving</div>
-            <% if (hasPatients) { %>
-            <div class="patient-number" id="patient-<%= safeId %>">
-              <%= patients[0].patientCode ? patients[0].patientCode.split('-').pop() : patients[0].testId %>
-            </div>
-            <% } else { %>
-            <div class="patient-number empty" id="patient-<%= safeId %>">—</div>
-            <% } %>
-            <div class="next-patient" id="next-<%= safeId %>">
-              <div class="next-label">Next</div>
-              <div class="next-list" id="nextlist-<%= safeId %>">
-                <% for (let i = 1; i < Math.min(patients.length, 11); i++) { %>
-                  <div class="next-item"><%= patients[i].patientCode ? patients[i].patientCode.split('-').pop() : patients[i].testId %></div>
+            <% if (isReleasing) { %>
+              <div class="releasing-batch-list" id="releasinglist-<%= safeId %>">
+                <% if (hasPatients) { %>
+                  <% for (let i = 0; i < Math.min(patients.length, 26); i++) { %>
+                    <div class="releasing-batch-item"><%= patients[i].patientCode ? patients[i].patientCode.split('-').pop() : patients[i].testId %></div>
+                  <% } %>
+                <% } else { %>
+                  <div class="releasing-batch-empty">—</div>
                 <% } %>
               </div>
-            </div>
+            <% } else { %>
+              <div class="now-serving-label"><i class="fas fa-user-check" style="margin-right:5px;font-size:0.85em;"></i>Now Serving</div>
+              <% if (hasPatients) { %>
+              <div class="patient-number" id="patient-<%= safeId %>">
+                <%= patients[0].patientCode ? patients[0].patientCode.split('-').pop() : patients[0].testId %>
+              </div>
+              <% } else { %>
+              <div class="patient-number empty" id="patient-<%= safeId %>">—</div>
+              <% } %>
+              <div class="next-patient" id="next-<%= safeId %>">
+                <div class="next-label">Next</div>
+                <div class="next-list" id="nextlist-<%= safeId %>">
+                  <% for (let i = 1; i < Math.min(patients.length, 11); i++) { %>
+                    <div class="next-item"><%= patients[i].patientCode ? patients[i].patientCode.split('-').pop() : patients[i].testId %></div>
+                  <% } %>
+                </div>
+              </div>
+            <% } %>
           </div>
         </div>
       <% }); %>
@@ -1327,6 +1372,7 @@
         const safeId = area.replace(/[^a-z0-9]/gi, '_');
         const patients = data.assignments[area] || [];
         const hasPatients = patients.length > 0;
+        const isReleasing = String(area).toLowerCase().includes('releas');
 
         // Update count
         const countEl = document.getElementById('count-' + safeId);
@@ -1335,30 +1381,44 @@
           countEl.className = 'area-count' + (hasPatients ? ' active' : '');
         }
 
-        // Update patient number
-        const patientEl = document.getElementById('patient-' + safeId);
-        if (patientEl) {
+        if (isReleasing) {
+          // Batch display for Releasing of Result (no Now Serving, no Next, NO speech)
+          const releasingListEl = document.getElementById('releasinglist-' + safeId);
+          if (releasingListEl) {
+            if (hasPatients) {
+              releasingListEl.innerHTML = '';
+              const entries = patients.slice(0, 26);
+              entries.forEach(p => {
+                const code = p.patientCode || '';
+                const short = code.includes('-') ? code.split('-').pop() : code;
+                const div = document.createElement('div');
+                div.className = 'releasing-batch-item';
+                div.textContent = short || (p.testId || '—');
+                releasingListEl.appendChild(div);
+              });
+            } else {
+              releasingListEl.innerHTML = '<div class="releasing-batch-empty">—</div>';
+            }
+          }
+        } else {
+          // Single patient serving for clinical / doctor areas
+          const patientEl = document.getElementById('patient-' + safeId);
+          if (patientEl) {
             if (hasPatients) {
               const code = patients[0].patientCode || '';
               const newText = code.includes('-') ? code.split('-').pop() : code;
-              const oldText = patientEl.textContent;
               patientEl.textContent = newText;
               patientEl.className = 'patient-number';
 
-              // Speech: if the shown patient number changed, speak announcement
+              // Speech announcement for single-serving stations
               try {
                 const prev = lastShownPatients[area] || '';
                 if (newText !== prev) {
                   lastShownPatients[area] = newText;
-
-                  // Disable voice announcements for the 'Releasing of Result' area only
-                  const areaLower = String(area).toLowerCase();
-                  if (areaLower.includes('releas')) {
-                    // do not speak for release step
-                  } else if (speechEnabled) {
+                  if (speechEnabled) {
                     const spokenNum = sanitizeSpokenNumber(newText);
                     let msg;
-                    if (areaLower.includes("doctor") && patients[0] && patients[0].assignedDoctor) {
+                    if (area.toLowerCase().includes("doctor") && patients[0] && patients[0].assignedDoctor) {
                       const docName = patients[0].assignedDoctor || '';
                       const lastName = docName.split(' ').slice(-1)[0] || docName;
                       msg = `Now serving Patient ${spokenNum} please proceed to Doctor ${lastName} for Check-up`;
@@ -1374,34 +1434,35 @@
               patientEl.className = 'patient-number empty';
               lastShownPatients[area] = '';
             }
-        }
+          }
 
-        // Update next patients list (up to 10)
-        const nextEl = document.getElementById('next-' + safeId);
-        const nextListEl = document.getElementById('nextlist-' + safeId);
-        if (nextEl && nextListEl) {
-          if (patients.length > 1) {
-            nextListEl.innerHTML = '';
-            const entries = patients.slice(1, 11);
-            entries.forEach(p => {
-              const code = p.patientCode || '';
-              const short = code.includes('-') ? code.split('-').pop() : code;
-              const div = document.createElement('div');
-              div.className = 'next-item';
-              div.textContent = short || '—';
-              nextListEl.appendChild(div);
-            });
-            nextEl.style.display = 'block';
-          } else {
-            nextEl.style.display = 'none';
-            nextListEl.innerHTML = '';
+          // Update next patients list (up to 10)
+          const nextEl = document.getElementById('next-' + safeId);
+          const nextListEl = document.getElementById('nextlist-' + safeId);
+          if (nextEl && nextListEl) {
+            if (patients.length > 1) {
+              nextListEl.innerHTML = '';
+              const entries = patients.slice(1, 11);
+              entries.forEach(p => {
+                const code = p.patientCode || '';
+                const short = code.includes('-') ? code.split('-').pop() : code;
+                const div = document.createElement('div');
+                div.className = 'next-item';
+                div.textContent = short || '—';
+                nextListEl.appendChild(div);
+              });
+              nextEl.style.display = 'block';
+            } else {
+              nextEl.style.display = 'none';
+              nextListEl.innerHTML = '';
+            }
           }
         }
 
         // Update card class
         const cardEl = document.getElementById('card-' + safeId);
         if (cardEl) {
-          cardEl.className = 'area-card' + (hasPatients ? ' has-patients' : '');
+          cardEl.className = 'area-card' + (hasPatients ? ' has-patients' : '') + (isReleasing ? ' releasing-card' : '');
           
           if (hasChanges) {
             cardEl.classList.add('highlight');
