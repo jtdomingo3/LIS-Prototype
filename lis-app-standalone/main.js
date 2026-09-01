@@ -551,6 +551,19 @@ async function createWindow() {
     try {
       const u = new URL(url);
       const p = u.pathname || '';
+
+      // If opening Kiosk: load server's real Kiosk directly in the browser
+      if (p.includes('/kiosk') || p.includes('/assigned') || u.searchParams.has('kiosk')) {
+        let serverKioskUrl = url;
+        if (config.SERVER_URL) {
+          const serverBase = config.SERVER_URL.replace(/\/$/, '');
+          serverKioskUrl = `${serverBase}/kiosk`;
+        }
+        console.log('[Main] Opening Live Server Kiosk in external browser:', serverKioskUrl);
+        shell.openExternal(serverKioskUrl);
+        return { action: 'deny' };
+      }
+
       if (p.startsWith('/reports/print') || p.startsWith('/reports/result') || p.includes('print-multiple') || p.includes('/print')) {
         openPrintPreviewWindow(url);
         return { action: 'deny' };

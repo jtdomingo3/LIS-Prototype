@@ -65,11 +65,17 @@
     const attrLabel = (el.getAttribute && (el.getAttribute('aria-label') || el.getAttribute('title') || el.getAttribute('data-label')));
     const raw = (attrLabel || el.textContent || el.innerText || el.value || '').replace(/[→←↶↷]/g, '').trim();
     if (!raw) return false;
-    const txt = raw.replace(/\s+/g, ' ').toLowerCase();
-    const exceptions = ['previous','next','print','print filtered','download','clear filter','clear filters', 'all test types', 'patient queue display', 'preview', 'fullscreen', 'create new template', 'edit', 'view', 'clear reception queue', 'clear queue', 'clear queues', 'total', 'selected', 'today', 'yesterday', 'monthly', 'daily', 'hourly'];
+    const exceptions = [
+      'previous', 'next', 'print', 'print filtered', 'download', 'clear filter', 'clear filters', 
+      'all test types', 'patient queue display', 'kiosk', 'open kiosk', 'open kiosk queue display', 
+      'add new test field', 'add test field', 'add field', 'remove field', 'preview', 'fullscreen', 
+      'create new template', 'edit', 'view', 'clear reception queue', 'clear queue', 'clear queues', 
+      'total', 'selected', 'today', 'yesterday', 'monthly', 'daily', 'hourly'
+    ];
     for (let i=0; i<exceptions.length; i++) {
       if (txt.indexOf(exceptions[i]) !== -1) return true;
     }
+    if (el.id === 'addFieldBtn' || el.classList.contains('add-field-btn') || el.classList.contains('remove-field-btn') || el.classList.contains('preset-pill')) return true;
     return false;
   }
 

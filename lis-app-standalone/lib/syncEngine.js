@@ -911,7 +911,8 @@ class SyncEngine {
     if (!this.config || !this.config.SERVER_URL) return;
 
     const base = this.config.SERVER_URL.replace(/\/$/, '');
-    const sseUrl = `${base}/reception/assigned-events`;
+    // Append ?kiosk=1 to establish connection without requiring interactive session cookie
+    const sseUrl = `${base}/reception/assigned-events?kiosk=1`;
     this._bridgeActive = true;
 
     let electron = null;
@@ -923,7 +924,6 @@ class SyncEngine {
       if (!this._bridgeActive) return;
       try {
         if (net && session) {
-          // In Electron runtime: use net.request with persist:lis partition session cookies
           const sess = session.fromPartition('persist:lis');
           const req = net.request({
             method: 'GET',
@@ -944,14 +944,13 @@ class SyncEngine {
 
           req.on('response', (res) => {
             if (res.statusCode === 302 || res.statusCode === 401) {
-              // Session expired on server; attempt background re-auth and reconnect
               this._ensureServerAuth().catch(() => {});
-              this._scheduleBridgeReconnect(connectStream, 10000);
+              this._scheduleBridgeReconnect(connectStream, 8000);
               return;
             }
 
             if (res.statusCode !== 200) {
-              this._scheduleBridgeReconnect(connectStream, 15000);
+              this._scheduleBridgeReconnect(connectStream, 10000);
               return;
             }
 
@@ -973,36 +972,39 @@ class SyncEngine {
                 try {
                   const eventData = JSON.parse(rawData);
                   if (eventData && !eventData.init && !eventData.offline && eventData.type !== 'ping' && !eventData.keepalive) {
-                    console.log('[SyncBridge] Received live server event:', eventData.action || eventData.type || 'event');
+                    console.log('[SyncBridge] Live server event received:', eventData.action || eventData.type || 'event');
                     
-                    // 1. Forward event to local UI / kiosk
-                    if (typeof onEventCallback === 'function') {
-                      try { onEventCallback(eventData); } catch (e) {}
-                    }
-
-                    // 2. Trigger automatic background sync so local SQLite has the latest records
-                    this.scheduleAutoFullSync(webContents);
+                    // 1. Immediately fetch latest server snapshot so local DB is in sync
+                    this.fullSync(webContents).then(() => {
+                      // 2. Forward event to local UI / renderer windows after data is stored
+                      if (typeof onEventCallback === 'function') {
+                        try { onEventCallback(eventData); } catch (e) {}
+                        try { onEventCallback({ action: 'live_sync_completed', timestamp: Date.now() }); } catch (e) {}
+                      }
+                    }).catch(() => {
+                      if (typeof onEventCallback === 'function') {
+                        try { onEventCallback(eventData); } catch (e) {}
+                      }
+                    });
                   }
-                } catch (parseErr) {
-                  // non-json or keepalive
-                }
+                } catch (parseErr) {}
               }
             });
 
             res.on('end', () => {
               this._bridgeConnected = false;
-              this._scheduleBridgeReconnect(connectStream, 8000);
+              this._scheduleBridgeReconnect(connectStream, 5000);
             });
 
             res.on('error', () => {
               this._bridgeConnected = false;
-              this._scheduleBridgeReconnect(connectStream, 10000);
+              this._scheduleBridgeReconnect(connectStream, 6000);
             });
           });
 
           req.on('error', () => {
             this._bridgeConnected = false;
-            this._scheduleBridgeReconnect(connectStream, 15000);
+            this._scheduleBridgeReconnect(connectStream, 8000);
           });
 
           this._currentBridgeReq = req;
@@ -1013,24 +1015,21 @@ class SyncEngine {
           const isHttps = parsed.protocol === 'https:';
           const client = isHttps ? require('https') : require('http');
 
-          const headers = {
-            'Accept': 'text/event-stream',
-            'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive'
-          };
-          if (this._sessionCookie) headers['Cookie'] = this._sessionCookie;
-
           const req = client.request({
             hostname: parsed.hostname,
             port: parsed.port || (isHttps ? 443 : 80),
             path: parsed.pathname + (parsed.search || ''),
             method: 'GET',
-            headers: headers,
+            headers: {
+              'Accept': 'text/event-stream',
+              'Cache-Control': 'no-cache',
+              'Connection': 'keep-alive'
+            },
             timeout: 0
           }, (res) => {
             if (res.statusCode !== 200) {
               res.resume();
-              this._scheduleBridgeReconnect(connectStream, 15000);
+              this._scheduleBridgeReconnect(connectStream, 10000);
               return;
             }
             this._bridgeConnected = true;
@@ -1047,23 +1046,24 @@ class SyncEngine {
                 try {
                   const eventData = JSON.parse(rawData);
                   if (eventData && !eventData.init && !eventData.offline && eventData.type !== 'ping' && !eventData.keepalive) {
-                    if (typeof onEventCallback === 'function') {
-                      try { onEventCallback(eventData); } catch (e) {}
-                    }
-                    this.scheduleAutoFullSync(webContents);
+                    this.fullSync(webContents).finally(() => {
+                      if (typeof onEventCallback === 'function') {
+                        try { onEventCallback(eventData); } catch (e) {}
+                      }
+                    });
                   }
                 } catch (e) {}
               }
             });
-            res.on('end', () => { this._bridgeConnected = false; this._scheduleBridgeReconnect(connectStream, 8000); });
-            res.on('error', () => { this._bridgeConnected = false; this._scheduleBridgeReconnect(connectStream, 10000); });
+            res.on('end', () => { this._bridgeConnected = false; this._scheduleBridgeReconnect(connectStream, 5000); });
+            res.on('error', () => { this._bridgeConnected = false; this._scheduleBridgeReconnect(connectStream, 6000); });
           });
-          req.on('error', () => { this._bridgeConnected = false; this._scheduleBridgeReconnect(connectStream, 15000); });
+          req.on('error', () => { this._bridgeConnected = false; this._scheduleBridgeReconnect(connectStream, 8000); });
           this._currentBridgeReq = req;
           req.end();
         }
       } catch (err) {
-        this._scheduleBridgeReconnect(connectStream, 15000);
+        this._scheduleBridgeReconnect(connectStream, 8000);
       }
     };
 

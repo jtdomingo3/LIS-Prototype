@@ -14,7 +14,7 @@
         <i class="fa fa-archive"></i>
         <span>Stashed Results (<%= (typeof stashedCount !== 'undefined' ? stashedCount : (typeof stashedList !== 'undefined' && Array.isArray(stashedList) ? stashedList.length : 0)) %>)</span>
       </a>
-      <a href="/reception/assigned?kiosk=1" target="_blank" rel="noopener" class="button btn-secondary" style="padding: 10px 18px; border-radius: 10px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.04);">
+      <a href="/kiosk" target="_blank" rel="noopener" class="button btn-secondary no-guard" data-no-guard="1" style="padding: 10px 18px; border-radius: 10px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.04);">
         <i class="fa fa-desktop" style="color: #2563eb;"></i>
         <span>Open Kiosk Queue Display</span>
       </a>

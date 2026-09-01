@@ -1298,11 +1298,15 @@
                             try {
                                 const isUserEditing = document.activeElement && (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName) || document.activeElement.isContentEditable);
                                 const isEditingPage = window.location.pathname.includes('/new') || window.location.pathname.includes('/edit') || window.location.pathname.includes('/results');
-                                const isQueuePage = window.location.pathname === '/reception' || window.location.pathname.includes('/assigned') || window.location.pathname === '/dashboard' || window.location.pathname === '/';
+                                const isQueuePage = window.location.pathname === '/reception' || 
+                                                    window.location.pathname.startsWith('/reception/area') ||
+                                                    window.location.pathname === '/dashboard' || 
+                                                    window.location.pathname === '/' ||
+                                                    window.location.pathname === '/patients';
                                 const v = localStorage.getItem('notif-auto-refresh');
                                 const enabled = (v === '1' || (autoRefreshCheckbox && autoRefreshCheckbox.checked) || isQueuePage);
                                 if (enabled && !isUserEditing && !isEditingPage) {
-                                    setTimeout(() => { try { window.location.reload(); } catch (e) {} }, 1200);
+                                    setTimeout(() => { try { window.location.reload(); } catch (e) {} }, 400);
                                 }
                             } catch(e){}
                         } catch (e) { console.warn('[SSE] message parse error', e); }
@@ -1321,10 +1325,9 @@
                 }
             }
             let sseRetryDelay = 3000;
-            // Defer SSE connection until the user stays on the page for 3s.
-            // If user switches tab/loses visibility, cancel the pending connect and close any open connection.
+            // Connect to SSE stream
             let sseDeferredTimer = null;
-            function scheduleSSEConnect(delay = 3000) {
+            function scheduleSSEConnect(delay = 500) {
                 if (!('EventSource' in window)) return;
                 try { clearTimeout(sseDeferredTimer); } catch(e){}
                 sseDeferredTimer = setTimeout(() => {
