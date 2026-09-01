@@ -4,8 +4,10 @@
   // Elements
   const serverEl = document.getElementById('serverUrl');
   const printerEl = document.getElementById('printerName');
+  const printerDatalistEl = document.getElementById('printerDatalist');
   const lastSyncEl = document.getElementById('lastSyncTime');
   const testConnBtn = document.getElementById('testConnBtn');
+  const testThermalBtn = document.getElementById('testThermalBtn');
   const saveBtn = document.getElementById('saveBtn');
   const closeBtn = document.getElementById('closeBtn');
   const closeHeaderBtn = document.getElementById('closeHeaderBtn');
@@ -40,7 +42,7 @@
     feedbackEl.className = 'feedback-msg' + (isError ? ' error' : '');
     setTimeout(() => {
       if (feedbackEl.textContent === msg) feedbackEl.textContent = '';
-    }, 4000);
+    }, 4500);
   }
 
   // Tab switching
@@ -73,6 +75,26 @@
       if (s) {
         if (s.serverUrl) serverEl.value = s.serverUrl;
         if (s.printerName || s.printer) printerEl.value = s.printerName || s.printer || '';
+      }
+
+      // Enumerate installed system printers to populate datalist
+      if (typeof window.lisApp.getPrinters === 'function') {
+        try {
+          const printers = await window.lisApp.getPrinters();
+          if (Array.isArray(printers) && printerDatalistEl) {
+            printerDatalistEl.innerHTML = '';
+            printers.forEach(p => {
+              const name = typeof p === 'string' ? p : p.name || p.displayName;
+              if (name) {
+                const opt = document.createElement('option');
+                opt.value = name;
+                printerDatalistEl.appendChild(opt);
+              }
+            });
+          }
+        } catch (e) {
+          console.warn('[Settings] getPrinters error:', e);
+        }
       }
 
       // Load security settings
@@ -128,7 +150,7 @@
       }
 
       let html = '';
-      pending.forEach((op, idx) => {
+      pending.forEach((op) => {
         const time = op.createdAt ? new Date(op.createdAt).toLocaleTimeString() : '—';
         const method = op.method || 'POST';
         const methodBadge = method === 'POST' ? '<span style="color:#60a5fa;font-weight:700;">POST</span>' :
@@ -168,7 +190,7 @@
     }
   };
 
-  // Test Connection
+  // Test Server Connection
   if (testConnBtn) {
     testConnBtn.addEventListener('click', async () => {
       const url = serverEl.value ? String(serverEl.value).trim() : '';
@@ -195,6 +217,39 @@
     });
   }
 
+  // Test Thermal Printer (Direct IPC)
+  if (testThermalBtn) {
+    testThermalBtn.addEventListener('click', async () => {
+      const pName = printerEl.value ? String(printerEl.value).trim() : '';
+      testThermalBtn.disabled = true;
+      testThermalBtn.textContent = 'Printing…';
+      try {
+        let res = null;
+        if (window.lisApp && typeof window.lisApp.testThermalPrint === 'function') {
+          res = await window.lisApp.testThermalPrint(pName);
+        } else {
+          const fetchRes = await fetch('/patients/thermal-print', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ printer: pName, receipt: true })
+          });
+          res = await fetchRes.json();
+        }
+        testThermalBtn.disabled = false;
+        testThermalBtn.textContent = '🖨️ Test Print';
+        if (res && res.success) {
+          setFeedback(`✓ Sent test print to ${pName || 'Default Printer'}! Check printer queue.`);
+        } else {
+          setFeedback(`Print failed: ${(res && (res.reason || res.error)) || 'Check printer connection'}`, true);
+        }
+      } catch (e) {
+        testThermalBtn.disabled = false;
+        testThermalBtn.textContent = '🖨️ Test Print';
+        setFeedback(`Print error: ${e.message}`, true);
+      }
+    });
+  }
+
   // Update PIN Passcode
   if (updatePinBtn) {
     updatePinBtn.addEventListener('click', async () => {
@@ -203,7 +258,7 @@
       const confirmPin = confirmPinEl ? confirmPinEl.value.trim() : '';
 
       if (!currentPin) {
-        setFeedback('Please enter your current PIN (default is 0000).', true);
+        setFeedback('Please enter your current PIN.', true);
         return;
       }
       if (!/^\d{4}$/.test(newPin)) {
@@ -253,9 +308,12 @@
       saveBtn.disabled = true;
       saveBtn.textContent = 'Saving…';
       try {
+        const pName = printerEl.value ? String(printerEl.value).trim() : '';
+        const sUrl = serverEl.value ? String(serverEl.value).trim() : '';
         const newSettings = {
-          serverUrl: serverEl.value ? String(serverEl.value).trim() : '',
-          printerName: printerEl.value ? String(printerEl.value).trim() : ''
+          serverUrl: sUrl,
+          printerName: pName,
+          printer: pName
         };
         await window.lisApp.setSettings(newSettings);
 
@@ -263,8 +321,10 @@
           await window.lisApp.setLockTimeout(lockTimeoutEl.value);
         }
 
-        setFeedback('✓ Settings saved successfully.');
-        setTimeout(() => { try { window.close(); } catch (e) {} }, 600);
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Settings';
+        setFeedback(`✓ Settings saved! (Thermal Printer: ${pName || 'Default'})`);
+        setTimeout(() => { try { window.close(); } catch (e) {} }, 1000);
       } catch (e) {
         saveBtn.disabled = false;
         saveBtn.textContent = 'Save Settings';

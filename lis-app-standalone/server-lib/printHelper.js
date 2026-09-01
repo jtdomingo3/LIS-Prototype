@@ -153,7 +153,19 @@ async function printPatientReceipt(patient, testOrTests) {
       return { success: false, reason: 'script-not-found' };
     }
     const args = [scriptPath, '--json', specPath];
-    const ENV_PRINTER = process.env.PRINTER_NAME || process.env.PRINTER || null;
+    let ENV_PRINTER = process.env.PRINTER_NAME || process.env.PRINTER || null;
+    if (!ENV_PRINTER) {
+      try {
+        const userDataPath = (typeof process.env.APPDATA !== 'undefined') ? path.join(process.env.APPDATA, 'lis-app-standalone') : null;
+        if (userDataPath) {
+          const settingsPath = path.join(userDataPath, 'settings.json');
+          if (fs.existsSync(settingsPath)) {
+            const s = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+            if (s && (s.printerName || s.printer)) ENV_PRINTER = s.printerName || s.printer;
+          }
+        }
+      } catch (e) {}
+    }
     if (ENV_PRINTER) args.push('--printer', ENV_PRINTER);
 
     // Allow test mode: if PRINT_DRY_RUN=1, ask thermal_test to print preview instead of sending to printer

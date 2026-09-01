@@ -28,6 +28,8 @@ contextBridge.exposeInMainWorld('lisApp', {
   getSettings:      ()      => ipcRenderer.invoke('get-settings'),
   setSettings:      (s)     => ipcRenderer.invoke('set-settings', s),
   openSettings:     ()      => ipcRenderer.invoke('open-settings'),
+  getPrinters:      ()      => ipcRenderer.invoke('get-printers'),
+  testThermalPrint: (printer) => ipcRenderer.invoke('test-thermal-print', { printer }),
   fullSync:         ()      => ipcRenderer.invoke('full-sync'),
   saveCredentials:  (email, password) => ipcRenderer.invoke('save-credentials', { email, password }),
   discardLocalChanges: ()   => ipcRenderer.invoke('discard-local-changes'),

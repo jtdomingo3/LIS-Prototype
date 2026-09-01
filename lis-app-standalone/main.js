@@ -73,12 +73,18 @@ function loadUserSettings() {
       userSettings = JSON.parse(fs.readFileSync(p, 'utf8') || '{}');
       // apply server override if present
       if (userSettings.serverUrl) config.SERVER_URL = userSettings.serverUrl;
+      if (userSettings.printerName || userSettings.printer) {
+        process.env.PRINTER_NAME = userSettings.printerName || userSettings.printer;
+      }
     }
   } catch (e) { console.warn('[Main] loadUserSettings failed', e && e.message); userSettings = {}; }
 }
 function saveUserSettings(newSettings = {}) {
   try {
     userSettings = Object.assign({}, userSettings, newSettings);
+    if (userSettings.printerName || userSettings.printer) {
+      process.env.PRINTER_NAME = userSettings.printerName || userSettings.printer;
+    }
     fs.writeFileSync(settingsFilePath(), JSON.stringify(userSettings, null, 2), 'utf8');
     if (newSettings.serverUrl) {
       config.SERVER_URL = newSettings.serverUrl;
@@ -725,6 +731,34 @@ ipcMain.handle('set-settings', (_e, settings) => {
 ipcMain.handle('open-settings', () => {
   openSettingsWindow();
   return { success: true };
+});
+
+// Thermal Printer Test IPC
+ipcMain.handle('test-thermal-print', async (_e, { printer }) => {
+  try {
+    const { spawnSync } = require('child_process');
+    const scriptPath = path.join(__dirname, 'scripts', 'thermal_test.js');
+    if (!fs.existsSync(scriptPath)) {
+      return { success: false, reason: 'thermal_test.js not found' };
+    }
+    const targetPrinter = printer || userSettings.printerName || userSettings.printer || process.env.PRINTER_NAME || undefined;
+    const args = [scriptPath, '--receipt'];
+    if (targetPrinter) args.push('--printer', targetPrinter);
+
+    const spawnEnv = Object.assign({}, process.env, { ELECTRON_RUN_AS_NODE: '1' });
+    const proc = spawnSync(process.execPath, args, { cwd: __dirname, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024, env: spawnEnv });
+    if (proc.error) {
+      console.error('[Thermal] spawn error:', proc.error);
+      return { success: false, reason: String(proc.error) };
+    }
+    if (proc.status !== 0) {
+      console.error('[Thermal] print failed:', proc.stderr || proc.stdout);
+      return { success: false, reason: proc.stderr || proc.stdout || ('Exit code: ' + proc.status) };
+    }
+    return { success: true, output: proc.stdout };
+  } catch (e) {
+    return { success: false, reason: e && e.message };
+  }
 });
 
 // Security IPC Handlers
