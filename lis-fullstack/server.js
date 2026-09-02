@@ -671,7 +671,8 @@ app.post('/api/restore/users', async (req, res) => {
     }
 
     let admin = existing.find(u => u.email === 'admin@lab.com');
-    const hash = await bcryptRestore.hash('password123', 12);
+    // Pre-hashed default administrator credential (cost factor 12)
+    const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$t1ORj/D94UYW057qZm1Ga.KU07BHErrr3BzmeO7fNbu5h5encZvD2';
 
     if (!admin) {
       admin = {

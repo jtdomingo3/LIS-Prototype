@@ -18,6 +18,9 @@ lis-app-standalone/dist
 lis-fullstack/tray/dist
 lis-fullstack/dist
 lis-fullstack/logs
+lis-fullstack/build/installer-resources/
+lis-app-standalone/build/installer-resources/
+**/installer-resources/
 
 lis-angular/backend/assets
 

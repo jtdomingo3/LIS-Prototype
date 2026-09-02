@@ -812,23 +812,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Delete Topic
     document.querySelectorAll('.btn-delete-topic').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
+        btn.addEventListener('click', (e) => {
             e.stopPropagation();
             const id = btn.dataset.id;
-            if (!confirm('Are you sure you want to delete this conversation?')) return;
-
-            try {
-                const res = await fetch(`/chatbot/api/conversations/${id}`, { method: 'DELETE' });
-                const data = await res.json();
-                if (data && data.success) {
-                    const item = document.querySelector(`.topic-item[data-id="${id}"]`);
-                    if (item) item.remove();
-                    if (activeConversationId === id) {
-                        window.location.href = '/chatbot';
+            const doDelete = async () => {
+                try {
+                    const res = await fetch(`/chatbot/api/conversations/${id}`, { method: 'DELETE' });
+                    const data = await res.json();
+                    if (data && data.success) {
+                        const item = document.querySelector(`.topic-item[data-id="${id}"]`);
+                        if (item) item.remove();
+                        if (activeConversationId === id) {
+                            window.location.href = '/chatbot';
+                        }
                     }
+                } catch (err) {
+                    alert('Could not delete conversation: ' + err.message);
                 }
-            } catch (err) {
-                alert('Could not delete conversation: ' + err.message);
+            };
+
+            if (typeof window.showCustomConfirm === 'function') {
+                window.showCustomConfirm('Are you sure you want to delete this conversation?', doDelete, {
+                    title: 'Delete Conversation',
+                    btnText: 'Yes, Delete'
+                });
+            } else if (confirm('Are you sure you want to delete this conversation?')) {
+                doDelete();
             }
         });
     });
