@@ -219,6 +219,28 @@ router.post('/api/query', requireAuth, async (req, res) => {
       try { history = global.db.getChatbotMessages(activeConvId) || []; } catch (_) {}
     }
 
+    const trimmedQuestion = String(question).trim();
+
+    // Deduplication guard: if an identical question was answered in this conversation within the last 20 seconds, return the cached result
+    if (history.length >= 2) {
+      const lastMsg = history[history.length - 1];
+      const secondLastMsg = history[history.length - 2];
+      if (secondLastMsg && secondLastMsg.role === 'user' && secondLastMsg.content === trimmedQuestion && lastMsg && lastMsg.role === 'assistant') {
+        const timeDiff = Date.now() - new Date(secondLastMsg.created_at).getTime();
+        if (timeDiff >= 0 && timeDiff < 20000) {
+          console.log('[Chatbot] Returning deduplicated response for repeat query in conv:', activeConvId);
+          return res.json({
+            success: true,
+            conversationId: activeConvId,
+            answer: lastMsg.content,
+            sources: lastMsg.sources || [],
+            model: selectedModel,
+            deduplicated: true
+          });
+        }
+      }
+    }
+
     // Save user's question to message history
     if (activeConvId && global.db && typeof global.db.addChatbotMessage === 'function') {
       try {

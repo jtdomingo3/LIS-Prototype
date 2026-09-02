@@ -191,6 +191,8 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
       if (reqPath === '/' || reqPath === '/login' || reqPath === '/logout') return next();
       // Skip export/sync endpoints
       if (reqPath.startsWith('/export/')) return next();
+      // Skip chatbot routes — interactive AI queries are live-proxied to server directly
+      if (reqPath.startsWith('/chatbot')) return next();
 
       // Build the real server URL for this request preserving query parameters
       const base = config.SERVER_URL.replace(/\/$/, '');
