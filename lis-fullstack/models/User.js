@@ -31,46 +31,55 @@ class User {
     return await bcrypt.compare(candidatePassword, this.password);
   }
 
-  // Convert to plain object (keeps password for database persistence)
+  // Convert to plain object (WITHOUT password — strictly safe for JSON responses, sessions, and views)
   toJSON() {
     const obj = { ...this };
     obj.autoSignature = this.autoSignature || { enabled: false, until: null };
-    return obj;
-  }
-
-  // Convert to safe plain object without password (for sessions, views, API responses)
-  toSafeJSON() {
-    const obj = this.toJSON();
     delete obj.password;
     return obj;
   }
 
-  // Save to database
-  async save() {
-    await this.hashPassword();
-    const userData = {
+  // Safe object for views/APIs
+  toSafeJSON() {
+    return this.toJSON();
+  }
+
+  // Complete object INCLUDING password (internal database persistence only)
+  toRawObject() {
+    return {
       id: this.id,
       name: this.name,
       email: this.email,
       password: this.password,
       role: this.role,
+      status: this.status,
       licenseNumber: this.licenseNumber,
       signature: this.signature,
-      autoSignature: this.autoSignature,
-      permissions: this.permissions,
-      status: this.status,
+      autoSignature: this.autoSignature || { enabled: false, until: null },
+      permissions: this.permissions || {},
       createdAt: this.createdAt,
       lastLogin: this.lastLogin
     };
+  }
+
+  // Save to database
+  async save() {
+    await this.hashPassword();
+    const userData = this.toRawObject();
 
     if (global.db && typeof global.db.upsertUser === 'function') {
       global.db.upsertUser(userData);
     } else {
       const users = global.db.getUsers();
       const index = users.findIndex(u => u.id === this.id);
-      if (index >= 0) users[index] = userData; else users.push(userData);
+      if (index >= 0) {
+        users[index] = userData;
+      } else {
+        users.push(userData);
+      }
       global.db.saveUsers(users);
     }
+
     return this;
   }
 
@@ -135,12 +144,15 @@ class User {
       } else if (!user.password && existingPassword) {
         user.password = existingPassword;
       }
+      const rawUser = (typeof user.toRawObject === 'function') ? user.toRawObject() : { ...user };
+      if (!rawUser.password && existingPassword) rawUser.password = existingPassword;
+
       if (global.db && typeof global.db.upsertUser === 'function') {
-        global.db.upsertUser(user);
+        global.db.upsertUser(rawUser);
       } else {
         const users = global.db.getUsers();
         const index = users.findIndex(u => u.id === user.id);
-        if (index >= 0) users[index] = user;
+        if (index >= 0) users[index] = rawUser;
         global.db.saveUsers(users);
       }
       return options.new !== false ? new User(user) : new User(user);

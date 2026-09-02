@@ -31,18 +31,35 @@ class User {
     return await bcrypt.compare(candidatePassword, this.password);
   }
 
-  // Convert to plain object (keeps password for database persistence)
+  // Convert to plain object (WITHOUT password — strictly safe for JSON responses, sessions, and views)
   toJSON() {
     const obj = { ...this };
     obj.autoSignature = this.autoSignature || { enabled: false, until: null };
+    delete obj.password;
     return obj;
   }
 
-  // Convert to safe plain object without password (for sessions, views, API responses)
+  // Safe object for views/APIs
   toSafeJSON() {
-    const obj = this.toJSON();
-    delete obj.password;
-    return obj;
+    return this.toJSON();
+  }
+
+  // Complete object INCLUDING password (internal database persistence only)
+  toRawObject() {
+    return {
+      id: this.id,
+      name: this.name,
+      email: this.email,
+      password: this.password,
+      role: this.role,
+      status: this.status,
+      licenseNumber: this.licenseNumber,
+      signature: this.signature,
+      autoSignature: this.autoSignature || { enabled: false, until: null },
+      permissions: this.permissions || {},
+      createdAt: this.createdAt,
+      lastLogin: this.lastLogin
+    };
   }
 
   // Save to database

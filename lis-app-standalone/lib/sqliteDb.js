@@ -278,10 +278,11 @@ function createBetterSqliteDb(dbPath, opts = {}) {
         stmts.deleteAllUsers.run();
         for (const u of arr) {
           if (!u || !u.id) continue;
-          let userObj = (typeof u.toJSON === 'function') ? u.toJSON() : { ...u };
-          if (!userObj.password && existingMap.has(u.id)) {
-            userObj.password = existingMap.get(u.id);
-          }
+          const pwd = u.password || (typeof u.toRawObject === 'function' ? u.toRawObject().password : null) || existingMap.get(u.id);
+          const userObj = (typeof u.toRawObject === 'function')
+            ? u.toRawObject()
+            : (typeof u.toJSON === 'function' ? { ...u.toJSON(), password: pwd } : { ...u, password: pwd });
+          if (!userObj.password && pwd) userObj.password = pwd;
           stmts.upsertUser.run({
             id: userObj.id,
             email: safeStr(userObj.email),
@@ -609,10 +610,11 @@ function createSqlJsDb(SQL, dbPath) {
         sqlite.run('DELETE FROM users;');
         for (const u of arr) {
           if (!u || !u.id) continue;
-          let userObj = (typeof u.toJSON === 'function') ? u.toJSON() : { ...u };
-          if (!userObj.password && existingMap.has(u.id)) {
-            userObj.password = existingMap.get(u.id);
-          }
+          const pwd = u.password || (typeof u.toRawObject === 'function' ? u.toRawObject().password : null) || existingMap.get(u.id);
+          const userObj = (typeof u.toRawObject === 'function')
+            ? u.toRawObject()
+            : (typeof u.toJSON === 'function' ? { ...u.toJSON(), password: pwd } : { ...u, password: pwd });
+          if (!userObj.password && pwd) userObj.password = pwd;
           sqlite.run(
             'INSERT OR REPLACE INTO users (id, email, role, status, json) VALUES (?, ?, ?, ?, ?)',
             [userObj.id, safeStr(userObj.email), safeStr(userObj.role), safeStr(userObj.status), JSON.stringify(userObj)]
