@@ -1,98 +1,139 @@
-# Gezyne Laboratory Information System (LIS) v2.0.0
+# Gezyne Laboratory Information System (LIS) v2.3.0
 
-> **Gezyne Clinical Laboratory - Laboratory Information System (LIS) v2.0.0** – A comprehensive clinical diagnostic and laboratory management platform featuring a full-stack Node.js/Express server, real-time patient queue displays (kiosk), PM2 process safety management, and Electron installer packaging for Windows.
+[![Version](https://img.shields.io/badge/version-2.3.0-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B-green.svg?style=flat-square&logo=node.js)](https://nodejs.org/)
+[![Database](https://img.shields.io/badge/database-SQLite%20(WAL)-blue.svg?style=flat-square&logo=sqlite)](https://www.sqlite.org/)
+[![Electron](https://img.shields.io/badge/desktop-Electron%20v28-47848F.svg?style=flat-square&logo=electron)](https://www.electronjs.org/)
+[![License](https://img.shields.io/badge/license-MIT-amber.svg?style=flat-square)](LICENSE)
+
+> **Gezyne Clinical Laboratory - Laboratory Information System (LIS) v2.3.0** is an enterprise-grade clinical diagnostic and laboratory management platform. It combines a central full-stack Node.js/Express server, a 100% offline-capable standalone desktop client with deterministic ID mapping, live patient queue kiosks, Bearer token authentication, and robust SQLite WAL backups.
 
 ---
 
-## 📁 Repository Layout
+## 🏗️ System Architecture & Repository Layout
 
 ```
 .
-├── README.md               # (this file)
-├── ads.json                # Kiosk ad configuration used by the Queue Display
-├── lis-fullstack/          # Full-stack Express server, EJS views, PDF reports & Tray app
-│   ├── build/              # Bundled installer resources & seed templates
-│   ├── dist/               # Packaged standalone executable (via pkg)
-│   ├── scripts/            # Build, seed, encryption & setup scripts
-│   ├── tray/               # Electron Tray launcher & NSIS Installer (v2.0.0)
-│   └── server.js           # Core LIS Server entrypoint
-├── lis-app-standalone/     # Standalone Electron desktop client with offline cache
-├── lis-mobile/             # Mobile wrapper (Cordova/Capacitor) for Android/iOS
-└── test/                   # Integration, offline sync & diagnostic test scripts
+├── README.md                  # Root documentation (v2.3.0)
+├── ads.json                   # Kiosk announcement configuration
+│
+├── lis-fullstack/             # Central LIS Server & Electron Tray Launcher
+│   ├── build/                 # Bundled installer resources & seed data
+│   ├── dist/                  # Packaged standalone executable (via pkg)
+│   ├── lib/                   # Database adapters (better-sqlite3/sql.js), tokens & PDF engine
+│   ├── middleware/            # Bearer token auth, role gates & rate limiting
+│   ├── models/                # Domain models (Patient, Test, User, Template)
+│   ├── routes/                # Express MVC routes & RESTful endpoints
+│   ├── scripts/               # Build, encryption & Windows service scripts
+│   ├── tray/                  # Electron System Tray launcher & NSIS Windows installer
+│   ├── views/                 # Responsive EJS views with auto-collapsing sidebars
+│   └── server.js              # Central LIS Server entrypoint
+│
+├── lis-app-standalone/        # Local-First Standalone Desktop Client (Electron)
+│   ├── lib/                   # Local Express engine, sync engine, network monitor & queue
+│   ├── models/                # Local SQLite models with offline support
+│   ├── renderer/              # Desktop modals, status banners & print preview
+│   ├── views/                 # Full local UI with auto-hidden sidebars on small screens
+│   └── main.js                # Electron main process & child window manager
+│
+├── lis-mobile/                # Mobile companion application (Cordova/Capacitor)
+├── lis-angular/               # Alternative Angular single-page frontend
+└── test/                      # Comprehensive integration, offline & sync test suites
 ```
 
 ---
 
-## 📦 Building the Windows Installer (v2.0.0)
+## ✨ What's New in v2.3.0
 
-To create a single-file executable Windows NSIS installer (`Gezyne LIS Server Setup 2.0.0.exe`):
+- 🔐 **Cryptographic Bearer Token Auth**: HMAC-SHA256 Bearer tokens for secure workstation sync without exposing plaintext passwords or database credentials.
+- 💾 **High-Performance SQLite Storage**: Granular parameterized row upserts and deletions with WAL journal mode (`lis-data.db`), eliminating full-table drops and concurrency locks.
+- 🔄 **Two-Way Offline Sync & ID Mapping**: Standalone Electron app captures offline operations into an `OperationQueue` and replays them automatically upon server reconnection with deep ID translation.
+- 🛡️ **Automated SQLite WAL Checkpointing & Backup**: Daily 3:00 PM auto-backup with active WAL checkpointing (`PRAGMA wal_checkpoint(TRUNCATE)`), binary `.db` snapshots, secondary `.json` archives, and rolling 30-day retention.
+- 📱 **Intelligent Auto-Hiding Responsive Sidebar**: Automatic sidebar collapse into a flyout drawer for secondary windows, report previews, and screen widths `<= 1100px`.
+- 🖨️ **Puppeteer Headless PDF Generation**: High-fidelity clinical report rendering with dynamic barcodes, multi-signatory digital signatures, and philhealth compliance.
+- 🏥 **Animated Multi-Station Patient Queue Kiosk**: Real-time queue display (`/reception/assigned?kiosk=1`) optimized for TV displays and reception monitors.
 
-### 1. Build Server Executable & Prepare Seed Data
+---
+
+## 🚀 Quick Start Guide
+
+### Prerequisites
+- **Node.js**: `v18.0.0` or higher
+- **Operating System**: Windows 10/11, Windows Server (or macOS/Linux for server mode)
+
+### 1. Running the Central Server (`lis-fullstack`)
+
 ```powershell
-cd "lis-fullstack"
+cd lis-fullstack
 npm install
-
-# Build compiled server binary (output -> dist/laboratory-information-system.exe)
-npm run build:exe
-
-# Prepare initial admin seed & installer resources
-npm run prepare-dist-data
+npm start
 ```
+Access the web application at `http://localhost:3000` or via your LAN IP (`http://<server-ip>:3000`).
 
-### 2. Build Electron Tray & NSIS Installer
+### 2. Running the Standalone Desktop Client (`lis-app-standalone`)
+
 ```powershell
+cd lis-app-standalone
+npm install
+npm start
+```
+The desktop client starts an embedded local engine on `http://127.0.0.1:30099` with full offline capability.
+
+---
+
+## 📦 Packaging Windows Installers (v2.3.0)
+
+### 1. Build Central Server Installer (`Gezyne LIS Server Setup 2.3.0.exe`)
+
+```powershell
+cd lis-fullstack
+npm run build:exe
+npm run prepare-dist-data
+
 cd tray
 npm install
-
-# Build installer (output -> tray/dist/Gezyne LIS Server Setup 2.0.0.exe)
 npm run dist:win
 ```
+*Output: `lis-fullstack/tray/dist/Gezyne LIS Server Setup 2.3.0.exe`*
 
-Your completed installer will be output to:
-`lis-fullstack/tray/dist/Gezyne LIS Server Setup 2.0.0.exe`
-
----
-
-## 🛡️ PM2 Process Management & Safety
-
-For production server safety, automatic crash recovery, and memory monitoring:
+### 2. Build Standalone Client Installer (`Gezyne LIS Client Setup 2.3.0.exe`)
 
 ```powershell
-# 1. Install PM2 globally on Windows
-npm install -g pm2
-
-# 2. (Optional) Configure automatic start on Windows boot
-npm install -g pm2-windows-startup
-pm2-startup install
-```
-
-When active, the Electron Tray app automatically detects PM2 and manages the LIS server via `ecosystem.config.js` (`lis-app`).
-
----
-
-## 🚀 Development & Local Server Setup
-
-```powershell
-cd "lis-fullstack"
+cd lis-app-standalone
 npm install
-npm start            # Starts server on http://localhost:3000
+npm run dist:win
 ```
-
-Once running, access the LIS in your browser at `http://localhost:3000` or on your network IP (`http://<your-ip>:3000`).
+*Output: `lis-app-standalone/dist/Gezyne LIS Client Setup 2.3.0.exe`*
 
 ---
 
-## ✨ Key Features in v2.0.0
+## 🧪 Testing & Quality Assurance
 
-- 🏥 **Vibrant Patient Queue Kiosk**: Animated queue display (`/reception/assigned?kiosk=1`) optimized for TV displays and reception monitors.
-- 🔐 **Modern Split-View Login**: Bounded login interface displaying Gezyne Clinical Laboratory address, contact info, and Facebook page details.
-- 🔔 **Formatted SSE Notifications**: Real-time event notifications with clean icons for queue assignments, stashing, and test completions.
-- 📋 **Comprehensive Test Modules**: Hematology, Blood Chemistry, Urinalysis, Fecalysis, Serology, Thyroid Panel, PT/APTT, X-Ray, ECG, and Ultrasound.
-- 📁 **Centralized Data Storage**: Automatic data persistence to `C:\ProgramData\GezyneLIS` for multi-user Windows compatibility.
+Run the comprehensive test suites from the repository root:
+
+```powershell
+# Run all standalone offline CRUD, pipeline, and ID mapping tests
+node test/run-all-offline-tests.js
+
+# Run live two-way sync verification (requires central server on port 3000)
+node test/standalone-live-sync.test.js
+```
+
+---
+
+## 🛡️ Production Deployment & Process Safety
+
+For continuous 24/7 server operation, automatic reboot recovery, and memory monitoring on Windows:
+
+```powershell
+npm install -g pm2
+cd lis-fullstack
+pm2 start ecosystem.config.js --env production
+pm2 save
+```
 
 ---
 
 ## 📌 License
 
-Licensed under the **MIT License**. Created for Gezyne Clinical Laboratory.
-
+Distributed under the **MIT License**. Developed for **Gezyne Clinical Laboratory**.

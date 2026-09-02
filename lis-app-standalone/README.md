@@ -1,22 +1,29 @@
-# lis-app-standalone
+# Gezyne LIS Standalone Desktop Client v2.3.0
 
-**Independent Desktop Workstation Client for Gezyne Clinical Laboratory LIS** with Local-First SQLite Database and Automatic Two-Way Central Synchronization.
+[![Version](https://img.shields.io/badge/version-2.3.0-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
+[![Electron](https://img.shields.io/badge/Electron-v28-47848F.svg?style=flat-square&logo=electron)](https://www.electronjs.org/)
+[![Database](https://img.shields.io/badge/database-SQLite%20(Local--First)-blue.svg?style=flat-square&logo=sqlite)](https://www.sqlite.org/)
+[![Offline](https://img.shields.io/badge/offline-100%25%20capable-success.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
+
+**Independent Desktop Workstation Client for Gezyne Clinical Laboratory LIS** featuring a Local-First SQLite Database, Multi-Station Reception Pipeline, and Automatic Two-Way Central Synchronization.
 
 The standalone desktop application is a **100% independent, local-first workstation**. The UI is served entirely by an embedded local Express engine backed by a local SQLite database (`lis-data.db`).
 
 - ⚡ **Local-First UI**: Instant responsiveness, zero lag, full offline functionality without server dependency.
 - 💾 **SQLite Storage (`lis-data.db`)**: High-performance local storage for patients, multi-department tests, and reception queues.
 - 🔄 **Auto-Sync Engine**: Background push of offline queued mutations and background pull of central database snapshots.
+- 🔐 **Bearer Token Security**: Encrypted and token-authenticated server communication without storing plaintext user passwords.
+- 📱 **Auto-Collapsing Sidebar**: Automatic sidebar hiding in child preview windows and displays `<= 1100px`.
 - 🏥 **Reception Multi-Station Pipeline**: Offline progression across Payment, Extraction, Imaging (X-ray/Ultrasound/ECG/2D Echo), Doctor Consultation, and Results.
 - 🪪 **Deterministic ID Mapping**: Automatic translation and rewriting of offline temporary IDs to server-assigned IDs across pending operations and local tables.
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
 
 ### Prerequisites
 - **Node.js 18+** installed on the workstation
-- Optional: Central LIS server (`lis-fullstack`) running on the network for sync
+- Optional: Central LIS server (`lis-fullstack`) running on the network for synchronization
 
 ### Install & Run
 
@@ -46,11 +53,11 @@ module.exports = {
 
 ---
 
-## Architecture & Data Flow
+## 🏗️ Architecture & Data Flow
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│                        Standalone Electron App                         │
+│                    Standalone Electron App (v2.3.0)                    │
 │                                                                        │
 │   ┌───────────────────┐               ┌────────────────────────────┐   │
 │   │   BrowserWindow   │◄─────────────►│    Local Express Engine    │   │
@@ -74,7 +81,7 @@ module.exports = {
 │   │   • Push: Replay queued mutations with ID mapping              │   │
 │   └──────────────────────────────────┬─────────────────────────────┘   │
 └──────────────────────────────────────┼─────────────────────────────────┘
-                                       │ HTTP / HTTPS
+                                       │ HTTP / HTTPS (Bearer Auth)
                                        ▼
                      ┌──────────────────────────────────┐
                      │     Central LIS Server           │
@@ -121,31 +128,9 @@ Ensure the central LIS server is running on `http://127.0.0.1:3000`, then execut
 node test/standalone-live-sync.test.js
 ```
 
-#### What the Live Sync Test Verifies:
-1. **Connectivity Check**: `NetworkMonitor` detects server status.
-2. **Database Pull (`fullSync`)**: Downloads central snapshot into local SQLite (`lis-data.db`).
-3. **Offline Mutation Capture**: Creates patients, multi-department tests, and station advancements into `OperationQueue`.
-4. **Queue Replay (`processQueue`)**: Replays mutations sequentially to the live server with automatic authentication.
-5. **Round-Trip Verification**: Pulls a fresh snapshot from the server and verifies that the new records exist on the central database.
-
 ---
 
-## Development Workflow for New Features
-
-When developing or modifying features in the standalone client:
-
-1. **Verify Offline First**:
-   Always run `node test/run-all-offline-tests.js` to ensure changes operate 100% offline without crashing or throwing unhandled database errors.
-2. **Check Queue Interception**:
-   Ensure new mutations in `routes/*.js` emit an operation via `req.app.locals.operationQueue.add({...})` with clean payloads.
-3. **Verify ID Resolution**:
-   If introducing new child entities, ensure `replaceTempId` in [`lib/operationQueue.js`](lib/operationQueue.js) maps foreign keys appropriately.
-4. **Verify Live Sync**:
-   Start the central server and run `node test/standalone-live-sync.test.js` to confirm two-way synchronization.
-
----
-
-## Building an Installer
+## 📦 Building the Standalone Installer (v2.3.0)
 
 To build the standalone Windows installer package:
 
@@ -157,13 +142,13 @@ npm run dist:win
 npm run dist:dir
 ```
 
-Output installers are generated in the `dist/` directory.
+Output installers are generated in the `dist/` directory (`Gezyne LIS Client Setup 2.3.0.exe`).
 
 ---
 
-## Data Storage Directory
+## 💾 Local Data Storage
 
-All local data is stored in the user data directory:
+All local database files and queued operations are preserved in the user data folder:
 
 ```
 %APPDATA%/lis-app-standalone/
@@ -172,3 +157,9 @@ All local data is stored in the user data directory:
 │   └── pending-operations.json    # Queued offline mutations
 └── page-cache/                    # Cached HTML snapshots
 ```
+
+---
+
+## 📌 License
+
+Distributed under the **MIT License**. Created for **Gezyne Clinical Laboratory**.

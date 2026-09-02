@@ -1,193 +1,92 @@
-# Laboratory Information System (LIS) v2.0.0
+# Gezyne LIS Server (Full-Stack) v2.3.0
 
-A full-stack web application for managing laboratory operations, built with Node.js, Express, and central ProgramData storage.
+[![Version](https://img.shields.io/badge/version-2.3.0-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B-green.svg?style=flat-square&logo=node.js)](https://nodejs.org/)
+[![Database](https://img.shields.io/badge/database-SQLite%20(better--sqlite3%20%2F%20sql.js)-blue.svg?style=flat-square&logo=sqlite)](https://www.sqlite.org/)
 
-## Features
+A full-stack clinical Laboratory Information System server built with Node.js, Express, and high-performance SQLite storage (`lis-data.db`).
 
-- **User Authentication & Authorization**: Role-based access control (Admin, Doctor, Technician, Receptionist)
-- **Patient Management**: Complete CRUD operations for patient records
-- **Test Management**: Create, update, and track laboratory tests
-- **Report Generation**: Generate and download PDF reports
-- **Template System**: Create and manage report templates
-- **Dashboard**: Overview of system statistics and recent activity
-- **Security**: Helmet for security headers, rate limiting, input validation
+---
 
-## Prerequisites
+## 🌟 Features in v2.3.0
 
-- Node.js (v18 or higher)
-- npm
+- 🔐 **Authentication & Bearer Token API**: Role-based access control with bcrypt password hashing and HMAC-SHA256 Bearer tokens for client synchronization.
+- 👥 **Patient Records Management**: Full CRUD operations, PhilHealth data, automated code generation, and payment histories.
+- 🧪 **Multi-Department Test Workflows**: Hematology, Blood Chemistry, Urinalysis, Fecalysis, Serology, Thyroid, PT/APTT, Ultrasound, ECG, X-Ray, and 2D Echo.
+- 🏥 **Real-Time Patient Queue & Kiosk**: Live Server-Sent Events (SSE) queue broadcast with audio-visual notifications.
+- 📄 **Puppeteer PDF Engine**: High-resolution clinical diagnostic reports with dynamic barcodes and digital signatures.
+- 🛡️ **Automated SQLite WAL Backup**: Scheduled 3:00 PM backups with active WAL checkpointing (`backup_db_${ts}.db` and `backup_${ts}.json`) with 30-day retention.
+- 📱 **Adaptive UI**: EJS layout featuring auto-collapsing sidebars for small displays, child preview windows, and responsive widths.
 
-## Installation
+---
 
-1. Clone the repository:
+## 🚀 Quick Start
+
+### Installation
 
 ```bash
-git clone <repository-url>
 cd lis-fullstack
-```
-
-2. Install dependencies:
-
-```bash
 npm install
 ```
 
-3. Seed the database with sample data:
+### Starting the Server
 
 ```bash
-node seed.js
+# Development mode with auto-reload
+npm run dev
+
+# Production mode
+npm start
 ```
 
-4. Start the server (development):
+Default access URL: `http://localhost:3000` (or network LAN IP).
 
-```bash
-node server.js
-```
+---
 
-5. Open your browser and navigate to `http://localhost:3000`
-
-## Project Structure
+## 📁 Directory Structure
 
 ```
 lis-fullstack/
-├── models/           # Data models (User, Patient, Test, Template)
-├── routes/           # Express routes for different modules
-├── views/            # EJS templates
-├── public/           # Static assets (CSS, JS, images)
-├── data.json         # File-based database
-├── server.js         # Main application file
-├── seed.js           # Database seeding script
-└── package.json      # Dependencies and scripts
+├── lib/               # SQLite database adapter, token helper, PDF generator & logger
+├── middleware/        # Authentication, authorization, and rate limiting middleware
+├── models/            # Data models: Patient, Test, User, Template
+├── public/            # Static client assets (CSS, JS, images, audio)
+├── routes/            # Express routes (auth, reception, patients, tests, reports, users, settings)
+├── scripts/           # Windows service installers, data seeders & icon generators
+├── tray/              # Electron System Tray launcher and NSIS Windows installer
+├── views/             # Responsive EJS views and report templates
+└── server.js          # Main Express application entrypoint
 ```
 
-## Technology Stack
+---
 
-- **Backend**: Node.js, Express.js
-- **Frontend**: EJS templating, Bootstrap CSS
-- **Database**: File-based JSON storage
-- **Security**: bcryptjs, helmet, express-rate-limit
-- **PDF Generation**: html-pdf
-- **Session Management**: express-session
+## 🔒 Security & Middleware
 
-## API Endpoints
+- **Password Protection**: Salted bcrypt hashing (12 rounds) on all stored user accounts.
+- **Bearer Tokens**: Native HMAC-SHA256 tokens (`POST /api/auth/token`) with constant-time verification.
+- **Security Headers**: `helmet` configured for local inline resources and cross-origin embedding.
+- **Rate Limiting**: `express-rate-limit` active on authentication routes.
+- **Safe Endpoints**: Protected management restore routes and authorized data export streams.
 
-### Authentication
+---
 
-- `GET /login` - Login page
-- `POST /login` - Authenticate user
-- `POST /logout` - Logout user
-
-### Dashboard
-
-- `GET /` - Dashboard with statistics
-
-### Patients
-
-- `GET /patients` - List all patients
-- `GET /patients/new` - New patient form
-- `POST /patients` - Create patient
-- `GET /patients/:id` - View patient details
-- `GET /patients/:id/edit` - Edit patient form
-- `PUT /patients/:id` - Update patient
-- `DELETE /patients/:id` - Delete patient
-
-### Tests
-
-- `GET /tests` - List all tests
-- `GET /tests/new` - New test form
-- `POST /tests` - Create test
-- `GET /tests/:id` - View test details
-- `GET /tests/:id/edit` - Edit test form
-- `PUT /tests/:id` - Update test
-- `DELETE /tests/:id` - Delete test
-
-### Reports
-
-- `GET /reports` - Generate reports
-- `GET /reports/download/:id` - Download PDF report
-
-### Templates
-
-- `GET /templates` - List templates
-- `GET /templates/new` - New template form
-- `POST /templates` - Create template
-- `GET /templates/:id/edit` - Edit template
-- `PUT /templates/:id` - Update template
-- `DELETE /templates/:id` - Delete template
-
-### Users (Admin only)
-
-- `GET /users` - List all users
-- `GET /users/new` - New user form
-- `POST /users` - Create user
-- `GET /users/:id/edit` - Edit user
-- `PUT /users/:id` - Update user
-- `DELETE /users/:id` - Delete user
-
-## Security Features
-
-- Password hashing with bcryptjs
-- Session-based authentication
-- Role-based access control
-- Security headers with Helmet
-- Rate limiting for API endpoints
-- Input validation and sanitization
-- CSRF protection
-
-## Development
-
-To run in development mode with auto-restart:
-
-```bash
-npm install -g nodemon
-nodemon server.js
-```
-
-## Environment Variables
-
-The server can be configured via environment variables. The most commonly used are already
-highlighted earlier, but there are a few additional flags you may find useful:
-
-- `DISABLE_REPORT_GENERATION=1` or `SKIP_REPORT_GENERATION=1`
-  disables the background startup scan that generates any missing PDF reports. This is
-  handy when running in CI, during automated tests, or on hosts where report creation
-  should be skipped.  *By default the PM2 ecosystem config and the Windows
-  `start-lis.ps1` launcher set this flag to `1`, so no reports are generated on boot
-  unless you explicitly unset it.*
-
-> **Note:** When editing the `.env` file manually a space on either side of the equals
-> sign is permitted, but older versions of the settings page ignored such entries. The
-> web UI now trims whitespace and will show every variable present in the file.
-
-## Building the Production Windows Installer (v2.0.0)
-
-To create a single-file executable Windows setup installer (`Gezyne LIS Server Setup 2.0.0.exe`):
+## 📦 Building the Windows Installer (v2.3.0)
 
 ```powershell
-# 1. Build server executable & prepare seed data
-cd lis-fullstack
+# 1. Compile server binary and prepare seed resources
 npm run build:exe
 npm run prepare-dist-data
 
-# 2. Build Electron Tray NSIS Installer
+# 2. Package Tray Launcher & NSIS Installer
 cd tray
+npm install
 npm run dist:win
 ```
 
-The compiled installer will be located in: `lis-fullstack/tray/dist/Gezyne LIS Server Setup 2.0.0.exe`
+Output: `lis-fullstack/tray/dist/Gezyne LIS Server Setup 2.3.0.exe`
 
-## Production Deployment
+---
 
-Recommended production options:
+## 📌 License
 
-- **Run under PM2 (recommended for server safety)**:
-  ```powershell
-  npm install -g pm2
-  pm2 start ecosystem.config.js --env production
-  pm2 save
-  ```
-- **Electron Tray Launcher**: Run `tray` or launch the installed `Gezyne LIS Server Setup 2.0.0.exe` for automated tray management and PM2 auto-start.
-
-## License
-
-This project is licensed under the MIT License. Created for Gezyne Clinical Laboratory.
+Licensed under the **MIT License**. Created for **Gezyne Clinical Laboratory**.
