@@ -119,8 +119,14 @@ class Test {
 
   // Static methods
   static async findById(id) {
+    if (!id) return null;
+    if (global.db && typeof global.db.getTestById === 'function') {
+      const test = global.db.getTestById(id);
+      if (test) return new Test(test);
+    }
     const tests = global.db.getTests();
-    const test = tests.find(t => t.id === id);
+    let test = tests.find(t => t.id === id);
+    if (!test) test = tests.find(t => t.testId === id);
     return test ? new Test(test) : null;
   }
 
@@ -149,6 +155,7 @@ class Test {
       test = tests.find(t => t.testId === query.testId);
     } else if (query._id || query.id) {
       test = tests.find(t => t.id === (query._id || query.id));
+      if (!test) test = tests.find(t => t.testId === (query._id || query.id));
     } else if (query.patient) {
       test = tests.find(t => t.patient === query.patient);
     }
@@ -169,6 +176,7 @@ class Test {
       test = tests.find(t => t.testId === query.testId);
     } else if (query._id || query.id) {
       test = tests.find(t => t.id === (query._id || query.id));
+      if (!test) test = tests.find(t => t.testId === (query._id || query.id));
     }
 
     if (test) {

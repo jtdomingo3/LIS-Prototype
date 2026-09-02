@@ -1,6 +1,6 @@
 {
   "name": "lis-app-standalone",
-  "version": "2.0.0",
+  "version": "2.3.0",
   "description": "Standalone desktop client for Gezyne LIS with offline support",
   "main": "main.js",
   "scripts": {
@@ -9,8 +9,7 @@
     "build": "electron-builder",
     "dist:win": "electron-builder --win nsis",
     "dist:dir": "electron-builder --dir",
-    "generate-icon": "node build/generate-icon.js",
-    "test": "node ../test/e2e-offline-sync.js && node ../test/sync-mapping.js"
+    "test": "node ../test/run-all-offline-tests.js && node test-sqlite-datastore.js && node test-integrated-sync.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -25,10 +24,11 @@
     "google-tts-api": "^2.0.2",
     "html-pdf": "^3.0.1",
     "jimp": "^1.6.0",
+    "method-override": "^3.0.0",
     "multer": "^2.0.2",
     "pdfjs-dist": "^3.11.174",
-    "uuid": "^9.0.1",
-    "method-override": "^3.0.0"
+    "sql.js": "^1.14.2",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "electron": "^28.1.0",

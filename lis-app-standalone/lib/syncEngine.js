@@ -24,16 +24,33 @@ class SyncEngine {
   }
 
   /**
-   * Get the bcrypt hash for the auto-login user from the DataStore.
+   * Get the bcrypt hash for the authenticated or admin user.
    * Used for hash-based authentication with the server sync endpoint.
    */
   _getAutoLoginHash() {
     try {
-      const email = this._autoLoginEmail;
-      if (!email || !this.dataStore) return null;
-      const users = this.dataStore.getCollection('users') || [];
-      const user = users.find(u => u.email && u.email.toLowerCase() === email.toLowerCase());
-      return (user && user.password) ? { email: user.email, hash: user.password } : null;
+      const email = this._autoLoginEmail || (this._credentials && this._credentials.email) || 'admin@lab.com';
+      let users = [];
+      if (this.dataStore && typeof this.dataStore.getCollection === 'function') {
+        users = this.dataStore.getCollection('users') || [];
+      }
+      if (!users.length && global.db && typeof global.db.getUsers === 'function') {
+        users = global.db.getUsers() || [];
+      }
+      if (!users.length) {
+        try {
+          const User = require('../models/User');
+          const allUsers = User.find ? User.find() : [];
+          if (Array.isArray(allUsers)) users = allUsers;
+        } catch (e) {}
+      }
+      if (email) {
+        const user = users.find(u => u && u.email && u.email.toLowerCase() === email.toLowerCase());
+        if (user && user.password) return { email: user.email, hash: user.password };
+      }
+      const admin = users.find(u => u && (u.role === 'Admin' || u.role === 'admin' || (u.email && u.email.toLowerCase().includes('admin'))));
+      if (admin && admin.password) return { email: admin.email, hash: admin.password };
+      return null;
     } catch (e) { return null; }
   }
 
@@ -49,19 +66,70 @@ class SyncEngine {
     }
     if (!this.config || !this.config.SERVER_URL) return false;
 
-    const { net, session } = require('electron');
+    let electron = null;
+    try { electron = require('electron'); } catch (_) {}
+    const net = (electron && electron.net) ? electron.net : null;
+    const session = (electron && electron.session) ? electron.session : null;
+
     const base = this.config.SERVER_URL.replace(/\/$/, '');
     const loginUrl = base + '/login';
+
+    if (!net || !session) {
+      // In non-electron runtime, perform standard HTTP POST /login and store session cookie
+      return new Promise((resolve) => {
+        try {
+          const parsed = new URL(loginUrl);
+          const isHttps = parsed.protocol === 'https:';
+          const client = isHttps ? require('https') : require('http');
+          const postData = new URLSearchParams({
+            email: this._credentials.email,
+            password: this._credentials.password
+          }).toString();
+
+          const req = client.request({
+            hostname: parsed.hostname,
+            port: parsed.port || (isHttps ? 443 : 80),
+            path: parsed.pathname,
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Content-Length': Buffer.byteLength(postData),
+              'Accept': 'application/json, text/html, */*'
+            },
+            timeout: 10000
+          }, (res) => {
+            const setCookie = res.headers['set-cookie'];
+            if (setCookie) {
+              const cookiesArr = Array.isArray(setCookie) ? setCookie : [setCookie];
+              const sid = cookiesArr.map(c => c.split(';')[0]).join('; ');
+              if (sid) {
+                this._sessionCookie = sid;
+                console.log('[Sync] authenticated with server and session cookie captured (Node fallback)');
+                return resolve(true);
+              }
+            }
+            if (res.statusCode >= 200 && res.statusCode < 400) {
+              return resolve(true);
+            }
+            resolve(false);
+          });
+          req.on('error', () => resolve(false));
+          req.write(postData);
+          req.end();
+        } catch (_) {
+          resolve(false);
+        }
+      });
+    }
 
     return new Promise((resolve) => {
       try {
         const sess = session.fromPartition('persist:lis');
-        const { BrowserWindow } = require('electron');
         const req = net.request({
           method: 'POST',
           url: loginUrl,
           session: sess,
-          redirect: 'manual', // handle redirects after cookie persistence
+          redirect: 'follow', // automatically follow redirects after login
         });
         req.setHeader('Content-Type', 'application/x-www-form-urlencoded');
         const body = new URLSearchParams({
@@ -69,26 +137,21 @@ class SyncEngine {
           password: this._credentials.password,
         }).toString();
 
+        req.on('redirect', (statusCode, method, redirectUrl) => {
+          try { req.followRedirect(); } catch (e) {}
+        });
+
         let responseBody = '';
         req.on('response', async (res) => {
           res.on('data', (chunk) => { responseBody += chunk.toString(); });
           res.on('end', async () => {
-            // Log headers for debugging
-            try { console.log('[Sync] login response headers:', res.headers); } catch (e) {}
-
-            if (res.statusCode >= 400) {
-              console.warn('[Sync] server auth returned', res.statusCode, responseBody.slice(0,200));
-              return resolve(false);
-            }
-
-            // Verify that a session cookie was set in the persist:lis partition
+            // Check session cookie in the persist:lis partition
             try {
               const cookies = await sess.cookies.get({ name: 'connect.sid' });
               if (cookies && cookies.length) {
                 console.log('[Sync] authenticated with server and session cookie set (connect.sid)');
                 return resolve(true);
               }
-              // Fallback: accept any cookie as sign of session establishment
               const anyCookies = await sess.cookies.get({});
               if (anyCookies && anyCookies.length) {
                 console.log('[Sync] authenticated with server — cookies present');
@@ -98,15 +161,21 @@ class SyncEngine {
               console.warn('[Sync] cookie check failed:', e && e.message);
             }
 
-            // No session cookie -> attempt renderer-based login (hidden BrowserWindow)
-            console.log('[Sync] no session cookie after net login — attempting hidden renderer login fallback');
+            if (res.statusCode >= 200 && res.statusCode < 400) {
+              console.log('[Sync] server returned status', res.statusCode, '— assuming authenticated');
+              return resolve(true);
+            }
+
+            // Fallback: hidden renderer login
             try {
-              const { BrowserWindow } = require('electron');
+              let electron = null;
+              try { electron = require('electron'); } catch (_) {}
+              const BrowserWindow = electron ? electron.BrowserWindow : null;
+              if (!BrowserWindow) return resolve(false);
+
               const win = new BrowserWindow({ show: false, webPreferences: { partition: 'persist:lis', nodeIntegration: false, contextIsolation: true } });
               try {
-                // Load login page in hidden window
                 await win.loadURL(loginUrl);
-                // Fill and submit the login form if present
                 const submitJs = `(function(){ try {
                   var e = document.querySelector('input[name="email"]');
                   var p = document.querySelector('input[name="password"]');
@@ -119,16 +188,15 @@ class SyncEngine {
                   if (btn) { btn.click(); return { ok:true, method:'button' }; }
                   return { ok:false, err:'no-submit' };
                 } catch(e){ return { ok:false, err: String(e) }; } })()`;
-                try { await win.webContents.executeJavaScript(submitJs, true); } catch (e) { /* ignore exec errors */ }
+                try { await win.webContents.executeJavaScript(submitJs, true); } catch (e) {}
 
-                // Poll for cookie set (give server time to redirect and set cookie)
                 const start = Date.now();
                 let found = false;
                 while ((Date.now() - start) < 8000) {
                   try {
                     const cookies2 = await sess.cookies.get({ name: 'connect.sid' });
                     if (cookies2 && cookies2.length) { found = true; break; }
-                  } catch (e) { /* ignore */ }
+                  } catch (e) {}
                   await new Promise(r => setTimeout(r, 400));
                 }
                 try { if (!win.isDestroyed()) win.close(); } catch (e) {}
@@ -138,23 +206,30 @@ class SyncEngine {
                 }
               } catch (e) {
                 try { if (!win.isDestroyed()) win.close(); } catch (ee) {}
-                console.warn('[Sync] renderer login attempt failed:', e && e.message);
               }
-            } catch (e) {
-              console.warn('[Sync] renderer login fallback error:', e && e.message);
-            }
+            } catch (e) {}
 
-            // Still no cookie -> treat as auth failure
-            console.warn('[Sync] login did not result in persisted session cookie; status', res.statusCode);
             resolve(false);
           });
         });
 
         req.on('error', async (err) => {
-          console.error('[Sync] server auth request failed:', err && err.message);
-          // Try renderer fallback on request errors (e.g., Redirect was cancelled)
+          console.warn('[Sync] server auth request net event:', err && err.message);
+          // Check if cookie was already set despite the event
           try {
-            console.log('[Sync] attempting renderer login fallback after net error');
+            const cookies = await sess.cookies.get({ name: 'connect.sid' });
+            if (cookies && cookies.length) {
+              console.log('[Sync] session cookie verified after net event');
+              return resolve(true);
+            }
+          } catch (e) {}
+
+          try {
+            let electron = null;
+            try { electron = require('electron'); } catch (_) {}
+            const BrowserWindow = electron ? electron.BrowserWindow : null;
+            if (!BrowserWindow) return resolve(false);
+
             const win = new BrowserWindow({ show: false, webPreferences: { partition: 'persist:lis', nodeIntegration: false, contextIsolation: true } });
             try {
               await win.loadURL(loginUrl);
@@ -178,28 +253,26 @@ class SyncEngine {
                 try {
                   const cookies2 = await sess.cookies.get({ name: 'connect.sid' });
                   if (cookies2 && cookies2.length) { found = true; break; }
-                } catch (e) { }
+                } catch (e) {}
                 await new Promise(r => setTimeout(r, 400));
               }
               try { if (!win.isDestroyed()) win.close(); } catch (e) {}
               if (found) {
-                console.log('[Sync] renderer login set session cookie (connect.sid) after net error');
+                console.log('[Sync] renderer login set session cookie (connect.sid) after net event');
                 return resolve(true);
               }
             } catch (e) {
               try { if (!win.isDestroyed()) win.close(); } catch (ee) {}
-              console.warn('[Sync] renderer login attempt failed after net error:', e && e.message);
             }
-          } catch (e) {
-            console.warn('[Sync] renderer login fallback error after net error:', e && e.message);
-          }
+          } catch (e) {}
+
           resolve(false);
         });
 
         req.write(body);
         req.end();
       } catch (e) {
-        console.error('[Sync] _ensureServerAuth error:', e && e.message);
+        console.error('[Sync] _ensureServerAuth exception:', e && e.message);
         resolve(false);
       }
     });
@@ -214,6 +287,16 @@ class SyncEngine {
 
       // Authenticate with the real server before fetching data
       await this._ensureServerAuth();
+
+      // Flush all pending offline mutations (including deletions) to the server before downloading
+      if (this.queue && this.queue.countPending() > 0) {
+        try {
+          console.log('[Sync] flushing pending queue operations before fullSync...');
+          await this.processQueue();
+        } catch (e) {
+          console.warn('[Sync] pre-fullSync queue flush warning:', e && e.message);
+        }
+      }
 
       const { net } = require('electron');
       // prefer authenticated export endpoint if available
@@ -287,46 +370,85 @@ class SyncEngine {
     _fetchJson(net, url, progressSender) {
       return new Promise((resolve, reject) => {
         try {
-          const { session } = require('electron');
-          const req = net.request({ method: 'GET', url, session: session.fromPartition('persist:lis'), redirect: 'follow' });
+          let electron = null;
+          try { electron = require('electron'); } catch (_) {}
+          const elNet = (electron && electron.net) ? electron.net : (net && typeof net.request === 'function' ? net : null);
+          const elSession = (electron && electron.session) ? electron.session : null;
 
-          // Add hash-based auth headers as fallback when no session exists
-          const hashAuth = this._getAutoLoginHash();
-          if (hashAuth) {
-            req.setHeader('X-LIS-Sync-Email', hashAuth.email);
-            req.setHeader('X-LIS-Sync-Hash', hashAuth.hash);
-            console.log('[Sync] sending hash-based auth headers for', hashAuth.email);
+          if (elNet && elSession) {
+            const req = elNet.request({ method: 'GET', url, session: elSession.fromPartition('persist:lis'), redirect: 'follow' });
+
+            const hashAuth = this._getAutoLoginHash();
+            if (hashAuth) {
+              req.setHeader('X-LIS-Sync-Email', hashAuth.email);
+              req.setHeader('X-LIS-Sync-Hash', hashAuth.hash);
+            }
+
+            let body = '';
+            let loaded = 0;
+            let total = null;
+            req.on('response', (res) => {
+              try {
+                const hdr = res.headers && (res.headers['content-length'] || res.headers['Content-Length']);
+                if (hdr) total = parseInt(Array.isArray(hdr) ? hdr[0] : hdr, 10);
+              } catch (e) { total = null; }
+
+              res.on('data', (chunk) => {
+                try { const len = chunk.length || (chunk.byteLength || 0); loaded += len; } catch (e) {}
+                body += chunk.toString();
+                if (progressSender) {
+                  try { progressSender.send('full-sync-progress', { phase: 'progress', loaded, total }); } catch (e) {}
+                }
+              });
+              res.on('end', () => {
+                if (res.statusCode >= 200 && res.statusCode < 300) {
+                  try { resolve(JSON.parse(body)); } catch (e) { reject(new Error('invalid-json')); }
+                } else {
+                  reject(new Error('http:' + res.statusCode));
+                }
+              });
+            });
+            req.on('error', (err) => reject(err));
+            req.end();
+            return;
           }
 
-          let body = '';
-          let loaded = 0;
-          let total = null;
-          req.on('response', (res) => {
-            // try to read Content-Length
-            try {
-              const hdr = res.headers && (res.headers['content-length'] || res.headers['Content-Length']);
-              if (hdr) total = parseInt(Array.isArray(hdr) ? hdr[0] : hdr, 10);
-            } catch (e) { total = null; }
-
-            res.on('data', (chunk) => {
-              try { const len = chunk.length || (chunk.byteLength || 0); loaded += len; } catch (e) {}
-              body += chunk.toString();
-              if (progressSender) {
-                try { progressSender.send('full-sync-progress', { phase: 'progress', loaded, total }); } catch (e) {}
-              }
-            });
+          // Node standard HTTP/HTTPS fallback
+          const parsed = new URL(url);
+          const isHttps = parsed.protocol === 'https:';
+          const client = isHttps ? require('https') : require('http');
+          const headers = { 'Accept': 'application/json' };
+          if (this._sessionCookie) {
+            headers['Cookie'] = this._sessionCookie;
+          }
+          const hashAuth = this._getAutoLoginHash();
+          if (hashAuth) {
+            headers['X-LIS-Sync-Email'] = hashAuth.email;
+            headers['X-LIS-Sync-Hash'] = hashAuth.hash;
+          }
+          const req = client.request({
+            hostname: parsed.hostname,
+            port: parsed.port || (isHttps ? 443 : 80),
+            path: parsed.pathname + (parsed.search || ''),
+            method: 'GET',
+            headers,
+            timeout: 10000
+          }, (res) => {
+            let body = '';
+            res.on('data', chunk => { body += chunk.toString(); });
             res.on('end', () => {
               if (res.statusCode >= 200 && res.statusCode < 300) {
                 try { resolve(JSON.parse(body)); } catch (e) { reject(new Error('invalid-json')); }
               } else {
-                console.error('[Sync] _fetchJson non-2xx', url, 'status=', res.statusCode, 'headers=', res.headers, 'bodySnippet=', (body || '').slice(0,200));
                 reject(new Error('http:' + res.statusCode));
               }
             });
           });
-          req.on('error', (err) => reject(err));
+          req.on('error', err => reject(err));
           req.end();
-        } catch (e) { reject(e); }
+        } catch (e) {
+          reject(e);
+        }
       });
     }
 
@@ -347,8 +469,9 @@ class SyncEngine {
     console.log(`[Sync] starting — ${pending.length} operation(s) to replay`);
     let synced = 0;
 
-    // Lazy-require electron net (only available in main process)
-    const { net } = require('electron');
+    let electron = null;
+    try { electron = require('electron'); } catch (_) {}
+    const net = (electron && electron.net) ? electron.net : null;
 
     for (const op of pending) {
       try {
@@ -367,10 +490,19 @@ class SyncEngine {
         synced++;
         console.log(`[Sync] ✓ ${op.method} ${op.url}`);
       } catch (e) {
-        console.error(`[Sync] ✗ ${op.method} ${op.url} — ${e.message}`);
-        this.queue.markFailed(op.id, e.message, this.config.MAX_SYNC_RETRIES);
-        // Stop on first failure to preserve ordering guarantees
-        break;
+        const errMsg = (e && e.message) ? e.message : String(e);
+        console.error(`[Sync] ✗ ${op.method} ${op.url} — ${errMsg}`);
+        this.queue.markFailed(op.id, errMsg, this.config.MAX_SYNC_RETRIES);
+
+        // If the server connection dropped or refused, stop replaying to wait for connection
+        const isNetworkDrop = /ERR_CONNECTION|ERR_NAME|timeout|timed out|ECONNREFUSED|ENOTFOUND/i.test(errMsg);
+        if (isNetworkDrop) {
+          console.warn('[Sync] network connection lost during replay — stopping queue pass');
+          break;
+        }
+
+        // For application/server errors (e.g. 400 bad request, 409 conflict, already processed),
+        // continue processing subsequent independent operations so the queue doesn't stall.
       }
     }
 
@@ -381,79 +513,147 @@ class SyncEngine {
     return synced;
   }
 
-  /* ── replay a single operation via electron net ───────────────── */
+  /* ── replay a single operation via electron net or Node http fallback ─── */
   _replay(net, op) {
     return new Promise((resolve, reject) => {
-      const { session } = require('electron');
-      let settled = false;
+      let electron = null;
+      try { electron = require('electron'); } catch (_) {}
+      const elNet = (electron && electron.net) ? electron.net : (net && typeof net.request === 'function' ? net : null);
+      const elSession = (electron && electron.session) ? electron.session : null;
 
-      const request = net.request({
-        method: 'POST',        // HTML forms always POST (with ?_method for PUT/DELETE)
-        url: op.url,
-        session: session.fromPartition('persist:lis'),
-        redirect: 'manual',    // handle redirects via the 'redirect' event
-      });
-
-      // Always include hash-based auth headers so the server can bootstrap
-      // a session even without a cookie.
-      const hashAuth = this._getAutoLoginHash();
-      if (hashAuth) {
-        request.setHeader('X-LIS-Sync-Email', hashAuth.email);
-        request.setHeader('X-LIS-Sync-Hash', hashAuth.hash);
-      }
-
-      // Encode body as URL-encoded form data (same as HTML form).
-      // Use qs.stringify (same lib as Express's body parser) to correctly
-      // handle arrays and nested objects, unlike URLSearchParams.
+      let qsLib = null;
+      try { qsLib = require('qs'); } catch (_) {}
+      let encodedBody = '';
       if (op.body && typeof op.body === 'object' && Object.keys(op.body).length) {
-        request.setHeader('Content-Type', 'application/x-www-form-urlencoded');
-        let encoded;
-        try {
-          const qs = require('qs');
-          encoded = qs.stringify(op.body, { arrayFormat: 'repeat', encode: true });
-        } catch (_) {
-          // fallback to URLSearchParams if qs is unavailable
-          encoded = new URLSearchParams(op.body).toString();
+        const normalized = {};
+        for (const [k, v] of Object.entries(op.body)) {
+          if (v !== null && typeof v === 'object') {
+            normalized[k] = JSON.stringify(v);
+          } else {
+            normalized[k] = v;
+          }
         }
-        request.write(encoded);
+        encodedBody = qsLib ? qsLib.stringify(normalized, { arrayFormat: 'repeat', encode: true }) : new URLSearchParams(normalized).toString();
       }
 
-      // Handle redirect event — Electron fires this INSTEAD of a 302 response
-      // when redirect:'manual' is set.
-      request.on('redirect', (statusCode, _method, redirectUrl) => {
-        if (settled) return;
-        const redirPath = (redirectUrl || '').replace(/^https?:\/\/[^/]+/, '');
-        console.log(`[Sync] _replay redirect: status=${statusCode} -> ${redirPath}`);
+      const hashAuth = this._getAutoLoginHash();
+      console.log(`[Sync Replay] -> [SEND] ${op.method || 'POST'} ${op.url}`, op.body ? `[payload keys: ${Object.keys(op.body).join(', ')}]` : '');
 
-        // Auth bounce: redirect to / or /login
-        if (redirPath === '/' || redirPath === '/login' || redirPath.startsWith('/?') || redirPath.startsWith('/login?')) {
-          settled = true;
-          reject(new Error(`Auth redirect to ${redirPath} — session not valid (status ${statusCode})`));
-          return;
+      if (elNet && elSession) {
+        let settled = false;
+        const request = elNet.request({
+          method: op.method || 'POST',
+          url: op.url,
+          session: elSession.fromPartition('persist:lis'),
+          redirect: 'manual',
+        });
+        if (hashAuth) {
+          request.setHeader('X-LIS-Sync-Email', hashAuth.email);
+          request.setHeader('X-LIS-Sync-Hash', hashAuth.hash);
         }
-
-        // Any other redirect = server processed the form successfully
-        settled = true;
-        console.log(`[Sync] _replay server processed form -> ${redirPath} — success`);
-        resolve({ status: statusCode, redirectTo: redirectUrl });
-      });
-
-      request.on('response', (response) => {
-        let responseBody = '';
-        response.on('data', (chunk) => { responseBody += chunk.toString(); });
-        response.on('end', () => {
+        request.setHeader('X-LIS-Sync-Replay', '1');
+        request.setHeader('Accept', 'application/json');
+        if (encodedBody) {
+          request.setHeader('Content-Type', 'application/x-www-form-urlencoded');
+          request.write(encodedBody);
+        }
+        request.on('redirect', (statusCode, _method, redirectUrl) => {
+          if (settled) return;
+          const redirPath = (redirectUrl || '').replace(/^https?:\/\/[^/]+/, '');
+          console.log(`[Sync Replay] -> REDIRECT (HTTP ${statusCode}) -> ${redirectUrl}`);
+          if (redirectUrl.includes('127.0.0.1') || redirectUrl.includes('localhost')) {
+            settled = true;
+            reject(new Error(`Replay request was redirected locally (${redirectUrl}) - interceptor loop prevented`));
+            return;
+          }
+          if (redirPath === '/' || redirPath === '/login' || redirPath.startsWith('/?') || redirPath.startsWith('/login?') || redirPath.startsWith('/login')) {
+            settled = true;
+            reject(new Error(`Auth redirect to ${redirPath} - session not valid (status ${statusCode})`));
+            return;
+          }
+          settled = true;
+          resolve({ status: statusCode, redirectTo: redirectUrl });
+        });
+        request.on('response', (res) => {
+          let responseBody = '';
+          res.on('data', (chunk) => { responseBody += chunk.toString(); });
+          res.on('end', () => {
+            if (settled) return;
+            settled = true;
+            console.log(`[Sync Replay] <- [RESP] (HTTP ${res.statusCode}) from ${op.url} | Body: ${responseBody.slice(0, 180)}`);
+            if (res.statusCode >= 200 && res.statusCode < 400) {
+              let json = null;
+              try { json = JSON.parse(responseBody); } catch (_) {}
+              resolve({ status: res.statusCode, body: json || responseBody });
+            } else {
+              reject(new Error(`Server returned HTTP ${res.statusCode}: ${responseBody.slice(0, 120)}`));
+            }
+          });
+        });
+        request.on('error', (err) => {
           if (settled) return;
           settled = true;
-          const status = response.statusCode;
-          console.log(`[Sync] _replay response: status=${status} bodyLen=${responseBody.length}`);
+          console.error(`[Sync Replay] [ERROR] sending ${op.method} ${op.url}:`, err && err.message);
+          reject(err);
+        });
+        request.end();
+        return;
+      }
+
+      // Node standard HTTP/HTTPS fallback
+      const parsed = new URL(op.url);
+      const isHttps = parsed.protocol === 'https:';
+      const client = isHttps ? require('https') : require('http');
+      const headers = {
+        'Accept': 'application/json',
+        'X-LIS-Sync-Replay': '1'
+      };
+      if (this._sessionCookie) {
+        headers['Cookie'] = this._sessionCookie;
+      }
+      if (hashAuth) {
+        headers['X-LIS-Sync-Email'] = hashAuth.email;
+        headers['X-LIS-Sync-Hash'] = hashAuth.hash;
+      }
+      if (encodedBody) {
+        headers['Content-Type'] = 'application/x-www-form-urlencoded';
+        headers['Content-Length'] = Buffer.byteLength(encodedBody);
+      }
+      let settled = false;
+      const req = client.request({
+        hostname: parsed.hostname,
+        port: parsed.port || (isHttps ? 443 : 80),
+        path: parsed.pathname + (parsed.search || ''),
+        method: op.method || 'POST',
+        headers,
+        timeout: 10000
+      }, (res) => {
+        let responseBody = '';
+        res.on('data', chunk => { responseBody += chunk.toString(); });
+        res.on('end', () => {
+          if (settled) return;
+          settled = true;
+          const status = res.statusCode;
+          console.log(`[Sync Replay] <- [RESP] (HTTP ${status}) from ${op.url} | Body: ${responseBody.slice(0, 180)}`);
           if (status >= 200 && status < 300) {
-            resolve({ status, body: responseBody });
+            let json = null;
+            try { json = JSON.parse(responseBody); } catch (_) {}
+            resolve({ status, body: json || responseBody });
             return;
           }
 
-          // Handle 3xx as success fallback
+          // Handle 3xx as success fallback ONLY if not redirecting to login/root auth challenge
           if (status >= 300 && status < 400) {
-            resolve({ status, body: responseBody });
+            const loc = (res.headers && res.headers.location) || '';
+            const redirPath = loc.replace(/^https?:\/\/[^/]+/, '');
+            console.log(`[Sync Replay] -> REDIRECT (HTTP ${status}) -> ${loc}`);
+            if (redirPath === '/' || redirPath === '/login' || redirPath.startsWith('/?') || redirPath.startsWith('/login?') || redirPath.startsWith('/login')) {
+              reject(new Error(`Auth redirect to ${redirPath} - session not valid (status ${status})`));
+              return;
+            }
+            let json = null;
+            try { json = JSON.parse(responseBody); } catch (_) {}
+            resolve({ status, body: json || responseBody, redirectTo: loc });
             return;
           }
 
@@ -466,30 +666,18 @@ class SyncEngine {
             }
           } catch (e) {}
 
-          // Heuristic: some result-entry forms POST to /tests/:id but server expects /tests/:id/results
-          try {
-            if (status === 404 && op && op.url && /\/tests\/[0-9a-fA-F-]{8,36}$/.test(op.url) && op.body && (op.body.esr_value || op.body.result || op.body.specimen || op.body.esr)) {
-              const altUrl = op.url.replace(/\/$/, '') + '/results';
-              console.log('[Sync] 404 when posting results — attempting fallback to', altUrl);
-              // Try alternate endpoint once
-              const tryAlt = Object.assign({}, op, { url: altUrl });
-              // perform a lightweight attempt using same request encoding
-              this._replay(net, tryAlt).then(r => resolve(r)).catch(err => reject(new Error(`Server returned ${status}: ${responseBody.slice(0,200)}; fallback failed: ${err && err.message}`)));
-              return;
-            }
-          } catch (e) {}
-
           reject(new Error(`Server returned ${status}: ${responseBody.slice(0, 200)}`));
         });
       });
 
-      request.on('error', (err) => {
+      req.on('error', (err) => {
         if (settled) return;
         settled = true;
         reject(err);
       });
 
-      request.end();
+      if (encodedBody) req.write(encodedBody);
+      req.end();
     });
   }
 
@@ -622,6 +810,8 @@ class SyncEngine {
       const body = op.body || {};
       const opTs = op.createdAt ? (new Date(op.createdAt)).getTime() : null;
 
+      if (body.id) return body.id;
+
       if (collection === 'patients') {
         // Prefer exact unique matches (patientId, patientCode, phone, email)
         if (body.patientId) {
@@ -693,6 +883,225 @@ class SyncEngine {
     }
     return null;
   }
+
+  /**
+   * Schedule a debounced background fullSync when remote events are received.
+   */
+  scheduleAutoFullSync(webContents, delay = 1200) {
+    try {
+      if (this._autoFullSyncTimer) clearTimeout(this._autoFullSyncTimer);
+      this._autoFullSyncTimer = setTimeout(async () => {
+        try {
+          if (this._syncing) return;
+          console.log('[SyncBridge] Triggering background fullSync on remote event...');
+          await this.fullSync(webContents);
+        } catch (err) {
+          console.warn('[SyncBridge] Background fullSync failed:', err && err.message);
+        }
+      }, delay);
+    } catch (e) {}
+  }
+
+  /**
+   * Start Live SSE Bridge connecting to the central LIS server.
+   * Forwards all real-time events to local windows and triggers background data sync.
+   */
+  startLiveEventBridge(onEventCallback, webContents) {
+    this.stopLiveEventBridge();
+    if (!this.config || !this.config.SERVER_URL) return;
+
+    const base = this.config.SERVER_URL.replace(/\/$/, '');
+    // Append ?kiosk=1 to establish connection without requiring interactive session cookie
+    const sseUrl = `${base}/reception/assigned-events?kiosk=1`;
+    this._bridgeActive = true;
+
+    let electron = null;
+    try { electron = require('electron'); } catch (_) {}
+    const net = (electron && electron.net) ? electron.net : null;
+    const session = (electron && electron.session) ? electron.session : null;
+
+    const connectStream = async () => {
+      if (!this._bridgeActive) return;
+      try {
+        if (net && session) {
+          const sess = session.fromPartition('persist:lis');
+          const req = net.request({
+            method: 'GET',
+            url: sseUrl,
+            session: sess,
+            useSessionCookies: true,
+          });
+
+          req.setHeader('Accept', 'text/event-stream');
+          req.setHeader('Cache-Control', 'no-cache');
+          req.setHeader('Connection', 'keep-alive');
+
+          const authCreds = this._getAutoLoginHash();
+          if (authCreds) {
+            req.setHeader('X-Auto-Login-Email', authCreds.email);
+            req.setHeader('X-Auto-Login-Hash', authCreds.hash);
+          }
+
+          req.on('response', (res) => {
+            if (res.statusCode === 302 || res.statusCode === 401) {
+              this._ensureServerAuth().catch(() => {});
+              this._scheduleBridgeReconnect(connectStream, 8000);
+              return;
+            }
+
+            if (res.statusCode !== 200) {
+              this._scheduleBridgeReconnect(connectStream, 10000);
+              return;
+            }
+
+            console.log('[SyncBridge] Connected to live server SSE stream:', sseUrl);
+            this._bridgeConnected = true;
+
+            let buffer = '';
+            res.on('data', (chunk) => {
+              buffer += chunk.toString('utf8');
+              const lines = buffer.split('\n\n');
+              buffer = lines.pop() || '';
+
+              for (const block of lines) {
+                const dataLine = block.split('\n').find(l => l.startsWith('data:'));
+                if (!dataLine) continue;
+                const rawData = dataLine.slice(5).trim();
+                if (!rawData) continue;
+
+                try {
+                  const eventData = JSON.parse(rawData);
+                  if (eventData && !eventData.init && !eventData.offline && eventData.type !== 'ping' && !eventData.keepalive) {
+                    console.log('[SyncBridge] Live server event received:', eventData.action || eventData.type || 'event');
+                    
+                    // 1. Immediately fetch latest server snapshot so local DB is in sync
+                    this.fullSync(webContents).then(() => {
+                      // 2. Forward event to local UI / renderer windows after data is stored
+                      if (typeof onEventCallback === 'function') {
+                        try { onEventCallback(eventData); } catch (e) {}
+                        try { onEventCallback({ action: 'live_sync_completed', timestamp: Date.now() }); } catch (e) {}
+                      }
+                    }).catch(() => {
+                      if (typeof onEventCallback === 'function') {
+                        try { onEventCallback(eventData); } catch (e) {}
+                      }
+                    });
+                  }
+                } catch (parseErr) {}
+              }
+            });
+
+            res.on('end', () => {
+              this._bridgeConnected = false;
+              this._scheduleBridgeReconnect(connectStream, 5000);
+            });
+
+            res.on('error', () => {
+              this._bridgeConnected = false;
+              this._scheduleBridgeReconnect(connectStream, 6000);
+            });
+          });
+
+          req.on('error', () => {
+            this._bridgeConnected = false;
+            this._scheduleBridgeReconnect(connectStream, 8000);
+          });
+
+          this._currentBridgeReq = req;
+          req.end();
+        } else {
+          // Node fallback (e.g. tests)
+          const parsed = new URL(sseUrl);
+          const isHttps = parsed.protocol === 'https:';
+          const client = isHttps ? require('https') : require('http');
+
+          const req = client.request({
+            hostname: parsed.hostname,
+            port: parsed.port || (isHttps ? 443 : 80),
+            path: parsed.pathname + (parsed.search || ''),
+            method: 'GET',
+            headers: {
+              'Accept': 'text/event-stream',
+              'Cache-Control': 'no-cache',
+              'Connection': 'keep-alive'
+            },
+            timeout: 0
+          }, (res) => {
+            if (res.statusCode !== 200) {
+              res.resume();
+              this._scheduleBridgeReconnect(connectStream, 10000);
+              return;
+            }
+            this._bridgeConnected = true;
+            let buffer = '';
+            res.on('data', (chunk) => {
+              buffer += chunk.toString('utf8');
+              const lines = buffer.split('\n\n');
+              buffer = lines.pop() || '';
+              for (const block of lines) {
+                const dataLine = block.split('\n').find(l => l.startsWith('data:'));
+                if (!dataLine) continue;
+                const rawData = dataLine.slice(5).trim();
+                if (!rawData) continue;
+                try {
+                  const eventData = JSON.parse(rawData);
+                  if (eventData && !eventData.init && !eventData.offline && eventData.type !== 'ping' && !eventData.keepalive) {
+                    this.fullSync(webContents).finally(() => {
+                      if (typeof onEventCallback === 'function') {
+                        try { onEventCallback(eventData); } catch (e) {}
+                      }
+                    });
+                  }
+                } catch (e) {}
+              }
+            });
+            res.on('end', () => { this._bridgeConnected = false; this._scheduleBridgeReconnect(connectStream, 5000); });
+            res.on('error', () => { this._bridgeConnected = false; this._scheduleBridgeReconnect(connectStream, 6000); });
+          });
+          req.on('error', () => { this._bridgeConnected = false; this._scheduleBridgeReconnect(connectStream, 8000); });
+          this._currentBridgeReq = req;
+          req.end();
+        }
+      } catch (err) {
+        this._scheduleBridgeReconnect(connectStream, 8000);
+      }
+    };
+
+    connectStream();
+  }
+
+  _scheduleBridgeReconnect(fn, delay) {
+    if (!this._bridgeActive) return;
+    if (this._bridgeReconnectTimer) clearTimeout(this._bridgeReconnectTimer);
+    this._bridgeReconnectTimer = setTimeout(() => {
+      if (this._bridgeActive) fn();
+    }, delay);
+  }
+
+  /**
+   * Stop the Live SSE Bridge.
+   */
+  stopLiveEventBridge() {
+    this._bridgeActive = false;
+    this._bridgeConnected = false;
+    if (this._bridgeReconnectTimer) {
+      clearTimeout(this._bridgeReconnectTimer);
+      this._bridgeReconnectTimer = null;
+    }
+    if (this._autoFullSyncTimer) {
+      clearTimeout(this._autoFullSyncTimer);
+      this._autoFullSyncTimer = null;
+    }
+    if (this._currentBridgeReq) {
+      try {
+        if (typeof this._currentBridgeReq.abort === 'function') this._currentBridgeReq.abort();
+        else if (typeof this._currentBridgeReq.destroy === 'function') this._currentBridgeReq.destroy();
+      } catch (e) {}
+      this._currentBridgeReq = null;
+    }
+  }
 }
 
 module.exports = { SyncEngine };
+
+

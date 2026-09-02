@@ -20,3 +20,19 @@ lis-fullstack/dist
 lis-fullstack/logs
 
 lis-angular/backend/assets
+
+# Test directories and temporary test artifacts
+/test/tmp-*
+*.test.db
+*.test.db-journal
+*.test.db-wal
+*.test.db-shm
+test-results/
+lis-app-standalone/test-tmp/
+lis-app-standalone/tests/
+lis-app-standalone/test-offline-*.js
+test/tmp/
+tmp-e2e-offline/
+lis-fullstack/lis-data.db-shm
+lis-fullstack/lis-data.db-wal
+lis-fullstack/lis-data.db

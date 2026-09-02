@@ -115,8 +115,9 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
     // Fallback: prefer reading the file-based DB `data.json` directly when available
     try {
       const testsCountByPatient = {};
-      // try file DB first
-      const dbPath = pathMod.join(__dirname, '..', 'data.json');
+      // try file DB first (handle packaged path)
+      const { dataFile } = require('../lib/dataPath');
+      const dbPath = dataFile('data.json');
       let fileTests = null;
       try {
         const raw = fs.readFileSync(dbPath, 'utf8');
@@ -140,7 +141,6 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
         const plain = (p && typeof p.toJSON === 'function') ? p.toJSON() : p;
         return Object.assign({}, plain, { hasTests: !!testsCountByPatient[String(plain.id)] });
       });
-      console.log('DEBUG patients hasTests map:', testsCountByPatient);
     } catch (e) {
       console.warn('Failed to compute patient test flags:', e);
     }
@@ -359,6 +359,7 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
     }
 
     const patient = new Patient({
+      id: req.body.id || req.body._id || undefined,
       patientId,
       patientCode,
       firstName,
@@ -378,7 +379,7 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       // preserve selected tests for extraction/medtech visibility (detailed objects)
       requestedTests: requestedTestsDetailed,
       client_id: (req.body && req.body.client_id) ? req.body.client_id : undefined,
-      createdBy: req.session.user.id
+      createdBy: (req.session && req.session.user && req.session.user.id) ? req.session.user.id : 'admin'
     });
 
     await patient.save();
@@ -391,6 +392,15 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
 
     // Patient saved — tests will be assigned from patient management. Printing is manual.
     req.flash('success_msg', `Patient ${firstName} ${middleName ? middleName + ' ' : ''}${lastName} added successfully!`);
+
+    // If this request came from the standalone sync engine or explicit JSON API client,
+    // return JSON including the created id and client_id so the client can map records deterministically.
+    const isSyncClient = !!(req.headers['x-lis-sync-email'] || req.headers['x-lis-sync-hash'] || req.headers['x-lis-sync-replay']);
+    const isExplicitJson = req.xhr || (req.headers['accept'] && req.headers['accept'].includes('application/json') && !req.headers['accept'].includes('text/html'));
+    if (isSyncClient || isExplicitJson) {
+      return res.json({ success: true, id: patient.id, client_id: patient.client_id || (req.body && req.body.client_id) || null, patientCode: patient.patientCode, patientId: patient.patientId });
+    }
+
     // Stay on the new patient form so users can continue adding patients
     res.redirect('/patients/new');
 
@@ -409,42 +419,43 @@ router.post('/thermal-print', requireAuth, canAccessPatient, (req, res) => {
   try {
     const { spawnSync } = require('child_process');
     const pathMod = require('path');
+    const fsMod = require('fs');
     const scriptPath = pathMod.join(__dirname, '..', 'scripts', 'thermal_test.js');
+    if (!fsMod.existsSync(scriptPath)) {
+      return res.status(404).json({ success: false, error: 'thermal_test.js not found' });
+    }
 
     // Build args: call Node with the script and --receipt
     const args = [scriptPath, '--receipt'];
     if (req.body && req.body.printer) args.push('--printer', req.body.printer);
 
-    const proc = spawnSync(process.execPath, args, { cwd: pathMod.join(__dirname, '..'), encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 });
+    const spawnEnv = Object.assign({}, process.env, { ELECTRON_RUN_AS_NODE: '1' });
+    const proc = spawnSync(process.execPath, args, { cwd: pathMod.join(__dirname, '..'), encoding: 'utf8', maxBuffer: 10 * 1024 * 1024, env: spawnEnv });
     // append log
     try {
       const entry = {
         action: 'thermal_test_manual',
         user: req.session && req.session.user ? req.session.user.id : null,
         args: args,
-        exitCode: proc.status != null ? proc.status : null,
-        error: proc.error ? String(proc.error) : null,
-        stdout: proc.stdout || null,
-        stderr: proc.stderr || null,
-        timestamp: new Date().toISOString()
+        exitCode: proc.status,
+        stdout: (proc.stdout || '').toString(),
+        stderr: (proc.stderr || '').toString(),
+        time: new Date().toISOString()
       };
-      appendPrintLog(JSON.stringify(entry));
-    } catch (logErr) {
-      console.error('Failed to append print log:', logErr);
+      const logFile = pathMod.join(__dirname, '..', 'thermal_test.log');
+      fsMod.appendFileSync(logFile, JSON.stringify(entry) + '\n');
+    } catch (e) {
+      console.warn('Failed to append thermal test log', e);
     }
 
-    if (proc.error) {
-      console.error('Thermal print spawn error:', proc.error);
-      return res.status(500).json({ success: false, error: String(proc.error) });
+    if (proc.status === 0) {
+      return res.json({ success: true, message: 'Print job sent successfully', stdout: (proc.stdout || '').toString() });
+    } else {
+      return res.status(500).json({ success: false, error: 'Print test failed', stderr: (proc.stderr || '').toString(), stdout: (proc.stdout || '').toString() });
     }
-    if (proc.status !== 0) {
-      console.error('Thermal print failed:', proc.stderr || proc.stdout || proc.status);
-      return res.status(500).json({ success: false, error: proc.stderr || proc.stdout || ('Exit code: ' + proc.status) });
-    }
-    return res.json({ success: true, output: proc.stdout });
-  } catch (e) {
-    console.error('Thermal print handler error:', e);
-    return res.status(500).json({ success: false, error: String(e) });
+  } catch (err) {
+    console.error('Thermal test error:', err);
+    return res.status(500).json({ success: false, error: String(err && err.message ? err.message : err) });
   }
 });
 
@@ -582,22 +593,37 @@ router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
 // DELETE /patients/:id - Delete patient
 router.delete('/:id', requireAuth, canAccessPatient, async (req, res) => {
   try {
-    // Check if patient has any tests
     const Test = require('../models/Test');
-    const testCount = await Test.countDocuments({ patient: req.params.id });
+    const targetId = req.params.id;
 
-    if (testCount > 0) {
-      req.flash('error_msg', 'Cannot delete patient with existing test records');
-      return res.redirect('/patients');
+    // Resolve patient by any identifier (id, _id, patientId, patientCode)
+    let patient = await Patient.findById(targetId);
+    if (!patient) patient = await Patient.findOne({ patientId: targetId });
+    if (!patient) patient = await Patient.findOne({ patientCode: targetId });
+    if (!patient) patient = await Patient.findOne({ id: targetId });
+
+    const allTests = await Test.find();
+    if (patient) {
+      const patientTests = allTests.filter(t => t && (
+        t.patient === patient.id || 
+        t.patient === patient._id || 
+        t.patient === patient.patientId || 
+        t.patient === patient.patientCode ||
+        t.patient === targetId
+      ));
+      for (const t of patientTests) {
+        await Test.findByIdAndDelete(t.id);
+      }
+      await Patient.findByIdAndDelete(patient.id);
+    } else {
+      const patientTests = allTests.filter(t => t && t.patient === targetId);
+      for (const t of patientTests) {
+        await Test.findByIdAndDelete(t.id);
+      }
+      await Patient.findByIdAndDelete(targetId);
     }
 
-    const patient = await Patient.findByIdAndDelete(req.params.id);
-    if (!patient) {
-      req.flash('error_msg', 'Patient not found');
-      return res.redirect('/patients');
-    }
-
-    req.flash('success_msg', 'Patient deleted successfully');
+    req.flash('success_msg', 'Patient and associated tests deleted successfully');
     res.redirect('/patients');
 
   } catch (error) {

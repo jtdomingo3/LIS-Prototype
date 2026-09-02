@@ -245,6 +245,36 @@
     font-size: 0.85rem;
   }
 
+  /* Releasing of Result Batch Grid */
+  .next-list,
+  .releasing-batch-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+    width: 100%;
+    margin: 2px 0 0 0;
+  }
+  .next-item,
+  .releasing-batch-item {
+    background: #f8fafc;
+    color: #0f172a;
+    padding: 5px 8px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    text-align: center;
+    border: 1px solid #e2e8f0;
+    font-variant-numeric: tabular-nums;
+    font-family: inherit;
+  }
+  .releasing-batch-empty {
+    grid-column: 1 / -1;
+    color: #cbd5e1;
+    font-size: 1.8rem;
+    text-align: center;
+    padding: 10px 0;
+  }
+
   /* Ensure content doesn't hide behind fixed footer */
   .kiosk-container {
     padding-bottom: 80px;
@@ -274,22 +304,35 @@
       <% const safeId = area.replace(/[^a-z0-9]/gi, '_'); %>
       <% const patients = assignments[area] || []; %>
       <% const hasPatients = patients.length > 0; %>
+      <% const isReleasing = String(area).toLowerCase().includes('releas'); %>
       <div class="area-card <%= hasPatients ? 'has-patients' : '' %>" id="card-<%= safeId %>" data-area="<%= area %>">
         <div class="area-header">
           <h3 class="area-name"><%= area %></h3>
           <span class="area-count <%= hasPatients ? 'active' : '' %>" id="count-<%= safeId %>"><%= patients.length %></span>
         </div>
         <div class="patient-display">
-          <div class="patient-label">Now Serving</div>
-          <div class="patient-number <%= !hasPatients ? 'empty' : '' %>" id="patient-<%= safeId %>">
-            <%= hasPatients ? (patients[0].patientCode ? patients[0].patientCode.split('-').pop() : patients[0].patientCode) : '—' %>
-          </div>
-          <% if (patients.length > 1) { %>
-          <div class="next-patient" id="next-<%= safeId %>">
-            Next: <strong><%= patients[1].patientCode ? patients[1].patientCode.split('-').pop() : patients[1].patientCode %></strong>
-          </div>
+          <% if (isReleasing) { %>
+            <div class="releasing-batch-list" id="releasinglist-<%= safeId %>">
+              <% if (hasPatients) { %>
+                <% for (let i = 0; i < Math.min(patients.length, 26); i++) { %>
+                  <div class="releasing-batch-item"><%= patients[i].patientCode ? patients[i].patientCode.split('-').pop() : (patients[i].testId || '—') %></div>
+                <% } %>
+              <% } else { %>
+                <div class="releasing-batch-empty">—</div>
+              <% } %>
+            </div>
           <% } else { %>
-          <div class="next-patient" id="next-<%= safeId %>" style="display:none;"></div>
+            <div class="patient-label">Now Serving</div>
+            <div class="patient-number <%= !hasPatients ? 'empty' : '' %>" id="patient-<%= safeId %>">
+              <%= hasPatients ? (patients[0].patientCode ? patients[0].patientCode.split('-').pop() : patients[0].patientCode) : '—' %>
+            </div>
+            <% if (patients.length > 1) { %>
+            <div class="next-patient" id="next-<%= safeId %>">
+              Next: <strong><%= patients[1].patientCode ? patients[1].patientCode.split('-').pop() : patients[1].patientCode %></strong>
+            </div>
+            <% } else { %>
+            <div class="next-patient" id="next-<%= safeId %>" style="display:none;"></div>
+            <% } %>
           <% } %>
         </div>
       </div>
@@ -457,6 +500,7 @@
       const safeId = area.replace(/[^a-z0-9]/gi, '_');
       const patients = data.assignments[area] || [];
       const hasPatients = patients.length > 0;
+      const isReleasing = String(area).toLowerCase().includes('releas');
 
       // Update count badge
       const countEl = document.getElementById('count-' + safeId);
@@ -465,28 +509,49 @@
         countEl.className = 'area-count' + (hasPatients ? ' active' : '');
       }
 
-      // Update patient number
-      const patientEl = document.getElementById('patient-' + safeId);
-      if (patientEl) {
-        if (hasPatients) {
-          const code = patients[0].patientCode || '';
-          patientEl.textContent = code.includes('-') ? code.split('-').pop() : code;
-          patientEl.className = 'patient-number';
-        } else {
-          patientEl.textContent = '—';
-          patientEl.className = 'patient-number empty';
+      if (isReleasing) {
+        // Batch display for Releasing of Result
+        const releasingListEl = document.getElementById('releasinglist-' + safeId);
+        if (releasingListEl) {
+          if (hasPatients) {
+            releasingListEl.innerHTML = '';
+            const entries = patients.slice(0, 26);
+            entries.forEach(p => {
+              const code = p.patientCode || '';
+              const short = code.includes('-') ? code.split('-').pop() : (p.testId || '—');
+              const div = document.createElement('div');
+              div.className = 'releasing-batch-item';
+              div.textContent = short;
+              releasingListEl.appendChild(div);
+            });
+          } else {
+            releasingListEl.innerHTML = '<div class="releasing-batch-empty">—</div>';
+          }
         }
-      }
+      } else {
+        // Update patient number
+        const patientEl = document.getElementById('patient-' + safeId);
+        if (patientEl) {
+          if (hasPatients) {
+            const code = patients[0].patientCode || '';
+            patientEl.textContent = code.includes('-') ? code.split('-').pop() : code;
+            patientEl.className = 'patient-number';
+          } else {
+            patientEl.textContent = '—';
+            patientEl.className = 'patient-number empty';
+          }
+        }
 
-      // Update next patient
-      const nextEl = document.getElementById('next-' + safeId);
-      if (nextEl) {
-        if (patients.length > 1) {
-          const nextCode = patients[1].patientCode || '';
-          nextEl.innerHTML = 'Next: <strong>' + (nextCode.includes('-') ? nextCode.split('-').pop() : nextCode) + '</strong>';
-          nextEl.style.display = 'block';
-        } else {
-          nextEl.style.display = 'none';
+        // Update next patient
+        const nextEl = document.getElementById('next-' + safeId);
+        if (nextEl) {
+          if (patients.length > 1) {
+            const nextCode = patients[1].patientCode || '';
+            nextEl.innerHTML = 'Next: <strong>' + (nextCode.includes('-') ? nextCode.split('-').pop() : nextCode) + '</strong>';
+            nextEl.style.display = 'block';
+          } else {
+            nextEl.style.display = 'none';
+          }
         }
       }
 
@@ -552,9 +617,9 @@
         try {
           const payload = JSON.parse(event.data);
           
-          // Skip initial connection message for sound
-          if (payload.init) {
-            console.log('[Kiosk] Initial SSE handshake received');
+          // Skip initial connection and offline heartbeat messages
+          if (payload.init || payload.offline || payload.type === 'connected' || payload.keepalive) {
+            console.log('[Kiosk] SSE handshake/offline message ignored');
             return;
           }
 

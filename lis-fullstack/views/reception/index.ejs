@@ -14,7 +14,7 @@
         <i class="fa fa-archive"></i>
         <span>Stashed Results (<%= (typeof stashedCount !== 'undefined' ? stashedCount : (typeof stashedList !== 'undefined' && Array.isArray(stashedList) ? stashedList.length : 0)) %>)</span>
       </a>
-      <a href="/reception/assigned?kiosk=1" target="_blank" rel="noopener" class="button btn-secondary" style="padding: 10px 18px; border-radius: 10px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.04);">
+      <a href="/kiosk" target="_blank" rel="noopener" class="button btn-secondary no-guard" data-no-guard="1" style="padding: 10px 18px; border-radius: 10px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.04);">
         <i class="fa fa-desktop" style="color: #2563eb;"></i>
         <span>Open Kiosk Queue Display</span>
       </a>
@@ -74,22 +74,6 @@
       </div>
     <% }) %>
   </div>
-
-  <!-- Messages & Flash Alerts -->
-  <% const success = (typeof flash !== 'undefined' && flash && flash.success_msg) ? flash.success_msg : (typeof success_msg !== 'undefined' ? success_msg : null); %>
-  <% const error = (typeof flash !== 'undefined' && flash && flash.error_msg) ? flash.error_msg : (typeof error_msg !== 'undefined' ? error_msg : null); %>
-  <% if (success && success.length > 0) { %>
-    <div style="padding: 12px 16px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; margin-bottom: 20px; color: #15803d; font-weight: 600; display: flex; align-items: center; gap: 10px;">
-      <i class="fa fa-check-circle" style="font-size: 1.1em;"></i>
-      <span><%= success %></span>
-    </div>
-  <% } %>
-  <% if (error && error.length > 0) { %>
-    <div style="padding: 12px 16px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; margin-bottom: 20px; color: #b91c1c; font-weight: 600; display: flex; align-items: center; gap: 10px;">
-      <i class="fa fa-exclamation-triangle" style="font-size: 1.1em;"></i>
-      <span><%= error %></span>
-    </div>
-  <% } %>
 
 
 

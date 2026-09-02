@@ -141,7 +141,6 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
         const plain = (p && typeof p.toJSON === 'function') ? p.toJSON() : p;
         return Object.assign({}, plain, { hasTests: !!testsCountByPatient[String(plain.id)] });
       });
-      console.log('DEBUG patients hasTests map:', testsCountByPatient);
     } catch (e) {
       console.warn('Failed to compute patient test flags:', e);
     }
@@ -360,6 +359,7 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
     }
 
     const patient = new Patient({
+      id: req.body.id || req.body._id || undefined,
       patientId,
       patientCode,
       firstName,
@@ -393,10 +393,12 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
     // Patient saved — tests will be assigned from patient management. Printing is manual.
     req.flash('success_msg', `Patient ${firstName} ${middleName ? middleName + ' ' : ''}${lastName} added successfully!`);
 
-    // If this request came from the standalone sync engine (hash-based headers),
+    // If this request came from the standalone sync engine or explicit JSON API client,
     // return JSON including the created id and client_id so the client can map records deterministically.
-    if (req.headers['x-lis-sync-email'] || req.headers['x-lis-sync-hash']) {
-      return res.json({ success: true, id: patient.id, client_id: req.body && req.body.client_id ? req.body.client_id : null });
+    const isSyncClient = !!(req.headers['x-lis-sync-email'] || req.headers['x-lis-sync-hash'] || req.headers['x-lis-sync-replay']);
+    const isExplicitJson = req.xhr || (req.headers['accept'] && req.headers['accept'].includes('application/json') && !req.headers['accept'].includes('text/html'));
+    if (isSyncClient || isExplicitJson) {
+      return res.json({ success: true, id: patient.id, client_id: patient.client_id || (req.body && req.body.client_id) || null, patientCode: patient.patientCode, patientId: patient.patientId });
     }
 
     // Stay on the new patient form so users can continue adding patients
@@ -417,13 +419,18 @@ router.post('/thermal-print', requireAuth, canAccessPatient, (req, res) => {
   try {
     const { spawnSync } = require('child_process');
     const pathMod = require('path');
+    const fsMod = require('fs');
     const scriptPath = pathMod.join(__dirname, '..', 'scripts', 'thermal_test.js');
+    if (!fsMod.existsSync(scriptPath)) {
+      return res.status(404).json({ success: false, error: 'thermal_test.js not found' });
+    }
 
     // Build args: call Node with the script and --receipt
     const args = [scriptPath, '--receipt'];
     if (req.body && req.body.printer) args.push('--printer', req.body.printer);
 
-    const proc = spawnSync(process.execPath, args, { cwd: pathMod.join(__dirname, '..'), encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 });
+    const spawnEnv = Object.assign({}, process.env, { ELECTRON_RUN_AS_NODE: '1' });
+    const proc = spawnSync(process.execPath, args, { cwd: pathMod.join(__dirname, '..'), encoding: 'utf8', maxBuffer: 10 * 1024 * 1024, env: spawnEnv });
     // append log
     try {
       const entry = {
@@ -590,22 +597,28 @@ router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
 // DELETE /patients/:id - Delete patient
 router.delete('/:id', requireAuth, canAccessPatient, async (req, res) => {
   try {
-    // Check if patient has any tests
     const Test = require('../models/Test');
-    const testCount = await Test.countDocuments({ patient: req.params.id });
-
-    if (testCount > 0) {
-      req.flash('error_msg', 'Cannot delete patient with existing test records');
-      return res.redirect('/patients');
+    
+    // Cascade delete any tests belonging to this patient
+    const associatedTests = await Test.find({ patient: req.params.id });
+    if (Array.isArray(associatedTests)) {
+      for (const t of associatedTests) {
+        await Test.findByIdAndDelete(t.id);
+      }
     }
 
-    const patient = await Patient.findByIdAndDelete(req.params.id);
+    let patient = await Patient.findByIdAndDelete(req.params.id);
+    if (!patient) {
+      const pByCode = await Patient.findOne({ patientId: req.params.id });
+      if (pByCode) patient = await Patient.findByIdAndDelete(pByCode.id);
+    }
+
     if (!patient) {
       req.flash('error_msg', 'Patient not found');
       return res.redirect('/patients');
     }
 
-    req.flash('success_msg', 'Patient deleted successfully');
+    req.flash('success_msg', 'Patient and associated tests deleted successfully');
     res.redirect('/patients');
 
   } catch (error) {

@@ -1,93 +1,111 @@
 /**
- * offlineDb.js — A `global.db`-compatible shim backed by the DataStore.
+ * offlineDb.js — A `global.db`-compatible shim backed by SQLite / DataStore.
  *
  * The lis-fullstack server uses `global.db` with methods like:
  *   read(), getPatients(), getTests(), getUsers(), getTemplates(), getCounters(),
- *   savePatients(), saveTests(), saveUsers(), saveTemplates(), saveCounters()
+ *   savePatients(), saveTests(), saveUsers(), saveTemplates(), saveCounters(),
+ *   getPatientById(id), getTestById(id), getUserById(id), getUserByEmail(email).
  *
- * This module creates an object with the same API but reads/writes to the
- * DataStore (Documents/LIS/app_sync/data.json) so the exact same route files
- * can run offline inside the standalone Electron app.
+ * This module wraps the underlying SQLite adapter and DataStore so the exact
+ * same route files and models can run offline inside the standalone Electron app.
  */
 
 function createOfflineDb(dataStore) {
   if (!dataStore) throw new Error('offlineDb requires a DataStore instance');
 
+  // If dataStore has the underlying SQLite database adapter, proxy directly to it
+  const sqliteAdapter = dataStore.db;
+
   const db = {
-    /**
-     * read() — return the full data object (patients, tests, templates, counters).
-     * The real server reads from data.json; we read from DataStore's in-memory cache.
-     */
+    _engine: sqliteAdapter ? sqliteAdapter._engine : 'sqlite-datastore',
+    _dataStore: dataStore,
+
     read() {
-      const all = dataStore.getAll();
-      return {
-        patients: Array.isArray(all.patients) ? all.patients : [],
-        tests: Array.isArray(all.tests) ? all.tests : [],
-        templates: Array.isArray(all.templates) ? all.templates : [],
-        counters: all.counters || {},
-      };
+      if (sqliteAdapter && typeof sqliteAdapter.read === 'function') {
+        return sqliteAdapter.read();
+      }
+      return dataStore.getAll();
     },
 
-    /** write(data) — persist the full data blob (minus users, which are separate). */
     write(data) {
-      if (data.patients) dataStore.setCollection('patients', data.patients);
-      if (data.tests) dataStore.setCollection('tests', data.tests);
-      if (data.templates) dataStore.setCollection('templates', data.templates);
-      if (data.counters != null) {
-        dataStore._data.counters = data.counters;
-        dataStore._save();
+      if (sqliteAdapter && typeof sqliteAdapter.write === 'function') {
+        sqliteAdapter.write(data);
+      } else {
+        if (data.patients) dataStore.setCollection('patients', data.patients);
+        if (data.tests) dataStore.setCollection('tests', data.tests);
+        if (data.templates) dataStore.setCollection('templates', data.templates);
+        if (data.users) dataStore.setCollection('users', data.users);
+        if (data.counters != null) dataStore.setCollection('counters', data.counters);
       }
     },
 
     /* ── Collection getters ─────────────────────────────────────── */
-    getPatients()  { return dataStore.getCollection('patients'); },
-    getTests()     { return dataStore.getCollection('tests'); },
-    getTemplates() { return dataStore.getCollection('templates'); },
-    getCounters()  { return dataStore._data.counters || {}; },
+    getPatients()  { return sqliteAdapter ? sqliteAdapter.getPatients() : dataStore.getCollection('patients'); },
+    getPatientById(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.getPatientById === 'function') {
+        return sqliteAdapter.getPatientById(id);
+      }
+      const list = dataStore.getCollection('patients') || [];
+      return list.find(p => p && (p.id === id || p._id === id || p.patientId === id)) || null;
+    },
 
-    /**
-     * getUsers() — return user accounts including hashed passwords.
-     * The export endpoint now sends passwords so offline auth can work.
-     */
-    getUsers() { return dataStore.getCollection('users'); },
+    getTests()     { return sqliteAdapter ? sqliteAdapter.getTests() : dataStore.getCollection('tests'); },
+    getTestById(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.getTestById === 'function') {
+        return sqliteAdapter.getTestById(id);
+      }
+      const list = dataStore.getCollection('tests') || [];
+      return list.find(t => t && (t.id === id || t._id === id || t.testId === id)) || null;
+    },
+
+    getTemplates() { return sqliteAdapter ? sqliteAdapter.getTemplates() : dataStore.getCollection('templates'); },
+    getCounters()  { return sqliteAdapter ? sqliteAdapter.getCounters() : dataStore.getCollection('counters'); },
+
+    getUsers()     { return sqliteAdapter ? sqliteAdapter.getUsers() : dataStore.getCollection('users'); },
+    getUserById(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.getUserById === 'function') {
+        return sqliteAdapter.getUserById(id);
+      }
+      const list = dataStore.getCollection('users') || [];
+      return list.find(u => u && (u.id === id || u._id === id)) || null;
+    },
+    getUserByEmail(email) {
+      if (sqliteAdapter && typeof sqliteAdapter.getUserByEmail === 'function') {
+        return sqliteAdapter.getUserByEmail(email);
+      }
+      if (!email) return null;
+      const list = dataStore.getCollection('users') || [];
+      return list.find(u => u && u.email && u.email.toLowerCase() === String(email).toLowerCase()) || null;
+    },
 
     /* ── Collection savers ──────────────────────────────────────── */
-    savePatients(patients)   { dataStore.setCollection('patients', patients); },
-    saveTemplates(templates) { dataStore.setCollection('templates', templates); },
-    saveCounters(counters)   {
-      dataStore._data.counters = counters;
-      dataStore._save();
+    savePatients(patients)   {
+      if (sqliteAdapter) sqliteAdapter.savePatients(patients);
+      else dataStore.setCollection('patients', patients);
     },
-    saveUsers(users) { dataStore.setCollection('users', users); },
-
-    /**
-     * saveTests — merge-aware save (mirrors server logic):
-     * keeps the newer version when the same test ID exists on disk and in
-     * the incoming payload.
-     */
     saveTests(tests) {
-      try {
-        const existing = dataStore.getCollection('tests');
-        const mergedMap = new Map();
-        for (const t of existing) {
-          if (t && t.id) mergedMap.set(t.id, t);
-        }
-        for (const t of (Array.isArray(tests) ? tests : [])) {
-          if (!t || !t.id) continue;
-          const cur = mergedMap.get(t.id);
-          const curTs = cur && cur.updatedAt ? Date.parse(cur.updatedAt) : 0;
-          const incomingTs = t.updatedAt ? Date.parse(t.updatedAt) : 0;
-          if (!cur || incomingTs >= curTs) {
-            mergedMap.set(t.id, t);
-          }
-        }
-        const merged = Array.from(mergedMap.values());
-        dataStore.setCollection('tests', merged);
-      } catch (e) {
-        console.error('[offlineDb] saveTests failed:', e && e.message);
-        dataStore.setCollection('tests', tests);
-      }
+      if (sqliteAdapter) sqliteAdapter.saveTests(tests);
+      else dataStore.setCollection('tests', tests);
     },
+    saveTemplates(templates) {
+      if (sqliteAdapter) sqliteAdapter.saveTemplates(templates);
+      else dataStore.setCollection('templates', templates);
+    },
+    saveCounters(counters)   {
+      if (sqliteAdapter) sqliteAdapter.saveCounters(counters);
+      else dataStore.setCollection('counters', counters);
+    },
+    saveUsers(users) {
+      if (sqliteAdapter) sqliteAdapter.saveUsers(users);
+      else dataStore.setCollection('users', users);
+    },
+
+    getMeta(key) {
+      return dataStore.getMeta(key);
+    },
+    setMeta(key, val) {
+      dataStore.setMeta(key, val);
+    }
   };
 
   return db;

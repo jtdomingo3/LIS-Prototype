@@ -148,19 +148,37 @@ async function printPatientReceipt(patient, testOrTests) {
     fs.writeFileSync(specPath, JSON.stringify(spec), { encoding: 'utf8' });
 
     const scriptPath = path.join(__dirname, '..', 'scripts', 'thermal_test.js');
+    if (!fs.existsSync(scriptPath)) {
+      console.warn('[printHelper] thermal_test.js not found at', scriptPath);
+      return { success: false, reason: 'script-not-found' };
+    }
     const args = [scriptPath, '--json', specPath];
-    const ENV_PRINTER = process.env.PRINTER_NAME || process.env.PRINTER || null;
+    let ENV_PRINTER = process.env.PRINTER_NAME || process.env.PRINTER || null;
+    if (!ENV_PRINTER) {
+      try {
+        const userDataPath = (typeof process.env.APPDATA !== 'undefined') ? path.join(process.env.APPDATA, 'lis-app-standalone') : null;
+        if (userDataPath) {
+          const settingsPath = path.join(userDataPath, 'settings.json');
+          if (fs.existsSync(settingsPath)) {
+            const s = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+            if (s && (s.printerName || s.printer)) ENV_PRINTER = s.printerName || s.printer;
+          }
+        }
+      } catch (e) {}
+    }
     if (ENV_PRINTER) args.push('--printer', ENV_PRINTER);
 
     // Allow test mode: if PRINT_DRY_RUN=1, ask thermal_test to print preview instead of sending to printer
     const debugDry = process.env.PRINT_DRY_RUN === '1';
     if (debugDry && !args.includes('--dry-run')) args.push('--dry-run');
 
+    const spawnEnv = Object.assign({}, process.env, { ELECTRON_RUN_AS_NODE: '1' });
+
     // If requested, run a debug dry-run first and print the payload/preview to the terminal
     if (process.env.PRINT_DEBUG_PRINT_PAYLOAD === '1') {
       try {
         const debugArgs = [scriptPath, '--json', specPath, '--dry-run'];
-        const debugProc = spawnSync(process.execPath, debugArgs, { cwd: path.join(__dirname, '..'), encoding: 'utf8', maxBuffer: 40 * 1024 * 1024 });
+        const debugProc = spawnSync(process.execPath, debugArgs, { cwd: path.join(__dirname, '..'), encoding: 'utf8', maxBuffer: 40 * 1024 * 1024, env: spawnEnv });
         const preview = debugProc.stdout || debugProc.stderr || '';
         console.log('--- Thermal preview (PRINT_DEBUG_PRINT_PAYLOAD) ---');
         console.log(preview);
@@ -179,7 +197,7 @@ async function printPatientReceipt(patient, testOrTests) {
       }
     } catch (e) {}
 
-    const proc = spawnSync(process.execPath, args, { cwd: path.join(__dirname, '..'), encoding: 'utf8', maxBuffer: 20 * 1024 * 1024 });
+    const proc = spawnSync(process.execPath, args, { cwd: path.join(__dirname, '..'), encoding: 'utf8', maxBuffer: 20 * 1024 * 1024, env: spawnEnv });
     // In debug mode keep the spec file and also append the spec JSON to the print log for inspection
     try {
       if (!debugDry) try { fs.unlinkSync(specPath); } catch (e) {}

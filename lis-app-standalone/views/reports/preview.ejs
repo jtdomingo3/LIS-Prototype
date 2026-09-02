@@ -1,18 +1,16 @@
 <div class="card">
-  <h3>Report Preview</h3>
-
 <% if (!test) { %>
   <p style="padding:20px; color:#888;">No completed test results yet.</p>
 <% } else { %>
   <!-- Navigation & Filters -->
-  <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
+  <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px; flex-wrap:wrap;">
     <div>
       <% // Always render as anchors so client-side can update hrefs reliably %>
       <a id="prevBtn" class="button btn-secondary<%= (typeof prevId === 'undefined' || !prevId) ? ' disabled' : '' %>" <%= (typeof prevId !== 'undefined' && prevId) ? ('href="/reports/preview/' + prevId + (typeof filterQuery !== 'undefined' ? filterQuery : '') + '"') : '' %>>← Previous</a>
       <a id="nextBtn" class="button btn-secondary<%= (typeof nextId === 'undefined' || !nextId) ? ' disabled' : '' %>" <%= (typeof nextId !== 'undefined' && nextId) ? ('href="/reports/preview/' + nextId + (typeof filterQuery !== 'undefined' ? filterQuery : '') + '"') : '' %>>Next →</a>
     </div>
 
-    <div style="flex:1; display:flex; gap:8px; align-items:center;">
+    <div style="flex:1; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
       <div style="display:flex; flex-direction:column; gap:4px; flex:2; min-width:300px;">
         <input id="patientSearch" type="text" placeholder="Type to search patients by name..." autocomplete="off" style="padding:8px; font-size:14px; border-radius:8px; border:1px solid #d0d7de;">
         <select id="filterPatient" style="width:100%; padding:8px;">
@@ -27,7 +25,7 @@
         </select>
       </div>
       <!-- Test type dropdown (based on templates/testType) -->
-        <div style="display:flex; gap:8px; align-items:flex-start;">
+        <div style="display:flex; gap:8px; align-items:flex-start; flex-wrap:wrap;">
           <div style="display:flex; flex-direction:column; gap:8px;">
             <% let testTypes = []; if (testsForNav && testsForNav.length) { testTypes = Array.from(new Set(testsForNav.map(t => t.testType || t.template || '').filter(Boolean))); } %>
             <div id="filterTestType" style="position:relative;">
@@ -45,6 +43,10 @@
           <button class="button btn-primary" id="printFiltered">Print Filtered</button>
         </div>
       </div>
+      <div style="display:flex; gap:8px; align-items:center; justify-content:flex-end;">
+        <a id="downloadPdf" href="/reports/pdf/<%= test.id %>" class="button btn-primary">Download PDF</a>
+        <a id="printLink" href="/reports/result/<%= test.id %>?embedded=1&print=1" target="_blank" class="button btn-orange">Print</a>
+      </div>
   </div>
 
   <!-- Filtered results (checkbox list populated when filters change) -->
@@ -55,38 +57,46 @@
         <!-- items injected here: each item contains a checkbox and a one-line label -->
       </div>
     </div>
-    <div style="margin-top:6px; text-align:right;">
-      <span id="filteredPager" style="margin-left:12px; font-weight:600;"></span>
-    </div>
-  </div>
-
-  <div style="margin-bottom:12px; text-align:right;">
-    <a id="downloadPdf" href="/reports/pdf/<%= test.id %>" class="button btn-primary">Download PDF</a>
-    <a id="printLink" href="/reports/result/<%= test.id %>?embedded=1&print=1" target="_blank" class="button btn-orange">Print</a>
   </div>
 
   <div class="card">
-    <h4>Patient Information</h4>
-    <% if (test.patient) { %>
-      <p><strong>Name:</strong> <span id="patientName"><%= test.patient.firstName %> <%= test.patient.lastName %></span></p>
-      <p><strong>Patient ID:</strong> <span id="patientPatientId"><%= test.patient.patientId %></span></p>
-    <% } else { %>
-      <p><strong>Name:</strong> <span id="patientName"><%= test.patientName || '' %></span></p>
-      <p><strong>Patient ID:</strong> <span id="patientPatientId"><%= (test.patient && test.patient.patientId) || '' %></span></p>
-    <% } %>
-    <h4>Test Information</h4>
-    <p><strong>Test ID:</strong> <span id="displayTestId"><%= test.testId %></span></p>
-    <p><strong>Test Type:</strong> <span id="displayTestType"><%= test.testType %></span></p>
-    <p><strong>Date:</strong> <span id="displayTestDate"><%= test.testDate ? new Date(test.testDate).toLocaleDateString() : '' %></span></p>
+    <div style="display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 16px; padding: 16px; background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px;">
+      <div style="flex: 1; min-width: 150px;">
+        <span style="display: block; font-size: 0.75em; text-transform: uppercase; color: #666; font-weight: 600; margin-bottom: 4px;">Patient Name</span>
+        <span style="font-size: 1.1em; font-weight: 600; color: #222;" id="patientName"><% if (test.patient) { %><%= test.patient.firstName %> <%= test.patient.lastName %><% } else { %><%= test.patientName || '' %><% } %></span>
+      </div>
+      <div style="flex: 1; min-width: 120px;">
+        <span style="display: block; font-size: 0.75em; text-transform: uppercase; color: #666; font-weight: 600; margin-bottom: 4px;">Patient ID</span>
+        <span style="font-size: 1.1em; font-weight: 600; color: #222;" id="patientPatientId"><% if (test.patient) { %><%= test.patient.patientId %><% } else { %><%= (test.patient && test.patient.patientId) || '' %><% } %></span>
+      </div>
+      <div style="flex: 1; min-width: 120px;">
+        <span style="display: block; font-size: 0.75em; text-transform: uppercase; color: #666; font-weight: 600; margin-bottom: 4px;">Test Type</span>
+        <span style="font-size: 1.1em; font-weight: 600; color: #222;" id="displayTestType"><%= test.testType %></span>
+      </div>
+      <div style="flex: 1; min-width: 120px;">
+        <span style="display: block; font-size: 0.75em; text-transform: uppercase; color: #666; font-weight: 600; margin-bottom: 4px;">Date</span>
+        <span style="font-size: 1.1em; font-weight: 600; color: #222;" id="displayTestDate"><%= test.testDate ? new Date(test.testDate).toLocaleDateString() : '' %></span>
+      </div>
+      <div style="flex: 1; min-width: 120px;">
+        <span style="display: block; font-size: 0.75em; text-transform: uppercase; color: #666; font-weight: 600; margin-bottom: 4px;">Test ID</span>
+        <span style="font-size: 1.1em; font-weight: 600; color: #222;" id="displayTestId"><%= test.testId %></span>
+      </div>
+    </div>
     <h4>Results</h4>
     <% if (true) { %>
-      <div style="width:100%;height:820px;border:1px solid #e6e6e6;">
+      <div style="width:100%;height:820px;border:1px solid #e6e6e6; margin-bottom: 8px;">
             <!-- Load result template via iframe src so it uses the same routing/layout logic and asset paths
                  (avoids srcdoc issues with relative URLs and duplicated/global CSS that distort preview) -->
             <iframe id="resultFrame" src="/reports/result/<%= test.id %>?embedded=1" style="width:100%;height:100%;border:0;margin:0;padding:0;" title="Result Template" sandbox="allow-same-origin allow-scripts"></iframe>
       </div>
+      <div style="text-align:center; padding: 10px; background: #f8f9fa; border: 1px solid #e6e6e6; border-radius: 6px;">
+        <span id="filteredPager" style="font-weight:600; font-size: 16px; color: #444;"></span>
+      </div>
     <% } else { %>
       <pre style="white-space:pre-wrap;"><%= test.results || 'No results recorded.' %></pre>
+      <div style="text-align:center; padding: 10px; background: #f8f9fa; border: 1px solid #e6e6e6; border-radius: 6px;">
+        <span id="filteredPager" style="font-weight:600; font-size: 16px; color: #444;"></span>
+      </div>
     <% } %>
   </div>
 
@@ -345,22 +355,29 @@
         if (!confirm('No tests selected. Print all filtered results?')) return;
         ids = allFiltered;
       }
-      const url = '/reports/print-multiple?ids=' + encodeURIComponent(ids.join(','));
-      // If running inside the Electron standalone app, request the main
-      // process to open the print preview (generates PDF and opens system viewer).
+      
+      // If running inside the Electron standalone app...
       if (window.lisApp && typeof window.lisApp.printPreview === 'function') {
-        // Ensure we pass an absolute URL; the main process needs a full origin.
+        const url = '/reports/print-multiple?ids=' + encodeURIComponent(ids.join(','));
         let fullUrl = (url && url[0] === '/') ? (window.location.origin + url) : url;
-        // Tell the server to suppress any automatic `window.print()` when
-        // rendering inside the hidden source window — we open the generated
-        // PDF ourselves via the system viewer.
         if (fullUrl && fullUrl.indexOf('suppressPrint=1') === -1) {
           fullUrl += (fullUrl.indexOf('?') === -1) ? '?suppressPrint=1' : '&suppressPrint=1';
         }
         window.lisApp.printPreview(fullUrl);
       } else {
-        // Fallback for browser/server mode
-        window.open(url, '_blank');
+        // Fallback for browser/server mode: Use a POST form to avoid URL length limits
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/reports/print-multiple';
+        form.target = '_blank';
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'ids';
+        input.value = ids.join(',');
+        form.appendChild(input);
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
       }
     });
 

@@ -21,14 +21,19 @@ class NetworkMonitor extends EventEmitter {
   check() {
     return new Promise((resolve) => {
       try {
+        if (!this.serverUrl) return resolve(false);
         const url = new URL(this.serverUrl);
-        const req = http.request(
+        const isHttps = url.protocol === 'https:';
+        const client = isHttps ? require('https') : require('http');
+        const defaultPort = isHttps ? 443 : 80;
+        const req = client.request(
           {
             hostname: url.hostname,
-            port: url.port || 80,
+            port: url.port || defaultPort,
             path: '/',
             method: 'HEAD',
             timeout: 3000,
+            rejectUnauthorized: false,
           },
           () => resolve(true),
         );
@@ -44,6 +49,7 @@ class NetworkMonitor extends EventEmitter {
   /** One-shot check that also updates internal state */
   async checkOnce() {
     const online = await this.check();
+    this.emit('check', online);
     if (this._wasOnline !== online) {
       this._wasOnline = online;
       this.emit('status-change', online);

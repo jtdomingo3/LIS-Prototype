@@ -25,6 +25,7 @@ class Patient {
     this.company = data.company || '';
     this.philhealthConsent = !!data.philhealthConsent;
     this.philhealthId = data.philhealthId || '';
+    this.client_id = data.client_id || data.clientId || null;
     this.createdAt = data.createdAt || new Date();
     this.updatedAt = data.updatedAt || new Date();
     this.createdBy = data.createdBy;
@@ -64,6 +65,13 @@ class Patient {
   async save() {
     this.updatedAt = new Date();
     const patients = global.db.getPatients();
+    if (!this.patientId) {
+      const maxNum = patients.reduce((max, p) => {
+        const n = parseInt((p.patientId || 'P0').replace(/\D/g, '')) || 0;
+        return Math.max(max, n);
+      }, 0);
+      this.patientId = 'P' + String(maxNum + 1).padStart(3, '0');
+    }
     const index = patients.findIndex(p => p.id === this.id);
     if (index >= 0) {
       patients[index] = this;
@@ -106,8 +114,14 @@ class Patient {
 
   // Static methods
   static async findById(id) {
+    if (!id) return null;
+    if (global.db && typeof global.db.getPatientById === 'function') {
+      const patient = global.db.getPatientById(id);
+      if (patient) return new Patient(patient);
+    }
     const patients = global.db.getPatients();
-    const patient = patients.find(p => p.id === id);
+    let patient = patients.find(p => p.id === id);
+    if (!patient) patient = patients.find(p => p.patientId === id || p.patientCode === id);
     return patient ? new Patient(patient) : null;
   }
 

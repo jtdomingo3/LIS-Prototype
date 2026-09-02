@@ -1,10 +1,11 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { createDb } = require('./sqliteDb');
+const { migrateJsonToSqlite } = require('./migrateJsonToSqlite');
 
 class DataStore {
   constructor(baseDir) {
-    // default to Documents/LIS/app-sync (hyphen) for clarity; accept existing app_sync too
     const homedir = (os.homedir ? os.homedir() : process.env.USERPROFILE || '');
     const preferred = path.join(homedir, 'Documents', 'LIS', 'app-sync');
     const alt = path.join(homedir, 'Documents', 'LIS', 'app_sync');
@@ -14,31 +15,88 @@ class DataStore {
       else baseDir = preferred;
     }
     this.baseDir = baseDir;
-    this.filePath = path.join(this.baseDir, 'data.json');
+    this.sqlitePath = path.join(this.baseDir, 'lis-data.db');
+    this.legacyJsonPath = path.join(this.baseDir, 'data.json');
+    this.filePath = this.sqlitePath; // primary storage path
+
     try { if (!fs.existsSync(this.baseDir)) fs.mkdirSync(this.baseDir, { recursive: true }); } catch (e) {}
-    // ensure alternate path also exists for compatibility
     try { if (!fs.existsSync(alt)) fs.mkdirSync(alt, { recursive: true }); } catch (e) {}
-    this._data = this._load();
+
+    // Initialize SQLite Database Adapter
+    this.db = createDb(this.sqlitePath);
+
+    // Auto-migrate from legacy data.json if present
+    this._autoMigrate();
   }
 
-  _load() {
+  _autoMigrate() {
     try {
-      if (fs.existsSync(this.filePath)) return JSON.parse(fs.readFileSync(this.filePath, 'utf8') || '{}');
-    } catch (e) { console.error('[DataStore] load error:', e && e.message); }
-    return { __meta: { lastFullSync: null }, users: [], patients: [], tests: [], templates: [], counters: {} };
+      const hasJson = fs.existsSync(this.legacyJsonPath);
+      if (!hasJson) return;
+
+      const existingPatients = this.db.getPatients();
+      const existingUsers = this.db.getUsers();
+      if (existingPatients.length > 0 || existingUsers.length > 0) {
+        return; // DB already has records
+      }
+
+      console.log('[DataStore] Detected legacy data.json, performing automatic migration to SQLite...');
+      migrateJsonToSqlite(this.db, {
+        dataJsonPath: this.legacyJsonPath,
+        renameAfter: true,
+        log: console.log
+      });
+    } catch (e) {
+      console.error('[DataStore] Auto-migration error:', e && e.message);
+    }
+  }
+
+  // Dynamic _data view for backward compatibility
+  get _data() {
+    return this.getAll();
+  }
+
+  set _data(val) {
+    if (val && typeof val === 'object') {
+      this.db.write(val);
+    }
   }
 
   _save() {
-    try {
-      fs.writeFileSync(this.filePath, JSON.stringify(this._data, null, 2), 'utf8');
-    } catch (e) { console.error('[DataStore] save error:', e && e.message); }
+    // No-op for SQLite as all writes persist immediately, kept for API compatibility
   }
 
-  getAll() { return this._data; }
+  getAll() {
+    const readData = this.db.read() || {};
+    return {
+      __meta: this.db.getAllMeta ? this.db.getAllMeta() : (readData.__meta || {}),
+      users: this.db.getUsers(),
+      patients: this.db.getPatients(),
+      tests: this.db.getTests(),
+      templates: this.db.getTemplates(),
+      counters: this.db.getCounters(),
+      settings: readData.settings || {}
+    };
+  }
 
-  getCollection(name) { return Array.isArray(this._data[name]) ? this._data[name] : []; }
+  getCollection(name) {
+    if (!name) return [];
+    if (name === 'patients') return this.db.getPatients();
+    if (name === 'tests') return this.db.getTests();
+    if (name === 'users') return this.db.getUsers();
+    if (name === 'templates') return this.db.getTemplates();
+    if (name === 'counters') return this.db.getCounters();
+    return [];
+  }
 
-  setCollection(name, items) { this._data[name] = Array.isArray(items) ? items : []; this._save(); }
+  setCollection(name, items) {
+    if (!name) return;
+    if (name === 'patients') this.db.savePatients(items);
+    else if (name === 'tests') this.db.saveTests(items);
+    else if (name === 'users') this.db.saveUsers(items);
+    else if (name === 'templates') this.db.saveTemplates(items);
+    else if (name === 'counters') this.db.saveCounters(items);
+  }
 
   mergeCollection(name, items, idKey = 'id') {
     if (!Array.isArray(items)) return;
@@ -49,19 +107,52 @@ class DataStore {
       map.set(String(it[idKey]), it);
     }
     const merged = Array.from(map.values());
-    this._data[name] = merged;
-    this._save();
+    this.setCollection(name, merged);
   }
 
-  setMeta(key, val) { if (!this._data.__meta) this._data.__meta = {}; this._data.__meta[key] = val; this._save(); }
-  getMeta(key) { return this._data.__meta ? this._data.__meta[key] : undefined; }
+  setMeta(key, val) {
+    if (this.db && this.db.setMeta) {
+      this.db.setMeta(key, val);
+    }
+  }
+
+  getMeta(key) {
+    if (this.db && this.db.getMeta) {
+      return this.db.getMeta(key);
+    }
+    return undefined;
+  }
+
   info() {
     try {
-      const exists = fs.existsSync(this.filePath);
-      const stat = exists ? fs.statSync(this.filePath) : null;
-      return { baseDir: this.baseDir, filePath: this.filePath, exists, size: stat ? stat.size : 0, lastFullSync: this.getMeta('lastFullSync') };
+      const existsOnDisk = fs.existsSync(this.sqlitePath);
+      const stat = existsOnDisk ? fs.statSync(this.sqlitePath) : null;
+      const counts = {
+        patients: this.db.getPatients().length,
+        tests: this.db.getTests().length,
+        users: this.db.getUsers().length,
+        templates: this.db.getTemplates().length,
+        counters: Object.keys(this.db.getCounters()).length
+      };
+      return {
+        baseDir: this.baseDir,
+        filePath: this.sqlitePath,
+        legacyJsonPath: this.legacyJsonPath,
+        exists: existsOnDisk || (this.db && !!this.db._engine),
+        existsOnDisk,
+        size: stat ? stat.size : 0,
+        engine: this.db._engine || 'sqlite',
+        counts,
+        lastFullSync: this.getMeta('lastFullSync')
+      };
     } catch (e) {
-      return { baseDir: this.baseDir, filePath: this.filePath, exists: false, size: 0, error: e && e.message };
+      return {
+        baseDir: this.baseDir,
+        filePath: this.sqlitePath,
+        exists: false,
+        size: 0,
+        error: e && e.message
+      };
     }
   }
 }

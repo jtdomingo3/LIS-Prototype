@@ -2,11 +2,22 @@ const express = require('express');
 const router = express.Router();
 const Test = require('../models/Test');
 const Patient = require('../models/Patient');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, getUserHomeRoute } = require('../middleware/auth');
 
 // GET /dashboard - Dashboard page
 router.get('/', requireAuth, async (req, res) => {
   try {
+    const user = req.session && req.session.user;
+    const managementRoles = new Set(['Admin', 'Manager', 'Owner']);
+    let perms = (user && user.permissions) || {};
+    if (typeof perms === 'string') {
+      try { perms = JSON.parse(perms); } catch (_) { perms = {}; }
+    }
+    if (user && !managementRoles.has(user.role) && !perms.dashboard) {
+      const home = getUserHomeRoute(user);
+      return res.redirect(home !== '/dashboard' ? home : '/reception');
+    }
+
     // Get statistics
     const allPatients = await Patient.find({});
     const allTests = await Test.find({});
@@ -44,13 +55,25 @@ router.get('/', requireAuth, async (req, res) => {
   let activeTests = 0;
   let releasedTests = 0;
 
-  // Compute sales totals from patient paymentHistory (if present)
+  // Compute sales totals and trend timelines from patient paymentHistory
   let totalSales = 0;
   let todaySales = 0;
+  let monthSales = 0;
   let clinicalSales = 0;
   let xraySales = 0;
   let clinicalToday = 0;
   let xrayToday = 0;
+  let clinicalMonth = 0;
+  let xrayMonth = 0;
+
+  const daysMap = {};
+  const monthsMap = {};
+  const hoursMap = {};
+  for (let i = 0; i < 24; i++) {
+    const hStr = (i === 0 ? 12 : (i > 12 ? i - 12 : i)) + (i < 12 ? ' AM' : ' PM');
+    hoursMap[i] = { label: hStr, total: 0, clinical: 0, xray: 0 };
+  }
+
   try {
     if (Array.isArray(allPatients)) {
       // totalPatients = patients created up to selectedEnd
@@ -65,19 +88,46 @@ router.get('/', requireAuth, async (req, res) => {
           const xray = parseFloat(entry && (entry.xray || entry.xray === 0) ? entry.xray : 0) || 0;
           const legacy = parseFloat(entry && (entry.amount || entry.total) ? (entry.amount || entry.total) : 0) || 0;
           const entryTotal = (clin || xray) ? (clin + xray) : legacy;
-          // payment timestamp
+          
           const ts = entry && entry.timestamp ? new Date(entry.timestamp) : null;
           if (ts && ts <= selectedEnd) {
-            // cumulative up to selected date
             totalSales += entryTotal;
             clinicalSales += clin;
             xraySales += xray;
+
+            // Monthly Sales calculation (for the selected month)
+            if (ts.getFullYear() === selectedStart.getFullYear() && ts.getMonth() === selectedStart.getMonth()) {
+              monthSales += entryTotal;
+              clinicalMonth += clin;
+              xrayMonth += xray;
+            }
+
+            // Daily trend grouping (YYYY-MM-DD)
+            const dKey = ts.toISOString().slice(0, 10);
+            if (!daysMap[dKey]) daysMap[dKey] = { total: 0, clinical: 0, xray: 0 };
+            daysMap[dKey].total += entryTotal;
+            daysMap[dKey].clinical += clin;
+            daysMap[dKey].xray += xray;
+
+            // Monthly trend grouping (YYYY-MM)
+            const mKey = ts.toISOString().slice(0, 7);
+            if (!monthsMap[mKey]) monthsMap[mKey] = { total: 0, clinical: 0, xray: 0 };
+            monthsMap[mKey].total += entryTotal;
+            monthsMap[mKey].clinical += clin;
+            monthsMap[mKey].xray += xray;
           }
+
           if (ts && isSameDay(ts, selectedStart)) {
-            // counts for the selected day
             todaySales += entryTotal;
             clinicalToday += clin;
             xrayToday += xray;
+
+            const hr = ts.getHours();
+            if (hoursMap[hr]) {
+              hoursMap[hr].total += entryTotal;
+              hoursMap[hr].clinical += clin;
+              hoursMap[hr].xray += xray;
+            }
           }
         }
       }
@@ -85,6 +135,46 @@ router.get('/', requireAuth, async (req, res) => {
   } catch (e) {
     console.warn('Failed computing sales totals', e);
   }
+
+  // Format Daily Trend (Last 14 days up to selectedEnd)
+  const salesTrendDaily = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(selectedStart);
+    d.setDate(d.getDate() - i);
+    const key = d.toISOString().slice(0, 10);
+    const label = (d.getMonth() + 1) + '/' + d.getDate();
+    const data = daysMap[key] || { total: 0, clinical: 0, xray: 0 };
+    salesTrendDaily.push({ label, total: data.total, clinical: data.clinical, xray: data.xray });
+  }
+
+  // Format Monthly Trend (Last 6 months)
+  const salesTrendMonthly = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(selectedStart);
+    d.setMonth(d.getMonth() - i);
+    const key = d.toISOString().slice(0, 7);
+    const label = d.toLocaleString('en-US', { month: 'short' });
+    const data = monthsMap[key] || { total: 0, clinical: 0, xray: 0 };
+    salesTrendMonthly.push({ label, total: data.total, clinical: data.clinical, xray: data.xray });
+  }
+
+  // Format Overall All-Time Trend (All recorded months)
+  const allMonthKeys = Object.keys(monthsMap).sort();
+  const salesTrendOverall = [];
+  if (allMonthKeys.length === 0) {
+    salesTrendOverall.push({ label: 'Current', total: totalSales, clinical: clinicalSales, xray: xraySales });
+  } else {
+    for (const mKey of allMonthKeys) {
+      const [y, m] = mKey.split('-');
+      const d = new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1);
+      const label = d.toLocaleString('en-US', { month: 'short', year: '2-digit' });
+      const data = monthsMap[mKey] || { total: 0, clinical: 0, xray: 0 };
+      salesTrendOverall.push({ label, total: data.total, clinical: data.clinical, xray: data.xray });
+    }
+  }
+
+  // Format Hourly Trend (24 Hours for selected day)
+  const salesTrendHourly = Object.values(hoursMap);
 
   // Compute totals for each requested test across all tests (snapshot-aware).
   // Treat blood chemistry and ultrasound variants as single groups.
@@ -101,11 +191,10 @@ router.get('/', requireAuth, async (req, res) => {
       return s.replace(/\s+/g, ' ').replace(/[-_]+/g, ' ').trim();
     };
 
-    // helper: determine status of a test at a given datetime (returns null if test not yet created)
     const statusAt = (test, atDate) => {
       try {
         const created = test && test.createdAt ? new Date(test.createdAt) : null;
-        if (!created || created > atDate) return null; // not yet created
+        if (!created || created > atDate) return null;
         const history = Array.isArray(test.statusHistory) ? test.statusHistory.slice().sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp)) : [];
         let last = null;
         for (const h of history) {
@@ -121,11 +210,9 @@ router.get('/', requireAuth, async (req, res) => {
 
     if (Array.isArray(allTests)) {
       for (const t of allTests) {
-        // only include tests that exist by selectedEnd
         const created = t && t.createdAt ? new Date(t.createdAt) : null;
         if (!created || created > selectedEnd) continue;
 
-        // determine status at selectedEnd for snapshot counts
         const s = statusAt(t, selectedEnd);
         if (!s) continue;
         if (!NON_PENDING_STATUSES.includes(s)) pendingTests++;
@@ -133,20 +220,17 @@ router.get('/', requireAuth, async (req, res) => {
         if (s === 'In Progress') activeTests++;
         if (s === 'Released') releasedTests++;
 
-        // requested test breakdowns
         const rlist = Array.isArray(t.requestedTests) ? t.requestedTests : [];
         const candidates = rlist.length === 0 ? [ (t.testType || '') ] : rlist.map(r => (r && (r.label || r.key)) ? (r.label || r.key) : r);
         for (const cand of candidates) {
           const key = normalize(cand);
           if (!key) continue;
-          // cumulative up to selectedEnd
           testTotals[key] = (testTotals[key] || 0) + 1;
-          // count if testDate/createdAt falls on the selected day
           const dtStr = t.testDate || t.createdAt;
           const dt = dtStr ? new Date(dtStr) : null;
           if (dt && dt >= selectedStart && dt <= selectedEnd) {
             testTotalsSelected[key] = (testTotalsSelected[key] || 0) + 1;
-            testTotalsToday[key] = (testTotalsToday[key] || 0) + 1; // keep TODAY aligned to selected day
+            testTotalsToday[key] = (testTotalsToday[key] || 0) + 1;
           }
         }
       }
@@ -170,16 +254,60 @@ router.get('/', requireAuth, async (req, res) => {
         });
     }
 
+    // Patient Demographics & Membership Calculations
+    const ageMap = {};
+    const sexMap = { Male: 0, Female: 0, Other: 0 };
+    const philhealthMap = { Member: 0, 'Non-Member': 0 };
+
+    if (Array.isArray(allPatients)) {
+      for (const p of allPatients) {
+        // 1. Age (prefer computed age from DOB or manual age)
+        let pAge = (p.age !== null && p.age !== undefined) ? parseInt(p.age, 10) : null;
+        if ((pAge === null || isNaN(pAge)) && p.dateOfBirth) {
+          try {
+            const birth = new Date(p.dateOfBirth);
+            if (!isNaN(birth.getTime())) {
+              const now = new Date();
+              pAge = now.getFullYear() - birth.getFullYear();
+            }
+          } catch(e) {}
+        }
+        if (pAge !== null && !isNaN(pAge) && pAge >= 0 && pAge < 120) {
+          const ageLabel = `${pAge} yrs`;
+          ageMap[ageLabel] = (ageMap[ageLabel] || 0) + 1;
+        }
+
+        // 2. Sex / Gender
+        const g = (p.gender || p.sex || '').toString().trim();
+        if (/^male$/i.test(g) || /^m$/i.test(g)) sexMap.Male++;
+        else if (/^female$/i.test(g) || /^f$/i.test(g)) sexMap.Female++;
+        else if (g) sexMap.Other++;
+
+        // 3. PhilHealth Membership
+        const hasPhilhealth = (p.philhealthId && String(p.philhealthId).trim() !== '') || p.philhealthConsent;
+        if (hasPhilhealth) philhealthMap.Member++;
+        else philhealthMap['Non-Member']++;
+      }
+    }
+
+    // Top 10 Frequent Ages sorted by count descending
+    const topAges = Object.entries(ageMap)
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
     res.render('dashboard/index', {
       title: 'Dashboard',
-        stats: {
+      stats: {
         totalPatients,
         pendingTests,
         completedTests,
         activeTests,
-        releasedTests
-        , totalSales, todaySales, clinicalSales, xraySales, clinicalToday, xrayToday
-          , testTotals, testTotalsToday, testTotalsSelected, selectedDate: (selectedDate ? (new Date(selectedDate)).toISOString().slice(0,10) : null)
+        releasedTests,
+        totalSales, todaySales, monthSales, clinicalSales, xraySales, clinicalToday, xrayToday, clinicalMonth, xrayMonth,
+        salesTrendDaily, salesTrendMonthly, salesTrendHourly, salesTrendOverall,
+        testTotals, testTotalsToday, testTotalsSelected, selectedDate: (selectedDate ? (new Date(selectedDate)).toISOString().slice(0,10) : null),
+        topAges, sexMap, philhealthMap
       },
       recentTests
     });

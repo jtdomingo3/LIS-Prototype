@@ -796,8 +796,6 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
     const createdTests = [];
 
     // Helper to detect doctor-only requested item
-
-    // Helper to detect doctor-only requested item
     const isDoctorRequest = (rt) => {
       try {
         const lab = String(rt.lab || '').toLowerCase();
@@ -840,8 +838,55 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       return null;
     };
 
-    // Group blood chemistry variants into single 'Blood Chemistry' test when multiple selected
-    if (requestedTestsDetailed && requestedTestsDetailed.length) {
+    // If incoming request contains pre-created tests (from offline sync replay)
+    let incomingList = null;
+    if (req.body) {
+      if (Array.isArray(req.body.createdTests)) incomingList = req.body.createdTests;
+      else if (Array.isArray(req.body.tests)) incomingList = req.body.tests;
+      else if (typeof req.body.createdTests === 'string') {
+        try { incomingList = JSON.parse(req.body.createdTests); } catch (_) {}
+      } else if (typeof req.body.tests === 'string') {
+        try { incomingList = JSON.parse(req.body.tests); } catch (_) {}
+      } else if (req.body.createdTests && typeof req.body.createdTests === 'object') {
+        incomingList = Object.values(req.body.createdTests);
+      } else if (req.body.tests && typeof req.body.tests === 'object') {
+        incomingList = Object.values(req.body.tests);
+      }
+    }
+
+    if (Array.isArray(incomingList) && incomingList.length) {
+      for (const item of incomingList) {
+        if (!item) continue;
+        const payload = {
+          id: item.id || undefined,
+          testId: item.testId || getNextTestId(getPrefixForLabel(item.testType || 'T')),
+          patient: item.patient || patient,
+          testType: item.testType || testType || 'Test',
+          testDate: item.testDate || (new Date()).toISOString(),
+          status: item.status || 'Payment Area',
+          priority: item.priority || priority || 'Normal',
+          results: item.results || undefined,
+          notes: item.notes || undefined,
+          specimenNumbers: item.specimenNumbers || undefined,
+          assignedDoctorId: item.assignedDoctorId || undefined,
+          assignedDoctorName: item.assignedDoctorName || undefined,
+          requestedBy: (req.session && req.session.user && req.session.user.id) || item.requestedBy,
+          requestedTests: Array.isArray(item.requestedTests) ? item.requestedTests : (requestedTestsDetailed || []),
+          awaitingOnly: item.awaitingOnly !== undefined ? item.awaitingOnly : awaitingOnly,
+          client_id: item.client_id || item.id || undefined
+        };
+        const existing = payload.id ? await Test.findById(payload.id) : (payload.testId ? await Test.findOne({ testId: payload.testId }) : null);
+        if (existing) {
+          Object.assign(existing, payload);
+          await existing.save();
+          createdTests.push(existing);
+        } else {
+          const t = new Test(payload);
+          await t.save();
+          createdTests.push(t);
+        }
+      }
+    } else if (requestedTestsDetailed && requestedTestsDetailed.length) {
       const copyRequested = requestedTestsDetailed.slice();
       // Treat specific requested items as Blood Chemistry only when they match chemistry-related keywords
       // but explicitly exclude 'typing' (e.g., 'Blood Typing') which is a separate serology/hematology test.
@@ -1009,6 +1054,17 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
 
     req.flash('success_msg', `Tests created successfully!`);
 
+    const isSyncClient = !!(req.headers['x-lis-sync-email'] || req.headers['x-lis-sync-hash'] || req.headers['x-lis-sync-replay']);
+    const isExplicitJson = req.xhr || (req.headers['accept'] && req.headers['accept'].includes('application/json') && !req.headers['accept'].includes('text/html'));
+    if (isSyncClient || isExplicitJson) {
+      return res.json({
+        success: true,
+        tests: createdTests.map(t => ({ id: t.id, testId: t.testId, client_id: t.client_id || null })),
+        id: createdTests.length === 1 ? createdTests[0].id : (createdTests[0] ? createdTests[0].id : null),
+        client_id: req.body && req.body.client_id ? req.body.client_id : null
+      });
+    }
+
     // Determine where to redirect after creating/assigning tests.
     // Priority: explicit hidden `returnTo` form field -> query param -> Referer -> fallback '/tests'
     let returnTo = (req.body && req.body.returnTo) || req.query.returnTo || req.get('Referer') || '/tests';
@@ -1089,7 +1145,8 @@ router.get('/:id', requireAuth, canAccessPatient, async (req, res) => {
 // GET /tests/:id/results - Results entry form (supports fecalysis for now)
 router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
   try {
-    const test = await Test.findById(req.params.id);
+    let test = await Test.findById(req.params.id);
+    if (!test) test = await Test.findOne({ testId: req.params.id });
     if (!test) {
       req.flash('error_msg', 'Test not found');
       return res.redirect('/tests');
@@ -1230,7 +1287,8 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
 // POST /tests/:id/results - Save results for fecalysis
 router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoFile'), async (req, res) => {
   try {
-    const test = await Test.findById(req.params.id);
+    let test = await Test.findById(req.params.id);
+    if (!test) test = await Test.findOne({ testId: req.params.id });
     if (!test) {
       req.flash('error_msg', 'Test not found');
       return res.redirect('/tests');

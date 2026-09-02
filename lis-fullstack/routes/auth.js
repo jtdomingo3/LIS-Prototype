@@ -78,40 +78,13 @@ router.post('/login', requireGuest, async (req, res) => {
     sessionUserObj.signature = sessionUserObj.signature || null;
     req.session.user = sessionUserObj;
 
-    req.flash('success_msg', `Welcome back, ${user.name}!`);
-
-    // Redirect user to the first page they have permission to access.
-    const sessionUser = req.session.user;
-    const perms = sessionUser.permissions || {};
-    const allowedDashboardRoles = new Set(['Admin', 'Manager', 'Owner']);
-
-    // If user role is allowed for dashboard, send them there.
-    if (allowedDashboardRoles.has(sessionUser.role)) {
-      // explicit fullscreen query removed so login no longer auto‑maximises
-      return res.redirect('/dashboard');
-    }
-
-    // Ordered destination preferences for non-dashboard users
-    const routes = [
-      { path: '/reception', perm: 'reception' },
-      { path: '/patients', perm: 'patients' },
-      { path: '/tests', perm: 'tests' },
-      { path: '/reports', perm: 'reports' },
-      { path: '/templates', perm: 'templates' },
-      { path: '/users', perm: 'users' }
-    ];
-
-    for (const r of routes) {
-      if (perms[r.perm]) return res.redirect(r.path);
-    }
-
-    // Fallback to dashboard only if role allows; otherwise redirect to login with message
-    req.flash('error_msg', 'You do not have access to the dashboard. Please contact administrator for access.');
-    return res.redirect('/');
+    const { getUserHomeRoute } = require('../middleware/auth');
+    const targetRoute = getUserHomeRoute(req.session.user);
+    return res.redirect(targetRoute);
 
   } catch (error) {
     console.error('Login error:', error);
-    req.flash('error_msg', 'An error occurred during login');
+    if (req.flash) req.flash('error_msg', 'An error occurred during login');
     res.redirect('/');
   }
 });

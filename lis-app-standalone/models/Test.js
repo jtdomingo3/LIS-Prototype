@@ -26,6 +26,13 @@ class Test {
     this.updatedAt = data.updatedAt || new Date();
     // Preserve requestedTests (array of { key,label,amount,lab }) when provided
     this.requestedTests = Array.isArray(data.requestedTests) ? data.requestedTests : (data.requestedTests || []);
+    this.paid = !!data.paid;
+    this.price = data.price !== undefined ? data.price : 0;
+    this.department = data.department || '';
+    // Flag indicating test results have been released (cleared from Releasing of Result queue)
+    this.released = !!data.released;
+    // Flag indicating test results are stashed (patient unavailable, held at reception)
+    this.stashed = !!data.stashed;
     // Flag indicating all requested tests are awaiting-only (no routing)
     this.awaitingOnly = !!data.awaitingOnly;
     // statusHistory: array of { from, to, user, area, timestamp }
@@ -41,6 +48,13 @@ class Test {
       try { this.completedAt = new Date().toISOString(); } catch (e) { this.completedAt = String(new Date()); }
     }
     const tests = global.db.getTests();
+    if (!this.testId) {
+      const maxNum = tests.reduce((max, t) => {
+        const n = parseInt((t.testId || 'T0').replace(/\D/g, '')) || 0;
+        return Math.max(max, n);
+      }, 0);
+      this.testId = 'T' + String(maxNum + 1).padStart(3, '0');
+    }
     const index = tests.findIndex(t => t.id === this.id);
     // Ensure initial statusHistory entry exists for new records
     if (index < 0) {
@@ -115,8 +129,14 @@ class Test {
 
   // Static methods
   static async findById(id) {
+    if (!id) return null;
+    if (global.db && typeof global.db.getTestById === 'function') {
+      const test = global.db.getTestById(id);
+      if (test) return new Test(test);
+    }
     const tests = global.db.getTests();
-    const test = tests.find(t => t.id === id);
+    let test = tests.find(t => t.id === id);
+    if (!test) test = tests.find(t => t.testId === id);
     return test ? new Test(test) : null;
   }
 
@@ -145,6 +165,7 @@ class Test {
       test = tests.find(t => t.testId === query.testId);
     } else if (query._id || query.id) {
       test = tests.find(t => t.id === (query._id || query.id));
+      if (!test) test = tests.find(t => t.testId === (query._id || query.id));
     } else if (query.patient) {
       test = tests.find(t => t.patient === query.patient);
     }
@@ -165,6 +186,7 @@ class Test {
       test = tests.find(t => t.testId === query.testId);
     } else if (query._id || query.id) {
       test = tests.find(t => t.id === (query._id || query.id));
+      if (!test) test = tests.find(t => t.testId === (query._id || query.id));
     }
 
     if (test) {

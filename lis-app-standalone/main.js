@@ -6,6 +6,8 @@ const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, dialog, shell, ses
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const { initAppLogger } = require('./lib/appLogger');
+initAppLogger(path.join(os.homedir(), 'Documents', 'LIS'));
 
 // Single-instance guard: only one copy of the standalone app may run.  If a
 // second instance is launched we exit immediately.  When the existing
@@ -73,12 +75,18 @@ function loadUserSettings() {
       userSettings = JSON.parse(fs.readFileSync(p, 'utf8') || '{}');
       // apply server override if present
       if (userSettings.serverUrl) config.SERVER_URL = userSettings.serverUrl;
+      if (userSettings.printerName || userSettings.printer) {
+        process.env.PRINTER_NAME = userSettings.printerName || userSettings.printer;
+      }
     }
   } catch (e) { console.warn('[Main] loadUserSettings failed', e && e.message); userSettings = {}; }
 }
 function saveUserSettings(newSettings = {}) {
   try {
     userSettings = Object.assign({}, userSettings, newSettings);
+    if (userSettings.printerName || userSettings.printer) {
+      process.env.PRINTER_NAME = userSettings.printerName || userSettings.printer;
+    }
     fs.writeFileSync(settingsFilePath(), JSON.stringify(userSettings, null, 2), 'utf8');
     if (newSettings.serverUrl) {
       config.SERVER_URL = newSettings.serverUrl;
@@ -96,6 +104,60 @@ function saveUserSettings(newSettings = {}) {
   } catch (e) { console.warn('[Main] saveUserSettings failed', e && e.message); }
 }
 
+// ── App Security & Inactivity Auto-Lock ──────────────────────────
+let appLocked = false;
+let lastActivityAt = Date.now();
+let lockCheckInterval = null;
+
+function getLockPin() {
+  return String(userSettings.lockPin || '0000').trim();
+}
+
+function getLockTimeoutMinutes() {
+  if (userSettings.lockTimeout === undefined) return 10; // Default 10 minutes
+  const parsed = parseInt(userSettings.lockTimeout, 10);
+  return isNaN(parsed) ? 10 : parsed;
+}
+
+function lockApp() {
+  if (appLocked) return;
+  appLocked = true;
+  console.log('[Security] Application locked due to inactivity or manual lock');
+  try {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('app-locked', { locked: true });
+    }
+  } catch (e) {}
+}
+
+function unlockApp(pin) {
+  const correctPin = getLockPin();
+  if (String(pin).trim() === correctPin) {
+    appLocked = false;
+    lastActivityAt = Date.now();
+    console.log('[Security] Application unlocked successfully');
+    try {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('app-unlocked');
+      }
+    } catch (e) {}
+    return { success: true };
+  }
+  return { success: false, reason: 'Incorrect PIN passcode. Try again.' };
+}
+
+function startLockCheckTimer() {
+  if (lockCheckInterval) clearInterval(lockCheckInterval);
+  lockCheckInterval = setInterval(() => {
+    const timeoutMin = getLockTimeoutMinutes();
+    if (timeoutMin <= 0 || appLocked) return; // 0 = never
+    const elapsedMinutes = (Date.now() - lastActivityAt) / (60 * 1000);
+    if (elapsedMinutes >= timeoutMin) {
+      lockApp();
+    }
+  }, 5000);
+}
+
 /** Create a timestamped backup of the current DataStore and pending queue. */
 function performBackup() {
   try {
@@ -103,8 +165,12 @@ function performBackup() {
     try { if (!fs.existsSync(backupRoot)) fs.mkdirSync(backupRoot, { recursive: true }); } catch (e) {}
     const ts = new Date().toISOString().replace(/[:.]/g, '-');
     let out = [];
-    if (dataStore && dataStore.filePath && fs.existsSync(dataStore.filePath)) {
-      const dst = path.join(backupRoot, `data.json.${ts}.bak`);
+    if (dataStore && dataStore.sqlitePath && fs.existsSync(dataStore.sqlitePath)) {
+      const dst = path.join(backupRoot, `lis-data.db.${ts}.bak`);
+      try { fs.copyFileSync(dataStore.sqlitePath, dst); out.push(dst); } catch (e) { console.warn('[Main] backup sqlite copy failed', e && e.message); }
+    } else if (dataStore && dataStore.filePath && fs.existsSync(dataStore.filePath)) {
+      const ext = path.extname(dataStore.filePath) || '.json';
+      const dst = path.join(backupRoot, `data${ext}.${ts}.bak`);
       try { fs.copyFileSync(dataStore.filePath, dst); out.push(dst); } catch (e) { console.warn('[Main] backup data copy failed', e && e.message); }
     }
     if (operationQueue && operationQueue.filePath && fs.existsSync(operationQueue.filePath)) {
@@ -126,11 +192,15 @@ function openSettingsWindow() {
     return;
   }
   const sw = new BrowserWindow({
-    width: 520,
-    height: 360,
+    width: 860,
+    height: 640,
+    minWidth: 720,
+    minHeight: 540,
     parent: mainWindow,
     modal: false,
-    resizable: false,
+    resizable: true,
+    title: 'Gezyne LIS — Standalone Settings & Diagnostics',
+    icon: appIcon || undefined,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, partition: 'persist:lis' }
   });
   sw.removeMenu();
@@ -165,31 +235,19 @@ async function startNetworkMonitor() {
       // Manage periodic full-sync timer
       try { updateFullSyncTimer(isOnline); } catch (e) {}
 
-      if (online && !wasOnline) {
-        console.log('[Main] connection restored — syncing queue…');
-        const synced = await syncEngine.processQueue();
-        const remaining = operationQueue ? operationQueue.countPending() : 0;
-        sendStatus();
-        // Stay on current page — do NOT force-reload to the server URL.
-        // The user keeps working on the local server seamlessly. When they
-        // explicitly click "Connect" or "Refresh" they will switch to the
-        // real server.  Background full-sync keeps data up-to-date.
-        try {
-          if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('sync-complete', { synced, remaining });
-          }
-        } catch (e) { /* ignore */ }
-
-        // After replaying the queue, trigger a full-sync to pull fresh data
-        try {
-          if (remaining === 0) {
-            console.log('[Main] queue empty — triggering full-sync');
-            // Clear page cache so cached server HTML won't be served
-            try { if (pageCache && typeof pageCache.clear === 'function') pageCache.clear(); } catch (e) {}
-            await syncEngine.fullSync(mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, { replace: true });
-            sendStatus();
-          }
-        } catch (e) { console.error('[Main] post-reconnect full-sync failed:', e && e.message); }
+      if (online) {
+        triggerAutoSync().catch(() => {});
+        if (syncEngine) {
+          syncEngine.startLiveEventBridge((eventData) => {
+            if (localServer && typeof localServer.broadcastEvent === 'function') {
+              localServer.broadcastEvent(eventData);
+            }
+          }, mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null);
+        }
+      } else {
+        if (syncEngine) {
+          syncEngine.stopLiveEventBridge();
+        }
       }
 
       // When going offline, immediately redirect the user from the real
@@ -211,8 +269,22 @@ async function startNetworkMonitor() {
       }
     });
 
+    networkMonitor.on('check', (online) => {
+      isOnline = online;
+      if (online && operationQueue && operationQueue.countPending() > 0) {
+        triggerAutoSync().catch(() => {});
+      }
+    });
+
     networkMonitor.start();
     setupRequestInterceptor();
+    if (isOnline && syncEngine) {
+      syncEngine.startLiveEventBridge((eventData) => {
+        if (localServer && typeof localServer.broadcastEvent === 'function') {
+          localServer.broadcastEvent(eventData);
+        }
+      }, mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null);
+    }
     // ensure periodic sync timer reflects current network state
     try { updateFullSyncTimer(isOnline); } catch (e) {}
   } catch (e) { console.error('[Main] startNetworkMonitor failed', e && e.message); }
@@ -245,7 +317,13 @@ async function createWindow() {
 
   // load persisted settings and apply overrides before services start
   loadUserSettings();
-  currentSessionEmail = userSettings.lastUserEmail || null;
+  currentSessionEmail = null; // Always require explicit login upon launching app
+
+  // Clear previous session partition cookies on startup so every launch starts at Login
+  try {
+    const sess = session.fromPartition('persist:lis');
+    if (sess) sess.clearStorageData({ storages: ['cookies'] }).catch(() => {});
+  } catch (e) {}
 
   // load application icon if available
   try {
@@ -268,7 +346,19 @@ async function createWindow() {
     },
   });
 
-  mainWindow.once('ready-to-show', () => mainWindow.show());
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.maximize();
+    mainWindow.show();
+  });
+
+  // Prevent web pages from forcing full screen on button clicks
+  mainWindow.webContents.on('enter-html-full-screen', () => {
+    try {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.setFullScreen(false);
+      }
+    } catch (e) {}
+  });
 
   if (process.argv.includes('--dev')) {
     try {
@@ -309,19 +399,34 @@ async function createWindow() {
   syncEngine = new SyncEngine(operationQueue, config, dataStore);
   localServer = createLocalServer(pageCache, operationQueue, config, dataStore);
 
-  // Load stored credentials for server re-authentication during sync
-  if (userSettings._syncEmail && userSettings._syncPassword) {
-    syncEngine.setCredentials(userSettings._syncEmail, userSettings._syncPassword);
-  }
-  // Always set the auto-login email so hash-based auth fallback works
-  if (currentSessionEmail) {
-    syncEngine.setAutoLoginEmail(currentSessionEmail);
+  // Fresh launch starts with NO pre-authenticated user session (manual login required)
+  currentSessionEmail = null;
+  if (localServer && localServer.setAutoLoginEmail) {
+    localServer.setAutoLoginEmail(null);
   }
 
-  // Activate auto-login on the local server so offline transitions are seamless
-  if (currentSessionEmail && localServer && localServer.setAutoLoginEmail) {
-    localServer.setAutoLoginEmail(currentSessionEmail);
-  }
+  global.onUserLogin = (email, password, user) => {
+    console.log('[Main] user authenticated manually:', email);
+    currentSessionEmail = email;
+    if (localServer && localServer.setAutoLoginEmail) localServer.setAutoLoginEmail(email);
+    if (syncEngine) {
+      syncEngine.setAutoLoginEmail(email);
+      syncEngine.setCredentials(email, password);
+      syncEngine._ensureServerAuth().then(() => {
+        syncEngine.processQueue().catch(() => {});
+      });
+    }
+  };
+
+  global.onUserLogout = () => {
+    console.log('[Main] user logged out');
+    currentSessionEmail = null;
+    if (localServer && localServer.setAutoLoginEmail) localServer.setAutoLoginEmail(null);
+    if (syncEngine) {
+      syncEngine.setAutoLoginEmail(null);
+      syncEngine.setCredentials(null, null);
+    }
+  };
 
   if (config.SERVER_URL) {
     // start monitor via helper (ensures consistent wiring)
@@ -333,47 +438,49 @@ async function createWindow() {
     try { setTimeout(openSettingsWindow, 300); } catch (e) {}
   }
 
+  // On page reload / navigation, perform fast simultaneous two-way sync
+  mainWindow.webContents.on('did-start-loading', () => {
+    try {
+      if (isOnline) {
+        if (operationQueue && operationQueue.countPending() > 0) {
+          triggerAutoSync().catch(() => {});
+        }
+        if (syncEngine) {
+          syncEngine.scheduleAutoFullSync(mainWindow.webContents, 200);
+        }
+      }
+    } catch (e) {}
+  });
+
   mainWindow.webContents.on('did-finish-load', async () => {
     // Always inject the status bar / client scripts first — before any async
     // work that might hang or bail early and prevent the injection.
     injectClientScripts();
 
-    // ── Track the logged-in user for seamless offline auto-login ─────
+    // ── Track the logged-in user only when actively authenticated ─────
     try {
-      const userName = await mainWindow.webContents.executeJavaScript(
-        '(function(){ try { var el = document.querySelector(\'a[href="/users/profile"]\'); return el ? el.textContent.trim() : null; } catch(e){ return null; } })()'
+      const isLoginPage = await mainWindow.webContents.executeJavaScript(
+        '!!(document.querySelector(\'form[action="/login"]\') || document.querySelector(\'input[name="email"]\'))'
       );
-      if (userName && dataStore) {
-        const users = dataStore.getCollection('users') || [];
-        const match = users.find(u => u.name && u.name.trim() === userName);
-        if (match && match.email && match.email !== currentSessionEmail) {
-          currentSessionEmail = match.email;
-          try { saveUserSettings({ lastUserEmail: currentSessionEmail }); } catch (e) {}
-          if (localServer && localServer.setAutoLoginEmail) localServer.setAutoLoginEmail(currentSessionEmail);
-          if (syncEngine) syncEngine.setAutoLoginEmail(currentSessionEmail);
-          console.log('[Main] tracked logged-in user:', currentSessionEmail);
+      if (isLoginPage) {
+        currentSessionEmail = null;
+        if (localServer && localServer.setAutoLoginEmail) localServer.setAutoLoginEmail(null);
+      } else {
+        const userName = await mainWindow.webContents.executeJavaScript(
+          '(function(){ try { var el = document.querySelector(\'a[href="/users/profile"]\'); return el ? el.textContent.trim() : null; } catch(e){ return null; } })()'
+        );
+        if (userName && dataStore) {
+          const users = dataStore.getCollection('users') || [];
+          const match = users.find(u => u.name && u.name.trim() === userName);
+          if (match && match.email && match.email !== currentSessionEmail) {
+            currentSessionEmail = match.email;
+            if (localServer && localServer.setAutoLoginEmail) localServer.setAutoLoginEmail(currentSessionEmail);
+            if (syncEngine) syncEngine.setAutoLoginEmail(currentSessionEmail);
+            console.log('[Main] tracked logged-in user:', currentSessionEmail);
+          }
         }
       }
     } catch (e) { /* ignore user tracking errors */ }
-
-    // ── Detect explicit logout (landed on login page with no session) ──
-    try {
-      const currentUrl = mainWindow.webContents.getURL();
-      const localBase = `http://127.0.0.1:${config.LOCAL_PORT}`;
-      // If on login page of real server or local server
-      const isServerRoot = config.SERVER_URL && currentUrl === config.SERVER_URL.replace(/\/$/, '') + '/';
-      const isLocalRoot = currentUrl === localBase + '/';
-      if (isServerRoot || isLocalRoot) {
-        // Check if the page is actually the login page (has login form)
-        const hasLoginForm = await mainWindow.webContents.executeJavaScript(
-          '!!(document.querySelector(\'form[action="/login"]\') || document.querySelector(\'input[name="email"]\'))'
-        );
-        // Only clear auto-login if user explicitly logged out (no auto-login
-        // email means they arrived here naturally)
-        // We DON'T clear auto-login here — the auto-login middleware will
-        // redirect them away from the login page via requireGuest.
-      }
-    } catch (e) { /* ignore */ }
 
     try {
       const url = mainWindow.webContents.getURL();
@@ -393,39 +500,50 @@ async function createWindow() {
     } catch (e) { /* ignore */ }
   });
 
-  // When offline, intercept all main-frame navigations to the server and
-  // redirect them to the local offline server instead. The local server now
-  // renders full EJS pages so users can navigate the entire app offline.
+  // Intercept all main-frame navigations to ensure the app ALWAYS stays on the local server
   mainWindow.webContents.on('will-navigate', (event, targetUrl) => {
     try {
-      if (!config.SERVER_URL) return;
-      // When online, let the navigation go to the real server
-      if (isOnline) return;
-      const base = config.SERVER_URL.replace(/\/$/, '');
-      if (!targetUrl || !targetUrl.startsWith(base)) return;
-      const urlPath = targetUrl.slice(base.length) || '/';
-      event.preventDefault();
-      console.log('[Main] offline — redirecting navigation to local server:', urlPath);
-      try {
-        mainWindow.loadURL(`http://127.0.0.1:${config.LOCAL_PORT}${urlPath}`);
-      } catch (e) { loadOfflinePage(urlPath); }
+      if (!targetUrl) return;
+      const localBase = `http://127.0.0.1:${config.LOCAL_PORT}`;
+      if (targetUrl.startsWith(localBase)) {
+        // Allow all local navigations
+        return;
+      }
+      // If navigating to the central server or external link, redirect path to local server
+      if (config.SERVER_URL) {
+        const base = config.SERVER_URL.replace(/\/$/, '');
+        if (targetUrl.startsWith(base)) {
+          const urlPath = targetUrl.slice(base.length) || '/';
+          event.preventDefault();
+          console.log('[Main] Local-First: redirecting server link to local UI:', urlPath);
+          mainWindow.loadURL(`http://127.0.0.1:${config.LOCAL_PORT}${urlPath}`);
+        }
+      }
     } catch (e) { /* ignore */ }
   });
 
   mainWindow.webContents.on('before-input-event', (event, input) => {
-    if (input.control && input.key.toLowerCase() === 'p' && input.type === 'keyDown') {
+    if (input.control && input.key.toLowerCase() === 'l' && input.type === 'keyDown') {
+      event.preventDefault();
+      lockApp();
+      return;
+    }
+    if (input.control && input.key.toLowerCase() === 'p' && input.type === 'keyDown' && !appLocked) {
       event.preventDefault();
       const url = mainWindow.webContents.getURL();
       openPrintPreviewWindow(url);
+      return;
+    }
+    if (!appLocked) {
+      lastActivityAt = Date.now();
     }
   });
 
   mainWindow.webContents.on('did-fail-load', (_event, _code, _desc, validatedURL, isMainFrame) => {
     if (!isMainFrame) return;
-    if (config.SERVER_URL && validatedURL && validatedURL.startsWith(config.SERVER_URL)) {
-      const urlObj = new URL(validatedURL);
-      const urlPath = urlObj.pathname + (urlObj.search || '');
-      loadOfflinePage(urlPath);
+    const localBase = `http://127.0.0.1:${config.LOCAL_PORT}`;
+    if (!validatedURL || !validatedURL.startsWith(localBase)) {
+      loadOfflinePage('/');
     }
   });
 
@@ -433,7 +551,20 @@ async function createWindow() {
     try {
       const u = new URL(url);
       const p = u.pathname || '';
-      if (p.startsWith('/reports/print') || p.startsWith('/reports/result') || p === '/reports/print-multiple') {
+
+      // If opening Kiosk: load server's real Kiosk directly in the browser
+      if (p.includes('/kiosk') || p.includes('/assigned') || u.searchParams.has('kiosk')) {
+        let serverKioskUrl = url;
+        if (config.SERVER_URL) {
+          const serverBase = config.SERVER_URL.replace(/\/$/, '');
+          serverKioskUrl = `${serverBase}/kiosk`;
+        }
+        console.log('[Main] Opening Live Server Kiosk in external browser:', serverKioskUrl);
+        shell.openExternal(serverKioskUrl);
+        return { action: 'deny' };
+      }
+
+      if (p.startsWith('/reports/print') || p.startsWith('/reports/result') || p.includes('print-multiple') || p.includes('/print')) {
         openPrintPreviewWindow(url);
         return { action: 'deny' };
       }
@@ -444,69 +575,22 @@ async function createWindow() {
     }
   });
 
-  // Detect navigation to dashboard (post-login) and trigger a full-sync
+  // Detect navigation to dashboard (post-login) and trigger a background full-sync if online
   mainWindow.webContents.on('did-navigate', async (_event, url) => {
     try {
-      // ── Session-loss detection: if the user lands on the real server's
-      //    login page while we have a tracked user, the server must have
-      //    restarted and lost its sessions.  Redirect to the local server
-      //    so the auto-login middleware creates a new session seamlessly.
-      if (config.SERVER_URL && currentSessionEmail) {
-        const base = config.SERVER_URL.replace(/\/$/, '');
-        if (url === base + '/' || url === base) {
-          try {
-            const isLoginPage = await mainWindow.webContents.executeJavaScript(
-              "!!(document.querySelector('form[action=\"/login\"]') || document.querySelector('input[name=\"email\"]'))"
-            );
-            if (isLoginPage) {
-                  // Debounce repeated re-auth attempts
-                  const now = Date.now();
-                  if (now - lastSessionAuthAt < 10000) {
-                    console.log('[Main] recent re-auth attempt in last 10s — skipping');
-                    return;
-                  }
-                  lastSessionAuthAt = now;
-                  console.log('[Main] session lost on real server — attempting re-auth before switching to local server');
-                  try {
-                    // Try to re-authenticate using stored credentials (SyncEngine)
-                    const authPromise = (syncEngine && typeof syncEngine._ensureServerAuth === 'function') ? syncEngine._ensureServerAuth() : Promise.resolve(false);
-                    // Timeout the auth attempt to avoid hanging the UI (8s)
-                    const timeout = new Promise(r => setTimeout(() => r(false), 8000));
-                    const authOk = await Promise.race([authPromise, timeout]);
-                    if (authOk) {
-                      console.log('[Main] re-auth succeeded — staying on real server');
-                      // reload root so session-backed redirects will occur
-                      try { if (mainWindow && !mainWindow.isDestroyed()) await mainWindow.loadURL(config.SERVER_URL); } catch (e) {}
-                      lastSessionAuthAt = Date.now();
-                      return;
-                    }
-                  } catch (e) { console.warn('[Main] re-auth attempt failed:', e && e.message); }
-                  console.log('[Main] switching to local server after failed re-auth');
-                  mainWindow.loadURL(`http://127.0.0.1:${config.LOCAL_PORT}/`);
-                  return;
-                } else {
-              console.log('[Main] landed on server root but no login form detected — staying with real server');
-            }
-          } catch (e) {
-            console.warn('[Main] login detection failed, not switching to local server:', e && e.message);
-          }
-        }
-      }
-    } catch (e) { /* ignore */ }
-    try {
       if (!config.AUTO_FULLSYNC_ON_LOGIN) return;
-      if (!config.SERVER_URL) return;
-      const base = config.SERVER_URL.replace(/\/$/, '');
-      if (!url || !url.startsWith(base)) return;
-      const path = url.slice(base.length) || '/';
-      // when server redirects to /dashboard after login, trigger an immediate full-sync
+      if (!config.SERVER_URL || !isOnline) return;
+      const localBase = `http://127.0.0.1:${config.LOCAL_PORT}`;
+      if (!url || !url.startsWith(localBase)) return;
+      const path = url.slice(localBase.length) || '/';
+      // when user visits /dashboard after login, trigger background sync
       if (path.startsWith('/dashboard')) {
         const LAST_MIN = 5 * 60 * 1000;
         const now = Date.now();
-        if (lastLoginSyncAt && (now - lastLoginSyncAt) < LAST_MIN) return; // avoid repeats
+        if (lastLoginSyncAt && (now - lastLoginSyncAt) < LAST_MIN) return;
         lastLoginSyncAt = now;
         try {
-          console.log('[Main] detected dashboard navigation — running full-sync');
+          console.log('[Main] Local-First: dashboard reached — running background full-sync');
           const res = await syncEngine.fullSync(mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null);
           sendStatus();
           if (res && res.success) {
@@ -524,29 +608,30 @@ async function createWindow() {
  *  Navigation helpers
  * ================================================================== */
 async function loadApp() {
-  if (!config.SERVER_URL) {
-    console.log('[Main] no SERVER_URL configured — showing offline UI and settings');
-    try { openSettingsWindow(); } catch (e) {}
-    isOnline = false;
-    loadOfflinePage('/');
-    return;
+  console.log(`[Main] Local-First: loading standalone UI on http://127.0.0.1:${config.LOCAL_PORT}`);
+  try {
+    await mainWindow.loadURL(`http://127.0.0.1:${config.LOCAL_PORT}/`);
+    sendStatus();
+  } catch (e) {
+    console.error('[Main] failed to load local server URL:', e && e.message);
   }
 
-  try {
-    await mainWindow.loadURL(config.SERVER_URL);
-    isOnline = true;
-    sendStatus();
-  } catch {
-    console.log('[Main] server unreachable on startup — loading offline');
-    isOnline = false;
-    loadOfflinePage('/');
+  // If server is configured and online, perform background sync
+  if (config.SERVER_URL && isOnline) {
+    setTimeout(async () => {
+      try {
+        console.log('[Main] online on startup — running background full-sync');
+        await syncEngine.fullSync(mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null);
+        sendStatus();
+      } catch (e) {
+        console.warn('[Main] startup full-sync failed:', e && e.message);
+      }
+    }, 1500);
   }
 }
 
 function loadOfflinePage(urlPath) {
-  // The local server now renders full EJS pages with DataStore data,
-  // so always redirect there for offline viewing.
-  mainWindow.loadURL(`http://127.0.0.1:${config.LOCAL_PORT}${urlPath}`);
+  mainWindow.loadURL(`http://127.0.0.1:${config.LOCAL_PORT}${urlPath || '/'}`);
 }
 
 /* ==================================================================
@@ -555,51 +640,19 @@ function loadOfflinePage(urlPath) {
 function setupRequestInterceptor() {
   const ses = session.fromPartition('persist:lis');
 
+  if (!config.SERVER_URL) return;
+
   ses.webRequest.onBeforeRequest({ urls: [`${config.SERVER_URL}/*`] }, (details, callback) => {
-    // Track explicit logout so we can clear auto-login state
     try {
-      if (details.method === 'POST') {
+      // ONLY redirect top-level user browser window navigations from remote URL to local server
+      if (details.resourceType === 'main_frame' || details.resourceType === 'sub_frame') {
         const urlObj = new URL(details.url);
-        if (urlObj.pathname === '/logout') {
-          currentSessionEmail = null;
-          if (localServer && localServer.setAutoLoginEmail) localServer.setAutoLoginEmail(null);
-          try { saveUserSettings({ lastUserEmail: '' }); } catch (e) {}
-          console.log('[Main] explicit logout detected — cleared auto-login');
-        }
-      }
-    } catch (e) { /* ignore */ }
-
-    if (isOnline) return callback({});
-
-    // When offline, redirect ALL requests to the local server which now
-    // renders full EJS pages and serves DataStore-backed JSON endpoints.
-    try {
-      const urlObj = new URL(details.url);
-      const urlPath = urlObj.pathname + (urlObj.search || '');
-
-      // For non-GET methods (POST/PUT/DELETE), queue the operation
-      if (details.method !== 'GET') {
-        // Don't queue auth operations (login/logout) — they are local-only
-        if (urlPath === '/login' || urlPath === '/logout') {
-          callback({ redirectURL: `http://127.0.0.1:${config.LOCAL_PORT}${urlPath}` });
-          return;
-        }
-        const body = parseUploadData(details.uploadData);
-        operationQueue.add({ method: details.method, url: details.url, body, timestamp: new Date().toISOString() });
-        // Redirect to local server so the route handler processes the form
-        // (which will also save to DataStore for offline mutations)
-        callback({ redirectURL: `http://127.0.0.1:${config.LOCAL_PORT}${urlPath}` });
-        return;
+        const urlPath = urlObj.pathname + (urlObj.search || '');
+        return callback({ redirectURL: `http://127.0.0.1:${config.LOCAL_PORT}${urlPath}` });
       }
 
-      // Skip static asset extensions — let Electron cache handle those
-      if (/\.(js|css|png|jpg|jpeg|svg|woff2?|ico|map|mp3|mp4|webp|ttf|eot)$/i.test(urlPath)) {
-        return callback({});
-      }
-
-      // Redirect all GET requests to the local server
-      console.log('[Intercept] offline — redirecting to local server:', details.method, urlPath);
-      callback({ redirectURL: `http://127.0.0.1:${config.LOCAL_PORT}${urlPath}` });
+      // Allow ALL background sync requests, API calls, net.request, login POST, exports to reach the real server
+      callback({});
     } catch (e) {
       callback({});
     }
@@ -670,15 +723,40 @@ ipcMain.handle('full-sync', async () => {
     return Object.assign({}, res || {}, { datastore: dsInfo });
   } catch (e) { return { success: false, reason: e && e.message } }
 });
+async function triggerAutoSync() {
+  try {
+    if (!isOnline || !syncEngine || !operationQueue) return;
+    const pending = operationQueue.countPending();
+    if (pending === 0 || syncEngine._syncing) return;
+    console.log(`[Main] triggerAutoSync starting — ${pending} pending operation(s)`);
+    const synced = await syncEngine.processQueue();
+    const remaining = operationQueue ? operationQueue.countPending() : 0;
+    sendStatus();
+    try {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('sync-complete', { synced, remaining });
+      }
+    } catch (e) {}
+    if (remaining === 0 && synced > 0) {
+      console.log('[Main] auto-sync completed all items — running full-sync');
+      try { if (pageCache && typeof pageCache.clear === 'function') pageCache.clear(); } catch (e) {}
+      await syncEngine.fullSync(mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null, { replace: true });
+      sendStatus();
+    }
+  } catch (e) {
+    console.error('[Main] triggerAutoSync failed:', e && e.message);
+  }
+}
+
 ipcMain.handle('retry-connection', async () => {
   if (!config.SERVER_URL) return { online: false, reason: 'no-server-configured' };
   if (!networkMonitor) networkMonitor = new NetworkMonitor(config.SERVER_URL, config.PING_INTERVAL);
   const online = await networkMonitor.checkOnce();
   isOnline = online;
   sendStatus();
-  // Don't force-load the real server URL here — the user stays on the
-  // local server. If the server is back, the status bar will update to
-  // "Connected" and background sync will keep data up to date.
+  if (online) {
+    triggerAutoSync().catch(() => {});
+  }
   return { online };
 });
 ipcMain.handle('datastore-info', () => {
@@ -687,9 +765,13 @@ ipcMain.handle('datastore-info', () => {
 ipcMain.handle('clear-cache', () => { pageCache.clear(); return { success: true }; });
 ipcMain.handle('go-online', () => {
   if (!config.SERVER_URL) return { success: false, reason: 'no-server-configured' };
-  // Don't force-load real server — stay on local server to prevent logout
-  // after server restarts.  Trigger a sync check instead.
-  if (networkMonitor) networkMonitor.checkOnce().then(online => { isOnline = online; sendStatus(); }).catch(() => {});
+  if (networkMonitor) {
+    networkMonitor.checkOnce().then(online => {
+      isOnline = online;
+      sendStatus();
+      if (online) triggerAutoSync().catch(() => {});
+    }).catch(() => {});
+  }
   return { success: true };
 });
 
@@ -704,6 +786,122 @@ ipcMain.handle('set-settings', (_e, settings) => {
 ipcMain.handle('open-settings', () => {
   openSettingsWindow();
   return { success: true };
+});
+
+// Thermal Printer Test IPC
+ipcMain.handle('test-thermal-print', async (_e, { printer }) => {
+  try {
+    const { spawnSync } = require('child_process');
+    const scriptPath = path.join(__dirname, 'scripts', 'thermal_test.js');
+    if (!fs.existsSync(scriptPath)) {
+      return { success: false, reason: 'thermal_test.js not found' };
+    }
+    const targetPrinter = printer || userSettings.printerName || userSettings.printer || process.env.PRINTER_NAME || undefined;
+    const args = [scriptPath, '--receipt'];
+    if (targetPrinter) args.push('--printer', targetPrinter);
+
+    const spawnEnv = Object.assign({}, process.env, { ELECTRON_RUN_AS_NODE: '1' });
+    const proc = spawnSync(process.execPath, args, { cwd: __dirname, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024, env: spawnEnv });
+    if (proc.error) {
+      console.error('[Thermal] spawn error:', proc.error);
+      return { success: false, reason: String(proc.error) };
+    }
+    if (proc.status !== 0) {
+      console.error('[Thermal] print failed:', proc.stderr || proc.stdout);
+      return { success: false, reason: proc.stderr || proc.stdout || ('Exit code: ' + proc.status) };
+    }
+    return { success: true, output: proc.stdout };
+  } catch (e) {
+    return { success: false, reason: e && e.message };
+  }
+});
+
+// Security IPC Handlers
+ipcMain.handle('get-security-settings', () => ({
+  lockTimeout: getLockTimeoutMinutes(),
+  isLocked: appLocked,
+  hasDefaultPin: getLockPin() === '0000'
+}));
+
+ipcMain.handle('change-pin', (_e, { currentPin, newPin }) => {
+  const currentStored = getLockPin();
+  if (String(currentPin).trim() !== currentStored) {
+    return { success: false, reason: 'Current PIN is incorrect.' };
+  }
+  const cleanNew = String(newPin || '').trim();
+  if (!/^\d{4}$/.test(cleanNew)) {
+    return { success: false, reason: 'New PIN must be exactly 4 numeric digits.' };
+  }
+  saveUserSettings({ lockPin: cleanNew });
+  return { success: true };
+});
+
+ipcMain.handle('set-lock-timeout', (_e, { timeoutMinutes }) => {
+  const parsed = parseInt(timeoutMinutes, 10);
+  saveUserSettings({ lockTimeout: isNaN(parsed) ? 10 : parsed });
+  lastActivityAt = Date.now();
+  return { success: true, timeout: getLockTimeoutMinutes() };
+});
+
+ipcMain.handle('lock-app', () => {
+  lockApp();
+  return { success: true };
+});
+
+ipcMain.handle('unlock-app', (_e, { pin }) => {
+  return unlockApp(pin);
+});
+
+ipcMain.handle('report-activity', () => {
+  lastActivityAt = Date.now();
+  return { success: true };
+});
+
+// Application Logs & Diagnostics IPC
+ipcMain.handle('get-recent-logs', async () => {
+  try {
+    const { getRecentLogs, getLogPath } = require('./lib/appLogger');
+    return {
+      logs: getRecentLogs(300),
+      path: getLogPath()
+    };
+  } catch (e) {
+    return { logs: 'Error reading logs: ' + (e && e.message), path: '' };
+  }
+});
+
+ipcMain.handle('export-logs', async () => {
+  try {
+    const { getLogPath } = require('./lib/appLogger');
+    const logPath = getLogPath();
+    if (!fs.existsSync(logPath)) {
+      return { success: false, message: 'No log file found to export.' };
+    }
+    const defaultName = `gezyne-lis-logs-${new Date().toISOString().slice(0, 10)}.log`;
+    const targetWin = global._settingsWindow || mainWindow;
+    const res = await dialog.showSaveDialog(targetWin, {
+      title: 'Export Application Logs',
+      defaultPath: path.join(app.getPath('downloads') || app.getPath('documents'), defaultName),
+      filters: [{ name: 'Log Files', extensions: ['log', 'txt'] }]
+    });
+    if (res.canceled || !res.filePath) {
+      return { success: false, message: 'Export canceled.' };
+    }
+    fs.copyFileSync(logPath, res.filePath);
+    return { success: true, path: res.filePath, message: 'Logs exported to ' + res.filePath };
+  } catch (e) {
+    return { success: false, message: 'Export failed: ' + (e && e.message) };
+  }
+});
+
+ipcMain.handle('clear-logs', async () => {
+  try {
+    const { clearLogFile } = require('./lib/appLogger');
+    clearLogFile();
+    return { success: true };
+  } catch (e) {
+    return { success: false, message: e && e.message };
+  }
 });
 
 // Discard local queued changes and attempt full-sync (triggered from renderer settings)
@@ -816,32 +1014,126 @@ ipcMain.handle('save-credentials', (_e, { email, password }) => {
   }
 });
 
+// Perform manual backup of SQLite DB and queue
+ipcMain.handle('perform-backup', async () => {
+  try {
+    const files = performBackup();
+    return { success: !!(files && files.length), files: files || [] };
+  } catch (e) {
+    return { success: false, error: e && e.message };
+  }
+});
+
+// Delete specific queued mutation
+ipcMain.handle('delete-queue-item', async (_e, id) => {
+  try {
+    if (!operationQueue || !id) return { success: false, reason: 'invalid-id' };
+    const initialLen = operationQueue.operations.length;
+    operationQueue.operations = operationQueue.operations.filter(o => o.id !== id);
+    if (operationQueue.operations.length !== initialLen) {
+      operationQueue._save();
+      sendStatus();
+      return { success: true, pendingCount: operationQueue.countPending() };
+    }
+    return { success: false, reason: 'not-found' };
+  } catch (e) {
+    return { success: false, error: e && e.message };
+  }
+});
+
+// Clear all pending operations
+ipcMain.handle('clear-queue', async () => {
+  try {
+    if (!operationQueue) return { success: false, reason: 'no-queue' };
+    operationQueue.clearAll();
+    sendStatus();
+    return { success: true };
+  } catch (e) {
+    return { success: false, error: e && e.message };
+  }
+});
+
 /* ==================================================================
  *  Print preview and child windows
  * ================================================================== */
 function openPrintPreviewWindow(url) {
   if (openPrintPreviewWindow._busy) { console.log('[Print] already generating preview, skipping duplicate'); return; }
   openPrintPreviewWindow._busy = true;
-  console.log('[Print] opening print preview for:', url);
 
-  const sourceWin = new BrowserWindow({ width: 800, height: 1100, show: false, icon: appIcon || undefined, webPreferences: { preload: path.join(__dirname, 'preload-print.js'), nodeIntegration: false, contextIsolation: true, partition: 'persist:lis' } });
-  sourceWin.loadURL(url);
-  sourceWin.webContents.on('dom-ready', () => { sourceWin.webContents.executeJavaScript('window.print = function(){}; void 0;').catch(() => {}); });
+  // Normalize URL to local server loopback
+  let targetUrl = url;
+  try {
+    if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+      targetUrl = `http://127.0.0.1:${config.LOCAL_PORT}${targetUrl.startsWith('/') ? '' : '/'}${targetUrl}`;
+    } else if (config.SERVER_URL && targetUrl.startsWith(config.SERVER_URL.replace(/\/$/, ''))) {
+      targetUrl = targetUrl.replace(config.SERVER_URL.replace(/\/$/, ''), `http://127.0.0.1:${config.LOCAL_PORT}`);
+    }
+  } catch (_) {}
 
-  const stallTimer = setTimeout(() => { console.error('[Print] PDF generation stalled — forcing cleanup'); try { if (sourceWin && !sourceWin.isDestroyed()) sourceWin.close(); } catch {} openPrintPreviewWindow._busy = false; }, 30000);
+  console.log('[Print] opening print preview for:', targetUrl);
+
+  const sourceWin = new BrowserWindow({
+    width: 800,
+    height: 1100,
+    show: false,
+    icon: appIcon || undefined,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload-print.js'),
+      nodeIntegration: false,
+      contextIsolation: true,
+      partition: 'persist:lis'
+    }
+  });
+
+  sourceWin.loadURL(targetUrl);
+  sourceWin.webContents.on('dom-ready', () => {
+    sourceWin.webContents.executeJavaScript('window.print = function(){}; void 0;').catch(() => {});
+  });
+
+  const stallTimer = setTimeout(() => {
+    console.error('[Print] PDF generation stalled — forcing cleanup');
+    try { if (sourceWin && !sourceWin.isDestroyed()) sourceWin.close(); } catch {}
+    openPrintPreviewWindow._busy = false;
+  }, 30000);
 
   sourceWin.webContents.on('did-finish-load', async () => {
     await sourceWin.webContents.executeJavaScript('window.print = function(){}; void 0;').catch(() => {});
-    await new Promise(r => setTimeout(r, 800));
+    await new Promise(r => setTimeout(r, 600));
     try {
-      const pdfBuffer = await sourceWin.webContents.printToPDF({ printBackground: true, preferCSSPageSize: true, margins: { marginType: 'none' } });
-      sourceWin.close();
-      const tmpDir = path.join(userDataPath, 'temp-pdfs'); if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
+      const pdfBuffer = await sourceWin.webContents.printToPDF({
+        printBackground: true,
+        preferCSSPageSize: true,
+        margins: { marginType: 'none' }
+      });
+      try { sourceWin.close(); } catch {}
+      const tmpDir = path.join(userDataPath, 'temp-pdfs');
+      if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
       const pdfPath = path.join(tmpDir, `report-${Date.now()}.pdf`);
       fs.writeFileSync(pdfPath, pdfBuffer);
-      const openRes = await shell.openPath(pdfPath);
-      if (openRes) console.error('[Print] shell.openPath returned error:', openRes);
-      setTimeout(() => { try { fs.unlinkSync(pdfPath); } catch { } }, 120000);
+      console.log('[Print] PDF generated successfully at:', pdfPath);
+
+      // Open in-app dedicated print preview window with PDF.js viewer
+      const previewWin = new BrowserWindow({
+        width: 1020,
+        height: 900,
+        title: 'Print Preview — Gezyne LIS',
+        icon: appIcon || undefined,
+        backgroundColor: '#0f172a',
+        webPreferences: {
+          preload: path.join(__dirname, 'preload-print.js'),
+          nodeIntegration: false,
+          contextIsolation: true,
+        }
+      });
+      previewWin.loadFile(path.join(__dirname, 'renderer', 'print-preview.html'), {
+        query: { pdf: pdfPath }
+      });
+      previewWin.once('ready-to-show', () => {
+        try { previewWin.show(); } catch {}
+      });
+      previewWin.on('closed', () => {
+        setTimeout(() => { try { if (fs.existsSync(pdfPath)) fs.unlinkSync(pdfPath); } catch {} }, 5000);
+      });
     } catch (err) {
       console.error('[Print] PDF generation failed:', err);
       try { sourceWin.close(); } catch {}
@@ -851,13 +1143,26 @@ function openPrintPreviewWindow(url) {
     openPrintPreviewWindow._busy = false;
   });
 
-  sourceWin.webContents.on('did-fail-load', () => { console.error('[Print] source window failed to load'); try { sourceWin.close(); } catch {} openPrintPreviewWindow._busy = false; try { clearTimeout(stallTimer); } catch(e) {} });
+  sourceWin.webContents.on('did-fail-load', () => {
+    console.error('[Print] source window failed to load');
+    try { sourceWin.close(); } catch {}
+    openPrintPreviewWindow._busy = false;
+    try { clearTimeout(stallTimer); } catch(e) {}
+  });
 }
 
 function openChildWindow(url) {
   try {
-    const child = new BrowserWindow({ width: 1000, height: 800, icon: appIcon || undefined, webPreferences: { preload: path.join(__dirname, 'preload.js'), nodeIntegration: false, contextIsolation: true, partition: 'persist:lis' } });
-    child.loadURL(url).catch(() => {});
+    let targetUrl = url;
+    try {
+      const u = new URL(url);
+      u.searchParams.set('popup', '1');
+      targetUrl = u.toString();
+    } catch (e) {
+      targetUrl = url + (url.includes('?') ? '&' : '?') + 'popup=1';
+    }
+    const child = new BrowserWindow({ width: 1040, height: 850, title: 'Report Preview — Gezyne LIS', icon: appIcon || undefined, webPreferences: { preload: path.join(__dirname, 'preload.js'), nodeIntegration: false, contextIsolation: true, partition: 'persist:lis' } });
+    child.loadURL(targetUrl).catch(() => {});
     child.once('ready-to-show', () => { try { child.show(); } catch {} });
     try { if (process && process.argv && process.argv.includes('--dev')) child.webContents.openDevTools({ mode: 'detach' }); } catch (e) {}
     // Track child renderer crashes for this URL: attempt a reload once, then open externally and close.
@@ -892,7 +1197,7 @@ function openChildWindow(url) {
       try {
         const u = new URL(newUrl);
         const p = u.pathname || '';
-        if (p.startsWith('/reports/print') || p.startsWith('/reports/result') || p === '/reports/print-multiple') { openPrintPreviewWindow(newUrl); return { action: 'deny' }; }
+        if (p.startsWith('/reports/print') || p.startsWith('/reports/result') || p.includes('print-multiple') || p.includes('/print')) { openPrintPreviewWindow(newUrl); return { action: 'deny' }; }
         openChildWindow(newUrl);
         return { action: 'deny' };
       } catch (e) { return { action: 'allow' }; }
@@ -903,7 +1208,73 @@ function openChildWindow(url) {
 ipcMain.handle('print-preview', async (_e, { url }) => { openPrintPreviewWindow(url); return { success: true }; });
 ipcMain.handle('read-pdf-file', async (_e, { filePath }) => { try { if (filePath && fs.existsSync(filePath)) { const buffer = fs.readFileSync(filePath); return new Uint8Array(buffer); } } catch (e) { console.error('[Print] read-pdf-file failed:', e); } return null; });
 ipcMain.handle('save-pdf', async (_e, { sourcePath }) => { const result = await dialog.showSaveDialog(mainWindow, { title: 'Save Report PDF', defaultPath: 'LIS-Report.pdf', filters: [{ name: 'PDF', extensions: ['pdf'] }] }); if (!result.canceled && result.filePath) { fs.copyFileSync(sourcePath, result.filePath); return { success: true, path: result.filePath }; } return { success: false }; });
-ipcMain.handle('open-pdf', async (_e, { filePath }) => { try { if (filePath && fs.existsSync(filePath)) { const res = await shell.openPath(filePath); if (!res) return { success: true }; console.error('[Print] shell.openPath error:', res); } } catch (err) { console.error('[Print] open-pdf failed:', err); } return { success: false }; });
+ipcMain.handle('get-printers', async (event) => {
+  try {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win && !win.isDestroyed()) {
+      const printers = await win.webContents.getPrintersAsync();
+      return printers || [];
+    }
+  } catch (e) {
+    console.error('[Print] getPrintersAsync error:', e);
+  }
+  return [];
+});
+
+ipcMain.handle('print-silent', async (event, opts = {}) => {
+  try {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win && !win.isDestroyed()) {
+      const marginType = opts.margins || 'none';
+      const printOpts = {
+        silent: true,
+        deviceName: opts.printerName || undefined,
+        copies: parseInt(opts.copies, 10) || 1,
+        color: opts.color !== undefined ? !!opts.color : true,
+        landscape: opts.orientation === 'landscape',
+        printBackground: true,
+        margins: { marginType: marginType }
+      };
+      if (opts.pageSize && opts.pageSize !== 'Default') {
+        printOpts.pageSize = opts.pageSize;
+      }
+      if (opts.scaleFactor && !isNaN(opts.scaleFactor)) {
+        printOpts.scaleFactor = parseInt(opts.scaleFactor, 10);
+      }
+      return new Promise((resolve) => {
+        win.webContents.print(printOpts, (success, failureReason) => {
+          if (!success) console.warn('[Print] silent print result:', success, failureReason);
+          resolve({ success, failureReason });
+        });
+      });
+    }
+  } catch (e) {
+    console.error('[Print] print-silent error:', e);
+    return { success: false, error: e && e.message };
+  }
+  return { success: false };
+});
+
+ipcMain.handle('print-current-window', async (event) => {
+  try {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win && !win.isDestroyed()) {
+      win.webContents.print({ silent: false });
+      return { success: true };
+    }
+  } catch (e) { console.error('[Print] print-current-window error:', e); }
+  return { success: false };
+});
+ipcMain.handle('close-current-window', async (event) => {
+  try {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win && !win.isDestroyed()) {
+      win.close();
+      return { success: true };
+    }
+  } catch (e) { console.error('[Print] close-current-window error:', e); }
+  return { success: false };
+});
 
 /* ==================================================================
  *  System tray
@@ -914,6 +1285,7 @@ function createTray() {
     tray = new Tray(trayIcon);
     const contextMenu = Menu.buildFromTemplate([
       { label: 'Open Gezyne LIS', click: () => mainWindow && mainWindow.show() },
+      { label: '🔒 Lock App (Ctrl+L)', click: () => lockApp() },
       { label: 'Settings', click: () => openSettingsWindow() },
       { type: 'separator' },
       { label: 'Quit', click: () => app.quit() },
@@ -937,4 +1309,5 @@ app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) creat
 app.whenReady().then(() => {
   createWindow();
   createTray();
+  startLockCheckTimer();
 });

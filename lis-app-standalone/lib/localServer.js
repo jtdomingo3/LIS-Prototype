@@ -115,10 +115,7 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     return escaped;
   }
 
-  /* ── Auto-login middleware — seamlessly restore session on offline
-   *  transition so the user doesn't see a login page when the server
-   *  goes down. The main process sets _autoLoginEmail via
-   *  server.setAutoLoginEmail(email). ──────────────────────────────── */
+  /* ── User session bridge for active logged-in user ────────────────── */
   app.use((req, res, next) => {
     try {
       if (_autoLoginEmail && req.session && !req.session.user) {
@@ -134,10 +131,9 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
             signature: user.signature || null,
             licenseNumber: user.licenseNumber || '',
           };
-          console.log('[LocalServer] auto-login:', user.email);
         }
       }
-    } catch (e) { /* ignore auto-login errors */ }
+    } catch (e) { }
     next();
   });
 
@@ -160,23 +156,63 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
       // Skip export/sync endpoints
       if (reqPath.startsWith('/export/')) return next();
 
-      // Build the real server URL for this request
+      // Build the real server URL for this request preserving query parameters
       const base = config.SERVER_URL.replace(/\/$/, '');
-      const serverUrl = base + reqPath;
+      const queryString = (req.originalUrl && req.originalUrl.includes('?')) ? ('?' + req.originalUrl.split('?')[1]) : '';
+      const serverUrl = base + req.path + queryString;
+      const effectiveMethod = (req.query && req.query._method) ? req.query._method.toUpperCase() : (req.method || 'POST');
 
-      // Ensure a deterministic client-generated id for offline-created records
-      if (req.body && !req.body.client_id) {
-        try { req.body.client_id = require('crypto').randomUUID(); } catch (e) { req.body.client_id = 'cli-' + Date.now(); }
+      // Ensure a deterministic client-generated id and UUID for offline-created records
+      if (req.body) {
+        if (!req.body.id && reqPath === '/patients' && req.method === 'POST') {
+          try { req.body.id = require('crypto').randomUUID(); } catch (e) { req.body.id = 'pat-' + Date.now(); }
+        }
+        if (!req.body.client_id) {
+          try { req.body.client_id = require('crypto').randomUUID(); } catch (e) { req.body.client_id = 'cli-' + Date.now(); }
+        }
       }
       // Queue with the request body for later replay
       if (operationQueue) {
-        operationQueue.add({
-          method: 'POST', // HTML forms always POST with ?_method for PUT/DELETE
+        const entry = operationQueue.add({
+          method: effectiveMethod,
           url: serverUrl,
           body: req.body || {},
           timestamp: new Date().toISOString(),
         });
-        console.log('[LocalServer] queued mutation for server:', req.method, reqPath);
+        console.log('[LocalServer] queued mutation for server:', effectiveMethod, serverUrl, req.body && req.body.id ? ('id=' + req.body.id) : '');
+
+        // If creating tests, hook response finish to attach created test definitions to the queued op
+        if (reqPath === '/tests' && req.method === 'POST' && entry) {
+          const patientIdForTests = req.body && req.body.patient;
+          const origEnd = res.end;
+          res.end = function(...args) {
+            try {
+              if (global.db && patientIdForTests) {
+                const allTests = (typeof global.db.getTests === 'function' ? global.db.getTests() : []) || [];
+                const patientTests = allTests.filter(t => t && String(t.patient) === String(patientIdForTests));
+                if (patientTests.length) {
+                  entry.body.createdTests = JSON.stringify(patientTests.map(t => ({
+                    id: t.id,
+                    testId: t.testId,
+                    testType: t.testType,
+                    status: t.status,
+                    patient: t.patient,
+                    requestedTests: t.requestedTests,
+                    specimenNumbers: t.specimenNumbers,
+                    assignedDoctorId: t.assignedDoctorId,
+                    assignedDoctorName: t.assignedDoctorName,
+                    priority: t.priority,
+                    notes: t.notes,
+                    results: t.results,
+                    client_id: t.client_id || t.id
+                  })));
+                  operationQueue._save();
+                }
+              }
+            } catch (e) {}
+            return origEnd.apply(this, args);
+          };
+        }
       }
     } catch (e) {
       console.error('[LocalServer] mutation queue error:', e && e.message);
@@ -185,10 +221,12 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   });
 
   /* ── Clear auto-login on explicit logout ───────────────────────── */
-  app.post('/logout', (req, res, next) => {
+  const clearAutoLogin = (req, res, next) => {
     _autoLoginEmail = null;
-    next(); // let the real logout route handle session destroy + redirect
-  });
+    next();
+  };
+  app.get('/logout', clearAutoLogin);
+  app.post('/logout', clearAutoLogin);
 
   /* ── Make flash messages & user available to all views ─────────── */
   app.use((req, res, next) => {
@@ -224,14 +262,21 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
 
   /* ── Expose doctor names & areas to views ──────────────────────── */
   app.use((req, res, next) => {
-    // Read from environment or DataStore settings (fallback to empty)
-    const d1 = process.env.DOCTOR_1_NAME || '';
-    const d2 = process.env.DOCTOR_2_NAME || '';
+    // Read from environment or DataStore settings (fallback to clean defaults)
+    let d1 = (process.env.DOCTOR_1_NAME || '').trim();
+    let d2 = (process.env.DOCTOR_2_NAME || '').trim();
+    try {
+      const s = (dataStore && typeof dataStore.getSettings === 'function' ? dataStore.getSettings() : (global.db && typeof global.db.getSettings === 'function' ? global.db.getSettings() : null)) || null;
+      if (s && s.doctor1Name) d1 = s.doctor1Name.trim();
+      if (s && s.doctor2Name) d2 = s.doctor2Name.trim();
+    } catch (_) {}
+    d1 = d1 || 'Dr. Lorenzo';
+    d2 = d2 || 'Dr. Arcilla';
     res.locals.DOCTOR_1_NAME = d1;
     res.locals.DOCTOR_2_NAME = d2;
     const areas = [];
     if (d1) areas.push("Doctor's Check-up - " + d1);
-    if (d2) areas.push("Doctor's Check-up - " + d2);
+    if (d2 && d2 !== d1) areas.push("Doctor's Check-up - " + d2);
     res.locals.DOCTOR_AREAS = areas;
     next();
   });
@@ -242,19 +287,44 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     global.db = offlineDb;
   }
 
-  /* ── SSE shim (no-op while offline) ───────────────────────────── */
+  /* ── Active SSE Broadcaster for local windows & kiosk ───────── */
+  const localSseClients = new Set();
+
+  function broadcastEvent(eventData) {
+    if (!eventData) return;
+    const payload = `data: ${JSON.stringify(eventData)}\n\n`;
+    for (const client of localSseClients) {
+      try {
+        client.write(payload);
+      } catch (e) {
+        localSseClients.delete(client);
+      }
+    }
+  }
+
+  // Attach global broadcaster so route controllers can emit local events if needed
+  global.broadcastLocalEvent = broadcastEvent;
+
   app.get('/reception/assigned-events', (req, res) => {
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive',
     });
-    res.write('data: {"type":"connected","offline":true}\n\n');
-    // Keep connection open but don't send events
+
+    localSseClients.add(res);
+    res.write(': sse-connected-local\n\n');
+    res.write('data: {"init":true,"connected":true}\n\n');
+
+    // Keep connection alive with periodic heartbeat
     const interval = setInterval(() => {
       try { res.write(': keepalive\n\n'); } catch (e) { clearInterval(interval); }
-    }, 30000);
-    req.on('close', () => clearInterval(interval));
+    }, 25000);
+
+    req.on('close', () => {
+      clearInterval(interval);
+      localSseClients.delete(res);
+    });
   });
 
   /* ── Export endpoint (JSON API for DataStore data) ────────────── */
@@ -367,6 +437,8 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   server.getAutoLoginEmail = () => _autoLoginEmail;
   /* ── Expose operationQueue getter for status checks ────────────── */
   server.getOperationQueue = () => operationQueue;
+  /* ── Expose live event broadcaster for main/syncEngine ─────────── */
+  server.broadcastEvent = broadcastEvent;
 
   return server;
 }
