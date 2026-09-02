@@ -1120,10 +1120,10 @@
                 }
             } catch (e) { /* if anything goes wrong, fall back to original behavior */ }
 
-            // restore preferences (default: auto-refresh enabled)
+            // restore preferences (default: auto-refresh disabled)
             try {
                 const v = localStorage.getItem('notif-auto-refresh');
-                if (v === '1' || v === null) autoRefreshCheckbox.checked = true;
+                if (v === '1') autoRefreshCheckbox.checked = true;
                 else autoRefreshCheckbox.checked = false;
             } catch(e){}
             try { if (localStorage.getItem('notif-muted') === '1') muteCheckbox.checked = true; } catch(e){}
