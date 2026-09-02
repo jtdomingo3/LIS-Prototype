@@ -1209,8 +1209,8 @@
                         try {
                             const data = ev.data ? JSON.parse(ev.data) : null;
                             if (!data) return;
-                            // ignore handshake/init/offline keepalive messages
-                            if (data.init || data.offline || data.type === 'connected' || data.type === 'ping' || data.keepalive || data.serverTime) return;
+                            // ignore handshake/init/offline keepalive messages (data.serverTime is present on real events so do NOT ignore it)
+                            if (data.init || data.offline || data.type === 'connected' || data.type === 'ping' || data.keepalive) return;
                             
                             let text = '';
                             if (data.message) {
@@ -1257,15 +1257,24 @@
                                 const muted = (function(){ try { return localStorage.getItem('notif-muted') === '1'; } catch(e){ return false; } })();
                                 if (!muted && sound && typeof sound.play === 'function') { sound.currentTime = 0; sound.play().catch(()=>{}); }
                             } catch(e){}
-                            // auto-refresh queue / list pages when live events arrive (unless user is actively typing)
+                            // auto-refresh live list pages (Reception, Patients, Tests & Results, Dashboard)
                             try {
                                 const isUserEditing = document.activeElement && (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName) || document.activeElement.isContentEditable);
-                                const isEditingPage = window.location.pathname.includes('/new') || window.location.pathname.includes('/edit') || window.location.pathname.includes('/results');
-                                const isQueuePage = window.location.pathname === '/reception' || window.location.pathname.includes('/assigned') || window.location.pathname === '/dashboard' || window.location.pathname === '/';
+                                const currentPath = (window.location.pathname || '').replace(/\/$/, '');
+                                const isEditingPage = currentPath.includes('/new') || currentPath.includes('/edit') || currentPath.includes('/results');
+                                const isLivePage = currentPath === '/reception' || 
+                                                   currentPath.startsWith('/reception') || 
+                                                   currentPath === '/patients' || 
+                                                   currentPath === '/tests' || 
+                                                   currentPath === '/dashboard' || 
+                                                   currentPath === '';
                                 const v = localStorage.getItem('notif-auto-refresh');
-                                const enabled = (v === '1' || (autoRefreshCheckbox && autoRefreshCheckbox.checked) || isQueuePage);
+                                const enabled = (v === '1' || (autoRefreshCheckbox && autoRefreshCheckbox.checked) || isLivePage);
                                 if (enabled && !isUserEditing && !isEditingPage) {
-                                    setTimeout(() => { try { window.location.reload(); } catch (e) {} }, 1200);
+                                    if (window._sseRefreshTimer) clearTimeout(window._sseRefreshTimer);
+                                    window._sseRefreshTimer = setTimeout(() => {
+                                        try { window.location.reload(); } catch (e) {}
+                                    }, 800);
                                 }
                             } catch(e){}
                         } catch (e) { console.warn('[SSE] message parse error', e); }

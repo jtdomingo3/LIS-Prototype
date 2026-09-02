@@ -18,31 +18,33 @@
     <div class="card" style="margin-top:12px;">
       <h4>Select Requested Tests</h4>
       <p>Choose the tests/services to request for this patient. You can specify amount and remarks per item.</p>
-      <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px; margin-top:8px;">
+      <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px; margin-top:8px; align-items:start;">
         <% (templates || []).forEach(t => {
              const rawKey = String(t.testType || t.name || '').trim();
              const slug = rawKey.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
         %>
-          <label style="display:flex; align-items:center; gap:8px; padding:6px; border-radius:6px; background:#fff; border:1px solid #eee; flex-direction:column; align-items:stretch;">
+          <label style="display:flex; align-items:center; gap:6px; padding:8px 10px; border-radius:6px; background:#fff; border:1px solid #e2e8f0; flex-direction:column; align-items:stretch; transition: border-color 0.15s;">
             <div style="display:flex; align-items:center; gap:8px;">
               <input type="checkbox" class="test-checkbox" data-key="<%= slug %>" name="selectedTests" value="<%= rawKey %>">
-              <span style="font-size:0.95em; flex:1;"><%= t.name || t.testType %></span>
-              <input type="number" step="0.01" min="0" name="amount_<%= slug %>" class="test-amount" placeholder="Amount" style="width:120px; display:none;">
+              <span style="font-size:0.92em; font-weight:500; flex:1;"><%= t.name || t.testType %></span>
+              <input type="number" step="0.01" min="0" name="amount_<%= slug %>" class="test-amount" placeholder="Amount" style="width:105px; padding:4px 8px; font-size:13px; display:none;">
             </div>
-            <div style="display:flex; gap:8px; align-items:center; margin-top:6px;">
-              <textarea name="remark_<%= slug %>" class="test-remark" placeholder="Remarks" rows="2" style="flex:1; width:100%; resize:vertical; display:none;"></textarea>
+            <div class="test-remark-container" style="display:none; margin-top:6px;">
+              <textarea name="remark_<%= slug %>" class="test-remark" placeholder="Remarks" rows="2" style="width:100%; height:42px; min-height:40px; max-height:44px; font-size:12.5px; line-height:1.25; padding:4px 8px; border:1px solid #cbd5e1; border-radius:4px; box-sizing:border-box; resize:none;"></textarea>
             </div>
           </label>
         <% }) %>
       </div>
 
-      <div style="margin-top:12px; display:flex; gap:12px; align-items:center;">
+      <div style="margin-top:12px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
         <label style="display:inline-flex; align-items:center; gap:8px; margin-right:12px;">
           <input type="checkbox" class="sendout-checkbox" data-key="sendout" name="forSendOut" value="1" >
-          <span style="font-size:0.95em;">For Send Out</span>
+          <span style="font-size:0.95em; font-weight:500;">For Send Out</span>
         </label>
-        <input type="number" step="0.01" min="0" name="amount_sendout" class="test-amount" placeholder="Amount" style="width:120px; display:none;">
-        <textarea name="remark_sendout" class="test-remark" placeholder="Remarks" rows="2" style="flex:1; width:220px; display:none; margin-left:6px; resize:vertical;"></textarea>
+        <input type="number" step="0.01" min="0" name="amount_sendout" class="test-amount" placeholder="Amount" style="width:105px; padding:4px 8px; font-size:13px; display:none;">
+        <div class="sendout-remark-container" style="display:none; margin-left:6px; flex:1; max-width:320px;">
+          <textarea name="remark_sendout" class="test-remark" placeholder="Remarks" rows="2" style="width:100%; height:42px; min-height:40px; max-height:44px; font-size:12.5px; line-height:1.25; padding:4px 8px; border:1px solid #cbd5e1; border-radius:4px; box-sizing:border-box; resize:none;"></textarea>
+        </div>
       </div>
 
       <h5 style="margin-top:12px;">Doctor's Check-up</h5>
@@ -131,11 +133,25 @@
       const key = cb.getAttribute('data-key');
       const amt = document.querySelector('input[name="amount_' + key + '"]');
       const remark = document.querySelector('[name="remark_' + key + '"]');
+      const container = remark ? (remark.closest('.test-remark-container') || remark) : null;
 
       function update() {
         if (!amt || !remark) return;
-        if (cb.checked) { amt.style.display = ''; amt.disabled = false; remark.style.display = ''; remark.disabled = false; }
-        else { amt.style.display = 'none'; amt.disabled = true; remark.style.display = 'none'; remark.disabled = true; }
+        if (cb.checked) {
+          amt.style.display = '';
+          amt.disabled = false;
+          remark.disabled = false;
+          if (container) container.style.display = 'block';
+          const card = cb.closest('label');
+          if (card) card.style.borderColor = '#10b981';
+        } else {
+          amt.style.display = 'none';
+          amt.disabled = true;
+          remark.disabled = true;
+          if (container) container.style.display = 'none';
+          const card = cb.closest('label');
+          if (card) card.style.borderColor = '#e2e8f0';
+        }
       }
       cb.addEventListener('change', update);
       update();
@@ -144,7 +160,21 @@
     document.querySelectorAll('.sendout-checkbox').forEach(cb => {
       const amt = document.querySelector('input[name="amount_sendout"]');
       const remark = document.querySelector('textarea[name="remark_sendout"]');
-      function update() { if (!amt||!remark) return; if (cb.checked) { amt.style.display=''; amt.disabled=false; remark.style.display=''; remark.disabled=false; } else { amt.style.display='none'; amt.disabled=true; remark.style.display='none'; remark.disabled=true; } }
+      const container = remark ? (remark.closest('.sendout-remark-container') || remark) : null;
+      function update() {
+        if (!amt || !remark) return;
+        if (cb.checked) {
+          amt.style.display = '';
+          amt.disabled = false;
+          remark.disabled = false;
+          if (container) container.style.display = 'block';
+        } else {
+          amt.style.display = 'none';
+          amt.disabled = true;
+          remark.disabled = true;
+          if (container) container.style.display = 'none';
+        }
+      }
       cb.addEventListener('change', update);
       update();
     });
