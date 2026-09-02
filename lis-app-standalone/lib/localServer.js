@@ -18,6 +18,9 @@ const { createOfflineDb } = require('./offlineDb');
 
 function createLocalServer(pageCache, operationQueue, config, dataStore) {
   const app = express();
+  app.locals.config = config;
+  app.locals.dataStore = dataStore;
+  app.locals.operationQueue = operationQueue;
 
   /* ── Auto-login state (set by main process for seamless transitions) ── */
   let _autoLoginEmail = null;
@@ -430,6 +433,11 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     const signaturesRoutes = require('../routes/signatures');
     app.use('/signatures', signaturesRoutes);
   } catch (e) { console.error('[LocalServer] failed to load signatures routes:', e && e.message); }
+
+  try {
+    const chatbotRoutes = require('../routes/chatbot');
+    app.use('/chatbot', chatbotRoutes);
+  } catch (e) { console.error('[LocalServer] failed to load chatbot routes:', e && e.message); }
 
   /* ── 404 handler ──────────────────────────────────────────────── */
   app.use((req, res) => {

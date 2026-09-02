@@ -1,0 +1,836 @@
+<!-- GezyneBot Floating AI Assistant Widget (Standalone Edition) -->
+<div id="gezynebot-container">
+    <!-- Floating Launcher Button -->
+    <button id="gezynebot-launcher" class="gezynebot-launcher-btn" type="button" title="Open GezyneBot Assistant">
+        <span class="gezynebot-launcher-icon">🤖</span>
+        <span class="gezynebot-status-badge" id="gezynebot-badge"></span>
+    </button>
+
+    <!-- Floating Chat Popup Panel -->
+    <div id="gezynebot-panel" class="gezynebot-panel">
+        <!-- Header -->
+        <div class="gezynebot-header">
+            <div class="gezynebot-header-info">
+                <div class="gezynebot-avatar">🤖</div>
+                <div>
+                    <h3 class="gezynebot-title">GezyneBot</h3>
+                    <p class="gezynebot-subtitle" id="gezynebot-status-text">Connecting to Server...</p>
+                </div>
+            </div>
+            <div class="gezynebot-header-actions">
+                <button id="gezynebot-maximize-btn" class="gezynebot-action-btn" type="button" title="Maximize to full page">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="15 3 21 3 21 9"></polyline>
+                        <polyline points="9 21 3 21 3 15"></polyline>
+                        <line x1="21" y1="3" x2="14" y2="10"></line>
+                        <line x1="3" y1="21" x2="10" y2="14"></line>
+                    </svg>
+                </button>
+                <button id="gezynebot-close-btn" class="gezynebot-action-btn" type="button" title="Close Assistant">✕</button>
+            </div>
+        </div>
+
+        <!-- Offline Notice Banner (Dynamic) -->
+        <div id="gezynebot-offline-alert" class="gezynebot-offline-alert" style="display:none;">
+            <span class="offline-icon">⚠️</span>
+            <span class="offline-text"><strong>Offline:</strong> Central LIS server connection required.</span>
+        </div>
+
+        <!-- Quick Suggestion Chips -->
+        <div class="gezynebot-chips-bar" id="gezynebot-chips">
+            <button class="gezynebot-chip" type="button" data-query="What is the CLSI tube order of draw?">🧪 Order of Draw</button>
+            <button class="gezynebot-chip" type="button" data-query="What are the patient fasting guidelines for Lipid Profile and FBS?">🩸 Fasting Rules</button>
+            <button class="gezynebot-chip" type="button" data-query="What are the critical panic lab values for potassium, glucose, and platelets?">⚠️ Panic Values</button>
+            <button class="gezynebot-chip" type="button" data-query="How do I capture chemistry results from Analyser.MDB?">🔬 Import Analyzer</button>
+        </div>
+
+        <!-- Message Body -->
+        <div id="gezynebot-messages" class="gezynebot-messages">
+            <div class="gezynebot-msg gezynebot-msg-bot">
+                <div class="gezynebot-bubble">
+                    <p>Hello! I am <strong>GezyneBot</strong>, your LIS & Clinical Laboratory Assistant.</p>
+                    <p style="font-size:0.86em; color:#64748b; margin-top:4px;">I operate through your central LIS server to assist with phlebotomy protocols, normal ranges, and system workflows.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Composer -->
+        <div class="gezynebot-composer">
+            <textarea id="gezynebot-input" placeholder="Ask GezyneBot anything..." rows="1"></textarea>
+            <button id="gezynebot-send-btn" class="gezynebot-send-btn" type="button" title="Send message">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Container & Floating Launcher */
+#gezynebot-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.gezynebot-launcher-btn {
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #09090b 0%, #18181b 100%);
+    border: 2px solid #10b981;
+    color: #ffffff;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    outline: none;
+}
+
+.gezynebot-launcher-btn:hover {
+    transform: scale(1.08) translateY(-2px);
+    box-shadow: 0 12px 28px rgba(16, 185, 129, 0.35);
+    border-color: #34d399;
+}
+
+.gezynebot-launcher-icon {
+    font-size: 26px;
+    line-height: 1;
+}
+
+.gezynebot-status-badge {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #94a3b8;
+    border: 2px solid #09090b;
+    transition: background 0.3s;
+}
+
+.gezynebot-status-badge.online {
+    background: #10b981;
+    box-shadow: 0 0 8px #10b981;
+}
+
+.gezynebot-status-badge.offline {
+    background: #ef4444;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+}
+
+/* Chat Panel */
+.gezynebot-panel {
+    position: absolute;
+    bottom: 70px;
+    right: 0;
+    width: 380px;
+    height: 550px;
+    max-height: calc(100vh - 100px);
+    background: #ffffff;
+    border-radius: 18px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+    border: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(20px) scale(0.96);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.gezynebot-panel.active {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0) scale(1);
+}
+
+/* Header */
+.gezynebot-header {
+    background: linear-gradient(135deg, #09090b 0%, #18181b 100%);
+    color: #ffffff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.gezynebot-header-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.gezynebot-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: rgba(16, 185, 129, 0.15);
+    border: 1.5px solid #10b981;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+}
+
+.gezynebot-title {
+    margin: 0;
+    font-size: 1.05em;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    color: #ffffff;
+}
+
+.gezynebot-subtitle {
+    margin: 0;
+    font-size: 0.76em;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.gezynebot-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.gezynebot-action-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: none;
+    color: #cbd5e1;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    outline: none;
+}
+
+.gezynebot-action-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+}
+
+/* Offline Alert Bar */
+.gezynebot-offline-alert {
+    background: #fffbeb;
+    border-bottom: 1px solid #fef3c7;
+    color: #b45309;
+    padding: 8px 14px;
+    font-size: 0.8em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Chips Bar */
+.gezynebot-chips-bar {
+    padding: 8px 14px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+.gezynebot-chips-bar::-webkit-scrollbar {
+    height: 4px;
+}
+.gezynebot-chips-bar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+
+.gezynebot-chip {
+    padding: 5px 11px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 16px;
+    font-size: 0.78em;
+    color: #334155;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.gezynebot-chip:hover {
+    background: #ecfdf5;
+    border-color: #10b981;
+    color: #047857;
+}
+
+/* Messages Area */
+.gezynebot-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    background: #f8fafc;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.gezynebot-msg {
+    display: flex;
+    flex-direction: column;
+    max-width: 86%;
+    animation: gezynebot-fadein 0.2s ease;
+}
+
+@keyframes gezynebot-fadein {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.gezynebot-msg-bot {
+    align-self: flex-start;
+}
+
+.gezynebot-msg-user {
+    align-self: flex-end;
+}
+
+.gezynebot-bubble {
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 0.9em;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.gezynebot-msg-bot .gezynebot-bubble {
+    background: #ffffff;
+    color: #1e293b;
+    border: 1px solid #e2e8f0;
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.gezynebot-msg-user .gezynebot-bubble {
+    background: #10b981;
+    color: #ffffff;
+    border-bottom-right-radius: 4px;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+}
+
+/* Bot Markdown Styles */
+.gezynebot-msg-bot .gezynebot-bubble h3 {
+    margin: 12px 0 6px 0;
+    font-size: 1.08em;
+    font-weight: 700;
+    color: #0f172a;
+    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 4px;
+}
+
+.gezynebot-msg-bot .gezynebot-bubble h4 {
+    margin: 10px 0 4px 0;
+    font-size: 1em;
+    font-weight: 700;
+    color: #047857;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.gezynebot-msg-bot .gezynebot-bubble h4::before {
+    content: '';
+    display: inline-block;
+    width: 3px;
+    height: 14px;
+    background: #10b981;
+    border-radius: 2px;
+}
+
+.gezynebot-msg-bot .gezynebot-bubble h5 {
+    margin: 8px 0 4px 0;
+    font-size: 0.94em;
+    font-weight: 600;
+    color: #334155;
+}
+
+.gezynebot-msg-bot .gezynebot-bubble blockquote {
+    margin: 8px 0;
+    padding: 6px 12px;
+    border-left: 3px solid #10b981;
+    background: #f8fafc;
+    color: #475569;
+    font-style: italic;
+    border-radius: 0 8px 8px 0;
+}
+
+.gezynebot-msg-bot .gezynebot-bubble hr {
+    border: none;
+    border-top: 1px solid #e2e8f0;
+    margin: 10px 0;
+}
+
+.gezynebot-msg-bot .gezynebot-bubble table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0;
+    font-size: 0.88em;
+}
+
+.gezynebot-msg-bot .gezynebot-bubble th,
+.gezynebot-msg-bot .gezynebot-bubble td {
+    border: 1px solid #e2e8f0;
+    padding: 6px 10px;
+    text-align: left;
+}
+
+.gezynebot-msg-bot .gezynebot-bubble th {
+    background: #f8fafc;
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.gezynebot-msg-bot .gezynebot-bubble p {
+    margin: 0 0 8px 0;
+}
+
+.gezynebot-msg-bot .gezynebot-bubble p:last-child {
+    margin-bottom: 0;
+}
+
+.gezynebot-msg-bot .gezynebot-bubble ul, .gezynebot-msg-bot .gezynebot-bubble ol {
+    margin: 6px 0 6px 20px;
+    padding: 0;
+}
+
+.gezynebot-msg-bot .gezynebot-bubble li {
+    margin-bottom: 4px;
+}
+
+.gezynebot-msg-bot .gezynebot-bubble strong {
+    color: #0f172a;
+}
+
+.gezynebot-msg-bot .gezynebot-bubble code {
+    background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    font-family: monospace;
+    color: #0f766e;
+}
+
+/* Typing indicator */
+.gezynebot-typing {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 14px;
+}
+
+.gezynebot-typing-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #10b981;
+    animation: gezynebot-blink 1.4s infinite both;
+}
+
+.gezynebot-typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.gezynebot-typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes gezynebot-blink {
+    0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+    40% { opacity: 1; transform: scale(1.1); }
+}
+
+/* Composer */
+.gezynebot-composer {
+    padding: 12px 14px;
+    background: #ffffff;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+}
+
+.gezynebot-composer textarea {
+    flex: 1;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-size: 0.95em;
+    font-family: inherit;
+    resize: none;
+    height: 42px;
+    min-height: 42px;
+    max-height: 100px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    line-height: 1.35;
+    box-sizing: border-box;
+}
+
+.gezynebot-composer textarea:focus {
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+.gezynebot-send-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: #10b981;
+    color: #ffffff;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.gezynebot-send-btn:hover {
+    background: #059669;
+    transform: scale(1.05);
+}
+
+.gezynebot-send-btn:disabled {
+    background: #cbd5e1;
+    cursor: not-allowed;
+    transform: none;
+}
+</style>
+
+<script>
+(function() {
+    const launcher = document.getElementById('gezynebot-launcher');
+    const badge = document.getElementById('gezynebot-badge');
+    const panel = document.getElementById('gezynebot-panel');
+    const closeBtn = document.getElementById('gezynebot-close-btn');
+    const maxBtn = document.getElementById('gezynebot-maximize-btn');
+    const input = document.getElementById('gezynebot-input');
+    const sendBtn = document.getElementById('gezynebot-send-btn');
+    const statusText = document.getElementById('gezynebot-status-text');
+    const offlineAlert = document.getElementById('gezynebot-offline-alert');
+    const messagesContainer = document.getElementById('gezynebot-messages');
+    const chips = document.querySelectorAll('.gezynebot-chip');
+
+    let currentConversationId = localStorage.getItem('gezynebot_active_conv') || null;
+    let isSending = false;
+    let isOnline = false;
+
+    // Check online status via server API and/or Electron context bridge
+    async function updateConnectivity() {
+        let serverOnline = false;
+        try {
+            if (window.lisApp && typeof window.lisApp.getStatus === 'function') {
+                const s = await window.lisApp.getStatus();
+                if (s && s.online) serverOnline = true;
+            }
+            if (!serverOnline) {
+                const res = await fetch('/chatbot/api/status');
+                const data = await res.json();
+                if (data && data.online) serverOnline = true;
+            }
+        } catch (_) {
+            serverOnline = false;
+        }
+
+        isOnline = serverOnline;
+        if (isOnline) {
+            badge.className = 'gezynebot-status-badge online';
+            statusText.innerHTML = '<span style="color:#10b981;">●</span> Server Connected';
+            offlineAlert.style.display = 'none';
+            input.disabled = false;
+            input.placeholder = 'Ask GezyneBot anything...';
+            sendBtn.disabled = isSending;
+        } else {
+            badge.className = 'gezynebot-status-badge offline';
+            statusText.innerHTML = '<span style="color:#ef4444;">●</span> Server Offline (Disabled)';
+            offlineAlert.style.display = 'flex';
+            input.disabled = true;
+            input.placeholder = 'Offline: Central LIS server connection required...';
+            sendBtn.disabled = true;
+        }
+    }
+
+    // Listen for network status changes if running in Electron
+    if (window.lisApp && typeof window.lisApp.onNetworkStatus === 'function') {
+        window.lisApp.onNetworkStatus((data) => {
+            updateConnectivity();
+        });
+    }
+
+    // Initial check + periodic heartbeat
+    updateConnectivity();
+    setInterval(updateConnectivity, 8000);
+
+    // Toggle panel open/close
+    function togglePanel() {
+        const isOpen = panel.classList.contains('active');
+        if (isOpen) {
+            panel.classList.remove('active');
+        } else {
+            panel.classList.add('active');
+            updateConnectivity();
+            if (isOnline) input.focus();
+            scrollToBottom();
+        }
+    }
+
+    if (launcher) launcher.addEventListener('click', togglePanel);
+    if (closeBtn) closeBtn.addEventListener('click', () => panel.classList.remove('active'));
+
+    // Maximize to dedicated page
+    if (maxBtn) {
+        maxBtn.addEventListener('click', () => {
+            const url = currentConversationId 
+                ? `/chatbot?conversationId=${encodeURIComponent(currentConversationId)}` 
+                : '/chatbot';
+            window.location.href = url;
+        });
+    }
+
+    // Auto-expand textarea
+    if (input) {
+        input.addEventListener('input', () => {
+            input.style.height = '42px';
+            const h = Math.max(42, Math.min(input.scrollHeight, 100));
+            input.style.height = h + 'px';
+        });
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+    }
+
+    if (sendBtn) sendBtn.addEventListener('click', sendMessage);
+
+    // Quick chips
+    chips.forEach(chip => {
+        chip.addEventListener('click', () => {
+            if (!isOnline) {
+                alert('GezyneBot is disabled while offline. Please connect to the central LIS server.');
+                return;
+            }
+            const query = chip.dataset.query;
+            if (query) {
+                input.value = query;
+                sendMessage();
+            }
+        });
+    });
+
+    function scrollToBottom() {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    // Markdown Parser
+    function formatMarkdown(text) {
+        if (!text) return '';
+        let escaped = text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+
+        escaped = escaped.replace(/`([^`]+)`/g, '<code>$1</code>');
+        escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        escaped = escaped.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+        const lines = escaped.split('\n');
+        let html = '';
+        let inList = null;
+        let inTable = false;
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const trimmed = line.trim();
+
+            if (!trimmed) {
+                if (inList) { html += inList === 'ul' ? '</ul>' : '</ol>'; inList = null; }
+                if (inTable) { html += '</tbody></table>'; inTable = false; }
+                continue;
+            }
+
+            if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+                const cells = trimmed.split('|').slice(1, -1).map(c => c.trim());
+                if (cells.every(c => /^:?-+:?$/.test(c))) continue;
+                if (!inTable) {
+                    if (inList) { html += inList === 'ul' ? '</ul>' : '</ol>'; inList = null; }
+                    inTable = true;
+                    html += '<table class="bot-table"><thead><tr>' + cells.map(c => '<th>' + c + '</th>').join('') + '</tr></thead><tbody>';
+                } else {
+                    html += '<tr>' + cells.map(c => '<td>' + c + '</td>').join('') + '</tr>';
+                }
+                continue;
+            } else if (inTable) {
+                html += '</tbody></table>';
+                inTable = false;
+            }
+
+            if (trimmed.startsWith('#### ')) {
+                if (inList) { html += inList === 'ul' ? '</ul>' : '</ol>'; inList = null; }
+                html += '<h5>' + trimmed.substring(5) + '</h5>';
+                continue;
+            }
+            if (trimmed.startsWith('### ')) {
+                if (inList) { html += inList === 'ul' ? '</ul>' : '</ol>'; inList = null; }
+                html += '<h4>' + trimmed.substring(4) + '</h4>';
+                continue;
+            }
+            if (trimmed.startsWith('## ')) {
+                if (inList) { html += inList === 'ul' ? '</ul>' : '</ol>'; inList = null; }
+                html += '<h3>' + trimmed.substring(3) + '</h3>';
+                continue;
+            }
+            if (trimmed.startsWith('# ')) {
+                if (inList) { html += inList === 'ul' ? '</ul>' : '</ol>'; inList = null; }
+                html += '<h3>' + trimmed.substring(2) + '</h3>';
+                continue;
+            }
+
+            if (trimmed.startsWith('> ')) {
+                if (inList) { html += inList === 'ul' ? '</ul>' : '</ol>'; inList = null; }
+                html += '<blockquote>' + trimmed.substring(2) + '</blockquote>';
+                continue;
+            }
+
+            if (/^(\-{3,}|\*{3,}|_{3,})$/.test(trimmed)) {
+                if (inList) { html += inList === 'ul' ? '</ul>' : '</ol>'; inList = null; }
+                html += '<hr>';
+                continue;
+            }
+
+            if (/^[-*+]\s+/.test(trimmed)) {
+                if (inList !== 'ul') {
+                    if (inList) html += inList === 'ul' ? '</ul>' : '</ol>';
+                    html += '<ul>';
+                    inList = 'ul';
+                }
+                html += '<li>' + trimmed.replace(/^[-*+]\s+/, '') + '</li>';
+                continue;
+            }
+
+            if (/^\d+\.\s+/.test(trimmed)) {
+                if (inList !== 'ol') {
+                    if (inList) html += inList === 'ul' ? '</ul>' : '</ol>';
+                    html += '<ol>';
+                    inList = 'ol';
+                }
+                html += '<li>' + trimmed.replace(/^\d+\.\s+/, '') + '</li>';
+                continue;
+            }
+
+            if (inList) { html += inList === 'ul' ? '</ul>' : '</ol>'; inList = null; }
+            html += '<p>' + trimmed + '</p>';
+        }
+
+        if (inList) html += inList === 'ul' ? '</ul>' : '</ol>';
+        if (inTable) html += '</tbody></table>';
+        return html;
+    }
+
+    // Append Message to UI
+    function appendMessage(role, text) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `gezynebot-msg gezynebot-msg-${role}`;
+        
+        const bubble = document.createElement('div');
+        bubble.className = 'gezynebot-bubble';
+        
+        if (role === 'bot') {
+            bubble.innerHTML = formatMarkdown(text);
+        } else {
+            const p = document.createElement('p');
+            p.textContent = text;
+            bubble.appendChild(p);
+        }
+
+        msgDiv.appendChild(bubble);
+        messagesContainer.appendChild(msgDiv);
+        scrollToBottom();
+        return msgDiv;
+    }
+
+    // Send Message function
+    async function sendMessage() {
+        if (!isOnline) {
+            alert('GezyneBot requires connection to the central LIS server.');
+            return;
+        }
+
+        const text = (input.value || '').trim();
+        if (!text || isSending) return;
+
+        isSending = true;
+        sendBtn.disabled = true;
+        input.value = '';
+        input.style.height = '42px';
+
+        appendMessage('user', text);
+
+        const typingDiv = document.createElement('div');
+        typingDiv.className = 'gezynebot-msg gezynebot-msg-bot';
+        typingDiv.innerHTML = `
+            <div class="gezynebot-bubble gezynebot-typing">
+                <span class="gezynebot-typing-dot"></span>
+                <span class="gezynebot-typing-dot"></span>
+                <span class="gezynebot-typing-dot"></span>
+            </div>
+        `;
+        messagesContainer.appendChild(typingDiv);
+        scrollToBottom();
+
+        try {
+            const res = await fetch('/chatbot/api/query', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    question: text,
+                    conversationId: currentConversationId
+                })
+            });
+
+            const data = await res.json();
+            typingDiv.remove();
+
+            if (data && data.offline) {
+                updateConnectivity();
+                appendMessage('bot', data.answer || 'GezyneBot is unavailable in offline mode.');
+            } else if (data && data.answer) {
+                appendMessage('bot', data.answer);
+                if (data.conversationId) {
+                    currentConversationId = data.conversationId;
+                    localStorage.setItem('gezynebot_active_conv', currentConversationId);
+                }
+            } else {
+                appendMessage('bot', '⚠️ Sorry, an error occurred while querying GezyneBot.');
+            }
+        } catch (err) {
+            typingDiv.remove();
+            appendMessage('bot', '⚠️ Failed to connect to server: ' + err.message);
+            updateConnectivity();
+        } finally {
+            isSending = false;
+            sendBtn.disabled = !isOnline;
+            if (isOnline) input.focus();
+        }
+    }
+})();
+</script>

@@ -913,6 +913,7 @@
                 <button type="submit" class="logout-btn" title="Logout"><i class="fa fa-power-off logout-emoji" aria-hidden="true"></i><span class="logout-text">Logout</span></button>
             </form>
             <a href="/settings" class="nav-item" style="margin-top:8px;"><span class="nav-emoji">⚙️</span><span class="nav-text">Settings</span></a>
+            <a href="/chatbot" class="nav-item <%= title && title.includes('GezyneBot') ? 'active' : '' %>" style="margin-top:4px;"><span class="nav-emoji">🤖</span><span class="nav-text">GezyneBot AI</span></a>
             <button type="button" class="nav-item" id="fullscreenBtn" onclick="toggleFullscreen()" style="margin-top:4px;border:none;width:100%;text-align:left;background:transparent;cursor:pointer;"><span class="nav-emoji">⛶</span><span class="nav-text">Fullscreen</span></button>
         </div>
         <% } %>
@@ -1471,5 +1472,8 @@
     <script src="/assets/results-autocomplete.js"></script>
     <!-- Scripts injected from individual views (via express-ejs-layouts extractScripts) -->
     <%- script %>
+
+    <!-- GezyneBot Floating AI Assistant Widget (Standalone Edition) -->
+    <%- include('partials/gezynebot-widget') %>
 </body>
 </html>
