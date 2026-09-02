@@ -273,15 +273,21 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     saveUsers(users) {
       const arr = Array.isArray(users) ? users : [];
       sqlite.transaction(() => {
+        const existingUsers = this.getUsers ? this.getUsers() : [];
+        const existingMap = new Map(existingUsers.map(x => [x.id, x.password]));
         stmts.deleteAllUsers.run();
         for (const u of arr) {
           if (!u || !u.id) continue;
+          let userObj = (typeof u.toJSON === 'function') ? u.toJSON() : { ...u };
+          if (!userObj.password && existingMap.has(u.id)) {
+            userObj.password = existingMap.get(u.id);
+          }
           stmts.upsertUser.run({
-            id: u.id,
-            email: safeStr(u.email),
-            role: safeStr(u.role),
-            status: safeStr(u.status),
-            json: JSON.stringify(u)
+            id: userObj.id,
+            email: safeStr(userObj.email),
+            role: safeStr(userObj.role),
+            status: safeStr(userObj.status),
+            json: JSON.stringify(userObj)
           });
         }
       })();
@@ -596,14 +602,20 @@ function createSqlJsDb(SQL, dbPath) {
 
     saveUsers(users) {
       const arr = Array.isArray(users) ? users : [];
+      const existingUsers = this.getUsers ? this.getUsers() : [];
+      const existingMap = new Map(existingUsers.map(x => [x.id, x.password]));
       sqlite.run('BEGIN TRANSACTION;');
       try {
         sqlite.run('DELETE FROM users;');
         for (const u of arr) {
           if (!u || !u.id) continue;
+          let userObj = (typeof u.toJSON === 'function') ? u.toJSON() : { ...u };
+          if (!userObj.password && existingMap.has(u.id)) {
+            userObj.password = existingMap.get(u.id);
+          }
           sqlite.run(
             'INSERT OR REPLACE INTO users (id, email, role, status, json) VALUES (?, ?, ?, ?, ?)',
-            [u.id, safeStr(u.email), safeStr(u.role), safeStr(u.status), JSON.stringify(u)]
+            [userObj.id, safeStr(userObj.email), safeStr(userObj.role), safeStr(userObj.status), JSON.stringify(userObj)]
           );
         }
         sqlite.run('COMMIT;');

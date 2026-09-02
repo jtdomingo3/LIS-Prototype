@@ -31,10 +31,16 @@ class User {
     return await bcrypt.compare(candidatePassword, this.password);
   }
 
-  // Convert to plain object (without password)
+  // Convert to plain object (keeps password for database persistence)
   toJSON() {
     const obj = { ...this };
     obj.autoSignature = this.autoSignature || { enabled: false, until: null };
+    return obj;
+  }
+
+  // Convert to safe plain object without password (for sessions, views, API responses)
+  toSafeJSON() {
+    const obj = this.toJSON();
     delete obj.password;
     return obj;
   }
@@ -121,10 +127,13 @@ class User {
     let user = await this.findOne(query);
 
     if (user) {
+      const existingPassword = user.password;
       Object.assign(user, updateData);
       if (updateData.password) {
         const salt = await bcrypt.genSalt(12);
         user.password = await bcrypt.hash(updateData.password, salt);
+      } else if (!user.password && existingPassword) {
+        user.password = existingPassword;
       }
       if (global.db && typeof global.db.upsertUser === 'function') {
         global.db.upsertUser(user);

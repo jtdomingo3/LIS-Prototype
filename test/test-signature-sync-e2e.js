@@ -45,6 +45,7 @@ async function testSignatureSync() {
   }
   const testEmail = adminUser.email;
   const syncHash = adminUser.password;
+  const originalSignature = adminUser.signature || null;
   console.log(`   Using admin user: ${testEmail} (hash: ${syncHash ? 'present' : 'none'})`);
 
   console.log('1. Starting test Express instance with /api/signatures/sync endpoint...');
@@ -145,8 +146,11 @@ async function testSignatureSync() {
   const updatedAdmin = await User.findOne({ email: testEmail });
   console.log(`✓ Server User record updated with signature: "${updatedAdmin.signature}"`);
 
-  // Clean up test file
+  // Clean up test file and restore user state
   try { fs.unlinkSync(targetServerFile); } catch (_) {}
+  try {
+    await User.findOneAndUpdate({ email: testEmail }, { signature: originalSignature });
+  } catch (_) {}
 
   console.log('\n🎉 E2E SIGNATURE SYNC TEST PASSED SUCCESSFULLY!');
 }

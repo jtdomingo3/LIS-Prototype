@@ -473,12 +473,18 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     },
     upsertUser(u) {
       if (!u || !u.id) return;
+      let userObj = (typeof u.toJSON === 'function') ? u.toJSON() : { ...u };
+      // Defensive guard: never allow password to be wiped if user already has one in database
+      if (!userObj.password) {
+        const existing = this.getUserById(u.id);
+        if (existing && existing.password) userObj.password = existing.password;
+      }
       stmts.upsertUser.run({
-        id: u.id,
-        email: safeStr(u.email),
-        role: safeStr(u.role),
-        status: safeStr(u.status),
-        json: JSON.stringify(u)
+        id: userObj.id,
+        email: safeStr(userObj.email),
+        role: safeStr(userObj.role),
+        status: safeStr(userObj.status),
+        json: JSON.stringify(userObj)
       });
     },
     deleteUser(id) {
