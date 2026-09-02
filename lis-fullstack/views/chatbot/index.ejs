@@ -461,6 +461,63 @@
     word-break: break-word;
 }
 
+.main-msg-bot .bubble-content h3 {
+    margin: 14px 0 6px 0;
+    font-size: 1.15em;
+    font-weight: 700;
+    color: #0f172a;
+    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 4px;
+}
+.main-msg-bot .bubble-content h4 {
+    margin: 12px 0 4px 0;
+    font-size: 1.05em;
+    font-weight: 700;
+    color: #047857;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.main-msg-bot .bubble-content h4::before {
+    content: '';
+    display: inline-block;
+    width: 3px;
+    height: 14px;
+    background: #10b981;
+    border-radius: 2px;
+}
+.main-msg-bot .bubble-content h5 {
+    margin: 10px 0 4px 0;
+    font-size: 0.96em;
+    font-weight: 600;
+    color: #334155;
+}
+.main-msg-bot .bubble-content blockquote {
+    margin: 10px 0;
+    padding: 8px 14px;
+    border-left: 3px solid #10b981;
+    background: #f8fafc;
+    color: #475569;
+    font-style: italic;
+    border-radius: 0 8px 8px 0;
+}
+.main-msg-bot .bubble-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 0.92em;
+}
+.main-msg-bot .bubble-content th,
+.main-msg-bot .bubble-content td {
+    border: 1px solid #e2e8f0;
+    padding: 8px 12px;
+    text-align: left;
+}
+.main-msg-bot .bubble-content th {
+    background: #f8fafc;
+    font-weight: 600;
+    color: #0f172a;
+}
 .main-msg-bot .bubble-content p {
     margin: 0 0 10px 0;
 }
@@ -561,7 +618,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     scrollToBottom();
 
-    // Basic markdown formatter
+    // Comprehensive markdown to clean HTML parser
     function formatMarkdown(text) {
         if (!text) return '';
         let escaped = text
@@ -569,30 +626,113 @@ document.addEventListener('DOMContentLoaded', () => {
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;');
 
-        escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        escaped = escaped.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        // Inline code
         escaped = escaped.replace(/`([^`]+)`/g, '<code>$1</code>');
+        // Bold
+        escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        // Italic
+        escaped = escaped.replace(/\*(.*?)\*/g, '<em>$1</em>');
 
         const lines = escaped.split('\n');
         let html = '';
-        let inList = false;
+        let inList = null; // 'ul' or 'ol'
+        let inTable = false;
 
-        for (const line of lines) {
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
             const trimmed = line.trim();
-            if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-                if (!inList) { html += '<ul>'; inList = true; }
-                html += `<li>${trimmed.substring(2)}</li>`;
-            } else if (/^\d+\.\s/.test(trimmed)) {
-                if (!inList) { html += '<ol>'; inList = true; }
-                html += `<li>${trimmed.replace(/^\d+\.\s/, '')}</li>`;
-            } else {
-                if (inList) { html += inList === true ? '</ul>' : '</ol>'; inList = false; }
-                if (trimmed.length > 0) {
-                    html += `<p>${trimmed}</p>`;
-                }
+
+            if (!trimmed) {
+                if (inList) { html += inList === 'ul' ? '</ul>' : '</ol>'; inList = null; }
+                if (inTable) { html += '</tbody></table>'; inTable = false; }
+                continue;
             }
+
+            // Table row: | cell | cell |
+            if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+                const cells = trimmed.split('|').slice(1, -1).map(c => c.trim());
+                // Skip separator row |---|---|
+                if (cells.every(c => /^:?-+:?$/.test(c))) {
+                    continue;
+                }
+                if (!inTable) {
+                    if (inList) { html += inList === 'ul' ? '</ul>' : '</ol>'; inList = null; }
+                    inTable = true;
+                    html += '<table class="bot-table"><thead><tr>' + cells.map(c => '<th>' + c + '</th>').join('') + '</tr></thead><tbody>';
+                } else {
+                    html += '<tr>' + cells.map(c => '<td>' + c + '</td>').join('') + '</tr>';
+                }
+                continue;
+            } else if (inTable) {
+                html += '</tbody></table>';
+                inTable = false;
+            }
+
+            // Headings
+            if (trimmed.startsWith('#### ')) {
+                if (inList) { html += inList === 'ul' ? '</ul>' : '</ol>'; inList = null; }
+                html += '<h5>' + trimmed.substring(5) + '</h5>';
+                continue;
+            }
+            if (trimmed.startsWith('### ')) {
+                if (inList) { html += inList === 'ul' ? '</ul>' : '</ol>'; inList = null; }
+                html += '<h4>' + trimmed.substring(4) + '</h4>';
+                continue;
+            }
+            if (trimmed.startsWith('## ')) {
+                if (inList) { html += inList === 'ul' ? '</ul>' : '</ol>'; inList = null; }
+                html += '<h3>' + trimmed.substring(3) + '</h3>';
+                continue;
+            }
+            if (trimmed.startsWith('# ')) {
+                if (inList) { html += inList === 'ul' ? '</ul>' : '</ol>'; inList = null; }
+                html += '<h3>' + trimmed.substring(2) + '</h3>';
+                continue;
+            }
+
+            // Blockquote
+            if (trimmed.startsWith('> ')) {
+                if (inList) { html += inList === 'ul' ? '</ul>' : '</ol>'; inList = null; }
+                html += '<blockquote>' + trimmed.substring(2) + '</blockquote>';
+                continue;
+            }
+
+            // Horizontal rule
+            if (/^(\-{3,}|\*{3,}|_{3,})$/.test(trimmed)) {
+                if (inList) { html += inList === 'ul' ? '</ul>' : '</ol>'; inList = null; }
+                html += '<hr>';
+                continue;
+            }
+
+            // Unordered list item
+            if (/^[-*+]\s+/.test(trimmed)) {
+                if (inList !== 'ul') {
+                    if (inList) html += inList === 'ul' ? '</ul>' : '</ol>';
+                    html += '<ul>';
+                    inList = 'ul';
+                }
+                html += '<li>' + trimmed.replace(/^[-*+]\s+/, '') + '</li>';
+                continue;
+            }
+
+            // Ordered list item
+            if (/^\d+\.\s+/.test(trimmed)) {
+                if (inList !== 'ol') {
+                    if (inList) html += inList === 'ul' ? '</ul>' : '</ol>';
+                    html += '<ol>';
+                    inList = 'ol';
+                }
+                html += '<li>' + trimmed.replace(/^\d+\.\s+/, '') + '</li>';
+                continue;
+            }
+
+            // Regular paragraph
+            if (inList) { html += inList === 'ul' ? '</ul>' : '</ol>'; inList = null; }
+            html += '<p>' + trimmed + '</p>';
         }
-        if (inList) html += '</ul>';
+
+        if (inList) html += inList === 'ul' ? '</ul>' : '</ol>';
+        if (inTable) html += '</tbody></table>';
         return html;
     }
 
