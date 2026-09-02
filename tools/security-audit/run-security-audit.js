@@ -10,6 +10,7 @@ const { checkAuthCrypto } = require('./checks/auth-crypto-check');
 const { checkInjection } = require('./checks/injection-check');
 const { checkSanitization } = require('./checks/sanitization-check');
 const { checkRateLimit } = require('./checks/rate-limit-check');
+const { checkApiPasswordLeak } = require('./checks/api-password-leak-check');
 
 const CONFIG_PATH = path.join(__dirname, 'audit-config.json');
 const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
@@ -24,6 +25,7 @@ async function runTargetAudit(targetName, targetInfo) {
   // Run all security modules
   results.push(await checkHeaders(targetInfo.url, baseDir));
   results.push(await checkAuthCrypto(baseDir));
+  results.push(await checkApiPasswordLeak(baseDir, targetInfo.url));
   results.push(await checkInjection(baseDir));
   results.push(await checkSanitization(baseDir));
   results.push(await checkRateLimit(baseDir));
