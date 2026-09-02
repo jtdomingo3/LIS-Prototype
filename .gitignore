@@ -36,3 +36,4 @@ tmp-e2e-offline/
 lis-fullstack/lis-data.db-shm
 lis-fullstack/lis-data.db-wal
 lis-fullstack/lis-data.db
+lis-fullstack/logs/print.log

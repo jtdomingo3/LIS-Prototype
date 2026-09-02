@@ -10,7 +10,22 @@
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#10b981">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        try {
+            const sp = new URLSearchParams(window.location.search);
+            const isPop = (window.opener != null) || 
+                          window.name === 'previewWin' || 
+                          sp.has('popup') || 
+                          sp.has('embedded') || 
+                          window.location.pathname.includes('/preview/') || 
+                          window.location.pathname.includes('/result/') || 
+                          window.innerWidth <= 1100;
+            if (isPop) {
+                document.documentElement.classList.add('popup-window');
+            }
+        } catch(e) {}
+    </script>
     <style>
         * {
             margin: 0;
@@ -766,17 +781,17 @@
             flex-wrap: wrap;
         }
 
-        /* Responsive (Mobile & Small Screens <= 900px) */
-        @media (max-width: 900px) {
+        /* Responsive (Mobile & Small/Medium Screens <= 1100px) */
+        @media (max-width: 1100px) {
             .container { flex-direction: column; }
-            .main-content { padding: 20px; width: 100%; max-width: 100%; box-sizing: border-box; }
+            .main-content { padding: 16px 20px; width: 100%; max-width: 100%; box-sizing: border-box; }
             .header {
-                padding: 12px 20px;
-                margin-bottom: 24px;
+                padding: 12px 18px;
+                margin-bottom: 20px;
                 border-radius: 12px;
             }
             .form-row { grid-template-columns: 1fr; }
-            h1 { font-size: 1.4em; }
+            h1 { font-size: 1.35em; }
             .stats-container { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
             
             .sidebar {
@@ -795,7 +810,8 @@
             .sidebar-backdrop.active { opacity: 1; visibility: visible; }
         }
 
-        /* Auto-collapse in Child/Popup Preview Windows */
+        /* Auto-collapse in Child/Popup Preview Windows and Report Views */
+        html.popup-window .sidebar,
         body.popup-window .sidebar {
             position: fixed;
             left: 0;
@@ -807,15 +823,18 @@
             box-shadow: 8px 0 36px rgba(0,0,0,0.45);
             transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
         }
+        html.popup-window .sidebar.open,
         body.popup-window .sidebar.open {
             transform: translateX(0);
         }
+        html.popup-window .main-content,
         body.popup-window .main-content {
             padding: 16px 20px 48px 20px;
             width: 100%;
             max-width: 100%;
             box-sizing: border-box;
         }
+        html.popup-window .hamburger,
         body.popup-window .hamburger {
             display: inline-flex !important;
         }
@@ -837,7 +856,7 @@
             user-select: none;
         }
         
-        @media (max-width: 900px) {
+        @media (max-width: 1100px) {
             .hamburger { display: inline-flex !important; }
         }
 
@@ -1041,8 +1060,11 @@
                 const isPopup = (window.opener != null) || 
                                 window.name === 'previewWin' || 
                                 params.has('popup') || 
-                                params.has('embedded');
+                                params.has('embedded') ||
+                                window.location.pathname.includes('/preview/') ||
+                                window.location.pathname.includes('/result/');
                 if (isPopup) {
+                    document.documentElement.classList.add('popup-window');
                     document.body.classList.add('popup-window');
                 }
             } catch(e) {}
@@ -1050,7 +1072,14 @@
             if (!toggle || !sidebar) return;
 
             function isNarrowScreen() {
-                return window.innerWidth <= 900 || document.body.classList.contains('popup-window');
+                const params = new URLSearchParams(window.location.search);
+                return window.innerWidth <= 1100 || 
+                       document.documentElement.classList.contains('popup-window') ||
+                       document.body.classList.contains('popup-window') ||
+                       params.has('popup') ||
+                       params.has('embedded') ||
+                       window.location.pathname.includes('/preview/') ||
+                       (window.opener != null);
             }
 
             function openSidebar() {
@@ -1094,7 +1123,7 @@
 
             // Ensure classes are consistent on resize
             window.addEventListener('resize', () => {
-                if (window.innerWidth > 900 && !document.body.classList.contains('popup-window')) {
+                if (window.innerWidth > 1100 && !document.documentElement.classList.contains('popup-window') && !document.body.classList.contains('popup-window')) {
                     sidebar.classList.remove('open');
                     if (backdrop) backdrop.classList.remove('active');
                     document.body.style.overflow = '';

@@ -146,6 +146,13 @@ if (process.env.NODE_ENV === 'development') {
 
       req.flash('success_msg', 'Registration successful! Please login.');
       res.redirect('/');
+    } catch (error) {
+      console.error('Registration error:', error);
+      req.flash('error_msg', 'An error occurred during registration');
+      res.redirect('/register');
+    }
+  });
+}
 
 // POST /api/auth/token - Issue a signed Bearer token for client apps
 const { generateToken, verifyToken } = require('../lib/tokenHelper');
