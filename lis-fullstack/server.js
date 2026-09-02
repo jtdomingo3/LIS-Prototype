@@ -610,6 +610,7 @@ const userRoutes = require('./routes/users');
 const receptionRoutes = require('./routes/reception');
 const settingsRoutes = require('./routes/settings');
 const signaturesRoutes = require('./routes/signatures');
+const chatbotRoutes = require('./routes/chatbot');
 
 app.use('/', authRoutes);
 app.use('/dashboard', dashboardRoutes);
@@ -621,6 +622,7 @@ app.use('/users', userRoutes);
 app.use('/reception', receptionRoutes);
 app.use('/settings', settingsRoutes);
 app.use('/signatures', signaturesRoutes);
+app.use('/chatbot', chatbotRoutes);
 
 // ---- Secure restore endpoints (accessible on fresh installs or by authenticated managers) ----
 const bcryptRestore = require('bcryptjs');

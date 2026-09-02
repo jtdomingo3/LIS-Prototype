@@ -1,0 +1,798 @@
+<div class="chatbot-page-container">
+    <!-- Left Sidebar: Saved Conversations / Topics -->
+    <aside class="chatbot-sidebar card">
+        <div class="chatbot-sidebar-header">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <span style="font-size:1.4em;">🤖</span>
+                <h3 style="margin:0; font-size:1.15em; font-weight:700; color:var(--primary-black);">GezyneBot Topics</h3>
+            </div>
+            <button type="button" id="btn-new-topic" class="button btn-primary btn-small" style="margin-top:14px; width:100%; display:flex; align-items:center; justify-content:center; gap:8px;">
+                <i class="fa fa-plus"></i> New Topic
+            </button>
+        </div>
+
+        <div class="chatbot-search-wrapper">
+            <input type="text" id="topic-search-input" class="chatbot-search" placeholder="Search conversations..." aria-label="Search conversations">
+        </div>
+
+        <div class="chatbot-topics-list" id="topics-list">
+            <% if (!conversations || conversations.length === 0) { %>
+                <div class="empty-topics" id="empty-topics-msg">
+                    <p style="color:#94a3b8; font-size:0.9em; text-align:center; padding:30px 10px;">No saved topics yet.<br>Click <strong>New Topic</strong> to start a discussion.</p>
+                </div>
+            <% } else { %>
+                <% conversations.forEach(conv => { %>
+                    <div class="topic-item <%= (activeConversation && activeConversation.id === conv.id) ? 'active' : '' %>" data-id="<%= conv.id %>" data-title="<%= conv.title %>">
+                        <div class="topic-info">
+                            <span class="topic-title"><%= conv.title || 'Untitled Conversation' %></span>
+                            <span class="topic-date"><%= new Date(conv.updated_at || conv.created_at).toLocaleDateString() %></span>
+                        </div>
+                        <button type="button" class="btn-delete-topic" title="Delete conversation" data-id="<%= conv.id %>">
+                            <i class="fa fa-trash-alt"></i>
+                        </button>
+                    </div>
+                <% }); %>
+            <% } %>
+        </div>
+    </aside>
+
+    <!-- Main Chat Workspace -->
+    <main class="chatbot-main card">
+        <div class="chatbot-main-header">
+            <div class="header-details">
+                <h2 id="active-topic-title" style="margin:0; font-size:1.35em; font-weight:700; color:var(--primary-black);">
+                    <%= activeConversation ? activeConversation.title : 'New Discussion with GezyneBot' %>
+                </h2>
+                <div style="display:flex; align-items:center; gap:12px; margin-top:4px;">
+                    <span class="status-indicator-badge">
+                        <span class="dot"></span> Online Assistant
+                    </span>
+                    <span style="font-size:0.82em; color:#64748b;">LIS Operational Workflows & Clinical Guidance</span>
+                </div>
+            </div>
+            
+            <div class="header-controls">
+                <div class="model-select-wrapper">
+                    <label for="ai-model-select" style="font-size:0.82em; font-weight:600; color:#475569; margin-right:6px;">Model:</label>
+                    <select id="ai-model-select" class="form-select" style="padding:6px 12px; font-size:0.88em; border-radius:8px; border:1px solid #cbd5e1;">
+                        <% (availableModels || []).forEach(m => { %>
+                            <option value="<%= m.id %>" <%= (activeConversation && activeConversation.last_model === m.id) ? 'selected' : (m.id === defaultModel ? 'selected' : '') %>><%= m.name %></option>
+                        <% }); %>
+                    </select>
+                </div>
+                <button type="button" id="btn-clear-chat" class="button btn-secondary btn-small" title="Clear current message view">Clear View</button>
+            </div>
+        </div>
+
+        <!-- Quick Knowledge Filter Chips -->
+        <div class="main-chips-bar">
+            <span style="font-size:0.8em; font-weight:600; color:#64748b; margin-right:4px;">Quick Queries:</span>
+            <button type="button" class="main-chip" data-query="What is the standard order of draw for phlebotomy blood collection tubes according to CLSI guidelines?">🧪 Tube Order of Draw</button>
+            <button type="button" class="main-chip" data-query="What are the patient preparation and fasting requirements for Fasting Blood Sugar (FBS) and Lipid Profile?">🩸 Fasting Guidelines</button>
+            <button type="button" class="main-chip" data-query="What are the critical/panic laboratory values for Glucose, Potassium, Hemoglobin, and Platelets, and what is the reporting protocol?">⚠️ Panic Values Protocol</button>
+            <button type="button" class="main-chip" data-query="How do I connect and capture clinical chemistry results from Analyser.MDB in the LIS?">🔬 Analyser.MDB Integration</button>
+            <button type="button" class="main-chip" data-query="How does the result lock guard work for Completed and Released tests in Gezyne LIS?">🔒 Result Lock Rules</button>
+        </div>
+
+        <!-- Messages Workspace -->
+        <div class="chatbot-main-messages" id="main-messages-container">
+            <% if (!initialMessages || initialMessages.length === 0) { %>
+                <div class="main-welcome-card" id="main-welcome">
+                    <div class="welcome-avatar">🤖</div>
+                    <h3>Welcome to GezyneBot AI</h3>
+                    <p>I am your specialized AI Assistant for Gezyne Clinical Laboratory. I can assist you with both software operations and clinical diagnostic inquiries:</p>
+                    <div class="welcome-features-grid">
+                        <div class="feature-box">
+                            <div class="feature-icon">🏥</div>
+                            <div class="feature-title">LIS Operations</div>
+                            <div class="feature-desc">Queue management, station routing, kiosk setup, test entry worksheets, analyzer direct import, and PDF reports.</div>
+                        </div>
+                        <div class="feature-box">
+                            <div class="feature-icon">🧪</div>
+                            <div class="feature-title">Clinical Laboratory Guide</div>
+                            <div class="feature-desc">CLSI phlebotomy order of draw, additives, fasting rules, sample collection criteria, and tube color codes.</div>
+                        </div>
+                        <div class="feature-box">
+                            <div class="feature-icon">📊</div>
+                            <div class="feature-title">Diagnostic References</div>
+                            <div class="feature-desc">Reference ranges for hematology, chemistry, urinalysis, thyroid panels, and critical panic values.</div>
+                        </div>
+                    </div>
+                    <p style="font-size:0.85em; color:#94a3b8; margin-top:20px;">Choose a quick query above or type a question below to start.</p>
+                </div>
+            <% } else { %>
+                <% initialMessages.forEach(msg => { %>
+                    <div class="main-msg main-msg-<%= msg.role === 'user' ? 'user' : 'bot' %>">
+                        <div class="main-bubble">
+                            <div class="bubble-header">
+                                <strong><%= msg.role === 'user' ? (sessionUser ? sessionUser.name : 'You') : 'GezyneBot' %></strong>
+                                <span class="bubble-time"><%= new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %></span>
+                            </div>
+                            <div class="bubble-content" data-raw="<%= msg.content %>"></div>
+                        </div>
+                    </div>
+                <% }); %>
+            <% } %>
+        </div>
+
+        <!-- Input Area -->
+        <div class="chatbot-main-composer">
+            <textarea id="main-chat-input" rows="2" placeholder="Ask GezyneBot about LIS procedures or medical lab questions... (Press Enter to send, Shift+Enter for new line)"></textarea>
+            <button type="button" id="btn-main-send" class="button btn-primary main-send-btn">
+                <span>Send</span>
+                <i class="fa fa-paper-plane" style="margin-left:6px;"></i>
+            </button>
+        </div>
+    </main>
+</div>
+
+<style>
+.chatbot-page-container {
+    display: flex;
+    gap: 20px;
+    height: calc(100vh - 125px);
+    height: calc(100dvh - 125px);
+    overflow: hidden;
+}
+
+/* Sidebar */
+.chatbot-sidebar {
+    width: 320px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 18px;
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1px solid var(--border-gray);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+    overflow: hidden;
+}
+
+.chatbot-sidebar-header {
+    margin-bottom: 14px;
+}
+
+.chatbot-search-wrapper {
+    margin-bottom: 12px;
+}
+
+.chatbot-search {
+    width: 100%;
+    padding: 8px 14px;
+    font-size: 0.88em;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    outline: none;
+    background: #f8fafc;
+    transition: all 0.2s;
+}
+
+.chatbot-search:focus {
+    background: #ffffff;
+    border-color: var(--secondary-green);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12);
+}
+
+.chatbot-topics-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-right: 4px;
+}
+
+.topic-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    background: #f8fafc;
+    border: 1px solid #f1f5f9;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.topic-item:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    transform: translateX(2px);
+}
+
+.topic-item.active {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.12);
+}
+
+.topic-info {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    gap: 2px;
+}
+
+.topic-title {
+    font-size: 0.9em;
+    font-weight: 600;
+    color: #1e293b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.topic-item.active .topic-title {
+    color: #065f46;
+}
+
+.topic-date {
+    font-size: 0.75em;
+    color: #94a3b8;
+}
+
+.btn-delete-topic {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    padding: 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.2s;
+}
+
+.topic-item:hover .btn-delete-topic {
+    opacity: 1;
+}
+
+.btn-delete-topic:hover {
+    color: #ef4444;
+    background: #fee2e2;
+}
+
+/* Main Workspace */
+.chatbot-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    background: #ffffff;
+    border-radius: 16px;
+    border: 1px solid var(--border-gray);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+    overflow: hidden;
+}
+
+.chatbot-main-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid #f1f5f9;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #ffffff;
+}
+
+.status-indicator-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #ecfdf5;
+    color: #065f46;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.78em;
+    font-weight: 600;
+    border: 1px solid #a7f3d0;
+}
+
+.status-indicator-badge .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #10b981;
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.main-chips-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 24px;
+    background: #f8fafc;
+    border-bottom: 1px solid #f1f5f9;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+.main-chip {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 0.8em;
+    font-weight: 500;
+    color: #334155;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.main-chip:hover {
+    background: #ecfdf5;
+    border-color: #10b981;
+    color: #065f46;
+    transform: translateY(-1px);
+}
+
+/* Messages */
+.chatbot-main-messages {
+    flex: 1;
+    padding: 24px;
+    overflow-y: auto;
+    background: #f8fafc;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.main-welcome-card {
+    margin: auto;
+    max-width: 680px;
+    text-align: center;
+    padding: 30px;
+    background: #ffffff;
+    border-radius: 20px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+}
+
+.welcome-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #ecfdf5;
+    color: #10b981;
+    font-size: 2em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px auto;
+    border: 2px solid #a7f3d0;
+}
+
+.welcome-features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-top: 24px;
+    text-align: left;
+}
+
+.feature-box {
+    padding: 14px;
+    background: #f8fafc;
+    border: 1px solid #f1f5f9;
+    border-radius: 12px;
+}
+
+.feature-icon {
+    font-size: 1.5em;
+    margin-bottom: 6px;
+}
+
+.feature-title {
+    font-size: 0.9em;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 4px;
+}
+
+.feature-desc {
+    font-size: 0.78em;
+    color: #64748b;
+    line-height: 1.4;
+}
+
+.main-msg {
+    display: flex;
+    max-width: 82%;
+}
+
+.main-msg-bot {
+    align-self: flex-start;
+}
+
+.main-msg-user {
+    align-self: flex-end;
+}
+
+.main-bubble {
+    padding: 14px 20px;
+    border-radius: 16px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+}
+
+.main-msg-bot .main-bubble {
+    background: #ffffff;
+    color: #1e293b;
+    border: 1px solid #e2e8f0;
+    border-top-left-radius: 4px;
+}
+
+.main-msg-user .main-bubble {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #ffffff;
+    border-top-right-radius: 4px;
+    box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
+}
+
+.bubble-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 8px;
+    font-size: 0.84em;
+}
+
+.main-msg-user .bubble-header strong {
+    color: #ffffff;
+}
+
+.main-msg-bot .bubble-header strong {
+    color: #047857;
+}
+
+.bubble-time {
+    font-size: 0.78em;
+    opacity: 0.75;
+}
+
+.bubble-content {
+    font-size: 0.95em;
+    line-height: 1.6;
+    word-break: break-word;
+}
+
+.main-msg-bot .bubble-content p {
+    margin: 0 0 10px 0;
+}
+.main-msg-bot .bubble-content p:last-child {
+    margin-bottom: 0;
+}
+.main-msg-bot .bubble-content ul, .main-msg-bot .bubble-content ol {
+    margin: 8px 0 8px 24px;
+    padding: 0;
+}
+.main-msg-bot .bubble-content li {
+    margin-bottom: 4px;
+}
+.main-msg-bot .bubble-content code {
+    background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: #0f766e;
+    font-family: monospace;
+}
+
+/* Composer */
+.chatbot-main-composer {
+    padding: 16px 24px;
+    background: #ffffff;
+    border-top: 1px solid #f1f5f9;
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+}
+
+.chatbot-main-composer textarea {
+    flex: 1;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 12px 18px;
+    font-size: 0.96em;
+    font-family: inherit;
+    resize: none;
+    max-height: 140px;
+    outline: none;
+    transition: all 0.2s;
+    line-height: 1.45;
+}
+
+.chatbot-main-composer textarea:focus {
+    border-color: var(--secondary-green);
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.12);
+}
+
+.main-send-btn {
+    height: 48px;
+    padding: 0 24px;
+    border-radius: 12px;
+    font-size: 0.95em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@media (max-width: 900px) {
+    .chatbot-page-container {
+        flex-direction: column;
+    }
+    .chatbot-sidebar {
+        width: 100%;
+        height: 180px;
+    }
+    .welcome-features-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    let activeConversationId = '<%= activeConversation ? activeConversation.id : "" %>';
+    const topicsList = document.getElementById('topics-list');
+    const topicSearch = document.getElementById('topic-search-input');
+    const newTopicBtn = document.getElementById('btn-new-topic');
+    const clearChatBtn = document.getElementById('btn-clear-chat');
+    const messagesContainer = document.getElementById('main-messages-container');
+    const chatInput = document.getElementById('main-chat-input');
+    const sendBtn = document.getElementById('btn-main-send');
+    const modelSelect = document.getElementById('ai-model-select');
+    const activeTitle = document.getElementById('active-topic-title');
+    const quickChips = document.querySelectorAll('.main-chip');
+
+    let isSubmitting = false;
+
+    // Format initial messages raw text to markdown
+    document.querySelectorAll('.bubble-content[data-raw]').forEach(el => {
+        const raw = el.getAttribute('data-raw');
+        if (raw) {
+            el.innerHTML = formatMarkdown(raw);
+        }
+    });
+    scrollToBottom();
+
+    // Basic markdown formatter
+    function formatMarkdown(text) {
+        if (!text) return '';
+        let escaped = text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+
+        escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        escaped = escaped.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        escaped = escaped.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+        const lines = escaped.split('\n');
+        let html = '';
+        let inList = false;
+
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+                if (!inList) { html += '<ul>'; inList = true; }
+                html += `<li>${trimmed.substring(2)}</li>`;
+            } else if (/^\d+\.\s/.test(trimmed)) {
+                if (!inList) { html += '<ol>'; inList = true; }
+                html += `<li>${trimmed.replace(/^\d+\.\s/, '')}</li>`;
+            } else {
+                if (inList) { html += inList === true ? '</ul>' : '</ol>'; inList = false; }
+                if (trimmed.length > 0) {
+                    html += `<p>${trimmed}</p>`;
+                }
+            }
+        }
+        if (inList) html += '</ul>';
+        return html;
+    }
+
+    function scrollToBottom() {
+        if (messagesContainer) {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+    }
+
+    // Auto-growing textarea & Enter key
+    chatInput.addEventListener('input', () => {
+        chatInput.style.height = 'auto';
+        chatInput.style.height = Math.min(chatInput.scrollHeight, 140) + 'px';
+    });
+
+    chatInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendQuestion();
+        }
+    });
+
+    sendBtn.addEventListener('click', sendQuestion);
+
+    // Quick chips
+    quickChips.forEach(chip => {
+        chip.addEventListener('click', () => {
+            const query = chip.dataset.query;
+            if (query) {
+                chatInput.value = query;
+                sendQuestion();
+            }
+        });
+    });
+
+    // New Topic Button
+    newTopicBtn.addEventListener('click', async () => {
+        try {
+            const res = await fetch('/chatbot/api/conversations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: 'New Discussion',
+                    model: modelSelect.value
+                })
+            });
+            const data = await res.json();
+            if (data && data.success && data.conversation) {
+                activeConversationId = data.conversation.id;
+                localStorage.setItem('gezynebot_active_conv', activeConversationId);
+                window.location.href = `/chatbot?conversationId=${encodeURIComponent(activeConversationId)}`;
+            }
+        } catch (e) {
+            alert('Failed to start new topic: ' + e.message);
+        }
+    });
+
+    // Clear Chat Button
+    clearChatBtn.addEventListener('click', () => {
+        messagesContainer.innerHTML = `
+            <div style="text-align:center; padding:40px 20px; color:#94a3b8;">
+                <p>View cleared for this session.</p>
+            </div>
+        `;
+    });
+
+    // Topic Selection
+    document.querySelectorAll('.topic-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            if (e.target.closest('.btn-delete-topic')) return;
+            const id = item.dataset.id;
+            if (id) {
+                window.location.href = `/chatbot?conversationId=${encodeURIComponent(id)}`;
+            }
+        });
+    });
+
+    // Delete Topic
+    document.querySelectorAll('.btn-delete-topic').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const id = btn.dataset.id;
+            if (!confirm('Are you sure you want to delete this conversation?')) return;
+
+            try {
+                const res = await fetch(`/chatbot/api/conversations/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data && data.success) {
+                    const item = document.querySelector(`.topic-item[data-id="${id}"]`);
+                    if (item) item.remove();
+                    if (activeConversationId === id) {
+                        window.location.href = '/chatbot';
+                    }
+                }
+            } catch (err) {
+                alert('Could not delete conversation: ' + err.message);
+            }
+        });
+    });
+
+    // Topic Filter
+    topicSearch.addEventListener('input', () => {
+        const query = (topicSearch.value || '').toLowerCase().trim();
+        document.querySelectorAll('.topic-item').forEach(item => {
+            const title = (item.dataset.title || '').toLowerCase();
+            if (!query || title.includes(query)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    });
+
+    // Append Message to Workspace
+    function appendMainMessage(role, text) {
+        const welcome = document.getElementById('main-welcome');
+        if (welcome) welcome.remove();
+
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `main-msg main-msg-${role}`;
+
+        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const nameStr = role === 'user' ? '<%= sessionUser ? sessionUser.name : "You" %>' : 'GezyneBot';
+
+        msgDiv.innerHTML = `
+            <div class="main-bubble">
+                <div class="bubble-header">
+                    <strong>${nameStr}</strong>
+                    <span class="bubble-time">${timeStr}</span>
+                </div>
+                <div class="bubble-content">
+                    ${role === 'bot' ? formatMarkdown(text) : `<p>${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`}
+                </div>
+            </div>
+        `;
+
+        messagesContainer.appendChild(msgDiv);
+        scrollToBottom();
+        return msgDiv;
+    }
+
+    // Send Question
+    async function sendQuestion() {
+        const question = (chatInput.value || '').trim();
+        if (!question || isSubmitting) return;
+
+        isSubmitting = true;
+        sendBtn.disabled = true;
+        chatInput.value = '';
+        chatInput.style.height = 'auto';
+
+        // Add user message
+        appendMainMessage('user', question);
+
+        // Add typing indicator
+        const typingDiv = document.createElement('div');
+        typingDiv.className = 'main-msg main-msg-bot';
+        typingDiv.innerHTML = `
+            <div class="main-bubble" style="background:#ffffff; border:1px solid #e2e8f0; padding:10px 16px;">
+                <span style="color:#10b981; font-weight:600; font-size:0.9em;">Thinking...</span>
+            </div>
+        `;
+        messagesContainer.appendChild(typingDiv);
+        scrollToBottom();
+
+        try {
+            const res = await fetch('/chatbot/api/query', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    question,
+                    conversationId: activeConversationId || null,
+                    model: modelSelect.value
+                })
+            });
+
+            const data = await res.json();
+            typingDiv.remove();
+
+            if (data && data.success) {
+                appendMainMessage('bot', data.answer);
+                if (data.conversationId) {
+                    activeConversationId = data.conversationId;
+                    localStorage.setItem('gezynebot_active_conv', activeConversationId);
+                    // Update active title if was new
+                    if (activeTitle && activeTitle.textContent.includes('New Discussion')) {
+                        activeTitle.textContent = question.slice(0, 36) + (question.length > 36 ? '...' : '');
+                    }
+                }
+            } else {
+                appendMainMessage('bot', data.answer || data.error || 'Sorry, I encountered an error communicating with the AI service.');
+            }
+        } catch (err) {
+            typingDiv.remove();
+            appendMainMessage('bot', 'Network error: could not connect to the server.');
+        } finally {
+            isSubmitting = false;
+            sendBtn.disabled = false;
+            chatInput.focus();
+        }
+    }
+});
+</script>

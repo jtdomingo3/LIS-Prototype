@@ -190,6 +190,28 @@ function createBetterSqliteDb(dbPath, opts = {}) {
       key TEXT PRIMARY KEY,
       value TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS chatbot_conversations (
+      id TEXT PRIMARY KEY,
+      user_id TEXT,
+      title TEXT,
+      last_model TEXT,
+      created_at TEXT,
+      updated_at TEXT,
+      json TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_chat_conv_user ON chatbot_conversations(user_id);
+
+    CREATE TABLE IF NOT EXISTS chatbot_messages (
+      id TEXT PRIMARY KEY,
+      conversation_id TEXT,
+      user_id TEXT,
+      role TEXT,
+      content TEXT,
+      sources TEXT,
+      created_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_chat_msg_conv ON chatbot_messages(conversation_id);
   `);
 
   const stmts = {
@@ -229,7 +251,16 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     deleteAllCounters: sqlite.prepare('DELETE FROM counters'),
 
     getSettings: sqlite.prepare("SELECT json FROM settings WHERE key = 'main'"),
-    upsertSettings: sqlite.prepare("INSERT OR REPLACE INTO settings (key, json) VALUES ('main', ?)")
+    upsertSettings: sqlite.prepare("INSERT OR REPLACE INTO settings (key, json) VALUES ('main', ?)"),
+
+    getChatConversationsByUser: sqlite.prepare('SELECT json FROM chatbot_conversations WHERE user_id = ? ORDER BY updated_at DESC'),
+    getAllChatConversations: sqlite.prepare('SELECT json FROM chatbot_conversations ORDER BY updated_at DESC'),
+    getChatConversationById: sqlite.prepare('SELECT json FROM chatbot_conversations WHERE id = ?'),
+    upsertChatConversation: sqlite.prepare('INSERT OR REPLACE INTO chatbot_conversations (id, user_id, title, last_model, created_at, updated_at, json) VALUES (@id, @user_id, @title, @last_model, @created_at, @updated_at, @json)'),
+    deleteChatConversationById: sqlite.prepare('DELETE FROM chatbot_conversations WHERE id = ?'),
+    deleteChatMessagesByConvId: sqlite.prepare('DELETE FROM chatbot_messages WHERE conversation_id = ?'),
+    getChatMessagesByConvId: sqlite.prepare('SELECT id, conversation_id, user_id, role, content, sources, created_at FROM chatbot_messages WHERE conversation_id = ? ORDER BY created_at ASC'),
+    insertChatMessage: sqlite.prepare('INSERT INTO chatbot_messages (id, conversation_id, user_id, role, content, sources, created_at) VALUES (@id, @conversation_id, @user_id, @role, @content, @sources, @created_at)')
   };
 
   const patientCache = createEntityCache(1000);
@@ -583,6 +614,100 @@ function createBetterSqliteDb(dbPath, opts = {}) {
       })();
     },
 
+    getChatbotConversations(userId) {
+      try {
+        const rows = userId ? stmts.getChatConversationsByUser.all(String(userId)) : stmts.getAllChatConversations.all();
+        return parseRows(rows);
+      } catch (e) {
+        return [];
+      }
+    },
+    getChatbotConversation(id, userId) {
+      if (!id) return null;
+      try {
+        const row = stmts.getChatConversationById.get(String(id));
+        if (!row || !row.json) return null;
+        const conv = JSON.parse(row.json);
+        if (userId && conv.user_id && String(conv.user_id) !== String(userId)) return null;
+        return conv;
+      } catch (e) { return null; }
+    },
+    saveChatbotConversation(conv) {
+      if (!conv || !conv.id) return null;
+      try {
+        const data = {
+          id: String(conv.id),
+          user_id: safeStr(conv.user_id || 'default'),
+          title: safeStr(conv.title || 'New Conversation'),
+          last_model: safeStr(conv.last_model || 'openai/gpt-4o-mini'),
+          created_at: safeStr(conv.created_at || new Date().toISOString()),
+          updated_at: safeStr(conv.updated_at || new Date().toISOString()),
+          json: JSON.stringify(conv)
+        };
+        stmts.upsertChatConversation.run(data);
+        return conv;
+      } catch (e) {
+        console.error('[sqliteDb] saveChatbotConversation error:', e.message);
+        return conv;
+      }
+    },
+    deleteChatbotConversation(id, userId) {
+      if (!id) return false;
+      try {
+        const conv = this.getChatbotConversation(id, userId);
+        if (!conv) return false;
+        sqlite.transaction(() => {
+          stmts.deleteChatConversationById.run(String(id));
+          stmts.deleteChatMessagesByConvId.run(String(id));
+        })();
+        return true;
+      } catch (e) {
+        return false;
+      }
+    },
+    getChatbotMessages(conversationId) {
+      if (!conversationId) return [];
+      try {
+        const rows = stmts.getChatMessagesByConvId.all(String(conversationId));
+        return (rows || []).map(r => ({
+          id: r.id,
+          conversation_id: r.conversation_id,
+          user_id: r.user_id,
+          role: r.role,
+          content: r.content,
+          sources: r.sources ? (typeof r.sources === 'string' ? JSON.parse(r.sources) : r.sources) : [],
+          created_at: r.created_at
+        }));
+      } catch (e) { return []; }
+    },
+    addChatbotMessage(msg) {
+      if (!msg || !msg.conversation_id) return null;
+      try {
+        const id = msg.id || ('msg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7));
+        const data = {
+          id,
+          conversation_id: String(msg.conversation_id),
+          user_id: safeStr(msg.user_id || 'default'),
+          role: safeStr(msg.role || 'user'),
+          content: safeStr(msg.content || ''),
+          sources: msg.sources ? JSON.stringify(msg.sources) : '[]',
+          created_at: safeStr(msg.created_at || new Date().toISOString())
+        };
+        stmts.insertChatMessage.run(data);
+        try {
+          const conv = this.getChatbotConversation(msg.conversation_id);
+          if (conv) {
+            conv.updated_at = data.created_at;
+            this.saveChatbotConversation(conv);
+          }
+        } catch (_) {}
+        return { ...data, sources: msg.sources || [] };
+      } catch (e) {
+        console.error('[sqliteDb] addChatbotMessage error:', e.message);
+        return null;
+      }
+    },
+
     close() { try { sqlite.close(); } catch (e) {} }
   };
 }
@@ -665,6 +790,28 @@ function createSqlJsDb(SQL, dbPath) {
       key TEXT PRIMARY KEY,
       value TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS chatbot_conversations (
+      id TEXT PRIMARY KEY,
+      user_id TEXT,
+      title TEXT,
+      last_model TEXT,
+      created_at TEXT,
+      updated_at TEXT,
+      json TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_chat_conv_user ON chatbot_conversations(user_id);
+
+    CREATE TABLE IF NOT EXISTS chatbot_messages (
+      id TEXT PRIMARY KEY,
+      conversation_id TEXT,
+      user_id TEXT,
+      role TEXT,
+      content TEXT,
+      sources TEXT,
+      created_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_chat_msg_conv ON chatbot_messages(conversation_id);
   `);
 
   function persist() {
@@ -1117,6 +1264,118 @@ function createSqlJsDb(SQL, dbPath) {
       if (data.settings && typeof data.settings === 'object') {
         sqlite.run("INSERT OR REPLACE INTO settings (key, json) VALUES ('main', ?)", [JSON.stringify(data.settings)]);
         persist();
+      }
+    },
+
+    getChatbotConversations(userId) {
+      try {
+        const sql = userId
+          ? 'SELECT json FROM chatbot_conversations WHERE user_id = ? ORDER BY updated_at DESC'
+          : 'SELECT json FROM chatbot_conversations ORDER BY updated_at DESC';
+        const rows = queryAll(sql, userId ? [String(userId)] : []);
+        return parseRows(rows);
+      } catch (e) { return []; }
+    },
+    getChatbotConversation(id, userId) {
+      if (!id) return null;
+      try {
+        const rows = queryAll('SELECT json FROM chatbot_conversations WHERE id = ?', [String(id)]);
+        if (!rows.length || !rows[0].json) return null;
+        const conv = JSON.parse(rows[0].json);
+        if (userId && conv.user_id && String(conv.user_id) !== String(userId)) return null;
+        return conv;
+      } catch (e) { return null; }
+    },
+    saveChatbotConversation(conv) {
+      if (!conv || !conv.id) return null;
+      try {
+        sqlite.run(
+          'INSERT OR REPLACE INTO chatbot_conversations (id, user_id, title, last_model, created_at, updated_at, json) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [
+            String(conv.id),
+            safeStr(conv.user_id || 'default'),
+            safeStr(conv.title || 'New Conversation'),
+            safeStr(conv.last_model || 'openai/gpt-4o-mini'),
+            safeStr(conv.created_at || new Date().toISOString()),
+            safeStr(conv.updated_at || new Date().toISOString()),
+            JSON.stringify(conv)
+          ]
+        );
+        persist();
+        return conv;
+      } catch (e) {
+        console.error('[sqliteDb sql.js] saveChatbotConversation error:', e.message);
+        return conv;
+      }
+    },
+    deleteChatbotConversation(id, userId) {
+      if (!id) return false;
+      try {
+        const conv = this.getChatbotConversation(id, userId);
+        if (!conv) return false;
+        sqlite.run('BEGIN TRANSACTION;');
+        sqlite.run('DELETE FROM chatbot_conversations WHERE id = ?', [String(id)]);
+        sqlite.run('DELETE FROM chatbot_messages WHERE conversation_id = ?', [String(id)]);
+        sqlite.run('COMMIT;');
+        persist();
+        return true;
+      } catch (e) {
+        try { sqlite.run('ROLLBACK;'); } catch (_) {}
+        return false;
+      }
+    },
+    getChatbotMessages(conversationId) {
+      if (!conversationId) return [];
+      try {
+        const rows = queryAll('SELECT id, conversation_id, user_id, role, content, sources, created_at FROM chatbot_messages WHERE conversation_id = ? ORDER BY created_at ASC', [String(conversationId)]);
+        return (rows || []).map(r => ({
+          id: r.id,
+          conversation_id: r.conversation_id,
+          user_id: r.user_id,
+          role: r.role,
+          content: r.content,
+          sources: r.sources ? (typeof r.sources === 'string' ? JSON.parse(r.sources) : r.sources) : [],
+          created_at: r.created_at
+        }));
+      } catch (e) { return []; }
+    },
+    addChatbotMessage(msg) {
+      if (!msg || !msg.conversation_id) return null;
+      try {
+        const id = msg.id || ('msg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7));
+        const createdAt = safeStr(msg.created_at || new Date().toISOString());
+        sqlite.run(
+          'INSERT INTO chatbot_messages (id, conversation_id, user_id, role, content, sources, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [
+            id,
+            String(msg.conversation_id),
+            safeStr(msg.user_id || 'default'),
+            safeStr(msg.role || 'user'),
+            safeStr(msg.content || ''),
+            msg.sources ? JSON.stringify(msg.sources) : '[]',
+            createdAt
+          ]
+        );
+        try {
+          const conv = this.getChatbotConversation(msg.conversation_id);
+          if (conv) {
+            conv.updated_at = createdAt;
+            this.saveChatbotConversation(conv);
+          }
+        } catch (_) {}
+        persist();
+        return {
+          id,
+          conversation_id: String(msg.conversation_id),
+          user_id: msg.user_id || 'default',
+          role: msg.role || 'user',
+          content: msg.content || '',
+          sources: msg.sources || [],
+          created_at: createdAt
+        };
+      } catch (e) {
+        console.error('[sqliteDb sql.js] addChatbotMessage error:', e.message);
+        return null;
       }
     },
 
