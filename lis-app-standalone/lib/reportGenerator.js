@@ -49,23 +49,31 @@ async function getBrowser() {
     // prefer puppeteer-core (no auto-download), fall back to puppeteer
     let puppeteer;
     try { puppeteer = require('puppeteer-core'); } catch (e) {
-      puppeteer = require('puppeteer');
+      try { puppeteer = require('puppeteer'); } catch (ee) {
+        return null;
+      }
     }
     const executablePath = findBrowserExe();
+    if (!executablePath) return null;
     console.log(`[reportGenerator] launching browser: ${executablePath || '(default)'}`);
-    _browser = await puppeteer.launch({
-      headless: 'new',
-      executablePath,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-gpu',
-        '--disable-dev-shm-usage',
-        '--disable-extensions',
-      ],
-    });
-    // auto-reconnect
-    _browser.on('disconnected', () => { _browser = null; _browserLaunchPromise = null; });
+    try {
+      _browser = await puppeteer.launch({
+        headless: 'new',
+        executablePath,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-gpu',
+          '--disable-dev-shm-usage',
+          '--disable-extensions',
+        ],
+      });
+      // auto-reconnect
+      _browser.on('disconnected', () => { _browser = null; _browserLaunchPromise = null; });
+    } catch (launchErr) {
+      console.warn('[reportGenerator] browser launch failed:', launchErr && launchErr.message);
+      _browser = null;
+    }
     _browserLaunchPromise = null;
     return _browser;
   })();
@@ -198,9 +206,36 @@ async function renderHtmlForTest(populatedTest, templateName) {
   return inlineSignatureImages(finalHtml);
 }
 
-// ── convert HTML → PDF using Edge/Chrome via puppeteer-core ────────────
+// ── convert HTML → PDF using Electron native or Edge/Chrome via puppeteer-core ──
 async function generatePdfBufferFromHtml(html) {
+  // 1. If running in Electron, use Electron's hidden BrowserWindow to render PDF natively
+  let electron = null;
+  try { electron = require('electron'); } catch (_) {}
+  const BrowserWindow = (electron && electron.BrowserWindow) ? electron.BrowserWindow : null;
+
+  if (BrowserWindow) {
+    const win = new BrowserWindow({
+      show: false,
+      webPreferences: { nodeIntegration: false, contextIsolation: true }
+    });
+    try {
+      await win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html));
+      const buf = await win.webContents.printToPDF({
+        pageSize: 'Letter',
+        printBackground: true,
+        margins: { top: 0.2, bottom: 0.2, left: 0.2, right: 0.2 }
+      });
+      return buf;
+    } finally {
+      try { if (!win.isDestroyed()) win.close(); } catch (_) {}
+    }
+  }
+
+  // 2. Fallback to Edge/Chrome via puppeteer-core or puppeteer
   const browser = await getBrowser();
+  if (!browser) {
+    throw new Error('No PDF rendering engine available (puppeteer/Edge not found)');
+  }
   const page = await browser.newPage();
   try {
     await page.setContent(html, { waitUntil: 'domcontentloaded' });

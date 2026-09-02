@@ -62,22 +62,30 @@ async function getBrowser() {
   _browserLaunchPromise = (async () => {
     let puppeteer;
     try { puppeteer = require('puppeteer-core'); } catch (e) {
-      puppeteer = require('puppeteer');
+      try { puppeteer = require('puppeteer'); } catch (ee) {
+        return null;
+      }
     }
     const executablePath = findBrowserExe();
+    if (!executablePath) return null;
     console.log(`[reportGenerator] launching browser: ${executablePath || '(default)'}`);
-    _browser = await puppeteer.launch({
-      headless: 'new',
-      executablePath,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-gpu',
-        '--disable-dev-shm-usage',
-        '--disable-extensions',
-      ],
-    });
-    _browser.on('disconnected', () => { _browser = null; _browserLaunchPromise = null; });
+    try {
+      _browser = await puppeteer.launch({
+        headless: 'new',
+        executablePath,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-gpu',
+          '--disable-dev-shm-usage',
+          '--disable-extensions',
+        ],
+      });
+      _browser.on('disconnected', () => { _browser = null; _browserLaunchPromise = null; });
+    } catch (launchErr) {
+      console.warn('[reportGenerator] browser launch failed:', launchErr && launchErr.message);
+      _browser = null;
+    }
     _browserLaunchPromise = null;
     return _browser;
   })();

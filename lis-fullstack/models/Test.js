@@ -252,8 +252,10 @@ class Test {
           const testRef = new Test(test);
           setImmediate(async () => {
             try {
-              await reportGenerator.generatePdfForTest(testRef);
-              console.log(`[Test.findOneAndUpdate] auto-generated PDF for testId=${testRef.testId || testRef.id}`);
+              const pdfPath = await reportGenerator.generatePdfForTest(testRef);
+              if (pdfPath) {
+                console.log(`[Test.findOneAndUpdate] auto-generated PDF for testId=${testRef.testId || testRef.id}`);
+              }
             } catch (e) {
               try { logReportError(e, 'auto-generate-pdf-findOneAndUpdate'); } catch (er) {}
             }

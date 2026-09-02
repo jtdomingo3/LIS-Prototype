@@ -599,23 +599,33 @@ router.delete('/:id', requireAuth, canAccessPatient, async (req, res) => {
   try {
     const Test = require('../models/Test');
     
-    // Cascade delete any tests belonging to this patient
-    const associatedTests = await Test.find({ patient: req.params.id });
-    if (Array.isArray(associatedTests)) {
-      for (const t of associatedTests) {
+    const targetId = req.params.id;
+
+    // Resolve patient by any identifier (id, _id, patientId, patientCode)
+    let patient = await Patient.findById(targetId);
+    if (!patient) patient = await Patient.findOne({ patientId: targetId });
+    if (!patient) patient = await Patient.findOne({ patientCode: targetId });
+    if (!patient) patient = await Patient.findOne({ id: targetId });
+
+    const allTests = await Test.find();
+    if (patient) {
+      const patientTests = allTests.filter(t => t && (
+        t.patient === patient.id || 
+        t.patient === patient._id || 
+        t.patient === patient.patientId || 
+        t.patient === patient.patientCode ||
+        t.patient === targetId
+      ));
+      for (const t of patientTests) {
         await Test.findByIdAndDelete(t.id);
       }
-    }
-
-    let patient = await Patient.findByIdAndDelete(req.params.id);
-    if (!patient) {
-      const pByCode = await Patient.findOne({ patientId: req.params.id });
-      if (pByCode) patient = await Patient.findByIdAndDelete(pByCode.id);
-    }
-
-    if (!patient) {
-      req.flash('error_msg', 'Patient not found');
-      return res.redirect('/patients');
+      await Patient.findByIdAndDelete(patient.id);
+    } else {
+      const patientTests = allTests.filter(t => t && t.patient === targetId);
+      for (const t of patientTests) {
+        await Test.findByIdAndDelete(t.id);
+      }
+      await Patient.findByIdAndDelete(targetId);
     }
 
     req.flash('success_msg', 'Patient and associated tests deleted successfully');

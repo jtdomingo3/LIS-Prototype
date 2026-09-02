@@ -16,7 +16,7 @@
     "service:uninstall": "node ./scripts/register-service.js uninstall",
     "tray": "cd tray && npm install && npm start",
     "security-audit": "node ../tools/security-audit/run-security-audit.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node ../test/run-all-offline-tests.js && node ../test/test-signature-sync-e2e.js"
   },
   "keywords": [
     "laboratory",

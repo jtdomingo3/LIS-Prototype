@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-09-02T02:39:15.656Z",
+  "timestamp": "2026-09-02T02:46:14.352Z",
   "auditVersion": "2026.1.0",
   "overallCompliancePassed": true,
   "reports": {
@@ -12,8 +12,7 @@
           "name": "HTTP Security Headers & Cookies",
           "score": 100,
           "findings": [],
-          "liveTested": true,
-          "statusCode": 200
+          "liveTested": false
         },
         {
           "name": "Authentication & Cryptographic Standards",
@@ -53,8 +52,7 @@
           "name": "HTTP Security Headers & Cookies",
           "score": 100,
           "findings": [],
-          "liveTested": true,
-          "statusCode": 302
+          "liveTested": false
         },
         {
           "name": "Authentication & Cryptographic Standards",
