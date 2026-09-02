@@ -1322,40 +1322,120 @@
             if (document.visibilityState === 'visible') scheduleSSEConnect(3000);
         })();
 
-        // Clean up any legacy keepFullscreen flag
-        try { localStorage.removeItem('keepFullscreen'); } catch (e) {}
-
-        // Standard native fullscreen toggle (no auto-fullscreen or shell redirects)
+        // Persistent Fullscreen Viewport (keeps Fullscreen active across all sidebar navigation and page loads)
         function toggleFullscreen() {
             try {
-                if (document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement) {
+                if (window.top !== window.self) {
+                    // Inside the fullscreen viewport iframe -> exit fullscreen
+                    try {
+                        if (window.top.document.exitFullscreen) {
+                            window.top.document.exitFullscreen();
+                        } else if (window.top.document.webkitExitFullscreen) {
+                            window.top.document.webkitExitFullscreen();
+                        } else if (window.top.document.mozCancelFullScreen) {
+                            window.top.document.mozCancelFullScreen();
+                        } else if (window.top.document.msExitFullscreen) {
+                            window.top.document.msExitFullscreen();
+                        }
+                    } catch (e) {
+                        window.top.location.href = window.location.href;
+                    }
+                    return;
+                }
+
+                const isCurrentFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+                if (isCurrentFS) {
                     if (document.exitFullscreen) document.exitFullscreen();
                     else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
                     else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
                     else if (document.msExitFullscreen) document.msExitFullscreen();
-                } else {
-                    const el = document.documentElement;
-                    if (el.requestFullscreen) el.requestFullscreen();
-                    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-                    else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
-                    else if (el.msRequestFullscreen) el.msRequestFullscreen();
+                    return;
                 }
-            } catch (e) {}
+
+                // Request fullscreen on parent document
+                const el = document.documentElement;
+                if (el.requestFullscreen) el.requestFullscreen();
+                else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+                else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
+                else if (el.msRequestFullscreen) el.msRequestFullscreen();
+
+                // Create or reveal persistent fullscreen container
+                let container = document.getElementById('lis-fullscreen-viewport');
+                if (!container) {
+                    container = document.createElement('div');
+                    container.id = 'lis-fullscreen-viewport';
+                    container.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:9999999;background:#f8fafc;display:none;';
+                    
+                    const spinner = document.createElement('div');
+                    spinner.id = 'lis-fullscreen-loading';
+                    spinner.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:Inter,sans-serif;color:#10b981;font-weight:600;display:flex;align-items:center;gap:10px;';
+                    spinner.innerHTML = '<i class="fa fa-spinner fa-spin" style="font-size:24px;"></i> <span>Loading Fullscreen LIS...</span>';
+                    container.appendChild(spinner);
+
+                    const iframe = document.createElement('iframe');
+                    iframe.id = 'lis-fullscreen-frame';
+                    iframe.style.cssText = 'width:100%;height:100%;border:none;margin:0;padding:0;display:block;opacity:0;transition:opacity 0.2s ease;';
+                    iframe.onload = function() {
+                        const sp = document.getElementById('lis-fullscreen-loading');
+                        if (sp) sp.style.display = 'none';
+                        iframe.style.opacity = '1';
+                    };
+                    container.appendChild(iframe);
+                    document.body.appendChild(container);
+                }
+
+                const iframe = document.getElementById('lis-fullscreen-frame');
+                const sp = document.getElementById('lis-fullscreen-loading');
+                if (sp) sp.style.display = 'flex';
+                iframe.style.opacity = '0';
+                iframe.src = window.location.href;
+                container.style.display = 'block';
+            } catch (e) {
+                console.warn('[Fullscreen] Error toggling fullscreen:', e);
+            }
         }
 
-        // Update button text on fullscreen change
-        document.addEventListener('fullscreenchange', updateFsButton);
-        document.addEventListener('webkitfullscreenchange', updateFsButton);
-        document.addEventListener('mozfullscreenchange', updateFsButton);
-        document.addEventListener('MSFullscreenChange', updateFsButton);
+        // Synchronize state when fullscreen changes or Escape is pressed
+        function onFsChange() {
+            const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+            const container = document.getElementById('lis-fullscreen-viewport');
+            
+            if (!isFS && container && container.style.display === 'block') {
+                let currentIframeUrl = null;
+                try {
+                    const iframe = document.getElementById('lis-fullscreen-frame');
+                    if (iframe && iframe.contentWindow && iframe.contentWindow.location.href) {
+                        currentIframeUrl = iframe.contentWindow.location.href;
+                    }
+                } catch (e) {}
+
+                container.style.display = 'none';
+                const iframe = document.getElementById('lis-fullscreen-frame');
+                if (iframe) iframe.src = 'about:blank';
+
+                if (currentIframeUrl && currentIframeUrl !== window.location.href && !currentIframeUrl.includes('about:blank')) {
+                    window.location.href = currentIframeUrl;
+                }
+            }
+            updateFsButton();
+        }
+
+        document.addEventListener('fullscreenchange', onFsChange);
+        document.addEventListener('webkitfullscreenchange', onFsChange);
+        document.addEventListener('mozfullscreenchange', onFsChange);
+        document.addEventListener('MSFullscreenChange', onFsChange);
         
         function updateFsButton() {
             const fsBtn = document.getElementById('fullscreenBtn');
             if (!fsBtn) return;
-            const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+            const inShell = (window.top !== window.self);
+            const isFullscreen = inShell || !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
             const textEl = fsBtn.querySelector('.nav-text');
             if (textEl) textEl.textContent = isFullscreen ? 'Exit Fullscreen' : 'Fullscreen';
         }
+
+        // Initialize button label on load
+        updateFsButton();
 </script>
 
     <!-- Global Custom Confirmation Modal -->
