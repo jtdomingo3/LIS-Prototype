@@ -37,16 +37,29 @@ function findBrowserExe() {
   return undefined;
 }
 
-// ── singleton browser instance ─────────────────────────────────────────
+// ── singleton browser instance with idle timer ─────────────────────────
 let _browser = null;
 let _browserLaunchPromise = null;
+let _browserIdleTimer = null;
+
+function resetBrowserIdleTimer() {
+  if (_browserIdleTimer) clearTimeout(_browserIdleTimer);
+  _browserIdleTimer = setTimeout(async () => {
+    try {
+      if (_browser) {
+        console.log('[reportGenerator] closing idle browser instance to conserve RAM');
+        await _browser.close();
+        _browser = null;
+      }
+    } catch (_) {}
+  }, 60000);
+}
 
 async function getBrowser() {
+  resetBrowserIdleTimer();
   if (_browser && _browser.isConnected()) return _browser;
-  // avoid multiple parallel launches
   if (_browserLaunchPromise) return _browserLaunchPromise;
   _browserLaunchPromise = (async () => {
-    // prefer puppeteer-core (no auto-download), fall back to puppeteer
     let puppeteer;
     try { puppeteer = require('puppeteer-core'); } catch (e) {
       puppeteer = require('puppeteer');
@@ -64,7 +77,6 @@ async function getBrowser() {
         '--disable-extensions',
       ],
     });
-    // auto-reconnect
     _browser.on('disconnected', () => { _browser = null; _browserLaunchPromise = null; });
     _browserLaunchPromise = null;
     return _browser;
@@ -223,16 +235,28 @@ function enqueue(fn) {
   return _queue;
 }
 
-// ── generate a single test's PDF and write to disk ─────────────────────
-async function generatePdfForTest(rawTest) {
+// ── generate a single test's PDF and write to disk (with disk mtime caching) ──
+async function generatePdfForTest(rawTest, forceRegenerate = false) {
   return enqueue(async () => {
     try {
       ensureDir();
       const populated    = await populateTestForPdf(rawTest);
+      const outPath      = getReportPath(populated);
+
+      // Fast path: if PDF exists on disk and is newer than test.updatedAt, serve cached
+      if (!forceRegenerate && fs.existsSync(outPath)) {
+        try {
+          const stat = fs.statSync(outPath);
+          const testUpdatedAt = rawTest.updatedAt ? new Date(rawTest.updatedAt).getTime() : 0;
+          if (stat.mtimeMs >= testUpdatedAt && stat.size > 1000) {
+            return outPath;
+          }
+        } catch (_) {}
+      }
+
       const templateName = getResultTemplate(populated);
       const html         = await renderHtmlForTest(populated, templateName);
       const buf          = await generatePdfBufferFromHtml(html);
-      const outPath      = getReportPath(populated);
       fs.writeFileSync(outPath, buf);
       console.log(`[reportGenerator] wrote ${path.basename(outPath)}`);
       return outPath;

@@ -148,19 +148,28 @@ function verifyStartupRequirements() {
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(methodOverride('_method'));
-app.use(express.static(path.join(__dirname, 'public')));
-// Serve assets folder (for notification sounds, logos, etc.)
-app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
-// Simple request logger to help debug routes and payloads
+// Static asset caching options (1 day maxAge with ETag validation)
+const staticCacheOpts = {
+  maxAge: '1d',
+  etag: true,
+  lastModified: true
+};
+app.use(express.static(path.join(__dirname, 'public'), staticCacheOpts));
+app.use('/assets', express.static(path.join(__dirname, 'assets'), staticCacheOpts));
+
+// Simple request logger to help debug routes and payloads with sensitive field masking
 function maskSensitive(obj) {
-  const SENSITIVE = new Set(['password','pwd','pass','confirmPassword','confirm_password','passwordConfirm']);
+  const SENSITIVE = new Set([
+    'password','pwd','pass','confirmPassword','confirm_password','passwordConfirm',
+    'token','authtoken','bearer','authorization','hash','synchash','x-lis-sync-hash','secret'
+  ]);
   if (obj == null) return obj;
   if (Array.isArray(obj)) return obj.map(v => maskSensitive(v));
   if (typeof obj === 'object') {
     const out = {};
     for (const k of Object.keys(obj)) {
-      if (SENSITIVE.has(k)) out[k] = '[FILTERED]';
+      if (SENSITIVE.has(k.toLowerCase())) out[k] = '[FILTERED]';
       else out[k] = maskSensitive(obj[k]);
     }
     return out;

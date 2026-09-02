@@ -123,18 +123,28 @@ class Test {
   // Static methods
   static async findById(id) {
     if (!id) return null;
-    if (global.db && typeof global.db.getTestById === 'function') {
-      const test = global.db.getTestById(id);
-      if (test) return new Test(test);
+    if (global.db) {
+      if (typeof global.db.getTestById === 'function') {
+        const test = global.db.getTestById(id);
+        if (test) return new Test(test);
+      }
+      if (typeof global.db.getTestByTestId === 'function') {
+        const test = global.db.getTestByTestId(id);
+        if (test) return new Test(test);
+      }
     }
-    const tests = global.db.getTests();
+    const tests = global.db && global.db.getTests ? global.db.getTests() : [];
     let test = tests.find(t => t.id === id);
     if (!test) test = tests.find(t => t.testId === id);
     return test ? new Test(test) : null;
   }
 
   static async find(query = {}) {
-    let tests = global.db.getTests();
+    if (global.db && typeof global.db.queryTests === 'function') {
+      const results = global.db.queryTests(query);
+      return results.map(t => new Test(t));
+    }
+    let tests = global.db && global.db.getTests ? global.db.getTests() : [];
 
     if (query.patient) {
       tests = tests.filter(t => t.patient === query.patient);
@@ -150,8 +160,23 @@ class Test {
     return tests.map(t => new Test(t));
   }
 
-  static async findOne(query) {
-    const tests = global.db.getTests();
+  static async findOne(query = {}) {
+    if (!query) return null;
+    if (global.db) {
+      if (query.testId && typeof global.db.getTestByTestId === 'function') {
+        const test = global.db.getTestByTestId(query.testId);
+        if (test) return new Test(test);
+      }
+      if ((query._id || query.id) && typeof global.db.getTestById === 'function') {
+        const test = global.db.getTestById(query._id || query.id);
+        if (test) return new Test(test);
+      }
+      if (typeof global.db.queryTests === 'function') {
+        const results = global.db.queryTests(query, { limit: 1 });
+        if (results && results.length) return new Test(results[0]);
+      }
+    }
+    const tests = global.db && global.db.getTests ? global.db.getTests() : [];
     let test = null;
 
     if (query.testId) {
@@ -167,17 +192,15 @@ class Test {
   }
 
   static async countDocuments(query = {}) {
+    if (global.db && typeof global.db.countTests === 'function') {
+      return global.db.countTests(query);
+    }
     const tests = await this.find(query);
     return tests.length;
   }
 
   static async findOneAndUpdate(query, updateData, options = {}) {
-    const tests = global.db.getTests();
-    let test = null;
-
-    if (query.testId) {
-      test = tests.find(t => t.testId === query.testId);
-    } else if (query._id || query.id) {
+    let test = await this.findOne(query);
       test = tests.find(t => t.id === (query._id || query.id));
       if (!test) test = tests.find(t => t.testId === (query._id || query.id));
     }

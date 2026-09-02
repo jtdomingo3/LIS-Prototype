@@ -115,18 +115,32 @@ class Patient {
   // Static methods
   static async findById(id) {
     if (!id) return null;
-    if (global.db && typeof global.db.getPatientById === 'function') {
-      const patient = global.db.getPatientById(id);
-      if (patient) return new Patient(patient);
+    if (global.db) {
+      if (typeof global.db.getPatientById === 'function') {
+        const patient = global.db.getPatientById(id);
+        if (patient) return new Patient(patient);
+      }
+      if (typeof global.db.getPatientByCode === 'function') {
+        const patient = global.db.getPatientByCode(id);
+        if (patient) return new Patient(patient);
+      }
+      if (typeof global.db.getPatientByPatientId === 'function') {
+        const patient = global.db.getPatientByPatientId(id);
+        if (patient) return new Patient(patient);
+      }
     }
-    const patients = global.db.getPatients();
+    const patients = global.db && global.db.getPatients ? global.db.getPatients() : [];
     let patient = patients.find(p => p.id === id);
     if (!patient) patient = patients.find(p => p.patientId === id || p.patientCode === id);
     return patient ? new Patient(patient) : null;
   }
 
   static async find(query = {}) {
-    let patients = global.db.getPatients();
+    if (global.db && typeof global.db.queryPatients === 'function') {
+      const results = global.db.queryPatients(query);
+      return results.map(p => new Patient(p));
+    }
+    let patients = global.db && global.db.getPatients ? global.db.getPatients() : [];
 
     if (query.createdBy) {
       patients = patients.filter(p => p.createdBy === query.createdBy);
@@ -138,8 +152,27 @@ class Patient {
     return patients.map(p => new Patient(p));
   }
 
-  static async findOne(query) {
-    const patients = global.db.getPatients();
+  static async findOne(query = {}) {
+    if (!query) return null;
+    if (global.db) {
+      if (query.patientId && typeof global.db.getPatientByPatientId === 'function') {
+        const patient = global.db.getPatientByPatientId(query.patientId);
+        if (patient) return new Patient(patient);
+      }
+      if (query.patientCode && typeof global.db.getPatientByCode === 'function') {
+        const patient = global.db.getPatientByCode(query.patientCode);
+        if (patient) return new Patient(patient);
+      }
+      if ((query._id || query.id) && typeof global.db.getPatientById === 'function') {
+        const patient = global.db.getPatientById(query._id || query.id);
+        if (patient) return new Patient(patient);
+      }
+      if (typeof global.db.queryPatients === 'function') {
+        const results = global.db.queryPatients(query, { limit: 1 });
+        if (results && results.length) return new Patient(results[0]);
+      }
+    }
+    const patients = global.db && global.db.getPatients ? global.db.getPatients() : [];
     let patient = null;
 
     if (query.patientId) {
@@ -154,6 +187,9 @@ class Patient {
   }
 
   static async countDocuments(query = {}) {
+    if (global.db && typeof global.db.countPatients === 'function' && !Object.keys(query).length) {
+      return global.db.countPatients();
+    }
     const patients = await this.find(query);
     return patients.length;
   }

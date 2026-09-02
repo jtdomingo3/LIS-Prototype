@@ -291,86 +291,113 @@ class SyncEngine {
       if (!this.config || !this.config.SERVER_URL) return { success: false, reason: 'no-server-url' };
       if (!this.dataStore) return { success: false, reason: 'no-datastore' };
 
-      // Authenticate with the real server before fetching data
-      await this._ensureServerAuth();
+      // Prevent concurrent duplicate full-sync passes
+      if (this._fullSyncActivePromise) {
+        return this._fullSyncActivePromise;
+      }
 
-      // Flush all pending offline mutations (including deletions) to the server before downloading
-      if (this.queue && this.queue.countPending() > 0) {
+      this._fullSyncActivePromise = (async () => {
         try {
-          console.log('[Sync] flushing pending queue operations before fullSync...');
-          await this.processQueue();
-        } catch (e) {
-          console.warn('[Sync] pre-fullSync queue flush warning:', e && e.message);
-        }
-      }
+          // Authenticate with the real server before fetching data
+          await this._ensureServerAuth();
 
-      const { net } = require('electron');
-      // prefer authenticated export endpoint if available
-      const base = this.config.SERVER_URL.replace(/\/$/, '');
-      const candidateUrls = [base + '/export/data.json', base + '/data.json'];
-      try {
-        let result = null;
-        let lastErr = null;
-        for (const url of candidateUrls) {
-          try {
-            console.log('[Sync] attempting full-sync from', url);
-            if (progressSender) progressSender.send('full-sync-progress', { phase: 'start', url });
-            result = await this._fetchJson(net, url, progressSender);
-            console.log('[Sync] fetched data from', url, '=>', Array.isArray(result) ? `array(${result.length})` : (result && typeof result === 'object' ? Object.keys(result).join(',') : typeof result));
-            if (result) break;
-          } catch (e) {
-            lastErr = e;
-            console.error('[Sync] full-sync attempt failed for', url, e && e.message);
-            // If the server requires authentication (401) but we have a renderer
-            // webContents available, try fetching from the renderer so browser
-            // session cookies are used (fallback without streaming progress).
+          // Flush all pending offline mutations (including deletions) to the server before downloading
+          if (this.queue && this.queue.countPending() > 0) {
             try {
-              if (e && String(e.message).startsWith('http:401') && progressSender && typeof progressSender.executeJavaScript === 'function') {
-                console.log('[Sync] falling back to renderer fetch for', url);
-                const js = `(async () => { const r = await fetch(${JSON.stringify(url)}, { credentials: 'include' }); const t = await r.text(); return { status: r.status, text: t }; })()`;
-                const res = await progressSender.executeJavaScript(js);
-                if (res && res.status >= 200 && res.status < 300) {
-                  try { result = JSON.parse(res.text); console.log('[Sync] renderer fetch parsed JSON from', url); break; } catch (pe) { lastErr = new Error('invalid-json'); }
-                } else {
-                  console.error('[Sync] renderer fetch returned', res && res.status);
-                  lastErr = new Error('http:' + (res && res.status ? res.status : 'unknown'));
-                }
-              }
-            } catch (ee) {
-              console.error('[Sync] renderer fetch fallback failed for', url, ee && ee.message);
+              console.log('[Sync] flushing pending queue operations before fullSync...');
+              await this.processQueue();
+            } catch (e) {
+              console.warn('[Sync] pre-fullSync queue flush warning:', e && e.message);
             }
-            continue;
           }
-        }
-        if (!result) throw lastErr || new Error('no-data');
-        if (!result || typeof result !== 'object') return { success: false, reason: 'invalid-json' };
 
-        // Merge known collections (best-effort) or replace when requested
-        const collections = ['users', 'patients', 'tests', 'templates', 'counters'];
-        let imported = 0;
-        for (const col of collections) {
-          if (Array.isArray(result[col])) {
-            if (opts && opts.replace) {
-              // Replace on-disk collection entirely to ensure authoritative server state
-              this.dataStore.setCollection(col, result[col]);
-            } else {
-              this.dataStore.mergeCollection(col, result[col]);
+          const { net } = require('electron');
+          // prefer authenticated export endpoint if available
+          const base = this.config.SERVER_URL.replace(/\/$/, '');
+          const candidateUrls = [base + '/export/data.json', base + '/data.json'];
+          let result = null;
+          let lastErr = null;
+          for (const url of candidateUrls) {
+            try {
+              console.log('[Sync] attempting full-sync from', url);
+              if (progressSender) progressSender.send('full-sync-progress', { phase: 'start', url });
+              result = await this._fetchJson(net, url, progressSender);
+              console.log('[Sync] fetched data from', url, '=>', Array.isArray(result) ? `array(${result.length})` : (result && typeof result === 'object' ? Object.keys(result).join(',') : typeof result));
+              if (result) break;
+            } catch (e) {
+              lastErr = e;
+              console.error('[Sync] full-sync attempt failed for', url, e && e.message);
+              try {
+                if (e && String(e.message).startsWith('http:401') && progressSender && typeof progressSender.executeJavaScript === 'function') {
+                  console.log('[Sync] falling back to renderer fetch for', url);
+                  const js = `(async () => { const r = await fetch(${JSON.stringify(url)}, { credentials: 'include' }); const t = await r.text(); return { status: r.status, text: t }; })()`;
+                  const res = await progressSender.executeJavaScript(js);
+                  if (res && res.status >= 200 && res.status < 300) {
+                    try { result = JSON.parse(res.text); console.log('[Sync] renderer fetch parsed JSON from', url); break; } catch (pe) { lastErr = new Error('invalid-json'); }
+                  } else {
+                    console.error('[Sync] renderer fetch returned', res && res.status);
+                    lastErr = new Error('http:' + (res && res.status ? res.status : 'unknown'));
+                  }
+                }
+              } catch (ee) {
+                console.error('[Sync] renderer fetch fallback failed for', url, ee && ee.message);
+              }
+              continue;
             }
-            imported += result[col].length;
-          } else if (result[col] && typeof result[col] === 'object' && col === 'counters') {
-            if (opts && opts.replace) this.dataStore.setCollection(col, result[col]); else this.dataStore.setCollection(col, result[col]);
           }
+          if (!result) throw lastErr || new Error('no-data');
+          if (!result || typeof result !== 'object') return { success: false, reason: 'invalid-json' };
+
+          // Merge known collections (best-effort) or replace when requested
+          const collections = ['users', 'patients', 'tests', 'templates', 'counters'];
+          let imported = 0;
+          for (const col of collections) {
+            if (Array.isArray(result[col])) {
+              if (opts && opts.replace) {
+                this.dataStore.setCollection(col, result[col]);
+              } else {
+                this.dataStore.mergeCollection(col, result[col]);
+              }
+              imported += result[col].length;
+            } else if (result[col] && typeof result[col] === 'object' && col === 'counters') {
+              if (opts && opts.replace) this.dataStore.setCollection(col, result[col]); else this.dataStore.setCollection(col, result[col]);
+            }
+          }
+          const now = new Date().toISOString();
+          this.dataStore.setMeta('lastFullSync', now);
+          console.log('[Sync] fullSync imported', imported, 'records — saved to', this.dataStore.filePath);
+          if (progressSender) progressSender.send('full-sync-progress', { phase: 'complete', imported, filePath: this.dataStore.filePath, lastFullSync: now });
+          return { success: true, imported, filePath: this.dataStore.filePath, lastFullSync: now };
+        } catch (e) {
+          console.error('[Sync] fullSync failed:', e && e.message);
+          if (progressSender) progressSender.send('full-sync-progress', { phase: 'error', reason: e && e.message });
+          return { success: false, reason: e && e.message };
+        } finally {
+          this._fullSyncActivePromise = null;
         }
-        const now = new Date().toISOString();
-        this.dataStore.setMeta('lastFullSync', now);
-        console.log('[Sync] fullSync imported', imported, 'records — saved to', this.dataStore.filePath);
-        if (progressSender) progressSender.send('full-sync-progress', { phase: 'complete', imported, filePath: this.dataStore.filePath, lastFullSync: now });
-        return { success: true, imported, filePath: this.dataStore.filePath, lastFullSync: now };
-      } catch (e) {
-        console.error('[Sync] fullSync failed:', e && e.message);
-        if (progressSender) progressSender.send('full-sync-progress', { phase: 'error', reason: e && e.message });
-        return { success: false, reason: e && e.message };
+      })();
+
+      return this._fullSyncActivePromise;
+    }
+
+    /**
+     * Debounced fullSync to coalesce rapid successive live bridge events
+     */
+    debouncedFullSync(webContents, delayMs = 1200) {
+      if (this._debouncedFullSyncTimer) {
+        clearTimeout(this._debouncedFullSyncTimer);
       }
+      return new Promise((resolve) => {
+        this._debouncedFullSyncTimer = setTimeout(async () => {
+          this._debouncedFullSyncTimer = null;
+          try {
+            const res = await this.fullSync(webContents);
+            resolve(res);
+          } catch (err) {
+            resolve({ success: false, reason: err && err.message });
+          }
+        }, delayMs);
+      });
     }
 
     _fetchJson(net, url, progressSender) {
@@ -992,8 +1019,8 @@ class SyncEngine {
                   if (eventData && !eventData.init && !eventData.offline && eventData.type !== 'ping' && !eventData.keepalive) {
                     console.log('[SyncBridge] Live server event received:', eventData.action || eventData.type || 'event');
                     
-                    // 1. Immediately fetch latest server snapshot so local DB is in sync
-                    this.fullSync(webContents).then(() => {
+                    // 1. Debounced fetch of latest server snapshot so local DB is in sync without thrashing
+                    this.debouncedFullSync(webContents, 1000).then(() => {
                       // 2. Forward event to local UI / renderer windows after data is stored
                       if (typeof onEventCallback === 'function') {
                         try { onEventCallback(eventData); } catch (e) {}
@@ -1064,7 +1091,7 @@ class SyncEngine {
                 try {
                   const eventData = JSON.parse(rawData);
                   if (eventData && !eventData.init && !eventData.offline && eventData.type !== 'ping' && !eventData.keepalive) {
-                    this.fullSync(webContents).finally(() => {
+                    this.debouncedFullSync(webContents, 1000).finally(() => {
                       if (typeof onEventCallback === 'function') {
                         try { onEventCallback(eventData); } catch (e) {}
                       }

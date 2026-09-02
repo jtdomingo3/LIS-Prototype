@@ -43,8 +43,13 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   }
 
   /* ── Static assets (served from copied server assets) ─────────── */
-  app.use('/assets', express.static(path.join(__dirname, '..', 'server-assets')));
-  app.use(express.static(path.join(__dirname, '..', 'server-public')));
+  const staticCacheOpts = {
+    maxAge: '1d',
+    etag: true,
+    lastModified: true
+  };
+  app.use('/assets', express.static(path.join(__dirname, '..', 'server-assets'), staticCacheOpts));
+  app.use(express.static(path.join(__dirname, '..', 'server-public'), staticCacheOpts));
 
   /* ── Session + flash ──────────────────────────────────────────── */
   app.use(session({

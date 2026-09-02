@@ -84,6 +84,38 @@ function safeStr(v) {
   return String(v);
 }
 
+function createEntityCache(maxSize = 1000) {
+  const cache = new Map();
+  return {
+    get(key) {
+      if (!key) return null;
+      const k = String(key);
+      const item = cache.get(k);
+      if (!item) return null;
+      cache.delete(k);
+      cache.set(k, item);
+      return item;
+    },
+    set(key, val) {
+      if (!key || val == null) return;
+      const k = String(key);
+      if (cache.has(k)) cache.delete(k);
+      else if (cache.size >= maxSize) {
+        const firstKey = cache.keys().next().value;
+        if (firstKey !== undefined) cache.delete(firstKey);
+      }
+      cache.set(k, val);
+    },
+    delete(key) {
+      if (!key) return;
+      cache.delete(String(key));
+    },
+    clear() {
+      cache.clear();
+    }
+  };
+}
+
 /**
  * Create a better-sqlite3 backed adapter
  */
@@ -163,30 +195,46 @@ function createBetterSqliteDb(dbPath, opts = {}) {
   const stmts = {
     getAllPatients: sqlite.prepare('SELECT json FROM patients ORDER BY createdAt DESC'),
     getPatientById: sqlite.prepare('SELECT json FROM patients WHERE id = ?'),
+    getPatientByCode: sqlite.prepare('SELECT json FROM patients WHERE patientCode = ?'),
+    getPatientByPatientId: sqlite.prepare('SELECT json FROM patients WHERE patientId = ?'),
     upsertPatient: sqlite.prepare('INSERT OR REPLACE INTO patients (id, patientId, patientCode, firstName, lastName, createdAt, json) VALUES (@id, @patientId, @patientCode, @firstName, @lastName, @createdAt, @json)'),
     deletePatientById: sqlite.prepare('DELETE FROM patients WHERE id = ?'),
     deleteAllPatients: sqlite.prepare('DELETE FROM patients'),
+    countPatients: sqlite.prepare('SELECT COUNT(*) as cnt FROM patients'),
+
     getAllTests: sqlite.prepare('SELECT json FROM tests ORDER BY createdAt DESC'),
     getTestById: sqlite.prepare('SELECT json FROM tests WHERE id = ?'),
+    getTestByTestId: sqlite.prepare('SELECT json FROM tests WHERE testId = ?'),
+    getTestsByPatient: sqlite.prepare('SELECT json FROM tests WHERE patient = ? ORDER BY createdAt DESC'),
+    getTestsByStatus: sqlite.prepare('SELECT json FROM tests WHERE status = ? ORDER BY createdAt DESC'),
     upsertTest: sqlite.prepare('INSERT OR REPLACE INTO tests (id, testId, patient, testType, status, updatedAt, createdAt, json) VALUES (@id, @testId, @patient, @testType, @status, @updatedAt, @createdAt, @json)'),
     deleteTestById: sqlite.prepare('DELETE FROM tests WHERE id = ?'),
     deleteAllTests: sqlite.prepare('DELETE FROM tests'),
+    countTests: sqlite.prepare('SELECT COUNT(*) as cnt FROM tests'),
+
     getAllUsers: sqlite.prepare('SELECT json FROM users ORDER BY rowid'),
     getUserById: sqlite.prepare('SELECT json FROM users WHERE id = ?'),
     getUserByEmail: sqlite.prepare('SELECT json FROM users WHERE email = ?'),
     upsertUser: sqlite.prepare('INSERT OR REPLACE INTO users (id, email, role, status, json) VALUES (@id, @email, @role, @status, @json)'),
     deleteUserById: sqlite.prepare('DELETE FROM users WHERE id = ?'),
     deleteAllUsers: sqlite.prepare('DELETE FROM users'),
+
     getAllTemplates: sqlite.prepare('SELECT json FROM templates ORDER BY rowid'),
     upsertTemplate: sqlite.prepare('INSERT OR REPLACE INTO templates (id, name, testType, isActive, json) VALUES (@id, @name, @testType, @isActive, @json)'),
     deleteTemplateById: sqlite.prepare('DELETE FROM templates WHERE id = ?'),
     deleteAllTemplates: sqlite.prepare('DELETE FROM templates'),
+
     getAllCounters: sqlite.prepare('SELECT key, value FROM counters'),
     upsertCounter: sqlite.prepare('INSERT OR REPLACE INTO counters (key, value) VALUES (?, ?)'),
     deleteAllCounters: sqlite.prepare('DELETE FROM counters'),
+
     getSettings: sqlite.prepare("SELECT json FROM settings WHERE key = 'main'"),
     upsertSettings: sqlite.prepare("INSERT OR REPLACE INTO settings (key, json) VALUES ('main', ?)")
   };
+
+  const patientCache = createEntityCache(1000);
+  const testCache = createEntityCache(1000);
+  const userCache = createEntityCache(200);
 
   return {
     _engine: 'better-sqlite3',
@@ -195,13 +243,83 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     getPatients() { return parseRows(stmts.getAllPatients.all()); },
     getPatientById(id) {
       if (!id) return null;
+      const cached = patientCache.get(id);
+      if (cached) return cached;
       try {
         const row = stmts.getPatientById.get(id);
-        return row && row.json ? JSON.parse(row.json) : null;
+        const parsed = row && row.json ? JSON.parse(row.json) : null;
+        if (parsed) {
+          patientCache.set(id, parsed);
+          if (parsed.patientCode) patientCache.set(parsed.patientCode, parsed);
+          if (parsed.patientId) patientCache.set(parsed.patientId, parsed);
+        }
+        return parsed;
       } catch (e) { return null; }
+    },
+    getPatientByCode(code) {
+      if (!code) return null;
+      const cached = patientCache.get(code);
+      if (cached) return cached;
+      try {
+        const row = stmts.getPatientByCode.get(code);
+        const parsed = row && row.json ? JSON.parse(row.json) : null;
+        if (parsed) {
+          patientCache.set(code, parsed);
+          if (parsed.id) patientCache.set(parsed.id, parsed);
+        }
+        return parsed;
+      } catch (e) { return null; }
+    },
+    getPatientByPatientId(patientId) {
+      if (!patientId) return null;
+      const cached = patientCache.get(patientId);
+      if (cached) return cached;
+      try {
+        const row = stmts.getPatientByPatientId.get(patientId);
+        const parsed = row && row.json ? JSON.parse(row.json) : null;
+        if (parsed) {
+          patientCache.set(patientId, parsed);
+          if (parsed.id) patientCache.set(parsed.id, parsed);
+        }
+        return parsed;
+      } catch (e) { return null; }
+    },
+    queryPatients(filter = {}, opts = {}) {
+      const clauses = [];
+      const params = {};
+      if (filter.id) { clauses.push('id = @id'); params.id = filter.id; }
+      if (filter.patientId) { clauses.push('patientId = @patientId'); params.patientId = filter.patientId; }
+      if (filter.patientCode) { clauses.push('patientCode = @patientCode'); params.patientCode = filter.patientCode; }
+      if (filter.search) {
+        clauses.push('(firstName LIKE @search OR lastName LIKE @search OR patientId LIKE @search OR patientCode LIKE @search)');
+        params.search = `%${filter.search}%`;
+      }
+      
+      let sql = 'SELECT json FROM patients';
+      if (clauses.length) sql += ' WHERE ' + clauses.join(' AND ');
+      sql += ' ORDER BY createdAt DESC';
+      if (opts.limit) {
+        sql += ` LIMIT ${Number(opts.limit)}`;
+        if (opts.offset) sql += ` OFFSET ${Number(opts.offset)}`;
+      }
+      try {
+        const rows = sqlite.prepare(sql).all(params);
+        return parseRows(rows);
+      } catch (e) {
+        return this.getPatients();
+      }
+    },
+    countPatients() {
+      try {
+        const row = stmts.countPatients.get();
+        return row ? row.cnt : 0;
+      } catch (e) { return 0; }
     },
     upsertPatient(p) {
       if (!p || !p.id) return;
+      if (p.id) patientCache.delete(p.id);
+      if (p.patientCode) patientCache.delete(p.patientCode);
+      if (p.patientId) patientCache.delete(p.patientId);
       stmts.upsertPatient.run({
         id: p.id,
         patientId: safeStr(p.patientId),
@@ -211,13 +329,18 @@ function createBetterSqliteDb(dbPath, opts = {}) {
         createdAt: safeStr(p.createdAt),
         json: JSON.stringify(p)
       });
+      patientCache.set(p.id, p);
+      if (p.patientCode) patientCache.set(p.patientCode, p);
+      if (p.patientId) patientCache.set(p.patientId, p);
     },
     deletePatient(id) {
       if (!id) return;
+      patientCache.delete(id);
       stmts.deletePatientById.run(id);
     },
     savePatients(patients) {
       const arr = Array.isArray(patients) ? patients : [];
+      patientCache.clear();
       sqlite.transaction(() => {
         const incomingIds = new Set(arr.filter(p => p && p.id).map(p => p.id));
         const existing = sqlite.prepare('SELECT id FROM patients').all();
@@ -234,13 +357,71 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     getTests() { return parseRows(stmts.getAllTests.all()); },
     getTestById(id) {
       if (!id) return null;
+      const cached = testCache.get(id);
+      if (cached) return cached;
       try {
         const row = stmts.getTestById.get(id);
-        return row && row.json ? JSON.parse(row.json) : null;
+        const parsed = row && row.json ? JSON.parse(row.json) : null;
+        if (parsed) {
+          testCache.set(id, parsed);
+          if (parsed.testId) testCache.set(parsed.testId, parsed);
+        }
+        return parsed;
       } catch (e) { return null; }
+    },
+    getTestByTestId(testId) {
+      if (!testId) return null;
+      const cached = testCache.get(testId);
+      if (cached) return cached;
+      try {
+        const row = stmts.getTestByTestId.get(testId);
+        const parsed = row && row.json ? JSON.parse(row.json) : null;
+        if (parsed) {
+          testCache.set(testId, parsed);
+          if (parsed.id) testCache.set(parsed.id, parsed);
+        }
+        return parsed;
+      } catch (e) { return null; }
+    },
+    queryTests(filter = {}, opts = {}) {
+      const clauses = [];
+      const params = {};
+      if (filter.id) { clauses.push('id = @id'); params.id = filter.id; }
+      if (filter.testId) { clauses.push('testId = @testId'); params.testId = filter.testId; }
+      if (filter.patient) { clauses.push('patient = @patient'); params.patient = filter.patient; }
+      if (filter.status) { clauses.push('status = @status'); params.status = filter.status; }
+      if (filter.testType) { clauses.push('testType = @testType'); params.testType = filter.testType; }
+      
+      let sql = 'SELECT json FROM tests';
+      if (clauses.length) sql += ' WHERE ' + clauses.join(' AND ');
+      sql += ' ORDER BY createdAt DESC';
+      if (opts.limit) {
+        sql += ` LIMIT ${Number(opts.limit)}`;
+        if (opts.offset) sql += ` OFFSET ${Number(opts.offset)}`;
+      }
+      try {
+        const rows = sqlite.prepare(sql).all(params);
+        return parseRows(rows);
+      } catch (e) {
+        return this.getTests();
+      }
+    },
+    countTests(filter = {}) {
+      const clauses = [];
+      const params = {};
+      if (filter.patient) { clauses.push('patient = @patient'); params.patient = filter.patient; }
+      if (filter.status) { clauses.push('status = @status'); params.status = filter.status; }
+      let sql = 'SELECT COUNT(*) as cnt FROM tests';
+      if (clauses.length) sql += ' WHERE ' + clauses.join(' AND ');
+      try {
+        const row = sqlite.prepare(sql).get(params);
+        return row ? row.cnt : 0;
+      } catch (e) { return 0; }
     },
     upsertTest(t) {
       if (!t || !t.id) return;
+      if (t.id) testCache.delete(t.id);
+      if (t.testId) testCache.delete(t.testId);
       stmts.upsertTest.run({
         id: t.id,
         testId: safeStr(t.testId),
@@ -251,13 +432,17 @@ function createBetterSqliteDb(dbPath, opts = {}) {
         createdAt: safeStr(t.createdAt),
         json: JSON.stringify(t)
       });
+      testCache.set(t.id, t);
+      if (t.testId) testCache.set(t.testId, t);
     },
     deleteTest(id) {
       if (!id) return;
+      testCache.delete(id);
       stmts.deleteTestById.run(id);
     },
     saveTests(tests) {
       const arr = Array.isArray(tests) ? tests : [];
+      testCache.clear();
       sqlite.transaction(() => {
         const incomingIds = new Set(arr.filter(t => t && t.id).map(t => t.id));
         const existing = sqlite.prepare('SELECT id FROM tests').all();
@@ -513,6 +698,10 @@ function createSqlJsDb(SQL, dbPath) {
     persist();
   }
 
+  const patientCache = createEntityCache(1000);
+  const testCache = createEntityCache(1000);
+  const userCache = createEntityCache(200);
+
   return {
     _engine: 'sql.js',
     _sqlite: sqlite,
@@ -523,30 +712,110 @@ function createSqlJsDb(SQL, dbPath) {
 
     getPatientById(id) {
       if (!id) return null;
+      const cached = patientCache.get(id);
+      if (cached) return cached;
       const rows = queryAll('SELECT json FROM patients WHERE id = ?', [id]);
       if (rows.length && rows[0].json) {
-        try { return JSON.parse(rows[0].json); } catch (e) {}
+        try {
+          const parsed = JSON.parse(rows[0].json);
+          patientCache.set(id, parsed);
+          if (parsed.patientCode) patientCache.set(parsed.patientCode, parsed);
+          if (parsed.patientId) patientCache.set(parsed.patientId, parsed);
+          return parsed;
+        } catch (e) {}
       }
       return null;
     },
 
+    getPatientByCode(code) {
+      if (!code) return null;
+      const cached = patientCache.get(code);
+      if (cached) return cached;
+      const rows = queryAll('SELECT json FROM patients WHERE patientCode = ?', [code]);
+      if (rows.length && rows[0].json) {
+        try {
+          const parsed = JSON.parse(rows[0].json);
+          patientCache.set(code, parsed);
+          if (parsed.id) patientCache.set(parsed.id, parsed);
+          return parsed;
+        } catch (e) {}
+      }
+      return null;
+    },
+
+    getPatientByPatientId(patientId) {
+      if (!patientId) return null;
+      const cached = patientCache.get(patientId);
+      if (cached) return cached;
+      const rows = queryAll('SELECT json FROM patients WHERE patientId = ?', [patientId]);
+      if (rows.length && rows[0].json) {
+        try {
+          const parsed = JSON.parse(rows[0].json);
+          patientCache.set(patientId, parsed);
+          if (parsed.id) patientCache.set(parsed.id, parsed);
+          return parsed;
+        } catch (e) {}
+      }
+      return null;
+    },
+
+    queryPatients(filter = {}, opts = {}) {
+      const clauses = [];
+      const params = [];
+      if (filter.id) { clauses.push('id = ?'); params.push(filter.id); }
+      if (filter.patientId) { clauses.push('patientId = ?'); params.push(filter.patientId); }
+      if (filter.patientCode) { clauses.push('patientCode = ?'); params.push(filter.patientCode); }
+      if (filter.search) {
+        clauses.push('(firstName LIKE ? OR lastName LIKE ? OR patientId LIKE ? OR patientCode LIKE ?)');
+        const s = `%${filter.search}%`;
+        params.push(s, s, s, s);
+      }
+      let sql = 'SELECT json FROM patients';
+      if (clauses.length) sql += ' WHERE ' + clauses.join(' AND ');
+      sql += ' ORDER BY createdAt DESC';
+      if (opts.limit) {
+        sql += ` LIMIT ${Number(opts.limit)}`;
+        if (opts.offset) sql += ` OFFSET ${Number(opts.offset)}`;
+      }
+      try {
+        return parseRows(queryAll(sql, params));
+      } catch (e) {
+        return this.getPatients();
+      }
+    },
+
+    countPatients() {
+      try {
+        const rows = queryAll('SELECT COUNT(*) as cnt FROM patients');
+        return rows.length ? rows[0].cnt : 0;
+      } catch (e) { return 0; }
+    },
+
     upsertPatient(p) {
       if (!p || !p.id) return;
+      if (p.id) patientCache.delete(p.id);
+      if (p.patientCode) patientCache.delete(p.patientCode);
+      if (p.patientId) patientCache.delete(p.patientId);
       sqlite.run(
         'INSERT OR REPLACE INTO patients (id, patientId, patientCode, firstName, lastName, createdAt, json) VALUES (?, ?, ?, ?, ?, ?, ?)',
         [p.id, safeStr(p.patientId), safeStr(p.patientCode), safeStr(p.firstName), safeStr(p.lastName), safeStr(p.createdAt), JSON.stringify(p)]
       );
+      patientCache.set(p.id, p);
+      if (p.patientCode) patientCache.set(p.patientCode, p);
+      if (p.patientId) patientCache.set(p.patientId, p);
       persist();
     },
 
     deletePatient(id) {
       if (!id) return;
+      patientCache.delete(id);
       sqlite.run('DELETE FROM patients WHERE id = ?', [id]);
       persist();
     },
 
     savePatients(patients) {
       const arr = Array.isArray(patients) ? patients : [];
+      patientCache.clear();
       sqlite.run('BEGIN TRANSACTION;');
       try {
         const incomingIds = new Set(arr.filter(p => p && p.id).map(p => p.id));
@@ -575,30 +844,94 @@ function createSqlJsDb(SQL, dbPath) {
 
     getTestById(id) {
       if (!id) return null;
+      const cached = testCache.get(id);
+      if (cached) return cached;
       const rows = queryAll('SELECT json FROM tests WHERE id = ?', [id]);
       if (rows.length && rows[0].json) {
-        try { return JSON.parse(rows[0].json); } catch (e) {}
+        try {
+          const parsed = JSON.parse(rows[0].json);
+          testCache.set(id, parsed);
+          if (parsed.testId) testCache.set(parsed.testId, parsed);
+          return parsed;
+        } catch (e) {}
       }
       return null;
     },
 
+    getTestByTestId(testId) {
+      if (!testId) return null;
+      const cached = testCache.get(testId);
+      if (cached) return cached;
+      const rows = queryAll('SELECT json FROM tests WHERE testId = ?', [testId]);
+      if (rows.length && rows[0].json) {
+        try {
+          const parsed = JSON.parse(rows[0].json);
+          testCache.set(testId, parsed);
+          if (parsed.id) testCache.set(parsed.id, parsed);
+          return parsed;
+        } catch (e) {}
+      }
+      return null;
+    },
+
+    queryTests(filter = {}, opts = {}) {
+      const clauses = [];
+      const params = [];
+      if (filter.id) { clauses.push('id = ?'); params.push(filter.id); }
+      if (filter.testId) { clauses.push('testId = ?'); params.push(filter.testId); }
+      if (filter.patient) { clauses.push('patient = ?'); params.push(filter.patient); }
+      if (filter.status) { clauses.push('status = ?'); params.push(filter.status); }
+      if (filter.testType) { clauses.push('testType = ?'); params.push(filter.testType); }
+      let sql = 'SELECT json FROM tests';
+      if (clauses.length) sql += ' WHERE ' + clauses.join(' AND ');
+      sql += ' ORDER BY createdAt DESC';
+      if (opts.limit) {
+        sql += ` LIMIT ${Number(opts.limit)}`;
+        if (opts.offset) sql += ` OFFSET ${Number(opts.offset)}`;
+      }
+      try {
+        return parseRows(queryAll(sql, params));
+      } catch (e) {
+        return this.getTests();
+      }
+    },
+
+    countTests(filter = {}) {
+      const clauses = [];
+      const params = [];
+      if (filter.patient) { clauses.push('patient = ?'); params.push(filter.patient); }
+      if (filter.status) { clauses.push('status = ?'); params.push(filter.status); }
+      let sql = 'SELECT COUNT(*) as cnt FROM tests';
+      if (clauses.length) sql += ' WHERE ' + clauses.join(' AND ');
+      try {
+        const rows = queryAll(sql, params);
+        return rows.length ? rows[0].cnt : 0;
+      } catch (e) { return 0; }
+    },
+
     upsertTest(t) {
       if (!t || !t.id) return;
+      if (t.id) testCache.delete(t.id);
+      if (t.testId) testCache.delete(t.testId);
       sqlite.run(
         'INSERT OR REPLACE INTO tests (id, testId, patient, testType, status, updatedAt, createdAt, json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         [t.id, safeStr(t.testId), safeStr(t.patient), safeStr(t.testType), safeStr(t.status), safeStr(t.updatedAt), safeStr(t.createdAt), JSON.stringify(t)]
       );
+      testCache.set(t.id, t);
+      if (t.testId) testCache.set(t.testId, t);
       persist();
     },
 
     deleteTest(id) {
       if (!id) return;
+      testCache.delete(id);
       sqlite.run('DELETE FROM tests WHERE id = ?', [id]);
       persist();
     },
 
     saveTests(tests) {
       const arr = Array.isArray(tests) ? tests : [];
+      testCache.clear();
       sqlite.run('BEGIN TRANSACTION;');
       try {
         const incomingIds = new Set(arr.filter(t => t && t.id).map(t => t.id));
@@ -837,11 +1170,18 @@ function createDb(dbPath, opts = {}) {
 
     getPatients() { return underlyingDb ? underlyingDb.getPatients() : []; },
     getPatientById(id) { return underlyingDb ? underlyingDb.getPatientById(id) : null; },
+    getPatientByCode(code) { return underlyingDb && underlyingDb.getPatientByCode ? underlyingDb.getPatientByCode(code) : null; },
+    getPatientByPatientId(pid) { return underlyingDb && underlyingDb.getPatientByPatientId ? underlyingDb.getPatientByPatientId(pid) : null; },
+    queryPatients(filter, opts) { return underlyingDb && underlyingDb.queryPatients ? underlyingDb.queryPatients(filter, opts) : (underlyingDb ? underlyingDb.getPatients() : []); },
+    countPatients() { return underlyingDb && underlyingDb.countPatients ? underlyingDb.countPatients() : (underlyingDb ? underlyingDb.getPatients().length : 0); },
     upsertPatient(p) { if (underlyingDb) underlyingDb.upsertPatient(p); else readyPromise.then(d => d.upsertPatient(p)); },
     deletePatient(id) { if (underlyingDb) underlyingDb.deletePatient(id); else readyPromise.then(d => d.deletePatient(id)); },
     savePatients(p) { if (underlyingDb) underlyingDb.savePatients(p); else readyPromise.then(d => d.savePatients(p)); },
     getTests() { return underlyingDb ? underlyingDb.getTests() : []; },
     getTestById(id) { return underlyingDb ? underlyingDb.getTestById(id) : null; },
+    getTestByTestId(testId) { return underlyingDb && underlyingDb.getTestByTestId ? underlyingDb.getTestByTestId(testId) : null; },
+    queryTests(filter, opts) { return underlyingDb && underlyingDb.queryTests ? underlyingDb.queryTests(filter, opts) : (underlyingDb ? underlyingDb.getTests() : []); },
+    countTests(filter) { return underlyingDb && underlyingDb.countTests ? underlyingDb.countTests(filter) : (underlyingDb ? underlyingDb.getTests().length : 0); },
     upsertTest(t) { if (underlyingDb) underlyingDb.upsertTest(t); else readyPromise.then(d => d.upsertTest(t)); },
     deleteTest(id) { if (underlyingDb) underlyingDb.deleteTest(id); else readyPromise.then(d => d.deleteTest(id)); },
     saveTests(t) { if (underlyingDb) underlyingDb.saveTests(t); else readyPromise.then(d => d.saveTests(t)); },
