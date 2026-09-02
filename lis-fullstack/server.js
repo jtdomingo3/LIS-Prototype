@@ -182,6 +182,24 @@ app.use((req, res, next) => {
   next();
 });
 
+// Security headers (configured to permit inline styles/scripts and local assets)
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
+}));
+
+// Rate limiter for authentication endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // max 100 attempts per window
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many authentication attempts, please try again later' }
+});
+app.use('/login', authLimiter);
+app.use('/api/auth/token', authLimiter);
+
 // EJS Layouts - enable the global layout wrapper so views get the
 // shared HTML, CSS and JS defined in `views/layout.ejs`.
 app.use(expressLayouts);
@@ -192,7 +210,7 @@ app.set('layout extractStyles', true);
 
 // Session configuration
 app.use(session({
-  secret: 'your-secret-key-change-in-production',
+  secret: process.env.SESSION_SECRET || 'gezyne-lis-session-secret-change-in-prod',
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -203,31 +221,52 @@ app.use(session({
 
 app.use(flash());
 
-// ── Hash-based session bootstrap for standalone app sync requests ──
-// If the request has X-LIS-Sync-Email + X-LIS-Sync-Hash headers and no
-// active session, verify the hash against stored user passwords and
-// create a session automatically.  This runs BEFORE any route-specific
-// auth middleware so req.session.user is available everywhere.
+// ── Bearer Token & Hash-based session bootstrap for API and standalone sync ──
+const { extractBearerToken, verifyToken } = require('./lib/tokenHelper');
+
 app.use((req, res, next) => {
   try {
     // Skip if session already exists
     if (req.session && req.session.user) return next();
+
+    // 1. Bearer Token Auth
+    const bearerToken = extractBearerToken(req);
+    if (bearerToken) {
+      const userPayload = verifyToken(bearerToken);
+      if (userPayload) {
+        req.session.user = {
+          id: userPayload.id,
+          name: userPayload.name,
+          email: userPayload.email,
+          role: userPayload.role,
+          permissions: userPayload.permissions || {},
+          signature: userPayload.signature || null,
+          licenseNumber: userPayload.licenseNumber || ''
+        };
+        req.user = req.session.user;
+        return next();
+      }
+    }
+
+    // 2. Verified Hash-based sync token from standalone desktop client
     const syncEmail = req.headers['x-lis-sync-email'];
     const syncHash  = req.headers['x-lis-sync-hash'];
-    if (!syncEmail || !syncHash) return next();
-    const allUsers = global.db && typeof global.db.getUsers === 'function' ? global.db.getUsers() : [];
-    const matchUser = allUsers.find(u => u.email && u.email.toLowerCase() === syncEmail.toLowerCase());
-    if (matchUser && matchUser.password && matchUser.password === syncHash) {
-      req.session.user = {
-        id: matchUser.id || matchUser.email,
-        name: matchUser.name || matchUser.email,
-        email: matchUser.email,
-        role: matchUser.role || 'User',
-        permissions: matchUser.permissions || {},
-        signature: matchUser.signature || null,
-        licenseNumber: matchUser.licenseNumber || '',
-      };
-      console.log('[auth] hash-based session bootstrap for', syncEmail);
+    if (syncEmail && syncHash && global.db) {
+      const allUsers = typeof global.db.getUsers === 'function' ? global.db.getUsers() : [];
+      const matchUser = allUsers.find(u => u && u.email && u.email.toLowerCase() === syncEmail.toLowerCase());
+      if (matchUser && matchUser.password && matchUser.password === syncHash && matchUser.status !== 'Inactive') {
+        req.session.user = {
+          id: matchUser.id || matchUser.email,
+          name: matchUser.name || matchUser.email,
+          email: matchUser.email,
+          role: matchUser.role || 'User',
+          permissions: matchUser.permissions || {},
+          signature: matchUser.signature || null,
+          licenseNumber: matchUser.licenseNumber || '',
+        };
+        req.user = req.session.user;
+        console.log('[auth] hash-based session bootstrap for', syncEmail);
+      }
     }
   } catch (e) { /* ignore */ }
   next();
@@ -371,16 +410,39 @@ try {
           fs.mkdirSync(dir, { recursive: true });
           const ts = new Date().toISOString().replace(/[:.]/g, '-');
           
-          const DATA_FILE = dataFile('data.json');
-          if (fs.existsSync(DATA_FILE)) {
-            fs.copyFileSync(DATA_FILE, path.join(dir, `data_${ts}.json`));
+          // Checkpoint WAL journal for consistent on-disk SQLite snapshot
+          if (global.db && typeof global.db.checkpoint === 'function') {
+            global.db.checkpoint();
           }
-          
-          const USERS_FILE = dataFile('data-users.json');
-          if (fs.existsSync(USERS_FILE)) {
-            fs.copyFileSync(USERS_FILE, path.join(dir, `users_${ts}.json`));
+
+          // 1. Primary SQLite database backup
+          if (fs.existsSync(SQLITE_FILE)) {
+            fs.copyFileSync(SQLITE_FILE, path.join(dir, `backup_db_${ts}.db`));
           }
-          console.log(`[backup] Auto-backup completed successfully at ${new Date().toLocaleString()}`);
+
+          // 2. Secondary human-readable JSON snapshot backup
+          const fullData = global.db && typeof global.db.read === 'function' ? global.db.read() : null;
+          if (fullData) {
+            fs.writeFileSync(path.join(dir, `backup_${ts}.json`), JSON.stringify(fullData, null, 2), 'utf8');
+          }
+
+          // 3. Rolling retention: prune backups older than 30 days
+          try {
+            const files = fs.readdirSync(dir);
+            const nowMs = Date.now();
+            const maxAgeMs = 30 * 24 * 60 * 60 * 1000;
+            for (const f of files) {
+              if (f.startsWith('backup_') || f.startsWith('backup_db_')) {
+                const fp = path.join(dir, f);
+                const stat = fs.statSync(fp);
+                if (nowMs - stat.mtimeMs > maxAgeMs) {
+                  fs.unlinkSync(fp);
+                }
+              }
+            }
+          } catch (cleanErr) {}
+
+          console.log(`[backup] Auto-backup of SQLite database and JSON snapshot completed successfully at ${new Date().toLocaleString()}`);
         } catch (e) {
           console.error('[backup] Auto-backup failed:', e);
         }
@@ -551,15 +613,24 @@ app.use('/reception', receptionRoutes);
 app.use('/settings', settingsRoutes);
 app.use('/signatures', signaturesRoutes);
 
-// ---- Unauthenticated restore endpoints (for fresh installs with no user data) ----
+// ---- Secure restore endpoints (accessible on fresh installs or by authenticated managers) ----
 const bcryptRestore = require('bcryptjs');
 const { v4: uuidRestore } = require('uuid');
 
-// POST /api/restore/users – seeds the default admin account
+// POST /api/restore/users – seeds the default admin account on fresh installs or when authorized
 app.post('/api/restore/users', async (req, res) => {
   try {
     let existing = [];
     try { existing = db.getUsers(); if (!Array.isArray(existing)) existing = []; } catch (e) { existing = []; }
+
+    // If accounts already exist, require authenticated manager session
+    if (existing.length > 0) {
+      const u = req.session && req.session.user;
+      const isMgmt = u && (u.role === 'Admin' || u.role === 'Manager' || u.role === 'Owner' || (u.permissions && u.permissions.users));
+      if (!isMgmt) {
+        return res.status(403).json({ ok: false, error: 'Administrator authentication required to restore users' });
+      }
+    }
 
     let admin = existing.find(u => u.email === 'admin@lab.com');
     const hash = await bcryptRestore.hash('password123', 12);
@@ -600,20 +671,31 @@ app.post('/api/restore/users', async (req, res) => {
   }
 });
 
-// POST /api/restore/data – resets data.json to empty initial structure
+// POST /api/restore/data – resets data to empty initial structure (requires manager authorization)
 app.post('/api/restore/data', (req, res) => {
   try {
+    let existing = [];
+    try { existing = db.getUsers(); if (!Array.isArray(existing)) existing = []; } catch (e) { existing = []; }
+
+    if (existing.length > 0) {
+      const u = req.session && req.session.user;
+      const isMgmt = u && (u.role === 'Admin' || u.role === 'Manager' || u.role === 'Owner' || (u.permissions && u.permissions.users));
+      if (!isMgmt) {
+        return res.status(403).json({ ok: false, error: 'Administrator authentication required to reset data' });
+      }
+    }
+
     // backup before reset
     try {
       const ts = new Date().toISOString().replace(/[:.]/g, '-');
-      const backupPath = dataFile(`data-backup-${ts}.json`);
-      fs.copyFileSync(DATA_FILE, backupPath);
-      console.log('[restore] backed up data.json to', backupPath);
+      if (fs.existsSync(SQLITE_FILE)) {
+        fs.copyFileSync(SQLITE_FILE, dataFile(`lis-data-backup-${ts}.db`));
+      }
     } catch (e) {}
 
     const initialData = { users: [], patients: [], tests: [], templates: [], counters: {} };
     db.write(initialData);
-    console.log('[restore] data.json reset via /api/restore/data');
+    console.log('[restore] data reset via /api/restore/data');
     res.json({ ok: true, message: 'Data reset to empty database' });
   } catch (e) {
     console.error('[restore] /api/restore/data failed:', e);
@@ -621,15 +703,20 @@ app.post('/api/restore/data', (req, res) => {
   }
 });
 
-// Export endpoint for full-sync (requires authenticated session or sync token)
+// Export endpoint for full-sync (requires authenticated session, Bearer token, or verified sync credentials)
 app.get('/export/data.json', (req, res) => {
   try {
-    // Primary auth: session-based or configured public export
     let authorized = !!(req.session && req.session.user) || (process.env.ALLOW_PUBLIC_DATA_EXPORT === '1');
 
-    // Fallback auth: hash-based sync token from the standalone app.
-    // The standalone app sends X-LIS-Sync-Email + X-LIS-Sync-Hash headers.
-    // We verify the email exists and the stored bcrypt hash matches.
+    // 1. Bearer Token Auth
+    if (!authorized) {
+      const token = extractBearerToken(req);
+      if (token && verifyToken(token)) {
+        authorized = true;
+      }
+    }
+
+    // 2. Hash-based sync token from standalone desktop app
     if (!authorized) {
       const syncEmail = req.headers['x-lis-sync-email'];
       const syncHash  = req.headers['x-lis-sync-hash'];
@@ -637,7 +724,7 @@ app.get('/export/data.json', (req, res) => {
         try {
           const allUsers = db.getUsers();
           const matchUser = allUsers.find(u => u.email && u.email.toLowerCase() === syncEmail.toLowerCase());
-          if (matchUser && matchUser.password && matchUser.password === syncHash) {
+          if (matchUser && matchUser.password && matchUser.password === syncHash && matchUser.status !== 'Inactive') {
             authorized = true;
             console.log('[export] hash-based auth accepted for', syncEmail);
           }
@@ -645,14 +732,10 @@ app.get('/export/data.json', (req, res) => {
       }
     }
 
-    if (!authorized) return res.status(401).send('Authentication required');
+    if (!authorized) return res.status(401).json({ success: false, error: 'Authentication required' });
     const data = db.read();
-    // Include user accounts WITH hashed passwords so the standalone app
-    // can authenticate users offline.  Passwords are already bcrypt-hashed
-    // so they are safe to transmit over the local network.
-    // Users are stored in a separate file (data-users.json), so we always
-    // pull them via getUsers() and merge them into the export.
     const allUsers = db.getUsers();
+
     data.users = allUsers.map(u => ({
       id: u.id || u.email,
       name: u.name || u.email,
@@ -665,10 +748,11 @@ app.get('/export/data.json', (req, res) => {
       signature: u.signature || null,
       autoSignature: u.autoSignature || { enabled: false, until: null },
     }));
+
     res.json(data);
   } catch (e) {
     console.error('export/data.json failed:', e && e.message);
-    res.status(500).send('Export failed');
+    res.status(500).json({ success: false, error: 'Export failed' });
   }
 });
 

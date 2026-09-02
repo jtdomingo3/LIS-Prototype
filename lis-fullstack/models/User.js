@@ -42,9 +42,6 @@ class User {
   // Save to database
   async save() {
     await this.hashPassword();
-    const users = global.db.getUsers();
-    const index = users.findIndex(u => u.id === this.id);
-    // Create a plain object for saving (avoid toJSON which removes password)
     const userData = {
       id: this.id,
       name: this.name,
@@ -59,12 +56,15 @@ class User {
       createdAt: this.createdAt,
       lastLogin: this.lastLogin
     };
-    if (index >= 0) {
-      users[index] = userData;
+
+    if (global.db && typeof global.db.upsertUser === 'function') {
+      global.db.upsertUser(userData);
     } else {
-      users.push(userData);
+      const users = global.db.getUsers();
+      const index = users.findIndex(u => u.id === this.id);
+      if (index >= 0) users[index] = userData; else users.push(userData);
+      global.db.saveUsers(users);
     }
-    global.db.saveUsers(users);
     return this;
   }
 
@@ -118,14 +118,7 @@ class User {
   }
 
   static async findOneAndUpdate(query, updateData, options = {}) {
-    const users = global.db.getUsers();
-    let user = null;
-
-    if (query.email) {
-      user = users.find(u => u.email === query.email);
-    } else if (query._id || query.id) {
-      user = users.find(u => u.id === (query._id || query.id));
-    }
+    let user = await this.findOne(query);
 
     if (user) {
       Object.assign(user, updateData);
@@ -133,7 +126,14 @@ class User {
         const salt = await bcrypt.genSalt(12);
         user.password = await bcrypt.hash(updateData.password, salt);
       }
-      global.db.saveUsers(users);
+      if (global.db && typeof global.db.upsertUser === 'function') {
+        global.db.upsertUser(user);
+      } else {
+        const users = global.db.getUsers();
+        const index = users.findIndex(u => u.id === user.id);
+        if (index >= 0) users[index] = user;
+        global.db.saveUsers(users);
+      }
       return options.new !== false ? new User(user) : new User(user);
     }
 
@@ -145,12 +145,28 @@ class User {
   }
 
   static async findByIdAndDelete(id) {
-    const users = global.db.getUsers();
-    const index = users.findIndex(u => u.id === id);
-    if (index >= 0) {
-      const deletedUser = users.splice(index, 1)[0];
-      global.db.saveUsers(users);
-      return new User(deletedUser);
+    if (!id) return null;
+    let existing = null;
+    if (global.db && typeof global.db.getUserById === 'function') {
+      existing = global.db.getUserById(id);
+    }
+    if (!existing) {
+      const users = global.db.getUsers();
+      existing = users.find(u => u.id === id);
+    }
+
+    if (existing) {
+      if (global.db && typeof global.db.deleteUser === 'function') {
+        global.db.deleteUser(existing.id);
+      } else {
+        const users = global.db.getUsers();
+        const index = users.findIndex(u => u.id === existing.id);
+        if (index >= 0) {
+          users.splice(index, 1);
+          global.db.saveUsers(users);
+        }
+      }
+      return new User(existing);
     }
     return null;
   }

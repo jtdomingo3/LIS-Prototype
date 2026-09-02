@@ -6,7 +6,6 @@ const User = require('../models/User');
 const Template = require('../models/Template');
 const fs = require('fs');
 const path = require('path');
-const pdf = require('html-pdf');
 const os = require('os');
 const ExcelJS = require('exceljs');
 const { requireAuth, canAccessPatient } = require('../middleware/auth');

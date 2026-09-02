@@ -42,7 +42,6 @@
     "express-validator": "^7.0.1",
     "google-tts-api": "^2.0.1",
     "helmet": "^7.0.0",
-    "html-pdf": "^3.0.1",
     "mdb-reader": "^3.1.0",
     "method-override": "^3.0.0",
     "minimist": "^1.2.8",

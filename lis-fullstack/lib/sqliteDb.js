@@ -164,18 +164,22 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     getAllPatients: sqlite.prepare('SELECT json FROM patients ORDER BY createdAt DESC'),
     getPatientById: sqlite.prepare('SELECT json FROM patients WHERE id = ?'),
     upsertPatient: sqlite.prepare('INSERT OR REPLACE INTO patients (id, patientId, patientCode, firstName, lastName, createdAt, json) VALUES (@id, @patientId, @patientCode, @firstName, @lastName, @createdAt, @json)'),
+    deletePatientById: sqlite.prepare('DELETE FROM patients WHERE id = ?'),
     deleteAllPatients: sqlite.prepare('DELETE FROM patients'),
     getAllTests: sqlite.prepare('SELECT json FROM tests ORDER BY createdAt DESC'),
     getTestById: sqlite.prepare('SELECT json FROM tests WHERE id = ?'),
     upsertTest: sqlite.prepare('INSERT OR REPLACE INTO tests (id, testId, patient, testType, status, updatedAt, createdAt, json) VALUES (@id, @testId, @patient, @testType, @status, @updatedAt, @createdAt, @json)'),
+    deleteTestById: sqlite.prepare('DELETE FROM tests WHERE id = ?'),
     deleteAllTests: sqlite.prepare('DELETE FROM tests'),
     getAllUsers: sqlite.prepare('SELECT json FROM users ORDER BY rowid'),
     getUserById: sqlite.prepare('SELECT json FROM users WHERE id = ?'),
     getUserByEmail: sqlite.prepare('SELECT json FROM users WHERE email = ?'),
     upsertUser: sqlite.prepare('INSERT OR REPLACE INTO users (id, email, role, status, json) VALUES (@id, @email, @role, @status, @json)'),
+    deleteUserById: sqlite.prepare('DELETE FROM users WHERE id = ?'),
     deleteAllUsers: sqlite.prepare('DELETE FROM users'),
     getAllTemplates: sqlite.prepare('SELECT json FROM templates ORDER BY rowid'),
     upsertTemplate: sqlite.prepare('INSERT OR REPLACE INTO templates (id, name, testType, isActive, json) VALUES (@id, @name, @testType, @isActive, @json)'),
+    deleteTemplateById: sqlite.prepare('DELETE FROM templates WHERE id = ?'),
     deleteAllTemplates: sqlite.prepare('DELETE FROM templates'),
     getAllCounters: sqlite.prepare('SELECT key, value FROM counters'),
     upsertCounter: sqlite.prepare('INSERT OR REPLACE INTO counters (key, value) VALUES (?, ?)'),
@@ -196,25 +200,33 @@ function createBetterSqliteDb(dbPath, opts = {}) {
         return row && row.json ? JSON.parse(row.json) : null;
       } catch (e) { return null; }
     },
+    upsertPatient(p) {
+      if (!p || !p.id) return;
+      stmts.upsertPatient.run({
+        id: p.id,
+        patientId: safeStr(p.patientId),
+        patientCode: safeStr(p.patientCode),
+        firstName: safeStr(p.firstName),
+        lastName: safeStr(p.lastName),
+        createdAt: safeStr(p.createdAt),
+        json: JSON.stringify(p)
+      });
+    },
+    deletePatient(id) {
+      if (!id) return;
+      stmts.deletePatientById.run(id);
+    },
     savePatients(patients) {
       const arr = Array.isArray(patients) ? patients : [];
       sqlite.transaction(() => {
         const incomingIds = new Set(arr.filter(p => p && p.id).map(p => p.id));
         const existing = sqlite.prepare('SELECT id FROM patients').all();
         for (const row of existing) {
-          if (!incomingIds.has(row.id)) sqlite.prepare('DELETE FROM patients WHERE id = ?').run(row.id);
+          if (!incomingIds.has(row.id)) stmts.deletePatientById.run(row.id);
         }
         for (const p of arr) {
           if (!p || !p.id) continue;
-          stmts.upsertPatient.run({
-            id: p.id,
-            patientId: safeStr(p.patientId),
-            patientCode: safeStr(p.patientCode),
-            firstName: safeStr(p.firstName),
-            lastName: safeStr(p.lastName),
-            createdAt: safeStr(p.createdAt),
-            json: JSON.stringify(p)
-          });
+          this.upsertPatient(p);
         }
       })();
     },
@@ -227,38 +239,34 @@ function createBetterSqliteDb(dbPath, opts = {}) {
         return row && row.json ? JSON.parse(row.json) : null;
       } catch (e) { return null; }
     },
+    upsertTest(t) {
+      if (!t || !t.id) return;
+      stmts.upsertTest.run({
+        id: t.id,
+        testId: safeStr(t.testId),
+        patient: safeStr(t.patient),
+        testType: safeStr(t.testType),
+        status: safeStr(t.status),
+        updatedAt: safeStr(t.updatedAt),
+        createdAt: safeStr(t.createdAt),
+        json: JSON.stringify(t)
+      });
+    },
+    deleteTest(id) {
+      if (!id) return;
+      stmts.deleteTestById.run(id);
+    },
     saveTests(tests) {
       const arr = Array.isArray(tests) ? tests : [];
       sqlite.transaction(() => {
-        const incomingMap = new Map();
-        for (const t of arr) { if (t && t.id) incomingMap.set(t.id, t); }
-        const existing = parseRows(stmts.getAllTests.all());
-        const mergedMap = new Map();
-        for (const t of existing) { if (t && t.id) mergedMap.set(t.id, t); }
+        const incomingIds = new Set(arr.filter(t => t && t.id).map(t => t.id));
+        const existing = sqlite.prepare('SELECT id FROM tests').all();
+        for (const row of existing) {
+          if (!incomingIds.has(row.id)) stmts.deleteTestById.run(row.id);
+        }
         for (const t of arr) {
           if (!t || !t.id) continue;
-          const cur = mergedMap.get(t.id);
-          const curTs = cur && cur.updatedAt ? Date.parse(cur.updatedAt) : 0;
-          const incomingTs = t.updatedAt ? Date.parse(t.updatedAt) : 0;
-          if (!cur || incomingTs >= curTs) mergedMap.set(t.id, t);
-        }
-        if (arr.length < existing.length) {
-          for (const t of existing) {
-            if (t && t.id && !incomingMap.has(t.id)) mergedMap.delete(t.id);
-          }
-        }
-        stmts.deleteAllTests.run();
-        for (const t of mergedMap.values()) {
-          stmts.upsertTest.run({
-            id: t.id,
-            testId: safeStr(t.testId),
-            patient: safeStr(t.patient),
-            testType: safeStr(t.testType),
-            status: safeStr(t.status),
-            updatedAt: safeStr(t.updatedAt),
-            createdAt: safeStr(t.createdAt),
-            json: JSON.stringify(t)
-          });
+          this.upsertTest(t);
         }
       })();
     },
@@ -278,37 +286,61 @@ function createBetterSqliteDb(dbPath, opts = {}) {
         return row && row.json ? JSON.parse(row.json) : null;
       } catch (e) { return null; }
     },
+    upsertUser(u) {
+      if (!u || !u.id) return;
+      stmts.upsertUser.run({
+        id: u.id,
+        email: safeStr(u.email),
+        role: safeStr(u.role),
+        status: safeStr(u.status),
+        json: JSON.stringify(u)
+      });
+    },
+    deleteUser(id) {
+      if (!id) return;
+      stmts.deleteUserById.run(id);
+    },
     saveUsers(users) {
       const arr = Array.isArray(users) ? users : [];
       sqlite.transaction(() => {
-        stmts.deleteAllUsers.run();
+        const incomingIds = new Set(arr.filter(u => u && u.id).map(u => u.id));
+        const existing = sqlite.prepare('SELECT id FROM users').all();
+        for (const row of existing) {
+          if (!incomingIds.has(row.id)) stmts.deleteUserById.run(row.id);
+        }
         for (const u of arr) {
           if (!u || !u.id) continue;
-          stmts.upsertUser.run({
-            id: u.id,
-            email: safeStr(u.email),
-            role: safeStr(u.role),
-            status: safeStr(u.status),
-            json: JSON.stringify(u)
-          });
+          this.upsertUser(u);
         }
       })();
     },
 
     getTemplates() { return parseRows(stmts.getAllTemplates.all()); },
+    upsertTemplate(t) {
+      if (!t || !t.id) return;
+      stmts.upsertTemplate.run({
+        id: t.id,
+        name: safeStr(t.name),
+        testType: safeStr(t.testType),
+        isActive: t.isActive !== false ? 1 : 0,
+        json: JSON.stringify(t)
+      });
+    },
+    deleteTemplate(id) {
+      if (!id) return;
+      stmts.deleteTemplateById.run(id);
+    },
     saveTemplates(templates) {
       const arr = Array.isArray(templates) ? templates : [];
       sqlite.transaction(() => {
-        stmts.deleteAllTemplates.run();
+        const incomingIds = new Set(arr.filter(t => t && t.id).map(t => t.id));
+        const existing = sqlite.prepare('SELECT id FROM templates').all();
+        for (const row of existing) {
+          if (!incomingIds.has(row.id)) stmts.deleteTemplateById.run(row.id);
+        }
         for (const t of arr) {
           if (!t || !t.id) continue;
-          stmts.upsertTemplate.run({
-            id: t.id,
-            name: safeStr(t.name),
-            testType: safeStr(t.testType),
-            isActive: t.isActive !== false ? 1 : 0,
-            json: JSON.stringify(t)
-          });
+          this.upsertTemplate(t);
         }
       })();
     },
@@ -327,6 +359,10 @@ function createBetterSqliteDb(dbPath, opts = {}) {
           stmts.upsertCounter.run(k, typeof v === 'number' ? v : (parseInt(v, 10) || 0));
         }
       })();
+    },
+
+    checkpoint() {
+      try { sqlite.pragma('wal_checkpoint(TRUNCATE)'); } catch (e) {}
     },
 
     read() {
@@ -494,6 +530,21 @@ function createSqlJsDb(SQL, dbPath) {
       return null;
     },
 
+    upsertPatient(p) {
+      if (!p || !p.id) return;
+      sqlite.run(
+        'INSERT OR REPLACE INTO patients (id, patientId, patientCode, firstName, lastName, createdAt, json) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [p.id, safeStr(p.patientId), safeStr(p.patientCode), safeStr(p.firstName), safeStr(p.lastName), safeStr(p.createdAt), JSON.stringify(p)]
+      );
+      persist();
+    },
+
+    deletePatient(id) {
+      if (!id) return;
+      sqlite.run('DELETE FROM patients WHERE id = ?', [id]);
+      persist();
+    },
+
     savePatients(patients) {
       const arr = Array.isArray(patients) ? patients : [];
       sqlite.run('BEGIN TRANSACTION;');
@@ -531,29 +582,32 @@ function createSqlJsDb(SQL, dbPath) {
       return null;
     },
 
+    upsertTest(t) {
+      if (!t || !t.id) return;
+      sqlite.run(
+        'INSERT OR REPLACE INTO tests (id, testId, patient, testType, status, updatedAt, createdAt, json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [t.id, safeStr(t.testId), safeStr(t.patient), safeStr(t.testType), safeStr(t.status), safeStr(t.updatedAt), safeStr(t.createdAt), JSON.stringify(t)]
+      );
+      persist();
+    },
+
+    deleteTest(id) {
+      if (!id) return;
+      sqlite.run('DELETE FROM tests WHERE id = ?', [id]);
+      persist();
+    },
+
     saveTests(tests) {
       const arr = Array.isArray(tests) ? tests : [];
       sqlite.run('BEGIN TRANSACTION;');
       try {
-        const incomingMap = new Map();
-        for (const t of arr) { if (t && t.id) incomingMap.set(t.id, t); }
-        const existing = parseRows(queryAll('SELECT json FROM tests ORDER BY createdAt DESC'));
-        const mergedMap = new Map();
-        for (const t of existing) { if (t && t.id) mergedMap.set(t.id, t); }
+        const incomingIds = new Set(arr.filter(t => t && t.id).map(t => t.id));
+        const existing = queryAll('SELECT id FROM tests');
+        for (const row of existing) {
+          if (!incomingIds.has(row.id)) sqlite.run('DELETE FROM tests WHERE id = ?', [row.id]);
+        }
         for (const t of arr) {
           if (!t || !t.id) continue;
-          const cur = mergedMap.get(t.id);
-          const curTs = cur && cur.updatedAt ? Date.parse(cur.updatedAt) : 0;
-          const incomingTs = t.updatedAt ? Date.parse(t.updatedAt) : 0;
-          if (!cur || incomingTs >= curTs) mergedMap.set(t.id, t);
-        }
-        if (arr.length < existing.length) {
-          for (const t of existing) {
-            if (t && t.id && !incomingMap.has(t.id)) mergedMap.delete(t.id);
-          }
-        }
-        sqlite.run('DELETE FROM tests;');
-        for (const t of mergedMap.values()) {
           sqlite.run(
             'INSERT OR REPLACE INTO tests (id, testId, patient, testType, status, updatedAt, createdAt, json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
             [t.id, safeStr(t.testId), safeStr(t.patient), safeStr(t.testType), safeStr(t.status), safeStr(t.updatedAt), safeStr(t.createdAt), JSON.stringify(t)]
@@ -589,11 +643,30 @@ function createSqlJsDb(SQL, dbPath) {
       return null;
     },
 
+    upsertUser(u) {
+      if (!u || !u.id) return;
+      sqlite.run(
+        'INSERT OR REPLACE INTO users (id, email, role, status, json) VALUES (?, ?, ?, ?, ?)',
+        [u.id, safeStr(u.email), safeStr(u.role), safeStr(u.status), JSON.stringify(u)]
+      );
+      persist();
+    },
+
+    deleteUser(id) {
+      if (!id) return;
+      sqlite.run('DELETE FROM users WHERE id = ?', [id]);
+      persist();
+    },
+
     saveUsers(users) {
       const arr = Array.isArray(users) ? users : [];
       sqlite.run('BEGIN TRANSACTION;');
       try {
-        sqlite.run('DELETE FROM users;');
+        const incomingIds = new Set(arr.filter(u => u && u.id).map(u => u.id));
+        const existing = queryAll('SELECT id FROM users');
+        for (const row of existing) {
+          if (!incomingIds.has(row.id)) sqlite.run('DELETE FROM users WHERE id = ?', [row.id]);
+        }
         for (const u of arr) {
           if (!u || !u.id) continue;
           sqlite.run(
@@ -613,11 +686,30 @@ function createSqlJsDb(SQL, dbPath) {
       return parseRows(queryAll('SELECT json FROM templates ORDER BY rowid'));
     },
 
+    upsertTemplate(t) {
+      if (!t || !t.id) return;
+      sqlite.run(
+        'INSERT OR REPLACE INTO templates (id, name, testType, isActive, json) VALUES (?, ?, ?, ?, ?)',
+        [t.id, safeStr(t.name), safeStr(t.testType), t.isActive !== false ? 1 : 0, JSON.stringify(t)]
+      );
+      persist();
+    },
+
+    deleteTemplate(id) {
+      if (!id) return;
+      sqlite.run('DELETE FROM templates WHERE id = ?', [id]);
+      persist();
+    },
+
     saveTemplates(templates) {
       const arr = Array.isArray(templates) ? templates : [];
       sqlite.run('BEGIN TRANSACTION;');
       try {
-        sqlite.run('DELETE FROM templates;');
+        const incomingIds = new Set(arr.filter(t => t && t.id).map(t => t.id));
+        const existing = queryAll('SELECT id FROM templates');
+        for (const row of existing) {
+          if (!incomingIds.has(row.id)) sqlite.run('DELETE FROM templates WHERE id = ?', [row.id]);
+        }
         for (const t of arr) {
           if (!t || !t.id) continue;
           sqlite.run(
@@ -656,6 +748,10 @@ function createSqlJsDb(SQL, dbPath) {
         sqlite.run('ROLLBACK;');
         throw e;
       }
+      persist();
+    },
+
+    checkpoint() {
       persist();
     },
 
@@ -741,18 +837,27 @@ function createDb(dbPath, opts = {}) {
 
     getPatients() { return underlyingDb ? underlyingDb.getPatients() : []; },
     getPatientById(id) { return underlyingDb ? underlyingDb.getPatientById(id) : null; },
+    upsertPatient(p) { if (underlyingDb) underlyingDb.upsertPatient(p); else readyPromise.then(d => d.upsertPatient(p)); },
+    deletePatient(id) { if (underlyingDb) underlyingDb.deletePatient(id); else readyPromise.then(d => d.deletePatient(id)); },
     savePatients(p) { if (underlyingDb) underlyingDb.savePatients(p); else readyPromise.then(d => d.savePatients(p)); },
     getTests() { return underlyingDb ? underlyingDb.getTests() : []; },
     getTestById(id) { return underlyingDb ? underlyingDb.getTestById(id) : null; },
+    upsertTest(t) { if (underlyingDb) underlyingDb.upsertTest(t); else readyPromise.then(d => d.upsertTest(t)); },
+    deleteTest(id) { if (underlyingDb) underlyingDb.deleteTest(id); else readyPromise.then(d => d.deleteTest(id)); },
     saveTests(t) { if (underlyingDb) underlyingDb.saveTests(t); else readyPromise.then(d => d.saveTests(t)); },
     getUsers() { return underlyingDb ? underlyingDb.getUsers() : []; },
     getUserById(id) { return underlyingDb ? underlyingDb.getUserById(id) : null; },
     getUserByEmail(email) { return underlyingDb ? underlyingDb.getUserByEmail(email) : null; },
+    upsertUser(u) { if (underlyingDb) underlyingDb.upsertUser(u); else readyPromise.then(d => d.upsertUser(u)); },
+    deleteUser(id) { if (underlyingDb) underlyingDb.deleteUser(id); else readyPromise.then(d => d.deleteUser(id)); },
     saveUsers(u) { if (underlyingDb) underlyingDb.saveUsers(u); else readyPromise.then(d => d.saveUsers(u)); },
     getTemplates() { return underlyingDb ? underlyingDb.getTemplates() : []; },
+    upsertTemplate(t) { if (underlyingDb) underlyingDb.upsertTemplate(t); else readyPromise.then(d => d.upsertTemplate(t)); },
+    deleteTemplate(id) { if (underlyingDb) underlyingDb.deleteTemplate(id); else readyPromise.then(d => d.deleteTemplate(id)); },
     saveTemplates(t) { if (underlyingDb) underlyingDb.saveTemplates(t); else readyPromise.then(d => d.saveTemplates(t)); },
     getCounters() { return underlyingDb ? underlyingDb.getCounters() : {}; },
     saveCounters(c) { if (underlyingDb) underlyingDb.saveCounters(c); else readyPromise.then(d => d.saveCounters(c)); },
+    checkpoint() { if (underlyingDb) underlyingDb.checkpoint(); else readyPromise.then(d => d.checkpoint()); },
     read() { return underlyingDb ? underlyingDb.read() : { patients: [], tests: [], templates: [], counters: {}, settings: {} }; },
     write(d) { if (underlyingDb) underlyingDb.write(d); else readyPromise.then(db => db.write(d)); },
     close() { if (underlyingDb) underlyingDb.close(); }

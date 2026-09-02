@@ -64,14 +64,18 @@ class Patient {
   // Save to database
   async save() {
     this.updatedAt = new Date();
-    const patients = global.db.getPatients();
-    const index = patients.findIndex(p => p.id === this.id);
-    if (index >= 0) {
-      patients[index] = this;
+    if (global.db && typeof global.db.upsertPatient === 'function') {
+      global.db.upsertPatient(this);
     } else {
-      patients.push(this);
+      const patients = global.db.getPatients();
+      const index = patients.findIndex(p => p.id === this.id);
+      if (index >= 0) {
+        patients[index] = this;
+      } else {
+        patients.push(this);
+      }
+      global.db.savePatients(patients);
     }
-    global.db.savePatients(patients);
     return this;
   }
 
@@ -152,18 +156,18 @@ class Patient {
   }
 
   static async findOneAndUpdate(query, updateData, options = {}) {
-    const patients = global.db.getPatients();
-    let patient = null;
-
-    if (query.patientId) {
-      patient = patients.find(p => p.patientId === query.patientId);
-    } else if (query._id || query.id) {
-      patient = patients.find(p => p.id === (query._id || query.id));
-    }
+    let patient = await this.findOne(query);
 
     if (patient) {
       Object.assign(patient, updateData, { updatedAt: new Date() });
-      global.db.savePatients(patients);
+      if (global.db && typeof global.db.upsertPatient === 'function') {
+        global.db.upsertPatient(patient);
+      } else {
+        const patients = global.db.getPatients();
+        const index = patients.findIndex(p => p.id === patient.id);
+        if (index >= 0) patients[index] = patient;
+        global.db.savePatients(patients);
+      }
       return options.new !== false ? new Patient(patient) : new Patient(patient);
     }
 
@@ -175,12 +179,28 @@ class Patient {
   }
 
   static async findByIdAndDelete(id) {
-    const patients = global.db.getPatients();
-    const index = patients.findIndex(p => p.id === id);
-    if (index >= 0) {
-      const deletedPatient = patients.splice(index, 1)[0];
-      global.db.savePatients(patients);
-      return new Patient(deletedPatient);
+    if (!id) return null;
+    let existing = null;
+    if (global.db && typeof global.db.getPatientById === 'function') {
+      existing = global.db.getPatientById(id);
+    }
+    if (!existing) {
+      const patients = global.db.getPatients();
+      existing = patients.find(p => p.id === id || p.patientId === id);
+    }
+
+    if (existing) {
+      if (global.db && typeof global.db.deletePatient === 'function') {
+        global.db.deletePatient(existing.id);
+      } else {
+        const patients = global.db.getPatients();
+        const index = patients.findIndex(p => p.id === existing.id);
+        if (index >= 0) {
+          patients.splice(index, 1);
+          global.db.savePatients(patients);
+        }
+      }
+      return new Patient(existing);
     }
     return null;
   }

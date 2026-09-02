@@ -44,44 +44,47 @@ class Test {
     if (this.status === 'Completed' && !this.completedAt) {
       try { this.completedAt = new Date().toISOString(); } catch (e) { this.completedAt = String(new Date()); }
     }
-    const tests = global.db.getTests();
-    const index = tests.findIndex(t => t.id === this.id);
+    const prev = global.db && typeof global.db.getTestById === 'function'
+      ? global.db.getTestById(this.id)
+      : (global.db.getTests().find(t => t.id === this.id) || null);
+
     // Ensure initial statusHistory entry exists for new records
-    if (index < 0) {
+    if (!prev) {
       if (!Array.isArray(this.statusHistory) || this.statusHistory.length === 0) {
         this.statusHistory = [{ from: null, to: this.status || null, user: null, area: this.status || null, timestamp: (new Date()).toISOString() }];
       }
-      tests.push(this);
     } else {
-      // If updating, ensure we don't duplicate history entries — only add if last entry differs
-      const prev = tests[index];
       // Guard: once a test is Completed or Released, do not allow reverting to a non-completed state
       try {
         const lockedStates = new Set(['Completed', 'Released']);
         if (prev && prev.status && lockedStates.has(prev.status) && !(this.status && lockedStates.has(this.status))) {
-          // attempted revert detected
           const msg = `Attempted to revert locked test id=${this.id} from ${prev.status} to ${this.status}`;
           console.warn('[GUARD]', msg);
           try { logReportError(msg, 'guard:revert-test'); } catch (e) {}
-          // enforce previous completed/released status
           this.status = prev.status;
-          // keep completedAt from prev
           this.completedAt = prev.completedAt || this.completedAt;
         }
       } catch (e) {}
+
       const last = Array.isArray(this.statusHistory) && this.statusHistory.length ? this.statusHistory[this.statusHistory.length - 1] : null;
       const prevStatus = prev && prev.status ? prev.status : null;
       if (prevStatus !== this.status) {
-        // Only append if last recorded 'to' is different
         if (!last || last.to !== this.status) {
           const entry = { from: prevStatus, to: this.status, user: null, area: this.status, timestamp: (new Date()).toISOString() };
           this.statusHistory = Array.isArray(this.statusHistory) ? this.statusHistory : [];
           this.statusHistory.push(entry);
         }
       }
-      tests[index] = this;
     }
-    global.db.saveTests(tests);
+
+    if (global.db && typeof global.db.upsertTest === 'function') {
+      global.db.upsertTest(this);
+    } else {
+      const tests = global.db.getTests();
+      const index = tests.findIndex(t => t.id === this.id);
+      if (index >= 0) tests[index] = this; else tests.push(this);
+      global.db.saveTests(tests);
+    }
     // After persisting, if the test is Completed/Released and has results, regenerate PDF
     try {
       const lockedStates = new Set(['Completed', 'Released']);
@@ -214,7 +217,12 @@ class Test {
       Object.assign(test, incoming);
       // ensure updatedAt normalization on disk object
       test.updatedAt = incoming.updatedAt;
-      global.db.saveTests(tests);
+
+      if (global.db && typeof global.db.upsertTest === 'function') {
+        global.db.upsertTest(test);
+      } else {
+        global.db.saveTests(tests);
+      }
       console.log(`[DEBUG Test.findOneAndUpdate] id=${test.id} afterStatus=${test.status} updatedAt=${test.updatedAt}`);
 
       // Auto-generate PDF if test is Completed/Released and has results
@@ -244,24 +252,28 @@ class Test {
   }
 
   static async findByIdAndDelete(id) {
-    const tests = global.db.getTests();
-    const index = tests.findIndex(t => t.id === id);
-    if (index >= 0) {
-      const deletedTest = tests.splice(index, 1)[0];
-      // Persist deletion by writing the full data object directly to disk.
-      // `db.saveTests` performs a merge overlay which can unintentionally
-      // preserve entries that were removed from the incoming array. For
-      // deletions we must replace the on-disk tests list with the updated
-      // array to ensure the removed test does not remain.
-      try {
-        const data = global.db.read();
-        data.tests = tests;
-        global.db.write(data);
-      } catch (e) {
-        // Fallback to the existing API if direct write fails
-        try { global.db.saveTests(tests); } catch (e2) { console.error('Failed to persist deleted test:', e2); }
+    if (!id) return null;
+    let existing = null;
+    if (global.db && typeof global.db.getTestById === 'function') {
+      existing = global.db.getTestById(id);
+    }
+    if (!existing) {
+      const tests = global.db.getTests();
+      existing = tests.find(t => t.id === id || t.testId === id);
+    }
+
+    if (existing) {
+      if (global.db && typeof global.db.deleteTest === 'function') {
+        global.db.deleteTest(existing.id);
+      } else {
+        const tests = global.db.getTests();
+        const index = tests.findIndex(t => t.id === existing.id);
+        if (index >= 0) {
+          tests.splice(index, 1);
+          global.db.saveTests(tests);
+        }
       }
-      return new Test(deletedTest);
+      return new Test(existing);
     }
     return null;
   }

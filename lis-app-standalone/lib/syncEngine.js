@@ -11,6 +11,12 @@ class SyncEngine {
     this.dataStore = dataStore || null;
     this._syncing = false;
     this._credentials = null; // { email, password } for server re-auth
+    this._bearerToken = null; // Bearer token for server auth
+  }
+
+  /** Set a signed Bearer token directly. */
+  setBearerToken(token) {
+    this._bearerToken = token || null;
   }
 
   /** Store credentials so we can re-authenticate with the server when needed. */
@@ -378,6 +384,9 @@ class SyncEngine {
           if (elNet && elSession) {
             const req = elNet.request({ method: 'GET', url, session: elSession.fromPartition('persist:lis'), redirect: 'follow' });
 
+            if (this._bearerToken) {
+              req.setHeader('Authorization', `Bearer ${this._bearerToken}`);
+            }
             const hashAuth = this._getAutoLoginHash();
             if (hashAuth) {
               req.setHeader('X-LIS-Sync-Email', hashAuth.email);
@@ -420,6 +429,9 @@ class SyncEngine {
           const headers = { 'Accept': 'application/json' };
           if (this._sessionCookie) {
             headers['Cookie'] = this._sessionCookie;
+          }
+          if (this._bearerToken) {
+            headers['Authorization'] = `Bearer ${this._bearerToken}`;
           }
           const hashAuth = this._getAutoLoginHash();
           if (hashAuth) {
@@ -547,6 +559,9 @@ class SyncEngine {
           session: elSession.fromPartition('persist:lis'),
           redirect: 'manual',
         });
+        if (this._bearerToken) {
+          request.setHeader('Authorization', `Bearer ${this._bearerToken}`);
+        }
         if (hashAuth) {
           request.setHeader('X-LIS-Sync-Email', hashAuth.email);
           request.setHeader('X-LIS-Sync-Hash', hashAuth.hash);
@@ -610,6 +625,9 @@ class SyncEngine {
       };
       if (this._sessionCookie) {
         headers['Cookie'] = this._sessionCookie;
+      }
+      if (this._bearerToken) {
+        headers['Authorization'] = `Bearer ${this._bearerToken}`;
       }
       if (hashAuth) {
         headers['X-LIS-Sync-Email'] = hashAuth.email;
