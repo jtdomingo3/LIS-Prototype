@@ -38,7 +38,7 @@
       <h4>Environment (.env)</h4>
       <% if (envEntries && envEntries.length) { %>
         <% envEntries.forEach(function(e) { %>
-          <% if (e.type === 'kv') { %>
+          <% if (e.type === 'kv' && !['OPENROUTER_ENCRYPTED_KEY', 'OPENROUTER_API_KEY', 'OPENROUTER_DEFAULT_MODEL'].includes(e.key)) { %>
             <div class="field">
               <label><%= e.key %></label>
               <input type="text" name="env_<%= e.key %>" value="<%= e.value %>" />

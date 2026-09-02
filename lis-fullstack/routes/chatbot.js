@@ -10,9 +10,22 @@ router.get('/', requireAuth, async (req, res) => {
   try {
     const user = req.session.user;
     const userId = user ? (user.id || user.email) : 'default';
-    const conversations = global.db && typeof global.db.getChatbotConversations === 'function'
-      ? global.db.getChatbotConversations(userId)
-      : [];
+    const altUserId = user ? (user.email || user.id) : null;
+    let conversations = [];
+
+    if (global.db && typeof global.db.getChatbotConversations === 'function') {
+      try {
+        conversations = global.db.getChatbotConversations(userId);
+        if ((!conversations || conversations.length === 0) && altUserId && altUserId !== userId) {
+          conversations = global.db.getChatbotConversations(altUserId);
+        }
+        if (!conversations || conversations.length === 0) {
+          conversations = global.db.getChatbotConversations(null);
+        }
+      } catch (_) {
+        conversations = [];
+      }
+    }
     
     // Check if a specific conversation was requested via query param (e.g. from maximize button)
     const activeConvId = req.query.conversationId || (conversations[0] ? conversations[0].id : null);
@@ -20,15 +33,17 @@ router.get('/', requireAuth, async (req, res) => {
     let initialMessages = [];
 
     if (activeConvId && global.db) {
-      activeConversation = global.db.getChatbotConversation(activeConvId, userId);
-      if (activeConversation) {
-        initialMessages = global.db.getChatbotMessages(activeConvId);
+      if (typeof global.db.getChatbotConversation === 'function') {
+        activeConversation = global.db.getChatbotConversation(activeConvId, userId) || global.db.getChatbotConversation(activeConvId);
+      }
+      if (typeof global.db.getChatbotMessages === 'function') {
+        initialMessages = global.db.getChatbotMessages(activeConvId) || [];
       }
     }
 
     res.render('chatbot/index', {
       title: 'GezyneBot AI Assistant',
-      conversations,
+      conversations: conversations || [],
       activeConversation,
       initialMessages,
       availableModels: AVAILABLE_MODELS,
@@ -47,10 +62,23 @@ router.get('/api/conversations', requireAuth, (req, res) => {
   try {
     const user = req.session.user;
     const userId = user ? (user.id || user.email) : 'default';
-    const conversations = global.db && typeof global.db.getChatbotConversations === 'function'
-      ? global.db.getChatbotConversations(userId)
-      : [];
-    res.json({ success: true, conversations });
+    const altUserId = user ? (user.email || user.id) : null;
+    let conversations = [];
+
+    if (global.db && typeof global.db.getChatbotConversations === 'function') {
+      try {
+        conversations = global.db.getChatbotConversations(userId);
+        if ((!conversations || conversations.length === 0) && altUserId && altUserId !== userId) {
+          conversations = global.db.getChatbotConversations(altUserId);
+        }
+        if (!conversations || conversations.length === 0) {
+          conversations = global.db.getChatbotConversations(null);
+        }
+      } catch (_) {
+        conversations = [];
+      }
+    }
+    res.json({ success: true, conversations: conversations || [] });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -98,12 +126,16 @@ router.get('/api/conversations/:id', requireAuth, (req, res) => {
       return res.status(500).json({ success: false, error: 'Database unavailable' });
     }
 
-    const conversation = global.db.getChatbotConversation(convId, userId);
+    const conversation = (typeof global.db.getChatbotConversation === 'function')
+      ? (global.db.getChatbotConversation(convId, userId) || global.db.getChatbotConversation(convId))
+      : null;
     if (!conversation) {
       return res.status(404).json({ success: false, error: 'Conversation not found' });
     }
 
-    const messages = global.db.getChatbotMessages(convId);
+    const messages = (typeof global.db.getChatbotMessages === 'function')
+      ? (global.db.getChatbotMessages(convId) || [])
+      : [];
     res.json({ success: true, conversation, messages });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -145,78 +177,106 @@ router.post('/api/query', requireAuth, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Question is required' });
     }
 
+    const selectedModel = model
+      || (global.db && typeof global.db.getSettings === 'function' && (global.db.getSettings() || {}).openrouterModel)
+      || process.env.OPENROUTER_DEFAULT_MODEL
+      || DEFAULT_MODEL;
+
     let activeConvId = conversationId;
     let isNewConv = false;
+    let assistantMessage = null;
 
-    // Ensure or create conversation
-    if (!activeConvId && global.db) {
-      activeConvId = 'conv_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    // Ensure or create conversation in database
+    let existingConv = null;
+    if (activeConvId && global.db && typeof global.db.getChatbotConversation === 'function') {
+      try {
+        existingConv = global.db.getChatbotConversation(activeConvId, userId) || global.db.getChatbotConversation(activeConvId);
+      } catch (_) {}
+    }
+
+    if (!existingConv) {
+      if (!activeConvId) {
+        activeConvId = 'conv_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+      }
       const titleCandidate = String(question).trim().slice(0, 42);
       const newConv = {
         id: activeConvId,
         user_id: userId,
         title: titleCandidate || 'New Discussion',
-        last_model: model || DEFAULT_MODEL,
+        last_model: selectedModel,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
-      global.db.saveChatbotConversation(newConv);
+      if (global.db && typeof global.db.saveChatbotConversation === 'function') {
+        global.db.saveChatbotConversation(newConv);
+      }
       isNewConv = true;
     }
 
     // Retrieve previous messages for context
     let history = [];
-    if (activeConvId && global.db) {
-      history = global.db.getChatbotMessages(activeConvId);
+    if (activeConvId && global.db && typeof global.db.getChatbotMessages === 'function') {
+      try { history = global.db.getChatbotMessages(activeConvId) || []; } catch (_) {}
     }
 
     // Save user's question to message history
-    if (activeConvId && global.db) {
-      global.db.addChatbotMessage({
-        conversation_id: activeConvId,
-        user_id: userId,
-        role: 'user',
-        content: String(question).trim(),
-        created_at: new Date().toISOString()
-      });
+    if (activeConvId && global.db && typeof global.db.addChatbotMessage === 'function') {
+      try {
+        global.db.addChatbotMessage({
+          conversation_id: activeConvId,
+          user_id: userId,
+          role: 'user',
+          content: String(question).trim(),
+          created_at: new Date().toISOString()
+        });
+      } catch (_) {}
     }
 
     // Query OpenRouter with clinical knowledge context
     const aiResult = await queryOpenRouter({
       question: String(question).trim(),
       history,
-      user,
-      model: model || DEFAULT_MODEL
+      user: req.session.user || null,
+      model: selectedModel
     });
 
-    // Save assistant response to message history
-    let assistantMessage = null;
-    if (activeConvId && global.db) {
-      assistantMessage = global.db.addChatbotMessage({
-        conversation_id: activeConvId,
-        user_id: 'gezynebot',
-        role: 'assistant',
-        content: aiResult.answer,
-        sources: [
-          { source: 'Gezyne LIS Standard Operating Procedures' },
-          { source: 'CLSI Clinical Laboratory Reference Guidelines' }
-        ],
-        created_at: new Date().toISOString()
-      });
+    // Save assistant's answer to message history
+    if (activeConvId && global.db && aiResult.answer && typeof global.db.addChatbotMessage === 'function') {
+      try {
+        assistantMessage = global.db.addChatbotMessage({
+          conversation_id: activeConvId,
+          user_id: 'gezynebot',
+          role: 'assistant',
+          content: aiResult.answer,
+          sources: aiResult.sources || [
+            { source: 'Gezyne LIS Standard Operating Procedures' },
+            { source: 'CLSI Clinical Laboratory Reference Guidelines' }
+          ],
+          created_at: new Date().toISOString()
+        });
+      } catch (_) {}
 
-      // If this was a new conversation, generate a smart short title from the question
-      if (isNewConv) {
+      // Update conversation title and last updated timestamp
+      if (typeof global.db.getChatbotConversation === 'function' && typeof global.db.saveChatbotConversation === 'function') {
         try {
-          const conv = global.db.getChatbotConversation(activeConvId, userId);
+          const conv = global.db.getChatbotConversation(activeConvId, userId) || global.db.getChatbotConversation(activeConvId);
           if (conv) {
-            let smartTitle = String(question).trim();
-            // clean up trailing punctuation
-            smartTitle = smartTitle.replace(/^[?.,\s]+|[?.,\s]+$/g, '');
-            if (smartTitle.length > 40) smartTitle = smartTitle.slice(0, 38) + '...';
-            conv.title = smartTitle;
+            conv.updated_at = new Date().toISOString();
+            if (isNewConv || !conv.title || conv.title === 'New Discussion' || conv.title === 'New Topic') {
+              let smartTitle = String(question).trim();
+              smartTitle = smartTitle.replace(/^[?.,\s]+|[?.,\s]+$/g, '');
+              if (smartTitle.length > 40) smartTitle = smartTitle.slice(0, 38) + '...';
+              conv.title = smartTitle;
+            }
+            conv.last_model = selectedModel;
             global.db.saveChatbotConversation(conv);
           }
         } catch (_) {}
+      }
+
+      // Flush immediately to disk in sql.js adapter
+      if (global.db && typeof global.db.checkpoint === 'function') {
+        global.db.checkpoint();
       }
     }
 
@@ -224,7 +284,7 @@ router.post('/api/query', requireAuth, async (req, res) => {
       success: true,
       answer: aiResult.answer,
       conversationId: activeConvId,
-      model: aiResult.model || model,
+      model: aiResult.model || selectedModel,
       messageId: assistantMessage ? assistantMessage.id : null
     });
   } catch (err) {

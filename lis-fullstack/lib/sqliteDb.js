@@ -19,18 +19,12 @@ const SCHEMA_VERSION = 1;
 
 let BetterSqlite3 = null;
 try {
-  BetterSqlite3 = require('better-sqlite3');
-} catch (e) {
-  try {
-    if (process.execPath) {
-      const extBetter = path.join(path.dirname(process.execPath), 'node_modules', 'better-sqlite3');
-      if (fs.existsSync(extBetter)) {
-        BetterSqlite3 = require(extBetter);
-      }
-    }
-  } catch (_) {
-    BetterSqlite3 = null;
+  // Only attempt better-sqlite3 outside of pkg snapshot to avoid fatal N-API version mismatch (node18 pkg vs host node)
+  if (!process.pkg) {
+    BetterSqlite3 = require('better-sqlite3');
   }
+} catch (e) {
+  BetterSqlite3 = null;
 }
 
 let SqlJs = null;
@@ -607,6 +601,19 @@ function createBetterSqliteDb(dbPath, opts = {}) {
       };
     },
 
+    getSettings() {
+      try {
+        const row = stmts.getSettings.get();
+        return row && row.json ? JSON.parse(row.json) : {};
+      } catch (e) {
+        return {};
+      }
+    },
+    setSettings(settings) {
+      if (!settings || typeof settings !== 'object') return;
+      stmts.upsertSettings.run(JSON.stringify(settings));
+    },
+
     write(data) {
       if (!data || typeof data !== 'object') return;
       sqlite.transaction(() => {
@@ -827,6 +834,7 @@ function createSqlJsDb(SQL, dbPath) {
       clearTimeout(persistTimer);
       persistTimer = null;
     }
+    if (!dbPath || dbPath === ':memory:') return;
     try {
       const data = sqlite.export();
       const tmp = dbPath + '.tmp';
@@ -1419,36 +1427,38 @@ function createSqlJsDb(SQL, dbPath) {
       persist(true);
     },
 
-    read() {
-      let settings = {};
+    getSettings() {
       try {
         const rows = queryAll("SELECT json FROM settings WHERE key = 'main'");
-        if (rows.length && rows[0].json) settings = JSON.parse(rows[0].json);
+        if (rows.length && rows[0].json) return JSON.parse(rows[0].json);
       } catch (e) {}
+      return {};
+    },
+
+    setSettings(settings) {
+      if (!settings || typeof settings !== 'object') return;
+      sqlite.run("INSERT OR REPLACE INTO settings (key, json) VALUES ('main', ?)", [JSON.stringify(settings)]);
+      persist();
+    },
+
+    read() {
       return {
         patients: this.getPatients(),
         tests: this.getTests(),
         templates: this.getTemplates(),
         counters: this.getCounters(),
-        settings
+        settings: this.getSettings()
       };
     },
 
     write(data) {
       if (!data || typeof data !== 'object') return;
-      sqlite.run('BEGIN TRANSACTION;');
-      try {
-        if (Array.isArray(data.patients)) this.savePatients(data.patients);
-        if (Array.isArray(data.tests)) this.saveTests(data.tests);
-        if (Array.isArray(data.templates)) this.saveTemplates(data.templates);
-        if (data.counters && typeof data.counters === 'object') this.saveCounters(data.counters);
-        if (data.settings && typeof data.settings === 'object') {
-          sqlite.run("INSERT OR REPLACE INTO settings (key, json) VALUES ('main', ?)", [JSON.stringify(data.settings)]);
-        }
-        sqlite.run('COMMIT;');
-      } catch (e) {
-        sqlite.run('ROLLBACK;');
-        throw e;
+      if (Array.isArray(data.patients)) this.savePatients(data.patients);
+      if (Array.isArray(data.tests)) this.saveTests(data.tests);
+      if (Array.isArray(data.templates)) this.saveTemplates(data.templates);
+      if (data.counters && typeof data.counters === 'object') this.saveCounters(data.counters);
+      if (data.settings && typeof data.settings === 'object') {
+        this.setSettings(data.settings);
       }
       persist();
     },
@@ -1464,7 +1474,7 @@ function createSqlJsDb(SQL, dbPath) {
  * Async initialization of database adapter (preferred for full compatibility)
  */
 async function initDb(dbPath, opts = {}) {
-  if (BetterSqlite3) {
+  if (BetterSqlite3 && !process.pkg) {
     try {
       return createBetterSqliteDb(dbPath, opts);
     } catch (e) {
@@ -1482,7 +1492,7 @@ async function initDb(dbPath, opts = {}) {
  * Otherwise uses pre-initialized sql.js instance or creates an in-memory queue.
  */
 function createDb(dbPath, opts = {}) {
-  if (BetterSqlite3) {
+  if (BetterSqlite3 && !process.pkg) {
     try {
       return createBetterSqliteDb(dbPath, opts);
     } catch (e) {
@@ -1538,10 +1548,29 @@ function createDb(dbPath, opts = {}) {
     checkpoint() { if (underlyingDb) underlyingDb.checkpoint(); else readyPromise.then(d => d.checkpoint()); },
     read() { return underlyingDb ? underlyingDb.read() : { patients: [], tests: [], templates: [], counters: {}, settings: {} }; },
     write(d) { if (underlyingDb) underlyingDb.write(d); else readyPromise.then(db => db.write(d)); },
+    getSettings() { return underlyingDb ? underlyingDb.getSettings() : {}; },
+    setSettings(s) { if (underlyingDb) underlyingDb.setSettings(s); else readyPromise.then(d => d.setSettings(s)); },
+    getChatbotConversations(userId) { return underlyingDb ? underlyingDb.getChatbotConversations(userId) : []; },
+    getChatbotConversation(id, userId) { return underlyingDb ? underlyingDb.getChatbotConversation(id, userId) : null; },
+    saveChatbotConversation(conv) { return underlyingDb ? underlyingDb.saveChatbotConversation(conv) : conv; },
+    deleteChatbotConversation(id, userId) { return underlyingDb ? underlyingDb.deleteChatbotConversation(id, userId) : false; },
+    getChatbotMessages(convId) { return underlyingDb ? underlyingDb.getChatbotMessages(convId) : []; },
+    addChatbotMessage(msg) { return underlyingDb ? underlyingDb.addChatbotMessage(msg) : null; },
     close() { if (underlyingDb) underlyingDb.close(); }
   };
 
-  return proxy;
+  return new Proxy(proxy, {
+    get(target, prop) {
+      if (prop in target) return target[prop];
+      if (underlyingDb && typeof underlyingDb[prop] === 'function') {
+        return underlyingDb[prop].bind(underlyingDb);
+      }
+      if (underlyingDb && prop in underlyingDb) {
+        return underlyingDb[prop];
+      }
+      return undefined;
+    }
+  });
 }
 
 module.exports = {

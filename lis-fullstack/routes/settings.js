@@ -169,7 +169,12 @@ router.get('/', requireAuth, (req, res) => {
   const networkAddress = getPreferredNetworkAddress();
   const networkPort = (req && req.socket && req.socket.localPort) ? req.socket.localPort : (process.env.PORT || req.app && req.app.locals && req.app.locals.port || 3000);
   const networkUrl = `${networkAddress}:${networkPort}`;
-  const envEntries = readEnvFileEntries();
+  const HIDDEN_ENV_KEYS = new Set([
+    'OPENROUTER_ENCRYPTED_KEY',
+    'OPENROUTER_API_KEY',
+    'OPENROUTER_DEFAULT_MODEL'
+  ]);
+  const envEntries = readEnvFileEntries().filter(e => e.type !== 'kv' || !HIDDEN_ENV_KEYS.has(e.key));
   const recentLogs = getRecentLogs(200);
   const logFilePath = getLogPath();
 

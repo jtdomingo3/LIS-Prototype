@@ -53,15 +53,13 @@ async function run() {
     console.log('Copied sql-wasm.wasm to', wasmDest);
   }
 
-  // Copy better_sqlite3.node to dist folder alongside the EXE
-  const nativeNodeSrc = path.join(projectRoot, 'node_modules', 'better-sqlite3', 'prebuilds', 'win32-x64.node');
+  // Remove any conflicting native better_sqlite3.node in dist to avoid N-API version abort
   const nativeNodeDest = path.join(distDir, 'better_sqlite3.node');
-  if (fs.existsSync(nativeNodeSrc)) {
-    fs.copyFileSync(nativeNodeSrc, nativeNodeDest);
-    console.log('Copied better_sqlite3.node to', nativeNodeDest);
+  if (fs.existsSync(nativeNodeDest)) {
+    try { fs.unlinkSync(nativeNodeDest); } catch (_) {}
   }
 
-  console.log('Executable build completed successfully without PE corruption.');
+  console.log('Executable build completed successfully.');
 }
 
 run();
