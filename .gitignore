@@ -37,3 +37,4 @@ lis-fullstack/lis-data.db-shm
 lis-fullstack/lis-data.db-wal
 lis-fullstack/lis-data.db
 lis-fullstack/logs/print.log
+tools/security-audit/audit-report-latest.json
