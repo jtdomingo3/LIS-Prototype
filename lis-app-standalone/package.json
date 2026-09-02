@@ -9,6 +9,7 @@
     "build": "electron-builder",
     "dist:win": "electron-builder --win nsis",
     "dist:dir": "electron-builder --dir",
+    "security-audit": "node ../tools/security-audit/run-security-audit.js",
     "test": "node ../test/run-all-offline-tests.js && node test-sqlite-datastore.js && node test-integrated-sync.js"
   },
   "dependencies": {

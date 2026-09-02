@@ -60,18 +60,46 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   }));
   app.use(flash());
 
-  /* ── CORS middleware ──────────────────────────────────────────── */
+  /* ── Sensitive payload sanitizer for logging ──────────────────── */
+  function maskSensitive(obj) {
+    const SENSITIVE = new Set([
+      'password','pwd','pass','confirmpassword','confirm_password','passwordconfirm',
+      'token','authtoken','bearer','authorization','hash','synchash','x-lis-sync-hash','secret'
+    ]);
+    if (obj == null) return obj;
+    if (Array.isArray(obj)) return obj.map(v => maskSensitive(v));
+    if (typeof obj === 'object') {
+      const out = {};
+      for (const k of Object.keys(obj)) {
+        if (SENSITIVE.has(k.toLowerCase())) out[k] = '[FILTERED]';
+        else out[k] = maskSensitive(obj[k]);
+      }
+      return out;
+    }
+    return obj;
+  }
+
+  /* ── Security headers & CORS middleware ────────────────────────── */
   app.use((req, res, next) => {
+    // Standard defensive HTTP security headers
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('X-Download-Options', 'noopen');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+
     try {
       const origin = req.get('Origin') || '';
       const allowed = [];
       if (config && config.SERVER_URL) allowed.push(config.SERVER_URL.replace(/\/$/, ''));
       allowed.push(`http://127.0.0.1:${config.LOCAL_PORT}`);
-      const allowOrigin = allowed.includes(origin) ? origin : '*';
-      res.setHeader('Access-Control-Allow-Origin', allowOrigin);
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
-      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+      allowed.push(`http://localhost:${config.LOCAL_PORT}`);
+
+      if (origin && allowed.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+      }
       if (req.method === 'OPTIONS') return res.sendStatus(204);
     } catch (e) { /* ignore */ }
     next();

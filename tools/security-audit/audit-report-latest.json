@@ -1,0 +1,89 @@
+{
+  "timestamp": "2026-09-02T02:19:39.057Z",
+  "auditVersion": "2026.1.0",
+  "overallCompliancePassed": true,
+  "reports": {
+    "server": {
+      "target": "server",
+      "path": "C:\\Users\\Jeff\\repo\\LIS Prototype\\lis-fullstack",
+      "score": 100,
+      "categories": [
+        {
+          "name": "HTTP Security Headers & Cookies",
+          "score": 100,
+          "findings": [],
+          "liveTested": true,
+          "statusCode": 200
+        },
+        {
+          "name": "Authentication & Cryptographic Standards",
+          "score": 100,
+          "findings": []
+        },
+        {
+          "name": "SQL & Command Injection Prevention",
+          "score": 100,
+          "findings": []
+        },
+        {
+          "name": "Log Sanitization, PII & Path Traversal",
+          "score": 100,
+          "findings": []
+        },
+        {
+          "name": "Rate Limiting & Brute-Force Throttling",
+          "score": 100,
+          "findings": []
+        }
+      ],
+      "findings": [],
+      "summary": {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0
+      }
+    },
+    "standalone": {
+      "target": "standalone",
+      "path": "C:\\Users\\Jeff\\repo\\LIS Prototype\\lis-app-standalone",
+      "score": 100,
+      "categories": [
+        {
+          "name": "HTTP Security Headers & Cookies",
+          "score": 100,
+          "findings": [],
+          "liveTested": true,
+          "statusCode": 302
+        },
+        {
+          "name": "Authentication & Cryptographic Standards",
+          "score": 100,
+          "findings": []
+        },
+        {
+          "name": "SQL & Command Injection Prevention",
+          "score": 100,
+          "findings": []
+        },
+        {
+          "name": "Log Sanitization, PII & Path Traversal",
+          "score": 100,
+          "findings": []
+        },
+        {
+          "name": "Rate Limiting & Brute-Force Throttling",
+          "score": 100,
+          "findings": []
+        }
+      ],
+      "findings": [],
+      "summary": {
+        "critical": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0
+      }
+    }
+  }
+}
