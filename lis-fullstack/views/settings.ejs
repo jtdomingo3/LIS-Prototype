@@ -61,6 +61,13 @@
         <p class="note">Name of the secondary doctor on duty (when 2 doctors are scheduled simultaneously).</p>
       </div>
 
+      <h4>Reception & Payment Workflow</h4>
+      <div class="field" style="display:flex;align-items:center;gap:8px;">
+        <input type="checkbox" id="requirePaymentAmount" name="requirePaymentAmount" <%= (typeof requirePaymentAmount === 'undefined' || requirePaymentAmount) ? 'checked' : '' %> />
+        <label for="requirePaymentAmount" style="margin:0;font-weight:600;cursor:pointer;">Require Lab Amount in Payment Area</label>
+      </div>
+      <p class="note" style="margin-top:-6px;">When enabled, receptionist must enter an amount for Clinical Lab and/or X-ray Lab before marking complete. When disabled, tests can be marked complete even if amount is 0.00.</p>
+
       <h4>Data Backup</h4>
       <div class="field" style="display:flex;align-items:center;gap:8px;">
         <input type="checkbox" name="autoBackup" <%= (backupConfig && backupConfig.enabled) ? 'checked' : '' %> />

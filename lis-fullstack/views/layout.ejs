@@ -444,6 +444,14 @@
             border-radius: 8px;
         }
 
+        button:disabled, .button:disabled, .btn:disabled, .payment-submit:disabled {
+            opacity: 0.45 !important;
+            cursor: not-allowed !important;
+            pointer-events: none !important;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
         /* Text-only pagination links */
         .page-link {
             background: transparent;

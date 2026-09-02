@@ -65,10 +65,10 @@ class Test {
     } else {
       // If updating, ensure we don't duplicate history entries — only add if last entry differs
       const prev = tests[index];
-      // Guard: once a test is Completed or Released, do not allow reverting to a non-completed state
+      // Guard: once a test is Completed or Released, do not allow reverting to a non-completed state unless allowReassign is explicitly set
       try {
         const lockedStates = new Set(['Completed', 'Released']);
-        if (prev && prev.status && lockedStates.has(prev.status) && !(this.status && lockedStates.has(this.status))) {
+        if (!this.allowReassign && prev && prev.status && lockedStates.has(prev.status) && !(this.status && lockedStates.has(this.status))) {
           // attempted revert detected
           const msg = `Attempted to revert locked test id=${this.id} from ${prev.status} to ${this.status}`;
           console.warn('[GUARD]', msg);
@@ -77,6 +77,9 @@ class Test {
           this.status = prev.status;
           // keep completedAt from prev
           this.completedAt = prev.completedAt || this.completedAt;
+        } else if (this.allowReassign && !(this.status && lockedStates.has(this.status))) {
+          this.completedAt = undefined;
+          this.released = false;
         }
       } catch (e) {}
       const last = Array.isArray(this.statusHistory) && this.statusHistory.length ? this.statusHistory[this.statusHistory.length - 1] : null;
@@ -234,10 +237,10 @@ class Test {
         }
       } catch (e) {}
 
-      // Guard: prevent reverting Completed/Released via findOneAndUpdate
+      // Guard: prevent reverting Completed/Released via findOneAndUpdate unless allowReassign is set
       try {
         const locked = new Set(['Completed', 'Released']);
-        if (test && test.status && locked.has(test.status) && incoming && incoming.status && !locked.has(incoming.status)) {
+        if (!incoming.allowReassign && test && test.status && locked.has(test.status) && incoming && incoming.status && !locked.has(incoming.status)) {
           const msg = `Attempted to revert locked test id=${test.id} from ${test.status} to ${incoming.status} (findOneAndUpdate)`;
           console.warn('[GUARD]', msg);
           try { logReportError(msg, 'guard:revert-test'); } catch (e) {}
@@ -245,6 +248,9 @@ class Test {
           delete incoming.status;
           // don't touch completedAt
           if (incoming.completedAt) delete incoming.completedAt;
+        } else if (incoming.allowReassign && !(incoming.status && locked.has(incoming.status))) {
+          incoming.completedAt = undefined;
+          incoming.released = false;
         }
       } catch (e) {}
 

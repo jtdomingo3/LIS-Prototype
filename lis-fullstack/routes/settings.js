@@ -184,6 +184,8 @@ router.get('/', requireAuth, (req, res) => {
   const maskedKey = hasOpenRouterKey ? (currentKey.slice(0, 10) + '...' + currentKey.slice(-4)) : '';
   const currentModel = settings.openrouterModel || process.env.OPENROUTER_DEFAULT_MODEL || DEFAULT_MODEL;
 
+  const requirePaymentAmount = (typeof settings.requirePaymentAmount !== 'undefined') ? !!settings.requirePaymentAmount : true;
+
   res.render('settings', {
     title: 'Settings',
     featureFlags,
@@ -198,7 +200,8 @@ router.get('/', requireAuth, (req, res) => {
     hasOpenRouterKey,
     maskedKey,
     currentModel,
-    availableModels: AVAILABLE_MODELS
+    availableModels: AVAILABLE_MODELS,
+    requirePaymentAmount
   });
 });
 
@@ -260,6 +263,7 @@ router.post('/', requireAuth, canManageUsers, (req, res) => {
       cur.doctor2Name = doc2;
       cur.gezynePath = gezyne;
       cur.openrouterModel = aiModel;
+      cur.requirePaymentAmount = (flags.requirePaymentAmount === 'on' || flags.requirePaymentAmount === true || flags.requirePaymentAmount === 'true');
 
       const envUpdates = {};
       envUpdates.OPENROUTER_DEFAULT_MODEL = aiModel;

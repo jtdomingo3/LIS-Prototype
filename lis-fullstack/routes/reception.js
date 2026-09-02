@@ -823,6 +823,9 @@ router.get('/area/:name', requireAuth, canAccessPatient, async (req, res) => {
     const users = await User.find({ role: 'Doctor' });
     const AREAS = getAreas();
 
+    const settings = (global.db && typeof global.db.getSettings === 'function') ? (global.db.getSettings() || {}) : {};
+    const requirePaymentAmount = (typeof settings.requirePaymentAmount !== 'undefined') ? !!settings.requirePaymentAmount : true;
+
     res.render('reception/area', {
       title: `Reception - ${areaName}`,
       areaName,
@@ -830,7 +833,8 @@ router.get('/area/:name', requireAuth, canAccessPatient, async (req, res) => {
       areas: AREAS,
       specimens,
       encodedPatients,
-      users
+      users,
+      requirePaymentAmount
     });
   } catch (err) {
     console.error('Reception area error:', err);
@@ -889,64 +893,80 @@ router.post('/assign', requireAuth, canAccessPatient, async (req, res) => {
       return res.redirect('/reception');
     }
 
-    // Restrict a patient to be assigned to only one active area at a time (ignore 'Releasing of Result')
+    // Manage area assignments for the patient's tests
     const existingTests = await Test.find({ patient: patientObj.id });
     const AREAS = getAreas();
-    if (Array.isArray(existingTests)) {
-      const conflict = existingTests.find(t => t && t.status && AREAS.includes(t.status) && t.status !== 'Releasing of Result' && t.status !== area);
-      if (conflict) {
-        // Previously we blocked reassignment when a patient already had an active assignment.
-        // Allow manual transfer: clear the conflicting active assignment (mark as Completed)
-        // and proceed to assign the selected test to the requested area.
-        console.warn('Assign conflict - clearing existing active assignment', { testId, conflict: conflict.testId, patient: patientObj.id });
-        try {
-          // record history with user info
-          // When clearing an active assignment that is a doctor's check-up, mark as 'Checked'
-          const isDoctorType = (conflict.testType === "Doctor's Check-up") || (conflict.testType && String(conflict.testType).toLowerCase().includes('doctor')) || (String(conflict.status || '').toLowerCase().includes('doctor'));
-          const finalStatus = isDoctorType ? 'Checked' : 'Completed';
-          conflict.addStatusEntry({ from: conflict.status, to: finalStatus, user: req.session && req.session.user ? req.session.user.username : null, area: finalStatus, timestamp: (new Date()).toISOString() });
-          conflict.status = finalStatus;
-          // completedAt is set by Test.save() when status === 'Completed'
-          await conflict.save();
-          // notify clients that the other test was completed/cleared
-          try {
-            const payloadCleared = { action: 'complete', testId: conflict.testId, status: conflict.status, time: (new Date()).toISOString() };
-            sseEmitter.emit('update', payloadCleared);
-          } catch (e) { console.warn('SSE emit for cleared conflict failed', e); }
-        } catch (clearErr) {
-          console.error('Failed to clear conflicting test assignment', clearErr);
-        }
-        // continue - the current test will be assigned below
-      }
-    }
 
-    // record history entry including user and area
-    test.addStatusEntry({ from: test.status, to: area, user: req.session && req.session.user ? req.session.user.username : null, area, timestamp: (new Date()).toISOString() });
-    test.status = area;
-    // If a specimen code was provided, record it for this area
-    if (specimen && String(specimen).trim()) {
-      if (!test.specimenNumbers || typeof test.specimenNumbers !== 'object') test.specimenNumbers = {};
-      test.specimenNumbers[area] = String(specimen).trim();
-    }
-    // If a doctor assignment was provided, persist it on the test
-    if (assignedDoctor && String(assignedDoctor).trim()) {
-      try {
-        const doc = await User.findById(assignedDoctor);
-        if (doc) {
-          test.assignedDoctorId = doc.id;
-          test.assignedDoctorName = doc.name;
-        } else {
-          // store raw value if lookup fails
-          test.assignedDoctorId = String(assignedDoctor).trim();
-          test.assignedDoctorName = String(assignedDoctor).trim();
+    if (area === 'Payment Area') {
+      // Reassigning patient back to Payment Area: return all unreleased tests to Payment Area
+      for (const t of (existingTests || [])) {
+        if (!t || t.released || t.status === 'Released') continue;
+        t.allowReassign = true;
+        t.completedAt = undefined;
+        t.released = false;
+        t.addStatusEntry({ from: t.status, to: 'Payment Area', user: req.session && req.session.user ? req.session.user.username : null, area: 'Payment Area', timestamp: (new Date()).toISOString() });
+        t.status = 'Payment Area';
+        await t.save();
+        try {
+          sseEmitter.emit('update', { action: 'assign', testId: t.testId, area: 'Payment Area', time: (new Date()).toISOString(), patientCode: patientObj.patientCode });
+        } catch (e) {}
+      }
+    } else {
+      // Reassigning to an active service area (e.g. Extraction Area, Drug Test, ECG, etc.)
+      // Find tests of this patient that naturally belong to this target area
+      const matchingTests = (existingTests || []).filter(t => t && getTargetAreaForTest(t) === area);
+      const activeTests = matchingTests.length ? matchingTests : [test];
+      const activeIds = new Set(activeTests.map(m => m.id || m.testId));
+
+      // 1. Activate only the tests that belong to the target area
+      for (const t of activeTests) {
+        t.allowReassign = true;
+        t.completedAt = undefined;
+        t.released = false;
+        t.addStatusEntry({ from: t.status, to: area, user: req.session && req.session.user ? req.session.user.username : null, area, timestamp: (new Date()).toISOString() });
+        t.status = area;
+        if (specimen && String(specimen).trim()) {
+          if (!t.specimenNumbers || typeof t.specimenNumbers !== 'object') t.specimenNumbers = {};
+          t.specimenNumbers[area] = String(specimen).trim();
         }
-      } catch (e) {
-        console.warn('Failed to lookup assigned doctor', e);
-        test.assignedDoctorId = String(assignedDoctor).trim();
-        test.assignedDoctorName = String(assignedDoctor).trim();
+        if (assignedDoctor && String(assignedDoctor).trim()) {
+          try {
+            const doc = await User.findById(assignedDoctor);
+            if (doc) {
+              t.assignedDoctorId = doc.id;
+              t.assignedDoctorName = doc.name;
+            } else {
+              t.assignedDoctorId = String(assignedDoctor).trim();
+              t.assignedDoctorName = String(assignedDoctor).trim();
+            }
+          } catch (e) {
+            t.assignedDoctorId = String(assignedDoctor).trim();
+            t.assignedDoctorName = String(assignedDoctor).trim();
+          }
+        }
+        await t.save();
+        try {
+          sseEmitter.emit('update', { action: 'assign', testId: t.testId, area, time: (new Date()).toISOString(), patientCode: patientObj.patientCode });
+        } catch (e) {}
+      }
+
+      // 2. All other active tests for this patient should be set to 'Pending' to prevent double entries
+      for (const t of (existingTests || [])) {
+        if (!t || activeIds.has(t.id) || activeIds.has(t.testId)) continue;
+        if (t.released || t.status === 'Released') continue;
+        if (t.status === area || AREAS.includes(t.status)) {
+          t.allowReassign = true;
+          t.completedAt = undefined;
+          t.released = false;
+          t.addStatusEntry({ from: t.status, to: 'Pending', user: req.session && req.session.user ? req.session.user.username : null, area: 'Pending', timestamp: (new Date()).toISOString() });
+          t.status = 'Pending';
+          await t.save();
+          try {
+            sseEmitter.emit('update', { action: 'pending', testId: t.testId, status: t.status, time: (new Date()).toISOString() });
+          } catch (e) {}
+        }
       }
     }
-    await test.save();
 
     // notify any connected clients that assignments changed
     try {
@@ -1012,6 +1032,21 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
     const AREAS = getAreas();
 
     if (area === 'Payment Area') {
+      const settings = (global.db && typeof global.db.getSettings === 'function') ? (global.db.getSettings() || {}) : {};
+      const requirePaymentAmount = (typeof settings.requirePaymentAmount !== 'undefined') ? !!settings.requirePaymentAmount : true;
+      if (requirePaymentAmount) {
+        const clinVal = parseFloat(String(amount_clinical || '').replace(/[,\s]/g, '')) || 0;
+        const xrayVal = parseFloat(String(amount_xray || '').replace(/[,\s]/g, '')) || 0;
+        if (clinVal <= 0 && xrayVal <= 0) {
+          const msg = 'Please enter an amount for either Clinical Lab or X-ray Lab before marking complete.';
+          if (req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'))) {
+            return res.status(400).json({ success: false, message: msg });
+          }
+          req.flash && req.flash('error_msg', msg);
+          return res.redirect('/reception/area/Payment%20Area');
+        }
+      }
+
       // Find all tests currently in Payment Area (or matching the submitted IDs)
       const testsToProcess = (allPatientTests || []).filter(t => {
         if (!t) return false;

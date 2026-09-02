@@ -141,8 +141,8 @@ router.get('/', requireAuth, (req, res) => {
   const networkUrl = `${networkAddress}:${networkPort}`;
   const envEntries = readEnvFileEntries();
   const recentLogs = getRecentLogs(200);
-  const logFilePath = getLogPath();
-  res.render('settings', { title: 'Settings', featureFlags, backupConfig, settings, networkAddress, networkPort, networkUrl, envEntries, recentLogs, logFilePath });
+  const requirePaymentAmount = (typeof settings.requirePaymentAmount !== 'undefined') ? !!settings.requirePaymentAmount : true;
+  res.render('settings', { title: 'Settings', featureFlags, backupConfig, settings, networkAddress, networkPort, networkUrl, envEntries, recentLogs, logFilePath, requirePaymentAmount });
 });
 
 router.post('/', requireAuth, canManageUsers, (req, res) => {
@@ -177,13 +177,16 @@ router.post('/', requireAuth, canManageUsers, (req, res) => {
       const doc2 = (flags.doctor2Name || '').trim() || 'Dr. Arcilla';
       const gezyne = flags.gezynePath || '';
 
+      const requirePaymentAmount = (flags.requirePaymentAmount === 'on' || flags.requirePaymentAmount === true || flags.requirePaymentAmount === 'true');
+
       if (global.db && typeof global.db.setSettings === 'function') {
         const cur = global.db.getSettings() || {};
         global.db.setSettings({
           ...cur,
           doctor1Name: doc1,
           doctor2Name: doc2,
-          gezynePath: gezyne
+          gezynePath: gezyne,
+          requirePaymentAmount
         });
       } else {
         const data = global.db.read();
@@ -191,6 +194,7 @@ router.post('/', requireAuth, canManageUsers, (req, res) => {
         data.settings.doctor1Name = doc1;
         data.settings.doctor2Name = doc2;
         data.settings.gezynePath = gezyne;
+        data.settings.requirePaymentAmount = requirePaymentAmount;
         global.db.write(data);
       }
       process.env.DOCTOR_1_NAME = doc1;

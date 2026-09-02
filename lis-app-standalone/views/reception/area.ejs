@@ -105,7 +105,7 @@
               <td>
                 <% if (areaName === 'Payment Area') { %>
                   <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
-                    <form action="/reception/complete" method="POST" class="complete-form" style="display:flex; gap:8px; align-items:flex-end; margin:0;">
+                    <form action="/reception/complete" method="POST" class="complete-form" data-require-amount="<%= (typeof requirePaymentAmount === 'undefined' || requirePaymentAmount) ? '1' : '0' %>" style="display:flex; gap:8px; align-items:flex-end; margin:0;">
                       <input type="hidden" name="patientId" value="<%= row.patient ? row.patient.id : '' %>">
                       <input type="hidden" name="testIds" value="<%= (row.testIds || []).join(',') %>">
                       <input type="hidden" name="area" value="<%= areaName %>">
@@ -118,7 +118,9 @@
                         <input type="number" name="amount_xray" class="payment-amount" step="0.01" min="0" placeholder="X-ray" style="width:130px;" value="<%= (row.xrayTotal || 0).toFixed(2) %>">
                       </div>
                       <div>
-                        <button type="submit" class="button btn-success btn-small payment-submit" title="Mark complete" onclick="return paymentSubmitFallback(this)" style="min-width:110px;">Mark Complete</button>
+                        <% const isAmountReq = (typeof requirePaymentAmount === 'undefined' || requirePaymentAmount); %>
+                        <% const hasInitialAmount = !isAmountReq || (Number(row.clinicalTotal) > 0 || Number(row.xrayTotal) > 0); %>
+                        <button type="submit" class="button btn-success btn-small payment-submit" title="Mark complete" onclick="return window.paymentSubmitFallback ? window.paymentSubmitFallback(this) : true" style="min-width:110px;<%= !hasInitialAmount ? ' opacity:0.45; cursor:not-allowed;' : '' %>" <%= !hasInitialAmount ? 'disabled' : '' %>>Mark Complete</button>
                       </div>
                     </form>
                     <form action="/reception/delete" method="POST" class="delete-form" style="margin:0;" onsubmit="return confirm('Delete these tests from the queue?');">
@@ -195,8 +197,8 @@
       const tabSpecimens = document.getElementById('tabSpecimens');
       const queuePane = document.getElementById('queuePane');
       const specimensPane = document.getElementById('specimensPane');
-      tabQueue.addEventListener('click', () => { queuePane.style.display='block'; specimensPane.style.display='none'; tabQueue.classList.add('btn-primary'); tabSpecimens.classList.remove('btn-primary'); });
-      tabSpecimens.addEventListener('click', () => { queuePane.style.display='none'; specimensPane.style.display='block'; tabSpecimens.classList.add('btn-primary'); tabQueue.classList.remove('btn-primary'); });
+      if (tabQueue && queuePane) tabQueue.addEventListener('click', () => { queuePane.style.display='block'; if (specimensPane) specimensPane.style.display='none'; tabQueue.classList.add('btn-primary'); if (tabSpecimens) tabSpecimens.classList.remove('btn-primary'); });
+      if (tabSpecimens && specimensPane) tabSpecimens.addEventListener('click', () => { if (queuePane) queuePane.style.display='none'; specimensPane.style.display='block'; tabSpecimens.classList.add('btn-primary'); if (tabQueue) tabQueue.classList.remove('btn-primary'); });
     })();
 
     // AJAX handlers for complete/delete to avoid navigation and keep on same area page
@@ -223,63 +225,90 @@
 
       // Fallback submit helper for Payment Area button clicks.
       // Validates that at least one lab amount (clinical or x-ray) is a positive number,
-      // logs debugging info, and triggers a programmatic submit which will be intercepted
-      // by the AJAX submit handler above.
-      function paymentSubmitFallback(btn) {
+      // and triggers form submit only if validation passes.
+      window.paymentSubmitFallback = function(btn) {
         try {
           const form = btn && btn.closest ? btn.closest('form') : null;
           if (!form) return true;
+          if (form.dataset && form.dataset.requireAmount === '0') return true;
           const amtInputs = Array.from(form.querySelectorAll('.payment-amount'));
           if (amtInputs.length) {
             let anyValid = false;
             for (const inp of amtInputs) {
               const raw = inp.value;
               const parsed = parseFloat(String(raw).replace(/[,\s]/g, ''));
-              const htmlValid = typeof inp.checkValidity === 'function' ? inp.checkValidity() : true;
-              const valid = htmlValid && Number.isFinite(parsed) && parsed > 0;
-              console.debug('[DEBUG] paymentSubmitFallback', { name: inp.name, raw, parsed, htmlValid, valid });
-              if (valid) { anyValid = true; break; }
+              if (Number.isFinite(parsed) && parsed > 0) { anyValid = true; break; }
             }
             if (!anyValid) {
-              alert('Please enter a valid positive amount for Clinical and/or X-ray before marking complete.');
+              alert('Please enter an amount for either Clinical Lab or X-ray Lab before marking complete.');
               return false;
             }
           }
           // Trigger form submission programmatically so the AJAX handler runs.
           if (typeof form.requestSubmit === 'function') form.requestSubmit(); else form.submit();
-          // Prevent default click action (we already submitted programmatically)
           return false;
         } catch (e) {
           console.error('paymentSubmitFallback error', e);
-          return true;
+          return false;
+        }
+      };
+
+      function updatePaymentFormButton(form) {
+        if (!form) return;
+        const btn = form.querySelector('.payment-submit');
+        if (!btn) return;
+        if (form.dataset && form.dataset.requireAmount === '0') {
+          btn.disabled = false;
+          btn.style.opacity = '1';
+          btn.style.cursor = 'pointer';
+          btn.style.pointerEvents = 'auto';
+          btn.title = 'Mark complete';
+          return;
+        }
+        const inputs = Array.from(form.querySelectorAll('.payment-amount'));
+        if (!inputs.length) return;
+        let anyValid = false;
+        for (const input of inputs) {
+          const raw = input.value;
+          const amt = parseFloat(String(raw).replace(/[,\s]/g, ''));
+          if (Number.isFinite(amt) && amt > 0) {
+            anyValid = true;
+            break;
+          }
+        }
+        btn.disabled = !anyValid;
+        if (!anyValid) {
+          btn.style.opacity = '0.45';
+          btn.style.cursor = 'not-allowed';
+          btn.style.pointerEvents = 'none';
+          btn.title = 'Enter Clinical Lab or X-ray Lab amount to complete';
+        } else {
+          btn.style.opacity = '1';
+          btn.style.cursor = 'pointer';
+          btn.style.pointerEvents = 'auto';
+          btn.title = 'Mark complete';
         }
       }
 
       // Enable/disable Payment Area submit buttons based on amount inputs in the same form.
-      // If at least one lab amount is a valid positive number, enable submit.
-      document.querySelectorAll('form').forEach(form => {
-        const inputs = Array.from(form.querySelectorAll('.payment-amount'));
-        if (!inputs.length) return;
-        const btn = form.querySelector('.payment-submit');
-        function parseAmount(v) {
-          if (v === null || v === undefined) return NaN;
-          try { return parseFloat(String(v).replace(/[,\s]/g, '')); } catch (e) { return NaN; }
-        }
-        function update() {
-          let anyValid = false;
-          for (const input of inputs) {
-            const raw = input.value;
-            const amt = parseAmount(raw);
-            let htmlValid = true;
-            try { htmlValid = typeof input.checkValidity === 'function' ? input.checkValidity() : true; } catch (e) { htmlValid = true; }
-            const valid = htmlValid && Number.isFinite(amt) && amt > 0;
-            if (valid) { anyValid = true; break; }
+      function setupPaymentAmountValidation() {
+        document.querySelectorAll('form').forEach(form => {
+          const inputs = Array.from(form.querySelectorAll('.payment-amount'));
+          if (!inputs.length) return;
+          ['input', 'change', 'blur', 'keyup', 'paste'].forEach(ev => inputs.forEach(i => i.addEventListener(ev, () => updatePaymentFormButton(form))));
+          updatePaymentFormButton(form);
+        });
+      }
+      setupPaymentAmountValidation();
+
+      // Delegated listener on document: guarantees updating even if elements were dynamically rendered
+      ['input', 'change', 'keyup', 'paste'].forEach(evName => {
+        document.addEventListener(evName, (e) => {
+          if (e.target && e.target.classList && e.target.classList.contains('payment-amount')) {
+            const form = e.target.closest('form');
+            if (form) updatePaymentFormButton(form);
           }
-          if (btn) btn.disabled = !anyValid;
-          console.debug('[DEBUG] payment-amount form update', { formAction: form.action, anyValid, buttonDisabled: btn ? btn.disabled : null });
-        }
-        ['input','change','blur'].forEach(ev => inputs.forEach(i => i.addEventListener(ev, update)));
-        setTimeout(update, 0);
+        });
       });
 
       // handle complete (AJAX) — use URLSearchParams and mimic the working delete flow
@@ -289,6 +318,32 @@
           e.preventDefault();
           console.debug('[DEBUG] complete-form submit triggered for form action=', form.action);
           const btn = form.querySelector('button[type="submit"]');
+
+          // Strict Payment Area validation: require at least one positive amount if required
+          if (!form.dataset || form.dataset.requireAmount !== '0') {
+            const amtInputs = Array.from(form.querySelectorAll('.payment-amount'));
+            if (amtInputs.length) {
+              let anyValid = false;
+              for (const input of amtInputs) {
+                const val = parseFloat(String(input.value || '').replace(/[,\s]/g, ''));
+                if (Number.isFinite(val) && val > 0) {
+                  anyValid = true;
+                  break;
+                }
+              }
+              if (!anyValid) {
+                alert('Please enter an amount for either Clinical Lab or X-ray Lab before marking complete.');
+                if (btn) {
+                  btn.disabled = true;
+                  btn.style.opacity = '0.45';
+                  btn.style.cursor = 'not-allowed';
+                  btn.style.pointerEvents = 'none';
+                }
+                return;
+              }
+            }
+          }
+
           if (btn) btn.disabled = true;
 
           // use URLSearchParams directly (fetch will set Content-Type correctly)

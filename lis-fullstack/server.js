@@ -625,7 +625,9 @@ app.use((req, res, next) => {
 // Set view engine
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.set('view cache', true); // In-memory compilation cache for lightning-fast page transitions
+if (process.pkg || process.env.NODE_ENV === 'production') {
+  app.set('view cache', true);
+}
 
 // Routes
 const authRoutes = require('./routes/auth');
