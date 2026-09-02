@@ -84,10 +84,16 @@ function getDataDir() {
 
       const seedDb = path.join(resDir, 'lis-data.db');
       const pdDb = path.join(pdDir, 'lis-data.db');
+      const seedEnv = path.join(resDir, '.env');
+      const pdEnv = path.join(pdDir, '.env');
 
       if (fs.existsSync(seedDb) && !fs.existsSync(pdDb)) {
         fs.copyFileSync(seedDb, pdDb);
         console.log('[dataPath] seeded clean lis-data.db from installer-resources');
+      }
+      if (fs.existsSync(seedEnv) && !fs.existsSync(pdEnv)) {
+        fs.copyFileSync(seedEnv, pdEnv);
+        console.log('[dataPath] seeded .env from installer-resources');
       }
       if (fs.existsSync(seedData) && !fs.existsSync(pdData) && !fs.existsSync(pdDb)) {
         fs.copyFileSync(seedData, pdData);

@@ -34,14 +34,38 @@ async function make() {
 
   fs.writeFileSync(usersPath, JSON.stringify([admin], null, 2), 'utf8');
 
+  // Read any existing key or configuration from local project .env
+  try {
+    require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+  } catch (_) {}
+
   const initialData = {
     users: [],
     patients: [],
     tests: [],
     templates: [],
-    counters: {}
+    counters: {},
+    settings: {
+      openrouterApiKeyEncrypted: process.env.OPENROUTER_ENCRYPTED_KEY || null,
+      openrouterModel: process.env.OPENROUTER_DEFAULT_MODEL || 'openai/gpt-4o-mini'
+    }
   };
   fs.writeFileSync(dataPath, JSON.stringify(initialData, null, 2), 'utf8');
+
+  // Seed default .env into installer resources
+  const envLines = [
+    'NODE_ENV=production',
+    'PORT=3000',
+    'DISABLE_REPORT_GENERATION=1'
+  ];
+  if (process.env.OPENROUTER_ENCRYPTED_KEY) {
+    envLines.push(`OPENROUTER_ENCRYPTED_KEY=${process.env.OPENROUTER_ENCRYPTED_KEY}`);
+  }
+  if (process.env.OPENROUTER_DEFAULT_MODEL) {
+    envLines.push(`OPENROUTER_DEFAULT_MODEL=${process.env.OPENROUTER_DEFAULT_MODEL}`);
+  }
+  const envPath = path.join(OUT_DIR, '.env');
+  fs.writeFileSync(envPath, envLines.join('\n') + '\n', 'utf8');
 
   // Create clean seed SQLite database
   try {
@@ -59,6 +83,7 @@ async function make() {
   console.log('Wrote installer resources to', OUT_DIR);
   console.log(' -', usersPath);
   console.log(' -', dataPath);
+  console.log(' -', envPath);
 }
 
 make().catch(err => { console.error(err); process.exit(1); });

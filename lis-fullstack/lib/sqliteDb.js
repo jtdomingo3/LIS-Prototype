@@ -19,12 +19,18 @@ const SCHEMA_VERSION = 1;
 
 let BetterSqlite3 = null;
 try {
-  // Only attempt better-sqlite3 outside of pkg snapshot to avoid N-API version mismatches
-  if (!process.pkg) {
-    BetterSqlite3 = require('better-sqlite3');
-  }
+  BetterSqlite3 = require('better-sqlite3');
 } catch (e) {
-  BetterSqlite3 = null;
+  try {
+    if (process.execPath) {
+      const extBetter = path.join(path.dirname(process.execPath), 'node_modules', 'better-sqlite3');
+      if (fs.existsSync(extBetter)) {
+        BetterSqlite3 = require(extBetter);
+      }
+    }
+  } catch (_) {
+    BetterSqlite3 = null;
+  }
 }
 
 let SqlJs = null;
@@ -814,7 +820,13 @@ function createSqlJsDb(SQL, dbPath) {
     CREATE INDEX IF NOT EXISTS idx_chat_msg_conv ON chatbot_messages(conversation_id);
   `);
 
-  function persist() {
+  let persistTimer = null;
+
+  function flushToDisk() {
+    if (persistTimer) {
+      clearTimeout(persistTimer);
+      persistTimer = null;
+    }
     try {
       const data = sqlite.export();
       const tmp = dbPath + '.tmp';
@@ -829,6 +841,24 @@ function createSqlJsDb(SQL, dbPath) {
       }
     }
   }
+
+  function persist(immediate = false) {
+    if (immediate) {
+      flushToDisk();
+      return;
+    }
+    if (!persistTimer) {
+      persistTimer = setTimeout(() => {
+        persistTimer = null;
+        flushToDisk();
+      }, 75); // 75ms debounce batches consecutive writes, eliminating I/O freezes
+    }
+  }
+
+  try {
+    process.on('beforeExit', () => { flushToDisk(); });
+    process.on('exit', () => { flushToDisk(); });
+  } catch (_) {}
 
   function queryAll(sql, params = []) {
     try {
@@ -1314,20 +1344,24 @@ function createSqlJsDb(SQL, dbPath) {
         const conv = this.getChatbotConversation(id, userId);
         if (!conv) return false;
         sqlite.run('BEGIN TRANSACTION;');
-        sqlite.run('DELETE FROM chatbot_conversations WHERE id = ?', [String(id)]);
-        sqlite.run('DELETE FROM chatbot_messages WHERE conversation_id = ?', [String(id)]);
-        sqlite.run('COMMIT;');
+        try {
+          sqlite.run('DELETE FROM chatbot_conversations WHERE id = ?', [String(id)]);
+          sqlite.run('DELETE FROM chatbot_messages WHERE conversation_id = ?', [String(id)]);
+          sqlite.run('COMMIT;');
+        } catch (e) {
+          sqlite.run('ROLLBACK;');
+          throw e;
+        }
         persist();
         return true;
       } catch (e) {
-        try { sqlite.run('ROLLBACK;'); } catch (_) {}
         return false;
       }
     },
     getChatbotMessages(conversationId) {
       if (!conversationId) return [];
       try {
-        const rows = queryAll('SELECT id, conversation_id, user_id, role, content, sources, created_at FROM chatbot_messages WHERE conversation_id = ? ORDER BY created_at ASC', [String(conversationId)]);
+        const rows = queryAll('SELECT * FROM chatbot_messages WHERE conversation_id = ? ORDER BY created_at ASC', [String(conversationId)]);
         return (rows || []).map(r => ({
           id: r.id,
           conversation_id: r.conversation_id,
@@ -1344,6 +1378,8 @@ function createSqlJsDb(SQL, dbPath) {
       try {
         const id = msg.id || ('msg_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7));
         const createdAt = safeStr(msg.created_at || new Date().toISOString());
+        const sources = msg.sources ? (typeof msg.sources === 'string' ? msg.sources : JSON.stringify(msg.sources)) : '[]';
+        
         sqlite.run(
           'INSERT INTO chatbot_messages (id, conversation_id, user_id, role, content, sources, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
           [
@@ -1352,7 +1388,7 @@ function createSqlJsDb(SQL, dbPath) {
             safeStr(msg.user_id || 'default'),
             safeStr(msg.role || 'user'),
             safeStr(msg.content || ''),
-            msg.sources ? JSON.stringify(msg.sources) : '[]',
+            sources,
             createdAt
           ]
         );
@@ -1379,8 +1415,46 @@ function createSqlJsDb(SQL, dbPath) {
       }
     },
 
-    close() {
+    checkpoint() {
+      persist(true);
+    },
+
+    read() {
+      let settings = {};
+      try {
+        const rows = queryAll("SELECT json FROM settings WHERE key = 'main'");
+        if (rows.length && rows[0].json) settings = JSON.parse(rows[0].json);
+      } catch (e) {}
+      return {
+        patients: this.getPatients(),
+        tests: this.getTests(),
+        templates: this.getTemplates(),
+        counters: this.getCounters(),
+        settings
+      };
+    },
+
+    write(data) {
+      if (!data || typeof data !== 'object') return;
+      sqlite.run('BEGIN TRANSACTION;');
+      try {
+        if (Array.isArray(data.patients)) this.savePatients(data.patients);
+        if (Array.isArray(data.tests)) this.saveTests(data.tests);
+        if (Array.isArray(data.templates)) this.saveTemplates(data.templates);
+        if (data.counters && typeof data.counters === 'object') this.saveCounters(data.counters);
+        if (data.settings && typeof data.settings === 'object') {
+          sqlite.run("INSERT OR REPLACE INTO settings (key, json) VALUES ('main', ?)", [JSON.stringify(data.settings)]);
+        }
+        sqlite.run('COMMIT;');
+      } catch (e) {
+        sqlite.run('ROLLBACK;');
+        throw e;
+      }
       persist();
+    },
+
+    close() {
+      persist(true);
       try { sqlite.close(); } catch (e) {}
     }
   };
@@ -1390,7 +1464,7 @@ function createSqlJsDb(SQL, dbPath) {
  * Async initialization of database adapter (preferred for full compatibility)
  */
 async function initDb(dbPath, opts = {}) {
-  if (BetterSqlite3 && !process.pkg) {
+  if (BetterSqlite3) {
     try {
       return createBetterSqliteDb(dbPath, opts);
     } catch (e) {
@@ -1408,7 +1482,7 @@ async function initDb(dbPath, opts = {}) {
  * Otherwise uses pre-initialized sql.js instance or creates an in-memory queue.
  */
 function createDb(dbPath, opts = {}) {
-  if (BetterSqlite3 && !process.pkg) {
+  if (BetterSqlite3) {
     try {
       return createBetterSqliteDb(dbPath, opts);
     } catch (e) {

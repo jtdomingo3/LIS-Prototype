@@ -1,6 +1,33 @@
 const express = require('express');
-// Load environment variables from .env when present
-try { require('dotenv').config({ path: require('path').join(__dirname, '.env') }); } catch (e) {}
+// Load environment variables from .env across multiple persistent candidates
+(function loadEnv() {
+  const path = require('path');
+  const fs = require('fs');
+  try {
+    const dotenv = require('dotenv');
+    const candidates = [];
+    if (process.env.DATA_DIR) {
+      candidates.push(path.join(process.env.DATA_DIR, '.env'));
+    }
+    const programDataBase = process.env.PROGRAMDATA || path.join('C:', 'ProgramData');
+    candidates.push(path.join(programDataBase, 'GezyneLIS', '.env'));
+    if (process.execPath) {
+      candidates.push(path.join(path.dirname(process.execPath), '.env'));
+    }
+    candidates.push(path.join(process.cwd(), '.env'));
+    candidates.push(path.join(__dirname, '.env'));
+
+    for (const p of candidates) {
+      if (fs.existsSync(p)) {
+        dotenv.config({ path: p });
+        console.log('[server] Loaded environment from:', p);
+        break;
+      }
+    }
+  } catch (e) {
+    console.warn('[server] dotenv load notice:', e.message);
+  }
+})();
 const session = require('express-session');
 const flash = require('connect-flash');
 const helmet = require('helmet');
