@@ -6,6 +6,8 @@ node_modules/
 /sample results/
 
 # Common extras
+*.log
+**/logs/
 npm-debug.log*
 lis-fullstack/data.json
 lis-fullstack/data-users.json
