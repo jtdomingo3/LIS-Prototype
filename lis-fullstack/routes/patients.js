@@ -112,29 +112,14 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
     });
 
     // Attach hasTests flag per patient so the view can decide which action button to show.
-    // Fallback: prefer reading the file-based DB `data.json` directly when available
+    // Compute tests count per patient
     try {
       const testsCountByPatient = {};
-      // try file DB first (handle packaged path)
-      const { dataFile } = require('../lib/dataPath');
-      const dbPath = dataFile('data.json');
-      let fileTests = null;
-      try {
-        const raw = fs.readFileSync(dbPath, 'utf8');
-        const parsed = JSON.parse(raw || '{}');
-        if (Array.isArray(parsed.tests)) fileTests = parsed.tests;
-      } catch (e) {
-        fileTests = null;
-      }
-
-      if (Array.isArray(fileTests)) {
-        fileTests.forEach(t => { if (t && t.patient) testsCountByPatient[String(t.patient)] = (testsCountByPatient[String(t.patient)] || 0) + 1; });
-      } else {
-        // fallback to model API
-        const allTests = await Test.find({});
-        if (Array.isArray(allTests)) {
-          allTests.forEach(t => { if (t && t.patient) testsCountByPatient[String(t.patient)] = (testsCountByPatient[String(t.patient)] || 0) + 1; });
-        }
+      const allTests = (global.db && typeof global.db.getTests === 'function')
+        ? global.db.getTests()
+        : await Test.find({});
+      if (Array.isArray(allTests)) {
+        allTests.forEach(t => { if (t && t.patient) testsCountByPatient[String(t.patient)] = (testsCountByPatient[String(t.patient)] || 0) + 1; });
       }
 
       patients = patients.map(p => {

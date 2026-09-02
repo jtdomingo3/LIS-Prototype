@@ -369,12 +369,18 @@ function stopServerDirect(cb) {
   }
 }
 
+let _logSendTimer = null;
 function appendLog(line) {
   const ts = new Date().toISOString();
   const out = `[${ts}] ${String(line).trim()}`;
   logBuffer.push(out);
   if (logBuffer.length > 2000) logBuffer = logBuffer.slice(logBuffer.length - 2000);
-  try { if (mainWindow && mainWindow.webContents) mainWindow.webContents.send('log-update', logBuffer.join('\n')); } catch (e) {}
+  if (!_logSendTimer) {
+    _logSendTimer = setTimeout(() => {
+      _logSendTimer = null;
+      try { if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('log-update', logBuffer.join('\n')); } catch (e) {}
+    }, 400);
+  }
 }
 
 // If pm2/pm2 logs exist, tail them and append

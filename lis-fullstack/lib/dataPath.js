@@ -15,7 +15,11 @@ const os = require('os');
  *   which allows the installer or user to point the server at a custom
  *   location.
  */
+let _cachedDataDir = null;
+
 function getDataDir() {
+  if (_cachedDataDir) return _cachedDataDir;
+
   // start by honoring an explicit override; this is useful for testing and
   // for environments where the directory should be controlled by the caller.
   if (process.env.DATA_DIR && process.env.DATA_DIR.length) {
@@ -37,7 +41,8 @@ function getDataDir() {
       console.error('[dataPath] migration from execDir failed:', err);
     }
     try { fs.mkdirSync(dir, { recursive: true }); } catch (e) { /* ignore */ }
-    return dir;
+    _cachedDataDir = dir;
+    return _cachedDataDir;
   }
 
   if (process.pkg) {
@@ -112,7 +117,8 @@ function getDataDir() {
       const testFile = path.join(pdDir, `.test_${process.pid}`);
       fs.writeFileSync(testFile, ''); fs.unlinkSync(testFile);
       console.log('[dataPath] using ProgramData directory', pdDir);
-      return pdDir;
+      _cachedDataDir = pdDir;
+      return _cachedDataDir;
     } catch (e) {
       console.warn('[dataPath] ProgramData not writable, falling back to userDir', e);
       try { fs.mkdirSync(userDir, { recursive: true }); } catch (e2) { /* ignore */ }
@@ -127,14 +133,16 @@ function getDataDir() {
         }
       } catch (e3) { console.error('[dataPath] failed to copy from pd to userDir', e3); }
       console.log('[dataPath] using user directory', userDir);
-      return userDir;
+      _cachedDataDir = userDir;
+      return _cachedDataDir;
     }
   }
 
   // development mode: files live in project root (../ relative to this file)
   const devDir = path.join(__dirname, '..');
   console.log('[dataPath] development mode, using', devDir);
-  return devDir;
+  _cachedDataDir = devDir;
+  return _cachedDataDir;
 }
 
 function dataFile(filename) {

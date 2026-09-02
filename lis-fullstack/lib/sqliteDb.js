@@ -267,11 +267,22 @@ function createBetterSqliteDb(dbPath, opts = {}) {
   const testCache = createEntityCache(1000);
   const userCache = createEntityCache(200);
 
+  let cachedPatientsList = null;
+  let cachedTestsList = null;
+  let cachedUsersList = null;
+  let cachedTemplatesList = null;
+  let cachedCounters = null;
+  let cachedSettings = null;
+
   return {
     _engine: 'better-sqlite3',
     _sqlite: sqlite,
 
-    getPatients() { return parseRows(stmts.getAllPatients.all()); },
+    getPatients() {
+      if (cachedPatientsList) return cachedPatientsList;
+      cachedPatientsList = parseRows(stmts.getAllPatients.all());
+      return cachedPatientsList;
+    },
     getPatientById(id) {
       if (!id) return null;
       const cached = patientCache.get(id);
@@ -348,6 +359,7 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     },
     upsertPatient(p) {
       if (!p || !p.id) return;
+      cachedPatientsList = null;
       if (p.id) patientCache.delete(p.id);
       if (p.patientCode) patientCache.delete(p.patientCode);
       if (p.patientId) patientCache.delete(p.patientId);
@@ -366,11 +378,13 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     },
     deletePatient(id) {
       if (!id) return;
+      cachedPatientsList = null;
       patientCache.delete(id);
       stmts.deletePatientById.run(id);
     },
     savePatients(patients) {
       const arr = Array.isArray(patients) ? patients : [];
+      cachedPatientsList = null;
       patientCache.clear();
       sqlite.transaction(() => {
         const incomingIds = new Set(arr.filter(p => p && p.id).map(p => p.id));
@@ -385,7 +399,11 @@ function createBetterSqliteDb(dbPath, opts = {}) {
       })();
     },
 
-    getTests() { return parseRows(stmts.getAllTests.all()); },
+    getTests() {
+      if (cachedTestsList) return cachedTestsList;
+      cachedTestsList = parseRows(stmts.getAllTests.all());
+      return cachedTestsList;
+    },
     getTestById(id) {
       if (!id) return null;
       const cached = testCache.get(id);
@@ -451,6 +469,7 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     },
     upsertTest(t) {
       if (!t || !t.id) return;
+      cachedTestsList = null;
       if (t.id) testCache.delete(t.id);
       if (t.testId) testCache.delete(t.testId);
       stmts.upsertTest.run({
@@ -468,11 +487,13 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     },
     deleteTest(id) {
       if (!id) return;
+      cachedTestsList = null;
       testCache.delete(id);
       stmts.deleteTestById.run(id);
     },
     saveTests(tests) {
       const arr = Array.isArray(tests) ? tests : [];
+      cachedTestsList = null;
       testCache.clear();
       sqlite.transaction(() => {
         const incomingIds = new Set(arr.filter(t => t && t.id).map(t => t.id));
@@ -487,7 +508,11 @@ function createBetterSqliteDb(dbPath, opts = {}) {
       })();
     },
 
-    getUsers() { return parseRows(stmts.getAllUsers.all()); },
+    getUsers() {
+      if (cachedUsersList) return cachedUsersList;
+      cachedUsersList = parseRows(stmts.getAllUsers.all());
+      return cachedUsersList;
+    },
     getUserById(id) {
       if (!id) return null;
       try {
@@ -504,6 +529,7 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     },
     upsertUser(u) {
       if (!u || !u.id) return;
+      cachedUsersList = null;
       const pwd = u.password || (typeof u.toRawObject === 'function' ? u.toRawObject().password : null) || (this.getUserById(u.id) || {}).password;
       const userObj = (typeof u.toRawObject === 'function')
         ? u.toRawObject()
@@ -519,10 +545,12 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     },
     deleteUser(id) {
       if (!id) return;
+      cachedUsersList = null;
       stmts.deleteUserById.run(id);
     },
     saveUsers(users) {
       const arr = Array.isArray(users) ? users : [];
+      cachedUsersList = null;
       sqlite.transaction(() => {
         const incomingIds = new Set(arr.filter(u => u && u.id).map(u => u.id));
         const existing = sqlite.prepare('SELECT id FROM users').all();
@@ -536,9 +564,14 @@ function createBetterSqliteDb(dbPath, opts = {}) {
       })();
     },
 
-    getTemplates() { return parseRows(stmts.getAllTemplates.all()); },
+    getTemplates() {
+      if (cachedTemplatesList) return cachedTemplatesList;
+      cachedTemplatesList = parseRows(stmts.getAllTemplates.all());
+      return cachedTemplatesList;
+    },
     upsertTemplate(t) {
       if (!t || !t.id) return;
+      cachedTemplatesList = null;
       stmts.upsertTemplate.run({
         id: t.id,
         name: safeStr(t.name),
@@ -549,10 +582,12 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     },
     deleteTemplate(id) {
       if (!id) return;
+      cachedTemplatesList = null;
       stmts.deleteTemplateById.run(id);
     },
     saveTemplates(templates) {
       const arr = Array.isArray(templates) ? templates : [];
+      cachedTemplatesList = null;
       sqlite.transaction(() => {
         const incomingIds = new Set(arr.filter(t => t && t.id).map(t => t.id));
         const existing = sqlite.prepare('SELECT id FROM templates').all();
@@ -567,13 +602,16 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     },
 
     getCounters() {
+      if (cachedCounters) return cachedCounters;
       const rows = stmts.getAllCounters.all();
       const obj = {};
       for (const r of rows) obj[r.key] = r.value;
+      cachedCounters = obj;
       return obj;
     },
     saveCounters(counters) {
       const obj = counters && typeof counters === 'object' ? counters : {};
+      cachedCounters = null;
       sqlite.transaction(() => {
         stmts.deleteAllCounters.run();
         for (const [k, v] of Object.entries(obj)) {
@@ -602,20 +640,29 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     },
 
     getSettings() {
+      if (cachedSettings) return cachedSettings;
       try {
         const row = stmts.getSettings.get();
-        return row && row.json ? JSON.parse(row.json) : {};
+        cachedSettings = (row && row.json) ? JSON.parse(row.json) : {};
       } catch (e) {
-        return {};
+        cachedSettings = {};
       }
+      return cachedSettings;
     },
     setSettings(settings) {
+      cachedSettings = null;
       if (!settings || typeof settings !== 'object') return;
       stmts.upsertSettings.run(JSON.stringify(settings));
     },
 
     write(data) {
       if (!data || typeof data !== 'object') return;
+      cachedPatientsList = null;
+      cachedTestsList = null;
+      cachedUsersList = null;
+      cachedTemplatesList = null;
+      cachedCounters = null;
+      cachedSettings = null;
       sqlite.transaction(() => {
         if (Array.isArray(data.patients)) this.savePatients(data.patients);
         if (Array.isArray(data.tests)) this.saveTests(data.tests);
@@ -892,12 +939,21 @@ function createSqlJsDb(SQL, dbPath) {
   const testCache = createEntityCache(1000);
   const userCache = createEntityCache(200);
 
+  let cachedPatientsList = null;
+  let cachedTestsList = null;
+  let cachedUsersList = null;
+  let cachedTemplatesList = null;
+  let cachedCounters = null;
+  let cachedSettings = null;
+
   return {
     _engine: 'sql.js',
     _sqlite: sqlite,
 
     getPatients() {
-      return parseRows(queryAll('SELECT json FROM patients ORDER BY createdAt DESC'));
+      if (cachedPatientsList) return cachedPatientsList;
+      cachedPatientsList = parseRows(queryAll('SELECT json FROM patients ORDER BY createdAt DESC'));
+      return cachedPatientsList;
     },
 
     getPatientById(id) {
@@ -983,6 +1039,7 @@ function createSqlJsDb(SQL, dbPath) {
 
     upsertPatient(p) {
       if (!p || !p.id) return;
+      cachedPatientsList = null;
       if (p.id) patientCache.delete(p.id);
       if (p.patientCode) patientCache.delete(p.patientCode);
       if (p.patientId) patientCache.delete(p.patientId);
@@ -998,6 +1055,7 @@ function createSqlJsDb(SQL, dbPath) {
 
     deletePatient(id) {
       if (!id) return;
+      cachedPatientsList = null;
       patientCache.delete(id);
       sqlite.run('DELETE FROM patients WHERE id = ?', [id]);
       persist();
@@ -1005,6 +1063,7 @@ function createSqlJsDb(SQL, dbPath) {
 
     savePatients(patients) {
       const arr = Array.isArray(patients) ? patients : [];
+      cachedPatientsList = null;
       patientCache.clear();
       sqlite.run('BEGIN TRANSACTION;');
       try {
@@ -1029,7 +1088,9 @@ function createSqlJsDb(SQL, dbPath) {
     },
 
     getTests() {
-      return parseRows(queryAll('SELECT json FROM tests ORDER BY createdAt DESC'));
+      if (cachedTestsList) return cachedTestsList;
+      cachedTestsList = parseRows(queryAll('SELECT json FROM tests ORDER BY createdAt DESC'));
+      return cachedTestsList;
     },
 
     getTestById(id) {
@@ -1101,6 +1162,7 @@ function createSqlJsDb(SQL, dbPath) {
 
     upsertTest(t) {
       if (!t || !t.id) return;
+      cachedTestsList = null;
       if (t.id) testCache.delete(t.id);
       if (t.testId) testCache.delete(t.testId);
       sqlite.run(
@@ -1114,6 +1176,7 @@ function createSqlJsDb(SQL, dbPath) {
 
     deleteTest(id) {
       if (!id) return;
+      cachedTestsList = null;
       testCache.delete(id);
       sqlite.run('DELETE FROM tests WHERE id = ?', [id]);
       persist();
@@ -1121,6 +1184,7 @@ function createSqlJsDb(SQL, dbPath) {
 
     saveTests(tests) {
       const arr = Array.isArray(tests) ? tests : [];
+      cachedTestsList = null;
       testCache.clear();
       sqlite.run('BEGIN TRANSACTION;');
       try {
@@ -1145,7 +1209,9 @@ function createSqlJsDb(SQL, dbPath) {
     },
 
     getUsers() {
-      return parseRows(queryAll('SELECT json FROM users ORDER BY rowid'));
+      if (cachedUsersList) return cachedUsersList;
+      cachedUsersList = parseRows(queryAll('SELECT json FROM users ORDER BY rowid'));
+      return cachedUsersList;
     },
 
     getUserById(id) {
@@ -1168,6 +1234,7 @@ function createSqlJsDb(SQL, dbPath) {
 
     upsertUser(u) {
       if (!u || !u.id) return;
+      cachedUsersList = null;
       sqlite.run(
         'INSERT OR REPLACE INTO users (id, email, role, status, json) VALUES (?, ?, ?, ?, ?)',
         [u.id, safeStr(u.email), safeStr(u.role), safeStr(u.status), JSON.stringify(u)]
@@ -1177,12 +1244,14 @@ function createSqlJsDb(SQL, dbPath) {
 
     deleteUser(id) {
       if (!id) return;
+      cachedUsersList = null;
       sqlite.run('DELETE FROM users WHERE id = ?', [id]);
       persist();
     },
 
     saveUsers(users) {
       const arr = Array.isArray(users) ? users : [];
+      cachedUsersList = null;
       sqlite.run('BEGIN TRANSACTION;');
       try {
         const incomingIds = new Set(arr.filter(u => u && u.id).map(u => u.id));
@@ -1206,11 +1275,14 @@ function createSqlJsDb(SQL, dbPath) {
     },
 
     getTemplates() {
-      return parseRows(queryAll('SELECT json FROM templates ORDER BY rowid'));
+      if (cachedTemplatesList) return cachedTemplatesList;
+      cachedTemplatesList = parseRows(queryAll('SELECT json FROM templates ORDER BY rowid'));
+      return cachedTemplatesList;
     },
 
     upsertTemplate(t) {
       if (!t || !t.id) return;
+      cachedTemplatesList = null;
       sqlite.run(
         'INSERT OR REPLACE INTO templates (id, name, testType, isActive, json) VALUES (?, ?, ?, ?, ?)',
         [t.id, safeStr(t.name), safeStr(t.testType), t.isActive !== false ? 1 : 0, JSON.stringify(t)]
@@ -1220,12 +1292,14 @@ function createSqlJsDb(SQL, dbPath) {
 
     deleteTemplate(id) {
       if (!id) return;
+      cachedTemplatesList = null;
       sqlite.run('DELETE FROM templates WHERE id = ?', [id]);
       persist();
     },
 
     saveTemplates(templates) {
       const arr = Array.isArray(templates) ? templates : [];
+      cachedTemplatesList = null;
       sqlite.run('BEGIN TRANSACTION;');
       try {
         const incomingIds = new Set(arr.filter(t => t && t.id).map(t => t.id));
@@ -1249,14 +1323,17 @@ function createSqlJsDb(SQL, dbPath) {
     },
 
     getCounters() {
+      if (cachedCounters) return cachedCounters;
       const rows = queryAll('SELECT key, value FROM counters');
       const obj = {};
       for (const r of rows) obj[r.key] = r.value;
+      cachedCounters = obj;
       return obj;
     },
 
     saveCounters(counters) {
       const obj = counters && typeof counters === 'object' ? counters : {};
+      cachedCounters = null;
       sqlite.run('BEGIN TRANSACTION;');
       try {
         sqlite.run('DELETE FROM counters;');
@@ -1428,14 +1505,20 @@ function createSqlJsDb(SQL, dbPath) {
     },
 
     getSettings() {
+      if (cachedSettings) return cachedSettings;
       try {
         const rows = queryAll("SELECT json FROM settings WHERE key = 'main'");
-        if (rows.length && rows[0].json) return JSON.parse(rows[0].json);
+        if (rows.length && rows[0].json) {
+          cachedSettings = JSON.parse(rows[0].json);
+          return cachedSettings;
+        }
       } catch (e) {}
-      return {};
+      cachedSettings = {};
+      return cachedSettings;
     },
 
     setSettings(settings) {
+      cachedSettings = null;
       if (!settings || typeof settings !== 'object') return;
       sqlite.run("INSERT OR REPLACE INTO settings (key, json) VALUES ('main', ?)", [JSON.stringify(settings)]);
       persist();
@@ -1453,6 +1536,12 @@ function createSqlJsDb(SQL, dbPath) {
 
     write(data) {
       if (!data || typeof data !== 'object') return;
+      cachedPatientsList = null;
+      cachedTestsList = null;
+      cachedUsersList = null;
+      cachedTemplatesList = null;
+      cachedCounters = null;
+      cachedSettings = null;
       if (Array.isArray(data.patients)) this.savePatients(data.patients);
       if (Array.isArray(data.tests)) this.saveTests(data.tests);
       if (Array.isArray(data.templates)) this.saveTemplates(data.templates);
