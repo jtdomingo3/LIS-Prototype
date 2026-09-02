@@ -861,7 +861,7 @@
     </style>
     
     <!-- Styles injected from individual views (via express-ejs-layouts extractStyles) -->
-    <%- style %>
+    <%- typeof style !== 'undefined' ? style : '' %>
 
     </head>
 <body>
@@ -1471,7 +1471,7 @@
     <script src="/assets/button-guard.js"></script>
     <script src="/assets/results-autocomplete.js"></script>
     <!-- Scripts injected from individual views (via express-ejs-layouts extractScripts) -->
-    <%- script %>
+    <%- typeof script !== 'undefined' ? script : '' %>
 
     <!-- GezyneBot Floating AI Assistant Widget (Standalone Edition) -->
     <%- include('partials/gezynebot-widget') %>

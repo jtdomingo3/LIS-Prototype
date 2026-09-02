@@ -70,13 +70,52 @@ function getForwardHeaders(req) {
     return headers;
 }
 
+// Available models on Central Server
+const AVAILABLE_MODELS = [
+    { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini (Fast & Accurate - Recommended)' },
+    { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash (Low Latency)' },
+    { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Llama 3.3 70B (High Precision)' }
+];
+const DEFAULT_MODEL = 'openai/gpt-4o-mini';
+
 // Render dedicated full-screen assistant page
 router.get('/', requireAuth, async (req, res) => {
     const serverUrl = getServerUrl(req);
     const isOnline = await checkServerReachable(serverUrl);
+    let conversations = [];
+    let activeConversation = null;
+    let initialMessages = [];
+
+    if (isOnline) {
+        try {
+            const headers = getForwardHeaders(req);
+            const convRes = await fetch(`${serverUrl}/chatbot/api/conversations`, { headers });
+            const convData = await convRes.json();
+            if (convData && convData.conversations) {
+                conversations = convData.conversations;
+            }
+
+            const activeConvId = req.query.conversationId || (conversations[0] ? conversations[0].id : null);
+            if (activeConvId) {
+                activeConversation = conversations.find(c => c.id === activeConvId) || null;
+                const msgRes = await fetch(`${serverUrl}/chatbot/api/conversations/${encodeURIComponent(activeConvId)}`, { headers });
+                const msgData = await msgRes.json();
+                if (msgData && msgData.messages) {
+                    initialMessages = msgData.messages;
+                }
+            }
+        } catch (err) {
+            console.warn('[Standalone Chatbot] error loading topics from server:', err && err.message);
+        }
+    }
 
     res.render('chatbot/index', {
         title: 'GezyneBot AI Assistant',
+        conversations,
+        activeConversation,
+        initialMessages,
+        availableModels: AVAILABLE_MODELS,
+        defaultModel: DEFAULT_MODEL,
         serverUrl,
         isOnline
     });
