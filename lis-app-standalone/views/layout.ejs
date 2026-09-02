@@ -914,7 +914,6 @@
             </form>
             <a href="/settings" class="nav-item" style="margin-top:8px;"><span class="nav-emoji">⚙️</span><span class="nav-text">Settings</span></a>
             <a href="/chatbot" class="nav-item <%= title && title.includes('GezyneBot') ? 'active' : '' %>" style="margin-top:4px;"><span class="nav-emoji">🤖</span><span class="nav-text">GezyneBot AI</span></a>
-            <button type="button" class="nav-item" id="fullscreenBtn" onclick="toggleFullscreen()" style="margin-top:4px;border:none;width:100%;text-align:left;background:transparent;cursor:pointer;"><span class="nav-emoji">⛶</span><span class="nav-text">Fullscreen</span></button>
         </div>
         <% } %>
 
@@ -1321,40 +1320,6 @@
             if (document.visibilityState === 'visible') scheduleSSEConnect(3000);
         })();
 
-        // Clean up any legacy keepFullscreen flag
-        try { localStorage.removeItem('keepFullscreen'); } catch (e) {}
-
-        // Standard native fullscreen toggle (no auto-fullscreen or shell redirects)
-        function toggleFullscreen() {
-            try {
-                if (document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement) {
-                    if (document.exitFullscreen) document.exitFullscreen();
-                    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-                    else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
-                    else if (document.msExitFullscreen) document.msExitFullscreen();
-                } else {
-                    const el = document.documentElement;
-                    if (el.requestFullscreen) el.requestFullscreen();
-                    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-                    else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
-                    else if (el.msRequestFullscreen) el.msRequestFullscreen();
-                }
-            } catch (e) {}
-        }
-
-        // Update button text on fullscreen change
-        document.addEventListener('fullscreenchange', updateFsButton);
-        document.addEventListener('webkitfullscreenchange', updateFsButton);
-        document.addEventListener('mozfullscreenchange', updateFsButton);
-        document.addEventListener('MSFullscreenChange', updateFsButton);
-        
-        function updateFsButton() {
-            const fsBtn = document.getElementById('fullscreenBtn');
-            if (!fsBtn) return;
-            const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
-            const textEl = fsBtn.querySelector('.nav-text');
-            if (textEl) textEl.textContent = isFullscreen ? 'Exit Fullscreen' : 'Fullscreen';
-        }
 </script>
 
     <!-- Global Custom Confirmation Modal -->
