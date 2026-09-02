@@ -1,64 +1,79 @@
-<!-- GezyneBot Floating AI Assistant Widget (Standalone Edition) -->
-<div id="gezynebot-container">
+<!-- GezyneBot Floating Chatbot Widget (Lower Right - Green Edition) -->
+<% if (typeof sessionUser !== 'undefined' && sessionUser) { %>
+<div id="gezynebot-container" class="gezynebot-container">
     <!-- Floating Launcher Button -->
-    <button id="gezynebot-launcher" class="gezynebot-launcher-btn" type="button" title="Open GezyneBot Assistant">
-        <span class="gezynebot-launcher-icon">🤖</span>
-        <span class="gezynebot-status-badge" id="gezynebot-badge"></span>
+    <button id="gezynebot-launcher" class="gezynebot-launcher" type="button" aria-label="Open GezyneBot AI Assistant" title="Open GezyneBot AI Assistant">
+        <span class="gezynebot-launcher-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2C6.48 2 2 6.48 2 12C2 13.85 2.5 15.55 3.39 17L2 22L7.25 20.65C8.65 21.5 10.28 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM8.5 10C9.33 10 10 9.33 10 8.5C10 7.67 9.33 7 8.5 7C7.67 7 7 7.67 7 8.5C7 9.33 7.67 10 8.5 10ZM15.5 10C16.33 10 17 9.33 17 8.5C17 7.67 16.33 7 15.5 7C14.67 7 14 7.67 14 8.5C14 9.33 14.67 10 15.5 10ZM12 17.5C9.67 17.5 7.69 16.04 6.89 14H17.11C16.31 16.04 14.33 17.5 12 17.5Z" fill="currentColor"/>
+            </svg>
+        </span>
+        <span class="gezynebot-badge-pulse" id="gezynebot-badge"></span>
+        <span class="gezynebot-tooltip" id="gezynebot-tooltip-text">GezyneBot</span>
     </button>
 
-    <!-- Floating Chat Popup Panel -->
-    <div id="gezynebot-panel" class="gezynebot-panel">
+    <!-- Floating Chat Window Panel -->
+    <div id="gezynebot-panel" class="gezynebot-panel" role="dialog" aria-label="GezyneBot AI Assistant">
         <!-- Header -->
         <div class="gezynebot-header">
-            <div class="gezynebot-header-info">
-                <div class="gezynebot-avatar">🤖</div>
+            <div class="gezynebot-header-left">
+                <div class="gezynebot-avatar">
+                    <span>🤖</span>
+                    <span class="gezynebot-online-dot" id="gezynebot-online-dot" title="Online"></span>
+                </div>
                 <div>
-                    <h3 class="gezynebot-title">GezyneBot</h3>
-                    <p class="gezynebot-subtitle" id="gezynebot-status-text">Connecting to Server...</p>
+                    <div class="gezynebot-title">GezyneBot</div>
+                    <div class="gezynebot-subtitle" id="gezynebot-status-text">LIS & Clinical Laboratory Assistant</div>
                 </div>
             </div>
             <div class="gezynebot-header-actions">
-                <button id="gezynebot-maximize-btn" class="gezynebot-action-btn" type="button" title="Maximize to full page">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <button type="button" id="gezynebot-maximize-btn" class="gezynebot-btn-icon" title="Maximize conversation to dedicated full page" aria-label="Maximize conversation">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="15 3 21 3 21 9"></polyline>
                         <polyline points="9 21 3 21 3 15"></polyline>
                         <line x1="21" y1="3" x2="14" y2="10"></line>
                         <line x1="3" y1="21" x2="10" y2="14"></line>
                     </svg>
                 </button>
-                <button id="gezynebot-close-btn" class="gezynebot-action-btn" type="button" title="Close Assistant">✕</button>
+                <button type="button" id="gezynebot-close-btn" class="gezynebot-btn-icon" title="Close chat" aria-label="Close chat">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
             </div>
         </div>
 
-        <!-- Offline Notice Banner (Dynamic) -->
-        <div id="gezynebot-offline-alert" class="gezynebot-offline-alert" style="display:none;">
-            <span class="offline-icon">⚠️</span>
-            <span class="offline-text"><strong>Offline:</strong> Central LIS server connection required.</span>
+        <!-- Offline Notice Alert (Shown when disconnected) -->
+        <div id="gezynebot-offline-alert" style="display:none; background:#fffbeb; border-bottom:1px solid #fef3c7; color:#b45309; padding:8px 14px; font-size:0.8em; align-items:center; gap:8px;">
+            <span>⚠️</span>
+            <span><strong>Offline:</strong> Central LIS server connection required to chat.</span>
         </div>
 
-        <!-- Quick Suggestion Chips -->
-        <div class="gezynebot-chips-bar" id="gezynebot-chips">
-            <button class="gezynebot-chip" type="button" data-query="What is the CLSI tube order of draw?">🧪 Order of Draw</button>
-            <button class="gezynebot-chip" type="button" data-query="What are the patient fasting guidelines for Lipid Profile and FBS?">🩸 Fasting Rules</button>
-            <button class="gezynebot-chip" type="button" data-query="What are the critical panic lab values for potassium, glucose, and platelets?">⚠️ Panic Values</button>
-            <button class="gezynebot-chip" type="button" data-query="How do I capture chemistry results from Analyser.MDB?">🔬 Import Analyzer</button>
+        <!-- Quick Suggestions Chips -->
+        <div class="gezynebot-chips">
+            <button type="button" class="gezynebot-chip" data-query="What is the phlebotomy order of draw for blood collection tubes?">🧪 Order of Draw</button>
+            <button type="button" class="gezynebot-chip" data-query="What are the patient fasting guidelines for Lipid Profile and FBS?">🩸 Fasting Rules</button>
+            <button type="button" class="gezynebot-chip" data-query="What are the laboratory critical panic values and reporting protocol?">⚠️ Panic Values</button>
+            <button type="button" class="gezynebot-chip" data-query="How do I capture and import chemistry results from Analyser.MDB in the LIS?">🔬 Import Analyzer</button>
         </div>
 
-        <!-- Message Body -->
+        <!-- Message Stream -->
         <div id="gezynebot-messages" class="gezynebot-messages">
             <div class="gezynebot-msg gezynebot-msg-bot">
                 <div class="gezynebot-bubble">
-                    <p>Hello! I am <strong>GezyneBot</strong>, your LIS & Clinical Laboratory Assistant.</p>
-                    <p style="font-size:0.86em; color:#64748b; margin-top:4px;">I operate through your central LIS server to assist with phlebotomy protocols, normal ranges, and system workflows.</p>
+                    <p>Hello <strong><%= sessionUser ? sessionUser.name : 'there' %></strong>! 👋</p>
+                    <p>I am <strong>GezyneBot</strong>, your LIS and clinical laboratory assistant. You can ask me how to use the LIS system (reception queue, test entry, analyzer capture, reports) or ask medical questions (normal ranges, tube order of draw, fasting guidelines, panic values).</p>
+                    <p style="font-size:0.85em;color:#64748b;margin-top:6px;">💡 <em>Tip: Click the <strong>⤢</strong> icon above anytime to maximize our discussion into a full dedicated page!</em></p>
                 </div>
             </div>
         </div>
 
         <!-- Input Composer -->
         <div class="gezynebot-composer">
-            <textarea id="gezynebot-input" placeholder="Ask GezyneBot anything..." rows="1"></textarea>
-            <button id="gezynebot-send-btn" class="gezynebot-send-btn" type="button" title="Send message">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <textarea id="gezynebot-input" rows="1" placeholder="Ask GezyneBot anything..." aria-label="Ask GezyneBot anything"></textarea>
+            <button id="gezynebot-send-btn" type="button" class="gezynebot-send-btn" title="Send message" aria-label="Send message">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="22" y1="2" x2="11" y2="13"></line>
                     <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                 </svg>
@@ -68,8 +83,8 @@
 </div>
 
 <style>
-/* Container & Floating Launcher */
-#gezynebot-container {
+/* --- GezyneBot Floating Widget Styles --- */
+.gezynebot-container {
     position: fixed;
     bottom: 24px;
     right: 24px;
@@ -77,95 +92,117 @@
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
-.gezynebot-launcher-btn {
-    width: 58px;
-    height: 58px;
+/* Launcher Button */
+.gezynebot-launcher {
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #09090b 0%, #18181b 100%);
-    border: 2px solid #10b981;
+    background: linear-gradient(135deg, #10b981 0%, #047857 100%);
     color: #ffffff;
+    border: none;
     cursor: pointer;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 8px 24px rgba(16, 185, 129, 0.45);
     display: flex;
     align-items: center;
     justify-content: center;
     position: relative;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     outline: none;
 }
 
-.gezynebot-launcher-btn:hover {
-    transform: scale(1.08) translateY(-2px);
-    box-shadow: 0 12px 28px rgba(16, 185, 129, 0.35);
-    border-color: #34d399;
+.gezynebot-launcher:hover {
+    transform: translateY(-4px) scale(1.05);
+    box-shadow: 0 12px 30px rgba(16, 185, 129, 0.6);
 }
 
-.gezynebot-launcher-icon {
-    font-size: 26px;
-    line-height: 1;
+.gezynebot-launcher:active {
+    transform: scale(0.95);
 }
 
-.gezynebot-status-badge {
+.gezynebot-badge-pulse {
     position: absolute;
-    bottom: 2px;
+    top: 2px;
     right: 2px;
     width: 14px;
     height: 14px;
     border-radius: 50%;
-    background: #94a3b8;
-    border: 2px solid #09090b;
-    transition: background 0.3s;
+    background: #34d399;
+    border: 2px solid #ffffff;
+    animation: gezynebot-pulse 2s infinite;
 }
 
-.gezynebot-status-badge.online {
-    background: #10b981;
-    box-shadow: 0 0 8px #10b981;
-}
-
-.gezynebot-status-badge.offline {
+.gezynebot-badge-pulse.offline {
     background: #ef4444;
-    box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+    animation: none;
+}
+
+@keyframes gezynebot-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(52, 211, 153, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0); }
+}
+
+.gezynebot-tooltip {
+    position: absolute;
+    right: 70px;
+    background: #18181b;
+    color: #ffffff;
+    font-size: 0.85em;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 8px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.gezynebot-launcher:hover .gezynebot-tooltip {
+    opacity: 1;
+    transform: translateX(-4px);
 }
 
 /* Chat Panel */
 .gezynebot-panel {
-    position: absolute;
-    bottom: 70px;
-    right: 0;
-    width: 380px;
-    height: 550px;
-    max-height: calc(100vh - 100px);
+    display: none;
+    position: fixed;
+    bottom: 96px;
+    right: 24px;
+    width: 410px;
+    max-width: calc(100vw - 32px);
+    height: 580px;
+    max-height: calc(100vh - 120px);
     background: #ffffff;
-    border-radius: 18px;
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2);
+    border-radius: 20px;
+    box-shadow: 0 18px 50px rgba(15, 23, 42, 0.22), 0 0 1px rgba(0,0,0,0.1);
     border: 1px solid #e2e8f0;
-    display: flex;
     flex-direction: column;
     overflow: hidden;
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(20px) scale(0.96);
-    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: gezynebot-slide-up 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .gezynebot-panel.active {
-    opacity: 1;
-    pointer-events: auto;
-    transform: translateY(0) scale(1);
+    display: flex;
+}
+
+@keyframes gezynebot-slide-up {
+    from { opacity: 0; transform: translateY(18px) scale(0.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 /* Header */
 .gezynebot-header {
+    padding: 14px 18px;
     background: linear-gradient(135deg, #09090b 0%, #18181b 100%);
     color: #ffffff;
-    padding: 14px 18px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 
-.gezynebot-header-info {
+.gezynebot-header-left {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -180,24 +217,35 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 20px;
+    font-size: 1.25em;
+    position: relative;
+}
+
+.gezynebot-online-dot {
+    position: absolute;
+    bottom: -1px;
+    right: -1px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #10b981;
+    border: 2px solid #09090b;
+}
+
+.gezynebot-online-dot.offline {
+    background: #ef4444;
 }
 
 .gezynebot-title {
-    margin: 0;
     font-size: 1.05em;
     font-weight: 700;
-    letter-spacing: 0.3px;
     color: #ffffff;
+    line-height: 1.2;
 }
 
 .gezynebot-subtitle {
-    margin: 0;
     font-size: 0.76em;
     color: #94a3b8;
-    display: flex;
-    align-items: center;
-    gap: 5px;
 }
 
 .gezynebot-header-actions {
@@ -206,96 +254,78 @@
     gap: 6px;
 }
 
-.gezynebot-action-btn {
-    background: rgba(255, 255, 255, 0.08);
+.gezynebot-btn-icon {
+    background: rgba(255,255,255,0.08);
     border: none;
-    color: #cbd5e1;
+    color: #e2e8f0;
     width: 32px;
     height: 32px;
     border-radius: 8px;
+    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    outline: none;
+    transition: all 0.2s ease;
 }
 
-.gezynebot-action-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
+.gezynebot-btn-icon:hover {
+    background: rgba(255,255,255,0.2);
     color: #ffffff;
+    transform: scale(1.05);
 }
 
-/* Offline Alert Bar */
-.gezynebot-offline-alert {
-    background: #fffbeb;
-    border-bottom: 1px solid #fef3c7;
-    color: #b45309;
-    padding: 8px 14px;
-    font-size: 0.8em;
+/* Quick Chips */
+.gezynebot-chips {
     display: flex;
-    align-items: center;
     gap: 8px;
-}
-
-/* Chips Bar */
-.gezynebot-chips-bar {
-    padding: 8px 14px;
+    padding: 10px 14px;
     background: #f8fafc;
-    border-bottom: 1px solid #e2e8f0;
-    display: flex;
-    gap: 8px;
+    border-bottom: 1px solid #f1f5f9;
     overflow-x: auto;
     white-space: nowrap;
+    scrollbar-width: none;
 }
 
-.gezynebot-chips-bar::-webkit-scrollbar {
-    height: 4px;
-}
-.gezynebot-chips-bar::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 4px;
+.gezynebot-chips::-webkit-scrollbar {
+    display: none;
 }
 
 .gezynebot-chip {
-    padding: 5px 11px;
     background: #ffffff;
-    border: 1px solid #cbd5e1;
-    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    padding: 5px 11px;
     font-size: 0.78em;
+    font-weight: 500;
     color: #334155;
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: all 0.2s ease;
     flex-shrink: 0;
 }
 
 .gezynebot-chip:hover {
     background: #ecfdf5;
     border-color: #10b981;
-    color: #047857;
+    color: #065f46;
+    transform: translateY(-1px);
 }
 
-/* Messages Area */
+/* Messages */
 .gezynebot-messages {
     flex: 1;
-    overflow-y: auto;
     padding: 16px;
+    overflow-y: auto;
     background: #f8fafc;
     display: flex;
     flex-direction: column;
     gap: 12px;
+    font-size: 0.92em;
+    line-height: 1.5;
 }
 
 .gezynebot-msg {
     display: flex;
-    flex-direction: column;
-    max-width: 86%;
-    animation: gezynebot-fadein 0.2s ease;
-}
-
-@keyframes gezynebot-fadein {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: translateY(0); }
+    max-width: 88%;
 }
 
 .gezynebot-msg-bot {
@@ -307,10 +337,8 @@
 }
 
 .gezynebot-bubble {
-    padding: 10px 14px;
-    border-radius: 14px;
-    font-size: 0.9em;
-    line-height: 1.5;
+    padding: 12px 16px;
+    border-radius: 16px;
     word-break: break-word;
 }
 
@@ -318,18 +346,17 @@
     background: #ffffff;
     color: #1e293b;
     border: 1px solid #e2e8f0;
-    border-bottom-left-radius: 4px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+    border-top-left-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
 }
 
 .gezynebot-msg-user .gezynebot-bubble {
-    background: #10b981;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
     color: #ffffff;
-    border-bottom-right-radius: 4px;
+    border-top-right-radius: 4px;
     box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
 }
 
-/* Bot Markdown Styles */
 .gezynebot-msg-bot .gezynebot-bubble h3 {
     margin: 12px 0 6px 0;
     font-size: 1.08em;
@@ -518,13 +545,15 @@
 (function() {
     const launcher = document.getElementById('gezynebot-launcher');
     const badge = document.getElementById('gezynebot-badge');
+    const onlineDot = document.getElementById('gezynebot-online-dot');
+    const tooltipText = document.getElementById('gezynebot-tooltip-text');
+    const statusText = document.getElementById('gezynebot-status-text');
+    const offlineAlert = document.getElementById('gezynebot-offline-alert');
     const panel = document.getElementById('gezynebot-panel');
     const closeBtn = document.getElementById('gezynebot-close-btn');
     const maxBtn = document.getElementById('gezynebot-maximize-btn');
     const input = document.getElementById('gezynebot-input');
     const sendBtn = document.getElementById('gezynebot-send-btn');
-    const statusText = document.getElementById('gezynebot-status-text');
-    const offlineAlert = document.getElementById('gezynebot-offline-alert');
     const messagesContainer = document.getElementById('gezynebot-messages');
     const chips = document.querySelectorAll('.gezynebot-chip');
 
@@ -532,7 +561,7 @@
     let isSending = false;
     let isOnline = false;
 
-    // Check online status via server API and/or Electron context bridge
+    // Check connectivity status
     async function updateConnectivity() {
         let serverOnline = false;
         try {
@@ -551,30 +580,34 @@
 
         isOnline = serverOnline;
         if (isOnline) {
-            badge.className = 'gezynebot-status-badge online';
-            statusText.innerHTML = '<span style="color:#10b981;">●</span> Server Connected';
-            offlineAlert.style.display = 'none';
-            input.disabled = false;
-            input.placeholder = 'Ask GezyneBot anything...';
-            sendBtn.disabled = isSending;
+            if (badge) badge.className = 'gezynebot-badge-pulse';
+            if (onlineDot) onlineDot.className = 'gezynebot-online-dot';
+            if (tooltipText) tooltipText.textContent = 'GezyneBot (Online)';
+            if (statusText) statusText.textContent = 'LIS & Clinical Laboratory Assistant';
+            if (offlineAlert) offlineAlert.style.display = 'none';
+            if (input) {
+                input.disabled = false;
+                input.placeholder = 'Ask GezyneBot anything...';
+            }
+            if (sendBtn) sendBtn.disabled = isSending;
         } else {
-            badge.className = 'gezynebot-status-badge offline';
-            statusText.innerHTML = '<span style="color:#ef4444;">●</span> Server Offline (Disabled)';
-            offlineAlert.style.display = 'flex';
-            input.disabled = true;
-            input.placeholder = 'Offline: Central LIS server connection required...';
-            sendBtn.disabled = true;
+            if (badge) badge.className = 'gezynebot-badge-pulse offline';
+            if (onlineDot) onlineDot.className = 'gezynebot-online-dot offline';
+            if (tooltipText) tooltipText.textContent = 'GezyneBot (Offline - Server Required)';
+            if (statusText) statusText.textContent = 'Offline (Central Server Required)';
+            if (offlineAlert) offlineAlert.style.display = 'flex';
+            if (input) {
+                input.disabled = true;
+                input.placeholder = 'Offline: Central LIS server connection required...';
+            }
+            if (sendBtn) sendBtn.disabled = true;
         }
     }
 
-    // Listen for network status changes if running in Electron
     if (window.lisApp && typeof window.lisApp.onNetworkStatus === 'function') {
-        window.lisApp.onNetworkStatus((data) => {
-            updateConnectivity();
-        });
+        window.lisApp.onNetworkStatus(() => updateConnectivity());
     }
 
-    // Initial check + periodic heartbeat
     updateConnectivity();
     setInterval(updateConnectivity, 8000);
 
@@ -641,7 +674,7 @@
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
 
-    // Markdown Parser
+    // Comprehensive markdown parser
     function formatMarkdown(text) {
         if (!text) return '';
         let escaped = text
@@ -834,3 +867,4 @@
     }
 })();
 </script>
+<% } %>
