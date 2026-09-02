@@ -363,6 +363,13 @@ class SyncEngine {
               if (opts && opts.replace) this.dataStore.setCollection(col, result[col]); else this.dataStore.setCollection(col, result[col]);
             }
           }
+          // Bi-directional signature assets sync
+          try {
+            await this._syncSignatureAssets(result.users, base);
+          } catch (sigErr) {
+            console.warn('[Sync] signature asset sync warning:', sigErr && sigErr.message);
+          }
+
           const now = new Date().toISOString();
           this.dataStore.setMeta('lastFullSync', now);
           console.log('[Sync] fullSync imported', imported, 'records — saved to', this.dataStore.filePath);
@@ -1144,6 +1151,154 @@ class SyncEngine {
       } catch (e) {}
       this._currentBridgeReq = null;
     }
+  }
+
+  /* ── Bi-directional Signature Assets Synchronization ──────────────── */
+  async _syncSignatureAssets(serverUsers, serverBaseUrl) {
+    const fs = require('fs');
+    const path = require('path');
+    const localSigDir = path.join(__dirname, '..', 'assets', 'signature');
+    if (!fs.existsSync(localSigDir)) {
+      try { fs.mkdirSync(localSigDir, { recursive: true }); } catch (_) {}
+    }
+
+    const base = (serverBaseUrl || '').replace(/\/$/, '');
+    if (!base) return;
+
+    // 1. Download missing signatures from server to local assets
+    if (Array.isArray(serverUsers)) {
+      for (const u of serverUsers) {
+        if (!u || !u.signature) continue;
+        const sigFilename = path.basename(u.signature);
+        const localPath = path.join(localSigDir, sigFilename);
+        if (!fs.existsSync(localPath)) {
+          try {
+            const fetchUrl = `${base}/assets/signature/${encodeURIComponent(sigFilename)}`;
+            const buf = await this._downloadBuffer(fetchUrl);
+            if (buf && buf.length > 0) {
+              fs.writeFileSync(localPath, buf);
+              console.log(`[Sync] downloaded missing signature from server: ${sigFilename} (${buf.length} bytes)`);
+            }
+          } catch (dlErr) {
+            // non-critical, continue
+          }
+        }
+      }
+    }
+
+    // 2. Upload any local signatures that the server might not have
+    try {
+      const localFiles = fs.readdirSync(localSigDir).filter(f => f.endsWith('.png') || f.endsWith('.jpg') || f.endsWith('.jpeg'));
+      const serverUserSigs = new Set((serverUsers || []).map(u => u && u.signature ? path.basename(u.signature) : null).filter(Boolean));
+
+      // Match signatures to user emails from local DataStore
+      const localUsers = (this.dataStore && typeof this.dataStore.getCollection === 'function') ? (this.dataStore.getCollection('users') || []) : [];
+      const userBySig = {};
+      for (const lu of localUsers) {
+        if (lu && lu.signature) userBySig[path.basename(lu.signature)] = lu.email;
+      }
+
+      for (const fname of localFiles) {
+        // If the server doesn't have this user signature, sync it to the server
+        if (!serverUserSigs.has(fname)) {
+          const filePath = path.join(localSigDir, fname);
+          const buf = fs.readFileSync(filePath);
+          const base64Data = buf.toString('base64');
+          const email = userBySig[fname] || null;
+
+          try {
+            await this._postSignatureSync(`${base}/api/signatures/sync`, fname, base64Data, email);
+            console.log(`[Sync] uploaded local signature to server: ${fname} (${buf.length} bytes) for ${email || 'user'}`);
+          } catch (upErr) {
+            // will retry on next sync
+          }
+        }
+      }
+    } catch (scanErr) {
+      console.warn('[Sync] signature upload scan warning:', scanErr && scanErr.message);
+    }
+  }
+
+  _downloadBuffer(url) {
+    return new Promise((resolve, reject) => {
+      try {
+        const parsed = new URL(url);
+        const isHttps = parsed.protocol === 'https:';
+        const client = isHttps ? require('https') : require('http');
+        const headers = {};
+        if (this._sessionCookie) headers['Cookie'] = this._sessionCookie;
+        if (this._bearerToken) headers['Authorization'] = `Bearer ${this._bearerToken}`;
+        const hashAuth = this._getAutoLoginHash();
+        if (hashAuth) {
+          headers['X-LIS-Sync-Email'] = hashAuth.email;
+          headers['X-LIS-Sync-Hash'] = hashAuth.hash;
+        }
+
+        const req = client.request({
+          hostname: parsed.hostname,
+          port: parsed.port || (isHttps ? 443 : 80),
+          path: parsed.pathname + (parsed.search || ''),
+          method: 'GET',
+          headers,
+          timeout: 10000
+        }, (res) => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            const chunks = [];
+            res.on('data', chunk => chunks.push(chunk));
+            res.on('end', () => resolve(Buffer.concat(chunks)));
+          } else {
+            reject(new Error(`HTTP ${res.statusCode}`));
+          }
+        });
+        req.on('error', reject);
+        req.end();
+      } catch (e) {
+        reject(e);
+      }
+    });
+  }
+
+  _postSignatureSync(url, filename, base64Data, email) {
+    return new Promise((resolve, reject) => {
+      try {
+        const parsed = new URL(url);
+        const isHttps = parsed.protocol === 'https:';
+        const client = isHttps ? require('https') : require('http');
+        const body = JSON.stringify({ filename, data: base64Data, email });
+        const headers = {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(body),
+          'X-LIS-Sync-Replay': '1'
+        };
+        if (this._sessionCookie) headers['Cookie'] = this._sessionCookie;
+        if (this._bearerToken) headers['Authorization'] = `Bearer ${this._bearerToken}`;
+        const hashAuth = this._getAutoLoginHash();
+        if (hashAuth) {
+          headers['X-LIS-Sync-Email'] = hashAuth.email;
+          headers['X-LIS-Sync-Hash'] = hashAuth.hash;
+        }
+
+        const req = client.request({
+          hostname: parsed.hostname,
+          port: parsed.port || (isHttps ? 443 : 80),
+          path: parsed.pathname,
+          method: 'POST',
+          headers,
+          timeout: 15000
+        }, (res) => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            resolve(true);
+          } else {
+            reject(new Error(`HTTP ${res.statusCode}`));
+          }
+        });
+        req.on('error', reject);
+        req.write(body);
+        req.end();
+      } catch (e) {
+        reject(e);
+      }
+    });
   }
 }
 

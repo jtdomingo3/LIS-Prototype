@@ -765,6 +765,73 @@ app.get('/export/data.json', (req, res) => {
   }
 });
 
+// Endpoint for syncing signatures between standalone app and server
+app.post('/api/signatures/sync', express.json({ limit: '15mb' }), express.urlencoded({ extended: true, limit: '15mb' }), async (req, res) => {
+  try {
+    let authorized = !!(req.session && req.session.user) || (process.env.ALLOW_PUBLIC_DATA_EXPORT === '1');
+
+    // 1. Bearer Token Auth
+    if (!authorized) {
+      const token = extractBearerToken(req);
+      if (token && verifyToken(token)) {
+        authorized = true;
+      }
+    }
+
+    // 2. Hash-based sync token from standalone desktop app
+    if (!authorized) {
+      const syncEmail = req.headers['x-lis-sync-email'];
+      const syncHash  = req.headers['x-lis-sync-hash'];
+      if (syncEmail && syncHash) {
+        try {
+          const allUsers = db.getUsers();
+          const matchUser = allUsers.find(u => u.email && u.email.toLowerCase() === syncEmail.toLowerCase());
+          if (matchUser && matchUser.password && matchUser.password === syncHash && matchUser.status !== 'Inactive') {
+            authorized = true;
+          }
+        } catch (e) { /* ignore auth check errors */ }
+      }
+    }
+
+    if (!authorized) return res.status(401).json({ success: false, error: 'Authentication required' });
+
+    const { filename, data, email } = req.body || {};
+    if (!filename || !data) {
+      return res.status(400).json({ success: false, error: 'Missing filename or base64 data' });
+    }
+
+    // Sanitize filename to prevent path traversal
+    const safeFilename = path.basename(filename).replace(/[^a-zA-Z0-9._-]/g, '_');
+    if (!safeFilename.toLowerCase().endsWith('.png') && !safeFilename.toLowerCase().endsWith('.jpg') && !safeFilename.toLowerCase().endsWith('.jpeg')) {
+      return res.status(400).json({ success: false, error: 'Invalid file extension - only PNG and JPEG allowed' });
+    }
+
+    const targetDir = path.join(__dirname, 'assets', 'signature');
+    if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+    const targetPath = path.join(targetDir, safeFilename);
+
+    // Write file from base64
+    const buffer = Buffer.from(data, 'base64');
+    fs.writeFileSync(targetPath, buffer);
+    console.log(`[Signatures] saved synced signature: ${safeFilename} (${buffer.length} bytes) for ${email || 'unknown'}`);
+
+    // If user email provided, update User record on the server
+    if (email) {
+      try {
+        const User = require('./models/User');
+        await User.findOneAndUpdate({ email: email.toLowerCase() }, { signature: safeFilename });
+      } catch (uErr) {
+        console.warn('[Signatures] User signature update warning:', uErr && uErr.message);
+      }
+    }
+
+    return res.json({ success: true, filename: safeFilename });
+  } catch (err) {
+    console.error('[Signatures] sync failed:', err && err.message);
+    return res.status(500).json({ success: false, error: err && err.message });
+  }
+});
+
 // Fullscreen persistent shell
 app.get('/shell', (req, res) => {
   const targetUrl = req.query.url || '/dashboard';
