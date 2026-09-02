@@ -201,9 +201,6 @@ class Test {
 
   static async findOneAndUpdate(query, updateData, options = {}) {
     let test = await this.findOne(query);
-      test = tests.find(t => t.id === (query._id || query.id));
-      if (!test) test = tests.find(t => t.testId === (query._id || query.id));
-    }
 
     if (test) {
       // Instrumentation: set/normalize incoming updatedAt
