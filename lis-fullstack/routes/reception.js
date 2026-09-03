@@ -199,6 +199,27 @@ function getTargetAreaForRequest(rr) {
   return null;
 }
 
+// Helper to determine if a test has already completed or passed a specific clinical queue area
+function hasTestCompletedArea(test, areaName) {
+  if (!test) return false;
+  // If test is already in In Progress, Completed, Checked, or Released, it has finished its physical queue station
+  if (test.released || test.status === 'Released' || test.status === 'Completed' || test.status === 'Checked' || test.status === 'In Progress') {
+    const directTarget = getTargetAreaForTest(test);
+    if (!areaName || directTarget === areaName) return true;
+  }
+  // Check test status history for any completed transition for this area
+  if (Array.isArray(test.statusHistory)) {
+    const visited = test.statusHistory.some(entry => {
+      if (!entry) return false;
+      const matchArea = !areaName || entry.area === areaName || entry.from === areaName;
+      const isExit = entry.to === 'In Progress' || entry.to === 'Completed' || entry.to === 'Checked' || entry.to === 'Released';
+      return matchArea && isExit;
+    });
+    if (visited) return true;
+  }
+  return false;
+}
+
 // GET /reception - show areas and counts
 router.get('/', requireAuth, canAccessPatient, async (req, res) => {
   try {
@@ -898,8 +919,14 @@ router.post('/assign', requireAuth, canAccessPatient, async (req, res) => {
     const AREAS = getAreas();
 
     if (area === 'Payment Area') {
-      // Reassigning patient back to Payment Area: return all unreleased tests to Payment Area
-      for (const t of (existingTests || [])) {
+      // Reassigning patient back to Payment Area: only return tests that have not yet completed their clinical procedure
+      const unperformedTests = (existingTests || []).filter(t => {
+        if (!t || t.released || t.status === 'Released' || t.status === 'Completed' || t.status === 'In Progress' || t.status === 'Checked') return false;
+        if (hasTestCompletedArea(t)) return false;
+        return true;
+      });
+      const toReassign = unperformedTests.length ? unperformedTests : [test];
+      for (const t of toReassign) {
         if (!t || t.released || t.status === 'Released') continue;
         t.allowReassign = true;
         t.completedAt = undefined;
@@ -1055,9 +1082,13 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
         return t.status === 'Payment Area' || !t.status;
       });
 
-      // Map each test to a candidate target area (null => Awaiting)
-      const candidates = testsToProcess.map(t => ({ test: t, target: getTargetAreaForTest(t) }));
-      console.log('DEBUG Payment Area candidates:', candidates.map(c => ({ testId: c.test && c.test.testId, target: c.target })));
+      // Map each test to a candidate target area (null => Awaiting, or In Progress if already done)
+      const candidates = testsToProcess.map(t => {
+        const rawTarget = getTargetAreaForTest(t);
+        const alreadyDone = rawTarget && hasTestCompletedArea(t, rawTarget);
+        return { test: t, target: alreadyDone ? null : rawTarget, alreadyDone };
+      });
+      console.log('DEBUG Payment Area candidates:', candidates.map(c => ({ testId: c.test && c.test.testId, target: c.target, alreadyDone: c.alreadyDone })));
 
       // Choose earliest area in AREAS order among non-null targets (preferring non-sendout)
       const nonNullTargets = candidates.map(c => c.target).filter(Boolean);
@@ -1081,6 +1112,8 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
           let targ;
           if (String(c.target || '').toLowerCase() === 'sendout') {
             targ = 'Sendout';
+          } else if (c.alreadyDone) {
+            targ = 'In Progress';
           } else if (chosenTarget && c.target === chosenTarget) {
             targ = chosenTarget;
           } else if (isSampleOnDemand) {
@@ -1177,22 +1210,30 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
       }
 
       // 3. Inspect remaining active tests for this patient to advance to the next pipeline station
+      // Filter strictly for tests that are still awaiting their physical station
+      // (Tests that are already In Progress, Completed, Checked, Released, or already visited their area MUST NEVER be re-queued)
       const currentIdx = AREAS.indexOf(area);
       let chosenNextArea = null;
       let bestNextIdx = Infinity;
 
-      for (const t of remainingTests) {
-        if (!t || t.released || t.status === 'Released' || t.status === 'Checked' || t.status === 'Completed') continue;
+      const pendingStationTests = remainingTests.filter(t => {
+        if (!t || t.released || t.status === 'Released' || t.status === 'Checked' || t.status === 'Completed' || t.status === 'In Progress' || t.status === 'Stashed') {
+          return false;
+        }
+        if (hasTestCompletedArea(t)) return false;
+        return true;
+      });
 
+      for (const t of pendingStationTests) {
         // Check target areas for this test
         const reqAreas = [];
         try {
           const directTarget = getTargetAreaForTest(t);
-          if (directTarget) reqAreas.push(directTarget);
+          if (directTarget && !hasTestCompletedArea(t, directTarget)) reqAreas.push(directTarget);
           const rlist = Array.isArray(t.requestedTests) ? t.requestedTests : [];
           for (const rr of rlist) {
             const a = getTargetAreaForRequest(rr);
-            if (a) reqAreas.push(a);
+            if (a && !hasTestCompletedArea(t, a)) reqAreas.push(a);
           }
         } catch (e) {}
 
@@ -1209,14 +1250,32 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
         }
       }
 
-      // 4. If a subsequent area is found in the pipeline, advance candidate tests to that area
-      for (const t of remainingTests) {
-        if (!t || t.released || t.status === 'Released' || t.status === 'Checked' || t.status === 'Completed') continue;
+      // If no subsequent area found (e.g. late test added for an earlier station), look for any uncompleted station among pending tests
+      if (!chosenNextArea && pendingStationTests.length) {
+        let earliestIdx = Infinity;
+        for (const t of pendingStationTests) {
+          const directTarget = getTargetAreaForTest(t);
+          if (directTarget && !hasTestCompletedArea(t, directTarget)) {
+            let idx = AREAS.indexOf(directTarget);
+            if (idx < 0 && String(directTarget).toLowerCase().includes("doctor's check-up")) {
+              idx = AREAS.findIndex(a => String(a).toLowerCase().includes("doctor's check-up"));
+            }
+            if (idx >= 0 && idx < earliestIdx) {
+              earliestIdx = idx;
+              chosenNextArea = directTarget;
+            }
+          }
+        }
+      }
+
+      // 4. Advance matching pending tests to the chosen target station
+      for (const t of pendingStationTests) {
         try {
           const label = String(t.testType || '').toLowerCase();
           const isSampleOnDemand = /fecal|pregnan|fob|urinal|fecalysis|fecal-occult-blood|pregnancy/.test(label) ||
                                   (Array.isArray(t.requestedTests) && t.requestedTests.some(rr => rr && /(fecal|pregnan|fob|urinal|pregnancy|fecalysis)/i.test(String(rr.label || ''))));
           const directTarget = getTargetAreaForTest(t);
+          if (directTarget && hasTestCompletedArea(t, directTarget)) continue;
 
           const isDirectMatch = chosenNextArea && (
             directTarget === chosenNextArea ||
