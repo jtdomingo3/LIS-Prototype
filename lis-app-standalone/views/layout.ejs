@@ -1230,21 +1230,66 @@
             // Initial render
             renderList(); showBadge(getNotifs().length);
 
-            // SSE connection
+            // State guards to eliminate duplicate connections and browser reload freezes
+            let isPageUnloading = false;
             let es = null;
             const connEl = document.getElementById('notifConn');
             function setConn(status){ try { if (connEl) { connEl.style.background = status ? '#10b981' : '#ef4444'; connEl.title = status ? 'Connected' : 'Disconnected'; } } catch(e){} }
             function indicateConnecting(){ try { if (connEl) { connEl.style.background = '#f59e0b'; connEl.title = 'Connecting...'; } } catch(e){} }
 
+            // Clean teardown on page navigation or reload to prevent browser process hangs
+            window.addEventListener('beforeunload', () => {
+                isPageUnloading = true;
+                if (window._sseRefreshTimer) clearTimeout(window._sseRefreshTimer);
+                if (window._sseDeferredTimer) clearTimeout(window._sseDeferredTimer);
+                try {
+                    if (es) {
+                        es.onopen = null;
+                        es.onmessage = null;
+                        es.onerror = null;
+                        es.close();
+                        es = null;
+                    }
+                } catch(e){}
+            });
+            window.addEventListener('pagehide', () => {
+                isPageUnloading = true;
+                try {
+                    if (es) {
+                        es.onopen = null;
+                        es.onmessage = null;
+                        es.onerror = null;
+                        es.close();
+                        es = null;
+                    }
+                } catch(e){}
+            });
+
+            // Track local form submissions to prevent the acting browser from double-reloading
+            document.addEventListener('submit', () => {
+                try { sessionStorage.setItem('lis-last-local-action', Date.now().toString()); } catch(e){}
+            });
+
             // initialize as disconnected until EventSource opens
             setConn(false);
 
             function connect(){
+                if (isPageUnloading) return;
+                // Prevent duplicate concurrent EventSource connections on the same tab
+                if (es && es.readyState !== 2) return;
                 try {
+                    if (es) {
+                        try { es.onopen = null; es.onmessage = null; es.onerror = null; es.close(); } catch(e){}
+                        es = null;
+                    }
                     indicateConnecting();
                     const url = '/reception/assigned-events';
                     es = new EventSource(url);
-                    es.onopen = function(){ console.log('[SSE] connected'); setConn(true); sseRetryDelay = 3000; };
+                    es.onopen = function(){
+                        console.log('[SSE] connected');
+                        setConn(true);
+                        sseRetryDelay = 3000;
+                    };
                     es.onmessage = function(ev){
                         try {
                             const data = ev.data ? JSON.parse(ev.data) : null;
@@ -1268,9 +1313,11 @@
                                     const isExplicitlyOff = (userAutoRefresh === '0');
                                     const isUserEditing = document.activeElement && (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName) || document.activeElement.isContentEditable);
 
-                                    if (!isExplicitlyOff && isLivePage && !isUserEditing && !isEditingPage) {
+                                    if (!isExplicitlyOff && isLivePage && !isUserEditing && !isEditingPage && !isPageUnloading) {
                                         if (window._sseRefreshTimer) clearTimeout(window._sseRefreshTimer);
                                         window._sseRefreshTimer = setTimeout(() => {
+                                            if (isPageUnloading) return;
+                                            isPageUnloading = true;
                                             try { window.location.reload(); } catch(e){}
                                         }, 300);
                                     }
@@ -1356,10 +1403,16 @@
                                 // Auto-refresh is ON by default on all live list pages so updates are seamless
                                 const enabled = isLivePage || defaultAutoRefresh || (autoRefreshCheckbox && autoRefreshCheckbox.checked !== false);
 
-                                if (enabled && !isUserEditing && !isEditingPage) {
+                                // Check if this browser tab just completed a form action (prevent double-reload on the active tab)
+                                const lastLocalAction = parseInt(sessionStorage.getItem('lis-last-local-action') || '0', 10);
+                                const isRecentLocalAction = (Date.now() - lastLocalAction < 2200);
+
+                                if (enabled && !isUserEditing && !isEditingPage && !isPageUnloading && !isRecentLocalAction) {
                                     if (window._sseRefreshTimer) clearTimeout(window._sseRefreshTimer);
-                                    const debounceDelay = Math.max(100, (sseCfg && sseCfg.refreshDebounceMs ? sseCfg.refreshDebounceMs : 800));
+                                    const debounceDelay = Math.max(300, (sseCfg && sseCfg.refreshDebounceMs ? sseCfg.refreshDebounceMs : 800));
                                     window._sseRefreshTimer = setTimeout(() => {
+                                        if (isPageUnloading) return;
+                                        isPageUnloading = true;
                                         try { window.location.reload(); } catch (e) {}
                                     }, debounceDelay);
                                 }
@@ -1369,16 +1422,24 @@
                         } catch (e) { console.warn('[SSE] message parse error', e); }
                     };
                     es.onerror = function(err){
-                        try { es.close(); } catch(e){};
+                        if (isPageUnloading) return;
+                        try {
+                            if (es) {
+                                es.onopen = null;
+                                es.onmessage = null;
+                                es.onerror = null;
+                                es.close();
+                            }
+                        } catch(e){};
                         es = null;
                         setConn(false);
                         sseRetryDelay = Math.min(30000, sseRetryDelay * 1.5);
-                        setTimeout(() => { connect(); }, sseRetryDelay);
+                        setTimeout(() => { if (!isPageUnloading && !es) connect(); }, sseRetryDelay);
                     };
                 } catch (e) {
                     setConn(false);
                     sseRetryDelay = Math.min(30000, sseRetryDelay * 1.5);
-                    setTimeout(() => { connect(); }, sseRetryDelay);
+                    setTimeout(() => { if (!isPageUnloading && !es) connect(); }, sseRetryDelay);
                 }
             }
             const configuredRetrySec = Math.max(1, (sseCfg.retryDelaySec || 3));
@@ -1388,20 +1449,20 @@
             // Connect immediately so live events and queue changes are never missed
             let sseDeferredTimer = null;
             function scheduleSSEConnect(delay = configuredConnectDelayMs) {
-                if (!('EventSource' in window)) return;
+                if (!('EventSource' in window) || isPageUnloading) return;
                 try { clearTimeout(sseDeferredTimer); } catch(e){}
                 if (delay <= 0) {
                     try { connect(); } catch(e){ console.warn('[SSE] connect failed', e); }
                 } else {
                     sseDeferredTimer = setTimeout(() => {
-                        try { connect(); } catch (e) { console.warn('[SSE] deferred connect failed', e); }
+                        try { if (!isPageUnloading) connect(); } catch (e) { console.warn('[SSE] deferred connect failed', e); }
                     }, delay);
                 }
             }
 
             // Keep connection alive continuously across tabs/windows; reconnect immediately if dropped
             document.addEventListener('visibilitychange', () => {
-                if (document.visibilityState === 'visible' && !es) {
+                if (document.visibilityState === 'visible' && !isPageUnloading && (!es || es.readyState === 2)) {
                     scheduleSSEConnect(0);
                 }
             });
