@@ -165,7 +165,7 @@ npm run dist:win
 npm run dist:dir
 ```
 
-Installer Artifact: `lis-app-standalone/dist/Gezyne LIS Client Setup 2.4.0.exe`
+Installer Artifact: `lis-app-standalone/dist/Gezyne LIS Setup 2.4.0.exe`
 
 ---
 

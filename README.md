@@ -141,14 +141,14 @@ npm run dist:win
 ```
 *Output: `lis-fullstack/tray/dist/Gezyne LIS Server Setup 2.4.0.exe`*
 
-### 2. Build Standalone Client Installer (`Gezyne LIS Client Setup 2.4.0.exe`)
+### 2. Build Standalone Client Installer (`Gezyne LIS Setup 2.4.0.exe`)
 
 ```powershell
 cd lis-app-standalone
 npm install
 npm run dist:win
 ```
-*Output: `lis-app-standalone/dist/Gezyne LIS Client Setup 2.4.0.exe`*
+*Output: `lis-app-standalone/dist/Gezyne LIS Setup 2.4.0.exe`*
 
 ---
 
