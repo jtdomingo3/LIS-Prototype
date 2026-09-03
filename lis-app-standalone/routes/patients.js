@@ -37,6 +37,18 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
     // Get all patients and filter/search
     let allPatients = await Patient.find({});
 
+    // Compute system-wide patient stats across whole database
+    let systemStats = { total: 0, female: 0, male: 0, philhealth: 0 };
+    if (Array.isArray(allPatients)) {
+      systemStats.total = allPatients.length;
+      allPatients.forEach(p => {
+        const g = String(p.gender || '').toLowerCase();
+        if (g.startsWith('f')) systemStats.female++;
+        else if (g.startsWith('m')) systemStats.male++;
+        if (p.philhealthConsent) systemStats.philhealth++;
+      });
+    }
+
     // Available companies for the company filter
     const availableCompanies = Array.isArray(allPatients) ? Array.from(new Set(allPatients.map(p => (p.company || '').toString()).filter(Boolean))).sort() : [];
 
@@ -112,29 +124,14 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
     });
 
     // Attach hasTests flag per patient so the view can decide which action button to show.
-    // Fallback: prefer reading the file-based DB `data.json` directly when available
+    // Compute tests count per patient
     try {
       const testsCountByPatient = {};
-      // try file DB first (handle packaged path)
-      const { dataFile } = require('../lib/dataPath');
-      const dbPath = dataFile('data.json');
-      let fileTests = null;
-      try {
-        const raw = fs.readFileSync(dbPath, 'utf8');
-        const parsed = JSON.parse(raw || '{}');
-        if (Array.isArray(parsed.tests)) fileTests = parsed.tests;
-      } catch (e) {
-        fileTests = null;
-      }
-
-      if (Array.isArray(fileTests)) {
-        fileTests.forEach(t => { if (t && t.patient) testsCountByPatient[String(t.patient)] = (testsCountByPatient[String(t.patient)] || 0) + 1; });
-      } else {
-        // fallback to model API
-        const allTests = await Test.find({});
-        if (Array.isArray(allTests)) {
-          allTests.forEach(t => { if (t && t.patient) testsCountByPatient[String(t.patient)] = (testsCountByPatient[String(t.patient)] || 0) + 1; });
-        }
+      const allTests = (global.db && typeof global.db.getTests === 'function')
+        ? global.db.getTests()
+        : await Test.find({});
+      if (Array.isArray(allTests)) {
+        allTests.forEach(t => { if (t && t.patient) testsCountByPatient[String(t.patient)] = (testsCountByPatient[String(t.patient)] || 0) + 1; });
       }
 
       patients = patients.map(p => {
@@ -158,7 +155,8 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
       philhealthFilter,
       companyFilter,
       dateFilter,
-      availableCompanies
+      availableCompanies,
+      systemStats
     });
   } catch (error) {
     console.error('Patients list error:', error);
@@ -379,7 +377,7 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       // preserve selected tests for extraction/medtech visibility (detailed objects)
       requestedTests: requestedTestsDetailed,
       client_id: (req.body && req.body.client_id) ? req.body.client_id : undefined,
-      createdBy: (req.session && req.session.user && req.session.user.id) ? req.session.user.id : 'admin'
+      createdBy: req.session.user.id
     });
 
     await patient.save();
@@ -437,25 +435,29 @@ router.post('/thermal-print', requireAuth, canAccessPatient, (req, res) => {
         action: 'thermal_test_manual',
         user: req.session && req.session.user ? req.session.user.id : null,
         args: args,
-        exitCode: proc.status,
-        stdout: (proc.stdout || '').toString(),
-        stderr: (proc.stderr || '').toString(),
-        time: new Date().toISOString()
+        exitCode: proc.status != null ? proc.status : null,
+        error: proc.error ? String(proc.error) : null,
+        stdout: proc.stdout || null,
+        stderr: proc.stderr || null,
+        timestamp: new Date().toISOString()
       };
-      const logFile = pathMod.join(__dirname, '..', 'thermal_test.log');
-      fsMod.appendFileSync(logFile, JSON.stringify(entry) + '\n');
-    } catch (e) {
-      console.warn('Failed to append thermal test log', e);
+      appendPrintLog(JSON.stringify(entry));
+    } catch (logErr) {
+      console.error('Failed to append print log:', logErr);
     }
 
-    if (proc.status === 0) {
-      return res.json({ success: true, message: 'Print job sent successfully', stdout: (proc.stdout || '').toString() });
-    } else {
-      return res.status(500).json({ success: false, error: 'Print test failed', stderr: (proc.stderr || '').toString(), stdout: (proc.stdout || '').toString() });
+    if (proc.error) {
+      console.error('Thermal print spawn error:', proc.error);
+      return res.status(500).json({ success: false, error: String(proc.error) });
     }
-  } catch (err) {
-    console.error('Thermal test error:', err);
-    return res.status(500).json({ success: false, error: String(err && err.message ? err.message : err) });
+    if (proc.status !== 0) {
+      console.error('Thermal print failed:', proc.stderr || proc.stdout || proc.status);
+      return res.status(500).json({ success: false, error: proc.stderr || proc.stdout || ('Exit code: ' + proc.status) });
+    }
+    return res.json({ success: true, output: proc.stdout });
+  } catch (e) {
+    console.error('Thermal print handler error:', e);
+    return res.status(500).json({ success: false, error: String(e) });
   }
 });
 
@@ -594,6 +596,7 @@ router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
 router.delete('/:id', requireAuth, canAccessPatient, async (req, res) => {
   try {
     const Test = require('../models/Test');
+    
     const targetId = req.params.id;
 
     // Resolve patient by any identifier (id, _id, patientId, patientCode)

@@ -1080,7 +1080,25 @@
         })();
 
         // ===== Global SSE Notifications =====
+        window.__LIS_SSE_CONFIG__ = <%- JSON.stringify(typeof sseConfig !== 'undefined' && sseConfig ? sseConfig : {
+            enabled: true,
+            autoRefreshByDefault: false,
+            allowedPages: ['/dashboard', '/patients', '/reception', '/tests', '/inventory'],
+            connectDelaySec: 3,
+            retryDelaySec: 3,
+            refreshDebounceMs: 800
+        }) %>;
+
         (function(){
+            const sseCfg = window.__LIS_SSE_CONFIG__ || {
+                enabled: true,
+                autoRefreshByDefault: false,
+                allowedPages: ['/dashboard', '/patients', '/reception', '/tests', '/inventory'],
+                connectDelaySec: 3,
+                retryDelaySec: 3,
+                refreshDebounceMs: 800
+            };
+
             const sound = document.getElementById('notifSound');
             const badge = document.getElementById('notifBadge');
             const btn = document.getElementById('notifBtn');
@@ -1092,8 +1110,14 @@
 
             if (!badge || !btn || !dropdown) return;
 
-            // Only enable SSE on a small set of real-time views to avoid system delays.
-            // Keep SSE active only for: /dashboard, /patients, /reception (and their subpaths).
+            // Check if SSE is globally disabled in Settings
+            if (sseCfg.enabled === false) {
+                const connEl = document.getElementById('notifConn');
+                if (connEl) { connEl.style.background = '#94a3b8'; connEl.title = 'SSE Real-Time updates disabled in Settings'; }
+                return;
+            }
+
+            // Real-time view check
             try {
                 const path = (window.location && window.location.pathname) ? window.location.pathname : '/';
                 // **don't open a stream on the new‑patient form** – a reload wipes the form
@@ -1116,21 +1140,27 @@
                     return;
                 }
 
-                const sseAllowed = ['/dashboard', '/patients', '/reception', '/tests', '/inventory'];
+                const sseAllowed = Array.isArray(sseCfg.allowedPages) && sseCfg.allowedPages.length > 0
+                    ? sseCfg.allowedPages
+                    : ['/dashboard', '/patients', '/reception', '/tests', '/inventory'];
+
                 const isAllowed = sseAllowed.some(p => path === p || path.startsWith(p + '/'));
                 if (!isAllowed) {
                     // Mark connection as disabled and skip SSE setup entirely (no reconnects)
                     const connEl = document.getElementById('notifConn');
-                    if (connEl) { connEl.style.background = '#ef4444'; connEl.title = 'SSE disabled on this page'; }
+                    if (connEl) { connEl.style.background = '#ef4444'; connEl.title = 'SSE disabled on this page (configurable in Settings)'; }
                     return;
                 }
             } catch (e) { /* if anything goes wrong, fall back to original behavior */ }
 
-            // restore preferences (default: auto-refresh disabled)
+            // restore preferences (default: auto-refresh disabled by default unless explicitly enabled in Settings)
             try {
                 const v = localStorage.getItem('notif-auto-refresh');
-                if (v === '1') autoRefreshCheckbox.checked = true;
-                else autoRefreshCheckbox.checked = false;
+                if (v !== null) {
+                    autoRefreshCheckbox.checked = (v === '1');
+                } else {
+                    autoRefreshCheckbox.checked = !!(sseCfg && sseCfg.autoRefreshByDefault === true);
+                }
             } catch(e){}
             try { if (localStorage.getItem('notif-muted') === '1') muteCheckbox.checked = true; } catch(e){}
 
@@ -1292,13 +1322,17 @@
                                                    currentPath === '/dashboard' || 
                                                    currentPath.startsWith('/inventory') || 
                                                    currentPath === '';
-                                const v = localStorage.getItem('notif-auto-refresh');
-                                const enabled = (v === '1' || (autoRefreshCheckbox && autoRefreshCheckbox.checked) || isLivePage);
-                                if (enabled && !isUserEditing && !isEditingPage) {
+                                const defaultAutoRefresh = !!(sseCfg && sseCfg.autoRefreshByDefault === true);
+                                const userAutoRefresh = localStorage.getItem('notif-auto-refresh');
+                                const isAutoRefreshOn = userAutoRefresh !== null ? (userAutoRefresh === '1') : defaultAutoRefresh;
+                                const enabled = (autoRefreshCheckbox && autoRefreshCheckbox.checked != null) ? autoRefreshCheckbox.checked : isAutoRefreshOn;
+
+                                if (enabled && !isUserEditing && !isEditingPage && isAllowed) {
                                     if (window._sseRefreshTimer) clearTimeout(window._sseRefreshTimer);
+                                    const debounceDelay = Math.max(100, (sseCfg.refreshDebounceMs || 800));
                                     window._sseRefreshTimer = setTimeout(() => {
                                         try { window.location.reload(); } catch (e) {}
-                                    }, 800);
+                                    }, debounceDelay);
                                 }
                             } catch(e){}
                         } catch (e) { console.warn('[SSE] message parse error', e); }
@@ -1316,11 +1350,14 @@
                     setTimeout(() => { if (document.visibilityState === 'visible') connect(); }, sseRetryDelay);
                 }
             }
-            let sseRetryDelay = 3000;
-            // Defer SSE connection until the user stays on the page for 3s.
-            // If user switches tab/loses visibility, cancel the pending connect and close any open connection.
+            const configuredRetrySec = Math.max(1, (sseCfg.retryDelaySec || 3));
+            let sseRetryDelay = configuredRetrySec * 1000;
+            const configuredConnectDelayMs = Math.max(0, (sseCfg.connectDelaySec != null ? sseCfg.connectDelaySec : 3)) * 1000;
+
+            // Defer SSE connection according to configured connection delay.
+            // If user switches tab/loses visibility, cancel pending connect and close open connection.
             let sseDeferredTimer = null;
-            function scheduleSSEConnect(delay = 3000) {
+            function scheduleSSEConnect(delay = configuredConnectDelayMs) {
                 if (!('EventSource' in window)) return;
                 try { clearTimeout(sseDeferredTimer); } catch(e){}
                 sseDeferredTimer = setTimeout(() => {
@@ -1332,17 +1369,15 @@
 
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible') {
-                    // schedule connect after 3s of being visible
-                    scheduleSSEConnect(3000);
+                    scheduleSSEConnect(configuredConnectDelayMs);
                 } else {
-                    // cancel pending connect and close any existing connection
                     try { clearTimeout(sseDeferredTimer); } catch(e){}
                     try { if (es) { es.close(); es = null; setConn(false); } } catch (e) {}
                 }
             });
 
-            // Kick off initial schedule when page loads (will connect after 5s if still visible)
-            if (document.visibilityState === 'visible') scheduleSSEConnect(3000);
+            // Kick off initial schedule when page loads
+            if (document.visibilityState === 'visible') scheduleSSEConnect(configuredConnectDelayMs);
         })();
 
         // Persistent Fullscreen Viewport (keeps Fullscreen active across all sidebar navigation and page loads)
@@ -1463,15 +1498,15 @@
 
     <!-- Global Custom Confirmation Modal -->
     <div id="customConfirmModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15, 23, 42, 0.6); backdrop-filter:blur(4px); z-index:999999; align-items:center; justify-content:center;">
-      <div style="background:#ffffff; width:90%; max-width:420px; border-radius:16px; padding:28px; box-shadow:0 25px 50px -12px rgba(0, 0, 0, 0.25); text-align:center; border: 1px solid #e2e8f0;">
-        <div style="width:60px; height:60px; background:#fee2e2; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 18px; color:#ef4444; font-size:26px;">
-          <i class="fa fa-exclamation-triangle"></i>
+      <div style="background:#ffffff; width:90%; max-width:440px; border-radius:16px; padding:28px; box-shadow:0 25px 50px -12px rgba(0, 0, 0, 0.25); text-align:center; border: 1px solid #e2e8f0;">
+        <div id="customConfirmIconWrapper" style="width:60px; height:60px; background:#fee2e2; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 18px; color:#ef4444; font-size:26px;">
+          <i id="customConfirmIcon" class="fa fa-exclamation-triangle"></i>
         </div>
-        <h3 id="customConfirmTitle" style="margin:0 0 10px; color:#0f172a; font-size:1.3rem; font-weight:700;">Confirm Action</h3>
-        <p id="customConfirmMessage" style="margin:0 0 24px; color:#64748b; font-size:0.95rem; line-height:1.5;">Are you sure you want to delete this item? This action cannot be undone.</p>
+        <h3 id="customConfirmTitle" style="margin:0 0 12px; color:#0f172a; font-size:1.25rem; font-weight:700;">Confirm Action</h3>
+        <div id="customConfirmMessage" style="margin:0 0 24px; color:#475569; font-size:0.92rem; line-height:1.55; text-align:left; background:#f8fafc; border:1px solid #f1f5f9; border-radius:10px; padding:14px 16px;">Are you sure you want to perform this action?</div>
         <div style="display:flex; gap:12px; justify-content:center;">
           <button id="customConfirmCancelBtn" type="button" class="button btn-secondary" style="flex:1; padding:12px; font-weight:600; border-radius:10px;">Cancel</button>
-          <button id="customConfirmOkBtn" type="button" class="button btn-danger" style="flex:1; padding:12px; font-weight:600; border-radius:10px;">Yes, Delete</button>
+          <button id="customConfirmOkBtn" type="button" class="button btn-danger" style="flex:1; padding:12px; font-weight:600; border-radius:10px;">Confirm</button>
         </div>
       </div>
     </div>
@@ -1481,19 +1516,50 @@
         const modal = document.getElementById('customConfirmModal');
         const titleEl = document.getElementById('customConfirmTitle');
         const msgEl = document.getElementById('customConfirmMessage');
+        const iconWrapper = document.getElementById('customConfirmIconWrapper');
+        const iconEl = document.getElementById('customConfirmIcon');
         const cancelBtn = document.getElementById('customConfirmCancelBtn');
         const okBtn = document.getElementById('customConfirmOkBtn');
         let pendingCallback = null;
 
         function openConfirm(message, onConfirm, options) {
           const opts = options || {};
+          const isPrimary = opts.type === 'primary' || opts.type === 'info';
           if (titleEl) titleEl.textContent = opts.title || 'Confirm Action';
           if (msgEl) {
             const rawMsg = String(message || 'Are you sure you want to perform this action?');
             msgEl.innerHTML = rawMsg.replace(/\\n|\n/g, '<br>');
           }
+          if (iconWrapper && iconEl) {
+            if (opts.icon) {
+              iconEl.className = opts.icon;
+            } else if (isPrimary) {
+              iconEl.className = 'fa fa-notes-medical';
+            } else {
+              iconEl.className = 'fa fa-exclamation-triangle';
+            }
+            if (opts.iconBg) {
+              iconWrapper.style.background = opts.iconBg;
+              iconWrapper.style.color = opts.iconColor || '#0284c7';
+            } else if (isPrimary) {
+              iconWrapper.style.background = '#e0f2fe';
+              iconWrapper.style.color = '#0284c7';
+            } else {
+              iconWrapper.style.background = '#fee2e2';
+              iconWrapper.style.color = '#ef4444';
+            }
+          }
           if (okBtn) {
-            okBtn.textContent = opts.btnText || 'Confirm';
+            okBtn.textContent = opts.btnText || (isPrimary ? 'Confirm' : 'Yes, Delete');
+            if (isPrimary) {
+              okBtn.className = 'button btn-primary';
+              okBtn.style.background = '#0284c7';
+              okBtn.style.borderColor = '#0284c7';
+            } else {
+              okBtn.className = 'button btn-danger';
+              okBtn.style.background = '';
+              okBtn.style.borderColor = '';
+            }
           }
           pendingCallback = onConfirm;
           if (modal) modal.style.display = 'flex';

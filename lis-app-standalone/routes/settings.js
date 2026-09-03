@@ -383,7 +383,46 @@ router.post('/', requireAuth, canManageUsers, (req, res) => {
       cur.openrouterModel = aiModel;
       cur.requirePaymentAmount = (flags.requirePaymentAmount === 'on' || flags.requirePaymentAmount === true || flags.requirePaymentAmount === 'true');
 
+      // SSE Real-Time Configuration
+      const sseAllowedPages = [];
+      if (flags.sse_page_dashboard) sseAllowedPages.push('/dashboard');
+      if (flags.sse_page_patients) sseAllowedPages.push('/patients');
+      if (flags.sse_page_reception) sseAllowedPages.push('/reception');
+      if (flags.sse_page_tests) sseAllowedPages.push('/tests');
+      if (flags.sse_page_reports) sseAllowedPages.push('/reports');
+      if (flags.sse_page_inventory) sseAllowedPages.push('/inventory');
+      if (flags.sse_page_signatures) sseAllowedPages.push('/signatures');
+      if (flags.sse_page_worksheet) sseAllowedPages.push('/reports/worksheet');
+      if (flags.sse_page_templates) sseAllowedPages.push('/templates');
+      if (flags.sse_page_users) sseAllowedPages.push('/users');
+      if (flags.sse_page_settings) sseAllowedPages.push('/settings');
+      if (flags.sse_page_chatbot) sseAllowedPages.push('/chatbot');
+
+      const parsedConnectDelay = parseInt(flags.sseConnectDelaySec, 10);
+      const parsedRetryDelay = parseInt(flags.sseRetryDelaySec, 10);
+      const parsedRefreshDebounce = parseInt(flags.sseRefreshDebounceMs, 10);
+
+      const sseConfigObj = {
+        enabled: flags.sseEnabled === 'on' || flags.sseEnabled === true || flags.sseEnabled === 'true',
+        autoRefreshByDefault: flags.sseAutoRefreshByDefault === 'on' || flags.sseAutoRefreshByDefault === true || flags.sseAutoRefreshByDefault === 'true',
+        allowedPages: sseAllowedPages,
+        connectDelaySec: !isNaN(parsedConnectDelay) ? Math.max(0, parsedConnectDelay) : 3,
+        retryDelaySec: !isNaN(parsedRetryDelay) ? Math.max(1, parsedRetryDelay) : 3,
+        refreshDebounceMs: !isNaN(parsedRefreshDebounce) ? Math.max(100, parsedRefreshDebounce) : 800
+      };
+      cur.sseConfig = sseConfigObj;
+      req.app.locals.sseConfig = sseConfigObj;
+
+      // Printer Settings
+      const printer = (flags.printerName || '').trim();
+      cur.printerName = printer;
+      process.env.PRINTER_NAME = printer;
+      process.env.THERMAL_PRINTER_NAME = printer;
+
       const envUpdates = {};
+      if (printer) {
+        envUpdates.PRINTER_NAME = printer;
+      }
       envUpdates.OPENROUTER_DEFAULT_MODEL = aiModel;
 
       if (rawAiKey && rawAiKey.startsWith('sk-or-')) {

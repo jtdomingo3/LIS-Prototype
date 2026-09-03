@@ -1,87 +1,106 @@
-<div class="card">
+<div class="card" style="padding:24px 28px; border-radius:16px; box-shadow:0 4px 18px rgba(0,0,0,0.03);">
 <% if (!test) { %>
-  <p style="padding:20px; color:#888;">No completed test results yet.</p>
+  <div style="padding:48px 16px; text-align:center; color:#94a3b8;">
+    <span style="font-size:2.4em; display:block; margin-bottom:8px;">📋</span>
+    <strong style="font-size:1.1em; color:#475569; display:block;">No Completed Diagnostic Reports Yet</strong>
+    <span style="font-size:0.9em;">When tests are completed and results are saved, clinical reports will appear here for preview and release.</span>
+  </div>
 <% } else { %>
-  <!-- Navigation & Filters -->
-  <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px; flex-wrap:wrap;">
-    <div>
-      <% // Always render as anchors so client-side can update hrefs reliably %>
-      <a id="prevBtn" class="button btn-secondary<%= (typeof prevId === 'undefined' || !prevId) ? ' disabled' : '' %>" <%= (typeof prevId !== 'undefined' && prevId) ? ('href="/reports/preview/' + prevId + (typeof filterQuery !== 'undefined' ? filterQuery : '') + '"') : '' %>>← Previous</a>
-      <a id="nextBtn" class="button btn-secondary<%= (typeof nextId === 'undefined' || !nextId) ? ' disabled' : '' %>" <%= (typeof nextId !== 'undefined' && nextId) ? ('href="/reports/preview/' + nextId + (typeof filterQuery !== 'undefined' ? filterQuery : '') + '"') : '' %>>Next →</a>
+  <!-- Structured Two-Line Toolbar -->
+  <!-- Line 1: Report Navigation & Output Actions -->
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid #f1f5f9; flex-wrap:nowrap; width:100%;">
+    <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+      <a id="prevBtn" class="button btn-secondary<%= (typeof prevId === 'undefined' || !prevId) ? ' disabled' : '' %>" <%= (typeof prevId !== 'undefined' && prevId) ? ('href="/reports/preview/' + prevId + (typeof filterQuery !== 'undefined' ? filterQuery : '') + '"') : '' %> style="padding:0 14px; height:38px; font-size:13.5px; display:inline-flex; align-items:center; border-radius:8px;">← Previous</a>
+      <a id="nextBtn" class="button btn-secondary<%= (typeof nextId === 'undefined' || !nextId) ? ' disabled' : '' %>" <%= (typeof nextId !== 'undefined' && nextId) ? ('href="/reports/preview/' + nextId + (typeof filterQuery !== 'undefined' ? filterQuery : '') + '"') : '' %> style="padding:0 14px; height:38px; font-size:13.5px; display:inline-flex; align-items:center; border-radius:8px;">Next →</a>
+      <a href="/reports/worksheet" class="button btn-secondary" style="padding:0 14px; height:38px; font-size:13.5px; display:inline-flex; align-items:center; border-radius:8px;" title="View Batch Worksheets">📊 Worksheets</a>
     </div>
 
-    <div style="flex:1; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-      <div style="display:flex; flex-direction:column; gap:4px; flex:2; min-width:300px;">
-        <input id="patientSearch" type="text" placeholder="Type to search patients by name..." autocomplete="off" style="padding:8px; font-size:14px; border-radius:8px; border:1px solid #d0d7de;">
-        <select id="filterPatient" style="width:100%; padding:8px;">
-          <option value="">-- All Patients --</option>
-          <% if (testsForNav && testsForNav.length) {
-              const patients = Array.from(new Set(testsForNav.map(t => t.patientName || '').filter(Boolean))).sort((a,b) => a.localeCompare(b)); 
-             %>
-            <% patients.forEach(function(pn) { %>
-              <option value="<%= pn %>"><%= pn %></option>
-            <% }) %>
-          <% } %>
-        </select>
-      </div>
-      <!-- Test type dropdown (based on templates/testType) -->
-        <div style="display:flex; gap:8px; align-items:flex-start; flex-wrap:wrap;">
-          <div style="display:flex; flex-direction:column; gap:8px;">
-            <% let testTypes = []; if (testsForNav && testsForNav.length) { testTypes = Array.from(new Set(testsForNav.map(t => t.testType || t.template || '').filter(Boolean))); } %>
-            <div id="filterTestType" style="position:relative;">
-              <button type="button" id="filterTestTypeToggle" class="button" style="white-space:nowrap;">All Test Types ▾</button>
-              <div id="filterTestTypeList" style="display:none; position:absolute; right:0; background:#fff; border:1px solid #ccc; padding:8px; z-index:1000; max-height:220px; overflow:auto; min-width:220px;">
-                <label style="display:block; margin-bottom:6px;"><input type="checkbox" id="filterTestTypeSelectAll"> <strong>Select all</strong></label>
-                <% testTypes.forEach(function(tp) { %>
-                  <label style="display:block; white-space:nowrap; margin:4px 0;"><input type="checkbox" class="filterTestTypeCheckbox" value="<%= tp %>"> <%= tp %></label>
-                <% }) %>
-              </div>
-            </div>
-          </div>
-          <input id="filterDate" type="date" style="width:130px; padding:8px;">
-          <button class="button" id="clearFilters">Clear Filters</button>
-          <button class="button btn-primary" id="printFiltered">Print Filtered</button>
-        </div>
-      </div>
-      <div style="display:flex; gap:8px; align-items:center; justify-content:flex-end;">
-        <a id="downloadPdf" href="/reports/pdf/<%= test.id %>" class="button btn-primary">Download PDF</a>
-        <a id="printLink" href="/reports/result/<%= test.id %>?embedded=1&print=1" target="_blank" class="button btn-orange">Print</a>
-      </div>
+    <div style="display:flex; gap:10px; align-items:center; flex-shrink:0;">
+      <a id="downloadPdf" href="/reports/pdf/<%= test.id %>" class="button btn-primary" style="display:inline-flex; align-items:center; gap:6px; padding:0 18px; height:38px; font-weight:600; font-size:13.5px; white-space:nowrap; border-radius:8px;">
+        📥 Download PDF
+      </a>
+      <a id="printLink" href="/reports/result/<%= test.id %>?embedded=1&print=1" target="_blank" class="button btn-orange" style="display:inline-flex; align-items:center; gap:6px; padding:0 18px; height:38px; font-weight:600; font-size:13.5px; white-space:nowrap; border-radius:8px;">
+        🖨️ Print Report
+      </a>
+    </div>
   </div>
 
-  <!-- Filtered results (checkbox list populated when filters change) -->
-  <div style="margin-bottom:12px;">
-    <div id="filteredContainer" style="width:100%; padding:8px; border:1px solid #e0e0e0; border-radius:6px; max-height:130px; overflow:auto; background:#fff;">
-      <label style="display:block; margin-bottom:8px;"><input type="checkbox" id="filteredSelectAll"> <strong>Select all visible</strong></label>
+  <!-- Line 2: Search, Filters & Batch Actions -->
+  <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px; flex-wrap:nowrap; width:100%;">
+    <div style="position:relative; flex:1; min-width:180px;">
+      <span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:0.9em; pointer-events:none;">🔍</span>
+      <input id="patientSearch" type="text" placeholder="Search patient name..." autocomplete="off" style="width:100%; height:38px; padding:0 12px 0 34px; font-size:13.5px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; margin:0; box-sizing:border-box;">
+    </div>
+
+    <div id="filterPatientWrapper" style="position:relative; flex-shrink:0;">
+      <select id="filterPatient" style="width:180px; height:38px; padding:0 10px; font-size:13px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; margin:0; box-sizing:border-box; cursor:pointer;">
+        <option value="">-- All Patients --</option>
+        <% if (testsForNav && testsForNav.length) {
+            const patients = Array.from(new Set(testsForNav.map(t => t.patientName || '').filter(Boolean))).sort((a,b) => a.localeCompare(b)); 
+           %>
+          <% patients.forEach(function(pn) { %>
+            <option value="<%= pn %>"><%= pn %></option>
+          <% }) %>
+        <% } %>
+      </select>
+      <div id="filterPatientDropdown" style="display:none; position:absolute; top:calc(100% + 4px); left:0; width:max-content; min-width:100%; max-width:320px; max-height:240px; overflow-y:auto; background:#ffffff; border:1px solid #cbd5e1; border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,0.12); z-index:9999; padding:4px 0;">
+        <!-- Dropdown items dynamically populated -->
+      </div>
+    </div>
+
+    <% let testTypes = []; if (testsForNav && testsForNav.length) { testTypes = Array.from(new Set(testsForNav.map(t => t.testType || t.template || '').filter(Boolean))); } %>
+    <div id="filterTestType" style="position:relative; flex-shrink:0;">
+      <button type="button" id="filterTestTypeToggle" class="button btn-secondary" style="height:38px; padding:0 12px; font-size:13px; white-space:nowrap; margin:0; border-radius:8px;">Test Types ▾</button>
+      <div id="filterTestTypeList" style="display:none; position:absolute; right:0; background:#fff; border:1px solid #cbd5e1; border-radius:8px; box-shadow:0 6px 20px rgba(0,0,0,0.08); padding:10px; z-index:1000; max-height:220px; overflow:auto; min-width:220px;">
+        <label style="display:block; margin-bottom:6px; font-size:0.85em; font-weight:700;"><input type="checkbox" id="filterTestTypeSelectAll"> Select all</label>
+        <% testTypes.forEach(function(tp) { %>
+          <label style="display:block; white-space:nowrap; margin:4px 0; font-size:0.85em;"><input type="checkbox" class="filterTestTypeCheckbox" value="<%= tp %>"> <%= tp %></label>
+        <% }) %>
+      </div>
+    </div>
+
+    <input id="filterDate" type="date" style="width:130px; flex-shrink:0; height:38px; padding:0 8px; font-size:13px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; margin:0; box-sizing:border-box;" title="Filter by date">
+
+    <button class="button btn-primary" id="printFiltered" style="height:38px; padding:0 14px; font-size:13px; flex-shrink:0; white-space:nowrap; margin:0; border-radius:8px;">Print Filtered</button>
+
+    <button class="button btn-secondary" id="clearFilters" style="height:38px; padding:0 14px; font-size:13px; flex-shrink:0; white-space:nowrap; margin:0; border-radius:8px;">Clear</button>
+  </div>
+
+  <!-- Filtered Selection Drawer -->
+  <div style="margin-bottom:14px;">
+    <div id="filteredContainer" style="width:100%; padding:10px 14px; border:1px solid #e2e8f0; border-radius:10px; max-height:130px; overflow:auto; background:#f8fafc;">
+      <label style="display:block; margin-bottom:8px; font-size:0.85em; font-weight:700;"><input type="checkbox" id="filteredSelectAll"> Select all visible in print batch</label>
       <div id="filteredList" style="display:block;">
-        <!-- items injected here: each item contains a checkbox and a one-line label -->
+        <!-- items injected here -->
       </div>
     </div>
   </div>
 
-  <div class="card">
-    <div style="display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 16px; padding: 16px; background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px;">
-      <div style="flex: 1; min-width: 150px;">
-        <span style="display: block; font-size: 0.75em; text-transform: uppercase; color: #666; font-weight: 600; margin-bottom: 4px;">Patient Name</span>
-        <span style="font-size: 1.1em; font-weight: 600; color: #222;" id="patientName"><% if (test.patient) { %><%= test.patient.firstName %> <%= test.patient.lastName %><% } else { %><%= test.patientName || '' %><% } %></span>
-      </div>
-      <div style="flex: 1; min-width: 120px;">
-        <span style="display: block; font-size: 0.75em; text-transform: uppercase; color: #666; font-weight: 600; margin-bottom: 4px;">Patient ID</span>
-        <span style="font-size: 1.1em; font-weight: 600; color: #222;" id="patientPatientId"><% if (test.patient) { %><%= test.patient.patientId %><% } else { %><%= (test.patient && test.patient.patientId) || '' %><% } %></span>
-      </div>
-      <div style="flex: 1; min-width: 120px;">
-        <span style="display: block; font-size: 0.75em; text-transform: uppercase; color: #666; font-weight: 600; margin-bottom: 4px;">Test Type</span>
-        <span style="font-size: 1.1em; font-weight: 600; color: #222;" id="displayTestType"><%= test.testType %></span>
-      </div>
-      <div style="flex: 1; min-width: 120px;">
-        <span style="display: block; font-size: 0.75em; text-transform: uppercase; color: #666; font-weight: 600; margin-bottom: 4px;">Date</span>
-        <span style="font-size: 1.1em; font-weight: 600; color: #222;" id="displayTestDate"><%= test.testDate ? new Date(test.testDate).toLocaleDateString() : '' %></span>
-      </div>
-      <div style="flex: 1; min-width: 120px;">
-        <span style="display: block; font-size: 0.75em; text-transform: uppercase; color: #666; font-weight: 600; margin-bottom: 4px;">Test ID</span>
-        <span style="font-size: 1.1em; font-weight: 600; color: #222;" id="displayTestId"><%= test.testId %></span>
-      </div>
+  <!-- Active Patient & Report Summary Card -->
+  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:14px; margin-bottom:18px; padding:16px 20px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px;">
+    <div>
+      <span style="display:block; font-size:0.75em; text-transform:uppercase; color:#64748b; font-weight:700; letter-spacing:0.5px; margin-bottom:4px;">Patient Name</span>
+      <strong style="font-size:1.1em; color:#0f172a;" id="patientName"><% if (test.patient) { %><%= test.patient.firstName %> <%= test.patient.lastName %><% } else { %><%= test.patientName || '' %><% } %></strong>
     </div>
+    <div>
+      <span style="display:block; font-size:0.75em; text-transform:uppercase; color:#64748b; font-weight:700; letter-spacing:0.5px; margin-bottom:4px;">Patient ID (MRN)</span>
+      <code style="font-size:1em; font-weight:700; color:#0284c7; background:#e0f2fe; padding:2px 8px; border-radius:6px;" id="patientPatientId"><% if (test.patient) { %><%= test.patient.patientId %><% } else { %><%= (test.patient && test.patient.patientId) || '' %><% } %></code>
+    </div>
+    <div>
+      <span style="display:block; font-size:0.75em; text-transform:uppercase; color:#64748b; font-weight:700; letter-spacing:0.5px; margin-bottom:4px;">Diagnostic Panel</span>
+      <strong style="font-size:1.05em; color:#334155;" id="displayTestType"><%= test.testType %></strong>
+    </div>
+    <div>
+      <span style="display:block; font-size:0.75em; text-transform:uppercase; color:#64748b; font-weight:700; letter-spacing:0.5px; margin-bottom:4px;">Test Date</span>
+      <span style="font-size:1em; color:#334155;" id="displayTestDate"><%= test.testDate ? new Date(test.testDate).toLocaleDateString() : '' %></span>
+    </div>
+    <div>
+      <span style="display:block; font-size:0.75em; text-transform:uppercase; color:#64748b; font-weight:700; letter-spacing:0.5px; margin-bottom:4px;">Work Order ID</span>
+      <code style="font-size:1em; font-weight:700; color:#334155; background:#f1f5f9; padding:2px 8px; border-radius:6px;" id="displayTestId"><%= test.testId %></code>
+    </div>
+  </div>
+
+  <div style="border-radius:12px; border:1px solid #e2e8f0; overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,0.02); margin-bottom:12px;">
     <h4>Results</h4>
     <% if (true) { %>
       <div style="width:100%;height:820px;border:1px solid #e6e6e6; margin-bottom: 8px;">
@@ -110,40 +129,142 @@
   window.currentTestId = '<%= test.id %>';
 
   (function(){
-    // Patient search -> filter patient select options
+    // Patient search -> filter patient select options & auto-expand dropdown menu
     (function(){
       const searchInput = document.getElementById('patientSearch');
       const selectEl = document.getElementById('filterPatient');
-      if (!searchInput || !selectEl) return;
+      const dropdownEl = document.getElementById('filterPatientDropdown');
+      const wrapperEl = document.getElementById('filterPatientWrapper');
+      if (!searchInput || !selectEl || !dropdownEl) return;
 
-      function filterPatientOptions() {
-        const q = String(searchInput.value || '').toLowerCase().trim();
-        let visibleCount = 0;
-        for (let i = 0; i < selectEl.options.length; i++) {
-          const opt = selectEl.options[i];
-          if (!opt.value) { opt.hidden = false; visibleCount++; continue; }
-          const txt = (opt.text || '').toLowerCase();
-          const match = q === '' || txt.indexOf(q) !== -1;
-          opt.hidden = !match;
-          if (match) visibleCount++;
-        }
-        if (q !== '' && visibleCount > 1) selectEl.size = Math.min(8, visibleCount);
-        else selectEl.size = 1;
+      const rawPatients = Array.from(selectEl.options).map(o => o.value).filter(Boolean);
+      let highlightedIdx = -1;
 
-        if (q !== '' && visibleCount === 1) {
-          for (let i = 0; i < selectEl.options.length; i++) {
-            const opt = selectEl.options[i];
-            if (!opt.hidden && opt.value) {
-              selectEl.value = opt.value;
-              selectEl.dispatchEvent(new Event('change'));
-              break;
-            }
-          }
+      function renderDropdown(q) {
+        dropdownEl.innerHTML = '';
+        const query = String(q || '').toLowerCase().trim();
+        const matches = rawPatients.filter(p => query === '' || p.toLowerCase().includes(query));
+
+        // Option: -- All Patients --
+        const allOpt = document.createElement('div');
+        allOpt.className = 'filter-patient-item';
+        allOpt.textContent = '-- All Patients --';
+        allOpt.dataset.value = '';
+        allOpt.style.cssText = 'padding:8px 14px; font-size:13px; cursor:pointer; color:#64748b; font-style:italic; border-bottom:1px solid #f1f5f9; transition:background 0.12s;';
+        if (selectEl.value === '') {
+          allOpt.style.background = '#f1f5f9';
+          allOpt.style.fontWeight = '600';
         }
+        allOpt.addEventListener('mouseenter', function() { if (selectEl.value !== '') this.style.background = '#f8fafc'; });
+        allOpt.addEventListener('mouseleave', function() { if (selectEl.value !== '') this.style.background = ''; });
+        allOpt.addEventListener('click', function() {
+          selectPatient('');
+        });
+        dropdownEl.appendChild(allOpt);
+
+        if (!matches.length && query !== '') {
+          const noMatch = document.createElement('div');
+          noMatch.textContent = 'No matching patients found';
+          noMatch.style.cssText = 'padding:10px 14px; font-size:12.5px; color:#94a3b8; font-style:italic;';
+          dropdownEl.appendChild(noMatch);
+        } else {
+          matches.forEach(pn => {
+            const item = document.createElement('div');
+            item.className = 'filter-patient-item';
+            item.textContent = pn;
+            item.dataset.value = pn;
+            const isSelected = selectEl.value === pn;
+            item.style.cssText = 'padding:8px 14px; font-size:13px; cursor:pointer; white-space:nowrap; transition:background 0.12s;' +
+                                (isSelected ? ' background:#475569; color:#ffffff; font-weight:600;' : ' color:#1e293b;');
+            item.addEventListener('mouseenter', function() {
+              if (selectEl.value !== pn) this.style.background = '#f1f5f9';
+            });
+            item.addEventListener('mouseleave', function() {
+              if (selectEl.value !== pn) this.style.background = '';
+            });
+            item.addEventListener('click', function() {
+              selectPatient(pn);
+            });
+            dropdownEl.appendChild(item);
+          });
+        }
+
+        dropdownEl.style.display = 'block';
+        highlightedIdx = -1;
       }
 
-      searchInput.addEventListener('input', filterPatientOptions);
-      selectEl.addEventListener('change', function(){ selectEl.size = 1; });
+      function selectPatient(val) {
+        selectEl.value = val;
+        dropdownEl.style.display = 'none';
+        if (val) searchInput.value = val;
+        selectEl.dispatchEvent(new Event('change'));
+      }
+
+      // Automatically expand floating dropdown when typing in search
+      searchInput.addEventListener('input', function() {
+        renderDropdown(searchInput.value);
+      });
+
+      // Automatically show dropdown on search focus if there is input or to view list
+      searchInput.addEventListener('focus', function() {
+        if (searchInput.value.trim() !== '') {
+          renderDropdown(searchInput.value);
+        }
+      });
+
+      // Toggle dropdown on select element click
+      selectEl.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        if (dropdownEl.style.display === 'block') {
+          dropdownEl.style.display = 'none';
+        } else {
+          renderDropdown(searchInput.value);
+        }
+      });
+
+      // Keyboard navigation (Arrow keys, Enter, Escape)
+      searchInput.addEventListener('keydown', function(e) {
+        const items = Array.from(dropdownEl.querySelectorAll('.filter-patient-item'));
+        if (dropdownEl.style.display === 'block' && items.length) {
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            highlightedIdx = (highlightedIdx + 1) % items.length;
+            updateHighlight(items);
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            highlightedIdx = (highlightedIdx - 1 + items.length) % items.length;
+            updateHighlight(items);
+          } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (highlightedIdx >= 0 && highlightedIdx < items.length) {
+              selectPatient(items[highlightedIdx].dataset.value);
+            }
+          } else if (e.key === 'Escape') {
+            dropdownEl.style.display = 'none';
+          }
+        }
+      });
+
+      function updateHighlight(items) {
+        items.forEach((it, idx) => {
+          if (idx === highlightedIdx) {
+            it.style.background = '#0284c7';
+            it.style.color = '#ffffff';
+            it.scrollIntoView({ block: 'nearest' });
+          } else {
+            const isSel = selectEl.value === it.dataset.value;
+            it.style.background = isSel ? '#475569' : '';
+            it.style.color = isSel ? '#ffffff' : '#1e293b';
+          }
+        });
+      }
+
+      // Close dropdown when clicking outside
+      document.addEventListener('click', function(e) {
+        if (wrapperEl && !wrapperEl.contains(e.target) && e.target !== searchInput) {
+          dropdownEl.style.display = 'none';
+        }
+      });
     })();
 
     const tests = window.testsForNav || [];
@@ -333,8 +454,7 @@
       if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; }
       patientInput.value = '';
       var psBox = document.getElementById('patientSearch'); if (psBox) { psBox.value = ''; }
-      for (var i = 0; i < patientInput.options.length; i++) patientInput.options[i].hidden = false;
-      patientInput.size = 1;
+      const pDrop = document.getElementById('filterPatientDropdown'); if (pDrop) { pDrop.style.display = 'none'; }
       Array.from(document.querySelectorAll('.filterTestTypeCheckbox')).forEach(cb => cb.checked = false);
       try { const sa = document.getElementById('filterTestTypeSelectAll'); if (sa) sa.checked = false; } catch(e) {}
       dateFilter.value = '';

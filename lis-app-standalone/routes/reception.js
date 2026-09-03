@@ -199,6 +199,27 @@ function getTargetAreaForRequest(rr) {
   return null;
 }
 
+// Helper to determine if a test has already completed or passed a specific clinical queue area
+function hasTestCompletedArea(test, areaName) {
+  if (!test) return false;
+  // If test is already in In Progress, Completed, Checked, or Released, it has finished its physical queue station
+  if (test.released || test.status === 'Released' || test.status === 'Completed' || test.status === 'Checked' || test.status === 'In Progress') {
+    const directTarget = getTargetAreaForTest(test);
+    if (!areaName || directTarget === areaName) return true;
+  }
+  // Check test status history for any completed transition for this area
+  if (Array.isArray(test.statusHistory)) {
+    const visited = test.statusHistory.some(entry => {
+      if (!entry) return false;
+      const matchArea = !areaName || entry.area === areaName || entry.from === areaName;
+      const isExit = entry.to === 'In Progress' || entry.to === 'Completed' || entry.to === 'Checked' || entry.to === 'Released';
+      return matchArea && isExit;
+    });
+    if (visited) return true;
+  }
+  return false;
+}
+
 // GET /reception - show areas and counts
 router.get('/', requireAuth, canAccessPatient, async (req, res) => {
   try {
@@ -898,8 +919,14 @@ router.post('/assign', requireAuth, canAccessPatient, async (req, res) => {
     const AREAS = getAreas();
 
     if (area === 'Payment Area') {
-      // Reassigning patient back to Payment Area: return all unreleased tests to Payment Area
-      for (const t of (existingTests || [])) {
+      // Reassigning patient back to Payment Area: only return tests that have not yet completed their clinical procedure
+      const unperformedTests = (existingTests || []).filter(t => {
+        if (!t || t.released || t.status === 'Released' || t.status === 'Completed' || t.status === 'In Progress' || t.status === 'Checked') return false;
+        if (hasTestCompletedArea(t)) return false;
+        return true;
+      });
+      const toReassign = unperformedTests.length ? unperformedTests : [test];
+      for (const t of toReassign) {
         if (!t || t.released || t.status === 'Released') continue;
         t.allowReassign = true;
         t.completedAt = undefined;
@@ -926,7 +953,7 @@ router.post('/assign', requireAuth, canAccessPatient, async (req, res) => {
         t.addStatusEntry({ from: t.status, to: area, user: req.session && req.session.user ? req.session.user.username : null, area, timestamp: (new Date()).toISOString() });
         t.status = area;
         if (specimen && String(specimen).trim()) {
-          if (!t.specimenNumbers || typeof t.specimenNumbers !== 'object') test.specimenNumbers = {};
+          if (!t.specimenNumbers || typeof t.specimenNumbers !== 'object') t.specimenNumbers = {};
           t.specimenNumbers[area] = String(specimen).trim();
         }
         if (assignedDoctor && String(assignedDoctor).trim()) {
@@ -1007,8 +1034,9 @@ router.post('/assign', requireAuth, canAccessPatient, async (req, res) => {
 // POST /reception/complete - mark patient/tests as completed for the area or advance from Payment Area
 router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
   try {
-    const { patientId, testIds, area, amount_clinical, amount_xray } = req.body || {};
-    console.log('POST /reception/complete', { patientId, testIds, area, amount_clinical, amount_xray });
+    const { patientId, testIds, area, amount_clinical, amount_xray, charged_to_philhealth } = req.body || {};
+    const isChargedToPhilhealth = charged_to_philhealth === '1' || charged_to_philhealth === 'true' || charged_to_philhealth === true;
+    console.log('POST /reception/complete', { patientId, testIds, area, amount_clinical, amount_xray, isChargedToPhilhealth });
 
     if (!patientId) {
       const msg = 'Missing patientId';
@@ -1034,7 +1062,7 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
     if (area === 'Payment Area') {
       const settings = (global.db && typeof global.db.getSettings === 'function') ? (global.db.getSettings() || {}) : {};
       const requirePaymentAmount = (typeof settings.requirePaymentAmount !== 'undefined') ? !!settings.requirePaymentAmount : true;
-      if (requirePaymentAmount) {
+      if (requirePaymentAmount && !isChargedToPhilhealth) {
         const clinVal = parseFloat(String(amount_clinical || '').replace(/[,\s]/g, '')) || 0;
         const xrayVal = parseFloat(String(amount_xray || '').replace(/[,\s]/g, '')) || 0;
         if (clinVal <= 0 && xrayVal <= 0) {
@@ -1054,9 +1082,13 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
         return t.status === 'Payment Area' || !t.status;
       });
 
-      // Map each test to a candidate target area (null => Awaiting)
-      const candidates = testsToProcess.map(t => ({ test: t, target: getTargetAreaForTest(t) }));
-      console.log('DEBUG Payment Area candidates:', candidates.map(c => ({ testId: c.test && c.test.testId, target: c.target })));
+      // Map each test to a candidate target area (null => Awaiting, or In Progress if already done)
+      const candidates = testsToProcess.map(t => {
+        const rawTarget = getTargetAreaForTest(t);
+        const alreadyDone = rawTarget && hasTestCompletedArea(t, rawTarget);
+        return { test: t, target: alreadyDone ? null : rawTarget, alreadyDone };
+      });
+      console.log('DEBUG Payment Area candidates:', candidates.map(c => ({ testId: c.test && c.test.testId, target: c.target, alreadyDone: c.alreadyDone })));
 
       // Choose earliest area in AREAS order among non-null targets (preferring non-sendout)
       const nonNullTargets = candidates.map(c => c.target).filter(Boolean);
@@ -1080,6 +1112,8 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
           let targ;
           if (String(c.target || '').toLowerCase() === 'sendout') {
             targ = 'Sendout';
+          } else if (c.alreadyDone) {
+            targ = 'In Progress';
           } else if (chosenTarget && c.target === chosenTarget) {
             targ = chosenTarget;
           } else if (isSampleOnDemand) {
@@ -1089,8 +1123,19 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
           } else {
             targ = 'In Progress';
           }
-          t.addStatusEntry({ from: t.status, to: targ, user: req.session && req.session.user ? req.session.user.username : null, area: targ, timestamp: (new Date()).toISOString() });
+          t.addStatusEntry({
+            from: t.status,
+            to: targ,
+            user: req.session && req.session.user ? req.session.user.username : null,
+            area: targ,
+            timestamp: (new Date()).toISOString(),
+            notes: isChargedToPhilhealth ? 'Charged to PhilHealth' : undefined
+          });
           t.status = targ;
+          if (isChargedToPhilhealth) {
+            t.chargedToPhilhealth = true;
+            t.paymentMethod = 'PhilHealth';
+          }
           await t.save();
           processed.push(t.testId || t.id);
           try { sseEmitter.emit('update', { action: 'complete', testId: t.testId, status: t.status, patient: t.patient, time: (new Date()).toISOString() }); } catch (e) { console.warn('SSE emit failed', e); }
@@ -1101,14 +1146,16 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
       try {
         const patientObj = await Patient.findById(patientId);
         if (patientObj) {
-          const clin = Number(amount_clinical || 0) || 0;
-          const xray = Number(amount_xray || 0) || 0;
+          const clin = isChargedToPhilhealth ? 0 : (Number(amount_clinical || 0) || 0);
+          const xray = isChargedToPhilhealth ? 0 : (Number(amount_xray || 0) || 0);
           const entry = {
             timestamp: (new Date()).toISOString(),
             area: 'Payment Area',
             clinical: clin,
             xray: xray,
             total: clin + xray,
+            chargedToPhilhealth: !!isChargedToPhilhealth,
+            paymentMethod: isChargedToPhilhealth ? 'PhilHealth' : 'Cash',
             tests: ids.slice()
           };
           patientObj.paymentHistory = Array.isArray(patientObj.paymentHistory) ? patientObj.paymentHistory : [];
@@ -1163,22 +1210,30 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
       }
 
       // 3. Inspect remaining active tests for this patient to advance to the next pipeline station
+      // Filter strictly for tests that are still awaiting their physical station
+      // (Tests that are already In Progress, Completed, Checked, Released, or already visited their area MUST NEVER be re-queued)
       const currentIdx = AREAS.indexOf(area);
       let chosenNextArea = null;
       let bestNextIdx = Infinity;
 
-      for (const t of remainingTests) {
-        if (!t || t.released || t.status === 'Released' || t.status === 'Checked' || t.status === 'Completed') continue;
+      const pendingStationTests = remainingTests.filter(t => {
+        if (!t || t.released || t.status === 'Released' || t.status === 'Checked' || t.status === 'Completed' || t.status === 'In Progress' || t.status === 'Stashed') {
+          return false;
+        }
+        if (hasTestCompletedArea(t)) return false;
+        return true;
+      });
 
+      for (const t of pendingStationTests) {
         // Check target areas for this test
         const reqAreas = [];
         try {
           const directTarget = getTargetAreaForTest(t);
-          if (directTarget) reqAreas.push(directTarget);
+          if (directTarget && !hasTestCompletedArea(t, directTarget)) reqAreas.push(directTarget);
           const rlist = Array.isArray(t.requestedTests) ? t.requestedTests : [];
           for (const rr of rlist) {
             const a = getTargetAreaForRequest(rr);
-            if (a) reqAreas.push(a);
+            if (a && !hasTestCompletedArea(t, a)) reqAreas.push(a);
           }
         } catch (e) {}
 
@@ -1195,14 +1250,32 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
         }
       }
 
-      // 4. If a subsequent area is found in the pipeline, advance candidate tests to that area
-      for (const t of remainingTests) {
-        if (!t || t.released || t.status === 'Released' || t.status === 'Checked' || t.status === 'Completed') continue;
+      // If no subsequent area found (e.g. late test added for an earlier station), look for any uncompleted station among pending tests
+      if (!chosenNextArea && pendingStationTests.length) {
+        let earliestIdx = Infinity;
+        for (const t of pendingStationTests) {
+          const directTarget = getTargetAreaForTest(t);
+          if (directTarget && !hasTestCompletedArea(t, directTarget)) {
+            let idx = AREAS.indexOf(directTarget);
+            if (idx < 0 && String(directTarget).toLowerCase().includes("doctor's check-up")) {
+              idx = AREAS.findIndex(a => String(a).toLowerCase().includes("doctor's check-up"));
+            }
+            if (idx >= 0 && idx < earliestIdx) {
+              earliestIdx = idx;
+              chosenNextArea = directTarget;
+            }
+          }
+        }
+      }
+
+      // 4. Advance matching pending tests to the chosen target station
+      for (const t of pendingStationTests) {
         try {
           const label = String(t.testType || '').toLowerCase();
           const isSampleOnDemand = /fecal|pregnan|fob|urinal|fecalysis|fecal-occult-blood|pregnancy/.test(label) ||
                                   (Array.isArray(t.requestedTests) && t.requestedTests.some(rr => rr && /(fecal|pregnan|fob|urinal|pregnancy|fecalysis)/i.test(String(rr.label || ''))));
           const directTarget = getTargetAreaForTest(t);
+          if (directTarget && hasTestCompletedArea(t, directTarget)) continue;
 
           const isDirectMatch = chosenNextArea && (
             directTarget === chosenNextArea ||
@@ -1229,7 +1302,9 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
       }
     }
 
-    const message = processed.length ? `Marked ${processed.length} test(s) complete` : 'No tests processed';
+    const message = processed.length
+      ? (isChargedToPhilhealth ? `Charged ${processed.length} test(s) to PhilHealth & advanced queue` : `Marked ${processed.length} test(s) complete`)
+      : 'No tests processed';
     if (req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'))) {
       return res.json({ success: true, message });
     }

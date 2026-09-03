@@ -1,109 +1,217 @@
-<div class="card">
+<%
+  // Compute test overview counts from systemStats (system-wide) or fallback to active list
+  const hasSystemStats = typeof systemStats !== 'undefined' && systemStats;
+  let totalCount = hasSystemStats ? systemStats.total : (typeof totalTests !== 'undefined' ? totalTests : (Array.isArray(tests) ? tests.length : 0));
+  let countCompleted = hasSystemStats ? systemStats.completed : 0;
+  let countInProgress = hasSystemStats ? systemStats.inProgress : 0;
+  let countQueue = hasSystemStats ? systemStats.queue : 0;
 
-  <div class="flex-between mb-20">
-    <div class="flex">
-      <a href="/tests/new?returnTo=/tests" class="button btn-primary">+ Create New Test</a>
+  if (!hasSystemStats && Array.isArray(tests)) {
+    tests.forEach(t => {
+      const s = String(t.status || '').toLowerCase();
+      if (s === 'completed' || s === 'released') countCompleted++;
+      else if (s === 'in progress') countInProgress++;
+      else countQueue++;
+    });
+  }
+%>
+
+<!-- Top Diagnostic Overview Counters (System-Wide) -->
+<div class="stats-container" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:24px;">
+  <div class="stat-card" style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:18px 22px; box-shadow:0 2px 10px rgba(0,0,0,0.02);">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-size:0.85em; text-transform:uppercase; font-weight:700; color:#64748b; letter-spacing:0.5px;">All Diagnostic Tests</span>
+      <span style="font-size:1.4em;">🧪</span>
     </div>
-    <div>
-      <form method="GET" action="/tests" style="display:flex; gap:8px; align-items:center;">
-        <select name="status" style="padding:0 12px; height:44px; font-size:14px; width:220px; box-sizing:border-box; border-radius:8px; border:1px solid #d0d7de; background:#fff;" onchange="this.form.submit();">
-          <option value="">All Statuses</option>
-          <option value="Payment Area" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Payment Area') ? 'selected' : '' %>>Payment Area</option>
-          <option value="Extraction Area" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Extraction Area') ? 'selected' : '' %>>Extraction Area</option>
-          <option value="Pending" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Pending') ? 'selected' : '' %>>Pending</option>
-          <option value="Awaiting" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Awaiting') ? 'selected' : '' %>>Awaiting</option>
-          <option value="In Progress" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'In Progress') ? 'selected' : '' %>>In Progress</option>
-          <option value="Completed" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Completed') ? 'selected' : '' %>>Completed</option>
-        </select>
-        <input type="text" name="search" class="search-box" placeholder="Search tests by patient name or ID..." value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>" style="height:44px; padding:10px 14px; font-size:14px; min-width:240px; flex:1; box-sizing:border-box; border-radius:8px; border:1px solid #d0d7de; margin:0 8px;">
-        <input type="date" name="date" onchange="this.form.submit();" value="<%= typeof dateFilter !== 'undefined' ? dateFilter : '' %>" style="height:44px; padding:6px;">
-        <select name="testType" style="padding:0 12px; height:44px; font-size:14px; width:220px; box-sizing:border-box; border-radius:8px; border:1px solid #d0d7de; background:#fff;" onchange="this.form.submit();">
-          <option value="">All Test Types</option>
-          <% if (Array.isArray(availableTestTypes)) { availableTestTypes.forEach(function(tt){ %>
-            <option value="<%= tt %>" <%= (typeof typeFilter !== 'undefined' && typeFilter === tt) ? 'selected' : '' %>><%= tt %></option>
-          <% }) } %>
-        </select>
-        <a href="/tests" class="button btn-secondary" style="height:44px; display:inline-flex; align-items:center; padding:0 14px; border-radius:8px;">Clear Filter</a>
-      </form>
-    </div>
+    <div style="font-size:2em; font-weight:800; color:#0f172a; margin-top:8px;"><%= totalCount %></div>
+    <div style="font-size:0.82em; color:#64748b; margin-top:4px;">Total in system</div>
   </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Test ID</th>
-        <th>Patient</th>
-        <th>Test Type</th>
-        <th>Date</th>
-        <th>Status</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% if (tests && tests.length) { %>
-        <% tests.forEach(test => { %>
+  <div class="stat-card" style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:18px 22px; box-shadow:0 2px 10px rgba(0,0,0,0.02);">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-size:0.85em; text-transform:uppercase; font-weight:700; color:#10b981; letter-spacing:0.5px;">Completed & Released</span>
+      <span style="font-size:1.4em;">✓</span>
+    </div>
+    <div style="font-size:2em; font-weight:800; color:#10b981; margin-top:8px;"><%= countCompleted %></div>
+    <div style="font-size:0.82em; color:#64748b; margin-top:4px;">Verified & printable</div>
+  </div>
+
+  <div class="stat-card" style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:18px 22px; box-shadow:0 2px 10px rgba(0,0,0,0.02);">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-size:0.85em; text-transform:uppercase; font-weight:700; color:#d97706; letter-spacing:0.5px;">In Progress</span>
+      <span style="font-size:1.4em;">⏳</span>
+    </div>
+    <div style="font-size:2em; font-weight:800; color:#d97706; margin-top:8px;"><%= countInProgress %></div>
+    <div style="font-size:0.82em; color:#64748b; margin-top:4px;">In laboratory analysis</div>
+  </div>
+
+  <div class="stat-card" style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:18px 22px; box-shadow:0 2px 10px rgba(0,0,0,0.02);">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-size:0.85em; text-transform:uppercase; font-weight:700; color:#6366f1; letter-spacing:0.5px;">Queue / Extraction</span>
+      <span style="font-size:1.4em;">🩸</span>
+    </div>
+    <div style="font-size:2em; font-weight:800; color:#6366f1; margin-top:8px;"><%= countQueue %></div>
+    <div style="font-size:0.82em; color:#64748b; margin-top:4px;">Awaiting phlebotomy / payment</div>
+  </div>
+</div>
+
+<div class="card" style="padding:24px 28px; border-radius:16px; box-shadow:0 4px 18px rgba(0,0,0,0.03);">
+  <!-- Filter and Search Toolbar (Single Clean Line) -->
+  <div style="display:flex; align-items:center; gap:10px; margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid #f1f5f9; width:100%;">
+    <a href="/tests/new?returnTo=/tests" class="button btn-primary" style="display:inline-flex; align-items:center; gap:8px; font-weight:600; padding:0 18px; height:40px; flex-shrink:0; white-space:nowrap; border-radius:8px;">
+      <i class="fa fa-plus"></i> Create New Test
+    </a>
+
+    <form method="GET" action="/tests" style="flex:1; display:flex; gap:8px; align-items:center; margin:0; min-width:0;">
+      <div style="position:relative; flex:1; min-width:180px;">
+        <span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:0.9em; pointer-events:none;">🔍</span>
+        <input type="text" name="search" placeholder="Search by patient name, ID, or order..." value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>" style="width:100%; height:40px; padding:0 12px 0 34px; font-size:13.5px; box-sizing:border-box; border-radius:8px; border:1px solid #cbd5e1; background:#fff; margin:0;" />
+      </div>
+
+      <select name="status" style="width:140px; flex-shrink:0; height:40px; padding:0 8px; font-size:13px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; margin:0; box-sizing:border-box;" onchange="this.form.submit();">
+        <option value="">All Statuses</option>
+        <option value="Payment Area" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Payment Area') ? 'selected' : '' %>>Payment Area</option>
+        <option value="Extraction Area" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Extraction Area') ? 'selected' : '' %>>Extraction Area</option>
+        <option value="Pending" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Pending') ? 'selected' : '' %>>Pending</option>
+        <option value="Awaiting" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Awaiting') ? 'selected' : '' %>>Awaiting</option>
+        <option value="In Progress" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'In Progress') ? 'selected' : '' %>>In Progress</option>
+        <option value="Completed" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Completed') ? 'selected' : '' %>>Completed</option>
+        <option value="Released" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Released') ? 'selected' : '' %>>Released</option>
+      </select>
+
+      <select name="testType" style="width:140px; flex-shrink:0; height:40px; padding:0 8px; font-size:13px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; margin:0; box-sizing:border-box;" onchange="this.form.submit();">
+        <option value="">All Test Types</option>
+        <% if (Array.isArray(availableTestTypes)) { availableTestTypes.forEach(function(tt){ %>
+          <option value="<%= tt %>" <%= (typeof typeFilter !== 'undefined' && typeFilter === tt) ? 'selected' : '' %>><%= tt %></option>
+        <% }) } %>
+      </select>
+
+      <input type="date" name="date" onchange="this.form.submit();" value="<%= typeof dateFilter !== 'undefined' ? dateFilter : '' %>" style="width:135px; flex-shrink:0; height:40px; padding:0 8px; font-size:13px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; margin:0; box-sizing:border-box;" title="Filter by date" />
+
+      <a href="/tests" class="button btn-secondary" style="height:40px; display:inline-flex; align-items:center; padding:0 14px; border-radius:8px; flex-shrink:0; white-space:nowrap; font-size:13px; margin:0;">Clear</a>
+    </form>
+  </div>
+
+  <!-- Tests Table -->
+  <div style="overflow-x:auto;">
+    <table style="width:100%; border-collapse:collapse; margin-bottom:16px;">
+      <thead>
+        <tr style="border-bottom:2px solid #e2e8f0; text-align:left;">
+          <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">Test ID</th>
+          <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">Patient Information</th>
+          <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">Diagnostic Panel</th>
+          <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">Test Date</th>
+          <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">Status</th>
+          <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b; text-align:right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (tests && tests.length) { %>
+          <% tests.forEach(test => { 
+            const patientName = test.patient ? (test.patient.firstName + ' ' + (test.patient.middleName ? test.patient.middleName + ' ' : '') + test.patient.lastName) : 'Unknown Patient';
+            const initials = test.patient ? ((test.patient.firstName || '')[0] || '' + (test.patient.lastName || '')[0] || '').toUpperCase() : 'PT';
+            const statusStr = String(test.status || 'Pending');
+            const sLower = statusStr.toLowerCase();
+            let badgeStyle = 'background:#f1f5f9; color:#475569; border:1px solid #cbd5e1;';
+            if (sLower === 'completed' || sLower === 'released') badgeStyle = 'background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0;';
+            else if (sLower === 'in progress') badgeStyle = 'background:#fef3c7; color:#92400e; border:1px solid #fde68a;';
+            else if (sLower.includes('extraction')) badgeStyle = 'background:#ede9fe; color:#5b21b6; border:1px solid #ddd6fe;';
+            else if (sLower.includes('payment')) badgeStyle = 'background:#fee2e2; color:#991b1b; border:1px solid #fecaca;';
+          %>
+            <tr style="border-bottom:1px solid #f1f5f9; transition:background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+              <td style="padding:14px; font-weight:700; color:#0f172a; white-space:nowrap;">
+                <code style="background:#f1f5f9; padding:4px 8px; border-radius:6px; font-size:0.9em; color:#334155;"><%= test.testId %></code>
+              </td>
+              <td style="padding:14px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <span style="display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:50%; background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.85em;"><%= initials || 'PT' %></span>
+                  <div>
+                    <strong style="color:#0f172a; display:block; font-size:0.95em;"><%= patientName %></strong>
+                    <% if (test.patient && test.patient.patientId) { %>
+                      <span style="font-size:0.8em; color:#64748b;">MRN: <%= test.patient.patientId %></span>
+                    <% } %>
+                  </div>
+                </div>
+              </td>
+              <td style="padding:14px;">
+                <span style="font-weight:600; color:#1e293b;"><%= test.testType %></span>
+              </td>
+              <td style="padding:14px; color:#64748b; font-size:0.9em; white-space:nowrap;">
+                <%= test.testDate ? new Date(test.testDate).toLocaleDateString() : '' %>
+              </td>
+              <td style="padding:14px; white-space:nowrap;">
+                <span style="display:inline-block; padding:4px 10px; border-radius:20px; font-size:0.8em; font-weight:600; <%= badgeStyle %>">
+                  <%= statusStr %>
+                </span>
+              </td>
+              <td style="padding:14px; text-align:right; white-space:nowrap;">
+                <% 
+                  const isDoctor = String(test.testType || '').toLowerCase().includes('doctor') || (Array.isArray(test.requestedTests) && test.requestedTests.some(rr => String(rr && (rr.label || rr.key) || '').toLowerCase().includes('doctor')));
+                  const isSendout = String(test.status || '').toLowerCase() === 'sendout' || (Array.isArray(test.requestedTests) && test.requestedTests.some(rr => {
+                    try { const lab = String(rr.lab || '').toLowerCase(); const lbl = String(rr.label || '').toLowerCase(); return lab === 'external' || lbl.includes('send out') || lbl.includes('sendout') || lbl.includes('for send'); } catch (e) { return false; }
+                  }));
+                %>
+                <% if (!isDoctor && !isSendout) { %>
+                  <a href="/tests/<%= test.id %>/results" class="button btn-primary btn-small" style="padding:6px 12px; font-size:0.82em; font-weight:600;">Enter Result</a>
+                <% } %>
+                <a href="/tests/<%= test.id %>" class="button btn-secondary btn-small" style="padding:6px 12px; font-size:0.82em;">View</a>
+                <% if (test.status === 'Completed' || test.status === 'Released') { %>
+                  <a href="/reports/preview/<%= test.id %>" class="button btn-orange btn-small" style="padding:6px 12px; font-size:0.82em;">Report</a>
+                <% } %>
+                <form action="/tests/<%= test.id %>?_method=DELETE" method="POST" style="display:inline;" onsubmit="return confirm('⚠️ Are you sure you want to delete test <%= test.testId %>? This will permanently remove its results.');">
+                  <button type="submit" class="button btn-small btn-danger" style="padding:6px 10px; font-size:0.82em; margin-left:4px;" title="Delete test">Delete</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        <% } else { %>
           <tr>
-            <td><%= test.testId %></td>
-            <td><%= test.patient ? (test.patient.firstName + ' ' + test.patient.lastName) : 'Unknown' %></td>
-            <td><%= test.testType %></td>
-            <td><%= test.testDate ? new Date(test.testDate).toLocaleDateString() : '' %></td>
-            <td><span class="badge <%= test.status === 'Completed' ? 'badge-success' : (test.status === 'In Progress' ? 'badge-warning' : '') %>"><%= test.status %></span></td>
-            <td class="action-buttons">
-              <% 
-                const isDoctor = String(test.testType || '').toLowerCase().includes('doctor') || (Array.isArray(test.requestedTests) && test.requestedTests.some(rr => String(rr && (rr.label || rr.key) || '').toLowerCase().includes('doctor')));
-                const isSendout = String(test.status || '').toLowerCase() === 'sendout' || (Array.isArray(test.requestedTests) && test.requestedTests.some(rr => {
-                  try { const lab = String(rr.lab || '').toLowerCase(); const lbl = String(rr.label || '').toLowerCase(); return lab === 'external' || lbl.includes('send out') || lbl.includes('sendout') || lbl.includes('for send'); } catch (e) { return false; }
-                }));
-              %>
-              <% if (!isDoctor && !isSendout) { %>
-                <a href="/tests/<%= test.id %>/results" class="button btn-primary btn-small">Enter Result</a>
-              <% } %>
-              <a href="/tests/<%= test.id %>" class="button btn-orange btn-small">View</a>
-              <% if (test.status === 'Completed') { %>
-                <a href="/reports/preview/<%= test.id %>" class="button btn-orange btn-small">Report</a>
-              <% } %>
-              <form action="/tests/<%= test.id %>?_method=DELETE" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this test?');">
-                <button type="submit" class="button btn-small btn-danger" style="margin-left: 4px;">Delete</button>
-              </form>
+            <td colspan="6" style="padding:48px 16px; text-align:center; color:#94a3b8;">
+              <span style="font-size:2.4em; display:block; margin-bottom:8px;">🧪</span>
+              <strong style="font-size:1.1em; color:#475569; display:block;">No Diagnostic Tests Found</strong>
+              <span style="font-size:0.9em;">Adjust your search criteria or register a new laboratory work order.</span>
             </td>
           </tr>
-        <% }) %>
-      <% } else { %>
-        <tr><td colspan="6">No tests found.</td></tr>
-      <% } %>
-    </tbody>
-  </table>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
 
+  <!-- Pagination Bar -->
   <% if (typeof totalPages !== 'undefined' && totalPages > 1) { %>
-    <div class="flex-between mt-20">
-      <% if (hasPrevPage) { %>
-        <a href="?page=<%= prevPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link">Previous</a>
-      <% } %>
-
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding-top:16px; border-top:1px solid #f1f5f9;">
       <div>
+        <% if (hasPrevPage) { %>
+          <a href="?page=<%= prevPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="button btn-secondary btn-small">← Previous</a>
+        <% } %>
+      </div>
+
+      <div style="display:flex; gap:6px; align-items:center;">
         <% 
-          const maxDisplay = 10;
+          const maxDisplay = 8;
           const half = Math.floor(maxDisplay/2);
           let start = Math.max(1, currentPage - half);
           let end = Math.min(totalPages, start + maxDisplay - 1);
           start = Math.max(1, end - maxDisplay + 1);
-          // Show First when there are more pages than maxDisplay and the window doesn't include page 1
           if (totalPages > maxDisplay && start > 1) { %>
-            <a href="?page=1&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link">First</a>
+            <a href="?page=1&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link" style="padding:6px 10px; border-radius:6px; text-decoration:none; font-size:0.85em; color:#64748b;">1</a>
+            <span style="color:#94a3b8;">...</span>
         <% }
           for (let p = start; p <= end; p++) {
         %>
-          <a href="?page=<%= p %>&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link <%= p === currentPage ? 'active' : '' %>"><%= p %></a>
+          <a href="?page=<%= p %>&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link" style="padding:6px 12px; border-radius:6px; text-decoration:none; font-size:0.85em; font-weight:600; <%= p === currentPage ? 'background:#0f172a; color:#fff;' : 'background:#f1f5f9; color:#475569;' %>"><%= p %></a>
         <% } 
-          // Show Last when there are more pages than maxDisplay and the window doesn't include the last page
           if (totalPages > maxDisplay && end < totalPages) { %>
-            <a href="?page=<%= totalPages %>&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link">Last</a>
+            <span style="color:#94a3b8;">...</span>
+            <a href="?page=<%= totalPages %>&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link" style="padding:6px 10px; border-radius:6px; text-decoration:none; font-size:0.85em; color:#64748b;"><%= totalPages %></a>
         <% } %>
       </div>
 
-      <% if (hasNextPage) { %>
-        <a href="?page=<%= nextPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link">Next</a>
-      <% } %>
+      <div>
+        <% if (hasNextPage) { %>
+          <a href="?page=<%= nextPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="button btn-secondary btn-small">Next →</a>
+        <% } %>
+      </div>
     </div>
   <% } %>
 </div>

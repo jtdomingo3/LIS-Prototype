@@ -445,6 +445,18 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
   let allTests = await Test.find({});
   const allPatients = await Patient.find({});
 
+  // Compute system-wide diagnostic test stats
+  const systemStats = { total: 0, completed: 0, inProgress: 0, queue: 0 };
+  if (Array.isArray(allTests)) {
+    systemStats.total = allTests.length;
+    allTests.forEach(t => {
+      const s = String(t.status || '').toLowerCase();
+      if (s === 'completed' || s === 'released') systemStats.completed++;
+      else if (s === 'in progress') systemStats.inProgress++;
+      else systemStats.queue++;
+    });
+  }
+
     // Available test types for filter dropdown
     // Collapse blood-chemistry variants (including BUN/Creat and common synonyms)
     const rawTypes = Array.isArray(allTests) ? allTests.map(t => (t.testType || '').toString()).filter(Boolean) : [];
@@ -555,7 +567,8 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
       statusFilter,
       typeFilter,
       dateFilter,
-      availableTestTypes
+      availableTestTypes,
+      systemStats
     });
   } catch (error) {
     console.error('Tests list error:', error);
