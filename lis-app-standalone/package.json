@@ -1,6 +1,6 @@
 {
   "name": "lis-app-standalone",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "Standalone desktop client for Gezyne LIS with offline support",
   "main": "main.js",
   "scripts": {

@@ -1,21 +1,64 @@
-# Gezyne LIS Standalone Desktop Client v2.3.0
+# Gezyne LIS Standalone Desktop Client v2.4.0
 
-[![Version](https://img.shields.io/badge/version-2.3.0-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
+[![Version](https://img.shields.io/badge/version-2.4.0-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
 [![Electron](https://img.shields.io/badge/Electron-v28-47848F.svg?style=flat-square&logo=electron)](https://www.electronjs.org/)
 [![Database](https://img.shields.io/badge/database-SQLite%20(Local--First)-blue.svg?style=flat-square&logo=sqlite)](https://www.sqlite.org/)
 [![Offline](https://img.shields.io/badge/offline-100%25%20capable-success.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](LICENSE)
 
-**Independent Desktop Workstation Client for Gezyne Clinical Laboratory LIS** featuring a Local-First SQLite Database, Multi-Station Reception Pipeline, and Automatic Two-Way Central Synchronization.
+An enterprise-grade, **local-first standalone desktop workstation client** for Gezyne Clinical Laboratory LIS. Features an embedded Express engine, local SQLite database (`lis-data.db`), multi-station reception workflow, and automated background two-way synchronization with the central LIS server.
 
-The standalone desktop application is a **100% independent, local-first workstation**. The UI is served entirely by an embedded local Express engine backed by a local SQLite database (`lis-data.db`).
+The standalone desktop application operates **100% autonomously without network connection**. When online connectivity is detected, queued offline operations are automatically replayed and reconciled with the central server using deterministic ID mapping.
 
-- ⚡ **Local-First UI**: Instant responsiveness, zero lag, full offline functionality without server dependency.
-- 💾 **SQLite Storage (`lis-data.db`)**: High-performance local storage for patients, multi-department tests, and reception queues.
-- 🔄 **Auto-Sync Engine**: Background push of offline queued mutations and background pull of central database snapshots.
-- 🔐 **Bearer Token Security**: Encrypted and token-authenticated server communication without storing plaintext user passwords.
-- 📱 **Auto-Collapsing Sidebar**: Automatic sidebar hiding in child preview windows and displays `<= 1100px`.
-- 🏥 **Reception Multi-Station Pipeline**: Offline progression across Payment, Extraction, Imaging (X-ray/Ultrasound/ECG/2D Echo), Doctor Consultation, and Results.
-- 🪪 **Deterministic ID Mapping**: Automatic translation and rewriting of offline temporary IDs to server-assigned IDs across pending operations and local tables.
+---
+
+## 📜 Version History & Release Notes
+
+### **v2.4.0 (Enterprise Clinical Intelligence & Operations) — Current Release**
+- 🤖 **Clinical & Operational AI Chatbot Assistant**:
+  - In-app desktop assistant providing immediate access to laboratory Standard Operating Procedures (SOP), reference ranges, specimen requirements, and operational guidelines.
+- 📦 **Reagent & Supply Inventory Tracking System**:
+  - Full desktop inventory management for laboratory reagents, test cartridges, extraction kits, and consumables.
+  - Expiry date monitoring, Lot/Batch tracking, low-stock alerts, and automated stock deductions per test.
+- 🎨 **Modernized UI / UX Design**:
+  - Polished desktop layout with rich analytical cards, status badges, responsive modals, and subtle micro-animations.
+  - Floating auto-expanding patient autocomplete search overlay in report preview screens.
+  - Persistent fullscreen mode across page transitions (`F11`).
+- 📊 **Clinical Batch Worksheet & Registry Retrieval Overhaul**:
+  - **Standardized Batch Diagnostic Worksheet**:
+    - Renamed approving pathologist / doctor column to **`APPROVED BY`** and **`APPROVED BY LICENSE`**.
+    - Corrected **`REQUESTED BY`** to display the attending physician from patient registration (`patient.physician`).
+    - Added patient **`Age`** and **`Sex`** directly after **`Last Name`**.
+    - Removed redundant `SIGNATORY` column and filtered out raw signature images and coordinate metadata (`signatures.*.filename`, `placement.x`, `placement.y`).
+    - Clean exports to Excel Spreadsheet (`.xlsx`), `.xls`, and `.csv`.
+  - **Patient Demographics Registry Export**:
+    - Replaced `Created By` with date-specific **`Tests Requested`** for census and audit tracking.
+    - Added **`Sex`** column directly after **`Age`** in both live preview and exported spreadsheets.
+- 🛡️ **Reception Multi-Station Sequence Protection**:
+  - Prevents patients with late-added tests from being routed back to stations they have already completed.
+  - PhilHealth membership verification and zero-charge routing with confirmation security prompts.
+- 🖨️ **Hardware Thermal Printing & Stream Sync**:
+  - Dedicated thermal barcode printer integration (ESC/POS) with environment variable fallback (`PRINTER_NAME`) and diagnostic testing tools.
+  - Granular SSE sync control with configurable page allowlist and rate limiters.
+
+---
+
+### **v2.0.0 – v2.3.0 (Local-First Architecture & Two-Way Sync)**
+- **Embedded SQLite Core (`lis-data.db`)**: High-performance local-first storage using `sql.js` / SQLite.
+- **Two-Way Synchronization Engine**: Background push of queued offline mutations and periodic pull of central server snapshots.
+- **Deterministic ID Mapping**: Automatic translation of offline temporary IDs (`temp-*`) to central server IDs across pending queues and local SQLite tables.
+- **Bearer Token Authentication**: Secure HMAC-SHA256 authenticated server communication without plaintext credential exposure.
+- **Multi-Station Reception Pipeline**: Autonomous offline progression across Payment, Extraction, Imaging, Consultation, and Results.
+- **Auto-Collapsing Sidebar**: Context-aware sidebar layout for compact workstation displays (`<= 1100px`) and child preview windows.
+
+---
+
+### **v1.0.0 (Foundational Baseline Release)**
+- **Basic Offline Patient Intake**: Local patient demographic entry, MRN generation, and basic search.
+- **Core Diagnostic Test Entry**: Offline recording of Hematology, Routine Urinalysis, Routine Fecalysis, and Blood Chemistry results.
+- **PDF Report Generation**: Standard diagnostic result rendering with A4 paper print formatting.
+- **Role-Based Workstation Access**: Basic session login for MedTechs and Receptionists.
+- **Local File Storage**: Initial JSON-based local data storage.
 
 ---
 
@@ -23,45 +66,47 @@ The standalone desktop application is a **100% independent, local-first workstat
 
 ### Prerequisites
 - **Node.js 18+** installed on the workstation
-- Optional: Central LIS server (`lis-fullstack`) running on the network for synchronization
+- Optional: Central LIS server (`lis-fullstack`) accessible on the local network for central synchronization
 
-### Install & Run
+### Installation & Execution
 
 ```powershell
 cd lis-app-standalone
 npm install
+
+# Start the desktop application
 npm start
 ```
 
-For development with Electron DevTools enabled:
+For development mode with Electron DevTools enabled:
 ```powershell
 npm run dev
 ```
 
-### Configuration
+### Workstation Configuration
 
-Edit `lib/config.js` or configure in the desktop settings modal:
+Edit `lib/config.js` or configure via the in-app Desktop Settings modal:
 
-```js
+```javascript
 module.exports = {
-  SERVER_URL: 'http://127.0.0.1:3000', // Central LIS Server URL
-  LOCAL_PORT: 30099,                   // Embedded local server port
-  SYNC_INTERVAL: 15000,                // Background sync poll interval (ms)
+  SERVER_URL: 'http://192.168.1.100:3000', // Central LIS Server URL
+  LOCAL_PORT: 30099,                       // Embedded local Express loopback port
+  SYNC_INTERVAL: 15000,                    // Background sync interval (ms)
   MAX_SYNC_RETRIES: 3
 };
 ```
 
 ---
 
-## 🏗️ Architecture & Data Flow
+## 🏗️ Architecture & Synchronization Flow
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│                    Standalone Electron App (v2.3.0)                    │
+│               Standalone Desktop Client Workstation (v2.4.0)           │
 │                                                                        │
 │   ┌───────────────────┐               ┌────────────────────────────┐   │
 │   │   BrowserWindow   │◄─────────────►│    Local Express Engine    │   │
-│   │ (127.0.0.1:30099) │   Loopback    │    (Full MVC & Routes)     │   │
+│   │ (127.0.0.1:30099) │   Loopback    │    (Full MVC & Controllers)│   │
 │   └───────────────────┘   Navigation  └──────────────┬─────────────┘   │
 │                                                      │                 │
 │                                       ┌──────────────▼─────────────┐   │
@@ -77,11 +122,11 @@ module.exports = {
 │             │ When Online                            │                 │
 │   ┌─────────▼────────────────────────────────────────▼─────────────┐   │
 │   │                       Sync Engine                              │   │
-│   │   • Pull: /export/data.json ──► Merge into local SQLite        │   │
-│   │   • Push: Replay queued mutations with ID mapping              │   │
+│   │   • Pull: /export/data.json ──► Reconcile into local SQLite    │   │
+│   │   • Push: Replay queued mutations with deterministic ID map    │   │
 │   └──────────────────────────────────┬─────────────────────────────┘   │
 └──────────────────────────────────────┼─────────────────────────────────┘
-                                       │ HTTP / HTTPS (Bearer Auth)
+                                       │ HTTP / HTTPS (HMAC-SHA256 Bearer)
                                        ▼
                      ┌──────────────────────────────────┐
                      │     Central LIS Server           │
@@ -91,75 +136,53 @@ module.exports = {
 
 ---
 
-## 🧪 Testing Suite Guide
+## 🧪 Automated Testing Suite
 
-All automated tests are compiled in the root [`test/`](../test) directory. These suites cover offline functionality, reception pipelines, embedded HTTP routes, deterministic ID mapping, and live server synchronization.
-
-### 1. Running Offline Tests (Server Offline)
-
-Run the full offline test suite from the repository root:
-
-```bash
-node test/run-all-offline-tests.js
-```
-
-Or run directly inside `lis-app-standalone`:
-
-```bash
-npm test
-```
-
-#### Individual Offline Suites:
-
-| Suite | File Path | What It Tests |
-| :--- | :--- | :--- |
-| **Suite 1: CRUD** | [`test/standalone-offline-crud.test.js`](../test/standalone-offline-crud.test.js) | SQLite DataStore initialization, auto-counter sequences (`P001`, `T001`), Patient & Test models offline CRUD. |
-| **Suite 2: Pipeline** | [`test/standalone-offline-pipeline.test.js`](../test/standalone-offline-pipeline.test.js) | Reception multi-station pipeline offline (`Payment Area` ➔ `Extraction Area` / `X-ray` / `Doctor` ➔ `Completed`). |
-| **Suite 3: HTTP Routes** | [`test/standalone-offline-routes.test.js`](../test/standalone-offline-routes.test.js) | Embedded Express endpoints (`GET /patients`, `POST /patients`, `POST /tests`, `GET /dashboard`) and operation queuing. |
-| **Suite 4: ID Mapping** | [`test/standalone-offline-id-mapping.test.js`](../test/standalone-offline-id-mapping.test.js) | Deep replacement of temporary offline IDs across chained queued mutations and SQLite DataStore collections. |
-
----
-
-### 2. Running Live Server Synchronization Tests (Server Online)
-
-Ensure the central LIS server is running on `http://127.0.0.1:3000`, then execute:
-
-```bash
-node test/standalone-live-sync.test.js
-```
-
----
-
-## 📦 Building the Standalone Installer (v2.3.0)
-
-To build the standalone Windows installer package:
+All automated tests are centralized in the root [`test/`](../test) directory.
 
 ```powershell
-# Build NSIS Windows installer (.exe)
+# Run all offline workstation tests (Server Offline)
+node test/run-all-offline-tests.js
+
+# Run live server synchronization tests (Server Online)
+node test/standalone-live-sync.test.js
+
+# Run system settings & SSE hardware diagnostic tests
+node test/settings-system.test.js
+```
+
+---
+
+## 📦 Building the Windows Installer (v2.4.0)
+
+To compile the production Windows desktop installer package:
+
+```powershell
+# Compile NSIS Windows Setup (.exe)
 npm run dist:win
 
-# Build unpacked executable directory
+# Compile unpacked executable directory for testing
 npm run dist:dir
 ```
 
-Output installers are generated in the `dist/` directory (`Gezyne LIS Client Setup 2.3.0.exe`).
+Installer Artifact: `lis-app-standalone/dist/Gezyne LIS Client Setup 2.4.0.exe`
 
 ---
 
-## 💾 Local Data Storage
+## 💾 Local Storage Directory
 
-All local database files and queued operations are preserved in the user data folder:
+All local databases, offline queues, and cached assets are persisted under the user profile:
 
 ```
 %APPDATA%/lis-app-standalone/
-├── lis-data.db                    # Local SQLite Database
+├── lis-data.db                    # High-performance local SQLite database
 ├── data/
-│   └── pending-operations.json    # Queued offline mutations
-└── page-cache/                    # Cached HTML snapshots
+│   └── pending-operations.json    # Queued offline mutations awaiting sync
+└── page-cache/                    # Cached HTML views
 ```
 
 ---
 
 ## 📌 License
 
-Distributed under the **MIT License**. Created for **Gezyne Clinical Laboratory**.
+Distributed under the **MIT License**. Engineered for **Gezyne Clinical Laboratory**.
