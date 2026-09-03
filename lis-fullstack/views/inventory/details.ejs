@@ -743,8 +743,12 @@
     const btn = document.getElementById('recSubmitBtn');
     btn.disabled = true;
 
+    const recLot = (document.getElementById('recLotNumber').value || '').trim();
     const payload = {
-      lotNumber: document.getElementById('recLotNumber').value,
+      id: (window.crypto && typeof window.crypto.randomUUID === 'function') 
+        ? window.crypto.randomUUID() 
+        : ('batch-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7)),
+      lotNumber: recLot || ('LOT-' + Math.floor(10000000 + Math.random() * 90000000)),
       quantityReceived: document.getElementById('recQuantity').value,
       expirationDate: document.getElementById('recExpirationDate').value,
       receivedDate: document.getElementById('recReceivedDate').value,

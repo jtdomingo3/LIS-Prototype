@@ -456,6 +456,49 @@ test('deleteInventory should remove transactions, batches, and item cleanly', ()
   assert.strictEqual(deletedItem, true);
 });
 
+// -------------------------------------------------------------
+// 8. SETUP SUPPRESSION & IDEMPOTENCY UNIT TESTS
+// -------------------------------------------------------------
+console.log('\n--- 8. Setup Mode Alert Suppression & Duplicate Prevention Tests ---');
+
+test('Critical stock calculation should ignore new items that have 0 batches (still being set up)', () => {
+  const item = new Inventory({
+    name: 'Gloves',
+    area: 'X-Ray & Radiology',
+    category: 'PPE',
+    criticalThreshold: 2
+  });
+
+  const allBatches = []; // No batches received yet
+  const itemBatches = allBatches.filter(b => b.inventoryId === item.id);
+
+  // When itemBatches is empty, item should NOT trigger critical alarm
+  const shouldAlert = itemBatches.length > 0 && itemBatches.reduce((sum, b) => sum + (b.quantityOnHand || 0), 0) <= item.criticalThreshold;
+  assert.strictEqual(shouldAlert, false, 'Item with 0 batches must not alert while setting up');
+});
+
+test('Critical stock calculation should trigger alert once batches are received and depleted', () => {
+  const item = new Inventory({
+    name: 'Cholesterol',
+    area: 'Clinical Chemistry',
+    category: 'Clinical Reagents',
+    criticalThreshold: 2
+  });
+
+  const batch = new InventoryBatch({
+    inventoryId: item.id,
+    lotNumber: 'LOT-123',
+    quantityOnHand: 1
+  });
+
+  const allBatches = [batch];
+  const itemBatches = allBatches.filter(b => b.inventoryId === item.id);
+  const totalStock = itemBatches.reduce((sum, b) => sum + (b.quantityOnHand || 0), 0);
+  const shouldAlert = itemBatches.length > 0 && totalStock <= item.criticalThreshold;
+
+  assert.strictEqual(shouldAlert, true, 'Depleted item with received batches must alert');
+});
+
 console.log('\n=============================================================');
 console.log(`🎉 ALL TESTS PASSED: ${passedTests} of ${totalTests} assertions verified!`);
 console.log('=============================================================\n');

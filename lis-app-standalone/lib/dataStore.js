@@ -148,10 +148,41 @@ class DataStore {
     if (!Array.isArray(items)) return;
     const dest = this.getCollection(name).slice();
     const map = new Map(dest.map(i => [String(i[idKey]), i]));
-    for (const it of items) {
-      if (!it || !it[idKey]) continue;
-      map.set(String(it[idKey]), it);
+
+    if (name === 'inventory') {
+      // Deduplicate items that have the same (name + area + category) or same SKU
+      for (const it of items) {
+        if (!it || !it[idKey]) continue;
+        const itName = (it.name || '').trim().toLowerCase();
+        const itArea = (it.area || '').trim().toLowerCase();
+        const itSku = (it.sku || '').trim().toUpperCase();
+
+        for (const [existingId, existingItem] of map.entries()) {
+          if (existingId !== String(it[idKey])) {
+            const exName = (existingItem.name || '').trim().toLowerCase();
+            const exArea = (existingItem.area || '').trim().toLowerCase();
+            const exSku = (existingItem.sku || '').trim().toUpperCase();
+
+            const isSameSku = itSku && exSku && itSku === exSku;
+            const isSameNameAndDept = itName && itArea && exName === itName && exArea === itArea && existingItem.category === it.category;
+
+            if (isSameSku || isSameNameAndDept) {
+              map.delete(existingId);
+              if (this.db && this.db.deleteInventory) {
+                try { this.db.deleteInventory(existingId); } catch (_) {}
+              }
+            }
+          }
+        }
+        map.set(String(it[idKey]), it);
+      }
+    } else {
+      for (const it of items) {
+        if (!it || !it[idKey]) continue;
+        map.set(String(it[idKey]), it);
+      }
     }
+
     const merged = Array.from(map.values());
     this.setCollection(name, merged);
   }

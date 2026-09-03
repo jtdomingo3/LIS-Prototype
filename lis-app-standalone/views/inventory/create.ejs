@@ -438,6 +438,16 @@
     const targetRoles = Array.from(document.querySelectorAll('input[name="targetRoles"]:checked')).map(el => el.value);
     payload.targetRoles = targetRoles;
 
+    // Ensure deterministic client ID and SKU to avoid duplicates across offline/online sync
+    if (!payload.id) {
+      payload.id = (window.crypto && typeof window.crypto.randomUUID === 'function') 
+        ? window.crypto.randomUUID() 
+        : ('inv-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7));
+    }
+    if (!payload.sku || !payload.sku.trim()) {
+      payload.sku = 'REF-' + Math.floor(100000 + Math.random() * 900000);
+    }
+
     function resetButton() {
       btn.disabled = false;
       btn.innerHTML = `<i class="fa fa-check"></i> <span id="lblSubmitBtn">${originalText}</span>`;

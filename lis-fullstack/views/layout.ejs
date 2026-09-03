@@ -1613,6 +1613,11 @@
             return;
           <% } %>
 
+          // Suppress intrusive pop-up dialog when user is already actively working in the Inventory module
+          if (window.location.pathname.startsWith('/inventory')) {
+            return;
+          }
+
           try {
             const snoozeUntil = localStorage.getItem(SNOOZE_KEY);
             if (snoozeUntil && Number(snoozeUntil) > Date.now()) {
