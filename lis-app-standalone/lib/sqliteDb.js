@@ -2051,12 +2051,22 @@ function createSqlJsDb(SQL, dbPath) {
       }
     },
 
+    getAllInventoryTransactions() {
+      try {
+        return parseRows(queryAll('SELECT json FROM inventory_transactions ORDER BY createdAt DESC'));
+      } catch (e) {
+        return [];
+      }
+    },
     getInventoryTransactions(inventoryId, batchId) {
       try {
         if (batchId) {
           return parseRows(queryAll('SELECT json FROM inventory_transactions WHERE batchId = ? ORDER BY createdAt DESC', [batchId]));
         }
-        return parseRows(queryAll('SELECT json FROM inventory_transactions WHERE inventoryId = ? ORDER BY createdAt DESC', [inventoryId]));
+        if (inventoryId) {
+          return parseRows(queryAll('SELECT json FROM inventory_transactions WHERE inventoryId = ? ORDER BY createdAt DESC', [inventoryId]));
+        }
+        return parseRows(queryAll('SELECT json FROM inventory_transactions ORDER BY createdAt DESC'));
       } catch (e) {
         return [];
       }
@@ -2201,6 +2211,7 @@ function createDb(dbPath, opts = {}) {
     getInventoryBatchById(id) { return underlyingDb ? underlyingDb.getInventoryBatchById(id) : null; },
     saveBatch(b) { if (underlyingDb) return underlyingDb.saveBatch(b); else readyPromise.then(d => d.saveBatch(b)); return b; },
     deleteBatch(id) { if (underlyingDb) return underlyingDb.deleteBatch(id); else readyPromise.then(d => d.deleteBatch(id)); return true; },
+    getAllInventoryTransactions() { return underlyingDb ? underlyingDb.getAllInventoryTransactions() : []; },
     getInventoryTransactions(itemId, batchId) { return underlyingDb ? underlyingDb.getInventoryTransactions(itemId, batchId) : []; },
     saveTransaction(tx) { if (underlyingDb) return underlyingDb.saveTransaction(tx); else readyPromise.then(d => d.saveTransaction(tx)); return tx; },
     deleteTransaction(id) { if (underlyingDb) return underlyingDb.deleteTransaction(id); else readyPromise.then(d => d.deleteTransaction(id)); return true; },

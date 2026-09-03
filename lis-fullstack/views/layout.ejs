@@ -1116,7 +1116,7 @@
                     return;
                 }
 
-                const sseAllowed = ['/dashboard', '/patients', '/reception', '/tests'];
+                const sseAllowed = ['/dashboard', '/patients', '/reception', '/tests', '/inventory'];
                 const isAllowed = sseAllowed.some(p => path === p || path.startsWith(p + '/'));
                 if (!isAllowed) {
                     // Mark connection as disabled and skip SSE setup entirely (no reconnects)
@@ -1253,6 +1253,15 @@
                                 text = `🧪 Test Results Encoded & Completed (ID: ${data.testId || ''})`;
                             } else if (data.action === 'release') {
                                 text = `📄 Laboratory Result Released for Test #${data.testId || ''}`;
+                            } else if (data.action === 'inventory_create') {
+                                text = `📦 New Inventory Item Added: ${data.name || ''}`;
+                            } else if (data.action === 'inventory_update') {
+                                text = `✏️ Inventory Item Updated: ${data.name || ''}`;
+                            } else if (data.action === 'inventory_delete') {
+                                text = `🗑️ Inventory Item Removed: ${data.name || ''}`;
+                            } else if (data.action === 'inventory_stock') {
+                                const stockDir = data.delta > 0 ? `+${data.delta}` : `${data.delta}`;
+                                text = `📊 Stock Updated: ${data.name || ''} (${stockDir}) — Total: ${data.totalStock}`;
                             } else if (data.action === 'delete') {
                                 text = `🗑️ Test #${data.testId || ''} removed from queue`;
                             } else if (data.action === 'advert') {
@@ -1281,6 +1290,7 @@
                                                    currentPath === '/patients' || 
                                                    currentPath === '/tests' || 
                                                    currentPath === '/dashboard' || 
+                                                   currentPath.startsWith('/inventory') || 
                                                    currentPath === '';
                                 const v = localStorage.getItem('notif-auto-refresh');
                                 const enabled = (v === '1' || (autoRefreshCheckbox && autoRefreshCheckbox.checked) || isLivePage);

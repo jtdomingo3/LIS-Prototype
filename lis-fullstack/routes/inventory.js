@@ -4,6 +4,15 @@ const { v4: uuidv4 } = require('uuid');
 const Inventory = require('../models/Inventory');
 const InventoryBatch = require('../models/InventoryBatch');
 const InventoryTransaction = require('../models/InventoryTransaction');
+const sseEmitter = require('../lib/sseEmitter');
+
+// Helper: compute total stock on hand across all batches for an item
+function getTotalStock(itemId) {
+  try {
+    const batches = (global.db.getInventoryBatchesByItemId(itemId) || []);
+    return batches.reduce((sum, b) => sum + (b.quantityOnHand || 0), 0);
+  } catch (_) { return 0; }
+}
 
 // Helper to get current user info
 const getUserIdentifier = (req) => {
@@ -653,6 +662,9 @@ router.post('/', requireInventoryAccess, (req, res) => {
       return res.status(500).json({ error: 'Database failed to save the inventory item.' });
     }
 
+    // Broadcast SSE event — all connected clients refresh instantly
+    try { sseEmitter.emit('update', { action: 'inventory_create', itemId: saved.id, name: saved.name, category: saved.category, area: saved.area, totalStock: 0, time: new Date().toISOString() }); } catch (_) {}
+
     res.json({ 
       success: true, 
       itemId: saved.id, 
@@ -828,6 +840,9 @@ const handleUpdateItem = (req, res) => {
       return res.status(500).json({ error: 'Failed to save updated inventory item.' });
     }
 
+    // Broadcast SSE update event
+    try { sseEmitter.emit('update', { action: 'inventory_update', itemId: saved.id, name: saved.name, category: saved.category, area: saved.area, totalStock: getTotalStock(saved.id), time: new Date().toISOString() }); } catch (_) {}
+
     res.json({ success: true, message: 'Item details updated successfully.' });
   } catch (err) {
     console.error('Update inventory item error:', err);
@@ -886,6 +901,9 @@ const handleDeleteItem = (req, res) => {
     if (!success) {
       return res.status(500).json({ error: 'Failed to delete inventory item.' });
     }
+
+    // Broadcast SSE delete event
+    try { sseEmitter.emit('update', { action: 'inventory_delete', itemId: item.id, name: item.name, time: new Date().toISOString() }); } catch (_) {}
 
     res.json({ success: true, message: `Item "${item.name}" deleted successfully.` });
   } catch (err) {
@@ -963,6 +981,7 @@ router.post('/:id/batch', requireInventoryAccess, (req, res) => {
 
     // Record RECEIVE audit transaction
     const transaction = new InventoryTransaction({
+      id: (req.body && req.body.transactionId) ? req.body.transactionId : undefined,
       inventoryId: item.id,
       batchId: savedBatch.id,
       lotNumber: savedBatch.lotNumber,
@@ -976,6 +995,9 @@ router.post('/:id/batch', requireInventoryAccess, (req, res) => {
     });
 
     global.db.saveTransaction(transaction);
+
+    // Broadcast SSE stock receive event
+    try { sseEmitter.emit('update', { action: 'inventory_stock', itemId: item.id, name: item.name, batchId: savedBatch.id, lotNumber: savedBatch.lotNumber, delta: qty, totalStock: getTotalStock(item.id), time: new Date().toISOString() }); } catch (_) {}
 
     res.json({ 
       success: true, 
@@ -1135,6 +1157,9 @@ router.post('/:id/batch/:batchId/adjust', requireInventoryAccess, (req, res) => 
 
     global.db.saveTransaction(transaction);
 
+    // Broadcast SSE stock adjust event
+    try { sseEmitter.emit('update', { action: 'inventory_stock', itemId: item.id, name: item.name, batchId: batch.id, lotNumber: batch.lotNumber, delta: diff, totalStock: getTotalStock(item.id), time: new Date().toISOString() }); } catch (_) {}
+
     res.json({ 
       success: true, 
       message: `Stock for Lot ${batch.lotNumber} adjusted from ${quantityBefore} to ${targetQty} ${item.unit}.` 
@@ -1191,6 +1216,9 @@ router.post('/:id/batch/:batchId/discard', requireInventoryAccess, (req, res) =>
     });
 
     global.db.saveTransaction(transaction);
+
+    // Broadcast SSE discard event
+    try { sseEmitter.emit('update', { action: 'inventory_stock', itemId: item.id, name: item.name, batchId: batch.id, lotNumber: batch.lotNumber, delta: -qtyToDiscard, totalStock: getTotalStock(item.id), time: new Date().toISOString() }); } catch (_) {}
 
     res.json({ 
       success: true, 
@@ -1290,6 +1318,9 @@ router.post('/:id/consume', requireAuth, (req, res) => {
     });
 
     global.db.saveTransaction(transaction);
+
+    // Broadcast SSE consume event
+    try { sseEmitter.emit('update', { action: 'inventory_stock', itemId: item.id, name: item.name, batchId: batch.id, lotNumber: batch.lotNumber, delta: -qty, totalStock: getTotalStock(item.id), time: new Date().toISOString() }); } catch (_) {}
 
     res.json({ 
       success: true, 

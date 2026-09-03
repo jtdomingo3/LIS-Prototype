@@ -104,7 +104,7 @@ class DataStore {
     if (name === 'counters') return this.db.getCounters();
     if (name === 'inventory') return this.db.getInventory ? this.db.getInventory() : [];
     if (name === 'inventory_batches') return this.db.getAllInventoryBatches ? this.db.getAllInventoryBatches() : [];
-    if (name === 'inventory_transactions') return this.db.getInventoryTransactions ? this.db.getInventoryTransactions() : [];
+    if (name === 'inventory_transactions') return this.db.getAllInventoryTransactions ? this.db.getAllInventoryTransactions() : (this.db.getInventoryTransactions ? this.db.getInventoryTransactions() : []);
     return [];
   }
 
@@ -140,6 +140,15 @@ class DataStore {
       items.forEach(b => this.db.saveBatch && this.db.saveBatch(b));
     }
     else if (name === 'inventory_transactions' && Array.isArray(items)) {
+      if (opts && opts.replace && (this.db.getAllInventoryTransactions || this.db.getInventoryTransactions)) {
+        const incomingIds = new Set(items.map(t => t && (t.id || t._id)).filter(Boolean));
+        const current = (this.db.getAllInventoryTransactions ? this.db.getAllInventoryTransactions() : this.db.getInventoryTransactions()) || [];
+        for (const t of current) {
+          if (t && t.id && !incomingIds.has(t.id) && this.db.deleteTransaction) {
+            this.db.deleteTransaction(t.id);
+          }
+        }
+      }
       items.forEach(t => this.db.saveTransaction && this.db.saveTransaction(t));
     }
   }
@@ -232,7 +241,7 @@ class DataStore {
     }
 
     const merged = Array.from(map.values());
-    this.setCollection(name, merged);
+    this.setCollection(name, merged, { replace: true });
   }
 
   setMeta(key, val) {
