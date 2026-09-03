@@ -32,16 +32,21 @@
       <input id="patientSearch" type="text" placeholder="Search patient name..." autocomplete="off" style="width:100%; height:38px; padding:0 12px 0 34px; font-size:13.5px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; margin:0; box-sizing:border-box;">
     </div>
 
-    <select id="filterPatient" style="width:170px; flex-shrink:0; height:38px; padding:0 10px; font-size:13px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; margin:0; box-sizing:border-box;">
-      <option value="">-- All Patients --</option>
-      <% if (testsForNav && testsForNav.length) {
-          const patients = Array.from(new Set(testsForNav.map(t => t.patientName || '').filter(Boolean))).sort((a,b) => a.localeCompare(b)); 
-         %>
-        <% patients.forEach(function(pn) { %>
-          <option value="<%= pn %>"><%= pn %></option>
-        <% }) %>
-      <% } %>
-    </select>
+    <div id="filterPatientWrapper" style="position:relative; flex-shrink:0;">
+      <select id="filterPatient" style="width:180px; height:38px; padding:0 10px; font-size:13px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; margin:0; box-sizing:border-box; cursor:pointer;">
+        <option value="">-- All Patients --</option>
+        <% if (testsForNav && testsForNav.length) {
+            const patients = Array.from(new Set(testsForNav.map(t => t.patientName || '').filter(Boolean))).sort((a,b) => a.localeCompare(b)); 
+           %>
+          <% patients.forEach(function(pn) { %>
+            <option value="<%= pn %>"><%= pn %></option>
+          <% }) %>
+        <% } %>
+      </select>
+      <div id="filterPatientDropdown" style="display:none; position:absolute; top:calc(100% + 4px); left:0; width:max-content; min-width:100%; max-width:320px; max-height:240px; overflow-y:auto; background:#ffffff; border:1px solid #cbd5e1; border-radius:8px; box-shadow:0 10px 25px rgba(0,0,0,0.12); z-index:9999; padding:4px 0;">
+        <!-- Dropdown items dynamically populated -->
+      </div>
+    </div>
 
     <% let testTypes = []; if (testsForNav && testsForNav.length) { testTypes = Array.from(new Set(testsForNav.map(t => t.testType || t.template || '').filter(Boolean))); } %>
     <div id="filterTestType" style="position:relative; flex-shrink:0;">
@@ -124,40 +129,142 @@
   window.currentTestId = '<%= test.id %>';
 
   (function(){
-    // Patient search -> filter patient select options
+    // Patient search -> filter patient select options & auto-expand dropdown menu
     (function(){
       const searchInput = document.getElementById('patientSearch');
       const selectEl = document.getElementById('filterPatient');
-      if (!searchInput || !selectEl) return;
+      const dropdownEl = document.getElementById('filterPatientDropdown');
+      const wrapperEl = document.getElementById('filterPatientWrapper');
+      if (!searchInput || !selectEl || !dropdownEl) return;
 
-      function filterPatientOptions() {
-        const q = String(searchInput.value || '').toLowerCase().trim();
-        let visibleCount = 0;
-        for (let i = 0; i < selectEl.options.length; i++) {
-          const opt = selectEl.options[i];
-          if (!opt.value) { opt.hidden = false; visibleCount++; continue; }
-          const txt = (opt.text || '').toLowerCase();
-          const match = q === '' || txt.indexOf(q) !== -1;
-          opt.hidden = !match;
-          if (match) visibleCount++;
-        }
-        if (q !== '' && visibleCount > 1) selectEl.size = Math.min(8, visibleCount);
-        else selectEl.size = 1;
+      const rawPatients = Array.from(selectEl.options).map(o => o.value).filter(Boolean);
+      let highlightedIdx = -1;
 
-        if (q !== '' && visibleCount === 1) {
-          for (let i = 0; i < selectEl.options.length; i++) {
-            const opt = selectEl.options[i];
-            if (!opt.hidden && opt.value) {
-              selectEl.value = opt.value;
-              selectEl.dispatchEvent(new Event('change'));
-              break;
-            }
-          }
+      function renderDropdown(q) {
+        dropdownEl.innerHTML = '';
+        const query = String(q || '').toLowerCase().trim();
+        const matches = rawPatients.filter(p => query === '' || p.toLowerCase().includes(query));
+
+        // Option: -- All Patients --
+        const allOpt = document.createElement('div');
+        allOpt.className = 'filter-patient-item';
+        allOpt.textContent = '-- All Patients --';
+        allOpt.dataset.value = '';
+        allOpt.style.cssText = 'padding:8px 14px; font-size:13px; cursor:pointer; color:#64748b; font-style:italic; border-bottom:1px solid #f1f5f9; transition:background 0.12s;';
+        if (selectEl.value === '') {
+          allOpt.style.background = '#f1f5f9';
+          allOpt.style.fontWeight = '600';
         }
+        allOpt.addEventListener('mouseenter', function() { if (selectEl.value !== '') this.style.background = '#f8fafc'; });
+        allOpt.addEventListener('mouseleave', function() { if (selectEl.value !== '') this.style.background = ''; });
+        allOpt.addEventListener('click', function() {
+          selectPatient('');
+        });
+        dropdownEl.appendChild(allOpt);
+
+        if (!matches.length && query !== '') {
+          const noMatch = document.createElement('div');
+          noMatch.textContent = 'No matching patients found';
+          noMatch.style.cssText = 'padding:10px 14px; font-size:12.5px; color:#94a3b8; font-style:italic;';
+          dropdownEl.appendChild(noMatch);
+        } else {
+          matches.forEach(pn => {
+            const item = document.createElement('div');
+            item.className = 'filter-patient-item';
+            item.textContent = pn;
+            item.dataset.value = pn;
+            const isSelected = selectEl.value === pn;
+            item.style.cssText = 'padding:8px 14px; font-size:13px; cursor:pointer; white-space:nowrap; transition:background 0.12s;' +
+                                (isSelected ? ' background:#475569; color:#ffffff; font-weight:600;' : ' color:#1e293b;');
+            item.addEventListener('mouseenter', function() {
+              if (selectEl.value !== pn) this.style.background = '#f1f5f9';
+            });
+            item.addEventListener('mouseleave', function() {
+              if (selectEl.value !== pn) this.style.background = '';
+            });
+            item.addEventListener('click', function() {
+              selectPatient(pn);
+            });
+            dropdownEl.appendChild(item);
+          });
+        }
+
+        dropdownEl.style.display = 'block';
+        highlightedIdx = -1;
       }
 
-      searchInput.addEventListener('input', filterPatientOptions);
-      selectEl.addEventListener('change', function(){ selectEl.size = 1; });
+      function selectPatient(val) {
+        selectEl.value = val;
+        dropdownEl.style.display = 'none';
+        if (val) searchInput.value = val;
+        selectEl.dispatchEvent(new Event('change'));
+      }
+
+      // Automatically expand floating dropdown when typing in search
+      searchInput.addEventListener('input', function() {
+        renderDropdown(searchInput.value);
+      });
+
+      // Automatically show dropdown on search focus if there is input or to view list
+      searchInput.addEventListener('focus', function() {
+        if (searchInput.value.trim() !== '') {
+          renderDropdown(searchInput.value);
+        }
+      });
+
+      // Toggle dropdown on select element click
+      selectEl.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        if (dropdownEl.style.display === 'block') {
+          dropdownEl.style.display = 'none';
+        } else {
+          renderDropdown(searchInput.value);
+        }
+      });
+
+      // Keyboard navigation (Arrow keys, Enter, Escape)
+      searchInput.addEventListener('keydown', function(e) {
+        const items = Array.from(dropdownEl.querySelectorAll('.filter-patient-item'));
+        if (dropdownEl.style.display === 'block' && items.length) {
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            highlightedIdx = (highlightedIdx + 1) % items.length;
+            updateHighlight(items);
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            highlightedIdx = (highlightedIdx - 1 + items.length) % items.length;
+            updateHighlight(items);
+          } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (highlightedIdx >= 0 && highlightedIdx < items.length) {
+              selectPatient(items[highlightedIdx].dataset.value);
+            }
+          } else if (e.key === 'Escape') {
+            dropdownEl.style.display = 'none';
+          }
+        }
+      });
+
+      function updateHighlight(items) {
+        items.forEach((it, idx) => {
+          if (idx === highlightedIdx) {
+            it.style.background = '#0284c7';
+            it.style.color = '#ffffff';
+            it.scrollIntoView({ block: 'nearest' });
+          } else {
+            const isSel = selectEl.value === it.dataset.value;
+            it.style.background = isSel ? '#475569' : '';
+            it.style.color = isSel ? '#ffffff' : '#1e293b';
+          }
+        });
+      }
+
+      // Close dropdown when clicking outside
+      document.addEventListener('click', function(e) {
+        if (wrapperEl && !wrapperEl.contains(e.target) && e.target !== searchInput) {
+          dropdownEl.style.display = 'none';
+        }
+      });
     })();
 
     const tests = window.testsForNav || [];
@@ -347,8 +454,7 @@
       if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; }
       patientInput.value = '';
       var psBox = document.getElementById('patientSearch'); if (psBox) { psBox.value = ''; }
-      for (var i = 0; i < patientInput.options.length; i++) patientInput.options[i].hidden = false;
-      patientInput.size = 1;
+      const pDrop = document.getElementById('filterPatientDropdown'); if (pDrop) { pDrop.style.display = 'none'; }
       Array.from(document.querySelectorAll('.filterTestTypeCheckbox')).forEach(cb => cb.checked = false);
       try { const sa = document.getElementById('filterTestTypeSelectAll'); if (sa) sa.checked = false; } catch(e) {}
       dateFilter.value = '';
