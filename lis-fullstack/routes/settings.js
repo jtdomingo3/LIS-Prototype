@@ -186,10 +186,22 @@ router.get('/', requireAuth, (req, res) => {
 
   const requirePaymentAmount = (typeof settings.requirePaymentAmount !== 'undefined') ? !!settings.requirePaymentAmount : true;
 
+  const sseConfig = settings.sseConfig || req.app.locals.sseConfig || {
+    enabled: true,
+    autoRefreshByDefault: true,
+    allowedPages: ['/dashboard', '/patients', '/reception', '/tests', '/inventory'],
+    connectDelaySec: 3,
+    retryDelaySec: 3,
+    refreshDebounceMs: 800
+  };
+  const printerName = settings.printerName || process.env.PRINTER_NAME || process.env.THERMAL_PRINTER_NAME || '';
+
   if (req.query.format === 'json' || req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'))) {
     return res.json({
       success: true,
       settings,
+      sseConfig,
+      printerName,
       featureFlags,
       backupConfig,
       hasOpenRouterKey,
@@ -220,8 +232,56 @@ router.get('/', requireAuth, (req, res) => {
     maskedKey,
     currentModel,
     availableModels: AVAILABLE_MODELS,
-    requirePaymentAmount
+    requirePaymentAmount,
+    sseConfig,
+    printerName
   });
+});
+
+// POST /settings/test-print - Test printer connection and trigger test print
+router.post('/test-print', requireAuth, (req, res) => {
+  try {
+    const { spawnSync } = require('child_process');
+    const pathMod = require('path');
+    const fsMod = require('fs');
+    const scriptPath = pathMod.join(__dirname, '..', 'scripts', 'thermal_test.js');
+    if (!fsMod.existsSync(scriptPath)) {
+      return res.status(404).json({ success: false, error: 'Thermal printer script (scripts/thermal_test.js) not found.' });
+    }
+
+    const printType = (req.body && req.body.type) ? req.body.type : 'receipt';
+    const args = [scriptPath];
+    if (printType === 'barcode') args.push('--barcode');
+    else args.push('--receipt');
+
+    const printer = (req.body && req.body.printer) || (settings && settings.printerName) || process.env.PRINTER_NAME || process.env.THERMAL_PRINTER_NAME || '';
+    if (printer) args.push('--printer', printer);
+
+    const spawnEnv = Object.assign({}, process.env, { ELECTRON_RUN_AS_NODE: '1' });
+    const proc = spawnSync(process.execPath, args, {
+      cwd: pathMod.join(__dirname, '..'),
+      encoding: 'utf8',
+      maxBuffer: 10 * 1024 * 1024,
+      env: spawnEnv
+    });
+
+    if (proc.error) {
+      return res.status(500).json({ success: false, error: proc.error.message || String(proc.error) });
+    }
+
+    if (proc.status !== 0) {
+      const errMsg = proc.stderr || proc.stdout || `Printer process exited with code ${proc.status}`;
+      return res.status(500).json({ success: false, error: errMsg });
+    }
+
+    return res.json({
+      success: true,
+      message: `Test print job (${printType.toUpperCase()}) successfully sent to ${printer || 'default system thermal printer'}!`,
+      output: proc.stdout || ''
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // Test OpenRouter AI Connection from settings page
@@ -284,8 +344,45 @@ router.post('/', requireAuth, canManageUsers, (req, res) => {
       cur.openrouterModel = aiModel;
       cur.requirePaymentAmount = (flags.requirePaymentAmount === 'on' || flags.requirePaymentAmount === true || flags.requirePaymentAmount === 'true');
 
+      // SSE Real-Time Configuration
+      const sseAllowedPages = [];
+      if (flags.sse_page_dashboard) sseAllowedPages.push('/dashboard');
+      if (flags.sse_page_patients) sseAllowedPages.push('/patients');
+      if (flags.sse_page_reception) sseAllowedPages.push('/reception');
+      if (flags.sse_page_tests) sseAllowedPages.push('/tests');
+      if (flags.sse_page_reports) sseAllowedPages.push('/reports');
+      if (flags.sse_page_inventory) sseAllowedPages.push('/inventory');
+      if (flags.sse_page_signatures) sseAllowedPages.push('/signatures');
+      if (flags.sse_page_worksheet) sseAllowedPages.push('/reports/worksheet');
+      if (flags.sse_page_templates) sseAllowedPages.push('/templates');
+      if (flags.sse_page_users) sseAllowedPages.push('/users');
+      if (flags.sse_page_settings) sseAllowedPages.push('/settings');
+      if (flags.sse_page_chatbot) sseAllowedPages.push('/chatbot');
+
+      const sseConfigObj = {
+        enabled: flags.sseEnabled === 'on' || flags.sseEnabled === true || flags.sseEnabled === 'true',
+        autoRefreshByDefault: flags.sseAutoRefreshByDefault === 'on' || flags.sseAutoRefreshByDefault === true || flags.sseAutoRefreshByDefault === 'true',
+        allowedPages: sseAllowedPages,
+        connectDelaySec: Math.max(0, parseInt(flags.sseConnectDelaySec, 10) || 3),
+        retryDelaySec: Math.max(1, parseInt(flags.sseRetryDelaySec, 10) || 3),
+        refreshDebounceMs: Math.max(100, parseInt(flags.sseRefreshDebounceMs, 10) || 800)
+      };
+      cur.sseConfig = sseConfigObj;
+      req.app.locals.sseConfig = sseConfigObj;
+
+      // Printer Settings
+      const printer = (flags.printerName || '').trim();
+      cur.printerName = printer;
+      process.env.PRINTER_NAME = printer;
+      process.env.THERMAL_PRINTER_NAME = printer;
+
       const envUpdates = {};
+      if (printer) {
+        envUpdates.PRINTER_NAME = printer;
+      }
       envUpdates.OPENROUTER_DEFAULT_MODEL = aiModel;
+      envUpdates.DOCTOR_1_NAME = doc1;
+      envUpdates.DOCTOR_2_NAME = doc2;
 
       if (rawAiKey && rawAiKey.startsWith('sk-or-')) {
         const encryptedKey = encryptSecret(rawAiKey);

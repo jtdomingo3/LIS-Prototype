@@ -1080,7 +1080,23 @@
         })();
 
         // ===== Global SSE Notifications =====
+        window.__LIS_SSE_CONFIG__ = <%- JSON.stringify(typeof sseConfig !== 'undefined' && sseConfig ? sseConfig : {
+            enabled: true,
+            allowedPages: ['/dashboard', '/patients', '/reception', '/tests', '/inventory'],
+            connectDelaySec: 3,
+            retryDelaySec: 3,
+            refreshDebounceMs: 800
+        }) %>;
+
         (function(){
+            const sseCfg = window.__LIS_SSE_CONFIG__ || {
+                enabled: true,
+                allowedPages: ['/dashboard', '/patients', '/reception', '/tests', '/inventory'],
+                connectDelaySec: 3,
+                retryDelaySec: 3,
+                refreshDebounceMs: 800
+            };
+
             const sound = document.getElementById('notifSound');
             const badge = document.getElementById('notifBadge');
             const btn = document.getElementById('notifBtn');
@@ -1092,8 +1108,14 @@
 
             if (!badge || !btn || !dropdown) return;
 
-            // Only enable SSE on a small set of real-time views to avoid system delays.
-            // Keep SSE active only for: /dashboard, /patients, /reception (and their subpaths).
+            // Check if SSE is globally disabled in Settings
+            if (sseCfg.enabled === false) {
+                const connEl = document.getElementById('notifConn');
+                if (connEl) { connEl.style.background = '#94a3b8'; connEl.title = 'SSE Real-Time updates disabled in Settings'; }
+                return;
+            }
+
+            // Real-time view check
             try {
                 const path = (window.location && window.location.pathname) ? window.location.pathname : '/';
                 // **don't open a stream on the new‑patient form** – a reload wipes the form
@@ -1116,21 +1138,27 @@
                     return;
                 }
 
-                const sseAllowed = ['/dashboard', '/patients', '/reception', '/tests', '/inventory'];
+                const sseAllowed = Array.isArray(sseCfg.allowedPages) && sseCfg.allowedPages.length > 0
+                    ? sseCfg.allowedPages
+                    : ['/dashboard', '/patients', '/reception', '/tests', '/inventory'];
+
                 const isAllowed = sseAllowed.some(p => path === p || path.startsWith(p + '/'));
                 if (!isAllowed) {
                     // Mark connection as disabled and skip SSE setup entirely (no reconnects)
                     const connEl = document.getElementById('notifConn');
-                    if (connEl) { connEl.style.background = '#ef4444'; connEl.title = 'SSE disabled on this page'; }
+                    if (connEl) { connEl.style.background = '#ef4444'; connEl.title = 'SSE disabled on this page (configurable in Settings)'; }
                     return;
                 }
             } catch (e) { /* if anything goes wrong, fall back to original behavior */ }
 
-            // restore preferences (default: auto-refresh disabled)
+            // restore preferences (uses sseCfg.autoRefreshByDefault as baseline default)
             try {
                 const v = localStorage.getItem('notif-auto-refresh');
-                if (v === '1') autoRefreshCheckbox.checked = true;
-                else autoRefreshCheckbox.checked = false;
+                if (v !== null) {
+                    autoRefreshCheckbox.checked = (v === '1');
+                } else {
+                    autoRefreshCheckbox.checked = (sseCfg.autoRefreshByDefault !== false);
+                }
             } catch(e){}
             try { if (localStorage.getItem('notif-muted') === '1') muteCheckbox.checked = true; } catch(e){}
 
@@ -1292,13 +1320,17 @@
                                                    currentPath === '/dashboard' || 
                                                    currentPath.startsWith('/inventory') || 
                                                    currentPath === '';
-                                const v = localStorage.getItem('notif-auto-refresh');
-                                const enabled = (v === '1' || (autoRefreshCheckbox && autoRefreshCheckbox.checked) || isLivePage);
-                                if (enabled && !isUserEditing && !isEditingPage) {
+                                const defaultAutoRefresh = sseCfg.autoRefreshByDefault !== false;
+                                const userAutoRefresh = localStorage.getItem('notif-auto-refresh');
+                                const isAutoRefreshOn = userAutoRefresh !== null ? (userAutoRefresh === '1') : defaultAutoRefresh;
+                                const enabled = (autoRefreshCheckbox && autoRefreshCheckbox.checked != null) ? autoRefreshCheckbox.checked : isAutoRefreshOn;
+
+                                if (enabled && !isUserEditing && !isEditingPage && isAllowed) {
                                     if (window._sseRefreshTimer) clearTimeout(window._sseRefreshTimer);
+                                    const debounceDelay = Math.max(100, (sseCfg.refreshDebounceMs || 800));
                                     window._sseRefreshTimer = setTimeout(() => {
                                         try { window.location.reload(); } catch (e) {}
-                                    }, 800);
+                                    }, debounceDelay);
                                 }
                             } catch(e){}
                         } catch (e) { console.warn('[SSE] message parse error', e); }
@@ -1316,11 +1348,14 @@
                     setTimeout(() => { if (document.visibilityState === 'visible') connect(); }, sseRetryDelay);
                 }
             }
-            let sseRetryDelay = 3000;
-            // Defer SSE connection until the user stays on the page for 3s.
-            // If user switches tab/loses visibility, cancel the pending connect and close any open connection.
+            const configuredRetrySec = Math.max(1, (sseCfg.retryDelaySec || 3));
+            let sseRetryDelay = configuredRetrySec * 1000;
+            const configuredConnectDelayMs = Math.max(0, (sseCfg.connectDelaySec != null ? sseCfg.connectDelaySec : 3)) * 1000;
+
+            // Defer SSE connection according to configured connection delay.
+            // If user switches tab/loses visibility, cancel pending connect and close open connection.
             let sseDeferredTimer = null;
-            function scheduleSSEConnect(delay = 3000) {
+            function scheduleSSEConnect(delay = configuredConnectDelayMs) {
                 if (!('EventSource' in window)) return;
                 try { clearTimeout(sseDeferredTimer); } catch(e){}
                 sseDeferredTimer = setTimeout(() => {
@@ -1332,17 +1367,15 @@
 
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible') {
-                    // schedule connect after 3s of being visible
-                    scheduleSSEConnect(3000);
+                    scheduleSSEConnect(configuredConnectDelayMs);
                 } else {
-                    // cancel pending connect and close any existing connection
                     try { clearTimeout(sseDeferredTimer); } catch(e){}
                     try { if (es) { es.close(); es = null; setConn(false); } } catch (e) {}
                 }
             });
 
-            // Kick off initial schedule when page loads (will connect after 5s if still visible)
-            if (document.visibilityState === 'visible') scheduleSSEConnect(3000);
+            // Kick off initial schedule when page loads
+            if (document.visibilityState === 'visible') scheduleSSEConnect(configuredConnectDelayMs);
         })();
 
         // Persistent Fullscreen Viewport (keeps Fullscreen active across all sidebar navigation and page loads)

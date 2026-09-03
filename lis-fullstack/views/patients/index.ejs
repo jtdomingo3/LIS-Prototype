@@ -26,10 +26,6 @@
                             <a href="/patients" class="button btn-secondary">Clear</a>
                         </div>
                     </form>
-
-                    <div style="white-space:nowrap;">
-                        <button id="testPrintBtn" class="button btn-secondary">Test Print</button>
-                    </div>
                 </div>
         </div>
     <table>
@@ -106,18 +102,3 @@
         </div>
         <% } %>
 </div>
-
-    <script>
-    // Test Print button: call server endpoint to run thermal test
-    document.getElementById('testPrintBtn').addEventListener('click', function() {
-        if (!confirm('Send a test print to the configured thermal printer?')) return;
-        this.disabled = true;
-        fetch('/patients/thermal-print', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ receipt: true }) })
-            .then(r => r.json())
-            .then(j => {
-                alert(j && j.success ? 'Print job sent.' : ('Print failed: ' + (j && j.error ? j.error : 'unknown')));
-            })
-            .catch(err => { alert('Print request failed: ' + err); })
-            .finally(() => { document.getElementById('testPrintBtn').disabled = false; });
-    });
-    </script>

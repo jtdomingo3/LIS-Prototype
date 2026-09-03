@@ -351,6 +351,21 @@ app.use((req, res, next) => {
   // Also expose the session's user under `sessionUser` so layout can rely on the
   // logged-in user even when a view passes a `user` variable for other purposes
   res.locals.sessionUser = req.session.user || null;
+
+  let currentSettings = {};
+  try {
+    if (global.db && typeof global.db.getSettings === 'function') currentSettings = global.db.getSettings() || {};
+    else if (global.db && typeof global.db.read === 'function') currentSettings = (global.db.read() || {}).settings || {};
+  } catch (_) {}
+  res.locals.sseConfig = currentSettings.sseConfig || app.locals.sseConfig || {
+    enabled: true,
+    autoRefreshByDefault: true,
+    allowedPages: ['/dashboard', '/patients', '/reception', '/tests', '/inventory'],
+    connectDelaySec: 3,
+    retryDelaySec: 3,
+    refreshDebounceMs: 800
+  };
+
   next();
 });
 
