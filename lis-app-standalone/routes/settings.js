@@ -8,9 +8,30 @@ const { dataFile } = require('../lib/dataPath');
 const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
+const { encryptSecret, decryptSecret } = require('../lib/cryptoHelper');
+const { testOpenRouterConnection, resolveApiKey, AVAILABLE_MODELS, DEFAULT_MODEL } = require('../lib/gezyneBotService');
+
 const DEFAULT_BACKUP_DIR = path.join(os.homedir(), 'Documents', 'LIS', 'backup');
 
-const ENV_FILE = path.join(__dirname, '..', '.env');
+function getEnvFilePath() {
+  // If running in packaged exe or DATA_DIR is set, use writable persistent location
+  if (process.pkg) {
+    const dataDir = process.env.DATA_DIR || path.join(process.env.PROGRAMDATA || 'C:\\ProgramData', 'GezyneLIS');
+    try { fs.mkdirSync(dataDir, { recursive: true }); } catch (_) {}
+    return path.join(dataDir, '.env');
+  }
+
+  // Next check if .env exists in project root
+  const rootEnv = path.join(__dirname, '..', '.env');
+  if (fs.existsSync(rootEnv)) return rootEnv;
+
+  // Fallback to DATA_DIR if set
+  if (process.env.DATA_DIR) {
+    return path.join(process.env.DATA_DIR, '.env');
+  }
+
+  return rootEnv;
+}
 
 function parseEnvContent(content) {
   const lines = String(content || '').split(/\r?\n/);
@@ -33,7 +54,11 @@ function parseEnvContent(content) {
 
 function readEnvFileEntries() {
   try {
-    const raw = fs.existsSync(ENV_FILE) ? fs.readFileSync(ENV_FILE, 'utf8') : '';
+    const envPath = getEnvFilePath();
+    let raw = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf8') : '';
+    if (!raw && fs.existsSync(path.join(__dirname, '..', '.env'))) {
+      try { raw = fs.readFileSync(path.join(__dirname, '..', '.env'), 'utf8'); } catch (_) {}
+    }
     return parseEnvContent(raw);
   } catch (e) {
     console.error('Failed to read .env:', e);
@@ -43,7 +68,11 @@ function readEnvFileEntries() {
 
 function writeEnvFile(updatedValues) {
   try {
-    const raw = fs.existsSync(ENV_FILE) ? fs.readFileSync(ENV_FILE, 'utf8') : '';
+    const envPath = getEnvFilePath();
+    let raw = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf8') : '';
+    if (!raw && fs.existsSync(path.join(__dirname, '..', '.env'))) {
+      try { raw = fs.readFileSync(path.join(__dirname, '..', '.env'), 'utf8'); } catch (_) {}
+    }
     const entries = parseEnvContent(raw);
     const seen = new Set();
     const outLines = entries.map((entry) => {
@@ -68,9 +97,10 @@ function writeEnvFile(updatedValues) {
         outLines.push(`${k}=${outV}`);
       }
     });
-    fs.writeFileSync(ENV_FILE, outLines.join(os.EOL), 'utf8');
+    fs.mkdirSync(path.dirname(envPath), { recursive: true });
+    fs.writeFileSync(envPath, outLines.join(os.EOL), 'utf8');
   } catch (e) {
-    throw e;
+    console.warn('[settings] writeEnvFile notice (non-fatal):', e && e.message);
   }
 }
 
@@ -139,10 +169,52 @@ router.get('/', requireAuth, (req, res) => {
   const networkAddress = getPreferredNetworkAddress();
   const networkPort = (req && req.socket && req.socket.localPort) ? req.socket.localPort : (process.env.PORT || req.app && req.app.locals && req.app.locals.port || 3000);
   const networkUrl = `${networkAddress}:${networkPort}`;
-  const envEntries = readEnvFileEntries();
+  const HIDDEN_ENV_KEYS = new Set([
+    'OPENROUTER_ENCRYPTED_KEY',
+    'OPENROUTER_API_KEY',
+    'OPENROUTER_DEFAULT_MODEL'
+  ]);
+  const envEntries = readEnvFileEntries().filter(e => e.type !== 'kv' || !HIDDEN_ENV_KEYS.has(e.key));
   const recentLogs = getRecentLogs(200);
+  const logFilePath = getLogPath();
+
+  // Determine if OpenRouter key is configured
+  const currentKey = resolveApiKey();
+  const hasOpenRouterKey = !!(currentKey && currentKey.startsWith('sk-or-'));
+  const maskedKey = hasOpenRouterKey ? (currentKey.slice(0, 10) + '...' + currentKey.slice(-4)) : '';
+  const currentModel = settings.openrouterModel || process.env.OPENROUTER_DEFAULT_MODEL || DEFAULT_MODEL;
+
   const requirePaymentAmount = (typeof settings.requirePaymentAmount !== 'undefined') ? !!settings.requirePaymentAmount : true;
-  res.render('settings', { title: 'Settings', featureFlags, backupConfig, settings, networkAddress, networkPort, networkUrl, envEntries, recentLogs, logFilePath, requirePaymentAmount });
+
+  res.render('settings', {
+    title: 'Settings',
+    featureFlags,
+    backupConfig,
+    settings,
+    networkAddress,
+    networkPort,
+    networkUrl,
+    envEntries,
+    recentLogs,
+    logFilePath,
+    hasOpenRouterKey,
+    maskedKey,
+    currentModel,
+    availableModels: AVAILABLE_MODELS,
+    requirePaymentAmount
+  });
+});
+
+// Test OpenRouter AI Connection from settings page
+router.post('/test-ai', requireAuth, canManageUsers, async (req, res) => {
+  try {
+    const { apiKey, model } = req.body || {};
+    const keyToTest = (apiKey && apiKey.trim()) ? apiKey.trim() : resolveApiKey();
+    const result = await testOpenRouterConnection(keyToTest, model);
+    res.json(result);
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
 });
 
 router.post('/', requireAuth, canManageUsers, (req, res) => {
@@ -171,32 +243,49 @@ router.post('/', requireAuth, canManageUsers, (req, res) => {
       console.error('Failed to persist backup config:', e);
     }
 
-    // Persist GEZYNE / analyzer path & doctor names in app data so it's preserved across restarts
+    // Persist GEZYNE / analyzer path, doctor names, & GezyneBot AI OpenRouter key/model
     try {
       const doc1 = (flags.doctor1Name || '').trim() || 'Dr. Lorenzo';
       const doc2 = (flags.doctor2Name || '').trim() || 'Dr. Arcilla';
       const gezyne = flags.gezynePath || '';
+      const rawAiKey = (flags.openrouterApiKey || '').trim();
+      const aiModel = (flags.openrouterModel || '').trim() || DEFAULT_MODEL;
 
-      const requirePaymentAmount = (flags.requirePaymentAmount === 'on' || flags.requirePaymentAmount === true || flags.requirePaymentAmount === 'true');
-
-      if (global.db && typeof global.db.setSettings === 'function') {
-        const cur = global.db.getSettings() || {};
-        global.db.setSettings({
-          ...cur,
-          doctor1Name: doc1,
-          doctor2Name: doc2,
-          gezynePath: gezyne,
-          requirePaymentAmount
-        });
+      let cur = {};
+      if (global.db && typeof global.db.getSettings === 'function') {
+        cur = global.db.getSettings() || {};
       } else {
         const data = global.db.read();
-        data.settings = data.settings || {};
-        data.settings.doctor1Name = doc1;
-        data.settings.doctor2Name = doc2;
-        data.settings.gezynePath = gezyne;
-        data.settings.requirePaymentAmount = requirePaymentAmount;
+        cur = data.settings || {};
+      }
+
+      cur.doctor1Name = doc1;
+      cur.doctor2Name = doc2;
+      cur.gezynePath = gezyne;
+      cur.openrouterModel = aiModel;
+      cur.requirePaymentAmount = (flags.requirePaymentAmount === 'on' || flags.requirePaymentAmount === true || flags.requirePaymentAmount === 'true');
+
+      const envUpdates = {};
+      envUpdates.OPENROUTER_DEFAULT_MODEL = aiModel;
+
+      if (rawAiKey && rawAiKey.startsWith('sk-or-')) {
+        const encryptedKey = encryptSecret(rawAiKey);
+        cur.openrouterApiKeyEncrypted = encryptedKey;
+        process.env.OPENROUTER_ENCRYPTED_KEY = encryptedKey;
+        process.env.OPENROUTER_API_KEY = rawAiKey;
+        envUpdates.OPENROUTER_ENCRYPTED_KEY = encryptedKey;
+      }
+
+      if (global.db && typeof global.db.setSettings === 'function') {
+        global.db.setSettings(cur);
+      } else {
+        const data = global.db.read();
+        data.settings = cur;
         global.db.write(data);
       }
+
+      writeEnvFile(envUpdates);
+
       process.env.DOCTOR_1_NAME = doc1;
       process.env.DOCTOR_2_NAME = doc2;
       req.app.locals.DOCTOR_1_NAME = doc1;
@@ -212,6 +301,7 @@ router.post('/', requireAuth, canManageUsers, (req, res) => {
       req.app.locals.featureFlags.templates = true;
       req.app.locals.featureFlags.users = true;
       req.app.locals.featureFlags.worksheet = true;
+      req.app.locals.featureFlags.inventory = true;
     } catch (e) {}
 
     // Frequency -> milliseconds

@@ -902,7 +902,7 @@
             <a href="/reports" class="nav-item <%= (title.includes('Report') && !title.includes('Template')) ? 'active' : '' %>"><span class="nav-emoji">📋</span><span class="nav-text">Reports</span></a>
             <% } %>
             <% } %>
-            <% if (!featureFlags || featureFlags.inventory) { %>
+            <% if (!featureFlags || featureFlags.inventory !== false) { %>
             <% if (sessionUser.role === 'Admin' || perms.inventory) { %>
             <a href="/inventory" class="nav-item <%= title.includes('Inventory') ? 'active' : '' %>"><span class="nav-emoji">📦</span><span class="nav-text">Inventory</span></a>
             <% } %>

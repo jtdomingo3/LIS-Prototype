@@ -301,6 +301,7 @@ router.post('/', requireAuth, canManageUsers, (req, res) => {
       req.app.locals.featureFlags.templates = true;
       req.app.locals.featureFlags.users = true;
       req.app.locals.featureFlags.worksheet = true;
+      req.app.locals.featureFlags.inventory = true;
     } catch (e) {}
 
     // Frequency -> milliseconds

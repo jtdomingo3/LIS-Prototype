@@ -117,7 +117,7 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   }
 
   /* ── Feature flags (match server defaults) ─────────────────────── */
-  app.locals.featureFlags = { tests: true, reports: true, templates: true, users: true, worksheet: true };
+  app.locals.featureFlags = { tests: true, reports: true, templates: true, users: true, worksheet: true, inventory: true };
 
   // Expose useful objects to route handlers (operationQueue, dataStore, config)
   try {
