@@ -227,6 +227,21 @@ async function startNetworkMonitor() {
     isOnline = await networkMonitor.checkOnce();
     console.log('[Main] initial network check:', isOnline ? 'ONLINE' : 'OFFLINE');
 
+    let hasValidatedInitialServerSync = false;
+    async function triggerInitialConnectValidation(webContents) {
+      if (hasValidatedInitialServerSync || !isOnline || !syncEngine) return;
+      hasValidatedInitialServerSync = true;
+      console.log('[Main] Connected to server for the first time — running comprehensive sync validation & audit...');
+      try {
+        const res = await syncEngine.validateAndReconcileWithServer(webContents);
+        console.log('[Main] Initial sync audit result:', res && res.audit ? res.audit.summary : 'completed');
+        sendStatus();
+      } catch (err) {
+        console.error('[Main] Initial sync audit error:', err && err.message);
+        hasValidatedInitialServerSync = false; // allow retry on next connection event
+      }
+    }
+
     networkMonitor.on('status-change', async (online) => {
       const wasOnline = isOnline;
       isOnline = online;
@@ -237,6 +252,7 @@ async function startNetworkMonitor() {
 
       if (online) {
         triggerAutoSync().catch(() => {});
+        triggerInitialConnectValidation(mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null).catch(() => {});
         if (syncEngine) {
           syncEngine.startLiveEventBridge((eventData) => {
             if (localServer && typeof localServer.broadcastEvent === 'function') {
@@ -279,6 +295,7 @@ async function startNetworkMonitor() {
     networkMonitor.start();
     setupRequestInterceptor();
     if (isOnline && syncEngine) {
+      triggerInitialConnectValidation(mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null).catch(() => {});
       syncEngine.startLiveEventBridge((eventData) => {
         if (localServer && typeof localServer.broadcastEvent === 'function') {
           localServer.broadcastEvent(eventData);
@@ -722,6 +739,15 @@ ipcMain.handle('full-sync', async () => {
     try { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('full-sync-end', Object.assign({}, res || {}, { datastore: dsInfo })); } catch (e) {}
     return Object.assign({}, res || {}, { datastore: dsInfo });
   } catch (e) { return { success: false, reason: e && e.message } }
+});
+ipcMain.handle('validate-sync-audit', async () => {
+  if (!isOnline || !syncEngine) return { success: false, reason: 'offline' };
+  try {
+    const sender = mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null;
+    return await syncEngine.validateAndReconcileWithServer(sender);
+  } catch (e) {
+    return { success: false, reason: e && e.message };
+  }
 });
 async function triggerAutoSync() {
   try {

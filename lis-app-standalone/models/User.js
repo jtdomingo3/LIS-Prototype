@@ -113,7 +113,7 @@ class User {
       const user = global.db.getUserById(query._id || query.id);
       return user ? new User(user) : null;
     }
-    const users = global.db.getUsers();
+    const users = (global.db && typeof global.db.getUsers === 'function') ? global.db.getUsers() : [];
     let user = null;
 
     if (query.email) {
@@ -126,7 +126,7 @@ class User {
   }
 
   static async find(query = {}) {
-    let users = global.db.getUsers();
+    let users = (global.db && typeof global.db.getUsers === 'function') ? global.db.getUsers() : [];
 
     if (query.role) {
       users = users.filter(u => u.role === query.role);

@@ -233,6 +233,75 @@ class DataStore {
         }
         map.set(String(it[idKey]), it);
       }
+    } else if (name === 'patients') {
+      // Deduplicate patients by client_id, patientCode, patientId, or normalized name + DOB/phone
+      for (const it of items) {
+        if (!it || !it[idKey]) continue;
+        const itClientId = (it.client_id || it.clientId || '').trim();
+        const itCode = (it.patientCode || '').trim().toUpperCase();
+        const itPid = (it.patientId || '').trim().toUpperCase();
+        const itFirst = (it.firstName || '').trim().toLowerCase();
+        const itLast = (it.lastName || '').trim().toLowerCase();
+        const itDob = (it.dateOfBirth || '').trim();
+        const itPhone = (it.phone || '').trim();
+
+        for (const [existingId, existingPt] of map.entries()) {
+          if (existingId !== String(it[idKey])) {
+            const exClientId = (existingPt.client_id || existingPt.clientId || '').trim();
+            const exCode = (existingPt.patientCode || '').trim().toUpperCase();
+            const exPid = (existingPt.patientId || '').trim().toUpperCase();
+            const exFirst = (existingPt.firstName || '').trim().toLowerCase();
+            const exLast = (existingPt.lastName || '').trim().toLowerCase();
+            const exDob = (existingPt.dateOfBirth || '').trim();
+            const exPhone = (existingPt.phone || '').trim();
+
+            const isSameClient = itClientId && exClientId && itClientId === exClientId;
+            const isSameCode = itCode && exCode && itCode === exCode;
+            const isSamePid = itPid && exPid && itPid === exPid;
+            const isSameNameAndDob = itFirst && itLast && exFirst === itFirst && exLast === itLast && (itDob && exDob ? itDob === exDob : (itPhone && exPhone ? itPhone === exPhone : false));
+
+            if (isSameClient || isSameCode || isSamePid || isSameNameAndDob) {
+              console.log(`[DataStore] Deduplicated patient: replacing local duplicate ${existingId} with server ${it[idKey]} (${it.firstName || ''} ${it.lastName || ''})`);
+              map.delete(existingId);
+              if (this.db && this.db.deletePatient) {
+                try { this.db.deletePatient(existingId); } catch (_) {}
+              }
+            }
+          }
+        }
+        map.set(String(it[idKey]), it);
+      }
+    } else if (name === 'tests') {
+      // Deduplicate tests by client_id, testId, or patient + testType
+      for (const it of items) {
+        if (!it || !it[idKey]) continue;
+        const itClientId = (it.client_id || it.clientId || '').trim();
+        const itTestId = String(it.testId || '').trim();
+        const itPatient = String(it.patient || '').trim();
+        const itType = String(it.testType || '').trim().toLowerCase();
+
+        for (const [existingId, existingTest] of map.entries()) {
+          if (existingId !== String(it[idKey])) {
+            const exClientId = (existingTest.client_id || existingTest.clientId || '').trim();
+            const exTestId = String(existingTest.testId || '').trim();
+            const exPatient = String(existingTest.patient || '').trim();
+            const exType = String(existingTest.testType || '').trim().toLowerCase();
+
+            const isSameClient = itClientId && exClientId && itClientId === exClientId;
+            const isSameTestId = itTestId && exTestId && itTestId === exTestId;
+            const isSamePatientAndType = itPatient && exPatient && itType && exType && itPatient === exPatient && itType === exType;
+
+            if (isSameClient || isSameTestId || isSamePatientAndType) {
+              console.log(`[DataStore] Deduplicated test: replacing local duplicate ${existingId} with server ${it[idKey]} (Test #${it.testId || ''})`);
+              map.delete(existingId);
+              if (this.db && this.db.deleteTest) {
+                try { this.db.deleteTest(existingId); } catch (_) {}
+              }
+            }
+          }
+        }
+        map.set(String(it[idKey]), it);
+      }
     } else {
       for (const it of items) {
         if (!it || !it[idKey]) continue;
