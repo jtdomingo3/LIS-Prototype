@@ -188,7 +188,7 @@ router.get('/', requireAuth, (req, res) => {
 
   const sseConfig = settings.sseConfig || req.app.locals.sseConfig || {
     enabled: true,
-    autoRefreshByDefault: true,
+    autoRefreshByDefault: false,
     allowedPages: ['/dashboard', '/patients', '/reception', '/tests', '/inventory'],
     connectDelaySec: 3,
     retryDelaySec: 3,

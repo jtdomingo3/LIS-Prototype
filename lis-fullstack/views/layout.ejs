@@ -1082,6 +1082,7 @@
         // ===== Global SSE Notifications =====
         window.__LIS_SSE_CONFIG__ = <%- JSON.stringify(typeof sseConfig !== 'undefined' && sseConfig ? sseConfig : {
             enabled: true,
+            autoRefreshByDefault: false,
             allowedPages: ['/dashboard', '/patients', '/reception', '/tests', '/inventory'],
             connectDelaySec: 3,
             retryDelaySec: 3,
@@ -1091,6 +1092,7 @@
         (function(){
             const sseCfg = window.__LIS_SSE_CONFIG__ || {
                 enabled: true,
+                autoRefreshByDefault: false,
                 allowedPages: ['/dashboard', '/patients', '/reception', '/tests', '/inventory'],
                 connectDelaySec: 3,
                 retryDelaySec: 3,
@@ -1151,13 +1153,13 @@
                 }
             } catch (e) { /* if anything goes wrong, fall back to original behavior */ }
 
-            // restore preferences (uses sseCfg.autoRefreshByDefault as baseline default)
+            // restore preferences (default: auto-refresh disabled by default unless explicitly enabled in Settings)
             try {
                 const v = localStorage.getItem('notif-auto-refresh');
                 if (v !== null) {
                     autoRefreshCheckbox.checked = (v === '1');
                 } else {
-                    autoRefreshCheckbox.checked = (sseCfg.autoRefreshByDefault !== false);
+                    autoRefreshCheckbox.checked = !!(sseCfg && sseCfg.autoRefreshByDefault === true);
                 }
             } catch(e){}
             try { if (localStorage.getItem('notif-muted') === '1') muteCheckbox.checked = true; } catch(e){}
@@ -1320,7 +1322,7 @@
                                                    currentPath === '/dashboard' || 
                                                    currentPath.startsWith('/inventory') || 
                                                    currentPath === '';
-                                const defaultAutoRefresh = sseCfg.autoRefreshByDefault !== false;
+                                const defaultAutoRefresh = !!(sseCfg && sseCfg.autoRefreshByDefault === true);
                                 const userAutoRefresh = localStorage.getItem('notif-auto-refresh');
                                 const isAutoRefreshOn = userAutoRefresh !== null ? (userAutoRefresh === '1') : defaultAutoRefresh;
                                 const enabled = (autoRefreshCheckbox && autoRefreshCheckbox.checked != null) ? autoRefreshCheckbox.checked : isAutoRefreshOn;

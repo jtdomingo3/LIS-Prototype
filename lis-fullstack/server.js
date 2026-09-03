@@ -359,7 +359,7 @@ app.use((req, res, next) => {
   } catch (_) {}
   res.locals.sseConfig = currentSettings.sseConfig || app.locals.sseConfig || {
     enabled: true,
-    autoRefreshByDefault: true,
+    autoRefreshByDefault: false,
     allowedPages: ['/dashboard', '/patients', '/reception', '/tests', '/inventory'],
     connectDelaySec: 3,
     retryDelaySec: 3,

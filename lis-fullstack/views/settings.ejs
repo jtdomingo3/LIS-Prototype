@@ -51,10 +51,10 @@
             </label>
 
             <label style="display:flex; align-items:center; gap:12px; cursor:pointer;">
-              <input type="checkbox" name="sseAutoRefreshByDefault" <%= (typeof sseConfig === 'undefined' || sseConfig.autoRefreshByDefault !== false) ? 'checked' : '' %> style="width:20px; height:20px; accent-color:var(--secondary-green);" />
+              <input type="checkbox" name="sseAutoRefreshByDefault" <%= (typeof sseConfig !== 'undefined' && sseConfig && sseConfig.autoRefreshByDefault === true) ? 'checked' : '' %> style="width:20px; height:20px; accent-color:var(--secondary-green);" />
               <div>
                 <strong style="display:block; color:#0f172a; font-size:0.95em;">Enable Auto-Refresh by Default</strong>
-                <span style="color:#64748b; font-size:0.85em;">When checked, viewing active pages will reload automatically when events occur.</span>
+                <span style="color:#64748b; font-size:0.85em;">When checked, viewing active pages will reload automatically when events occur (disabled by default).</span>
               </div>
             </label>
           </div>

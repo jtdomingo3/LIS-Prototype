@@ -262,6 +262,29 @@ test('views/settings.ejs should compile and render all 6 tabs cleanly', () => {
   assert.ok(!envSection.includes('name="env_PRINTER_NAME"'), 'PRINTER_NAME must be excluded from generic .env form');
 });
 
+test('views/settings.ejs should render sseAutoRefreshByDefault as unchecked by default', () => {
+  const settingsViewPath = path.join(__dirname, '..', 'lis-fullstack', 'views', 'settings.ejs');
+  const tpl = fs.readFileSync(settingsViewPath, 'utf8');
+  const defaultHtml = ejs.compile(tpl)({
+    settings: {},
+    sseConfig: { enabled: true, autoRefreshByDefault: false, allowedPages: ['/dashboard'] },
+    printerName: '',
+    featureFlags: {},
+    backupConfig: {},
+    envEntries: [],
+    recentLogs: [],
+    logFilePath: '',
+    hasOpenRouterKey: false,
+    maskedKey: '',
+    currentModel: '',
+    availableModels: [],
+    requirePaymentAmount: true,
+    networkUrl: '127.0.0.1:3000'
+  });
+
+  assert.ok(!defaultHtml.includes('name="sseAutoRefreshByDefault" checked'), 'Auto-refresh checkbox must not be checked by default');
+});
+
 // -------------------------------------------------------------
 // 5. GLOBAL LAYOUT & SSE CLIENT INJECTION
 // -------------------------------------------------------------
@@ -273,6 +296,7 @@ test('views/layout.ejs should inject window.__LIS_SSE_CONFIG__ and use allowedPa
   const layoutContent = fs.readFileSync(layoutViewPath, 'utf8');
 
   assert.ok(layoutContent.includes('window.__LIS_SSE_CONFIG__'), 'Must inject window.__LIS_SSE_CONFIG__');
+  assert.ok(layoutContent.includes('autoRefreshByDefault: false'), 'Layout must configure autoRefreshByDefault as false by default');
   assert.ok(layoutContent.includes('sseCfg.allowedPages'), 'Must use sseCfg.allowedPages');
   assert.ok(layoutContent.includes('sseCfg.autoRefreshByDefault'), 'Must use sseCfg.autoRefreshByDefault');
   assert.ok(layoutContent.includes('sseCfg.refreshDebounceMs'), 'Must use sseCfg.refreshDebounceMs');
