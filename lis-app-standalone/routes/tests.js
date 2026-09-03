@@ -654,11 +654,27 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
     if (req.query && req.query.patient) {
       test.printAfterAssign = '1';
     }
+
+    // Determine return destination
+    let returnTo = req.query.returnTo || '';
+    if (!returnTo && req.get('Referer')) {
+      try {
+        const refUrl = new URL(req.get('Referer'));
+        if (refUrl.pathname !== '/tests/new') {
+          returnTo = refUrl.pathname + (refUrl.search || '');
+        }
+      } catch (e) {}
+    }
+    if (!returnTo && req.query.patient) {
+      returnTo = `/patients/${req.query.patient}`;
+    }
+
     res.render('tests/new', {
       title: 'Create New Test',
       test,
       patients,
-      templates
+      templates,
+      returnTo
     });
   } catch (error) {
     console.error('New test error:', error);
@@ -1078,28 +1094,50 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
     }
 
     // Determine where to redirect after creating/assigning tests.
-    // Priority: explicit hidden `returnTo` form field -> query param -> Referer -> fallback '/tests'
-    let returnTo = (req.body && req.body.returnTo) || req.query.returnTo || req.get('Referer') || '/tests';
+    // Priority: explicit hidden `returnTo` form field -> query param -> Referer (if not /tests/new) -> fallback
+    let returnTo = (req.body && req.body.returnTo) || req.query.returnTo;
+    if (!returnTo && req.get('Referer')) {
+      try {
+        const refUrl = new URL(req.get('Referer'));
+        if (refUrl.pathname !== '/tests/new') {
+          returnTo = refUrl.pathname + (refUrl.search || '');
+        }
+      } catch (e) {}
+    }
+
+    // If still no returnTo, check if a patient was selected/assigned: return to that patient; otherwise /tests
+    if (!returnTo || returnTo === '/tests/new' || returnTo.startsWith('/tests/new')) {
+      returnTo = patient ? `/patients/${patient}` : '/tests';
+    }
+
     try {
       // If it's an absolute URL, only allow same-host paths to avoid open-redirects
       if (/^https?:\/\//i.test(returnTo)) {
         const u = new URL(returnTo);
-        if (u.host === req.get('host')) {
+        if (u.host === req.get('host') && u.pathname !== '/tests/new') {
           returnTo = u.pathname + (u.search || '');
         } else {
-          returnTo = '/tests';
+          returnTo = patient ? `/patients/${patient}` : '/tests';
         }
       } else if (!returnTo.startsWith('/')) {
-        // try to resolve relative URLs against current host
         try {
           const u = new URL(returnTo, `${req.protocol}://${req.get('host')}`);
-          returnTo = u.pathname + (u.search || '');
+          if (u.pathname !== '/tests/new') {
+            returnTo = u.pathname + (u.search || '');
+          } else {
+            returnTo = patient ? `/patients/${patient}` : '/tests';
+          }
         } catch (e) {
-          returnTo = '/tests';
+          returnTo = patient ? `/patients/${patient}` : '/tests';
         }
       }
     } catch (e) {
-      returnTo = '/tests';
+      returnTo = patient ? `/patients/${patient}` : '/tests';
+    }
+
+    // Final safety check: Never redirect back to /tests/new form
+    if (returnTo === '/tests/new' || returnTo.startsWith('/tests/new')) {
+      returnTo = patient ? `/patients/${patient}` : '/tests';
     }
 
     return res.redirect(returnTo);

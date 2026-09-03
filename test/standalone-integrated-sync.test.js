@@ -1,9 +1,9 @@
 const path = require('path');
 const fs = require('fs');
-const { DataStore } = require('./lib/dataStore');
-const { OperationQueue } = require('./lib/operationQueue');
-const { SyncEngine } = require('./lib/syncEngine');
-const { createOfflineDb } = require('./lib/offlineDb');
+const { DataStore } = require('../lis-app-standalone/lib/dataStore');
+const { OperationQueue } = require('../lis-app-standalone/lib/operationQueue');
+const { SyncEngine } = require('../lis-app-standalone/lib/syncEngine');
+const { createOfflineDb } = require('../lis-app-standalone/lib/offlineDb');
 
 function assert(cond, msg) {
   if (!cond) {
@@ -19,7 +19,7 @@ function assert(cond, msg) {
   fs.mkdirSync(tmpRoot, { recursive: true });
 
   const dataDir = path.join(tmpRoot, 'data');
-  const ds = new DataStore(dataDir);
+  const ds = await new DataStore(dataDir).ready();
   const q = new OperationQueue(path.join(tmpRoot, 'queue'));
   q.dataStore = ds;
   const sync = new SyncEngine(q, { SERVER_URL: 'http://127.0.0.1:3000' }, ds);

@@ -349,7 +349,7 @@ class SyncEngine {
           if (!result || typeof result !== 'object') return { success: false, reason: 'invalid-json' };
 
           // Merge known collections (best-effort) or replace when requested
-          const collections = ['users', 'patients', 'tests', 'templates', 'counters'];
+          const collections = ['users', 'patients', 'tests', 'templates', 'counters', 'inventory', 'inventory_batches', 'inventory_transactions'];
           let imported = 0;
           for (const col of collections) {
             if (Array.isArray(result[col])) {

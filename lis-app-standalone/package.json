@@ -10,7 +10,8 @@
     "dist:win": "electron-builder --win nsis",
     "dist:dir": "electron-builder --dir",
     "security-audit": "node ../tools/security-audit/run-security-audit.js",
-    "test": "node ../test/run-all-offline-tests.js && node test-sqlite-datastore.js && node test-integrated-sync.js && node ../test/test-signature-sync-e2e.js"
+    "test": "node ../test/run-all-inventory-tests.js && node ../test/run-all-offline-tests.js && node ../test/standalone-sqlite-datastore.test.js && node ../test/standalone-integrated-sync.test.js && node ../test/test-signature-sync-e2e.js",
+    "test:inventory": "node ../test/run-all-inventory-tests.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

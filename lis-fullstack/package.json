@@ -16,8 +16,8 @@
     "service:uninstall": "node ./scripts/register-service.js uninstall",
     "tray": "cd tray && npm install && npm start",
     "security-audit": "node ../tools/security-audit/run-security-audit.js",
-    "test:inventory": "node test/run-all-tests.js",
-    "test": "node ../test/run-all-offline-tests.js && node ../test/test-signature-sync-e2e.js"
+    "test:inventory": "node ../test/run-all-inventory-tests.js",
+    "test": "node ../test/run-all-inventory-tests.js && node ../test/run-all-offline-tests.js && node ../test/test-signature-sync-e2e.js"
   },
   "keywords": [
     "laboratory",

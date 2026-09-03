@@ -63,7 +63,9 @@
 
     <div class="form-row" style="display:flex; gap:12px; align-items:center; flex-wrap:nowrap; justify-content:flex-start;">
       <div style="display:flex; gap:12px; align-items:center;">
-        <a href="/tests" class="button btn-secondary" style="white-space:nowrap;">Back to Tests</a>
+        <a href="<%= (typeof returnTo !== 'undefined' && returnTo) ? returnTo : '/tests' %>" class="button btn-secondary" style="white-space:nowrap;" id="backButton">
+          <%= (typeof returnTo !== 'undefined' && returnTo && returnTo.startsWith('/patients')) ? 'Back to Patient' : 'Back to Tests' %>
+        </a>
       </div>
 
       <div style="flex:0 0 auto; margin-left:8px;">
@@ -76,7 +78,7 @@
         </label>
       </div>
     </div>
-    <input type="hidden" name="returnTo" id="returnTo" value="">
+    <input type="hidden" name="returnTo" id="returnTo" value="<%= typeof returnTo !== 'undefined' ? returnTo : '' %>">
   </form>
 </div>
 
@@ -120,11 +122,23 @@
         // populate hidden returnTo input so server can redirect back after create
         try {
           const rtField = document.getElementById('returnTo');
-          if (rtField) {
-            // prefer explicit returnTo query param, otherwise document.referrer
-            const params = new URLSearchParams(window.location.search || '');
-            const rt = params.get('returnTo') || document.referrer || '';
-            rtField.value = rt;
+          const backBtn = document.getElementById('backButton');
+          const params = new URLSearchParams(window.location.search || '');
+          let rt = params.get('returnTo');
+          if (!rt && document.referrer) {
+            try {
+              const refUrl = new URL(document.referrer);
+              if (refUrl.pathname !== '/tests/new') {
+                rt = refUrl.pathname + (refUrl.search || '');
+              }
+            } catch (_) {}
+          }
+          if (rt) {
+            if (rtField && !rtField.value) rtField.value = rt;
+            if (backBtn) {
+              backBtn.href = rt;
+              if (rt.startsWith('/patients')) backBtn.textContent = 'Back to Patient';
+            }
           }
         } catch (e) {}
     })();

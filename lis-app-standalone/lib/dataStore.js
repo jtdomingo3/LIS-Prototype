@@ -29,10 +29,23 @@ class DataStore {
     this._autoMigrate();
   }
 
+  async ready() {
+    if (this.db && this.db._readyPromise) {
+      await this.db._readyPromise;
+    }
+    this._autoMigrate();
+    return this;
+  }
+
   _autoMigrate() {
     try {
       const hasJson = fs.existsSync(this.legacyJsonPath);
       if (!hasJson) return;
+
+      if (this.db && this.db._readyPromise && !this.db._isReady) {
+        this.db._readyPromise.then(() => this._autoMigrate()).catch(() => {});
+        return;
+      }
 
       const existingPatients = this.db.getPatients();
       const existingUsers = this.db.getUsers();
@@ -75,6 +88,9 @@ class DataStore {
       tests: this.db.getTests(),
       templates: this.db.getTemplates(),
       counters: this.db.getCounters(),
+      inventory: this.db.getInventory ? this.db.getInventory() : [],
+      inventory_batches: this.db.getAllInventoryBatches ? this.db.getAllInventoryBatches() : [],
+      inventory_transactions: this.db.getInventoryTransactions ? this.db.getInventoryTransactions() : [],
       settings: readData.settings || {}
     };
   }
@@ -86,16 +102,46 @@ class DataStore {
     if (name === 'users') return this.db.getUsers();
     if (name === 'templates') return this.db.getTemplates();
     if (name === 'counters') return this.db.getCounters();
+    if (name === 'inventory') return this.db.getInventory ? this.db.getInventory() : [];
+    if (name === 'inventory_batches') return this.db.getAllInventoryBatches ? this.db.getAllInventoryBatches() : [];
+    if (name === 'inventory_transactions') return this.db.getInventoryTransactions ? this.db.getInventoryTransactions() : [];
     return [];
   }
 
-  setCollection(name, items) {
+  setCollection(name, items, opts = {}) {
     if (!name) return;
     if (name === 'patients') this.db.savePatients(items);
     else if (name === 'tests') this.db.saveTests(items);
     else if (name === 'users') this.db.saveUsers(items);
     else if (name === 'templates') this.db.saveTemplates(items);
     else if (name === 'counters') this.db.saveCounters(items);
+    else if (name === 'inventory' && Array.isArray(items)) {
+      if (opts && opts.replace && this.db.getInventory) {
+        const incomingIds = new Set(items.map(i => i && (i.id || i._id)).filter(Boolean));
+        const current = this.db.getInventory() || [];
+        for (const it of current) {
+          if (it && it.id && !incomingIds.has(it.id) && this.db.deleteInventory) {
+            this.db.deleteInventory(it.id);
+          }
+        }
+      }
+      items.forEach(it => this.db.saveInventory && this.db.saveInventory(it));
+    }
+    else if (name === 'inventory_batches' && Array.isArray(items)) {
+      if (opts && opts.replace && this.db.getAllInventoryBatches) {
+        const incomingIds = new Set(items.map(b => b && (b.id || b._id)).filter(Boolean));
+        const current = this.db.getAllInventoryBatches() || [];
+        for (const b of current) {
+          if (b && b.id && !incomingIds.has(b.id) && this.db.deleteBatch) {
+            this.db.deleteBatch(b.id);
+          }
+        }
+      }
+      items.forEach(b => this.db.saveBatch && this.db.saveBatch(b));
+    }
+    else if (name === 'inventory_transactions' && Array.isArray(items)) {
+      items.forEach(t => this.db.saveTransaction && this.db.saveTransaction(t));
+    }
   }
 
   mergeCollection(name, items, idKey = 'id') {
@@ -113,6 +159,15 @@ class DataStore {
   setMeta(key, val) {
     if (this.db && this.db.setMeta) {
       this.db.setMeta(key, val);
+    } else {
+      const s = (this.db && this.db.getSettings) ? (this.db.getSettings() || {}) : {};
+      s.__meta = s.__meta || {};
+      s.__meta[key] = val;
+      if (this.db && this.db.setSettings) {
+        this.db.setSettings(s);
+      }
+      if (!this._inMemoryMeta) this._inMemoryMeta = {};
+      this._inMemoryMeta[key] = val;
     }
   }
 
@@ -120,7 +175,11 @@ class DataStore {
     if (this.db && this.db.getMeta) {
       return this.db.getMeta(key);
     }
-    return undefined;
+    if (this._inMemoryMeta && this._inMemoryMeta[key] !== undefined) {
+      return this._inMemoryMeta[key];
+    }
+    const s = (this.db && this.db.getSettings) ? (this.db.getSettings() || {}) : {};
+    return (s.__meta && s.__meta[key] !== undefined) ? s.__meta[key] : undefined;
   }
 
   info() {
@@ -132,6 +191,7 @@ class DataStore {
         tests: this.db.getTests().length,
         users: this.db.getUsers().length,
         templates: this.db.getTemplates().length,
+        inventory: this.db.getInventory ? this.db.getInventory().length : 0,
         counters: Object.keys(this.db.getCounters()).length
       };
       return {

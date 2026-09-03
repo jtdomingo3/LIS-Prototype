@@ -1,0 +1,274 @@
+<div class="stats-container">
+  <div class="stat-card">
+    <h4 style="color: #d97706;">Low Stock Items</h4>
+    <div style="font-size: 2.2em; font-weight: 700; color: #d97706; margin-top: 8px;">
+      <%= alerts.lowStock.length %>
+    </div>
+    <div style="color: var(--text-gray); font-size: 0.85em; margin-top: 4px;">At or below reorder point</div>
+  </div>
+
+  <div class="stat-card">
+    <h4 style="color: var(--accent-orange);">Expiring Soon (&le;30d)</h4>
+    <div style="font-size: 2.2em; font-weight: 700; color: var(--accent-orange); margin-top: 8px;">
+      <%= alerts.expiringBatches.length %>
+    </div>
+    <div style="color: var(--text-gray); font-size: 0.85em; margin-top: 4px;">Requires FEFO stock rotation</div>
+  </div>
+
+  <div class="stat-card">
+    <h4 style="color: var(--danger);">Expired Lots</h4>
+    <div style="font-size: 2.2em; font-weight: 700; color: var(--danger); margin-top: 8px;">
+      <%= alerts.expiredBatches.length %>
+    </div>
+    <div style="color: var(--text-gray); font-size: 0.85em; margin-top: 4px;">Action required (Segregate/Discard)</div>
+  </div>
+
+  <div class="stat-card">
+    <h4 style="color: var(--info);">Active Open Vials</h4>
+    <div style="font-size: 2.2em; font-weight: 700; color: var(--info); margin-top: 8px;">
+      <%= alerts.openVials.length %>
+    </div>
+    <div style="color: var(--text-gray); font-size: 0.85em; margin-top: 4px;">In-use stability clock active</div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom: 24px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+    <div>
+      <h3 style="margin: 0; display: flex; align-items: center; gap: 10px;">
+        <i class="fa fa-triangle-exclamation" style="color: #d97706;"></i> Inventory Quality & Safety Alerts
+      </h3>
+      <p style="color: var(--text-gray); margin-top: 4px; font-size: 0.9em;">
+        Continuous real-time compliance monitoring per ISO 15189 & Good Laboratory Practice standards.
+      </p>
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <a href="/inventory" class="button btn-secondary">
+        <i class="fa fa-arrow-left"></i> Back to Inventory
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- 1. Expired Lots (High Priority) -->
+<% if (alerts.expiredBatches && alerts.expiredBatches.length > 0) { %>
+  <div class="card" style="border-left: 5px solid var(--danger); margin-bottom: 24px;">
+    <h3 style="color: var(--danger); font-size: 1.2em; margin-bottom: 16px;">
+      <i class="fa fa-circle-xmark"></i> Expired Lots - Immediate Action Required (<%= alerts.expiredBatches.length %>)
+    </h3>
+    <div style="overflow-x: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Item Name & Category</th>
+            <th>Lot #</th>
+            <th>Expired Date</th>
+            <th>Reason</th>
+            <th>Remaining Stock</th>
+            <th>Location</th>
+            <th style="text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% alerts.expiredBatches.forEach(b => { %>
+            <tr>
+              <td>
+                <a href="/inventory/<%= b.itemId %>" style="font-weight: 600; color: var(--danger); text-decoration: none;">
+                  <%= b.itemName %>
+                </a>
+                <br><small style="color: var(--text-gray);"><%= b.category %></small>
+              </td>
+              <td><span style="font-family: monospace; font-weight: 700;"><%= b.lotNumber %></span></td>
+              <td style="color: var(--danger); font-weight: 700;">
+                <%= new Date(b.expirationDate).toLocaleDateString() %>
+              </td>
+              <td>
+                <span class="badge badge-danger">
+                  <%= b.isDueToOpenVial ? 'Open-Vial In-Use Expired' : 'Sealed Manufacturer Expired' %>
+                </span>
+              </td>
+              <td>
+                <strong style="color: var(--danger);"><%= b.quantity %> <%= b.unit %></strong>
+              </td>
+              <td><%= b.storageLocation || 'N/A' %></td>
+              <td style="text-align: right;">
+                <a href="/inventory/<%= b.itemId %>" class="button btn-small btn-danger">
+                  <i class="fa fa-trash"></i> Discard / Resolve
+                </a>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% } %>
+
+<!-- 2. Low Stock Reorder Alerts -->
+<div class="card" style="border-left: 5px solid #d97706; margin-bottom: 24px;">
+  <h3 style="color: #d97706; font-size: 1.2em; margin-bottom: 16px;">
+    <i class="fa fa-box-archive"></i> Low Stock & Depleted Items (<%= alerts.lowStock.length %>)
+  </h3>
+  <% if (alerts.lowStock && alerts.lowStock.length > 0) { %>
+    <div style="overflow-x: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>SKU / REF</th>
+            <th>Item Name & Section</th>
+            <th>Current Balance</th>
+            <th>Safety Threshold</th>
+            <th>Status</th>
+            <th style="text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% alerts.lowStock.forEach(item => { %>
+            <tr>
+              <td><span style="font-family: monospace; font-weight: 700;"><%= item.sku %></span></td>
+              <td>
+                <a href="/inventory/<%= item.itemId %>" style="font-weight: 600; color: var(--primary-black); text-decoration: none;">
+                  <%= item.itemName %>
+                </a>
+                <br><small style="color: var(--text-gray);"><%= item.category %> &bull; <%= item.area %></small>
+              </td>
+              <td>
+                <span style="font-weight: 700; font-size: 1.1em; color: <%= item.isDepleted ? 'var(--danger)' : '#d97706' %>;">
+                  <%= item.currentStock %> <%= item.unit %>
+                </span>
+              </td>
+              <td><%= item.minThreshold %> <%= item.unit %></td>
+              <td>
+                <% if (item.isDepleted) { %>
+                  <span class="badge badge-danger">Out of Stock</span>
+                <% } else { %>
+                  <span class="badge badge-warning">Low Stock</span>
+                <% } %>
+              </td>
+              <td style="text-align: right;">
+                <a href="/inventory/<%= item.itemId %>" class="button btn-small btn-primary">
+                  <i class="fa fa-plus"></i> Receive Stock
+                </a>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  <% } else { %>
+    <div style="text-align: center; padding: 24px; color: var(--secondary-green);">
+      <i class="fa fa-circle-check" style="font-size: 2em; margin-bottom: 8px; display: block;"></i>
+      All laboratory supplies and reagents are above minimum safety thresholds.
+    </div>
+  <% } %>
+</div>
+
+<!-- 3. Expiring Soon Lots -->
+<div class="card" style="border-left: 5px solid var(--accent-orange); margin-bottom: 24px;">
+  <h3 style="color: var(--accent-orange); font-size: 1.2em; margin-bottom: 16px;">
+    <i class="fa fa-clock"></i> Lots Expiring Soon Within 30 Days (<%= alerts.expiringBatches.length %>)
+  </h3>
+  <% if (alerts.expiringBatches && alerts.expiringBatches.length > 0) { %>
+    <div style="overflow-x: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Item Name & Category</th>
+            <th>Lot #</th>
+            <th>Expiration Date</th>
+            <th>Days Remaining</th>
+            <th>Quantity</th>
+            <th>Location</th>
+            <th style="text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% alerts.expiringBatches.forEach(b => { %>
+            <tr>
+              <td>
+                <a href="/inventory/<%= b.itemId %>" style="font-weight: 600; color: var(--primary-black); text-decoration: none;">
+                  <%= b.itemName %>
+                </a>
+                <br><small style="color: var(--text-gray);"><%= b.category %></small>
+              </td>
+              <td><span style="font-family: monospace; font-weight: 700;"><%= b.lotNumber %></span></td>
+              <td><%= new Date(b.expirationDate).toLocaleDateString() %></td>
+              <td>
+                <span class="badge <%= b.daysUntilExpiry <= 7 ? 'badge-danger' : 'badge-warning' %>">
+                  <i class="fa fa-hourglass-half"></i> <%= b.daysUntilExpiry %> Days
+                </span>
+              </td>
+              <td><strong><%= b.quantity %> <%= b.unit %></strong></td>
+              <td><%= b.storageLocation || 'N/A' %></td>
+              <td style="text-align: right;">
+                <a href="/inventory/<%= b.itemId %>" class="button btn-small btn-secondary">
+                  <i class="fa fa-eye"></i> View Lot
+                </a>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  <% } else { %>
+    <div style="text-align: center; padding: 24px; color: var(--secondary-green);">
+      <i class="fa fa-circle-check" style="font-size: 2em; margin-bottom: 8px; display: block;"></i>
+      No active lots expiring within the next 30 days.
+    </div>
+  <% } %>
+</div>
+
+<!-- 4. Active In-Use Open Vials -->
+<div class="card" style="border-left: 5px solid var(--info); margin-bottom: 24px;">
+  <h3 style="color: var(--info); font-size: 1.2em; margin-bottom: 16px;">
+    <i class="fa fa-vial"></i> Active In-Use Open Vials (<%= alerts.openVials.length %>)
+  </h3>
+  <% if (alerts.openVials && alerts.openVials.length > 0) { %>
+    <div style="overflow-x: auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Item Name</th>
+            <th>Lot #</th>
+            <th>Date Opened</th>
+            <th>Opened By</th>
+            <th>Open-Vial Expiry</th>
+            <th>Status</th>
+            <th style="text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% alerts.openVials.forEach(b => { %>
+            <tr>
+              <td>
+                <a href="/inventory/<%= b.itemId %>" style="font-weight: 600; color: var(--primary-black); text-decoration: none;">
+                  <%= b.itemName %>
+                </a>
+              </td>
+              <td><span style="font-family: monospace; font-weight: 700;"><%= b.lotNumber %></span></td>
+              <td><%= new Date(b.dateOpened).toLocaleDateString() %></td>
+              <td><%= b.openedBy || 'System' %></td>
+              <td><%= new Date(b.openVialExpiryDate).toLocaleDateString() %></td>
+              <td>
+                <% if (b.isExpired) { %>
+                  <span class="badge badge-danger">Stability Expired</span>
+                <% } else { %>
+                  <span class="badge badge-info"><%= b.daysLeft %>d Stability Remaining</span>
+                <% } %>
+              </td>
+              <td style="text-align: right;">
+                <a href="/inventory/<%= b.itemId %>" class="button btn-small btn-secondary">
+                  <i class="fa fa-eye"></i> View Item
+                </a>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  <% } else { %>
+    <div style="text-align: center; padding: 24px; color: var(--text-gray);">
+      No active in-use open vials currently tracked.
+    </div>
+  <% } %>
+</div>

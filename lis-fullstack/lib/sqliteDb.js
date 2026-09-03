@@ -721,6 +721,23 @@ function createBetterSqliteDb(dbPath, opts = {}) {
       stmts.upsertSettings.run(JSON.stringify(settings));
     },
 
+    getMeta(key) {
+      if (!key) return undefined;
+      const s = this.getSettings() || {};
+      return (s.__meta && s.__meta[key] !== undefined) ? s.__meta[key] : undefined;
+    },
+    setMeta(key, value) {
+      if (!key) return;
+      const s = this.getSettings() || {};
+      s.__meta = s.__meta || {};
+      s.__meta[key] = value;
+      this.setSettings(s);
+    },
+    getAllMeta() {
+      const s = this.getSettings() || {};
+      return s.__meta || {};
+    },
+
     write(data) {
       if (!data || typeof data !== 'object') return;
       cachedPatientsList = null;
@@ -901,12 +918,21 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     },
     deleteInventory(id) {
       try {
-        stmts.deleteInventoryById.run(id);
-        stmts.deleteInventoryBatchesByItemId.run(id);
         stmts.deleteInventoryTransactionsByItemId.run(id);
+        stmts.deleteInventoryBatchesByItemId.run(id);
+        stmts.deleteInventoryById.run(id);
         return true;
       } catch (e) {
-        return false;
+        console.error('[sqliteDb] deleteInventory error:', e && e.message);
+        try {
+          sqlite.prepare('DELETE FROM inventory_transactions WHERE inventoryId = ?').run(id);
+          sqlite.prepare('DELETE FROM inventory_batches WHERE inventoryId = ?').run(id);
+          sqlite.prepare('DELETE FROM inventory WHERE id = ?').run(id);
+          return true;
+        } catch (e2) {
+          console.error('[sqliteDb] deleteInventory fallback error:', e2 && e2.message);
+          return false;
+        }
       }
     },
 
@@ -1210,6 +1236,20 @@ function createSqlJsDb(SQL, dbPath) {
       return rows;
     } catch (e) {
       return [];
+    }
+  }
+
+  function queryRun(sql, params = []) {
+    try {
+      if (params && params.length) {
+        sqlite.run(sql, params);
+      } else {
+        sqlite.run(sql);
+      }
+      return true;
+    } catch (e) {
+      console.error('[sqliteDb sql.js] queryRun error:', e && e.message);
+      return false;
     }
   }
 
@@ -1639,18 +1679,44 @@ function createSqlJsDb(SQL, dbPath) {
     },
 
     read() {
-      let settings = {};
-      try {
-        const rows = queryAll("SELECT json FROM settings WHERE key = 'main'");
-        if (rows.length && rows[0].json) settings = JSON.parse(rows[0].json);
-      } catch (e) {}
       return {
         patients: this.getPatients(),
         tests: this.getTests(),
         templates: this.getTemplates(),
         counters: this.getCounters(),
-        settings
+        settings: this.getSettings()
       };
+    },
+
+    getSettings() {
+      try {
+        const rows = queryAll("SELECT json FROM settings WHERE key = 'main'");
+        if (rows.length && rows[0].json) return JSON.parse(rows[0].json);
+      } catch (e) {}
+      return {};
+    },
+
+    setSettings(settings) {
+      if (!settings || typeof settings !== 'object') return;
+      sqlite.run("INSERT OR REPLACE INTO settings (key, json) VALUES ('main', ?)", [JSON.stringify(settings)]);
+      persist();
+    },
+
+    getMeta(key) {
+      if (!key) return undefined;
+      const s = this.getSettings() || {};
+      return (s.__meta && s.__meta[key] !== undefined) ? s.__meta[key] : undefined;
+    },
+    setMeta(key, value) {
+      if (!key) return;
+      const s = this.getSettings() || {};
+      s.__meta = s.__meta || {};
+      s.__meta[key] = value;
+      this.setSettings(s);
+    },
+    getAllMeta() {
+      const s = this.getSettings() || {};
+      return s.__meta || {};
     },
 
     write(data) {
@@ -1660,8 +1726,7 @@ function createSqlJsDb(SQL, dbPath) {
       if (Array.isArray(data.templates)) this.saveTemplates(data.templates);
       if (data.counters && typeof data.counters === 'object') this.saveCounters(data.counters);
       if (data.settings && typeof data.settings === 'object') {
-        sqlite.run("INSERT OR REPLACE INTO settings (key, json) VALUES ('main', ?)", [JSON.stringify(data.settings)]);
-        persist();
+        this.setSettings(data.settings);
       }
     },
 
@@ -1880,14 +1945,16 @@ function createSqlJsDb(SQL, dbPath) {
     saveInventory(item) {
       if (!item || !item.id) return null;
       try {
+        const createdAt = item.createdAt ? (typeof item.createdAt === 'string' ? item.createdAt : new Date(item.createdAt).toISOString()) : new Date().toISOString();
+        const updatedAt = item.updatedAt ? (typeof item.updatedAt === 'string' ? item.updatedAt : new Date(item.updatedAt).toISOString()) : new Date().toISOString();
         const data = {
           id: String(item.id),
           sku: item.sku || '',
           name: item.name || '',
           category: item.category || '',
           area: item.area || '',
-          createdAt: (item.createdAt || new Date()).toISOString(),
-          updatedAt: (item.updatedAt || new Date()).toISOString(),
+          createdAt,
+          updatedAt,
           json: JSON.stringify(item)
         };
         queryRun(
@@ -1903,11 +1970,22 @@ function createSqlJsDb(SQL, dbPath) {
     },
     deleteInventory(id) {
       try {
+        queryRun('DELETE FROM inventory_transactions WHERE inventoryId = ?', [id]);
+        queryRun('DELETE FROM inventory_batches WHERE inventoryId = ?', [id]);
         queryRun('DELETE FROM inventory WHERE id = ?', [id]);
         persist();
         return true;
       } catch (e) {
+        console.error('[sqliteDb sql.js] deleteInventory error:', e && e.message);
         return false;
+      }
+    },
+
+    getAllInventoryBatches() {
+      try {
+        return parseRows(queryAll('SELECT json FROM inventory_batches ORDER BY createdAt DESC'));
+      } catch (e) {
+        return [];
       }
     },
 
@@ -1931,13 +2009,16 @@ function createSqlJsDb(SQL, dbPath) {
     saveBatch(batch) {
       if (!batch || !batch.id) return null;
       try {
+        const createdAt = batch.createdAt ? (typeof batch.createdAt === 'string' ? batch.createdAt : new Date(batch.createdAt).toISOString()) : new Date().toISOString();
+        const updatedAt = batch.updatedAt ? (typeof batch.updatedAt === 'string' ? batch.updatedAt : new Date(batch.updatedAt).toISOString()) : new Date().toISOString();
+        const expirationDate = batch.expirationDate ? (typeof batch.expirationDate === 'string' ? batch.expirationDate : new Date(batch.expirationDate).toISOString()) : null;
         const data = {
           id: String(batch.id),
           inventoryId: String(batch.inventoryId || ''),
           lotNumber: batch.lotNumber || '',
-          expirationDate: batch.expirationDate ? new Date(batch.expirationDate).toISOString() : null,
-          createdAt: (batch.createdAt || new Date()).toISOString(),
-          updatedAt: (batch.updatedAt || new Date()).toISOString(),
+          expirationDate,
+          createdAt,
+          updatedAt,
           json: JSON.stringify(batch)
         };
         queryRun(
@@ -1974,17 +2055,18 @@ function createSqlJsDb(SQL, dbPath) {
     saveTransaction(transaction) {
       if (!transaction || !transaction.id) return null;
       try {
+        const createdAt = transaction.createdAt ? (typeof transaction.createdAt === 'string' ? transaction.createdAt : new Date(transaction.createdAt).toISOString()) : new Date().toISOString();
         const data = {
           id: String(transaction.id),
           inventoryId: String(transaction.inventoryId || ''),
           batchId: transaction.batchId ? String(transaction.batchId) : null,
           transactionType: transaction.transactionType || '',
           performedBy: transaction.performedBy || '',
-          createdAt: (transaction.createdAt || new Date()).toISOString(),
+          createdAt,
           json: JSON.stringify(transaction)
         };
         queryRun(
-          'INSERT INTO inventory_transactions (id, inventoryId, batchId, transactionType, performedBy, createdAt, json) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          'INSERT OR REPLACE INTO inventory_transactions (id, inventoryId, batchId, transactionType, performedBy, createdAt, json) VALUES (?, ?, ?, ?, ?, ?, ?)',
           [data.id, data.inventoryId, data.batchId, data.transactionType, data.performedBy, data.createdAt, data.json]
         );
         persist();
@@ -2039,14 +2121,11 @@ function createDb(dbPath, opts = {}) {
   // If sql.js is still resolving its promise, return a proxy adapter
   // that delegates to the underlying db once ready
   let underlyingDb = null;
-  const readyPromise = getSqlJs().then(SQL => {
-    underlyingDb = createSqlJsDb(SQL, dbPath);
-    return underlyingDb;
-  });
-
+  let readyPromise = null;
   const proxy = {
     _engine: 'sql.js (async-proxy)',
-    _readyPromise: readyPromise,
+    _isReady: false,
+    _readyPromise: null,
 
     getPatients() { return underlyingDb ? underlyingDb.getPatients() : []; },
     getPatientById(id) { return underlyingDb ? underlyingDb.getPatientById(id) : null; },
@@ -2082,14 +2161,40 @@ function createDb(dbPath, opts = {}) {
     write(d) { if (underlyingDb) underlyingDb.write(d); else readyPromise.then(db => db.write(d)); },
     getSettings() { return underlyingDb ? underlyingDb.getSettings() : {}; },
     setSettings(s) { if (underlyingDb) underlyingDb.setSettings(s); else readyPromise.then(d => d.setSettings(s)); },
+    getMeta(k) { return underlyingDb && underlyingDb.getMeta ? underlyingDb.getMeta(k) : undefined; },
+    setMeta(k, v) { if (underlyingDb && underlyingDb.setMeta) underlyingDb.setMeta(k, v); else readyPromise.then(d => d.setMeta && d.setMeta(k, v)); },
+    getAllMeta() { return underlyingDb && underlyingDb.getAllMeta ? underlyingDb.getAllMeta() : {}; },
     getChatbotConversations(userId) { return underlyingDb ? underlyingDb.getChatbotConversations(userId) : []; },
     getChatbotConversation(id, userId) { return underlyingDb ? underlyingDb.getChatbotConversation(id, userId) : null; },
     saveChatbotConversation(conv) { return underlyingDb ? underlyingDb.saveChatbotConversation(conv) : conv; },
     deleteChatbotConversation(id, userId) { return underlyingDb ? underlyingDb.deleteChatbotConversation(id, userId) : false; },
     getChatbotMessages(convId) { return underlyingDb ? underlyingDb.getChatbotMessages(convId) : []; },
     addChatbotMessage(msg) { return underlyingDb ? underlyingDb.addChatbotMessage(msg) : null; },
+
+    getInventory() { return underlyingDb ? underlyingDb.getInventory() : []; },
+    getInventoryById(id) { return underlyingDb ? underlyingDb.getInventoryById(id) : null; },
+    getInventoryBySku(sku) { return underlyingDb ? underlyingDb.getInventoryBySku(sku) : null; },
+    getInventoryByCategory(c) { return underlyingDb ? underlyingDb.getInventoryByCategory(c) : []; },
+    getInventoryByArea(a) { return underlyingDb ? underlyingDb.getInventoryByArea(a) : []; },
+    saveInventory(item) { if (underlyingDb) return underlyingDb.saveInventory(item); else readyPromise.then(d => d.saveInventory(item)); return item; },
+    deleteInventory(id) { if (underlyingDb) return underlyingDb.deleteInventory(id); else readyPromise.then(d => d.deleteInventory(id)); return true; },
+    getAllInventoryBatches() { return underlyingDb ? underlyingDb.getAllInventoryBatches() : []; },
+    getInventoryBatchesByItemId(id) { return underlyingDb ? underlyingDb.getInventoryBatchesByItemId(id) : []; },
+    getInventoryBatchById(id) { return underlyingDb ? underlyingDb.getInventoryBatchById(id) : null; },
+    saveBatch(b) { if (underlyingDb) return underlyingDb.saveBatch(b); else readyPromise.then(d => d.saveBatch(b)); return b; },
+    deleteBatch(id) { if (underlyingDb) return underlyingDb.deleteBatch(id); else readyPromise.then(d => d.deleteBatch(id)); return true; },
+    getInventoryTransactions(itemId, batchId) { return underlyingDb ? underlyingDb.getInventoryTransactions(itemId, batchId) : []; },
+    saveTransaction(tx) { if (underlyingDb) return underlyingDb.saveTransaction(tx); else readyPromise.then(d => d.saveTransaction(tx)); return tx; },
+
     close() { if (underlyingDb) underlyingDb.close(); }
   };
+
+  readyPromise = getSqlJs().then(SQL => {
+    underlyingDb = createSqlJsDb(SQL, dbPath);
+    proxy._isReady = true;
+    return underlyingDb;
+  });
+  proxy._readyPromise = readyPromise;
 
   return new Proxy(proxy, {
     get(target, prop) {

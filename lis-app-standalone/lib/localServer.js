@@ -205,6 +205,9 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
         if (!req.body.id && reqPath === '/patients' && req.method === 'POST') {
           try { req.body.id = require('crypto').randomUUID(); } catch (e) { req.body.id = 'pat-' + Date.now(); }
         }
+        if (!req.body.id && (reqPath === '/inventory' || /^\/inventory\/[^/]+\/batch$/.test(reqPath)) && req.method === 'POST') {
+          try { req.body.id = require('crypto').randomUUID(); } catch (e) { req.body.id = 'inv-' + Date.now(); }
+        }
         if (!req.body.client_id) {
           try { req.body.client_id = require('crypto').randomUUID(); } catch (e) { req.body.client_id = 'cli-' + Date.now(); }
         }
@@ -375,11 +378,86 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
           tests: dataStore.getCollection('tests') || [],
           templates: dataStore.getCollection('templates') || [],
           counters: dataStore._data.counters || {},
+          inventory: dataStore.getCollection('inventory') || [],
+          inventory_batches: dataStore.getCollection('inventory_batches') || [],
+          inventory_transactions: dataStore.getCollection('inventory_transactions') || []
         };
         return res.json(out);
       } catch (e) { return res.status(500).send('datastore-error'); }
     });
   }
+
+  /* ══════════════════════════════════════════════════════════════
+   *  Authorization & Route Permission Guard
+   * ══════════════════════════════════════════════════════════════ */
+  const routePermissionMap = [
+    { prefix: '/dashboard', perm: 'dashboard' },
+    { prefix: '/patients', perm: 'patients' },
+    { prefix: '/reception', perm: 'reception' },
+    { prefix: '/tests', perm: 'tests' },
+    { prefix: '/reports', perm: 'reports' },
+    { prefix: '/templates', perm: 'templates' },
+    { prefix: '/inventory', perm: 'inventory' },
+    { prefix: '/users', perm: 'users' },
+    { prefix: '/worksheet', perm: 'worksheet' }
+  ];
+
+  app.use((req, res, next) => {
+    try {
+      const path = req.originalUrl || req.url || '';
+      const mapping = routePermissionMap.find(m => path.indexOf(m.prefix) === 0);
+
+      if (!mapping) return next();
+
+      // Allow users to access their own profile
+      if (path.indexOf('/users/profile') === 0) return next();
+
+      // Allow authenticated users to check critical inventory alerts for global notification
+      if (path.indexOf('/inventory/critical-check') === 0) return next();
+
+      // Allow public auth routes
+      if (path === '/' || path.indexOf('/login') === 0) return next();
+
+      const sessionUser = req.session && req.session.user;
+      if (!sessionUser) {
+        req.flash('error_msg', 'Please login to access that page');
+        return res.redirect('/');
+      }
+
+      let perms = sessionUser.permissions || {};
+      if (typeof perms === 'string') {
+        try { perms = JSON.parse(perms); } catch (_) { perms = {}; }
+      }
+      const managementRoles = new Set(['Admin', 'Manager', 'Owner']);
+      const isManagement = managementRoles.has(sessionUser.role);
+
+      if (mapping.perm === 'dashboard') {
+        if (isManagement || perms.dashboard) return next();
+        const { getUserHomeRoute } = require('../middleware/auth');
+        const target = getUserHomeRoute(sessionUser);
+        return res.redirect(target !== '/dashboard' ? target : '/reception');
+      }
+
+      if (sessionUser.role === 'Admin') return next();
+
+      if (perms[mapping.perm]) return next();
+
+      // Role-based baseline workflow access for laboratory personnel (templates and inventory require explicit permission)
+      const labRoles = new Set(['Medical Technologist', 'MedTech', 'Technician', 'Doctor', 'Staff', 'Receptionist', 'Encoder']);
+      if (labRoles.has(sessionUser.role)) {
+        if (['reception', 'patients', 'tests', 'reports', 'worksheet'].includes(mapping.perm)) {
+          return next();
+        }
+      }
+
+      if (req.flash) req.flash('error_msg', 'You do not have permission to access that page');
+      const { getUserHomeRoute } = require('../middleware/auth');
+      const target = getUserHomeRoute(sessionUser);
+      return res.redirect(target === path ? '/users/profile' : target);
+    } catch (e) {
+      return next();
+    }
+  });
 
   /* ══════════════════════════════════════════════════════════════
    *  Mount the real server routes
@@ -420,6 +498,11 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     const templateRoutes = require('../routes/templates');
     app.use('/templates', templateRoutes);
   } catch (e) { console.error('[LocalServer] failed to load template routes:', e && e.message); }
+
+  try {
+    const inventoryRoutes = require('../routes/inventory');
+    app.use('/inventory', inventoryRoutes);
+  } catch (e) { console.error('[LocalServer] failed to load inventory routes:', e && e.message); }
 
   try {
     const userRoutes = require('../routes/users');

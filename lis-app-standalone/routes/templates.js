@@ -2,12 +2,12 @@ const express = require('express');
 const router = express.Router();
 const Template = require('../models/Template');
 const User = require('../models/User');
-const { requireAuth, canAccessPatient } = require('../middleware/auth');
+const { requireAuth, canAccessTemplates } = require('../middleware/auth');
 const fs = require('fs');
 const path = require('path');
 
 // GET /templates - List all templates
-router.get('/', requireAuth, canAccessPatient, async (req, res) => {
+router.get('/', requireAuth, canAccessTemplates, async (req, res) => {
   try {
     const templates = await Template.find({ isActive: true });
     
@@ -204,7 +204,7 @@ async function getStaticResultTemplates() {
 }
 
 // GET /templates/new - New template form
-router.get('/new', requireAuth, canAccessPatient, (req, res) => {
+router.get('/new', requireAuth, canAccessTemplates, (req, res) => {
   res.render('templates/new', {
     title: 'Create New Template',
     template: {}
@@ -212,7 +212,7 @@ router.get('/new', requireAuth, canAccessPatient, (req, res) => {
 });
 
 // POST /templates - Create new template
-router.post('/', requireAuth, canAccessPatient, async (req, res) => {
+router.post('/', requireAuth, canAccessTemplates, async (req, res) => {
   try {
     const { name, testType, fields, footerNotes } = req.body;
 
@@ -263,8 +263,8 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
   }
 });
 
-// GET /templates/:id - Show template details
-router.get('/:id', requireAuth, canAccessPatient, async (req, res) => {
+// GET /templates/:id - View single template
+router.get('/:id', requireAuth, canAccessTemplates, async (req, res) => {
   try {
     const id = req.params.id;
 
@@ -329,7 +329,7 @@ router.get('/:id', requireAuth, canAccessPatient, async (req, res) => {
 });
 
 // GET /templates/:id/edit - Edit template form
-router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
+router.get('/:id/edit', requireAuth, canAccessTemplates, async (req, res) => {
   try {
     const id = req.params.id;
     let template;
@@ -362,7 +362,7 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
 });
 
 // PUT /templates/:id - Update template
-router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
+router.put('/:id', requireAuth, canAccessTemplates, async (req, res) => {
   try {
     const { name, testType, fields, footerNotes } = req.body;
     const id = req.params.id;
@@ -426,7 +426,7 @@ router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
 });
 
 // DELETE /templates/:id - Delete template
-router.delete('/:id', requireAuth, canAccessPatient, async (req, res) => {
+router.delete('/:id', requireAuth, canAccessTemplates, async (req, res) => {
   try {
     const template = await Template.findByIdAndUpdate(
       req.params.id,

@@ -36,6 +36,9 @@ function createOfflineDb(dataStore) {
         if (data.templates) dataStore.setCollection('templates', data.templates);
         if (data.users) dataStore.setCollection('users', data.users);
         if (data.counters != null) dataStore.setCollection('counters', data.counters);
+        if (data.inventory) dataStore.setCollection('inventory', data.inventory);
+        if (data.inventory_batches) dataStore.setCollection('inventory_batches', data.inventory_batches);
+        if (data.inventory_transactions) dataStore.setCollection('inventory_transactions', data.inventory_transactions);
       }
     },
 
@@ -234,6 +237,97 @@ function createOfflineDb(dataStore) {
     },
     setMeta(key, val) {
       dataStore.setMeta(key, val);
+    },
+
+    /* ── Inventory Management ─────────────────────────────────────── */
+    getInventory() {
+      if (sqliteAdapter && typeof sqliteAdapter.getInventory === 'function') {
+        return sqliteAdapter.getInventory();
+      }
+      return dataStore.getCollection('inventory') || [];
+    },
+    getInventoryById(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.getInventoryById === 'function') {
+        return sqliteAdapter.getInventoryById(id);
+      }
+      const list = dataStore.getCollection('inventory') || [];
+      return list.find(i => i && (i.id === id || i._id === id || i.sku === id)) || null;
+    },
+    saveInventory(item) {
+      if (sqliteAdapter && typeof sqliteAdapter.saveInventory === 'function') {
+        return sqliteAdapter.saveInventory(item);
+      }
+      let list = dataStore.getCollection('inventory') || [];
+      const idx = list.findIndex(i => i && i.id === item.id);
+      if (idx >= 0) list[idx] = item;
+      else list.push(item);
+      dataStore.setCollection('inventory', list);
+      return item;
+    },
+    deleteInventory(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.deleteInventory === 'function') {
+        return sqliteAdapter.deleteInventory(id);
+      }
+      let list = dataStore.getCollection('inventory') || [];
+      list = list.filter(i => i && i.id !== id);
+      dataStore.setCollection('inventory', list);
+      return true;
+    },
+    getAllInventoryBatches() {
+      if (sqliteAdapter && typeof sqliteAdapter.getAllInventoryBatches === 'function') {
+        return sqliteAdapter.getAllInventoryBatches();
+      }
+      return dataStore.getCollection('inventory_batches') || [];
+    },
+    getInventoryBatchesByItemId(inventoryId) {
+      if (sqliteAdapter && typeof sqliteAdapter.getInventoryBatchesByItemId === 'function') {
+        return sqliteAdapter.getInventoryBatchesByItemId(inventoryId);
+      }
+      const list = dataStore.getCollection('inventory_batches') || [];
+      return list.filter(b => b && b.inventoryId === inventoryId);
+    },
+    getInventoryBatchById(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.getInventoryBatchById === 'function') {
+        return sqliteAdapter.getInventoryBatchById(id);
+      }
+      const list = dataStore.getCollection('inventory_batches') || [];
+      return list.find(b => b && b.id === id) || null;
+    },
+    saveBatch(batch) {
+      if (sqliteAdapter && typeof sqliteAdapter.saveBatch === 'function') {
+        return sqliteAdapter.saveBatch(batch);
+      }
+      let list = dataStore.getCollection('inventory_batches') || [];
+      const idx = list.findIndex(b => b && b.id === batch.id);
+      if (idx >= 0) list[idx] = batch;
+      else list.push(batch);
+      dataStore.setCollection('inventory_batches', list);
+      return batch;
+    },
+    deleteBatch(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.deleteBatch === 'function') {
+        return sqliteAdapter.deleteBatch(id);
+      }
+      let list = dataStore.getCollection('inventory_batches') || [];
+      list = list.filter(b => b && b.id !== id);
+      dataStore.setCollection('inventory_batches', list);
+      return true;
+    },
+    getInventoryTransactions(inventoryId) {
+      if (sqliteAdapter && typeof sqliteAdapter.getInventoryTransactions === 'function') {
+        return sqliteAdapter.getInventoryTransactions(inventoryId);
+      }
+      const list = dataStore.getCollection('inventory_transactions') || [];
+      return list.filter(t => t && t.inventoryId === inventoryId);
+    },
+    saveTransaction(tx) {
+      if (sqliteAdapter && typeof sqliteAdapter.saveTransaction === 'function') {
+        return sqliteAdapter.saveTransaction(tx);
+      }
+      let list = dataStore.getCollection('inventory_transactions') || [];
+      list.unshift(tx);
+      dataStore.setCollection('inventory_transactions', list);
+      return tx;
     }
   };
 

@@ -95,7 +95,7 @@ router.post('/', requireAuth, canManageUsers, async (req, res) => {
     // Build permissions object from nested or flattened form inputs
     const permissionsRaw = req.body.permissions || {};
     const permissions = {};
-    ['dashboard','patients','reception','tests','reports','worksheet','templates','users','delete'].forEach(k => {
+    ['dashboard','patients','reception','tests','reports','worksheet','templates','inventory','users','delete'].forEach(k => {
       const val = (permissionsRaw && permissionsRaw[k] !== undefined) ? permissionsRaw[k] : (req.body[`permissions[${k}]`] !== undefined ? req.body[`permissions[${k}]`] : req.body[`permissions.${k}`]);
       permissions[k] = !!(val === '1' || val === 1 || val === true || val === 'on' || val === 'true');
     });
@@ -192,35 +192,9 @@ router.put('/profile', requireAuth, upload.single('signature'), async (req, res)
       update.password = password;
     }
 
-    // If a signature file was uploaded, include its filename in the update and queue sync to server
+    // If a signature file was uploaded, include its filename in the update
     if (req.file && req.file.filename) {
       update.signature = req.file.filename;
-
-      try {
-        const filePath = path.join(sigDir, req.file.filename);
-        if (fs.existsSync(filePath)) {
-          const fileBuf = fs.readFileSync(filePath);
-          const base64Data = fileBuf.toString('base64');
-          const q = (req.app && req.app.locals && req.app.locals.operationQueue) || global.operationQueue;
-          const conf = (req.app && req.app.locals && req.app.locals.config) || global.dbConfig || {};
-          const base = (conf.SERVER_URL || 'http://127.0.0.1:3000').replace(/\/$/, '');
-          if (q && typeof q.add === 'function') {
-            q.add({
-              method: 'POST',
-              url: `${base}/api/signatures/sync`,
-              body: {
-                filename: req.file.filename,
-                data: base64Data,
-                email: email.toLowerCase()
-              },
-              timestamp: new Date().toISOString()
-            });
-            console.log(`[Users] queued signature sync to server for ${email}: ${req.file.filename}`);
-          }
-        }
-      } catch (sigErr) {
-        console.warn('[Users] failed queueing signature sync:', sigErr && sigErr.message);
-      }
     }
 
     // Handle autoSignatureOption: 'off', '1day', '1week', '1month', 'permanent'
@@ -329,7 +303,7 @@ router.put('/:id', requireAuth, canManageUsers, async (req, res) => {
     // Build permissions object from nested or flattened form inputs
     const permissionsRaw = req.body.permissions || {};
     const permissions = {};
-    ['dashboard','patients','reception','tests','reports','worksheet','templates','users','delete'].forEach(k => {
+    ['dashboard','patients','reception','tests','reports','worksheet','templates','inventory','users','delete'].forEach(k => {
       const val = (permissionsRaw && permissionsRaw[k] !== undefined) ? permissionsRaw[k] : (req.body[`permissions[${k}]`] !== undefined ? req.body[`permissions[${k}]`] : req.body[`permissions.${k}`]);
       permissions[k] = !!(val === '1' || val === 1 || val === true || val === 'on' || val === 'true');
     });

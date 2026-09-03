@@ -48,13 +48,29 @@
     </div>
 
     <div class="form-group">
-      <label>Permissions</label>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;">
-        <% const perms = ['dashboard','patients','reception','tests','reports','worksheet','templates','users','delete']; %>
-        <% perms.forEach(p => { %>
-          <label style="display:inline-flex;align-items:center;gap:6px;margin-right:8px;">
-            <input type="checkbox" name="permissions[<%= p %>]" value="1" <%= user.permissions && user.permissions[p] ? 'checked' : '' %> />
-            <span><%= p.charAt(0).toUpperCase() + p.slice(1) %></span>
+      <label style="font-weight: 700; margin-bottom: 8px; display: block;">User Permissions & Access Control</label>
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; background: #f8fafc; border: 1px solid var(--border-gray); padding: 14px; border-radius: 10px;">
+        <% 
+          const permList = [
+            { key: 'dashboard', label: 'Dashboard', desc: 'Analytics & Financials' },
+            { key: 'reception', label: 'Reception', desc: 'Patient Intake & Queue' },
+            { key: 'patients', label: 'Patients', desc: 'Demographics & Records' },
+            { key: 'tests', label: 'Tests', desc: 'Worklist & Results Entry' },
+            { key: 'reports', label: 'Reports', desc: 'Sign-off & Printouts' },
+            { key: 'worksheet', label: 'Worksheet', desc: 'Batch Bench Sheet' },
+            { key: 'inventory', label: 'Inventory', desc: 'Reagents, Films & Supplies' },
+            { key: 'templates', label: 'Report Templates', desc: 'Responsible Person Only', highlight: true },
+            { key: 'users', label: 'Users', desc: 'Staff Management' },
+            { key: 'delete', label: 'Delete Records', desc: 'Deletion Authority' }
+          ];
+        %>
+        <% permList.forEach(p => { %>
+          <label style="display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; border-radius: 8px; background: <%= p.highlight ? '#fef2f2' : '#ffffff' %>; border: 1px solid <%= p.highlight ? '#fca5a5' : '#e2e8f0' %>; cursor: pointer;">
+            <input type="checkbox" name="permissions[<%= p.key %>]" value="1" <%= user.permissions && user.permissions[p.key] ? 'checked' : '' %> style="margin-top: 3px; accent-color: var(--secondary-green);" />
+            <div>
+              <div style="font-weight: 600; font-size: 0.9em; color: <%= p.highlight ? '#b91c1c' : 'var(--text-dark)' %>;"><%= p.label %></div>
+              <small style="font-size: 0.75em; color: <%= p.highlight ? '#991b1b' : 'var(--text-gray)' %>; display: block;"><%= p.desc %></small>
+            </div>
           </label>
         <% }) %>
       </div>

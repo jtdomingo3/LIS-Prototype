@@ -881,29 +881,38 @@
                 <img src="<%= typeof inlineLogo !== 'undefined' && inlineLogo ? inlineLogo : '/assets/gezyne-logo.png' %>" alt="Gezyne Clinical Laboratory" class="brand-logo">
                 <div class="brand-text">Gezyne Clinical Laboratory</div>
             </div>
-            <% const perms = (sessionUser && sessionUser.permissions) ? sessionUser.permissions : {}; %>
+            <% 
+               let perms = (sessionUser && sessionUser.permissions) ? sessionUser.permissions : {}; 
+               if (typeof perms === 'string') {
+                 try { perms = JSON.parse(perms); } catch(_) { perms = {}; }
+               }
+               const hasInventoryPerm = sessionUser && (sessionUser.role === 'Admin' || sessionUser.role === 'admin' || (perms && (perms.inventory === true || perms.inventory === '1' || perms.inventory === 1 || (Array.isArray(perms) && perms.includes('inventory')))));
+            %>
             <% const dashboardRoles = new Set(['Admin','Manager','Owner']); %>
             <% if (dashboardRoles.has(sessionUser.role) || perms.dashboard) { %>
             <a href="/dashboard" class="nav-item <%= title.includes('Dashboard') ? 'active' : '' %>"><span class="nav-emoji">📊</span><span class="nav-text">Dashboard</span></a>
             <% } %>
-            <% if (sessionUser.role === 'Admin' || perms.patients) { %>
+            <% if (sessionUser.role === 'Admin' || sessionUser.role === 'admin' || perms.patients) { %>
             <a href="/patients" class="nav-item <%= title.includes('Patient') ? 'active' : '' %>"><span class="nav-emoji">👥</span><span class="nav-text">Patients</span></a>
             <% } %>
-            <% if (sessionUser.role === 'Admin' || perms.reception) { %>
+            <% if (sessionUser.role === 'Admin' || sessionUser.role === 'admin' || perms.reception) { %>
             <a href="/reception" class="nav-item <%= title.includes('Reception') ? 'active' : '' %>"><span class="nav-emoji">🏥</span><span class="nav-text">Reception</span></a>
             <% } %>
             <% if (!featureFlags || featureFlags.tests) { %>
-            <% if (sessionUser.role === 'Admin' || perms.tests) { %>
+            <% if (sessionUser.role === 'Admin' || sessionUser.role === 'admin' || perms.tests) { %>
             <a href="/tests" class="nav-item <%= ((title.includes('Test') || title.includes('Result')) && !title.includes('Reception')) ? 'active' : '' %>"><span class="nav-emoji">🧪</span><span class="nav-text">Tests & Results</span></a>
             <% } %>
             <% } %>
             <% if (!featureFlags || featureFlags.reports) { %>
-            <% if (sessionUser.role === 'Admin' || perms.reports) { %>
+            <% if (sessionUser.role === 'Admin' || sessionUser.role === 'admin' || perms.reports) { %>
             <a href="/reports" class="nav-item <%= (title.includes('Report') && !title.includes('Template')) ? 'active' : '' %>"><span class="nav-emoji">📋</span><span class="nav-text">Reports</span></a>
             <% } %>
             <% } %>
             <!-- Signature area: allows users to upload e-signatures for documents where their name appears -->
             <a href="/signatures" class="nav-item <%= title.includes('Signature') ? 'active' : '' %>"><span class="nav-emoji">✍️</span><span class="nav-text">Signature</span></a>
+            <% if (hasInventoryPerm) { %>
+            <a href="/inventory" class="nav-item <%= title.includes('Inventory') ? 'active' : '' %>"><span class="nav-emoji">📦</span><span class="nav-text">Inventory</span></a>
+            <% } %>
             <% if (!featureFlags || featureFlags.worksheet) { %>
             <% if (sessionUser.role === 'Admin' || perms.worksheet) { %>
             <a href="/reports/worksheet" class="nav-item <%= title.includes('Worksheet') ? 'active' : '' %>"><span class="nav-emoji">📊</span><span class="nav-text">Worksheet</span></a>
@@ -1445,6 +1454,123 @@
     <script src="/assets/results-autocomplete.js"></script>
     <!-- Scripts injected from individual views (via express-ejs-layouts extractScripts) -->
     <%- typeof script !== 'undefined' ? script : '' %>
+
+    <!-- Global Critical Reagent Stock Alert Modal -->
+    <div id="globalCriticalStockModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15, 23, 42, 0.65); backdrop-filter:blur(6px); z-index:999999; align-items:center; justify-content:center; padding:16px;">
+      <div style="background:#ffffff; width:100%; max-width:640px; border-radius:18px; padding:28px 32px; box-shadow:0 25px 60px rgba(0, 0, 0, 0.25); border:1px solid #fee2e2; animation:fadeIn 0.25s ease forwards;">
+        <div style="display:flex; align-items:center; gap:16px; margin-bottom:16px;">
+          <div style="width:52px; height:52px; border-radius:14px; background:#fef2f2; display:flex; align-items:center; justify-content:center; color:#dc2626; font-size:1.75em; flex-shrink:0;">
+            <i class="fa fa-triangle-exclamation"></i>
+          </div>
+          <div>
+            <h3 style="margin:0; color:#991b1b; font-size:1.35rem; font-weight:700;">Critical Reagent Stock Alert</h3>
+            <p style="margin:4px 0 0; color:#64748b; font-size:0.9rem;">
+              The following laboratory supply/reagent has reached or fallen below its critical emergency reserve level.
+            </p>
+          </div>
+        </div>
+
+        <div id="globalCriticalItemsContainer" style="max-height:220px; overflow-y:auto; margin:16px 0; border:1px solid #fee2e2; border-radius:12px; background:#fffbfb; padding:6px 12px;">
+          <!-- Dynamically populated -->
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:20px; flex-wrap:wrap;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.85rem; color:#64748b; font-weight:600;"><i class="fa fa-clock"></i> Snooze:</span>
+            <button type="button" onclick="snoozeCriticalModal(60)" class="button btn-small btn-secondary" style="padding:6px 10px; font-size:0.82rem;">1h</button>
+            <button type="button" onclick="snoozeCriticalModal(240)" class="button btn-small btn-secondary" style="padding:6px 10px; font-size:0.82rem;">4h</button>
+            <button type="button" onclick="snoozeCriticalModal(1440)" class="button btn-small btn-secondary" style="padding:6px 10px; font-size:0.82rem;">24h</button>
+          </div>
+
+          <div style="display:flex; gap:10px;">
+            <button type="button" onclick="closeCriticalModal()" class="button btn-secondary" style="padding:10px 16px;">Dismiss</button>
+            <a href="/inventory" class="button btn-primary" style="padding:10px 18px; text-decoration:none;">
+              <i class="fa fa-boxes-stacked"></i> View Inventory
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function() {
+        const SNOOZE_KEY = 'lis_inv_critical_snooze_until';
+
+        function checkCriticalInventoryStock() {
+          <% if (typeof sessionUser === 'undefined' || !sessionUser) { %>
+            return;
+          <% } %>
+
+          try {
+            const snoozeUntil = localStorage.getItem(SNOOZE_KEY);
+            if (snoozeUntil && Number(snoozeUntil) > Date.now()) {
+              return; // Currently snoozed
+            }
+
+            fetch('/inventory/critical-check', {
+              headers: { 'Accept': 'application/json' }
+            })
+            .then(res => {
+              if (!res.ok) return null;
+              return res.json();
+            })
+            .then(data => {
+              if (!data || !data.hasCritical || !data.items || data.items.length === 0) return;
+              renderCriticalModal(data.items);
+            })
+            .catch(() => {});
+          } catch(e) {}
+        }
+
+        function renderCriticalModal(items) {
+          const container = document.getElementById('globalCriticalItemsContainer');
+          const modal = document.getElementById('globalCriticalStockModal');
+          if (!container || !modal) return;
+
+          container.innerHTML = items.map(item => `
+            <div style="padding:10px 0; border-bottom:1px solid #fee2e2; display:flex; justify-content:space-between; align-items:center; gap:10px;">
+              <div>
+                <strong style="color:#1e293b; font-size:0.95rem;">${escapeHtml(item.name)}</strong>
+                <div style="font-size:0.8rem; color:#64748b;">
+                  REF: ${escapeHtml(item.sku)} &bull; ${escapeHtml(item.area || 'General')} ${item.location ? `&bull; Loc: ${escapeHtml(item.location)}` : ''}
+                </div>
+              </div>
+              <div style="text-align:right; white-space:nowrap;">
+                <div style="font-size:1.15rem; font-weight:700; color:#dc2626;">
+                  ${item.totalStock} ${escapeHtml(item.unit)}
+                </div>
+                <div style="font-size:0.75rem; color:#991b1b; font-weight:600;">
+                  Critical Level: &le; ${item.criticalThreshold}
+                </div>
+              </div>
+            </div>
+          `).join('');
+
+          modal.style.display = 'flex';
+        }
+
+        window.snoozeCriticalModal = function(minutes) {
+          try {
+            const until = Date.now() + (minutes * 60 * 1000);
+            localStorage.setItem(SNOOZE_KEY, until.toString());
+          } catch(e) {}
+          closeCriticalModal();
+        };
+
+        window.closeCriticalModal = function() {
+          const modal = document.getElementById('globalCriticalStockModal');
+          if (modal) modal.style.display = 'none';
+        };
+
+        function escapeHtml(text) {
+          if (!text) return '';
+          return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+        }
+
+        // Run check after initial page render
+        setTimeout(checkCriticalInventoryStock, 1500);
+      })();
+    </script>
 
     <!-- GezyneBot Floating AI Assistant Widget (Standalone Edition) -->
     <%- include('partials/gezynebot-widget') %>

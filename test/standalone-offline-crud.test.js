@@ -17,6 +17,9 @@ async function runDatastoreCrudTests() {
 
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'lis-test-crud-'));
   const ds = new DataStore(tmpDir);
+  if (ds.db && ds.db._readyPromise) {
+    await ds.db._readyPromise;
+  }
 
   global.db = {
     getPatients: () => ds.getCollection('patients'),

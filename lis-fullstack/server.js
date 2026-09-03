@@ -800,6 +800,10 @@ app.get('/export/data.json', (req, res) => {
       autoSignature: u.autoSignature || { enabled: false, until: null },
     }));
 
+    data.inventory = typeof db.getInventory === 'function' ? db.getInventory() : [];
+    data.inventory_batches = typeof db.getAllInventoryBatches === 'function' ? db.getAllInventoryBatches() : [];
+    data.inventory_transactions = typeof db.getInventoryTransactions === 'function' ? db.getInventoryTransactions() : [];
+
     res.json(data);
   } catch (e) {
     console.error('export/data.json failed:', e && e.message);

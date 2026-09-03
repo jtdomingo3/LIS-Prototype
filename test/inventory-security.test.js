@@ -4,7 +4,12 @@
  */
 
 const assert = require('assert');
-const express = require('express');
+const path = require('path');
+const express = (() => {
+  try { return require('express'); } catch (e) {
+    return require(path.join(__dirname, '../lis-fullstack/node_modules/express'));
+  }
+})();
 
 console.log('\n=============================================================');
 console.log('🔒 RUNNING SECURITY & ACCESS CONTROL ROUTE TESTS');

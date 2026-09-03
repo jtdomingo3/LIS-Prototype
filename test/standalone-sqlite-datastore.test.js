@@ -1,7 +1,7 @@
 const path = require('path');
 const fs = require('fs');
-const { DataStore } = require('./lib/dataStore');
-const { createOfflineDb } = require('./lib/offlineDb');
+const { DataStore } = require('../lis-app-standalone/lib/dataStore');
+const { createOfflineDb } = require('../lis-app-standalone/lib/offlineDb');
 
 function assert(condition, message) {
   if (!condition) {
@@ -16,7 +16,7 @@ function assert(condition, message) {
   fs.mkdirSync(tmpDir, { recursive: true });
 
   console.log('--- Test 1: Fresh SQLite DataStore creation ---');
-  const ds1 = new DataStore(path.join(tmpDir, 'store1'));
+  const ds1 = await new DataStore(path.join(tmpDir, 'store1')).ready();
   ds1.setCollection('patients', [
     { id: 'p1', patientId: 'PID-001', firstName: 'John', lastName: 'Doe', createdAt: new Date().toISOString() }
   ]);
@@ -60,7 +60,7 @@ function assert(condition, message) {
   fs.writeFileSync(path.join(store2Dir, 'data.json'), JSON.stringify(sampleJson, null, 2), 'utf8');
 
   // Instantiate DataStore on store2Dir -> should auto migrate to lis-data.db and rename data.json to data.json.migrated
-  const ds2 = new DataStore(store2Dir);
+  const ds2 = await new DataStore(store2Dir).ready();
   const migPatients = ds2.getCollection('patients');
   const migTests = ds2.getCollection('tests');
   const migUsers = ds2.getCollection('users');

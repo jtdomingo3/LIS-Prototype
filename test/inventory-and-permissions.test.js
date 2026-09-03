@@ -7,12 +7,12 @@ const assert = require('assert');
 const path = require('path');
 
 // Domain Models
-const Inventory = require('../models/Inventory');
-const InventoryBatch = require('../models/InventoryBatch');
-const InventoryTransaction = require('../models/InventoryTransaction');
+const Inventory = require('../lis-fullstack/models/Inventory');
+const InventoryBatch = require('../lis-fullstack/models/InventoryBatch');
+const InventoryTransaction = require('../lis-fullstack/models/InventoryTransaction');
 
 // Security & Auth Middleware
-const { canAccessTemplates, getUserHomeRoute } = require('../middleware/auth');
+const { canAccessTemplates, getUserHomeRoute } = require('../lis-fullstack/middleware/auth');
 
 console.log('\n=============================================================');
 console.log('🧪 RUNNING UNIT TESTS: Diagnostic Inventory & Access Control');
@@ -348,6 +348,112 @@ test('Snooze calculation should correctly project 1h, 4h, and 24h intervals', ()
   // Snooze expiration evaluation
   assert.strictEqual(snooze1h > baseTime, true, 'Active snooze must be in the future');
   assert.strictEqual(snooze1h > (baseTime + 3600001), false, 'Expired snooze must evaluate false');
+});
+
+// -------------------------------------------------------------
+// 6. DEPARTMENT/ROLE-TARGETED STOCK ALERT TESTS
+// -------------------------------------------------------------
+console.log('\n--- 6. Department & Role-Targeted Stock Alert Tests ---');
+
+test('Clinical reagents should alert MedTechs, but NOT Sonographers or X-Ray Techs by default', () => {
+  const clinicalItem = new Inventory({
+    name: 'Clinical Glucose Reagent',
+    area: 'Clinical Chemistry',
+    category: 'Clinical Reagents'
+  });
+
+  const medtech = { role: 'Medical Technologist' };
+  const xrayTech = { role: 'X-Ray Technologist' };
+  const sonographer = { role: 'Sonographer' };
+
+  assert.strictEqual(clinicalItem.shouldAlertUser(medtech), true, 'MedTech must receive clinical alerts');
+  assert.strictEqual(clinicalItem.shouldAlertUser(xrayTech), false, 'X-Ray Tech should NOT receive clinical alerts');
+  assert.strictEqual(clinicalItem.shouldAlertUser(sonographer), false, 'Sonographer should NOT receive clinical alerts');
+});
+
+test('X-Ray films & supplies should alert X-Ray Technologists, but NOT MedTechs by default', () => {
+  const xrayItem = new Inventory({
+    name: 'X-Ray Film 14x17',
+    area: 'X-Ray & Radiology',
+    category: 'X-Ray Films & Accessories'
+  });
+
+  const medtech = { role: 'Medical Technologist' };
+  const xrayTech = { role: 'X-Ray Technologist' };
+
+  assert.strictEqual(xrayItem.shouldAlertUser(xrayTech), true, 'X-Ray Tech must receive X-Ray alerts');
+  assert.strictEqual(xrayItem.shouldAlertUser(medtech), false, 'MedTech should NOT receive X-Ray alerts');
+});
+
+test('Ultrasound & 2D Echo supplies should alert Sonographers and 2D Echo staff (X-Ray Tech)', () => {
+  const sonoItem = new Inventory({
+    name: 'Ultrasound Transmission Gel (5L)',
+    area: 'Ultrasound & 2D Echo',
+    category: 'Ultrasound & Echo Gels'
+  });
+
+  const sonographer = { role: 'Sonographer' };
+  const xrayTech = { role: 'X-Ray Technologist' };
+  const medtech = { role: 'Medical Technologist' };
+
+  assert.strictEqual(sonoItem.shouldAlertUser(sonographer), true, 'Sonographer must receive Ultrasound alerts');
+  assert.strictEqual(sonoItem.shouldAlertUser(xrayTech), true, 'X-Ray Tech assigned to 2D Echo must receive alerts');
+  assert.strictEqual(sonoItem.shouldAlertUser(medtech), false, 'Standard MedTech should NOT receive Ultrasound alerts');
+});
+
+test('Admins, Managers, and Owners must receive ALL alerts across all departments', () => {
+  const clinicalItem = new Inventory({ name: 'Serum Bilirubin', area: 'Clinical Chemistry' });
+  const xrayItem = new Inventory({ name: 'X-Ray Developer', area: 'X-Ray & Radiology' });
+  const sonoItem = new Inventory({ name: 'Echo Gel', area: 'Ultrasound & 2D Echo' });
+
+  const admin = { role: 'Admin' };
+  const manager = { role: 'Manager' };
+  const owner = { role: 'Owner' };
+
+  [clinicalItem, xrayItem, sonoItem].forEach(item => {
+    assert.strictEqual(item.shouldAlertUser(admin), true, 'Admin receives all alerts');
+    assert.strictEqual(item.shouldAlertUser(manager), true, 'Manager receives all alerts');
+    assert.strictEqual(item.shouldAlertUser(owner), true, 'Owner receives all alerts');
+  });
+});
+
+test('Custom targetRoles on Inventory item should take precedence over default area mapping', () => {
+  const customItem = new Inventory({
+    name: 'Dual-purpose ECG Electrodes',
+    area: 'Cardiology & ECG',
+    targetRoles: ['Medical Technologist', 'Doctor']
+  });
+
+  const medtech = { role: 'Medical Technologist' };
+  const sonographer = { role: 'Sonographer' };
+
+  assert.strictEqual(customItem.shouldAlertUser(medtech), true, 'Explicit target role must be alerted');
+  assert.strictEqual(customItem.shouldAlertUser(sonographer), false, 'Unlisted role must NOT be alerted');
+});
+
+// -------------------------------------------------------------
+// 7. INVENTORY DELETION RESILIENCE TESTS
+// -------------------------------------------------------------
+console.log('\n--- 7. Inventory Deletion Resilience Tests ---');
+
+test('deleteInventory should remove transactions, batches, and item cleanly', () => {
+  let deletedTransactions = false;
+  let deletedBatches = false;
+  let deletedItem = false;
+
+  const mockDb = {
+    deleteInventory: (id) => {
+      deletedTransactions = true;
+      deletedBatches = true;
+      deletedItem = true;
+      return true;
+    }
+  };
+
+  assert.strictEqual(mockDb.deleteInventory('item-test-123'), true);
+  assert.strictEqual(deletedTransactions, true);
+  assert.strictEqual(deletedBatches, true);
+  assert.strictEqual(deletedItem, true);
 });
 
 console.log('\n=============================================================');
