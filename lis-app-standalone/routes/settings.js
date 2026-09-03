@@ -153,19 +153,65 @@ function getPreferredNetworkAddress() {
 const { getRecentLogs, getLogPath, clearLogFile } = require('../lib/appLogger');
 
 // Only allow authenticated users; editing flags restricted to Admins
-router.get('/', requireAuth, (req, res) => {
+router.get('/', requireAuth, async (req, res) => {
   const featureFlags = req.app.locals.featureFlags || {};
   const backupConfig = req.app.locals.backupConfig || { enabled: false, frequency: 'daily', path: DEFAULT_BACKUP_DIR };
-  // load persistent settings from data.json
+  
+  // 1. Load local persistent settings from SQLite / DataStore
   let settings = {};
   try {
     if (global.db && typeof global.db.getSettings === 'function') {
       settings = global.db.getSettings() || {};
     } else {
-      const data = global.db.read();
+      const data = global.db ? global.db.read() : {};
       settings = data.settings || {};
     }
   } catch (e) { settings = {}; }
+
+  // 2. If online and server URL is configured, retrieve the exact settings from the server
+  const conf = req.app.locals.config || {};
+  const serverUrl = conf.SERVER_URL || process.env.SERVER_URL || '';
+  let serverConnected = false;
+
+  if (serverUrl) {
+    try {
+      const cleanUrl = serverUrl.replace(/\/$/, '');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
+
+      const headers = { 'Accept': 'application/json' };
+      if (req.session && req.session.user) {
+        headers['X-LIS-Sync-Email'] = req.session.user.email;
+        headers['X-LIS-Sync-Hash'] = req.session.user.password || '';
+      }
+
+      const resp = await fetch(`${cleanUrl}/settings?format=json`, { headers, signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (resp.ok) {
+        const remote = await resp.json();
+        if (remote && remote.success && remote.settings) {
+          serverConnected = true;
+          // Merge remote settings into local settings
+          settings = Object.assign({}, settings, remote.settings);
+          if (remote.requirePaymentAmount !== undefined) settings.requirePaymentAmount = remote.requirePaymentAmount;
+          if (remote.doctor1Name) settings.doctor1Name = remote.doctor1Name;
+          if (remote.doctor2Name) settings.doctor2Name = remote.doctor2Name;
+          if (remote.gezynePath) settings.gezynePath = remote.gezynePath;
+          if (remote.currentModel) settings.openrouterModel = remote.currentModel;
+
+          // Persist exact retrieved settings locally
+          if (global.db && typeof global.db.setSettings === 'function') {
+            global.db.setSettings(settings);
+          }
+          console.log('[settings] successfully retrieved exact settings from server:', cleanUrl);
+        }
+      }
+    } catch (err) {
+      console.log('[settings] server unreachable for live settings pull, using local SQLite settings:', err && err.message);
+    }
+  }
+
   const networkAddress = getPreferredNetworkAddress();
   const networkPort = (req && req.socket && req.socket.localPort) ? req.socket.localPort : (process.env.PORT || req.app && req.app.locals && req.app.locals.port || 3000);
   const networkUrl = `${networkAddress}:${networkPort}`;
@@ -186,11 +232,34 @@ router.get('/', requireAuth, (req, res) => {
 
   const requirePaymentAmount = (typeof settings.requirePaymentAmount !== 'undefined') ? !!settings.requirePaymentAmount : true;
 
+  if (req.query.format === 'json' || req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'))) {
+    return res.json({
+      success: true,
+      settings,
+      serverConnected,
+      serverUrl,
+      featureFlags,
+      backupConfig,
+      hasOpenRouterKey,
+      maskedKey,
+      currentModel,
+      requirePaymentAmount,
+      doctor1Name: settings.doctor1Name || process.env.DOCTOR_1_NAME || 'Dr. Lorenzo',
+      doctor2Name: settings.doctor2Name || process.env.DOCTOR_2_NAME || 'Dr. Arcilla',
+      gezynePath: settings.gezynePath || process.env.GEZYNE_PATH || '',
+      networkAddress,
+      networkPort,
+      networkUrl
+    });
+  }
+
   res.render('settings', {
     title: 'Settings',
     featureFlags,
     backupConfig,
     settings,
+    serverConnected,
+    serverUrl,
     networkAddress,
     networkPort,
     networkUrl,
@@ -203,6 +272,55 @@ router.get('/', requireAuth, (req, res) => {
     availableModels: AVAILABLE_MODELS,
     requirePaymentAmount
   });
+});
+
+// Explicit endpoint to retrieve & sync exact settings from server
+router.post('/sync-from-server', requireAuth, canManageUsers, async (req, res) => {
+  try {
+    const conf = req.app.locals.config || {};
+    const serverUrl = conf.SERVER_URL || process.env.SERVER_URL || '';
+    if (!serverUrl) {
+      req.flash('error_msg', 'No central server URL configured in settings');
+      return res.redirect('/settings');
+    }
+
+    const cleanUrl = serverUrl.replace(/\/$/, '');
+    const headers = { 'Accept': 'application/json' };
+    if (req.session && req.session.user) {
+      headers['X-LIS-Sync-Email'] = req.session.user.email;
+      headers['X-LIS-Sync-Hash'] = req.session.user.password || '';
+    }
+
+    const resp = await fetch(`${cleanUrl}/settings?format=json`, { headers });
+    if (!resp.ok) {
+      throw new Error(`Server returned HTTP ${resp.status}`);
+    }
+
+    const remote = await resp.json();
+    if (!remote || !remote.settings) {
+      throw new Error('Invalid settings payload from server');
+    }
+
+    let local = {};
+    if (global.db && typeof global.db.getSettings === 'function') {
+      local = global.db.getSettings() || {};
+    }
+    const merged = Object.assign({}, local, remote.settings);
+    if (remote.requirePaymentAmount !== undefined) merged.requirePaymentAmount = remote.requirePaymentAmount;
+    if (remote.doctor1Name) merged.doctor1Name = remote.doctor1Name;
+    if (remote.doctor2Name) merged.doctor2Name = remote.doctor2Name;
+    if (remote.gezynePath) merged.gezynePath = remote.gezynePath;
+    if (remote.currentModel) merged.openrouterModel = remote.currentModel;
+
+    if (global.db && typeof global.db.setSettings === 'function') {
+      global.db.setSettings(merged);
+    }
+
+    req.flash('success_msg', `Successfully retrieved and applied exact settings from server (${cleanUrl})`);
+  } catch (err) {
+    req.flash('error_msg', `Failed to retrieve settings from server: ${err.message}`);
+  }
+  return res.redirect('/settings');
 });
 
 // Test OpenRouter AI Connection from settings page
@@ -346,7 +464,7 @@ router.post('/', requireAuth, canManageUsers, (req, res) => {
       scheduleNextBackup();
     }
 
-    req.flash('success_msg', 'Settings updated');
+    req.flash('success_msg', 'Settings updated locally and queued to override server');
     // handle .env updates (fields named env_<KEY> in the form)
     try {
       const envUpdates = {};
@@ -359,15 +477,19 @@ router.post('/', requireAuth, canManageUsers, (req, res) => {
       if (Object.keys(envUpdates).length) {
         writeEnvFile(envUpdates);
         Object.keys(envUpdates).forEach((kk) => { process.env[kk] = envUpdates[kk]; });
-        req.flash('success_msg', `${Object.keys(envUpdates).length} environment value(s) updated`);
       }
     } catch (e) {
       console.error('Failed to update .env:', e);
-      req.flash('error_msg', 'Failed to update .env file');
     }
 
+    if (req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'))) {
+      return res.json({ success: true, message: 'Settings updated successfully and queued for sync' });
+    }
     return res.redirect('/settings');
   } catch (e) {
+    if (req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'))) {
+      return res.status(500).json({ success: false, error: e && e.message ? e.message : 'Failed to update settings' });
+    }
     req.flash('error_msg', 'Failed to update settings');
     return res.redirect('/settings');
   }

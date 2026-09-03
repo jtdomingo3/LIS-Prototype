@@ -270,6 +270,19 @@ class DataStore {
     return (s.__meta && s.__meta[key] !== undefined) ? s.__meta[key] : undefined;
   }
 
+  getSettings() {
+    if (this.db && typeof this.db.getSettings === 'function') {
+      return this.db.getSettings() || {};
+    }
+    return {};
+  }
+
+  setSettings(settings) {
+    if (this.db && typeof this.db.setSettings === 'function') {
+      this.db.setSettings(settings);
+    }
+  }
+
   info() {
     try {
       const existsOnDisk = fs.existsSync(this.sqlitePath);

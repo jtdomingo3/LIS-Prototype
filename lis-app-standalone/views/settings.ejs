@@ -1,26 +1,83 @@
 <div class="page active">
   <div class="card">
-    <h3>Settings</h3>
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:20px;">
+      <h3 style="margin:0;">Settings</h3>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <% if (typeof serverUrl !== 'undefined' && serverUrl) { %>
+          <span class="badge <%= (typeof serverConnected !== 'undefined' && serverConnected) ? 'badge-success' : 'badge-warning' %>" style="font-size:0.85em; padding:6px 12px;">
+            <%= (typeof serverConnected !== 'undefined' && serverConnected) ? '✓ Server Synced' : '⚡ Local / Offline' %> (<%= serverUrl %>)
+          </span>
+          <form method="POST" action="/settings/sync-from-server" style="display:inline; margin:0;">
+            <button type="submit" class="button btn-secondary btn-small" title="Retrieve and apply the exact settings from the central server">
+              🔄 Retrieve Server Settings
+            </button>
+          </form>
+        <% } %>
+      </div>
+    </div>
+
+    <!-- Server Connection & Override Notice Banner -->
+    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 16px; margin-bottom:24px; font-size:0.9em; display:flex; align-items:flex-start; gap:12px;">
+      <span style="font-size:1.3em;">🌐</span>
+      <div style="flex:1;">
+        <strong style="color:var(--text-dark);">Server Settings Synchronization & Override:</strong>
+        <p style="margin:4px 0 0 0; color:var(--text-gray); line-height:1.4;">
+          This standalone workstation automatically retrieves settings from the central server (<code><%= (typeof serverUrl !== 'undefined' && serverUrl) ? serverUrl : 'http://127.0.0.1:3000' %></code>).
+          Saving settings here updates your local configuration and automatically synchronizes to <strong>override the central server's settings</strong>.
+        </p>
+      </div>
+    </div>
+
     <div class="field">
       <label>Network Address</label>
       <input type="text" readonly value="<%= (typeof networkUrl !== 'undefined' && networkUrl) ? networkUrl : ((typeof networkAddress !== 'undefined' && networkAddress) ? networkAddress : 'Unavailable') %>" />
-      <p class="note">Use this address (address:port) to access the server from other devices on the network.</p>
+      <p class="note">Local loopback and LAN address for this workstation.</p>
     </div>
+
     <form method="POST" action="/settings">
+      <h4>🤖 GezyneBot AI Assistant Settings</h4>
+      <div class="field">
+        <label>OpenRouter API Key</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="password" id="openrouterApiKeyInput" name="openrouterApiKey" placeholder="sk-or-v1-..." style="flex:1;" />
+          <button type="button" class="button btn-secondary btn-small" id="btnToggleApiKey" onclick="toggleApiKeyVisibility()">Show</button>
+          <button type="button" class="button btn-secondary btn-small" id="btnTestAi" onclick="testAiConnection()">Test Connection</button>
+        </div>
+        <p class="note" id="apiKeyStatusNote">
+          <% if (typeof hasOpenRouterKey !== 'undefined' && hasOpenRouterKey) { %>
+            <span style="color:#10b981;font-weight:600;">● API Key Configured & Encrypted at Rest (<%= maskedKey %>)</span>. Enter a new key above only if you want to replace it.
+          <% } else { %>
+            <span style="color:#ef4444;font-weight:600;">● No API Key Configured</span>. Enter your OpenRouter key (starts with <code>sk-or-</code>) to enable GezyneBot.
+          <% } %>
+        </p>
+        <div id="aiTestFeedback" style="display:none;margin-top:6px;padding:8px 12px;border-radius:8px;font-size:0.88em;"></div>
+      </div>
+
+      <div class="field">
+        <label>Default AI Model</label>
+        <select name="openrouterModel" id="openrouterModelSelect">
+          <% (typeof availableModels !== 'undefined' ? availableModels : []).forEach(function(m) { %>
+            <option value="<%= m.id %>" <%= (typeof currentModel !== 'undefined' && currentModel === m.id) ? 'selected' : '' %>><%= m.name %></option>
+          <% }); %>
+        </select>
+        <p class="note">Choose the default OpenRouter AI model used by GezyneBot.</p>
+      </div>
+
       <h4>Environment (.env)</h4>
       <% if (envEntries && envEntries.length) { %>
         <% envEntries.forEach(function(e) { %>
-          <% if (e.type === 'kv') { %>
+          <% if (e.type === 'kv' && !['OPENROUTER_ENCRYPTED_KEY', 'OPENROUTER_API_KEY', 'OPENROUTER_DEFAULT_MODEL'].includes(e.key)) { %>
             <div class="field">
               <label><%= e.key %></label>
               <input type="text" name="env_<%= e.key %>" value="<%= e.value %>" />
             </div>
           <% } %>
         <% }); %>
-        <p class="note">Updating these values will modify the project's <strong>.env</strong> file. Only users with appropriate permissions can change them.</p>
+        <p class="note">Updating these values will modify the workstation's configuration. Only administrators can modify these values.</p>
       <% } else { %>
         <p class="note">No .env entries found.</p>
       <% } %>
+
       <h4>Doctor Check-up Schedule</h4>
       <div class="field">
         <label>Primary Doctor on Duty (Doctor 1)</label>
@@ -66,10 +123,11 @@
       </div>
 
       <div class="mt-20">
-        <button type="submit" class="button btn-primary">Save</button>
+        <button type="submit" class="button btn-primary">Save & Apply Settings</button>
         <a href="/dashboard" class="button btn-secondary" style="margin-left:8px;">Cancel</a>
       </div>
     </form>
+
     <hr/>
     <h4>Manual Backup / Restore</h4>
     <form method="POST" action="/settings/backup" style="display:inline-block;margin-right:12px;">
@@ -103,3 +161,63 @@
     </form>
   </div>
 </div>
+
+<script>
+function toggleApiKeyVisibility() {
+  const inp = document.getElementById('openrouterApiKeyInput');
+  const btn = document.getElementById('btnToggleApiKey');
+  if (!inp || !btn) return;
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    btn.textContent = 'Hide';
+  } else {
+    inp.type = 'password';
+    btn.textContent = 'Show';
+  }
+}
+
+async function testAiConnection() {
+  const inp = document.getElementById('openrouterApiKeyInput');
+  const modelSelect = document.getElementById('openrouterModelSelect');
+  const fb = document.getElementById('aiTestFeedback');
+  const btn = document.getElementById('btnTestAi');
+  if (!fb || !btn) return;
+
+  fb.style.display = 'block';
+  fb.style.background = '#f1f5f9';
+  fb.style.color = '#334155';
+  fb.style.border = '1px solid #cbd5e1';
+  fb.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Testing connection to OpenRouter...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/settings/test-ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey: inp ? inp.value.trim() : '',
+        model: modelSelect ? modelSelect.value : ''
+      })
+    });
+    const data = await res.json();
+    if (data && data.success) {
+      fb.style.background = '#ecfdf5';
+      fb.style.color = '#065f46';
+      fb.style.border = '1px solid #a7f3d0';
+      fb.innerHTML = '<strong>✓ ' + (data.message || 'Connection successful! OpenRouter responded.') + '</strong>';
+    } else {
+      fb.style.background = '#fef2f2';
+      fb.style.color = '#991b1b';
+      fb.style.border = '1px solid #fecaca';
+      fb.innerHTML = '<strong>✗ ' + (data.error || 'Connection failed.') + '</strong>';
+    }
+  } catch (err) {
+    fb.style.background = '#fef2f2';
+    fb.style.color = '#991b1b';
+    fb.style.border = '1px solid #fecaca';
+    fb.innerHTML = '<strong>✗ Network error: ' + err.message + '</strong>';
+  } finally {
+    btn.disabled = false;
+  }
+}
+</script>

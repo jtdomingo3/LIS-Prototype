@@ -186,6 +186,25 @@ router.get('/', requireAuth, (req, res) => {
 
   const requirePaymentAmount = (typeof settings.requirePaymentAmount !== 'undefined') ? !!settings.requirePaymentAmount : true;
 
+  if (req.query.format === 'json' || req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'))) {
+    return res.json({
+      success: true,
+      settings,
+      featureFlags,
+      backupConfig,
+      hasOpenRouterKey,
+      maskedKey,
+      currentModel,
+      requirePaymentAmount,
+      doctor1Name: settings.doctor1Name || process.env.DOCTOR_1_NAME || 'Dr. Lorenzo',
+      doctor2Name: settings.doctor2Name || process.env.DOCTOR_2_NAME || 'Dr. Arcilla',
+      gezynePath: settings.gezynePath || process.env.GEZYNE_PATH || '',
+      networkAddress,
+      networkPort,
+      networkUrl
+    });
+  }
+
   res.render('settings', {
     title: 'Settings',
     featureFlags,
@@ -366,8 +385,14 @@ router.post('/', requireAuth, canManageUsers, (req, res) => {
       req.flash('error_msg', 'Failed to update .env file');
     }
 
+    if (req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'))) {
+      return res.json({ success: true, message: 'Settings updated successfully' });
+    }
     return res.redirect('/settings');
   } catch (e) {
+    if (req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'))) {
+      return res.status(500).json({ success: false, error: e && e.message ? e.message : 'Failed to update settings' });
+    }
     req.flash('error_msg', 'Failed to update settings');
     return res.redirect('/settings');
   }

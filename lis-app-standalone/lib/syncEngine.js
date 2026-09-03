@@ -363,6 +363,21 @@ class SyncEngine {
               if (opts && opts.replace) this.dataStore.setCollection(col, result[col]); else this.dataStore.setCollection(col, result[col]);
             }
           }
+
+          // Synchronize application settings from server
+          if (result.settings && typeof result.settings === 'object') {
+            try {
+              if (this.dataStore && typeof this.dataStore.setSettings === 'function') {
+                this.dataStore.setSettings(result.settings);
+              }
+              if (global.db && typeof global.db.setSettings === 'function') {
+                global.db.setSettings(result.settings);
+              }
+              console.log('[Sync] fullSync updated local settings from server');
+            } catch (settErr) {
+              console.warn('[Sync] fullSync settings sync warning:', settErr && settErr.message);
+            }
+          }
           // Bi-directional signature assets sync
           try {
             await this._syncSignatureAssets(result.users, base);

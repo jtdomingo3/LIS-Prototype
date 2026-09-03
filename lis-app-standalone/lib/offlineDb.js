@@ -39,7 +39,28 @@ function createOfflineDb(dataStore) {
         if (data.inventory) dataStore.setCollection('inventory', data.inventory);
         if (data.inventory_batches) dataStore.setCollection('inventory_batches', data.inventory_batches);
         if (data.inventory_transactions) dataStore.setCollection('inventory_transactions', data.inventory_transactions);
+        if (data.settings && this.setSettings) this.setSettings(data.settings);
       }
+    },
+
+    getSettings() {
+      if (sqliteAdapter && typeof sqliteAdapter.getSettings === 'function') {
+        return sqliteAdapter.getSettings();
+      }
+      if (dataStore && typeof dataStore.getSettings === 'function') {
+        return dataStore.getSettings();
+      }
+      return {};
+    },
+
+    setSettings(settings) {
+      if (sqliteAdapter && typeof sqliteAdapter.setSettings === 'function') {
+        sqliteAdapter.setSettings(settings);
+      }
+      if (dataStore && typeof dataStore.setSettings === 'function') {
+        dataStore.setSettings(settings);
+      }
+      return settings;
     },
 
     /* ── Collection getters ─────────────────────────────────────── */
