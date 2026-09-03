@@ -112,9 +112,10 @@
             return;
           }
           const rows = json.rows;
-          const baseHeaders = ['Test ID','Test Type','Date','Time','Patient ID','First Name','Last Name','Signatory'];
+          const baseHeaders = ['Test ID','Test Type','Date','Time','Patient ID','First Name','Last Name','Age','Sex'];
           const resultCols = Array.isArray(json.resultCols) ? json.resultCols : [];
-          const headers = baseHeaders.concat(resultCols);
+          const personnelHeaders = ['Performed By','Performed By License','Validated By','Validated By License','Approved By','Approved By License','Requested By'];
+          const headers = baseHeaders.concat(resultCols.map(c => c.toUpperCase())).concat(personnelHeaders);
           headers.forEach(h => { 
             const th = document.createElement('th'); 
             th.textContent = h; 
@@ -125,7 +126,7 @@
           rows.forEach(r => {
             const tr = document.createElement('tr');
             tr.style.borderBottom = '1px solid #f1f5f9';
-            const baseVals = [r.testId,r.testType,r.date,r.time,r.patientId,r.firstName,r.lastName,r.signatory];
+            const baseVals = [r.testId, r.testType, r.date, r.time, r.patientId, r.firstName, r.lastName, r.age, r.sex];
             baseVals.forEach(v => { 
               const td = document.createElement('td'); 
               td.textContent = v || ''; 
@@ -135,6 +136,21 @@
             resultCols.forEach(k => { 
               const td = document.createElement('td'); 
               const v = (r.flatResults && typeof r.flatResults[k] !== 'undefined') ? r.flatResults[k] : ((r.resultsObj && typeof r.resultsObj[k] !== 'undefined') ? r.resultsObj[k] : ''); 
+              td.textContent = v || ''; 
+              td.style.padding = '8px 10px'; 
+              tr.appendChild(td); 
+            });
+            const personnelVals = [
+              r.performedByName || '',
+              r.performedByLicense || '',
+              r.validatedByName || '',
+              r.validatedByLicense || '',
+              r.approvedByName || '',
+              r.approvedByLicense || '',
+              r.requestedByDoctor || ''
+            ];
+            personnelVals.forEach(v => { 
+              const td = document.createElement('td'); 
               td.textContent = v || ''; 
               td.style.padding = '8px 10px'; 
               tr.appendChild(td); 
@@ -258,7 +274,7 @@
             return; 
           }
           const rows = json.rows;
-          const headers = ['Patient ID','Patient Code','Full Name','DOB','Age','Company','PhilHealth','Phone','Email','Created At','Created By'];
+          const headers = ['Patient ID','Patient Code','Full Name','DOB','Age','Sex','Company','PhilHealth','Phone','Email','Registration Date','Tests Requested'];
           headers.forEach(h=>{ 
             const th = document.createElement('th'); 
             th.textContent = h; 
@@ -269,7 +285,20 @@
           rows.forEach(r=>{
             const tr = document.createElement('tr');
             tr.style.borderBottom = '1px solid #f1f5f9';
-            const vals = [r.patientId,r.patientCode,r.fullName,r.dob,r.age,r.company,(r.philhealthConsent ? 'yes' : 'no'),r.phone,r.email,r.createdAt,r.createdBy];
+            const vals = [
+              r.patientId,
+              r.patientCode,
+              r.fullName,
+              r.dob,
+              r.age,
+              r.sex,
+              r.company,
+              (r.philhealthConsent ? 'yes' : 'no'),
+              r.phone,
+              r.email,
+              (r.createdAt ? r.createdAt.slice(0, 10) : ''),
+              r.testsRequested || '—'
+            ];
             vals.forEach(v=>{ 
               const td = document.createElement('td'); 
               td.textContent = v || ''; 

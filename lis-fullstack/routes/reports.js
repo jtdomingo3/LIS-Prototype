@@ -31,28 +31,47 @@ function getInlineLogo() {
   return _cachedInlineLogo;
 }
 
-// Flatten nested results object into dot-notated flat map
+const EXCLUDED_RESULT_KEYS = new Set([
+  'signatures', 'performedby', 'performedbyname', 'performedbylicense',
+  'validatedby', 'validatedbyname', 'validatedbylicense',
+  'requestedby', 'requestedbyname', 'requestedbylicense',
+  'approvedby', 'approvedbyname', 'approvedbylicense',
+  'signatory', 'signatories', 'signature', 'results', 'resultsobj'
+]);
+
+function isExcludedResultKey(k) {
+  if (!k) return true;
+  const low = String(k).toLowerCase().trim();
+  if (EXCLUDED_RESULT_KEYS.has(low)) return true;
+  if (low.startsWith('signatures.') || low.startsWith('signature.') || low.includes('signature')) return true;
+  if (low.includes('placement.') || low.includes('.placement') || low === 'placement') return true;
+  if (low.endsWith('.filename') || low.endsWith('.uploadedat') || low.endsWith('.name')) return true;
+  if (low.includes('performedby') || low.includes('validatedby') || low.includes('requestedby') || low.includes('approvedby')) return true;
+  return false;
+}
+
+// Flatten nested results object into dot-notated flat map, omitting internal signature/personnel metadata
 function flattenResults(obj, prefix = '') {
   const out = {};
   try {
     if (obj == null) return out;
     if (typeof obj !== 'object' || Array.isArray(obj)) {
-      out[prefix || 'results'] = obj;
+      if (!isExcludedResultKey(prefix)) out[prefix || 'results'] = obj;
       return out;
     }
     for (const k of Object.keys(obj)) {
+      if (isExcludedResultKey(k)) continue;
       const v = obj[k];
       const key = prefix ? (prefix + '.' + k) : k;
+      if (isExcludedResultKey(key)) continue;
       if (v != null && typeof v === 'object' && !Array.isArray(v)) {
-        const nested = flattenResults(v, key);
-        Object.assign(out, nested);
+        Object.assign(out, flattenResults(v, key));
       } else {
         out[key] = v;
       }
     }
   } catch (e) {
-    // fallback: stringify
-    out[prefix || 'results'] = String(obj);
+    if (!isExcludedResultKey(prefix)) out[prefix || 'results'] = String(obj);
   }
   return out;
 }
@@ -586,8 +605,21 @@ router.post('/worksheet/download', requireAuth, canAccessPatient, async (req, re
       const performedBy = t.performedBy ? userMap.get(t.performedBy) : null;
       const resultsObjRaw = (t.results && typeof t.results === 'object') ? t.results : (t.results ? { results: String(t.results) } : {});
       const flatResults = flattenResults(resultsObjRaw);
-      Object.keys(flatResults).forEach(k => resultKeys.add(k));
+      Object.keys(flatResults).forEach(k => {
+        if (!isExcludedResultKey(k)) resultKeys.add(k);
+      });
+
+      const performedByName = t.performedByName || resultsObjRaw.performedByName || (performedBy ? performedBy.name : '') || '';
+      const performedByLicense = t.performedByLicense || resultsObjRaw.performedByLicense || (performedBy ? (performedBy.licenseNumber || performedBy.license || '') : '') || '';
+      const validatedByName = t.validatedByName || resultsObjRaw.validatedByName || '';
+      const validatedByLicense = t.validatedByLicense || resultsObjRaw.validatedByLicense || '';
+
       const isRequestedByMedical = requestedBy && (requestedBy.role === 'Radiologist' || requestedBy.role === 'Doctor' || requestedBy.role === 'Pathologist');
+      const approvedByName = resultsObjRaw.approvedByName || resultsObjRaw.requestedByName || t.approvedByName || (isRequestedByMedical ? requestedBy.name : (t.requestedByName || '')) || '';
+      const approvedByLicense = resultsObjRaw.approvedByLicense || resultsObjRaw.requestedByLicense || t.approvedByLicense || (isRequestedByMedical ? (requestedBy.licenseNumber || requestedBy.license || '') : (t.requestedByLicense || '')) || '';
+
+      const requestedByDoctor = (p && (p.physician || p.physicianName)) || t.physician || t.assignedDoctorName || '';
+
       rows.push({
         testId: t.testId || (t.id || t._id) || '',
         testType: t.testType || t.template || '',
@@ -595,13 +627,24 @@ router.post('/worksheet/download', requireAuth, canAccessPatient, async (req, re
         patient: p ? p.toJSON() : null,
         resultsObj: resultsObjRaw,
         flatResults,
-        requestedBy: isRequestedByMedical ? { name: requestedBy.name } : (t.requestedByName ? { name: t.requestedByName } : null),
-        performedBy: performedBy ? { name: performedBy.name, license: performedBy.license || null } : (t.performedByName ? { name: t.performedByName, license: t.performedByLicense || null } : null)
+        performedByName,
+        performedByLicense,
+        validatedByName,
+        validatedByLicense,
+        approvedByName,
+        approvedByLicense,
+        requestedByDoctor
       });
     }
 
-    const resultCols = Array.from(resultKeys);
-    const headers = ['Test ID','Test Type','Test Date','Test Time','Patient ID','First Name','Last Name','DOB','Sex','Phone','Results (raw)','Performed By','Performed By License','Requested By', ...resultCols];
+    const resultCols = Array.from(resultKeys).filter(k => !isExcludedResultKey(k));
+    const personnelHeaders = ['Performed By', 'Performed By License', 'Validated By', 'Validated By License', 'Approved By', 'Approved By License', 'Requested By'];
+    const headers = [
+      'Test ID', 'Test Type', 'Test Date', 'Test Time',
+      'Patient ID', 'First Name', 'Last Name', 'Age', 'Sex',
+      ...resultCols.map(c => c.toUpperCase()),
+      ...personnelHeaders
+    ];
 
     function escapeCsvCell(v) {
       if (v === null || typeof v === 'undefined') return '';
@@ -617,25 +660,31 @@ router.post('/worksheet/download', requireAuth, canAccessPatient, async (req, re
       const dateStr = r.testDate ? r.testDate.toLocaleDateString() : '';
       const timeStr = r.testDate ? r.testDate.toLocaleTimeString() : '';
       const p = r.patient || {};
-      const rawResults = (r.resultsObj && Object.keys(r.resultsObj).length) ? JSON.stringify(r.resultsObj) : '';
+      const ageVal = (p.age !== null && p.age !== undefined && p.age !== '') ? p.age : (p.ageManual || '');
+      const sexVal = p.sex || p.gender || '';
+
       const base = [
         r.testId, r.testType, dateStr, timeStr,
-        p.patientId || p.patientId || '',
+        p.patientId || p.patientCode || '',
         p.firstName || '', p.lastName || '',
-        p.dateOfBirth ? (new Date(p.dateOfBirth)).toLocaleDateString() : '',
-        p.sex || p.gender || '',
-        p.phone || p.telephone || '',
-        rawResults,
-        r.performedBy ? r.performedBy.name : '',
-        r.performedBy ? r.performedBy.license || '' : '',
-        r.requestedBy ? r.requestedBy.name : ''
+        ageVal,
+        sexVal
       ];
       const resultVals = resultCols.map(k => {
         if (r.flatResults && typeof r.flatResults[k] !== 'undefined') return r.flatResults[k];
         if (r.resultsObj && typeof r.resultsObj[k] !== 'undefined') return r.resultsObj[k];
         return '';
       });
-      const rowVals = base.concat(resultVals).map(escapeCsvCell).join(',');
+      const personnelVals = [
+        r.performedByName || '',
+        r.performedByLicense || '',
+        r.validatedByName || '',
+        r.validatedByLicense || '',
+        r.approvedByName || '',
+        r.approvedByLicense || '',
+        r.requestedByDoctor || ''
+      ];
+      const rowVals = base.concat(resultVals).concat(personnelVals).map(escapeCsvCell).join(',');
       lines.push(rowVals);
     }
 
@@ -655,21 +704,31 @@ router.post('/worksheet/download', requireAuth, canAccessPatient, async (req, re
         const dateStr = r.testDate ? r.testDate.toLocaleDateString() : '';
         const timeStr = r.testDate ? r.testDate.toLocaleTimeString() : '';
         const p = r.patient || {};
-        const rawResults = (r.resultsObj && Object.keys(r.resultsObj).length) ? JSON.stringify(r.resultsObj) : '';
+        const ageVal = (p.age !== null && p.age !== undefined && p.age !== '') ? p.age : (p.ageManual || '');
+        const sexVal = p.sex || p.gender || '';
+
         const baseVals = [
           r.testId, r.testType, dateStr, timeStr,
-          p.patientId || '',
+          p.patientId || p.patientCode || '',
           p.firstName || '', p.lastName || '',
-          p.dateOfBirth ? (new Date(p.dateOfBirth)).toLocaleDateString() : '',
-          p.sex || p.gender || '',
-          p.phone || '',
-          rawResults,
-          r.performedBy ? r.performedBy.name : '',
-          r.performedBy ? r.performedBy.license || '' : '',
-          r.requestedBy ? r.requestedBy.name : ''
+          ageVal,
+          sexVal
         ];
-        const rowVals = baseVals.concat(resultCols.map(k => (r.resultsObj && typeof r.resultsObj[k] !== 'undefined') ? r.resultsObj[k] : ''));
-        // Push as object keyed by header to preserve column order
+        const resultVals = resultCols.map(k => {
+          if (r.flatResults && typeof r.flatResults[k] !== 'undefined') return r.flatResults[k];
+          if (r.resultsObj && typeof r.resultsObj[k] !== 'undefined') return r.resultsObj[k];
+          return '';
+        });
+        const personnelVals = [
+          r.performedByName || '',
+          r.performedByLicense || '',
+          r.validatedByName || '',
+          r.validatedByLicense || '',
+          r.approvedByName || '',
+          r.approvedByLicense || '',
+          r.requestedByDoctor || ''
+        ];
+        const rowVals = baseVals.concat(resultVals).concat(personnelVals);
         const rowObj = {};
         headers.forEach((h, i) => { rowObj[h] = rowVals[i]; });
         ws.addRow(rowObj);
@@ -695,20 +754,31 @@ router.post('/worksheet/download', requireAuth, canAccessPatient, async (req, re
         const dateStr = r.testDate ? r.testDate.toLocaleDateString() : '';
         const timeStr = r.testDate ? r.testDate.toLocaleTimeString() : '';
         const p = r.patient || {};
-        const rawResults = (r.resultsObj && Object.keys(r.resultsObj).length) ? JSON.stringify(r.resultsObj) : '';
+        const ageVal = (p.age !== null && p.age !== undefined && p.age !== '') ? p.age : (p.ageManual || '');
+        const sexVal = p.sex || p.gender || '';
+
         const baseVals = [
           r.testId, r.testType, dateStr, timeStr,
-          p.patientId || '',
+          p.patientId || p.patientCode || '',
           p.firstName || '', p.lastName || '',
-          p.dateOfBirth ? (new Date(p.dateOfBirth)).toLocaleDateString() : '',
-          p.sex || p.gender || '',
-          p.phone || '',
-          rawResults,
-          r.performedBy ? r.performedBy.name : '',
-          r.performedBy ? r.performedBy.license || '' : '',
-          r.requestedBy ? r.requestedBy.name : ''
+          ageVal,
+          sexVal
         ];
-        baseVals.concat(resultCols.map(k => (r.resultsObj && typeof r.resultsObj[k] !== 'undefined') ? r.resultsObj[k] : '')).forEach(v => {
+        const resultVals = resultCols.map(k => {
+          if (r.flatResults && typeof r.flatResults[k] !== 'undefined') return r.flatResults[k];
+          if (r.resultsObj && typeof r.resultsObj[k] !== 'undefined') return r.resultsObj[k];
+          return '';
+        });
+        const personnelVals = [
+          r.performedByName || '',
+          r.performedByLicense || '',
+          r.validatedByName || '',
+          r.validatedByLicense || '',
+          r.approvedByName || '',
+          r.approvedByLicense || '',
+          r.requestedByDoctor || ''
+        ];
+        baseVals.concat(resultVals).concat(personnelVals).forEach(v => {
           html += `<td>${String(v === undefined || v === null ? '' : v).replace(/</g,'&lt;')}</td>`;
         });
         html += '</tr>';
@@ -789,30 +859,53 @@ router.post('/worksheet/preview', requireAuth, canAccessPatient, async (req, res
       if (u && u.id) userMap.set(u.id, u);
     }
 
-    // build preview rows (minimal patient info + date/time + performedBy + flattened results)
+    // build preview rows (patient info with age/sex + date/time + personnel + flattened results)
     const previewRows = [];
     const resultKeys = new Set();
     for (const t of testsRaw) {
       const p = t.patient ? patientMap.get(t.patient) : null;
       const performedBy = t.performedBy ? userMap.get(t.performedBy) : null;
+      const requestedBy = t.requestedBy ? userMap.get(t.requestedBy) : null;
       const resultsObjRaw = (t.results && typeof t.results === 'object') ? t.results : (t.results ? { results: String(t.results) } : {});
       const flatResults = flattenResults(resultsObjRaw);
-      Object.keys(flatResults).forEach(k => resultKeys.add(k));
+      Object.keys(flatResults).forEach(k => {
+        if (!isExcludedResultKey(k)) resultKeys.add(k);
+      });
+
+      const performedByName = t.performedByName || resultsObjRaw.performedByName || (performedBy ? performedBy.name : '') || '';
+      const performedByLicense = t.performedByLicense || resultsObjRaw.performedByLicense || (performedBy ? (performedBy.licenseNumber || performedBy.license || '') : '') || '';
+      const validatedByName = t.validatedByName || resultsObjRaw.validatedByName || '';
+      const validatedByLicense = t.validatedByLicense || resultsObjRaw.validatedByLicense || '';
+
+      const isRequestedByMedical = requestedBy && (requestedBy.role === 'Radiologist' || requestedBy.role === 'Doctor' || requestedBy.role === 'Pathologist');
+      const approvedByName = resultsObjRaw.approvedByName || resultsObjRaw.requestedByName || t.approvedByName || (isRequestedByMedical ? requestedBy.name : (t.requestedByName || '')) || '';
+      const approvedByLicense = resultsObjRaw.approvedByLicense || resultsObjRaw.requestedByLicense || t.approvedByLicense || (isRequestedByMedical ? (requestedBy.licenseNumber || requestedBy.license || '') : (t.requestedByLicense || '')) || '';
+
+      const requestedByDoctor = (p && (p.physician || p.physicianName)) || t.physician || t.assignedDoctorName || '';
+
       previewRows.push({
         testId: t.testId || t.id || t._id || '',
         testType: t.testType || t.template || '',
         date: t.testDate ? new Date(t.testDate).toISOString().slice(0,10) : (t.createdAt ? new Date(t.createdAt).toISOString().slice(0,10) : ''),
         time: t.testDate ? new Date(t.testDate).toISOString().slice(11,19) : '',
-        patientId: p ? (p.patientId || '') : '',
+        patientId: p ? (p.patientId || p.patientCode || '') : '',
         firstName: p ? (p.firstName || '') : '',
         lastName: p ? (p.lastName || '') : '',
-        signatory: performedBy ? (performedBy.name || '') : (t.performedByName || ''),
+        age: p ? ((p.age !== null && p.age !== undefined && p.age !== '') ? p.age : (p.ageManual || '')) : '',
+        sex: p ? (p.sex || p.gender || '') : '',
+        performedByName,
+        performedByLicense,
+        validatedByName,
+        validatedByLicense,
+        approvedByName,
+        approvedByLicense,
+        requestedByDoctor,
         resultsObj: resultsObjRaw,
         flatResults
       });
     }
 
-    const resultCols = Array.from(resultKeys);
+    const resultCols = Array.from(resultKeys).filter(k => !isExcludedResultKey(k));
     const max = Math.min(1000, parseInt(limit || '200', 10) || 200);
     return res.json({ count: previewRows.length, rows: previewRows.slice(0, max), resultCols });
   } catch (err) {
@@ -833,6 +926,78 @@ router.get('/patient-export', requireAuth, canAccessPatient, async (req, res) =>
     res.redirect('/reports');
   }
 });
+
+// Helper to retrieve tests requested for a patient on a specific date range or registration date
+function buildPatientTestsHelper(allTests) {
+  const testsByPatient = new Map();
+  for (const t of (allTests || [])) {
+    if (!t || !t.patient) continue;
+    const pKey = String(t.patient);
+    if (!testsByPatient.has(pKey)) testsByPatient.set(pKey, []);
+    testsByPatient.get(pKey).push(t);
+  }
+
+  return function getRequestedTestsForPatient(patient, dateFrom, dateTo) {
+    const pId = String(patient.id || patient._id || '');
+    const pCode = String(patient.patientCode || '');
+    const pPatientId = String(patient.patientId || '');
+
+    const candidates = [
+      ...(testsByPatient.get(pId) || []),
+      ...(pCode ? (testsByPatient.get(pCode) || []) : []),
+      ...(pPatientId ? (testsByPatient.get(pPatientId) || []) : [])
+    ];
+
+    const seenIds = new Set();
+    const patientTests = [];
+    for (const t of candidates) {
+      const tid = String(t.id || t.testId || t._id);
+      if (!seenIds.has(tid)) {
+        seenIds.add(tid);
+        patientTests.push(t);
+      }
+    }
+
+    let matchedTests = patientTests;
+    if (dateFrom || dateTo) {
+      const from = dateFrom ? new Date(dateFrom) : null;
+      const to = dateTo ? new Date(dateTo) : null;
+      if (to) to.setHours(23, 59, 59, 999);
+      matchedTests = patientTests.filter(t => {
+        const d = new Date(t.testDate || t.createdAt);
+        if (isNaN(d.getTime())) return false;
+        if (from && d < from) return false;
+        if (to && d > to) return false;
+        return true;
+      });
+    } else if (patient.createdAt) {
+      const regDay = new Date(patient.createdAt).toISOString().slice(0, 10);
+      const dayTests = patientTests.filter(t => {
+        const d = t.testDate || t.createdAt;
+        return d && new Date(d).toISOString().slice(0, 10) === regDay;
+      });
+      if (dayTests.length) matchedTests = dayTests;
+    }
+
+    const testNames = [];
+    for (const t of matchedTests) {
+      const name = t.testType || t.template || (t.testId ? `Test #${t.testId}` : null);
+      if (name) testNames.push(name);
+    }
+
+    if (Array.isArray(patient.requestedTests)) {
+      for (const rt of patient.requestedTests) {
+        if (typeof rt === 'string' && rt.trim()) {
+          testNames.push(rt.trim());
+        } else if (rt && typeof rt === 'object' && (rt.label || rt.name || rt.code)) {
+          testNames.push(rt.label || rt.name || rt.code);
+        }
+      }
+    }
+
+    return Array.from(new Set(testNames.map(n => String(n).trim()).filter(Boolean))).join(', ');
+  };
+}
 
 // POST /reports/patient-export/download - Download patient data filtered by date/company/philhealth
 router.post('/patient-export/download', requireAuth, canAccessPatient, async (req, res) => {
@@ -859,8 +1024,13 @@ router.post('/patient-export/download', requireAuth, canAccessPatient, async (re
       patients = (patients || []).filter(p => !p.philhealthConsent);
     }
 
-    // Build headers for patient export
-    const headers = ['Patient ID','Patient Code','First Name','Middle Name','Last Name','Full Name','DOB','Age','Age Manual','Sex','Phone','Email','Address','Physician','Requested Tests','Required Areas','Company','PhilHealth Consent','PhilHealth ID','Created At','Created By','Updated At','Payment History (raw)'];
+    const allTests = (global.db && typeof global.db.getTests === 'function')
+      ? global.db.getTests()
+      : await Test.find({});
+    const getRequestedTestsForPatient = buildPatientTestsHelper(allTests);
+
+    // Build headers for patient export (Created By removed, Requested Tests populated)
+    const headers = ['Patient ID','Patient Code','First Name','Middle Name','Last Name','Full Name','DOB','Age','Age Manual','Sex','Phone','Email','Address','Physician','Requested Tests','Required Areas','Company','PhilHealth Consent','PhilHealth ID','Registration Date','Updated At','Payment History (raw)'];
 
     function escapeCsvCell(v) {
       if (v === null || typeof v === 'undefined') return '';
@@ -874,15 +1044,16 @@ router.post('/patient-export/download', requireAuth, canAccessPatient, async (re
     const lines = [headers.map(escapeCsvCell).join(',')];
     for (const p of (patients || [])) {
       const pj = (p && typeof p.toJSON === 'function') ? p.toJSON() : (p || {});
+      const reqTests = getRequestedTestsForPatient(pj, dateFrom, dateTo);
       const row = [
         pj.patientId || '', pj.patientCode || '', pj.firstName || '', pj.middleName || '', pj.lastName || '', pj.fullName || '',
         pj.dateOfBirth ? (new Date(pj.dateOfBirth)).toLocaleDateString() : '',
         (pj.age !== undefined && pj.age !== null) ? pj.age : '', pj.ageManual || '', pj.sex || pj.gender || '',
         pj.phone || '', pj.email || '', pj.address || '', pj.physician || '',
-        Array.isArray(pj.requestedTests) ? pj.requestedTests.join('; ') : (pj.requestedTests || ''),
+        reqTests,
         Array.isArray(pj.requiredAreas) ? pj.requiredAreas.join('; ') : (pj.requiredAreas || ''),
         pj.company || '', pj.philhealthConsent ? 'yes' : 'no', pj.philhealthId || '',
-        pj.createdAt ? (new Date(pj.createdAt)).toLocaleString() : '', pj.createdBy || '', pj.updatedAt ? (new Date(pj.updatedAt)).toLocaleString() : '',
+        pj.createdAt ? (new Date(pj.createdAt)).toLocaleString() : '', pj.updatedAt ? (new Date(pj.updatedAt)).toLocaleString() : '',
         pj.paymentHistory && pj.paymentHistory.length ? JSON.stringify(pj.paymentHistory) : ''
       ];
       lines.push(row.map(escapeCsvCell).join(','));
@@ -898,15 +1069,16 @@ router.post('/patient-export/download', requireAuth, canAccessPatient, async (re
       ws.columns = cols;
       for (const p of (patients || [])) {
         const pj = (p && typeof p.toJSON === 'function') ? p.toJSON() : (p || {});
+        const reqTests = getRequestedTestsForPatient(pj, dateFrom, dateTo);
         const rowVals = [
           pj.patientId || '', pj.patientCode || '', pj.firstName || '', pj.middleName || '', pj.lastName || '', pj.fullName || '',
           pj.dateOfBirth ? (new Date(pj.dateOfBirth)).toLocaleDateString() : '',
           (pj.age !== undefined && pj.age !== null) ? pj.age : '', pj.ageManual || '', pj.sex || pj.gender || '',
           pj.phone || '', pj.email || '', pj.address || '', pj.physician || '',
-          Array.isArray(pj.requestedTests) ? pj.requestedTests.join('; ') : (pj.requestedTests || ''),
+          reqTests,
           Array.isArray(pj.requiredAreas) ? pj.requiredAreas.join('; ') : (pj.requiredAreas || ''),
           pj.company || '', pj.philhealthConsent ? 'yes' : 'no', pj.philhealthId || '',
-          pj.createdAt ? (new Date(pj.createdAt)).toLocaleString() : '', pj.createdBy || '', pj.updatedAt ? (new Date(pj.updatedAt)).toLocaleString() : '',
+          pj.createdAt ? (new Date(pj.createdAt)).toLocaleString() : '', pj.updatedAt ? (new Date(pj.updatedAt)).toLocaleString() : '',
           pj.paymentHistory && pj.paymentHistory.length ? JSON.stringify(pj.paymentHistory) : ''
         ];
         const rowObj = {};
@@ -927,16 +1099,17 @@ router.post('/patient-export/download', requireAuth, canAccessPatient, async (re
       html += '</tr></thead><tbody>';
       for (const p of (patients || [])) {
         const pj = (p && typeof p.toJSON === 'function') ? p.toJSON() : (p || {});
+        const reqTests = getRequestedTestsForPatient(pj, dateFrom, dateTo);
         html += '<tr>';
         const rowVals = [
           pj.patientId || '', pj.patientCode || '', pj.firstName || '', pj.middleName || '', pj.lastName || '', pj.fullName || '',
           pj.dateOfBirth ? (new Date(pj.dateOfBirth)).toLocaleDateString() : '',
           (pj.age !== undefined && pj.age !== null) ? pj.age : '', pj.ageManual || '', pj.sex || pj.gender || '',
           pj.phone || '', pj.email || '', pj.address || '', pj.physician || '',
-          Array.isArray(pj.requestedTests) ? pj.requestedTests.join('; ') : (pj.requestedTests || ''),
+          reqTests,
           Array.isArray(pj.requiredAreas) ? pj.requiredAreas.join('; ') : (pj.requiredAreas || ''),
           pj.company || '', pj.philhealthConsent ? 'yes' : 'no', pj.philhealthId || '',
-          pj.createdAt ? (new Date(pj.createdAt)).toLocaleString() : '', pj.createdBy || '', pj.updatedAt ? (new Date(pj.updatedAt)).toLocaleString() : '',
+          pj.createdAt ? (new Date(pj.createdAt)).toLocaleString() : '', pj.updatedAt ? (new Date(pj.updatedAt)).toLocaleString() : '',
           pj.paymentHistory && pj.paymentHistory.length ? JSON.stringify(pj.paymentHistory) : ''
         ];
         rowVals.forEach(v => { html += `<td>${String(v === undefined || v === null ? '' : v).replace(/</g,'&lt;')}</td>`; });
@@ -983,12 +1156,28 @@ router.post('/patient-export/preview', requireAuth, canAccessPatient, async (req
       patients = (patients || []).filter(p => !p.philhealthConsent);
     }
 
+    const allTests = (global.db && typeof global.db.getTests === 'function')
+      ? global.db.getTests()
+      : await Test.find({});
+    const getRequestedTestsForPatient = buildPatientTestsHelper(allTests);
+
     const previewRows = (patients || []).map(p => {
       const pj = (p && typeof p.toJSON === 'function') ? p.toJSON() : (p || {});
       return {
-        patientId: pj.patientId || '', patientCode: pj.patientCode || '', fullName: pj.fullName || '', firstName: pj.firstName || '', lastName: pj.lastName || '',
-        dob: pj.dateOfBirth ? (new Date(pj.dateOfBirth)).toISOString().slice(0,10) : '', age: pj.age || '', company: pj.company || '', philhealthConsent: !!pj.philhealthConsent,
-        createdAt: pj.createdAt ? (new Date(pj.createdAt)).toISOString() : '', createdBy: pj.createdBy || '', phone: pj.phone || '' , email: pj.email || ''
+        patientId: pj.patientId || '',
+        patientCode: pj.patientCode || '',
+        fullName: pj.fullName || '',
+        firstName: pj.firstName || '',
+        lastName: pj.lastName || '',
+        dob: pj.dateOfBirth ? (new Date(pj.dateOfBirth)).toISOString().slice(0,10) : '',
+        age: (pj.age !== undefined && pj.age !== null) ? pj.age : (pj.ageManual || ''),
+        sex: pj.sex || pj.gender || '',
+        company: pj.company || '',
+        philhealthConsent: !!pj.philhealthConsent,
+        createdAt: pj.createdAt ? (new Date(pj.createdAt)).toISOString() : '',
+        testsRequested: getRequestedTestsForPatient(pj, dateFrom, dateTo) || '—',
+        phone: pj.phone || '',
+        email: pj.email || ''
       };
     });
 
