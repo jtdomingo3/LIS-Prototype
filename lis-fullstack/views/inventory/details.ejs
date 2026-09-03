@@ -1,0 +1,949 @@
+<% 
+  const isReagentItem = ['Reagents', 'Controls', 'Calibrators', 'Stains & Dyes', 'Test Kits', 'Clinical Reagents', 'X-Ray & Imaging Chemicals'].includes(item.category);
+  function checkInventoryPerm(u) {
+    if (!u) return false;
+    if (u.role === 'Admin' || u.role === 'Management' || u.role === 'Manager' || u.role === 'Owner') return true;
+    let p = u.permissions;
+    if (!p) return false;
+    if (typeof p === 'string') { try { p = JSON.parse(p); } catch(_) { return false; } }
+    if (Array.isArray(p)) return p.includes('inventory');
+    if (typeof p === 'object') return !!(p.inventory === true || p.inventory === '1' || p.inventory === 1 || p.inventory === 'true' || p.inventory === 'on');
+    return false;
+  }
+  const userCanEdit = (typeof canEdit !== 'undefined' && canEdit) || (typeof sessionUser !== 'undefined' && checkInventoryPerm(sessionUser));
+%>
+
+<!-- Top Summary KPIs -->
+<div class="stats-container">
+  <div class="stat-card">
+    <h4>Current Total Stock</h4>
+    <div style="font-size: 2.2em; font-weight: 700; color: <%= item.totalStock <= item.minThreshold ? '#d97706' : 'var(--secondary-green-dark)' %>; margin-top: 8px;">
+      <%= item.totalStock %> <span style="font-size: 0.5em; font-weight: 500; color: var(--text-gray);"><%= item.unit %></span>
+    </div>
+    <div style="color: var(--text-gray); font-size: 0.85em; margin-top: 4px;">
+      <%= item.totalStock <= 0 ? '❌ Out of Stock' : (item.totalStock <= item.minThreshold ? '⚠️ Low Stock Alert' : '✓ Normal Stock Level') %>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <h4>Safety Reorder Level</h4>
+    <div style="font-size: 2.2em; font-weight: 700; color: var(--primary-black); margin-top: 8px;">
+      <%= item.minThreshold %> <span style="font-size: 0.5em; font-weight: 500; color: var(--text-gray);"><%= item.unit %></span>
+    </div>
+    <div style="color: #b91c1c; font-size: 0.85em; margin-top: 4px; font-weight: 600;">
+      🚨 Critical: <%= item.criticalThreshold !== undefined ? item.criticalThreshold : 2 %> <%= item.unit %>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <h4>Active Lots / Batches</h4>
+    <div style="font-size: 2.2em; font-weight: 700; color: var(--info); margin-top: 8px;">
+      <%= activeBatches.length %>
+    </div>
+    <div style="color: var(--text-gray); font-size: 0.85em; margin-top: 4px;"><%= batches.length %> Total lot records</div>
+  </div>
+
+  <div class="stat-card">
+    <h4>Unit Valuation</h4>
+    <div style="font-size: 2.2em; font-weight: 700; color: var(--primary-black); margin-top: 8px;">
+      $<%= Number(item.cost || 0).toFixed(2) %>
+    </div>
+    <div style="color: var(--text-gray); font-size: 0.85em; margin-top: 4px;">Per <%= item.unit %></div>
+  </div>
+</div>
+
+<!-- Main Item Header & Quick Action Buttons -->
+<div class="card" style="margin-bottom: 24px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+    <div>
+      <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <h2 style="margin: 0; color: var(--primary-black); font-weight: 700;">
+          <%= item.name %>
+        </h2>
+        <span class="badge badge-info"><%= item.category %></span>
+        <span class="badge badge-success"><%= item.area %></span>
+        <% if (item.isActive === false) { %>
+          <span class="badge badge-danger">Archived</span>
+        <% } %>
+      </div>
+      <div style="color: var(--text-gray); font-size: 0.9em; margin-top: 6px; display: flex; gap: 16px; flex-wrap: wrap;">
+        <span><strong>SKU:</strong> <code style="font-family: monospace; font-size: 1.1em; color: var(--text-dark);"><%= item.sku %></code></span>
+        <% if (item.supplierPartNumber) { %>
+          <span><strong>REF / Cat #:</strong> <%= item.supplierPartNumber %></span>
+        <% } %>
+        <% if (item.manufacturer) { %>
+          <span><strong>Manufacturer:</strong> <%= item.manufacturer %></span>
+        <% } %>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <a href="/inventory" class="button btn-secondary">
+        <i class="fa fa-arrow-left"></i> Inventory List
+      </a>
+      <% if (userCanEdit) { %>
+        <button type="button" class="button btn-primary" onclick="openReceiveModal();">
+          <i class="fa fa-plus"></i> <%= isReagentItem ? 'Receive Reagent Lot' : 'Add Supply Stock' %>
+        </button>
+        <button type="button" class="button btn-secondary" onclick="openQuickConsumeModal();">
+          <i class="fa fa-flask"></i> <%= isReagentItem ? 'Dispense / Use' : 'Use / Deduct Stock' %>
+        </button>
+        <a href="/inventory/<%= item.id %>/edit" class="button btn-orange">
+          <i class="fa fa-pen"></i> Edit Catalog
+        </a>
+        <button type="button" class="button btn-danger" onclick="confirmDeleteItem();">
+          <i class="fa fa-trash"></i> Delete
+        </button>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 320px 1fr; gap: 24px; align-items: start;">
+  <!-- Left Column: Item Specifications -->
+  <div>
+    <div class="card" style="padding: 24px;">
+      <h3 style="margin-bottom: 20px; font-size: 1.15em;">Specifications & Safety</h3>
+      
+      <div style="margin-bottom: 16px;">
+        <label style="font-size: 0.8em; text-transform: uppercase; color: var(--text-gray); margin-bottom: 2px;">Description</label>
+        <div style="font-size: 0.95em; color: var(--text-dark);">
+          <%= item.description || '<em style="color:var(--text-gray);">No description provided</em>' %>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <label style="font-size: 0.8em; text-transform: uppercase; color: var(--text-gray); margin-bottom: 2px;">Storage Temperature</label>
+        <div style="font-size: 0.95em; font-weight: 600; color: <%= item.requiresRefrigeration ? '#0284c7' : 'var(--text-dark)' %>;">
+          <% if (item.requiresRefrigeration) { %>
+            <i class="fa fa-snowflake" style="color: #0284c7; margin-right: 4px;"></i>
+          <% } else { %>
+            <i class="fa fa-temperature-half" style="color: var(--text-gray); margin-right: 4px;"></i>
+          <% } %>
+          <%= item.storageTemp || (item.requiresRefrigeration ? '2-8°C Refrigerated' : '18-25°C Room Temp') %>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <label style="font-size: 0.8em; text-transform: uppercase; color: var(--text-gray); margin-bottom: 2px;">Physical Storage Location</label>
+        <div style="font-size: 0.95em; color: var(--text-dark); font-weight: 500;">
+          <i class="fa fa-location-dot" style="color: var(--secondary-green); margin-right: 4px;"></i>
+          <%= item.location || 'General Storage Area' %>
+        </div>
+      </div>
+
+      <% if (isReagentItem) { %>
+        <div style="margin-bottom: 16px;">
+          <label style="font-size: 0.8em; text-transform: uppercase; color: var(--text-gray); margin-bottom: 2px;">In-Use / Open-Vial Stability</label>
+          <div style="font-size: 0.95em; color: var(--text-dark); font-weight: 600;">
+            <i class="fa fa-vial" style="color: var(--info); margin-right: 4px;"></i>
+            <%= item.openVialStabilityDays ? `${item.openVialStabilityDays} Days once unsealed` : 'Manufacturer shelf expiration' %>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <label style="font-size: 0.8em; text-transform: uppercase; color: var(--text-gray); margin-bottom: 2px;">GHS Hazard Classification</label>
+          <div>
+            <% if (item.hazardClass && item.hazardClass !== 'Non-Hazardous') { %>
+              <span class="badge badge-danger" style="font-size: 0.8em;">
+                <i class="fa fa-triangle-exclamation" style="margin-right: 4px;"></i> <%= item.hazardClass %>
+              </span>
+            <% } else { %>
+              <span class="badge badge-success" style="font-size: 0.8em;">
+                <i class="fa fa-shield-check" style="margin-right: 4px;"></i> Non-Hazardous
+              </span>
+            <% } %>
+          </div>
+        </div>
+      <% } %>
+
+      <% if (item.supplier) { %>
+        <div style="margin-bottom: 16px;">
+          <label style="font-size: 0.8em; text-transform: uppercase; color: var(--text-gray); margin-bottom: 2px;">Supplier / Distributor</label>
+          <div style="font-size: 0.95em; color: var(--text-dark);"><%= item.supplier %></div>
+        </div>
+      <% } %>
+
+      <% if (item.msdsUrl) { %>
+        <div style="margin-bottom: 16px;">
+          <label style="font-size: 0.8em; text-transform: uppercase; color: var(--text-gray); margin-bottom: 2px;">Safety Data Sheet</label>
+          <div style="font-size: 0.9em;">
+            <a href="<%= item.msdsUrl.startsWith('http') ? item.msdsUrl : '#' %>" target="_blank" style="color: var(--info); text-decoration: none; font-weight: 600;">
+              <i class="fa fa-file-shield"></i> <%= item.msdsUrl %>
+            </a>
+          </div>
+        </div>
+      <% } %>
+
+      <% if (item.notes) { %>
+        <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border-gray);">
+          <label style="font-size: 0.8em; text-transform: uppercase; color: var(--text-gray); margin-bottom: 2px;">Technical Notes</label>
+          <div style="font-size: 0.9em; color: var(--text-gray); white-space: pre-wrap;"><%= item.notes %></div>
+        </div>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Right Column: Lot / Batch Traceability & Audit Timeline -->
+  <div>
+    <!-- Lot Traceability Card -->
+    <div class="card" style="padding: 24px; margin-bottom: 24px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+        <h3 style="margin: 0; font-size: 1.2em; display: flex; align-items: center; gap: 8px;">
+          <i class="fa fa-boxes-stacked" style="color: var(--secondary-green);"></i> <%= isReagentItem ? 'Lot / Batch Traceability (ISO 15189)' : 'Stock & Batch Deliveries' %>
+        </h3>
+        <% if (userCanEdit) { %>
+          <button type="button" class="button btn-small btn-primary" onclick="openReceiveModal();">
+            <i class="fa fa-plus"></i> <%= isReagentItem ? 'Receive New Lot' : 'Add Stock' %>
+          </button>
+        <% } %>
+      </div>
+
+      <% if (batches && batches.length > 0) { %>
+        <div style="overflow-x: auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Lot / Batch #</th>
+                <th>QC Status</th>
+                <th>Sealed Expiry</th>
+                <th>In-Use / Open-Vial</th>
+                <th>Qty On Hand</th>
+                <th>Location</th>
+                <th style="text-align: right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% batches.forEach(batch => { 
+                const effExp = batch.effectiveExpirationDate;
+                const isExp = batch.isExpired;
+                const isSoon = batch.isExpiringSoon;
+                const daysLeft = batch.daysUntilExpiration;
+              %>
+                <tr style="<%= batch.quantityOnHand <= 0 ? 'opacity: 0.6; background-color: #fafafa;' : '' %>">
+                  <td>
+                    <span style="font-family: monospace; font-weight: 700; color: var(--primary-black); font-size: 1.05em;">
+                      <%= batch.lotNumber %>
+                    </span>
+                    <% if (batch.serialNumber) { %>
+                      <br><small style="color: var(--text-gray);">SN: <%= batch.serialNumber %></small>
+                    <% } %>
+                    <br><small style="color: var(--text-gray);">Recv: <%= new Date(batch.receivedDate).toLocaleDateString() %></small>
+                  </td>
+
+                  <td>
+                    <% if (batch.qcStatus === 'PASSED') { %>
+                      <span class="badge badge-success"><i class="fa fa-check"></i> QC Passed</span>
+                    <% } else if (batch.qcStatus === 'QUARANTINED') { %>
+                      <span class="badge badge-danger"><i class="fa fa-ban"></i> Quarantined</span>
+                    <% } else if (batch.qcStatus === 'DISCARDED') { %>
+                      <span class="badge badge-danger">Discarded</span>
+                    <% } else { %>
+                      <span class="badge badge-warning"><i class="fa fa-clock"></i> <%= batch.qcStatus || 'Pending QC' %></span>
+                    <% } %>
+                  </td>
+
+                  <td>
+                    <% if (batch.expirationDate) { %>
+                      <div style="font-weight: 600; color: <%= isExp ? 'var(--danger)' : (isSoon ? '#d97706' : 'var(--text-dark)') %>;">
+                        <%= new Date(batch.expirationDate).toLocaleDateString() %>
+                      </div>
+                    <% } else { %>
+                      <span style="color: var(--text-gray); font-size: 0.85em;">No Expiry</span>
+                    <% } %>
+                  </td>
+
+                  <td>
+                    <% if (batch.isOpen) { %>
+                      <span class="badge badge-info" style="font-size: 0.75em; padding: 3px 8px;">
+                        <i class="fa fa-lock-open"></i> OPENED (<%= new Date(batch.dateOpened).toLocaleDateString() %>)
+                      </span>
+                      <% if (batch.openVialExpiryDate) { %>
+                        <div style="font-size: 0.85em; font-weight: 600; margin-top: 4px; color: <%= new Date(batch.openVialExpiryDate) < new Date() ? 'var(--danger)' : '#d97706' %>;">
+                          Exp: <%= new Date(batch.openVialExpiryDate).toLocaleDateString() %>
+                        </div>
+                      <% } %>
+                    <% } else { %>
+                      <span style="color: var(--text-gray); font-size: 0.85em;">🔒 Sealed</span>
+                      <% if (canEdit && batch.quantityOnHand > 0 && item.openVialStabilityDays) { %>
+                        <button type="button" class="button btn-small btn-secondary" style="padding: 2px 8px; font-size: 0.75em; margin-top: 4px; display: block;" onclick="openOpenVialModal('<%= batch.id %>', '<%= batch.lotNumber %>');">
+                          Open Vial
+                        </button>
+                      <% } %>
+                    <% } %>
+                  </td>
+
+                  <td>
+                    <div style="font-weight: 700; font-size: 1.15em; color: <%= batch.quantityOnHand <= 0 ? 'var(--text-gray)' : 'var(--primary-black)' %>;">
+                      <%= batch.quantityOnHand %> <span style="font-size: 0.8em; font-weight: 500;"><%= item.unit %></span>
+                    </div>
+                    <% if (batch.quantityDefective > 0) { %>
+                      <small style="color: var(--danger);"><%= batch.quantityDefective %> Defective</small>
+                    <% } %>
+                  </td>
+
+                  <td>
+                    <small style="color: var(--text-dark); font-weight: 500;"><%= batch.storageLocation || item.location %></small>
+                  </td>
+
+                  <td style="text-align: right; white-space: nowrap;">
+                    <% if (canEdit) { %>
+                      <div class="action-buttons" style="display: inline-flex; gap: 4px; justify-content: flex-end;">
+                        <% if (!batch.isOpen && batch.quantityOnHand > 0) { %>
+                          <button type="button" class="button btn-small btn-secondary" title="Open Vial (Start Stability Timer)" onclick="openOpenVialModal('<%= batch.id %>', '<%= batch.lotNumber %>');">
+                            <i class="fa fa-lock-open" style="color: var(--info);"></i>
+                          </button>
+                        <% } %>
+                        <button type="button" class="button btn-small btn-secondary" title="Update QC Status" onclick="openQcModal('<%= batch.id %>', '<%= batch.lotNumber %>', '<%= batch.qcStatus %>');">
+                          <i class="fa fa-vial-circle-check" style="color: var(--secondary-green);"></i>
+                        </button>
+                        <button type="button" class="button btn-small btn-secondary" title="Adjust Stock Count" onclick="openAdjustModal('<%= batch.id %>', '<%= batch.lotNumber %>', <%= batch.quantityOnHand %>);">
+                          <i class="fa fa-scale-balanced" style="color: #d97706;"></i>
+                        </button>
+                        <button type="button" class="button btn-small btn-danger" title="Discard Stock" onclick="openDiscardModal('<%= batch.id %>', '<%= batch.lotNumber %>', <%= batch.quantityOnHand %>);">
+                          <i class="fa fa-trash"></i>
+                        </button>
+                      </div>
+                    <% } %>
+                  </td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% } else { %>
+        <div style="text-align: center; padding: 40px; color: var(--text-gray);">
+          <i class="fa fa-box-open" style="font-size: 2.5em; opacity: 0.3; margin-bottom: 12px; display: block;"></i>
+          <strong style="font-size: 1.1em; color: var(--text-dark);">No lots recorded for this item</strong>
+          <p style="margin-top: 6px;">Click "Receive New Lot" to add initial stock and lot traceability.</p>
+        </div>
+      <% } %>
+    </div>
+
+    <!-- Audit Trail Card -->
+    <div class="card" style="padding: 24px;">
+      <h3 style="margin-bottom: 16px; font-size: 1.2em; display: flex; align-items: center; gap: 8px;">
+        <i class="fa fa-timeline" style="color: var(--secondary-green);"></i> Regulatory Transaction Audit Log
+      </h3>
+
+      <% if (transactions && transactions.length > 0) { %>
+        <div style="max-height: 420px; overflow-y: auto; padding-right: 8px;">
+          <% transactions.forEach(tx => { 
+            let txColor = 'var(--text-gray)';
+            let txIcon = 'fa-arrow-right-arrow-left';
+            if (tx.transactionType === 'RECEIVE') { txColor = 'var(--secondary-green-dark)'; txIcon = 'fa-arrow-down'; }
+            else if (tx.transactionType === 'CONSUME') { txColor = '#0284c7'; txIcon = 'fa-flask'; }
+            else if (tx.transactionType === 'OPEN_VIAL') { txColor = 'var(--info)'; txIcon = 'fa-lock-open'; }
+            else if (tx.transactionType === 'ADJUST') { txColor = '#d97706'; txIcon = 'fa-scale-balanced'; }
+            else if (tx.transactionType === 'DISCARD') { txColor = 'var(--danger)'; txIcon = 'fa-trash'; }
+            else if (tx.transactionType === 'QC_USAGE') { txColor = '#8b5cf6'; txIcon = 'fa-vial-circle-check'; }
+          %>
+            <div style="padding: 12px 14px; border: 1px solid var(--border-gray); border-radius: 10px; margin-bottom: 8px; background: #fff; display: flex; justify-content: space-between; align-items: start; gap: 12px;">
+              <div>
+                <div style="font-weight: 600; color: <%= txColor %>; font-size: 0.95em;">
+                  <i class="fa <%= txIcon %>" style="margin-right: 6px;"></i> <%= tx.displayText %>
+                </div>
+                <% if (tx.notes) { %>
+                  <div style="font-size: 0.85em; color: var(--text-dark); margin-top: 2px;"><%= tx.notes %></div>
+                <% } %>
+                <div style="font-size: 0.8em; color: var(--text-gray); margin-top: 4px;">
+                  Performed by: <strong><%= tx.performedBy %></strong> | <%= tx.formatTimestamp() %>
+                </div>
+              </div>
+
+              <div style="text-align: right; white-space: nowrap;">
+                <div style="font-weight: 700; font-size: 1.05em; color: var(--text-dark);">
+                  <%= tx.quantityBefore %> &rarr; <%= tx.quantityAfter %> <span style="font-size: 0.8em; font-weight: 500;"><%= item.unit %></span>
+                </div>
+              </div>
+            </div>
+          <% }); %>
+        </div>
+      <% } else { %>
+        <div style="text-align: center; padding: 30px; color: var(--text-gray);">
+          No transactions logged yet.
+        </div>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODALS ================= -->
+
+<!-- 1. Modal: Receive Stock / Add Lot -->
+<div id="modalReceive" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 10000; align-items: center; justify-content: center;">
+  <div class="card" style="width: 100%; max-width: 650px; max-height: 90vh; overflow-y: auto; margin: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.2);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border-gray);">
+      <h3 style="margin: 0; font-size: 1.25em;">
+        <% if (isReagentItem) { %>
+          <i class="fa fa-vial" style="color: var(--secondary-green);"></i> Receive & Register Reagent Lot (ISO 15189)
+        <% } else { %>
+          <i class="fa fa-boxes-stacked" style="color: var(--info);"></i> Add Supply Stock Delivery
+        <% } %>
+      </h3>
+      <button type="button" onclick="closeModal('modalReceive')" style="background: none; border: none; font-size: 1.4em; cursor: pointer; color: var(--text-gray);">&times;</button>
+    </div>
+
+    <form onsubmit="handleReceiveSubmit(event);">
+      <div class="form-row">
+        <div class="form-group">
+          <label>
+            <%= isReagentItem ? 'Lot / Batch Number' : 'Batch / Lot / PO #' %> 
+            <span style="color: <%= isReagentItem ? 'var(--danger)' : 'var(--text-gray)' %>;"><%= isReagentItem ? '*' : '(Optional)' %></span>
+          </label>
+          <input type="text" id="recLotNumber" <%= isReagentItem ? 'required' : '' %> placeholder="<%= isReagentItem ? 'e.g., LOT-20260901A' : 'Leave blank to auto-generate' %>">
+        </div>
+        <div class="form-group">
+          <label>Quantity Received (<%= item.unit %>) <span style="color: var(--danger);">*</span></label>
+          <input type="number" id="recQuantity" required min="1" placeholder="e.g., 50">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>
+            Expiration Date 
+            <span style="color: <%= isReagentItem ? 'var(--danger)' : 'var(--text-gray)' %>;"><%= isReagentItem ? '*' : '(Optional for supplies)' %></span>
+          </label>
+          <input type="date" id="recExpirationDate" <%= isReagentItem ? 'required' : '' %>>
+        </div>
+        <div class="form-group">
+          <label>Date Received</label>
+          <input type="date" id="recReceivedDate" value="<%= new Date().toISOString().slice(0, 10) %>">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Storage Location</label>
+          <input type="text" id="recLocation" value="<%= item.location || '' %>" placeholder="e.g., Shelf 2, Cabinet B">
+        </div>
+        <% if (isReagentItem) { %>
+          <div class="form-group">
+            <label>Initial QC / Verification Status</label>
+            <select id="recQcStatus">
+              <option value="PASSED">Passed / Verified (Ready for Use)</option>
+              <option value="PENDING_QC">Pending Quality Control Testing</option>
+              <option value="QUARANTINED">Quarantined (Hold for Verification)</option>
+            </select>
+          </div>
+        <% } else { %>
+          <input type="hidden" id="recQcStatus" value="PASSED">
+        <% } %>
+      </div>
+
+      <% if (isReagentItem) { %>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Receipt Condition (Cold Chain Integrity)</label>
+            <select id="recCondition">
+              <option value="ACCEPTABLE">Acceptable (Integrity Intact)</option>
+              <option value="TEMPERATURE_EXCURSION">Temperature Excursion Note</option>
+              <option value="COMPROMISED">Damaged / Compromised</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Arrival Temperature Check</label>
+            <input type="text" id="recTemp" value="<%= item.storageTemp || '' %>" placeholder="e.g., 4°C Cold Chain OK">
+          </div>
+        </div>
+      <% } else { %>
+        <input type="hidden" id="recCondition" value="ACCEPTABLE">
+        <input type="hidden" id="recTemp" value="<%= item.storageTemp || 'Room Temp' %>">
+      <% } %>
+
+      <div class="form-group">
+        <label><%= isReagentItem ? 'Receipt Notes / Certificate of Analysis' : 'Delivery Notes / Invoice Reference' %></label>
+        <textarea id="recNotes" placeholder="<%= isReagentItem ? 'Inspection notes or CoA reference...' : 'Invoice number, delivery receipt, or notes...' %>"></textarea>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
+        <button type="button" class="button btn-secondary" onclick="closeModal('modalReceive')">Cancel</button>
+        <button type="submit" id="recSubmitBtn" class="button btn-primary">
+          <i class="fa fa-check"></i> <%= isReagentItem ? 'Register Lot' : 'Add Stock' %>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 2. Modal: Open Vial (In-Use Stability) -->
+<div id="modalOpenVial" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 10000; align-items: center; justify-content: center;">
+  <div class="card" style="width: 100%; max-width: 500px; margin: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.2);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border-gray);">
+      <h3 style="margin: 0; font-size: 1.25em;"><i class="fa fa-lock-open" style="color: var(--info);"></i> Open Vial / Unseal Reagent</h3>
+      <button type="button" onclick="closeModal('modalOpenVial')" style="background: none; border: none; font-size: 1.4em; cursor: pointer; color: var(--text-gray);">&times;</button>
+    </div>
+
+    <form onsubmit="handleOpenVialSubmit(event);">
+      <input type="hidden" id="openBatchId">
+      <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 12px 16px; border-radius: 10px; margin-bottom: 16px; font-size: 0.9em; color: #1e40af;">
+        <i class="fa fa-info-circle"></i> Opening Lot <strong id="openLotLabel"></strong> will start the <strong><%= item.openVialStabilityDays || 30 %>-day in-use stability clock</strong> per ISO 15189 compliance.
+      </div>
+
+      <div class="form-group">
+        <label>Date & Time Opened</label>
+        <input type="date" id="openDate" value="<%= new Date().toISOString().slice(0, 10) %>" required>
+      </div>
+
+      <div class="form-group">
+        <label>Reason / Clinical Testing Workload</label>
+        <input type="text" id="openReason" value="Routine Testing Run" placeholder="e.g., Morning Batch Run">
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
+        <button type="button" class="button btn-secondary" onclick="closeModal('modalOpenVial')">Cancel</button>
+        <button type="submit" id="openSubmitBtn" class="button btn-primary"><i class="fa fa-lock-open"></i> Confirm Open</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 3. Modal: Update QC Status -->
+<div id="modalQc" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 10000; align-items: center; justify-content: center;">
+  <div class="card" style="width: 100%; max-width: 500px; margin: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.2);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border-gray);">
+      <h3 style="margin: 0; font-size: 1.25em;"><i class="fa fa-vial-circle-check" style="color: var(--secondary-green);"></i> Update Lot QC Status</h3>
+      <button type="button" onclick="closeModal('modalQc')" style="background: none; border: none; font-size: 1.4em; cursor: pointer; color: var(--text-gray);">&times;</button>
+    </div>
+
+    <form onsubmit="handleQcSubmit(event);">
+      <input type="hidden" id="qcBatchId">
+      <div class="form-group">
+        <label>Lot Number</label>
+        <input type="text" id="qcLotLabel" disabled style="background: #f8fafc; font-weight: 700;">
+      </div>
+
+      <div class="form-group">
+        <label>Quality Control Status <span style="color: var(--danger);">*</span></label>
+        <select id="qcStatusSelect" required>
+          <option value="PASSED">Passed / Verified (Available for patient tests)</option>
+          <option value="PENDING_QC">Pending Quality Control Testing</option>
+          <option value="QUARANTINED">Quarantined (Do NOT Use)</option>
+          <option value="DISCARDED">Discarded / Failed Verification</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Verification / Calibration Notes</label>
+        <textarea id="qcNotes" placeholder="Document QC run values, calibration pass, or quarantine reason..."></textarea>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
+        <button type="button" class="button btn-secondary" onclick="closeModal('modalQc')">Cancel</button>
+        <button type="submit" id="qcSubmitBtn" class="button btn-primary"><i class="fa fa-check"></i> Update Status</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 4. Modal: Adjust Stock Count -->
+<div id="modalAdjust" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 10000; align-items: center; justify-content: center;">
+  <div class="card" style="width: 100%; max-width: 500px; margin: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.2);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border-gray);">
+      <h3 style="margin: 0; font-size: 1.25em;"><i class="fa fa-scale-balanced" style="color: #d97706;"></i> Physical Inventory Adjustment</h3>
+      <button type="button" onclick="closeModal('modalAdjust')" style="background: none; border: none; font-size: 1.4em; cursor: pointer; color: var(--text-gray);">&times;</button>
+    </div>
+
+    <form onsubmit="handleAdjustSubmit(event);">
+      <input type="hidden" id="adjustBatchId">
+      
+      <div class="form-row">
+        <div class="form-group">
+          <label>Current Count</label>
+          <input type="text" id="adjustCurrentQty" disabled style="background: #f8fafc; font-weight: 700;">
+        </div>
+        <div class="form-group">
+          <label>Physical Count (<%= item.unit %>) <span style="color: var(--danger);">*</span></label>
+          <input type="number" id="adjustNewQty" required min="0" placeholder="New actual count">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Audit Justification / Reason <span style="color: var(--danger);">*</span></label>
+        <input type="text" id="adjustReason" required placeholder="e.g., Annual physical inventory reconciliation, Spill correction">
+        <small style="color: var(--text-gray); font-size: 0.8em; margin-top: 4px; display: block;">Mandatory under ISO 15189 inventory control standards</small>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
+        <button type="button" class="button btn-secondary" onclick="closeModal('modalAdjust')">Cancel</button>
+        <button type="submit" id="adjustSubmitBtn" class="button btn-primary"><i class="fa fa-check"></i> Save Adjustment</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 5. Modal: Discard Stock / Waste -->
+<div id="modalDiscard" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 10000; align-items: center; justify-content: center;">
+  <div class="card" style="width: 100%; max-width: 500px; margin: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.2);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border-gray);">
+      <h3 style="margin: 0; font-size: 1.25em; color: var(--danger);"><i class="fa fa-trash"></i> Discard Reagent / Supply</h3>
+      <button type="button" onclick="closeModal('modalDiscard')" style="background: none; border: none; font-size: 1.4em; cursor: pointer; color: var(--text-gray);">&times;</button>
+    </div>
+
+    <form onsubmit="handleDiscardSubmit(event);">
+      <input type="hidden" id="discardBatchId">
+      
+      <div class="form-group">
+        <label>Quantity to Discard (<%= item.unit %>) <span style="color: var(--danger);">*</span></label>
+        <input type="number" id="discardQty" required min="1" placeholder="Units to remove">
+      </div>
+
+      <div class="form-group">
+        <label>Discard Reason <span style="color: var(--danger);">*</span></label>
+        <select id="discardReason" required>
+          <option value="Expired Lot">Expired Lot</option>
+          <option value="Open-Vial Stability Exceeded">Open-Vial Stability Exceeded</option>
+          <option value="Contamination / Discoloration">Contamination / Discoloration</option>
+          <option value="QC Calibration Failure">QC Calibration Failure</option>
+          <option value="Spill / Broken Container">Spill / Broken Container</option>
+          <option value="Temperature Breach / Compromised">Temperature Breach / Compromised</option>
+        </select>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
+        <button type="button" class="button btn-secondary" onclick="closeModal('modalDiscard')">Cancel</button>
+        <button type="submit" id="discardSubmitBtn" class="button btn-danger"><i class="fa fa-trash"></i> Confirm Discard</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 6. Modal: Quick Dispense / Routine Test Usage -->
+<div id="modalQuickConsume" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 10000; align-items: center; justify-content: center;">
+  <div class="card" style="width: 100%; max-width: 500px; margin: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.2);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border-gray);">
+      <h3 style="margin: 0; font-size: 1.25em;"><i class="fa fa-flask" style="color: var(--info);"></i> Dispense Reagent for Testing</h3>
+      <button type="button" onclick="closeModal('modalQuickConsume')" style="background: none; border: none; font-size: 1.4em; cursor: pointer; color: var(--text-gray);">&times;</button>
+    </div>
+
+    <form onsubmit="handleQuickConsumeSubmit(event);">
+      <div class="form-group">
+        <label>Select Lot / Batch</label>
+        <select id="consumeBatchId">
+          <option value="">-- Automatic FEFO (Earliest Expiring / Open First) --</option>
+          <% activeBatches.forEach(b => { %>
+            <option value="<%= b.id %>">Lot <%= b.lotNumber %> (<%= b.quantityOnHand %> <%= item.unit %> left) <%= b.isOpen ? '[OPEN]' : '' %></option>
+          <% }); %>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Quantity to Dispense (<%= item.unit %>) <span style="color: var(--danger);">*</span></label>
+        <input type="number" id="consumeQty" required min="1" value="1">
+      </div>
+
+      <div class="form-group">
+        <label>Reason / Patient Batch / Workload</label>
+        <input type="text" id="consumeReason" value="Routine Clinical Chemistry / Hematology Runs" placeholder="e.g., Run #2026-0903">
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
+        <button type="button" class="button btn-secondary" onclick="closeModal('modalQuickConsume')">Cancel</button>
+        <button type="submit" id="consumeSubmitBtn" class="button btn-primary"><i class="fa fa-flask"></i> Dispense</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Custom UI Toast Feedback -->
+<div id="detailsToast" style="display: none; position: fixed; bottom: 24px; right: 24px; z-index: 99999; min-width: 320px; max-width: 450px; padding: 16px 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); font-weight: 500; align-items: center; gap: 12px;">
+  <div id="detailsToastIcon" style="font-size: 1.3em;"></div>
+  <div id="detailsToastMsg" style="flex: 1; font-size: 0.95em;"></div>
+</div>
+
+<script>
+  function showDetailsToast(type, msg) {
+    const t = document.getElementById('detailsToast');
+    const icon = document.getElementById('detailsToastIcon');
+    const text = document.getElementById('detailsToastMsg');
+
+    if (type === 'success') {
+      t.style.backgroundColor = '#ecfdf5';
+      t.style.color = '#065f46';
+      t.style.border = '1px solid #a7f3d0';
+      icon.innerHTML = '<i class="fa fa-circle-check" style="color:#10b981;"></i>';
+    } else {
+      t.style.backgroundColor = '#fef2f2';
+      t.style.color = '#991b1b';
+      t.style.border = '1px solid #fecaca';
+      icon.innerHTML = '<i class="fa fa-circle-xmark" style="color:#ef4444;"></i>';
+    }
+
+    text.textContent = msg;
+    t.style.display = 'flex';
+    setTimeout(() => { t.style.display = 'none'; }, 4000);
+  }
+
+  function openModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'flex';
+  }
+
+  function closeModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  }
+
+  function openReceiveModal() { openModal('modalReceive'); }
+  function openQuickConsumeModal() { openModal('modalQuickConsume'); }
+
+  function openOpenVialModal(batchId, lotNumber) {
+    document.getElementById('openBatchId').value = batchId;
+    document.getElementById('openLotLabel').textContent = lotNumber;
+    openModal('modalOpenVial');
+  }
+
+  function openQcModal(batchId, lotNumber, qcStatus) {
+    document.getElementById('qcBatchId').value = batchId;
+    document.getElementById('qcLotLabel').value = lotNumber;
+    document.getElementById('qcStatusSelect').value = qcStatus || 'PASSED';
+    openModal('modalQc');
+  }
+
+  function openAdjustModal(batchId, lotNumber, currentQty) {
+    document.getElementById('adjustBatchId').value = batchId;
+    document.getElementById('adjustCurrentQty').value = `${currentQty} <%= item.unit %>`;
+    document.getElementById('adjustNewQty').value = currentQty;
+    openModal('modalAdjust');
+  }
+
+  function openDiscardModal(batchId, lotNumber, currentQty) {
+    document.getElementById('discardBatchId').value = batchId;
+    document.getElementById('discardQty').max = currentQty;
+    document.getElementById('discardQty').value = Math.min(1, currentQty);
+    openModal('modalDiscard');
+  }
+
+  async function handleReceiveSubmit(e) {
+    e.preventDefault();
+    const btn = document.getElementById('recSubmitBtn');
+    btn.disabled = true;
+
+    const payload = {
+      lotNumber: document.getElementById('recLotNumber').value,
+      quantityReceived: document.getElementById('recQuantity').value,
+      expirationDate: document.getElementById('recExpirationDate').value,
+      receivedDate: document.getElementById('recReceivedDate').value,
+      storageLocation: document.getElementById('recLocation').value,
+      qcStatus: document.getElementById('recQcStatus').value,
+      receiptCondition: document.getElementById('recCondition').value,
+      receivedTemperature: document.getElementById('recTemp').value,
+      receiveNotes: document.getElementById('recNotes').value
+    };
+
+    try {
+      const res = await fetch('/inventory/<%= item.id %>/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showDetailsToast('success', data.message || 'Lot received successfully!');
+        closeModal('modalReceive');
+        setTimeout(() => window.location.reload(), 600);
+      } else {
+        showDetailsToast('error', data.error || 'Failed to receive lot.');
+        btn.disabled = false;
+      }
+    } catch (err) {
+      showDetailsToast('error', 'Error: ' + err.message);
+      btn.disabled = false;
+    }
+  }
+
+  async function handleOpenVialSubmit(e) {
+    e.preventDefault();
+    const batchId = document.getElementById('openBatchId').value;
+    const btn = document.getElementById('openSubmitBtn');
+    btn.disabled = true;
+
+    const payload = {
+      dateOpened: document.getElementById('openDate').value,
+      reason: document.getElementById('openReason').value
+    };
+
+    try {
+      const res = await fetch(`/inventory/<%= item.id %>/batch/${batchId}/open`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showDetailsToast('success', data.message || 'Vial marked as open!');
+        closeModal('modalOpenVial');
+        setTimeout(() => window.location.reload(), 600);
+      } else {
+        showDetailsToast('error', data.error || 'Failed to open vial.');
+        btn.disabled = false;
+      }
+    } catch (err) {
+      showDetailsToast('error', 'Error: ' + err.message);
+      btn.disabled = false;
+    }
+  }
+
+  async function handleQcSubmit(e) {
+    e.preventDefault();
+    const batchId = document.getElementById('qcBatchId').value;
+    const btn = document.getElementById('qcSubmitBtn');
+    btn.disabled = true;
+
+    const payload = {
+      qcStatus: document.getElementById('qcStatusSelect').value,
+      notes: document.getElementById('qcNotes').value
+    };
+
+    try {
+      const res = await fetch(`/inventory/<%= item.id %>/batch/${batchId}/qc`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showDetailsToast('success', data.message || 'QC Status updated!');
+        closeModal('modalQc');
+        setTimeout(() => window.location.reload(), 600);
+      } else {
+        showDetailsToast('error', data.error || 'Failed to update QC.');
+        btn.disabled = false;
+      }
+    } catch (err) {
+      showDetailsToast('error', 'Error: ' + err.message);
+      btn.disabled = false;
+    }
+  }
+
+  async function handleAdjustSubmit(e) {
+    e.preventDefault();
+    const batchId = document.getElementById('adjustBatchId').value;
+    const btn = document.getElementById('adjustSubmitBtn');
+    btn.disabled = true;
+
+    const payload = {
+      newQuantity: document.getElementById('adjustNewQty').value,
+      reason: document.getElementById('adjustReason').value
+    };
+
+    try {
+      const res = await fetch(`/inventory/<%= item.id %>/batch/${batchId}/adjust`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showDetailsToast('success', data.message || 'Stock adjusted!');
+        closeModal('modalAdjust');
+        setTimeout(() => window.location.reload(), 600);
+      } else {
+        showDetailsToast('error', data.error || 'Failed to adjust stock.');
+        btn.disabled = false;
+      }
+    } catch (err) {
+      showDetailsToast('error', 'Error: ' + err.message);
+      btn.disabled = false;
+    }
+  }
+
+  async function handleDiscardSubmit(e) {
+    e.preventDefault();
+    const batchId = document.getElementById('discardBatchId').value;
+    const btn = document.getElementById('discardSubmitBtn');
+    btn.disabled = true;
+
+    const payload = {
+      discardQuantity: document.getElementById('discardQty').value,
+      reason: document.getElementById('discardReason').value
+    };
+
+    try {
+      const res = await fetch(`/inventory/<%= item.id %>/batch/${batchId}/discard`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showDetailsToast('success', data.message || 'Stock discarded!');
+        closeModal('modalDiscard');
+        setTimeout(() => window.location.reload(), 600);
+      } else {
+        showDetailsToast('error', data.error || 'Failed to discard stock.');
+        btn.disabled = false;
+      }
+    } catch (err) {
+      showDetailsToast('error', 'Error: ' + err.message);
+      btn.disabled = false;
+    }
+  }
+
+  async function handleQuickConsumeSubmit(e) {
+    e.preventDefault();
+    const btn = document.getElementById('consumeSubmitBtn');
+    btn.disabled = true;
+
+    const payload = {
+      batchId: document.getElementById('consumeBatchId').value || null,
+      quantity: document.getElementById('consumeQty').value,
+      reason: document.getElementById('consumeReason').value
+    };
+
+    try {
+      const res = await fetch('/inventory/<%= item.id %>/consume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showDetailsToast('success', data.message || 'Stock dispensed!');
+        closeModal('modalQuickConsume');
+        setTimeout(() => window.location.reload(), 600);
+      } else {
+        showDetailsToast('error', data.error || 'Failed to dispense stock.');
+        btn.disabled = false;
+      }
+    } catch (err) {
+      showDetailsToast('error', 'Error: ' + err.message);
+      btn.disabled = false;
+    }
+  }
+
+  function confirmDeleteItem() {
+    if (typeof window.showCustomConfirm === 'function') {
+      window.showCustomConfirm(
+        'Are you sure you want to permanently delete this catalog item and all associated lots and audit trail?',
+        function() {
+          performDeleteItem();
+        },
+        {
+          title: 'Confirm Catalog Deletion',
+          btnText: 'Delete Item'
+        }
+      );
+    } else {
+      performDeleteItem();
+    }
+  }
+
+  async function performDeleteItem() {
+    try {
+      const res = await fetch('/inventory/<%= item.id %>/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        window.location.href = '/inventory';
+      } else {
+        showDetailsToast('error', data.error || 'Failed to delete item.');
+      }
+    } catch (err) {
+      showDetailsToast('error', 'Error: ' + err.message);
+    }
+  }
+</script>

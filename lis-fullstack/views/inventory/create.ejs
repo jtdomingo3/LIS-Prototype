@@ -1,0 +1,430 @@
+<div class="card" style="max-width: 900px; margin: 0 auto;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border-gray); flex-wrap: wrap; gap: 12px;">
+    <div>
+      <h3 style="margin: 0; display: flex; align-items: center; gap: 10px;">
+        <i class="fa fa-boxes-stacked" style="color: var(--secondary-green);"></i> Register Diagnostic Reagent or Supply
+      </h3>
+      <p style="color: var(--text-gray); margin-top: 4px; font-size: 0.9em;">
+        Covers Clinical Laboratory, Radiology (X-Ray), Ultrasound, 2D Echo, Cardiology (ECG), & General Facilities.
+      </p>
+    </div>
+    <a href="/inventory" class="button btn-secondary">
+      <i class="fa fa-arrow-left"></i> Back to Inventory
+    </a>
+  </div>
+
+  <!-- Type Selector: Reagent/Chemicals vs Supplies/Films/Gels/Papers -->
+  <div style="margin-bottom: 24px;">
+    <label style="font-weight: 700; color: var(--primary-black); margin-bottom: 8px; display: block;">
+      Select the type of inventory item you are adding:
+    </label>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+      <div id="cardTypeReagent" onclick="switchItemMode('reagent')" style="border: 2px solid #10b981; background: #ecfdf5; border-radius: 12px; padding: 16px; cursor: pointer; display: flex; align-items: center; gap: 14px; transition: all 0.2s;">
+        <div style="width: 46px; height: 46px; border-radius: 10px; background: #10b981; color: white; display: flex; align-items: center; justify-content: center; font-size: 1.4em; flex-shrink: 0;">
+          <i class="fa fa-flask-vial"></i>
+        </div>
+        <div>
+          <div style="font-weight: 700; font-size: 1.05em; color: #065f46;">🧪 Reagents & Imaging Chemicals</div>
+          <div style="font-size: 0.82em; color: #047857; margin-top: 2px;">Clinical test kits, controls, X-ray developer & fixer chemicals, stains & dyes</div>
+        </div>
+      </div>
+
+      <div id="cardTypeSupply" onclick="switchItemMode('supply')" style="border: 2px solid var(--border-gray); background: #ffffff; border-radius: 12px; padding: 16px; cursor: pointer; display: flex; align-items: center; gap: 14px; transition: all 0.2s;">
+        <div style="width: 46px; height: 46px; border-radius: 10px; background: #f1f5f9; color: var(--text-gray); display: flex; align-items: center; justify-content: center; font-size: 1.4em; flex-shrink: 0;">
+          <i class="fa fa-box-archive"></i>
+        </div>
+        <div>
+          <div style="font-weight: 700; font-size: 1.05em; color: var(--text-dark);">📦 Supplies, Films, Gels & Papers</div>
+          <div style="font-size: 0.82em; color: var(--text-gray); margin-top: 2px;">X-ray films, ultrasound/echo gels, ECG paper & electrodes, tubes, gloves</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <form id="createInventoryForm" onsubmit="handleCreateSubmit(event);">
+    <input type="hidden" id="itemMode" name="itemMode" value="reagent">
+
+    <!-- Section 1: Item Identification -->
+    <div style="font-weight: 700; color: var(--primary-black); font-size: 1.05em; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+      <i class="fa fa-tag" style="color: var(--secondary-green);"></i> 1. Item Identification & Classification
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="name"><span id="lblItemName">Reagent / Chemical Name</span> <span style="color: var(--danger);">*</span></label>
+        <input type="text" id="name" name="name" required placeholder="e.g., AST / SGOT Kinetic Kit, or X-Ray Developer (5L)" autocomplete="off">
+        <small id="txtItemNameHelper" style="color: var(--text-gray); font-size: 0.8em; margin-top: 4px; display: block;">Item identification name</small>
+      </div>
+      <div class="form-group">
+        <label for="sku">Catalog / SKU / REF #</label>
+        <input type="text" id="sku" name="sku" placeholder="Auto-generated if left blank (e.g., REF-40291)">
+        <small style="color: var(--text-gray); font-size: 0.8em; margin-top: 4px; display: block;">Catalog REF, barcode, or internal SKU</small>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="category">Category <span style="color: var(--danger);">*</span></label>
+        <select id="category" name="category" required>
+          <!-- Dynamically populated by switchItemMode -->
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="area">Diagnostic Section / Department <span style="color: var(--danger);">*</span></label>
+        <select id="area" name="area" required>
+          <% areas.forEach(area => { %>
+            <option value="<%= area %>" <%= area === 'Clinical Chemistry' ? 'selected' : '' %>><%= area %></option>
+          <% }); %>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="unit">Unit of Measure <span style="color: var(--danger);">*</span></label>
+        <select id="unit" name="unit" required>
+          <!-- Dynamically populated by switchItemMode -->
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="packageSize">Package / Presentation Size</label>
+        <input type="text" id="packageSize" name="packageSize" placeholder="e.g., 100 films/box, 5L cubitainer, 10 rolls/pack, 100 tests/kit">
+      </div>
+    </div>
+
+    <!-- Storage Location (always visible) -->
+    <div class="form-group">
+      <label for="location">Physical Storage Location</label>
+      <input type="text" id="location" name="location" placeholder="e.g., X-Ray Darkroom Shelf 2, Ultrasound Room Cabinet, Chemistry Refrigerator 1">
+      <small style="color: var(--text-gray); font-size: 0.8em; margin-top: 4px; display: block;">Specific room, shelf, cabinet, or bin</small>
+    </div>
+
+    <!-- Section 2: Stock Thresholds & Cost -->
+    <div style="font-weight: 700; color: var(--primary-black); font-size: 1.05em; margin: 24px 0 16px 0; display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--border-gray); padding-top: 20px;">
+      <i class="fa fa-chart-line" style="color: var(--secondary-green);"></i> 2. Stock Thresholds & Valuation
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="minThreshold">Minimum Safety Stock Level (Reorder Point) <span style="color: var(--danger);">*</span></label>
+        <input type="number" id="minThreshold" name="minThreshold" required min="0" value="5">
+        <small style="color: var(--text-gray); font-size: 0.8em; margin-top: 4px; display: block;">Standard reorder warning when stock reaches this level</small>
+      </div>
+      <div class="form-group">
+        <label for="criticalThreshold" style="color: #b91c1c;">Critical Emergency Stock Level <span style="color: var(--danger);">*</span></label>
+        <input type="number" id="criticalThreshold" name="criticalThreshold" required min="0" value="2" style="border-color: #fca5a5;">
+        <small style="color: #b91c1c; font-size: 0.8em; margin-top: 4px; display: block;">Triggers global emergency alert pop-up when reached</small>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="cost">Unit Cost ($ / ₱)</label>
+        <input type="number" id="cost" name="cost" step="0.01" min="0" value="0.00">
+      </div>
+      <div class="form-group">
+        <label for="maxThreshold">Maximum Storage Capacity</label>
+        <input type="number" id="maxThreshold" name="maxThreshold" min="0" placeholder="Optional ceiling capacity">
+      </div>
+    </div>
+
+    <!-- Section 3: Clinical Reagent & Chemical Parameters (Shown only for Reagents / Chemicals) -->
+    <div id="sectionReagentSpecific">
+      <div style="font-weight: 700; color: var(--primary-black); font-size: 1.05em; margin: 24px 0 16px 0; display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--border-gray); padding-top: 20px;">
+        <i class="fa fa-temperature-half" style="color: var(--secondary-green);"></i> 3. Reagent Storage, Stability & Chemical Safety (ISO 15189)
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="storageTemp">Storage Temperature Requirement <span style="color: var(--danger);">*</span></label>
+          <select id="storageTemp" name="storageTemp" onchange="handleTempChange(this.value)">
+            <option value="18-25°C Room Temp">18-25°C Room Temperature (Controlled Ambient)</option>
+            <option value="2-8°C Refrigerated">2-8°C Refrigerated (Cold Chain)</option>
+            <option value="-20°C Frozen">-20°C Frozen (Standard Freezer)</option>
+            <option value="-80°C Ultra-Low">-80°C Ultra-Low Freezer</option>
+            <option value="2-30°C Ambient">2-30°C Ambient Range (Darkroom / Dry Storage)</option>
+            <option value="15-30°C Climate Controlled">15-30°C Climate Controlled</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="openVialStabilityDays">Open-Vial / In-Use Stability (Days)</label>
+          <input type="number" id="openVialStabilityDays" name="openVialStabilityDays" min="1" placeholder="e.g., 30 (Days stable once opened)">
+          <small style="color: var(--text-gray); font-size: 0.8em; margin-top: 4px; display: block;">Automatically starts stability countdown when unsealed</small>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="hazardClass">GHS Hazard Classification</label>
+          <select id="hazardClass" name="hazardClass">
+            <option value="Non-Hazardous">Non-Hazardous / General Diagnostic</option>
+            <option value="Corrosive">Corrosive (Developer, Acid/Base)</option>
+            <option value="Flammable">Flammable</option>
+            <option value="Toxic">Toxic / Poisonous</option>
+            <option value="Oxidizer">Oxidizing Agent</option>
+            <option value="Biohazard">Biohazard / Infectious Risk</option>
+            <option value="Irritant">Irritant / Sensitizer</option>
+          </select>
+        </div>
+        <div class="form-group" style="display: flex; align-items: center; padding-top: 28px;">
+          <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 0;">
+            <input type="checkbox" id="requiresRefrigeration" name="requiresRefrigeration" style="width: 20px; height: 20px; accent-color: var(--secondary-green);">
+            <span style="font-weight: 600; color: var(--text-dark);">Strict Cold Chain Refrigeration Required</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="msdsUrl">Safety Data Sheet (SDS / MSDS) Reference</label>
+        <input type="text" id="msdsUrl" name="msdsUrl" placeholder="SDS document URL or binder reference code">
+      </div>
+    </div>
+
+    <!-- Section 4: Supplier & Manufacturer Information -->
+    <div style="font-weight: 700; color: var(--primary-black); font-size: 1.05em; margin: 24px 0 16px 0; display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--border-gray); padding-top: 20px;">
+      <i class="fa fa-industry" style="color: var(--secondary-green);"></i> <span id="lblSectionVendor">3. Supplier & Manufacturer</span>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="manufacturer">Manufacturer / Brand</label>
+        <input type="text" id="manufacturer" name="manufacturer" placeholder="e.g., Fujifilm, Kodak/Carestream, Sony, Parker, Roche, BD">
+      </div>
+      <div class="form-group">
+        <label for="supplier">Supplier / Local Distributor</label>
+        <input type="text" id="supplier" name="supplier" placeholder="e.g., MedLine Phils, Imaging Medical Supplies Corp">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="supplierPartNumber">Supplier / Catalog Order Part #</label>
+        <input type="text" id="supplierPartNumber" name="supplierPartNumber" placeholder="e.g., ORD-99214">
+      </div>
+      <div class="form-group">
+        <label for="barcode">Item Barcode / GTIN</label>
+        <input type="text" id="barcode" name="barcode" placeholder="Optional barcode scan value">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="notes">Notes / Special Instructions</label>
+      <textarea id="notes" name="notes" placeholder="Special storage or handling instructions (e.g. keep away from light, room temperature darkroom storage, etc.)..."></textarea>
+    </div>
+
+    <!-- Form Actions -->
+    <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border-gray);">
+      <a href="/inventory" class="button btn-secondary">Cancel</a>
+      <button type="submit" id="submitBtn" class="button btn-primary">
+        <i class="fa fa-check"></i> <span id="lblSubmitBtn">Register Item</span>
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- Notification Toast -->
+<div id="createNotifyToast" style="display: none; position: fixed; bottom: 24px; right: 24px; z-index: 9999; min-width: 320px; max-width: 450px; padding: 16px 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); font-weight: 500; align-items: center; gap: 12px;">
+  <div id="createNotifyIcon" style="font-size: 1.3em;"></div>
+  <div id="createNotifyMsg" style="flex: 1; font-size: 0.95em;"></div>
+</div>
+
+<script>
+  const reagentCategories = [
+    'Clinical Reagents',
+    'X-Ray & Imaging Chemicals',
+    'Controls & Calibrators',
+    'Stains & Dyes',
+    'Test Kits'
+  ];
+
+  const supplyCategories = [
+    'X-Ray Films & Accessories',
+    'Ultrasound & Echo Gels',
+    'ECG Papers & Electrodes',
+    'Consumables',
+    'PPE',
+    'General Supplies'
+  ];
+
+  const reagentUnits = [
+    { val: 'tests', label: 'tests (Total Test Determinations)' },
+    { val: 'kits', label: 'kits (Complete Assay Kits)' },
+    { val: 'ml', label: 'ml (Milliliters)' },
+    { val: 'L', label: 'L (Liters - Developer/Fixer/Bulk)' },
+    { val: 'μL', label: 'μL (Microliters)' },
+    { val: 'bottles', label: 'bottles (Bottles / Reagent Containers)' },
+    { val: 'vials', label: 'vials (Vials)' },
+    { val: 'gallons', label: 'gallons (Gallons - Processing Chem)' },
+    { val: 'boxes', label: 'boxes (Boxes)' }
+  ];
+
+  const supplyUnits = [
+    { val: 'films', label: 'films (X-Ray Films / Sheets)' },
+    { val: 'sheets', label: 'sheets (Sheets / Films)' },
+    { val: 'rolls', label: 'rolls (ECG Paper Rolls, Ultrasound Video Paper)' },
+    { val: 'bottles', label: 'bottles (Ultrasound Gel bottles, Sprays)' },
+    { val: 'L', label: 'L (Liters - 5L Ultrasound Gel Cubitainer)' },
+    { val: 'pads', label: 'pads (ECG Electrodes / Monitoring Pads)' },
+    { val: 'pcs', label: 'pcs (Pieces / Individual Units)' },
+    { val: 'boxes', label: 'boxes (Boxes)' },
+    { val: 'packs', label: 'packs (Packs / Packages)' },
+    { val: 'tubes', label: 'tubes (Vacutainer / Microtainer Tubes)' },
+    { val: 'ea', label: 'ea (Each)' }
+  ];
+
+  function switchItemMode(mode) {
+    const cardReagent = document.getElementById('cardTypeReagent');
+    const cardSupply = document.getElementById('cardTypeSupply');
+    const sectionReagent = document.getElementById('sectionReagentSpecific');
+    const itemModeInput = document.getElementById('itemMode');
+    const catSelect = document.getElementById('category');
+    const unitSelect = document.getElementById('unit');
+    const areaSelect = document.getElementById('area');
+    const lblItemName = document.getElementById('lblItemName');
+    const txtItemNameHelper = document.getElementById('txtItemNameHelper');
+    const lblSubmitBtn = document.getElementById('lblSubmitBtn');
+    const nameInput = document.getElementById('name');
+
+    if (mode === 'supply') {
+      itemModeInput.value = 'supply';
+
+      // Visual card selection
+      cardSupply.style.border = '2px solid #3b82f6';
+      cardSupply.style.background = '#eff6ff';
+      cardSupply.querySelector('div').style.background = '#3b82f6';
+      cardSupply.querySelector('div').style.color = '#ffffff';
+      cardSupply.querySelector('div:last-child div:first-child').style.color = '#1e40af';
+
+      cardReagent.style.border = '2px solid var(--border-gray)';
+      cardReagent.style.background = '#ffffff';
+      cardReagent.querySelector('div').style.background = '#f1f5f9';
+      cardReagent.querySelector('div').style.color = 'var(--text-gray)';
+      cardReagent.querySelector('div:last-child div:first-child').style.color = 'var(--text-dark)';
+
+      // Hide Reagent specific clinical fields
+      sectionReagent.style.display = 'none';
+
+      // Update labels & placeholders
+      lblItemName.textContent = 'Supply / Film / Gel / Paper Name';
+      txtItemNameHelper.textContent = 'e.g., X-Ray Film 14x17, Ultrasound Gel 5L, ECG Thermal Paper, Nitrile Gloves';
+      lblSubmitBtn.textContent = 'Register Diagnostic Supply';
+      nameInput.placeholder = 'e.g., 14x17 Blue-Sensitive X-Ray Film, Ultrasound Transmission Gel (5L), Sony UPP-110HD Paper';
+      document.getElementById('lblSectionVendor').textContent = '3. Supplier & Manufacturer';
+
+      // Populate Supply categories
+      catSelect.innerHTML = supplyCategories.map(c => `<option value="${c}">${c}</option>`).join('');
+
+      // Populate Supply units
+      unitSelect.innerHTML = supplyUnits.map(u => `<option value="${u.val}" ${u.val === 'boxes' ? 'selected' : ''}>${u.label}</option>`).join('');
+
+      // Reset reagent values
+      document.getElementById('storageTemp').value = '18-25°C Room Temp';
+      document.getElementById('requiresRefrigeration').checked = false;
+      document.getElementById('hazardClass').value = 'Non-Hazardous';
+      document.getElementById('openVialStabilityDays').value = '';
+
+    } else {
+      itemModeInput.value = 'reagent';
+
+      // Visual card selection
+      cardReagent.style.border = '2px solid #10b981';
+      cardReagent.style.background = '#ecfdf5';
+      cardReagent.querySelector('div').style.background = '#10b981';
+      cardReagent.querySelector('div').style.color = '#ffffff';
+      cardReagent.querySelector('div:last-child div:first-child').style.color = '#065f46';
+
+      cardSupply.style.border = '2px solid var(--border-gray)';
+      cardSupply.style.background = '#ffffff';
+      cardSupply.querySelector('div').style.background = '#f1f5f9';
+      cardSupply.querySelector('div').style.color = 'var(--text-gray)';
+      cardSupply.querySelector('div:last-child div:first-child').style.color = 'var(--text-dark)';
+
+      // Show Reagent specific clinical fields
+      sectionReagent.style.display = 'block';
+
+      // Update labels & placeholders
+      lblItemName.textContent = 'Reagent / Chemical / Kit Name';
+      txtItemNameHelper.textContent = 'Official clinical reagent, test kit, or X-ray processing chemical name';
+      lblSubmitBtn.textContent = 'Register Reagent / Chemical';
+      nameInput.placeholder = 'e.g., AST / SGOT Kinetic Kit, X-Ray Automatic Developer (5L), Gram Stain Kit';
+      document.getElementById('lblSectionVendor').textContent = '4. Supplier & Manufacturer';
+
+      // Populate Reagent categories
+      catSelect.innerHTML = reagentCategories.map(c => `<option value="${c}">${c}</option>`).join('');
+
+      // Populate Reagent units
+      unitSelect.innerHTML = reagentUnits.map(u => `<option value="${u.val}" ${u.val === 'tests' ? 'selected' : ''}>${u.label}</option>`).join('');
+    }
+  }
+
+  function handleTempChange(val) {
+    const chk = document.getElementById('requiresRefrigeration');
+    if (val.includes('2-8°C') || val.includes('Frozen') || val.includes('Ultra-Low')) {
+      chk.checked = true;
+    }
+  }
+
+  function showToast(type, msg) {
+    const t = document.getElementById('createNotifyToast');
+    const icon = document.getElementById('createNotifyIcon');
+    const text = document.getElementById('createNotifyMsg');
+
+    if (type === 'success') {
+      t.style.backgroundColor = '#ecfdf5';
+      t.style.color = '#065f46';
+      t.style.border = '1px solid #a7f3d0';
+      icon.innerHTML = '<i class="fa fa-circle-check" style="color:#10b981;"></i>';
+    } else {
+      t.style.backgroundColor = '#fef2f2';
+      t.style.color = '#991b1b';
+      t.style.border = '1px solid #fecaca';
+      icon.innerHTML = '<i class="fa fa-circle-xmark" style="color:#ef4444;"></i>';
+    }
+
+    text.textContent = msg;
+    t.style.display = 'flex';
+    setTimeout(() => { t.style.display = 'none'; }, 4000);
+  }
+
+  async function handleCreateSubmit(e) {
+    e.preventDefault();
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Saving...';
+
+    const form = e.target;
+    const formData = new FormData(form);
+    const payload = Object.fromEntries(formData.entries());
+    payload.requiresRefrigeration = document.getElementById('requiresRefrigeration').checked;
+
+    try {
+      const res = await fetch('/inventory', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast('success', data.message || 'Item registered successfully!');
+        setTimeout(() => {
+          window.location.href = `/inventory/${data.itemId}`;
+        }, 1000);
+      } else {
+        showToast('error', data.error || 'Failed to register item.');
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa fa-check"></i> ${document.getElementById('lblSubmitBtn').textContent}`;
+      }
+    } catch (err) {
+      showToast('error', 'Network error: ' + err.message);
+      btn.disabled = false;
+      btn.innerHTML = `<i class="fa fa-check"></i> ${document.getElementById('lblSubmitBtn').textContent}`;
+    }
+  }
+
+  // Initialize with Reagent mode
+  switchItemMode('reagent');
+</script>

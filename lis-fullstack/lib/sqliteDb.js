@@ -212,6 +212,50 @@ function createBetterSqliteDb(dbPath, opts = {}) {
       created_at TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_chat_msg_conv ON chatbot_messages(conversation_id);
+
+    CREATE TABLE IF NOT EXISTS inventory (
+      id TEXT PRIMARY KEY,
+      sku TEXT UNIQUE,
+      name TEXT,
+      category TEXT,
+      area TEXT,
+      createdAt TEXT,
+      updatedAt TEXT,
+      json TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_inventory_sku ON inventory(sku);
+    CREATE INDEX IF NOT EXISTS idx_inventory_category ON inventory(category);
+    CREATE INDEX IF NOT EXISTS idx_inventory_area ON inventory(area);
+
+    CREATE TABLE IF NOT EXISTS inventory_batches (
+      id TEXT PRIMARY KEY,
+      inventoryId TEXT,
+      lotNumber TEXT,
+      expirationDate TEXT,
+      createdAt TEXT,
+      updatedAt TEXT,
+      json TEXT NOT NULL,
+      FOREIGN KEY(inventoryId) REFERENCES inventory(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_inv_batch_inventory ON inventory_batches(inventoryId);
+    CREATE INDEX IF NOT EXISTS idx_inv_batch_lot ON inventory_batches(lotNumber);
+    CREATE INDEX IF NOT EXISTS idx_inv_batch_expiration ON inventory_batches(expirationDate);
+
+    CREATE TABLE IF NOT EXISTS inventory_transactions (
+      id TEXT PRIMARY KEY,
+      inventoryId TEXT,
+      batchId TEXT,
+      transactionType TEXT,
+      performedBy TEXT,
+      createdAt TEXT,
+      json TEXT NOT NULL,
+      FOREIGN KEY(inventoryId) REFERENCES inventory(id),
+      FOREIGN KEY(batchId) REFERENCES inventory_batches(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_inv_trans_inventory ON inventory_transactions(inventoryId);
+    CREATE INDEX IF NOT EXISTS idx_inv_trans_batch ON inventory_transactions(batchId);
+    CREATE INDEX IF NOT EXISTS idx_inv_trans_type ON inventory_transactions(transactionType);
+    CREATE INDEX IF NOT EXISTS idx_inv_trans_date ON inventory_transactions(createdAt);
   `);
 
   const stmts = {
@@ -260,7 +304,29 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     deleteChatConversationById: sqlite.prepare('DELETE FROM chatbot_conversations WHERE id = ?'),
     deleteChatMessagesByConvId: sqlite.prepare('DELETE FROM chatbot_messages WHERE conversation_id = ?'),
     getChatMessagesByConvId: sqlite.prepare('SELECT id, conversation_id, user_id, role, content, sources, created_at FROM chatbot_messages WHERE conversation_id = ? ORDER BY created_at ASC'),
-    insertChatMessage: sqlite.prepare('INSERT INTO chatbot_messages (id, conversation_id, user_id, role, content, sources, created_at) VALUES (@id, @conversation_id, @user_id, @role, @content, @sources, @created_at)')
+    insertChatMessage: sqlite.prepare('INSERT INTO chatbot_messages (id, conversation_id, user_id, role, content, sources, created_at) VALUES (@id, @conversation_id, @user_id, @role, @content, @sources, @created_at)'),
+
+    getAllInventory: sqlite.prepare("SELECT json FROM inventory WHERE json_extract(json, '$.isActive') IS NULL OR json_extract(json, '$.isActive') != 0 ORDER BY createdAt DESC"),
+    getInventoryById: sqlite.prepare('SELECT json FROM inventory WHERE id = ?'),
+    getInventoryBySku: sqlite.prepare('SELECT json FROM inventory WHERE sku = ?'),
+    getInventoryByCategory: sqlite.prepare("SELECT json FROM inventory WHERE category = ? AND (json_extract(json, '$.isActive') IS NULL OR json_extract(json, '$.isActive') != 0) ORDER BY name"),
+    getInventoryByArea: sqlite.prepare("SELECT json FROM inventory WHERE area = ? AND (json_extract(json, '$.isActive') IS NULL OR json_extract(json, '$.isActive') != 0) ORDER BY name"),
+    upsertInventory: sqlite.prepare('INSERT OR REPLACE INTO inventory (id, sku, name, category, area, createdAt, updatedAt, json) VALUES (@id, @sku, @name, @category, @area, @createdAt, @updatedAt, @json)'),
+    deleteInventoryById: sqlite.prepare('DELETE FROM inventory WHERE id = ?'),
+    
+    getAllInventoryBatches: sqlite.prepare('SELECT json FROM inventory_batches ORDER BY createdAt DESC'),
+    getInventoryBatchesByItemId: sqlite.prepare('SELECT json FROM inventory_batches WHERE inventoryId = ? ORDER BY createdAt DESC'),
+    getInventoryBatchById: sqlite.prepare('SELECT json FROM inventory_batches WHERE id = ?'),
+    getInventoryBatchByLot: sqlite.prepare('SELECT json FROM inventory_batches WHERE lotNumber = ?'),
+    upsertInventoryBatch: sqlite.prepare('INSERT OR REPLACE INTO inventory_batches (id, inventoryId, lotNumber, expirationDate, createdAt, updatedAt, json) VALUES (@id, @inventoryId, @lotNumber, @expirationDate, @createdAt, @updatedAt, @json)'),
+    deleteInventoryBatchById: sqlite.prepare('DELETE FROM inventory_batches WHERE id = ?'),
+    deleteInventoryBatchesByItemId: sqlite.prepare('DELETE FROM inventory_batches WHERE inventoryId = ?'),
+    
+    getAllInventoryTransactions: sqlite.prepare('SELECT json FROM inventory_transactions ORDER BY createdAt DESC'),
+    getInventoryTransactionsByItemId: sqlite.prepare('SELECT json FROM inventory_transactions WHERE inventoryId = ? ORDER BY createdAt DESC'),
+    getInventoryTransactionsByBatchId: sqlite.prepare('SELECT json FROM inventory_transactions WHERE batchId = ? ORDER BY createdAt DESC'),
+    insertInventoryTransaction: sqlite.prepare('INSERT INTO inventory_transactions (id, inventoryId, batchId, transactionType, performedBy, createdAt, json) VALUES (@id, @inventoryId, @batchId, @transactionType, @performedBy, @createdAt, @json)'),
+    deleteInventoryTransactionsByItemId: sqlite.prepare('DELETE FROM inventory_transactions WHERE inventoryId = ?')
   };
 
   const patientCache = createEntityCache(1000);
@@ -768,6 +834,179 @@ function createBetterSqliteDb(dbPath, opts = {}) {
       }
     },
 
+    // Inventory Management Methods
+    getInventory() {
+      try {
+        const rows = stmts.getAllInventory.all();
+        return parseRows(rows);
+      } catch (e) {
+        return [];
+      }
+    },
+    getInventoryById(id) {
+      if (!id) return null;
+      try {
+        const row = stmts.getInventoryById.get(id);
+        return row && row.json ? JSON.parse(row.json) : null;
+      } catch (e) {
+        return null;
+      }
+    },
+    getInventoryBySku(sku) {
+      if (!sku) return null;
+      try {
+        const row = stmts.getInventoryBySku.get(sku);
+        return row && row.json ? JSON.parse(row.json) : null;
+      } catch (e) {
+        return null;
+      }
+    },
+    getInventoryByCategory(category) {
+      if (!category) return [];
+      try {
+        const rows = stmts.getInventoryByCategory.all(category);
+        return parseRows(rows);
+      } catch (e) {
+        return [];
+      }
+    },
+    getInventoryByArea(area) {
+      if (!area) return [];
+      try {
+        const rows = stmts.getInventoryByArea.all(area);
+        return parseRows(rows);
+      } catch (e) {
+        return [];
+      }
+    },
+    saveInventory(item) {
+      if (!item || !item.id) return null;
+      try {
+        const data = {
+          id: String(item.id),
+          sku: safeStr(item.sku || ''),
+          name: safeStr(item.name || ''),
+          category: safeStr(item.category || ''),
+          area: safeStr(item.area || ''),
+          createdAt: safeStr(item.createdAt || new Date().toISOString()),
+          updatedAt: safeStr(item.updatedAt || new Date().toISOString()),
+          json: JSON.stringify(item)
+        };
+        stmts.upsertInventory.run(data);
+        return item;
+      } catch (e) {
+        console.error('[sqliteDb] saveInventory error:', e.message);
+        return null;
+      }
+    },
+    deleteInventory(id) {
+      try {
+        stmts.deleteInventoryById.run(id);
+        stmts.deleteInventoryBatchesByItemId.run(id);
+        stmts.deleteInventoryTransactionsByItemId.run(id);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    },
+
+    getAllInventoryBatches() {
+      try {
+        const rows = stmts.getAllInventoryBatches.all();
+        return parseRows(rows);
+      } catch (e) {
+        return [];
+      }
+    },
+    getInventoryBatchesByItemId(inventoryId) {
+      if (!inventoryId) return [];
+      try {
+        const rows = stmts.getInventoryBatchesByItemId.all(inventoryId);
+        return parseRows(rows);
+      } catch (e) {
+        return [];
+      }
+    },
+    getInventoryBatchById(id) {
+      if (!id) return null;
+      try {
+        const row = stmts.getInventoryBatchById.get(id);
+        return row && row.json ? JSON.parse(row.json) : null;
+      } catch (e) {
+        return null;
+      }
+    },
+    saveBatch(batch) {
+      if (!batch || !batch.id) return null;
+      try {
+        const data = {
+          id: String(batch.id),
+          inventoryId: String(batch.inventoryId || ''),
+          lotNumber: safeStr(batch.lotNumber || ''),
+          expirationDate: batch.expirationDate ? safeStr(new Date(batch.expirationDate).toISOString()) : null,
+          createdAt: safeStr(batch.createdAt || new Date().toISOString()),
+          updatedAt: safeStr(batch.updatedAt || new Date().toISOString()),
+          json: JSON.stringify(batch)
+        };
+        stmts.upsertInventoryBatch.run(data);
+        return batch;
+      } catch (e) {
+        console.error('[sqliteDb] saveBatch error:', e.message);
+        return null;
+      }
+    },
+    deleteBatch(id) {
+      try {
+        stmts.deleteInventoryBatchById.run(id);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    },
+
+    getAllInventoryTransactions() {
+      try {
+        const rows = stmts.getAllInventoryTransactions.all();
+        return parseRows(rows);
+      } catch (e) {
+        return [];
+      }
+    },
+    getInventoryTransactions(inventoryId, batchId) {
+      try {
+        let rows;
+        if (batchId) {
+          rows = stmts.getInventoryTransactionsByBatchId.all(batchId);
+        } else if (inventoryId) {
+          rows = stmts.getInventoryTransactionsByItemId.all(inventoryId);
+        } else {
+          rows = stmts.getAllInventoryTransactions.all();
+        }
+        return parseRows(rows);
+      } catch (e) {
+        return [];
+      }
+    },
+    saveTransaction(transaction) {
+      if (!transaction || !transaction.id) return null;
+      try {
+        const data = {
+          id: String(transaction.id),
+          inventoryId: String(transaction.inventoryId || ''),
+          batchId: transaction.batchId ? String(transaction.batchId) : null,
+          transactionType: safeStr(transaction.transactionType || ''),
+          performedBy: safeStr(transaction.performedBy || ''),
+          createdAt: safeStr(transaction.createdAt || new Date().toISOString()),
+          json: JSON.stringify(transaction)
+        };
+        stmts.insertInventoryTransaction.run(data);
+        return transaction;
+      } catch (e) {
+        console.error('[sqliteDb] saveTransaction error:', e.message);
+        return null;
+      }
+    },
+
     close() { try { sqlite.close(); } catch (e) {} }
   };
 }
@@ -872,6 +1111,50 @@ function createSqlJsDb(SQL, dbPath) {
       created_at TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_chat_msg_conv ON chatbot_messages(conversation_id);
+
+    CREATE TABLE IF NOT EXISTS inventory (
+      id TEXT PRIMARY KEY,
+      sku TEXT UNIQUE,
+      name TEXT,
+      category TEXT,
+      area TEXT,
+      createdAt TEXT,
+      updatedAt TEXT,
+      json TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_inventory_sku ON inventory(sku);
+    CREATE INDEX IF NOT EXISTS idx_inventory_category ON inventory(category);
+    CREATE INDEX IF NOT EXISTS idx_inventory_area ON inventory(area);
+
+    CREATE TABLE IF NOT EXISTS inventory_batches (
+      id TEXT PRIMARY KEY,
+      inventoryId TEXT,
+      lotNumber TEXT,
+      expirationDate TEXT,
+      createdAt TEXT,
+      updatedAt TEXT,
+      json TEXT NOT NULL,
+      FOREIGN KEY(inventoryId) REFERENCES inventory(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_inv_batch_inventory ON inventory_batches(inventoryId);
+    CREATE INDEX IF NOT EXISTS idx_inv_batch_lot ON inventory_batches(lotNumber);
+    CREATE INDEX IF NOT EXISTS idx_inv_batch_expiration ON inventory_batches(expirationDate);
+
+    CREATE TABLE IF NOT EXISTS inventory_transactions (
+      id TEXT PRIMARY KEY,
+      inventoryId TEXT,
+      batchId TEXT,
+      transactionType TEXT,
+      performedBy TEXT,
+      createdAt TEXT,
+      json TEXT NOT NULL,
+      FOREIGN KEY(inventoryId) REFERENCES inventory(id),
+      FOREIGN KEY(batchId) REFERENCES inventory_batches(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_inv_trans_inventory ON inventory_transactions(inventoryId);
+    CREATE INDEX IF NOT EXISTS idx_inv_trans_batch ON inventory_transactions(batchId);
+    CREATE INDEX IF NOT EXISTS idx_inv_trans_type ON inventory_transactions(transactionType);
+    CREATE INDEX IF NOT EXISTS idx_inv_trans_date ON inventory_transactions(createdAt);
   `);
 
   let persistTimer = null;
@@ -1550,6 +1833,166 @@ function createSqlJsDb(SQL, dbPath) {
         this.setSettings(data.settings);
       }
       persist();
+    },
+
+    // Inventory Management Methods
+    getInventory() {
+      try {
+        return parseRows(queryAll("SELECT json FROM inventory WHERE json_extract(json, '$.isActive') IS NULL OR json_extract(json, '$.isActive') != 0 ORDER BY createdAt DESC"));
+      } catch (e) {
+        return [];
+      }
+    },
+    getInventoryById(id) {
+      if (!id) return null;
+      try {
+        const rows = queryAll('SELECT json FROM inventory WHERE id = ?', [id]);
+        return rows.length ? JSON.parse(rows[0].json) : null;
+      } catch (e) {
+        return null;
+      }
+    },
+    getInventoryBySku(sku) {
+      if (!sku) return null;
+      try {
+        const rows = queryAll('SELECT json FROM inventory WHERE sku = ?', [sku]);
+        return rows.length ? JSON.parse(rows[0].json) : null;
+      } catch (e) {
+        return null;
+      }
+    },
+    getInventoryByCategory(category) {
+      if (!category) return [];
+      try {
+        return parseRows(queryAll("SELECT json FROM inventory WHERE category = ? AND (json_extract(json, '$.isActive') IS NULL OR json_extract(json, '$.isActive') != 0) ORDER BY name", [category]));
+      } catch (e) {
+        return [];
+      }
+    },
+    getInventoryByArea(area) {
+      if (!area) return [];
+      try {
+        return parseRows(queryAll("SELECT json FROM inventory WHERE area = ? AND (json_extract(json, '$.isActive') IS NULL OR json_extract(json, '$.isActive') != 0) ORDER BY name", [area]));
+      } catch (e) {
+        return [];
+      }
+    },
+    saveInventory(item) {
+      if (!item || !item.id) return null;
+      try {
+        const data = {
+          id: String(item.id),
+          sku: item.sku || '',
+          name: item.name || '',
+          category: item.category || '',
+          area: item.area || '',
+          createdAt: (item.createdAt || new Date()).toISOString(),
+          updatedAt: (item.updatedAt || new Date()).toISOString(),
+          json: JSON.stringify(item)
+        };
+        queryRun(
+          'INSERT OR REPLACE INTO inventory (id, sku, name, category, area, createdAt, updatedAt, json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [data.id, data.sku, data.name, data.category, data.area, data.createdAt, data.updatedAt, data.json]
+        );
+        persist();
+        return item;
+      } catch (e) {
+        console.error('[sqliteDb sql.js] saveInventory error:', e.message);
+        return null;
+      }
+    },
+    deleteInventory(id) {
+      try {
+        queryRun('DELETE FROM inventory WHERE id = ?', [id]);
+        persist();
+        return true;
+      } catch (e) {
+        return false;
+      }
+    },
+
+    getInventoryBatchesByItemId(inventoryId) {
+      if (!inventoryId) return [];
+      try {
+        return parseRows(queryAll('SELECT json FROM inventory_batches WHERE inventoryId = ? ORDER BY createdAt DESC', [inventoryId]));
+      } catch (e) {
+        return [];
+      }
+    },
+    getInventoryBatchById(id) {
+      if (!id) return null;
+      try {
+        const rows = queryAll('SELECT json FROM inventory_batches WHERE id = ?', [id]);
+        return rows.length ? JSON.parse(rows[0].json) : null;
+      } catch (e) {
+        return null;
+      }
+    },
+    saveBatch(batch) {
+      if (!batch || !batch.id) return null;
+      try {
+        const data = {
+          id: String(batch.id),
+          inventoryId: String(batch.inventoryId || ''),
+          lotNumber: batch.lotNumber || '',
+          expirationDate: batch.expirationDate ? new Date(batch.expirationDate).toISOString() : null,
+          createdAt: (batch.createdAt || new Date()).toISOString(),
+          updatedAt: (batch.updatedAt || new Date()).toISOString(),
+          json: JSON.stringify(batch)
+        };
+        queryRun(
+          'INSERT OR REPLACE INTO inventory_batches (id, inventoryId, lotNumber, expirationDate, createdAt, updatedAt, json) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [data.id, data.inventoryId, data.lotNumber, data.expirationDate, data.createdAt, data.updatedAt, data.json]
+        );
+        persist();
+        return batch;
+      } catch (e) {
+        console.error('[sqliteDb sql.js] saveBatch error:', e.message);
+        return null;
+      }
+    },
+    deleteBatch(id) {
+      try {
+        queryRun('DELETE FROM inventory_batches WHERE id = ?', [id]);
+        persist();
+        return true;
+      } catch (e) {
+        return false;
+      }
+    },
+
+    getInventoryTransactions(inventoryId, batchId) {
+      try {
+        if (batchId) {
+          return parseRows(queryAll('SELECT json FROM inventory_transactions WHERE batchId = ? ORDER BY createdAt DESC', [batchId]));
+        }
+        return parseRows(queryAll('SELECT json FROM inventory_transactions WHERE inventoryId = ? ORDER BY createdAt DESC', [inventoryId]));
+      } catch (e) {
+        return [];
+      }
+    },
+    saveTransaction(transaction) {
+      if (!transaction || !transaction.id) return null;
+      try {
+        const data = {
+          id: String(transaction.id),
+          inventoryId: String(transaction.inventoryId || ''),
+          batchId: transaction.batchId ? String(transaction.batchId) : null,
+          transactionType: transaction.transactionType || '',
+          performedBy: transaction.performedBy || '',
+          createdAt: (transaction.createdAt || new Date()).toISOString(),
+          json: JSON.stringify(transaction)
+        };
+        queryRun(
+          'INSERT INTO inventory_transactions (id, inventoryId, batchId, transactionType, performedBy, createdAt, json) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [data.id, data.inventoryId, data.batchId, data.transactionType, data.performedBy, data.createdAt, data.json]
+        );
+        persist();
+        return transaction;
+      } catch (e) {
+        console.error('[sqliteDb sql.js] saveTransaction error:', e.message);
+        return null;
+      }
     },
 
     close() {

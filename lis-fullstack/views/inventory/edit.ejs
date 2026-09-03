@@ -1,0 +1,361 @@
+<% const initialIsSupply = ['Supplies', 'Consumables', 'PPE', 'General Supplies'].includes(item.category); %>
+
+<div class="card" style="max-width: 900px; margin: 0 auto;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border-gray); flex-wrap: wrap; gap: 12px;">
+    <div>
+      <h3 style="margin: 0; display: flex; align-items: center; gap: 10px;">
+        <i class="fa fa-pen-to-square" style="color: var(--secondary-green);"></i> Edit: <%= item.name %>
+      </h3>
+      <p style="color: var(--text-gray); margin-top: 4px; font-size: 0.9em;">
+        SKU: <strong><%= item.sku %></strong> | ID: <span style="font-family: monospace;"><%= item.id %></span>
+      </p>
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <a href="/inventory/<%= item.id %>" class="button btn-secondary">
+        <i class="fa fa-arrow-left"></i> View Item
+      </a>
+    </div>
+  </div>
+
+  <!-- Type Selector: Reagent vs Supply -->
+  <div style="margin-bottom: 24px;">
+    <label style="font-weight: 700; color: var(--primary-black); margin-bottom: 8px; display: block;">
+      Item Form Mode:
+    </label>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+      <div id="cardTypeReagent" onclick="switchItemMode('reagent')" style="border: 2px solid <%= !initialIsSupply ? '#10b981' : 'var(--border-gray)' %>; background: <%= !initialIsSupply ? '#ecfdf5' : '#ffffff' %>; border-radius: 12px; padding: 16px; cursor: pointer; display: flex; align-items: center; gap: 14px; transition: all 0.2s;">
+        <div style="width: 44px; height: 44px; border-radius: 10px; background: <%= !initialIsSupply ? '#10b981' : '#f1f5f9' %>; color: <%= !initialIsSupply ? '#ffffff' : 'var(--text-gray)' %>; display: flex; align-items: center; justify-content: center; font-size: 1.4em; flex-shrink: 0;">
+          <i class="fa fa-vial"></i>
+        </div>
+        <div>
+          <div style="font-weight: 700; font-size: 1.05em; color: <%= !initialIsSupply ? '#065f46' : 'var(--text-dark)' %>;">🧪 Laboratory Reagent / Control</div>
+          <div style="font-size: 0.82em; color: <%= !initialIsSupply ? '#047857' : 'var(--text-gray)' %>; margin-top: 2px;">Detailed clinical tracking (Cold chain, open-vial stability, GHS hazard)</div>
+        </div>
+      </div>
+
+      <div id="cardTypeSupply" onclick="switchItemMode('supply')" style="border: 2px solid <%= initialIsSupply ? '#3b82f6' : 'var(--border-gray)' %>; background: <%= initialIsSupply ? '#eff6ff' : '#ffffff' %>; border-radius: 12px; padding: 16px; cursor: pointer; display: flex; align-items: center; gap: 14px; transition: all 0.2s;">
+        <div style="width: 44px; height: 44px; border-radius: 10px; background: <%= initialIsSupply ? '#3b82f6' : '#f1f5f9' %>; color: <%= initialIsSupply ? '#ffffff' : 'var(--text-gray)' %>; display: flex; align-items: center; justify-content: center; font-size: 1.4em; flex-shrink: 0;">
+          <i class="fa fa-box-archive"></i>
+        </div>
+        <div>
+          <div style="font-weight: 700; font-size: 1.05em; color: <%= initialIsSupply ? '#1e40af' : 'var(--text-dark)' %>;">📦 General Supply / Consumable</div>
+          <div style="font-size: 0.82em; color: <%= initialIsSupply ? '#1e40af' : 'var(--text-gray)' %>; margin-top: 2px;">Simple & fast form (Gloves, tubes, tips, pipette tips, slides)</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <form id="editInventoryForm" onsubmit="handleEditSubmit(event);">
+    <!-- General Identification -->
+    <div style="font-weight: 700; color: var(--primary-black); font-size: 1.05em; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+      <i class="fa fa-tag" style="color: var(--secondary-green);"></i> 1. Item Identification & Classification
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="name"><span id="lblItemName"><%= initialIsSupply ? 'Supply / Consumable Name' : 'Item / Reagent Name' %></span> <span style="color: var(--danger);">*</span></label>
+        <input type="text" id="name" name="name" required value="<%= item.name %>">
+      </div>
+      <div class="form-group">
+        <label for="sku">Catalog / SKU / REF # <span style="color: var(--danger);">*</span></label>
+        <input type="text" id="sku" name="sku" required value="<%= item.sku %>">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="category">Category <span style="color: var(--danger);">*</span></label>
+        <select id="category" name="category" required>
+          <% categories.forEach(cat => { %>
+            <option value="<%= cat %>" <%= item.category === cat ? 'selected' : '' %>><%= cat %></option>
+          <% }); %>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="area">Laboratory Section / Department <span style="color: var(--danger);">*</span></label>
+        <select id="area" name="area" required>
+          <% areas.forEach(area => { %>
+            <option value="<%= area %>" <%= item.area === area ? 'selected' : '' %>><%= area %></option>
+          <% }); %>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="unit">Unit of Measure <span style="color: var(--danger);">*</span></label>
+        <select id="unit" name="unit" required>
+          <option value="films" <%= item.unit === 'films' ? 'selected' : '' %>>films (X-Ray Films / Sheets)</option>
+          <option value="sheets" <%= item.unit === 'sheets' ? 'selected' : '' %>>sheets (Sheets / Films)</option>
+          <option value="rolls" <%= item.unit === 'rolls' ? 'selected' : '' %>>rolls (ECG Paper Rolls, Ultrasound Video Paper)</option>
+          <option value="bottles" <%= item.unit === 'bottles' ? 'selected' : '' %>>bottles (Ultrasound Gel bottles, Sprays)</option>
+          <option value="pads" <%= item.unit === 'pads' ? 'selected' : '' %>>pads (ECG Electrodes / Monitoring Pads)</option>
+          <option value="pcs" <%= item.unit === 'pcs' ? 'selected' : '' %>>pcs (Pieces / Individual Units)</option>
+          <option value="boxes" <%= item.unit === 'boxes' ? 'selected' : '' %>>boxes (Boxes)</option>
+          <option value="packs" <%= item.unit === 'packs' ? 'selected' : '' %>>packs (Packs / Packages)</option>
+          <option value="tubes" <%= item.unit === 'tubes' ? 'selected' : '' %>>tubes (Vacutainer / Microtainer Tubes)</option>
+          <option value="ea" <%= item.unit === 'ea' ? 'selected' : '' %>>ea (Each)</option>
+          <option value="tests" <%= item.unit === 'tests' ? 'selected' : '' %>>tests (Total Test Determinations)</option>
+          <option value="kits" <%= item.unit === 'kits' ? 'selected' : '' %>>kits (Complete Assay Kits)</option>
+          <option value="ml" <%= item.unit === 'ml' ? 'selected' : '' %>>ml (Milliliters)</option>
+          <option value="L" <%= item.unit === 'L' ? 'selected' : '' %>>L (Liters - Gel / Chemical Bulk)</option>
+          <option value="gallons" <%= item.unit === 'gallons' ? 'selected' : '' %>>gallons (Gallons - Developer/Fixer)</option>
+          <option value="μL" <%= item.unit === 'μL' ? 'selected' : '' %>>μL (Microliters)</option>
+          <option value="vials" <%= item.unit === 'vials' ? 'selected' : '' %>>vials (Vials / Bottles)</option>
+          <option value="g" <%= item.unit === 'g' ? 'selected' : '' %>>g (Grams)</option>
+          <option value="mg" <%= item.unit === 'mg' ? 'selected' : '' %>>mg (Milligrams)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="packageSize">Package / Presentation Size</label>
+        <input type="text" id="packageSize" name="packageSize" value="<%= item.packageSize || '' %>" placeholder="e.g., 5 x 20ml (100 tests)">
+      </div>
+    </div>
+
+    <!-- Storage Location (Always visible) -->
+    <div class="form-group">
+      <label for="location">Physical Storage Location</label>
+      <input type="text" id="location" name="location" value="<%= item.location || '' %>" placeholder="e.g., Refrigerator 2 - Shelf B, Cabinet 4">
+    </div>
+
+    <!-- Section 2: Stock Thresholds & Cost -->
+    <div style="font-weight: 700; color: var(--primary-black); font-size: 1.05em; margin: 24px 0 16px 0; display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--border-gray); padding-top: 20px;">
+      <i class="fa fa-chart-line" style="color: var(--secondary-green);"></i> 2. Stock Thresholds & Cost
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="minThreshold">Minimum Safety Stock Level (Reorder Point) <span style="color: var(--danger);">*</span></label>
+        <input type="number" id="minThreshold" name="minThreshold" required min="0" value="<%= item.minThreshold %>">
+        <small style="color: var(--text-gray); font-size: 0.8em; margin-top: 4px; display: block;">Standard alert when stock drops to or below this reorder level</small>
+      </div>
+      <div class="form-group">
+        <label for="criticalThreshold" style="color: #b91c1c;">Critical Emergency Stock Level <span style="color: var(--danger);">*</span></label>
+        <input type="number" id="criticalThreshold" name="criticalThreshold" required min="0" value="<%= item.criticalThreshold !== undefined ? item.criticalThreshold : 2 %>" style="border-color: #fca5a5;">
+        <small style="color: #b91c1c; font-size: 0.8em; margin-top: 4px; display: block;">Triggers global emergency popup across the LIS when reached</small>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="maxThreshold">Maximum Storage Capacity</label>
+        <input type="number" id="maxThreshold" name="maxThreshold" min="0" value="<%= item.maxThreshold || '' %>" placeholder="Optional ceiling capacity">
+      </div>
+      <div class="form-group">
+        <label for="cost">Unit Cost ($ / ₱)</label>
+        <input type="number" id="cost" name="cost" step="0.01" min="0" value="<%= item.cost || 0 %>">
+      </div>
+    </div>
+
+    <!-- Section 3: Clinical Reagent Parameters (Hidden in Supply mode) -->
+    <div id="sectionReagentSpecific" style="<%= initialIsSupply ? 'display: none;' : '' %>">
+      <div style="font-weight: 700; color: var(--primary-black); font-size: 1.05em; margin: 24px 0 16px 0; display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--border-gray); padding-top: 20px;">
+        <i class="fa fa-temperature-half" style="color: var(--secondary-green);"></i> 3. Clinical Reagent Storage & In-Use Stability (ISO 15189)
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="storageTemp">Storage Temperature Requirement <span style="color: var(--danger);">*</span></label>
+          <select id="storageTemp" name="storageTemp">
+            <option value="18-25°C Room Temp" <%= item.storageTemp === '18-25°C Room Temp' ? 'selected' : '' %>>18-25°C Room Temperature</option>
+            <option value="2-8°C Refrigerated" <%= item.storageTemp === '2-8°C Refrigerated' ? 'selected' : '' %>>2-8°C Refrigerated (Cold Chain)</option>
+            <option value="-20°C Frozen" <%= item.storageTemp === '-20°C Frozen' ? 'selected' : '' %>>-20°C Frozen</option>
+            <option value="-80°C Ultra-Low" <%= item.storageTemp === '-80°C Ultra-Low' ? 'selected' : '' %>>-80°C Ultra-Low</option>
+            <option value="2-30°C Ambient" <%= item.storageTemp === '2-30°C Ambient' ? 'selected' : '' %>>2-30°C Ambient Range</option>
+            <option value="15-30°C Climate Controlled" <%= item.storageTemp === '15-30°C Climate Controlled' ? 'selected' : '' %>>15-30°C Climate Controlled</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="openVialStabilityDays">Open-Vial / In-Use Stability (Days)</label>
+          <input type="number" id="openVialStabilityDays" name="openVialStabilityDays" min="1" value="<%= item.openVialStabilityDays || '' %>" placeholder="e.g., 30">
+          <small style="color: var(--text-gray); font-size: 0.8em; margin-top: 4px; display: block;">ISO 15189 requirement: triggers open-vial timer when unsealed</small>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="hazardClass">GHS Hazard Classification</label>
+          <select id="hazardClass" name="hazardClass">
+            <option value="Non-Hazardous" <%= item.hazardClass === 'Non-Hazardous' ? 'selected' : '' %>>Non-Hazardous / General</option>
+            <option value="Corrosive" <%= item.hazardClass === 'Corrosive' ? 'selected' : '' %>>Corrosive</option>
+            <option value="Flammable" <%= item.hazardClass === 'Flammable' ? 'selected' : '' %>>Flammable</option>
+            <option value="Toxic" <%= item.hazardClass === 'Toxic' ? 'selected' : '' %>>Toxic</option>
+            <option value="Oxidizer" <%= item.hazardClass === 'Oxidizer' ? 'selected' : '' %>>Oxidizer</option>
+            <option value="Biohazard" <%= item.hazardClass === 'Biohazard' ? 'selected' : '' %>>Biohazard</option>
+            <option value="Irritant" <%= item.hazardClass === 'Irritant' ? 'selected' : '' %>>Irritant</option>
+          </select>
+        </div>
+        <div class="form-group" style="display: flex; align-items: center; padding-top: 28px;">
+          <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 0;">
+            <input type="checkbox" id="requiresRefrigeration" name="requiresRefrigeration" <%= item.requiresRefrigeration ? 'checked' : '' %> style="width: 20px; height: 20px; accent-color: var(--secondary-green);">
+            <span style="font-weight: 600; color: var(--text-dark);">Strict Cold Chain Refrigeration Required</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="msdsUrl">Safety Data Sheet (SDS) Reference</label>
+        <input type="text" id="msdsUrl" name="msdsUrl" value="<%= item.msdsUrl || '' %>" placeholder="SDS document link or binder code">
+      </div>
+    </div>
+
+    <!-- Section 4: Supplier & Manufacturer Information -->
+    <div style="font-weight: 700; color: var(--primary-black); font-size: 1.05em; margin: 24px 0 16px 0; display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--border-gray); padding-top: 20px;">
+      <i class="fa fa-industry" style="color: var(--secondary-green);"></i> <span id="lblSectionVendor"><%= initialIsSupply ? '3. Supplier & Manufacturer' : '4. Supplier & Manufacturer' %></span>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="manufacturer">Manufacturer / Brand</label>
+        <input type="text" id="manufacturer" name="manufacturer" value="<%= item.manufacturer || '' %>">
+      </div>
+      <div class="form-group">
+        <label for="supplier">Supplier / Local Distributor</label>
+        <input type="text" id="supplier" name="supplier" value="<%= item.supplier || '' %>">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="supplierPartNumber">Supplier Order Part / Reference #</label>
+        <input type="text" id="supplierPartNumber" name="supplierPartNumber" value="<%= item.supplierPartNumber || '' %>">
+      </div>
+      <div class="form-group">
+        <label for="barcode">Item Barcode / GTIN</label>
+        <input type="text" id="barcode" name="barcode" value="<%= item.barcode || '' %>" placeholder="Optional barcode scan value">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="notes">Clinical / Technical Notes</label>
+      <textarea id="notes" name="notes"><%= item.notes || '' %></textarea>
+    </div>
+
+    <div class="form-group" style="margin-top: 16px;">
+      <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+        <input type="checkbox" id="isActive" name="isActive" <%= item.isActive !== false ? 'checked' : '' %> style="width: 20px; height: 20px; accent-color: var(--secondary-green);">
+        <span style="font-weight: 600; color: var(--text-dark);">Active Catalog Item (uncheck to archive)</span>
+      </label>
+    </div>
+
+    <!-- Actions -->
+    <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border-gray);">
+      <a href="/inventory/<%= item.id %>" class="button btn-secondary">Cancel</a>
+      <button type="submit" id="saveEditBtn" class="button btn-primary">
+        <i class="fa fa-floppy-disk"></i> Save Changes
+      </button>
+    </div>
+  </form>
+</div>
+
+<!-- Toast Feedback -->
+<div id="editToast" style="display: none; position: fixed; bottom: 24px; right: 24px; z-index: 9999; min-width: 320px; max-width: 450px; padding: 16px 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); font-weight: 500; align-items: center; gap: 12px;">
+  <div id="editToastIcon" style="font-size: 1.3em;"></div>
+  <div id="editToastMsg" style="flex: 1; font-size: 0.95em;"></div>
+</div>
+
+<script>
+  function switchItemMode(mode) {
+    const cardReagent = document.getElementById('cardTypeReagent');
+    const cardSupply = document.getElementById('cardTypeSupply');
+    const sectionReagent = document.getElementById('sectionReagentSpecific');
+    const lblItemName = document.getElementById('lblItemName');
+    const lblSectionVendor = document.getElementById('lblSectionVendor');
+
+    if (mode === 'supply') {
+      cardSupply.style.border = '2px solid #3b82f6';
+      cardSupply.style.background = '#eff6ff';
+      cardSupply.querySelector('div').style.background = '#3b82f6';
+      cardSupply.querySelector('div').style.color = '#ffffff';
+      cardSupply.querySelector('div:last-child div:first-child').style.color = '#1e40af';
+
+      cardReagent.style.border = '2px solid var(--border-gray)';
+      cardReagent.style.background = '#ffffff';
+      cardReagent.querySelector('div').style.background = '#f1f5f9';
+      cardReagent.querySelector('div').style.color = 'var(--text-gray)';
+      cardReagent.querySelector('div:last-child div:first-child').style.color = 'var(--text-dark)';
+
+      sectionReagent.style.display = 'none';
+      lblItemName.textContent = 'Supply / Consumable Name';
+      lblSectionVendor.textContent = '3. Supplier & Manufacturer';
+    } else {
+      cardReagent.style.border = '2px solid #10b981';
+      cardReagent.style.background = '#ecfdf5';
+      cardReagent.querySelector('div').style.background = '#10b981';
+      cardReagent.querySelector('div').style.color = '#ffffff';
+      cardReagent.querySelector('div:last-child div:first-child').style.color = '#065f46';
+
+      cardSupply.style.border = '2px solid var(--border-gray)';
+      cardSupply.style.background = '#ffffff';
+      cardSupply.querySelector('div').style.background = '#f1f5f9';
+      cardSupply.querySelector('div').style.color = 'var(--text-gray)';
+      cardSupply.querySelector('div:last-child div:first-child').style.color = 'var(--text-dark)';
+
+      sectionReagent.style.display = 'block';
+      lblItemName.textContent = 'Reagent / Item Name';
+      lblSectionVendor.textContent = '4. Supplier & Manufacturer';
+    }
+  }
+
+  function showToast(type, msg) {
+    const t = document.getElementById('editToast');
+    const icon = document.getElementById('editToastIcon');
+    const text = document.getElementById('editToastMsg');
+
+    if (type === 'success') {
+      t.style.backgroundColor = '#ecfdf5';
+      t.style.color = '#065f46';
+      t.style.border = '1px solid #a7f3d0';
+      icon.innerHTML = '<i class="fa fa-circle-check" style="color:#10b981;"></i>';
+    } else {
+      t.style.backgroundColor = '#fef2f2';
+      t.style.color = '#991b1b';
+      t.style.border = '1px solid #fecaca';
+      icon.innerHTML = '<i class="fa fa-circle-xmark" style="color:#ef4444;"></i>';
+    }
+
+    text.textContent = msg;
+    t.style.display = 'flex';
+    setTimeout(() => { t.style.display = 'none'; }, 4000);
+  }
+
+  async function handleEditSubmit(e) {
+    e.preventDefault();
+    const btn = document.getElementById('saveEditBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Saving...';
+
+    const form = e.target;
+    const formData = new FormData(form);
+    const payload = Object.fromEntries(formData.entries());
+    payload.requiresRefrigeration = document.getElementById('requiresRefrigeration') ? document.getElementById('requiresRefrigeration').checked : false;
+    payload.isActive = document.getElementById('isActive').checked;
+
+    try {
+      const res = await fetch('/inventory/<%= item.id %>', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast('success', data.message || 'Changes saved successfully!');
+        setTimeout(() => {
+          window.location.href = '/inventory/<%= item.id %>';
+        }, 800);
+      } else {
+        showToast('error', data.error || 'Failed to save changes.');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa fa-floppy-disk"></i> Save Changes';
+      }
+    } catch (err) {
+      showToast('error', 'Error: ' + err.message);
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa fa-floppy-disk"></i> Save Changes';
+    }
+  }
+</script>

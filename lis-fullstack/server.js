@@ -408,7 +408,8 @@ app.locals.featureFlags = {
   reports: true,
   templates: true,
   users: true,
-  worksheet: true
+  worksheet: true,
+  inventory: true
 };
 
 // Expose current feature flags to all views via res.locals
@@ -531,6 +532,7 @@ const routePermissionMap = [
   { prefix: '/tests', perm: 'tests' },
   { prefix: '/reports', perm: 'reports' },
   { prefix: '/templates', perm: 'templates' },
+  { prefix: '/inventory', perm: 'inventory' },
   { prefix: '/users', perm: 'users' },
   { prefix: '/worksheet', perm: 'worksheet' }
 ];
@@ -557,6 +559,11 @@ app.use((req, res, next) => {
     // Allow users to access their own profile regardless of broader '/users' permission
     if (path.indexOf('/users/profile') === 0) {
       console.debug('[auth-guard] allowing /users/profile for authenticated users');
+      return next();
+    }
+
+    // Allow authenticated users to check critical inventory alerts for global notification
+    if (path.indexOf('/inventory/critical-check') === 0) {
       return next();
     }
 
@@ -599,10 +606,10 @@ app.use((req, res, next) => {
       return next();
     }
 
-    // Role-based baseline workflow access for laboratory personnel
+    // Role-based baseline workflow access for laboratory personnel (templates requires explicit permission)
     const labRoles = new Set(['Medical Technologist', 'MedTech', 'Technician', 'Doctor', 'Staff', 'Receptionist', 'Encoder']);
     if (labRoles.has(sessionUser.role)) {
-      if (['reception', 'patients', 'tests', 'reports', 'worksheet', 'templates'].includes(mapping.perm)) {
+      if (['reception', 'patients', 'tests', 'reports', 'worksheet'].includes(mapping.perm)) {
         console.debug(`[auth-guard] allowing ${sessionUser.role} baseline workflow access to ${mapping.perm}`);
         return next();
       }
@@ -641,6 +648,7 @@ const receptionRoutes = require('./routes/reception');
 const settingsRoutes = require('./routes/settings');
 const signaturesRoutes = require('./routes/signatures');
 const chatbotRoutes = require('./routes/chatbot');
+const inventoryRoutes = require('./routes/inventory');
 
 app.use('/', authRoutes);
 app.use('/dashboard', dashboardRoutes);
@@ -653,6 +661,7 @@ app.use('/reception', receptionRoutes);
 app.use('/settings', settingsRoutes);
 app.use('/signatures', signaturesRoutes);
 app.use('/chatbot', chatbotRoutes);
+app.use('/inventory', inventoryRoutes);
 
 // ---- Secure restore endpoints (accessible on fresh installs or by authenticated managers) ----
 const bcryptRestore = require('bcryptjs');

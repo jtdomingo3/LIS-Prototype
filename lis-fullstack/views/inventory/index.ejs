@@ -1,0 +1,404 @@
+<% 
+  function checkInventoryPerm(u) {
+    if (!u) return false;
+    if (u.role === 'Admin' || u.role === 'Management' || u.role === 'Manager' || u.role === 'Owner') return true;
+    let p = u.permissions;
+    if (!p) return false;
+    if (typeof p === 'string') { try { p = JSON.parse(p); } catch(_) { return false; } }
+    if (Array.isArray(p)) return p.includes('inventory');
+    if (typeof p === 'object') return !!(p.inventory === true || p.inventory === '1' || p.inventory === 1 || p.inventory === 'true' || p.inventory === 'on');
+    return false;
+  }
+  const isEditable = (typeof canEdit !== 'undefined' && canEdit) || (typeof sessionUser !== 'undefined' && checkInventoryPerm(sessionUser));
+%>
+
+<div class="stats-container">
+  <div class="stat-card">
+    <h4>Total Supplies & Reagents</h4>
+    <div style="font-size: 2.2em; font-weight: 700; color: var(--primary-black); margin-top: 8px;"><%= typeof totalItems !== 'undefined' ? totalItems : 0 %></div>
+    <div style="color: var(--text-gray); font-size: 0.85em; margin-top: 4px;">Laboratory, X-Ray, Ultrasound & ECG Items</div>
+  </div>
+  <div class="stat-card" style="cursor: pointer;" onclick="filterByCard('critical');">
+    <h4 style="color: #b91c1c;">Critical Stock Alert</h4>
+    <div style="font-size: 2.2em; font-weight: 700; color: #b91c1c; margin-top: 8px;"><%= typeof criticalStockCount !== 'undefined' ? criticalStockCount : 0 %></div>
+    <div style="color: var(--text-gray); font-size: 0.85em; margin-top: 4px;">At or Below Critical Emergency Reserve</div>
+  </div>
+  <div class="stat-card" style="cursor: pointer;" onclick="filterByCard('low-stock');">
+    <h4 style="color: #d97706;">Low Stock Alert</h4>
+    <div style="font-size: 2.2em; font-weight: 700; color: #d97706; margin-top: 8px;"><%= typeof lowStockCount !== 'undefined' ? lowStockCount : 0 %></div>
+    <div style="color: var(--text-gray); font-size: 0.85em; margin-top: 4px;">At or Below Reorder Threshold</div>
+  </div>
+  <div class="stat-card" style="cursor: pointer;" onclick="filterByCard('expiring');">
+    <h4 style="color: var(--accent-orange);">Expiring Soon (&le;30d)</h4>
+    <div style="font-size: 2.2em; font-weight: 700; color: var(--accent-orange); margin-top: 8px;"><%= typeof expiringCount !== 'undefined' ? expiringCount : 0 %></div>
+    <div style="color: var(--text-gray); font-size: 0.85em; margin-top: 4px;">Lots requiring rotation (FEFO)</div>
+  </div>
+  <div class="stat-card" style="cursor: pointer;" onclick="filterByCard('expired');">
+    <h4 style="color: var(--danger);">Expired / Action Required</h4>
+    <div style="font-size: 2.2em; font-weight: 700; color: var(--danger); margin-top: 8px;"><%= typeof expiredCount !== 'undefined' ? expiredCount : 0 %></div>
+    <div style="color: var(--text-gray); font-size: 0.85em; margin-top: 4px;">Must be segregated / discarded</div>
+  </div>
+</div>
+
+<div class="card">
+  <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+    <div style="display: flex; gap: 10px; align-items: center;">
+      <% if (isEditable) { %>
+        <a href="/inventory/create" class="button btn-primary">
+          <i class="fa fa-plus"></i> Add Reagent / Supply
+        </a>
+      <% } %>
+      <a href="/inventory/alerts" class="button btn-secondary">
+        <i class="fa fa-triangle-exclamation" style="color: #d97706;"></i> View Alerts
+      </a>
+      <a href="/inventory/export" class="button btn-secondary">
+        <i class="fa fa-file-csv"></i> Export CSV
+      </a>
+    </div>
+
+    <div style="display: flex; gap: 10px; align-items: center;">
+      <span class="badge badge-info" style="font-size: 0.9em; padding: 8px 14px;">
+        <i class="fa fa-notes-medical" style="margin-right: 6px;"></i> Clinical Lab, X-Ray, Ultrasound & ECG
+      </span>
+    </div>
+  </div>
+
+  <!-- Filter Toolbar -->
+  <div class="filter-form" style="margin-bottom: 24px;">
+    <input type="text" id="searchInput" class="search-box" placeholder="Search by name, SKU, REF, brand (X-ray film, gel, ECG paper, reagent, tubes)..." style="flex: 1;">
+    
+    <select id="categoryFilter" class="filter-select">
+      <option value="">All Categories</option>
+      <% (categories || []).forEach(cat => { %>
+        <option value="<%= cat %>"><%= cat %></option>
+      <% }); %>
+    </select>
+
+    <select id="areaFilter" class="filter-select">
+      <option value="">All Lab Sections</option>
+      <% (areas || []).forEach(area => { %>
+        <option value="<%= area %>"><%= area %></option>
+      <% }); %>
+    </select>
+
+    <select id="statusFilter" class="filter-select">
+      <option value="">All Stock Levels</option>
+      <option value="critical">🚨 Critical Emergency Stock</option>
+      <option value="low-stock">⚠️ Low Stock Only</option>
+      <option value="expiring">🟡 Expiring Soon (&le;30d)</option>
+      <option value="expired">❌ Expired Lots</option>
+      <option value="open-vials">🔓 Active Open Vials</option>
+    </select>
+
+    <select id="sortFilter" class="filter-select">
+      <option value="name">Sort: Name (A-Z)</option>
+      <option value="name-desc">Sort: Name (Z-A)</option>
+      <option value="stock-asc">Stock: Low to High</option>
+      <option value="stock-desc">Stock: High to Low</option>
+      <option value="category">Sort: Category</option>
+    </select>
+
+    <div class="filter-actions">
+      <button type="button" id="resetFiltersBtn" class="button btn-secondary">Clear</button>
+    </div>
+  </div>
+
+  <!-- Inventory Table -->
+  <div style="overflow-x: auto;">
+    <table>
+      <thead>
+        <tr>
+          <th>SKU / REF</th>
+          <th>Item Name & Details</th>
+          <th>Category & Section</th>
+          <th>Current Stock</th>
+          <th>Reorder & Critical</th>
+          <th>Storage & Stability</th>
+          <th>Status</th>
+          <th style="text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="inventoryTableBody">
+        <tr>
+          <td colspan="8" class="text-center" style="padding: 40px; color: var(--text-gray);">
+            <i class="fa fa-spinner fa-spin" style="font-size: 1.8em; margin-bottom: 10px; display: block; color: var(--secondary-green);"></i>
+            Loading laboratory inventory catalog...
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Custom UI Feedback Toast / Modal Container -->
+<div id="invUiNotification" style="display: none; position: fixed; bottom: 24px; right: 24px; z-index: 9999; min-width: 320px; max-width: 450px; padding: 16px 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); font-weight: 500; align-items: center; gap: 12px; transition: all 0.3s ease;">
+  <div id="invUiNotificationIcon" style="font-size: 1.3em;"></div>
+  <div id="invUiNotificationMessage" style="flex: 1; font-size: 0.95em;"></div>
+  <button onclick="hideInvNotification()" style="background: transparent; border: none; font-size: 1.2em; cursor: pointer; color: inherit; opacity: 0.7;">&times;</button>
+</div>
+
+<script>
+  let currentItemsData = [];
+  const isEditableUser = <%= isEditable ? 'true' : 'false' %>;
+  const searchInput = document.getElementById('searchInput');
+  const categoryFilter = document.getElementById('categoryFilter');
+  const areaFilter = document.getElementById('areaFilter');
+  const statusFilter = document.getElementById('statusFilter');
+  const sortFilter = document.getElementById('sortFilter');
+  const resetFiltersBtn = document.getElementById('resetFiltersBtn');
+  const tbody = document.getElementById('inventoryTableBody');
+
+  function showInvNotification(type, message) {
+    const el = document.getElementById('invUiNotification');
+    const icon = document.getElementById('invUiNotificationIcon');
+    const msg = document.getElementById('invUiNotificationMessage');
+    
+    if (type === 'success') {
+      el.style.backgroundColor = '#ecfdf5';
+      el.style.color = '#065f46';
+      el.style.border = '1px solid #a7f3d0';
+      icon.innerHTML = '<i class="fa fa-circle-check" style="color:#10b981;"></i>';
+    } else if (type === 'error') {
+      el.style.backgroundColor = '#fef2f2';
+      el.style.color = '#991b1b';
+      el.style.border = '1px solid #fecaca';
+      icon.innerHTML = '<i class="fa fa-circle-xmark" style="color:#ef4444;"></i>';
+    } else {
+      el.style.backgroundColor = '#eff6ff';
+      el.style.color = '#1e40af';
+      el.style.border = '1px solid #bfdbfe';
+      icon.innerHTML = '<i class="fa fa-circle-info" style="color:#3b82f6;"></i>';
+    }
+
+    msg.textContent = message;
+    el.style.display = 'flex';
+    setTimeout(() => { hideInvNotification(); }, 5000);
+  }
+
+  function hideInvNotification() {
+    const el = document.getElementById('invUiNotification');
+    if (el) el.style.display = 'none';
+  }
+
+  function filterByCard(filterType) {
+    statusFilter.value = filterType;
+    loadInventory();
+  }
+
+  function loadInventory() {
+    const params = new URLSearchParams({
+      search: searchInput.value || '',
+      category: categoryFilter.value || '',
+      area: areaFilter.value || '',
+      filter: statusFilter.value || '',
+      sort: sortFilter.value || 'name'
+    });
+
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8" class="text-center" style="padding: 30px; color: var(--text-gray);">
+          <i class="fa fa-spinner fa-spin" style="color: var(--secondary-green); font-size: 1.5em; margin-bottom: 8px;"></i>
+          <div>Updating inventory list...</div>
+        </td>
+      </tr>
+    `;
+
+    fetch(`/inventory/list?${params}`)
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to load inventory');
+        return res.json();
+      })
+      .then(items => {
+        currentItemsData = items;
+        if (!items || items.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="8" class="text-center" style="padding: 40px; color: var(--text-gray);">
+                <i class="fa fa-box-open" style="font-size: 2.5em; opacity: 0.3; margin-bottom: 12px; display: block;"></i>
+                <strong style="font-size: 1.1em; color: var(--text-dark);">No inventory items found</strong>
+                <p style="margin-top: 6px;">Try adjusting your filters or search terms.</p>
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        tbody.innerHTML = items.map(item => {
+          let stockBadgeClass = 'badge-success';
+          let stockStatusText = 'In Stock';
+          if (item.totalStock <= 0) {
+            stockBadgeClass = 'badge-danger';
+            stockStatusText = 'Out of Stock';
+          } else if (item.isCriticalStock) {
+            stockBadgeClass = 'badge-danger';
+            stockStatusText = '🚨 CRITICAL';
+          } else if (item.isLowStock) {
+            stockBadgeClass = 'badge-warning';
+            stockStatusText = 'Low Stock';
+          }
+
+          const warnings = [];
+          if (item.isCriticalStock && item.totalStock > 0) {
+            warnings.push(`<span class="badge badge-danger" style="font-size:0.75em; padding:3px 8px; margin-top:4px;"><i class="fa fa-bell"></i> Critical Level</span>`);
+          }
+          if (item.expiredBatchCount > 0) {
+            warnings.push(`<span class="badge badge-danger" style="font-size:0.75em; padding:3px 8px; margin-top:4px;"><i class="fa fa-triangle-exclamation"></i> ${item.expiredBatchCount} Expired</span>`);
+          }
+          if (item.expiringBatchCount > 0) {
+            warnings.push(`<span class="badge badge-warning" style="font-size:0.75em; padding:3px 8px; margin-top:4px;"><i class="fa fa-clock"></i> ${item.expiringBatchCount} Expiring</span>`);
+          }
+          if (item.openVialCount > 0) {
+            warnings.push(`<span class="badge badge-info" style="font-size:0.75em; padding:3px 8px; margin-top:4px;"><i class="fa fa-vial"></i> ${item.openVialCount} Open</span>`);
+          }
+
+          const storageLabel = item.storageTemp || (item.requiresRefrigeration ? '2-8°C Refrigerated' : '18-25°C Room Temp');
+          const stabilityLabel = item.openVialStabilityDays ? `${item.openVialStabilityDays}d in-use stability` : 'Standard stability';
+
+          return `
+            <tr>
+              <td>
+                <span style="font-family: monospace; font-weight: 700; color: var(--primary-black); font-size: 0.95em;">
+                  ${escapeHtml(item.sku)}
+                </span>
+                ${item.supplierPartNumber ? `<br><small style="color: var(--text-gray);">REF: ${escapeHtml(item.supplierPartNumber)}</small>` : ''}
+              </td>
+              <td>
+                <a href="/inventory/${item.id}" style="font-weight: 600; color: var(--primary-black); text-decoration: none; font-size: 1.05em; display: inline-block;">
+                  ${escapeHtml(item.name)}
+                </a>
+                ${item.manufacturer ? `<br><small style="color: var(--text-gray);"><i class="fa fa-industry" style="margin-right:4px;"></i> ${escapeHtml(item.manufacturer)}</small>` : ''}
+                ${item.packageSize ? `<small style="color: var(--text-gray); margin-left: 6px;">(${escapeHtml(item.packageSize)})</small>` : ''}
+              </td>
+              <td>
+                <span class="badge badge-info" style="font-size: 0.75em; padding: 4px 8px;">${escapeHtml(item.category)}</span>
+                <br><small style="color: var(--text-gray); font-size: 0.85em; display: inline-block; margin-top: 4px;">
+                  <i class="fa fa-location-dot" style="font-size:0.8em; margin-right:3px;"></i> ${escapeHtml(item.area || 'General')}
+                </small>
+              </td>
+              <td>
+                <div style="font-weight: 700; font-size: 1.15em; color: ${item.isCriticalStock ? '#b91c1c' : (item.isLowStock ? '#d97706' : 'var(--text-dark)')};">
+                  ${item.totalStock} <span style="font-size: 0.8em; font-weight: 500; color: var(--text-gray);">${escapeHtml(item.unit)}</span>
+                </div>
+                <small style="color: var(--text-gray);">${item.activeBatchCount} Active Lots</small>
+              </td>
+              <td>
+                <div style="font-size: 0.85em;">
+                  <span>Reorder: <strong>${item.minThreshold}</strong> ${escapeHtml(item.unit)}</span>
+                  <br><span style="color: #b91c1c;">Critical: <strong>${item.criticalThreshold !== undefined ? item.criticalThreshold : 2}</strong> ${escapeHtml(item.unit)}</span>
+                </div>
+              </td>
+              <td>
+                <div style="font-size: 0.85em; color: var(--text-dark);">
+                  ${item.requiresRefrigeration ? '<i class="fa fa-snowflake" style="color:#0284c7; margin-right:4px;"></i>' : '<i class="fa fa-temperature-half" style="color:var(--text-gray); margin-right:4px;"></i>'}
+                  ${escapeHtml(storageLabel)}
+                </div>
+                <small style="color: var(--text-gray); font-size: 0.8em;">${escapeHtml(stabilityLabel)}</small>
+              </td>
+              <td>
+                <span class="badge ${stockBadgeClass}">${stockStatusText}</span>
+                ${warnings.length > 0 ? `<div style="display:flex; flex-direction:column; gap:2px; margin-top:4px;">${warnings.join('')}</div>` : ''}
+              </td>
+              <td style="text-align: right; white-space: nowrap;">
+                <div class="action-buttons" style="display: inline-flex; gap: 6px; justify-content: flex-end;">
+                  <a href="/inventory/${item.id}" class="button btn-small btn-primary" title="View Lots & Traceability">
+                    <i class="fa fa-eye"></i> View
+                  </a>
+                  ${isEditableUser ? `
+                    <a href="/inventory/${item.id}/edit" class="button btn-small btn-secondary" title="Edit Catalog Details">
+                      <i class="fa fa-pen"></i> Edit
+                    </a>
+                    <button type="button" class="button btn-small btn-danger" title="Delete Item" onclick="confirmDeleteItem('${item.id}', '${escapeJs(item.name)}')">
+                      <i class="fa fa-trash"></i>
+                    </button>
+                  ` : ''}
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      })
+      .catch(err => {
+        console.error('Error loading items:', err);
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8" class="text-center" style="padding: 30px; color: var(--danger);">
+              <i class="fa fa-triangle-exclamation" style="font-size: 1.8em; margin-bottom: 8px; display: block;"></i>
+              Failed to load inventory data. Please refresh or check connection.
+            </td>
+          </tr>
+        `;
+      });
+  }
+
+  function confirmDeleteItem(itemId, itemName) {
+    if (typeof window.showCustomConfirm === 'function') {
+      window.showCustomConfirm(
+        `Are you sure you want to delete "${itemName}"?\\n\\nThis will remove the item catalog, lot records, and historical audit entries.`,
+        function() {
+          performDeleteItem(itemId);
+        },
+        {
+          title: 'Confirm Catalog Item Deletion',
+          btnText: 'Delete Item'
+        }
+      );
+    } else {
+      performDeleteItem(itemId);
+    }
+  }
+
+  function performDeleteItem(itemId) {
+    fetch(`/inventory/${itemId}/delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        showInvNotification('success', data.message || 'Item deleted successfully.');
+        loadInventory();
+      } else {
+        showInvNotification('error', data.error || 'Failed to delete item.');
+      }
+    })
+    .catch(err => {
+      showInvNotification('error', 'Error deleting item: ' + err.message);
+    });
+  }
+
+  function escapeHtml(text) {
+    if (!text) return '';
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function escapeJs(text) {
+    if (!text) return '';
+    return String(text).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  }
+
+  let debounceTimer;
+  searchInput.addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(loadInventory, 250);
+  });
+  categoryFilter.addEventListener('change', loadInventory);
+  areaFilter.addEventListener('change', loadInventory);
+  statusFilter.addEventListener('change', loadInventory);
+  sortFilter.addEventListener('change', loadInventory);
+  resetFiltersBtn.addEventListener('click', () => {
+    searchInput.value = '';
+    categoryFilter.value = '';
+    areaFilter.value = '';
+    statusFilter.value = '';
+    sortFilter.value = 'name';
+    loadInventory();
+  });
+
+  // Initial load
+  loadInventory();
+</script>

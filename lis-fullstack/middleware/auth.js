@@ -169,11 +169,35 @@ const canManageUsers = (req, res, next) => {
   return res.redirect('/');
 };
 
+// Middleware to check if user can access report templates (restricted to Admin or responsible person with templates permission)
+const canAccessTemplates = (req, res, next) => {
+  if (!req.session || !req.session.user) {
+    if (req.flash) req.flash('error_msg', 'Please log in to access this page');
+    return res.redirect('/');
+  }
+
+  const user = req.session.user;
+  if (user.role === 'Admin') return next();
+
+  let perms = user.permissions || {};
+  if (typeof perms === 'string') {
+    try { perms = JSON.parse(perms); } catch (_) { perms = {}; }
+  }
+
+  if (perms.templates) {
+    return next();
+  }
+
+  if (req.flash) req.flash('error_msg', 'Access restricted: You do not have permission to manage Report Templates. This is assigned only to responsible personnel.');
+  return res.redirect(getUserHomeRoute(user));
+};
+
 module.exports = {
   requireAuth,
   requireGuest,
   requireRole,
   canAccessPatient,
+  canAccessTemplates,
   canManageUsers,
   getUserHomeRoute
 };
