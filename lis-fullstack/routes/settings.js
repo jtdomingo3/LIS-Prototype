@@ -359,13 +359,17 @@ router.post('/', requireAuth, canManageUsers, (req, res) => {
       if (flags.sse_page_settings) sseAllowedPages.push('/settings');
       if (flags.sse_page_chatbot) sseAllowedPages.push('/chatbot');
 
+      const parsedConnectDelay = parseInt(flags.sseConnectDelaySec, 10);
+      const parsedRetryDelay = parseInt(flags.sseRetryDelaySec, 10);
+      const parsedRefreshDebounce = parseInt(flags.sseRefreshDebounceMs, 10);
+
       const sseConfigObj = {
         enabled: flags.sseEnabled === 'on' || flags.sseEnabled === true || flags.sseEnabled === 'true',
         autoRefreshByDefault: flags.sseAutoRefreshByDefault === 'on' || flags.sseAutoRefreshByDefault === true || flags.sseAutoRefreshByDefault === 'true',
         allowedPages: sseAllowedPages,
-        connectDelaySec: Math.max(0, parseInt(flags.sseConnectDelaySec, 10) || 3),
-        retryDelaySec: Math.max(1, parseInt(flags.sseRetryDelaySec, 10) || 3),
-        refreshDebounceMs: Math.max(100, parseInt(flags.sseRefreshDebounceMs, 10) || 800)
+        connectDelaySec: !isNaN(parsedConnectDelay) ? Math.max(0, parsedConnectDelay) : 3,
+        retryDelaySec: !isNaN(parsedRetryDelay) ? Math.max(1, parsedRetryDelay) : 3,
+        refreshDebounceMs: !isNaN(parsedRefreshDebounce) ? Math.max(100, parsedRefreshDebounce) : 800
       };
       cur.sseConfig = sseConfigObj;
       req.app.locals.sseConfig = sseConfigObj;
