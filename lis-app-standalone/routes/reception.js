@@ -429,7 +429,16 @@ router.get('/assigned-events', (req, res) => {
 
   sseEmitter.on('update', onUpdate);
 
+  const keepaliveInterval = setInterval(() => {
+    try {
+      res.write(': keepalive\n\n');
+    } catch (e) {
+      clearInterval(keepaliveInterval);
+    }
+  }, 25000);
+
   req.on('close', () => {
+    clearInterval(keepaliveInterval);
     sseEmitter.removeListener('update', onUpdate);
     console.log('SSE client disconnected');
   });
