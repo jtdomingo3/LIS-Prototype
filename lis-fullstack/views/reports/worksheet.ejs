@@ -1,234 +1,293 @@
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Worksheet Export</title>
-  <style>
-    /* expand card to use most of viewport width to accommodate wide preview tables */
-    .card{ width: calc(100% - 40px); max-width: none; margin:20px auto; padding:18px; border:1px solid #e6e6e6; background:#fff }
-    .form-row{ display:flex; gap:12px; align-items:center; margin-bottom:12px; flex-wrap:wrap }
-    label{ min-width:120px; font-weight:600 }
-    input, select { padding:8px; min-width:160px }
-    .actions{ margin-top:16px }
-    /* preview area should expand to card width and allow horizontal scrolling when many columns */
-    #previewArea { width:100%; max-width:none }
-    /* Allow table to size naturally and enable horizontal scroll on container when many columns */
-    #previewTable { width:auto; min-width: max-content; table-layout:auto; border-collapse:collapse }
-    #previewTable th, #previewTable td { white-space:normal; word-break:break-word; padding:6px; vertical-align:top }
-    #previewTable th { background:#0b7a3f; color:#ffffff; position:sticky; top:0; z-index:2; font-weight:600; }
-    /* Ensure the preview container handles overflow cleanly */
-    #previewArea > div { overflow:auto; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h3>Worksheet Export</h3>
-    <form id="wsForm" action="/reports/worksheet/download" method="POST">
-      <div class="form-row">
-        <label>Test Type</label>
-        <select name="testType">
-          <option value="">-- All / Select --</option>
+<div class="card" style="padding:24px 28px; border-radius:16px; box-shadow:0 4px 18px rgba(0,0,0,0.03); margin-bottom:24px;">
+  <!-- Header -->
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-bottom:1px solid #f1f5f9; padding-bottom:16px; margin-bottom:20px;">
+    <div>
+      <h3 style="margin:0; font-size:1.4em; display:flex; align-items:center; gap:10px; color:#0f172a;">
+        <span style="font-size:1.1em;">📊</span> Batch Diagnostic Worksheet Export
+      </h3>
+      <p style="margin:4px 0 0 0; color:#64748b; font-size:0.9em;">Export daily patient laboratory results and worksheets into Excel (.xlsx) or CSV format.</p>
+    </div>
+    <div>
+      <a href="/reports" class="button btn-secondary" style="padding:8px 16px; font-size:0.88em;">← Back to Reports</a>
+    </div>
+  </div>
+
+  <!-- Worksheet Form -->
+  <form id="wsForm" action="/reports/worksheet/download" method="POST">
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-bottom:16px;">
+      <div class="field" style="margin:0;">
+        <label>Diagnostic Test Type</label>
+        <select name="testType" style="width:100%; height:40px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; padding:0 10px;">
+          <option value="">-- All Test Types --</option>
           <% if (types && types.length) { types.forEach(function(tp){ %>
             <option value="<%= tp %>"><%= tp %></option>
           <% }) } %>
         </select>
       </div>
 
-      <div class="form-row">
-        <label>Date From</label>
-        <input type="date" name="dateFrom" />
-        <label>Date To</label>
-        <input type="date" name="dateTo" />
+      <div class="field" style="margin:0;">
+        <label>Date Range (From - To)</label>
+        <div style="display:flex; gap:8px;">
+          <input type="date" name="dateFrom" style="flex:1; height:40px; border-radius:8px; border:1px solid #cbd5e1; padding:0 8px;" />
+          <input type="date" name="dateTo" style="flex:1; height:40px; border-radius:8px; border:1px solid #cbd5e1; padding:0 8px;" />
+        </div>
       </div>
 
-      <div class="form-row">
-        <label>Export Scope</label>
-        <label><input type="checkbox" name="allData" value="1" /> Export ALL data (ignore filters)</label>
-      </div>
-
-      <div class="form-row">
-        <label>Format</label>
-        <select name="format">
-          <option value="csv">CSV</option>
-          <option value="xlsx">Excel (.xlsx)</option>
+      <div class="field" style="margin:0;">
+        <label>File Export Format</label>
+        <select name="format" style="width:100%; height:40px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; padding:0 10px;">
+          <option value="xlsx">Excel Spreadsheet (.xlsx)</option>
+          <option value="csv">Comma-Separated Values (.csv)</option>
         </select>
-      </div>
-
-      <div class="actions">
-        <button type="submit" class="button btn-primary">Download</button>
-        <button type="button" id="previewBtn" class="button">Preview</button>
-        <a href="/reports" style="margin-left:12px">Cancel</a>
-      </div>
-    </form>
-    <div id="previewArea" style="width:100%;margin:12px auto;display:none">
-      <h4>Preview (<span id="previewCount">0</span> rows)</h4>
-      <div style="overflow:auto;max-height:400px;border:1px solid #ddd;background:#fff;padding:8px">
-        <table id="previewTable" style="border-collapse:collapse">
-          <thead>
-            <tr id="previewHead"></tr>
-          </thead>
-          <tbody id="previewBody"></tbody>
-        </table>
       </div>
     </div>
 
-    <script>
-      (function(){
-        const form = document.getElementById('wsForm');
-        const previewBtn = document.getElementById('previewBtn');
-        const previewArea = document.getElementById('previewArea');
-        const previewCount = document.getElementById('previewCount');
-        const previewHead = document.getElementById('previewHead');
-        const previewBody = document.getElementById('previewBody');
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:20px;">
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.9em; font-weight:600; color:#475569;">
+        <input type="checkbox" name="allData" value="1" style="width:18px; height:18px; accent-color:var(--secondary-green);" />
+        Export ALL Historical Data (Bypass date/type filters)
+      </label>
+    </div>
 
-        function serializeForm(f){
-          const data = {};
-          new FormData(f).forEach((v,k) => { data[k]=v; });
-          return data;
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <button type="submit" class="button btn-primary" style="padding:10px 22px; font-weight:600;">
+        📥 Download Worksheet
+      </button>
+      <button type="button" id="previewBtn" class="button btn-secondary" style="padding:10px 20px;">
+        👁️ Preview First 500 Rows
+      </button>
+    </div>
+  </form>
+
+  <!-- Worksheet Preview Area -->
+  <div id="previewArea" style="width:100%; margin-top:20px; display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <h4 style="margin:0; font-size:1em; color:#0f172a;">Worksheet Preview: <span id="previewCount" style="color:var(--secondary-green); font-weight:700;">0</span> records found</h4>
+    </div>
+    <div style="overflow:auto; max-height:420px; border:1px solid #e2e8f0; border-radius:10px; background:#fff; padding:6px;">
+      <table id="previewTable" style="border-collapse:collapse; width:100%; font-size:0.88em;">
+        <thead>
+          <tr id="previewHead" style="background:#0f172a; color:#fff; position:sticky; top:0; z-index:2;"></tr>
+        </thead>
+        <tbody id="previewBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const form = document.getElementById('wsForm');
+      const previewBtn = document.getElementById('previewBtn');
+      const previewArea = document.getElementById('previewArea');
+      const previewCount = document.getElementById('previewCount');
+      const previewHead = document.getElementById('previewHead');
+      const previewBody = document.getElementById('previewBody');
+
+      function serializeForm(f){
+        const data = {};
+        new FormData(f).forEach((v,k) => { data[k]=v; });
+        return data;
+      }
+
+      previewBtn.addEventListener('click', async function(){
+        const data = serializeForm(form);
+        if (!form.querySelector('input[name="allData"]').checked) {
+          data.allData = '';
         }
-
-        previewBtn.addEventListener('click', async function(){
-          const data = serializeForm(form);
-          // when previewing, unset allData if checkbox is unchecked
-          if (!form.querySelector('input[name="allData"]').checked) {
-            data.allData = '';
+        try{
+          previewBtn.disabled = true;
+          previewBtn.textContent = 'Loading...';
+          const resp = await fetch('/reports/worksheet/preview', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(Object.assign({}, data, { limit: 500 }))
+          });
+          if (!resp.ok) throw new Error('Preview failed');
+          const json = await resp.json();
+          previewHead.innerHTML = '';
+          previewBody.innerHTML = '';
+          if (!json || !Array.isArray(json.rows)) {
+            previewArea.style.display = 'none';
+            alert('No preview data available');
+            return;
           }
-          try{
-            previewBtn.disabled = true;
-            previewBtn.textContent = 'Loading...';
-            const resp = await fetch('/reports/worksheet/preview', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(Object.assign({}, data, { limit: 500 }))
+          const rows = json.rows;
+          const baseHeaders = ['Test ID','Test Type','Date','Time','Patient ID','First Name','Last Name','Signatory'];
+          const resultCols = Array.isArray(json.resultCols) ? json.resultCols : [];
+          const headers = baseHeaders.concat(resultCols);
+          headers.forEach(h => { 
+            const th = document.createElement('th'); 
+            th.textContent = h; 
+            th.style.padding = '8px 10px'; 
+            th.style.borderBottom = '1px solid #cbd5e1'; 
+            previewHead.appendChild(th); 
+          });
+          rows.forEach(r => {
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid #f1f5f9';
+            const baseVals = [r.testId,r.testType,r.date,r.time,r.patientId,r.firstName,r.lastName,r.signatory];
+            baseVals.forEach(v => { 
+              const td = document.createElement('td'); 
+              td.textContent = v || ''; 
+              td.style.padding = '8px 10px'; 
+              tr.appendChild(td); 
             });
-            if (!resp.ok) throw new Error('Preview failed');
-            const json = await resp.json();
-            // build table
-            previewHead.innerHTML = '';
-            previewBody.innerHTML = '';
-            if (!json || !Array.isArray(json.rows)) {
-              previewArea.style.display = 'none';
-              alert('No preview data');
-              return;
-            }
-            const rows = json.rows;
-            // build headers: base columns + dynamic resultCols
-            const baseHeaders = ['Test ID','Test Type','Date','Time','Patient ID','First Name','Last Name','Signatory'];
-            const resultCols = Array.isArray(json.resultCols) ? json.resultCols : [];
-            const headers = baseHeaders.concat(resultCols);
-            headers.forEach(h => { const th = document.createElement('th'); th.textContent = h; th.style.borderBottom='1px solid #ccc'; th.style.padding='6px'; previewHead.appendChild(th); });
-            rows.forEach(r => {
-              const tr = document.createElement('tr');
-              // base values
-              const baseVals = [r.testId,r.testType,r.date,r.time,r.patientId,r.firstName,r.lastName,r.signatory];
-              baseVals.forEach(v => { const td = document.createElement('td'); td.textContent = v || ''; td.style.padding='6px'; td.style.borderBottom='1px solid #f1f1f1'; tr.appendChild(td); });
-              // result columns
-              resultCols.forEach(k => { const td = document.createElement('td'); const v = (r.flatResults && typeof r.flatResults[k] !== 'undefined') ? r.flatResults[k] : ((r.resultsObj && typeof r.resultsObj[k] !== 'undefined') ? r.resultsObj[k] : ''); td.textContent = v || ''; td.style.padding='6px'; td.style.borderBottom='1px solid #f1f1f1'; tr.appendChild(td); });
-              previewBody.appendChild(tr);
+            resultCols.forEach(k => { 
+              const td = document.createElement('td'); 
+              const v = (r.flatResults && typeof r.flatResults[k] !== 'undefined') ? r.flatResults[k] : ((r.resultsObj && typeof r.resultsObj[k] !== 'undefined') ? r.resultsObj[k] : ''); 
+              td.textContent = v || ''; 
+              td.style.padding = '8px 10px'; 
+              tr.appendChild(td); 
             });
-            previewCount.textContent = json.count || rows.length || 0;
-            previewArea.style.display = 'block';
-          } catch (e) {
-            console.error(e);
-            alert('Preview failed');
-          } finally {
-            previewBtn.disabled = false;
-            previewBtn.textContent = 'Preview';
-          }
-        });
-      })();
-    </script>
-    
-      <!-- Patient Export Section -->
-      <hr style="margin:18px 0" />
-      <h3>Patient Export</h3>
-      <form id="patientForm" action="/reports/patient-export/download" method="POST">
-        <div class="form-row">
-          <label>Date From</label>
-          <input type="date" name="dateFrom" />
-          <label>Date To</label>
-          <input type="date" name="dateTo" />
-        </div>
+            previewBody.appendChild(tr);
+          });
+          previewCount.textContent = json.count || rows.length || 0;
+          previewArea.style.display = 'block';
+        } catch (e) {
+          console.error(e);
+          alert('Preview failed');
+        } finally {
+          previewBtn.disabled = false;
+          previewBtn.textContent = '👁️ Preview First 500 Rows';
+        }
+      });
+    })();
+  </script>
+</div>
 
-        <div class="form-row">
-          <label>Company</label>
-          <select name="company">
-            <option value="">-- Any --</option>
-            <% if (typeof companies !== 'undefined' && companies && companies.length) { companies.forEach(function(cmp){ %>
-              <option value="<%= cmp %>"><%= cmp %></option>
-            <% }) } %>
-          </select>
-          <label>PhilHealth</label>
-          <select name="philhealth">
-            <option value="">-- Any --</option>
-            <option value="yes">Yes</option>
-            <option value="no">No</option>
-          </select>
-        </div>
+<!-- Patient Registry Export Card -->
+<div class="card" style="padding:24px 28px; border-radius:16px; box-shadow:0 4px 18px rgba(0,0,0,0.03);">
+  <div style="border-bottom:1px solid #f1f5f9; padding-bottom:16px; margin-bottom:20px;">
+    <h3 style="margin:0; font-size:1.4em; display:flex; align-items:center; gap:10px; color:#0f172a;">
+      <span style="font-size:1.1em;">👥</span> Patient Demographics Registry Export
+    </h3>
+    <p style="margin:4px 0 0 0; color:#64748b; font-size:0.9em;">Export master patient directory records with corporate accounts and PhilHealth flags.</p>
+  </div>
 
-        <div class="form-row">
-          <label>Format</label>
-          <select name="format">
-            <option value="csv">CSV</option>
-            <option value="xlsx">Excel (.xlsx)</option>
-          </select>
-        </div>
-
-        <div class="actions">
-          <button type="submit" class="button btn-primary">Download Patients</button>
-          <button type="button" id="patientPreviewBtn" class="button">Preview</button>
-        </div>
-      </form>
-
-      <div id="patientPreviewArea" style="width:100%;margin:12px auto;display:none">
-        <h4>Patient Preview (<span id="patientPreviewCount">0</span> rows)</h4>
-        <div style="overflow:auto;max-height:300px;border:1px solid #ddd;background:#fff;padding:8px">
-          <table id="patientPreviewTable" style="border-collapse:collapse;width:auto;min-width:max-content">
-            <thead>
-              <tr id="patientPreviewHead"></tr>
-            </thead>
-            <tbody id="patientPreviewBody"></tbody>
-          </table>
+  <form id="patientForm" action="/reports/patient-export/download" method="POST">
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-bottom:20px;">
+      <div class="field" style="margin:0;">
+        <label>Date Registration Range</label>
+        <div style="display:flex; gap:8px;">
+          <input type="date" name="dateFrom" style="flex:1; height:40px; border-radius:8px; border:1px solid #cbd5e1; padding:0 8px;" />
+          <input type="date" name="dateTo" style="flex:1; height:40px; border-radius:8px; border:1px solid #cbd5e1; padding:0 8px;" />
         </div>
       </div>
 
-      <script>
-        (function(){
-          const pForm = document.getElementById('patientForm');
-          const pPreviewBtn = document.getElementById('patientPreviewBtn');
-          const pPreviewArea = document.getElementById('patientPreviewArea');
-          const pPreviewCount = document.getElementById('patientPreviewCount');
-          const pPreviewHead = document.getElementById('patientPreviewHead');
-          const pPreviewBody = document.getElementById('patientPreviewBody');
+      <div class="field" style="margin:0;">
+        <label>Corporate Account</label>
+        <select name="company" style="width:100%; height:40px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; padding:0 10px;">
+          <option value="">-- All Companies --</option>
+          <% if (typeof companies !== 'undefined' && companies && companies.length) { companies.forEach(function(cmp){ %>
+            <option value="<%= cmp %>"><%= cmp %></option>
+          <% }) } %>
+        </select>
+      </div>
 
-          function serializeForm(f){ const data = {}; new FormData(f).forEach((v,k)=>{ data[k]=v; }); return data; }
+      <div class="field" style="margin:0;">
+        <label>PhilHealth Membership</label>
+        <select name="philhealth" style="width:100%; height:40px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; padding:0 10px;">
+          <option value="">-- Any Status --</option>
+          <option value="yes">Yes (PhilHealth Verified)</option>
+          <option value="no">No</option>
+        </select>
+      </div>
 
-          pPreviewBtn.addEventListener('click', async function(){
-            const data = serializeForm(pForm);
-            try{
-              pPreviewBtn.disabled = true; pPreviewBtn.textContent = 'Loading...';
-              const resp = await fetch('/reports/patient-export/preview', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({}, data, { limit: 500 }))
-              });
-              if (!resp.ok) throw new Error('Preview failed');
-              const json = await resp.json();
-              pPreviewHead.innerHTML = ''; pPreviewBody.innerHTML = '';
-              if (!json || !Array.isArray(json.rows)) { pPreviewArea.style.display = 'none'; alert('No preview data'); return; }
-              const rows = json.rows;
-              const headers = ['Patient ID','Patient Code','Full Name','DOB','Age','Company','PhilHealth','Phone','Email','Created At','Created By'];
-              headers.forEach(h=>{ const th = document.createElement('th'); th.textContent = h; th.style.borderBottom='1px solid #ccc'; th.style.padding='6px'; pPreviewHead.appendChild(th); });
-              rows.forEach(r=>{
-                const tr = document.createElement('tr');
-                const vals = [r.patientId,r.patientCode,r.fullName,r.dob,r.age,r.company,(r.philhealthConsent ? 'yes' : 'no'),r.phone,r.email,r.createdAt,r.createdBy];
-                vals.forEach(v=>{ const td = document.createElement('td'); td.textContent = v || ''; td.style.padding='6px'; td.style.borderBottom='1px solid #f1f1f1'; tr.appendChild(td); });
-                pPreviewBody.appendChild(tr);
-              });
-              pPreviewCount.textContent = json.count || rows.length || 0; pPreviewArea.style.display = 'block';
-            } catch(e){ console.error(e); alert('Preview failed'); }
-            finally{ pPreviewBtn.disabled = false; pPreviewBtn.textContent = 'Preview'; }
-          });
-        })();
-      </script>
+      <div class="field" style="margin:0;">
+        <label>Export Format</label>
+        <select name="format" style="width:100%; height:40px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; padding:0 10px;">
+          <option value="xlsx">Excel Spreadsheet (.xlsx)</option>
+          <option value="csv">Comma-Separated Values (.csv)</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <button type="submit" class="button btn-primary" style="padding:10px 22px; font-weight:600;">
+        📥 Download Patient Registry
+      </button>
+      <button type="button" id="patientPreviewBtn" class="button btn-secondary" style="padding:10px 20px;">
+        👁️ Preview Patients
+      </button>
+    </div>
+  </form>
+
+  <!-- Patient Preview Area -->
+  <div id="patientPreviewArea" style="width:100%; margin-top:20px; display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <h4 style="margin:0; font-size:1em; color:#0f172a;">Patient Preview: <span id="patientPreviewCount" style="color:var(--secondary-green); font-weight:700;">0</span> records found</h4>
+    </div>
+    <div style="overflow:auto; max-height:350px; border:1px solid #e2e8f0; border-radius:10px; background:#fff; padding:6px;">
+      <table id="patientPreviewTable" style="border-collapse:collapse; width:100%; font-size:0.88em;">
+        <thead>
+          <tr id="patientPreviewHead" style="background:#0f172a; color:#fff; position:sticky; top:0; z-index:2;"></tr>
+        </thead>
+        <tbody id="patientPreviewBody"></tbody>
+      </table>
+    </div>
   </div>
-</body>
-</html>
+
+  <script>
+    (function(){
+      const pForm = document.getElementById('patientForm');
+      const pPreviewBtn = document.getElementById('patientPreviewBtn');
+      const pPreviewArea = document.getElementById('patientPreviewArea');
+      const pPreviewCount = document.getElementById('patientPreviewCount');
+      const pPreviewHead = document.getElementById('patientPreviewHead');
+      const pPreviewBody = document.getElementById('patientPreviewBody');
+
+      function serializeForm(f){ const data = {}; new FormData(f).forEach((v,k)=>{ data[k]=v; }); return data; }
+
+      pPreviewBtn.addEventListener('click', async function(){
+        const data = serializeForm(pForm);
+        try{
+          pPreviewBtn.disabled = true; 
+          pPreviewBtn.textContent = 'Loading...';
+          const resp = await fetch('/reports/patient-export/preview', {
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify(Object.assign({}, data, { limit: 500 }))
+          });
+          if (!resp.ok) throw new Error('Preview failed');
+          const json = await resp.json();
+          pPreviewHead.innerHTML = ''; 
+          pPreviewBody.innerHTML = '';
+          if (!json || !Array.isArray(json.rows)) { 
+            pPreviewArea.style.display = 'none'; 
+            alert('No preview data available'); 
+            return; 
+          }
+          const rows = json.rows;
+          const headers = ['Patient ID','Patient Code','Full Name','DOB','Age','Company','PhilHealth','Phone','Email','Created At','Created By'];
+          headers.forEach(h=>{ 
+            const th = document.createElement('th'); 
+            th.textContent = h; 
+            th.style.padding = '8px 10px'; 
+            th.style.borderBottom = '1px solid #cbd5e1'; 
+            pPreviewHead.appendChild(th); 
+          });
+          rows.forEach(r=>{
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid #f1f5f9';
+            const vals = [r.patientId,r.patientCode,r.fullName,r.dob,r.age,r.company,(r.philhealthConsent ? 'yes' : 'no'),r.phone,r.email,r.createdAt,r.createdBy];
+            vals.forEach(v=>{ 
+              const td = document.createElement('td'); 
+              td.textContent = v || ''; 
+              td.style.padding = '8px 10px'; 
+              tr.appendChild(td); 
+            });
+            pPreviewBody.appendChild(tr);
+          });
+          pPreviewCount.textContent = json.count || rows.length || 0; 
+          pPreviewArea.style.display = 'block';
+        } catch(e){ 
+          console.error(e); 
+          alert('Preview failed'); 
+        } finally{ 
+          pPreviewBtn.disabled = false; 
+          pPreviewBtn.textContent = '👁️ Preview Patients'; 
+        }
+      });
+    })();
+  </script>
+</div>

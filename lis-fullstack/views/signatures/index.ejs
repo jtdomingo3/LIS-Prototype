@@ -1,90 +1,155 @@
-<div class="card">
-  <form method="GET" action="/signatures" style="display:flex; gap:8px; margin-bottom:12px; align-items:center;">
-    <input type="text" name="search" placeholder="Search test id / patient / type..." value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>" style="flex:1; min-width:360px; padding:8px; height:44px; box-sizing:border-box;">
-    <input type="date" name="date" onchange="this.form.submit()" value="<%= typeof dateFilter !== 'undefined' ? dateFilter : '' %>" style="width:170px; height:44px; padding:6px; box-sizing:border-box;">
-    <select name="type" onchange="this.form.submit()" style="width:220px; padding:8px;">
+<%
+  const uid = currentUser && (currentUser.id || currentUser._id) ? String(currentUser.id || currentUser._id) : (currentUser && currentUser.email ? currentUser.email : null);
+%>
+
+<!-- Signatory Station Header Banner (Without signature image) -->
+<div class="card" style="padding:16px 24px; border-radius:12px; margin-bottom:18px; background:#f8fafc; border:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
+  <div style="display:flex; align-items:center; gap:12px;">
+    <span style="display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; border-radius:10px; background:#e0e7ff; color:#4338ca; font-size:1.3em;">✍️</span>
+    <div>
+      <h3 style="margin:0; font-size:1.15em; color:#0f172a;">Digital Signatory Station</h3>
+      <p style="margin:2px 0 0 0; color:#64748b; font-size:0.84em;">
+        Authorized Process Owners: <strong>Medical Technologists (RMT), X-Ray Technicians & Sonographers</strong>
+      </p>
+    </div>
+  </div>
+
+  <div style="display:flex; align-items:center; gap:10px; font-size:0.88em; color:#334155;">
+    <div>Logged in: <strong><%= currentUser ? (currentUser.name || currentUser.email) : 'Technician' %></strong></div>
+    <% if (currentUser && currentUser.role) { %>
+      <span style="background:#e2e8f0; padding:2px 8px; border-radius:10px; font-size:0.8em; font-weight:700; color:#334155;"><%= currentUser.role %></span>
+    <% } %>
+    <% if (currentUser && currentUser.licenseNumber) { %>
+      <span style="color:#64748b; font-size:0.84em;">PRC License: <strong><%= currentUser.licenseNumber %></strong></span>
+    <% } %>
+  </div>
+</div>
+
+<div class="card" style="padding:24px 28px; border-radius:16px; box-shadow:0 4px 18px rgba(0,0,0,0.03);">
+  <!-- Search & Filter Bar (Single Clean Line) -->
+  <form method="GET" action="/signatures" style="display:flex; gap:8px; margin-bottom:18px; align-items:center; flex-wrap:nowrap; padding-bottom:16px; border-bottom:1px solid #f1f5f9; width:100%;">
+    <div style="position:relative; flex:1; min-width:200px;">
+      <span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:0.9em; pointer-events:none;">🔍</span>
+      <input type="text" name="search" placeholder="Search Test ID, patient, or test type..." value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>" style="width:100%; height:40px; padding:0 12px 0 34px; font-size:13.5px; box-sizing:border-box; border-radius:8px; border:1px solid #cbd5e1; background:#fff; margin:0;" />
+    </div>
+
+    <input type="date" name="date" onchange="this.form.submit()" value="<%= typeof dateFilter !== 'undefined' ? dateFilter : '' %>" style="width:135px; flex-shrink:0; height:40px; padding:0 8px; font-size:13px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; margin:0; box-sizing:border-box;" title="Filter by date" />
+
+    <select name="type" onchange="this.form.submit()" style="width:165px; flex-shrink:0; height:40px; padding:0 10px; font-size:13px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; margin:0; box-sizing:border-box;">
       <option value="">-- All Test Types --</option>
       <% (availableTestTypes || []).forEach(function(tt){ %>
         <option value="<%= tt %>" <%= (typeof typeFilter !== 'undefined' && typeFilter === tt) ? 'selected' : '' %>><%= tt %></option>
       <% }) %>
     </select>
     
-    <a href="/signatures" class="button btn-secondary">Clear</a>
+    <a href="/signatures" class="button btn-secondary" style="height:40px; display:inline-flex; align-items:center; padding:0 16px; border-radius:8px; flex-shrink:0; white-space:nowrap; font-size:13px; margin:0;">Clear</a>
   </form>
 
-  <% if (tests && tests.length) { %>
-    <table>
-      <thead>
-        <tr>
-          <th>Test ID</th>
-          <th>Patient</th>
-          <th>Type</th>
-          <th>Date</th>
-          <th>Signature</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% tests.forEach(t => { %>
-          <tr>
-            <td><a href="/tests/<%= t.id %>"><%= t.testId || t.id %></a></td>
-            <td><%= t.patient ? (t.patient.lastName + ', ' + t.patient.firstName) : 'Unknown' %></td>
-            <td><%= t.testType || t.template || '' %></td>
-            <td><%= t.testDate ? new Date(t.testDate).toLocaleDateString() : (t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '') %></td>
-            <td>
-              <% const sigs = (t.results && t.results.signatures) ? t.results.signatures : {}; %>
-              <% const uid = currentUser && (currentUser.id || currentUser._id) ? String(currentUser.id || currentUser._id) : (currentUser && currentUser.email ? currentUser.email : null); %>
-              <% if (uid && sigs[uid] && sigs[uid].filename) { %>
-                <div>Signed by <%= sigs[uid].name %> <small>(<%= new Date(sigs[uid].uploadedAt).toLocaleString() %>)</small></div>
-                <div><img src="/assets/signature/<%= sigs[uid].filename %>" alt="signature" style="max-height:48px;border:1px solid #eee;padding:4px;background:#fff;" /></div>
-              <% } else { %>
-                <div>-</div>
-              <% } %>
-            </td>
-            <td style="white-space:nowrap">
-              <% if (!(uid && sigs[uid] && sigs[uid].filename)) { %>
-                <form action="/signatures/<%= t.id %>/sign" method="POST" style="display:inline-block;margin:0;">
-                  <button class="button btn-primary btn-small">Apply My Signature</button>
-                </form>
-              <% } %>
-              <a href="/reports/preview/<%= t.id %>" target="_blank" class="button btn-orange btn-small">Report</a>
-            </td>
+  <!-- Signable Tests Table (No signature image rendered) -->
+  <div style="overflow-x:auto;">
+    <% if (tests && tests.length) { %>
+      <table style="width:100%; border-collapse:collapse; margin-bottom:16px;">
+        <thead>
+          <tr style="border-bottom:2px solid #e2e8f0; text-align:left;">
+            <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">Test ID</th>
+            <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">Patient</th>
+            <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">Diagnostic Panel</th>
+            <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">Test Date</th>
+            <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">Signatory Status</th>
+            <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b; text-align:right;">Actions</th>
           </tr>
-        <% }) %>
-      </tbody>
-    </table>
-  <% } else { %>
-    <p>No signable tests found.</p>
-  <% } %>
+        </thead>
+        <tbody>
+          <% tests.forEach(t => { 
+            const sigs = (t.results && t.results.signatures) ? t.results.signatures : {};
+            const isSignedByMe = !!(uid && sigs[uid] && sigs[uid].filename);
+            const hasAnySig = Object.keys(sigs).length > 0;
+            const patientName = t.patient ? (t.patient.lastName + ', ' + t.patient.firstName) : 'Unknown Patient';
+          %>
+            <tr style="border-bottom:1px solid #f1f5f9; transition:background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+              <td style="padding:14px; font-weight:700; color:#0f172a; white-space:nowrap;">
+                <a href="/tests/<%= t.id %>" style="color:#0284c7; text-decoration:none;">
+                  <code style="background:#f1f5f9; padding:4px 8px; border-radius:6px; font-size:0.9em; color:#0284c7;"><%= t.testId || t.id %></code>
+                </a>
+              </td>
+              <td style="padding:14px;">
+                <strong style="color:#0f172a; display:block; font-size:0.95em;"><%= patientName %></strong>
+                <% if (t.patient && t.patient.patientId) { %>
+                  <span style="font-size:0.8em; color:#64748b;">ID: <%= t.patient.patientId %></span>
+                <% } %>
+              </td>
+              <td style="padding:14px;">
+                <span style="font-weight:600; color:#334155;"><%= t.testType || t.template || 'General Diagnostic' %></span>
+              </td>
+              <td style="padding:14px; color:#64748b; font-size:0.9em; white-space:nowrap;">
+                <%= t.testDate ? new Date(t.testDate).toLocaleDateString() : (t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '') %>
+              </td>
+              <td style="padding:14px; white-space:nowrap;">
+                <% if (isSignedByMe) { %>
+                  <span style="display:inline-flex; align-items:center; gap:6px; background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; padding:4px 10px; border-radius:12px; font-size:0.82em; font-weight:600;">
+                    ✓ Signed by You <small style="color:#64748b; font-weight:400;">(<%= new Date(sigs[uid].uploadedAt).toLocaleDateString() %>)</small>
+                  </span>
+                <% } else if (hasAnySig) { %>
+                  <% const firstKey = Object.keys(sigs)[0]; %>
+                  <span style="display:inline-flex; align-items:center; gap:6px; background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; padding:4px 10px; border-radius:12px; font-size:0.82em; font-weight:600;">
+                    ✓ Signed: <%= sigs[firstKey].name || 'Technician' %>
+                  </span>
+                <% } else { %>
+                  <span style="color:#94a3b8; font-size:0.85em; font-style:italic;">Awaiting signature</span>
+                <% } %>
+              </td>
+              <td style="padding:14px; text-align:right; white-space:nowrap;">
+                <% if (!isSignedByMe) { %>
+                  <form action="/signatures/<%= t.id %>/sign" method="POST" style="display:inline-block; margin:0;">
+                    <button type="submit" class="button btn-primary btn-small" style="padding:6px 14px; font-size:0.82em; font-weight:600;">
+                      ✍️ Sign Report
+                    </button>
+                  </form>
+                <% } %>
+                <a href="/reports/preview/<%= t.id %>" target="_blank" class="button btn-orange btn-small" style="padding:6px 12px; font-size:0.82em;">
+                  📄 Preview Report
+                </a>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } else { %>
+      <div style="padding:48px 16px; text-align:center; color:#94a3b8;">
+        <span style="font-size:2.4em; display:block; margin-bottom:8px;">✍️</span>
+        <strong style="font-size:1.1em; color:#475569; display:block;">No Signable Reports in Queue</strong>
+        <span style="font-size:0.9em;">All completed diagnostic reports have been reviewed, or match no current filters.</span>
+      </div>
+    <% } %>
+  </div>
   
+  <!-- Pagination -->
   <% if (typeof totalPages !== 'undefined' && totalPages > 1) { %>
-    <div class="flex-between mt-20">
-      <% if (hasPrevPage) { %>
-        <a href="?page=<%= prevPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&priority=<%= encodeURIComponent(priorityFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link">Previous</a>
-      <% } %>
-
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding-top:16px; border-top:1px solid #f1f5f9;">
       <div>
+        <% if (hasPrevPage) { %>
+          <a href="?page=<%= prevPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="button btn-secondary btn-small">← Previous</a>
+        <% } %>
+      </div>
+
+      <div style="display:flex; gap:6px; align-items:center;">
         <% 
-          const maxDisplay = 10;
+          const maxDisplay = 8;
           const half = Math.floor(maxDisplay/2);
           let start = Math.max(1, currentPage - half);
           let end = Math.min(totalPages, start + maxDisplay - 1);
           start = Math.max(1, end - maxDisplay + 1);
-          if (totalPages > maxDisplay && start > 1) { %>
-            <a href="?page=1&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&priority=<%= encodeURIComponent(priorityFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link">First</a>
-        <% }
           for (let p = start; p <= end; p++) {
         %>
-          <a href="?page=<%= p %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&priority=<%= encodeURIComponent(priorityFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link <%= p === currentPage ? 'active' : '' %>"><%= p %></a>
-        <% } 
-          if (totalPages > maxDisplay && end < totalPages) { %>
-            <a href="?page=<%= totalPages %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&priority=<%= encodeURIComponent(priorityFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link">Last</a>
+          <a href="?page=<%= p %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link" style="padding:6px 12px; border-radius:6px; text-decoration:none; font-size:0.85em; font-weight:600; <%= p === currentPage ? 'background:#0f172a; color:#fff;' : 'background:#f1f5f9; color:#475569;' %>"><%= p %></a>
         <% } %>
       </div>
 
-      <% if (hasNextPage) { %>
-        <a href="?page=<%= nextPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&priority=<%= encodeURIComponent(priorityFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link">Next</a>
-      <% } %>
+      <div>
+        <% if (hasNextPage) { %>
+          <a href="?page=<%= nextPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="button btn-secondary btn-small">Next →</a>
+        <% } %>
+      </div>
     </div>
   <% } %>
 </div>

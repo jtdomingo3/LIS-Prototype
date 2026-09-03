@@ -37,6 +37,18 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
     // Get all patients and filter/search
     let allPatients = await Patient.find({});
 
+    // Compute system-wide patient stats across whole database
+    let systemStats = { total: 0, female: 0, male: 0, philhealth: 0 };
+    if (Array.isArray(allPatients)) {
+      systemStats.total = allPatients.length;
+      allPatients.forEach(p => {
+        const g = String(p.gender || '').toLowerCase();
+        if (g.startsWith('f')) systemStats.female++;
+        else if (g.startsWith('m')) systemStats.male++;
+        if (p.philhealthConsent) systemStats.philhealth++;
+      });
+    }
+
     // Available companies for the company filter
     const availableCompanies = Array.isArray(allPatients) ? Array.from(new Set(allPatients.map(p => (p.company || '').toString()).filter(Boolean))).sort() : [];
 
@@ -143,7 +155,8 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
       philhealthFilter,
       companyFilter,
       dateFilter,
-      availableCompanies
+      availableCompanies,
+      systemStats
     });
   } catch (error) {
     console.error('Patients list error:', error);

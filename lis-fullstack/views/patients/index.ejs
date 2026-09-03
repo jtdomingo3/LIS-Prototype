@@ -1,104 +1,222 @@
-<div class="card">
-        <div style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; gap:12px;">
-                <div>
-                        <a href="/patients/new" class="button btn-primary">➕ Add New Patient</a>
+<%
+  // Use system-wide stats across the whole system
+  const hasSystemStats = typeof systemStats !== 'undefined' && systemStats;
+  let totalPatientsCount = hasSystemStats ? systemStats.total : (Array.isArray(patients) ? patients.length : 0);
+  let countFemale = hasSystemStats ? systemStats.female : 0;
+  let countMale = hasSystemStats ? systemStats.male : 0;
+  let countPhilhealth = hasSystemStats ? systemStats.philhealth : 0;
+
+  if (!hasSystemStats && Array.isArray(patients)) {
+    patients.forEach(p => {
+      const g = String(p.gender || '').toLowerCase();
+      if (g.startsWith('f')) countFemale++;
+      else if (g.startsWith('m')) countMale++;
+      if (p.philhealthConsent) countPhilhealth++;
+    });
+  }
+%>
+
+<!-- Top Patient Demographics & Registry Overview (Whole System) -->
+<div class="stats-container" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:24px;">
+  <div class="stat-card" style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:18px 22px; box-shadow:0 2px 10px rgba(0,0,0,0.02);">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-size:0.85em; text-transform:uppercase; font-weight:700; color:#64748b; letter-spacing:0.5px;">Registered Patients</span>
+      <span style="font-size:1.4em;">👥</span>
+    </div>
+    <div style="font-size:2em; font-weight:800; color:#0f172a; margin-top:8px;"><%= totalPatientsCount %></div>
+    <div style="font-size:0.82em; color:#64748b; margin-top:4px;">Total registered in system</div>
+  </div>
+
+  <div class="stat-card" style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:18px 22px; box-shadow:0 2px 10px rgba(0,0,0,0.02);">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-size:0.85em; text-transform:uppercase; font-weight:700; color:#db2777; letter-spacing:0.5px;">Female Patients</span>
+      <span style="font-size:1.4em;">👩</span>
+    </div>
+    <div style="font-size:2em; font-weight:800; color:#db2777; margin-top:8px;"><%= countFemale %></div>
+    <div style="font-size:0.82em; color:#64748b; margin-top:4px;">System demographic total</div>
+  </div>
+
+  <div class="stat-card" style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:18px 22px; box-shadow:0 2px 10px rgba(0,0,0,0.02);">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-size:0.85em; text-transform:uppercase; font-weight:700; color:#2563eb; letter-spacing:0.5px;">Male Patients</span>
+      <span style="font-size:1.4em;">👨</span>
+    </div>
+    <div style="font-size:2em; font-weight:800; color:#2563eb; margin-top:8px;"><%= countMale %></div>
+    <div style="font-size:0.82em; color:#64748b; margin-top:4px;">System demographic total</div>
+  </div>
+
+  <div class="stat-card" style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:18px 22px; box-shadow:0 2px 10px rgba(0,0,0,0.02);">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <span style="font-size:0.85em; text-transform:uppercase; font-weight:700; color:#10b981; letter-spacing:0.5px;">PhilHealth Members</span>
+      <span style="font-size:1.4em;">🩺</span>
+    </div>
+    <div style="font-size:2em; font-weight:800; color:#10b981; margin-top:8px;"><%= countPhilhealth %></div>
+    <div style="font-size:0.82em; color:#64748b; margin-top:4px;">Health insurance verified</div>
+  </div>
+</div>
+
+<div class="card" style="padding:24px 28px; border-radius:16px; box-shadow:0 4px 18px rgba(0,0,0,0.03);">
+  <!-- Filter & Search Toolbar (Single Clean Line) -->
+  <div style="display:flex; align-items:center; gap:10px; margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid #f1f5f9; width:100%;">
+    <a href="/patients/new" class="button btn-primary" style="display:inline-flex; align-items:center; gap:8px; font-weight:600; padding:0 18px; height:40px; flex-shrink:0; white-space:nowrap; border-radius:8px;">
+      <i class="fa fa-plus"></i> Add New Patient
+    </a>
+
+    <form method="GET" action="/patients" style="flex:1; display:flex; gap:8px; align-items:center; margin:0; min-width:0;">
+      <div style="position:relative; flex:1; min-width:180px;">
+        <span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:0.9em; pointer-events:none;">🔍</span>
+        <input type="text" name="search" placeholder="Search patients by name, MRN, or ID..." value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>" style="width:100%; height:40px; padding:0 12px 0 34px; font-size:13.5px; box-sizing:border-box; border-radius:8px; border:1px solid #cbd5e1; background:#fff; margin:0;" />
+      </div>
+
+      <input type="date" name="date" onchange="this.form.submit()" value="<%= typeof dateFilter !== 'undefined' ? dateFilter : '' %>" style="width:135px; flex-shrink:0; height:40px; padding:0 8px; font-size:13px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; margin:0; box-sizing:border-box;" title="Filter by registration date" />
+
+      <select name="philhealth" onchange="this.form.submit()" style="width:135px; flex-shrink:0; height:40px; padding:0 8px; font-size:13px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; margin:0; box-sizing:border-box;">
+        <option value="">PhilHealth (All)</option>
+        <option value="yes" <%= (typeof philhealthFilter !== 'undefined' && philhealthFilter === 'yes') ? 'selected' : '' %>>PhilHealth: Yes</option>
+        <option value="no" <%= (typeof philhealthFilter !== 'undefined' && philhealthFilter === 'no') ? 'selected' : '' %>>PhilHealth: No</option>
+      </select>
+
+      <select name="company" onchange="this.form.submit()" style="width:145px; flex-shrink:0; height:40px; padding:0 8px; font-size:13px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; margin:0; box-sizing:border-box;">
+        <option value="">All Companies</option>
+        <% (availableCompanies || []).forEach(function(c){ %>
+          <option value="<%= c %>" <%= (typeof companyFilter !== 'undefined' && companyFilter === c) ? 'selected' : '' %>><%= c %></option>
+        <% }) %>
+      </select>
+
+      <a href="/patients" class="button btn-secondary" style="height:40px; display:inline-flex; align-items:center; padding:0 14px; border-radius:8px; flex-shrink:0; white-space:nowrap; font-size:13px; margin:0;">Clear</a>
+    </form>
+  </div>
+
+  <!-- Patients Table -->
+  <div style="overflow-x:auto;">
+    <table style="width:100%; border-collapse:collapse; margin-bottom:16px;">
+      <thead>
+        <tr style="border-bottom:2px solid #e2e8f0; text-align:left;">
+          <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">ID / MRN</th>
+          <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">Patient Full Name</th>
+          <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">Age</th>
+          <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">Gender</th>
+          <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">Contact Phone</th>
+          <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">Company / Account</th>
+          <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">PhilHealth</th>
+          <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b; text-align:right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="patientsTable">
+        <% if (patients && patients.length > 0) { %>
+          <% patients.forEach(patient => { 
+            const patientIdDisplay = patient.patientCode ? patient.patientCode.split('-').pop() : patient.patientId;
+            const fullName = (patient.firstName || '') + (patient.middleName ? ' ' + patient.middleName : '') + ' ' + (patient.lastName || '');
+            const initials = (((patient.firstName || '')[0] || '') + ((patient.lastName || '')[0] || '')).toUpperCase() || 'PT';
+            const ageDisplay = (patient.age !== null && patient.age !== undefined && patient.age !== '') ? patient.age : (patient.ageManual !== null && patient.ageManual !== undefined ? patient.ageManual : '—');
+            const genderStr = String(patient.gender || 'Unknown');
+            const isFemale = genderStr.toLowerCase().startsWith('f');
+            const isMale = genderStr.toLowerCase().startsWith('m');
+            let genderBadgeStyle = 'background:#f1f5f9; color:#475569; border:1px solid #cbd5e1;';
+            if (isFemale) genderBadgeStyle = 'background:#fdf2f8; color:#be185d; border:1px solid #fbcfe8;';
+            else if (isMale) genderBadgeStyle = 'background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe;';
+          %>
+            <tr style="border-bottom:1px solid #f1f5f9; transition:background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+              <td style="padding:14px; font-weight:700; color:#0f172a; white-space:nowrap;">
+                <code style="background:#f1f5f9; padding:4px 8px; border-radius:6px; font-size:0.9em; color:#0284c7;"><%= patientIdDisplay %></code>
+              </td>
+              <td style="padding:14px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <span style="display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:50%; <%= isFemale ? 'background:#fce7f3; color:#db2777;' : 'background:#e0e7ff; color:#4338ca;' %> font-weight:700; font-size:0.85em;"><%= initials %></span>
+                  <div>
+                    <strong style="color:#0f172a; display:block; font-size:0.95em;"><%= fullName %></strong>
+                    <% if (patient.patientId && patient.patientId !== patientIdDisplay) { %>
+                      <span style="font-size:0.8em; color:#64748b;">ID: <%= patient.patientId %></span>
+                    <% } %>
+                  </div>
                 </div>
-                <div style="flex:1; display:flex; justify-content:flex-start; gap:12px; align-items:center;">
-                    <form method="GET" action="/patients" class="filter-form" style="flex:1; display:flex; gap:8px; align-items:center;">
-                        <input type="text" name="search" class="search-box" placeholder="Search patients by name or ID..." value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>" style="flex:1;">
-
-                        <input type="date" name="date" class="filter-select" onchange="this.form.submit()" value="<%= typeof dateFilter !== 'undefined' ? dateFilter : '' %>">
-
-                        <select name="philhealth" class="filter-select" onchange="this.form.submit()">
-                            <option value="">PhilHealth</option>
-                            <option value="yes" <%= (typeof philhealthFilter !== 'undefined' && philhealthFilter === 'yes') ? 'selected' : '' %>>Yes</option>
-                            <option value="no" <%= (typeof philhealthFilter !== 'undefined' && philhealthFilter === 'no') ? 'selected' : '' %>>No</option>
-                        </select>
-
-                        <select name="company" class="filter-select" onchange="this.form.submit()">
-                            <option value="">All Companies</option>
-                            <% (availableCompanies || []).forEach(function(c){ %>
-                                <option value="<%= c %>" <%= (typeof companyFilter !== 'undefined' && companyFilter === c) ? 'selected' : '' %>><%= c %></option>
-                            <% }) %>
-                        </select>
-
-                        <div class="filter-actions">
-                            <a href="/patients" class="button btn-secondary">Clear</a>
-                        </div>
-                    </form>
-                </div>
-        </div>
-    <table>
-        <thead>
-            <tr>
-                    <th>ID</th>
-                    <th>Name</th>
-                    <th>Age</th>
-                    <th>Gender</th>
-                    <th>Phone</th>
-                    <th>Company</th>
-                    <th>PhilHealth</th>
-                    <th>Actions</th>
-                </tr>
-        </thead>
-        <tbody id="patientsTable">
-            <% if (patients && patients.length > 0) { %>
-                <% patients.forEach(patient => { %>
-                <tr>
-                    <td><strong><%= patient.patientCode ? patient.patientCode.split('-').pop() : patient.patientId %></strong></td>
-                    <td><%= patient.firstName %> <%= patient.middleName ? patient.middleName + ' ' : '' %><%= patient.lastName %></td>
-                    <td><%= (patient.age !== null && patient.age !== undefined) ? patient.age : (patient.ageManual !== null && patient.ageManual !== undefined ? patient.ageManual : '') %></td>
-                    <td><%= patient.gender %></td>
-                    <td><%= patient.phone || 'N/A' %></td>
-                    <td><%= patient.company || '' %></td>
-                    <td><%= patient.philhealthConsent ? 'Yes' : 'No' %></td>
-                    <td class="action-buttons" style="flex-wrap:nowrap; white-space:nowrap; margin-top:0;">
-                        <% if (patient.hasTests) { %>
-                            <a href="/patients/<%= patient.id %>" class="button btn-small btn-primary">View</a>
-                        <% } else { %>
-                            <a href="/tests/new?patient=<%= patient.id %>&returnTo=/patients" class="button btn-small btn-primary">Assign Test</a>
-                        <% } %>
-                        <a href="/patients/<%= patient.id %>/edit" class="button btn-small btn-orange">Edit</a>
-                        <form action="/patients/<%= patient.id %>?_method=DELETE" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this patient?')">
-                            <button type="submit" class="button btn-small btn-danger">Delete</button>
-                        </form>
-                    </td>
-                </tr>
-                <% }); %>
-            <% } else { %>
-                <tr><td colspan="6" class="text-center">No patients found</td></tr>
-            <% } %>
-        </tbody>
-    </table>
-
-        <% if (totalPages > 1) { %>
-        <div class="flex-between mt-20">
-            <% if (hasPrevPage) { %>
-                <a href="/patients?page=<%= prevPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&philhealth=<%= encodeURIComponent(philhealthFilter || '') %>&company=<%= encodeURIComponent(companyFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link">Previous</a>
-            <% } %>
-
-            <div>
-                <% 
-                    const maxDisplay = 10;
-                    const half = Math.floor(maxDisplay/2);
-                    let start = Math.max(1, currentPage - half);
-                    let end = Math.min(totalPages, start + maxDisplay - 1);
-                    start = Math.max(1, end - maxDisplay + 1);
-                    if (totalPages > maxDisplay && start > 1) { %>
-                        <a href="/patients?page=1&search=<%= encodeURIComponent(searchQuery || '') %>&philhealth=<%= encodeURIComponent(philhealthFilter || '') %>&company=<%= encodeURIComponent(companyFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link">First</a>
-                <% }
-                    for (let p = start; p <= end; p++) {
-                %>
-                    <a href="/patients?page=<%= p %>&search=<%= encodeURIComponent(searchQuery || '') %>&philhealth=<%= encodeURIComponent(philhealthFilter || '') %>&company=<%= encodeURIComponent(companyFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link <%= p === currentPage ? 'active' : '' %>"><%= p %></a>
-                <% } 
-                    if (totalPages > maxDisplay && end < totalPages) { %>
-                        <a href="/patients?page=<%= totalPages %>&search=<%= encodeURIComponent(searchQuery || '') %>&philhealth=<%= encodeURIComponent(philhealthFilter || '') %>&company=<%= encodeURIComponent(companyFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link">Last</a>
+              </td>
+              <td style="padding:14px; color:#334155; font-size:0.92em;">
+                <%= ageDisplay %>
+              </td>
+              <td style="padding:14px; white-space:nowrap;">
+                <span style="display:inline-block; padding:3px 10px; border-radius:20px; font-size:0.8em; font-weight:600; <%= genderBadgeStyle %>">
+                  <%= genderStr %>
+                </span>
+              </td>
+              <td style="padding:14px; color:#64748b; font-size:0.9em; white-space:nowrap;">
+                <%= patient.phone || 'N/A' %>
+              </td>
+              <td style="padding:14px; color:#334155; font-size:0.9em;">
+                <% if (patient.company) { %>
+                  <span style="background:#f1f5f9; padding:3px 8px; border-radius:6px; font-weight:600; font-size:0.85em; color:#475569;"><%= patient.company %></span>
+                <% } else { %>
+                  <span style="color:#94a3b8;">—</span>
                 <% } %>
-            </div>
-
-            <% if (hasNextPage) { %>
-                <a href="/patients?page=<%= nextPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&philhealth=<%= encodeURIComponent(philhealthFilter || '') %>&company=<%= encodeURIComponent(companyFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link">Next</a>
-            <% } %>
-        </div>
+              </td>
+              <td style="padding:14px; white-space:nowrap;">
+                <% if (patient.philhealthConsent) { %>
+                  <span style="display:inline-block; padding:3px 8px; border-radius:12px; font-size:0.8em; font-weight:600; background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0;">✓ Member</span>
+                <% } else { %>
+                  <span style="display:inline-block; padding:3px 8px; border-radius:12px; font-size:0.8em; font-weight:600; background:#f1f5f9; color:#94a3b8;">No</span>
+                <% } %>
+              </td>
+              <td class="action-buttons" style="padding:14px; text-align:right; white-space:nowrap;">
+                <% if (patient.hasTests) { %>
+                  <a href="/patients/<%= patient.id %>" class="button btn-small btn-primary" style="padding:6px 12px; font-size:0.82em; font-weight:600;">View</a>
+                <% } else { %>
+                  <a href="/tests/new?patient=<%= patient.id %>&returnTo=/patients" class="button btn-small btn-primary" style="padding:6px 12px; font-size:0.82em; font-weight:600;">Assign Test</a>
+                <% } %>
+                <a href="/patients/<%= patient.id %>/edit" class="button btn-small btn-orange" style="padding:6px 12px; font-size:0.82em;">Edit</a>
+                <form action="/patients/<%= patient.id %>?_method=DELETE" method="POST" style="display:inline-block; margin:0;" onsubmit="return confirm('⚠️ Are you sure you want to delete patient <%= fullName.trim() %>? This will remove all demographic records.');">
+                  <button type="submit" class="button btn-small btn-danger" style="padding:6px 10px; font-size:0.82em; margin-left:4px;" title="Delete patient">Delete</button>
+                </form>
+              </td>
+            </tr>
+          <% }); %>
+        <% } else { %>
+          <tr>
+            <td colspan="8" style="padding:48px 16px; text-align:center; color:#94a3b8;">
+              <span style="font-size:2.4em; display:block; margin-bottom:8px;">👥</span>
+              <strong style="font-size:1.1em; color:#475569; display:block;">No Patients Found</strong>
+              <span style="font-size:0.9em;">Adjust search terms or register a new patient.</span>
+            </td>
+          </tr>
         <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination Bar -->
+  <% if (typeof totalPages !== 'undefined' && totalPages > 1) { %>
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding-top:16px; border-top:1px solid #f1f5f9;">
+      <div>
+        <% if (hasPrevPage) { %>
+          <a href="/patients?page=<%= prevPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&philhealth=<%= encodeURIComponent(philhealthFilter || '') %>&company=<%= encodeURIComponent(companyFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="button btn-secondary btn-small">← Previous</a>
+        <% } %>
+      </div>
+
+      <div style="display:flex; gap:6px; align-items:center;">
+        <% 
+          const maxDisplay = 8;
+          const half = Math.floor(maxDisplay/2);
+          let start = Math.max(1, currentPage - half);
+          let end = Math.min(totalPages, start + maxDisplay - 1);
+          start = Math.max(1, end - maxDisplay + 1);
+          if (totalPages > maxDisplay && start > 1) { %>
+            <a href="/patients?page=1&search=<%= encodeURIComponent(searchQuery || '') %>&philhealth=<%= encodeURIComponent(philhealthFilter || '') %>&company=<%= encodeURIComponent(companyFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link" style="padding:6px 10px; border-radius:6px; text-decoration:none; font-size:0.85em; color:#64748b;">1</a>
+            <span style="color:#94a3b8;">...</span>
+        <% }
+          for (let p = start; p <= end; p++) {
+        %>
+          <a href="/patients?page=<%= p %>&search=<%= encodeURIComponent(searchQuery || '') %>&philhealth=<%= encodeURIComponent(philhealthFilter || '') %>&company=<%= encodeURIComponent(companyFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link" style="padding:6px 12px; border-radius:6px; text-decoration:none; font-size:0.85em; font-weight:600; <%= p === currentPage ? 'background:#0f172a; color:#fff;' : 'background:#f1f5f9; color:#475569;' %>"><%= p %></a>
+        <% } 
+          if (totalPages > maxDisplay && end < totalPages) { %>
+            <span style="color:#94a3b8;">...</span>
+            <a href="/patients?page=<%= totalPages %>&search=<%= encodeURIComponent(searchQuery || '') %>&philhealth=<%= encodeURIComponent(philhealthFilter || '') %>&company=<%= encodeURIComponent(companyFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link" style="padding:6px 10px; border-radius:6px; text-decoration:none; font-size:0.85em; color:#64748b;"><%= totalPages %></a>
+        <% } %>
+      </div>
+
+      <div>
+        <% if (hasNextPage) { %>
+          <a href="/patients?page=<%= nextPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&philhealth=<%= encodeURIComponent(philhealthFilter || '') %>&company=<%= encodeURIComponent(companyFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="button btn-secondary btn-small">Next →</a>
+        <% } %>
+      </div>
+    </div>
+  <% } %>
 </div>

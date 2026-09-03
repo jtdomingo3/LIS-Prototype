@@ -1,38 +1,115 @@
-<div class="card">
-  <div class="flex-between mb-20">
-    <a href="/users/new" class="button btn-primary">+ Add New User</a>
+<div class="card" style="padding:24px 28px; border-radius:16px; box-shadow:0 4px 18px rgba(0,0,0,0.03);">
+  <!-- Toolbar (Single Clean Line) -->
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:nowrap; gap:16px; margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid #f1f5f9; width:100%;">
+    <div>
+      <a href="/users/new" class="button btn-primary" style="display:inline-flex; align-items:center; gap:8px; font-weight:600; padding:0 18px; height:40px; flex-shrink:0; white-space:nowrap; border-radius:8px;">
+        <i class="fa fa-user-plus"></i> Add New User Account
+      </a>
+    </div>
+
+    <div style="display:flex; gap:10px; align-items:center; flex:1; justify-content:flex-end; max-width:420px;">
+      <div style="position:relative; width:100%;">
+        <span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:0.9em; pointer-events:none;">🔍</span>
+        <input type="text" id="userSearchInput" placeholder="Filter staff by name, email, or role..." onkeyup="filterUsers()" style="width:100%; height:40px; padding:0 12px 0 34px; font-size:13.5px; box-sizing:border-box; border-radius:8px; border:1px solid #cbd5e1; background:#fff; margin:0;" />
+      </div>
+    </div>
   </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Email</th>
-        <th>Role</th>
-        <th>Status</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% if (users && users.length) { %>
-        <% users.forEach(u => { %>
+  <!-- User Table -->
+  <div style="overflow-x:auto;">
+    <table id="usersTable" style="width:100%; border-collapse:collapse;">
+      <thead>
+        <tr style="border-bottom:2px solid #e2e8f0; text-align:left;">
+          <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">Staff Member</th>
+          <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">Email Address</th>
+          <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">Role & Scope</th>
+          <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">Account Status</th>
+          <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b; text-align:right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (users && users.length) { %>
+          <% users.forEach(u => { 
+            const initials = ((u.name || u.email || 'US').split(' ').map(n => n[0]).join('').slice(0, 2)).toUpperCase();
+            const roleStr = String(u.role || 'Staff');
+            let roleBadgeStyle = 'background:#f1f5f9; color:#475569; border:1px solid #cbd5e1;';
+            if (roleStr.toLowerCase().includes('admin') || roleStr.toLowerCase().includes('manager')) {
+              roleBadgeStyle = 'background:#f5f3ff; color:#5b21b6; border:1px solid #ddd6fe;';
+            } else if (roleStr.toLowerCase().includes('doctor') || roleStr.toLowerCase().includes('pathologist')) {
+              roleBadgeStyle = 'background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd;';
+            } else if (roleStr.toLowerCase().includes('tech') || roleStr.toLowerCase().includes('med')) {
+              roleBadgeStyle = 'background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0;';
+            } else if (roleStr.toLowerCase().includes('reception')) {
+              roleBadgeStyle = 'background:#fef3c7; color:#92400e; border:1px solid #fde68a;';
+            }
+
+            const isInactive = String(u.status || '').toLowerCase() === 'inactive';
+          %>
+            <tr class="user-row" style="border-bottom:1px solid #f1f5f9; transition:background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+              <td style="padding:14px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <span style="display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:50%; background:#0f172a; color:#fff; font-weight:700; font-size:0.85em;"><%= initials %></span>
+                  <div>
+                    <strong class="user-name" style="color:#0f172a; display:block; font-size:0.95em;"><%= u.name %></strong>
+                    <% if (u.licenseNumber) { %>
+                      <span style="font-size:0.8em; color:#64748b;">PRC: <%= u.licenseNumber %></span>
+                    <% } %>
+                  </div>
+                </div>
+              </td>
+              <td style="padding:14px;">
+                <span class="user-email" style="font-family:monospace; color:#334155; font-size:0.9em;"><%= u.email %></span>
+              </td>
+              <td style="padding:14px;">
+                <span class="user-role" style="display:inline-block; padding:4px 10px; border-radius:20px; font-size:0.8em; font-weight:600; <%= roleBadgeStyle %>">
+                  <%= roleStr %>
+                </span>
+              </td>
+              <td style="padding:14px;">
+                <% if (isInactive) { %>
+                  <span style="display:inline-block; padding:4px 10px; border-radius:20px; font-size:0.8em; font-weight:600; background:#f1f5f9; color:#94a3b8; border:1px solid #cbd5e1;">Inactive</span>
+                <% } else { %>
+                  <span style="display:inline-block; padding:4px 10px; border-radius:20px; font-size:0.8em; font-weight:600; background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0;">Active</span>
+                <% } %>
+              </td>
+              <td style="padding:14px; text-align:right; white-space:nowrap;">
+                <a href="/users/<%= u.id %>" class="button btn-secondary btn-small" style="padding:6px 12px; font-size:0.82em;">View</a>
+                <a href="/users/<%= u.id %>/edit" class="button btn-primary btn-small" style="padding:6px 12px; font-size:0.82em; font-weight:600;">Edit</a>
+                <form action="/users/<%= u.id %>?_method=DELETE" method="POST" style="display:inline-block; margin:0;" onsubmit="return confirm('⚠️ Are you sure you want to permanently delete user <%= u.name %> (<%= u.email %>)? This action cannot be undone.');">
+                  <button type="submit" class="button btn-danger btn-small" style="padding:6px 10px; font-size:0.82em; margin-left:4px;" title="Delete user">Delete</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        <% } else { %>
           <tr>
-            <td><%= u.name %></td>
-            <td><%= u.email %></td>
-            <td><span class="badge"><%= u.role %></span></td>
-            <td><span class="badge"><%= u.status %></span></td>
-            <td class="action-buttons">
-              <a href="/users/<%= u.id %>" class="button btn-orange btn-small">View</a>
-              <a href="/users/<%= u.id %>/edit" class="button btn-success btn-small">Edit</a>
-              <form action="/users/<%= u.id %>?_method=DELETE" method="POST" style="display:inline-block;" onsubmit="return confirm('Are you sure you want to delete this user?');">
-                <button type="submit" class="button btn-danger btn-small">Delete</button>
-              </form>
+            <td colspan="5" style="text-align:center; color:#94a3b8; padding:48px 16px;">
+              <span style="font-size:2.4em; display:block; margin-bottom:8px;">👥</span>
+              <strong style="font-size:1.1em; color:#475569; display:block;">No Staff Accounts Found</strong>
+              <span style="font-size:0.9em;">Create a user account to grant access to laboratory modules.</span>
             </td>
           </tr>
-        <% }) %>
-      <% } else { %>
-        <tr><td colspan="5">No users found.</td></tr>
-      <% } %>
-    </tbody>
-  </table>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
 </div>
+
+<script>
+function filterUsers() {
+  const input = document.getElementById('userSearchInput');
+  const filter = input.value.toLowerCase().trim();
+  const rows = document.querySelectorAll('.user-row');
+
+  rows.forEach(row => {
+    const name = row.querySelector('.user-name') ? row.querySelector('.user-name').textContent.toLowerCase() : '';
+    const email = row.querySelector('.user-email') ? row.querySelector('.user-email').textContent.toLowerCase() : '';
+    const role = row.querySelector('.user-role') ? row.querySelector('.user-role').textContent.toLowerCase() : '';
+    if (name.includes(filter) || email.includes(filter) || role.includes(filter)) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+}
+</script>
