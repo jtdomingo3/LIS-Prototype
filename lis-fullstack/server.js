@@ -171,9 +171,9 @@ function verifyStartupRequirements() {
   }
 }
 
-// Middleware
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+// Middleware (50mb limit to support large sync snapshots and base64 digital signatures)
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '50mb' }));
 app.use(methodOverride('_method'));
 
 // Static asset caching options (1 day maxAge with ETag validation)
@@ -944,8 +944,18 @@ app.use((req, res) => {
 
 // Error handler
 app.use((err, req, res, next) => {
+  if (err.type === 'entity.too.large' || err.status === 413) {
+    console.warn(`[server] PayloadTooLarge on ${req.method} ${req.originalUrl}:`, err.message);
+    if (req.xhr || (req.headers.accept && req.headers.accept.includes('json')) || req.originalUrl.startsWith('/api/') || req.originalUrl.startsWith('/reception/')) {
+      return res.status(413).json({ success: false, error: 'Payload too large', message: err.message });
+    }
+    return res.status(413).send('Payload too large');
+  }
   console.error('Unhandled error:', err && err.stack ? err.stack : err);
   try { logReportError(err, `express error ${req.method} ${req.originalUrl}`); } catch (e) { console.error('Failed to write express error to log:', e); }
+  if (req.xhr || (req.headers.accept && req.headers.accept.includes('json')) || req.originalUrl.startsWith('/api/') || req.originalUrl.startsWith('/reception/')) {
+    return res.status(500).json({ success: false, error: 'Internal Server Error', message: err && err.message });
+  }
   // Show the error details in development, otherwise show generic message
   res.status(500).render('500', { title: 'Server Error', error: process.env.NODE_ENV === 'development' ? err : {} });
 });

@@ -33,9 +33,9 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   app.set('layout extractScripts', true);
   app.set('layout extractStyles', true);
 
-  /* ── Body parsers ─────────────────────────────────────────────── */
-  app.use(express.urlencoded({ extended: true }));
-  app.use(express.json());
+  /* ── Body parsers (50mb limit for large sync payloads and signatures) ─ */
+  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+  app.use(express.json({ limit: '50mb' }));
 
   // Support HTML form method overrides (POST with ?_method=PUT/DELETE or hidden _method field)
   try {
@@ -343,8 +343,16 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     }
   }
 
-  // Attach global broadcaster so route controllers can emit local events if needed
+  // Attach global broadcaster and wire sseEmitter so route actions trigger local SSE
   global.broadcastLocalEvent = broadcastEvent;
+  try {
+    const sseEmitter = require('./sseEmitter');
+    sseEmitter.on('update', (payload) => {
+      broadcastEvent(payload);
+    });
+  } catch (e) {
+    console.warn('[LocalServer] failed to wire sseEmitter:', e && e.message);
+  }
 
   app.get('/reception/assigned-events', (req, res) => {
     res.writeHead(200, {

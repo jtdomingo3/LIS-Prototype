@@ -1153,14 +1153,10 @@
                 }
             } catch (e) { /* if anything goes wrong, fall back to original behavior */ }
 
-            // restore preferences (default: auto-refresh disabled by default unless explicitly enabled in Settings)
+            // restore preferences (default: auto-refresh enabled by default)
             try {
                 const v = localStorage.getItem('notif-auto-refresh');
-                if (v !== null) {
-                    autoRefreshCheckbox.checked = (v === '1');
-                } else {
-                    autoRefreshCheckbox.checked = !!(sseCfg && sseCfg.autoRefreshByDefault === true);
-                }
+                autoRefreshCheckbox.checked = (v !== '0');
             } catch(e){}
             try { if (localStorage.getItem('notif-muted') === '1') muteCheckbox.checked = true; } catch(e){}
 
@@ -1256,6 +1252,32 @@
                             // ignore handshake/init/offline keepalive messages (data.serverTime is present on real events so do NOT ignore it)
                             if (data.init || data.offline || data.type === 'connected' || data.type === 'ping' || data.keepalive) return;
                             
+                            // Special internal event: remote sync committed fresh records to local DB
+                            if (data.action === 'live_sync_completed') {
+                                try {
+                                    const currentPath = (window.location.pathname || '').replace(/\/$/, '');
+                                    const isEditingPage = currentPath.includes('/new') || currentPath.includes('/edit') || currentPath.includes('/results');
+                                    const isLivePage = currentPath === '/reception' || 
+                                                       currentPath.startsWith('/reception') || 
+                                                       currentPath === '/patients' || 
+                                                       currentPath === '/tests' || 
+                                                       currentPath === '/dashboard' || 
+                                                       currentPath.startsWith('/inventory') || 
+                                                       currentPath === '';
+                                    const userAutoRefresh = localStorage.getItem('notif-auto-refresh');
+                                    const isExplicitlyOff = (userAutoRefresh === '0');
+                                    const isUserEditing = document.activeElement && (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName) || document.activeElement.isContentEditable);
+
+                                    if (!isExplicitlyOff && isLivePage && !isUserEditing && !isEditingPage) {
+                                        if (window._sseRefreshTimer) clearTimeout(window._sseRefreshTimer);
+                                        window._sseRefreshTimer = setTimeout(() => {
+                                            try { window.location.reload(); } catch(e){}
+                                        }, 300);
+                                    }
+                                } catch(e){}
+                                return;
+                            }
+                            
                             let text = '';
                             if (data.message) {
                                 text = data.message;
@@ -1271,6 +1293,14 @@
                                 text = `👤 New Patient Registered: ${data.patientName || 'Patient'}`;
                                 if (data.patientIdLabel) text += ` (${data.patientIdLabel})`;
                                 else if (data.patientCode) text += ` (${data.patientCode})`;
+                            } else if (data.action === 'patient_updated') {
+                                text = `✏️ Patient Updated: ${data.patientName || 'Patient'}`;
+                            } else if (data.action === 'patient_deleted') {
+                                text = `🗑️ Patient Deleted: ${data.patientName || 'Patient'}`;
+                            } else if (data.action === 'test_deleted') {
+                                text = `🗑️ Test #${data.testId || ''} deleted`;
+                            } else if (data.action === 'test_updated') {
+                                text = `✏️ Test #${data.testId || ''} updated`;
                             } else if (data.action === 'assign' || data.action === 'assigned') {
                                 const pCode = data.patientCode || data.patientIdLabel || '';
                                 const testId = data.testId || (Array.isArray(data.tests) ? data.tests.map(t => t.testId || t.id).join(', ') : '');
@@ -1310,7 +1340,7 @@
                                 const muted = (function(){ try { return localStorage.getItem('notif-muted') === '1'; } catch(e){ return false; } })();
                                 if (!muted && sound && typeof sound.play === 'function') { sound.currentTime = 0; sound.play().catch(()=>{}); }
                             } catch(e){}
-                            // auto-refresh live list pages (Reception, Patients, Tests & Results, Dashboard)
+                            // auto-refresh live list pages (Reception, Patients, Tests & Results, Dashboard, Inventory)
                             try {
                                 const isUserEditing = document.activeElement && (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName) || document.activeElement.isContentEditable);
                                 const currentPath = (window.location.pathname || '').replace(/\/$/, '');
@@ -1323,18 +1353,19 @@
                                                    currentPath.startsWith('/inventory') || 
                                                    currentPath === '';
                                 const defaultAutoRefresh = !!(sseCfg && sseCfg.autoRefreshByDefault === true);
-                                const userAutoRefresh = localStorage.getItem('notif-auto-refresh');
-                                const isAutoRefreshOn = userAutoRefresh !== null ? (userAutoRefresh === '1') : defaultAutoRefresh;
-                                const enabled = (autoRefreshCheckbox && autoRefreshCheckbox.checked != null) ? autoRefreshCheckbox.checked : isAutoRefreshOn;
+                                // Auto-refresh is ON by default on all live list pages so updates are seamless
+                                const enabled = isLivePage || defaultAutoRefresh || (autoRefreshCheckbox && autoRefreshCheckbox.checked !== false);
 
-                                if (enabled && !isUserEditing && !isEditingPage && isAllowed) {
+                                if (enabled && !isUserEditing && !isEditingPage) {
                                     if (window._sseRefreshTimer) clearTimeout(window._sseRefreshTimer);
-                                    const debounceDelay = Math.max(100, (sseCfg.refreshDebounceMs || 800));
+                                    const debounceDelay = Math.max(100, (sseCfg && sseCfg.refreshDebounceMs ? sseCfg.refreshDebounceMs : 800));
                                     window._sseRefreshTimer = setTimeout(() => {
                                         try { window.location.reload(); } catch (e) {}
                                     }, debounceDelay);
                                 }
-                            } catch(e){}
+                            } catch(e){
+                                console.warn('[SSE] refresh error', e);
+                            }
                         } catch (e) { console.warn('[SSE] message parse error', e); }
                     };
                     es.onerror = function(err){
@@ -1342,42 +1373,41 @@
                         es = null;
                         setConn(false);
                         sseRetryDelay = Math.min(30000, sseRetryDelay * 1.5);
-                        setTimeout(() => { if (document.visibilityState === 'visible') connect(); }, sseRetryDelay);
+                        setTimeout(() => { connect(); }, sseRetryDelay);
                     };
                 } catch (e) {
                     setConn(false);
                     sseRetryDelay = Math.min(30000, sseRetryDelay * 1.5);
-                    setTimeout(() => { if (document.visibilityState === 'visible') connect(); }, sseRetryDelay);
+                    setTimeout(() => { connect(); }, sseRetryDelay);
                 }
             }
             const configuredRetrySec = Math.max(1, (sseCfg.retryDelaySec || 3));
             let sseRetryDelay = configuredRetrySec * 1000;
-            const configuredConnectDelayMs = Math.max(0, (sseCfg.connectDelaySec != null ? sseCfg.connectDelaySec : 3)) * 1000;
+            const configuredConnectDelayMs = Math.max(0, (sseCfg.connectDelaySec != null ? sseCfg.connectDelaySec : 0)) * 1000;
 
-            // Defer SSE connection according to configured connection delay.
-            // If user switches tab/loses visibility, cancel pending connect and close open connection.
+            // Connect immediately so live events and queue changes are never missed
             let sseDeferredTimer = null;
             function scheduleSSEConnect(delay = configuredConnectDelayMs) {
                 if (!('EventSource' in window)) return;
                 try { clearTimeout(sseDeferredTimer); } catch(e){}
-                sseDeferredTimer = setTimeout(() => {
-                    try {
-                        if (document.visibilityState === 'visible') connect();
-                    } catch (e) { console.warn('[SSE] deferred connect failed', e); }
-                }, delay);
+                if (delay <= 0) {
+                    try { connect(); } catch(e){ console.warn('[SSE] connect failed', e); }
+                } else {
+                    sseDeferredTimer = setTimeout(() => {
+                        try { connect(); } catch (e) { console.warn('[SSE] deferred connect failed', e); }
+                    }, delay);
+                }
             }
 
+            // Keep connection alive continuously across tabs/windows; reconnect immediately if dropped
             document.addEventListener('visibilitychange', () => {
-                if (document.visibilityState === 'visible') {
-                    scheduleSSEConnect(configuredConnectDelayMs);
-                } else {
-                    try { clearTimeout(sseDeferredTimer); } catch(e){}
-                    try { if (es) { es.close(); es = null; setConn(false); } } catch (e) {}
+                if (document.visibilityState === 'visible' && !es) {
+                    scheduleSSEConnect(0);
                 }
             });
 
-            // Kick off initial schedule when page loads
-            if (document.visibilityState === 'visible') scheduleSSEConnect(configuredConnectDelayMs);
+            // Kick off connection immediately when page loads
+            scheduleSSEConnect(configuredConnectDelayMs);
         })();
 
         // Persistent Fullscreen Viewport (keeps Fullscreen active across all sidebar navigation and page loads)

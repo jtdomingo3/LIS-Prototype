@@ -582,6 +582,18 @@ router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
       return res.redirect('/patients');
     }
 
+    try {
+      sseEmitter.emit('update', {
+        action: 'patient_updated',
+        patientId: patient.id,
+        patientName: `${patient.firstName} ${patient.lastName}`,
+        patientCode: patient.patientCode || null,
+        patientIdLabel: patient.patientId || null,
+        time: (new Date()).toISOString(),
+        message: `Patient ${patient.firstName} ${patient.lastName} updated`
+      });
+    } catch (e) { console.warn('SSE emit failed for patient_updated', e); }
+
     req.flash('success_msg', `Patient ${firstName} ${lastName} updated successfully!`);
     res.redirect(`/patients/${req.params.id}`);
 
@@ -625,6 +637,18 @@ router.delete('/:id', requireAuth, canAccessPatient, async (req, res) => {
       }
       await Patient.findByIdAndDelete(targetId);
     }
+
+    // Emit SSE event so all active client pages (and standalone sync) update immediately
+    try {
+      const pName = patient ? `${patient.firstName} ${patient.lastName}` : 'Patient';
+      sseEmitter.emit('update', {
+        action: 'patient_deleted',
+        patientId: targetId,
+        patientName: pName,
+        time: (new Date()).toISOString(),
+        message: `🗑️ Patient ${pName} deleted`
+      });
+    } catch (e) { console.warn('SSE emit failed for patient_deleted', e); }
 
     req.flash('success_msg', 'Patient and associated tests deleted successfully');
     res.redirect('/patients');

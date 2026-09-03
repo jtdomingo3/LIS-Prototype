@@ -1041,18 +1041,17 @@ class SyncEngine {
                   if (eventData && !eventData.init && !eventData.offline && eventData.type !== 'ping' && !eventData.keepalive) {
                     console.log('[SyncBridge] Live server event received:', eventData.action || eventData.type || 'event');
                     
-                    // 1. Debounced fetch of latest server snapshot so local DB is in sync without thrashing
-                    this.debouncedFullSync(webContents, 1000).then(() => {
-                      // 2. Forward event to local UI / renderer windows after data is stored
+                    // 1. Immediately forward event to local UI / renderer windows
+                    if (typeof onEventCallback === 'function') {
+                      try { onEventCallback(eventData); } catch (e) {}
+                    }
+
+                    // 2. Debounced fetch of latest server snapshot in background so local DB is kept in sync
+                    this.debouncedFullSync(webContents, 1200).then(() => {
                       if (typeof onEventCallback === 'function') {
-                        try { onEventCallback(eventData); } catch (e) {}
                         try { onEventCallback({ action: 'live_sync_completed', timestamp: Date.now() }); } catch (e) {}
                       }
-                    }).catch(() => {
-                      if (typeof onEventCallback === 'function') {
-                        try { onEventCallback(eventData); } catch (e) {}
-                      }
-                    });
+                    }).catch(() => {});
                   }
                 } catch (parseErr) {}
               }
@@ -1113,11 +1112,14 @@ class SyncEngine {
                 try {
                   const eventData = JSON.parse(rawData);
                   if (eventData && !eventData.init && !eventData.offline && eventData.type !== 'ping' && !eventData.keepalive) {
-                    this.debouncedFullSync(webContents, 1000).finally(() => {
+                    if (typeof onEventCallback === 'function') {
+                      try { onEventCallback(eventData); } catch (e) {}
+                    }
+                    this.debouncedFullSync(webContents, 1200).then(() => {
                       if (typeof onEventCallback === 'function') {
-                        try { onEventCallback(eventData); } catch (e) {}
+                        try { onEventCallback({ action: 'live_sync_completed', timestamp: Date.now() }); } catch (e) {}
                       }
-                    });
+                    }).catch(() => {});
                   }
                 } catch (e) {}
               }

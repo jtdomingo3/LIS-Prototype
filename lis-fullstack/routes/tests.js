@@ -2674,6 +2674,8 @@ router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
     try {
       if (updateData && updateData.results && Object.keys(updateData.results).length) {
         try { sseEmitter.emit('update', { action: 'result_encoded', testId: test.testId, status: test.status, patient: test.patient, time: (new Date()).toISOString() }); } catch (e) { console.warn('SSE emit (result_encoded) failed', e); }
+      } else {
+        try { sseEmitter.emit('update', { action: 'test_updated', testId: test.testId, status: test.status, patient: test.patient, time: (new Date()).toISOString(), message: `Test #${test.testId} updated` }); } catch (e) {}
       }
     } catch (e) {}
 
@@ -2695,6 +2697,16 @@ router.delete('/:id', requireAuth, canAccessPatient, async (req, res) => {
       req.flash('error_msg', 'Test not found');
       return res.redirect('/tests');
     }
+
+    try {
+      sseEmitter.emit('update', {
+        action: 'test_deleted',
+        testId: test.testId,
+        patient: test.patient,
+        time: (new Date()).toISOString(),
+        message: `🗑️ Test #${test.testId} deleted`
+      });
+    } catch (e) {}
 
     req.flash('success_msg', 'Test deleted successfully');
     res.redirect('/tests');
