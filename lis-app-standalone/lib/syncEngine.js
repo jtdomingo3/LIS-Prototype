@@ -772,7 +772,7 @@ class SyncEngine {
       if (!collection) return;
 
       // Only handle known collections where local temp IDs exist
-      if (!['patients','tests','templates','users'].includes(collection)) return;
+      if (!['patients','tests','templates','users','inventory'].includes(collection)) return;
 
       // Prefer deterministic mapping when server echoed back a client_id in JSON response
       let clientId = null;

@@ -326,7 +326,8 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     getInventoryTransactionsByItemId: sqlite.prepare('SELECT json FROM inventory_transactions WHERE inventoryId = ? ORDER BY createdAt DESC'),
     getInventoryTransactionsByBatchId: sqlite.prepare('SELECT json FROM inventory_transactions WHERE batchId = ? ORDER BY createdAt DESC'),
     insertInventoryTransaction: sqlite.prepare('INSERT INTO inventory_transactions (id, inventoryId, batchId, transactionType, performedBy, createdAt, json) VALUES (@id, @inventoryId, @batchId, @transactionType, @performedBy, @createdAt, @json)'),
-    deleteInventoryTransactionsByItemId: sqlite.prepare('DELETE FROM inventory_transactions WHERE inventoryId = ?')
+    deleteInventoryTransactionsByItemId: sqlite.prepare('DELETE FROM inventory_transactions WHERE inventoryId = ?'),
+    deleteInventoryTransactionById: sqlite.prepare('DELETE FROM inventory_transactions WHERE id = ?')
   };
 
   const patientCache = createEntityCache(1000);
@@ -1030,6 +1031,14 @@ function createBetterSqliteDb(dbPath, opts = {}) {
       } catch (e) {
         console.error('[sqliteDb] saveTransaction error:', e.message);
         return null;
+      }
+    },
+    deleteTransaction(id) {
+      try {
+        stmts.deleteInventoryTransactionById.run(id);
+        return true;
+      } catch (e) {
+        return false;
       }
     },
 
@@ -2076,6 +2085,15 @@ function createSqlJsDb(SQL, dbPath) {
         return null;
       }
     },
+    deleteTransaction(id) {
+      try {
+        queryRun('DELETE FROM inventory_transactions WHERE id = ?', [id]);
+        persist();
+        return true;
+      } catch (e) {
+        return false;
+      }
+    },
 
     close() {
       persist(true);
@@ -2185,6 +2203,7 @@ function createDb(dbPath, opts = {}) {
     deleteBatch(id) { if (underlyingDb) return underlyingDb.deleteBatch(id); else readyPromise.then(d => d.deleteBatch(id)); return true; },
     getInventoryTransactions(itemId, batchId) { return underlyingDb ? underlyingDb.getInventoryTransactions(itemId, batchId) : []; },
     saveTransaction(tx) { if (underlyingDb) return underlyingDb.saveTransaction(tx); else readyPromise.then(d => d.saveTransaction(tx)); return tx; },
+    deleteTransaction(id) { if (underlyingDb) return underlyingDb.deleteTransaction(id); else readyPromise.then(d => d.deleteTransaction(id)); return true; },
 
     close() { if (underlyingDb) underlyingDb.close(); }
   };

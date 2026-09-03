@@ -918,6 +918,21 @@ router.post('/:id/batch', requireInventoryAccess, (req, res) => {
 
     const cleanLotNumber = (lotNumber && lotNumber.trim()) || `LOT-${Date.now().toString().slice(-8)}`;
 
+    // Idempotency check: if a batch with this exact lotNumber already exists for this item, return it
+    const existingBatches = (typeof global.db.getInventoryBatchesByItemId === 'function')
+      ? (global.db.getInventoryBatchesByItemId(item.id) || [])
+      : [];
+    const dupBatch = existingBatches.find(b => 
+      b && b.lotNumber && b.lotNumber.trim().toUpperCase() === cleanLotNumber.trim().toUpperCase()
+    );
+    if (dupBatch) {
+      return res.json({
+        success: true,
+        batch: dupBatch,
+        message: `Lot "${cleanLotNumber}" is already registered for this item.`
+      });
+    }
+
     const batch = new InventoryBatch({
       id: req.body.id || undefined,
       inventoryId: item.id,

@@ -176,6 +176,54 @@ class DataStore {
         }
         map.set(String(it[idKey]), it);
       }
+    } else if (name === 'inventory_batches') {
+      // Deduplicate batches by (inventoryId + lotNumber)
+      for (const it of items) {
+        if (!it || !it[idKey]) continue;
+        const itLot = (it.lotNumber || '').trim().toUpperCase();
+        const itInvId = String(it.inventoryId || '');
+
+        for (const [existingId, existingBatch] of map.entries()) {
+          if (existingId !== String(it[idKey])) {
+            const exLot = (existingBatch.lotNumber || '').trim().toUpperCase();
+            const exInvId = String(existingBatch.inventoryId || '');
+
+            if (itLot && exLot && itLot === exLot && itInvId && exInvId && itInvId === exInvId) {
+              map.delete(existingId);
+              if (this.db && this.db.deleteBatch) {
+                try { this.db.deleteBatch(existingId); } catch (_) {}
+              }
+            }
+          }
+        }
+        map.set(String(it[idKey]), it);
+      }
+    } else if (name === 'inventory_transactions') {
+      // Deduplicate transactions by (inventoryId + batchId/lotNumber + type + quantity)
+      for (const it of items) {
+        if (!it || !it[idKey]) continue;
+        const itInvId = String(it.inventoryId || '');
+        const itLot = (it.lotNumber || '').trim().toUpperCase();
+        const itType = String(it.transactionType || '');
+        const itQty = Number(it.quantity || 0);
+
+        for (const [existingId, existingTx] of map.entries()) {
+          if (existingId !== String(it[idKey])) {
+            const exInvId = String(existingTx.inventoryId || '');
+            const exLot = (existingTx.lotNumber || '').trim().toUpperCase();
+            const exType = String(existingTx.transactionType || '');
+            const exQty = Number(existingTx.quantity || 0);
+
+            if (itInvId === exInvId && itType === exType && itQty === exQty && (!itLot || !exLot || itLot === exLot)) {
+              map.delete(existingId);
+              if (this.db && this.db.deleteTransaction) {
+                try { this.db.deleteTransaction(existingId); } catch (_) {}
+              }
+            }
+          }
+        }
+        map.set(String(it[idKey]), it);
+      }
     } else {
       for (const it of items) {
         if (!it || !it[idKey]) continue;

@@ -328,6 +328,15 @@ function createOfflineDb(dataStore) {
       list.unshift(tx);
       dataStore.setCollection('inventory_transactions', list);
       return tx;
+    },
+    deleteTransaction(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.deleteTransaction === 'function') {
+        return sqliteAdapter.deleteTransaction(id);
+      }
+      let list = dataStore.getCollection('inventory_transactions') || [];
+      list = list.filter(t => t && t.id !== id);
+      dataStore.setCollection('inventory_transactions', list);
+      return true;
     }
   };
 
