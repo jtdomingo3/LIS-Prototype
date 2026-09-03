@@ -109,6 +109,7 @@
                       <input type="hidden" name="patientId" value="<%= row.patient ? row.patient.id : '' %>">
                       <input type="hidden" name="testIds" value="<%= (row.testIds || []).join(',') %>">
                       <input type="hidden" name="area" value="<%= areaName %>">
+                      <input type="hidden" name="charged_to_philhealth" value="0">
                       <div>
                         <label style="display:block; font-size:0.8em; margin-bottom:4px; font-weight:600; color:#64748b;">Clinical Lab Amount</label>
                         <input type="number" name="amount_clinical" class="payment-amount" step="0.01" min="0" placeholder="Clinical" style="width:130px;" value="<%= (row.clinicalTotal || 0).toFixed(2) %>">
@@ -117,16 +118,17 @@
                         <label style="display:block; font-size:0.8em; margin-bottom:4px; font-weight:600; color:#64748b;">X-ray Lab Amount</label>
                         <input type="number" name="amount_xray" class="payment-amount" step="0.01" min="0" placeholder="X-ray" style="width:130px;" value="<%= (row.xrayTotal || 0).toFixed(2) %>">
                       </div>
-                      <div>
+                      <div style="display:flex; flex-direction:column; gap:6px;">
                         <% const isAmountReq = (typeof requirePaymentAmount === 'undefined' || requirePaymentAmount); %>
                         <% const hasInitialAmount = !isAmountReq || (Number(row.clinicalTotal) > 0 || Number(row.xrayTotal) > 0); %>
-                        <button type="submit" class="button btn-success btn-small payment-submit" title="Mark complete" onclick="return window.paymentSubmitFallback ? window.paymentSubmitFallback(this) : true" style="min-width:110px;<%= !hasInitialAmount ? ' opacity:0.45; cursor:not-allowed;' : '' %>" <%= !hasInitialAmount ? 'disabled' : '' %>>Mark Complete</button>
+                        <button type="submit" class="button btn-success btn-small payment-submit" title="Mark complete" onclick="return window.paymentSubmitFallback ? window.paymentSubmitFallback(this) : true" style="min-width:155px;<%= !hasInitialAmount ? ' opacity:0.45; cursor:not-allowed;' : '' %>" <%= !hasInitialAmount ? 'disabled' : '' %>>Mark Complete</button>
+                        <button type="button" class="button btn-small btn-philhealth" style="background:#0284c7; color:#fff; border:none; padding:6px 12px; font-size:0.82em; font-weight:600; border-radius:6px; min-width:155px; cursor:pointer;" onclick="submitChargedToPhilhealth(this)" title="Charge to PhilHealth without requiring on-site payment">🩺 Charged to PhilHealth</button>
                       </div>
                     </form>
                     <form action="/reception/delete" method="POST" class="delete-form" style="margin:0;" onsubmit="return confirm('Delete these tests from the queue?');">
                       <input type="hidden" name="testId" value="<%= (row.testIds && row.testIds.length ? row.testIds[0] : '') %>">
                       <input type="hidden" name="area" value="<%= areaName %>">
-                      <button type="submit" class="button btn-danger btn-small" title="Delete" style="min-width:110px;">Delete</button>
+                      <button type="submit" class="button btn-danger btn-small" title="Delete" style="min-width:155px;">Delete</button>
                     </form>
                   </div>
                 <% } else { %>
@@ -230,6 +232,8 @@
         try {
           const form = btn && btn.closest ? btn.closest('form') : null;
           if (!form) return true;
+          const philInput = form.querySelector('input[name="charged_to_philhealth"]');
+          if (philInput) philInput.value = '0';
           if (form.dataset && form.dataset.requireAmount === '0') return true;
           const amtInputs = Array.from(form.querySelectorAll('.payment-amount'));
           if (amtInputs.length) {
@@ -250,6 +254,35 @@
         } catch (e) {
           console.error('paymentSubmitFallback error', e);
           return false;
+        }
+      };
+
+      // Handler for Charged to PhilHealth button
+      window.submitChargedToPhilhealth = function(btn) {
+        try {
+          const form = btn && btn.closest ? btn.closest('form') : null;
+          if (!form) return;
+          if (!confirm('Charge tests for this patient to PhilHealth?\n\n• Patient will NOT be charged on-site (amount: 0.00).\n• Tests will immediately advance to the next clinical area (e.g. Extraction Area).')) {
+            return;
+          }
+          let philInput = form.querySelector('input[name="charged_to_philhealth"]');
+          if (!philInput) {
+            philInput = document.createElement('input');
+            philInput.type = 'hidden';
+            philInput.name = 'charged_to_philhealth';
+            form.appendChild(philInput);
+          }
+          philInput.value = '1';
+          form.dataset.requireAmount = '0';
+
+          // Trigger submission
+          if (typeof form.requestSubmit === 'function') {
+            form.requestSubmit();
+          } else {
+            form.submit();
+          }
+        } catch (e) {
+          console.error('submitChargedToPhilhealth error', e);
         }
       };
 
@@ -320,7 +353,9 @@
           const btn = form.querySelector('button[type="submit"]');
 
           // Strict Payment Area validation: require at least one positive amount if required
-          if (!form.dataset || form.dataset.requireAmount !== '0') {
+          const philInput = form.querySelector('input[name="charged_to_philhealth"]');
+          const isChargedToPhilhealth = philInput && (philInput.value === '1' || philInput.value === 'true');
+          if (!isChargedToPhilhealth && (!form.dataset || form.dataset.requireAmount !== '0')) {
             const amtInputs = Array.from(form.querySelectorAll('.payment-amount'));
             if (amtInputs.length) {
               let anyValid = false;

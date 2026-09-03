@@ -1007,8 +1007,9 @@ router.post('/assign', requireAuth, canAccessPatient, async (req, res) => {
 // POST /reception/complete - mark patient/tests as completed for the area or advance from Payment Area
 router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
   try {
-    const { patientId, testIds, area, amount_clinical, amount_xray } = req.body || {};
-    console.log('POST /reception/complete', { patientId, testIds, area, amount_clinical, amount_xray });
+    const { patientId, testIds, area, amount_clinical, amount_xray, charged_to_philhealth } = req.body || {};
+    const isChargedToPhilhealth = charged_to_philhealth === '1' || charged_to_philhealth === 'true' || charged_to_philhealth === true;
+    console.log('POST /reception/complete', { patientId, testIds, area, amount_clinical, amount_xray, isChargedToPhilhealth });
 
     if (!patientId) {
       const msg = 'Missing patientId';
@@ -1034,7 +1035,7 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
     if (area === 'Payment Area') {
       const settings = (global.db && typeof global.db.getSettings === 'function') ? (global.db.getSettings() || {}) : {};
       const requirePaymentAmount = (typeof settings.requirePaymentAmount !== 'undefined') ? !!settings.requirePaymentAmount : true;
-      if (requirePaymentAmount) {
+      if (requirePaymentAmount && !isChargedToPhilhealth) {
         const clinVal = parseFloat(String(amount_clinical || '').replace(/[,\s]/g, '')) || 0;
         const xrayVal = parseFloat(String(amount_xray || '').replace(/[,\s]/g, '')) || 0;
         if (clinVal <= 0 && xrayVal <= 0) {
@@ -1089,8 +1090,19 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
           } else {
             targ = 'In Progress';
           }
-          t.addStatusEntry({ from: t.status, to: targ, user: req.session && req.session.user ? req.session.user.username : null, area: targ, timestamp: (new Date()).toISOString() });
+          t.addStatusEntry({
+            from: t.status,
+            to: targ,
+            user: req.session && req.session.user ? req.session.user.username : null,
+            area: targ,
+            timestamp: (new Date()).toISOString(),
+            notes: isChargedToPhilhealth ? 'Charged to PhilHealth' : undefined
+          });
           t.status = targ;
+          if (isChargedToPhilhealth) {
+            t.chargedToPhilhealth = true;
+            t.paymentMethod = 'PhilHealth';
+          }
           await t.save();
           processed.push(t.testId || t.id);
           try { sseEmitter.emit('update', { action: 'complete', testId: t.testId, status: t.status, patient: t.patient, time: (new Date()).toISOString() }); } catch (e) { console.warn('SSE emit failed', e); }
@@ -1101,14 +1113,16 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
       try {
         const patientObj = await Patient.findById(patientId);
         if (patientObj) {
-          const clin = Number(amount_clinical || 0) || 0;
-          const xray = Number(amount_xray || 0) || 0;
+          const clin = isChargedToPhilhealth ? 0 : (Number(amount_clinical || 0) || 0);
+          const xray = isChargedToPhilhealth ? 0 : (Number(amount_xray || 0) || 0);
           const entry = {
             timestamp: (new Date()).toISOString(),
             area: 'Payment Area',
             clinical: clin,
             xray: xray,
             total: clin + xray,
+            chargedToPhilhealth: !!isChargedToPhilhealth,
+            paymentMethod: isChargedToPhilhealth ? 'PhilHealth' : 'Cash',
             tests: ids.slice()
           };
           patientObj.paymentHistory = Array.isArray(patientObj.paymentHistory) ? patientObj.paymentHistory : [];
@@ -1229,7 +1243,9 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
       }
     }
 
-    const message = processed.length ? `Marked ${processed.length} test(s) complete` : 'No tests processed';
+    const message = processed.length
+      ? (isChargedToPhilhealth ? `Charged ${processed.length} test(s) to PhilHealth & advanced queue` : `Marked ${processed.length} test(s) complete`)
+      : 'No tests processed';
     if (req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'))) {
       return res.json({ success: true, message });
     }
