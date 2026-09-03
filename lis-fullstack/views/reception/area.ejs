@@ -122,7 +122,22 @@
                         <% const isAmountReq = (typeof requirePaymentAmount === 'undefined' || requirePaymentAmount); %>
                         <% const hasInitialAmount = !isAmountReq || (Number(row.clinicalTotal) > 0 || Number(row.xrayTotal) > 0); %>
                         <button type="submit" class="button btn-success btn-small payment-submit" title="Mark complete" onclick="return window.paymentSubmitFallback ? window.paymentSubmitFallback(this) : true" style="min-width:155px;<%= !hasInitialAmount ? ' opacity:0.45; cursor:not-allowed;' : '' %>" <%= !hasInitialAmount ? 'disabled' : '' %>>Mark Complete</button>
-                        <button type="button" class="button btn-small btn-philhealth" style="background:#0284c7; color:#fff; border:none; padding:6px 12px; font-size:0.82em; font-weight:600; border-radius:6px; min-width:155px; cursor:pointer;" onclick="submitChargedToPhilhealth(this)" title="Charge to PhilHealth without requiring on-site payment">🩺 Charged to PhilHealth</button>
+                        <% 
+                          const pName = row.patient ? (row.patient.firstName + ' ' + (row.patient.middleName ? row.patient.middleName + ' ' : '') + row.patient.lastName).trim() : 'this patient';
+                          const isPhilMember = Boolean(row.patient && (row.patient.philhealthConsent || row.patient.philhealthId || (row.patient.philhealth && String(row.patient.philhealth).toLowerCase() === 'yes')));
+                          const pHasPhil = isPhilMember ? '1' : '0';
+                          const pPhilId = (row.patient && row.patient.philhealthId) ? row.patient.philhealthId : '';
+                        %>
+                        <button type="button" class="button btn-small btn-philhealth" 
+                          data-patient-name="<%= pName %>"
+                          data-patient-philhealth="<%= pHasPhil %>"
+                          data-philhealth-id="<%= pPhilId %>"
+                          style="background:<%= isPhilMember ? '#0284c7' : '#94a3b8' %>; color:#fff; border:none; padding:6px 12px; font-size:0.82em; font-weight:600; border-radius:6px; min-width:155px;<%= !isPhilMember ? ' opacity:0.45; cursor:not-allowed;' : ' cursor:pointer;' %>" 
+                          <%= !isPhilMember ? 'disabled' : '' %>
+                          onclick="submitChargedToPhilhealth(this)" 
+                          title="<%= isPhilMember ? 'Charge to PhilHealth (Verified Member)' : 'Disabled: Patient is not registered as a PhilHealth member' %>">
+                          🩺 Charged to PhilHealth
+                        </button>
                       </div>
                     </form>
                     <form action="/reception/delete" method="POST" class="delete-form" style="margin:0;" onsubmit="return confirm('Delete these tests from the queue?');">
@@ -262,24 +277,74 @@
         try {
           const form = btn && btn.closest ? btn.closest('form') : null;
           if (!form) return;
-          if (!confirm('Charge tests for this patient to PhilHealth?\n\n• Patient will NOT be charged on-site (amount: 0.00).\n• Tests will immediately advance to the next clinical area (e.g. Extraction Area).')) {
+
+          const patientName = (btn && btn.dataset && btn.dataset.patientName) ? btn.dataset.patientName : 'this patient';
+          const isMember = btn && btn.dataset && btn.dataset.patientPhilhealth === '1';
+          const philhealthId = (btn && btn.dataset && btn.dataset.philhealthId) ? btn.dataset.philhealthId : '';
+
+          if (!isMember) {
+            if (typeof window.showCustomConfirm === 'function') {
+              window.showCustomConfirm(
+                '<div style="font-size:0.93em; line-height:1.6; color:#334155;">' +
+                  '<p style="margin:0 0 10px; font-weight:700; color:#dc2626;">Action Not Allowed</p>' +
+                  '<p>Patient <strong>' + patientName + '</strong> is not registered as a PhilHealth member in the demographic records.</p>' +
+                  '<p style="color:#64748b; font-size:0.88em; margin-bottom:0;">Please update the patient profile under Patients management first to enable PhilHealth billing.</p>' +
+                '</div>',
+                function() {},
+                { title: 'Non-PhilHealth Member', btnText: 'Understood', type: 'danger' }
+              );
+            } else {
+              alert('Patient ' + patientName + ' is not registered as a PhilHealth member.');
+            }
             return;
           }
-          let philInput = form.querySelector('input[name="charged_to_philhealth"]');
-          if (!philInput) {
-            philInput = document.createElement('input');
-            philInput.type = 'hidden';
-            philInput.name = 'charged_to_philhealth';
-            form.appendChild(philInput);
-          }
-          philInput.value = '1';
-          form.dataset.requireAmount = '0';
 
-          // Trigger submission
-          if (typeof form.requestSubmit === 'function') {
-            form.requestSubmit();
+          const htmlMsg = '<div style="font-size:0.93em; line-height:1.6; color:#334155;">' +
+                          '<p style="margin:0 0 10px; font-weight:600; color:#0f172a;">Are you sure you want to charge this patient to PhilHealth?</p>' +
+                          '<div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; margin-bottom:12px;">' +
+                            '<div><strong>Patient:</strong> ' + patientName + '</div>' +
+                            '<div style="margin-top:4px;"><strong>PhilHealth Status:</strong> ' + 
+                              '<span style="color:#059669; font-weight:700;">✓ Verified Member' + (philhealthId ? ' (ID: ' + philhealthId + ')' : '') + '</span>' +
+                            '</div>' +
+                          '</div>' +
+                          '<div style="font-size:0.86em; color:#64748b; line-height:1.5;">' +
+                            '• <strong>Amount Due:</strong> ₱0.00 (No on-site collection)<br>' +
+                            '• <strong>Next Station:</strong> Advances to Extraction / Clinical Queue' +
+                          '</div>' +
+                        '</div>';
+
+          const proceedCharge = function() {
+            let philInput = form.querySelector('input[name="charged_to_philhealth"]');
+            if (!philInput) {
+              philInput = document.createElement('input');
+              philInput.type = 'hidden';
+              philInput.name = 'charged_to_philhealth';
+              form.appendChild(philInput);
+            }
+            philInput.value = '1';
+            form.dataset.requireAmount = '0';
+
+            // Trigger submission
+            if (typeof form.requestSubmit === 'function') {
+              form.requestSubmit();
+            } else {
+              form.submit();
+            }
+          };
+
+          if (typeof window.showCustomConfirm === 'function') {
+            window.showCustomConfirm(htmlMsg, proceedCharge, {
+              title: 'PhilHealth Billing Verification',
+              btnText: 'Yes, Charge to PhilHealth',
+              type: 'primary',
+              icon: 'fa fa-file-medical',
+              iconBg: '#e0f2fe',
+              iconColor: '#0284c7'
+            });
           } else {
-            form.submit();
+            if (confirm('Charge tests for ' + patientName + ' to PhilHealth?')) {
+              proceedCharge();
+            }
           }
         } catch (e) {
           console.error('submitChargedToPhilhealth error', e);
