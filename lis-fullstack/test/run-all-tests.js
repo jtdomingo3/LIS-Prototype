@@ -7,7 +7,8 @@ const path = require('path');
 
 const suites = [
   'inventory-and-permissions.test.js',
-  'inventory-security.test.js'
+  'inventory-security.test.js',
+  'assign-test-navigation.test.js'
 ];
 
 console.log('=============================================================');

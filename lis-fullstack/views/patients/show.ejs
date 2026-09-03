@@ -33,7 +33,7 @@
 
     <div class="action-buttons">
         <a href="/patients/<%= patient.id %>/edit" class="button btn-orange">Edit Patient</a>
-        <a href="/tests/new?patient=<%= patient.id %>" class="button btn-primary">Create New Test</a>
+        <a href="/tests/new?patient=<%= patient.id %>&returnTo=/patients/<%= patient.id %>" class="button btn-primary">Create New Test</a>
         <button id="printPatientBtn" class="button btn-secondary">Print</button>
         <a href="/patients" class="button btn-secondary">Back to Patients</a>
     </div>
