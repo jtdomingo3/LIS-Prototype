@@ -667,6 +667,51 @@
   </div>
 </div>
 
+<!-- Dedicated Delete Item Confirmation & Safety Warning Modal -->
+<div id="modalDeleteItem" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); z-index: 10001; align-items: center; justify-content: center;">
+  <div class="card" style="width: 100%; max-width: 490px; margin: 20px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35); border: 1px solid #fee2e2; border-radius: 16px; overflow: hidden; padding: 0;">
+    <div style="background: #fef2f2; border-bottom: 1px solid #fee2e2; padding: 18px 24px; display: flex; align-items: center; gap: 14px;">
+      <div style="width: 44px; height: 44px; border-radius: 50%; background: #fee2e2; display: flex; align-items: center; justify-content: center; color: #dc2626; font-size: 1.3rem; flex-shrink: 0; border: 2px solid #fca5a5;">
+        <i class="fa fa-triangle-exclamation"></i>
+      </div>
+      <div>
+        <h3 style="margin: 0; font-size: 1.2rem; color: #991b1b; font-weight: 700;">Confirm Item Deletion</h3>
+        <small style="color: #b91c1c; font-weight: 500;">Accidental deletion prevention & safety warning</small>
+      </div>
+      <button type="button" onclick="closeDeleteItemModal()" style="margin-left: auto; background: none; border: none; font-size: 1.4rem; color: #991b1b; cursor: pointer; line-height: 1;">&times;</button>
+    </div>
+    
+    <div style="padding: 22px 24px;">
+      <p style="margin: 0 0 14px; font-size: 0.98rem; color: #334155; line-height: 1.5;">
+        Are you sure you want to permanently delete <strong style="color: #0f172a; font-size: 1.05rem;"><%= item.name %></strong> (<%= item.sku %>) from the diagnostic catalog?
+      </p>
+
+      <% if (item.totalStock > 0) { %>
+        <div style="padding: 12px 16px; background: #fff1f2; border: 1px solid #fecdd3; border-radius: 10px; margin-bottom: 16px;">
+          <div style="display: flex; align-items: flex-start; gap: 10px;">
+            <i class="fa fa-circle-exclamation" style="color: #e11d48; font-size: 1.2rem; margin-top: 2px; flex-shrink: 0;"></i>
+            <div style="font-size: 0.88rem; color: #9f1239; line-height: 1.45;">
+              <strong>Active Stock Detected:</strong> This item currently has <strong style="color: #881337;"><%= item.totalStock %> <%= item.unit %></strong> across <%= activeBatches.length %> active lot(s). Deleting it will permanently erase all batch inventory and audit records.
+            </div>
+          </div>
+        </div>
+      <% } %>
+
+      <div style="padding: 12px 14px; background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; font-size: 0.85rem; color: #64748b; line-height: 1.45;">
+        <i class="fa fa-shield-halved" style="color: #64748b; margin-right: 6px;"></i>
+        <strong>Regulatory Traceability Note:</strong> ISO 15189 compliance requires logging all deletions. This action cannot be reversed.
+      </div>
+    </div>
+
+    <div style="padding: 16px 24px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 12px;">
+      <button type="button" class="button btn-secondary" onclick="closeDeleteItemModal()" style="padding: 10px 18px; font-weight: 600;">Cancel</button>
+      <button type="button" id="btnConfirmDeleteFinal" class="button btn-danger" onclick="executeDeleteItem()" style="background: #dc2626; border-color: #dc2626; padding: 10px 20px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+        <i class="fa fa-trash"></i> Delete Item Permanently
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- Custom UI Toast Feedback -->
 <div id="detailsToast" style="display: none; position: fixed; bottom: 24px; right: 24px; z-index: 99999; min-width: 320px; max-width: 450px; padding: 16px 20px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); font-weight: 500; align-items: center; gap: 12px;">
   <div id="detailsToastIcon" style="font-size: 1.3em;"></div>
@@ -941,20 +986,33 @@
   }
 
   function confirmDeleteItem() {
-    if (typeof window.showCustomConfirm === 'function') {
-      window.showCustomConfirm(
-        'Are you sure you want to permanently delete this catalog item and all associated lots and audit trail?',
-        function() {
-          performDeleteItem();
-        },
-        {
-          title: 'Confirm Catalog Deletion',
-          btnText: 'Delete Item'
-        }
-      );
-    } else {
-      performDeleteItem();
+    const modal = document.getElementById('modalDeleteItem');
+    if (!modal) {
+      if (confirm(`⚠️ WARNING: Are you sure you want to permanently delete "<%= item.name %>"?\n\nThis will remove the item, all lot records, and historical audit entries.`)) {
+        performDeleteItem();
+      }
+      return;
     }
+    modal.style.display = 'flex';
+  }
+
+  function closeDeleteItemModal() {
+    const modal = document.getElementById('modalDeleteItem');
+    if (modal) modal.style.display = 'none';
+    const btn = document.getElementById('btnConfirmDeleteFinal');
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa fa-trash"></i> Delete Item Permanently';
+    }
+  }
+
+  function executeDeleteItem() {
+    const btn = document.getElementById('btnConfirmDeleteFinal');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Deleting...';
+    }
+    performDeleteItem();
   }
 
   async function performDeleteItem() {
@@ -968,9 +1026,11 @@
         window.location.href = '/inventory';
       } else {
         showDetailsToast('error', data.error || 'Failed to delete item.');
+        closeDeleteItemModal();
       }
     } catch (err) {
       showDetailsToast('error', 'Error: ' + err.message);
+      closeDeleteItemModal();
     }
   }
 </script>

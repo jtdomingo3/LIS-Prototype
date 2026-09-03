@@ -846,6 +846,20 @@ const handleDeleteItem = (req, res) => {
       return res.json({ success: true, message: 'Item already removed.' });
     }
 
+    // Audit and safety verification: capture stock on hand prior to deletion
+    let totalStock = 0;
+    let batchCount = 0;
+    try {
+      if (typeof global.db.getInventoryBatchesByItemId === 'function') {
+        const batches = global.db.getInventoryBatchesByItemId(item.id) || [];
+        batchCount = batches.length;
+        totalStock = batches.reduce((sum, b) => sum + (b.quantityOnHand || 0), 0);
+      }
+    } catch (_) {}
+
+    const userEmail = getUserIdentifier(req);
+    console.warn(`[AUDIT WARNING] User "${userEmail}" deleted inventory item "${item.name}" (SKU: ${item.sku}, ID: ${item.id}, Area: ${item.area}, Category: ${item.category}, StockOnHand: ${totalStock} ${item.unit}, Batches: ${batchCount}) at ${new Date().toISOString()}`);
+
     let success = false;
     try {
       if (typeof global.db.deleteInventory === 'function') {
