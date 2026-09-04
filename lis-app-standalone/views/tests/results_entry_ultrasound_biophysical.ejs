@@ -185,7 +185,7 @@
         <!-- Gender -->
         <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
           <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Fetal Gender</label>
-          <input type="text" name="gender" placeholder="e.g. MALE / FEMALE" value="<%= test && test.results && test.results.gender ? test.results.gender : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          <input type="text" name="gender" placeholder="FEMALE / MALE" value="<%= test && test.results && test.results.gender ? test.results.gender : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
         </div>
 
         <!-- Fetal Tone -->
@@ -209,7 +209,7 @@
         <!-- AFI -->
         <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
           <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Amniotic Fluid Index (AFI)</label>
-          <input type="text" name="afi" placeholder="e.g. 17.22" value="<%= test && test.results && test.results.afi ? test.results.afi : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          <input type="text" name="afi" placeholder="17.22" value="<%= test && test.results && test.results.afi ? test.results.afi : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
         </div>
 
         <!-- BPS -->
@@ -278,7 +278,7 @@
         </div>
         <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
           <label style="display: block; font-weight: 600; font-size: 0.88em; color: #475569; margin-bottom: 6px;">Professional Designation</label>
-          <input type="text" name="doctorDesignation" placeholder="e.g. MD, FPCR - Radiologist" value="<%= test.results && test.results.doctorDesignation ? test.results.doctorDesignation : 'Radiologist' %>" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 4px 10px; font-size: 0.9em; font-weight: 600;">
+          <input type="text" name="doctorDesignation" placeholder="MD, FPCR - Radiologist" value="<%= test.results && test.results.doctorDesignation ? test.results.doctorDesignation : 'Radiologist' %>" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 4px 10px; font-size: 0.9em; font-weight: 600;">
         </div>
       </div>
     </div>

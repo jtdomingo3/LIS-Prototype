@@ -47,7 +47,7 @@
                 <input type="text" name="gestational_sac_length" placeholder="0.00" value="<%= test && test.results && test.results.gestational_sac_length ? test.results.gestational_sac_length : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
                 <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">cm</span>
               </div>
-              <input type="text" name="gestational_sac_age" placeholder="e.g. 6w6d" value="<%= test && test.results && test.results.gestational_sac_age ? test.results.gestational_sac_age : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 90px;" title="Age by GS">
+              <input type="text" name="gestational_sac_age" placeholder="6w6d" value="<%= test && test.results && test.results.gestational_sac_age ? test.results.gestational_sac_age : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 95px;" title="Age by GS">
             </div>
           </div>
 
@@ -59,21 +59,21 @@
                 <input type="text" name="crl_length" placeholder="0.00" value="<%= test && test.results && test.results.crl_length ? test.results.crl_length : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
                 <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">cm</span>
               </div>
-              <input type="text" name="crl_age" placeholder="e.g. 6w6d" value="<%= test && test.results && test.results.crl_age ? test.results.crl_age : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 90px;" title="Age by CRL">
+              <input type="text" name="crl_age" placeholder="6w6d" value="<%= test && test.results && test.results.crl_age ? test.results.crl_age : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 95px;" title="Age by CRL">
             </div>
           </div>
 
           <!-- Average Age -->
           <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
             <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.9em; color: #1e293b; display: block;">Average Ultrasound Age (AOA)</label>
-            <input type="text" name="average_ultrasound_age" placeholder="e.g. 6w6d" value="<%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+            <input type="text" name="average_ultrasound_age" placeholder="6w6d" value="<%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
           </div>
 
           <!-- Fetal Heart Rate -->
           <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
             <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.9em; color: #1e293b; display: block;">Fetal Heart Rate (FHR)</label>
             <div style="position: relative;">
-              <input type="text" name="fetal_heart_rate" placeholder="e.g. 145" value="<%= test && test.results && test.results.fetal_heart_rate ? test.results.fetal_heart_rate : '' %>" style="height: 36px; padding: 4px 45px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+              <input type="text" name="fetal_heart_rate" placeholder="145" value="<%= test && test.results && test.results.fetal_heart_rate ? test.results.fetal_heart_rate : '' %>" style="height: 36px; padding: 4px 45px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
               <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">BPM</span>
             </div>
           </div>
@@ -270,7 +270,7 @@
         <!-- Others -->
         <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
           <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.9em; color: #1e293b; display: block;">Other Clinical Notes</label>
-          <input type="text" name="other" placeholder="e.g. Normal scan" value="<%= test && test.results && test.results.other ? test.results.other : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 500; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          <input type="text" name="other" placeholder="Normal scan" value="<%= test && test.results && test.results.other ? test.results.other : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 500; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
         </div>
       </div>
 
@@ -328,7 +328,7 @@
         </div>
         <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
           <label style="display: block; font-weight: 600; font-size: 0.88em; color: #475569; margin-bottom: 6px;">Professional Designation</label>
-          <input type="text" name="doctorDesignation" placeholder="e.g. MD, FPCR - Radiologist" value="<%= test.results && test.results.doctorDesignation ? test.results.doctorDesignation : 'Radiologist' %>" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 4px 10px; font-size: 0.9em; font-weight: 600;">
+          <input type="text" name="doctorDesignation" placeholder="MD, FPCR - Radiologist" value="<%= test.results && test.results.doctorDesignation ? test.results.doctorDesignation : 'Radiologist' %>" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 4px 10px; font-size: 0.9em; font-weight: 600;">
         </div>
       </div>
     </div>
