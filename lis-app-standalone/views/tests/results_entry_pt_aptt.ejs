@@ -1,64 +1,152 @@
 <%- include('../partials/test_patient_banner', { test, patient: typeof patient !== 'undefined' ? patient : (test ? test.patient : null) }) %>
 
 <div class="card" style="padding: 24px 28px; border-radius: 16px; box-shadow: 0 4px 18px rgba(0,0,0,0.03); background: #ffffff; border: 1px solid #e2e8f0;">
-  <h3>Enter PT / APTT Results - <%= test.testId %></h3>
-
-  <form action="/tests/<%= test.id %>/results" method="POST">
+  <form action="/tests/<%= test.id %>/results" method="POST" id="ptApttForm">
     <input type="hidden" name="_method" value="POST">
 
-    <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;">
-      <div class="form-row" style="margin:0;">
-        <label>Date</label>
-        <input type="date" name="entryDate" value="<%= test && test.testDate ? (new Date(test.testDate)).toISOString().slice(0,10) : (new Date()).toISOString().slice(0,10) %>" readonly>
+    <!-- Timing & Meta Bar -->
+    <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; padding: 12px 18px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Date:</label>
+        <input type="date" name="entryDate" value="<%= test && test.testDate ? (new Date(test.testDate)).toISOString().slice(0,10) : (new Date()).toISOString().slice(0,10) %>" readonly style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 0.88em; width: 135px;">
       </div>
-      <div class="form-row" style="margin:0;">
-        <label>Time Requested</label>
-        <input type="time" name="timeRequested" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '') %>">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Time Requested:</label>
+        <input type="time" name="timeRequested" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '') %>" style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 0.88em; width: 115px;">
       </div>
-      <div class="form-row" style="margin:0;">
-        <label>Time Released</label>
-        <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (new Date()).toTimeString().slice(0,5) %>">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Time Released:</label>
+        <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (new Date()).toTimeString().slice(0,5) %>" style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 0.88em; width: 115px;">
       </div>
     </div>
 
-    <h4>Prothrombin Time (PT)</h4>
-    <div class="form-row">
-      <label>Control</label>
-      <input type="text" name="pt_control" value="<%= (test.results && test.results.prothrombin && test.results.prothrombin.control) ? test.results.prothrombin.control : '10.9 sec.' %>">
-    </div>
-    <div class="form-row">
-      <label>Patient</label>
-      <input type="text" name="pt_patient" value="<%= (test.results && test.results.prothrombin && test.results.prothrombin.patient) ? test.results.prothrombin.patient : '' %>">
-    </div>
-    <div class="form-row">
-      <label>Activity</label>
-      <input type="text" name="pt_activity" value="<%= (test.results && test.results.prothrombin && test.results.prothrombin.activity) ? test.results.prothrombin.activity : '' %>">
-    </div>
-    <div class="form-row">
-      <label>INR</label>
-      <input type="text" name="pt_inr" value="<%= (test.results && test.results.prothrombin && test.results.prothrombin.inr) ? test.results.prothrombin.inr : '' %>">
+    <!-- Double-Column Results Encoding Grid -->
+    <div class="results-encoding-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 20px;">
+      
+      <!-- Column 1: Prothrombin Time (PT) -->
+      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+        <div style="font-weight: 700; font-size: 1em; color: #0f172a; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+          <span style="display: flex; align-items: center; gap: 8px;">
+            <i class="fa fa-clock" style="color: #ef4444;"></i> Prothrombin Time (PT)
+          </span>
+          <span style="font-size: 0.75em; color: #64748b; font-weight: 500;">Extrinsic Pathway</span>
+        </div>
+
+        <!-- Control -->
+        <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9; gap: 12px;">
+          <div style="min-width: 120px; flex: 1;">
+            <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">Control</label>
+            <div style="font-size: 0.74em; color: #64748b;">Reference Control Time</div>
+          </div>
+          <div style="position: relative; width: 170px; flex-shrink: 0;">
+            <input type="text" name="pt_control" value="<%= (test.results && test.results.prothrombin && test.results.prothrombin.control) ? test.results.prothrombin.control : '10.9 sec.' %>" style="height: 36px; padding: 6px 12px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.92em;">
+          </div>
+        </div>
+
+        <!-- Patient -->
+        <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9; gap: 12px;">
+          <div style="min-width: 120px; flex: 1;">
+            <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">Patient Time</label>
+            <div style="font-size: 0.74em; color: #64748b;">Clotting duration</div>
+          </div>
+          <div style="position: relative; width: 170px; flex-shrink: 0;">
+            <input type="text" name="pt_patient" value="<%= (test.results && test.results.prothrombin && test.results.prothrombin.patient) ? test.results.prothrombin.patient : '' %>" placeholder="e.g. 11.5" style="height: 36px; padding: 6px 45px 6px 12px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.92em;">
+            <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.72em; font-weight: 600; color: #94a3b8; pointer-events: none;">sec</span>
+          </div>
+        </div>
+
+        <!-- Activity -->
+        <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9; gap: 12px;">
+          <div style="min-width: 120px; flex: 1;">
+            <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">Activity</label>
+            <div style="font-size: 0.74em; color: #64748b;">% PT Activity</div>
+          </div>
+          <div style="position: relative; width: 170px; flex-shrink: 0;">
+            <input type="text" name="pt_activity" value="<%= (test.results && test.results.prothrombin && test.results.prothrombin.activity) ? test.results.prothrombin.activity : '' %>" placeholder="e.g. 95" style="height: 36px; padding: 6px 35px 6px 12px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.92em;">
+            <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.75em; font-weight: 600; color: #94a3b8; pointer-events: none;">%</span>
+          </div>
+        </div>
+
+        <!-- INR -->
+        <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; gap: 12px;">
+          <div style="min-width: 120px; flex: 1;">
+            <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">INR</label>
+            <div style="font-size: 0.74em; color: #64748b;">International Normalized Ratio</div>
+          </div>
+          <div style="position: relative; width: 170px; flex-shrink: 0;">
+            <input type="text" name="pt_inr" value="<%= (test.results && test.results.prothrombin && test.results.prothrombin.inr) ? test.results.prothrombin.inr : '' %>" placeholder="0.8 - 1.2" style="height: 36px; padding: 6px 12px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.92em;">
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Column 2: APTT -->
+      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+        <div style="font-weight: 700; font-size: 1em; color: #0f172a; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+          <span style="display: flex; align-items: center; gap: 8px;">
+            <i class="fa fa-stopwatch" style="color: #3b82f6;"></i> APTT
+          </span>
+          <span style="font-size: 0.75em; color: #64748b; font-weight: 500;">Intrinsic Pathway</span>
+        </div>
+
+        <!-- APTT Patient -->
+        <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; gap: 12px;">
+          <div style="min-width: 120px; flex: 1;">
+            <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">APTT Patient</label>
+            <div style="font-size: 0.74em; color: #64748b;">Ref: 24.0 - 36.0 sec</div>
+          </div>
+          <div style="position: relative; width: 170px; flex-shrink: 0;">
+            <input type="text" name="aptt_patient" value="<%= (test.results && test.results.aptt && test.results.aptt.patient) ? test.results.aptt.patient : '' %>" placeholder="24.0 - 36.0" style="height: 36px; padding: 6px 45px 6px 12px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.92em;">
+            <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.72em; font-weight: 600; color: #94a3b8; pointer-events: none;">sec</span>
+          </div>
+        </div>
+
+      </div>
+
     </div>
 
-    <hr>
-    <h4>APTT</h4>
-    <div class="form-row">
-      <label>Patient</label>
-      <input type="text" name="aptt_patient" value="<%= (test.results && test.results.aptt && test.results.aptt.patient) ? test.results.aptt.patient : '' %>">
+    <!-- Signatures & Verification Section -->
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; margin-top: 24px;">
+      <div style="font-weight: 700; font-size: 0.88em; text-transform: uppercase; color: #475569; letter-spacing: 0.5px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+        <i class="fa fa-signature" style="color: #10b981;"></i> Medical Staff Signatures & Verification
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+          <%- include('../partials/signatory_select', { prefix: 'mt', label: 'Medical Technologist', role: 'Medical Technologist', nameInput: 'mtName', licenseInput: 'mtLicense', existingName: (test.results && test.results.performedByName) ? test.results.performedByName : '', existingLicense: (test.results && test.results.performedByLicense) ? test.results.performedByLicense : '' }) %>
+        </div>
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+          <%- include('../partials/signatory_select', { prefix: 'validated', label: '2nd MedTech (Validator)', role: 'Medical Technologist', nameInput: 'validatedByName', licenseInput: 'validatedByLicense', existingName: (test.results && test.results.validatedByName) ? test.results.validatedByName : '', existingLicense: (test.results && test.results.validatedByLicense) ? test.results.validatedByLicense : '' }) %>
+        </div>
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+          <%- include('../partials/signatory_select', { prefix: 'path', label: 'Pathologist', role: 'Pathologist', nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (test.results && test.results.requestedByName) ? test.results.requestedByName : '', existingLicense: (test.results && test.results.requestedByLicense) ? test.results.requestedByLicense : '' }) %>
+        </div>
+      </div>
     </div>
 
-    <hr>
-    <h4>Signatures / Performers</h4>
-    <%- include('../partials/signatory_select', { prefix: 'mt', label: 'Medical Technologist', role: 'Medical Technologist', nameInput: 'mtName', licenseInput: 'mtLicense', existingName: (test.results && test.results.performedByName) ? test.results.performedByName : '', existingLicense: (test.results && test.results.performedByLicense) ? test.results.performedByLicense : '' }) %>
-
-    <hr>
-    <h4>Validation</h4>
-    <%- include('../partials/signatory_select', { prefix: 'validated', label: '2nd Medical Technologist (Validator)', role: 'Medical Technologist', nameInput: 'validatedByName', licenseInput: 'validatedByLicense', existingName: (test.results && test.results.validatedByName) ? test.results.validatedByName : '', existingLicense: (test.results && test.results.validatedByLicense) ? test.results.validatedByLicense : '' }) %>
-
-    <%- include('../partials/signatory_select', { prefix: 'path', label: 'Pathologist', role: 'Pathologist', nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (test.results && test.results.requestedByName) ? test.results.requestedByName : '', existingLicense: (test.results && test.results.requestedByLicense) ? test.results.requestedByLicense : '' }) %>
-
-    <div class="form-row mt-12">
-      <a href="/tests/<%= test.id %>" class="button btn-secondary">Cancel</a>
-      <button class="button btn-primary">Save Results</button>
+    <!-- Bottom Action Buttons -->
+    <div style="display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
+      <a href="/tests/<%= test.id %>" class="button btn-secondary" style="height: 42px; padding: 0 20px; border-radius: 8px; font-weight: 600;">Cancel</a>
+      <button type="submit" class="button btn-primary" style="height: 42px; padding: 0 28px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+        <i class="fa fa-check"></i> Save Results
+      </button>
     </div>
+
   </form>
 </div>
+
+<style>
+  @media (max-width: 900px) {
+    .results-encoding-grid {
+      grid-template-columns: 1fr !important;
+    }
+  }
+  .result-input-row:hover {
+    background-color: #f8fafc;
+    border-radius: 6px;
+  }
+  .result-input-row input:focus {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
+  }
+</style>

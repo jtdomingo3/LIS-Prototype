@@ -25,45 +25,360 @@
       </div>
     </div>
 
-    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px 20px; margin-bottom: 24px;">
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">FBS</label><input type="text" name="fbs" value="<%= test.results && test.results.fbs ? test.results.fbs : '' %>" placeholder="70-110 mg/dL" title="Reference: 70.00 - 110.00 mg/dL" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">RBS</label><input type="text" name="rbs" value="<%= test.results && test.results.rbs ? test.results.rbs : '' %>" placeholder="80-130 mg/dL" title="Reference: 80.00 - 130.00 mg/dL" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">1st Hour</label><input type="text" name="firstHour" value="<%= test.results && test.results.firstHour ? test.results.firstHour : '' %>" placeholder="90-140 mg/dL" title="Reference: 90.00 - 140.00 mg/dL" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">2nd Hour</label><input type="text" name="secondHour" value="<%= test.results && test.results.secondHour ? test.results.secondHour : '' %>" placeholder="80-120 mg/dL" title="Reference: 80.00 - 120.00 mg/dL" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">Cholesterol</label><input type="text" name="cholesterol" value="<%= test.results && test.results.cholesterol ? test.results.cholesterol : '' %>" placeholder="0-200 mg/dL" title="Reference: 0.00 - 200.00 mg/dL" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">Triglyceride</label><input type="text" name="tg" value="<%= test.results && test.results.tg ? test.results.tg : '' %>" placeholder="60-150 mg/dL" title="Reference: 60.00 - 150.00 mg/dL" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">HDL-C</label><input type="text" name="hdl" value="<%= test.results && test.results.hdl ? test.results.hdl : '' %>" placeholder="35-80 mg/dL" title="Reference: 35.00 - 80.00 mg/dL" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">LDL</label><input type="text" name="ldl" value="<%= test.results && test.results.ldl ? test.results.ldl : '' %>" placeholder="66-178 mg/dL" title="Reference: 66.00 - 178.00 mg/dL" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">VLDL</label><input type="text" name="vldl" value="<%= test.results && test.results.vldl ? test.results.vldl : '' %>" placeholder="0-30 mg/dL" title="Reference: 0.00 - 30.00 mg/dL" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">Uric Acid</label><input type="text" name="uricAcid" value="<%= test.results && test.results.uricAcid ? test.results.uricAcid : '' %>" placeholder="2.4-5.7 mg/dL" title="Reference: 2.40 - 5.70 mg/dL" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">Creatinine</label><input type="text" name="creatinine" value="<%= test.results && test.results.creatinine ? test.results.creatinine : '' %>" placeholder="0.5-1.0 mg/dL" title="Reference: 0.50 - 1.00 mg/dL" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">Urea</label><input type="text" name="urea" value="<%= test.results && test.results.urea ? test.results.urea : '' %>" placeholder="10-50 mg/dL" title="Reference: 10.00 - 50.00 mg/dL" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">BUN</label><input type="text" name="bun" value="<%= test.results && test.results.bun ? test.results.bun : '' %>" placeholder="4.7-23.4 mg/dL" title="Reference: 4.67 - 23.36 mg/dL" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">SGPT (ALT)</label><input type="text" name="sgpt" value="<%= test.results && test.results.sgpt ? test.results.sgpt : '' %>" placeholder="0-32 U/L" title="Reference: 0.00 - 32.00 U/L" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">SGOT (AST)</label><input type="text" name="sgot" value="<%= test.results && test.results.sgot ? test.results.sgot : '' %>" placeholder="0-31 U/L" title="Reference: 0.00 - 31.00 U/L" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">Sodium</label><input type="text" name="sodium" value="<%= test.results && test.results.sodium ? test.results.sodium : '' %>" placeholder="136-148 mmol/L" title="Reference: 136.00 - 148.00 mmol/L" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">Potassium</label><input type="text" name="potassium" value="<%= test.results && test.results.potassium ? test.results.potassium : '' %>" placeholder="3.5-5.1 mmol/L" title="Reference: 3.50 - 5.10 mmol/L" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">Chloride</label><input type="text" name="chloride" value="<%= test.results && test.results.chloride ? test.results.chloride : '' %>" placeholder="98-107 mmol/L" title="Reference: 98.00 - 107.00 mmol/L" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">Calcium</label><input type="text" name="calcium" value="<%= test.results && test.results.calcium ? test.results.calcium : '' %>" placeholder="8.5-10.2 mg/dL" title="Reference: 8.50 - 10.20 mg/dL" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">Hba1c</label><input type="text" name="hba1c" value="<%= test.results && test.results.hba1c ? test.results.hba1c : '' %>" placeholder="4.0-6.5 %" title="Reference: 4.00 - 6.50 %" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">ALB</label><input type="text" name="alb" value="<%= test.results && test.results.alb ? test.results.alb : '' %>" placeholder="3-6 g/L" title="Reference: 3.00 - 6.00 g/L" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
-      
-      <% 
-      if (typeof dbTemplate !== 'undefined' && dbTemplate && dbTemplate.fields && dbTemplate.fields.length) {
-        const hardcodedLabels = ['FBS', 'RBS', '1st Hour', '2nd Hour', 'Cholesterol', 'Triglyceride', 'HDL-C', 'LDL', 'VLDL', 'Uric Acid', 'Creatinine', 'Urea', 'BUN', 'SGPT (ALT)', 'SGOT (AST)', 'Sodium', 'Potassium', 'Chloride', 'Calcium', 'Hba1c', 'ALB'];
-        dbTemplate.fields.forEach(f => {
-          if (f.name && !hardcodedLabels.find(l => l.toLowerCase() === f.name.toLowerCase())) {
-            const safeKey = f.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
-            const val = (test.results && test.results[safeKey] !== undefined) ? test.results[safeKey] : '';
-            const ph = f.normalValues ? f.normalValues + (f.unit ? ' ' + f.unit : '') : '';
-            const title = f.normalValues ? `Reference: ${f.normalValues} ${f.unit || ''}` : '';
+    <!-- Double-Column Results Encoding Grid -->
+    <div class="results-encoding-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 20px;">
+
+      <!-- Column 1: Glycemic Control & Lipid Profile -->
+      <div style="display: flex; flex-direction: column; gap: 20px;">
+        
+        <!-- Panel 1: Fasting Blood Sugar & Glycemic Control -->
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+          <div style="font-weight: 700; font-size: 0.95em; color: #0f172a; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+            <span style="display: flex; align-items: center; gap: 8px;">
+              <i class="fa fa-cubes" style="color: #f59e0b;"></i> Blood Sugar & Glycemic Profile
+            </span>
+            <span style="font-size: 0.75em; color: #64748b; font-weight: 500;">Carbohydrate</span>
+          </div>
+
+          <!-- FBS -->
+          <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9; gap: 12px;">
+            <div style="min-width: 120px; flex: 1;">
+              <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">FBS</label>
+              <div style="font-size: 0.74em; color: #64748b;">Ref: 70.00 - 110.00 mg/dL</div>
+            </div>
+            <div style="position: relative; width: 170px; flex-shrink: 0;">
+              <input type="text" name="fbs" value="<%= test.results && test.results.fbs ? test.results.fbs : '' %>" placeholder="70-110" title="Reference: 70.00 - 110.00 mg/dL" style="height: 36px; padding: 6px 50px 6px 12px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.92em;">
+              <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.72em; font-weight: 600; color: #94a3b8; pointer-events: none;">mg/dL</span>
+            </div>
+          </div>
+
+          <!-- RBS -->
+          <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9; gap: 12px;">
+            <div style="min-width: 120px; flex: 1;">
+              <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">RBS</label>
+              <div style="font-size: 0.74em; color: #64748b;">Ref: 80.00 - 130.00 mg/dL</div>
+            </div>
+            <div style="position: relative; width: 170px; flex-shrink: 0;">
+              <input type="text" name="rbs" value="<%= test.results && test.results.rbs ? test.results.rbs : '' %>" placeholder="80-130" title="Reference: 80.00 - 130.00 mg/dL" style="height: 36px; padding: 6px 50px 6px 12px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.92em;">
+              <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.72em; font-weight: 600; color: #94a3b8; pointer-events: none;">mg/dL</span>
+            </div>
+          </div>
+
+          <!-- 1st Hour -->
+          <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9; gap: 12px;">
+            <div style="min-width: 120px; flex: 1;">
+              <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">1st Hour (OGTT)</label>
+              <div style="font-size: 0.74em; color: #64748b;">Ref: 90.00 - 140.00 mg/dL</div>
+            </div>
+            <div style="position: relative; width: 170px; flex-shrink: 0;">
+              <input type="text" name="firstHour" value="<%= test.results && test.results.firstHour ? test.results.firstHour : '' %>" placeholder="90-140" title="Reference: 90.00 - 140.00 mg/dL" style="height: 36px; padding: 6px 50px 6px 12px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.92em;">
+              <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.72em; font-weight: 600; color: #94a3b8; pointer-events: none;">mg/dL</span>
+            </div>
+          </div>
+
+          <!-- 2nd Hour -->
+          <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9; gap: 12px;">
+            <div style="min-width: 120px; flex: 1;">
+              <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">2nd Hour (OGTT)</label>
+              <div style="font-size: 0.74em; color: #64748b;">Ref: 80.00 - 120.00 mg/dL</div>
+            </div>
+            <div style="position: relative; width: 170px; flex-shrink: 0;">
+              <input type="text" name="secondHour" value="<%= test.results && test.results.secondHour ? test.results.secondHour : '' %>" placeholder="80-120" title="Reference: 80.00 - 120.00 mg/dL" style="height: 36px; padding: 6px 50px 6px 12px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.92em;">
+              <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.72em; font-weight: 600; color: #94a3b8; pointer-events: none;">mg/dL</span>
+            </div>
+          </div>
+
+          <!-- HbA1c -->
+          <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; gap: 12px;">
+            <div style="min-width: 120px; flex: 1;">
+              <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">HbA1c</label>
+              <div style="font-size: 0.74em; color: #64748b;">Ref: 4.00 - 6.50 %</div>
+            </div>
+            <div style="position: relative; width: 170px; flex-shrink: 0;">
+              <input type="text" name="hba1c" value="<%= test.results && test.results.hba1c ? test.results.hba1c : '' %>" placeholder="4.0-6.5" title="Reference: 4.00 - 6.50 %" style="height: 36px; padding: 6px 30px 6px 12px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.92em;">
+              <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.75em; font-weight: 600; color: #94a3b8; pointer-events: none;">%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel 2: Lipid Profile -->
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+          <div style="font-weight: 700; font-size: 0.95em; color: #0f172a; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+            <span style="display: flex; align-items: center; gap: 8px;">
+              <i class="fa fa-heartbeat" style="color: #ef4444;"></i> Lipid Profile
+            </span>
+            <span style="font-size: 0.75em; color: #64748b; font-weight: 500;">Cardiovascular</span>
+          </div>
+
+          <!-- Total Cholesterol -->
+          <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9; gap: 12px;">
+            <div style="min-width: 120px; flex: 1;">
+              <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">Cholesterol (Total)</label>
+              <div style="font-size: 0.74em; color: #64748b;">Ref: 0.00 - 200.00 mg/dL</div>
+            </div>
+            <div style="position: relative; width: 170px; flex-shrink: 0;">
+              <input type="text" name="cholesterol" id="chemCholesterol" value="<%= test.results && test.results.cholesterol ? test.results.cholesterol : '' %>" placeholder="0-200" title="Reference: 0.00 - 200.00 mg/dL" style="height: 36px; padding: 6px 50px 6px 12px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.92em;">
+              <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.72em; font-weight: 600; color: #94a3b8; pointer-events: none;">mg/dL</span>
+            </div>
+          </div>
+
+          <!-- Triglyceride -->
+          <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9; gap: 12px;">
+            <div style="min-width: 120px; flex: 1;">
+              <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">Triglyceride</label>
+              <div style="font-size: 0.74em; color: #64748b;">Ref: 60.00 - 150.00 mg/dL</div>
+            </div>
+            <div style="position: relative; width: 170px; flex-shrink: 0;">
+              <input type="text" name="tg" id="chemTg" value="<%= test.results && test.results.tg ? test.results.tg : '' %>" placeholder="60-150" title="Reference: 60.00 - 150.00 mg/dL" style="height: 36px; padding: 6px 50px 6px 12px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.92em;">
+              <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.72em; font-weight: 600; color: #94a3b8; pointer-events: none;">mg/dL</span>
+            </div>
+          </div>
+
+          <!-- HDL-C -->
+          <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9; gap: 12px;">
+            <div style="min-width: 120px; flex: 1;">
+              <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">HDL-C (Good)</label>
+              <div style="font-size: 0.74em; color: #64748b;">Ref: 35.00 - 80.00 mg/dL</div>
+            </div>
+            <div style="position: relative; width: 170px; flex-shrink: 0;">
+              <input type="text" name="hdl" id="chemHdl" value="<%= test.results && test.results.hdl ? test.results.hdl : '' %>" placeholder="35-80" title="Reference: 35.00 - 80.00 mg/dL" style="height: 36px; padding: 6px 50px 6px 12px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.92em;">
+              <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.72em; font-weight: 600; color: #94a3b8; pointer-events: none;">mg/dL</span>
+            </div>
+          </div>
+
+          <!-- LDL -->
+          <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9; gap: 12px;">
+            <div style="min-width: 120px; flex: 1;">
+              <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">LDL (Calculated/Direct)</label>
+              <div style="font-size: 0.74em; color: #64748b;">Ref: 66.00 - 178.00 mg/dL</div>
+            </div>
+            <div style="position: relative; width: 170px; flex-shrink: 0;">
+              <input type="text" name="ldl" id="chemLdl" value="<%= test.results && test.results.ldl ? test.results.ldl : '' %>" placeholder="66-178" title="Reference: 66.00 - 178.00 mg/dL" style="height: 36px; padding: 6px 50px 6px 12px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.92em;">
+              <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.72em; font-weight: 600; color: #94a3b8; pointer-events: none;">mg/dL</span>
+            </div>
+          </div>
+
+          <!-- VLDL -->
+          <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; gap: 12px;">
+            <div style="min-width: 120px; flex: 1;">
+              <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">VLDL</label>
+              <div style="font-size: 0.74em; color: #64748b;">Ref: 0.00 - 30.00 mg/dL</div>
+            </div>
+            <div style="position: relative; width: 170px; flex-shrink: 0;">
+              <input type="text" name="vldl" value="<%= test.results && test.results.vldl ? test.results.vldl : '' %>" placeholder="0-30" title="Reference: 0.00 - 30.00 mg/dL" style="height: 36px; padding: 6px 50px 6px 12px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.92em;">
+              <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.72em; font-weight: 600; color: #94a3b8; pointer-events: none;">mg/dL</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Column 2: Renal, Hepatic, Electrolytes & Template -->
+      <div style="display: flex; flex-direction: column; gap: 20px;">
+        
+        <!-- Panel 3: Renal & Kidney Function -->
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+          <div style="font-weight: 700; font-size: 0.95em; color: #0f172a; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+            <span style="display: flex; align-items: center; gap: 8px;">
+              <i class="fa fa-filter" style="color: #0ea5e9;"></i> Renal & Kidney Function
+            </span>
+            <span style="font-size: 0.75em; color: #64748b; font-weight: 500;">Metabolic</span>
+          </div>
+
+          <!-- BUN -->
+          <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9; gap: 12px;">
+            <div style="min-width: 120px; flex: 1;">
+              <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">BUN</label>
+              <div style="font-size: 0.74em; color: #64748b;">Ref: 4.67 - 23.36 mg/dL</div>
+            </div>
+            <div style="position: relative; width: 170px; flex-shrink: 0;">
+              <input type="text" name="bun" value="<%= test.results && test.results.bun ? test.results.bun : '' %>" placeholder="4.7-23.4" title="Reference: 4.67 - 23.36 mg/dL" style="height: 36px; padding: 6px 50px 6px 12px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.92em;">
+              <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.72em; font-weight: 600; color: #94a3b8; pointer-events: none;">mg/dL</span>
+            </div>
+          </div>
+
+          <!-- Creatinine -->
+          <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9; gap: 12px;">
+            <div style="min-width: 120px; flex: 1;">
+              <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">Creatinine</label>
+              <div style="font-size: 0.74em; color: #64748b;">Ref: 0.50 - 1.00 mg/dL</div>
+            </div>
+            <div style="position: relative; width: 170px; flex-shrink: 0;">
+              <input type="text" name="creatinine" value="<%= test.results && test.results.creatinine ? test.results.creatinine : '' %>" placeholder="0.5-1.0" title="Reference: 0.50 - 1.00 mg/dL" style="height: 36px; padding: 6px 50px 6px 12px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.92em;">
+              <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.72em; font-weight: 600; color: #94a3b8; pointer-events: none;">mg/dL</span>
+            </div>
+          </div>
+
+          <!-- Urea -->
+          <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9; gap: 12px;">
+            <div style="min-width: 120px; flex: 1;">
+              <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">Urea</label>
+              <div style="font-size: 0.74em; color: #64748b;">Ref: 10.00 - 50.00 mg/dL</div>
+            </div>
+            <div style="position: relative; width: 170px; flex-shrink: 0;">
+              <input type="text" name="urea" value="<%= test.results && test.results.urea ? test.results.urea : '' %>" placeholder="10-50" title="Reference: 10.00 - 50.00 mg/dL" style="height: 36px; padding: 6px 50px 6px 12px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.92em;">
+              <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.72em; font-weight: 600; color: #94a3b8; pointer-events: none;">mg/dL</span>
+            </div>
+          </div>
+
+          <!-- Uric Acid -->
+          <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; gap: 12px;">
+            <div style="min-width: 120px; flex: 1;">
+              <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">Uric Acid</label>
+              <div style="font-size: 0.74em; color: #64748b;">Ref: 2.40 - 5.70 mg/dL</div>
+            </div>
+            <div style="position: relative; width: 170px; flex-shrink: 0;">
+              <input type="text" name="uricAcid" value="<%= test.results && test.results.uricAcid ? test.results.uricAcid : '' %>" placeholder="2.4-5.7" title="Reference: 2.40 - 5.70 mg/dL" style="height: 36px; padding: 6px 50px 6px 12px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.92em;">
+              <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.72em; font-weight: 600; color: #94a3b8; pointer-events: none;">mg/dL</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel 4: Liver Enzymes & Proteins -->
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+          <div style="font-weight: 700; font-size: 0.95em; color: #0f172a; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+            <span style="display: flex; align-items: center; gap: 8px;">
+              <i class="fa fa-flask" style="color: #8b5cf6;"></i> Liver Function & Proteins
+            </span>
+            <span style="font-size: 0.75em; color: #64748b; font-weight: 500;">Hepatic</span>
+          </div>
+
+          <!-- SGPT (ALT) -->
+          <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9; gap: 12px;">
+            <div style="min-width: 120px; flex: 1;">
+              <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">SGPT (ALT)</label>
+              <div style="font-size: 0.74em; color: #64748b;">Ref: 0.00 - 32.00 U/L</div>
+            </div>
+            <div style="position: relative; width: 170px; flex-shrink: 0;">
+              <input type="text" name="sgpt" value="<%= test.results && test.results.sgpt ? test.results.sgpt : '' %>" placeholder="0-32" title="Reference: 0.00 - 32.00 U/L" style="height: 36px; padding: 6px 40px 6px 12px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.92em;">
+              <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.72em; font-weight: 600; color: #94a3b8; pointer-events: none;">U/L</span>
+            </div>
+          </div>
+
+          <!-- SGOT (AST) -->
+          <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9; gap: 12px;">
+            <div style="min-width: 120px; flex: 1;">
+              <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">SGOT (AST)</label>
+              <div style="font-size: 0.74em; color: #64748b;">Ref: 0.00 - 31.00 U/L</div>
+            </div>
+            <div style="position: relative; width: 170px; flex-shrink: 0;">
+              <input type="text" name="sgot" value="<%= test.results && test.results.sgot ? test.results.sgot : '' %>" placeholder="0-31" title="Reference: 0.00 - 31.00 U/L" style="height: 36px; padding: 6px 40px 6px 12px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.92em;">
+              <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.72em; font-weight: 600; color: #94a3b8; pointer-events: none;">U/L</span>
+            </div>
+          </div>
+
+          <!-- ALB -->
+          <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; gap: 12px;">
+            <div style="min-width: 120px; flex: 1;">
+              <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">Albumin (ALB)</label>
+              <div style="font-size: 0.74em; color: #64748b;">Ref: 3.00 - 6.00 g/L</div>
+            </div>
+            <div style="position: relative; width: 170px; flex-shrink: 0;">
+              <input type="text" name="alb" value="<%= test.results && test.results.alb ? test.results.alb : '' %>" placeholder="3-6" title="Reference: 3.00 - 6.00 g/L" style="height: 36px; padding: 6px 40px 6px 12px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.92em;">
+              <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.72em; font-weight: 600; color: #94a3b8; pointer-events: none;">g/L</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel 5: Electrolytes & Minerals -->
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+          <div style="font-weight: 700; font-size: 0.95em; color: #0f172a; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+            <span style="display: flex; align-items: center; gap: 8px;">
+              <i class="fa fa-bolt" style="color: #10b981;"></i> Electrolytes & Minerals
+            </span>
+            <span style="font-size: 0.75em; color: #64748b; font-weight: 500;">Electrolytes</span>
+          </div>
+
+          <!-- Sodium -->
+          <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9; gap: 12px;">
+            <div style="min-width: 120px; flex: 1;">
+              <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">Sodium (Na)</label>
+              <div style="font-size: 0.74em; color: #64748b;">Ref: 136.00 - 148.00 mmol/L</div>
+            </div>
+            <div style="position: relative; width: 170px; flex-shrink: 0;">
+              <input type="text" name="sodium" value="<%= test.results && test.results.sodium ? test.results.sodium : '' %>" placeholder="136-148" title="Reference: 136.00 - 148.00 mmol/L" style="height: 36px; padding: 6px 55px 6px 12px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.92em;">
+              <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.72em; font-weight: 600; color: #94a3b8; pointer-events: none;">mmol/L</span>
+            </div>
+          </div>
+
+          <!-- Potassium -->
+          <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9; gap: 12px;">
+            <div style="min-width: 120px; flex: 1;">
+              <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">Potassium (K)</label>
+              <div style="font-size: 0.74em; color: #64748b;">Ref: 3.50 - 5.10 mmol/L</div>
+            </div>
+            <div style="position: relative; width: 170px; flex-shrink: 0;">
+              <input type="text" name="potassium" value="<%= test.results && test.results.potassium ? test.results.potassium : '' %>" placeholder="3.5-5.1" title="Reference: 3.50 - 5.10 mmol/L" style="height: 36px; padding: 6px 55px 6px 12px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.92em;">
+              <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.72em; font-weight: 600; color: #94a3b8; pointer-events: none;">mmol/L</span>
+            </div>
+          </div>
+
+          <!-- Chloride -->
+          <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9; gap: 12px;">
+            <div style="min-width: 120px; flex: 1;">
+              <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">Chloride (Cl)</label>
+              <div style="font-size: 0.74em; color: #64748b;">Ref: 98.00 - 107.00 mmol/L</div>
+            </div>
+            <div style="position: relative; width: 170px; flex-shrink: 0;">
+              <input type="text" name="chloride" value="<%= test.results && test.results.chloride ? test.results.chloride : '' %>" placeholder="98-107" title="Reference: 98.00 - 107.00 mmol/L" style="height: 36px; padding: 6px 55px 6px 12px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.92em;">
+              <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.72em; font-weight: 600; color: #94a3b8; pointer-events: none;">mmol/L</span>
+            </div>
+          </div>
+
+          <!-- Calcium -->
+          <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; gap: 12px;">
+            <div style="min-width: 120px; flex: 1;">
+              <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">Calcium (Ca)</label>
+              <div style="font-size: 0.74em; color: #64748b;">Ref: 8.50 - 10.20 mg/dL</div>
+            </div>
+            <div style="position: relative; width: 170px; flex-shrink: 0;">
+              <input type="text" name="calcium" value="<%= test.results && test.results.calcium ? test.results.calcium : '' %>" placeholder="8.5-10.2" title="Reference: 8.50 - 10.20 mg/dL" style="height: 36px; padding: 6px 50px 6px 12px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.92em;">
+              <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.72em; font-weight: 600; color: #94a3b8; pointer-events: none;">mg/dL</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Panel 6: Dynamic/Custom Template Fields if present -->
+        <% 
+        if (typeof dbTemplate !== 'undefined' && dbTemplate && dbTemplate.fields && dbTemplate.fields.length) {
+          const hardcodedLabels = ['FBS', 'RBS', '1st Hour', '2nd Hour', 'Cholesterol', 'Triglyceride', 'HDL-C', 'LDL', 'VLDL', 'Uric Acid', 'Creatinine', 'Urea', 'BUN', 'SGPT (ALT)', 'SGOT (AST)', 'Sodium', 'Potassium', 'Chloride', 'Calcium', 'Hba1c', 'ALB'];
+          const customFields = dbTemplate.fields.filter(f => f.name && !hardcodedLabels.find(l => l.toLowerCase() === f.name.toLowerCase()));
+          if (customFields.length > 0) {
             %>
-            <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;"><%= f.name %></label><input type="text" name="<%= safeKey %>" value="<%= val %>" placeholder="<%= ph %>" title="<%= title %>" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+              <div style="font-weight: 700; font-size: 0.95em; color: #0f172a; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+                <span style="display: flex; align-items: center; gap: 8px;">
+                  <i class="fa fa-plus-circle" style="color: #6366f1;"></i> Additional Parameters
+                </span>
+                <span style="font-size: 0.75em; color: #64748b; font-weight: 500;">Custom</span>
+              </div>
+              <% customFields.forEach(f => {
+                const safeKey = f.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
+                const val = (test.results && test.results[safeKey] !== undefined) ? test.results[safeKey] : '';
+                const ph = f.normalValues || '';
+                const unitStr = f.unit || '';
+                %>
+                <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9; gap: 12px;">
+                  <div style="min-width: 120px; flex: 1;">
+                    <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;"><%= f.name %></label>
+                    <% if (ph) { %><div style="font-size: 0.74em; color: #64748b;">Ref: <%= ph %> <%= unitStr %></div><% } %>
+                  </div>
+                  <div style="position: relative; width: 170px; flex-shrink: 0;">
+                    <input type="text" name="<%= safeKey %>" value="<%= val %>" placeholder="<%= ph %>" style="height: 36px; padding: 6px <%= unitStr ? '45px' : '12px' %> 6px 12px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.92em;">
+                    <% if (unitStr) { %>
+                      <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.72em; font-weight: 600; color: #94a3b8; pointer-events: none;"><%= unitStr %></span>
+                    <% } %>
+                  </div>
+                </div>
+              <% }); %>
+            </div>
             <%
           }
-        });
-      }
-      %>
+        }
+        %>
+
+      </div>
+
     </div>
 
     <!-- Signatures & Verification Section -->
@@ -96,6 +411,20 @@
 </div>
 
 <style>
+  @media (max-width: 900px) {
+    .results-encoding-grid {
+      grid-template-columns: 1fr !important;
+    }
+  }
+  .result-input-row:hover {
+    background-color: #f8fafc;
+    border-radius: 6px;
+  }
+  .result-input-row input:focus {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
+  }
+
   @keyframes fadeIn {
     from {
       opacity: 0;

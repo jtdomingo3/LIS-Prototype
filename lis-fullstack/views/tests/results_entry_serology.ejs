@@ -1,85 +1,150 @@
 <%- include('../partials/test_patient_banner', { test, patient: typeof patient !== 'undefined' ? patient : (test ? test.patient : null) }) %>
 
 <div class="card" style="padding: 24px 28px; border-radius: 16px; box-shadow: 0 4px 18px rgba(0,0,0,0.03); background: #ffffff; border: 1px solid #e2e8f0;">
-  <h3>Enter Serology Results - <%= test.testId %></h3>
-
-  <form action="/tests/<%= test.id %>/results" method="POST">
+  <form action="/tests/<%= test.id %>/results" method="POST" id="serologyForm">
     <input type="hidden" name="_method" value="POST">
 
-    <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;">
-      <div class="form-row" style="margin:0;">
-        <label>Date</label>
-        <input type="date" name="entryDate" value="<%= test && test.testDate ? (new Date(test.testDate)).toISOString().slice(0,10) : (new Date()).toISOString().slice(0,10) %>" readonly>
+    <!-- Timing & Meta Bar -->
+    <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; padding: 12px 18px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Date:</label>
+        <input type="date" name="entryDate" value="<%= test && test.testDate ? (new Date(test.testDate)).toISOString().slice(0,10) : (new Date()).toISOString().slice(0,10) %>" readonly style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 0.88em; width: 135px;">
       </div>
-      <div class="form-row" style="margin:0;">
-        <label>Time Requested</label>
-        <input type="time" name="timeRequested" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '') %>">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Time Requested:</label>
+        <input type="time" name="timeRequested" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '') %>" style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 0.88em; width: 115px;">
       </div>
-      <div class="form-row" style="margin:0;">
-        <label>Time Released</label>
-        <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (new Date()).toTimeString().slice(0,5) %>">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Time Released:</label>
+        <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (new Date()).toTimeString().slice(0,5) %>" style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 0.88em; width: 115px;">
       </div>
     </div>
 
-    <h4>Results</h4>
-    <div id="serology-rows">
-      <% const existing = (test.results && test.results.entries) ? test.results.entries : null; %>
-      <% if (existing && existing.length) { %>
-        <% existing.forEach(function(e, idx) { %>
-          <div class="serology-row" style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
-            <input type="text" name="testName[]" placeholder="Test" value="<%= e.test %>" style="flex:1" required>
-            <input type="text" name="testResult[]" placeholder="Result" value="<%= e.result %>" style="flex:1" required>
-            <button type="button" class="btn-remove-row">Remove</button>
+    <!-- Parameter Card -->
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); max-width: 750px; margin-bottom: 20px;">
+      <div style="font-weight: 700; font-size: 1em; color: #0f172a; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <i class="fa fa-vial" style="color: #6366f1;"></i> Serological Test Entries
+        </span>
+        <span style="font-size: 0.75em; color: #64748b; font-weight: 500;">Qualitative & Quantitative</span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr 80px; gap: 12px; margin-bottom: 8px; font-weight: 600; font-size: 0.82em; color: #64748b; text-transform: uppercase;">
+        <div>Test Parameter / Analyte</div>
+        <div>Result / Findings</div>
+        <div style="text-align: center;">Action</div>
+      </div>
+
+      <div id="serology-rows">
+        <% const existing = (test.results && test.results.entries) ? test.results.entries : null; %>
+        <% if (existing && existing.length) { %>
+          <% existing.forEach(function(e, idx) { %>
+            <div class="serology-row result-input-row" style="display: grid; grid-template-columns: 1fr 1fr 80px; gap: 12px; align-items: center; padding: 6px 0; border-bottom: 1px solid #f1f5f9;">
+              <input type="text" name="testName[]" placeholder="e.g. HBsAg, Syphilis RPR" value="<%= e.test %>" required style="height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; font-weight: 600; padding: 0 12px; font-size: 0.92em;">
+              <input type="text" name="testResult[]" placeholder="e.g. Non-Reactive" value="<%= e.result %>" required style="height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; font-weight: 600; padding: 0 12px; font-size: 0.92em;">
+              <div style="text-align: center;">
+                <button type="button" class="btn-remove-row button btn-secondary" style="height: 34px; padding: 0 12px; border-radius: 6px; font-size: 0.82em; color: #ef4444; border-color: #fecaca;"><i class="fa fa-trash"></i></button>
+              </div>
+            </div>
+          <% }) %>
+        <% } else { %>
+          <div class="serology-row result-input-row" style="display: grid; grid-template-columns: 1fr 1fr 80px; gap: 12px; align-items: center; padding: 6px 0; border-bottom: 1px solid #f1f5f9;">
+            <input type="text" name="testName[]" placeholder="e.g. HBsAg, Syphilis RPR" required style="height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; font-weight: 600; padding: 0 12px; font-size: 0.92em;">
+            <input type="text" name="testResult[]" placeholder="e.g. Non-Reactive" required style="height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; font-weight: 600; padding: 0 12px; font-size: 0.92em;">
+            <div style="text-align: center;">
+              <button type="button" class="btn-remove-row button btn-secondary" style="height: 34px; padding: 0 12px; border-radius: 6px; font-size: 0.82em; color: #ef4444; border-color: #fecaca;"><i class="fa fa-trash"></i></button>
+            </div>
           </div>
-        <% }) %>
-      <% } else { %>
-        <div class="serology-row" style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
-          <input type="text" name="testName[]" placeholder="Test" style="flex:1" required>
-          <input type="text" name="testResult[]" placeholder="Result" style="flex:1" required>
-          <button type="button" class="btn-remove-row">Remove</button>
+        <% } %>
+      </div>
+
+      <div style="margin-top: 14px;">
+        <button type="button" id="btn-add-row" class="button btn-secondary" style="height: 36px; padding: 0 16px; border-radius: 8px; font-weight: 600; font-size: 0.88em; display: inline-flex; align-items: center; gap: 6px;">
+          <i class="fa fa-plus"></i> Add Test Parameter
+        </button>
+      </div>
+    </div>
+
+    <!-- Signatures & Verification Section -->
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; margin-top: 24px;">
+      <div style="font-weight: 700; font-size: 0.88em; text-transform: uppercase; color: #475569; letter-spacing: 0.5px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+        <i class="fa fa-signature" style="color: #10b981;"></i> Medical Staff Signatures & Verification
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+          <%- include('../partials/signatory_select', { prefix: 'mt', label: 'Medical Technologist', role: 'Medical Technologist', nameInput: 'mtName', licenseInput: 'mtLicense', existingName: (test.results && test.results.performedByName) ? test.results.performedByName : '', existingLicense: (test.results && test.results.performedByLicense) ? test.results.performedByLicense : '' }) %>
         </div>
-      <% } %>
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+          <%- include('../partials/signatory_select', { prefix: 'validated', label: '2nd MedTech (Validator)', role: 'Medical Technologist', nameInput: 'validatedByName', licenseInput: 'validatedByLicense', existingName: (test.results && test.results.validatedByName) ? test.results.validatedByName : '', existingLicense: (test.results && test.results.validatedByLicense) ? test.results.validatedByLicense : '' }) %>
+        </div>
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+          <%- include('../partials/signatory_select', { prefix: 'path', label: 'Pathologist', role: 'Pathologist', nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (test.results && test.results.requestedByName) ? test.results.requestedByName : '', existingLicense: (test.results && test.results.requestedByLicense) ? test.results.requestedByLicense : '' }) %>
+        </div>
+      </div>
     </div>
-    <div style="margin-bottom:12px;">
-      <button type="button" id="btn-add-row" class="button">Add Test</button>
+
+    <!-- Bottom Action Buttons -->
+    <div style="display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
+      <a href="/tests/<%= test.id %>" class="button btn-secondary" style="height: 42px; padding: 0 20px; border-radius: 8px; font-weight: 600;">Cancel</a>
+      <button type="submit" class="button btn-primary" style="height: 42px; padding: 0 28px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+        <i class="fa fa-check"></i> Save Results
+      </button>
     </div>
 
-    <hr>
-    <h4>Signatures / Performers</h4>
-    <%- include('../partials/signatory_select', { prefix: 'mt', label: 'Medical Technologist', role: 'Medical Technologist', nameInput: 'mtName', licenseInput: 'mtLicense', existingName: (test.results && test.results.performedByName) ? test.results.performedByName : '', existingLicense: (test.results && test.results.performedByLicense) ? test.results.performedByLicense : '' }) %>
-
-    <hr>
-    <h4>Validation</h4>
-    <%- include('../partials/signatory_select', { prefix: 'validated', label: '2nd Medical Technologist (Validator)', role: 'Medical Technologist', nameInput: 'validatedByName', licenseInput: 'validatedByLicense', existingName: (test.results && test.results.validatedByName) ? test.results.validatedByName : '', existingLicense: (test.results && test.results.validatedByLicense) ? test.results.validatedByLicense : '' }) %>
-
-    <%- include('../partials/signatory_select', { prefix: 'path', label: 'Pathologist', role: 'Pathologist', nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (test.results && test.results.requestedByName) ? test.results.requestedByName : '', existingLicense: (test.results && test.results.requestedByLicense) ? test.results.requestedByLicense : '' }) %>
-
-    <div class="form-row mt-12">
-      <a href="/tests/<%= test.id %>" class="button btn-secondary">Cancel</a>
-      <button class="button btn-primary">Save Results</button>
-    </div>
   </form>
-
-  <script>
-    (function(){
-      const container = document.getElementById('serology-rows');
-      const addBtn = document.getElementById('btn-add-row');
-      function makeRow(nameVal, resultVal){
-        const div = document.createElement('div');
-        div.className = 'serology-row';
-        div.style.display = 'flex'; div.style.gap = '8px'; div.style.alignItems = 'center'; div.style.marginBottom = '6px';
-        const inp1 = document.createElement('input'); inp1.type='text'; inp1.name='testName[]'; inp1.placeholder='Test'; inp1.style.flex='1'; inp1.required=true; if(nameVal) inp1.value = nameVal;
-        const inp2 = document.createElement('input'); inp2.type='text'; inp2.name='testResult[]'; inp2.placeholder='Result'; inp2.style.flex='1'; inp2.required=true; if(resultVal) inp2.value = resultVal;
-        const rem = document.createElement('button'); rem.type='button'; rem.className='btn-remove-row'; rem.innerText='Remove';
-        rem.addEventListener('click', function(){ container.removeChild(div); });
-        div.appendChild(inp1); div.appendChild(inp2); div.appendChild(rem);
-        return div;
-      }
-      addBtn.addEventListener('click', function(){ container.appendChild(makeRow('','')); });
-      // attach remove handlers to initial rows
-      Array.from(document.getElementsByClassName('btn-remove-row')).forEach(function(b){
-        b.addEventListener('click', function(){ const row = b.parentNode; row.parentNode.removeChild(row); });
-      });
-    })();
-  </script>
 </div>
+
+<style>
+  .result-input-row:hover {
+    background-color: #f8fafc;
+    border-radius: 6px;
+  }
+  .result-input-row input:focus {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
+  }
+</style>
+
+<script>
+  (function(){
+    const container = document.getElementById('serology-rows');
+    const addBtn = document.getElementById('btn-add-row');
+    function makeRow(nameVal, resultVal){
+      const div = document.createElement('div');
+      div.className = 'serology-row result-input-row';
+      div.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr 80px; gap: 12px; align-items: center; padding: 6px 0; border-bottom: 1px solid #f1f5f9;';
+      
+      const inp1 = document.createElement('input'); 
+      inp1.type='text'; inp1.name='testName[]'; inp1.placeholder='e.g. HBsAg, Syphilis RPR'; 
+      inp1.style.cssText = 'height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; font-weight: 600; padding: 0 12px; font-size: 0.92em;';
+      inp1.required=true; if(nameVal) inp1.value = nameVal;
+
+      const inp2 = document.createElement('input'); 
+      inp2.type='text'; inp2.name='testResult[]'; inp2.placeholder='e.g. Non-Reactive'; 
+      inp2.style.cssText = 'height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; font-weight: 600; padding: 0 12px; font-size: 0.92em;';
+      inp2.required=true; if(resultVal) inp2.value = resultVal;
+
+      const actDiv = document.createElement('div');
+      actDiv.style.textAlign = 'center';
+      const rem = document.createElement('button'); 
+      rem.type='button'; rem.className='btn-remove-row button btn-secondary'; 
+      rem.style.cssText = 'height: 34px; padding: 0 12px; border-radius: 6px; font-size: 0.82em; color: #ef4444; border-color: #fecaca;';
+      rem.innerHTML='<i class="fa fa-trash"></i>';
+      rem.addEventListener('click', function(){ container.removeChild(div); });
+      actDiv.appendChild(rem);
+
+      div.appendChild(inp1); div.appendChild(inp2); div.appendChild(actDiv);
+      return div;
+    }
+    if (addBtn) {
+      addBtn.addEventListener('click', function(){ container.appendChild(makeRow('','')); });
+    }
+    Array.from(document.getElementsByClassName('btn-remove-row')).forEach(function(b){
+      b.addEventListener('click', function(){ 
+        const row = b.closest('.serology-row'); 
+        if (row && row.parentNode) row.parentNode.removeChild(row); 
+      });
+    });
+  })();
+</script>
