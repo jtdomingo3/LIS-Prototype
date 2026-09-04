@@ -1335,6 +1335,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     res.render(view, {
       title: `Enter ${test.testType} Results`,
       test: testForView,
+      patient: testForView.patient || null,
       users,
       nextCaseNumber,
       ANALYZER_MAP

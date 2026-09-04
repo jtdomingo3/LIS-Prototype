@@ -1,4 +1,6 @@
-<div class="card">
+<%- include('../partials/test_patient_banner', { test, patient: typeof patient !== 'undefined' ? patient : (test ? test.patient : null) }) %>
+
+<div class="card" style="padding: 24px 28px; border-radius: 16px; box-shadow: 0 4px 18px rgba(0,0,0,0.03); background: #ffffff; border: 1px solid #e2e8f0;">
   <h3>Enter PT / APTT Results - <%= test.testId %></h3>
 
   <form action="/tests/<%= test.id %>/results" method="POST">

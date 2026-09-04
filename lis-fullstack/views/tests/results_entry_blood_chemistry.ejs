@@ -1,70 +1,52 @@
-<div class="card">
-  <form action="/tests/<%= test.id %>/results" method="POST">
+<%- include('../partials/test_patient_banner', { test, patient: typeof patient !== 'undefined' ? patient : (test ? test.patient : null) }) %>
+
+<div class="card" style="padding: 24px 28px; border-radius: 16px; box-shadow: 0 4px 18px rgba(0,0,0,0.03); background: #ffffff; border: 1px solid #e2e8f0;">
+  <form action="/tests/<%= test.id %>/results" method="POST" id="bloodChemForm">
     <input type="hidden" name="_method" value="POST">
 
-    <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap;padding:12px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
-      <div class="form-row" style="margin:0;">
-        <label style="font-weight:600;">Date</label>
-        <input type="date" name="entryDate" value="<%= test && test.testDate ? (new Date(test.testDate)).toISOString().slice(0,10) : (new Date()).toISOString().slice(0,10) %>" readonly>
+    <div style="display: flex; gap: 14px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; padding: 12px 18px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Date:</label>
+        <input type="date" name="entryDate" value="<%= test && test.testDate ? (new Date(test.testDate)).toISOString().slice(0,10) : (new Date()).toISOString().slice(0,10) %>" readonly style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 0.88em; width: 135px;">
       </div>
-      <div class="form-row" style="margin:0;">
-        <label style="font-weight:600;">Time Requested</label>
-        <input type="time" name="timeRequested" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '') %>">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Time Requested:</label>
+        <input type="time" name="timeRequested" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '') %>" style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 0.88em; width: 115px;">
       </div>
-      <div class="form-row" style="margin:0;">
-        <label style="font-weight:600;">Time Released</label>
-        <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (new Date()).toTimeString().slice(0,5) %>">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Time Released:</label>
+        <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (new Date()).toTimeString().slice(0,5) %>" style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 0.88em; width: 115px;">
       </div>
-      <% 
-        let testRemarks = '';
-        if (typeof test !== 'undefined' && test) {
-          if (typeof test.remarks === 'string' && test.remarks.trim()) {
-            testRemarks = test.remarks.trim();
-          } else if (typeof test.remark === 'string' && test.remark.trim()) {
-            testRemarks = test.remark.trim();
-          } else if (Array.isArray(test.requestedTests) && test.requestedTests.length) {
-            const rems = test.requestedTests.map(rt => (rt.remarks || rt.remark || '').trim()).filter(Boolean);
-            if (rems.length) testRemarks = Array.from(new Set(rems)).join(', ');
-          }
-          if (!testRemarks && test.results && typeof test.results.remarks === 'string' && test.results.remarks.trim()) {
-            testRemarks = test.results.remarks.trim();
-          }
-        }
-      %>
-      <% if (testRemarks) { %>
-        <div style="margin-left:12px; padding:6px 12px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; color:#1e40af; font-size:0.85em; display:inline-flex; align-items:center; gap:6px;">
-          <strong style="color:#1d4ed8;">Remarks:</strong>
-          <span><%= testRemarks %></span>
-        </div>
-      <% } %>
 
-      <div style="margin-left:auto;">
-        <button type="button" id="captureFromAnalyzer" class="button btn-success">Capture from Analyzer</button>
+      <div style="margin-left: auto;">
+        <button type="button" id="captureFromAnalyzer" class="button btn-success" style="height: 36px; padding: 0 16px; border-radius: 8px; font-size: 0.88em; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+          <i class="fa fa-microchip"></i> Capture from Analyzer
+        </button>
       </div>
     </div>
 
-    <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap: 12px 20px; margin-bottom: 20px;">
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">FBS</label><input type="text" name="fbs" value="<%= test.results && test.results.fbs ? test.results.fbs : '' %>" placeholder="70-110 mg/dL" title="Reference: 70.00 - 110.00 mg/dL"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">RBS</label><input type="text" name="rbs" value="<%= test.results && test.results.rbs ? test.results.rbs : '' %>" placeholder="80-130 mg/dL" title="Reference: 80.00 - 130.00 mg/dL"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">1st Hour</label><input type="text" name="firstHour" value="<%= test.results && test.results.firstHour ? test.results.firstHour : '' %>" placeholder="90-140 mg/dL" title="Reference: 90.00 - 140.00 mg/dL"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">2nd Hour</label><input type="text" name="secondHour" value="<%= test.results && test.results.secondHour ? test.results.secondHour : '' %>" placeholder="80-120 mg/dL" title="Reference: 80.00 - 120.00 mg/dL"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">Cholesterol</label><input type="text" name="cholesterol" value="<%= test.results && test.results.cholesterol ? test.results.cholesterol : '' %>" placeholder="0-200 mg/dL" title="Reference: 0.00 - 200.00 mg/dL"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">Triglyceride</label><input type="text" name="tg" value="<%= test.results && test.results.tg ? test.results.tg : '' %>" placeholder="60-150 mg/dL" title="Reference: 60.00 - 150.00 mg/dL"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">HDL-C</label><input type="text" name="hdl" value="<%= test.results && test.results.hdl ? test.results.hdl : '' %>" placeholder="35-80 mg/dL" title="Reference: 35.00 - 80.00 mg/dL"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">LDL</label><input type="text" name="ldl" value="<%= test.results && test.results.ldl ? test.results.ldl : '' %>" placeholder="66-178 mg/dL" title="Reference: 66.00 - 178.00 mg/dL"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">VLDL</label><input type="text" name="vldl" value="<%= test.results && test.results.vldl ? test.results.vldl : '' %>" placeholder="0-30 mg/dL" title="Reference: 0.00 - 30.00 mg/dL"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">Uric Acid</label><input type="text" name="uricAcid" value="<%= test.results && test.results.uricAcid ? test.results.uricAcid : '' %>" placeholder="2.4-5.7 mg/dL" title="Reference: 2.40 - 5.70 mg/dL"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">Creatinine</label><input type="text" name="creatinine" value="<%= test.results && test.results.creatinine ? test.results.creatinine : '' %>" placeholder="0.5-1.0 mg/dL" title="Reference: 0.50 - 1.00 mg/dL"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">Urea</label><input type="text" name="urea" value="<%= test.results && test.results.urea ? test.results.urea : '' %>" placeholder="10-50 mg/dL" title="Reference: 10.00 - 50.00 mg/dL"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">BUN</label><input type="text" name="bun" value="<%= test.results && test.results.bun ? test.results.bun : '' %>" placeholder="4.7-23.4 mg/dL" title="Reference: 4.67 - 23.36 mg/dL"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">SGPT (ALT)</label><input type="text" name="sgpt" value="<%= test.results && test.results.sgpt ? test.results.sgpt : '' %>" placeholder="0-32 U/L" title="Reference: 0.00 - 32.00 U/L"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">SGOT (AST)</label><input type="text" name="sgot" value="<%= test.results && test.results.sgot ? test.results.sgot : '' %>" placeholder="0-31 U/L" title="Reference: 0.00 - 31.00 U/L"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">Sodium</label><input type="text" name="sodium" value="<%= test.results && test.results.sodium ? test.results.sodium : '' %>" placeholder="136-148 mmol/L" title="Reference: 136.00 - 148.00 mmol/L"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">Potassium</label><input type="text" name="potassium" value="<%= test.results && test.results.potassium ? test.results.potassium : '' %>" placeholder="3.5-5.1 mmol/L" title="Reference: 3.50 - 5.10 mmol/L"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">Chloride</label><input type="text" name="chloride" value="<%= test.results && test.results.chloride ? test.results.chloride : '' %>" placeholder="98-107 mmol/L" title="Reference: 98.00 - 107.00 mmol/L"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">Calcium</label><input type="text" name="calcium" value="<%= test.results && test.results.calcium ? test.results.calcium : '' %>" placeholder="8.5-10.2 mg/dL" title="Reference: 8.50 - 10.20 mg/dL"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">Hba1c</label><input type="text" name="hba1c" value="<%= test.results && test.results.hba1c ? test.results.hba1c : '' %>" placeholder="4.0-6.5 %" title="Reference: 4.00 - 6.50 %"></div>
-      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;">ALB</label><input type="text" name="alb" value="<%= test.results && test.results.alb ? test.results.alb : '' %>" placeholder="3-6 g/L" title="Reference: 3.00 - 6.00 g/L"></div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px 20px; margin-bottom: 24px;">
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">FBS</label><input type="text" name="fbs" value="<%= test.results && test.results.fbs ? test.results.fbs : '' %>" placeholder="70-110 mg/dL" title="Reference: 70.00 - 110.00 mg/dL" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">RBS</label><input type="text" name="rbs" value="<%= test.results && test.results.rbs ? test.results.rbs : '' %>" placeholder="80-130 mg/dL" title="Reference: 80.00 - 130.00 mg/dL" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">1st Hour</label><input type="text" name="firstHour" value="<%= test.results && test.results.firstHour ? test.results.firstHour : '' %>" placeholder="90-140 mg/dL" title="Reference: 90.00 - 140.00 mg/dL" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">2nd Hour</label><input type="text" name="secondHour" value="<%= test.results && test.results.secondHour ? test.results.secondHour : '' %>" placeholder="80-120 mg/dL" title="Reference: 80.00 - 120.00 mg/dL" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">Cholesterol</label><input type="text" name="cholesterol" value="<%= test.results && test.results.cholesterol ? test.results.cholesterol : '' %>" placeholder="0-200 mg/dL" title="Reference: 0.00 - 200.00 mg/dL" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">Triglyceride</label><input type="text" name="tg" value="<%= test.results && test.results.tg ? test.results.tg : '' %>" placeholder="60-150 mg/dL" title="Reference: 60.00 - 150.00 mg/dL" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">HDL-C</label><input type="text" name="hdl" value="<%= test.results && test.results.hdl ? test.results.hdl : '' %>" placeholder="35-80 mg/dL" title="Reference: 35.00 - 80.00 mg/dL" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">LDL</label><input type="text" name="ldl" value="<%= test.results && test.results.ldl ? test.results.ldl : '' %>" placeholder="66-178 mg/dL" title="Reference: 66.00 - 178.00 mg/dL" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">VLDL</label><input type="text" name="vldl" value="<%= test.results && test.results.vldl ? test.results.vldl : '' %>" placeholder="0-30 mg/dL" title="Reference: 0.00 - 30.00 mg/dL" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">Uric Acid</label><input type="text" name="uricAcid" value="<%= test.results && test.results.uricAcid ? test.results.uricAcid : '' %>" placeholder="2.4-5.7 mg/dL" title="Reference: 2.40 - 5.70 mg/dL" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">Creatinine</label><input type="text" name="creatinine" value="<%= test.results && test.results.creatinine ? test.results.creatinine : '' %>" placeholder="0.5-1.0 mg/dL" title="Reference: 0.50 - 1.00 mg/dL" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">Urea</label><input type="text" name="urea" value="<%= test.results && test.results.urea ? test.results.urea : '' %>" placeholder="10-50 mg/dL" title="Reference: 10.00 - 50.00 mg/dL" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">BUN</label><input type="text" name="bun" value="<%= test.results && test.results.bun ? test.results.bun : '' %>" placeholder="4.7-23.4 mg/dL" title="Reference: 4.67 - 23.36 mg/dL" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">SGPT (ALT)</label><input type="text" name="sgpt" value="<%= test.results && test.results.sgpt ? test.results.sgpt : '' %>" placeholder="0-32 U/L" title="Reference: 0.00 - 32.00 U/L" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">SGOT (AST)</label><input type="text" name="sgot" value="<%= test.results && test.results.sgot ? test.results.sgot : '' %>" placeholder="0-31 U/L" title="Reference: 0.00 - 31.00 U/L" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">Sodium</label><input type="text" name="sodium" value="<%= test.results && test.results.sodium ? test.results.sodium : '' %>" placeholder="136-148 mmol/L" title="Reference: 136.00 - 148.00 mmol/L" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">Potassium</label><input type="text" name="potassium" value="<%= test.results && test.results.potassium ? test.results.potassium : '' %>" placeholder="3.5-5.1 mmol/L" title="Reference: 3.50 - 5.10 mmol/L" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">Chloride</label><input type="text" name="chloride" value="<%= test.results && test.results.chloride ? test.results.chloride : '' %>" placeholder="98-107 mmol/L" title="Reference: 98.00 - 107.00 mmol/L" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">Calcium</label><input type="text" name="calcium" value="<%= test.results && test.results.calcium ? test.results.calcium : '' %>" placeholder="8.5-10.2 mg/dL" title="Reference: 8.50 - 10.20 mg/dL" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">Hba1c</label><input type="text" name="hba1c" value="<%= test.results && test.results.hba1c ? test.results.hba1c : '' %>" placeholder="4.0-6.5 %" title="Reference: 4.00 - 6.50 %" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
+      <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;">ALB</label><input type="text" name="alb" value="<%= test.results && test.results.alb ? test.results.alb : '' %>" placeholder="3-6 g/L" title="Reference: 3.00 - 6.00 g/L" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
       
       <% 
       if (typeof dbTemplate !== 'undefined' && dbTemplate && dbTemplate.fields && dbTemplate.fields.length) {
@@ -76,7 +58,7 @@
             const ph = f.normalValues ? f.normalValues + (f.unit ? ' ' + f.unit : '') : '';
             const title = f.normalValues ? `Reference: ${f.normalValues} ${f.unit || ''}` : '';
             %>
-            <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;"><%= f.name %></label><input type="text" name="<%= safeKey %>" value="<%= val %>" placeholder="<%= ph %>" title="<%= title %>"></div>
+            <div class="form-row" style="margin:0;"><label style="min-width:90px;font-weight:600;font-size:0.9em;color:#1e293b;"><%= f.name %></label><input type="text" name="<%= safeKey %>" value="<%= val %>" placeholder="<%= ph %>" title="<%= title %>" style="height:36px; border-radius:8px; border:1px solid #cbd5e1; font-weight:600;"></div>
             <%
           }
         });
@@ -84,19 +66,31 @@
       %>
     </div>
 
-    <hr>
-    <h4>Signatures / Performers</h4>
-    <%- include('../partials/signatory_select', { prefix: 'mt', label: 'Medical Technologist', role: 'Medical Technologist', nameInput: 'mtName', licenseInput: 'mtLicense', existingName: (test.results && test.results.performedByName) ? test.results.performedByName : '', existingLicense: (test.results && test.results.performedByLicense) ? test.results.performedByLicense : '' }) %>
+    <!-- Signatures & Verification Section -->
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; margin-top: 24px;">
+      <div style="font-weight: 700; font-size: 0.88em; text-transform: uppercase; color: #475569; letter-spacing: 0.5px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+        <i class="fa fa-signature" style="color: #10b981;"></i> Medical Staff Signatures & Verification
+      </div>
 
-    <hr>
-    <h4>Validation</h4>
-    <%- include('../partials/signatory_select', { prefix: 'validated', label: '2nd Medical Technologist (Validator)', role: 'Medical Technologist', nameInput: 'validatedByName', licenseInput: 'validatedByLicense', existingName: (test.results && test.results.validatedByName) ? test.results.validatedByName : '', existingLicense: (test.results && test.results.validatedByLicense) ? test.results.validatedByLicense : '' }) %>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+          <%- include('../partials/signatory_select', { prefix: 'mt', label: 'Medical Technologist', role: 'Medical Technologist', nameInput: 'mtName', licenseInput: 'mtLicense', existingName: (test.results && test.results.performedByName) ? test.results.performedByName : '', existingLicense: (test.results && test.results.performedByLicense) ? test.results.performedByLicense : '' }) %>
+        </div>
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+          <%- include('../partials/signatory_select', { prefix: 'validated', label: '2nd MedTech (Validator)', role: 'Medical Technologist', nameInput: 'validatedByName', licenseInput: 'validatedByLicense', existingName: (test.results && test.results.validatedByName) ? test.results.validatedByName : '', existingLicense: (test.results && test.results.validatedByLicense) ? test.results.validatedByLicense : '' }) %>
+        </div>
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+          <%- include('../partials/signatory_select', { prefix: 'path', label: 'Pathologist', role: 'Pathologist', nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (test.results && test.results.requestedByName) ? test.results.requestedByName : '', existingLicense: (test.results && test.results.requestedByLicense) ? test.results.requestedByLicense : '' }) %>
+        </div>
+      </div>
+    </div>
 
-    <%- include('../partials/signatory_select', { prefix: 'path', label: 'Pathologist', role: 'Pathologist', nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (test.results && test.results.requestedByName) ? test.results.requestedByName : '', existingLicense: (test.results && test.results.requestedByLicense) ? test.results.requestedByLicense : '' }) %>
-
-    <div class="form-row mt-12">
-      <a href="/tests/<%= test.id %>" class="button btn-secondary">Cancel</a>
-      <button class="button btn-primary">Save Results</button>
+    <!-- Sticky / Bottom Action Buttons -->
+    <div style="display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
+      <a href="/tests/<%= test.id %>" class="button btn-secondary" style="height: 42px; padding: 0 20px; border-radius: 8px; font-weight: 600;">Cancel</a>
+      <button type="submit" class="button btn-primary" style="height: 42px; padding: 0 28px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+        <i class="fa fa-check"></i> Save Results
+      </button>
     </div>
   </form>
 </div>

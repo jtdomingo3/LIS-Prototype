@@ -1,251 +1,380 @@
-<div class="card">
-  <h3>Enter Urinalysis Results - <%= test.testId %></h3>
+<%- include('../partials/test_patient_banner', { test, patient: typeof patient !== 'undefined' ? patient : (test ? test.patient : null) }) %>
 
-  <form action="/tests/<%= test.id %>/results" method="POST">
+<div class="card" style="padding: 24px 28px; border-radius: 16px; box-shadow: 0 4px 18px rgba(0,0,0,0.03); background: #ffffff; border: 1px solid #e2e8f0;">
+  <form action="/tests/<%= test.id %>/results" method="POST" id="urinalysisForm">
     <input type="hidden" name="_method" value="POST">
 
-    <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
-      <div class="form-row" style="margin:0;">
-        <label>Date</label>
-        <input type="date" name="entryDate" value="<%= test && test.testDate ? (new Date(test.testDate)).toISOString().slice(0,10) : (new Date()).toISOString().slice(0,10) %>" readonly>
+    <!-- Timing & Meta Bar -->
+    <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 18px; flex-wrap: wrap; padding: 10px 18px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Date:</label>
+        <input type="date" name="entryDate" value="<%= test && test.testDate ? (new Date(test.testDate)).toISOString().slice(0,10) : (new Date()).toISOString().slice(0,10) %>" readonly style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 0.88em; width: 135px;">
       </div>
-      <div class="form-row" style="margin:0;">
-        <label>Time Requested</label>
-        <input type="time" name="timeRequested" value="<%= test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '' %>" readonly>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Time Requested:</label>
+        <input type="time" name="timeRequested" value="<%= test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '' %>" readonly style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 0.88em; width: 115px;">
       </div>
-      <div class="form-row" style="margin:0;">
-        <label>Time Released</label>
-        <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (new Date()).toTimeString().slice(0,5) %>">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Time Released:</label>
+        <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (new Date()).toTimeString().slice(0,5) %>" style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 0.88em; width: 115px;">
       </div>
     </div>
 
-    <div class="form-row">
-      <strong>Physical / Chemical Analysis</strong>
-    </div>
-    <div class="form-row">
-      <label>Color</label>
-      <select name="color">
-        <option value=""></option>
-        <option value="Yellow" <%= test.results && test.results.color === 'Yellow' ? 'selected' : '' %>>Yellow</option>
-        <option value="Light Yellow" <%= test.results && test.results.color === 'Light Yellow' ? 'selected' : '' %>>Light Yellow</option>
-        <option value="Dark Yellow" <%= test.results && test.results.color === 'Dark Yellow' ? 'selected' : '' %>>Dark Yellow</option>
-        <option value="Amber" <%= test.results && test.results.color === 'Amber' ? 'selected' : '' %>>Amber</option>
-        <option value="Red" <%= test.results && test.results.color === 'Red' ? 'selected' : '' %>>Red</option>
-        <option value="Reddish Brown" <%= test.results && test.results.color === 'Reddish Brown' ? 'selected' : '' %>>Reddish Brown</option>
-        <option value="Yellow Orange" <%= test.results && test.results.color === 'Yellow Orange' ? 'selected' : '' %>>Yellow Orange</option>
-        <option value="Straw" <%= test.results && test.results.color === 'Straw' ? 'selected' : '' %>>Straw</option>
-        <option value="Clear" <%= test.results && test.results.color === 'Clear' ? 'selected' : '' %>>Clear</option>
-      </select>
+    <!-- Double-Column Results Encoding Grid -->
+    <div class="results-encoding-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 20px;">
+      
+      <!-- Column 1: Physical & Chemical Analysis (12 tests) -->
+      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+        <div style="font-weight: 700; font-size: 0.98em; color: #0f172a; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+          <span style="display: flex; align-items: center; gap: 8px;">
+            <i class="fa fa-vial" style="color: #f59e0b;"></i> Physical & Chemical Analysis
+          </span>
+          <span style="font-size: 0.75em; color: #64748b; font-weight: 500;">Macroscopic & Dipstick</span>
+        </div>
+
+        <!-- Color -->
+        <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f1f5f9; gap: 10px;">
+          <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #1e293b;">Color</label>
+          <div style="width: 170px; flex-shrink: 0;">
+            <select name="color" style="height: 32px; padding: 2px 8px; font-size: 0.88em; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff;">
+              <option value=""></option>
+              <option value="Yellow" <%= test.results && test.results.color === 'Yellow' ? 'selected' : '' %>>Yellow</option>
+              <option value="Light Yellow" <%= test.results && test.results.color === 'Light Yellow' ? 'selected' : '' %>>Light Yellow</option>
+              <option value="Dark Yellow" <%= test.results && test.results.color === 'Dark Yellow' ? 'selected' : '' %>>Dark Yellow</option>
+              <option value="Amber" <%= test.results && test.results.color === 'Amber' ? 'selected' : '' %>>Amber</option>
+              <option value="Straw" <%= test.results && test.results.color === 'Straw' ? 'selected' : '' %>>Straw</option>
+              <option value="Clear" <%= test.results && test.results.color === 'Clear' ? 'selected' : '' %>>Clear</option>
+              <option value="Red" <%= test.results && test.results.color === 'Red' ? 'selected' : '' %>>Red</option>
+              <option value="Reddish Brown" <%= test.results && test.results.color === 'Reddish Brown' ? 'selected' : '' %>>Reddish Brown</option>
+              <option value="Yellow Orange" <%= test.results && test.results.color === 'Yellow Orange' ? 'selected' : '' %>>Yellow Orange</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Transparency / Appearance -->
+        <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f1f5f9; gap: 10px;">
+          <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #1e293b;">Transparency</label>
+          <div style="width: 170px; flex-shrink: 0;">
+            <select name="appearance" style="height: 32px; padding: 2px 8px; font-size: 0.88em; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff;">
+              <option value=""></option>
+              <option value="Clear" <%= test.results && test.results.appearance === 'Clear' ? 'selected' : '' %>>Clear</option>
+              <option value="Slightly Hazy" <%= test.results && test.results.appearance === 'Slightly Hazy' ? 'selected' : '' %>>Slightly Hazy</option>
+              <option value="Hazy" <%= test.results && test.results.appearance === 'Hazy' ? 'selected' : '' %>>Hazy</option>
+              <option value="Slightly Turbid" <%= test.results && test.results.appearance === 'Slightly Turbid' ? 'selected' : '' %>>Slightly Turbid</option>
+              <option value="Turbid" <%= test.results && test.results.appearance === 'Turbid' ? 'selected' : '' %>>Turbid</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- pH -->
+        <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f1f5f9; gap: 10px;">
+          <div>
+            <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #1e293b;">pH</label>
+            <div style="font-size: 0.72em; color: #64748b;">Ref: 5.0 - 7.0</div>
+          </div>
+          <div style="width: 170px; flex-shrink: 0;">
+            <input type="text" name="ph" value="<%= test.results && test.results.ph ? test.results.ph : '' %>" placeholder="5.0-7.0" title="Reference: 5.0 - 7.0" style="height: 32px; padding: 2px 10px; font-size: 0.88em; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1;">
+          </div>
+        </div>
+
+        <!-- Specific Gravity -->
+        <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f1f5f9; gap: 10px;">
+          <div>
+            <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #1e293b;">Specific Gravity</label>
+            <div style="font-size: 0.72em; color: #64748b;">Ref: 1.005 - 1.025</div>
+          </div>
+          <div style="width: 170px; flex-shrink: 0;">
+            <input type="text" name="specificGravity" value="<%= test.results && test.results.specificGravity ? test.results.specificGravity : '' %>" placeholder="1.005-1.025" title="Reference: 1.005 - 1.025" style="height: 32px; padding: 2px 10px; font-size: 0.88em; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1;">
+          </div>
+        </div>
+
+        <!-- Glucose -->
+        <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f1f5f9; gap: 10px;">
+          <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #1e293b;">Glucose</label>
+          <div style="width: 170px; flex-shrink: 0;">
+            <select name="glucose" style="height: 32px; padding: 2px 8px; font-size: 0.88em; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff;">
+              <option value=""></option>
+              <option value="Negative" <%= (!test.results || !test.results.glucose || test.results.glucose === 'Negative') ? 'selected' : '' %>>Negative</option>
+              <option value="Trace" <%= test.results && test.results.glucose === 'Trace' ? 'selected' : '' %>>Trace</option>
+              <option value="+" <%= test.results && test.results.glucose === '+' ? 'selected' : '' %>>+</option>
+              <option value="++" <%= test.results && test.results.glucose === '++' ? 'selected' : '' %>>++</option>
+              <option value="+++" <%= test.results && test.results.glucose === '+++' ? 'selected' : '' %>>+++</option>
+              <option value="++++" <%= test.results && test.results.glucose === '++++' ? 'selected' : '' %>>++++</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Protein -->
+        <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f1f5f9; gap: 10px;">
+          <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #1e293b;">Protein</label>
+          <div style="width: 170px; flex-shrink: 0;">
+            <select name="protein" style="height: 32px; padding: 2px 8px; font-size: 0.88em; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff;">
+              <option value=""></option>
+              <option value="Negative" <%= (!test.results || !test.results.protein || test.results.protein === 'Negative') ? 'selected' : '' %>>Negative</option>
+              <option value="Trace" <%= test.results && test.results.protein === 'Trace' ? 'selected' : '' %>>Trace</option>
+              <option value="+" <%= test.results && test.results.protein === '+' ? 'selected' : '' %>>+</option>
+              <option value="++" <%= test.results && test.results.protein === '++' ? 'selected' : '' %>>++</option>
+              <option value="+++" <%= test.results && test.results.protein === '+++' ? 'selected' : '' %>>+++</option>
+              <option value="++++" <%= test.results && test.results.protein === '++++' ? 'selected' : '' %>>++++</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Leukocyte -->
+        <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f1f5f9; gap: 10px;">
+          <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #1e293b;">Leukocytes</label>
+          <div style="width: 170px; flex-shrink: 0;">
+            <select name="leukocyte" style="height: 32px; padding: 2px 8px; font-size: 0.88em; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff;">
+              <option value=""></option>
+              <option value="Negative" <%= (!test.results || !test.results.leukocyte || test.results.leukocyte === 'Negative') ? 'selected' : '' %>>Negative</option>
+              <option value="Trace" <%= test.results && test.results.leukocyte === 'Trace' ? 'selected' : '' %>>Trace</option>
+              <option value="+" <%= test.results && test.results.leukocyte === '+' ? 'selected' : '' %>>+</option>
+              <option value="++" <%= test.results && test.results.leukocyte === '++' ? 'selected' : '' %>>++</option>
+              <option value="+++" <%= test.results && test.results.leukocyte === '+++' ? 'selected' : '' %>>+++</option>
+              <option value="++++" <%= test.results && test.results.leukocyte === '++++' ? 'selected' : '' %>>++++</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Nitrite -->
+        <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f1f5f9; gap: 10px;">
+          <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #1e293b;">Nitrite</label>
+          <div style="width: 170px; flex-shrink: 0;">
+            <select name="nitrite" style="height: 32px; padding: 2px 8px; font-size: 0.88em; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff;">
+              <option value=""></option>
+              <option value="Negative" <%= (!test.results || !test.results.nitrite || test.results.nitrite === 'Negative') ? 'selected' : '' %>>Negative</option>
+              <option value="Trace" <%= test.results && test.results.nitrite === 'Trace' ? 'selected' : '' %>>Trace</option>
+              <option value="+" <%= test.results && test.results.nitrite === '+' ? 'selected' : '' %>>+</option>
+              <option value="++" <%= test.results && test.results.nitrite === '++' ? 'selected' : '' %>>++</option>
+              <option value="+++" <%= test.results && test.results.nitrite === '+++' ? 'selected' : '' %>>+++</option>
+              <option value="++++" <%= test.results && test.results.nitrite === '++++' ? 'selected' : '' %>>++++</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Urobilinogen -->
+        <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f1f5f9; gap: 10px;">
+          <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #1e293b;">Urobilinogen</label>
+          <div style="width: 170px; flex-shrink: 0;">
+            <select name="urobilinogen" style="height: 32px; padding: 2px 8px; font-size: 0.88em; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff;">
+              <option value=""></option>
+              <option value="Negative" <%= (!test.results || !test.results.urobilinogen || test.results.urobilinogen === 'Negative') ? 'selected' : '' %>>Negative</option>
+              <option value="Trace" <%= test.results && test.results.urobilinogen === 'Trace' ? 'selected' : '' %>>Trace</option>
+              <option value="+" <%= test.results && test.results.urobilinogen === '+' ? 'selected' : '' %>>+</option>
+              <option value="++" <%= test.results && test.results.urobilinogen === '++' ? 'selected' : '' %>>++</option>
+              <option value="+++" <%= test.results && test.results.urobilinogen === '+++' ? 'selected' : '' %>>+++</option>
+              <option value="++++" <%= test.results && test.results.urobilinogen === '++++' ? 'selected' : '' %>>++++</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Blood -->
+        <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f1f5f9; gap: 10px;">
+          <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #1e293b;">Blood (Occult)</label>
+          <div style="width: 170px; flex-shrink: 0;">
+            <select name="blood" style="height: 32px; padding: 2px 8px; font-size: 0.88em; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff;">
+              <option value=""></option>
+              <option value="Negative" <%= (!test.results || !test.results.blood || test.results.blood === 'Negative') ? 'selected' : '' %>>Negative</option>
+              <option value="Trace" <%= test.results && test.results.blood === 'Trace' ? 'selected' : '' %>>Trace</option>
+              <option value="+" <%= test.results && test.results.blood === '+' ? 'selected' : '' %>>+</option>
+              <option value="++" <%= test.results && test.results.blood === '++' ? 'selected' : '' %>>++</option>
+              <option value="+++" <%= test.results && test.results.blood === '+++' ? 'selected' : '' %>>+++</option>
+              <option value="++++" <%= test.results && test.results.blood === '++++' ? 'selected' : '' %>>++++</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Ketones -->
+        <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f1f5f9; gap: 10px;">
+          <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #1e293b;">Ketones</label>
+          <div style="width: 170px; flex-shrink: 0;">
+            <select name="ketones" style="height: 32px; padding: 2px 8px; font-size: 0.88em; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff;">
+              <option value=""></option>
+              <option value="Negative" <%= (!test.results || !test.results.ketones || test.results.ketones === 'Negative') ? 'selected' : '' %>>Negative</option>
+              <option value="Trace" <%= test.results && test.results.ketones === 'Trace' ? 'selected' : '' %>>Trace</option>
+              <option value="+" <%= test.results && test.results.ketones === '+' ? 'selected' : '' %>>+</option>
+              <option value="++" <%= test.results && test.results.ketones === '++' ? 'selected' : '' %>>++</option>
+              <option value="+++" <%= test.results && test.results.ketones === '+++' ? 'selected' : '' %>>+++</option>
+              <option value="++++" <%= test.results && test.results.ketones === '++++' ? 'selected' : '' %>>++++</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Bilirubin -->
+        <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 4px 0; gap: 10px;">
+          <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #1e293b;">Bilirubin</label>
+          <div style="width: 170px; flex-shrink: 0;">
+            <select name="bilirubin" style="height: 32px; padding: 2px 8px; font-size: 0.88em; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff;">
+              <option value=""></option>
+              <option value="Negative" <%= (!test.results || !test.results.bilirubin || test.results.bilirubin === 'Negative') ? 'selected' : '' %>>Negative</option>
+              <option value="Trace" <%= test.results && test.results.bilirubin === 'Trace' ? 'selected' : '' %>>Trace</option>
+              <option value="+" <%= test.results && test.results.bilirubin === '+' ? 'selected' : '' %>>+</option>
+              <option value="++" <%= test.results && test.results.bilirubin === '++' ? 'selected' : '' %>>++</option>
+              <option value="+++" <%= test.results && test.results.bilirubin === '+++' ? 'selected' : '' %>>+++</option>
+              <option value="++++" <%= test.results && test.results.bilirubin === '++++' ? 'selected' : '' %>>++++</option>
+            </select>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Column 2: Microscopy Examination & Notes (8 items) -->
+      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); display: flex; flex-direction: column;">
+        <div style="font-weight: 700; font-size: 0.98em; color: #0f172a; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+          <span style="display: flex; align-items: center; gap: 8px;">
+            <i class="fa fa-microscope" style="color: #6366f1;"></i> Microscopy Examination
+          </span>
+          <span style="font-size: 0.75em; color: #64748b; font-weight: 500;">Microscopic & Sediment</span>
+        </div>
+
+        <!-- WBC -->
+        <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f1f5f9; gap: 10px;">
+          <div>
+            <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #1e293b;">Pus Cells (WBC)</label>
+            <div style="font-size: 0.72em; color: #64748b;">Ref: 0 - 3 /hpf</div>
+          </div>
+          <div style="position: relative; width: 170px; flex-shrink: 0;">
+            <input type="text" name="wbc" value="<%= test.results && test.results.wbc ? test.results.wbc : '' %>" placeholder="0-3" title="Reference: 0 - 3 /hpf" style="height: 32px; padding: 2px 35px 2px 10px; font-size: 0.88em; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1;">
+            <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.72em; font-weight: 600; color: #94a3b8; pointer-events: none;">/hpf</span>
+          </div>
+        </div>
+
+        <!-- RBC -->
+        <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f1f5f9; gap: 10px;">
+          <div>
+            <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #1e293b;">Red Blood Cells (RBC)</label>
+            <div style="font-size: 0.72em; color: #64748b;">Ref: 0 - 5 /hpf</div>
+          </div>
+          <div style="position: relative; width: 170px; flex-shrink: 0;">
+            <input type="text" name="rbc" value="<%= test.results && test.results.rbc ? test.results.rbc : '' %>" placeholder="0-5" title="Reference: 0 - 5 /hpf" style="height: 32px; padding: 2px 35px 2px 10px; font-size: 0.88em; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1;">
+            <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.72em; font-weight: 600; color: #94a3b8; pointer-events: none;">/hpf</span>
+          </div>
+        </div>
+
+        <!-- Epithelial Cells -->
+        <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f1f5f9; gap: 10px;">
+          <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #1e293b;">Epithelial Cells</label>
+          <div style="width: 170px; flex-shrink: 0;">
+            <select name="epithelial" style="height: 32px; padding: 2px 8px; font-size: 0.88em; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff;">
+              <option value=""></option>
+              <option value="Rare" <%= test.results && test.results.epithelial === 'Rare' ? 'selected' : '' %>>Rare</option>
+              <option value="Few" <%= test.results && test.results.epithelial === 'Few' ? 'selected' : '' %>>Few</option>
+              <option value="Moderate" <%= test.results && test.results.epithelial === 'Moderate' ? 'selected' : '' %>>Moderate</option>
+              <option value="Many" <%= test.results && test.results.epithelial === 'Many' ? 'selected' : '' %>>Many</option>
+              <option value="Loaded" <%= test.results && test.results.epithelial === 'Loaded' ? 'selected' : '' %>>Loaded</option>
+              <option value="None" <%= test.results && test.results.epithelial === 'None' ? 'selected' : '' %>>None</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Mucus Threads -->
+        <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f1f5f9; gap: 10px;">
+          <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #1e293b;">Mucus Threads</label>
+          <div style="width: 170px; flex-shrink: 0;">
+            <select name="mucus" style="height: 32px; padding: 2px 8px; font-size: 0.88em; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff;">
+              <option value=""></option>
+              <option value="Rare" <%= test.results && test.results.mucus === 'Rare' ? 'selected' : '' %>>Rare</option>
+              <option value="Few" <%= test.results && test.results.mucus === 'Few' ? 'selected' : '' %>>Few</option>
+              <option value="Moderate" <%= test.results && test.results.mucus === 'Moderate' ? 'selected' : '' %>>Moderate</option>
+              <option value="Many" <%= test.results && test.results.mucus === 'Many' ? 'selected' : '' %>>Many</option>
+              <option value="Loaded" <%= test.results && test.results.mucus === 'Loaded' ? 'selected' : '' %>>Loaded</option>
+              <option value="None" <%= test.results && test.results.mucus === 'None' ? 'selected' : '' %>>None</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Amorphous Crystals -->
+        <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f1f5f9; gap: 10px;">
+          <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #1e293b;">Amorphous Crystals</label>
+          <div style="width: 170px; flex-shrink: 0;">
+            <select name="amorphous" style="height: 32px; padding: 2px 8px; font-size: 0.88em; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff;">
+              <option value=""></option>
+              <option value="Rare" <%= test.results && test.results.amorphous === 'Rare' ? 'selected' : '' %>>Rare</option>
+              <option value="Few" <%= test.results && test.results.amorphous === 'Few' ? 'selected' : '' %>>Few</option>
+              <option value="Moderate" <%= test.results && test.results.amorphous === 'Moderate' ? 'selected' : '' %>>Moderate</option>
+              <option value="Many" <%= test.results && test.results.amorphous === 'Many' ? 'selected' : '' %>>Many</option>
+              <option value="Loaded" <%= test.results && test.results.amorphous === 'Loaded' ? 'selected' : '' %>>Loaded</option>
+              <option value="None" <%= test.results && test.results.amorphous === 'None' ? 'selected' : '' %>>None</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Bacteria -->
+        <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f1f5f9; gap: 10px;">
+          <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #1e293b;">Bacteria</label>
+          <div style="width: 170px; flex-shrink: 0;">
+            <select name="bacteria" style="height: 32px; padding: 2px 8px; font-size: 0.88em; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff;">
+              <option value=""></option>
+              <option value="Rare" <%= test.results && test.results.bacteria === 'Rare' ? 'selected' : '' %>>Rare</option>
+              <option value="Few" <%= test.results && test.results.bacteria === 'Few' ? 'selected' : '' %>>Few</option>
+              <option value="Moderate" <%= test.results && test.results.bacteria === 'Moderate' ? 'selected' : '' %>>Moderate</option>
+              <option value="Many" <%= test.results && test.results.bacteria === 'Many' ? 'selected' : '' %>>Many</option>
+              <option value="Loaded" <%= test.results && test.results.bacteria === 'Loaded' ? 'selected' : '' %>>Loaded</option>
+              <option value="None" <%= test.results && test.results.bacteria === 'None' ? 'selected' : '' %>>None</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Others / Casts -->
+        <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f1f5f9; gap: 10px;">
+          <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #1e293b;">Casts / Others</label>
+          <div style="width: 170px; flex-shrink: 0;">
+            <input type="text" name="others" value="<%= test.results && test.results.others ? test.results.others : '' %>" placeholder="e.g. Hyaline casts" style="height: 32px; padding: 2px 10px; font-size: 0.88em; border-radius: 6px; border: 1px solid #cbd5e1;">
+          </div>
+        </div>
+
+        <!-- Notes / Special Remarks -->
+        <div style="margin-top: 10px; flex: 1; display: flex; flex-direction: column;">
+          <label style="margin: 0 0 4px 0; font-weight: 600; font-size: 0.88em; color: #1e293b;">Clinical Note / Pathologist Remarks</label>
+          <textarea name="note" rows="2" placeholder="Enter any microscopic or clinical notes here..." style="min-height: 52px; height: 52px; padding: 6px 10px; font-size: 0.88em; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%; box-sizing: border-box; resize: none;"><%= test.results && test.results.note ? test.results.note : '' %></textarea>
+        </div>
+
+      </div>
+
     </div>
 
-    <div class="form-row">
-      <label>Transparency</label>
-      <select name="appearance">
-        <option value=""></option>
-        <option value="Turbid" <%= test.results && test.results.appearance === 'Turbid' ? 'selected' : '' %>>Turbid</option>
-        <option value="Slightly Turbid" <%= test.results && test.results.appearance === 'Slightly Turbid' ? 'selected' : '' %>>Slightly Turbid</option>
-        <option value="Hazy" <%= test.results && test.results.appearance === 'Hazy' ? 'selected' : '' %>>Hazy</option>
-        <option value="Clear" <%= test.results && test.results.appearance === 'Clear' ? 'selected' : '' %>>Clear</option>
-        <option value="Slightly Hazy" <%= test.results && test.results.appearance === 'Slightly Hazy' ? 'selected' : '' %>>Slightly Hazy</option>
-      </select>
+    <!-- Signatures & Verification Section -->
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; margin-top: 24px;">
+      <div style="font-weight: 700; font-size: 0.88em; text-transform: uppercase; color: #475569; letter-spacing: 0.5px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+        <i class="fa fa-signature" style="color: #10b981;"></i> Medical Staff Signatures & Verification
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+          <%- include('../partials/signatory_select', { prefix: 'mt', label: 'Medical Technologist', role: 'Medical Technologist', nameInput: 'mtName', licenseInput: 'mtLicense', existingName: (test.results && test.results.performedByName) ? test.results.performedByName : '', existingLicense: (test.results && test.results.performedByLicense) ? test.results.performedByLicense : '' }) %>
+        </div>
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+          <%- include('../partials/signatory_select', { prefix: 'validated', label: '2nd MedTech (Validator)', role: 'Medical Technologist', nameInput: 'validatedByName', licenseInput: 'validatedByLicense', existingName: (test.results && test.results.validatedByName) ? test.results.validatedByName : '', existingLicense: (test.results && test.results.validatedByLicense) ? test.results.validatedByLicense : '' }) %>
+        </div>
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+          <%- include('../partials/signatory_select', { prefix: 'path', label: 'Pathologist', role: 'Pathologist', nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (test.results && test.results.requestedByName) ? test.results.requestedByName : '', existingLicense: (test.results && test.results.requestedByLicense) ? test.results.requestedByLicense : '' }) %>
+        </div>
+      </div>
     </div>
 
-    <div class="form-row">
-      <label>pH</label>
-      <input type="text" name="ph" value="<%= test.results && test.results.ph ? test.results.ph : '' %>" placeholder="5.0-7.0" title="Reference: 5.0 - 7.0">
+    <!-- Sticky / Bottom Action Buttons -->
+    <div style="display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
+      <a href="/tests/<%= test.id %>" class="button btn-secondary" style="height: 42px; padding: 0 20px; border-radius: 8px; font-weight: 600;">Cancel</a>
+      <button type="submit" class="button btn-primary" style="height: 42px; padding: 0 28px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+        <i class="fa fa-check"></i> Save Results
+      </button>
     </div>
 
-    <div class="form-row">
-      <label>Specific Gravity</label>
-      <input type="text" name="specificGravity" value="<%= test.results && test.results.specificGravity ? test.results.specificGravity : '' %>" placeholder="1.005-1.025" title="Reference: 1.005 - 1.025">
-    </div>
-
-    <div class="form-row">
-      <label>Glucose</label>
-      <select name="glucose">
-        <option value=""></option>
-        <option value="Negative" <%= (!test.results || !test.results.glucose || test.results.glucose === 'Negative') ? 'selected' : '' %>>Negative</option>
-        <option value="+" <%= test.results && test.results.glucose === '+' ? 'selected' : '' %>>+</option>
-        <option value="++" <%= test.results && test.results.glucose === '++' ? 'selected' : '' %>>++</option>
-        <option value="+++" <%= test.results && test.results.glucose === '+++' ? 'selected' : '' %>>+++</option>
-        <option value="++++" <%= test.results && test.results.glucose === '++++' ? 'selected' : '' %>>++++</option>
-        <option value="Trace" <%= test.results && test.results.glucose === 'Trace' ? 'selected' : '' %>>Trace</option>
-      </select>
-    </div>
-
-    <div class="form-row">
-      <label>Protein</label>
-      <select name="protein">
-        <option value=""></option>
-        <option value="Negative" <%= (!test.results || !test.results.protein || test.results.protein === 'Negative') ? 'selected' : '' %>>Negative</option>
-        <option value="+" <%= test.results && test.results.protein === '+' ? 'selected' : '' %>>+</option>
-        <option value="++" <%= test.results && test.results.protein === '++' ? 'selected' : '' %>>++</option>
-        <option value="+++" <%= test.results && test.results.protein === '+++' ? 'selected' : '' %>>+++</option>
-        <option value="++++" <%= test.results && test.results.protein === '++++' ? 'selected' : '' %>>++++</option>
-        <option value="Trace" <%= test.results && test.results.protein === 'Trace' ? 'selected' : '' %>>Trace</option>
-      </select>
-    </div>
-
-    <div class="form-row">
-      <label>Leukocyte</label>
-      <select name="leukocyte">
-        <option value=""></option>
-        <option value="Negative" <%= (!test.results || !test.results.leukocyte || test.results.leukocyte === 'Negative') ? 'selected' : '' %>>Negative</option>
-        <option value="+" <%= test.results && test.results.leukocyte === '+' ? 'selected' : '' %>>+</option>
-        <option value="++" <%= test.results && test.results.leukocyte === '++' ? 'selected' : '' %>>++</option>
-        <option value="+++" <%= test.results && test.results.leukocyte === '+++' ? 'selected' : '' %>>+++</option>
-        <option value="++++" <%= test.results && test.results.leukocyte === '++++' ? 'selected' : '' %>>++++</option>
-        <option value="Trace" <%= test.results && test.results.leukocyte === 'Trace' ? 'selected' : '' %>>Trace</option>
-      </select>
-    </div>
-
-    <div class="form-row">
-      <label>Nitrite</label>
-      <select name="nitrite">
-        <option value=""></option>
-        <option value="Negative" <%= (!test.results || !test.results.nitrite || test.results.nitrite === 'Negative') ? 'selected' : '' %>>Negative</option>
-        <option value="+" <%= test.results && test.results.nitrite === '+' ? 'selected' : '' %>>+</option>
-        <option value="++" <%= test.results && test.results.nitrite === '++' ? 'selected' : '' %>>++</option>
-        <option value="+++" <%= test.results && test.results.nitrite === '+++' ? 'selected' : '' %>>+++</option>
-        <option value="++++" <%= test.results && test.results.nitrite === '++++' ? 'selected' : '' %>>++++</option>
-        <option value="Trace" <%= test.results && test.results.nitrite === 'Trace' ? 'selected' : '' %>>Trace</option>
-      </select>
-    </div>
-
-    <div class="form-row">
-      <label>Urobilinogen</label>
-      <select name="urobilinogen">
-        <option value=""></option>
-        <option value="Negative" <%= (!test.results || !test.results.urobilinogen || test.results.urobilinogen === 'Negative') ? 'selected' : '' %>>Negative</option>
-        <option value="+" <%= test.results && test.results.urobilinogen === '+' ? 'selected' : '' %>>+</option>
-        <option value="++" <%= test.results && test.results.urobilinogen === '++' ? 'selected' : '' %>>++</option>
-        <option value="+++" <%= test.results && test.results.urobilinogen === '+++' ? 'selected' : '' %>>+++</option>
-        <option value="++++" <%= test.results && test.results.urobilinogen === '++++' ? 'selected' : '' %>>++++</option>
-        <option value="Trace" <%= test.results && test.results.urobilinogen === 'Trace' ? 'selected' : '' %>>Trace</option>
-      </select>
-    </div>
-
-    <div class="form-row">
-      <label>Blood</label>
-      <select name="blood">
-        <option value=""></option>
-        <option value="Negative" <%= (!test.results || !test.results.blood || test.results.blood === 'Negative') ? 'selected' : '' %>>Negative</option>
-        <option value="+" <%= test.results && test.results.blood === '+' ? 'selected' : '' %>>+</option>
-        <option value="++" <%= test.results && test.results.blood === '++' ? 'selected' : '' %>>++</option>
-        <option value="+++" <%= test.results && test.results.blood === '+++' ? 'selected' : '' %>>+++</option>
-        <option value="++++" <%= test.results && test.results.blood === '++++' ? 'selected' : '' %>>++++</option>
-        <option value="Trace" <%= test.results && test.results.blood === 'Trace' ? 'selected' : '' %>>Trace</option>
-      </select>
-    </div>
-
-    <div class="form-row">
-      <label>Ketones</label>
-      <select name="ketones">
-        <option value=""></option>
-        <option value="Negative" <%= (!test.results || !test.results.ketones || test.results.ketones === 'Negative') ? 'selected' : '' %>>Negative</option>
-        <option value="+" <%= test.results && test.results.ketones === '+' ? 'selected' : '' %>>+</option>
-        <option value="++" <%= test.results && test.results.ketones === '++' ? 'selected' : '' %>>++</option>
-        <option value="+++" <%= test.results && test.results.ketones === '+++' ? 'selected' : '' %>>+++</option>
-        <option value="++++" <%= test.results && test.results.ketones === '++++' ? 'selected' : '' %>>++++</option>
-        <option value="Trace" <%= test.results && test.results.ketones === 'Trace' ? 'selected' : '' %>>Trace</option>
-      </select>
-    </div>
-    <div class="form-row">
-      <label>Bilirubin</label>
-      <select name="bilirubin">
-        <option value=""></option>
-        <option value="Negative" <%= (!test.results || !test.results.bilirubin || test.results.bilirubin === 'Negative') ? 'selected' : '' %>>Negative</option>
-        <option value="+" <%= test.results && test.results.bilirubin === '+' ? 'selected' : '' %>>+</option>
-        <option value="++" <%= test.results && test.results.bilirubin === '++' ? 'selected' : '' %>>++</option>
-        <option value="+++" <%= test.results && test.results.bilirubin === '+++' ? 'selected' : '' %>>+++</option>
-        <option value="++++" <%= test.results && test.results.bilirubin === '++++' ? 'selected' : '' %>>++++</option>
-        <option value="Trace" <%= test.results && test.results.bilirubin === 'Trace' ? 'selected' : '' %>>Trace</option>
-      </select>
-    </div>
-
-    <hr>
-    <h4>Microscopy Examination</h4>
-    <div class="form-row">
-      <label>WBC</label>
-      <div style="display:flex;gap:8px;align-items:center;"><input type="text" name="wbc" value="<%= test.results && test.results.wbc ? test.results.wbc : '' %>" placeholder="0-3" title="Reference: 0 - 3 /hpf"><span>hpf</span></div>
-    </div>
-    <div class="form-row">
-      <label>RBC</label>
-      <div style="display:flex;gap:8px;align-items:center;"><input type="text" name="rbc" value="<%= test.results && test.results.rbc ? test.results.rbc : '' %>" placeholder="0-5" title="Reference: 0 - 5 /hpf"><span>hpf</span></div>
-    </div>
-    <div class="form-row">
-      <label>Epithelial Cells</label>
-      <select name="epithelial">
-        <option value=""></option>
-        <option value="Few" <%= test.results && test.results.epithelial === 'Few' ? 'selected' : '' %>>Few</option>
-        <option value="Moderate" <%= test.results && test.results.epithelial === 'Moderate' ? 'selected' : '' %>>Moderate</option>
-        <option value="Rare" <%= test.results && test.results.epithelial === 'Rare' ? 'selected' : '' %>>Rare</option>
-        <option value="Many" <%= test.results && test.results.epithelial === 'Many' ? 'selected' : '' %>>Many</option>
-        <option value="Loaded" <%= test.results && test.results.epithelial === 'Loaded' ? 'selected' : '' %>>Loaded</option>
-        <option value="None" <%= test.results && test.results.epithelial === 'None' ? 'selected' : '' %>>None</option>
-      </select>
-    </div>
-    <div class="form-row">
-      <label>Mucus Threads</label>
-      <select name="mucus">
-        <option value=""></option>
-        <option value="Few" <%= test.results && test.results.mucus === 'Few' ? 'selected' : '' %>>Few</option>
-        <option value="Moderate" <%= test.results && test.results.mucus === 'Moderate' ? 'selected' : '' %>>Moderate</option>
-        <option value="Rare" <%= test.results && test.results.mucus === 'Rare' ? 'selected' : '' %>>Rare</option>
-        <option value="Many" <%= test.results && test.results.mucus === 'Many' ? 'selected' : '' %>>Many</option>
-        <option value="Loaded" <%= test.results && test.results.mucus === 'Loaded' ? 'selected' : '' %>>Loaded</option>
-        <option value="None" <%= test.results && test.results.mucus === 'None' ? 'selected' : '' %>>None</option>
-      </select>
-    </div>
-    <div class="form-row">
-      <label>Amorphous Crystals</label>
-      <select name="amorphous">
-        <option value=""></option>
-        <option value="Few" <%= test.results && test.results.amorphous === 'Few' ? 'selected' : '' %>>Few</option>
-        <option value="Moderate" <%= test.results && test.results.amorphous === 'Moderate' ? 'selected' : '' %>>Moderate</option>
-        <option value="Rare" <%= test.results && test.results.amorphous === 'Rare' ? 'selected' : '' %>>Rare</option>
-        <option value="Many" <%= test.results && test.results.amorphous === 'Many' ? 'selected' : '' %>>Many</option>
-        <option value="Loaded" <%= test.results && test.results.amorphous === 'Loaded' ? 'selected' : '' %>>Loaded</option>
-        <option value="None" <%= test.results && test.results.amorphous === 'None' ? 'selected' : '' %>>None</option>
-      </select>
-    </div>
-    <div class="form-row">
-      <label>Bacteria</label>
-      <select name="bacteria">
-        <option value=""></option>
-        <option value="Few" <%= test.results && test.results.bacteria === 'Few' ? 'selected' : '' %>>Few</option>
-        <option value="Moderate" <%= test.results && test.results.bacteria === 'Moderate' ? 'selected' : '' %>>Moderate</option>
-        <option value="Rare" <%= test.results && test.results.bacteria === 'Rare' ? 'selected' : '' %>>Rare</option>
-        <option value="Many" <%= test.results && test.results.bacteria === 'Many' ? 'selected' : '' %>>Many</option>
-        <option value="Loaded" <%= test.results && test.results.bacteria === 'Loaded' ? 'selected' : '' %>>Loaded</option>
-        <option value="None" <%= test.results && test.results.bacteria === 'None' ? 'selected' : '' %>>None</option>
-      </select>
-    </div>
-
-    <div class="form-row">
-      <label>Others</label>
-      <input type="text" name="others" value="<%= test.results && test.results.others ? test.results.others : '' %>">
-    </div>
-
-    <div class="form-row">
-      <label>Note</label>
-      <textarea name="note" rows="3"><%= test.results && test.results.note ? test.results.note : '' %></textarea>
-    </div>
-
-    <hr>
-    <h4>Signatures / Performers</h4>
-    <%- include('../partials/signatory_select', { prefix: 'mt', label: 'Medical Technologist', role: 'Medical Technologist', nameInput: 'mtName', licenseInput: 'mtLicense', existingName: (test.results && test.results.performedByName) ? test.results.performedByName : '', existingLicense: (test.results && test.results.performedByLicense) ? test.results.performedByLicense : '' }) %>
-
-    <div class="form-row">
-      <h4>Validation</h4>
-    </div>
-    <%- include('../partials/signatory_select', { prefix: 'validated', label: 'Validator', role: 'Medical Technologist', nameInput: 'validatedByName', licenseInput: 'validatedByLicense', existingName: (test.results && test.results.validatedByName) ? test.results.validatedByName : '', existingLicense: (test.results && test.results.validatedByLicense) ? test.results.validatedByLicense : '' }) %>
-
-    <%- include('../partials/signatory_select', { prefix: 'path', label: 'Pathologist', role: 'Pathologist', nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (test.results && test.results.requestedByName) ? test.results.requestedByName : '', existingLicense: (test.results && test.results.requestedByLicense) ? test.results.requestedByLicense : '' }) %>
-
-    <div class="form-row mt-12">
-      <a href="/tests/<%= test.id %>" class="button btn-secondary">Cancel</a>
-      <button class="button btn-primary">Save Results</button>
-    </div>
   </form>
 </div>
+
+<style>
+  @media (max-width: 900px) {
+    .results-encoding-grid {
+      grid-template-columns: 1fr !important;
+    }
+  }
+  .result-input-row:hover {
+    background-color: #f8fafc;
+    border-radius: 6px;
+  }
+  .result-input-row input:focus, .result-input-row select:focus {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
+  }
+</style>

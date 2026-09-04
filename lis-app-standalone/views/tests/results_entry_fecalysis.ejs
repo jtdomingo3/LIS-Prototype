@@ -1,163 +1,231 @@
-<div class="card">
-  <h3>Enter Fecalysis Results - <%= test.testId %></h3>
+<%- include('../partials/test_patient_banner', { test, patient: typeof patient !== 'undefined' ? patient : (test ? test.patient : null) }) %>
 
-  <form action="/tests/<%= test.id %>/results" method="POST">
+<div class="card" style="padding: 24px 28px; border-radius: 16px; box-shadow: 0 4px 18px rgba(0,0,0,0.03); background: #ffffff; border: 1px solid #e2e8f0;">
+  <form action="/tests/<%= test.id %>/results" method="POST" id="fecalysisForm">
     <input type="hidden" name="_method" value="POST">
 
-    <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
-      <div class="form-row" style="margin:0;">
-        <label>Date</label>
-        <input type="date" name="entryDate" value="<%= test && test.testDate ? (new Date(test.testDate)).toISOString().slice(0,10) : (new Date()).toISOString().slice(0,10) %>" readonly>
+    <!-- Timing & Meta Bar -->
+    <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; padding: 10px 18px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Date:</label>
+        <input type="date" name="entryDate" value="<%= test && test.testDate ? (new Date(test.testDate)).toISOString().slice(0,10) : (new Date()).toISOString().slice(0,10) %>" readonly style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 0.88em; width: 135px;">
       </div>
-      <div class="form-row" style="margin:0;">
-        <label>Time Requested</label>
-          <input type="time" name="timeRequested" value="<%= test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '' %>">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Time Requested:</label>
+        <input type="time" name="timeRequested" value="<%= test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '' %>" style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 0.88em; width: 115px;">
       </div>
-      <div class="form-row" style="margin:0;">
-        <label>Time Released</label>
-        <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (new Date()).toTimeString().slice(0,5) %>">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Time Released:</label>
+        <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (new Date()).toTimeString().slice(0,5) %>" style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 0.88em; width: 115px;">
       </div>
     </div>
 
-    <div class="form-row">
-      <label>Color</label>
-      <select name="color" required>
-        <option value=""></option>
-        <option value="Brown" <%= test.results && test.results.color === 'Brown' ? 'selected' : '' %>>Brown</option>
-        <option value="Light Brown" <%= test.results && test.results.color === 'Light Brown' ? 'selected' : '' %>>Light Brown</option>
-        <option value="Dark Brown" <%= test.results && test.results.color === 'Dark Brown' ? 'selected' : '' %>>Dark Brown</option>
-        <option value="Yellow" <%= test.results && test.results.color === 'Yellow' ? 'selected' : '' %>>Yellow</option>
-        <option value="Black" <%= test.results && test.results.color === 'Black' ? 'selected' : '' %>>Black</option>
-        <option value="Red" <%= test.results && test.results.color === 'Red' ? 'selected' : '' %>>Red</option>
-        <option value="Green" <%= test.results && test.results.color === 'Green' ? 'selected' : '' %>>Green</option>
-        <option value="White" <%= test.results && test.results.color === 'White' ? 'selected' : '' %>>White</option>
-        <option value="Clay-colored" <%= test.results && test.results.color === 'Clay-colored' ? 'selected' : '' %>>Clay-colored</option>
-        <option value="Pale" <%= test.results && test.results.color === 'Pale' ? 'selected' : '' %>>Pale</option>
-        <option value="Orange" <%= test.results && test.results.color === 'Orange' ? 'selected' : '' %>>Orange</option>
-        <option value="Maroon" <%= test.results && test.results.color === 'Maroon' ? 'selected' : '' %>>Maroon</option>
-        <option value="Red-brown" <%= test.results && test.results.color === 'Red-brown' ? 'selected' : '' %>>Red-brown</option>
-        <option value="Silver" <%= test.results && test.results.color === 'Silver' ? 'selected' : '' %>>Silver</option>
-      </select>
-    </div>
+    <!-- Double-Column Results Encoding Grid -->
+    <div class="results-encoding-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 20px;">
+      
+      <!-- Column 1: Macroscopic Examination -->
+      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+        <div style="font-weight: 700; font-size: 1em; color: #0f172a; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+          <span style="display: flex; align-items: center; gap: 8px;">
+            <i class="fa fa-eye" style="color: #d97706;"></i> Macroscopic Examination
+          </span>
+          <span style="font-size: 0.75em; color: #64748b; font-weight: 500;">Physical Appearance</span>
+        </div>
 
-    <div class="form-row">
-      <label>Consistency</label>
-      <select name="consistency">
-        <option value=""></option>
-        <option value="Soft" <%= test.results && test.results.consistency === 'Soft' ? 'selected' : '' %>>Soft</option>
-        <option value="Watery" <%= test.results && test.results.consistency === 'Watery' ? 'selected' : '' %>>Watery</option>
-        <option value="Mucoid" <%= test.results && test.results.consistency === 'Mucoid' ? 'selected' : '' %>>Mucoid</option>
-        <option value="Formed" <%= test.results && test.results.consistency === 'Formed' ? 'selected' : '' %>>Formed</option>
-        <option value="Semi-Watery" <%= test.results && test.results.consistency === 'Semi-Watery' ? 'selected' : '' %>>Semi-Watery</option>
-        <option value="Semi-Mucoid" <%= test.results && test.results.consistency === 'Semi-Mucoid' ? 'selected' : '' %>>Semi-Mucoid</option>
-        <option value="Semi-Formed" <%= test.results && test.results.consistency === 'Semi-Formed' ? 'selected' : '' %>>Semi-Formed</option>
-        <option value="Well-Formed" <%= test.results && test.results.consistency === 'Well-Formed' ? 'selected' : '' %>>Well-Formed</option>
-      </select>
-    </div>
+        <!-- Color -->
+        <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9; gap: 12px;">
+          <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">Color</label>
+          <div style="width: 175px; flex-shrink: 0;">
+            <select name="color" required style="height: 34px; padding: 2px 8px; font-size: 0.88em; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff;">
+              <option value=""></option>
+              <option value="Brown" <%= test.results && test.results.color === 'Brown' ? 'selected' : '' %>>Brown</option>
+              <option value="Light Brown" <%= test.results && test.results.color === 'Light Brown' ? 'selected' : '' %>>Light Brown</option>
+              <option value="Dark Brown" <%= test.results && test.results.color === 'Dark Brown' ? 'selected' : '' %>>Dark Brown</option>
+              <option value="Yellow" <%= test.results && test.results.color === 'Yellow' ? 'selected' : '' %>>Yellow</option>
+              <option value="Black" <%= test.results && test.results.color === 'Black' ? 'selected' : '' %>>Black</option>
+              <option value="Red" <%= test.results && test.results.color === 'Red' ? 'selected' : '' %>>Red</option>
+              <option value="Green" <%= test.results && test.results.color === 'Green' ? 'selected' : '' %>>Green</option>
+              <option value="White" <%= test.results && test.results.color === 'White' ? 'selected' : '' %>>White</option>
+              <option value="Clay-colored" <%= test.results && test.results.color === 'Clay-colored' ? 'selected' : '' %>>Clay-colored</option>
+              <option value="Pale" <%= test.results && test.results.color === 'Pale' ? 'selected' : '' %>>Pale</option>
+              <option value="Orange" <%= test.results && test.results.color === 'Orange' ? 'selected' : '' %>>Orange</option>
+              <option value="Maroon" <%= test.results && test.results.color === 'Maroon' ? 'selected' : '' %>>Maroon</option>
+              <option value="Red-brown" <%= test.results && test.results.color === 'Red-brown' ? 'selected' : '' %>>Red-brown</option>
+              <option value="Silver" <%= test.results && test.results.color === 'Silver' ? 'selected' : '' %>>Silver</option>
+            </select>
+          </div>
+        </div>
 
-    <div class="form-row">
-      <label>White Blood Cell</label>
-      <div style="display:flex;gap:8px;align-items:center;"><input type="text" name="pusCell" value="<%= test.results && test.results.pusCell ? test.results.pusCell : '' %>"><span>hpf</span></div>
-    </div>
+        <!-- Consistency -->
+        <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9; gap: 12px;">
+          <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">Consistency</label>
+          <div style="width: 175px; flex-shrink: 0;">
+            <select name="consistency" style="height: 34px; padding: 2px 8px; font-size: 0.88em; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff;">
+              <option value=""></option>
+              <option value="Soft" <%= test.results && test.results.consistency === 'Soft' ? 'selected' : '' %>>Soft</option>
+              <option value="Watery" <%= test.results && test.results.consistency === 'Watery' ? 'selected' : '' %>>Watery</option>
+              <option value="Mucoid" <%= test.results && test.results.consistency === 'Mucoid' ? 'selected' : '' %>>Mucoid</option>
+              <option value="Formed" <%= test.results && test.results.consistency === 'Formed' ? 'selected' : '' %>>Formed</option>
+              <option value="Semi-Watery" <%= test.results && test.results.consistency === 'Semi-Watery' ? 'selected' : '' %>>Semi-Watery</option>
+              <option value="Semi-Mucoid" <%= test.results && test.results.consistency === 'Semi-Mucoid' ? 'selected' : '' %>>Semi-Mucoid</option>
+              <option value="Semi-Formed" <%= test.results && test.results.consistency === 'Semi-Formed' ? 'selected' : '' %>>Semi-Formed</option>
+              <option value="Well-Formed" <%= test.results && test.results.consistency === 'Well-Formed' ? 'selected' : '' %>>Well-Formed</option>
+            </select>
+          </div>
+        </div>
 
-    <div class="form-row">
-      <label>Red Blood Cell</label>
-      <div style="display:flex;gap:8px;align-items:center;"><input type="text" name="rbc" value="<%= test.results && test.results.rbc ? test.results.rbc : '' %>"><span>hpf</span></div>
-    </div>
+        <!-- Others -->
+        <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9; gap: 12px;">
+          <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">Others / Findings</label>
+          <div style="width: 175px; flex-shrink: 0;">
+            <input type="text" name="others" value="<%= test.results && test.results.others ? test.results.others : '' %>" placeholder="e.g. Mucus present" style="height: 34px; padding: 4px 10px; font-size: 0.88em; border-radius: 6px; border: 1px solid #cbd5e1;">
+          </div>
+        </div>
 
-    <div class="form-row">
-      <label>Ova &amp; Parasite</label>
-      <% 
-        const parasitesValRaw = test.results && test.results.parasites ? test.results.parasites : '';
-        const parasiteOptions = [
-          'No ova of any Intestinal Parasite Seen',
-          'Entamoeba histolytica',
-          'Entamoeba histolytica Cyst',
-          'Ascaris lumbricoides',
-          'Trichuris trichiura',
-          'Entamoeba  coli cyst'
-        ];
-        let parasitesName = parasitesValRaw;
-        let parasitesCount = '';
-        const colonIndex = parasitesValRaw.indexOf(':');
-        if(colonIndex !== -1){
-          parasitesName = parasitesValRaw.slice(0, colonIndex).trim();
-            parasitesCount = parasitesValRaw.slice(colonIndex + 1).replace(/\/?\s*hpf/i, '').trim();
-        }
-        const parasitesIsKnown = parasiteOptions.includes(parasitesName);
-      %>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <select id="parasites_select" name="parasites_select">
-          <option value=""></option>
-          <% parasiteOptions.forEach(function(opt){ %>
-            <option value="<%= opt %>" <%= parasitesName === opt ? 'selected' : '' %>><%= opt %></option>
-          <% }) %>
-          <option value="Other" <%= !parasitesIsKnown && parasitesName ? 'selected' : '' %>>Other (specify)</option>
-        </select>
-        <input id="parasites_count" type="text" placeholder="e.g., 0-1, 2-5" style="display:<%= parasitesIsKnown && parasitesName !== 'No ova of any Intestinal Parasite Seen' ? 'inline-block' : 'none' %>;" value="<%= parasitesCount %>">
-        <input id="parasites_other" type="text" placeholder="Specify parasite" style="display:<%= parasitesIsKnown ? 'none' : 'inline-block' %>;" value="<%= parasitesIsKnown ? '' : parasitesName %>">
-        <input type="hidden" id="parasites" name="parasites" value="<%= parasitesValRaw %>">
-        <span>hpf</span>
+        <!-- Clinical Notes -->
+        <div style="margin-top: 12px;">
+          <label style="margin: 0 0 4px 0; font-weight: 600; font-size: 0.88em; color: #1e293b;">Clinical Note / Observations</label>
+          <textarea name="note" rows="3" placeholder="Enter special remarks or findings..." style="width: 100%; min-height: 70px; padding: 8px 10px; font-size: 0.88em; border-radius: 6px; border: 1px solid #cbd5e1; box-sizing: border-box; resize: none;"><%= test.results && test.results.note ? test.results.note : '' %></textarea>
+        </div>
+
       </div>
-      <script>
-        (function(){
-          var sel = document.getElementById('parasites_select');
-          var other = document.getElementById('parasites_other');
-          var count = document.getElementById('parasites_count');
-          var hidden = document.getElementById('parasites');
-          function updateVisibility(){
-            if(!sel) return;
-            var val = sel.value || '';
-            if(val === 'Other'){
-              other.style.display = 'inline-block';
-              count.style.display = 'none';
-              hidden.value = other.value || '';
-            } else if(val === 'No ova of any Intestinal Parasite Seen' || val === ''){
-              other.style.display = 'none';
-              count.style.display = 'none';
-              hidden.value = val || '';
-            } else {
-              other.style.display = 'none';
-              count.style.display = 'inline-block';
-              hidden.value = val + (count.value ? ': ' + count.value + ' / hpf' : '');
+
+      <!-- Column 2: Microscopic Examination & Parasites -->
+      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+        <div style="font-weight: 700; font-size: 1em; color: #0f172a; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+          <span style="display: flex; align-items: center; gap: 8px;">
+            <i class="fa fa-microscope" style="color: #6366f1;"></i> Microscopic Examination
+          </span>
+          <span style="font-size: 0.75em; color: #64748b; font-weight: 500;">Cells & Parasites</span>
+        </div>
+
+        <!-- Pus Cells (WBC) -->
+        <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9; gap: 12px;">
+          <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">Pus Cells (WBC)</label>
+          <div style="position: relative; width: 175px; flex-shrink: 0;">
+            <input type="text" name="pusCell" value="<%= test.results && test.results.pusCell ? test.results.pusCell : '' %>" placeholder="0-2" style="height: 34px; padding: 4px 35px 4px 10px; font-size: 0.88em; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1;">
+            <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.72em; font-weight: 600; color: #94a3b8; pointer-events: none;">/hpf</span>
+          </div>
+        </div>
+
+        <!-- RBC -->
+        <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f1f5f9; gap: 12px;">
+          <label style="margin: 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">Red Blood Cells (RBC)</label>
+          <div style="position: relative; width: 175px; flex-shrink: 0;">
+            <input type="text" name="rbc" value="<%= test.results && test.results.rbc ? test.results.rbc : '' %>" placeholder="0-2" style="height: 34px; padding: 4px 35px 4px 10px; font-size: 0.88em; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1;">
+            <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.72em; font-weight: 600; color: #94a3b8; pointer-events: none;">/hpf</span>
+          </div>
+        </div>
+
+        <!-- Ova & Parasites -->
+        <div style="padding: 10px 0; border-bottom: 1px solid #f1f5f9;">
+          <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.9em; color: #1e293b;">Ova &amp; Parasite</label>
+          <% 
+            const parasitesValRaw = test.results && test.results.parasites ? test.results.parasites : '';
+            const parasiteOptions = [
+              'No ova of any Intestinal Parasite Seen',
+              'Entamoeba histolytica',
+              'Entamoeba histolytica Cyst',
+              'Ascaris lumbricoides',
+              'Trichuris trichiura',
+              'Entamoeba coli cyst'
+            ];
+            let parasitesName = parasitesValRaw;
+            let parasitesCount = '';
+            const colonIndex = parasitesValRaw.indexOf(':');
+            if(colonIndex !== -1){
+              parasitesName = parasitesValRaw.slice(0, colonIndex).trim();
+              parasitesCount = parasitesValRaw.slice(colonIndex + 1).replace(/\/?\s*hpf/i, '').trim();
             }
-          }
-          if(sel){ sel.addEventListener('change', updateVisibility); }
-          if(other){ other.addEventListener('input', function(){ hidden.value = other.value || ''; }); }
-          if(count){ count.addEventListener('input', function(){ var v = sel.value || ''; hidden.value = v + (count.value ? ': ' + count.value + ' / hpf' : ''); }); }
-          updateVisibility();
-        })();
-      </script>
+            const parasitesIsKnown = parasiteOptions.includes(parasitesName);
+          %>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <select id="parasites_select" name="parasites_select" style="height: 34px; padding: 4px 8px; font-size: 0.88em; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; width: 100%;">
+              <option value=""></option>
+              <% parasiteOptions.forEach(function(opt){ %>
+                <option value="<%= opt %>" <%= parasitesName === opt ? 'selected' : '' %>><%= opt %></option>
+              <% }) %>
+              <option value="Other" <%= !parasitesIsKnown && parasitesName ? 'selected' : '' %>>Other (specify)</option>
+            </select>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <input id="parasites_count" type="text" placeholder="e.g. 0-1, 2-5" style="display:<%= parasitesIsKnown && parasitesName !== 'No ova of any Intestinal Parasite Seen' ? 'inline-block' : 'none' %>; height: 34px; padding: 4px 10px; font-size: 0.88em; border-radius: 6px; border: 1px solid #cbd5e1; flex: 1;" value="<%= parasitesCount %>">
+              <input id="parasites_other" type="text" placeholder="Specify parasite name" style="display:<%= parasitesIsKnown ? 'none' : 'inline-block' %>; height: 34px; padding: 4px 10px; font-size: 0.88em; border-radius: 6px; border: 1px solid #cbd5e1; flex: 1;" value="<%= parasitesIsKnown ? '' : parasitesName %>">
+              <input type="hidden" id="parasites" name="parasites" value="<%= parasitesValRaw %>">
+            </div>
+          </div>
+          <script>
+            (function(){
+              var sel = document.getElementById('parasites_select');
+              var other = document.getElementById('parasites_other');
+              var count = document.getElementById('parasites_count');
+              var hidden = document.getElementById('parasites');
+              function updateVisibility(){
+                if(!sel) return;
+                var val = sel.value || '';
+                if(val === 'Other'){
+                  other.style.display = 'inline-block';
+                  count.style.display = 'none';
+                  hidden.value = other.value || '';
+                } else if(val === 'No ova of any Intestinal Parasite Seen' || val === ''){
+                  other.style.display = 'none';
+                  count.style.display = 'none';
+                  hidden.value = val || '';
+                } else {
+                  other.style.display = 'none';
+                  count.style.display = 'inline-block';
+                  hidden.value = val + (count.value ? ': ' + count.value + ' / hpf' : '');
+                }
+              }
+              if(sel){ sel.addEventListener('change', updateVisibility); }
+              if(other){ other.addEventListener('input', function(){ hidden.value = other.value || ''; }); }
+              if(count){ count.addEventListener('input', function(){ var v = sel.value || ''; hidden.value = v + (count.value ? ': ' + count.value + ' / hpf' : ''); }); }
+              updateVisibility();
+            })();
+          </script>
+        </div>
+
+      </div>
+
     </div>
 
-    <div class="form-row">
-      <label>Others</label>
-      <input type="text" name="others" value="<%= test.results && test.results.others ? test.results.others : '' %>">
+    <!-- Signatures & Verification Section -->
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; margin-top: 24px;">
+      <div style="font-weight: 700; font-size: 0.88em; text-transform: uppercase; color: #475569; letter-spacing: 0.5px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+        <i class="fa fa-signature" style="color: #10b981;"></i> Medical Staff Signatures & Verification
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+          <%- include('../partials/signatory_select', { prefix: 'mt', label: 'Medical Technologist', role: 'Medical Technologist', nameInput: 'mtName', licenseInput: 'mtLicense', existingName: (test.results && test.results.performedByName) ? test.results.performedByName : '', existingLicense: (test.results && test.results.performedByLicense) ? test.results.performedByLicense : '' }) %>
+        </div>
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+          <%- include('../partials/signatory_select', { prefix: 'validated', label: '2nd MedTech (Validator)', role: 'Medical Technologist', nameInput: 'validatedByName', licenseInput: 'validatedByLicense', existingName: (test.results && test.results.validatedByName) ? test.results.validatedByName : '', existingLicense: (test.results && test.results.validatedByLicense) ? test.results.validatedByLicense : '' }) %>
+        </div>
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+          <%- include('../partials/signatory_select', { prefix: 'path', label: 'Pathologist', role: 'Pathologist', nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (test.results && test.results.requestedByName) ? test.results.requestedByName : '', existingLicense: (test.results && test.results.requestedByLicense) ? test.results.requestedByLicense : '' }) %>
+        </div>
+      </div>
     </div>
 
-    
-
-    <div class="form-row">
-      <label>Note</label>
-      <textarea name="note" rows="3"><%= test.results && test.results.note ? test.results.note : '' %></textarea>
+    <!-- Sticky / Bottom Action Buttons -->
+    <div style="display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
+      <a href="/tests/<%= test.id %>" class="button btn-secondary" style="height: 42px; padding: 0 20px; border-radius: 8px; font-weight: 600;">Cancel</a>
+      <button type="submit" class="button btn-primary" style="height: 42px; padding: 0 28px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+        <i class="fa fa-check"></i> Save Results
+      </button>
     </div>
 
-    <hr>
-    <h4>Signatures / Performers</h4>
-    <%- include('../partials/signatory_select', { prefix: 'mt', label: 'Medical Technologist', role: 'Medical Technologist', nameInput: 'mtName', licenseInput: 'mtLicense', existingName: (test.results && test.results.performedByName) ? test.results.performedByName : '', existingLicense: (test.results && test.results.performedByLicense) ? test.results.performedByLicense : '' }) %>
-
-    <div class="form-row">
-      <h4>Validation</h4>
-    </div>
-    <%- include('../partials/signatory_select', { prefix: 'validated', label: 'Validator', role: 'Medical Technologist', nameInput: 'validatedByName', licenseInput: 'validatedByLicense', existingName: (test.results && test.results.validatedByName) ? test.results.validatedByName : '', existingLicense: (test.results && test.results.validatedByLicense) ? test.results.validatedByLicense : '' }) %>
-
-    <%- include('../partials/signatory_select', { prefix: 'path', label: 'Pathologist', role: 'Pathologist', nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (test.results && test.results.requestedByName) ? test.results.requestedByName : '', existingLicense: (test.results && test.results.requestedByLicense) ? test.results.requestedByLicense : '' }) %>
-
-    <!-- Performed By selection deferred; managed separately -->
-
-    <div class="form-row mt-12">
-      <a href="/tests/<%= test.id %>" class="button btn-secondary">Cancel</a>
-      <button class="button btn-primary">Save Results</button>
-    </div>
   </form>
 </div>
+
+<style>
+  @media (max-width: 900px) {
+    .results-encoding-grid {
+      grid-template-columns: 1fr !important;
+    }
+  }
+  .result-input-row:hover {
+    background-color: #f8fafc;
+    border-radius: 6px;
+  }
+</style>
