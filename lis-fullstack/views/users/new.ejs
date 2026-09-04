@@ -36,7 +36,7 @@
     </a>
   </div>
 
-  <form action="/users" method="POST">
+  <form action="/users" method="POST" enctype="multipart/form-data">
     <div class="user-form-grid">
       
       <!-- Left Column: Account Details -->
@@ -99,6 +99,14 @@
           <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">PRC / Professional License Number</label>
           <input type="text" name="licenseNumber" value="<%= user.licenseNumber || '' %>" placeholder="e.g. 0089123" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 6px 12px; font-size: 0.9em; font-weight: 500; box-sizing: border-box;" />
         </div>
+
+        <div>
+          <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">
+            <i class="fa fa-signature" style="color: #10b981;"></i> Digital Signature (PNG)
+          </label>
+          <input type="file" name="signature" accept="image/png,image/*" style="width: 100%; font-size: 0.85em; color: #475569; box-sizing: border-box;" />
+          <small style="font-size: 0.72em; color: #64748b; margin-top: 4px; display: block;">Upload a clean PNG image of handwritten signature.</small>
+        </div>
       </div>
 
       <!-- Right Column: User Permissions & Access Control -->
@@ -118,6 +126,7 @@
               { key: 'patients', label: 'Patients', desc: 'Demographics & Records' },
               { key: 'tests', label: 'Tests', desc: 'Worklist & Results Entry' },
               { key: 'reports', label: 'Reports', desc: 'Sign-off & Printouts' },
+              { key: 'signatures', label: 'Signature', desc: 'Sign-offs & Queue' },
               { key: 'worksheet', label: 'Worksheet', desc: 'Batch Bench Sheet' },
               { key: 'inventory', label: 'Inventory', desc: 'Reagents & Supplies' },
               { key: 'templates', label: 'Report Templates', desc: 'Template Config', highlight: true },
@@ -127,7 +136,7 @@
           %>
           <% permList.forEach(p => { %>
             <label style="display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; background: <%= p.highlight ? '#fef2f2' : '#ffffff' %>; border: 1px solid <%= p.highlight ? '#fca5a5' : '#e2e8f0' %>; cursor: pointer; transition: all 0.15s ease;" onmouseover="this.style.borderColor='<%= p.highlight ? '#ef4444' : '#10b981' %>'" onmouseout="this.style.borderColor='<%= p.highlight ? '#fca5a5' : '#e2e8f0' %>'">
-              <input type="checkbox" name="permissions[<%= p.key %>]" value="1" <%= user.permissions && user.permissions[p.key] ? 'checked' : '' %> style="accent-color: #10b981; width: 16px; height: 16px; cursor: pointer; flex-shrink: 0;" />
+              <input type="checkbox" name="permissions[<%= p.key %>]" value="1" <%= user.permissions && (user.permissions[p.key] || (p.key === 'signatures' && user.permissions.signature)) ? 'checked' : '' %> style="accent-color: #10b981; width: 16px; height: 16px; cursor: pointer; flex-shrink: 0;" />
               <div style="min-width: 0; flex: 1;">
                 <div style="font-weight: 700; font-size: 0.84em; color: <%= p.highlight ? '#b91c1c' : '#0f172a' %>; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><%= p.label %></div>
                 <div style="font-size: 0.7em; color: <%= p.highlight ? '#991b1b' : '#64748b' %>; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><%= p.desc %></div>
