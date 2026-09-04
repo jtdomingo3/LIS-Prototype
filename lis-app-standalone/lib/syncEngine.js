@@ -1209,6 +1209,17 @@ class SyncEngine {
     const base = (serverBaseUrl || '').replace(/\/$/, '');
     if (!base) return;
 
+    // Throttle: skip signature sync if it ran within the last 5 minutes
+    const now = Date.now();
+    const lastSigSync = this._lastSignatureSyncTs || 0;
+    if (now - lastSigSync < 5 * 60 * 1000) {
+      return;
+    }
+    this._lastSignatureSyncTs = now;
+
+    // Build a set of all signature filenames the server already knows about
+    const serverUserSigs = new Set((serverUsers || []).map(u => u && u.signature ? path.basename(u.signature) : null).filter(Boolean));
+
     // 1. Download missing signatures from server to local assets
     if (Array.isArray(serverUsers)) {
       for (const u of serverUsers) {
@@ -1230,10 +1241,9 @@ class SyncEngine {
       }
     }
 
-    // 2. Upload any local signatures that the server might not have
+    // 2. Upload only local signatures that the server truly doesn't have
     try {
       const localFiles = fs.readdirSync(localSigDir).filter(f => f.endsWith('.png') || f.endsWith('.jpg') || f.endsWith('.jpeg'));
-      const serverUserSigs = new Set((serverUsers || []).map(u => u && u.signature ? path.basename(u.signature) : null).filter(Boolean));
 
       // Match signatures to user emails from local DataStore
       const localUsers = (this.dataStore && typeof this.dataStore.getCollection === 'function') ? (this.dataStore.getCollection('users') || []) : [];
@@ -1242,26 +1252,33 @@ class SyncEngine {
         if (lu && lu.signature) userBySig[path.basename(lu.signature)] = lu.email;
       }
 
-      for (const fname of localFiles) {
-        // If the server doesn't have this user signature, sync it to the server
-        if (!serverUserSigs.has(fname)) {
-          const filePath = path.join(localSigDir, fname);
-          const buf = fs.readFileSync(filePath);
-          const base64Data = buf.toString('base64');
-          const email = userBySig[fname] || null;
+      // Track already-synced filenames across sessions to avoid redundant uploads
+      if (!this._syncedSignatures) this._syncedSignatures = new Set();
 
-          try {
-            await this._postSignatureSync(`${base}/api/signatures/sync`, fname, base64Data, email);
-            console.log(`[Sync] uploaded local signature to server: ${fname} (${buf.length} bytes) for ${email || 'user'}`);
-          } catch (upErr) {
-            // will retry on next sync
-          }
+      for (const fname of localFiles) {
+        // Skip if server already references this signature file
+        if (serverUserSigs.has(fname)) continue;
+        // Skip if we already uploaded this file in a previous sync cycle this session
+        if (this._syncedSignatures.has(fname)) continue;
+
+        const filePath = path.join(localSigDir, fname);
+        const buf = fs.readFileSync(filePath);
+        const base64Data = buf.toString('base64');
+        const email = userBySig[fname] || null;
+
+        try {
+          await this._postSignatureSync(`${base}/api/signatures/sync`, fname, base64Data, email);
+          console.log(`[Sync] uploaded local signature to server: ${fname} (${buf.length} bytes) for ${email || 'user'}`);
+          this._syncedSignatures.add(fname);
+        } catch (upErr) {
+          // will retry on next sync (after 5-minute throttle)
         }
       }
     } catch (scanErr) {
       console.warn('[Sync] signature upload scan warning:', scanErr && scanErr.message);
     }
   }
+
 
   _downloadBuffer(url) {
     return new Promise((resolve, reject) => {

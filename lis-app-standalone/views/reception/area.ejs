@@ -330,7 +330,7 @@
                         <input type="hidden" name="testId" value="<%= (row.testIds && row.testIds.length ? row.testIds[0] : '') %>">
                         <input type="hidden" name="area" value="<%= areaName %>">
                         <button type="submit" class="button btn-small" style="width: 100%; height: 30px; border-radius: 6px; background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; font-weight: 600; font-size: 0.8em; display: inline-flex; align-items: center; justify-content: center; gap: 6px;" title="Remove from queue">
-                          <i class="fa fa-trash-alt"></i> Remove from Queue
+                          <i class="fa fa-trash-alt"></i> Remove
                         </button>
                       </form>
                     </div>
@@ -501,7 +501,7 @@
           return;
         }
 
-        const htmlMsg = '<div style="font-size:0.93em; line-line:1.6; color:#334155;">' +
+        const htmlMsg = '<div style="font-size:0.93em; line-height:1.6; color:#334155;">' +
                         '<p style="margin:0 0 10px; font-weight:600; color:#0f172a;">Are you sure you want to charge this patient to their Health Card?</p>' +
                         '<div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; margin-bottom:12px;">' +
                           '<div><strong>Patient:</strong> ' + patientName + '</div>' +
@@ -697,7 +697,6 @@
           row.style.transform = 'translateY(-10px)';
           setTimeout(() => {
             row.remove();
-            // Check if queue is now empty
             const remaining = document.querySelectorAll('#queuePane tbody tr');
             if (remaining.length === 0) location.reload();
           }, 300);
