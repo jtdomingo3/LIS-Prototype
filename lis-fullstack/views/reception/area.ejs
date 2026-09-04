@@ -1,652 +1,780 @@
-<div class="card">
-  <h3><%= areaName %> - Queue</h3>
-  <p>Manage patients and tests currently waiting in this area.</p>
+<%
+  // Curated Department Themes (icon, color, bg, border, badgeBg, badgeColor)
+  const themeMap = {
+    'Payment Area': { icon: 'fa-cash-register', color: '#059669', bg: '#f0fdf4', border: '#a7f3d0', badgeBg: '#dcfce7', badgeColor: '#15803d', btnBg: '#059669' },
+    'Extraction Area': { icon: 'fa-vial', color: '#d97706', bg: '#fffbe6', border: '#fef08a', badgeBg: '#fef3c7', badgeColor: '#b45309', btnBg: '#d97706' },
+    'Drug Test': { icon: 'fa-capsules', color: '#7c3aed', bg: '#faf5ff', border: '#e9d5ff', badgeBg: '#f3e8ff', badgeColor: '#6b21a8', btnBg: '#7c3aed' },
+    'Ultrasound': { icon: 'fa-wave-square', color: '#0284c7', bg: '#f0f9ff', border: '#bae6fd', badgeBg: '#e0f2fe', badgeColor: '#0369a1', btnBg: '#0284c7' },
+    '2D Echo': { icon: 'fa-heartbeat', color: '#e11d48', bg: '#fff1f2', border: '#fecdd3', badgeBg: '#ffe4e6', badgeColor: '#be123c', btnBg: '#e11d48' },
+    'X-ray': { icon: 'fa-x-ray', color: '#ea580c', bg: '#fff7ed', border: '#ffedd5', badgeBg: '#ffedd5', badgeColor: '#c2410c', btnBg: '#ea580c' },
+    'ECG': { icon: 'fa-file-medical-alt', color: '#0891b2', bg: '#ecfeff', border: '#cffaff', badgeBg: '#cffafe', badgeColor: '#0e7490', btnBg: '#0891b2' },
+    'Sendout': { icon: 'fa-box-archive', color: '#475569', bg: '#f8fafc', border: '#e2e8f0', badgeBg: '#f1f5f9', badgeColor: '#334155', btnBg: '#475569' },
+    'Releasing of Result': { icon: 'fa-paper-plane', color: '#4f46e5', bg: '#f5f3ff', border: '#ddd6fe', badgeBg: '#ede9fe', badgeColor: '#5b21b6', btnBg: '#4f46e5' }
+  };
+  const isDoctor = String(areaName).toLowerCase().includes('doctor');
+  const theme = themeMap[areaName] || (isDoctor ? { icon: 'fa-user-md', color: '#0d9488', bg: '#f0fdfa', border: '#99f6e4', badgeBg: '#ccfbf1', badgeColor: '#0f766e', btnBg: '#0d9488' } : { icon: 'fa-hospital-user', color: '#10b981', bg: '#f8fafc', border: '#e2e8f0', badgeBg: '#f1f5f9', badgeColor: '#334155', btnBg: '#10b981' });
 
-  <div id="queuePane" style="margin-top:12px;">
-    <!-- Create & assign removed: new patients are auto-created and assigned to Payment Area on encoding -->
+  function getTestIcon(testType) {
+    const t = String(testType || '').toLowerCase();
+    if (t.includes('xray') || t.includes('x-ray')) return 'fa-x-ray';
+    if (t.includes('ultrasound') || t.includes('pelvic') || t.includes('transvaginal') || t.includes('biometry') || t.includes('obstetrics') || t.includes('kubp')) return 'fa-wave-square';
+    if (t.includes('echo') || t.includes('echocardiography')) return 'fa-heartbeat';
+    if (t.includes('ecg')) return 'fa-file-medical-alt';
+    if (t.includes('drug')) return 'fa-capsules';
+    if (t.includes('blood-typing') || t.includes('typing')) return 'fa-droplet';
+    if (t.includes('urine') || t.includes('urinalysis')) return 'fa-flask-vial';
+    if (t.includes('fecal') || t.includes('fecalysis') || t.includes('occult')) return 'fa-microscope';
+    if (t.includes('pregnancy')) return 'fa-baby';
+    if (t.includes('blood') || t.includes('chem') || t.includes('cbc') || t.includes('hematology') || t.includes('serology') || t.includes('thyroid') || t.includes('dengue')) return 'fa-vial';
+    return 'fa-vial';
+  }
+%>
+
+<!-- Header Hero Card -->
+<div class="card" style="padding: 24px 28px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); background: #ffffff; border: 1px solid #e2e8f0; margin-bottom: 24px;">
+  
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <div style="width: 52px; height: 52px; border-radius: 14px; background: <%= theme.bg %>; border: 1px solid <%= theme.border %>; color: <%= theme.color %>; display: flex; align-items: center; justify-content: center; font-size: 1.5em; box-shadow: 0 2px 8px rgba(0,0,0,0.04); flex-shrink: 0;">
+        <i class="fa <%= theme.icon %>"></i>
+      </div>
+      <div>
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+          <h2 style="margin: 0; font-size: 1.45em; color: #0f172a; font-weight: 700; letter-spacing: -0.3px;"><%= areaName %></h2>
+          <span style="background: <%= theme.badgeBg %>; color: <%= theme.badgeColor %>; border: 1px solid <%= theme.border %>; padding: 2px 10px; border-radius: 20px; font-weight: 700; font-size: 0.8em; display: inline-flex; align-items: center; gap: 6px;">
+            <i class="fa fa-users"></i> <%= tests && tests.length ? tests.length : 0 %> Patient<%= (tests && tests.length === 1) ? '' : 's' %> in Queue
+          </span>
+        </div>
+        <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.9em;">Manage active patient procedures and station transfers.</p>
+      </div>
+    </div>
+
+    <div>
+      <a href="/reception" class="button btn-secondary" style="height: 38px; padding: 0 16px; border-radius: 8px; font-weight: 600; font-size: 0.88em; display: inline-flex; align-items: center; gap: 8px;">
+        <i class="fa fa-arrow-left"></i> Back to Reception
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Active Queue Card -->
+<div class="card" style="padding: 24px 28px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); background: #ffffff; border: 1px solid #e2e8f0; margin-bottom: 24px;">
+  <div id="queuePane">
     <% if (!tests || tests.length === 0) { %>
-      <p class="text-center">No tests currently assigned to this area.</p>
+      <div style="text-align: center; padding: 48px 20px; background: #f8fafc; border-radius: 12px; border: 1px dashed #cbd5e1; margin: 8px 0;">
+        <div style="width: 56px; height: 56px; border-radius: 50%; background: #e2e8f0; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 1.5em; margin: 0 auto 14px;">
+          <i class="fa fa-check-circle" style="color: #10b981;"></i>
+        </div>
+        <h4 style="margin: 0 0 6px 0; color: #1e293b; font-size: 1.1em; font-weight: 700;">Queue is Clear</h4>
+        <p style="margin: 0 0 16px 0; color: #64748b; font-size: 0.9em;">There are currently no patients waiting in <%= areaName %>.</p>
+        <a href="/reception" class="button btn-secondary" style="padding: 8px 16px; border-radius: 8px; font-size: 0.85em; font-weight: 600;">
+          <i class="fa fa-arrow-left" style="margin-right: 6px;"></i> Return to Reception Overview
+        </a>
+      </div>
     <% } else { %>
-      <table style="width:100%; margin-top:12px;">
-        <thead>
-          <tr>
-            <th>Patient</th>
-            <th>Tests</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% // Unified rendering: server provides aggregated rows for every area in `tests`.
-             tests.forEach(row => { %>
-            <tr>
-              <td>
-                <strong><%= row.patient ? (row.patient.firstName + ' ' + row.patient.lastName) : 'Unknown' %></strong>
-                <% if (row.patient && row.patient.patientCode) { %>
-                  <div style="font-size:0.85em; color:var(--text-gray);">Code: <%= String(row.patient.patientCode).slice(-5) %></div>
-                <% } else { %>
-                  <div style="font-size:0.85em; color:var(--danger);">(Not encoded)</div>
-                <% } %>
-              </td>
-              <td>
-                <ul style="margin:0 0 0 12px; padding:0; list-style:disc;">
-                  <% if (Array.isArray(row.tests) && row.tests.length) {
-                       row.tests.forEach(t => {
-                         // Render a single collapsed row for Blood Chemistry tests (group variants)
-                         const tt = (t.testType || '').toString().toLowerCase();
-                         const isBloodChem = /blood\s*chemistry|blood-chemistry|^bc\b/i.test(tt) || (Array.isArray(t.requestedTests) && t.requestedTests.length > 1 && t.requestedTests.every(r=>/(blood|chemistry|bun|crea|sgpt|sgot|lipid|hba1c|albumin|blood[-_\s]?sugar)/i.test(String(r.key||r.label||''))));
-                         if (isBloodChem) {
-                           const label = (t.testType && t.testType.toString()) ? (t.testType.toString()) : 'Blood Chemistry'; %>
-                            <li style="margin-bottom:4px;"><%= label.replace(/-/g,' ').replace(/\b\w/g, function(ch){return ch.toUpperCase();}) %>
-                               <div style="margin-top:4px; font-size:0.85em;">
-                                <% if (areaName !== 'Payment Area') { %>
-                                 <form action="/reception/assign" method="POST" style="display:inline-block; margin-right:6px;">
-                                   <input type="hidden" name="testId" value="<%= t.id %>">
-                                   <select name="area" required style="margin-right:6px;">
-                                     <% areas.forEach(a => { %>
-                                       <option value="<%= a %>" <%= a === areaName ? 'selected' : '' %>><%= a %></option>
-                                     <% }) %>
-                                   </select>
-                                   <input type="text" name="specimen" placeholder="Specimen # (optional)" style="margin-right:6px;" <%= row.patientEncoded ? '' : 'disabled' %>>
-                                   <button class="button btn-primary btn-small" <%= row.patientEncoded ? '' : 'disabled' %>>Assign</button>
-                                 </form>
-                                <% } %>
-                               </div>
-                             </li>
-                         <% } else {
-                           // use area-specific requested list when available, otherwise fall back to whole test type
-                           const areaList = Array.isArray(t._areaRequested) && t._areaRequested.length ? t._areaRequested : (Array.isArray(t.requestedTests) ? t.requestedTests : []);
-                           if (areaList.length) {
-                             areaList.forEach(rt => { const amt = Number(rt.amount || 0); %>
-                              <li style="margin-bottom:4px;"><%= (rt.label || '').replace(/-/g,' ').replace(/\b\w/g, function(ch){return ch.toUpperCase();}) %> <span style="color:var(--text-gray);">(<%= rt.lab || 'clinical' %>)</span>
-                                 <% if (rt.remarks || rt.remark) { %>
-                                   <span style="font-size:0.82em; color:#0284c7; background:#f0f9ff; border:1px solid #bae6fd; padding:2px 6px; border-radius:4px; margin-left:6px; font-weight:600;"><i class="fa fa-info-circle"></i> <%= rt.remarks || rt.remark %></span>
-                                 <% } %>
-                                 <div style="margin-top:4px; font-size:0.85em;">
-                                  <% if (areaName !== 'Payment Area') { %>
-                                   <form action="/reception/assign" method="POST" style="display:inline-block; margin-right:6px;">
-                                     <input type="hidden" name="testId" value="<%= t.id %>">
-                                     <select name="area" required style="margin-right:6px;">
-                                       <% areas.forEach(a => { %>
-                                         <option value="<%= a %>" <%= a === areaName ? 'selected' : '' %>><%= a %></option>
-                                       <% }) %>
-                                     </select>
-                                     <input type="text" name="specimen" placeholder="Specimen # (optional)" style="margin-right:6px;" <%= row.patientEncoded ? '' : 'disabled' %>>
-                                     <button class="button btn-primary btn-small" <%= row.patientEncoded ? '' : 'disabled' %>>Assign</button>
-                                   </form>
-                                  <% } %>
-                                   <!-- per-test View/Delete removed; use patient-level actions in Action column -->
-                                 </div>
-                               </li>
-                             <% })
-                           } else {
-                             const singleLabel = (t.testType || 'Test').toString().replace(/-/g,' ').replace(/\b\w/g, function(ch){return ch.toUpperCase();}); %>
-                             <li style="margin-bottom:4px;"><%= singleLabel %>
-                               <% const singleRem = t.notes || t.remarks || ''; if (singleRem) { %>
-                                 <span style="font-size:0.82em; color:#0284c7; background:#f0f9ff; border:1px solid #bae6fd; padding:2px 6px; border-radius:4px; margin-left:6px; font-weight:600;"><i class="fa fa-info-circle"></i> <%= singleRem %></span>
-                               <% } %>
-                               <div style="margin-top:4px; font-size:0.85em;">
-                                 <% if (areaName !== 'Payment Area') { %>
-                                 <form action="/reception/assign" method="POST" style="display:inline-block; margin-right:6px;">
-                                   <input type="hidden" name="testId" value="<%= t.id %>">
-                                   <select name="area" required style="margin-right:6px;">
-                                     <% areas.forEach(a => { %>
-                                       <option value="<%= a %>" <%= a === areaName ? 'selected' : '' %>><%= a %></option>
-                                     <% }) %>
-                                   </select>
-                                   <input type="text" name="specimen" placeholder="Specimen # (optional)" style="margin-right:6px;" <%= row.patientEncoded ? '' : 'disabled' %>>
-                                   <button class="button btn-primary btn-small" <%= row.patientEncoded ? '' : 'disabled' %>>Assign</button>
-                                 </form>
-                                 <% } %>
-                                 <!-- per-test View/Delete removed; use patient-level actions in Action column -->
-                               </div>
-                             </li>
-                           <% }
-                         }
-                       })
-                     } else { %>
-                       <li>No tests</li>
-                     <% } %>
-                </ul>
-              </td>
-              <td>
-                <% if (areaName === 'Payment Area') { %>
-                  <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
-                    <form action="/reception/complete" method="POST" class="complete-form" data-require-amount="<%= (typeof requirePaymentAmount === 'undefined' || requirePaymentAmount) ? '1' : '0' %>" style="display:flex; gap:8px; align-items:flex-end; margin:0;">
-                      <input type="hidden" name="patientId" value="<%= row.patient ? row.patient.id : '' %>">
-                      <input type="hidden" name="testIds" value="<%= (row.testIds || []).join(',') %>">
-                      <input type="hidden" name="area" value="<%= areaName %>">
-                      <input type="hidden" name="charged_to_philhealth" value="0">
-                      <input type="hidden" name="charged_to_healthcard" value="0">
-                      <div>
-                        <label style="display:block; font-size:0.8em; margin-bottom:4px; font-weight:600; color:#64748b;">Clinical Lab Amount</label>
-                        <input type="number" name="amount_clinical" class="payment-amount" step="0.01" min="0" placeholder="Clinical" style="width:130px;" value="<%= (row.clinicalTotal || 0).toFixed(2) %>">
+      <div style="overflow-x: auto; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+        <table style="width: 100%; border-collapse: collapse; text-align: left; background: #ffffff;">
+          <thead>
+            <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+              <th style="padding: 14px 18px; font-size: 0.78em; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; width: 26%;">Patient Information</th>
+              <th style="padding: 14px 18px; font-size: 0.78em; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; width: <%= areaName === 'Payment Area' ? '44%' : '40%' %>;">Diagnostic Tests</th>
+              <% if (areaName !== 'Payment Area') { %>
+                <th style="padding: 14px 18px; font-size: 0.78em; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; width: 20%;">Transfer to Area</th>
+              <% } %>
+              <th style="padding: 14px 18px; font-size: 0.78em; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; width: <%= areaName === 'Payment Area' ? '30%' : '14%' %>; text-align: right;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% tests.forEach((row, idx) => { 
+                 const pName = row.patient ? (row.patient.firstName + ' ' + (row.patient.middleName ? row.patient.middleName + ' ' : '') + row.patient.lastName).trim() : 'Unknown Patient';
+                 const initials = row.patient && row.patient.firstName ? (row.patient.firstName.charAt(0) + (row.patient.lastName ? row.patient.lastName.charAt(0) : '')).toUpperCase() : 'PT';
+                 const isFemale = row.patient && String(row.patient.gender || '').toLowerCase() === 'female';
+                 const isPhilMember = Boolean(row.patient && (row.patient.philhealthConsent || row.patient.philhealthId || (row.patient.philhealth && String(row.patient.philhealth).toLowerCase() === 'yes')));
+                 const isHealthCardMember = Boolean(row.patient && (row.patient.healthInsuranceConsent || row.patient.healthInsuranceProvider || row.patient.healthInsuranceId));
+                 const pPhilId = (row.patient && row.patient.philhealthId) ? row.patient.philhealthId : '';
+                 const pHealthCardProvider = (row.patient && row.patient.healthInsuranceProvider) ? row.patient.healthInsuranceProvider : '';
+                 const pHealthCardId = (row.patient && row.patient.healthInsuranceId) ? row.patient.healthInsuranceId : '';
+                 const patientAge = (row.patient && row.patient.age !== null && row.patient.age !== undefined && row.patient.age !== '') ? row.patient.age : (row.patient ? row.patient.ageManual : '');
+            %>
+              <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease;" onmouseover="this.style.background='#fbfcfd'" onmouseout="this.style.background='#ffffff'">
+                
+                <!-- Patient Column -->
+                <td style="padding: 16px 18px; vertical-align: top;">
+                  <div style="display: flex; align-items: flex-start; gap: 12px;">
+                    <div style="width: 40px; height: 40px; border-radius: 50%; background: <%= isFemale ? 'linear-gradient(135deg, #ec4899 0%, #be185d 100%)' : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)' %>; color: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.95em; flex-shrink: 0; box-shadow: 0 2px 6px rgba(0,0,0,0.1);">
+                      <%= initials %>
+                    </div>
+                    <div style="min-width: 0;">
+                      <div style="font-weight: 700; color: #0f172a; font-size: 0.98em; line-height: 1.35;">
+                        <%= pName %>
                       </div>
-                      <div>
-                        <label style="display:block; font-size:0.8em; margin-bottom:4px; font-weight:600; color:#64748b;">X-ray Lab Amount</label>
-                        <input type="number" name="amount_xray" class="payment-amount" step="0.01" min="0" placeholder="X-ray" style="width:130px;" value="<%= (row.xrayTotal || 0).toFixed(2) %>">
+                      <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 4px;">
+                        <% if (row.patient && row.patient.patientCode) { %>
+                          <span style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; font-family: monospace; padding: 1px 6px; border-radius: 4px; font-size: 0.78em; font-weight: 700;">
+                            Code: <%= String(row.patient.patientCode).slice(-5) %>
+                          </span>
+                        <% } else { %>
+                          <span style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; padding: 1px 6px; border-radius: 4px; font-size: 0.78em; font-weight: 600;">
+                            (Not encoded)
+                          </span>
+                        <% } %>
+                        <% if (row.patient && row.patient.gender) { %>
+                          <span style="background: #f1f5f9; color: #475569; padding: 1px 6px; border-radius: 4px; font-size: 0.76em; font-weight: 600;">
+                            <%= row.patient.gender %><%= patientAge ? ' • ' + patientAge + (!/(yr|year|mo|month|day|wk|week)/i.test(String(patientAge)) ? ' yrs' : '') : '' %>
+                          </span>
+                        <% } %>
                       </div>
-                      <div style="display:flex; flex-direction:column; gap:6px;">
-                        <% const isAmountReq = (typeof requirePaymentAmount === 'undefined' || requirePaymentAmount); %>
-                        <% const hasInitialAmount = !isAmountReq || (Number(row.clinicalTotal) > 0 || Number(row.xrayTotal) > 0); %>
-                        <button type="submit" class="button btn-success btn-small payment-submit" title="Mark complete" onclick="return window.paymentSubmitFallback ? window.paymentSubmitFallback(this) : true" style="min-width:155px;<%= !hasInitialAmount ? ' opacity:0.45; cursor:not-allowed;' : '' %>" <%= !hasInitialAmount ? 'disabled' : '' %>>Mark Complete</button>
-                        <% 
-                          const pName = row.patient ? (row.patient.firstName + ' ' + (row.patient.middleName ? row.patient.middleName + ' ' : '') + row.patient.lastName).trim() : 'this patient';
-                          const isPhilMember = Boolean(row.patient && (row.patient.philhealthConsent || row.patient.philhealthId || (row.patient.philhealth && String(row.patient.philhealth).toLowerCase() === 'yes')));
-                          const pHasPhil = isPhilMember ? '1' : '0';
-                          const pPhilId = (row.patient && row.patient.philhealthId) ? row.patient.philhealthId : '';
-
-                          const isHealthCardMember = Boolean(row.patient && (row.patient.healthInsuranceConsent || row.patient.healthInsuranceProvider || row.patient.healthInsuranceId));
-                          const pHasHealthCard = isHealthCardMember ? '1' : '0';
-                          const pHealthCardProvider = (row.patient && row.patient.healthInsuranceProvider) ? row.patient.healthInsuranceProvider : '';
-                          const pHealthCardId = (row.patient && row.patient.healthInsuranceId) ? row.patient.healthInsuranceId : '';
-                        %>
-                        <button type="button" class="button btn-small btn-philhealth" 
-                          data-patient-name="<%= pName %>"
-                          data-patient-philhealth="<%= pHasPhil %>"
-                          data-philhealth-id="<%= pPhilId %>"
-                          style="background:<%= isPhilMember ? '#0284c7' : '#94a3b8' %>; color:#fff; border:none; padding:6px 12px; font-size:0.82em; font-weight:600; border-radius:6px; min-width:155px;<%= !isPhilMember ? ' opacity:0.45; cursor:not-allowed;' : ' cursor:pointer;' %>" 
-                          <%= !isPhilMember ? 'disabled' : '' %>
-                          onclick="submitChargedToPhilhealth(this)" 
-                          title="<%= isPhilMember ? 'Charge to PhilHealth (Verified Member)' : 'Disabled: Patient is not registered as a PhilHealth member' %>">
-                          🩺 Charged to PhilHealth
-                        </button>
-                        <button type="button" class="button btn-small btn-healthcard" 
-                          data-patient-name="<%= pName %>"
-                          data-patient-healthcard="<%= pHasHealthCard %>"
-                          data-healthcard-provider="<%= pHealthCardProvider %>"
-                          data-healthcard-id="<%= pHealthCardId %>"
-                          style="background:<%= isHealthCardMember ? '#6366f1' : '#94a3b8' %>; color:#fff; border:none; padding:6px 12px; font-size:0.82em; font-weight:600; border-radius:6px; min-width:155px;<%= !isHealthCardMember ? ' opacity:0.45; cursor:not-allowed;' : ' cursor:pointer;' %>" 
-                          <%= !isHealthCardMember ? 'disabled' : '' %>
-                          onclick="submitChargedToHealthcard(this)" 
-                          title="<%= isHealthCardMember ? ('Charge to Health Card (' + pHealthCardProvider + ')') : 'Disabled: Patient is not registered with a Health Card' %>">
-                          💳 Charged to Health Card
-                        </button>
-                      </div>
-                    </form>
-                    <form action="/reception/delete" method="POST" class="delete-form" style="margin:0;" onsubmit="return confirm('Delete these tests from the queue?');">
-                      <input type="hidden" name="testId" value="<%= (row.testIds && row.testIds.length ? row.testIds[0] : '') %>">
-                      <input type="hidden" name="area" value="<%= areaName %>">
-                      <button type="submit" class="button btn-danger btn-small" title="Delete" style="min-width:155px;">Delete</button>
-                    </form>
+                      <% if (isPhilMember || isHealthCardMember) { %>
+                        <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px;">
+                          <% if (isPhilMember) { %>
+                            <span style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; font-size: 0.72em; padding: 1px 6px; border-radius: 4px; font-weight: 700;" title="PhilHealth: <%= pPhilId || 'Member' %>">
+                              🩺 PhilHealth
+                            </span>
+                          <% } %>
+                          <% if (isHealthCardMember) { %>
+                            <span style="background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; font-size: 0.72em; padding: 1px 6px; border-radius: 4px; font-weight: 700;" title="HMO: <%= pHealthCardProvider %>">
+                              💳 <%= pHealthCardProvider || 'HMO' %>
+                            </span>
+                          <% } %>
+                        </div>
+                      <% } %>
+                    </div>
                   </div>
-                <% } else { %>
-                  <!-- For non-payment areas show Mark Complete, Stash (if Releasing), and Delete stacked -->
-                  <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end;">
-                    <form action="/reception/complete" method="POST" class="complete-form" style="margin:0;">
-                      <input type="hidden" name="patientId" value="<%= row.patient ? row.patient.id : '' %>">
+                </td>
+
+                <!-- Tests Column (Clean Styled Chips - ZERO nested forms) -->
+                <td style="padding: 16px 18px; vertical-align: top;">
+                  <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                    <% 
+                      if (Array.isArray(row.tests) && row.tests.length) {
+                        const renderedTests = [];
+                        row.tests.forEach(t => {
+                          const tt = (t.testType || '').toString().toLowerCase();
+                          const isBloodChem = /blood\s*chemistry|blood-chemistry|^bc\b/i.test(tt) || (Array.isArray(t.requestedTests) && t.requestedTests.length > 1 && t.requestedTests.every(r=>/(blood|chemistry|bun|crea|sgpt|sgot|lipid|hba1c|albumin|blood[-_\s]?sugar)/i.test(String(r.key||r.label||''))));
+                          
+                          if (isBloodChem) {
+                            renderedTests.push({
+                              label: 'Blood Chemistry',
+                              lab: 'clinical',
+                              remark: t.notes || t.remarks || '',
+                              icon: 'fa-flask'
+                            });
+                          } else {
+                            const areaList = Array.isArray(t._areaRequested) && t._areaRequested.length ? t._areaRequested : (Array.isArray(t.requestedTests) ? t.requestedTests : []);
+                            if (areaList.length) {
+                              areaList.forEach(rt => {
+                                renderedTests.push({
+                                  label: (rt.label || '').replace(/-/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase()),
+                                  lab: rt.lab || 'clinical',
+                                  remark: rt.remarks || rt.remark || '',
+                                  icon: getTestIcon(rt.label || rt.key)
+                                });
+                              });
+                            } else {
+                              const singleLabel = (t.testType || 'Test').toString().replace(/-/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase());
+                              renderedTests.push({
+                                label: singleLabel,
+                                lab: String(t.testType || '').toLowerCase().includes('xray') ? 'xray' : 'clinical',
+                                remark: t.notes || t.remarks || '',
+                                icon: getTestIcon(t.testType)
+                              });
+                            }
+                          }
+                        });
+
+                        // Deduplicate identical test items
+                        const seenLabels = new Set();
+                        renderedTests.forEach(item => {
+                          const key = item.label.toLowerCase();
+                          if (seenLabels.has(key)) return;
+                          seenLabels.add(key);
+                          const isXray = item.lab === 'xray' || item.label.toLowerCase().includes('x-ray') || item.label.toLowerCase().includes('xray');
+                    %>
+                          <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 5px 10px; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.03); font-size: 0.85em;">
+                            <i class="fa <%= item.icon %>" style="color: <%= isXray ? '#ea580c' : '#0284c7' %>; font-size: 0.9em;"></i>
+                            <strong style="color: #1e293b;"><%= item.label %></strong>
+                            <span style="font-size: 0.72em; text-transform: uppercase; font-weight: 700; color: <%= isXray ? '#c2410c' : '#475569' %>; background: <%= isXray ? '#fff7ed' : '#f1f5f9' %>; padding: 1px 5px; border-radius: 4px;">
+                              <%= item.lab %>
+                            </span>
+                            <% if (item.remark) { %>
+                              <span style="font-size: 0.76em; color: #0284c7; background: #f0f9ff; border: 1px solid #bae6fd; padding: 1px 5px; border-radius: 4px; font-weight: 600;" title="<%= item.remark %>">
+                                <i class="fa fa-info-circle"></i> <%= item.remark %>
+                              </span>
+                            <% } %>
+                          </div>
+                    <% 
+                        });
+                      } else { 
+                    %>
+                      <span style="color: #94a3b8; font-size: 0.85em; font-style: italic;">No specific test items</span>
+                    <% } %>
+                  </div>
+                </td>
+
+                <!-- Transfer Column (Non-Payment Areas: ONE Single Transfer Action per Patient!) -->
+                <% if (areaName !== 'Payment Area') { %>
+                  <td style="padding: 16px 18px; vertical-align: top;">
+                    <form action="/reception/assign" method="POST" class="assign-form" style="margin: 0;">
                       <input type="hidden" name="testIds" value="<%= (row.testIds || []).join(',') %>">
-                      <input type="hidden" name="area" value="<%= areaName %>">
-                      <button type="submit" class="button btn-success btn-small" title="Mark Complete" style="min-width:110px;">Mark Complete</button>
+                      <input type="hidden" name="testId" value="<%= (row.testIds && row.testIds.length ? row.testIds[0] : '') %>">
+                      
+                      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 8px; display: flex; gap: 6px; align-items: center;">
+                        <select name="area" required style="height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 8px; font-size: 0.84em; font-weight: 500; background: #ffffff; color: #0f172a; flex: 1; box-sizing: border-box;">
+                          <% areas.forEach(a => { %>
+                            <option value="<%= a %>" <%= a === areaName ? 'selected' : '' %>><%= a %></option>
+                          <% }) %>
+                        </select>
+                        <button type="submit" class="button btn-primary" style="height: 34px; padding: 0 12px; border-radius: 6px; font-size: 0.82em; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; flex-shrink: 0;" <%= row.patientEncoded ? '' : 'disabled' %>>
+                          <i class="fa fa-share"></i> Assign
+                        </button>
+                      </div>
                     </form>
-                    <% if (areaName === 'Releasing of Result') { %>
-                      <form action="/reception/stash" method="POST" class="stash-form" style="margin:0;" data-confirm-title="Stash Patient Result" data-confirm-button="Yes, Stash Result" data-confirm="Stash results for this patient?\n\n• The patient will be moved to the Stashed Results section on Reception.\n• This queue count will decrease immediately.">
+                  </td>
+                <% } %>
+
+                <!-- Action Column -->
+                <td style="padding: 16px 18px; vertical-align: top; text-align: right;">
+                  <% if (areaName === 'Payment Area') { %>
+                    <!-- Payment Area Billing Controls -->
+                    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+                      <form action="/reception/complete" method="POST" class="complete-form" data-require-amount="<%= (typeof requirePaymentAmount === 'undefined' || requirePaymentAmount) ? '1' : '0' %>" style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end; margin: 0; width: 100%;">
                         <input type="hidden" name="patientId" value="<%= row.patient ? row.patient.id : '' %>">
                         <input type="hidden" name="testIds" value="<%= (row.testIds || []).join(',') %>">
-                        <button type="submit" class="button btn-small no-guard" data-no-guard="1" style="min-width:110px; background:#f59e0b; color:white; border:none; padding: 6px 12px; font-weight:700; border-radius:6px; cursor:pointer;" title="Stash result if patient unavailable">
-                          <i class="fa fa-archive" style="margin-right:4px;"></i> Stash
+                        <input type="hidden" name="area" value="<%= areaName %>">
+                        <input type="hidden" name="charged_to_philhealth" value="0">
+                        <input type="hidden" name="charged_to_healthcard" value="0">
+                        
+                        <div style="display: flex; gap: 8px; width: 100%; justify-content: flex-end;">
+                          <div style="text-align: left; flex: 1; max-width: 140px;">
+                            <label style="display: block; font-size: 0.75em; margin-bottom: 3px; font-weight: 700; color: #475569;">Clinical Lab (₱)</label>
+                            <input type="number" name="amount_clinical" class="payment-amount" step="0.01" min="0" placeholder="0.00" style="width: 100%; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 8px; font-size: 0.88em; font-weight: 600; box-sizing: border-box;" value="<%= (row.clinicalTotal || 0).toFixed(2) %>">
+                          </div>
+                          <div style="text-align: left; flex: 1; max-width: 140px;">
+                            <label style="display: block; font-size: 0.75em; margin-bottom: 3px; font-weight: 700; color: #475569;">X-ray Lab (₱)</label>
+                            <input type="number" name="amount_xray" class="payment-amount" step="0.01" min="0" placeholder="0.00" style="width: 100%; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 8px; font-size: 0.88em; font-weight: 600; box-sizing: border-box;" value="<%= (row.xrayTotal || 0).toFixed(2) %>">
+                          </div>
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; gap: 5px; width: 100%; max-width: 288px;">
+                          <% const isAmountReq = (typeof requirePaymentAmount === 'undefined' || requirePaymentAmount); %>
+                          <% const hasInitialAmount = !isAmountReq || (Number(row.clinicalTotal) > 0 || Number(row.xrayTotal) > 0); %>
+                          <button type="submit" class="button btn-success btn-small payment-submit" title="Mark payment complete" onclick="return window.paymentSubmitFallback ? window.paymentSubmitFallback(this) : true" style="width: 100%; height: 36px; border-radius: 6px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 6px;<%= !hasInitialAmount ? ' opacity:0.45; cursor:not-allowed;' : '' %>" <%= !hasInitialAmount ? 'disabled' : '' %>>
+                            <i class="fa fa-check-circle"></i> Mark Complete / Paid
+                          </button>
+
+                          <button type="button" class="button btn-small btn-philhealth" 
+                            data-patient-name="<%= pName %>"
+                            data-patient-philhealth="<%= isPhilMember ? '1' : '0' %>"
+                            data-philhealth-id="<%= pPhilId %>"
+                            style="background: <%= isPhilMember ? '#0284c7' : '#94a3b8' %>; color: #fff; border: none; height: 32px; font-size: 0.82em; font-weight: 600; border-radius: 6px; width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px;<%= !isPhilMember ? ' opacity:0.5; cursor:not-allowed;' : ' cursor:pointer;' %>" 
+                            <%= !isPhilMember ? 'disabled' : '' %>
+                            onclick="submitChargedToPhilhealth(this)" 
+                            title="<%= isPhilMember ? 'Charge to PhilHealth (Verified Member)' : 'Disabled: Patient is not registered as a PhilHealth member' %>">
+                            <i class="fa fa-file-medical"></i> Charged to PhilHealth
+                          </button>
+
+                          <button type="button" class="button btn-small btn-healthcard" 
+                            data-patient-name="<%= pName %>"
+                            data-patient-healthcard="<%= isHealthCardMember ? '1' : '0' %>"
+                            data-healthcard-provider="<%= pHealthCardProvider %>"
+                            data-healthcard-id="<%= pHealthCardId %>"
+                            style="background: <%= isHealthCardMember ? '#6366f1' : '#94a3b8' %>; color: #fff; border: none; height: 32px; font-size: 0.82em; font-weight: 600; border-radius: 6px; width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 6px;<%= !isHealthCardMember ? ' opacity:0.5; cursor:not-allowed;' : ' cursor:pointer;' %>" 
+                            <%= !isHealthCardMember ? 'disabled' : '' %>
+                            onclick="submitChargedToHealthcard(this)" 
+                            title="<%= isHealthCardMember ? ('Charge to Health Card (' + pHealthCardProvider + ')') : 'Disabled: Patient is not registered with a Health Card' %>">
+                            <i class="fa fa-id-card"></i> Charged to Health Card
+                          </button>
+                        </div>
+                      </form>
+
+                      <form action="/reception/delete" method="POST" class="delete-form" style="margin: 0; width: 100%; max-width: 288px;"
+                        data-confirm="Are you sure you want to remove this patient from Payment Area queue?"
+                        data-confirm-title="Remove from Queue"
+                        data-confirm-button="Yes, Remove">
+                        <input type="hidden" name="testId" value="<%= (row.testIds && row.testIds.length ? row.testIds[0] : '') %>">
+                        <input type="hidden" name="area" value="<%= areaName %>">
+                        <button type="submit" class="button btn-small" style="width: 100%; height: 30px; border-radius: 6px; background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; font-weight: 600; font-size: 0.8em; display: inline-flex; align-items: center; justify-content: center; gap: 6px;" title="Remove from queue">
+                          <i class="fa fa-trash-alt"></i> Remove from Queue
                         </button>
                       </form>
-                    <% } %>
-                    <form action="/reception/delete" method="POST" class="delete-form" style="margin:0;" onsubmit="return confirm('Delete these tests from the queue?');">
-                      <input type="hidden" name="testId" value="<%= (row.testIds && row.testIds.length ? row.testIds[0] : '') %>">
-                      <input type="hidden" name="area" value="<%= areaName %>">
-                      <button type="submit" class="button btn-danger btn-small" title="Delete" style="min-width:110px;">Delete</button>
-                    </form>
-                  </div>
-                <% } %>
-              </td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
+                    </div>
+                  <% } else { %>
+                    <!-- Non-Payment Areas Actions -->
+                    <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-end; min-width: 120px;">
+                      <form action="/reception/complete" method="POST" class="complete-form" style="margin: 0; width: 100%;">
+                        <input type="hidden" name="patientId" value="<%= row.patient ? row.patient.id : '' %>">
+                        <input type="hidden" name="testIds" value="<%= (row.testIds || []).join(',') %>">
+                        <input type="hidden" name="area" value="<%= areaName %>">
+                        <button type="submit" class="button btn-success btn-small" title="Mark Complete for <%= areaName %>" style="width: 100%; height: 36px; border-radius: 8px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                          <i class="fa fa-check-circle"></i> Complete
+                        </button>
+                      </form>
+
+                      <% if (areaName === 'Releasing of Result') { %>
+                        <form action="/reception/stash" method="POST" class="stash-form" style="margin: 0; width: 100%;" 
+                          data-confirm-title="Stash Patient Result" 
+                          data-confirm-button="Yes, Stash Result" 
+                          data-confirm="Stash results for this patient?&#10;&#10;• The patient will be moved to the Stashed Results section on Reception.&#10;• This queue count will decrease immediately.">
+                          <input type="hidden" name="patientId" value="<%= row.patient ? row.patient.id : '' %>">
+                          <input type="hidden" name="testIds" value="<%= (row.testIds || []).join(',') %>">
+                          <button type="submit" class="button btn-small no-guard" data-no-guard="1" style="width: 100%; height: 32px; background: #f59e0b; color: white; border: none; font-weight: 700; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px;" title="Stash result if patient unavailable">
+                            <i class="fa fa-archive"></i> Stash
+                          </button>
+                        </form>
+                      <% } %>
+
+                      <form action="/reception/delete" method="POST" class="delete-form" style="margin: 0; width: 100%;"
+                        data-confirm="Are you sure you want to remove this patient from <%= areaName %> queue?"
+                        data-confirm-title="Remove from Queue"
+                        data-confirm-button="Yes, Remove">
+                        <input type="hidden" name="testId" value="<%= (row.testIds && row.testIds.length ? row.testIds[0] : '') %>">
+                        <input type="hidden" name="area" value="<%= areaName %>">
+                        <button type="submit" class="button btn-small" style="width: 100%; height: 30px; border-radius: 6px; background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; font-weight: 600; font-size: 0.8em; display: inline-flex; align-items: center; justify-content: center; gap: 6px;" title="Remove from queue">
+                          <i class="fa fa-trash-alt"></i> Remove
+                        </button>
+                      </form>
+                    </div>
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
     <% } %>
   </div>
+</div>
 
-  <div id="specimensPane" style="margin-top:12px; display:none;">
-    <% if (!specimens || specimens.length === 0) { %>
-      <p class="text-center">No specimens assigned for this area yet.</p>
-    <% } else { %>
-      <table style="width:100%; margin-top:12px;">
-        <thead>
-          <tr>
-            <th>Test ID</th>
-            <th>Specimen #</th>
-            <th>Patient</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% specimens.forEach(s => { %>
-            <tr>
-              <td><%= s.testId %></td>
-              <td><%= s.specimen %></td>
-              <td><%= s.patient ? s.patient.firstName + ' ' + s.patient.lastName : 'Unknown' %></td>
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    <% } %>
-  </div>
+<script>
+  // AJAX handlers for complete and delete
+  (function(){
+    function serializeForm(form) {
+      const data = new URLSearchParams();
+      for (const el of form.elements) {
+        if (!el.name) continue;
+        if ((el.type === 'checkbox' || el.type === 'radio') && !el.checked) continue;
+        data.append(el.name, el.value);
+      }
+      return data;
+    }
 
-  <div style="margin-top:14px;">
-    <a href="/reception" class="button btn-secondary">Back to Areas</a>
-  </div>
-
-  <script>
-    (function(){
-      const tabQueue = document.getElementById('tabQueue');
-      const tabSpecimens = document.getElementById('tabSpecimens');
-      const queuePane = document.getElementById('queuePane');
-      const specimensPane = document.getElementById('specimensPane');
-      if (tabQueue && queuePane) tabQueue.addEventListener('click', () => { queuePane.style.display='block'; if (specimensPane) specimensPane.style.display='none'; tabQueue.classList.add('btn-primary'); if (tabSpecimens) tabSpecimens.classList.remove('btn-primary'); });
-      if (tabSpecimens && specimensPane) tabSpecimens.addEventListener('click', () => { if (queuePane) queuePane.style.display='none'; specimensPane.style.display='block'; tabSpecimens.classList.add('btn-primary'); if (tabQueue) tabQueue.classList.remove('btn-primary'); });
-    })();
-
-    // AJAX handlers for complete/delete to avoid navigation and keep on same area page
-    (function(){
-      console.debug('[DEBUG] reception area script init');
+    // Fallback submit helper for Payment Area button clicks
+    window.paymentSubmitFallback = function(btn) {
       try {
-        document.addEventListener('DOMContentLoaded', () => {
-          console.debug('[DEBUG] DOMContentLoaded, .complete-form count=', document.querySelectorAll('.complete-form').length);
-        });
-        // also log immediately in case script runs after DOM is ready
-        console.debug('[DEBUG] immediate .complete-form count=', document.querySelectorAll('.complete-form').length);
-      } catch (e) {
-        console.warn('[DEBUG] failed to attach debug listeners', e);
-      }
-      function serializeForm(form) {
-        const data = new URLSearchParams();
-        for (const el of form.elements) {
-          if (!el.name) continue;
-          if ((el.type === 'checkbox' || el.type === 'radio') && !el.checked) continue;
-          data.append(el.name, el.value);
+        const form = btn && btn.closest ? btn.closest('form') : null;
+        if (!form) return true;
+        const philInput = form.querySelector('input[name="charged_to_philhealth"]');
+        if (philInput) philInput.value = '0';
+        const cardInput = form.querySelector('input[name="charged_to_healthcard"]');
+        if (cardInput) cardInput.value = '0';
+        if (form.dataset && form.dataset.requireAmount === '0') return true;
+        const amtInputs = Array.from(form.querySelectorAll('.payment-amount'));
+        if (amtInputs.length) {
+          let anyValid = false;
+          for (const inp of amtInputs) {
+            const raw = inp.value;
+            const parsed = parseFloat(String(raw).replace(/[,\s]/g, ''));
+            if (Number.isFinite(parsed) && parsed > 0) { anyValid = true; break; }
+          }
+          if (!anyValid) {
+            if (typeof window.showCustomAlert === 'function') {
+              window.showCustomAlert('Please enter an amount for either Clinical Lab or X-ray Lab before marking complete.', {
+                title: 'Payment Amount Required',
+                type: 'warning',
+                btnText: 'Understood'
+              });
+            } else {
+              alert('Please enter an amount for either Clinical Lab or X-ray Lab before marking complete.');
+            }
+            return false;
+          }
         }
-        return data;
+        if (typeof form.requestSubmit === 'function') form.requestSubmit(); else form.submit();
+        return false;
+      } catch (e) {
+        console.error('paymentSubmitFallback error', e);
+        return false;
       }
+    };
 
-      // Fallback submit helper for Payment Area button clicks.
-      // Validates that at least one lab amount (clinical or x-ray) is a positive number,
-      // and triggers form submit only if validation passes.
-      window.paymentSubmitFallback = function(btn) {
-        try {
-          const form = btn && btn.closest ? btn.closest('form') : null;
-          if (!form) return true;
-          const philInput = form.querySelector('input[name="charged_to_philhealth"]');
-          if (philInput) philInput.value = '0';
-          const cardInput = form.querySelector('input[name="charged_to_healthcard"]');
+    // Handler for Charged to PhilHealth button
+    window.submitChargedToPhilhealth = function(btn) {
+      try {
+        const form = btn && btn.closest ? btn.closest('form') : null;
+        if (!form) return;
+
+        const patientName = (btn && btn.dataset && btn.dataset.patientName) ? btn.dataset.patientName : 'this patient';
+        const isMember = btn && btn.dataset && btn.dataset.patientPhilhealth === '1';
+        const philhealthId = (btn && btn.dataset && btn.dataset.philhealthId) ? btn.dataset.philhealthId : '';
+
+        if (!isMember) {
+          if (typeof window.showCustomAlert === 'function') {
+            window.showCustomAlert(
+              '<div style="font-size:0.93em; line-height:1.6; color:#334155;">' +
+                '<p style="margin:0 0 10px; font-weight:700; color:#dc2626;">Action Not Allowed</p>' +
+                '<p>Patient <strong>' + patientName + '</strong> is not registered as a PhilHealth member in the demographic records.</p>' +
+                '<p style="color:#64748b; font-size:0.88em; margin-bottom:0;">Please update the patient profile under Patients management first to enable PhilHealth billing.</p>' +
+              '</div>',
+              { title: 'Non-PhilHealth Member', btnText: 'Understood', type: 'danger' }
+            );
+          } else {
+            alert('Patient ' + patientName + ' is not registered as a PhilHealth member.');
+          }
+          return;
+        }
+
+        const htmlMsg = '<div style="font-size:0.93em; line-height:1.6; color:#334155;">' +
+                        '<p style="margin:0 0 10px; font-weight:600; color:#0f172a;">Are you sure you want to charge this patient to PhilHealth?</p>' +
+                        '<div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; margin-bottom:12px;">' +
+                          '<div><strong>Patient:</strong> ' + patientName + '</div>' +
+                          '<div style="margin-top:4px;"><strong>PhilHealth Status:</strong> ' + 
+                            '<span style="color:#059669; font-weight:700;">✓ Verified Member' + (philhealthId ? ' (ID: ' + philhealthId + ')' : '') + '</span>' +
+                          '</div>' +
+                        '</div>' +
+                        '<div style="font-size:0.86em; color:#64748b; line-height:1.5;">' +
+                          '• <strong>Amount Due:</strong> ₱0.00 (No on-site collection)<br>' +
+                          '• <strong>Next Station:</strong> Advances to Extraction / Clinical Queue' +
+                        '</div>' +
+                      '</div>';
+
+        const proceedCharge = function() {
+          let philInput = form.querySelector('input[name="charged_to_philhealth"]');
+          if (!philInput) {
+            philInput = document.createElement('input');
+            philInput.type = 'hidden';
+            philInput.name = 'charged_to_philhealth';
+            form.appendChild(philInput);
+          }
+          philInput.value = '1';
+          let cardInput = form.querySelector('input[name="charged_to_healthcard"]');
           if (cardInput) cardInput.value = '0';
-          if (form.dataset && form.dataset.requireAmount === '0') return true;
+          form.dataset.requireAmount = '0';
+
+          if (typeof form.requestSubmit === 'function') {
+            form.requestSubmit();
+          } else {
+            form.submit();
+          }
+        };
+
+        if (typeof window.showCustomConfirm === 'function') {
+          window.showCustomConfirm(htmlMsg, proceedCharge, {
+            title: 'PhilHealth Billing Verification',
+            btnText: 'Yes, Charge to PhilHealth',
+            type: 'primary',
+            icon: 'fa fa-file-medical',
+            iconBg: '#e0f2fe',
+            iconColor: '#0284c7'
+          });
+        } else {
+          proceedCharge();
+        }
+      } catch (e) {
+        console.error('submitChargedToPhilhealth error', e);
+      }
+    };
+
+    // Handler for Charged to Health Card button
+    window.submitChargedToHealthcard = function(btn) {
+      try {
+        const form = btn && btn.closest ? btn.closest('form') : null;
+        if (!form) return;
+
+        const patientName = (btn && btn.dataset && btn.dataset.patientName) ? btn.dataset.patientName : 'this patient';
+        const isMember = btn && btn.dataset && btn.dataset.patientHealthcard === '1';
+        const provider = (btn && btn.dataset && btn.dataset.healthcardProvider) ? btn.dataset.healthcardProvider : 'Health Card';
+        const cardId = (btn && btn.dataset && btn.dataset.healthcardId) ? btn.dataset.healthcardId : '';
+
+        if (!isMember) {
+          if (typeof window.showCustomAlert === 'function') {
+            window.showCustomAlert(
+              '<div style="font-size:0.93em; line-height:1.6; color:#334155;">' +
+                '<p style="margin:0 0 10px; font-weight:700; color:#dc2626;">Action Not Allowed</p>' +
+                '<p>Patient <strong>' + patientName + '</strong> does not have an active Health Insurance / Health Card registered in their demographic records.</p>' +
+                '<p style="color:#64748b; font-size:0.88em; margin-bottom:0;">Please update the patient profile under Patients management first to add Health Card credentials.</p>' +
+              '</div>',
+              { title: 'No Health Card on File', btnText: 'Understood', type: 'danger' }
+            );
+          } else {
+            alert('Patient ' + patientName + ' does not have a Health Card on file.');
+          }
+          return;
+        }
+
+        const htmlMsg = '<div style="font-size:0.93em; line-height:1.6; color:#334155;">' +
+                        '<p style="margin:0 0 10px; font-weight:600; color:#0f172a;">Are you sure you want to charge this patient to their Health Card?</p>' +
+                        '<div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; margin-bottom:12px;">' +
+                          '<div><strong>Patient:</strong> ' + patientName + '</div>' +
+                          '<div style="margin-top:4px;"><strong>HMO / Provider:</strong> ' + 
+                            '<span style="color:#4f46e5; font-weight:700;">' + provider + '</span>' +
+                          '</div>' +
+                          (cardId ? '<div style="margin-top:4px;"><strong>Card / Member #:</strong> <span style="font-weight:600; color:#0f172a;">' + cardId + '</span></div>' : '') +
+                        '</div>' +
+                        '<div style="font-size:0.86em; color:#64748b; line-height:1.5;">' +
+                          '• <strong>Amount Due:</strong> ₱0.00 (Covered by HMO / Health Card)<br>' +
+                          '• <strong>Next Station:</strong> Advances to Extraction / Clinical Queue' +
+                        '</div>' +
+                      '</div>';
+
+        const proceedCharge = function() {
+          let cardInput = form.querySelector('input[name="charged_to_healthcard"]');
+          if (!cardInput) {
+            cardInput = document.createElement('input');
+            cardInput.type = 'hidden';
+            cardInput.name = 'charged_to_healthcard';
+            form.appendChild(cardInput);
+          }
+          cardInput.value = '1';
+          let philInput = form.querySelector('input[name="charged_to_philhealth"]');
+          if (philInput) philInput.value = '0';
+          form.dataset.requireAmount = '0';
+
+          if (typeof form.requestSubmit === 'function') {
+            form.requestSubmit();
+          } else {
+            form.submit();
+          }
+        };
+
+        if (typeof window.showCustomConfirm === 'function') {
+          window.showCustomConfirm(htmlMsg, proceedCharge, {
+            title: 'Health Card Billing Verification',
+            btnText: 'Yes, Charge to Health Card',
+            type: 'primary',
+            icon: 'fas fa-id-card-clip',
+            iconBg: '#e0e7ff',
+            iconColor: '#4f46e5'
+          });
+        } else {
+          proceedCharge();
+        }
+      } catch (e) {
+        console.error('submitChargedToHealthcard error', e);
+      }
+    };
+
+    function updatePaymentFormButton(form) {
+      if (!form) return;
+      const btn = form.querySelector('.payment-submit');
+      if (!btn) return;
+      if (form.dataset && form.dataset.requireAmount === '0') {
+        btn.disabled = false;
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+        btn.style.pointerEvents = 'auto';
+        btn.title = 'Mark complete';
+        return;
+      }
+      const inputs = Array.from(form.querySelectorAll('.payment-amount'));
+      if (!inputs.length) return;
+      let anyValid = false;
+      for (const input of inputs) {
+        const raw = input.value;
+        const amt = parseFloat(String(raw).replace(/[,\s]/g, ''));
+        if (Number.isFinite(amt) && amt > 0) {
+          anyValid = true;
+          break;
+        }
+      }
+      btn.disabled = !anyValid;
+      if (!anyValid) {
+        btn.style.opacity = '0.45';
+        btn.style.cursor = 'not-allowed';
+        btn.style.pointerEvents = 'none';
+        btn.title = 'Enter Clinical Lab or X-ray Lab amount to complete';
+      } else {
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+        btn.style.pointerEvents = 'auto';
+        btn.title = 'Mark complete';
+      }
+    }
+
+    function setupPaymentAmountValidation() {
+      document.querySelectorAll('form').forEach(form => {
+        const inputs = Array.from(form.querySelectorAll('.payment-amount'));
+        if (!inputs.length) return;
+        ['input', 'change', 'blur', 'keyup', 'paste'].forEach(ev => inputs.forEach(i => i.addEventListener(ev, () => updatePaymentFormButton(form))));
+        updatePaymentFormButton(form);
+      });
+    }
+    setupPaymentAmountValidation();
+
+    ['input', 'change', 'keyup', 'paste'].forEach(evName => {
+      document.addEventListener(evName, (e) => {
+        if (e.target && e.target.classList && e.target.classList.contains('payment-amount')) {
+          const form = e.target.closest('form');
+          if (form) updatePaymentFormButton(form);
+        }
+      });
+    });
+
+    // handle complete (AJAX)
+    document.querySelectorAll('.complete-form').forEach(form => {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = form.querySelector('button[type="submit"]');
+
+        const philInput = form.querySelector('input[name="charged_to_philhealth"]');
+        const isChargedToPhilhealth = philInput && (philInput.value === '1' || philInput.value === 'true');
+        const cardInput = form.querySelector('input[name="charged_to_healthcard"]');
+        const isChargedToHealthCard = cardInput && (cardInput.value === '1' || cardInput.value === 'true');
+        if (!isChargedToPhilhealth && !isChargedToHealthCard && (!form.dataset || form.dataset.requireAmount !== '0')) {
           const amtInputs = Array.from(form.querySelectorAll('.payment-amount'));
           if (amtInputs.length) {
             let anyValid = false;
-            for (const inp of amtInputs) {
-              const raw = inp.value;
-              const parsed = parseFloat(String(raw).replace(/[,\s]/g, ''));
-              if (Number.isFinite(parsed) && parsed > 0) { anyValid = true; break; }
+            for (const input of amtInputs) {
+              const val = parseFloat(String(input.value || '').replace(/[,\s]/g, ''));
+              if (Number.isFinite(val) && val > 0) {
+                anyValid = true;
+                break;
+              }
             }
             if (!anyValid) {
-              alert('Please enter an amount for either Clinical Lab or X-ray Lab before marking complete.');
-              return false;
-            }
-          }
-          // Trigger form submission programmatically so the AJAX handler runs.
-          if (typeof form.requestSubmit === 'function') form.requestSubmit(); else form.submit();
-          return false;
-        } catch (e) {
-          console.error('paymentSubmitFallback error', e);
-          return false;
-        }
-      };
-
-      // Handler for Charged to PhilHealth button
-      window.submitChargedToPhilhealth = function(btn) {
-        try {
-          const form = btn && btn.closest ? btn.closest('form') : null;
-          if (!form) return;
-
-          const patientName = (btn && btn.dataset && btn.dataset.patientName) ? btn.dataset.patientName : 'this patient';
-          const isMember = btn && btn.dataset && btn.dataset.patientPhilhealth === '1';
-          const philhealthId = (btn && btn.dataset && btn.dataset.philhealthId) ? btn.dataset.philhealthId : '';
-
-          if (!isMember) {
-            if (typeof window.showCustomAlert === 'function') {
-              window.showCustomAlert(
-                '<div style="font-size:0.93em; line-height:1.6; color:#334155;">' +
-                  '<p style="margin:0 0 10px; font-weight:700; color:#dc2626;">Action Not Allowed</p>' +
-                  '<p>Patient <strong>' + patientName + '</strong> is not registered as a PhilHealth member in the demographic records.</p>' +
-                  '<p style="color:#64748b; font-size:0.88em; margin-bottom:0;">Please update the patient profile under Patients management first to enable PhilHealth billing.</p>' +
-                '</div>',
-                { title: 'Non-PhilHealth Member', btnText: 'Understood', type: 'danger' }
-              );
-            } else {
-              alert('Patient ' + patientName + ' is not registered as a PhilHealth member.');
-            }
-            return;
-          }
-
-          const htmlMsg = '<div style="font-size:0.93em; line-height:1.6; color:#334155;">' +
-                          '<p style="margin:0 0 10px; font-weight:600; color:#0f172a;">Are you sure you want to charge this patient to PhilHealth?</p>' +
-                          '<div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; margin-bottom:12px;">' +
-                            '<div><strong>Patient:</strong> ' + patientName + '</div>' +
-                            '<div style="margin-top:4px;"><strong>PhilHealth Status:</strong> ' + 
-                              '<span style="color:#059669; font-weight:700;">✓ Verified Member' + (philhealthId ? ' (ID: ' + philhealthId + ')' : '') + '</span>' +
-                            '</div>' +
-                          '</div>' +
-                          '<div style="font-size:0.86em; color:#64748b; line-height:1.5;">' +
-                            '• <strong>Amount Due:</strong> ₱0.00 (No on-site collection)<br>' +
-                            '• <strong>Next Station:</strong> Advances to Extraction / Clinical Queue' +
-                          '</div>' +
-                        '</div>';
-
-          const proceedCharge = function() {
-            let philInput = form.querySelector('input[name="charged_to_philhealth"]');
-            if (!philInput) {
-              philInput = document.createElement('input');
-              philInput.type = 'hidden';
-              philInput.name = 'charged_to_philhealth';
-              form.appendChild(philInput);
-            }
-            philInput.value = '1';
-            let cardInput = form.querySelector('input[name="charged_to_healthcard"]');
-            if (cardInput) cardInput.value = '0';
-            form.dataset.requireAmount = '0';
-
-            // Trigger submission
-            if (typeof form.requestSubmit === 'function') {
-              form.requestSubmit();
-            } else {
-              form.submit();
-            }
-          };
-
-          if (typeof window.showCustomConfirm === 'function') {
-            window.showCustomConfirm(htmlMsg, proceedCharge, {
-              title: 'PhilHealth Billing Verification',
-              btnText: 'Yes, Charge to PhilHealth',
-              type: 'primary',
-              icon: 'fa fa-file-medical',
-              iconBg: '#e0f2fe',
-              iconColor: '#0284c7'
-            });
-          } else {
-            proceedCharge();
-          }
-        } catch (e) {
-          console.error('submitChargedToPhilhealth error', e);
-        }
-      };
-
-      // Handler for Charged to Health Card button
-      window.submitChargedToHealthcard = function(btn) {
-        try {
-          const form = btn && btn.closest ? btn.closest('form') : null;
-          if (!form) return;
-
-          const patientName = (btn && btn.dataset && btn.dataset.patientName) ? btn.dataset.patientName : 'this patient';
-          const isMember = btn && btn.dataset && btn.dataset.patientHealthcard === '1';
-          const provider = (btn && btn.dataset && btn.dataset.healthcardProvider) ? btn.dataset.healthcardProvider : 'Health Card';
-          const cardId = (btn && btn.dataset && btn.dataset.healthcardId) ? btn.dataset.healthcardId : '';
-
-          if (!isMember) {
-            if (typeof window.showCustomAlert === 'function') {
-              window.showCustomAlert(
-                '<div style="font-size:0.93em; line-height:1.6; color:#334155;">' +
-                  '<p style="margin:0 0 10px; font-weight:700; color:#dc2626;">Action Not Allowed</p>' +
-                  '<p>Patient <strong>' + patientName + '</strong> does not have an active Health Insurance / Health Card registered in their demographic records.</p>' +
-                  '<p style="color:#64748b; font-size:0.88em; margin-bottom:0;">Please update the patient profile under Patients management first to add Health Card credentials.</p>' +
-                '</div>',
-                { title: 'No Health Card on File', btnText: 'Understood', type: 'danger' }
-              );
-            } else {
-              alert('Patient ' + patientName + ' does not have a Health Card on file.');
-            }
-            return;
-          }
-
-          const htmlMsg = '<div style="font-size:0.93em; line-height:1.6; color:#334155;">' +
-                          '<p style="margin:0 0 10px; font-weight:600; color:#0f172a;">Are you sure you want to charge this patient to their Health Card?</p>' +
-                          '<div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; margin-bottom:12px;">' +
-                            '<div><strong>Patient:</strong> ' + patientName + '</div>' +
-                            '<div style="margin-top:4px;"><strong>HMO / Provider:</strong> ' + 
-                              '<span style="color:#4f46e5; font-weight:700;">' + provider + '</span>' +
-                            '</div>' +
-                            (cardId ? '<div style="margin-top:4px;"><strong>Card / Member #:</strong> <span style="font-weight:600; color:#0f172a;">' + cardId + '</span></div>' : '') +
-                          '</div>' +
-                          '<div style="font-size:0.86em; color:#64748b; line-height:1.5;">' +
-                            '• <strong>Amount Due:</strong> ₱0.00 (Covered by HMO / Health Card)<br>' +
-                            '• <strong>Next Station:</strong> Advances to Extraction / Clinical Queue' +
-                          '</div>' +
-                        '</div>';
-
-          const proceedCharge = function() {
-            let cardInput = form.querySelector('input[name="charged_to_healthcard"]');
-            if (!cardInput) {
-              cardInput = document.createElement('input');
-              cardInput.type = 'hidden';
-              cardInput.name = 'charged_to_healthcard';
-              form.appendChild(cardInput);
-            }
-            cardInput.value = '1';
-            let philInput = form.querySelector('input[name="charged_to_philhealth"]');
-            if (philInput) philInput.value = '0';
-            form.dataset.requireAmount = '0';
-
-            // Trigger submission
-            if (typeof form.requestSubmit === 'function') {
-              form.requestSubmit();
-            } else {
-              form.submit();
-            }
-          };
-
-          if (typeof window.showCustomConfirm === 'function') {
-            window.showCustomConfirm(htmlMsg, proceedCharge, {
-              title: 'Health Card Billing Verification',
-              btnText: 'Yes, Charge to Health Card',
-              type: 'primary',
-              icon: 'fas fa-id-card-clip',
-              iconBg: '#e0e7ff',
-              iconColor: '#4f46e5'
-            });
-          } else {
-            proceedCharge();
-          }
-        } catch (e) {
-          console.error('submitChargedToHealthcard error', e);
-        }
-      };
-
-      function updatePaymentFormButton(form) {
-        if (!form) return;
-        const btn = form.querySelector('.payment-submit');
-        if (!btn) return;
-        if (form.dataset && form.dataset.requireAmount === '0') {
-          btn.disabled = false;
-          btn.style.opacity = '1';
-          btn.style.cursor = 'pointer';
-          btn.style.pointerEvents = 'auto';
-          btn.title = 'Mark complete';
-          return;
-        }
-        const inputs = Array.from(form.querySelectorAll('.payment-amount'));
-        if (!inputs.length) return;
-        let anyValid = false;
-        for (const input of inputs) {
-          const raw = input.value;
-          const amt = parseFloat(String(raw).replace(/[,\s]/g, ''));
-          if (Number.isFinite(amt) && amt > 0) {
-            anyValid = true;
-            break;
-          }
-        }
-        btn.disabled = !anyValid;
-        if (!anyValid) {
-          btn.style.opacity = '0.45';
-          btn.style.cursor = 'not-allowed';
-          btn.style.pointerEvents = 'none';
-          btn.title = 'Enter Clinical Lab or X-ray Lab amount to complete';
-        } else {
-          btn.style.opacity = '1';
-          btn.style.cursor = 'pointer';
-          btn.style.pointerEvents = 'auto';
-          btn.title = 'Mark complete';
-        }
-      }
-
-      // Enable/disable Payment Area submit buttons based on amount inputs in the same form.
-      function setupPaymentAmountValidation() {
-        document.querySelectorAll('form').forEach(form => {
-          const inputs = Array.from(form.querySelectorAll('.payment-amount'));
-          if (!inputs.length) return;
-          ['input', 'change', 'blur', 'keyup', 'paste'].forEach(ev => inputs.forEach(i => i.addEventListener(ev, () => updatePaymentFormButton(form))));
-          updatePaymentFormButton(form);
-        });
-      }
-      setupPaymentAmountValidation();
-
-      // Delegated listener on document: guarantees updating even if elements were dynamically rendered
-      ['input', 'change', 'keyup', 'paste'].forEach(evName => {
-        document.addEventListener(evName, (e) => {
-          if (e.target && e.target.classList && e.target.classList.contains('payment-amount')) {
-            const form = e.target.closest('form');
-            if (form) updatePaymentFormButton(form);
-          }
-        });
-      });
-
-      // handle complete (AJAX) — use URLSearchParams and mimic the working delete flow
-      document.querySelectorAll('.complete-form').forEach(form => {
-        // normal submit interception
-        form.addEventListener('submit', async (e) => {
-          e.preventDefault();
-          console.debug('[DEBUG] complete-form submit triggered for form action=', form.action);
-          const btn = form.querySelector('button[type="submit"]');
-
-          // Strict Payment Area validation: require at least one positive amount if required
-          const philInput = form.querySelector('input[name="charged_to_philhealth"]');
-          const isChargedToPhilhealth = philInput && (philInput.value === '1' || philInput.value === 'true');
-          const cardInput = form.querySelector('input[name="charged_to_healthcard"]');
-          const isChargedToHealthCard = cardInput && (cardInput.value === '1' || cardInput.value === 'true');
-          if (!isChargedToPhilhealth && !isChargedToHealthCard && (!form.dataset || form.dataset.requireAmount !== '0')) {
-            const amtInputs = Array.from(form.querySelectorAll('.payment-amount'));
-            if (amtInputs.length) {
-              let anyValid = false;
-              for (const input of amtInputs) {
-                const val = parseFloat(String(input.value || '').replace(/[,\s]/g, ''));
-                if (Number.isFinite(val) && val > 0) {
-                  anyValid = true;
-                  break;
-                }
-              }
-              if (!anyValid) {
+              if (typeof window.showCustomAlert === 'function') {
+                window.showCustomAlert('Please enter an amount for either Clinical Lab or X-ray Lab before marking complete.', {
+                  title: 'Payment Amount Required',
+                  type: 'warning'
+                });
+              } else {
                 alert('Please enter an amount for either Clinical Lab or X-ray Lab before marking complete.');
-                if (btn) {
-                  btn.disabled = true;
-                  btn.style.opacity = '0.45';
-                  btn.style.cursor = 'not-allowed';
-                  btn.style.pointerEvents = 'none';
-                }
-                return;
               }
+              if (btn) {
+                btn.disabled = true;
+                btn.style.opacity = '0.45';
+                btn.style.cursor = 'not-allowed';
+                btn.style.pointerEvents = 'none';
+              }
+              return;
             }
           }
-
-          if (btn) btn.disabled = true;
-
-          // use URLSearchParams directly (fetch will set Content-Type correctly)
-          let bodyParams = null;
-          try { bodyParams = serializeForm(form); } catch (serr) { console.warn('serializeForm failed', serr); bodyParams = new URLSearchParams(); }
-          console.debug('[DEBUG] body to send=', bodyParams.toString());
-
-          let resp;
-          try {
-            resp = await fetch(form.action, {
-              method: 'POST',
-              credentials: 'same-origin',
-              headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json'
-              },
-              body: bodyParams
-            });
-            console.debug('[DEBUG] fetch completed, status=', resp.status);
-          } catch (err) {
-            if (btn) btn.disabled = false;
-            console.error('Network error completing test', err);
-            alert('Network error marking complete');
-            return;
-          }
-
-          if (btn) btn.disabled = false;
-          let json = null;
-          try { json = await resp.json(); } catch (e) { /* ignore parse errors */ }
-          console.debug('[DEBUG] parsed json response=', json);
-          if (!resp.ok) {
-            const msg = (json && json.message) ? json.message : 'Error marking complete';
-            alert(msg);
-            return;
-          }
-          // remove the row from the table so next patient shows up
-          const row = form.closest('tr');
-          if (row) row.remove();
-          if (json && json.message) {
-            const note = document.createElement('div');
-            note.className = 'alert alert-success active';
-            note.textContent = json.message;
-            const main = document.querySelector('.main-content') || document.body;
-            main.insertBefore(note, main.firstChild);
-            setTimeout(() => note.classList.remove('active'), 3000);
-            try { localStorage.setItem('reception:updated', String(Date.now())); } catch (e) { }
-          }
-        });
-
-        // safety: prevent silent failures if browser validation/disabled state blocks click
-        const submitBtn = form.querySelector('button[type="submit"]');
-        if (submitBtn) {
-          submitBtn.addEventListener('click', (ev) => {
-            // if button is disabled when clicked, stop native behavior to avoid confusion
-            if (submitBtn.disabled) {
-              ev.preventDefault();
-              ev.stopImmediatePropagation();
-            }
-          });
         }
-      });
 
-      // handle delete
-      document.querySelectorAll('.delete-form').forEach(form => {
-        form.addEventListener('submit', async (e) => {
-          e.preventDefault();
-          if (!confirm('Delete this test from the queue?')) return;
-          const btn = form.querySelector('button[type="submit"]');
-          btn.disabled = true;
-          const resp = await fetch(form.action, {
+        if (btn) btn.disabled = true;
+
+        let bodyParams = null;
+        try { bodyParams = serializeForm(form); } catch (serr) { bodyParams = new URLSearchParams(); }
+
+        let resp;
+        try {
+          resp = await fetch(form.action, {
             method: 'POST',
             credentials: 'same-origin',
-            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-            body: serializeForm(form)
-          }).catch(err => ({ ok: false, error: err }));
-          btn.disabled = false;
-          if (!resp || !resp.ok) {
-            alert('Error deleting test');
-            return;
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest',
+              'Accept': 'application/json'
+            },
+            body: bodyParams
+          });
+        } catch (err) {
+          if (btn) btn.disabled = false;
+          if (typeof window.showCustomAlert === 'function') {
+            window.showCustomAlert('Network error marking complete. Please try again.', { title: 'Network Error', type: 'danger' });
+          } else {
+            alert('Network error marking complete');
           }
-          const json = await resp.json().catch(() => null);
-          const row = form.closest('tr');
-          if (row) row.remove();
-          if (json && json.message) {
-            const note = document.createElement('div');
-            note.className = 'alert alert-success active';
-            note.textContent = json.message;
-            document.querySelector('.main-content').insertBefore(note, document.querySelector('.main-content').firstChild);
-            setTimeout(() => note.classList.remove('active'), 3000);
-            try {
-              // notify other tabs via localStorage so kiosk/assigned views refresh immediately
-              localStorage.setItem('reception:updated', String(Date.now()));
-            } catch (e) { }
-          }
-        });
-      });
-    })();
-  </script>
+          return;
+        }
 
-</div>
+        if (btn) btn.disabled = false;
+        let json = null;
+        try { json = await resp.json(); } catch (e) {}
+        if (!resp.ok) {
+          const msg = (json && json.message) ? json.message : 'Error marking complete';
+          if (typeof window.showCustomAlert === 'function') {
+            window.showCustomAlert(msg, { title: 'Notice', type: 'warning' });
+          } else {
+            alert(msg);
+          }
+          return;
+        }
+        
+        // Remove row and animate
+        const row = form.closest('tr');
+        if (row) {
+          row.style.transition = 'all 0.3s ease';
+          row.style.opacity = '0';
+          row.style.transform = 'translateY(-10px)';
+          setTimeout(() => {
+            row.remove();
+            const remaining = document.querySelectorAll('#queuePane tbody tr');
+            if (remaining.length === 0) location.reload();
+          }, 300);
+        }
+        
+        if (json && json.message) {
+          const note = document.createElement('div');
+          note.className = 'alert alert-success active';
+          note.style.position = 'fixed';
+          note.style.top = '24px';
+          note.style.right = '24px';
+          note.style.zIndex = '99999';
+          note.style.boxShadow = '0 10px 25px rgba(0,0,0,0.15)';
+          note.innerHTML = '<i class="fa fa-check-circle" style="margin-right:8px;"></i> ' + json.message;
+          document.body.appendChild(note);
+          setTimeout(() => {
+            note.style.opacity = '0';
+            setTimeout(() => note.remove(), 300);
+          }, 3000);
+          try { localStorage.setItem('reception:updated', String(Date.now())); } catch (e) {}
+        }
+      });
+    });
+
+    // handle delete (AJAX)
+    document.querySelectorAll('.delete-form').forEach(form => {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = form.querySelector('button[type="submit"]');
+        if (btn) btn.disabled = true;
+        
+        const resp = await fetch(form.action, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+          body: serializeForm(form)
+        }).catch(err => ({ ok: false, error: err }));
+        
+        if (btn) btn.disabled = false;
+        if (!resp || !resp.ok) {
+          if (typeof window.showCustomAlert === 'function') {
+            window.showCustomAlert('Error deleting test from queue.', { title: 'Action Failed', type: 'danger' });
+          } else {
+            alert('Error deleting test');
+          }
+          return;
+        }
+        
+        const json = await resp.json().catch(() => null);
+        const row = form.closest('tr');
+        if (row) {
+          row.style.transition = 'all 0.3s ease';
+          row.style.opacity = '0';
+          row.style.transform = 'translateY(-10px)';
+          setTimeout(() => {
+            row.remove();
+            const remaining = document.querySelectorAll('#queuePane tbody tr');
+            if (remaining.length === 0) location.reload();
+          }, 300);
+        }
+        
+        if (json && json.message) {
+          const note = document.createElement('div');
+          note.className = 'alert alert-success active';
+          note.style.position = 'fixed';
+          note.style.top = '24px';
+          note.style.right = '24px';
+          note.style.zIndex = '99999';
+          note.style.boxShadow = '0 10px 25px rgba(0,0,0,0.15)';
+          note.innerHTML = '<i class="fa fa-trash-alt" style="margin-right:8px;"></i> ' + json.message;
+          document.body.appendChild(note);
+          setTimeout(() => {
+            note.style.opacity = '0';
+            setTimeout(() => note.remove(), 300);
+          }, 3000);
+          try { localStorage.setItem('reception:updated', String(Date.now())); } catch (e) {}
+        }
+      });
+    });
+  })();
+</script>

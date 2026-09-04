@@ -949,9 +949,16 @@ router.post('/assign', requireAuth, canAccessPatient, async (req, res) => {
       }
     } else {
       // Reassigning to an active service area (e.g. Extraction Area, Drug Test, ECG, etc.)
-      // Find tests of this patient that naturally belong to this target area
-      const matchingTests = (existingTests || []).filter(t => t && getTargetAreaForTest(t) === area);
-      const activeTests = matchingTests.length ? matchingTests : [test];
+      const inputIds = (req.body.testIds || '').split(',').map(s => String(s || '').trim()).filter(Boolean);
+      let activeTests = [];
+      if (inputIds.length) {
+        activeTests = (existingTests || []).filter(t => t && (inputIds.includes(t.id) || inputIds.includes(t.testId)));
+      }
+      if (!activeTests.length) {
+        // Find tests of this patient that naturally belong to this target area
+        const matchingTests = (existingTests || []).filter(t => t && getTargetAreaForTest(t) === area);
+        activeTests = matchingTests.length ? matchingTests : [test];
+      }
       const activeIds = new Set(activeTests.map(m => m.id || m.testId));
 
       // 1. Activate only the tests that belong to the target area
