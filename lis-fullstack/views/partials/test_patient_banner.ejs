@@ -36,6 +36,8 @@
       testRemarks = test.remarks.trim();
     } else if (typeof test.remark === 'string' && test.remark.trim()) {
       testRemarks = test.remark.trim();
+    } else if (typeof test.notes === 'string' && test.notes.trim()) {
+      testRemarks = test.notes.trim();
     } else if (Array.isArray(test.requestedTests) && test.requestedTests.length) {
       const rems = test.requestedTests.map(rt => (rt.remarks || rt.remark || '').trim()).filter(Boolean);
       if (rems.length) testRemarks = Array.from(new Set(rems)).join(', ');

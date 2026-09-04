@@ -14,6 +14,7 @@ const path = require('path');
 const os   = require('os');
 const ejs  = require('ejs');
 const { getResultTemplate } = require('./templateResolver');
+const { sanitizeTestSignatures } = require('./signatureResolver');
 
 const reportsDir = path.join(os.homedir(), 'Documents', 'LIS', 'reports');
 
@@ -161,6 +162,8 @@ async function populateTestForPdf(test) {
   if ((!populated.performedBy || !populated.performedBy.name) && populated.results && populated.results.performedByName) {
     populated.performedBy = { name: populated.results.performedByName, license: populated.results.performedByLicense || null };
   }
+
+  sanitizeTestSignatures(populated);
 
   return populated;
 }

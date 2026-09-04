@@ -1,0 +1,1253 @@
+<%- include('../partials/test_patient_banner', { test, patient: typeof patient !== 'undefined' ? patient : (test ? test.patient : null) }) %>
+
+<%
+  let currentType = (test && test.template) || (test && test.results && test.results.ultrasoundType) || '';
+  if (!currentType) {
+    const tt = (test && test.testType || '').toLowerCase();
+    if (tt.includes('transvaginal') || tt.includes('tvus')) currentType = 'ultrasound-transvaginal';
+    else if (tt.includes('biophysical') || tt.includes('bps')) currentType = 'ultrasound-biophysical';
+    else if (/(?:1st|first|2nd|second|3rd|third|trimester)/.test(tt)) currentType = 'ultrasound-1st-trimester-obstetrics';
+    else if (tt.includes('pelvic') && tt.includes('biometry')) currentType = 'ultrasound-pelvic-biometry';
+    else if (tt.includes('pelvic')) currentType = 'ultrasound-pelvic';
+    else if (tt.includes('abd') || tt.includes('kubp') || tt.includes('hbt')) currentType = 'ultrasound-abd-kubp-hbt';
+  }
+  if (!currentType) {
+    const remarks = ((test && test.notes || '') + ' ' + (test && test.remarks || '') + ' ' + ((test && test.requestedTests && test.requestedTests[0] && test.requestedTests[0].remarks) || '')).toLowerCase();
+    if (remarks.includes('transvaginal') || remarks.includes('tvus')) currentType = 'ultrasound-transvaginal';
+    else if (remarks.includes('biophysical') || remarks.includes('bps')) currentType = 'ultrasound-biophysical';
+    else if (/(?:1st|first|2nd|second|3rd|third|trimester|obstetric)/.test(remarks)) currentType = 'ultrasound-1st-trimester-obstetrics';
+    else if (remarks.includes('biometry')) currentType = 'ultrasound-pelvic-biometry';
+    else if (remarks.includes('pelvic')) currentType = 'ultrasound-pelvic';
+    else currentType = 'ultrasound-abd-kubp-hbt';
+  }
+  let orderRemark = '';
+  if (test) {
+    if (typeof test.remarks === 'string' && test.remarks.trim()) orderRemark = test.remarks.trim();
+    else if (typeof test.remark === 'string' && test.remark.trim()) orderRemark = test.remark.trim();
+    else if (typeof test.notes === 'string' && test.notes.trim()) orderRemark = test.notes.trim();
+    else if (Array.isArray(test.requestedTests) && test.requestedTests.length) {
+      const rems = test.requestedTests.map(rt => (rt.remarks || rt.remark || '').trim()).filter(Boolean);
+      if (rems.length) orderRemark = Array.from(new Set(rems)).join(', ');
+    }
+    if (!orderRemark && test.results && typeof test.results.remarks === 'string' && test.results.remarks.trim()) {
+      orderRemark = test.results.remarks.trim();
+    }
+  }
+
+  const defaultTitles = {
+    'ultrasound-abd-kubp-hbt': 'ULTRASOUND RESULT',
+    'ultrasound-transvaginal': 'TRANSVAGINAL ULTRASOUND',
+    'ultrasound-pelvic': 'PELVIC ULTRASOUND',
+    'ultrasound-pelvic-biometry': 'PELVIC ULTRASOUND',
+    'ultrasound-biophysical': 'BIOPHYSICAL ULTRASOUND',
+    'ultrasound-1st-trimester-obstetrics': '1st TRIMESTER OBSTETRICS (ULTRASOUND)'
+  };
+%>
+
+<div class="card" style="padding: 24px 28px; border-radius: 16px; box-shadow: 0 4px 18px rgba(0,0,0,0.03); background: #ffffff; border: 1px solid #e2e8f0;">
+  
+  <form id="ultrasoundForm" action="/tests/<%= test.id %>/results" method="POST">
+    <input type="hidden" name="_method" value="POST">
+    <input type="hidden" id="ultrasoundTypeInput" name="ultrasoundType" value="<%= currentType %>">
+
+    <!-- Prominent Order Note / Reception Remarks Banner -->
+    <% if (orderRemark) { %>
+      <div style="margin-bottom: 22px; padding: 14px 20px; background: #eff6ff; border: 1px solid #bfdbfe; border-left: 5px solid #2563eb; border-radius: 10px; color: #1e40af; font-size: 0.95em; display: flex; align-items: center; gap: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+        <i class="fa fa-notes-medical" style="color: #2563eb; font-size: 1.4em; flex-shrink: 0;"></i>
+        <div>
+          <div style="font-size: 0.78em; font-weight: 700; text-transform: uppercase; color: #1d4ed8; letter-spacing: 0.5px;">Reception Order Note / Physician Request:</div>
+          <div style="font-weight: 600; color: #1e3a8a; font-size: 1.05em; margin-top: 2px;"><%= orderRemark %></div>
+        </div>
+      </div>
+    <% } %>
+
+    <!-- Procedure Selection Card -->
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px 20px; margin-bottom: 22px;">
+      <div style="font-weight: 700; font-size: 0.95em; color: #0f172a; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <i class="fa fa-layer-group" style="color: #6366f1;"></i> Select Ultrasound Procedure
+        </span>
+        <span style="font-size: 0.8em; color: #64748b; font-weight: 500;">Directly routes to matching clinical entry form and report layout</span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;" id="procTabsContainer">
+        
+        <button type="button" class="proc-tab <%= currentType === 'ultrasound-abd-kubp-hbt' ? 'active-proc-tab' : '' %>" data-proc="ultrasound-abd-kubp-hbt" onclick="selectProcedure('ultrasound-abd-kubp-hbt')">
+          <span class="proc-icon"><i class="fa fa-wave-square"></i></span>
+          <span class="proc-title">Whole Abdomen / KUBP</span>
+          <span class="proc-sub">General UTZ / HBT</span>
+        </button>
+
+        <button type="button" class="proc-tab <%= currentType === 'ultrasound-transvaginal' ? 'active-proc-tab' : '' %>" data-proc="ultrasound-transvaginal" onclick="selectProcedure('ultrasound-transvaginal')">
+          <span class="proc-icon"><i class="fa fa-venus"></i></span>
+          <span class="proc-title">Transvaginal (TVUS)</span>
+          <span class="proc-sub">Endovaginal Pelvic</span>
+        </button>
+
+        <button type="button" class="proc-tab <%= currentType === 'ultrasound-pelvic' ? 'active-proc-tab' : '' %>" data-proc="ultrasound-pelvic" onclick="selectProcedure('ultrasound-pelvic')">
+          <span class="proc-icon"><i class="fa fa-female"></i></span>
+          <span class="proc-title">Pelvic Ultrasound</span>
+          <span class="proc-sub">Transabdominal Pelvic</span>
+        </button>
+
+        <button type="button" class="proc-tab <%= currentType === 'ultrasound-pelvic-biometry' ? 'active-proc-tab' : '' %>" data-proc="ultrasound-pelvic-biometry" onclick="selectProcedure('ultrasound-pelvic-biometry')">
+          <span class="proc-icon"><i class="fa fa-ruler-combined"></i></span>
+          <span class="proc-title">Pelvic Biometry</span>
+          <span class="proc-sub">Fetal Growth Survey</span>
+        </button>
+
+        <button type="button" class="proc-tab <%= currentType === 'ultrasound-biophysical' ? 'active-proc-tab' : '' %>" data-proc="ultrasound-biophysical" onclick="selectProcedure('ultrasound-biophysical')">
+          <span class="proc-icon"><i class="fa fa-chart-line"></i></span>
+          <span class="proc-title">Biophysical (BPS)</span>
+          <span class="proc-sub">BPS Score & Parameters</span>
+        </button>
+
+        <button type="button" class="proc-tab <%= currentType === 'ultrasound-1st-trimester-obstetrics' ? 'active-proc-tab' : '' %>" data-proc="ultrasound-1st-trimester-obstetrics" onclick="selectProcedure('ultrasound-1st-trimester-obstetrics')">
+          <span class="proc-icon"><i class="fa fa-baby"></i></span>
+          <span class="proc-title">1st Trimester OB</span>
+          <span class="proc-sub">Single & Twin Survey</span>
+        </button>
+
+      </div>
+    </div>
+
+    <!-- Timing & Section Title Bar -->
+    <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; padding: 12px 18px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Date:</label>
+        <input type="date" name="entryDate" value="<%= test && test.testDate ? (new Date(test.testDate)).toISOString().slice(0,10) : (new Date()).toISOString().slice(0,10) %>" readonly style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 0.88em; width: 135px;">
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Time Requested:</label>
+        <input type="time" name="timeRequested" value="<%= test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '' %>" style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 0.88em; width: 115px;">
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Time Released:</label>
+        <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (new Date()).toTimeString().slice(0,5) %>" style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 0.88em; width: 115px;">
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; margin-left: auto; flex: 1; min-width: 240px; justify-content: flex-end;">
+        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Section Title:</label>
+        <input type="text" id="section_title_input" name="section_title" placeholder="Report Section Title" value="<%= test && test.results && test.results.section_title ? test.results.section_title : (defaultTitles[currentType] || 'ULTRASOUND RESULT') %>" style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.88em; font-weight: 600; width: 260px;">
+      </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- PROCEDURE 1: Whole Abdomen / KUBP / HBT -->
+    <!-- ===================================================================== -->
+    <div id="panel-ultrasound-abd-kubp-hbt" class="proc-panel" style="display: <%= currentType === 'ultrasound-abd-kubp-hbt' ? 'block' : 'none' %>;">
+      
+      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
+        <div style="font-weight: 700; font-size: 1em; color: #0f172a; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+          <span style="display: flex; align-items: center; gap: 8px;">
+            <i class="fa fa-wave-square" style="color: #6366f1;"></i> Ultrasound Examination & Findings
+          </span>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Examination Type:</label>
+            <select name="examination_select" onchange="updateExaminationField(this)" style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.88em; font-weight: 600;">
+              <option value="">-- select --</option>
+              <option value="WAB-P UTZ" <%= test && test.results && test.results.examination==='WAB-P UTZ' ? 'selected' : '' %>>WAB-P UTZ</option>
+              <option value="KUBP-UTZ" <%= test && test.results && test.results.examination==='KUBP-UTZ' ? 'selected' : '' %>>KUBP-UTZ</option>
+              <option value="HBT UTZ" <%= test && test.results && test.results.examination==='HBT UTZ' ? 'selected' : '' %>>HBT UTZ</option>
+              <option value="Other" <%= test && test.results && test.results.examination && ['WAB-P UTZ','KUBP-UTZ','HBT UTZ'].indexOf(test.results.examination)===-1 && test.results.examination ? 'selected' : '' %>>Other (type...)</option>
+            </select>
+            <input type="text" name="examination_custom" id="examination_custom" placeholder="Type examination" style="display:none; height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.88em; width: 160px;" value="<%= (test && test.results && test.results.examination && ['WAB-P UTZ','KUBP-UTZ','HBT UTZ'].indexOf(test.results.examination)===-1) ? test.results.examination : '' %>">
+            <input type="hidden" name="examination" id="examination_hidden" value="<%= test && test.results && test.results.examination ? test.results.examination : '' %>">
+          </div>
+        </div>
+
+        <!-- Formatting Toolbar -->
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; padding: 6px 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+          <div style="display: flex; gap: 4px;">
+            <button type="button" class="button btn-secondary" onclick="wrapSelection('paragraphs', '<b>','</b>')" style="height: 30px; width: 32px; padding: 0; font-weight: bold;">B</button>
+            <button type="button" class="button btn-secondary" onclick="wrapSelection('paragraphs', '<i>','</i>')" style="height: 30px; width: 32px; padding: 0; font-style: italic;">I</button>
+            <button type="button" class="button btn-secondary" onclick="wrapSelection('paragraphs', '<u>','</u>')" style="height: 30px; width: 32px; padding: 0; text-decoration: underline;">U</button>
+            <button type="button" class="button btn-secondary" onclick="insertParagraph('paragraphs')" style="height: 30px; padding: 0 10px; font-size: 0.82em;"><i class="fa fa-paragraph"></i> Paragraph</button>
+          </div>
+
+          <div style="display: flex; gap: 12px; align-items: center; margin-left: auto;">
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <label style="font-size: 0.82em; font-weight: 600; color: #64748b; margin: 0;">Font:</label>
+              <select name="paragraphsFontFamily" style="height: 30px; padding: 2px 6px; font-size: 0.82em; border-radius: 6px; border: 1px solid #cbd5e1;">
+                <option value="Courier New" <%= test.results && test.results.paragraphs_font_family==='Courier New' ? 'selected' : '' %>>Courier New</option>
+                <option value="Times New Roman" <%= test.results && test.results.paragraphs_font_family==='Times New Roman' ? 'selected' : '' %>>Times New Roman</option>
+                <option value="Arial" <%= test.results && test.results.paragraphs_font_family==='Arial' ? 'selected' : '' %>>Arial</option>
+                <option value="Georgia" <%= test.results && test.results.paragraphs_font_family==='Georgia' ? 'selected' : '' %>>Georgia</option>
+              </select>
+            </div>
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <label style="font-size: 0.82em; font-weight: 600; color: #64748b; margin: 0;">Size:</label>
+              <select name="paragraphsFontSize" style="height: 30px; padding: 2px 6px; font-size: 0.82em; border-radius: 6px; border: 1px solid #cbd5e1;">
+                <option value="10px" <%= test.results && test.results.paragraphs_font_size==='10px' ? 'selected' : '' %>>10px</option>
+                <option value="12px" <%= test.results && test.results.paragraphs_font_size==='12px' ? 'selected' : '' %>>12px</option>
+                <option value="14px" <%= (!test.results || !test.results.paragraphs_font_size || test.results.paragraphs_font_size==='14px') ? 'selected' : '' %>>14px</option>
+                <option value="16px" <%= test.results && test.results.paragraphs_font_size==='16px' ? 'selected' : '' %>>16px</option>
+                <option value="18px" <%= test.results && test.results.paragraphs_font_size==='18px' ? 'selected' : '' %>>18px</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <textarea id="paragraphs" name="paragraphs" rows="9" spellcheck="true" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; font-size: 0.95em; line-height: 1.5; box-sizing: border-box; font-family: inherit;"><%= test && test.results && (test.results.paragraphs || test.results.findings || test.results.result) ? (test.results.paragraphs || test.results.findings || test.results.result) : 'Enter findings here.\n\nDescribe organ sizes, echotexture, focal lesions, measurements and other relevant observations.' %></textarea>
+      </div>
+
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- PROCEDURE 2: Transvaginal Ultrasound (TVUS) -->
+    <!-- ===================================================================== -->
+    <div id="panel-ultrasound-transvaginal" class="proc-panel" style="display: <%= currentType === 'ultrasound-transvaginal' ? 'block' : 'none' %>;">
+      
+      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
+        <div style="font-weight: 700; font-size: 1em; color: #0f172a; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+          <span style="display: flex; align-items: center; gap: 8px;">
+            <i class="fa fa-wave-square" style="color: #6366f1;"></i> Transvaginal Biometry & Clinical Parameters
+          </span>
+          <span style="font-size: 0.75em; color: #64748b; font-weight: 500;">Endovaginal Pelvic Imaging</span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 16px;">
+          <!-- Gestational Sac -->
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.9em; color: #1e293b; display: block;">Gestational Sac</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <div style="position: relative; flex: 1;">
+                <input type="text" name="gestational_sac_length" placeholder="0.00" value="<%= test && test.results && test.results.gestational_sac_length ? test.results.gestational_sac_length : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+                <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">cm</span>
+              </div>
+              <input type="text" name="gestational_sac_age" placeholder="6w6d" value="<%= test && test.results && test.results.gestational_sac_age ? test.results.gestational_sac_age : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 95px;" title="Age by GS">
+            </div>
+          </div>
+
+          <!-- CRL -->
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.9em; color: #1e293b; display: block;">Crown Rump Length (CRL)</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <div style="position: relative; flex: 1;">
+                <input type="text" name="crl_length" placeholder="0.00" value="<%= test && test.results && test.results.crl_length ? test.results.crl_length : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+                <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">cm</span>
+              </div>
+              <input type="text" name="crl_age" placeholder="6w6d" value="<%= test && test.results && test.results.crl_age ? test.results.crl_age : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 95px;" title="Age by CRL">
+            </div>
+          </div>
+
+          <!-- Average Age -->
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.9em; color: #1e293b; display: block;">Average Ultrasound Age (AOA)</label>
+            <input type="text" name="average_ultrasound_age" placeholder="6w6d" value="<%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          </div>
+
+          <!-- Fetal Heart Rate -->
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.9em; color: #1e293b; display: block;">Fetal Heart Rate (FHR)</label>
+            <div style="position: relative;">
+              <input type="text" name="fetal_heart_rate" placeholder="145" value="<%= test && test.results && test.results.fetal_heart_rate ? test.results.fetal_heart_rate : '' %>" style="height: 36px; padding: 4px 45px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+              <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">BPM</span>
+            </div>
+          </div>
+
+          <!-- EDD -->
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.9em; color: #1e293b; display: block;">Expected Date of Delivery (EDD)</label>
+            <input type="date" name="expected_date_of_delivery" value="<%= test && test.results && test.results.expected_date_of_delivery ? (new Date(test.results.expected_date_of_delivery)).toISOString().slice(0,10) : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          </div>
+
+          <!-- Others -->
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.9em; color: #1e293b; display: block;">Other Findings</label>
+            <input type="text" name="other" placeholder="Normal adnexa" value="<%= test && test.results && test.results.other ? test.results.other : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 500; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          </div>
+        </div>
+
+        <!-- Comments List -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; margin-top: 10px;">
+          <div style="font-weight: 700; font-size: 0.9em; color: #1e293b; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <span>Comments & Annotations</span>
+            <button type="button" class="button btn-secondary" onclick="addCommentRow('commentsList_tvus')" style="height: 28px; padding: 0 10px; font-size: 0.8em; display: inline-flex; align-items: center; gap: 4px;">
+              <i class="fa fa-plus"></i> Add Comment
+            </button>
+          </div>
+          <div id="commentsList_tvus">
+            <% let commentEntries_tvus = [];
+               if (test && test.results && Array.isArray(test.results.comment_entries)) {
+                 commentEntries_tvus = test.results.comment_entries;
+               } else if (test && test.results && (test.results.comment_yolk || test.results.comment_hemorrhage)) {
+                 if (test.results.comment_yolk) commentEntries_tvus.push({ sign: '-', text: test.results.comment_yolk });
+                 if (test.results.comment_hemorrhage) commentEntries_tvus.push({ sign: '-', text: test.results.comment_hemorrhage });
+               } else {
+                 commentEntries_tvus = [{ sign: '-', text: 'Yolk sac' }, { sign: '-', text: 'Hemorrhage' }];
+               }
+            %>
+            <% commentEntries_tvus.forEach(function(c, idx){ %>
+              <div class="comment-row" style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
+                <select name="comment_sign[]" style="width: 70px; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 700; padding: 2px 6px;">
+                  <option value="-" <%= c.sign === '-' ? 'selected' : '' %>>-</option>
+                  <option value="+" <%= c.sign === '+' ? 'selected' : '' %>>+</option>
+                </select>
+                <input type="text" name="comment_text[]" value="<%= c.text || '' %>" placeholder="Comment description..." style="flex: 1; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 4px 10px; font-size: 0.9em; font-weight: 500;">
+                <button type="button" class="button btn-secondary" onclick="removeCommentRow(this)" style="height: 34px; padding: 0 10px; color: #ef4444;"><i class="fa fa-trash"></i></button>
+              </div>
+            <% }); %>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- PROCEDURE 3: Pelvic Ultrasound -->
+    <!-- ===================================================================== -->
+    <div id="panel-ultrasound-pelvic" class="proc-panel" style="display: <%= currentType === 'ultrasound-pelvic' ? 'block' : 'none' %>;">
+      
+      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
+        <div style="font-weight: 700; font-size: 1em; color: #0f172a; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+          <span style="display: flex; align-items: center; gap: 8px;">
+            <i class="fa fa-wave-square" style="color: #6366f1;"></i> Pelvic Biometry & Clinical Parameters
+          </span>
+          <span style="font-size: 0.75em; color: #64748b; font-weight: 500;">Transabdominal Pelvic Imaging</span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 16px;">
+          <!-- Gestational Sac -->
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.9em; color: #1e293b; display: block;">Gestational Sac</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <div style="position: relative; flex: 1;">
+                <input type="text" name="gestational_sac_length" placeholder="0.00" value="<%= test && test.results && test.results.gestational_sac_length ? test.results.gestational_sac_length : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+                <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">cm</span>
+              </div>
+              <input type="text" name="gestational_sac_age" placeholder="6w6d" value="<%= test && test.results && test.results.gestational_sac_age ? test.results.gestational_sac_age : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 95px;" title="Age by GS">
+            </div>
+          </div>
+
+          <!-- CRL -->
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.9em; color: #1e293b; display: block;">Crown Rump Length (CRL)</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <div style="position: relative; flex: 1;">
+                <input type="text" name="crl_length" placeholder="0.00" value="<%= test && test.results && test.results.crl_length ? test.results.crl_length : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+                <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">cm</span>
+              </div>
+              <input type="text" name="crl_age" placeholder="6w6d" value="<%= test && test.results && test.results.crl_age ? test.results.crl_age : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 95px;" title="Age by CRL">
+            </div>
+          </div>
+
+          <!-- Average Age -->
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.9em; color: #1e293b; display: block;">Average Ultrasound Age (AOA)</label>
+            <input type="text" name="average_ultrasound_age" placeholder="6w6d" value="<%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          </div>
+
+          <!-- Fetal Heart Rate -->
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.9em; color: #1e293b; display: block;">Fetal Heart Rate (FHR)</label>
+            <div style="position: relative;">
+              <input type="text" name="fetal_heart_rate" placeholder="145" value="<%= test && test.results && test.results.fetal_heart_rate ? test.results.fetal_heart_rate : '' %>" style="height: 36px; padding: 4px 45px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+              <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">BPM</span>
+            </div>
+          </div>
+
+          <!-- EDD -->
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.9em; color: #1e293b; display: block;">Expected Date of Delivery (EDD)</label>
+            <input type="date" name="expected_date_of_delivery" value="<%= test && test.results && test.results.expected_date_of_delivery ? (new Date(test.results.expected_date_of_delivery)).toISOString().slice(0,10) : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          </div>
+
+          <!-- Others -->
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.9em; color: #1e293b; display: block;">Other Findings</label>
+            <input type="text" name="other" placeholder="Normal adnexa" value="<%= test && test.results && test.results.other ? test.results.other : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 500; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          </div>
+        </div>
+
+        <!-- Comments List -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; margin-top: 10px;">
+          <div style="font-weight: 700; font-size: 0.9em; color: #1e293b; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <span>Comments & Annotations</span>
+            <button type="button" class="button btn-secondary" onclick="addCommentRow('commentsList_pelvic')" style="height: 28px; padding: 0 10px; font-size: 0.8em; display: inline-flex; align-items: center; gap: 4px;">
+              <i class="fa fa-plus"></i> Add Comment
+            </button>
+          </div>
+          <div id="commentsList_pelvic">
+            <% let commentEntries_pelvic = [];
+               if (test && test.results && Array.isArray(test.results.comment_entries)) {
+                 commentEntries_pelvic = test.results.comment_entries;
+               } else if (test && test.results && (test.results.comment_yolk || test.results.comment_hemorrhage)) {
+                 if (test.results.comment_yolk) commentEntries_pelvic.push({ sign: '-', text: test.results.comment_yolk });
+                 if (test.results.comment_hemorrhage) commentEntries_pelvic.push({ sign: '-', text: test.results.comment_hemorrhage });
+               } else {
+                 commentEntries_pelvic = [{ sign: '-', text: 'Yolk sac' }, { sign: '-', text: 'Hemorrhage' }];
+               }
+            %>
+            <% commentEntries_pelvic.forEach(function(c, idx){ %>
+              <div class="comment-row" style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
+                <select name="comment_sign[]" style="width: 70px; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 700; padding: 2px 6px;">
+                  <option value="-" <%= c.sign === '-' ? 'selected' : '' %>>-</option>
+                  <option value="+" <%= c.sign === '+' ? 'selected' : '' %>>+</option>
+                </select>
+                <input type="text" name="comment_text[]" value="<%= c.text || '' %>" placeholder="Comment description..." style="flex: 1; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 4px 10px; font-size: 0.9em; font-weight: 500;">
+                <button type="button" class="button btn-secondary" onclick="removeCommentRow(this)" style="height: 34px; padding: 0 10px; color: #ef4444;"><i class="fa fa-trash"></i></button>
+              </div>
+            <% }); %>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- PROCEDURE 4: Pelvic Biometry / Fetal Survey -->
+    <!-- ===================================================================== -->
+    <div id="panel-ultrasound-pelvic-biometry" class="proc-panel" style="display: <%= currentType === 'ultrasound-pelvic-biometry' ? 'block' : 'none' %>;">
+      
+      <!-- Fetal Biometry Measurements -->
+      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
+        <div style="font-weight: 700; font-size: 1em; color: #0f172a; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+          <span style="display: flex; align-items: center; gap: 8px;">
+            <i class="fa fa-ruler-combined" style="color: #6366f1;"></i> Fetal Biometry Measurements
+          </span>
+          <button type="button" class="button btn-secondary" onclick="addBiometryRow('biometryList_pelvic')" style="height: 28px; padding: 0 10px; font-size: 0.8em; display: inline-flex; align-items: center; gap: 4px;">
+            <i class="fa fa-plus"></i> Add Biometry Row
+          </button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
+          <!-- BPD -->
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">BPD (Biparietal Diameter)</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <div style="position: relative; flex: 1;">
+                <input type="text" name="bpd_size" placeholder="8.95" value="<%= test && test.results && test.results.bpd_size ? test.results.bpd_size : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+                <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">cm</span>
+              </div>
+              <input type="text" name="bpd_label" placeholder="36w2d" value="<%= test && test.results && test.results.bpd_label ? test.results.bpd_label : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 90px;" title="Age / Remarks">
+            </div>
+          </div>
+
+          <!-- HC -->
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">HC (Head Circumference)</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <div style="position: relative; flex: 1;">
+                <input type="text" name="hc_size" placeholder="31.97" value="<%= test && test.results && test.results.hc_size ? test.results.hc_size : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+                <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">cm</span>
+              </div>
+              <input type="text" name="hc_label" placeholder="36w0d" value="<%= test && test.results && test.results.hc_label ? test.results.hc_label : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 90px;" title="Age / Remarks">
+            </div>
+          </div>
+
+          <!-- AC -->
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">AC (Abdominal Circumference)</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <div style="position: relative; flex: 1;">
+                <input type="text" name="ac_size" placeholder="32.27" value="<%= test && test.results && test.results.ac_size ? test.results.ac_size : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+                <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">cm</span>
+              </div>
+              <input type="text" name="ac_label" placeholder="36w1d" value="<%= test && test.results && test.results.ac_label ? test.results.ac_label : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 90px;" title="Age / Remarks">
+            </div>
+          </div>
+
+          <!-- FL -->
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">FL (Femur Length)</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <div style="position: relative; flex: 1;">
+                <input type="text" name="fl_size" placeholder="7.01" value="<%= test && test.results && test.results.fl_size ? test.results.fl_size : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+                <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">cm</span>
+              </div>
+              <input type="text" name="fl_label" placeholder="36w0d" value="<%= test && test.results && test.results.fl_label ? test.results.fl_label : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 90px;" title="Age / Remarks">
+            </div>
+          </div>
+        </div>
+
+        <!-- Additional Custom Biometry Rows -->
+        <div id="biometryList_pelvic" style="margin-top: 10px;">
+          <% if (test && test.results && Array.isArray(test.results.biometry) && test.results.biometry.length) { %>
+            <% test.results.biometry.forEach(function(b){ %>
+              <div class="biometry-row" style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
+                <input type="text" name="biometry_label[]" placeholder="Measurement Label" value="<%= b && b.label ? b.label : '' %>" style="width: 140px; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 4px 8px; font-size: 0.88em;">
+                <input type="text" name="biometry_size[]" placeholder="Size / Remarks" value="<%= b && b.size ? b.size : '' %>" style="flex: 1; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 4px 8px; font-size: 0.88em;">
+                <button type="button" class="button btn-secondary" onclick="removeBiometryRow(this)" style="height: 34px; padding: 0 10px; color: #ef4444;"><i class="fa fa-trash"></i></button>
+              </div>
+            <% }) %>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- Clinical Parameters -->
+      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
+        <div style="font-weight: 700; font-size: 1em; color: #0f172a; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; gap: 8px;">
+          <i class="fa fa-notes-medical" style="color: #6366f1;"></i> Clinical & Diagnostic Parameters
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Number of Fetus</label>
+            <input type="text" name="number_of_fetus" placeholder="SINGLE" value="<%= test && test.results && test.results.number_of_fetus ? test.results.number_of_fetus : 'SINGLE' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          </div>
+
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Average Ultrasound Age (AOA)</label>
+            <input type="text" name="average_ultrasound_age" placeholder="36w0d" value="<%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          </div>
+
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Presentation</label>
+            <input type="text" name="presentation" placeholder="CEPHALIC" value="<%= test && test.results && test.results.presentation ? test.results.presentation : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          </div>
+
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">EDC by Ultrasound</label>
+            <input type="date" name="edc_by_ultrasound" value="<%= test && test.results && test.results.edc_by_ultrasound ? (new Date(test.results.edc_by_ultrasound)).toISOString().slice(0,10) : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          </div>
+
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Estimated Fetal Weight (EFW)</label>
+            <div style="position: relative;">
+              <input type="text" name="efw" placeholder="2800" value="<%= test && test.results && test.results.efw ? test.results.efw : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+              <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">g</span>
+            </div>
+          </div>
+
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Fetal Heart Rate (FHR)</label>
+            <div style="position: relative;">
+              <input type="text" name="fetal_heart_rate" placeholder="145" value="<%= test && test.results && test.results.fetal_heart_rate ? test.results.fetal_heart_rate : '' %>" style="height: 36px; padding: 4px 45px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+              <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">BPM</span>
+            </div>
+          </div>
+
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Placental Location</label>
+            <input type="text" name="placental_location" placeholder="POSTERIOR HIGH" value="<%= test && test.results && test.results.placental_location ? test.results.placental_location : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          </div>
+
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Placental Maturity</label>
+            <input type="text" name="maturity" placeholder="GRADE II" value="<%= test && test.results && test.results.maturity ? test.results.maturity : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          </div>
+
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Amniotic Fluid</label>
+            <input type="text" name="amniotic_fluid" placeholder="ADEQUATE" value="<%= test && test.results && test.results.amniotic_fluid ? test.results.amniotic_fluid : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          </div>
+
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Fetal Gender</label>
+            <input type="text" name="gender" placeholder="FEMALE / MALE" value="<%= test && test.results && test.results.gender ? test.results.gender : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- PROCEDURE 5: Biophysical Profile (BPS) -->
+    <!-- ===================================================================== -->
+    <div id="panel-ultrasound-biophysical" class="proc-panel" style="display: <%= currentType === 'ultrasound-biophysical' ? 'block' : 'none' %>;">
+      
+      <!-- Fetal Biometry Measurements -->
+      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
+        <div style="font-weight: 700; font-size: 1em; color: #0f172a; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+          <span style="display: flex; align-items: center; gap: 8px;">
+            <i class="fa fa-ruler-combined" style="color: #6366f1;"></i> Fetal Biometry Measurements
+          </span>
+          <button type="button" class="button btn-secondary" onclick="addBiometryRow('biometryList_bps')" style="height: 28px; padding: 0 10px; font-size: 0.8em; display: inline-flex; align-items: center; gap: 4px;">
+            <i class="fa fa-plus"></i> Add Biometry Row
+          </button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">BPD (Biparietal Diameter)</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <div style="position: relative; flex: 1;">
+                <input type="text" name="bpd_size" placeholder="8.95" value="<%= test && test.results && test.results.bpd_size ? test.results.bpd_size : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+                <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">cm</span>
+              </div>
+              <input type="text" name="bpd_label" placeholder="36w2d" value="<%= test && test.results && test.results.bpd_label ? test.results.bpd_label : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 90px;" title="Age / Remarks">
+            </div>
+          </div>
+
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">HC (Head Circumference)</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <div style="position: relative; flex: 1;">
+                <input type="text" name="hc_size" placeholder="31.97" value="<%= test && test.results && test.results.hc_size ? test.results.hc_size : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+                <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">cm</span>
+              </div>
+              <input type="text" name="hc_label" placeholder="36w0d" value="<%= test && test.results && test.results.hc_label ? test.results.hc_label : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 90px;" title="Age / Remarks">
+            </div>
+          </div>
+
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">AC (Abdominal Circumference)</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <div style="position: relative; flex: 1;">
+                <input type="text" name="ac_size" placeholder="32.27" value="<%= test && test.results && test.results.ac_size ? test.results.ac_size : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+                <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">cm</span>
+              </div>
+              <input type="text" name="ac_label" placeholder="36w1d" value="<%= test && test.results && test.results.ac_label ? test.results.ac_label : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 90px;" title="Age / Remarks">
+            </div>
+          </div>
+
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">FL (Femur Length)</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <div style="position: relative; flex: 1;">
+                <input type="text" name="fl_size" placeholder="7.01" value="<%= test && test.results && test.results.fl_size ? test.results.fl_size : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+                <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">cm</span>
+              </div>
+              <input type="text" name="fl_label" placeholder="36w0d" value="<%= test && test.results && test.results.fl_label ? test.results.fl_label : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 90px;" title="Age / Remarks">
+            </div>
+          </div>
+        </div>
+
+        <div id="biometryList_bps" style="margin-top: 10px;">
+          <% if (test && test.results && Array.isArray(test.results.biometry) && test.results.biometry.length) { %>
+            <% test.results.biometry.forEach(function(b){ %>
+              <div class="biometry-row" style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
+                <input type="text" name="biometry_label[]" placeholder="Measurement Label" value="<%= b && b.label ? b.label : '' %>" style="width: 140px; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 4px 8px; font-size: 0.88em;">
+                <input type="text" name="biometry_size[]" placeholder="Size / Remarks" value="<%= b && b.size ? b.size : '' %>" style="flex: 1; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 4px 8px; font-size: 0.88em;">
+                <button type="button" class="button btn-secondary" onclick="removeBiometryRow(this)" style="height: 34px; padding: 0 10px; color: #ef4444;"><i class="fa fa-trash"></i></button>
+              </div>
+            <% }) %>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- Clinical & BPS Parameters -->
+      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
+        <div style="font-weight: 700; font-size: 1em; color: #0f172a; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; gap: 8px;">
+          <i class="fa fa-heartbeat" style="color: #6366f1;"></i> Biophysical Profile Scoring & Clinical Parameters
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Number of Fetus</label>
+            <input type="text" name="number_of_fetus" placeholder="SINGLE" value="<%= test && test.results && test.results.number_of_fetus ? test.results.number_of_fetus : 'SINGLE' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          </div>
+
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Average Ultrasound Age (AOA)</label>
+            <input type="text" name="average_ultrasound_age" placeholder="36w0d" value="<%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          </div>
+
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Presentation</label>
+            <input type="text" name="presentation" placeholder="CEPHALIC" value="<%= test && test.results && test.results.presentation ? test.results.presentation : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          </div>
+
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">EDC by Ultrasound</label>
+            <input type="date" name="edc_by_ultrasound" value="<%= test && test.results && test.results.edc_by_ultrasound ? (new Date(test.results.edc_by_ultrasound)).toISOString().slice(0,10) : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          </div>
+
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Estimated Fetal Weight (EFW)</label>
+            <div style="position: relative;">
+              <input type="text" name="efw" placeholder="2800" value="<%= test && test.results && test.results.efw ? test.results.efw : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+              <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">g</span>
+            </div>
+          </div>
+
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Fetal Heart Rate (FHR)</label>
+            <div style="position: relative;">
+              <input type="text" name="fetal_heart_rate" placeholder="145" value="<%= test && test.results && test.results.fetal_heart_rate ? test.results.fetal_heart_rate : '' %>" style="height: 36px; padding: 4px 45px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+              <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">BPM</span>
+            </div>
+          </div>
+
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Placental Location</label>
+            <input type="text" name="placental_location" placeholder="POSTERIOR HIGH" value="<%= test && test.results && test.results.placental_location ? test.results.placental_location : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          </div>
+
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Placental Maturity</label>
+            <input type="text" name="maturity" placeholder="GRADE II" value="<%= test && test.results && test.results.maturity ? test.results.maturity : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          </div>
+
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Amniotic Fluid</label>
+            <input type="text" name="amniotic_fluid" placeholder="ADEQUATE" value="<%= test && test.results && test.results.amniotic_fluid ? test.results.amniotic_fluid : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          </div>
+
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Fetal Gender</label>
+            <input type="text" name="gender" placeholder="FEMALE / MALE" value="<%= test && test.results && test.results.gender ? test.results.gender : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          </div>
+
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Fetal Tone (Score)</label>
+            <input type="text" name="fetal_tone" placeholder="2" value="<%= test && test.results && test.results.fetal_tone ? test.results.fetal_tone : '2' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          </div>
+
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Fetal Movement (Score)</label>
+            <input type="text" name="fetal_movement" placeholder="2" value="<%= test && test.results && test.results.fetal_movement ? test.results.fetal_movement : '2' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          </div>
+
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Fetal Breathing (Score)</label>
+            <input type="text" name="fetal_breathing" placeholder="2" value="<%= test && test.results && test.results.fetal_breathing ? test.results.fetal_breathing : '2' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          </div>
+
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Amniotic Fluid Index (AFI)</label>
+            <input type="text" name="afi" placeholder="17.22" value="<%= test && test.results && test.results.afi ? test.results.afi : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          </div>
+
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Total BPS Score</label>
+            <input type="text" name="bps" placeholder="8/8" value="<%= test && test.results && test.results.bps ? test.results.bps : '8/8' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          </div>
+
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Estimated Date of Delivery (EDD)</label>
+            <input type="date" name="estimated_date_of_delivery" value="<%= test && test.results && test.results.estimated_date_of_delivery ? (new Date(test.results.estimated_date_of_delivery)).toISOString().slice(0,10) : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- PROCEDURE 6: 1st Trimester Obstetrics -->
+    <!-- ===================================================================== -->
+    <div id="panel-ultrasound-1st-trimester-obstetrics" class="proc-panel" style="display: <%= currentType === 'ultrasound-1st-trimester-obstetrics' ? 'block' : 'none' %>;">
+      
+      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
+        <div style="font-weight: 700; font-size: 1em; color: #0f172a; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+          <span style="display: flex; align-items: center; gap: 8px;">
+            <i class="fa fa-wave-square" style="color: #6366f1;"></i> 1st Trimester Obstetric Biometry & Clinical Findings
+          </span>
+          <label style="display: inline-flex; align-items: center; gap: 8px; background: #eff6ff; border: 1px solid #bfdbfe; padding: 4px 12px; border-radius: 20px; font-size: 0.85em; color: #1e40af; font-weight: 600; cursor: pointer;">
+            <input type="checkbox" id="isTwin" name="isTwin" <%= test && test.results && test.results.isTwin ? 'checked' : '' %> onchange="toggleTwin(this)" style="cursor: pointer;">
+            <span>Twin Pregnancy</span>
+          </label>
+        </div>
+
+        <!-- SINGLE PREGNANCY BLOCK -->
+        <div id="singleBlock" style="display:<%= (test && test.results && test.results.isTwin) ? 'none' : 'block' %>">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 16px;">
+            <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+              <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.9em; color: #1e293b; display: block;">Gestational Sac (GS)</label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <div style="position: relative; flex: 1;">
+                  <input type="text" name="gestational_sac_length" placeholder="0.00" value="<%= test && test.results && test.results.gestational_sac_length ? test.results.gestational_sac_length : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+                  <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">cm</span>
+                </div>
+                <input type="text" name="gestational_sac_age" placeholder="6w6d" value="<%= test && test.results && test.results.gestational_sac_age ? test.results.gestational_sac_age : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 95px;" title="Age by GS">
+              </div>
+            </div>
+
+            <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+              <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.9em; color: #1e293b; display: block;">Crown Rump Length (CRL)</label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <div style="position: relative; flex: 1;">
+                  <input type="text" name="crl_length" placeholder="0.00" value="<%= test && test.results && test.results.crl_length ? test.results.crl_length : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+                  <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">cm</span>
+                </div>
+                <input type="text" name="crl_age" placeholder="6w6d" value="<%= test && test.results && test.results.crl_age ? test.results.crl_age : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 95px;" title="Age by CRL">
+              </div>
+            </div>
+
+            <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+              <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.9em; color: #1e293b; display: block;">Average Ultrasound Age (AOA)</label>
+              <input type="text" name="average_ultrasound_age" placeholder="6w6d" value="<%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+            </div>
+
+            <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+              <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.9em; color: #1e293b; display: block;">Fetal Heart Rate (FHR)</label>
+              <div style="position: relative;">
+                <input type="text" name="fetal_heart_rate" placeholder="145" value="<%= test && test.results && test.results.fetal_heart_rate ? test.results.fetal_heart_rate : '' %>" style="height: 36px; padding: 4px 45px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+                <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">BPM</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Single Comments -->
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; margin-top: 10px;">
+            <div style="font-weight: 700; font-size: 0.9em; color: #1e293b; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+              <span>Comments & Annotations</span>
+              <button type="button" class="button btn-secondary" onclick="addCommentRow('commentsList_single_ob')" style="height: 28px; padding: 0 10px; font-size: 0.8em; display: inline-flex; align-items: center; gap: 4px;">
+                <i class="fa fa-plus"></i> Add Comment
+              </button>
+            </div>
+            <div id="commentsList_single_ob">
+              <% let commentEntries_single_ob = [];
+                 if (test && test.results && Array.isArray(test.results.comment_entries)) {
+                   commentEntries_single_ob = test.results.comment_entries;
+                 } else if (test && test.results && (test.results.comment_yolk || test.results.comment_hemorrhage)) {
+                   if (test.results.comment_yolk) commentEntries_single_ob.push({ sign: '-', text: test.results.comment_yolk });
+                   if (test.results.comment_hemorrhage) commentEntries_single_ob.push({ sign: '-', text: test.results.comment_hemorrhage });
+                 } else {
+                   commentEntries_single_ob = [{ sign: '-', text: 'Yolk sac' }, { sign: '-', text: 'Hemorrhage' }];
+                 }
+              %>
+              <% commentEntries_single_ob.forEach(function(c, idx){ %>
+                <div class="comment-row" style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
+                  <select name="comment_sign[]" style="width: 70px; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 700; padding: 2px 6px;">
+                    <option value="-" <%= c.sign === '-' ? 'selected' : '' %>>-</option>
+                    <option value="+" <%= c.sign === '+' ? 'selected' : '' %>>+</option>
+                  </select>
+                  <input type="text" name="comment_text[]" value="<%= c.text || '' %>" placeholder="Comment description..." style="flex: 1; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 4px 10px; font-size: 0.9em; font-weight: 500;">
+                  <button type="button" class="button btn-secondary" onclick="removeCommentRow(this)" style="height: 34px; padding: 0 10px; color: #ef4444;"><i class="fa fa-trash"></i></button>
+                </div>
+              <% }); %>
+            </div>
+          </div>
+        </div>
+
+        <!-- TWIN PREGNANCY BLOCK -->
+        <div id="twinBlock" style="display:<%= (test && test.results && test.results.isTwin) ? 'block' : 'none' %>">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <!-- FETUS A -->
+            <div style="border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px; background: #fafafa;">
+              <div style="font-weight: 700; color: #1e40af; margin-bottom: 10px; border-bottom: 2px solid #bfdbfe; padding-bottom: 4px;">
+                <i class="fa fa-user"></i> FETUS A
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div>
+                  <label style="margin: 0 0 4px 0; font-weight: 600; font-size: 0.85em; color: #1e293b; display: block;">Gestational Sac (GS)</label>
+                  <div style="display: flex; gap: 6px;">
+                    <input type="text" name="gestational_sac_length_A" placeholder="0.00 cm" value="<%= test && test.results && test.results.gestational_sac_length_A ? test.results.gestational_sac_length_A : '' %>" style="height: 34px; padding: 4px 8px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 60%;">
+                    <input type="text" name="gestational_sac_age_A" placeholder="6w6d" value="<%= test && test.results && test.results.gestational_sac_age_A ? test.results.gestational_sac_age_A : '' %>" style="height: 34px; padding: 4px 8px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 40%;">
+                  </div>
+                </div>
+
+                <div>
+                  <label style="margin: 0 0 4px 0; font-weight: 600; font-size: 0.85em; color: #1e293b; display: block;">Crown Rump Length (CRL)</label>
+                  <div style="display: flex; gap: 6px;">
+                    <input type="text" name="crl_length_A" placeholder="0.00 cm" value="<%= test && test.results && test.results.crl_length_A ? test.results.crl_length_A : '' %>" style="height: 34px; padding: 4px 8px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 60%;">
+                    <input type="text" name="crl_age_A" placeholder="6w6d" value="<%= test && test.results && test.results.crl_age_A ? test.results.crl_age_A : '' %>" style="height: 34px; padding: 4px 8px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 40%;">
+                  </div>
+                </div>
+
+                <!-- Comments Fetus A -->
+                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+                  <div style="font-weight: 700; font-size: 0.82em; color: #334155; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                    <span>Comments (Fetus A)</span>
+                    <button type="button" class="button btn-secondary" onclick="addCommentRowTwin('commentsList_A', 'comment_sign_A[]', 'comment_text_A[]')" style="height: 24px; padding: 0 6px; font-size: 0.75em;">+ Add</button>
+                  </div>
+                  <div id="commentsList_A">
+                    <% let commentEntriesA = [];
+                       if (test && test.results && Array.isArray(test.results.comment_entries_A)) {
+                         commentEntriesA = test.results.comment_entries_A;
+                       } else {
+                         commentEntriesA = [{ sign: '-', text: 'Yolk sac' }, { sign: '-', text: 'Hemorrhage' }];
+                       }
+                    %>
+                    <% commentEntriesA.forEach(function(c){ %>
+                      <div class="comment-row" style="display: flex; gap: 6px; align-items: center; margin-top: 4px;">
+                        <select name="comment_sign_A[]" style="width: 55px; height: 30px; border-radius: 5px; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.8em; padding: 2px 4px;">
+                          <option value="-" <%= c.sign === '-' ? 'selected' : '' %>>-</option>
+                          <option value="+" <%= c.sign === '+' ? 'selected' : '' %>>+</option>
+                        </select>
+                        <input type="text" name="comment_text_A[]" value="<%= c.text || '' %>" placeholder="Comment..." style="flex: 1; height: 30px; border-radius: 5px; border: 1px solid #cbd5e1; padding: 2px 6px; font-size: 0.82em;">
+                        <button type="button" class="button btn-secondary" onclick="removeCommentRow(this)" style="height: 30px; padding: 0 8px; color: #ef4444;"><i class="fa fa-trash"></i></button>
+                      </div>
+                    <% }); %>
+                  </div>
+                </div>
+
+                <div>
+                  <label style="margin: 0 0 4px 0; font-weight: 600; font-size: 0.85em; color: #1e293b; display: block;">Average Ultrasound Age (AOA)</label>
+                  <input type="text" name="average_ultrasound_age_A" placeholder="6w6d" value="<%= test && test.results && test.results.average_ultrasound_age_A ? test.results.average_ultrasound_age_A : '' %>" style="height: 34px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+                </div>
+
+                <div>
+                  <label style="margin: 0 0 4px 0; font-weight: 600; font-size: 0.85em; color: #1e293b; display: block;">Fetal Heart Rate (FHR)</label>
+                  <input type="text" name="fetal_heart_rate_A" placeholder="145 BPM" value="<%= test && test.results && test.results.fetal_heart_rate_A ? test.results.fetal_heart_rate_A : '' %>" style="height: 34px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+                </div>
+              </div>
+            </div>
+
+            <!-- FETUS B -->
+            <div style="border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px; background: #fafafa;">
+              <div style="font-weight: 700; color: #1e40af; margin-bottom: 10px; border-bottom: 2px solid #bfdbfe; padding-bottom: 4px;">
+                <i class="fa fa-user"></i> FETUS B
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div>
+                  <label style="margin: 0 0 4px 0; font-weight: 600; font-size: 0.85em; color: #1e293b; display: block;">Gestational Sac (GS)</label>
+                  <div style="display: flex; gap: 6px;">
+                    <input type="text" name="gestational_sac_length_B" placeholder="0.00 cm" value="<%= test && test.results && test.results.gestational_sac_length_B ? test.results.gestational_sac_length_B : '' %>" style="height: 34px; padding: 4px 8px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 60%;">
+                    <input type="text" name="gestational_sac_age_B" placeholder="6w6d" value="<%= test && test.results && test.results.gestational_sac_age_B ? test.results.gestational_sac_age_B : '' %>" style="height: 34px; padding: 4px 8px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 40%;">
+                  </div>
+                </div>
+
+                <div>
+                  <label style="margin: 0 0 4px 0; font-weight: 600; font-size: 0.85em; color: #1e293b; display: block;">Crown Rump Length (CRL)</label>
+                  <div style="display: flex; gap: 6px;">
+                    <input type="text" name="crl_length_B" placeholder="0.00 cm" value="<%= test && test.results && test.results.crl_length_B ? test.results.crl_length_B : '' %>" style="height: 34px; padding: 4px 8px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 60%;">
+                    <input type="text" name="crl_age_B" placeholder="6w6d" value="<%= test && test.results && test.results.crl_age_B ? test.results.crl_age_B : '' %>" style="height: 34px; padding: 4px 8px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 40%;">
+                  </div>
+                </div>
+
+                <!-- Comments Fetus B -->
+                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+                  <div style="font-weight: 700; font-size: 0.82em; color: #334155; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                    <span>Comments (Fetus B)</span>
+                    <button type="button" class="button btn-secondary" onclick="addCommentRowTwin('commentsList_B', 'comment_sign_B[]', 'comment_text_B[]')" style="height: 24px; padding: 0 6px; font-size: 0.75em;">+ Add</button>
+                  </div>
+                  <div id="commentsList_B">
+                    <% let commentEntriesB = [];
+                       if (test && test.results && Array.isArray(test.results.comment_entries_B)) {
+                         commentEntriesB = test.results.comment_entries_B;
+                       } else {
+                         commentEntriesB = [{ sign: '-', text: 'Yolk sac' }, { sign: '-', text: 'Hemorrhage' }];
+                       }
+                    %>
+                    <% commentEntriesB.forEach(function(c){ %>
+                      <div class="comment-row" style="display: flex; gap: 6px; align-items: center; margin-top: 4px;">
+                        <select name="comment_sign_B[]" style="width: 55px; height: 30px; border-radius: 5px; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.8em; padding: 2px 4px;">
+                          <option value="-" <%= c.sign === '-' ? 'selected' : '' %>>-</option>
+                          <option value="+" <%= c.sign === '+' ? 'selected' : '' %>>+</option>
+                        </select>
+                        <input type="text" name="comment_text_B[]" value="<%= c.text || '' %>" placeholder="Comment..." style="flex: 1; height: 30px; border-radius: 5px; border: 1px solid #cbd5e1; padding: 2px 6px; font-size: 0.82em;">
+                        <button type="button" class="button btn-secondary" onclick="removeCommentRow(this)" style="height: 30px; padding: 0 8px; color: #ef4444;"><i class="fa fa-trash"></i></button>
+                      </div>
+                    <% }); %>
+                  </div>
+                </div>
+
+                <div>
+                  <label style="margin: 0 0 4px 0; font-weight: 600; font-size: 0.85em; color: #1e293b; display: block;">Average Ultrasound Age (AOA)</label>
+                  <input type="text" name="average_ultrasound_age_B" placeholder="6w6d" value="<%= test && test.results && test.results.average_ultrasound_age_B ? test.results.average_ultrasound_age_B : '' %>" style="height: 34px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+                </div>
+
+                <div>
+                  <label style="margin: 0 0 4px 0; font-weight: 600; font-size: 0.85em; color: #1e293b; display: block;">Fetal Heart Rate (FHR)</label>
+                  <input type="text" name="fetal_heart_rate_B" placeholder="145 BPM" value="<%= test && test.results && test.results.fetal_heart_rate_B ? test.results.fetal_heart_rate_B : '' %>" style="height: 34px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Shared Parameters for 1st Trimester OB -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 16px;">
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.9em; color: #1e293b; display: block;">Expected Date of Delivery (EDD)</label>
+            <input type="date" name="expected_date_of_delivery" value="<%= test && test.results && test.results.expected_date_of_delivery ? (new Date(test.results.expected_date_of_delivery)).toISOString().slice(0,10) : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          </div>
+
+          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.9em; color: #1e293b; display: block;">Other Findings</label>
+            <input type="text" name="other" placeholder="Both fetuses viable" value="<%= test && test.results && test.results.other ? test.results.other : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 500; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- SHARED IMPRESSION & SPACING CARD -->
+    <!-- ===================================================================== -->
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0;">
+        <span style="font-weight: 700; font-size: 1em; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+          <i class="fa fa-clipboard-check" style="color: #10b981;"></i> Impression
+        </span>
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <label style="font-size: 0.85em; font-weight: 600; color: #64748b; margin: 0;">Footer Spacing:</label>
+          <select name="impression_spacing" style="height: 30px; padding: 2px 6px; font-size: 0.85em; border-radius: 6px; border: 1px solid #cbd5e1;">
+            <option value="" <%= !(test && test.results && test.results.impression_spacing) ? 'selected' : '' %>>Default</option>
+            <option value="12px" <%= test && test.results && test.results.impression_spacing==='12px' ? 'selected' : '' %>>12px</option>
+            <option value="24px" <%= test && test.results && test.results.impression_spacing==='24px' ? 'selected' : '' %>>24px</option>
+            <option value="36px" <%= test && test.results && test.results.impression_spacing==='36px' ? 'selected' : '' %>>36px</option>
+            <option value="48px" <%= test && test.results && test.results.impression_spacing==='48px' ? 'selected' : '' %>>48px</option>
+            <option value="72px" <%= test && test.results && test.results.impression_spacing==='72px' ? 'selected' : '' %>>72px</option>
+            <option value="96px" <%= test && test.results && test.results.impression_spacing==='96px' ? 'selected' : '' %>>96px</option>
+            <option value="120px" <%= test && test.results && test.results.impression_spacing==='120px' ? 'selected' : '' %>>120px</option>
+            <option value="180px" <%= test && test.results && test.results.impression_spacing==='180px' ? 'selected' : '' %>>180px</option>
+            <option value="240px" <%= test && test.results && test.results.impression_spacing==='240px' ? 'selected' : '' %>>240px</option>
+            <% if (test && test.results && test.results.impression_spacing && ['12px','24px','36px','48px','72px','96px','120px','180px','240px'].indexOf(test.results.impression_spacing) === -1) { %>
+              <option value="<%= test.results.impression_spacing %>" selected>Custom: <%= test.results.impression_spacing %></option>
+            <% } %>
+          </select>
+        </div>
+      </div>
+      <textarea name="impression" rows="4" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; font-size: 0.95em; line-height: 1.5; box-sizing: border-box;" placeholder="Enter clinical impression and conclusion..."><%= test && test.results && (test.results.impression || test.results.impression_text) ? (test.results.impression || test.results.impression_text) : '' %></textarea>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- SIGNATURES & VERIFICATION SECTION -->
+    <!-- ===================================================================== -->
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; margin-top: 24px;">
+      <div style="font-weight: 700; font-size: 0.88em; text-transform: uppercase; color: #475569; letter-spacing: 0.5px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+        <i class="fa fa-signature" style="color: #10b981;"></i> Radiologist / Sonologist Signature & Verification
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+          <%- include('../partials/signatory_select', { prefix: 'path', label: 'Radiologist / Sonologist', role: 'Radiologist', nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (test.results && test.results.pathName) ? test.results.pathName : (test.results && test.results.doctorName ? test.results.doctorName : ''), existingLicense: (test.results && test.results.pathLicense) ? test.results.pathLicense : (test.results && test.results.doctorLicense ? test.results.doctorLicense : '') }) %>
+        </div>
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+          <label style="display: block; font-weight: 600; font-size: 0.88em; color: #475569; margin-bottom: 6px;">Professional Designation</label>
+          <input type="text" name="doctorDesignation" placeholder="MD, FPCR - Radiologist" value="<%= test.results && test.results.doctorDesignation ? test.results.doctorDesignation : 'Radiologist' %>" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 4px 10px; font-size: 0.9em; font-weight: 600;">
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- BOTTOM ACTION BUTTONS -->
+    <!-- ===================================================================== -->
+    <div style="display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
+      <button type="button" onclick="if (window.history.length > 1) { window.history.back(); } else { window.location.href = '/tests'; }" class="button btn-secondary" style="height: 42px; padding: 0 20px; border-radius: 8px; font-weight: 600;">Cancel</button>
+      <button type="submit" class="button btn-primary" style="height: 42px; padding: 0 28px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+        <i class="fa fa-check"></i> Save Results
+      </button>
+    </div>
+
+  </form>
+</div>
+
+<style>
+  .proc-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 12px 14px;
+    background: #ffffff;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    outline: none;
+  }
+  .proc-tab:hover {
+    border-color: #a5b4fc;
+    background: #fdfdfd;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.08);
+  }
+  .proc-tab.active-proc-tab {
+    border-color: #6366f1;
+    background: #eff6ff;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  }
+  .proc-icon {
+    font-size: 1.15em;
+    color: #64748b;
+    margin-bottom: 6px;
+    display: inline-block;
+  }
+  .active-proc-tab .proc-icon {
+    color: #4f46e5;
+  }
+  .proc-title {
+    font-size: 0.9em;
+    font-weight: 700;
+    color: #1e293b;
+    line-height: 1.25;
+    margin-bottom: 3px;
+  }
+  .active-proc-tab .proc-title {
+    color: #1e1b4b;
+  }
+  .proc-sub {
+    font-size: 0.74em;
+    color: #64748b;
+    font-weight: 500;
+  }
+  .active-proc-tab .proc-sub {
+    color: #4338ca;
+    font-weight: 600;
+  }
+</style>
+
+<script>
+  var DEFAULT_TITLES = {
+    'ultrasound-abd-kubp-hbt': 'ULTRASOUND RESULT',
+    'ultrasound-transvaginal': 'TRANSVAGINAL ULTRASOUND',
+    'ultrasound-pelvic': 'PELVIC ULTRASOUND',
+    'ultrasound-pelvic-biometry': 'PELVIC ULTRASOUND',
+    'ultrasound-biophysical': 'BIOPHYSICAL ULTRASOUND',
+    'ultrasound-1st-trimester-obstetrics': '1st TRIMESTER OBSTETRICS (ULTRASOUND)'
+  };
+
+  var currentProcedure = '<%= currentType %>';
+
+  function selectProcedure(type) {
+    currentProcedure = type;
+    var input = document.getElementById('ultrasoundTypeInput');
+    if (input) input.value = type;
+
+    // Update tab styles
+    var tabs = document.querySelectorAll('.proc-tab');
+    tabs.forEach(function(t){
+      if (t.getAttribute('data-proc') === type) {
+        t.classList.add('active-proc-tab');
+      } else {
+        t.classList.remove('active-proc-tab');
+      }
+    });
+
+    // Toggle panels and enable/disable inputs so only active panel submits
+    var panels = document.querySelectorAll('.proc-panel');
+    panels.forEach(function(p){
+      var isTarget = p.id === 'panel-' + type;
+      if (isTarget) {
+        p.style.display = 'block';
+        p.querySelectorAll('input, select, textarea').forEach(function(el){
+          el.disabled = false;
+        });
+      } else {
+        p.style.display = 'none';
+        p.querySelectorAll('input, select, textarea').forEach(function(el){
+          el.disabled = true;
+        });
+      }
+    });
+
+    // Auto-update section title if default
+    var titleInput = document.getElementById('section_title_input');
+    if (titleInput) {
+      var currentVal = titleInput.value.trim();
+      var isDefaultTitle = !currentVal || Object.values(DEFAULT_TITLES).indexOf(currentVal) !== -1;
+      if (isDefaultTitle && DEFAULT_TITLES[type]) {
+        titleInput.value = DEFAULT_TITLES[type];
+      }
+    }
+  }
+
+  // Examination select custom input toggle for ABD/KUBP/HBT
+  function updateExaminationField() {
+    var sel = document.querySelector('[name="examination_select"]');
+    var custom = document.getElementById('examination_custom');
+    var hidden = document.getElementById('examination_hidden');
+    if (!sel || !hidden || !custom) return;
+    if (sel.value === 'Other') {
+      custom.style.display = 'inline-block';
+      hidden.value = custom.value || '';
+    } else {
+      custom.style.display = 'none';
+      hidden.value = sel.value || '';
+    }
+  }
+
+  // Toolbar functions for ABD/KUBP/HBT textarea
+  function wrapSelection(textareaId, openTag, closeTag) {
+    var ta = document.getElementById(textareaId);
+    if (!ta) return;
+    var start = ta.selectionStart;
+    var end = ta.selectionEnd;
+    var selected = ta.value.substring(start, end);
+    var newText = openTag + selected + closeTag;
+    ta.value = ta.value.substring(0, start) + newText + ta.value.substring(end);
+    ta.focus();
+    ta.selectionStart = start + openTag.length;
+    ta.selectionEnd = start + openTag.length + selected.length;
+  }
+
+  function insertParagraph(textareaId) {
+    var ta = document.getElementById(textareaId);
+    if (!ta) return;
+    var pos = ta.selectionStart || ta.value.length;
+    var p = '\n\n';
+    ta.value = ta.value.substring(0, pos) + p + ta.value.substring(pos);
+    ta.focus();
+  }
+
+  // Comments List Row Management
+  function addCommentRow(containerId) {
+    var container = document.getElementById(containerId);
+    if (!container) return;
+    var row = document.createElement('div');
+    row.className = 'comment-row';
+    row.style.display = 'flex';
+    row.style.gap = '8px';
+    row.style.alignItems = 'center';
+    row.style.marginTop = '6px';
+    row.innerHTML = '<select name="comment_sign[]" style="width: 70px; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 700; padding: 2px 6px;"><option value="-">-</option><option value="+">+</option></select>' +
+      '<input type="text" name="comment_text[]" placeholder="Comment description..." style="flex: 1; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 4px 10px; font-size: 0.9em; font-weight: 500;">' +
+      '<button type="button" class="button btn-secondary" onclick="removeCommentRow(this)" style="height: 34px; padding: 0 10px; color: #ef4444;"><i class="fa fa-trash"></i></button>';
+    container.appendChild(row);
+  }
+
+  function addCommentRowTwin(containerId, signName, textName) {
+    var container = document.getElementById(containerId);
+    if (!container) return;
+    var row = document.createElement('div');
+    row.className = 'comment-row';
+    row.style.display = 'flex';
+    row.style.gap = '6px';
+    row.style.alignItems = 'center';
+    row.style.marginTop = '4px';
+    row.innerHTML = '<select name="' + signName + '" style="width: 55px; height: 30px; border-radius: 5px; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.8em; padding: 2px 4px;"><option value="-">-</option><option value="+">+</option></select>' +
+      '<input type="text" name="' + textName + '" placeholder="Comment..." style="flex: 1; height: 30px; border-radius: 5px; border: 1px solid #cbd5e1; padding: 2px 6px; font-size: 0.82em;">' +
+      '<button type="button" class="button btn-secondary" onclick="removeCommentRow(this)" style="height: 30px; padding: 0 8px; color: #ef4444;"><i class="fa fa-trash"></i></button>';
+    container.appendChild(row);
+  }
+
+  function removeCommentRow(btn) {
+    var row = btn.closest('.comment-row');
+    if (row) row.remove();
+  }
+
+  // Biometry Row Management
+  function addBiometryRow(containerId) {
+    var container = document.getElementById(containerId);
+    if (!container) return;
+    var row = document.createElement('div');
+    row.className = 'biometry-row';
+    row.style.display = 'flex';
+    row.style.gap = '8px';
+    row.style.alignItems = 'center';
+    row.style.marginTop = '6px';
+    row.innerHTML = '<input type="text" name="biometry_label[]" placeholder="Measurement Label" style="width: 140px; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 4px 8px; font-size: 0.88em;">' +
+      '<input type="text" name="biometry_size[]" placeholder="Size / Remarks" style="flex: 1; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 4px 8px; font-size: 0.88em;">' +
+      '<button type="button" class="button btn-secondary" onclick="removeBiometryRow(this)" style="height: 34px; padding: 0 10px; color: #ef4444;"><i class="fa fa-trash"></i></button>';
+    container.appendChild(row);
+  }
+
+  function removeBiometryRow(btn) {
+    var row = btn.closest('.biometry-row');
+    if (row) row.remove();
+  }
+
+  // Twin pregnancy toggle for 1st Trimester OB
+  function toggleTwin(cb) {
+    var singleBlock = document.getElementById('singleBlock');
+    var twinBlock = document.getElementById('twinBlock');
+    if (cb.checked) {
+      if (singleBlock) singleBlock.style.display = 'none';
+      if (twinBlock) twinBlock.style.display = 'block';
+    } else {
+      if (singleBlock) singleBlock.style.display = 'block';
+      if (twinBlock) twinBlock.style.display = 'none';
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    // Initialize active procedure state and disable non-active panel inputs
+    selectProcedure(currentProcedure);
+
+    updateExaminationField();
+    var sel = document.querySelector('[name="examination_select"]');
+    var custom = document.getElementById('examination_custom');
+    if (sel) sel.addEventListener('change', updateExaminationField);
+    if (custom) custom.addEventListener('input', function(){
+      var hidden = document.getElementById('examination_hidden');
+      if (hidden) hidden.value = custom.value;
+    });
+
+    var form = document.getElementById('ultrasoundForm');
+    if (form) {
+      form.addEventListener('submit', function(){
+        // Ensure active procedure is selected and inputs are properly enabled
+        selectProcedure(currentProcedure);
+        updateExaminationField();
+      });
+    }
+  });
+</script>

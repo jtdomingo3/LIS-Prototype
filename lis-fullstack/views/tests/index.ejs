@@ -135,6 +135,22 @@
               </td>
               <td style="padding:14px;">
                 <span style="font-weight:600; color:#1e293b;"><%= test.testType %></span>
+                <%
+                  let rowRemark = '';
+                  if (typeof test.remarks === 'string' && test.remarks.trim()) rowRemark = test.remarks.trim();
+                  else if (typeof test.remark === 'string' && test.remark.trim()) rowRemark = test.remark.trim();
+                  else if (typeof test.notes === 'string' && test.notes.trim()) rowRemark = test.notes.trim();
+                  else if (Array.isArray(test.requestedTests) && test.requestedTests.length) {
+                    const rems = test.requestedTests.map(rt => (rt.remarks || rt.remark || '').trim()).filter(Boolean);
+                    if (rems.length) rowRemark = Array.from(new Set(rems)).join(', ');
+                  }
+                %>
+                <% if (rowRemark) { %>
+                  <div style="font-size: 0.78em; color: #0284c7; background: #f0f9ff; border: 1px solid #bae6fd; padding: 2px 8px; border-radius: 6px; margin-top: 5px; display: inline-flex; align-items: center; gap: 5px; max-width: 240px; white-space: normal; line-height: 1.3;">
+                    <i class="fa fa-info-circle" style="flex-shrink: 0; color: #0284c7;"></i>
+                    <span><%= rowRemark %></span>
+                  </div>
+                <% } %>
               </td>
               <td style="padding:14px; color:#64748b; font-size:0.9em; white-space:nowrap;">
                 <%= test.testDate ? new Date(test.testDate).toLocaleDateString() : '' %>

@@ -23,30 +23,28 @@ async function testSignatureSync() {
 
   console.log('1. Simulating signature sync POST to server endpoint (/api/signatures/sync)...');
 
-  // Initialize server sqlite db adapter for reading user
-  const { getDataDir } = require('../lis-fullstack/lib/dataPath');
-  const DATA_DIR = getDataDir();
+  // Initialize isolated test sqlite db adapter (never pollute live lis-data.db)
+  const tmpDir = path.join(__dirname, 'tmp-sig-sync');
+  if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
+  const testDbFile = path.join(tmpDir, 'test-sig-sync.db');
+  if (fs.existsSync(testDbFile)) { try { fs.unlinkSync(testDbFile); } catch (_) {} }
+
   const { createDb } = require('../lis-fullstack/lib/sqliteDb');
-  global.db = createDb(path.join(DATA_DIR, 'lis-data.db'));
-  const users = global.db.getUsers() || [];
-  let adminUser = users.find(u => u && u.password && (u.role === 'Admin' || u.email === 'admin@lab.com')) || users[0];
-  if (!adminUser || !adminUser.password) {
-    adminUser = {
-      id: 'test-admin-uuid',
-      name: 'Test Administrator',
-      email: 'admin@test.com',
-      password: '$2a$10$mockhashedpasswordforsynctesting123',
-      role: 'Admin',
-      status: 'Active'
-    };
-    if (global.db && typeof global.db.saveUsers === 'function') {
-      global.db.saveUsers([adminUser]);
-    }
-  }
+  global.db = createDb(testDbFile);
+  const adminUser = {
+    id: 'test-admin-uuid',
+    name: 'Test Administrator',
+    email: 'admin_test@lab.com',
+    password: '$2a$10$mockhashedpasswordforsynctesting123',
+    role: 'Admin',
+    status: 'Active'
+  };
+  global.db.saveUsers([adminUser]);
+  const users = [adminUser];
   const testEmail = adminUser.email;
   const syncHash = adminUser.password;
-  const originalSignature = adminUser.signature || null;
-  console.log(`   Using admin user: ${testEmail} (hash: ${syncHash ? 'present' : 'none'})`);
+  const originalSignature = null;
+  console.log(`   Using isolated test admin user: ${testEmail} in ${testDbFile}`);
 
   console.log('1. Starting test Express instance with /api/signatures/sync endpoint...');
   let express;
@@ -148,9 +146,7 @@ async function testSignatureSync() {
 
   // Clean up test file and restore user state
   try { fs.unlinkSync(targetServerFile); } catch (_) {}
-  try {
-    await User.findOneAndUpdate({ email: testEmail }, { signature: originalSignature });
-  } catch (_) {}
+  try { fs.unlinkSync(testDbFile); } catch (_) {}
 
   console.log('\n🎉 E2E SIGNATURE SYNC TEST PASSED SUCCESSFULLY!');
 }
