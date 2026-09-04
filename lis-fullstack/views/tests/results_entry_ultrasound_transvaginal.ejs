@@ -1,151 +1,190 @@
 <%- include('../partials/test_patient_banner', { test, patient: typeof patient !== 'undefined' ? patient : (test ? test.patient : null) }) %>
 
 <div class="card" style="padding: 24px 28px; border-radius: 16px; box-shadow: 0 4px 18px rgba(0,0,0,0.03); background: #ffffff; border: 1px solid #e2e8f0;">
-  <h3>Enter Transvaginal Ultrasound Results - <%= test.testId %></h3>
-
   <form action="/tests/<%= test.id %>/results" method="POST">
     <input type="hidden" name="_method" value="POST">
 
-    <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
-      <div class="form-row" style="margin:0;">
-        <label>Date</label>
-        <input type="date" name="entryDate" value="<%= test && test.testDate ? (new Date(test.testDate)).toISOString().slice(0,10) : (new Date()).toISOString().slice(0,10) %>" readonly>
+    <!-- Timing & Meta Bar -->
+    <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; padding: 12px 18px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Date:</label>
+        <input type="date" name="entryDate" value="<%= test && test.testDate ? (new Date(test.testDate)).toISOString().slice(0,10) : (new Date()).toISOString().slice(0,10) %>" readonly style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 0.88em; width: 135px;">
       </div>
-      <div class="form-row" style="margin:0;">
-        <label>Time Requested</label>
-        <input type="time" name="timeRequested" value="<%= test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '' %>">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Time Requested:</label>
+        <input type="time" name="timeRequested" value="<%= test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '' %>" style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 0.88em; width: 115px;">
       </div>
-      <div class="form-row" style="margin:0;">
-        <label>Time Released</label>
-        <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (new Date()).toTimeString().slice(0,5) %>">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Time Released:</label>
+        <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (new Date()).toTimeString().slice(0,5) %>" style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 0.88em; width: 115px;">
       </div>
-    </div>
-
-    <div style="margin-top:8px">
-      <label>Section Title</label>
-      <input type="text" name="section_title" value="<%= test && test.results && test.results.section_title ? test.results.section_title : 'TRANSVAGINAL ULTRASOUND' %>">
-    </div>
-
-    <div class="form-row">
-      <label>GESTATIONAL SAC (length)</label>
-      <div style="display:flex;gap:8px;align-items:center">
-        <input type="text" name="gestational_sac_length" placeholder="0.00" value="<%= test && test.results && test.results.gestational_sac_length ? test.results.gestational_sac_length : '' %>" style="width:120px"> 
-        <label style="margin:0">cm</label>
-        <input type="text" name="gestational_sac_age" placeholder="6w6d" value="<%= test && test.results && test.results.gestational_sac_age ? test.results.gestational_sac_age : '' %>" style="margin-left:8px; width:120px">
+      <div style="display: flex; align-items: center; gap: 8px; margin-left: auto; flex: 1; min-width: 220px; justify-content: flex-end;">
+        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Section Title:</label>
+        <input type="text" name="section_title" value="<%= test && test.results && test.results.section_title ? test.results.section_title : 'TRANSVAGINAL ULTRASOUND' %>" style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.88em; font-weight: 600; width: 220px;">
       </div>
     </div>
 
-    <div class="form-row" style="margin-top:8px">
-      <label>CRL</label>
-      <div style="display:flex;gap:8px;align-items:center">
-        <input type="text" name="crl_length" placeholder="0.00" value="<%= test && test.results && test.results.crl_length ? test.results.crl_length : '' %>" style="width:120px">
-        <label style="margin:0">cm</label>
-        <input type="text" name="crl_age" placeholder="6w6d" value="<%= test && test.results && test.results.crl_age ? test.results.crl_age : '' %>" style="margin-left:8px; width:120px">
+    <!-- Parameter Card: Ultrasound Measurements -->
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
+      <div style="font-weight: 700; font-size: 1em; color: #0f172a; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <i class="fa fa-wave-square" style="color: #6366f1;"></i> Transvaginal Biometry & Clinical Parameters
+        </span>
+        <span style="font-size: 0.75em; color: #64748b; font-weight: 500;">Endovaginal Pelvic Imaging</span>
       </div>
-    </div>
 
-    <div style="margin-top:8px">
-      <label>COMMENTS</label>
-      <div id="commentsList">
-        <% let commentEntries = [];
-           if (test && test.results && Array.isArray(test.results.comment_entries)) {
-             commentEntries = test.results.comment_entries;
-           } else if (test && test.results && (test.results.comment_yolk || test.results.comment_hemorrhage)) {
-             // back-compat fallback
-             if (test.results.comment_yolk) commentEntries.push({ sign: '-', text: test.results.comment_yolk });
-             if (test.results.comment_hemorrhage) commentEntries.push({ sign: '-', text: test.results.comment_hemorrhage });
-           } else {
-             commentEntries = [{ sign: '-', text: 'Yolk sac' }, { sign: '-', text: 'Hemorrhage' }];
-           }
-        %>
-        <% commentEntries.forEach(function(c, idx){ %>
-          <div class="comment-row" style="display:flex;gap:8px;align-items:center;margin-top:6px">
-            <select name="comment_sign[]" style="width:64px">
-              <option value="+" <%= c && c.sign === '+' ? 'selected' : '' %> >(+)</option>
-              <option value="-" <%= (!c || c.sign === '-' ) ? 'selected' : '' %> >(-)</option>
-            </select>
-            <input type="text" name="comment_text[]" placeholder="Comment" value="<%= c && c.text ? c.text : '' %>" style="flex:1">
-            <button type="button" class="button btn-small" onclick="removeCommentRow(this)">Remove</button>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 16px;">
+        <!-- Gestational Sac -->
+        <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+          <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.9em; color: #1e293b; display: block;">Gestational Sac</label>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <div style="position: relative; flex: 1;">
+              <input type="text" name="gestational_sac_length" placeholder="0.00" value="<%= test && test.results && test.results.gestational_sac_length ? test.results.gestational_sac_length : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+              <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">cm</span>
+            </div>
+            <input type="text" name="gestational_sac_age" placeholder="e.g. 6w6d" value="<%= test && test.results && test.results.gestational_sac_age ? test.results.gestational_sac_age : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 90px;" title="Age by GS">
           </div>
-        <% }) %>
-      </div>
-      <div style="margin-top:8px">
-        <button type="button" class="button" onclick="addCommentRow()">Add Comment</button>
-      </div>
-    </div>
+        </div>
 
-    <div style="margin-top:8px">
-      <label>AVERAGE ULTRASOUND AGE</label>
-      <input type="text" name="average_ultrasound_age" placeholder="6w6d" value="<%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : '' %>">
-    </div>
+        <!-- CRL -->
+        <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+          <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.9em; color: #1e293b; display: block;">Crown Rump Length (CRL)</label>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <div style="position: relative; flex: 1;">
+              <input type="text" name="crl_length" placeholder="0.00" value="<%= test && test.results && test.results.crl_length ? test.results.crl_length : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+              <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">cm</span>
+            </div>
+            <input type="text" name="crl_age" placeholder="e.g. 6w6d" value="<%= test && test.results && test.results.crl_age ? test.results.crl_age : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 90px;" title="Age by CRL">
+          </div>
+        </div>
 
-    <div style="margin-top:8px">
-      <label>FETAL HEART RATE</label>
-      <input type="text" name="fetal_heart_rate" placeholder="BPM" value="<%= test && test.results && test.results.fetal_heart_rate ? test.results.fetal_heart_rate : '' %>">
-    </div>
+        <!-- Average Age -->
+        <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+          <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.9em; color: #1e293b; display: block;">Average Ultrasound Age (AOA)</label>
+          <input type="text" name="average_ultrasound_age" placeholder="e.g. 6w6d" value="<%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+        </div>
 
-    <div style="margin-top:8px">
-      <label>EXPECTED DATE OF DELIVERY</label>
-      <input type="date" name="expected_date_of_delivery" value="<%= test && test.results && test.results.expected_date_of_delivery ? (new Date(test.results.expected_date_of_delivery)).toISOString().slice(0,10) : '' %>">
-    </div>
+        <!-- Fetal Heart Rate -->
+        <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+          <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.9em; color: #1e293b; display: block;">Fetal Heart Rate (FHR)</label>
+          <div style="position: relative;">
+            <input type="text" name="fetal_heart_rate" placeholder="e.g. 145" value="<%= test && test.results && test.results.fetal_heart_rate ? test.results.fetal_heart_rate : '' %>" style="height: 36px; padding: 4px 45px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+            <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">BPM</span>
+          </div>
+        </div>
 
-    <div style="margin-top:8px">
-      <label>OTHERS</label>
-      <input type="text" name="other" value="<%= test && test.results && test.results.other ? test.results.other : '' %>">
-    </div>
+        <!-- EDD -->
+        <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+          <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.9em; color: #1e293b; display: block;">Expected Date of Delivery (EDD)</label>
+          <input type="date" name="expected_date_of_delivery" value="<%= test && test.results && test.results.expected_date_of_delivery ? (new Date(test.results.expected_date_of_delivery)).toISOString().slice(0,10) : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+        </div>
 
-    <div style="margin-top:8px">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-        <label style="margin:0;">IMPRESSION</label>
-        <div style="display:flex; gap:6px; align-items:center;">
-          <label style="font-size:0.85em; color:#64748b;">Font Size:</label>
-          <select name="paragraphsFontSize" style="padding:2px 6px; font-size:0.85em;">
-            <option value="10px" <%= test.results && test.results.paragraphs_font_size==='10px' ? 'selected' : '' %>>10px</option>
-            <option value="12px" <%= test.results && test.results.paragraphs_font_size==='12px' ? 'selected' : '' %>>12px</option>
-            <option value="14px" <%= (!test.results || !test.results.paragraphs_font_size || test.results.paragraphs_font_size==='14px') ? 'selected' : '' %>>14px</option>
-            <option value="16px" <%= test.results && test.results.paragraphs_font_size==='16px' ? 'selected' : '' %>>16px</option>
-            <option value="18px" <%= test.results && test.results.paragraphs_font_size==='18px' ? 'selected' : '' %>>18px</option>
-          </select>
+        <!-- Others -->
+        <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
+          <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.9em; color: #1e293b; display: block;">Other Findings</label>
+          <input type="text" name="other" placeholder="e.g. Normal adnexa" value="<%= test && test.results && test.results.other ? test.results.other : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 500; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
         </div>
       </div>
-      <textarea name="impression" rows="4" style="width:100%"><%= test && test.results && test.results.impression ? test.results.impression : 'Enter impression here.' %></textarea>
-    </div>
 
-    <div style="margin-top:8px">
-      <label>Space between Impression and Footer</label>
-      <div>
-        <select name="impression_spacing" style="width:220px">
-          <option value="" <%= !(test && test.results && test.results.impression_spacing) ? 'selected' : '' %>>Default (template)</option>
-          <option value="12px" <%= test && test.results && test.results.impression_spacing==='12px' ? 'selected' : '' %>>12px</option>
-          <option value="24px" <%= test && test.results && test.results.impression_spacing==='24px' ? 'selected' : '' %>>24px</option>
-          <option value="36px" <%= test && test.results && test.results.impression_spacing==='36px' ? 'selected' : '' %>>36px</option>
-          <option value="48px" <%= test && test.results && test.results.impression_spacing==='48px' ? 'selected' : '' %>>48px</option>
-          <option value="72px" <%= test && test.results && test.results.impression_spacing==='72px' ? 'selected' : '' %>>72px</option>
-          <option value="96px" <%= test && test.results && test.results.impression_spacing==='96px' ? 'selected' : '' %>>96px</option>
-          <option value="120px" <%= test && test.results && test.results.impression_spacing==='120px' ? 'selected' : '' %>>120px</option>
-          <option value="180px" <%= test && test.results && test.results.impression_spacing==='180px' ? 'selected' : '' %>>180px</option>
-          <option value="240px" <%= test && test.results && test.results.impression_spacing==='240px' ? 'selected' : '' %>>240px</option>
-          <% if (test && test.results && test.results.impression_spacing && ['12px','24px','36px','48px','72px','96px','120px','180px','240px'].indexOf(test.results.impression_spacing) === -1) { %>
-            <option value="<%= test.results.impression_spacing %>" selected>Custom: <%= test.results.impression_spacing %></option>
-          <% } %>
-        </select>
+      <!-- Comments List -->
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; margin-top: 10px;">
+        <div style="font-weight: 700; font-size: 0.9em; color: #1e293b; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+          <span>Comments & Annotations</span>
+          <button type="button" class="button btn-secondary" onclick="addCommentRow()" style="height: 28px; padding: 0 10px; font-size: 0.8em; display: inline-flex; align-items: center; gap: 4px;">
+            <i class="fa fa-plus"></i> Add Comment
+          </button>
+        </div>
+        <div id="commentsList">
+          <% let commentEntries = [];
+             if (test && test.results && Array.isArray(test.results.comment_entries)) {
+               commentEntries = test.results.comment_entries;
+             } else if (test && test.results && (test.results.comment_yolk || test.results.comment_hemorrhage)) {
+               if (test.results.comment_yolk) commentEntries.push({ sign: '-', text: test.results.comment_yolk });
+               if (test.results.comment_hemorrhage) commentEntries.push({ sign: '-', text: test.results.comment_hemorrhage });
+             } else {
+               commentEntries = [{ sign: '-', text: 'Yolk sac' }, { sign: '-', text: 'Hemorrhage' }];
+             }
+          %>
+          <% commentEntries.forEach(function(c, idx){ %>
+            <div class="comment-row" style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
+              <select name="comment_sign[]" style="width: 70px; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 700; padding: 2px 6px;">
+                <option value="+" <%= c && c.sign === '+' ? 'selected' : '' %>>(+)</option>
+                <option value="-" <%= (!c || c.sign === '-' ) ? 'selected' : '' %>>(-)</option>
+              </select>
+              <input type="text" name="comment_text[]" placeholder="Comment description" value="<%= c && c.text ? c.text : '' %>" style="flex: 1; height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.9em;">
+              <button type="button" class="button btn-secondary" onclick="removeCommentRow(this)" style="height: 34px; padding: 0 10px; font-size: 0.82em; color: #ef4444; border-color: #fecaca;"><i class="fa fa-trash"></i></button>
+            </div>
+          <% }) %>
+        </div>
       </div>
-      <div style="font-size:12px;color:#666;margin-top:4px">Select a spacing value (examples: <strong>36px</strong>, <strong>2in</strong>); leave as <strong>Default</strong> to use the template's preset.</div>
+
     </div>
 
-    <hr>
-    <h4>Signatures / Performers</h4>
-    <%- include('../partials/signatory_select', { prefix: 'path', label: 'Radiologist', role: 'Radiologist', nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (test.results && test.results.pathName) ? test.results.pathName : (test.results && test.results.doctorName ? test.results.doctorName : ''), existingLicense: (test.results && test.results.pathLicense) ? test.results.pathLicense : (test.results && test.results.doctorLicense ? test.results.doctorLicense : '') }) %>
-
-    <div class="form-row">
-      <label>Designation</label>
-      <input type="text" name="doctorDesignation" placeholder="e.g. MD, FPCR - Radiologist" value="<%= test.results && test.results.doctorDesignation ? test.results.doctorDesignation : 'Radiologist' %>">
+    <!-- Parameter Card: Impression & Spacing -->
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0;">
+        <span style="font-weight: 700; font-size: 1em; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+          <i class="fa fa-clipboard-check" style="color: #10b981;"></i> Impression
+        </span>
+        <div style="display: flex; gap: 14px; align-items: center;">
+          <div style="display: flex; gap: 6px; align-items: center;">
+            <label style="font-size: 0.85em; font-weight: 600; color: #64748b; margin: 0;">Font Size:</label>
+            <select name="paragraphsFontSize" style="height: 30px; padding: 2px 6px; font-size: 0.85em; border-radius: 6px; border: 1px solid #cbd5e1;">
+              <option value="10px" <%= test.results && test.results.paragraphs_font_size==='10px' ? 'selected' : '' %>>10px</option>
+              <option value="12px" <%= test.results && test.results.paragraphs_font_size==='12px' ? 'selected' : '' %>>12px</option>
+              <option value="14px" <%= (!test.results || !test.results.paragraphs_font_size || test.results.paragraphs_font_size==='14px') ? 'selected' : '' %>>14px</option>
+              <option value="16px" <%= test.results && test.results.paragraphs_font_size==='16px' ? 'selected' : '' %>>16px</option>
+              <option value="18px" <%= test.results && test.results.paragraphs_font_size==='18px' ? 'selected' : '' %>>18px</option>
+            </select>
+          </div>
+          <div style="display: flex; gap: 6px; align-items: center;">
+            <label style="font-size: 0.85em; font-weight: 600; color: #64748b; margin: 0;">Footer Spacing:</label>
+            <select name="impression_spacing" style="height: 30px; padding: 2px 6px; font-size: 0.85em; border-radius: 6px; border: 1px solid #cbd5e1;">
+              <option value="" <%= !(test && test.results && test.results.impression_spacing) ? 'selected' : '' %>>Default</option>
+              <option value="12px" <%= test.results && test.results.impression_spacing==='12px' ? 'selected' : '' %>>12px</option>
+              <option value="24px" <%= test.results && test.results.impression_spacing==='24px' ? 'selected' : '' %>>24px</option>
+              <option value="36px" <%= test.results && test.results.impression_spacing==='36px' ? 'selected' : '' %>>36px</option>
+              <option value="48px" <%= test.results && test.results.impression_spacing==='48px' ? 'selected' : '' %>>48px</option>
+              <option value="72px" <%= test.results && test.results.impression_spacing==='72px' ? 'selected' : '' %>>72px</option>
+              <option value="96px" <%= test.results && test.results.impression_spacing==='96px' ? 'selected' : '' %>>96px</option>
+              <option value="120px" <%= test.results && test.results.impression_spacing==='120px' ? 'selected' : '' %>>120px</option>
+              <option value="180px" <%= test.results && test.results.impression_spacing==='180px' ? 'selected' : '' %>>180px</option>
+              <option value="240px" <%= test.results && test.results.impression_spacing==='240px' ? 'selected' : '' %>>240px</option>
+              <% if (test && test.results && test.results.impression_spacing && ['12px','24px','36px','48px','72px','96px','120px','180px','240px'].indexOf(test.results.impression_spacing) === -1) { %>
+                <option value="<%= test.results.impression_spacing %>" selected>Custom: <%= test.results.impression_spacing %></option>
+              <% } %>
+            </select>
+          </div>
+        </div>
+      </div>
+      <textarea name="impression" rows="4" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; font-size: 0.95em; line-height: 1.5; box-sizing: border-box;"><%= test && test.results && test.results.impression ? test.results.impression : 'Enter impression here.' %></textarea>
     </div>
 
-    <div class="form-row mt-12">
-      <a href="/tests/<%= test.id %>" class="button btn-secondary">Cancel</a>
-      <button class="button btn-primary">Save Results</button>
+    <!-- Signatures & Verification Section -->
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; margin-top: 24px;">
+      <div style="font-weight: 700; font-size: 0.88em; text-transform: uppercase; color: #475569; letter-spacing: 0.5px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+        <i class="fa fa-signature" style="color: #10b981;"></i> Reading Physician Signature & Verification
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+          <%- include('../partials/signatory_select', { prefix: 'path', label: 'Radiologist', role: 'Radiologist', nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (test.results && test.results.pathName) ? test.results.pathName : (test.results && test.results.doctorName ? test.results.doctorName : ''), existingLicense: (test.results && test.results.pathLicense) ? test.results.pathLicense : (test.results && test.results.doctorLicense ? test.results.doctorLicense : '') }) %>
+        </div>
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+          <label style="display: block; font-weight: 600; font-size: 0.88em; color: #475569; margin-bottom: 6px;">Professional Designation</label>
+          <input type="text" name="doctorDesignation" placeholder="e.g. MD, FPCR - Radiologist" value="<%= test.results && test.results.doctorDesignation ? test.results.doctorDesignation : 'Radiologist' %>" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 4px 10px; font-size: 0.9em; font-weight: 600;">
+        </div>
+      </div>
     </div>
+
+    <!-- Bottom Action Buttons -->
+    <div style="display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
+      <button type="button" onclick="if (window.history.length > 1) { window.history.back(); } else { window.location.href = '/tests'; }" class="button btn-secondary" style="height: 42px; padding: 0 20px; border-radius: 8px; font-weight: 600;">Cancel</button>
+      <button type="submit" class="button btn-primary" style="height: 42px; padding: 0 28px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+        <i class="fa fa-check"></i> Save Results
+      </button>
+    </div>
+
   </form>
 </div>
 
@@ -156,12 +195,12 @@
     div.className = 'comment-row';
     div.style.cssText = 'display:flex;gap:8px;align-items:center;margin-top:6px';
     div.innerHTML = `
-      <select name="comment_sign[]" style="width:64px">
+      <select name="comment_sign[]" style="width:70px;height:34px;border-radius:6px;border:1px solid #cbd5e1;font-weight:700;padding:2px 6px;">
         <option value="+">(+)</option>
         <option value="-" selected>(-)</option>
       </select>
-      <input type="text" name="comment_text[]" placeholder="Comment" style="flex:1">
-      <button type="button" class="button btn-small" onclick="removeCommentRow(this)">Remove</button>
+      <input type="text" name="comment_text[]" placeholder="Comment description" style="flex:1;height:34px;padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;font-size:0.9em;">
+      <button type="button" class="button btn-secondary" onclick="removeCommentRow(this)" style="height:34px;padding:0 10px;font-size:0.82em;color:#ef4444;border-color:#fecaca;"><i class="fa fa-trash"></i></button>
     `;
     container.appendChild(div);
   }

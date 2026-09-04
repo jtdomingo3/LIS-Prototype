@@ -86,7 +86,7 @@
 
     <!-- Bottom Action Buttons -->
     <div style="display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
-      <a href="/tests/<%= test.id %>" class="button btn-secondary" style="height: 42px; padding: 0 20px; border-radius: 8px; font-weight: 600;">Cancel</a>
+      <button type="button" onclick="if (window.history.length > 1) { window.history.back(); } else { window.location.href = '/tests'; }" class="button btn-secondary" style="height: 42px; padding: 0 20px; border-radius: 8px; font-weight: 600;">Cancel</button>
       <button type="submit" class="button btn-primary" style="height: 42px; padding: 0 28px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
         <i class="fa fa-check"></i> Save Results
       </button>

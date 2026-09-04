@@ -1,158 +1,182 @@
 <%- include('../partials/test_patient_banner', { test, patient: typeof patient !== 'undefined' ? patient : (test ? test.patient : null) }) %>
 
 <div class="card" style="padding: 24px 28px; border-radius: 16px; box-shadow: 0 4px 18px rgba(0,0,0,0.03); background: #ffffff; border: 1px solid #e2e8f0;">
-  <h3>Enter Ultrasound Results - <%= test.testId %></h3>
-
   <form action="/tests/<%= test.id %>/results" method="POST">
     <input type="hidden" name="_method" value="POST">
 
-    <div style="display:flex;gap:12px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
-      <div class="form-row" style="margin:0;">
-        <label>Date</label>
-        <input type="date" name="entryDate" value="<%= test && test.testDate ? (new Date(test.testDate)).toISOString().slice(0,10) : (new Date()).toISOString().slice(0,10) %>" readonly>
+    <!-- Timing & Meta Bar -->
+    <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; padding: 12px 18px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Date:</label>
+        <input type="date" name="entryDate" value="<%= test && test.testDate ? (new Date(test.testDate)).toISOString().slice(0,10) : (new Date()).toISOString().slice(0,10) %>" readonly style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 0.88em; width: 135px;">
       </div>
-      <div class="form-row" style="margin:0;">
-        <label>Time Requested</label>
-        <input type="time" name="timeRequested" value="<%= test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '' %>">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Time Requested:</label>
+        <input type="time" name="timeRequested" value="<%= test && test.testDate ? (new Date(test.testDate)).toTimeString().slice(0,5) : '' %>" style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 0.88em; width: 115px;">
       </div>
-      <div class="form-row" style="margin:0;">
-        <label>Time Released</label>
-        <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (new Date()).toTimeString().slice(0,5) %>">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Time Released:</label>
+        <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (new Date()).toTimeString().slice(0,5) %>" style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 0.88em; width: 115px;">
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; margin-left: auto; flex: 1; min-width: 240px; justify-content: flex-end;">
+        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Section Title:</label>
+        <input type="text" name="section_title" placeholder="Section title" value="<%= test && test.results && test.results.section_title ? test.results.section_title : 'ULTRASOUND RESULT' %>" style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.88em; font-weight: 600; width: 240px;">
       </div>
     </div>
 
-    <div class="form-row">
-      <label>Section Title</label>
-      <input type="text" name="section_title" placeholder="Section title" value="<%= test && test.results && test.results.section_title ? test.results.section_title : 'ULTRASOUND RESULT' %>">
-    </div>
-
-    <div class="form-row">
-      <label>Examination</label>
-      <select name="examination_select" onchange="updateExaminationField(this)">
-        <option value="">-- select --</option>
-        <option value="WAB-P UTZ" <%= test && test.results && test.results.examination==='WAB-P UTZ' ? 'selected' : '' %>>WAB-P UTZ</option>
-        <option value="KUBP-UTZ" <%= test && test.results && test.results.examination==='KUBP-UTZ' ? 'selected' : '' %>>KUBP-UTZ</option>
-        <option value="HBT UTZ" <%= test && test.results && test.results.examination==='HBT UTZ' ? 'selected' : '' %>>HBT UTZ</option>
-        <option value="Other" <%= test && test.results && test.results.examination && ['WAB-P UTZ','KUBP-UTZ','HBT UTZ'].indexOf(test.results.examination)===-1 && test.results.examination ? 'selected' : '' %>>Other (type...)</option>
-      </select>
-      <input type="text" name="examination_custom" id="examination_custom" placeholder="Type examination" style="display:none; margin-left:8px;" value="<%= (test && test.results && test.results.examination && ['WAB-P UTZ','KUBP-UTZ','HBT UTZ'].indexOf(test.results.examination)===-1) ? test.results.examination : '' %>">
-      <input type="hidden" name="examination" id="examination_hidden" value="<%= test && test.results && test.results.examination ? test.results.examination : '' %>">
-    </div>
-
-    <script>
-      function updateExaminationField() {
-        var sel = document.querySelector('[name="examination_select"]');
-        var custom = document.getElementById('examination_custom');
-        var hidden = document.getElementById('examination_hidden');
-        if (!sel || !hidden || !custom) return;
-        if (sel.value === 'Other') {
-          custom.style.display = 'inline-block';
-          hidden.value = custom.value || '';
-        } else {
-          custom.style.display = 'none';
-          hidden.value = sel.value || '';
-        }
-      }
-      document.addEventListener('DOMContentLoaded', function(){
-        updateExaminationField();
-        var sel = document.querySelector('[name="examination_select"]');
-        var custom = document.getElementById('examination_custom');
-        if (sel) sel.addEventListener('change', updateExaminationField);
-        if (custom) custom.addEventListener('input', function(){
-          var hidden = document.getElementById('examination_hidden'); if (hidden) hidden.value = custom.value;
-        });
-        // ensure hidden is synced on submit
-        var form = document.querySelector('form[action][method]');
-        if (form) form.addEventListener('submit', function(){ updateExaminationField(); });
-      });
-    </script>
-
-    <div style="margin-top:8px">
-      <label>Findings / Examination (paragraphs)</label>
-      <div style="margin-bottom:6px; display:flex; gap:8px; align-items:center;">
-        <button type="button" class="button btn-small" onclick="wrapSelection('<b>','</b>')">B</button>
-        <button type="button" class="button btn-small" onclick="wrapSelection('<i>','</i>')"><em>I</em></button>
-        <button type="button" class="button btn-small" onclick="wrapSelection('<u>','</u>')">U</button>
-        <button type="button" class="button btn-small" onclick="insertParagraph()">Insert Paragraph</button>
-        <label style="margin-left:12px">Font:</label>
-        <select name="paragraphsFontFamily">
-          <option value="Courier New" <%= test.results && test.results.paragraphs_font_family==='Courier New' ? 'selected' : '' %>>Courier New</option>
-          <option value="Times New Roman" <%= test.results && test.results.paragraphs_font_family==='Times New Roman' ? 'selected' : '' %>>Times New Roman</option>
-          <option value="Arial" <%= test.results && test.results.paragraphs_font_family==='Arial' ? 'selected' : '' %>>Arial</option>
-          <option value="Georgia" <%= test.results && test.results.paragraphs_font_family==='Georgia' ? 'selected' : '' %>>Georgia</option>
-        </select>
-        <label>Size:</label>
-        <select name="paragraphsFontSize">
-          <option value="10px" <%= test.results && test.results.paragraphs_font_size==='10px' ? 'selected' : '' %>>10px</option>
-          <option value="12px" <%= test.results && test.results.paragraphs_font_size==='12px' ? 'selected' : '' %>>12px</option>
-          <option value="14px" <%= (!test.results || !test.results.paragraphs_font_size || test.results.paragraphs_font_size==='14px') ? 'selected' : '' %>>14px</option>
-          <option value="16px" <%= test.results && test.results.paragraphs_font_size==='16px' ? 'selected' : '' %>>16px</option>
-          <option value="18px" <%= test.results && test.results.paragraphs_font_size==='18px' ? 'selected' : '' %>>18px</option>
-        </select>
+    <!-- Parameter Card: Ultrasound Examination & Findings -->
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
+      <div style="font-weight: 700; font-size: 1em; color: #0f172a; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <i class="fa fa-wave-square" style="color: #6366f1;"></i> Ultrasound Examination & Findings
+        </span>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Examination Type:</label>
+          <select name="examination_select" onchange="updateExaminationField(this)" style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.88em; font-weight: 600;">
+            <option value="">-- select --</option>
+            <option value="WAB-P UTZ" <%= test && test.results && test.results.examination==='WAB-P UTZ' ? 'selected' : '' %>>WAB-P UTZ</option>
+            <option value="KUBP-UTZ" <%= test && test.results && test.results.examination==='KUBP-UTZ' ? 'selected' : '' %>>KUBP-UTZ</option>
+            <option value="HBT UTZ" <%= test && test.results && test.results.examination==='HBT UTZ' ? 'selected' : '' %>>HBT UTZ</option>
+            <option value="Other" <%= test && test.results && test.results.examination && ['WAB-P UTZ','KUBP-UTZ','HBT UTZ'].indexOf(test.results.examination)===-1 && test.results.examination ? 'selected' : '' %>>Other (type...)</option>
+          </select>
+          <input type="text" name="examination_custom" id="examination_custom" placeholder="Type examination" style="display:none; height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.88em; width: 160px;" value="<%= (test && test.results && test.results.examination && ['WAB-P UTZ','KUBP-UTZ','HBT UTZ'].indexOf(test.results.examination)===-1) ? test.results.examination : '' %>">
+          <input type="hidden" name="examination" id="examination_hidden" value="<%= test && test.results && test.results.examination ? test.results.examination : '' %>">
+        </div>
       </div>
-      <textarea id="paragraphs" name="paragraphs" rows="8" spellcheck="true" style="width:100%; font-family:inherit;"><%= test && test.results && (test.results.paragraphs || test.results.findings || test.results.result) ? (test.results.paragraphs || test.results.findings || test.results.result) : 'Enter findings here.\n\nDescribe organ sizes, echotexture, focal lesions, measurements and other relevant observations.' %></textarea>
-    </div>
 
-    <div style="margin-top:8px">
-      <label>Impression</label>
-      <textarea name="impression" rows="4" style="width:100%"><%= test && test.results && (test.results.impression || test.results.impression_text) ? (test.results.impression || test.results.impression_text) : 'Enter impression here.' %></textarea>
-    </div>
+      <!-- Formatting Toolbar -->
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; padding: 6px 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+        <div style="display: flex; gap: 4px;">
+          <button type="button" class="button btn-secondary" onclick="wrapSelection('<b>','</b>')" style="height: 30px; width: 32px; padding: 0; font-weight: bold;">B</button>
+          <button type="button" class="button btn-secondary" onclick="wrapSelection('<i>','</i>')" style="height: 30px; width: 32px; padding: 0; font-style: italic;">I</button>
+          <button type="button" class="button btn-secondary" onclick="wrapSelection('<u>','</u>')" style="height: 30px; width: 32px; padding: 0; text-decoration: underline;">U</button>
+          <button type="button" class="button btn-secondary" onclick="insertParagraph()" style="height: 30px; padding: 0 10px; font-size: 0.82em;"><i class="fa fa-paragraph"></i> Paragraph</button>
+        </div>
 
-    <div style="margin-top:8px">
-      <label>Space between Impression and Footer</label>
-      <div>
-        <select name="impression_spacing" style="width:220px">
-          <option value="" <%= !(test && test.results && test.results.impression_spacing) ? 'selected' : '' %>>Default (template)</option>
-          <option value="12px" <%= test && test.results && test.results.impression_spacing==='12px' ? 'selected' : '' %>>12px</option>
-          <option value="24px" <%= test && test.results && test.results.impression_spacing==='24px' ? 'selected' : '' %>>24px</option>
-          <option value="36px" <%= test && test.results && test.results.impression_spacing==='36px' ? 'selected' : '' %>>36px</option>
-          <option value="48px" <%= test && test.results && test.results.impression_spacing==='48px' ? 'selected' : '' %>>48px</option>
-          <option value="72px" <%= test && test.results && test.results.impression_spacing==='72px' ? 'selected' : '' %>>72px</option>
-          <option value="96px" <%= test && test.results && test.results.impression_spacing==='96px' ? 'selected' : '' %>>96px</option>
-          <option value="120px" <%= test && test.results && test.results.impression_spacing==='120px' ? 'selected' : '' %>>120px</option>
-          <option value="180px" <%= test && test.results && test.results.impression_spacing==='180px' ? 'selected' : '' %>>180px</option>
-          <option value="240px" <%= test && test.results && test.results.impression_spacing==='240px' ? 'selected' : '' %>>240px</option>
-          <% if (test && test.results && test.results.impression_spacing && ['12px','24px','36px','48px','72px','96px','120px','180px','240px'].indexOf(test.results.impression_spacing) === -1) { %>
-            <option value="<%= test.results.impression_spacing %>" selected>Custom: <%= test.results.impression_spacing %></option>
-          <% } %>
-        </select>
+        <div style="display: flex; gap: 12px; align-items: center; margin-left: auto;">
+          <div style="display: flex; gap: 6px; align-items: center;">
+            <label style="font-size: 0.82em; font-weight: 600; color: #64748b; margin: 0;">Font:</label>
+            <select name="paragraphsFontFamily" style="height: 30px; padding: 2px 6px; font-size: 0.82em; border-radius: 6px; border: 1px solid #cbd5e1;">
+              <option value="Courier New" <%= test.results && test.results.paragraphs_font_family==='Courier New' ? 'selected' : '' %>>Courier New</option>
+              <option value="Times New Roman" <%= test.results && test.results.paragraphs_font_family==='Times New Roman' ? 'selected' : '' %>>Times New Roman</option>
+              <option value="Arial" <%= test.results && test.results.paragraphs_font_family==='Arial' ? 'selected' : '' %>>Arial</option>
+              <option value="Georgia" <%= test.results && test.results.paragraphs_font_family==='Georgia' ? 'selected' : '' %>>Georgia</option>
+            </select>
+          </div>
+          <div style="display: flex; gap: 6px; align-items: center;">
+            <label style="font-size: 0.82em; font-weight: 600; color: #64748b; margin: 0;">Size:</label>
+            <select name="paragraphsFontSize" style="height: 30px; padding: 2px 6px; font-size: 0.82em; border-radius: 6px; border: 1px solid #cbd5e1;">
+              <option value="10px" <%= test.results && test.results.paragraphs_font_size==='10px' ? 'selected' : '' %>>10px</option>
+              <option value="12px" <%= test.results && test.results.paragraphs_font_size==='12px' ? 'selected' : '' %>>12px</option>
+              <option value="14px" <%= (!test.results || !test.results.paragraphs_font_size || test.results.paragraphs_font_size==='14px') ? 'selected' : '' %>>14px</option>
+              <option value="16px" <%= test.results && test.results.paragraphs_font_size==='16px' ? 'selected' : '' %>>16px</option>
+              <option value="18px" <%= test.results && test.results.paragraphs_font_size==='18px' ? 'selected' : '' %>>18px</option>
+            </select>
+          </div>
+        </div>
       </div>
-      <div style="font-size:12px;color:#666;margin-top:4px">Select a spacing value (examples: <strong>36px</strong>, <strong>2in</strong>); leave as <strong>Default</strong> to use the template's preset.</div>
+
+      <textarea id="paragraphs" name="paragraphs" rows="9" spellcheck="true" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; font-size: 0.95em; line-height: 1.5; box-sizing: border-box; font-family: inherit;"><%= test && test.results && (test.results.paragraphs || test.results.findings || test.results.result) ? (test.results.paragraphs || test.results.findings || test.results.result) : 'Enter findings here.\n\nDescribe organ sizes, echotexture, focal lesions, measurements and other relevant observations.' %></textarea>
     </div>
 
-    <hr>
-    <h4>Signatures / Performers</h4>
-    <%- include('../partials/signatory_select', { prefix: 'path', label: 'Radiologist', role: 'Radiologist', nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (test.results && test.results.pathName) ? test.results.pathName : (test.results && test.results.doctorName ? test.results.doctorName : ''), existingLicense: (test.results && test.results.pathLicense) ? test.results.pathLicense : (test.results && test.results.doctorLicense ? test.results.doctorLicense : '') }) %>
-
-    <div class="form-row">
-      <label>Designation</label>
-      <input type="text" name="doctorDesignation" placeholder="e.g. MD, FPCR - Radiologist" value="<%= test.results && test.results.doctorDesignation ? test.results.doctorDesignation : 'Radiologist' %>">
+    <!-- Parameter Card: Impression & Spacing -->
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0;">
+        <span style="font-weight: 700; font-size: 1em; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+          <i class="fa fa-clipboard-check" style="color: #10b981;"></i> Impression
+        </span>
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <label style="font-size: 0.85em; font-weight: 600; color: #64748b; margin: 0;">Footer Spacing:</label>
+          <select name="impression_spacing" style="height: 30px; padding: 2px 6px; font-size: 0.85em; border-radius: 6px; border: 1px solid #cbd5e1;">
+            <option value="" <%= !(test && test.results && test.results.impression_spacing) ? 'selected' : '' %>>Default</option>
+            <option value="12px" <%= test && test.results && test.results.impression_spacing==='12px' ? 'selected' : '' %>>12px</option>
+            <option value="24px" <%= test && test.results && test.results.impression_spacing==='24px' ? 'selected' : '' %>>24px</option>
+            <option value="36px" <%= test && test.results && test.results.impression_spacing==='36px' ? 'selected' : '' %>>36px</option>
+            <option value="48px" <%= test && test.results && test.results.impression_spacing==='48px' ? 'selected' : '' %>>48px</option>
+            <option value="72px" <%= test && test.results && test.results.impression_spacing==='72px' ? 'selected' : '' %>>72px</option>
+            <option value="96px" <%= test && test.results && test.results.impression_spacing==='96px' ? 'selected' : '' %>>96px</option>
+            <option value="120px" <%= test && test.results && test.results.impression_spacing==='120px' ? 'selected' : '' %>>120px</option>
+            <option value="180px" <%= test && test.results && test.results.impression_spacing==='180px' ? 'selected' : '' %>>180px</option>
+            <option value="240px" <%= test && test.results && test.results.impression_spacing==='240px' ? 'selected' : '' %>>240px</option>
+            <% if (test && test.results && test.results.impression_spacing && ['12px','24px','36px','48px','72px','96px','120px','180px','240px'].indexOf(test.results.impression_spacing) === -1) { %>
+              <option value="<%= test.results.impression_spacing %>" selected>Custom: <%= test.results.impression_spacing %></option>
+            <% } %>
+          </select>
+        </div>
+      </div>
+      <textarea name="impression" rows="4" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; font-size: 0.95em; line-height: 1.5; box-sizing: border-box;"><%= test && test.results && (test.results.impression || test.results.impression_text) ? (test.results.impression || test.results.impression_text) : 'Enter impression here.' %></textarea>
     </div>
 
-    <div class="form-row mt-12">
-      <a href="/tests/<%= test.id %>" class="button btn-secondary">Cancel</a>
-      <button class="button btn-primary">Save Results</button>
+    <!-- Signatures & Verification Section -->
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; margin-top: 24px;">
+      <div style="font-weight: 700; font-size: 0.88em; text-transform: uppercase; color: #475569; letter-spacing: 0.5px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+        <i class="fa fa-signature" style="color: #10b981;"></i> Reading Physician Signature & Verification
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+          <%- include('../partials/signatory_select', { prefix: 'path', label: 'Radiologist', role: 'Radiologist', nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (test.results && test.results.pathName) ? test.results.pathName : (test.results && test.results.doctorName ? test.results.doctorName : ''), existingLicense: (test.results && test.results.pathLicense) ? test.results.pathLicense : (test.results && test.results.doctorLicense ? test.results.doctorLicense : '') }) %>
+        </div>
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+          <label style="display: block; font-weight: 600; font-size: 0.88em; color: #475569; margin-bottom: 6px;">Professional Designation</label>
+          <input type="text" name="doctorDesignation" placeholder="e.g. MD, FPCR - Radiologist" value="<%= test.results && test.results.doctorDesignation ? test.results.doctorDesignation : 'Radiologist' %>" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 4px 10px; font-size: 0.9em; font-weight: 600;">
+        </div>
+      </div>
     </div>
+
+    <!-- Bottom Action Buttons -->
+    <div style="display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
+      <button type="button" onclick="if (window.history.length > 1) { window.history.back(); } else { window.location.href = '/tests'; }" class="button btn-secondary" style="height: 42px; padding: 0 20px; border-radius: 8px; font-weight: 600;">Cancel</button>
+      <button type="submit" class="button btn-primary" style="height: 42px; padding: 0 28px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+        <i class="fa fa-check"></i> Save Results
+      </button>
+    </div>
+
   </form>
-
-  <script>
-    function wrapSelection(openTag, closeTag) {
-      var ta = document.getElementById('paragraphs');
-      var start = ta.selectionStart;
-      var end = ta.selectionEnd;
-      var selected = ta.value.substring(start, end);
-      var newText = openTag + selected + closeTag;
-      ta.value = ta.value.substring(0, start) + newText + ta.value.substring(end);
-      ta.focus();
-      ta.selectionStart = start + openTag.length;
-      ta.selectionEnd = start + openTag.length + selected.length;
-    }
-    function insertParagraph(){
-      var ta = document.getElementById('paragraphs');
-      var pos = ta.selectionStart || ta.value.length;
-      var p = '\n\n';
-      ta.value = ta.value.substring(0,pos) + p + ta.value.substring(pos);
-      ta.focus();
-    }
-  </script>
 </div>
+
+<script>
+  function updateExaminationField() {
+    var sel = document.querySelector('[name="examination_select"]');
+    var custom = document.getElementById('examination_custom');
+    var hidden = document.getElementById('examination_hidden');
+    if (!sel || !hidden || !custom) return;
+    if (sel.value === 'Other') {
+      custom.style.display = 'inline-block';
+      hidden.value = custom.value || '';
+    } else {
+      custom.style.display = 'none';
+      hidden.value = sel.value || '';
+    }
+  }
+  document.addEventListener('DOMContentLoaded', function(){
+    updateExaminationField();
+    var sel = document.querySelector('[name="examination_select"]');
+    var custom = document.getElementById('examination_custom');
+    if (sel) sel.addEventListener('change', updateExaminationField);
+    if (custom) custom.addEventListener('input', function(){
+      var hidden = document.getElementById('examination_hidden'); if (hidden) hidden.value = custom.value;
+    });
+    var form = document.querySelector('form[action][method]');
+    if (form) form.addEventListener('submit', function(){ updateExaminationField(); });
+  });
+
+  function wrapSelection(openTag, closeTag) {
+    var ta = document.getElementById('paragraphs');
+    var start = ta.selectionStart;
+    var end = ta.selectionEnd;
+    var selected = ta.value.substring(start, end);
+    var newText = openTag + selected + closeTag;
+    ta.value = ta.value.substring(0, start) + newText + ta.value.substring(end);
+    ta.focus();
+    ta.selectionStart = start + openTag.length;
+    ta.selectionEnd = start + openTag.length + selected.length;
+  }
+  function insertParagraph(){
+    var ta = document.getElementById('paragraphs');
+    var pos = ta.selectionStart || ta.value.length;
+    var p = '\n\n';
+    ta.value = ta.value.substring(0,pos) + p + ta.value.substring(pos);
+    ta.focus();
+  }
+</script>
