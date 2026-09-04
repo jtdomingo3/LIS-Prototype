@@ -621,6 +621,9 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       if (f === 'echocardiography-2d.ejs') {
         return { name: 'Echocardiography - 2D', testType: 'echocardiography-2d' };
       }
+      if (f === 'xray.ejs') {
+        return { name: 'X-ray', testType: 'X-ray' };
+      }
       const name = f.replace('.ejs', '').replace(/-/g, ' ');
       return { name: name.charAt(0).toUpperCase() + name.slice(1), testType: f.replace('.ejs','') };
     });
@@ -703,7 +706,7 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
         const amtRaw = req.body['amount_' + slug];
         const amt = amtRaw ? parseFloat(String(amtRaw).replace(/,/g,'')) : 0;
         const remark = req.body['remark_' + slug] || '';
-        const qtyRaw = parseInt(req.body['qty_' + slug] || '1', 10);
+        const qtyRaw = parseInt(req.body['qty_' + slug] || req.body['qty_' + slug.replace(/_/g, '')] || '1', 10);
         const qty = Math.max(1, Math.min(isNaN(qtyRaw) ? 1 : qtyRaw, 10));
         const area = mapTestToArea(raw);
         if (area) mappedAreas.add(area);
@@ -2584,6 +2587,9 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
       }
       if (f === 'blood-chemistry-sgpt-sgot.ejs') {
         return { name: 'Blood Chemistry - SGPT/SGOT', testType: 'Blood Chemistry - SGPT/SGOT' };
+      }
+      if (f === 'xray.ejs') {
+        return { name: 'X-ray', testType: 'X-ray' };
       }
       const name = f.replace('.ejs', '').replace(/-/g, ' ');
       return { name: name.charAt(0).toUpperCase() + name.slice(1), testType: name };

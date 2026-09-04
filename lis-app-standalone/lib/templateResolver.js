@@ -68,11 +68,21 @@ function getResultTemplate(test) {
     template = 'ultrasound-pelvic';
   } else if (type.includes('biophysical') || type.includes('ultrasound-biophysical')) {
     template = 'ultrasound-biophysical';
+  } else if (type.includes('ultrasound') || type.includes('ultra')) {
+    if (test && test.template && typeof test.template === 'string') {
+      template = test.template;
+    } else if (test && test.results && test.results.ultrasoundType) {
+      template = test.results.ultrasoundType;
+    } else {
+      template = 'ultrasound-abd-kubp-hbt';
+    }
   }
 
-  // Allow overriding with explicit `template` field on test
+  // Allow overriding with explicit `template` field on test or results.ultrasoundType
   if (test && test.template && typeof test.template === 'string') {
     template = test.template;
+  } else if (test && test.results && test.results.ultrasoundType) {
+    template = test.results.ultrasoundType;
   }
 
   return template;

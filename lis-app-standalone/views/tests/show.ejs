@@ -131,17 +131,19 @@
              if (key === 'requestedByName') label = 'Approved By Name';
              if (key === 'requestedByLicense') label = 'Approved By License';
              const val = test.results[key];
+             const isHtml = typeof val === 'string' && /<\/?[a-z][\s\S]*>/i.test(val);
+             const isRichBlock = /^(paragraphs|findings|impression|conclusion|result)$/i.test(key) || isHtml || (typeof val === 'string' && val.length > 80);
         %>
-          <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: flex-start; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-            <span style="font-size: 0.82em; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.3px; padding-right: 12px; flex-shrink: 0;">
+          <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); <%= isRichBlock ? 'grid-column: 1 / -1; display: flex; flex-direction: column; gap: 8px;' : 'display: flex; justify-content: space-between; align-items: flex-start;' %>">
+            <span style="font-size: 0.82em; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.3px; <%= isRichBlock ? 'border-bottom: 1px solid #f1f5f9; padding-bottom: 6px; width: 100%; display: flex; align-items: center; gap: 6px;' : 'padding-right: 12px; flex-shrink: 0;' %>">
+              <% if (isRichBlock) { %><i class="fa fa-align-left" style="color: #6366f1;"></i><% } %>
               <%= label %>
             </span>
-            <span style="font-size: 0.95em; font-weight: 600; color: #0f172a; text-align: right; word-break: break-word;">
+            <div style="font-size: 0.95em; font-weight: <%= isRichBlock ? '500' : '600' %>; color: #0f172a; <%= isRichBlock ? 'text-align: left; line-height: 1.55; width: 100%;' : 'text-align: right; word-break: break-word;' %>">
               <%
                 let displayVal = '-';
                 if (val !== null && val !== undefined && val !== '') {
                   if (Array.isArray(val)) {
-                    // comment_entries: [{sign, text}] → readable list like "- Yolk sac; - Hemorrhage"
                     if (val.length > 0 && typeof val[0] === 'object' && ('sign' in val[0] || 'text' in val[0])) {
                       displayVal = val.map(function(c){ return (c.sign || '-') + ' ' + (c.text || ''); }).join('; ');
                     } else if (val.length > 0) {
@@ -150,7 +152,6 @@
                       displayVal = '-';
                     }
                   } else if (typeof val === 'object') {
-                    // Other objects: show key: value pairs cleanly
                     const parts = Object.keys(val).filter(k => val[k] !== '' && val[k] !== null && val[k] !== undefined).map(k => k + ': ' + val[k]);
                     displayVal = parts.length ? parts.join(', ') : '-';
                   } else {
@@ -158,8 +159,14 @@
                   }
                 }
               %>
-              <%= displayVal %>
-            </span>
+              <% if (isHtml) { %>
+                <%- val %>
+              <% } else if (isRichBlock && typeof displayVal === 'string' && displayVal.includes('\n')) { %>
+                <%- displayVal.split(/\r?\n\r?\n/).map(p => '<p style="margin: 0 0 8px 0;">' + p.replace(/\r?\n/g, '<br>') + '</p>').join('') %>
+              <% } else { %>
+                <%= displayVal %>
+              <% } %>
+            </div>
           </div>
         <% }); %>
       </div>

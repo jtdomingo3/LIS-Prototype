@@ -1,8 +1,41 @@
 <%- include('../partials/test_patient_banner', { test, patient: typeof patient !== 'undefined' ? patient : (test ? test.patient : null) }) %>
 
+<%
+  let orderRemark = '';
+  if (test) {
+    if (typeof test.remarks === 'string' && test.remarks.trim()) orderRemark = test.remarks.trim();
+    else if (typeof test.remark === 'string' && test.remark.trim()) orderRemark = test.remark.trim();
+    else if (typeof test.notes === 'string' && test.notes.trim()) orderRemark = test.notes.trim();
+    else if (Array.isArray(test.requestedTests) && test.requestedTests.length) {
+      const rems = test.requestedTests.map(rt => (rt.remarks || rt.remark || '').trim()).filter(Boolean);
+      if (rems.length) orderRemark = Array.from(new Set(rems)).join(', ');
+    }
+    if (!orderRemark && test.results && typeof test.results.remarks === 'string' && test.results.remarks.trim()) {
+      orderRemark = test.results.remarks.trim();
+    }
+  }
+  const currentExam = (test && (test.examination || test.examinationName)) ? (test.examination || test.examinationName) : (test && test.results && test.results.examination ? test.results.examination : (orderRemark || ''));
+%>
+
 <div class="card" style="padding: 24px 28px; border-radius: 16px; box-shadow: 0 4px 18px rgba(0,0,0,0.03); background: #ffffff; border: 1px solid #e2e8f0;">
   <form action="/tests/<%= test.id %>/results" method="POST">
     <input type="hidden" name="_method" value="POST">
+
+    <!-- Prominent Order Note / Reception Remarks Banner -->
+    <% if (orderRemark) { %>
+      <div style="margin-bottom: 20px; padding: 14px 20px; background: #eff6ff; border: 1px solid #bfdbfe; border-left: 5px solid #2563eb; border-radius: 10px; color: #1e40af; font-size: 0.95em; display: flex; align-items: center; justify-content: space-between; gap: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <i class="fa fa-notes-medical" style="color: #2563eb; font-size: 1.4em; flex-shrink: 0;"></i>
+          <div>
+            <div style="font-size: 0.78em; font-weight: 700; text-transform: uppercase; color: #1d4ed8; letter-spacing: 0.5px;">Reception Order Note / Requested Site:</div>
+            <div style="font-weight: 600; color: #1e3a8a; font-size: 1.05em; margin-top: 2px;"><%= orderRemark %></div>
+          </div>
+        </div>
+        <button type="button" onclick="setExamination('<%= orderRemark.replace(/'/g, "\\'") %>')" class="button btn-secondary" style="height: 32px; padding: 0 12px; font-size: 0.82em; background: #ffffff; border-color: #93c5fd; color: #1d4ed8; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+          <i class="fa fa-arrow-down"></i> Use as Examination
+        </button>
+      </div>
+    <% } %>
 
     <!-- Timing & Meta Bar -->
     <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; padding: 12px 18px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;">
@@ -34,13 +67,24 @@
       </div>
 
       <!-- Examination Field -->
-      <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f1f5f9; gap: 14px; margin-bottom: 12px;">
-        <div style="min-width: 160px;">
-          <label style="margin: 0; font-weight: 600; font-size: 0.92em; color: #1e293b;">Examination Requested</label>
-          <div style="font-size: 0.74em; color: #64748b;">e.g. CHEST PA, SKULL AP/LAT</div>
+      <div class="result-input-row" style="display: flex; flex-direction: column; padding: 8px 0 14px 0; border-bottom: 1px solid #f1f5f9; gap: 8px; margin-bottom: 14px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px;">
+          <div style="min-width: 170px;">
+            <label style="margin: 0; font-weight: 600; font-size: 0.92em; color: #1e293b;">Examination Requested</label>
+            <div style="font-size: 0.74em; color: #64748b;">CHEST PA, SKULL AP/LAT, etc.</div>
+          </div>
+          <div style="flex: 1;">
+            <input type="text" id="examinationInput" name="examination" placeholder="CHEST PA / SKULL AP/LAT + WATERS" value="<%= currentExam %>" style="height: 38px; padding: 6px 12px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.95em; width: 100%; box-sizing: border-box;">
+          </div>
         </div>
-        <div style="flex: 1;">
-          <input type="text" name="examination" placeholder="e.g. CHEST PA / SKULL AP/LAT + WATERS" value="<%= test && (test.examination || test.examinationName) ? (test.examination || test.examinationName) : (test && test.results && test.results.examination ? test.results.examination : '') %>" style="height: 38px; padding: 6px 12px; font-weight: 600; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.95em; width: 100%;">
+
+        <!-- Quick Presets -->
+        <div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding-left: 2px;">
+          <span style="font-size: 0.74em; font-weight: 700; color: #64748b; text-transform: uppercase;">Quick Presets:</span>
+          <% const commonExaminations = ['CHEST PA', 'CHEST AP/LAT', 'SKULL AP/LAT', 'CERVICAL SPINE AP/LAT', 'LUMBAR SPINE AP/LAT', 'PELVIS AP', 'KNEE AP/LAT', 'ANKLE AP/LAT', 'FOOT AP/LAT', 'HAND AP/LAT', 'WRIST AP/LAT', 'PLAIN ABDOMEN (KUB)']; %>
+          <% commonExaminations.forEach(exam => { %>
+            <button type="button" class="xray-preset-chip" onclick="setExamination('<%= exam %>')" style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 14px; padding: 3px 10px; font-size: 0.75em; font-weight: 600; color: #334155; cursor: pointer; transition: all 0.15s ease;"><%= exam %></button>
+          <% }) %>
         </div>
       </div>
 
@@ -133,5 +177,12 @@
     var p = '<p>New paragraph...</p>';
     ta.value = ta.value.substring(0,pos) + p + ta.value.substring(pos);
     ta.focus();
+  }
+  function setExamination(val){
+    var el = document.getElementById('examinationInput') || document.querySelector('input[name="examination"]');
+    if (el) {
+      el.value = val;
+      el.focus();
+    }
   }
 </script>

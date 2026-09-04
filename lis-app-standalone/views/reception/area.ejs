@@ -58,6 +58,9 @@
                            if (areaList.length) {
                              areaList.forEach(rt => { const amt = Number(rt.amount || 0); %>
                               <li style="margin-bottom:4px;"><%= (rt.label || '').replace(/-/g,' ').replace(/\b\w/g, function(ch){return ch.toUpperCase();}) %> <span style="color:var(--text-gray);">(<%= rt.lab || 'clinical' %>)</span>
+                                 <% if (rt.remarks || rt.remark) { %>
+                                   <span style="font-size:0.82em; color:#0284c7; background:#f0f9ff; border:1px solid #bae6fd; padding:2px 6px; border-radius:4px; margin-left:6px; font-weight:600;"><i class="fa fa-info-circle"></i> <%= rt.remarks || rt.remark %></span>
+                                 <% } %>
                                  <div style="margin-top:4px; font-size:0.85em;">
                                   <% if (areaName !== 'Payment Area') { %>
                                    <form action="/reception/assign" method="POST" style="display:inline-block; margin-right:6px;">
@@ -78,6 +81,9 @@
                            } else {
                              const singleLabel = (t.testType || 'Test').toString().replace(/-/g,' ').replace(/\b\w/g, function(ch){return ch.toUpperCase();}); %>
                              <li style="margin-bottom:4px;"><%= singleLabel %>
+                               <% const singleRem = t.notes || t.remarks || ''; if (singleRem) { %>
+                                 <span style="font-size:0.82em; color:#0284c7; background:#f0f9ff; border:1px solid #bae6fd; padding:2px 6px; border-radius:4px; margin-left:6px; font-weight:600;"><i class="fa fa-info-circle"></i> <%= singleRem %></span>
+                               <% } %>
                                <div style="margin-top:4px; font-size:0.85em;">
                                  <% if (areaName !== 'Payment Area') { %>
                                  <form action="/reception/assign" method="POST" style="display:inline-block; margin-right:6px;">
