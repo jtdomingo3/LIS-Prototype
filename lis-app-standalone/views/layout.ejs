@@ -1285,6 +1285,10 @@
             // initialize as disconnected until EventSource opens
             setConn(false);
 
+            // Reload cooldown: track when this page loaded to prevent rapid reload storms
+            const _pageLoadTs = Date.now();
+            const RELOAD_COOLDOWN_MS = 3000; // minimum 3s between reloads
+
             function connect(){
                 if (isPageUnloading) return;
                 // Prevent duplicate concurrent EventSource connections on the same tab
@@ -1325,13 +1329,14 @@
                                     const isExplicitlyOff = (userAutoRefresh === '0');
                                     const isUserEditing = document.activeElement && (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName) || document.activeElement.isContentEditable);
 
-                                    if (!isExplicitlyOff && isLivePage && !isUserEditing && !isEditingPage && !isPageUnloading) {
+                                    const reloadCooldownOk = (Date.now() - _pageLoadTs) > RELOAD_COOLDOWN_MS;
+                                    if (!isExplicitlyOff && isLivePage && !isUserEditing && !isEditingPage && !isPageUnloading && reloadCooldownOk) {
                                         if (window._sseRefreshTimer) clearTimeout(window._sseRefreshTimer);
                                         window._sseRefreshTimer = setTimeout(() => {
                                             if (isPageUnloading) return;
                                             isPageUnloading = true;
                                             try { window.location.reload(); } catch(e){}
-                                        }, 300);
+                                        }, 500);
                                     }
                                 } catch(e){}
                                 return;
@@ -1417,11 +1422,12 @@
 
                                 // Check if this browser tab just completed a form action (prevent double-reload on the active tab)
                                 const lastLocalAction = parseInt(sessionStorage.getItem('lis-last-local-action') || '0', 10);
-                                const isRecentLocalAction = (Date.now() - lastLocalAction < 2200);
+                                // Enforce reload cooldown to prevent rapid reconnect storms
+                                const reloadCooldown = (Date.now() - _pageLoadTs) > RELOAD_COOLDOWN_MS;
 
-                                if (enabled && !isUserEditing && !isEditingPage && !isPageUnloading && !isRecentLocalAction) {
+                                if (enabled && !isUserEditing && !isEditingPage && !isPageUnloading && !isRecentLocalAction && reloadCooldown) {
                                     if (window._sseRefreshTimer) clearTimeout(window._sseRefreshTimer);
-                                    const debounceDelay = Math.max(300, (sseCfg && sseCfg.refreshDebounceMs ? sseCfg.refreshDebounceMs : 800));
+                                    const debounceDelay = Math.max(500, (sseCfg && sseCfg.refreshDebounceMs ? sseCfg.refreshDebounceMs : 1200));
                                     window._sseRefreshTimer = setTimeout(() => {
                                         if (isPageUnloading) return;
                                         isPageUnloading = true;
