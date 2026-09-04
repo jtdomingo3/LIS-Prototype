@@ -163,9 +163,13 @@
                   <a href="/tests/new?patient=<%= patient.id %>&returnTo=/patients" class="button btn-small btn-primary" style="padding:6px 12px; font-size:0.82em; font-weight:600;">Assign Test</a>
                 <% } %>
                 <a href="/patients/<%= patient.id %>/edit" class="button btn-small btn-orange" style="padding:6px 12px; font-size:0.82em;">Edit</a>
-                <form action="/patients/<%= patient.id %>?_method=DELETE" method="POST" style="display:inline-block; margin:0;" onsubmit="return confirm('⚠️ Are you sure you want to delete patient <%= fullName.trim() %>? This will remove all demographic records.');">
-                  <button type="submit" class="button btn-small btn-danger" style="padding:6px 10px; font-size:0.82em; margin-left:4px;" title="Delete patient">Delete</button>
-                </form>
+                <% if (patient.hasTestResults) { %>
+                  <button type="button" class="button btn-small btn-cannot-delete" data-patient-id="<%= patient.id %>" data-patient-name="<%= fullName.trim() %>" style="padding:6px 10px; font-size:0.82em; margin-left:4px; background:#f8fafc; color:#94a3b8; border:1px solid #cbd5e1; cursor:pointer;" title="Patient has active test records with recorded results">Delete</button>
+                <% } else { %>
+                  <form action="/patients/<%= patient.id %>?_method=DELETE" method="POST" style="display:inline-block; margin:0;" data-confirm="Are you sure you want to delete patient <%= fullName.trim() %>? This will permanently remove their demographic profile and any unperformed test orders." data-confirm-title="Delete Patient Record" data-confirm-btn="Yes, Delete Patient">
+                    <button type="submit" class="button btn-small btn-danger" style="padding:6px 10px; font-size:0.82em; margin-left:4px;" title="Delete patient">Delete</button>
+                  </form>
+                <% } %>
               </td>
             </tr>
           <% }); %>
@@ -220,3 +224,47 @@
     </div>
   <% } %>
 </div>
+
+<script>
+  function showCannotDeletePatient(patientId, patientName) {
+    const html = `
+      <div style="text-align:center; margin-bottom:14px;">
+        <div style="font-size:1.1rem; font-weight:700; color:#0f172a; margin-bottom:6px;">${patientName}</div>
+        <span style="display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:12px; font-size:0.75rem; font-weight:700; background:#fee2e2; color:#b91c1c; border:1px solid #fecaca;">
+          <i class="fa fa-lock" style="font-size:0.7rem;"></i> Recorded Test Results Exist
+        </span>
+      </div>
+      <div style="color:#475569; font-size:0.92rem; line-height:1.55; margin-bottom:14px;">
+        This patient has laboratory or radiology test records with completed clinical results. To preserve patient history and data integrity, profiles with recorded clinical results cannot be deleted.
+      </div>
+      <div style="padding:10px 14px; background:#fffbeb; border:1px solid #fef3c7; border-radius:10px; font-size:0.85rem; color:#92400e; display:flex; align-items:flex-start; gap:10px; line-height:1.45;">
+        <i class="fa fa-triangle-exclamation" style="margin-top:2px; font-size:0.95rem; flex-shrink:0;"></i>
+        <span>To delete this patient profile, all recorded test results must first be cleared or deleted in their test records.</span>
+      </div>
+    `;
+
+    if (typeof window.showCustomAlert === 'function') {
+      window.showCustomAlert(html, {
+        title: 'Cannot Delete Patient',
+        type: 'warning',
+        icon: 'fa fa-shield-halved',
+        iconBg: '#fef3c7',
+        iconColor: '#d97706',
+        btnText: 'Close',
+        secondaryBtnText: 'View Patient Tests',
+        secondaryHref: '/patients/' + encodeURIComponent(patientId)
+      });
+    } else {
+      window.location.href = '/patients/' + encodeURIComponent(patientId);
+    }
+  }
+
+  document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.btn-cannot-delete');
+    if (!btn) return;
+    e.preventDefault();
+    const patientId = btn.getAttribute('data-patient-id');
+    const patientName = btn.getAttribute('data-patient-name');
+    showCannotDeletePatient(patientId, patientName);
+  });
+</script>

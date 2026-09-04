@@ -123,20 +123,62 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
       }
     });
 
-    // Attach hasTests flag per patient so the view can decide which action button to show.
-    // Compute tests count per patient
+// Helper: Check if a test has actual recorded clinical result values
+function testHasResultValues(test) {
+  if (!test) return false;
+  const statusLower = String(test.status || '').toLowerCase();
+  if (statusLower === 'completed') return true;
+  if (!test.results || typeof test.results !== 'object') return false;
+  
+  // Exclude purely metadata/formatting keys
+  const metaKeys = new Set(['signatures', 'paragraphs_font_family', 'paragraphs_font_size', 'impression_spacing', 'ultrasoundType', 'section_title']);
+  const resultKeys = Object.keys(test.results).filter(k => !metaKeys.has(k));
+  if (resultKeys.length === 0) return false;
+
+  return resultKeys.some(k => {
+    const val = test.results[k];
+    if (val === null || val === undefined || val === '') return false;
+    if (Array.isArray(val)) return val.length > 0;
+    if (typeof val === 'object') {
+      return Object.entries(val).some(([subK, subV]) => {
+        if (subK === 'unit' || subK === 'normalRange' || subK === 'flag') return false;
+        return subV !== null && subV !== undefined && String(subV).trim() !== '';
+      });
+    }
+    return String(val).trim() !== '';
+  });
+}
+
+    // Attach hasTests and hasTestResults flag per patient so the view can decide which action buttons to show
     try {
       const testsCountByPatient = {};
+      const testsWithResultsByPatient = {};
       const allTests = (global.db && typeof global.db.getTests === 'function')
         ? global.db.getTests()
         : await Test.find({});
       if (Array.isArray(allTests)) {
-        allTests.forEach(t => { if (t && t.patient) testsCountByPatient[String(t.patient)] = (testsCountByPatient[String(t.patient)] || 0) + 1; });
+        allTests.forEach(t => {
+          if (t && t.patient) {
+            const pKey = String(t.patient);
+            testsCountByPatient[pKey] = (testsCountByPatient[pKey] || 0) + 1;
+            if (testHasResultValues(t)) {
+              testsWithResultsByPatient[pKey] = (testsWithResultsByPatient[pKey] || 0) + 1;
+            }
+          }
+        });
       }
 
       patients = patients.map(p => {
         const plain = (p && typeof p.toJSON === 'function') ? p.toJSON() : p;
-        return Object.assign({}, plain, { hasTests: !!testsCountByPatient[String(plain.id)] });
+        const pId = String(plain.id);
+        const pCode = plain.patientCode ? String(plain.patientCode) : null;
+        const pPid = plain.patientId ? String(plain.patientId) : null;
+        const hasTests = !!(testsCountByPatient[pId] || (pCode && testsCountByPatient[pCode]) || (pPid && testsCountByPatient[pPid]));
+        const hasResults = !!(testsWithResultsByPatient[pId] || (pCode && testsWithResultsByPatient[pCode]) || (pPid && testsWithResultsByPatient[pPid]));
+        return Object.assign({}, plain, { 
+          hasTests,
+          hasTestResults: hasResults
+        });
       });
     } catch (e) {
       console.warn('Failed to compute patient test flags:', e);
@@ -179,7 +221,7 @@ router.get('/new', requireAuth, canAccessPatient, (req, res) => {
         const path = require('path');
         const resultsDir = path.join(__dirname, '..', 'views', 'reports', 'results');
         const allowed = [
-          'fecalysis.ejs','esr.ejs','fecal-occult-blood.ejs','urinalysis.ejs','ct-bt.ejs','blood-typing.ejs','pregnancy-test.ejs','dengue-duo.ejs','thyroid-panel.ejs','blood-chemistry.ejs','pt-aptt.ejs','xray.ejs','ecg.ejs','hematology.ejs','serology.ejs','ultrasound-abd-kubp-hbt.ejs','echocardiography-2d.ejs','ultrasound-transvaginal.ejs','ultrasound-biophysical.ejs','ultrasound-1st-trimester-obstetrics.ejs','ultrasound-pelvic.ejs','ultrasound-pelvic-biometry.ejs','drugtest.ejs'
+          'fecalysis.ejs','esr.ejs','fecal-occult-blood.ejs','urinalysis.ejs','ct-bt.ejs','blood-typing.ejs','pregnancy-test.ejs','dengue-duo.ejs','thyroid-panel.ejs','blood-chemistry.ejs','pt-aptt.ejs','xray.ejs','ecg.ejs','hematology.ejs','serology.ejs','echocardiography-2d.ejs','drugtest.ejs'
         ];
         try {
           const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
@@ -187,16 +229,11 @@ router.get('/new', requireAuth, canAccessPatient, (req, res) => {
             if (f === 'drugtest.ejs') return { name: 'Drug Test', testType: 'drugtest' };
             if (f === 'blood-chemistry-bun-crea.ejs') return { name: 'Blood Chemistry - BUN/Crea', testType: 'BUN/Creat' };
             if (f === 'blood-chemistry-sgpt-sgot.ejs') return { name: 'Blood Chemistry - SGPT/SGOT', testType: 'Blood Chemistry - SGPT/SGOT' };
-            if (f === 'ultrasound-abd-kubp-hbt.ejs') return { name: 'Ultrasound - ABD / KUBP / HBT', testType: 'ultrasound-abd-kubp-hbt' };
             if (f === 'echocardiography-2d.ejs') return { name: 'Echocardiography - 2D', testType: 'echocardiography-2d' };
-            if (f === 'ultrasound-transvaginal.ejs') return { name: 'Ultrasound - Transvaginal', testType: 'ultrasound-transvaginal' };
-            if (f === 'ultrasound-biophysical.ejs') return { name: 'Ultrasound - Biophysical', testType: 'ultrasound-biophysical' };
-            if (f === 'ultrasound-pelvic.ejs') return { name: 'Ultrasound - Pelvic Ultrasound', testType: 'ultrasound-pelvic' };
-            if (f === 'ultrasound-pelvic-biometry.ejs') return { name: 'Ultrasound - Pelvic Biometry', testType: 'ultrasound-pelvic-biometry' };
-            if (f === 'ultrasound-1st-trimester-obstetrics.ejs') return { name: 'Ultrasound - Trimester Obstetrics', testType: 'ultrasound-trimester-obstetrics' };
             const name = f.replace('.ejs', '').replace(/-/g, ' ');
             return { name: name.charAt(0).toUpperCase() + name.slice(1), testType: f.replace('.ejs','') };
           });
+          staticTemplates.push({ name: 'Ultrasound', testType: 'Ultrasound' });
           templates = templates.concat(staticTemplates);
         } catch (e) {}
       } catch (e) {
@@ -618,23 +655,43 @@ router.delete('/:id', requireAuth, canAccessPatient, async (req, res) => {
     if (!patient) patient = await Patient.findOne({ id: targetId });
 
     const allTests = await Test.find();
+    let patientTests = [];
     if (patient) {
-      const patientTests = allTests.filter(t => t && (
+      patientTests = allTests.filter(t => t && (
         t.patient === patient.id || 
         t.patient === patient._id || 
         t.patient === patient.patientId || 
         t.patient === patient.patientCode ||
         t.patient === targetId
       ));
-      for (const t of patientTests) {
-        await Test.findByIdAndDelete(t.id);
+    } else {
+      patientTests = allTests.filter(t => t && t.patient === targetId);
+    }
+
+    // Protection: Disallow deleting patient if any associated test has recorded result values
+    const testsWithResults = patientTests.filter(t => testHasResultValues(t));
+    if (testsWithResults.length > 0) {
+      const testNames = testsWithResults.map(t => `${t.testType || 'Test'} (${t.testId || t.id})`).slice(0, 3).join(', ');
+      const moreCount = testsWithResults.length > 3 ? ` and ${testsWithResults.length - 3} more` : '';
+      const msg = `Cannot delete patient: Patient has ${testsWithResults.length} test record(s) with recorded results [${testNames}${moreCount}]. Please clear or delete all test results first before deleting this patient.`;
+
+      const isSyncClient = !!(req.headers['x-lis-sync-email'] || req.headers['x-lis-sync-hash'] || req.headers['x-lis-sync-replay']);
+      const isExplicitJson = req.xhr || (req.headers['accept'] && req.headers['accept'].includes('application/json') && !req.headers['accept'].includes('text/html'));
+      if (isSyncClient || isExplicitJson) {
+        return res.status(400).json({ success: false, error: msg });
       }
+
+      req.flash('error_msg', msg);
+      return res.redirect('/patients');
+    }
+
+    // If all tests are empty (or no tests exist), delete empty test orders and patient
+    for (const t of patientTests) {
+      await Test.findByIdAndDelete(t.id);
+    }
+    if (patient) {
       await Patient.findByIdAndDelete(patient.id);
     } else {
-      const patientTests = allTests.filter(t => t && t.patient === targetId);
-      for (const t of patientTests) {
-        await Test.findByIdAndDelete(t.id);
-      }
       await Patient.findByIdAndDelete(targetId);
     }
 

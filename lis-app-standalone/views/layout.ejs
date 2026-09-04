@@ -1587,15 +1587,15 @@
         updateFsButton();
 </script>
 
-    <!-- Global Custom Confirmation Modal -->
-    <div id="customConfirmModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15, 23, 42, 0.6); backdrop-filter:blur(4px); z-index:999999; align-items:center; justify-content:center;">
-      <div style="background:#ffffff; width:90%; max-width:440px; border-radius:16px; padding:28px; box-shadow:0 25px 50px -12px rgba(0, 0, 0, 0.25); text-align:center; border: 1px solid #e2e8f0;">
+    <!-- Global Custom Confirmation / Alert Modal -->
+    <div id="customConfirmModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15, 23, 42, 0.6); backdrop-filter:blur(4px); z-index:999999; align-items:center; justify-content:center; padding:16px;">
+      <div style="background:#ffffff; width:100%; max-width:440px; border-radius:16px; padding:28px; box-shadow:0 25px 50px -12px rgba(0, 0, 0, 0.25); text-align:center; border: 1px solid #e2e8f0;">
         <div id="customConfirmIconWrapper" style="width:60px; height:60px; background:#fee2e2; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 18px; color:#ef4444; font-size:26px;">
           <i id="customConfirmIcon" class="fa fa-exclamation-triangle"></i>
         </div>
         <h3 id="customConfirmTitle" style="margin:0 0 12px; color:#0f172a; font-size:1.25rem; font-weight:700;">Confirm Action</h3>
         <div id="customConfirmMessage" style="margin:0 0 24px; color:#475569; font-size:0.92rem; line-height:1.55; text-align:left; background:#f8fafc; border:1px solid #f1f5f9; border-radius:10px; padding:14px 16px;">Are you sure you want to perform this action?</div>
-        <div style="display:flex; gap:12px; justify-content:center;">
+        <div id="customConfirmActions" style="display:flex; gap:12px; justify-content:center;">
           <button id="customConfirmCancelBtn" type="button" class="button btn-secondary" style="flex:1; padding:12px; font-weight:600; border-radius:10px;">Cancel</button>
           <button id="customConfirmOkBtn" type="button" class="button btn-danger" style="flex:1; padding:12px; font-weight:600; border-radius:10px;">Confirm</button>
         </div>
@@ -1612,6 +1612,39 @@
         const cancelBtn = document.getElementById('customConfirmCancelBtn');
         const okBtn = document.getElementById('customConfirmOkBtn');
         let pendingCallback = null;
+        let secondaryCallback = null;
+
+        function setIcon(type, iconClass, bg, color) {
+          if (!iconWrapper || !iconEl) return;
+          if (iconClass) {
+            iconEl.className = iconClass;
+          } else if (type === 'warning') {
+            iconEl.className = 'fa fa-triangle-exclamation';
+          } else if (type === 'primary' || type === 'info') {
+            iconEl.className = 'fa fa-circle-info';
+          } else if (type === 'success') {
+            iconEl.className = 'fa fa-circle-check';
+          } else {
+            iconEl.className = 'fa fa-triangle-exclamation';
+          }
+
+          if (bg) {
+            iconWrapper.style.background = bg;
+            iconWrapper.style.color = color || '#0284c7';
+          } else if (type === 'warning') {
+            iconWrapper.style.background = '#fef3c7';
+            iconWrapper.style.color = '#d97706';
+          } else if (type === 'primary' || type === 'info') {
+            iconWrapper.style.background = '#e0f2fe';
+            iconWrapper.style.color = '#0284c7';
+          } else if (type === 'success') {
+            iconWrapper.style.background = '#dcfce7';
+            iconWrapper.style.color = '#16a34a';
+          } else {
+            iconWrapper.style.background = '#fee2e2';
+            iconWrapper.style.color = '#ef4444';
+          }
+        }
 
         function openConfirm(message, onConfirm, options) {
           const opts = options || {};
@@ -1619,33 +1652,31 @@
           if (titleEl) titleEl.textContent = opts.title || 'Confirm Action';
           if (msgEl) {
             const rawMsg = String(message || 'Are you sure you want to perform this action?');
-            msgEl.innerHTML = rawMsg.replace(/\\n|\n/g, '<br>');
+            msgEl.innerHTML = rawMsg.includes('<') ? rawMsg : rawMsg.replace(/\\n|\n/g, '<br>');
           }
-          if (iconWrapper && iconEl) {
-            if (opts.icon) {
-              iconEl.className = opts.icon;
-            } else if (isPrimary) {
-              iconEl.className = 'fa fa-notes-medical';
-            } else {
-              iconEl.className = 'fa fa-exclamation-triangle';
-            }
-            if (opts.iconBg) {
-              iconWrapper.style.background = opts.iconBg;
-              iconWrapper.style.color = opts.iconColor || '#0284c7';
-            } else if (isPrimary) {
-              iconWrapper.style.background = '#e0f2fe';
-              iconWrapper.style.color = '#0284c7';
-            } else {
-              iconWrapper.style.background = '#fee2e2';
-              iconWrapper.style.color = '#ef4444';
-            }
+
+          setIcon(opts.type || (isPrimary ? 'primary' : 'danger'), opts.icon, opts.iconBg, opts.iconColor);
+
+          if (cancelBtn) {
+            cancelBtn.style.display = 'inline-block';
+            cancelBtn.textContent = opts.cancelText || 'Cancel';
+            cancelBtn.className = 'button btn-secondary';
+            cancelBtn.style.background = '';
+            cancelBtn.style.borderColor = '';
+            cancelBtn.style.color = '';
           }
+
           if (okBtn) {
+            okBtn.style.display = 'inline-block';
             okBtn.textContent = opts.btnText || (isPrimary ? 'Confirm' : 'Yes, Delete');
             if (isPrimary) {
               okBtn.className = 'button btn-primary';
               okBtn.style.background = '#0284c7';
               okBtn.style.borderColor = '#0284c7';
+            } else if (opts.type === 'warning') {
+              okBtn.className = 'button btn-orange';
+              okBtn.style.background = '';
+              okBtn.style.borderColor = '';
             } else {
               okBtn.className = 'button btn-danger';
               okBtn.style.background = '';
@@ -1653,15 +1684,83 @@
             }
           }
           pendingCallback = onConfirm;
+          secondaryCallback = null;
+          if (modal) modal.style.display = 'flex';
+        }
+
+        function openAlert(message, options, onDismiss) {
+          const opts = options || {};
+          const type = opts.type || 'warning';
+          if (titleEl) titleEl.textContent = opts.title || (type === 'warning' ? 'Notice' : (type === 'error' || type === 'danger' ? 'Warning' : 'Notification'));
+          if (msgEl) {
+            const rawMsg = String(message || '');
+            msgEl.innerHTML = rawMsg.includes('<') ? rawMsg : rawMsg.replace(/\\n|\n/g, '<br>');
+          }
+
+          setIcon(type, opts.icon, opts.iconBg, opts.iconColor);
+
+          if (opts.secondaryBtnText) {
+            if (cancelBtn) {
+              cancelBtn.style.display = 'inline-block';
+              cancelBtn.textContent = opts.secondaryBtnText;
+              cancelBtn.className = 'button btn-primary';
+              cancelBtn.style.background = '#0284c7';
+              cancelBtn.style.borderColor = '#0284c7';
+              cancelBtn.style.color = '#ffffff';
+            }
+            secondaryCallback = function() {
+              if (opts.secondaryHref) {
+                window.location.href = opts.secondaryHref;
+              } else if (typeof opts.onSecondary === 'function') {
+                opts.onSecondary();
+              }
+            };
+          } else {
+            if (cancelBtn) cancelBtn.style.display = 'none';
+            secondaryCallback = null;
+          }
+
+          if (okBtn) {
+            okBtn.style.display = 'inline-block';
+            okBtn.textContent = opts.btnText || (opts.secondaryBtnText ? 'Close' : 'Understood');
+            if (opts.secondaryBtnText) {
+              okBtn.className = 'button btn-secondary';
+              okBtn.style.background = '';
+              okBtn.style.borderColor = '';
+              okBtn.style.color = '';
+            } else if (type === 'warning') {
+              okBtn.className = 'button btn-orange';
+              okBtn.style.background = '';
+              okBtn.style.borderColor = '';
+            } else if (type === 'danger' || type === 'error') {
+              okBtn.className = 'button btn-danger';
+              okBtn.style.background = '';
+              okBtn.style.borderColor = '';
+            } else {
+              okBtn.className = 'button btn-primary';
+              okBtn.style.background = '#0284c7';
+              okBtn.style.borderColor = '#0284c7';
+            }
+          }
+
+          pendingCallback = onDismiss;
           if (modal) modal.style.display = 'flex';
         }
 
         function closeConfirm() {
           if (modal) modal.style.display = 'none';
           pendingCallback = null;
+          secondaryCallback = null;
         }
 
-        if (cancelBtn) cancelBtn.addEventListener('click', closeConfirm);
+        if (cancelBtn) {
+          cancelBtn.addEventListener('click', function() {
+            const secCb = secondaryCallback;
+            closeConfirm();
+            if (secCb) secCb();
+          });
+        }
+
         if (okBtn) {
           okBtn.addEventListener('click', function() {
             const cb = pendingCallback;
@@ -1692,7 +1791,7 @@
           let msg = dataConfirm;
 
           if (!msg && onsubmitAttr.includes('confirm(')) {
-            const match = onsubmitAttr.match(/confirm\((['"])(.*?)\1\)/);
+            const match = onsubmitAttr.match(/confirm\((['"])([\s\S]*?)\1\)/);
             if (match && match[2]) {
               msg = match[2];
             }
@@ -1705,7 +1804,8 @@
             const isDelete = onsubmitAttr.toLowerCase().includes('delete') || (msg && msg.toLowerCase().includes('delete'));
             const options = {
               title: dataTitle || (isDelete ? 'Confirm Deletion' : 'Confirm Action'),
-              btnText: dataBtn || (isDelete ? 'Yes, Delete' : 'Confirm')
+              btnText: dataBtn || (isDelete ? 'Yes, Delete' : 'Confirm'),
+              type: isDelete ? 'danger' : 'info'
             };
 
             openConfirm(msg, function() {
@@ -1726,6 +1826,12 @@
         }, true);
 
         window.showCustomConfirm = openConfirm;
+        window.showCustomAlert = openAlert;
+
+        // Override native window.alert so all alert messages match our UI design
+        window.alert = function(message) {
+          openAlert(message, { type: 'warning', title: 'Attention' });
+        };
       })();
     </script>
 
