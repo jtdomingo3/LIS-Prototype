@@ -132,12 +132,33 @@
              if (key === 'requestedByLicense') label = 'Approved By License';
              const val = test.results[key];
         %>
-          <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
-            <span style="font-size: 0.82em; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.3px; padding-right: 12px;">
+          <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: flex-start; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+            <span style="font-size: 0.82em; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.3px; padding-right: 12px; flex-shrink: 0;">
               <%= label %>
             </span>
             <span style="font-size: 0.95em; font-weight: 600; color: #0f172a; text-align: right; word-break: break-word;">
-              <%= (val !== null && val !== undefined && val !== '') ? (typeof val === 'object' ? JSON.stringify(val) : val) : '-' %>
+              <%
+                let displayVal = '-';
+                if (val !== null && val !== undefined && val !== '') {
+                  if (Array.isArray(val)) {
+                    // comment_entries: [{sign, text}] → readable list like "- Yolk sac; - Hemorrhage"
+                    if (val.length > 0 && typeof val[0] === 'object' && ('sign' in val[0] || 'text' in val[0])) {
+                      displayVal = val.map(function(c){ return (c.sign || '-') + ' ' + (c.text || ''); }).join('; ');
+                    } else if (val.length > 0) {
+                      displayVal = val.join(', ');
+                    } else {
+                      displayVal = '-';
+                    }
+                  } else if (typeof val === 'object') {
+                    // Other objects: show key: value pairs cleanly
+                    const parts = Object.keys(val).filter(k => val[k] !== '' && val[k] !== null && val[k] !== undefined).map(k => k + ': ' + val[k]);
+                    displayVal = parts.length ? parts.join(', ') : '-';
+                  } else {
+                    displayVal = val;
+                  }
+                }
+              %>
+              <%= displayVal %>
             </span>
           </div>
         <% }); %>
