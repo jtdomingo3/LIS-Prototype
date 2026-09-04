@@ -1096,6 +1096,14 @@ function openPrintPreviewWindow(url) {
     }
   } catch (_) {}
 
+  // Strip auto-print triggers that cause in-page window.print() execution
+  try {
+    const urlObj = new URL(targetUrl);
+    urlObj.searchParams.delete('print');
+    urlObj.searchParams.set('suppressPrint', '1');
+    targetUrl = urlObj.toString();
+  } catch (_) {}
+
   console.log('[Print] opening print preview for:', targetUrl);
 
   const sourceWin = new BrowserWindow({
@@ -1124,15 +1132,26 @@ function openPrintPreviewWindow(url) {
 
   sourceWin.webContents.on('did-finish-load', async () => {
     await sourceWin.webContents.executeJavaScript('window.print = function(){}; void 0;').catch(() => {});
-    await new Promise(r => setTimeout(r, 600));
     try {
+      // Wait for web fonts and layout stability before capturing PDF
+      await sourceWin.webContents.executeJavaScript(`
+        new Promise((resolve) => {
+          if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(resolve).catch(resolve);
+          } else {
+            resolve();
+          }
+        });
+      `).catch(() => {});
+      await new Promise(r => setTimeout(r, 400));
+
       const pdfBuffer = await sourceWin.webContents.printToPDF({
         printBackground: true,
-        preferCSSPageSize: true,
-        margins: { marginType: 'none' }
+        preferCSSPageSize: true
       });
       try { sourceWin.close(); } catch {}
-      const tmpDir = path.join(userDataPath, 'temp-pdfs');
+      const effectiveUserData = userDataPath || (app && app.getPath ? app.getPath('userData') : path.join(os.homedir(), 'AppData', 'Roaming', 'Gezyne LIS'));
+      const tmpDir = path.join(effectiveUserData, 'temp-pdfs');
       if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
       const pdfPath = path.join(tmpDir, `report-${Date.now()}.pdf`);
       fs.writeFileSync(pdfPath, pdfBuffer);
@@ -1140,8 +1159,8 @@ function openPrintPreviewWindow(url) {
 
       // Open in-app dedicated print preview window with PDF.js viewer
       const previewWin = new BrowserWindow({
-        width: 1020,
-        height: 900,
+        width: 1040,
+        height: 920,
         title: 'Print Preview — Gezyne LIS',
         icon: appIcon || undefined,
         backgroundColor: '#0f172a',
@@ -1163,17 +1182,19 @@ function openPrintPreviewWindow(url) {
     } catch (err) {
       console.error('[Print] PDF generation failed:', err);
       try { sourceWin.close(); } catch {}
-      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.print();
+      // Open dedicated child window for the report rather than popping native print dialog over main window
+      openChildWindow(targetUrl);
+    } finally {
+      clearTimeout(stallTimer);
+      openPrintPreviewWindow._busy = false;
     }
-    clearTimeout(stallTimer);
-    openPrintPreviewWindow._busy = false;
   });
 
   sourceWin.webContents.on('did-fail-load', () => {
     console.error('[Print] source window failed to load');
     try { sourceWin.close(); } catch {}
+    clearTimeout(stallTimer);
     openPrintPreviewWindow._busy = false;
-    try { clearTimeout(stallTimer); } catch(e) {}
   });
 }
 

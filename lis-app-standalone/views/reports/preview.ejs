@@ -559,6 +559,17 @@
       nextBtn.addEventListener('click', function(e){ e.preventDefault(); const handled = navigateWithinFiltered('next'); if (!handled) { const href = nextBtn.getAttribute && nextBtn.getAttribute('href'); if (href) window.location.href = href; } });
     }
 
+    if (printLink) {
+      printLink.addEventListener('click', function(e) {
+        if (window.lisApp && typeof window.lisApp.printPreview === 'function') {
+          e.preventDefault();
+          const targetHref = printLink.getAttribute('href') || ('/reports/result/' + (window.currentTestId || '') + '?embedded=1');
+          const fullUrl = (targetHref.startsWith('http://') || targetHref.startsWith('https://')) ? targetHref : (window.location.origin + targetHref);
+          window.lisApp.printPreview(fullUrl);
+        }
+      });
+    }
+
     // initial populate if filters present
     if (patientInput.value || getSelectedTestTypes().length || dateFilter.value) populateFilteredList();
     updatePager();
