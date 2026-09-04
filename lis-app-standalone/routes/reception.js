@@ -1043,9 +1043,10 @@ router.post('/assign', requireAuth, canAccessPatient, async (req, res) => {
 // POST /reception/complete - mark patient/tests as completed for the area or advance from Payment Area
 router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
   try {
-    const { patientId, testIds, area, amount_clinical, amount_xray, charged_to_philhealth } = req.body || {};
+    const { patientId, testIds, area, amount_clinical, amount_xray, charged_to_philhealth, charged_to_healthcard } = req.body || {};
     const isChargedToPhilhealth = charged_to_philhealth === '1' || charged_to_philhealth === 'true' || charged_to_philhealth === true;
-    console.log('POST /reception/complete', { patientId, testIds, area, amount_clinical, amount_xray, isChargedToPhilhealth });
+    const isChargedToHealthCard = charged_to_healthcard === '1' || charged_to_healthcard === 'true' || charged_to_healthcard === true;
+    console.log('POST /reception/complete', { patientId, testIds, area, amount_clinical, amount_xray, isChargedToPhilhealth, isChargedToHealthCard });
 
     if (!patientId) {
       const msg = 'Missing patientId';
@@ -1071,7 +1072,7 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
     if (area === 'Payment Area') {
       const settings = (global.db && typeof global.db.getSettings === 'function') ? (global.db.getSettings() || {}) : {};
       const requirePaymentAmount = (typeof settings.requirePaymentAmount !== 'undefined') ? !!settings.requirePaymentAmount : true;
-      if (requirePaymentAmount && !isChargedToPhilhealth) {
+      if (requirePaymentAmount && !isChargedToPhilhealth && !isChargedToHealthCard) {
         const clinVal = parseFloat(String(amount_clinical || '').replace(/[,\s]/g, '')) || 0;
         const xrayVal = parseFloat(String(amount_xray || '').replace(/[,\s]/g, '')) || 0;
         if (clinVal <= 0 && xrayVal <= 0) {
@@ -1138,12 +1139,15 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
             user: req.session && req.session.user ? req.session.user.username : null,
             area: targ,
             timestamp: (new Date()).toISOString(),
-            notes: isChargedToPhilhealth ? 'Charged to PhilHealth' : undefined
+            notes: isChargedToPhilhealth ? 'Charged to PhilHealth' : (isChargedToHealthCard ? 'Charged to Health Card' : undefined)
           });
           t.status = targ;
           if (isChargedToPhilhealth) {
             t.chargedToPhilhealth = true;
             t.paymentMethod = 'PhilHealth';
+          } else if (isChargedToHealthCard) {
+            t.chargedToHealthCard = true;
+            t.paymentMethod = 'Health Card';
           }
           await t.save();
           processed.push(t.testId || t.id);
@@ -1155,8 +1159,12 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
       try {
         const patientObj = await Patient.findById(patientId);
         if (patientObj) {
-          const clin = isChargedToPhilhealth ? 0 : (Number(amount_clinical || 0) || 0);
-          const xray = isChargedToPhilhealth ? 0 : (Number(amount_xray || 0) || 0);
+          const isCovered = isChargedToPhilhealth || isChargedToHealthCard;
+          const clin = isCovered ? 0 : (Number(amount_clinical || 0) || 0);
+          const xray = isCovered ? 0 : (Number(amount_xray || 0) || 0);
+          const method = isChargedToPhilhealth
+            ? 'PhilHealth'
+            : (isChargedToHealthCard ? ('Health Card (' + (patientObj.healthInsuranceProvider || 'HMO') + ')') : 'Cash');
           const entry = {
             timestamp: (new Date()).toISOString(),
             area: 'Payment Area',
@@ -1164,7 +1172,9 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
             xray: xray,
             total: clin + xray,
             chargedToPhilhealth: !!isChargedToPhilhealth,
-            paymentMethod: isChargedToPhilhealth ? 'PhilHealth' : 'Cash',
+            chargedToHealthCard: !!isChargedToHealthCard,
+            healthInsuranceProvider: patientObj.healthInsuranceProvider || '',
+            paymentMethod: method,
             tests: ids.slice()
           };
           patientObj.paymentHistory = Array.isArray(patientObj.paymentHistory) ? patientObj.paymentHistory : [];

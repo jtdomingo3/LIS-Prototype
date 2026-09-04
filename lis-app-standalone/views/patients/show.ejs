@@ -2,8 +2,20 @@
   let dobDisplay = 'No DOB';
   try {
     if (patient && patient.dateOfBirth) {
-      const d = new Date(patient.dateOfBirth);
-      if (!isNaN(d.getTime())) dobDisplay = d.toLocaleDateString();
+      let d = null;
+      if (typeof patient.dateOfBirth === 'string' && patient.dateOfBirth.includes('-')) {
+        const parts = patient.dateOfBirth.split('T')[0].split('-');
+        if (parts.length === 3) {
+          d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        }
+      }
+      if (!d || isNaN(d.getTime())) d = new Date(patient.dateOfBirth);
+      if (d && !isNaN(d.getTime())) {
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        const yyyy = d.getFullYear();
+        dobDisplay = mm + '/' + dd + '/' + yyyy;
+      }
     }
   } catch (e) {}
 
@@ -30,9 +42,26 @@
           <span style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; padding: 2px 10px; border-radius: 20px; font-size: 0.8em; font-weight: 700;">
             <%= patient.patientId %>
           </span>
+          <% 
+            let _ageStr = (patient.age !== null && patient.age !== undefined && patient.age !== '') ? String(patient.age) : (patient.ageManual ? String(patient.ageManual) : '');
+            let _formattedAge = _ageStr;
+            if (_ageStr && !/(yr|year|mo|month|day|wk|week)/i.test(_ageStr)) {
+              _formattedAge = _ageStr + ' yrs';
+            }
+          %>
           <span style="background: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 6px; font-size: 0.8em; font-weight: 600;">
-            <%= patient.gender %> &bull; <%= patient.age %> yrs
+            <%= patient.gender || 'Unknown' %><%= _formattedAge ? (' • ' + _formattedAge) : '' %>
           </span>
+          <% if (patient.philhealthConsent) { %>
+            <span style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 2px 10px; border-radius: 20px; font-size: 0.8em; font-weight: 700;">
+              🩺 PhilHealth: <%= patient.philhealthId || 'Member' %>
+            </span>
+          <% } %>
+          <% if (patient.healthInsuranceConsent) { %>
+            <span style="background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; padding: 2px 10px; border-radius: 20px; font-size: 0.8em; font-weight: 700;">
+              💳 Health Card: <%= patient.healthInsuranceProvider || 'HMO' %><%= patient.healthInsuranceId ? ' (' + patient.healthInsuranceId + ')' : '' %>
+            </span>
+          <% } %>
         </div>
         <div style="font-size: 0.85em; color: #64748b; margin-top: 4px;">
           Registered Patient Record &bull; Born: <strong><%= dobDisplay %></strong>
@@ -82,6 +111,18 @@
         <div>
           <span style="font-size: 0.78em; text-transform: uppercase; color: #64748b; font-weight: 600; display: block;">Complete Address</span>
           <span style="font-size: 0.92em; font-weight: 600; color: #0f172a;"><%= patient.address || 'N/A' %></span>
+        </div>
+        <div>
+          <span style="font-size: 0.78em; text-transform: uppercase; color: #64748b; font-weight: 600; display: block;">PhilHealth Coverage</span>
+          <span style="font-size: 0.92em; font-weight: 600; color: <%= patient.philhealthConsent ? '#047857' : '#64748b' %>;">
+            <%= patient.philhealthConsent ? ('✓ Member' + (patient.philhealthId ? ' (ID: ' + patient.philhealthId + ')' : '')) : 'No' %>
+          </span>
+        </div>
+        <div>
+          <span style="font-size: 0.78em; text-transform: uppercase; color: #64748b; font-weight: 600; display: block;">Health Insurance / Health Card</span>
+          <span style="font-size: 0.92em; font-weight: 600; color: <%= patient.healthInsuranceConsent ? '#6d28d9' : '#64748b' %>;">
+            <%= patient.healthInsuranceConsent ? ('✓ ' + (patient.healthInsuranceProvider || 'HMO') + (patient.healthInsuranceId ? ' (Card: ' + patient.healthInsuranceId + ')' : '')) : 'None / Self-pay' %>
+          </span>
         </div>
       </div>
     </div>

@@ -258,9 +258,23 @@ router.get('/new', requireAuth, canAccessPatient, (req, res) => {
 router.post('/', requireAuth, canAccessPatient, async (req, res) => {
   try {
     const { firstName, middleName, lastName, dateOfBirth, gender, phone, email, address, physician } = req.body;
+    let normalizedDob = dateOfBirth;
+    if (typeof dateOfBirth === 'string' && dateOfBirth.trim()) {
+      const trimmed = dateOfBirth.trim();
+      const mmdd = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (mmdd) {
+        const mm = String(mmdd[1]).padStart(2, '0');
+        const dd = String(mmdd[2]).padStart(2, '0');
+        const yyyy = mmdd[3];
+        normalizedDob = `${yyyy}-${mm}-${dd}`;
+      }
+    }
     const company = req.body.company || '';
     const philhealthConsent = req.body.philhealthConsent === 'on' || req.body.philhealthConsent === '1' || req.body.philhealthConsent === 'true';
     const philhealthId = req.body.philhealthId || '';
+    const healthInsuranceConsent = req.body.healthInsuranceConsent === 'on' || req.body.healthInsuranceConsent === '1' || req.body.healthInsuranceConsent === 'true';
+    const healthInsuranceProvider = req.body.healthInsuranceProvider || req.body.healthCardProvider || '';
+    const healthInsuranceId = req.body.healthInsuranceId || req.body.healthCardNumber || '';
     // encoder may provide age instead of DOB -> accept either
     const ageManual = req.body.ageManual || req.body.age || null;
     // normalize doctor's checkup selection (checkboxes)
@@ -400,7 +414,7 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       firstName,
       middleName: middleName || '',
       lastName,
-      dateOfBirth,
+      dateOfBirth: normalizedDob,
       ageManual,
       physician,
       gender,
@@ -410,11 +424,14 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       company,
       philhealthConsent,
       philhealthId,
+      healthInsuranceConsent,
+      healthInsuranceProvider,
+      healthInsuranceId,
       requiredAreas: finalRequiredAreas,
       // preserve selected tests for extraction/medtech visibility (detailed objects)
       requestedTests: requestedTestsDetailed,
       client_id: (req.body && req.body.client_id) ? req.body.client_id : undefined,
-      createdBy: req.session.user.id
+      createdBy: (req.session && req.session.user && req.session.user.id) ? req.session.user.id : 'system'
     });
 
     await patient.save();
@@ -580,9 +597,21 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
     // PUT /patients/:id - Update patient
 router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
   try {
-    const { firstName, middleName, lastName, dateOfBirth, gender, phone, email, address, physician, company, philhealthConsent, philhealthId } = req.body;
+    const { firstName, middleName, lastName, dateOfBirth, gender, phone, email, address, physician, company, philhealthConsent, philhealthId, healthInsuranceConsent, healthInsuranceProvider, healthInsuranceId } = req.body;
+    let normalizedDob = dateOfBirth;
+    if (typeof dateOfBirth === 'string' && dateOfBirth.trim()) {
+      const trimmed = dateOfBirth.trim();
+      const mmdd = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (mmdd) {
+        const mm = String(mmdd[1]).padStart(2, '0');
+        const dd = String(mmdd[2]).padStart(2, '0');
+        const yyyy = mmdd[3];
+        normalizedDob = `${yyyy}-${mm}-${dd}`;
+      }
+    }
     const ageManual = req.body.ageManual || req.body.age || null;
     const philhealthConsentBool = (philhealthConsent === 'on' || philhealthConsent === '1' || philhealthConsent === 'true');
+    const healthInsuranceConsentBool = (healthInsuranceConsent === 'on' || healthInsuranceConsent === '1' || healthInsuranceConsent === 'true');
     const requiredAreas = Array.isArray(req.body.requiredAreas)
       ? req.body.requiredAreas
       : req.body.requiredAreas ? [req.body.requiredAreas] : [];
@@ -599,7 +628,7 @@ router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
         firstName,
         middleName: middleName || '',
         lastName,
-        dateOfBirth,
+        dateOfBirth: normalizedDob,
         ageManual,
         physician,
         gender,
@@ -609,7 +638,10 @@ router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
         requiredAreas,
         company: company || '',
         philhealthConsent: !!philhealthConsentBool,
-        philhealthId: philhealthId || ''
+        philhealthId: philhealthId || '',
+        healthInsuranceConsent: !!healthInsuranceConsentBool,
+        healthInsuranceProvider: healthInsuranceProvider || req.body.healthCardProvider || '',
+        healthInsuranceId: healthInsuranceId || req.body.healthCardNumber || ''
       },
       { new: true }
     );

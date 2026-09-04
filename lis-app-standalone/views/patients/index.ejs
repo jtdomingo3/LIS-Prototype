@@ -150,10 +150,19 @@
                 <% } %>
               </td>
               <td style="padding:14px; white-space:nowrap;">
-                <% if (patient.philhealthConsent) { %>
-                  <span style="display:inline-block; padding:3px 8px; border-radius:12px; font-size:0.8em; font-weight:600; background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0;">✓ Member</span>
-                <% } else { %>
-                  <span style="display:inline-block; padding:3px 8px; border-radius:12px; font-size:0.8em; font-weight:600; background:#f1f5f9; color:#94a3b8;">No</span>
+                <div>
+                  <% if (patient.philhealthConsent) { %>
+                    <span style="display:inline-block; padding:2px 8px; border-radius:12px; font-size:0.78em; font-weight:700; background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0;" title="PhilHealth: <%= patient.philhealthId || 'Verified' %>">🩺 PhilHealth</span>
+                  <% } else { %>
+                    <span style="display:inline-block; padding:2px 6px; border-radius:10px; font-size:0.75em; font-weight:600; background:#f1f5f9; color:#94a3b8;">No PhilHealth</span>
+                  <% } %>
+                </div>
+                <% if (patient.healthInsuranceConsent) { %>
+                  <div style="margin-top:4px;">
+                    <span style="display:inline-block; padding:2px 8px; border-radius:12px; font-size:0.78em; font-weight:700; background:#f5f3ff; color:#6d28d9; border:1px solid #ddd6fe;" title="<%= patient.healthInsuranceProvider || 'Health Card' %>: <%= patient.healthInsuranceId || 'Member' %>">
+                      💳 <%= patient.healthInsuranceProvider || 'Health Card' %>
+                    </span>
+                  </div>
                 <% } %>
               </td>
               <td class="action-buttons" style="padding:14px; text-align:right; white-space:nowrap;">

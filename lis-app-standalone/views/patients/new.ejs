@@ -67,14 +67,27 @@
           </div>
 
           <!-- DOB, Age, Gender Row -->
-          <div style="display: grid; grid-template-columns: 1.1fr 0.9fr 1fr; gap: 10px;">
+          <div style="display: grid; grid-template-columns: 1.15fr 0.85fr 1fr; gap: 10px;">
             <div>
-              <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 5px;">Date of Birth</label>
-              <input id="dobInput" type="date" name="dateOfBirth" value="<%= patient.dateOfBirth ? new Date(patient.dateOfBirth).toISOString().split('T')[0] : '' %>" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 4px 8px; font-size: 0.88em; box-sizing: border-box;" />
+              <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px;">
+                <label style="font-weight: 600; font-size: 0.85em; color: #334155;">Date of Birth</label>
+                <span style="font-size: 0.72em; font-weight: 700; color: #0284c7; background: #e0f2fe; padding: 1px 6px; border-radius: 4px;">MM/DD/YYYY</span>
+              </div>
+              <div style="position: relative; display: flex; align-items: center;">
+                <input id="dobText" type="text" placeholder="MM/DD/YYYY (e.g. 06/11/1994)" maxlength="10" autocomplete="off"
+                  style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 4px 34px 4px 10px; font-size: 0.88em; box-sizing: border-box;" />
+                <input id="dobPicker" type="date" tabindex="-1"
+                  style="position: absolute; right: 4px; width: 28px; height: 30px; opacity: 0; cursor: pointer; z-index: 2;" />
+                <button type="button" tabindex="-1" onclick="try{document.getElementById('dobPicker').showPicker()}catch(e){document.getElementById('dobPicker').focus()}"
+                  style="position: absolute; right: 4px; background: transparent; border: none; color: #64748b; cursor: pointer; padding: 6px; display: flex; align-items: center; justify-content: center; z-index: 1;" title="Open Calendar">
+                  <i class="fa fa-calendar-alt"></i>
+                </button>
+                <input type="hidden" id="dobHidden" name="dateOfBirth" value="<%= patient.dateOfBirth ? new Date(patient.dateOfBirth).toISOString().split('T')[0] : '' %>" />
+              </div>
             </div>
             <div>
               <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 5px;">Age</label>
-              <input id="ageInput" type="number" name="ageManual" value="<%= patient.ageManual || '' %>" placeholder="Age" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 4px 8px; font-size: 0.88em; box-sizing: border-box;" />
+              <input id="ageInput" type="text" name="ageManual" value="<%= patient.ageManual || '' %>" placeholder="e.g. 32, 5 mos, 20 days" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 4px 8px; font-size: 0.88em; box-sizing: border-box;" />
             </div>
             <div>
               <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 5px;">Gender <span style="color: #ef4444;">*</span></label>
@@ -86,7 +99,8 @@
               </select>
             </div>
           </div>
-          <small style="font-size: 0.72em; color: #64748b; margin-top: 5px; display: block;">Age is auto-calculated when DOB is selected.</small>
+          <div id="dobPreview" style="display: none; margin-top: 6px; font-size: 0.8em; padding: 6px 10px; border-radius: 6px; background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; font-weight: 600;"></div>
+          <small style="font-size: 0.72em; color: #64748b; margin-top: 5px; display: block;">Format: <strong>MM/DD/YYYY</strong> (e.g. 06/11/1994 for June 11). Age auto-calculates (including infants &lt; 1 yr, e.g. 5 mos, 28 days) or can be entered manually.</small>
         </div>
 
         <!-- PhilHealth Benefits Card -->
@@ -116,6 +130,60 @@
           <div id="philIdWrap" style="display:<%= patient && patient.philhealthConsent ? '' : 'none' %>; margin-top: 10px;">
             <label style="display: block; font-weight: 600; font-size: 0.82em; color: #334155; margin-bottom: 4px;">PhilHealth Identification Number (PIN)</label>
             <input id="philId" type="text" name="philhealthId" value="<%= patient && patient.philhealthId ? patient.philhealthId : '' %>" placeholder="e.g. 12-345678901-2" style="width: 100%; height: 36px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 4px 10px; font-size: 0.88em; box-sizing: border-box;" />
+          </div>
+        </div>
+
+        <!-- Health Insurance / Health Card Coverage Card -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 20px; margin-top: 14px;">
+          <div style="font-weight: 700; font-size: 0.9em; color: #0f172a; display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+            <span style="display: flex; align-items: center; gap: 8px;">
+              <i class="fa fa-id-card-clip" style="color: #6366f1;"></i> Health Insurance / Health Card Coverage
+            </span>
+            <span style="font-size: 0.75em; background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 10px; font-weight: 700;">HMO Partner</span>
+          </div>
+
+          <p style="font-size: 0.8em; color: #64748b; line-height: 1.45; margin: 0 0 10px 0;">
+            Patients with active HMO or private health insurance cards can charge eligible diagnostics. Please indicate if the patient is using health insurance and provide their card details.
+          </p>
+
+          <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap; margin-top: 8px;">
+            <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.86em; font-weight: 600; color: #1e293b;">
+              <input type="radio" name="healthInsuranceConsent" id="insuranceYes" value="1" <%= patient && patient.healthInsuranceConsent ? 'checked' : '' %> style="accent-color: #6366f1; width: 16px; height: 16px;" />
+              <span>Yes — Health Card / HMO</span>
+            </label>
+            <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.86em; font-weight: 600; color: #1e293b;">
+              <input type="radio" name="healthInsuranceConsent" id="insuranceNo" value="0" <%= patient && patient.healthInsuranceConsent ? '' : 'checked' %> style="accent-color: #6366f1; width: 16px; height: 16px;" />
+              <span>No — None / Self-pay</span>
+            </label>
+          </div>
+
+          <div id="insuranceDetailsWrap" style="display:<%= patient && patient.healthInsuranceConsent ? '' : 'none' %>; margin-top: 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+            <div style="margin-bottom: 10px;">
+              <label style="display: block; font-weight: 600; font-size: 0.82em; color: #334155; margin-bottom: 4px;">Health Insurance / HMO Provider</label>
+              <input list="hmoList" id="insuranceProvider" type="text" name="healthInsuranceProvider" value="<%= patient && patient.healthInsuranceProvider ? patient.healthInsuranceProvider : '' %>" placeholder="Select or type HMO (e.g. Maxicare, Intellicare, Medicard)" style="width: 100%; height: 36px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 4px 10px; font-size: 0.88em; box-sizing: border-box;" />
+              <datalist id="hmoList">
+                <option value="Maxicare">
+                <option value="Intellicare / Asalus">
+                <option value="Medicard">
+                <option value="PhilCare">
+                <option value="Cocolife Healthcare">
+                <option value="Etiqa">
+                <option value="Caritas Health Shield">
+                <option value="Pacific Cross">
+                <option value="Avega Managed Care">
+                <option value="Generali">
+                <option value="Insular Health Care">
+                <option value="ValuCare">
+                <option value="EastWest Healthcare">
+                <option value="Kaiser International Healthgroup">
+                <option value="Lacson & Lacson">
+                <option value="WellCare Health Maintenance">
+              </datalist>
+            </div>
+            <div>
+              <label style="display: block; font-weight: 600; font-size: 0.82em; color: #334155; margin-bottom: 4px;">Health Card / Policy / Member Number</label>
+              <input id="insuranceId" type="text" name="healthInsuranceId" value="<%= patient && patient.healthInsuranceId ? patient.healthInsuranceId : '' %>" placeholder="Enter card / member / certificate ID number" style="width: 100%; height: 36px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 4px 10px; font-size: 0.88em; box-sizing: border-box;" />
+            </div>
           </div>
         </div>
 
@@ -174,34 +242,136 @@
 
 <script>
   (function(){
-    const dob = document.getElementById('dobInput');
-    const age = document.getElementById('ageInput');
+    const dobText = document.getElementById('dobText');
+    const dobPicker = document.getElementById('dobPicker');
+    const dobHidden = document.getElementById('dobHidden');
+    const ageInput = document.getElementById('ageInput');
+    const preview = document.getElementById('dobPreview');
 
-    function computeAgeFromDob(d) {
-      if (!d) return '';
-      const b = new Date(d);
-      if (isNaN(b.getTime())) return '';
-      const today = new Date();
-      let a = today.getFullYear() - b.getFullYear();
-      const m = today.getMonth() - b.getMonth();
-      if (m < 0 || (m === 0 && today.getDate() < b.getDate())) a--;
-      return a;
+    const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+    // Auto-slash formatting for MM/DD/YYYY text input
+    if (dobText) {
+      dobText.addEventListener('input', function(e) {
+        let v = this.value.replace(/\D/g, '');
+        if (v.length > 8) v = v.substring(0, 8);
+        if (v.length > 4) {
+          this.value = v.substring(0, 2) + '/' + v.substring(2, 4) + '/' + v.substring(4);
+        } else if (v.length > 2) {
+          this.value = v.substring(0, 2) + '/' + v.substring(2);
+        } else {
+          this.value = v;
+        }
+        onDobUpdated(true);
+      });
     }
 
-    function onDobChange() {
-      const val = dob.value;
-      if (val) {
-        const calc = computeAgeFromDob(val);
-        age.value = calc;
-        age.setAttribute('readonly', 'readonly');
+    // Native picker change (YYYY-MM-DD)
+    if (dobPicker) {
+      dobPicker.addEventListener('change', function() {
+        if (this.value) {
+          const parts = this.value.split('-');
+          if (parts.length === 3) {
+            dobText.value = parts[1] + '/' + parts[2] + '/' + parts[0];
+            onDobUpdated(true);
+          }
+        }
+      });
+    }
+
+    function parseInputDate(str) {
+      if (!str) return null;
+      const clean = str.trim();
+      // Try MM/DD/YYYY
+      const m = clean.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (m) {
+        const mon = parseInt(m[1], 10);
+        const day = parseInt(m[2], 10);
+        const yr = parseInt(m[3], 10);
+        if (mon >= 1 && mon <= 12 && day >= 1 && day <= 31 && yr >= 1900 && yr <= 2100) {
+          return { date: new Date(yr, mon - 1, day), yyyy: yr, mm: String(mon).padStart(2, '0'), dd: String(day).padStart(2, '0'), monIdx: mon - 1 };
+        }
+      }
+      // Fallback YYYY-MM-DD
+      const iso = clean.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      if (iso) {
+        const yr = parseInt(iso[1], 10);
+        const mon = parseInt(iso[2], 10);
+        const day = parseInt(iso[3], 10);
+        if (mon >= 1 && mon <= 12 && day >= 1 && day <= 31 && yr >= 1900 && yr <= 2100) {
+          return { date: new Date(yr, mon - 1, day), yyyy: yr, mm: String(mon).padStart(2, '0'), dd: String(day).padStart(2, '0'), monIdx: mon - 1 };
+        }
+      }
+      return null;
+    }
+
+    function computeAgeDetails(b) {
+      if (!b) return null;
+      const today = new Date();
+      let years = today.getFullYear() - b.getFullYear();
+      let months = today.getMonth() - b.getMonth();
+      let days = today.getDate() - b.getDate();
+
+      if (days < 0) {
+        months--;
+        const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+        days += prevMonth.getDate();
+      }
+      if (months < 0) {
+        years--;
+        months += 12;
+      }
+
+      if (years >= 1) {
+        return { text: String(years), years, months, days, isInfant: false };
+      } else if (months >= 1) {
+        const str = months + (months === 1 ? ' mo' : ' mos');
+        return { text: str, years, months, days, isInfant: true };
       } else {
-        age.removeAttribute('readonly');
+        const dCount = Math.max(0, days);
+        const str = dCount + (dCount === 1 ? ' day' : ' days');
+        return { text: str, years, months, days, isInfant: true };
       }
     }
 
-    if (dob && age) {
-      onDobChange();
-      dob.addEventListener('change', onDobChange);
+    function onDobUpdated(isUserTyping) {
+      const parsed = parseInputDate(dobText.value);
+      if (parsed) {
+        const isoStr = parsed.yyyy + '-' + parsed.mm + '-' + parsed.dd;
+        dobHidden.value = isoStr;
+        if (dobPicker) dobPicker.value = isoStr;
+
+        const details = computeAgeDetails(parsed.date);
+        if (details) {
+          if (isUserTyping || !ageInput.value) {
+            ageInput.value = details.text;
+          }
+          if (preview) {
+            preview.style.display = 'block';
+            let html = '<i class="fa fa-calendar-check" style="margin-right:4px;"></i> Selected DOB: <strong>' + MONTH_NAMES[parsed.monIdx] + ' ' + parseInt(parsed.dd, 10) + ', ' + parsed.yyyy + '</strong>';
+            html += ' &bull; Computed Age: <strong>' + details.text + '</strong>';
+            if (details.isInfant) {
+              html += ' <span style="background:#fef3c7; color:#92400e; padding:1px 6px; border-radius:4px; font-size:0.85em; margin-left:4px; font-weight:700;">Infant / Pediatric</span>';
+            }
+            preview.innerHTML = html;
+          }
+        }
+      } else {
+        if (preview) preview.style.display = 'none';
+        if (dobText.value.trim() === '') {
+          dobHidden.value = '';
+          if (dobPicker) dobPicker.value = '';
+        }
+      }
+    }
+
+    // Initialize from existing hidden value if editing or prefilled
+    if (dobHidden && dobHidden.value) {
+      const p = parseInputDate(dobHidden.value);
+      if (p) {
+        dobText.value = p.mm + '/' + p.dd + '/' + p.yyyy;
+        onDobUpdated(false);
+      }
     }
   })();
 </script>
@@ -210,6 +380,18 @@
     const yes = document.getElementById('philYes');
     const no = document.getElementById('philNo');
     const wrap = document.getElementById('philIdWrap');
+    if (!yes || !no || !wrap) return;
+    function update(){ if (yes.checked) wrap.style.display = ''; else wrap.style.display = 'none'; }
+    yes.addEventListener('change', update);
+    no.addEventListener('change', update);
+    update();
+  })();
+</script>
+<script>
+  (function(){
+    const yes = document.getElementById('insuranceYes');
+    const no = document.getElementById('insuranceNo');
+    const wrap = document.getElementById('insuranceDetailsWrap');
     if (!yes || !no || !wrap) return;
     function update(){ if (yes.checked) wrap.style.display = ''; else wrap.style.display = 'none'; }
     yes.addEventListener('change', update);

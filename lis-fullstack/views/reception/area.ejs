@@ -116,6 +116,7 @@
                       <input type="hidden" name="testIds" value="<%= (row.testIds || []).join(',') %>">
                       <input type="hidden" name="area" value="<%= areaName %>">
                       <input type="hidden" name="charged_to_philhealth" value="0">
+                      <input type="hidden" name="charged_to_healthcard" value="0">
                       <div>
                         <label style="display:block; font-size:0.8em; margin-bottom:4px; font-weight:600; color:#64748b;">Clinical Lab Amount</label>
                         <input type="number" name="amount_clinical" class="payment-amount" step="0.01" min="0" placeholder="Clinical" style="width:130px;" value="<%= (row.clinicalTotal || 0).toFixed(2) %>">
@@ -133,6 +134,11 @@
                           const isPhilMember = Boolean(row.patient && (row.patient.philhealthConsent || row.patient.philhealthId || (row.patient.philhealth && String(row.patient.philhealth).toLowerCase() === 'yes')));
                           const pHasPhil = isPhilMember ? '1' : '0';
                           const pPhilId = (row.patient && row.patient.philhealthId) ? row.patient.philhealthId : '';
+
+                          const isHealthCardMember = Boolean(row.patient && (row.patient.healthInsuranceConsent || row.patient.healthInsuranceProvider || row.patient.healthInsuranceId));
+                          const pHasHealthCard = isHealthCardMember ? '1' : '0';
+                          const pHealthCardProvider = (row.patient && row.patient.healthInsuranceProvider) ? row.patient.healthInsuranceProvider : '';
+                          const pHealthCardId = (row.patient && row.patient.healthInsuranceId) ? row.patient.healthInsuranceId : '';
                         %>
                         <button type="button" class="button btn-small btn-philhealth" 
                           data-patient-name="<%= pName %>"
@@ -143,6 +149,17 @@
                           onclick="submitChargedToPhilhealth(this)" 
                           title="<%= isPhilMember ? 'Charge to PhilHealth (Verified Member)' : 'Disabled: Patient is not registered as a PhilHealth member' %>">
                           🩺 Charged to PhilHealth
+                        </button>
+                        <button type="button" class="button btn-small btn-healthcard" 
+                          data-patient-name="<%= pName %>"
+                          data-patient-healthcard="<%= pHasHealthCard %>"
+                          data-healthcard-provider="<%= pHealthCardProvider %>"
+                          data-healthcard-id="<%= pHealthCardId %>"
+                          style="background:<%= isHealthCardMember ? '#6366f1' : '#94a3b8' %>; color:#fff; border:none; padding:6px 12px; font-size:0.82em; font-weight:600; border-radius:6px; min-width:155px;<%= !isHealthCardMember ? ' opacity:0.45; cursor:not-allowed;' : ' cursor:pointer;' %>" 
+                          <%= !isHealthCardMember ? 'disabled' : '' %>
+                          onclick="submitChargedToHealthcard(this)" 
+                          title="<%= isHealthCardMember ? ('Charge to Health Card (' + pHealthCardProvider + ')') : 'Disabled: Patient is not registered with a Health Card' %>">
+                          💳 Charged to Health Card
                         </button>
                       </div>
                     </form>
@@ -255,6 +272,8 @@
           if (!form) return true;
           const philInput = form.querySelector('input[name="charged_to_philhealth"]');
           if (philInput) philInput.value = '0';
+          const cardInput = form.querySelector('input[name="charged_to_healthcard"]');
+          if (cardInput) cardInput.value = '0';
           if (form.dataset && form.dataset.requireAmount === '0') return true;
           const amtInputs = Array.from(form.querySelectorAll('.payment-amount'));
           if (amtInputs.length) {
@@ -289,14 +308,13 @@
           const philhealthId = (btn && btn.dataset && btn.dataset.philhealthId) ? btn.dataset.philhealthId : '';
 
           if (!isMember) {
-            if (typeof window.showCustomConfirm === 'function') {
-              window.showCustomConfirm(
+            if (typeof window.showCustomAlert === 'function') {
+              window.showCustomAlert(
                 '<div style="font-size:0.93em; line-height:1.6; color:#334155;">' +
                   '<p style="margin:0 0 10px; font-weight:700; color:#dc2626;">Action Not Allowed</p>' +
                   '<p>Patient <strong>' + patientName + '</strong> is not registered as a PhilHealth member in the demographic records.</p>' +
                   '<p style="color:#64748b; font-size:0.88em; margin-bottom:0;">Please update the patient profile under Patients management first to enable PhilHealth billing.</p>' +
                 '</div>',
-                function() {},
                 { title: 'Non-PhilHealth Member', btnText: 'Understood', type: 'danger' }
               );
             } else {
@@ -328,6 +346,8 @@
               form.appendChild(philInput);
             }
             philInput.value = '1';
+            let cardInput = form.querySelector('input[name="charged_to_healthcard"]');
+            if (cardInput) cardInput.value = '0';
             form.dataset.requireAmount = '0';
 
             // Trigger submission
@@ -348,12 +368,90 @@
               iconColor: '#0284c7'
             });
           } else {
-            if (confirm('Charge tests for ' + patientName + ' to PhilHealth?')) {
-              proceedCharge();
-            }
+            proceedCharge();
           }
         } catch (e) {
           console.error('submitChargedToPhilhealth error', e);
+        }
+      };
+
+      // Handler for Charged to Health Card button
+      window.submitChargedToHealthcard = function(btn) {
+        try {
+          const form = btn && btn.closest ? btn.closest('form') : null;
+          if (!form) return;
+
+          const patientName = (btn && btn.dataset && btn.dataset.patientName) ? btn.dataset.patientName : 'this patient';
+          const isMember = btn && btn.dataset && btn.dataset.patientHealthcard === '1';
+          const provider = (btn && btn.dataset && btn.dataset.healthcardProvider) ? btn.dataset.healthcardProvider : 'Health Card';
+          const cardId = (btn && btn.dataset && btn.dataset.healthcardId) ? btn.dataset.healthcardId : '';
+
+          if (!isMember) {
+            if (typeof window.showCustomAlert === 'function') {
+              window.showCustomAlert(
+                '<div style="font-size:0.93em; line-height:1.6; color:#334155;">' +
+                  '<p style="margin:0 0 10px; font-weight:700; color:#dc2626;">Action Not Allowed</p>' +
+                  '<p>Patient <strong>' + patientName + '</strong> does not have an active Health Insurance / Health Card registered in their demographic records.</p>' +
+                  '<p style="color:#64748b; font-size:0.88em; margin-bottom:0;">Please update the patient profile under Patients management first to add Health Card credentials.</p>' +
+                '</div>',
+                { title: 'No Health Card on File', btnText: 'Understood', type: 'danger' }
+              );
+            } else {
+              alert('Patient ' + patientName + ' does not have a Health Card on file.');
+            }
+            return;
+          }
+
+          const htmlMsg = '<div style="font-size:0.93em; line-height:1.6; color:#334155;">' +
+                          '<p style="margin:0 0 10px; font-weight:600; color:#0f172a;">Are you sure you want to charge this patient to their Health Card?</p>' +
+                          '<div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; margin-bottom:12px;">' +
+                            '<div><strong>Patient:</strong> ' + patientName + '</div>' +
+                            '<div style="margin-top:4px;"><strong>HMO / Provider:</strong> ' + 
+                              '<span style="color:#4f46e5; font-weight:700;">' + provider + '</span>' +
+                            '</div>' +
+                            (cardId ? '<div style="margin-top:4px;"><strong>Card / Member #:</strong> <span style="font-weight:600; color:#0f172a;">' + cardId + '</span></div>' : '') +
+                          '</div>' +
+                          '<div style="font-size:0.86em; color:#64748b; line-height:1.5;">' +
+                            '• <strong>Amount Due:</strong> ₱0.00 (Covered by HMO / Health Card)<br>' +
+                            '• <strong>Next Station:</strong> Advances to Extraction / Clinical Queue' +
+                          '</div>' +
+                        '</div>';
+
+          const proceedCharge = function() {
+            let cardInput = form.querySelector('input[name="charged_to_healthcard"]');
+            if (!cardInput) {
+              cardInput = document.createElement('input');
+              cardInput.type = 'hidden';
+              cardInput.name = 'charged_to_healthcard';
+              form.appendChild(cardInput);
+            }
+            cardInput.value = '1';
+            let philInput = form.querySelector('input[name="charged_to_philhealth"]');
+            if (philInput) philInput.value = '0';
+            form.dataset.requireAmount = '0';
+
+            // Trigger submission
+            if (typeof form.requestSubmit === 'function') {
+              form.requestSubmit();
+            } else {
+              form.submit();
+            }
+          };
+
+          if (typeof window.showCustomConfirm === 'function') {
+            window.showCustomConfirm(htmlMsg, proceedCharge, {
+              title: 'Health Card Billing Verification',
+              btnText: 'Yes, Charge to Health Card',
+              type: 'primary',
+              icon: 'fas fa-id-card-clip',
+              iconBg: '#e0e7ff',
+              iconColor: '#4f46e5'
+            });
+          } else {
+            proceedCharge();
+          }
+        } catch (e) {
+          console.error('submitChargedToHealthcard error', e);
         }
       };
 
@@ -426,7 +524,9 @@
           // Strict Payment Area validation: require at least one positive amount if required
           const philInput = form.querySelector('input[name="charged_to_philhealth"]');
           const isChargedToPhilhealth = philInput && (philInput.value === '1' || philInput.value === 'true');
-          if (!isChargedToPhilhealth && (!form.dataset || form.dataset.requireAmount !== '0')) {
+          const cardInput = form.querySelector('input[name="charged_to_healthcard"]');
+          const isChargedToHealthCard = cardInput && (cardInput.value === '1' || cardInput.value === 'true');
+          if (!isChargedToPhilhealth && !isChargedToHealthCard && (!form.dataset || form.dataset.requireAmount !== '0')) {
             const amtInputs = Array.from(form.querySelectorAll('.payment-amount'));
             if (amtInputs.length) {
               let anyValid = false;

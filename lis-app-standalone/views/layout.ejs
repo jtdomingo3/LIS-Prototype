@@ -975,7 +975,14 @@
                                                                                                                 </svg>
                                                                                                         </a>
                                                 </div>
-                                                <p style="margin:0;"><span id="currentDate"><%= new Date().toLocaleDateString() %></span>&nbsp;<span id="currentTime"><%= new Date().toLocaleTimeString() %></span></p>
+                                                <% 
+                                                    const _headerNow = new Date();
+                                                    const _hMM = String(_headerNow.getMonth() + 1).padStart(2, '0');
+                                                    const _hDD = String(_headerNow.getDate()).padStart(2, '0');
+                                                    const _hYYYY = _headerNow.getFullYear();
+                                                    const _headerFormattedDate = _hMM + '/' + _hDD + '/' + _hYYYY;
+                                                %>
+                                                <p style="margin:0;"><span id="currentDate"><%= _headerFormattedDate %></span>&nbsp;<span id="currentTime"><%= new Date().toLocaleTimeString() %></span></p>
                                         </div>
                 </div>
             </div>
@@ -1000,13 +1007,18 @@
     <div id="sidebarBackdrop" class="sidebar-backdrop" tabindex="-1"></div>
 
     <script>
-        // Update date and time every second
+        // Update date and time every second (explicit MM/DD/YYYY Philippine standard)
         function updateTime() {
             const now = new Date();
             const timeEl = document.getElementById('currentTime');
             const dateEl = document.getElementById('currentDate');
             if (timeEl) timeEl.textContent = now.toLocaleTimeString();
-            if (dateEl) dateEl.textContent = now.toLocaleDateString();
+            if (dateEl) {
+                const mm = String(now.getMonth() + 1).padStart(2, '0');
+                const dd = String(now.getDate()).padStart(2, '0');
+                const yyyy = now.getFullYear();
+                dateEl.textContent = mm + '/' + dd + '/' + yyyy;
+            }
         }
         setInterval(updateTime, 1000);
 
