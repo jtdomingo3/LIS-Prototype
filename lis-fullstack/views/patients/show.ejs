@@ -1,105 +1,224 @@
-<div class="card">
-    <h3>Patient Details</h3>
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
-        <div>
-                        <h4 style="color: var(--secondary-green); margin-bottom: 15px;">Patient Information</h4>
-                        <% 
-                            let dobDisplay = 'No DOB';
-                            try {
-                                if (patient && patient.dateOfBirth) {
-                                    const d = new Date(patient.dateOfBirth);
-                                    if (!isNaN(d.getTime())) dobDisplay = d.toLocaleDateString();
-                                }
-                            } catch (e) {}
-                        %>
-                        <p><strong>Patient ID:</strong> <%= patient.patientId %></p>
-                        <p><strong>Name:</strong> <%= patient.firstName %> <%= patient.lastName %></p>
-                        <p><strong>Date of Birth:</strong> <%= dobDisplay %></p>
-                        <p><strong>Age:</strong> <%= patient.age %> years</p>
-            <p><strong>Gender:</strong> <%= patient.gender %></p>
-            <p><strong>Phone:</strong> <%= patient.phone || 'N/A' %></p>
-            <p><strong>Email:</strong> <%= patient.email || 'N/A' %></p>
-            <p><strong>Address:</strong> <%= patient.address || 'N/A' %></p>
-            <p><strong>Physician:</strong> <%= patient.physician || 'N/A' %></p>
+<% 
+  let dobDisplay = 'No DOB';
+  try {
+    if (patient && patient.dateOfBirth) {
+      const d = new Date(patient.dateOfBirth);
+      if (!isNaN(d.getTime())) dobDisplay = d.toLocaleDateString();
+    }
+  } catch (e) {}
+
+  const totalTests = Array.isArray(tests) ? tests.length : 0;
+  const completedTests = Array.isArray(tests) ? tests.filter(t => t.status === 'Completed' || t.status === 'Released').length : 0;
+  const pendingTests = Array.isArray(tests) ? tests.filter(t => t.status === 'Pending' || t.status === 'Awaiting').length : 0;
+  const inProgressTests = Array.isArray(tests) ? tests.filter(t => t.status === 'In Progress' || t.status === 'Checked').length : 0;
+%>
+
+<!-- Patient Demographic Profile Card -->
+<div class="card" style="padding: 24px 28px; border-radius: 16px; box-shadow: 0 4px 18px rgba(0,0,0,0.03); background: #ffffff; border: 1px solid #e2e8f0; margin-bottom: 24px;">
+  
+  <!-- Header: Avatar, Name & Summary -->
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; flex-wrap: wrap; padding-bottom: 20px; border-bottom: 1px solid #f1f5f9;">
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <div style="width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 1.5em; font-weight: 700; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.25);">
+        <%= patient.firstName ? patient.firstName.charAt(0).toUpperCase() : 'P' %>
+      </div>
+      <div>
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+          <h2 style="margin: 0; font-size: 1.4em; font-weight: 700; color: #0f172a;">
+            <%= patient.firstName %> <%= patient.lastName %>
+          </h2>
+          <span style="background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; padding: 2px 10px; border-radius: 20px; font-size: 0.8em; font-weight: 700;">
+            <%= patient.patientId %>
+          </span>
+          <span style="background: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 6px; font-size: 0.8em; font-weight: 600;">
+            <%= patient.gender %> &bull; <%= patient.age %> yrs
+          </span>
         </div>
-        <div>
-            <h4 style="color: var(--secondary-green); margin-bottom: 15px;">Test History</h4>
-            <p><strong>Total Tests:</strong> <%= tests.length %></p>
-            <p><strong>Completed:</strong> <%= tests.filter(t => t.status === 'Completed').length %></p>
-            <p><strong>Pending:</strong> <%= tests.filter(t => t.status === 'Pending').length %></p>
-            <p><strong>In Progress:</strong> <%= tests.filter(t => t.status === 'In Progress').length %></p>
+        <div style="font-size: 0.85em; color: #64748b; margin-top: 4px;">
+          Registered Patient Record &bull; Born: <strong><%= dobDisplay %></strong>
         </div>
+      </div>
     </div>
 
-    <div class="action-buttons">
-        <a href="/patients/<%= patient.id %>/edit" class="button btn-orange">Edit Patient</a>
-        <a href="/tests/new?patient=<%= patient.id %>&returnTo=/patients/<%= patient.id %>" class="button btn-primary">Create New Test</a>
-        <button id="printPatientBtn" class="button btn-secondary">Print</button>
-        <a href="/patients" class="button btn-secondary">Back to Patients</a>
+    <!-- Action Buttons -->
+    <div class="action-buttons" style="display: flex; gap: 8px; flex-wrap: wrap; margin: 0;">
+      <a href="/patients/<%= patient.id %>/edit" class="button btn-secondary" style="height: 38px; padding: 0 14px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em;">
+        <i class="fa fa-edit"></i> Edit Patient
+      </a>
+      <a href="/tests/new?patient=<%= patient.id %>&returnTo=/patients/<%= patient.id %>" class="button btn-primary" style="height: 38px; padding: 0 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em;">
+        <i class="fa fa-plus"></i> Create New Test
+      </a>
+      <button id="printPatientBtn" class="button btn-secondary" style="height: 38px; padding: 0 14px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em;">
+        <i class="fa fa-print"></i> Print Receipt
+      </button>
+      <a href="/patients" class="button btn-secondary" style="height: 38px; padding: 0 14px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em;">
+        <i class="fa fa-arrow-left"></i> Back to Patients
+      </a>
     </div>
+  </div>
+
+  <!-- Body: Demographic Info & Test Statistics Grid -->
+  <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-top: 20px;">
+    
+    <!-- Left: Detailed Patient Information -->
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px;">
+      <div style="font-weight: 700; font-size: 0.92em; color: #1e293b; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+        <i class="fa fa-id-card" style="color: #3b82f6;"></i> Patient Demographic Information
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px;">
+        <div>
+          <span style="font-size: 0.78em; text-transform: uppercase; color: #64748b; font-weight: 600; display: block;">Contact Number</span>
+          <span style="font-size: 0.92em; font-weight: 600; color: #0f172a;"><%= patient.phone || 'None recorded' %></span>
+        </div>
+        <div>
+          <span style="font-size: 0.78em; text-transform: uppercase; color: #64748b; font-weight: 600; display: block;">Email Address</span>
+          <span style="font-size: 0.92em; font-weight: 600; color: #0f172a;"><%= patient.email || 'None recorded' %></span>
+        </div>
+        <div>
+          <span style="font-size: 0.78em; text-transform: uppercase; color: #64748b; font-weight: 600; display: block;">Attending / Referring Physician</span>
+          <span style="font-size: 0.92em; font-weight: 600; color: #0f172a;"><%= patient.physician || 'N/A' %></span>
+        </div>
+        <div>
+          <span style="font-size: 0.78em; text-transform: uppercase; color: #64748b; font-weight: 600; display: block;">Complete Address</span>
+          <span style="font-size: 0.92em; font-weight: 600; color: #0f172a;"><%= patient.address || 'N/A' %></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Test Summary Metrics -->
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px;">
+      <div style="font-weight: 700; font-size: 0.92em; color: #1e293b; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; text-transform: uppercase; letter-spacing: 0.5px;">
+        <span><i class="fa fa-chart-pie" style="color: #10b981;"></i> Test History Summary</span>
+        <span style="font-size: 0.9em; font-weight: 800; color: #0f172a;"><%= totalTests %> Total</span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 12px;">
+          <div style="font-size: 0.75em; font-weight: 600; color: #166534; text-transform: uppercase;">Completed</div>
+          <div style="font-size: 1.4em; font-weight: 800; color: #15803d; margin-top: 2px;"><%= completedTests %></div>
+        </div>
+        <div style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px; padding: 10px 12px;">
+          <div style="font-size: 0.75em; font-weight: 600; color: #92400e; text-transform: uppercase;">In Progress</div>
+          <div style="font-size: 1.4em; font-weight: 800; color: #b45309; margin-top: 2px;"><%= inProgressTests %></div>
+        </div>
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 12px; grid-column: span 2;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.78em; font-weight: 600; color: #475569; text-transform: uppercase;">Pending / Awaiting</span>
+            <span style="font-size: 1.1em; font-weight: 800; color: #334155;"><%= pendingTests %></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Test History Card -->
+<div class="card" style="padding: 24px 28px; border-radius: 16px; box-shadow: 0 4px 18px rgba(0,0,0,0.03); background: #ffffff; border: 1px solid #e2e8f0;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <div style="font-weight: 700; font-size: 1.1em; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+      <i class="fa fa-vial" style="color: #06b6d4;"></i> Diagnostic Tests & Lab Results
+    </div>
+    <span style="font-size: 0.85em; color: #64748b;">Showing all <%= totalTests %> recorded test(s)</span>
+  </div>
+
+  <% if (tests && tests.length > 0) { %>
+    <div style="overflow-x: auto;">
+      <table style="width: 100%; border-collapse: collapse; text-align: left;">
+        <thead>
+          <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; color: #475569; font-size: 0.82em; text-transform: uppercase; letter-spacing: 0.5px;">
+            <th style="padding: 12px 16px; font-weight: 700;">Test ID</th>
+            <th style="padding: 12px 16px; font-weight: 700;">Test Type</th>
+            <th style="padding: 12px 16px; font-weight: 700;">Order Date</th>
+            <th style="padding: 12px 16px; font-weight: 700;">Status</th>
+            <th style="padding: 12px 16px; font-weight: 700;">Requested By</th>
+            <th style="padding: 12px 16px; font-weight: 700; text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% tests.forEach(test => { %>
+            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+              <td style="padding: 12px 16px; font-weight: 700; color: #0f172a;">
+                <%= test.testId %>
+              </td>
+              <td style="padding: 12px 16px; color: #334155; font-weight: 600; text-transform: capitalize;">
+                <%= test.testType %>
+              </td>
+              <td style="padding: 12px 16px; color: #64748b; font-size: 0.9em;">
+                <%= new Date(test.testDate).toLocaleDateString() %>
+              </td>
+              <td style="padding: 12px 16px;">
+                <% 
+                  const st = String(test.status || '').toLowerCase();
+                  let badgeBg = '#f1f5f9', badgeColor = '#475569', badgeBorder = '#cbd5e1';
+                  if (st === 'completed' || st === 'released') {
+                    badgeBg = '#dcfce7'; badgeColor = '#15803d'; badgeBorder = '#bbf7d0';
+                  } else if (st === 'in progress' || st === 'checked') {
+                    badgeBg = '#fef3c7'; badgeColor = '#b45309'; badgeBorder = '#fde68a';
+                  } else if (st === 'awaiting' || st === 'pending') {
+                    badgeBg = '#eff6ff'; badgeColor = '#1d4ed8'; badgeBorder = '#bfdbfe';
+                  }
+                %>
+                <span style="display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.78em; font-weight: 700; text-transform: uppercase; background: <%= badgeBg %>; color: <%= badgeColor %>; border: 1px solid <%= badgeBorder %>;">
+                  <%= test.status %>
+                </span>
+              </td>
+              <td style="padding: 12px 16px; color: #64748b; font-size: 0.9em;">
+                <%= test.requestedBy ? test.requestedBy.name : 'System User' %>
+              </td>
+              <td style="padding: 12px 16px; text-align: right;">
+                <div style="display: inline-flex; gap: 6px; align-items: center;">
+                  <a href="/tests/<%= test.id %>" class="button btn-secondary" style="height: 32px; padding: 0 10px; font-size: 0.82em; border-radius: 6px; font-weight: 600;">
+                    View
+                  </a>
+                  <% 
+                    const statusStr = String(test.status || '').toLowerCase();
+                    const hasResults = (test.results && (typeof test.results === 'object' ? Object.keys(test.results).length > 0 : String(test.results).trim().length > 0));
+                    if (statusStr === 'completed' || statusStr === 'released' || Boolean(test.completedAt) || hasResults) { %>
+                    <a href="/reports/preview/<%= test.id %>" class="button btn-orange" style="height: 32px; padding: 0 10px; font-size: 0.82em; border-radius: 6px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                      <i class="fa fa-file-pdf"></i> Report
+                    </a>
+                  <% } %>
+                </div>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+  <% } else { %>
+    <div style="text-align: center; padding: 36px 20px; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 12px; color: #64748b;">
+      <i class="fa fa-folder-open" style="font-size: 2.4em; color: #94a3b8; margin-bottom: 10px; display: block;"></i>
+      <p style="margin: 0; font-size: 0.95em; font-weight: 600; color: #334155;">No diagnostic tests recorded for this patient yet.</p>
+      <p style="margin: 4px 0 14px 0; font-size: 0.82em;">Click below to order a laboratory or imaging test.</p>
+      <a href="/tests/new?patient=<%= patient.id %>&returnTo=/patients/<%= patient.id %>" class="button btn-primary" style="height: 36px; padding: 0 16px; font-size: 0.88em; border-radius: 6px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+        <i class="fa fa-plus"></i> Create New Test
+      </a>
+    </div>
+  <% } %>
 </div>
 
 <script>
-    (function(){
-        const btn = document.getElementById('printPatientBtn');
-        if (!btn) return;
-        btn.addEventListener('click', function(){
-            if (!confirm('Print patient receipt?')) return;
-            btn.disabled = true;
-            const id = '<%= patient.id %>';
-            fetch('/patients/' + encodeURIComponent(id) + '/print', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
-                .then(r => r.json())
-                .then(j => {
-                    if (j && j.success) {
-                        alert('Print job sent.');
-                    } else {
-                        alert('Print failed: ' + (j && j.error ? j.error : 'unknown'));
-                    }
-                })
-                .catch(err => { alert('Print request failed: ' + err); })
-                .finally(() => { btn.disabled = false; });
-        });
-    })();
+  (function(){
+    const btn = document.getElementById('printPatientBtn');
+    if (!btn) return;
+    btn.addEventListener('click', function(){
+      if (!confirm('Print patient receipt?')) return;
+      btn.disabled = true;
+      const id = '<%= patient.id %>';
+      fetch('/patients/' + encodeURIComponent(id) + '/print', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+        .then(r => r.json())
+        .then(j => {
+          if (j && j.success) {
+            alert('Print job sent.');
+          } else {
+            alert('Print failed: ' + (j && j.error ? j.error : 'unknown'));
+          }
+        })
+        .catch(err => { alert('Print request failed: ' + err); })
+        .finally(() => { btn.disabled = false; });
+    });
+  })();
 </script>
-
-<% if (tests && tests.length > 0) { %>
-<div class="card">
-    <h3>Test History</h3>
-    <table>
-        <thead>
-            <tr>
-                <th>Test ID</th>
-                <th>Test Type</th>
-                <th>Date</th>
-                <th>Status</th>
-                <th>Requested By</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            <% tests.forEach(test => { %>
-            <tr>
-                <td><strong><%= test.testId %></strong></td>
-                <td><%= test.testType %></td>
-                <td><%= new Date(test.testDate).toLocaleDateString() %></td>
-                <td>
-                    <span class="badge <%= test.status === 'Completed' ? 'badge-success' : test.status === 'In Progress' ? 'badge-warning' : 'badge-info' %>">
-                        <%= test.status %>
-                    </span>
-                </td>
-                <td><%= test.requestedBy ? test.requestedBy.name : 'Unknown' %></td>
-                                <td>
-                                        <a href="/tests/<%= test.id %>" class="button btn-small btn-primary">View</a>
-                                        <% 
-                                            const statusStr = String(test.status || '').toLowerCase();
-                                            const hasResults = (test.results && (typeof test.results === 'object' ? Object.keys(test.results).length > 0 : String(test.results).trim().length > 0));
-                                            if (statusStr === 'completed' || statusStr === 'released' || Boolean(test.completedAt) || hasResults) { %>
-                                            <a href="/reports/preview/<%= test.id %>" class="button btn-small btn-orange">Report</a>
-                                        <% } %>
-                                </td>
-            </tr>
-            <% }); %>
-        </tbody>
-    </table>
-</div>
-<% } %>

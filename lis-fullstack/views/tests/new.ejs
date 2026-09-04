@@ -1,84 +1,172 @@
-<div class="card">
-  <form action="/tests" method="POST">
-    <div class="form-group">
-      <label>Patient</label>
-      <div style="display:flex; flex-direction:column; gap:6px;">
-        <input id="patientSearch" type="text" placeholder="Type to search patients by name or ID..." autocomplete="off" style="padding:10px; font-size:14px;">
-        <select id="patientSelect" name="patient" required style="padding:8px; font-size:14px;">
-          <option value="">-- Select Patient --</option>
-          <% if (patients && patients.length) { %>
-            <% patients.forEach(p => { %>
-              <option value="<%= p.id %>" <%= (test.patient && test.patient === p.id) ? 'selected' : '' %>><%= p.lastName %>, <%= p.firstName %> (<%= p.patientId %>)</option>
-            <% }) %>
-          <% } %>
-        </select>
+<style>
+  .test-order-layout {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    box-sizing: border-box;
+  }
+  .test-order-grid {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 20px;
+    align-items: stretch;
+  }
+  .test-catalog-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    align-content: start;
+  }
+  @media (max-width: 1280px) {
+    .test-catalog-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+  @media (max-width: 1024px) {
+    .test-order-grid {
+      grid-template-columns: 1fr;
+    }
+    .test-catalog-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+</style>
+
+<div class="card test-order-layout" style="padding: 24px 28px; border-radius: 16px; box-shadow: 0 4px 18px rgba(0,0,0,0.03); background: #ffffff; border: 1px solid #e2e8f0;">
+  
+  <!-- Header Banner -->
+  <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; margin-bottom: 18px; border-bottom: 1px solid #f1f5f9; flex-wrap: wrap; gap: 12px;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="width: 44px; height: 44px; border-radius: 10px; background: #ecfdf5; color: #10b981; display: flex; align-items: center; justify-content: center; font-size: 1.25em;">
+        <i class="fa fa-notes-medical"></i>
+      </div>
+      <div>
+        <h2 style="margin: 0; font-size: 1.35em; font-weight: 700; color: #0f172a;">Create New Test</h2>
+        <div style="font-size: 0.85em; color: #64748b; margin-top: 2px;">Assign diagnostic laboratory procedures or medical services to a patient</div>
       </div>
     </div>
+    <a href="<%= (typeof returnTo !== 'undefined' && returnTo) ? returnTo : '/tests' %>" class="button btn-secondary" style="height: 38px; padding: 0 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em;" id="backButton">
+      <i class="fa fa-arrow-left"></i> <%= (typeof returnTo !== 'undefined' && returnTo && returnTo.startsWith('/patients')) ? 'Back to Patient' : 'Back to Tests' %>
+    </a>
+  </div>
 
-    <div class="card" style="margin-top:12px;">
-      <h4>Select Requested Tests</h4>
-      <p>Choose the tests/services to request for this patient. You can specify amount and remarks per item.</p>
-      <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px; margin-top:8px; align-items:start;">
-        <% (templates || []).forEach(t => {
-             const rawKey = String(t.testType || t.name || '').trim();
-             const slug = rawKey.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
-        %>
-          <label style="display:flex; align-items:center; gap:6px; padding:8px 10px; border-radius:6px; background:#fff; border:1px solid #e2e8f0; flex-direction:column; align-items:stretch; transition: border-color 0.15s;">
-            <div style="display:flex; align-items:center; gap:8px;">
-              <input type="checkbox" class="test-checkbox" data-key="<%= slug %>" name="selectedTests" value="<%= rawKey %>">
-              <span style="font-size:0.92em; font-weight:500; flex:1;"><%= t.name || t.testType %></span>
-              <input type="number" step="0.01" min="0" name="amount_<%= slug %>" class="test-amount" placeholder="Amount" style="width:105px; padding:4px 8px; font-size:13px; display:none;">
+  <form action="/tests" method="POST">
+    
+    <div class="test-order-grid">
+      
+      <!-- Left Column: Patient Selection, Send Out, Doctor Check-up & Submit -->
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        
+        <!-- Patient Assignment Card -->
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 18px;">
+          <div style="font-weight: 700; font-size: 0.94em; color: #0f172a; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+            <span style="display: flex; align-items: center; gap: 8px;">
+              <i class="fa fa-user" style="color: #10b981;"></i> Patient Assignment <span style="color: #ef4444;">*</span>
+            </span>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div style="position: relative;">
+              <i class="fa fa-search" style="position: absolute; left: 12px; top: 12px; color: #94a3b8; font-size: 0.92em;"></i>
+              <input id="patientSearch" type="text" placeholder="Type name or ID to filter..." autocomplete="off" style="width: 100%; height: 38px; padding: 6px 12px 6px 36px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.92em; font-weight: 500; box-sizing: border-box;" />
             </div>
-            <div class="test-remark-container" style="display:none; margin-top:6px;">
-              <textarea name="remark_<%= slug %>" class="test-remark" placeholder="Remarks" rows="2" style="width:100%; height:42px; min-height:40px; max-height:44px; font-size:12.5px; line-height:1.25; padding:4px 8px; border:1px solid #cbd5e1; border-radius:4px; box-sizing:border-box; resize:none;"></textarea>
-            </div>
+
+            <select id="patientSelect" name="patient" required style="width: 100%; min-height: 40px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 6px 10px; font-size: 0.92em; background: #ffffff; color: #1e293b; box-sizing: border-box; outline: none;">
+              <option value="">-- Select Patient --</option>
+              <% if (patients && patients.length) { %>
+                <% patients.forEach(p => { %>
+                  <option value="<%= p.id %>" <%= (test.patient && test.patient === p.id) ? 'selected' : '' %>>
+                    <%= p.lastName %>, <%= p.firstName %> (<%= p.patientId %>)
+                  </option>
+                <% }) %>
+              <% } %>
+            </select>
+          </div>
+        </div>
+
+        <!-- Send Out Card -->
+        <div style="background: #faf5ff; border: 1px solid #e9d5ff; border-radius: 12px; padding: 12px 16px;">
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+              <input type="checkbox" class="sendout-checkbox" data-key="sendout" name="forSendOut" value="1" style="accent-color: #9333ea; width: 17px; height: 17px;" />
+              <span style="font-size: 0.92em; font-weight: 700; color: #6b21a8; display: flex; align-items: center; gap: 6px;">
+                <i class="fa fa-share-square"></i> For Send Out
+              </span>
+            </label>
+            <input type="number" step="0.01" min="0" name="amount_sendout" class="test-amount" placeholder="₱ Amount" style="width: 100px; height: 32px; padding: 4px 8px; font-size: 0.88em; border-radius: 6px; border: 1px solid #d8b4fe; display: none; box-sizing: border-box;" />
+          </div>
+          <div class="sendout-remark-container" style="display: none; margin-top: 8px;">
+            <textarea name="remark_sendout" class="test-remark" placeholder="Send out laboratory instructions..." rows="2" style="width: 100%; height: 38px; min-height: 38px; max-height: 48px; font-size: 0.85em; line-height: 1.3; padding: 6px 8px; border: 1px solid #d8b4fe; border-radius: 6px; box-sizing: border-box; resize: none; background: #fff;"></textarea>
+          </div>
+        </div>
+
+        <!-- Doctor's Check-up Card -->
+        <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 12px; padding: 12px 16px;">
+          <div style="font-weight: 700; font-size: 0.9em; color: #0369a1; display: flex; align-items: center; gap: 6px; margin-bottom: 8px;">
+            <i class="fa fa-user-md"></i> Doctor's Check-up
+          </div>
+          <% const DOCS = (typeof DOCTOR_AREAS !== 'undefined' && DOCTOR_AREAS && DOCTOR_AREAS.length) ? DOCTOR_AREAS : ["Doctor's Check-up - Dr. Lorenzo","Doctor's Check-up - Dr. Arcilla"]; %>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <% DOCS.forEach(d => { %>
+              <label style="display: inline-flex; align-items: center; gap: 8px; background: #ffffff; padding: 7px 10px; border-radius: 6px; border: 1px solid #bae6fd; font-size: 0.86em; font-weight: 600; color: #0c4a6e; cursor: pointer; user-select: none;">
+                <input type="checkbox" name="requiredAreas" value="<%= d %>" style="accent-color: #0284c7; width: 16px; height: 16px;" />
+                <span><%= d %></span>
+              </label>
+            <% }) %>
+          </div>
+        </div>
+
+        <!-- Receipt & Actions Box -->
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px;">
+          <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.88em; font-weight: 600; color: #334155; user-select: none;">
+            <input type="checkbox" name="printAfterAssign" value="1" <%= test.printAfterAssign ? 'checked' : '' %> style="accent-color: #10b981; width: 16px; height: 16px;" />
+            <span>Print receipt after assign</span>
           </label>
-        <% }) %>
+
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <a href="<%= (typeof returnTo !== 'undefined' && returnTo) ? returnTo : '/tests' %>" class="button btn-secondary" style="flex: 1; height: 40px; padding: 0 12px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; font-size: 0.88em;">
+              Cancel
+            </a>
+            <button type="submit" class="button btn-primary" style="flex: 1.4; height: 40px; padding: 0 14px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.88em;">
+              <i class="fa fa-plus-circle"></i> Create Test
+            </button>
+          </div>
+        </div>
+
       </div>
 
-      <div style="margin-top:12px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
-        <label style="display:inline-flex; align-items:center; gap:8px; margin-right:12px;">
-          <input type="checkbox" class="sendout-checkbox" data-key="sendout" name="forSendOut" value="1" >
-          <span style="font-size:0.95em; font-weight:500;">For Send Out</span>
-        </label>
-        <input type="number" step="0.01" min="0" name="amount_sendout" class="test-amount" placeholder="Amount" style="width:105px; padding:4px 8px; font-size:13px; display:none;">
-        <div class="sendout-remark-container" style="display:none; margin-left:6px; flex:1; max-width:320px;">
-          <textarea name="remark_sendout" class="test-remark" placeholder="Remarks" rows="2" style="width:100%; height:42px; min-height:40px; max-height:44px; font-size:12.5px; line-height:1.25; padding:4px 8px; border:1px solid #cbd5e1; border-radius:4px; box-sizing:border-box; resize:none;"></textarea>
+      <!-- Right Column: Select Requested Tests Catalog (Exactly 4 Columns) -->
+      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 20px; display: flex; flex-direction: column;">
+        <div style="font-weight: 700; font-size: 0.96em; color: #0f172a; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+          <span style="display: flex; align-items: center; gap: 8px;">
+            <i class="fa fa-flask" style="color: #3b82f6;"></i> Available Tests & Procedures
+          </span>
+          <span style="font-size: 0.8em; color: #64748b; font-weight: 500;">Check test to enable amount & remarks</span>
+        </div>
+
+        <!-- 4-Column Grid for Clear Readability -->
+        <div class="test-catalog-grid">
+          <% (templates || []).forEach(t => {
+               const rawKey = String(t.testType || t.name || '').trim();
+               const slug = rawKey.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
+          %>
+            <label style="display: flex; flex-direction: column; padding: 10px 12px; border-radius: 8px; background: #f8fafc; border: 1px solid #e2e8f0; cursor: pointer; transition: all 0.15s ease; user-select: none;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="checkbox" class="test-checkbox" data-key="<%= slug %>" name="selectedTests" value="<%= rawKey %>" style="accent-color: #10b981; width: 17px; height: 17px; cursor: pointer; flex-shrink: 0;" />
+                <span style="font-size: 0.9em; font-weight: 600; color: #0f172a; flex: 1; word-break: break-word; line-height: 1.25;"><%= t.name || t.testType %></span>
+                <input type="number" step="0.01" min="0" name="amount_<%= slug %>" class="test-amount" placeholder="₱ Amount" style="width: 88px; height: 30px; padding: 2px 6px; font-size: 0.82em; border-radius: 5px; border: 1px solid #cbd5e1; display: none; box-sizing: border-box;" />
+              </div>
+              <div class="test-remark-container" style="display: none; margin-top: 6px;">
+                <textarea name="remark_<%= slug %>" class="test-remark" placeholder="Special instructions..." rows="2" style="width: 100%; height: 36px; min-height: 36px; max-height: 44px; font-size: 0.82em; line-height: 1.25; padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 5px; box-sizing: border-box; resize: none; background: #ffffff;"></textarea>
+              </div>
+            </label>
+          <% }) %>
         </div>
       </div>
 
-      <h5 style="margin-top:12px;">Doctor's Check-up</h5>
-      <% const DOCS = (typeof DOCTOR_AREAS !== 'undefined' && DOCTOR_AREAS && DOCTOR_AREAS.length) ? DOCTOR_AREAS : ["Doctor's Check-up - Dr. Lorenzo","Doctor's Check-up - Dr. Arcilla"]; %>
-      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;">
-        <% DOCS.forEach(d => { %>
-          <label style="display:inline-flex; align-items:center; gap:6px;">
-            <input type="checkbox" name="requiredAreas" value="<%= d %>">
-            <%= d %>
-          </label>
-        <% }) %>
-      </div>
     </div>
 
-    <!-- Test Date and Priority removed — defaults will be applied by server -->
-
-    <div class="form-row" style="display:flex; gap:12px; align-items:center; flex-wrap:nowrap; justify-content:flex-start;">
-      <div style="display:flex; gap:12px; align-items:center;">
-        <a href="<%= (typeof returnTo !== 'undefined' && returnTo) ? returnTo : '/tests' %>" class="button btn-secondary" style="white-space:nowrap;" id="backButton">
-          <%= (typeof returnTo !== 'undefined' && returnTo && returnTo.startsWith('/patients')) ? 'Back to Patient' : 'Back to Tests' %>
-        </a>
-      </div>
-
-      <div style="flex:0 0 auto; margin-left:8px;">
-        <button class="button btn-primary" style="white-space:nowrap;">Create Test</button>
-      </div>
-
-      <div style="display:flex; gap:8px; align-items:center; margin-left:8px;">
-        <label style="display:inline-flex; align-items:center; gap:8px; white-space:nowrap;">
-          <input type="checkbox" name="printAfterAssign" value="1" <%= test.printAfterAssign ? 'checked' : '' %>> Print receipt after assign
-        </label>
-      </div>
-    </div>
-    <input type="hidden" name="returnTo" id="returnTo" value="<%= typeof returnTo !== 'undefined' ? returnTo : '' %>">
+    <input type="hidden" name="returnTo" id="returnTo" value="<%= typeof returnTo !== 'undefined' ? returnTo : '' %>" />
   </form>
 </div>
 
@@ -137,7 +225,7 @@
             if (rtField && !rtField.value) rtField.value = rt;
             if (backBtn) {
               backBtn.href = rt;
-              if (rt.startsWith('/patients')) backBtn.textContent = 'Back to Patient';
+              if (rt.startsWith('/patients')) backBtn.innerHTML = '<i class="fa fa-arrow-left"></i> Back to Patient';
             }
           }
         } catch (e) {}
@@ -151,20 +239,25 @@
 
       function update() {
         if (!amt || !remark) return;
+        const card = cb.closest('label');
         if (cb.checked) {
           amt.style.display = '';
           amt.disabled = false;
           remark.disabled = false;
           if (container) container.style.display = 'block';
-          const card = cb.closest('label');
-          if (card) card.style.borderColor = '#10b981';
+          if (card) {
+            card.style.borderColor = '#10b981';
+            card.style.background = '#f0fdf4';
+          }
         } else {
           amt.style.display = 'none';
           amt.disabled = true;
           remark.disabled = true;
           if (container) container.style.display = 'none';
-          const card = cb.closest('label');
-          if (card) card.style.borderColor = '#e2e8f0';
+          if (card) {
+            card.style.borderColor = '#e2e8f0';
+            card.style.background = '#f8fafc';
+          }
         }
       }
       cb.addEventListener('change', update);

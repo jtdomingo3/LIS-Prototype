@@ -1,43 +1,128 @@
-<div class="card">
-  <h3>My Profile</h3>
+<div class="card" style="padding: 28px 32px; border-radius: 16px; box-shadow: 0 4px 18px rgba(0,0,0,0.03); background: #ffffff; border: 1px solid #e2e8f0; max-width: 1000px; margin: 0 auto;">
+  
+  <!-- Profile Header Banner -->
+  <div style="display: flex; align-items: center; gap: 20px; padding-bottom: 24px; margin-bottom: 24px; border-bottom: 1px solid #f1f5f9; flex-wrap: wrap;">
+    <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 1.6em; font-weight: 700; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);">
+      <%= user.name ? user.name.charAt(0).toUpperCase() : 'U' %>
+    </div>
+    <div style="flex: 1; min-width: 220px;">
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <h2 style="margin: 0; font-size: 1.4em; font-weight: 700; color: #0f172a;"><%= user.name %></h2>
+        <span style="background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; padding: 2px 10px; border-radius: 20px; font-size: 0.78em; font-weight: 600; text-transform: uppercase;">
+          <%= user.role || 'Staff Member' %>
+        </span>
+      </div>
+      <div style="font-size: 0.88em; color: #64748b; margin-top: 4px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+        <span><i class="fa fa-envelope" style="margin-right: 4px;"></i> <%= user.email %></span>
+        <% if (user.licenseNumber) { %>
+          <span><i class="fa fa-id-card" style="margin-right: 4px;"></i> License: <strong><%= user.licenseNumber %></strong></span>
+        <% } %>
+      </div>
+    </div>
+  </div>
 
   <form action="/users/profile?_method=PUT" method="POST" enctype="multipart/form-data">
-    <label>Name</label>
-    <input type="text" name="name" value="<%= user.name %>" required />
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 28px;">
+      
+      <!-- Left Column: Personal & Professional Credentials -->
+      <div style="display: flex; flex-direction: column; gap: 18px;">
+        <div style="font-weight: 700; font-size: 1em; color: #0f172a; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; gap: 8px;">
+          <i class="fa fa-user-circle" style="color: #10b981;"></i> Account Credentials
+        </div>
 
-    <label>Email</label>
-    <input type="email" name="email" value="<%= user.email %>" required />
+        <div>
+          <label style="display: block; font-weight: 600; font-size: 0.88em; color: #334155; margin-bottom: 6px;">Full Name <span style="color: #ef4444;">*</span></label>
+          <input type="text" name="name" value="<%= user.name %>" required style="width: 100%; height: 40px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 6px 12px; font-size: 0.92em; font-weight: 500; box-sizing: border-box;" />
+        </div>
 
-    <label>License Number</label>
-    <input type="text" name="licenseNumber" value="<%= user.licenseNumber || '' %>" />
+        <div>
+          <label style="display: block; font-weight: 600; font-size: 0.88em; color: #334155; margin-bottom: 6px;">Email Address <span style="color: #ef4444;">*</span></label>
+          <input type="email" name="email" value="<%= user.email %>" required style="width: 100%; height: 40px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 6px 12px; font-size: 0.92em; font-weight: 500; box-sizing: border-box;" />
+        </div>
 
-    <label>E-signature (PNG)</label>
-    <% const sigPath = user.signature ? ('/assets/signature/' + user.signature) : null; %>
-    <% if (sigPath) { %>
-      <div style="margin-bottom:8px;"><img src="<%= sigPath %>" alt="signature" style="height:64px;border:1px solid #eee;padding:6px;background:#fff;" /></div>
-    <% } %>
-    <input type="file" name="signature" accept="image/png,image/*" />
+        <div>
+          <label style="display: block; font-weight: 600; font-size: 0.88em; color: #334155; margin-bottom: 6px;">PRC / Professional License Number</label>
+          <input type="text" name="licenseNumber" value="<%= user.licenseNumber || '' %>" placeholder="e.g. 0012345" style="width: 100%; height: 40px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 6px 12px; font-size: 0.92em; font-weight: 500; box-sizing: border-box;" />
+        </div>
 
-    <label>Auto-apply signature</label>
-    <% const as = user.autoSignature || { enabled:false, until:null }; const now = new Date(); const until = as && as.until ? new Date(as.until) : null; %>
-    <select name="autoSignatureOption">
-      <option value="off" <% if (!as.enabled) { %>selected<% } %>>Off</option>
-      <option value="1day" <% if (as.enabled && until && (until - now) > 0 && (until - now) <= 24*3600*1000) { %>selected<% } %>>1 day</option>
-      <option value="1week" <% if (as.enabled && until && (until - now) > 0 && (until - now) <= 7*24*3600*1000) { %>selected<% } %>>1 week</option>
-      <option value="1month" <% if (as.enabled && until && (until - now) > 0 && (until - now) <= 31*24*3600*1000) { %>selected<% } %>>1 month</option>
-      <option value="permanent" <% if (as.enabled && !as.until) { %>selected<% } %>>Always</option>
-    </select>
+        <!-- E-Signature Section -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-top: 4px;">
+          <div style="font-weight: 600; font-size: 0.9em; color: #1e293b; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between;">
+            <span><i class="fa fa-signature" style="color: #6366f1;"></i> Digital Signature (PNG)</span>
+            <span style="font-size: 0.78em; color: #64748b;">Transparent background recommended</span>
+          </div>
 
-    <hr />
-    <h4>Change Password (optional)</h4>
-    <label>New password</label>
-    <input type="password" name="password" />
-    <label>Confirm password</label>
-    <input type="password" name="confirmPassword" />
+          <% const sigPath = user.signature ? ('/assets/signature/' + user.signature) : null; %>
+          <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 12px;">
+            <div style="width: 150px; height: 68px; border: 1px dashed #cbd5e1; border-radius: 8px; background: #ffffff; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 4px;">
+              <% if (sigPath) { %>
+                <img src="<%= sigPath %>" alt="signature" style="max-height: 56px; max-width: 100%; object-fit: contain;" onerror="this.onerror=null; this.src=''; this.parentElement.innerHTML='<span style=\'font-size:0.75em;color:#94a3b8;\'>No signature</span>';" />
+              <% } else { %>
+                <span style="font-size: 0.75em; color: #94a3b8; text-align: center;">No signature uploaded</span>
+              <% } %>
+            </div>
+            <div style="flex: 1;">
+              <input type="file" name="signature" accept="image/png,image/*" style="font-size: 0.85em; color: #475569; width: 100%;" />
+              <div style="font-size: 0.75em; color: #64748b; margin-top: 4px;">Upload a clean PNG image of your handwritten signature.</div>
+            </div>
+          </div>
 
-    <div style="margin-top:12px;">
-      <button class="button btn-primary" type="submit">Save Profile</button>
-      <a href="/dashboard" class="button btn-secondary">Cancel</a>
+          <div>
+            <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 6px;">Auto-apply signature on result releases</label>
+            <% const as = user.autoSignature || { enabled:false, until:null }; const now = new Date(); const until = as && as.until ? new Date(as.until) : null; %>
+            <select name="autoSignatureOption" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 6px 12px; font-size: 0.88em; background: #fff;">
+              <option value="off" <% if (!as.enabled) { %>selected<% } %>>Off (Always require manual selection)</option>
+              <option value="1day" <% if (as.enabled && until && (until - now) > 0 && (until - now) <= 24*3600*1000) { %>selected<% } %>>Active for 1 day</option>
+              <option value="1week" <% if (as.enabled && until && (until - now) > 0 && (until - now) <= 7*24*3600*1000) { %>selected<% } %>>Active for 1 week</option>
+              <option value="1month" <% if (as.enabled && until && (until - now) > 0 && (until - now) <= 31*24*3600*1000) { %>selected<% } %>>Active for 1 month</option>
+              <option value="permanent" <% if (as.enabled && !as.until) { %>selected<% } %>>Always active</option>
+            </select>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Security & Password -->
+      <div style="display: flex; flex-direction: column; gap: 18px;">
+        <div style="font-weight: 700; font-size: 1em; color: #0f172a; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; gap: 8px;">
+          <i class="fa fa-shield-alt" style="color: #f59e0b;"></i> Security & Password
+        </div>
+
+        <div style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: 10px; padding: 12px 16px; font-size: 0.82em; color: #92400e; line-height: 1.5;">
+          <i class="fa fa-info-circle"></i> Leave password fields blank if you do not wish to change your current password.
+        </div>
+
+        <div>
+          <label style="display: block; font-weight: 600; font-size: 0.88em; color: #334155; margin-bottom: 6px;">New Password</label>
+          <input type="password" name="password" placeholder="Enter new password" style="width: 100%; height: 40px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 6px 12px; font-size: 0.92em; box-sizing: border-box;" />
+        </div>
+
+        <div>
+          <label style="display: block; font-weight: 600; font-size: 0.88em; color: #334155; margin-bottom: 6px;">Confirm New Password</label>
+          <input type="password" name="confirmPassword" placeholder="Confirm new password" style="width: 100%; height: 40px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 6px 12px; font-size: 0.92em; box-sizing: border-box;" />
+        </div>
+
+        <!-- Quick Summary of Access Privileges -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px; margin-top: auto;">
+          <div style="font-weight: 600; font-size: 0.88em; color: #475569; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">
+            System Privileges
+          </div>
+          <div style="font-size: 0.85em; color: #64748b; line-height: 1.6;">
+            Your assigned role is <strong><%= user.role %></strong>. Permissions and access to laboratory sections, reports, and administrative tools are managed by the System Administrator.
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Form Action Buttons -->
+    <div style="display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+      <a href="/dashboard" class="button btn-secondary" style="height: 42px; padding: 0 20px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">Cancel</a>
+      <button class="button btn-primary" type="submit" style="height: 42px; padding: 0 28px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+        <i class="fa fa-save"></i> Save Profile
+      </button>
     </div>
   </form>
+
 </div>

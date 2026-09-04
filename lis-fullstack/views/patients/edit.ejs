@@ -1,148 +1,217 @@
-<div class="card">
-    <form action="/patients/<%= patient.id %>?_method=PUT" method="POST">
-        <div class="form-group">
-            <label>First Name *</label>
-            <input type="text" name="firstName" value="<%= patient.firstName %>" placeholder="Enter first name" required>
-        </div>
-        <div class="form-group">
-            <label>Middle Name</label>
-            <input type="text" name="middleName" value="<%= patient.middleName || '' %>" placeholder="Enter middle name (optional)">
-        </div>
-        <div class="form-group">
-            <label>Last Name *</label>
-            <input type="text" name="lastName" value="<%= patient.lastName %>" placeholder="Enter last name" required>
-        </div>
-        <div class="form-row">
-            <div class="form-group">
-                <label>Date of Birth</label>
-                <input id="dobInput" type="date" name="dateOfBirth" value="<%= patient.dateOfBirth ? new Date(patient.dateOfBirth).toISOString().split('T')[0] : '' %>">
-            </div>
-            <div class="form-group">
-                <label>Age</label>
-                <input id="ageInput" type="number" name="ageManual" value="<%= patient.ageManual || patient.age || '' %>" placeholder="Enter age if DOB unknown">
-                <small class="muted">Age is auto-calculated when DOB is set. Clear DOB to enter age manually.</small>
-            </div>
-            <div class="form-group">
-                <label>Gender *</label>
-                <select name="gender" required>
-                    <option value="">Select Gender</option>
-                    <option value="Male" <%= patient.gender === 'Male' ? 'selected' : '' %>>Male</option>
-                    <option value="Female" <%= patient.gender === 'Female' ? 'selected' : '' %>>Female</option>
-                    <option value="Other" <%= patient.gender === 'Other' ? 'selected' : '' %>>Other</option>
-                </select>
-            </div>
-        </div>
-        <div class="form-row">
-            <div class="form-group">
-                <label>Phone Number</label>
-                <input type="text" name="phone" value="<%= patient.phone || '' %>" placeholder="+1 (555) 000-0000">
-            </div>
-            <div class="form-group">
-                <label>Email</label>
-                <input type="email" name="email" value="<%= patient.email || '' %>" placeholder="patient@example.com">
-            </div>
-        </div>
-                <div class="form-group">
-                        <label>Physician</label>
-                        <input type="text" name="physician" value="<%= patient.physician || '' %>" placeholder="Referring physician or doctor's name">
-                </div>
-                <div class="form-group">
-                    <label>Company (optional)</label>
-                    <input type="text" name="company" value="<%= patient.company || '' %>" placeholder="Company / Employer (optional)">
-                </div>
-                <div class="form-group">
-                        <label>Address</label>
-                        <textarea name="address" placeholder="Street address, city, state, zip"><%= patient.address || '' %></textarea>
-                </div>
+<style>
+  .patient-form-layout {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    box-sizing: border-box;
+  }
+  .patient-form-grid {
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: 20px;
+    align-items: stretch;
+  }
+  @media (max-width: 992px) {
+    .patient-form-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
 
-                <div class="card" style="margin-top:12px;">
-                    <h4>PhilHealth</h4>
-                    <p>
-                        The Gezyne Clinical Laboratory is an accredited PhilHealth provider. Coverage depends on the specific tests requested; some services may be fully covered while others may receive partial benefits. Please indicate whether the patient is a PhilHealth member.
-                    </p>
-                    <div style="margin-top:8px;">
-                        <div style="display:flex; gap:24px; align-items:center;">
-                            <label style="display:inline-flex; align-items:center; gap:8px; white-space:nowrap;">
-                                <input type="radio" name="philhealthConsent" id="philYesEdit" value="1" <%= patient.philhealthConsent ? 'checked' : '' %> >
-                                <span>Yes — apply PhilHealth benefits</span>
-                            </label>
-                            <label style="display:inline-flex; align-items:center; gap:8px; white-space:nowrap;">
-                                <input type="radio" name="philhealthConsent" id="philNoEdit" value="0" <%= patient.philhealthConsent ? '' : 'checked' %> >
-                                <span>No — not a PhilHealth member</span>
-                            </label>
-                        </div>
-                        <div id="philIdWrapEdit" style="display:<%= patient.philhealthConsent ? '' : 'none' %>; margin-top:12px;">
-                            <label style="display:block; margin-bottom:4px;">PhilHealth ID Number (optional)</label>
-                            <input id="philIdEdit" type="text" name="philhealthId" value="<%= patient.philhealthId || '' %>" placeholder="e.g. 12-345678901-2">
-                        </div>
-                    </div>
-                </div>
+<div class="card patient-form-layout" style="padding: 24px 28px; border-radius: 16px; box-shadow: 0 4px 18px rgba(0,0,0,0.03); background: #ffffff; border: 1px solid #e2e8f0;">
+  
+  <!-- Header Banner -->
+  <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; margin-bottom: 18px; border-bottom: 1px solid #f1f5f9; flex-wrap: wrap; gap: 12px;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="width: 42px; height: 42px; border-radius: 10px; background: #ecfdf5; color: #10b981; display: flex; align-items: center; justify-content: center; font-size: 1.2em;">
+        <i class="fa fa-user-edit"></i>
+      </div>
+      <div>
+        <h2 style="margin: 0; font-size: 1.3em; font-weight: 700; color: #0f172a;">Edit Patient</h2>
+        <div style="font-size: 0.8em; color: #64748b; margin-top: 2px;">
+          Updating records for <strong style="color: #1e293b;"><%= patient.firstName %> <%= patient.lastName %></strong> (<%= patient.id %>)
+        </div>
+      </div>
+    </div>
+    <a href="/patients/<%= patient.id %>" class="button btn-secondary" style="height: 36px; padding: 0 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.85em;">
+      <i class="fa fa-arrow-left"></i> Back to Patient
+    </a>
+  </div>
 
-                <!-- Removed reception-area routing UI per request -->
+  <form action="/patients/<%= patient.id %>?_method=PUT" method="POST">
+    
+    <div class="patient-form-grid">
+      
+      <!-- Left Column: Demographics & PhilHealth -->
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        
+        <!-- Primary Demographics Card -->
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; flex: 1;">
+          <div style="font-weight: 700; font-size: 0.92em; color: #0f172a; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; gap: 8px; margin-bottom: 14px;">
+            <i class="fa fa-id-card" style="color: #10b981;"></i> Patient Identity & Demographics
+          </div>
 
-                                <div class="form-row">
-                                                <a href="/patients/<%= patient.id %>" class="button btn-secondary">Cancel</a>
-                                                <button type="submit" class="button btn-primary">Update Patient</button>
-                                </div>
-        </form>
+          <!-- Names Grid -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+            <div>
+              <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 5px;">First Name <span style="color: #ef4444;">*</span></label>
+              <input type="text" name="firstName" value="<%= patient.firstName %>" placeholder="Enter first name" required style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 6px 12px; font-size: 0.9em; font-weight: 500; box-sizing: border-box;" />
+            </div>
+            <div>
+              <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 5px;">Middle Name</label>
+              <input type="text" name="middleName" value="<%= patient.middleName || '' %>" placeholder="Middle name (optional)" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 6px 12px; font-size: 0.9em; font-weight: 500; box-sizing: border-box;" />
+            </div>
+          </div>
+
+          <div style="margin-bottom: 12px;">
+            <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 5px;">Last Name <span style="color: #ef4444;">*</span></label>
+            <input type="text" name="lastName" value="<%= patient.lastName %>" placeholder="Enter last name" required style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 6px 12px; font-size: 0.9em; font-weight: 500; box-sizing: border-box;" />
+          </div>
+
+          <!-- DOB, Age, Gender Row -->
+          <div style="display: grid; grid-template-columns: 1.1fr 0.9fr 1fr; gap: 10px;">
+            <div>
+              <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 5px;">Date of Birth</label>
+              <input id="dobInput" type="date" name="dateOfBirth" value="<%= patient.dateOfBirth ? new Date(patient.dateOfBirth).toISOString().split('T')[0] : '' %>" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 4px 8px; font-size: 0.88em; box-sizing: border-box;" />
+            </div>
+            <div>
+              <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 5px;">Age</label>
+              <input id="ageInput" type="number" name="ageManual" value="<%= patient.ageManual || patient.age || '' %>" placeholder="Age" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 4px 8px; font-size: 0.88em; box-sizing: border-box;" />
+            </div>
+            <div>
+              <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 5px;">Gender <span style="color: #ef4444;">*</span></label>
+              <select name="gender" required style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 4px 8px; font-size: 0.88em; background: #fff;">
+                <option value="">Gender</option>
+                <option value="Male" <%= patient.gender === 'Male' ? 'selected' : '' %>>Male</option>
+                <option value="Female" <%= patient.gender === 'Female' ? 'selected' : '' %>>Female</option>
+                <option value="Other" <%= patient.gender === 'Other' ? 'selected' : '' %>>Other</option>
+              </select>
+            </div>
+          </div>
+          <small style="font-size: 0.72em; color: #64748b; margin-top: 5px; display: block;">Age is auto-calculated when DOB is selected.</small>
+        </div>
+
+        <!-- PhilHealth Benefits Card -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 20px;">
+          <div style="font-weight: 700; font-size: 0.9em; color: #0f172a; display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+            <span style="display: flex; align-items: center; gap: 8px;">
+              <i class="fa fa-clinic-medical" style="color: #10b981;"></i> PhilHealth Coverage
+            </span>
+            <span style="font-size: 0.75em; background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 10px; font-weight: 700;">Accredited Provider</span>
+          </div>
+
+          <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap; margin-top: 8px;">
+            <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.86em; font-weight: 600; color: #1e293b;">
+              <input type="radio" name="philhealthConsent" id="philYesEdit" value="1" <%= patient.philhealthConsent ? 'checked' : '' %> style="accent-color: #10b981; width: 16px; height: 16px;" />
+              <span>Yes — Apply Benefits</span>
+            </label>
+            <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.86em; font-weight: 600; color: #1e293b;">
+              <input type="radio" name="philhealthConsent" id="philNoEdit" value="0" <%= patient.philhealthConsent ? '' : 'checked' %> style="accent-color: #10b981; width: 16px; height: 16px;" />
+              <span>No — Non-member</span>
+            </label>
+          </div>
+
+          <div id="philIdWrapEdit" style="display:<%= patient.philhealthConsent ? '' : 'none' %>; margin-top: 10px;">
+            <label style="display: block; font-weight: 600; font-size: 0.82em; color: #334155; margin-bottom: 4px;">PhilHealth Identification Number (PIN)</label>
+            <input id="philIdEdit" type="text" name="philhealthId" value="<%= patient.philhealthId || '' %>" placeholder="e.g. 12-345678901-2" style="width: 100%; height: 36px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 4px 10px; font-size: 0.88em; box-sizing: border-box;" />
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Contact & Affiliation -->
+      <div style="display: flex; flex-direction: column;">
+        
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; flex: 1; display: flex; flex-direction: column;">
+          <div style="font-weight: 700; font-size: 0.92em; color: #0f172a; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; gap: 8px; margin-bottom: 14px;">
+            <i class="fa fa-phone" style="color: #3b82f6;"></i> Contact Information & Affiliation
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+            <div>
+              <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 5px;">Phone Number</label>
+              <input type="text" name="phone" value="<%= patient.phone || '' %>" placeholder="+63 (915) 000-0000" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 6px 12px; font-size: 0.9em; box-sizing: border-box;" />
+            </div>
+            <div>
+              <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 5px;">Email Address</label>
+              <input type="email" name="email" value="<%= patient.email || '' %>" placeholder="patient@example.com" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 6px 12px; font-size: 0.9em; box-sizing: border-box;" />
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+            <div>
+              <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 5px;">Referring Physician</label>
+              <input type="text" name="physician" value="<%= patient.physician || '' %>" placeholder="Doctor or clinic" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 6px 12px; font-size: 0.9em; box-sizing: border-box;" />
+            </div>
+            <div>
+              <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 5px;">Company / Employer</label>
+              <input type="text" name="company" value="<%= patient.company || '' %>" placeholder="Employer (optional)" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 6px 12px; font-size: 0.9em; box-sizing: border-box;" />
+            </div>
+          </div>
+
+          <div style="flex: 1; display: flex; flex-direction: column;">
+            <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 5px;">Complete Address</label>
+            <textarea name="address" rows="3" placeholder="House/Unit #, Street, Barangay, City, Province" style="width: 100%; flex: 1; min-height: 80px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 8px 12px; font-size: 0.9em; box-sizing: border-box; line-height: 1.4; resize: none;"><%= patient.address || '' %></textarea>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Actions Footer -->
+    <div style="display: flex; justify-content: flex-end; align-items: center; gap: 12px; padding-top: 18px; margin-top: 20px; border-top: 1px solid #e2e8f0;">
+      <a href="/patients/<%= patient.id %>" class="button btn-secondary" style="height: 40px; padding: 0 20px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">Cancel</a>
+      <button type="submit" class="button btn-primary" style="height: 40px; padding: 0 28px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+        <i class="fa fa-save"></i> Update Patient
+      </button>
+    </div>
+
+  </form>
 </div>
 
 <script>
-    (function(){
-        const dob = document.getElementById('dobInput');
-        const age = document.getElementById('ageInput');
+  (function(){
+    const dob = document.getElementById('dobInput');
+    const age = document.getElementById('ageInput');
 
-        function computeAgeFromDob(d) {
-            if (!d) return '';
-            const b = new Date(d);
-            if (isNaN(b.getTime())) return '';
-            const today = new Date();
-            let a = today.getFullYear() - b.getFullYear();
-            const m = today.getMonth() - b.getMonth();
-            if (m < 0 || (m === 0 && today.getDate() < b.getDate())) a--;
-            return a;
-        }
+    function computeAgeFromDob(d) {
+      if (!d) return '';
+      const b = new Date(d);
+      if (isNaN(b.getTime())) return '';
+      const today = new Date();
+      let a = today.getFullYear() - b.getFullYear();
+      const m = today.getMonth() - b.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < b.getDate())) a--;
+      return a;
+    }
 
-        function onDobChange() {
-            const val = dob.value;
-            if (val) {
-                const calc = computeAgeFromDob(val);
-                age.value = calc;
-                age.setAttribute('readonly', 'readonly');
-            } else {
-                age.removeAttribute('readonly');
-            }
-        }
+    function onDobChange() {
+      const val = dob.value;
+      if (val) {
+        const calc = computeAgeFromDob(val);
+        age.value = calc;
+        age.setAttribute('readonly', 'readonly');
+      } else {
+        age.removeAttribute('readonly');
+      }
+    }
 
-        if (dob && age) {
-            onDobChange();
-            dob.addEventListener('change', onDobChange);
-        }
-    })();
+    if (dob && age) {
+      onDobChange();
+      dob.addEventListener('change', onDobChange);
+    }
+  })();
 </script>
 <script>
-    (function(){
-        const philChk = document.getElementById('philChkEdit');
-        const philIdWrap = document.getElementById('philIdWrapEdit');
-        if (philChk && philIdWrap) {
-            philChk.addEventListener('change', function(){
-                if (philChk.checked) philIdWrap.style.display = '';
-                else philIdWrap.style.display = 'none';
-            });
-        }
-    })();
+  (function(){
+    const yes = document.getElementById('philYesEdit');
+    const no = document.getElementById('philNoEdit');
+    const wrap = document.getElementById('philIdWrapEdit');
+    if (!yes || !no || !wrap) return;
+    function update(){ if (yes.checked) wrap.style.display = ''; else wrap.style.display = 'none'; }
+    yes.addEventListener('change', update);
+    no.addEventListener('change', update);
+    update();
+  })();
 </script>
-<script>
-    (function(){
-        const yes = document.getElementById('philYesEdit');
-        const no = document.getElementById('philNoEdit');
-        const wrap = document.getElementById('philIdWrapEdit');
-        if (!yes || !no || !wrap) return;
-        function update(){ if (yes.checked) wrap.style.display = ''; else wrap.style.display = 'none'; }
-        yes.addEventListener('change', update);
-        no.addEventListener('change', update);
-        update();
-    })();
-</script>
-        </form>
-</div>
