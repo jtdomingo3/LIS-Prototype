@@ -29,17 +29,18 @@
         <span style="font-size: 0.75em; color: #64748b; font-weight: 500;">Immunochromatography</span>
       </div>
 
-      <!-- NS1 -->
-      <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f1f5f9; gap: 14px;">
+      <!-- NS1 (Placeholder in Dengue Duo, no result value) -->
+      <div class="result-input-row" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9; gap: 14px;">
         <div style="min-width: 140px; flex: 1;">
-          <label style="margin: 0; font-weight: 600; font-size: 0.92em; color: #1e293b;">NS1 Antigen</label>
-          <div style="font-size: 0.74em; color: #64748b;">Early Acute Infection marker</div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <label style="margin: 0; font-weight: 600; font-size: 0.92em; color: #475569;">NS1</label>
+            <span style="font-size: 0.7em; padding: 2px 8px; border-radius: 4px; background: #f1f5f9; color: #64748b; font-weight: 600; text-transform: uppercase;">Placeholder</span>
+          </div>
+          <div style="font-size: 0.74em; color: #94a3b8;">No value required &mdash; placeholder in Dengue Duo</div>
         </div>
-        <div style="width: 180px; flex-shrink: 0;">
-          <select name="ns1" style="width: 100%; height: 38px; padding: 6px 12px; font-size: 0.92em; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; font-weight: 600;">
-            <option value="Non-Reactive" <%= test.results && (test.results.ns1 === 'Non-Reactive' || test.results.ns1 === 'Negative') ? 'selected' : '' %>>Non-Reactive (Negative)</option>
-            <option value="Reactive" <%= test.results && (test.results.ns1 === 'Reactive' || test.results.ns1 === 'Positive') ? 'selected' : '' %>>Reactive (Positive)</option>
-          </select>
+        <div style="width: 180px; flex-shrink: 0; text-align: center;">
+          <span style="display: inline-block; width: 100%; height: 38px; line-height: 36px; border-radius: 8px; background: #f8fafc; border: 1px dashed #cbd5e1; color: #94a3b8; font-size: 0.88em; font-weight: 600;">&mdash; (No Value) &mdash;</span>
+          <input type="hidden" name="ns1" value="">
         </div>
       </div>
 
@@ -52,8 +53,8 @@
         <div style="width: 180px; flex-shrink: 0;">
           <select name="igm" required style="width: 100%; height: 38px; padding: 6px 12px; font-size: 0.92em; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; font-weight: 600;">
             <option value="">-- Select --</option>
-            <option value="Negative" <%= test.results && test.results.igm === 'Negative' ? 'selected' : '' %>>Negative</option>
-            <option value="Positive" <%= test.results && test.results.igm === 'Positive' ? 'selected' : '' %>>Positive</option>
+            <option value="Negative" <%= test.results && (test.results.igm === 'Negative' || test.results.igm === 'Non-Reactive') ? 'selected' : '' %>>Negative</option>
+            <option value="Positive" <%= test.results && (test.results.igm === 'Positive' || test.results.igm === 'Reactive') ? 'selected' : '' %>>Positive</option>
           </select>
         </div>
       </div>
@@ -67,8 +68,8 @@
         <div style="width: 180px; flex-shrink: 0;">
           <select name="igg" required style="width: 100%; height: 38px; padding: 6px 12px; font-size: 0.92em; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; font-weight: 600;">
             <option value="">-- Select --</option>
-            <option value="Negative" <%= test.results && test.results.igg === 'Negative' ? 'selected' : '' %>>Negative</option>
-            <option value="Positive" <%= test.results && test.results.igg === 'Positive' ? 'selected' : '' %>>Positive</option>
+            <option value="Negative" <%= test.results && (test.results.igg === 'Negative' || test.results.igg === 'Non-Reactive') ? 'selected' : '' %>>Negative</option>
+            <option value="Positive" <%= test.results && (test.results.igg === 'Positive' || test.results.igg === 'Reactive') ? 'selected' : '' %>>Positive</option>
           </select>
         </div>
       </div>
