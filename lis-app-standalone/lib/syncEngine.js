@@ -1461,16 +1461,14 @@ class SyncEngine {
     const serverPatients = Array.isArray(serverData.patients) ? serverData.patients : [];
     const serverTests = Array.isArray(serverData.tests) ? serverData.tests : [];
 
-    // Check duplicate patients in local database
+    // Check duplicate patients in local database (only temporary client_ids or duplicate patientCodes)
     const patientCodeMap = new Map();
     const patientClientMap = new Map();
-    const patientNameDobMap = new Map();
 
     for (const p of localPatientsBefore) {
       if (!p || !p.id) continue;
       const code = (p.patientCode || '').trim().toUpperCase();
       const cid = (p.client_id || p.clientId || '').trim();
-      const nameKey = `${(p.firstName || '').trim().toLowerCase()}_${(p.lastName || '').trim().toLowerCase()}_${(p.dateOfBirth || '').trim()}`;
 
       if (code) {
         if (patientCodeMap.has(code)) {
@@ -1484,13 +1482,6 @@ class SyncEngine {
           discrepancies.push(`Local duplicate patient client_id '${cid}': IDs [${patientClientMap.get(cid)}, ${p.id}]`);
         } else {
           patientClientMap.set(cid, p.id);
-        }
-      }
-      if (nameKey && nameKey !== '__') {
-        if (patientNameDobMap.has(nameKey)) {
-          discrepancies.push(`Local duplicate patient identity '${p.firstName} ${p.lastName}': IDs [${patientNameDobMap.get(nameKey)}, ${p.id}]`);
-        } else {
-          patientNameDobMap.set(nameKey, p.id);
         }
       }
     }
@@ -1620,19 +1611,6 @@ class SyncEngine {
       this.dataStore.setMeta('lastSyncAudit', audit);
       this.dataStore.setMeta('lastFullSync', nowIso);
     } catch (_) {}
-
-    if (this.conflictStore && discrepancies.length > 0) {
-      try {
-        for (const d of discrepancies) {
-          this.conflictStore.recordConflict({
-            type: 'validation_error',
-            entity: d.toLowerCase().includes('patient') ? 'patients' : (d.toLowerCase().includes('test') ? 'tests' : 'database'),
-            operation: 'AUDIT_RECONCILE',
-            error: d
-          });
-        }
-      } catch (_) {}
-    }
 
     // Step 7: Broadcast to UI
     if (progressSender) {

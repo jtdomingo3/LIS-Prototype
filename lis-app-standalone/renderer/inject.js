@@ -338,6 +338,7 @@
       '    <div style="display:flex; gap:8px;">',
       '      <button class="lis-btn" id="lis-conflict-export-btn">📥 Export JSON Report</button>',
       '      <button class="lis-btn" id="lis-conflict-clear-resolved-btn">🧹 Clear Resolved</button>',
+      '      <button class="lis-btn" id="lis-conflict-clear-all-btn" style="color:#f87171; border-color:rgba(239,68,68,0.3);">🗑 Clear All</button>',
       '    </div>',
       '    <button class="lis-btn lis-btn-primary" id="lis-conflict-close-footer-btn">Close</button>',
       '  </div>',
@@ -518,6 +519,19 @@
         if (!window.lisApp || typeof window.lisApp.clearConflicts !== 'function') return;
         window.lisApp.clearConflicts().then(function () {
           showToast('Cleared', 'Cleaned up resolved conflict items.');
+          loadConflictItems();
+          window.lisApp.getStatus().then(updateStatus).catch(function () {});
+        });
+      });
+    }
+
+    var clearAllBtn = overlay.querySelector('#lis-conflict-clear-all-btn');
+    if (clearAllBtn) {
+      clearAllBtn.addEventListener('click', function () {
+        if (!confirm('Clear all conflict records from the log?')) return;
+        if (!window.lisApp || typeof window.lisApp.clearAllConflicts !== 'function') return;
+        window.lisApp.clearAllConflicts().then(function () {
+          showToast('Cleared All', 'All conflict records removed.');
           loadConflictItems();
           window.lisApp.getStatus().then(updateStatus).catch(function () {});
         });

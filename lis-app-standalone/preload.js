@@ -42,7 +42,8 @@ contextBridge.exposeInMainWorld('lisApp', {
   getConflicts:        ()                 => ipcRenderer.invoke('get-conflicts'),
   resolveConflict:     (id, note)         => ipcRenderer.invoke('resolve-conflict', { id, note }),
   retryConflict:       (id)               => ipcRenderer.invoke('retry-conflict', { id }),
-  clearConflicts:      ()                 => ipcRenderer.invoke('clear-conflicts'),
+  clearConflicts:      (all = false)      => ipcRenderer.invoke('clear-conflicts', { all }),
+  clearAllConflicts:   ()                 => ipcRenderer.invoke('clear-all-conflicts'),
   exportConflicts:     ()                 => ipcRenderer.invoke('export-conflicts'),
 
   /* ── security & app lock ─────────────────────────────────────── */

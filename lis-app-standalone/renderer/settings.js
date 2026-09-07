@@ -49,6 +49,7 @@
   const settingsConflictBadge = document.getElementById('settingsConflictBadge');
   const exportConflictsBtn = document.getElementById('exportConflictsBtn');
   const clearConflictsBtn = document.getElementById('clearConflictsBtn');
+  const clearAllConflictsBtn = document.getElementById('clearAllConflictsBtn');
 
   async function updateConflictBadge() {
     if (!settingsConflictBadge || !window.lisApp || typeof window.lisApp.getStatus !== 'function') return;
@@ -446,6 +447,20 @@
       try {
         await window.lisApp.clearConflicts();
         setFeedback('✓ Cleaned up resolved conflicts.');
+        await updateConflictBadge();
+      } catch (e) {
+        setFeedback('Failed to clear: ' + e.message, true);
+      }
+    });
+  }
+
+  if (clearAllConflictsBtn) {
+    clearAllConflictsBtn.addEventListener('click', async () => {
+      if (!confirm('Clear all conflict records completely?')) return;
+      if (!window.lisApp || typeof window.lisApp.clearAllConflicts !== 'function') return;
+      try {
+        await window.lisApp.clearAllConflicts();
+        setFeedback('✓ All conflict records cleared.');
         await updateConflictBadge();
       } catch (e) {
         setFeedback('Failed to clear: ' + e.message, true);

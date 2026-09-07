@@ -767,9 +767,19 @@ ipcMain.handle('retry-conflict', async (_e, { id } = {}) => {
   }
   return { success: false, reason: 'no-payload-to-retry' };
 });
-ipcMain.handle('clear-conflicts', () => {
+ipcMain.handle('clear-conflicts', (_e, { all } = {}) => {
   if (!conflictStore) return { success: false };
-  conflictStore.clearResolved();
+  if (all) {
+    conflictStore.clearAll();
+  } else {
+    conflictStore.clearResolved();
+  }
+  sendStatus();
+  return { success: true, conflictCount: conflictStore.countUnresolved() };
+});
+ipcMain.handle('clear-all-conflicts', () => {
+  if (!conflictStore) return { success: false };
+  conflictStore.clearAll();
   sendStatus();
   return { success: true, conflictCount: conflictStore.countUnresolved() };
 });
@@ -990,6 +1000,8 @@ ipcMain.handle('discard-local-changes', async () => {
     try { performBackup(); } catch (e) { console.warn('[Main] backup before discard failed', e && e.message); }
     // Clear pending queue
     try { if (operationQueue && typeof operationQueue.clearAll === 'function') operationQueue.clearAll(); } catch (e) { console.error('[Main] failed to clear operation queue', e); }
+    // Clear conflict store
+    try { if (conflictStore && typeof conflictStore.clearAll === 'function') conflictStore.clearAll(); } catch (e) {}
     // Attempt full-sync to refresh local datastore
     try {
       if (!config.SERVER_URL) return { success: false, reason: 'no-server-configured' };
@@ -1041,6 +1053,8 @@ ipcMain.handle('drop-offline-data', async () => {
         }
       } catch (e) { console.warn('[Main] failed to recreate global.db', e && e.message); }
       if (operationQueue && typeof operationQueue.clearAll === 'function') operationQueue.clearAll();
+      // Clear conflict store on fresh server drop & replace
+      try { if (conflictStore && typeof conflictStore.clearAll === 'function') conflictStore.clearAll(); } catch (e) {}
       // Clear page cache so any cached server HTML won't be served
       try { if (pageCache && typeof pageCache.clear === 'function') pageCache.clear(); } catch (e) {}
       sendStatus();
