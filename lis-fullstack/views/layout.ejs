@@ -1853,8 +1853,9 @@
             return;
           }
 
+          const form = target.form || target.closest('form');
           const onclickAttr = target.getAttribute('onclick') || '';
-          const dataConfirm = target.getAttribute('data-confirm');
+          const dataConfirm = target.getAttribute('data-confirm') || (form ? form.getAttribute('data-confirm') : null);
           let msg = dataConfirm;
 
           if (!msg && onclickAttr.includes('confirm(')) {
@@ -1869,9 +1870,9 @@
             e.stopPropagation();
             e.stopImmediatePropagation();
 
-            const isDelete = onclickAttr.toLowerCase().includes('delete') || (msg && msg.toLowerCase().includes('delete'));
-            const dataTitle = target.getAttribute('data-confirm-title');
-            const dataBtn = target.getAttribute('data-confirm-button') || target.getAttribute('data-confirm-btn');
+            const isDelete = (form && (form.action || '').includes('DELETE')) || onclickAttr.toLowerCase().includes('delete') || (msg && msg.toLowerCase().includes('delete'));
+            const dataTitle = target.getAttribute('data-confirm-title') || (form ? form.getAttribute('data-confirm-title') : null);
+            const dataBtn = target.getAttribute('data-confirm-button') || target.getAttribute('data-confirm-btn') || (form ? (form.getAttribute('data-confirm-button') || form.getAttribute('data-confirm-btn')) : null);
             const options = {
               title: dataTitle || (isDelete ? 'Confirm Deletion' : 'Confirm Action'),
               btnText: dataBtn || (isDelete ? 'Yes, Delete' : 'Confirm'),
@@ -1880,12 +1881,17 @@
 
             openConfirm(msg, function() {
               target.dataset.__customConfirmed = '1';
-              const form = target.form || target.closest('form');
+              if (form) form.dataset.__customConfirmed = '1';
+
               if (target.type === 'submit' && form) {
-                if (typeof form.requestSubmit === 'function') {
-                  form.requestSubmit(target);
-                } else {
-                  form.submit();
+                try {
+                  if (typeof form.requestSubmit === 'function') {
+                    form.requestSubmit(target);
+                  } else {
+                    HTMLFormElement.prototype.submit.call(form);
+                  }
+                } catch(e) {
+                  HTMLFormElement.prototype.submit.call(form);
                 }
               } else if (target.tagName === 'A' && target.href) {
                 window.location.href = target.href;

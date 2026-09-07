@@ -176,7 +176,7 @@
                   <button type="button" class="button btn-small btn-cannot-delete" data-patient-id="<%= patient.id %>" data-patient-name="<%= fullName.trim() %>" style="padding:6px 10px; font-size:0.82em; margin-left:4px; background:#f8fafc; color:#94a3b8; border:1px solid #cbd5e1; cursor:pointer;" title="Patient has active test records with recorded results">Delete</button>
                 <% } else { %>
                   <form action="/patients/<%= patient.id %>?_method=DELETE" method="POST" style="display:inline-block; margin:0;" data-confirm="Are you sure you want to delete patient <%= fullName.trim() %>? This will permanently remove their demographic profile and any unperformed test orders." data-confirm-title="Delete Patient Record" data-confirm-btn="Yes, Delete Patient">
-                    <button type="submit" class="button btn-small btn-danger" style="padding:6px 10px; font-size:0.82em; margin-left:4px;" title="Delete patient">Delete</button>
+                    <button type="submit" class="button btn-small btn-danger" style="padding:6px 10px; font-size:0.82em; margin-left:4px;" title="Delete patient" data-confirm="Are you sure you want to delete patient <%= fullName.trim() %>? This will permanently remove their demographic profile and any unperformed test orders." data-confirm-title="Delete Patient Record" data-confirm-btn="Yes, Delete Patient">Delete</button>
                   </form>
                 <% } %>
               </td>
