@@ -6,8 +6,9 @@ const path = require('path');
 const os = require('os');
 const { dataFile } = require('../lib/dataPath');
 const multer = require('multer');
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
 
+const { decryptJson } = require('../lib/migrateJsonToSqlite');
 const { encryptSecret, decryptSecret } = require('../lib/cryptoHelper');
 const { testOpenRouterConnection, resolveApiKey, AVAILABLE_MODELS, DEFAULT_MODEL } = require('../lib/gezyneBotService');
 
@@ -545,15 +546,31 @@ router.post('/backup-users', requireAuth, canManageUsers, (req, res) => {
 router.post('/restore', requireAuth, canManageUsers, upload.single('backupFile'), (req, res) => {
   try {
     if (!req.file) {
-      req.flash('error_msg', 'No file uploaded');
+      req.flash('error_msg', 'No file was uploaded. Please select a .json backup file.');
       return res.redirect('/settings');
     }
     // Validate JSON first
-    const parsed = JSON.parse(req.file.buffer.toString('utf8'));
-    // backup current before overwrite
+    const raw = req.file.buffer.toString('utf8');
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') {
+      throw new Error('Uploaded file is not a valid JSON database object.');
+    }
+
+    // Backup current before overwrite
     performBackup();
+
+    // Write clinical data to database
     global.db.write(parsed);
-    req.flash('success_msg', 'Restore completed (previous data backed up)');
+
+    // Force checkpoint to flush immediately to disk
+    if (global.db && typeof global.db.checkpoint === 'function') {
+      global.db.checkpoint();
+    }
+
+    const patientCount = Array.isArray(parsed.patients) ? parsed.patients.length : (global.db.getPatients ? global.db.getPatients().length : 0);
+    const testCount = Array.isArray(parsed.tests) ? parsed.tests.length : (global.db.getTests ? global.db.getTests().length : 0);
+
+    req.flash('success_msg', `Clinical restore completed successfully (${patientCount.toLocaleString()} patients, ${testCount.toLocaleString()} tests imported). A safety snapshot was created.`);
   } catch (e) {
     console.error('Restore error:', e);
     req.flash('error_msg', `Restore failed: ${e && e.message ? e.message : String(e)}`);
@@ -565,14 +582,33 @@ router.post('/restore', requireAuth, canManageUsers, upload.single('backupFile')
 router.post('/restore-users', requireAuth, canManageUsers, upload.single('backupFileUsers'), (req, res) => {
   try {
     if (!req.file) {
-      req.flash('error_msg', 'No file uploaded');
+      req.flash('error_msg', 'No file was uploaded. Please select a user credentials .json file.');
       return res.redirect('/settings');
     }
-    const parsed = JSON.parse(req.file.buffer.toString('utf8'));
-    // backup current before overwrite
+
+    const raw = req.file.buffer.toString('utf8');
+    const key = process.env.DATA_USERS_KEY || process.env.USER_DATA_KEY || null;
+    let users = decryptJson(raw, key);
+
+    // Handle nested { users: [...] } format
+    if (users && typeof users === 'object' && !Array.isArray(users) && Array.isArray(users.users)) {
+      users = users.users;
+    }
+
+    if (!Array.isArray(users)) {
+      throw new Error('User credentials backup must contain a valid array of user accounts.');
+    }
+
+    // Backup current before overwrite
     performUserBackup();
-    global.db.saveUsers(Array.isArray(parsed) ? parsed : [parsed]);
-    req.flash('success_msg', 'User restore completed (previous user data backed up)');
+
+    global.db.saveUsers(users);
+
+    if (global.db && typeof global.db.checkpoint === 'function') {
+      global.db.checkpoint();
+    }
+
+    req.flash('success_msg', `User accounts restore completed successfully (${users.length} accounts restored). A safety snapshot was created.`);
   } catch (e) {
     console.error('User restore error:', e);
     req.flash('error_msg', `User restore failed: ${e && e.message ? e.message : String(e)}`);

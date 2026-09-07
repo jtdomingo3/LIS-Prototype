@@ -1,59 +1,69 @@
 <!-- Top Metric KPI Cards -->
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
     <!-- Total Patients -->
-    <div style="background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%); padding: 20px; border-radius: 14px; border: 1px solid #bae6fd; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.06); position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s;" class="kpi-card">
-        <div style="display:flex; justify-size:space-between; align-items:center; margin-bottom: 8px;">
-            <span style="font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: #0369a1;">Total Patients</span>
-            <div style="width: 36px; height: 36px; border-radius: 10px; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 1.1em;">
-                <i class="fa fa-users"></i>
+    <a href="/patients" style="text-decoration: none; color: inherit; display: block;">
+        <div style="background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%); padding: 20px; border-radius: 14px; border: 1px solid #bae6fd; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.06); position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;" class="kpi-card" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(2, 132, 199, 0.12)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 12px rgba(2, 132, 199, 0.06)';">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                <span style="font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: #0369a1;">Total Patients</span>
+                <div style="width: 36px; height: 36px; border-radius: 10px; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 1.1em;">
+                    <i class="fa fa-users"></i>
+                </div>
             </div>
+            <div style="font-size: 2.2em; font-weight: 800; color: #0284c7; line-height: 1.1;"><%= stats.totalPatients %></div>
         </div>
-        <div style="font-size: 2.2em; font-weight: 800; color: #0284c7; line-height: 1.1;"><%= stats.totalPatients %></div>
-    </div>
+    </a>
 
     <!-- Pending Tests -->
-    <div style="background: linear-gradient(135deg, #ffffff 0%, #fffbe6 100%); padding: 20px; border-radius: 14px; border: 1px solid #fef08a; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.06); position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s;" class="kpi-card">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
-            <span style="font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: #b45309;">Pending Tests</span>
-            <div style="width: 36px; height: 36px; border-radius: 10px; background: #fef3c7; color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 1.1em;">
-                <i class="fa fa-hourglass-half"></i>
+    <a href="/tests?status=Pending" style="text-decoration: none; color: inherit; display: block;">
+        <div style="background: linear-gradient(135deg, #ffffff 0%, #fffbe6 100%); padding: 20px; border-radius: 14px; border: 1px solid #fef08a; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.06); position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;" class="kpi-card" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(217, 119, 6, 0.12)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 12px rgba(217, 119, 6, 0.06)';">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                <span style="font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: #b45309;">Pending Tests</span>
+                <div style="width: 36px; height: 36px; border-radius: 10px; background: #fef3c7; color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 1.1em;">
+                    <i class="fa fa-hourglass-half"></i>
+                </div>
             </div>
+            <div style="font-size: 2.2em; font-weight: 800; color: #d97706; line-height: 1.1;"><%= stats.pendingTests %></div>
         </div>
-        <div style="font-size: 2.2em; font-weight: 800; color: #d97706; line-height: 1.1;"><%= stats.pendingTests %></div>
-    </div>
+    </a>
 
     <!-- Completed Tests -->
-    <div style="background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%); padding: 20px; border-radius: 14px; border: 1px solid #a7f3d0; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.06); position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s;" class="kpi-card">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
-            <span style="font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: #047857;">Completed Tests</span>
-            <div style="width: 36px; height: 36px; border-radius: 10px; background: #d1fae5; color: #059669; display: flex; align-items: center; justify-content: center; font-size: 1.1em;">
-                <i class="fa fa-check-circle"></i>
+    <a href="/tests?status=Completed" style="text-decoration: none; color: inherit; display: block;">
+        <div style="background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%); padding: 20px; border-radius: 14px; border: 1px solid #a7f3d0; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.06); position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;" class="kpi-card" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(5, 150, 105, 0.12)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 12px rgba(5, 150, 105, 0.06)';">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                <span style="font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: #047857;">Completed Tests</span>
+                <div style="width: 36px; height: 36px; border-radius: 10px; background: #d1fae5; color: #059669; display: flex; align-items: center; justify-content: center; font-size: 1.1em;">
+                    <i class="fa fa-check-circle"></i>
+                </div>
             </div>
+            <div style="font-size: 2.2em; font-weight: 800; color: #059669; line-height: 1.1;"><%= stats.completedTests %></div>
         </div>
-        <div style="font-size: 2.2em; font-weight: 800; color: #059669; line-height: 1.1;"><%= stats.completedTests %></div>
-    </div>
+    </a>
 
     <!-- In Progress -->
-    <div style="background: linear-gradient(135deg, #ffffff 0%, #faf5ff 100%); padding: 20px; border-radius: 14px; border: 1px solid #e9d5ff; box-shadow: 0 4px 12px rgba(124, 58, 237, 0.06); position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s;" class="kpi-card">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
-            <span style="font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: #6b21a8;">In Progress</span>
-            <div style="width: 36px; height: 36px; border-radius: 10px; background: #f3e8ff; color: #7c3aed; display: flex; align-items: center; justify-content: center; font-size: 1.1em;">
-                <i class="fa fa-sync-alt"></i>
+    <a href="/tests?status=In+Progress" style="text-decoration: none; color: inherit; display: block;">
+        <div style="background: linear-gradient(135deg, #ffffff 0%, #faf5ff 100%); padding: 20px; border-radius: 14px; border: 1px solid #e9d5ff; box-shadow: 0 4px 12px rgba(124, 58, 237, 0.06); position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;" class="kpi-card" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(124, 58, 237, 0.12)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 12px rgba(124, 58, 237, 0.06)';">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                <span style="font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: #6b21a8;">In Progress</span>
+                <div style="width: 36px; height: 36px; border-radius: 10px; background: #f3e8ff; color: #7c3aed; display: flex; align-items: center; justify-content: center; font-size: 1.1em;">
+                    <i class="fa fa-sync-alt"></i>
+                </div>
             </div>
+            <div style="font-size: 2.2em; font-weight: 800; color: #7c3aed; line-height: 1.1;"><%= stats.activeTests %></div>
         </div>
-        <div style="font-size: 2.2em; font-weight: 800; color: #7c3aed; line-height: 1.1;"><%= stats.activeTests %></div>
-    </div>
+    </a>
 
     <!-- Released Tests -->
-    <div style="background: linear-gradient(135deg, #ffffff 0%, #f0fdfa 100%); padding: 20px; border-radius: 14px; border: 1px solid #99f6e4; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.06); position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s;" class="kpi-card">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
-            <span style="font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: #0f766e;">Released Tests</span>
-            <div style="width: 36px; height: 36px; border-radius: 10px; background: #ccfbf1; color: #0d9488; display: flex; align-items: center; justify-content: center; font-size: 1.1em;">
-                <i class="fa fa-paper-plane"></i>
+    <a href="/tests?status=Released" style="text-decoration: none; color: inherit; display: block;">
+        <div style="background: linear-gradient(135deg, #ffffff 0%, #f0fdfa 100%); padding: 20px; border-radius: 14px; border: 1px solid #99f6e4; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.06); position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;" class="kpi-card" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(13, 148, 136, 0.12)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 12px rgba(13, 148, 136, 0.06)';">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                <span style="font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: #0f766e;">Released Tests</span>
+                <div style="width: 36px; height: 36px; border-radius: 10px; background: #ccfbf1; color: #0d9488; display: flex; align-items: center; justify-content: center; font-size: 1.1em;">
+                    <i class="fa fa-paper-plane"></i>
+                </div>
             </div>
+            <div style="font-size: 2.2em; font-weight: 800; color: #0d9488; line-height: 1.1;"><%= stats.releasedTests %></div>
         </div>
-        <div style="font-size: 2.2em; font-weight: 800; color: #0d9488; line-height: 1.1;"><%= stats.releasedTests %></div>
-    </div>
+    </a>
 </div>
 
 <!-- Sales Revenue Section (3 Columns: Total, Monthly, Today) -->

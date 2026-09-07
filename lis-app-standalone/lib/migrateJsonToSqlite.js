@@ -176,4 +176,23 @@ function decryptJson(raw, key) {
   return JSON.parse(dec.toString('utf8'));
 }
 
-module.exports = { migrateJsonToSqlite };
+/**
+ * Import a JSON file (data.json or data-users.json format) into an existing
+ * SQLite database.
+ * 
+ * @param {object} db - The SQLite db adapter
+ * @param {string} jsonFilePath - Path to the JSON file
+ * @param {'data'|'users'} type - Type of import
+ * @param {string} [userDataKey] - Encryption key for users file
+ */
+function importJsonFile(db, jsonFilePath, type, userDataKey) {
+  return migrateJsonToSqlite(db, {
+    dataJsonPath: type === 'data' ? jsonFilePath : null,
+    usersJsonPath: type === 'users' ? jsonFilePath : null,
+    userDataKey,
+    renameAfter: false,
+    log: console.log
+  });
+}
+
+module.exports = { migrateJsonToSqlite, importJsonFile, decryptJson };

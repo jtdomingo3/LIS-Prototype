@@ -195,6 +195,21 @@ router.get('/', requireAuth, async (req, res) => {
       try {
         const created = test && test.createdAt ? new Date(test.createdAt) : null;
         if (!created || created > atDate) return null;
+
+        // 1. Explicitly released
+        if (test.status === 'Released' || test.released) {
+          return 'Released';
+        }
+
+        // 2. Completed on or before atDate
+        if (test.status === 'Completed' || test.completedAt) {
+          const compDate = test.completedAt ? new Date(test.completedAt) : (test.createdAt ? new Date(test.createdAt) : null);
+          if (!compDate || compDate <= atDate) {
+            return 'Completed';
+          }
+        }
+
+        // 3. Check statusHistory up to atDate
         const history = Array.isArray(test.statusHistory) ? test.statusHistory.slice().sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp)) : [];
         let last = null;
         for (const h of history) {
@@ -203,9 +218,18 @@ router.get('/', requireAuth, async (req, res) => {
           if (ts <= atDate) last = h;
           else break;
         }
-        if (last && last.to) return last.to;
-        return test.status || null;
-      } catch (e) { return test.status || null; }
+
+        if (last && last.to && String(last.to).toLowerCase() === 'in progress') {
+          return 'In Progress';
+        }
+
+        const currStatus = (test.status || '').trim();
+        if (currStatus && currStatus.toLowerCase() === 'in progress') {
+          return 'In Progress';
+        }
+
+        return 'Pending';
+      } catch (e) { return test.status || 'Pending'; }
     };
 
     if (Array.isArray(allTests)) {
@@ -215,10 +239,14 @@ router.get('/', requireAuth, async (req, res) => {
 
         const s = statusAt(t, selectedEnd);
         if (!s) continue;
-        if (!NON_PENDING_STATUSES.includes(s)) pendingTests++;
-        if (s === 'Completed' || s === 'Released') completedTests++;
-        if (s === 'In Progress') activeTests++;
-        if (s === 'Released') releasedTests++;
+        const sLower = String(s).toLowerCase();
+
+        if (sLower === 'completed' || sLower === 'released') completedTests++;
+        if (sLower === 'in progress') activeTests++;
+        if (sLower === 'released') releasedTests++;
+        if (sLower === 'pending' || (!NON_PENDING_STATUSES.some(ns => ns.toLowerCase() === sLower) && sLower !== 'completed' && sLower !== 'released' && sLower !== 'in progress')) {
+          pendingTests++;
+        }
 
         const rlist = Array.isArray(t.requestedTests) ? t.requestedTests : [];
         const candidates = rlist.length === 0 ? [ (t.testType || '') ] : rlist.map(r => (r && (r.label || r.key)) ? (r.label || r.key) : r);

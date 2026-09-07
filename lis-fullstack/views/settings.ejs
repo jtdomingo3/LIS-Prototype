@@ -322,16 +322,18 @@
             <div>
               <strong style="display:block; margin-bottom:6px; font-size:0.9em; color:#334155;">Restore Clinical Database from JSON:</strong>
               <div style="display:flex; gap:8px;">
-                <input type="file" name="backupFile" accept=".json" style="flex:1;" />
-                <button type="submit" formaction="/settings/restore" class="button btn-danger btn-small" onclick="return confirm('Restore database from JSON? Existing records will be backed up first.');">Restore</button>
+                <input type="file" id="restoreClinicalFileInput" name="backupFile" form="restoreClinicalForm" accept=".json" style="flex:1;" />
+                <button type="button" id="btnRestoreClinical" class="button btn-danger btn-small" onclick="handleRestoreClinical()">Restore</button>
               </div>
+              <p class="note" style="margin:4px 0 0 0;">Restores patients, tests, counters, templates, and clinical settings.</p>
             </div>
             <div>
               <strong style="display:block; margin-bottom:6px; font-size:0.9em; color:#334155;">Restore User Credentials from JSON:</strong>
               <div style="display:flex; gap:8px;">
-                <input type="file" name="backupFileUsers" accept=".json" style="flex:1;" />
-                <button type="submit" formaction="/settings/restore-users" class="button btn-danger btn-small" onclick="return confirm('Restore users from JSON?');">Restore</button>
+                <input type="file" id="restoreUsersFileInput" name="backupFileUsers" form="restoreUsersForm" accept=".json" style="flex:1;" />
+                <button type="button" id="btnRestoreUsers" class="button btn-danger btn-small" onclick="handleRestoreUsers()">Restore</button>
               </div>
+              <p class="note" style="margin:4px 0 0 0;">Restores staff accounts and system access roles.</p>
             </div>
           </div>
         </div>
@@ -374,7 +376,7 @@
 
           <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; padding-top:16px; border-top:1px solid #e2e8f0;">
             <a href="/settings/export-logs" class="button btn-secondary btn-small">📥 Download Application Logs</a>
-            <button type="submit" formaction="/settings/clear-logs" class="button btn-secondary btn-small" onclick="return confirm('Clear application log history?');">🧹 Clear Logs</button>
+            <button type="button" class="button btn-secondary btn-small" onclick="handleClearLogs()">🧹 Clear Logs</button>
           </div>
         </div>
       </div>
@@ -392,6 +394,11 @@
         </div>
       </div>
     </form>
+
+    <!-- Dedicated Isolated Forms for Clinical & User JSON Restore (with multipart/form-data) -->
+    <form id="restoreClinicalForm" method="POST" action="/settings/restore" enctype="multipart/form-data" style="display:none;"></form>
+    <form id="restoreUsersForm" method="POST" action="/settings/restore-users" enctype="multipart/form-data" style="display:none;"></form>
+    <form id="clearLogsForm" method="POST" action="/settings/clear-logs" style="display:none;"></form>
   </div>
 </div>
 
@@ -585,6 +592,110 @@ async function testAiConnection() {
     fb.innerHTML = '<strong>✗ Network error: ' + err.message + '</strong>';
   } finally {
     btn.disabled = false;
+  }
+}
+
+function escapeHtml(text) {
+  const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+  return String(text || '').replace(/[&<>"']/g, m => map[m]);
+}
+
+function handleRestoreClinical() {
+  const fileInput = document.getElementById('restoreClinicalFileInput');
+  if (!fileInput || !fileInput.files || !fileInput.files.length) {
+    if (typeof window.showCustomAlert === 'function') {
+      window.showCustomAlert('Please choose a clinical JSON backup file (.json) first before clicking Restore.', {
+        type: 'warning',
+        title: 'No File Chosen'
+      });
+    } else {
+      alert('Please choose a clinical JSON backup file (.json) first.');
+    }
+    return;
+  }
+
+  const file = fileInput.files[0];
+  const msg = 'Restore clinical database from <strong>' + escapeHtml(file.name) + '</strong> (' + (file.size ? (file.size / (1024 * 1024)).toFixed(2) + ' MB' : '') + ')?<br><br>' +
+    'This will import patient records, tests & results, worksheets, counter sequences, and templates. An automated backup of current records will be preserved before overwriting.';
+
+  const onConfirm = function() {
+    const btn = document.getElementById('btnRestoreClinical');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Restoring Data...';
+    }
+    document.getElementById('restoreClinicalForm').submit();
+  };
+
+  if (typeof window.showCustomConfirm === 'function') {
+    window.showCustomConfirm(msg, onConfirm, {
+      title: 'Confirm Clinical Data Restore',
+      btnText: 'Yes, Restore Database',
+      cancelText: 'Cancel',
+      type: 'danger'
+    });
+  } else if (confirm('Restore clinical database from ' + file.name + '? Existing records will be backed up.')) {
+    onConfirm();
+  }
+}
+
+function handleRestoreUsers() {
+  const fileInput = document.getElementById('restoreUsersFileInput');
+  if (!fileInput || !fileInput.files || !fileInput.files.length) {
+    if (typeof window.showCustomAlert === 'function') {
+      window.showCustomAlert('Please choose a user credentials JSON backup file (.json) first before clicking Restore.', {
+        type: 'warning',
+        title: 'No File Chosen'
+      });
+    } else {
+      alert('Please choose a user credentials JSON backup file (.json) first.');
+    }
+    return;
+  }
+
+  const file = fileInput.files[0];
+  const msg = 'Restore user accounts from <strong>' + escapeHtml(file.name) + '</strong>?<br><br>' +
+    'This will restore staff logins and role permissions. Existing users will be backed up before applying changes.';
+
+  const onConfirm = function() {
+    const btn = document.getElementById('btnRestoreUsers');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Restoring Users...';
+    }
+    document.getElementById('restoreUsersForm').submit();
+  };
+
+  if (typeof window.showCustomConfirm === 'function') {
+    window.showCustomConfirm(msg, onConfirm, {
+      title: 'Confirm User Restore',
+      btnText: 'Yes, Restore Users',
+      cancelText: 'Cancel',
+      type: 'danger'
+    });
+  } else if (confirm('Restore user accounts from ' + file.name + '? Existing user accounts will be backed up.')) {
+    onConfirm();
+  }
+}
+
+function handleClearLogs() {
+  const onConfirm = function() {
+    document.getElementById('clearLogsForm').submit();
+  };
+
+  if (typeof window.showCustomConfirm === 'function') {
+    window.showCustomConfirm(
+      'Are you sure you want to permanently clear the application log history?<br><br>Archived records will be purged from the server disk.',
+      onConfirm,
+      {
+        title: 'Clear Application Logs',
+        btnText: 'Yes, Clear Logs',
+        cancelText: 'Cancel',
+        type: 'warning'
+      }
+    );
+  } else if (confirm('Clear application log history?')) {
+    onConfirm();
   }
 }
 </script>

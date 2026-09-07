@@ -360,12 +360,16 @@ function restartViaPm2(cb) {
 
 function stopServerDirect(cb) {
   if (!serverChild) return cb && cb(new Error('not running'));
-  try {
-    process.kill(serverChild.pid);
-    serverChild = null;
-    cb && cb(null, 'stopped');
-  } catch (e) {
-    cb && cb(e);
+  const pid = serverChild.pid;
+  serverChild = null;
+  if (process.platform === 'win32') {
+    exec(`taskkill /pid ${pid} /T /F`, () => {
+      // Allow OS time to release port 3000
+      setTimeout(() => cb && cb(null, 'stopped'), 1500);
+    });
+  } else {
+    try { process.kill(pid, 'SIGTERM'); } catch (_) {}
+    setTimeout(() => cb && cb(null, 'stopped'), 1000);
   }
 }
 
@@ -799,6 +803,39 @@ function resolveDataFiles() {
   };
 }
 
+// Helper: safely resolve sqliteDb and migrateJsonToSqlite across dev and packaged modes
+function getSqliteModules() {
+  const candidates = [
+    { db: path.join(__dirname, 'lib', 'sqliteDb.js'), mig: path.join(__dirname, 'lib', 'migrateJsonToSqlite.js') },
+    { db: path.join(__dirname, '..', 'lib', 'sqliteDb.js'), mig: path.join(__dirname, '..', 'lib', 'migrateJsonToSqlite.js') },
+    { db: path.join(process.resourcesPath || '', 'server', 'lib', 'sqliteDb.js'), mig: path.join(process.resourcesPath || '', 'server', 'lib', 'migrateJsonToSqlite.js') },
+    { db: path.join(PROJECT_ROOT, 'lib', 'sqliteDb.js'), mig: path.join(PROJECT_ROOT, 'lib', 'migrateJsonToSqlite.js') }
+  ];
+  for (const c of candidates) {
+    try {
+      if (fs.existsSync(c.db) && fs.existsSync(c.mig)) {
+        return {
+          createDb: require(c.db).createDb,
+          importJsonFile: require(c.mig).importJsonFile
+        };
+      }
+    } catch (_) {}
+  }
+  try {
+    return {
+      createDb: require('./lib/sqliteDb').createDb,
+      importJsonFile: require('./lib/migrateJsonToSqlite').importJsonFile
+    };
+  } catch (_) {}
+  try {
+    return {
+      createDb: require('../lib/sqliteDb').createDb,
+      importJsonFile: require('../lib/migrateJsonToSqlite').importJsonFile
+    };
+  } catch (_) {}
+  return null;
+}
+
 // Helper: restart server asynchronously so uploads take effect
 function restartServerAsync() {
   appendLog('[settings] restarting server to apply changes...');
@@ -813,18 +850,26 @@ function restartServerAsync() {
       else appendLog('[settings] server restarted via service');
     });
   } else {
-    stopServerDirect(() => startServerDirect((err) => {
-      if (err) appendLog('[settings] direct restart failed: ' + String(err));
-      else appendLog('[settings] server restarted via direct spawn');
-    }));
+    stopServerDirect(() => {
+      setTimeout(() => {
+        startServerDirect((err) => {
+          if (err) appendLog('[settings] direct restart failed: ' + String(err));
+          else appendLog('[settings] server restarted via direct spawn');
+        });
+      }, 800);
+    });
   }
 }
 
 // Helper: import JSON into SQLite if available
 function importIntoSqlite(dbFile, jsonPath, type) {
   try {
-    const { createDb } = require('../lib/sqliteDb');
-    const { importJsonFile } = require('../lib/migrateJsonToSqlite');
+    const modules = getSqliteModules();
+    if (!modules) {
+      appendLog('[settings] SQLite direct sync module not available; server auto-migration will process file on startup');
+      return;
+    }
+    const { createDb, importJsonFile } = modules;
     const sdb = createDb(dbFile);
     importJsonFile(sdb, jsonPath, type);
     sdb.close();
@@ -897,15 +942,18 @@ ipcMain.handle('restore-users', async () => {
     // Also update SQLite database directly if it exists
     try {
       if (fs.existsSync(dbFile)) {
-        const { createDb } = require('../lib/sqliteDb');
-        const sdb = createDb(dbFile);
-        const currentUsers = sdb.getUsers() || [];
-        const idx = currentUsers.findIndex(u => u.email === 'admin@lab.com');
-        if (idx >= 0) currentUsers[idx] = admin;
-        else currentUsers.push(admin);
-        sdb.saveUsers(currentUsers);
-        sdb.close();
-        appendLog('[settings] Restored admin user in SQLite database ' + dbFile);
+        const modules = getSqliteModules();
+        if (modules) {
+          const { createDb } = modules;
+          const sdb = createDb(dbFile);
+          const currentUsers = sdb.getUsers() || [];
+          const idx = currentUsers.findIndex(u => u.email === 'admin@lab.com');
+          if (idx >= 0) currentUsers[idx] = admin;
+          else currentUsers.push(admin);
+          sdb.saveUsers(currentUsers);
+          sdb.close();
+          appendLog('[settings] Restored admin user in SQLite database ' + dbFile);
+        }
       }
     } catch (e) { appendLog('[settings] warning: could not update sqlite users: ' + String(e)); }
 
@@ -953,11 +1001,14 @@ ipcMain.handle('restore-data', async () => {
     // Reset SQLite database directly
     try {
       if (fs.existsSync(dbFile)) {
-        const { createDb } = require('../lib/sqliteDb');
-        const sdb = createDb(dbFile);
-        sdb.write(initialData);
-        sdb.close();
-        appendLog('[settings] Reset SQLite database ' + dbFile);
+        const modules = getSqliteModules();
+        if (modules) {
+          const { createDb } = modules;
+          const sdb = createDb(dbFile);
+          sdb.write(initialData);
+          sdb.close();
+          appendLog('[settings] Reset SQLite database ' + dbFile);
+        }
       }
     } catch (e) {
       appendLog('[settings] SQLite reset notice: ' + e.message);

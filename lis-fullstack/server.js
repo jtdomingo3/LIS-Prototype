@@ -109,24 +109,33 @@ const db = createDb(SQLITE_FILE);
   const hasJsonUsers = fs.existsSync(USERS_FILE);
   if (!hasJsonData && !hasJsonUsers) return; // fresh install, nothing to migrate
 
-  // Check if SQLite already has data (skip migration if so)
-  const existingPatients = db.getPatients();
-  const existingUsers = db.getUsers();
-  if (existingPatients.length > 0 || existingUsers.length > 0) {
-    console.log('[server] SQLite database already has data, skipping JSON migration');
+  // Decouple data and users migration checks:
+  // - Migrate clinical data if data.json exists and patients table is empty
+  // - Migrate users if data-users.json exists and users table has <= 1 user (fresh or default admin only)
+  const existingPatients = typeof db.getPatients === 'function' ? db.getPatients() : [];
+  const existingUsers = typeof db.getUsers === 'function' ? db.getUsers() : [];
+
+  const shouldMigrateData = hasJsonData && existingPatients.length === 0;
+  const shouldMigrateUsers = hasJsonUsers && (existingUsers.length <= 1);
+
+  if (!shouldMigrateData && !shouldMigrateUsers) {
+    console.log('[server] SQLite database already populated, skipping JSON migration');
     return;
   }
 
-  console.log('[server] Detected legacy JSON files, performing one-time migration to SQLite...');
+  console.log(`[server] Detected legacy JSON files (data=${shouldMigrateData}, users=${shouldMigrateUsers}), performing migration to SQLite...`);
   const result = migrateJsonToSqlite(db, {
-    dataJsonPath: hasJsonData ? DATA_FILE : null,
-    usersJsonPath: hasJsonUsers ? USERS_FILE : null,
+    dataJsonPath: shouldMigrateData ? DATA_FILE : null,
+    usersJsonPath: shouldMigrateUsers ? USERS_FILE : null,
     userDataKey: USER_DATA_KEY,
     renameAfter: true
   });
 
   if (result.success) {
     console.log('[server] JSON → SQLite migration completed successfully');
+    if (typeof db.checkpoint === 'function') {
+      db.checkpoint();
+    }
   } else {
     console.error('[server] JSON → SQLite migration had errors:', result.errors);
   }

@@ -21,7 +21,10 @@
 
   const totalTests = Array.isArray(tests) ? tests.length : 0;
   const completedTests = Array.isArray(tests) ? tests.filter(t => t.status === 'Completed' || t.status === 'Released').length : 0;
-  const pendingTests = Array.isArray(tests) ? tests.filter(t => t.status === 'Pending' || t.status === 'Awaiting').length : 0;
+  const pendingTests = Array.isArray(tests) ? tests.filter(t => {
+    const s = String(t.status || '').toLowerCase();
+    return s === 'pending' || s === 'awaiting' || s === 'payment area' || s === 'extraction area' || !s;
+  }).length : 0;
   const inProgressTests = Array.isArray(tests) ? tests.filter(t => t.status === 'In Progress' || t.status === 'Checked').length : 0;
 %>
 
@@ -246,20 +249,46 @@
     const btn = document.getElementById('printPatientBtn');
     if (!btn) return;
     btn.addEventListener('click', function(){
-      if (!confirm('Print patient receipt?')) return;
-      btn.disabled = true;
-      const id = '<%= patient.id %>';
-      fetch('/patients/' + encodeURIComponent(id) + '/print', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
-        .then(r => r.json())
-        .then(j => {
-          if (j && j.success) {
-            alert('Print job sent.');
-          } else {
-            alert('Print failed: ' + (j && j.error ? j.error : 'unknown'));
-          }
-        })
-        .catch(err => { alert('Print request failed: ' + err); })
-        .finally(() => { btn.disabled = false; });
+      const doPrint = function() {
+        btn.disabled = true;
+        const id = '<%= patient.id %>';
+        fetch('/patients/' + encodeURIComponent(id) + '/print', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+          .then(r => r.json())
+          .then(j => {
+            if (j && j.success) {
+              if (typeof window.showCustomAlert === 'function') {
+                window.showCustomAlert('Print job successfully sent to printer.', { type: 'success', title: 'Print Sent' });
+              } else {
+                alert('Print job sent.');
+              }
+            } else {
+              const errMsg = 'Print failed: ' + (j && j.error ? j.error : 'unknown');
+              if (typeof window.showCustomAlert === 'function') {
+                window.showCustomAlert(errMsg, { type: 'danger', title: 'Print Error' });
+              } else {
+                alert(errMsg);
+              }
+            }
+          })
+          .catch(err => {
+            if (typeof window.showCustomAlert === 'function') {
+              window.showCustomAlert('Print request failed: ' + err.message, { type: 'danger', title: 'Network Error' });
+            } else {
+              alert('Print request failed: ' + err);
+            }
+          })
+          .finally(() => { btn.disabled = false; });
+      };
+
+      if (typeof window.showCustomConfirm === 'function') {
+        window.showCustomConfirm('Print official receipt for patient <strong><%= patient.firstName %> <%= patient.lastName %></strong>?', doPrint, {
+          title: 'Print Receipt',
+          btnText: 'Print Receipt',
+          type: 'info'
+        });
+      } else if (confirm('Print patient receipt?')) {
+        doPrint();
+      }
     });
   })();
 </script>

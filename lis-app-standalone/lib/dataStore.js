@@ -47,13 +47,12 @@ class DataStore {
         return;
       }
 
-      const existingPatients = this.db.getPatients();
-      const existingUsers = this.db.getUsers();
-      if (existingPatients.length > 0 || existingUsers.length > 0) {
-        return; // DB already has records
+      const existingPatients = (this.db && typeof this.db.getPatients === 'function') ? this.db.getPatients() : [];
+      if (existingPatients.length > 0) {
+        return; // DB already has clinical records
       }
 
-      console.log('[DataStore] Detected legacy data.json, performing automatic migration to SQLite...');
+      console.log('[DataStore] Detected legacy data.json with empty patient records, performing automatic migration to SQLite...');
       migrateJsonToSqlite(this.db, {
         dataJsonPath: this.legacyJsonPath,
         renameAfter: true,

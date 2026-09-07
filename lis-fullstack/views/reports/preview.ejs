@@ -469,35 +469,55 @@
     printBtn.addEventListener('click', function(){
       const checked = Array.from(document.querySelectorAll('.filteredItemCheckbox')).filter(cb => cb.checked).map(cb => cb.getAttribute('data-id'));
       let ids = checked.filter(Boolean);
+
+      const proceedPrint = function(targetIds) {
+        // If running inside the Electron standalone app...
+        if (window.lisApp && typeof window.lisApp.printPreview === 'function') {
+          const url = '/reports/print-multiple?ids=' + encodeURIComponent(targetIds.join(','));
+          let fullUrl = (url && url[0] === '/') ? (window.location.origin + url) : url;
+          if (fullUrl && fullUrl.indexOf('suppressPrint=1') === -1) {
+            fullUrl += (fullUrl.indexOf('?') === -1) ? '?suppressPrint=1' : '&suppressPrint=1';
+          }
+          window.lisApp.printPreview(fullUrl);
+        } else {
+          // Fallback for browser/server mode: Use a POST form to avoid URL length limits
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = '/reports/print-multiple';
+          form.target = '_blank';
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = 'ids';
+          input.value = targetIds.join(',');
+          form.appendChild(input);
+          document.body.appendChild(form);
+          form.submit();
+          document.body.removeChild(form);
+        }
+      };
+
       if (!ids.length) {
         const allFiltered = getFilteredIds();
-        if (!allFiltered || !allFiltered.length) { alert('No tests match the current filter'); return; }
-        if (!confirm('No tests selected. Print all filtered results?')) return;
-        ids = allFiltered;
-      }
-      
-      // If running inside the Electron standalone app...
-      if (window.lisApp && typeof window.lisApp.printPreview === 'function') {
-        const url = '/reports/print-multiple?ids=' + encodeURIComponent(ids.join(','));
-        let fullUrl = (url && url[0] === '/') ? (window.location.origin + url) : url;
-        if (fullUrl && fullUrl.indexOf('suppressPrint=1') === -1) {
-          fullUrl += (fullUrl.indexOf('?') === -1) ? '?suppressPrint=1' : '&suppressPrint=1';
+        if (!allFiltered || !allFiltered.length) {
+          if (typeof window.showCustomAlert === 'function') {
+            window.showCustomAlert('No tests match the current filter criteria.', { type: 'warning', title: 'No Tests Selected' });
+          } else {
+            alert('No tests match the current filter');
+          }
+          return;
         }
-        window.lisApp.printPreview(fullUrl);
+
+        if (typeof window.showCustomConfirm === 'function') {
+          window.showCustomConfirm(
+            'No individual tests are checked. Would you like to print all <strong>' + allFiltered.length + '</strong> filtered test results in batch?',
+            function() { proceedPrint(allFiltered); },
+            { title: 'Batch Print Filtered Tests', btnText: 'Print All ' + allFiltered.length + ' Tests', type: 'info' }
+          );
+        } else if (confirm('No tests selected. Print all filtered results?')) {
+          proceedPrint(allFiltered);
+        }
       } else {
-        // Fallback for browser/server mode: Use a POST form to avoid URL length limits
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '/reports/print-multiple';
-        form.target = '_blank';
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'ids';
-        input.value = ids.join(',');
-        form.appendChild(input);
-        document.body.appendChild(form);
-        form.submit();
-        document.body.removeChild(form);
+        proceedPrint(ids);
       }
     });
 

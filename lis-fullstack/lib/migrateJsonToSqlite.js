@@ -189,4 +189,4 @@ function importJsonFile(db, jsonFilePath, type, userDataKey) {
   });
 }
 
-module.exports = { migrateJsonToSqlite, importJsonFile };
+module.exports = { migrateJsonToSqlite, importJsonFile, decryptJson };

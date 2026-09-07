@@ -501,8 +501,20 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
 
     // Apply status filter
     if (statusFilter) {
-      const sf = statusFilter.toString().toLowerCase();
-      allTests = allTests.filter(t => ((t.status || '').toString().toLowerCase() === sf));
+      const sf = statusFilter.toString().toLowerCase().trim();
+      if (sf === 'pending') {
+        allTests = allTests.filter(t => {
+          const s = (t.status || '').toString().toLowerCase().trim();
+          return s === 'pending' || s === 'payment area' || s === 'extraction area' || s === 'awaiting' || !s;
+        });
+      } else if (sf === 'completed') {
+        allTests = allTests.filter(t => {
+          const s = (t.status || '').toString().toLowerCase().trim();
+          return s === 'completed' || s === 'released';
+        });
+      } else {
+        allTests = allTests.filter(t => ((t.status || '').toString().toLowerCase().trim() === sf));
+      }
     }
 
     // Apply testType filter (substring match) with special handling for Blood Chemistry
