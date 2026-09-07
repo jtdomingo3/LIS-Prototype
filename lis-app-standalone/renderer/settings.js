@@ -45,6 +45,21 @@
     }, 4500);
   }
 
+  // Conflict elements
+  const settingsConflictBadge = document.getElementById('settingsConflictBadge');
+  const exportConflictsBtn = document.getElementById('exportConflictsBtn');
+  const clearConflictsBtn = document.getElementById('clearConflictsBtn');
+
+  async function updateConflictBadge() {
+    if (!settingsConflictBadge || !window.lisApp || typeof window.lisApp.getStatus !== 'function') return;
+    try {
+      const status = await window.lisApp.getStatus();
+      const count = status ? (status.conflictCount || 0) : 0;
+      settingsConflictBadge.textContent = count;
+      settingsConflictBadge.style.background = count > 0 ? '#ef4444' : '#10b981';
+    } catch (e) {}
+  }
+
   // Tab switching
   const navItems = document.querySelectorAll('.nav-item');
   const tabPanes = document.querySelectorAll('.tab-pane');
@@ -62,6 +77,8 @@
       if (tabId === 'tab-storage' || tabId === 'tab-queue') {
         loadDataStoreInfo();
         loadQueue();
+      } else if (tabId === 'tab-sync') {
+        updateConflictBadge();
       } else if (tabId === 'tab-logs') {
         loadLogs();
       }
@@ -114,6 +131,7 @@
 
       await loadDataStoreInfo();
       await loadQueue();
+      await updateConflictBadge();
     } catch (e) {
       console.warn('[Settings] load failed:', e);
     }
@@ -397,6 +415,40 @@
       } catch (e) {
         dropBtn.disabled = false;
         setFeedback('Rebuild failed: ' + e.message, true);
+      }
+    });
+  }
+
+  // Conflict actions
+  if (exportConflictsBtn) {
+    exportConflictsBtn.addEventListener('click', async () => {
+      if (!window.lisApp || typeof window.lisApp.exportConflicts !== 'function') return;
+      try {
+        const json = await window.lisApp.exportConflicts();
+        const blob = new Blob([json], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `lis-sync-conflicts-${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setFeedback('✓ Exported sync conflicts report.');
+      } catch (e) {
+        setFeedback('Export failed: ' + e.message, true);
+      }
+    });
+  }
+
+  if (clearConflictsBtn) {
+    clearConflictsBtn.addEventListener('click', async () => {
+      if (!confirm('Clear all resolved conflicts from history?')) return;
+      if (!window.lisApp || typeof window.lisApp.clearConflicts !== 'function') return;
+      try {
+        await window.lisApp.clearConflicts();
+        setFeedback('✓ Cleaned up resolved conflicts.');
+        await updateConflictBadge();
+      } catch (e) {
+        setFeedback('Failed to clear: ' + e.message, true);
       }
     });
   }

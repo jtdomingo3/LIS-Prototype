@@ -157,224 +157,57 @@ class DataStore {
     const startMs = Date.now();
     const dest = this.getCollection(name).slice();
     const map = new Map(dest.map(i => [String(i[idKey]), i]));
-    const deletedIds = []; // Batch deletions for performance
+    const deletedIds = []; // Batch deletions for temporary offline IDs replaced by server records
 
-    if (name === 'inventory') {
-      // Build O(1) lookup indexes from existing records
-      const skuIndex = new Map();   // SKU → existingId
-      const nameAreaIndex = new Map(); // "name|area|category" → existingId
-      for (const [id, it] of map.entries()) {
-        const sku = (it.sku || '').trim().toUpperCase();
-        if (sku) skuIndex.set(sku, id);
-        const nameKey = `${(it.name || '').trim().toLowerCase()}|${(it.area || '').trim().toLowerCase()}|${it.category || ''}`;
-        nameAreaIndex.set(nameKey, id);
+    // Index local items by client_id to reconcile offline-created records
+    const localByClientId = new Map();
+    for (const [id, item] of map.entries()) {
+      const cid = item && (item.client_id || item.clientId);
+      if (cid && String(cid) !== id) {
+        localByClientId.set(String(cid), id);
       }
+    }
 
-      for (const it of items) {
-        if (!it || !it[idKey]) continue;
-        const itId = String(it[idKey]);
-        const itSku = (it.sku || '').trim().toUpperCase();
-        const itNameKey = `${(it.name || '').trim().toLowerCase()}|${(it.area || '').trim().toLowerCase()}|${it.category || ''}`;
+    for (const it of items) {
+      if (!it || !it[idKey]) continue;
+      const itId = String(it[idKey]);
 
-        // Check for duplicate by SKU or name+area+category
-        const dupBySku = itSku ? skuIndex.get(itSku) : undefined;
-        const dupByName = nameAreaIndex.get(itNameKey);
-        const dupId = (dupBySku && dupBySku !== itId) ? dupBySku : ((dupByName && dupByName !== itId) ? dupByName : null);
-
-        if (dupId) {
-          map.delete(dupId);
-          deletedIds.push(dupId);
-          // Remove from indexes so future items don't match stale entries
-          const old = dest.find(d => String(d[idKey]) === dupId);
-          if (old) {
-            const oldSku = (old.sku || '').trim().toUpperCase();
-            if (oldSku && skuIndex.get(oldSku) === dupId) skuIndex.delete(oldSku);
-            const oldNameKey = `${(old.name || '').trim().toLowerCase()}|${(old.area || '').trim().toLowerCase()}|${old.category || ''}`;
-            if (nameAreaIndex.get(oldNameKey) === dupId) nameAreaIndex.delete(oldNameKey);
-          }
-        }
-
-        map.set(itId, it);
-        // Update indexes with new record
-        if (itSku) skuIndex.set(itSku, itId);
-        nameAreaIndex.set(itNameKey, itId);
-      }
-
-      // Batch delete removed duplicates
-      if (this.db && this.db.deleteInventory) {
-        for (const id of deletedIds) { try { this.db.deleteInventory(id); } catch (_) {} }
-      }
-    } else if (name === 'inventory_batches') {
-      // Build O(1) lookup: "inventoryId|lotNumber" → existingId
-      const lotIndex = new Map();
-      for (const [id, b] of map.entries()) {
-        const key = `${String(b.inventoryId || '')}|${(b.lotNumber || '').trim().toUpperCase()}`;
-        if (b.inventoryId && b.lotNumber) lotIndex.set(key, id);
-      }
-
-      for (const it of items) {
-        if (!it || !it[idKey]) continue;
-        const itId = String(it[idKey]);
-        const itKey = `${String(it.inventoryId || '')}|${(it.lotNumber || '').trim().toUpperCase()}`;
-        const dupId = (it.inventoryId && it.lotNumber) ? lotIndex.get(itKey) : undefined;
-
-        if (dupId && dupId !== itId) {
-          map.delete(dupId);
-          deletedIds.push(dupId);
-          lotIndex.delete(itKey);
-        }
-
-        map.set(itId, it);
-        if (it.inventoryId && it.lotNumber) lotIndex.set(itKey, itId);
-      }
-
-      if (this.db && this.db.deleteBatch) {
-        for (const id of deletedIds) { try { this.db.deleteBatch(id); } catch (_) {} }
-      }
-    } else if (name === 'inventory_transactions') {
-      // Build O(1) lookup: "inventoryId|type|quantity|lotNumber" → existingId
-      const txIndex = new Map();
-      for (const [id, tx] of map.entries()) {
-        const key = `${String(tx.inventoryId || '')}|${String(tx.transactionType || '')}|${Number(tx.quantity || 0)}|${(tx.lotNumber || '').trim().toUpperCase()}`;
-        txIndex.set(key, id);
-      }
-
-      for (const it of items) {
-        if (!it || !it[idKey]) continue;
-        const itId = String(it[idKey]);
-        const itKey = `${String(it.inventoryId || '')}|${String(it.transactionType || '')}|${Number(it.quantity || 0)}|${(it.lotNumber || '').trim().toUpperCase()}`;
-        const dupId = txIndex.get(itKey);
-
-        if (dupId && dupId !== itId) {
-          map.delete(dupId);
-          deletedIds.push(dupId);
-          txIndex.delete(itKey);
-        }
-
-        map.set(itId, it);
-        txIndex.set(itKey, itId);
-      }
-
-      if (this.db && this.db.deleteTransaction) {
-        for (const id of deletedIds) { try { this.db.deleteTransaction(id); } catch (_) {} }
-      }
-    } else if (name === 'patients') {
-      // Build O(1) lookup indexes from existing patients
-      const clientIdIndex = new Map();  // client_id → existingId
-      const codeIndex = new Map();      // patientCode → existingId
-      const pidIndex = new Map();       // patientId → existingId
-      const nameIndex = new Map();      // "first|last|dob" or "first|last|phone" → existingId
-
-      for (const [id, pt] of map.entries()) {
-        const cid = (pt.client_id || pt.clientId || '').trim();
-        if (cid) clientIdIndex.set(cid, id);
-        const code = (pt.patientCode || '').trim().toUpperCase();
-        if (code) codeIndex.set(code, id);
-        const pid = (pt.patientId || '').trim().toUpperCase();
-        if (pid) pidIndex.set(pid, id);
-        const first = (pt.firstName || '').trim().toLowerCase();
-        const last = (pt.lastName || '').trim().toLowerCase();
-        const dob = (pt.dateOfBirth || '').trim();
-        const phone = (pt.phone || '').trim();
-        if (first && last) {
-          if (dob) nameIndex.set(`${first}|${last}|dob:${dob}`, id);
-          if (phone) nameIndex.set(`${first}|${last}|ph:${phone}`, id);
+      // If the incoming server item carries a client_id that matches a local record with a different temp ID,
+      // reconcile and remove the old local temp record so we don't end up with duplicate rows
+      const incomingClientId = it.client_id || it.clientId;
+      if (incomingClientId && map.has(String(incomingClientId)) && String(incomingClientId) !== itId) {
+        const tempId = String(incomingClientId);
+        console.log(`[DataStore] Reconciled ${name}: replacing local temporary ${tempId} with server ${itId}`);
+        map.delete(tempId);
+        deletedIds.push(tempId);
+      } else if (localByClientId.has(itId)) {
+        const tempId = localByClientId.get(itId);
+        if (tempId && tempId !== itId) {
+          console.log(`[DataStore] Reconciled ${name}: replacing local temporary ${tempId} with server ${itId}`);
+          map.delete(tempId);
+          deletedIds.push(tempId);
         }
       }
 
-      for (const it of items) {
-        if (!it || !it[idKey]) continue;
-        const itId = String(it[idKey]);
-        const itClientId = (it.client_id || it.clientId || '').trim();
-        const itCode = (it.patientCode || '').trim().toUpperCase();
-        const itPid = (it.patientId || '').trim().toUpperCase();
-        const itFirst = (it.firstName || '').trim().toLowerCase();
-        const itLast = (it.lastName || '').trim().toLowerCase();
-        const itDob = (it.dateOfBirth || '').trim();
-        const itPhone = (it.phone || '').trim();
+      // Authoritatively upsert the server record
+      map.set(itId, it);
+    }
 
-        // O(1) duplicate lookup via indexes
-        let dupId = null;
-        if (!dupId && itClientId) { const d = clientIdIndex.get(itClientId); if (d && d !== itId) dupId = d; }
-        if (!dupId && itCode) { const d = codeIndex.get(itCode); if (d && d !== itId) dupId = d; }
-        if (!dupId && itPid) { const d = pidIndex.get(itPid); if (d && d !== itId) dupId = d; }
-        if (!dupId && itFirst && itLast) {
-          if (itDob) { const d = nameIndex.get(`${itFirst}|${itLast}|dob:${itDob}`); if (d && d !== itId) dupId = d; }
-          if (!dupId && itPhone) { const d = nameIndex.get(`${itFirst}|${itLast}|ph:${itPhone}`); if (d && d !== itId) dupId = d; }
+    // Delete any replaced temp IDs from SQLite adapter
+    if (this.db && deletedIds.length > 0) {
+      const deleteFn =
+        name === 'patients' ? this.db.deletePatient :
+        name === 'tests' ? this.db.deleteTest :
+        name === 'users' ? this.db.deleteUser :
+        name === 'templates' ? this.db.deleteTemplate :
+        name === 'inventory' ? this.db.deleteInventory :
+        name === 'inventory_batches' ? this.db.deleteBatch :
+        name === 'inventory_transactions' ? this.db.deleteTransaction : null;
+
+      if (deleteFn) {
+        for (const id of deletedIds) {
+          try { deleteFn.call(this.db, id); } catch (_) {}
         }
-
-        if (dupId) {
-          console.log(`[DataStore] Deduplicated patient: replacing local duplicate ${dupId} with server ${itId} (${it.firstName || ''} ${it.lastName || ''})`);
-          map.delete(dupId);
-          deletedIds.push(dupId);
-        }
-
-        map.set(itId, it);
-        // Update indexes
-        if (itClientId) clientIdIndex.set(itClientId, itId);
-        if (itCode) codeIndex.set(itCode, itId);
-        if (itPid) pidIndex.set(itPid, itId);
-        if (itFirst && itLast) {
-          if (itDob) nameIndex.set(`${itFirst}|${itLast}|dob:${itDob}`, itId);
-          if (itPhone) nameIndex.set(`${itFirst}|${itLast}|ph:${itPhone}`, itId);
-        }
-      }
-
-      // Batch delete all collected duplicates at the end
-      if (this.db && this.db.deletePatient) {
-        for (const id of deletedIds) { try { this.db.deletePatient(id); } catch (_) {} }
-      }
-    } else if (name === 'tests') {
-      // Build O(1) lookup indexes from existing tests
-      const clientIdIndex = new Map();   // client_id → existingId
-      const testIdIndex = new Map();     // testId → existingId
-      const patTypeIndex = new Map();    // "patient|testType" → existingId
-
-      for (const [id, t] of map.entries()) {
-        const cid = (t.client_id || t.clientId || '').trim();
-        if (cid) clientIdIndex.set(cid, id);
-        const tid = String(t.testId || '').trim();
-        if (tid) testIdIndex.set(tid, id);
-        const pat = String(t.patient || '').trim();
-        const type = String(t.testType || '').trim().toLowerCase();
-        if (pat && type) patTypeIndex.set(`${pat}|${type}`, id);
-      }
-
-      for (const it of items) {
-        if (!it || !it[idKey]) continue;
-        const itId = String(it[idKey]);
-        const itClientId = (it.client_id || it.clientId || '').trim();
-        const itTestId = String(it.testId || '').trim();
-        const itPatient = String(it.patient || '').trim();
-        const itType = String(it.testType || '').trim().toLowerCase();
-
-        // O(1) duplicate lookup
-        let dupId = null;
-        if (!dupId && itClientId) { const d = clientIdIndex.get(itClientId); if (d && d !== itId) dupId = d; }
-        if (!dupId && itTestId) { const d = testIdIndex.get(itTestId); if (d && d !== itId) dupId = d; }
-        if (!dupId && itPatient && itType) { const d = patTypeIndex.get(`${itPatient}|${itType}`); if (d && d !== itId) dupId = d; }
-
-        if (dupId) {
-          console.log(`[DataStore] Deduplicated test: replacing local duplicate ${dupId} with server ${itId} (Test #${it.testId || ''})`);
-          map.delete(dupId);
-          deletedIds.push(dupId);
-        }
-
-        map.set(itId, it);
-        // Update indexes
-        if (itClientId) clientIdIndex.set(itClientId, itId);
-        if (itTestId) testIdIndex.set(itTestId, itId);
-        if (itPatient && itType) patTypeIndex.set(`${itPatient}|${itType}`, itId);
-      }
-
-      // Batch delete all collected duplicates
-      if (this.db && this.db.deleteTest) {
-        for (const id of deletedIds) { try { this.db.deleteTest(id); } catch (_) {} }
-      }
-    } else {
-      for (const it of items) {
-        if (!it || !it[idKey]) continue;
-        map.set(String(it[idKey]), it);
       }
     }
 
@@ -382,7 +215,7 @@ class DataStore {
     this.setCollection(name, merged, { replace: true });
     const elapsed = Date.now() - startMs;
     if (elapsed > 50) {
-      console.log(`[DataStore] mergeCollection ${name}: ${items.length} items merged in ${elapsed}ms (${deletedIds.length} duplicates removed)`);
+      console.log(`[DataStore] mergeCollection ${name}: ${items.length} items merged in ${elapsed}ms (${deletedIds.length} temp records reconciled)`);
     }
   }
 

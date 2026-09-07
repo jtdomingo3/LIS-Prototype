@@ -5,13 +5,18 @@
  */
 
 class SyncEngine {
-  constructor(operationQueue, config, dataStore) {
+  constructor(operationQueue, config, dataStore, conflictStore) {
     this.queue = operationQueue;
     this.config = config;
     this.dataStore = dataStore || null;
+    this.conflictStore = conflictStore || null;
     this._syncing = false;
     this._credentials = null; // { email, password } for server re-auth
     this._bearerToken = null; // Bearer token for server auth
+  }
+
+  setConflictStore(store) {
+    this.conflictStore = store || null;
   }
 
   /** Set a signed Bearer token directly. */
@@ -554,6 +559,36 @@ class SyncEngine {
         const errMsg = (e && e.message) ? e.message : String(e);
         console.error(`[Sync] ✗ ${op.method} ${op.url} — ${errMsg}`);
         this.queue.markFailed(op.id, errMsg, this.config.MAX_SYNC_RETRIES);
+
+        // Parse status code from error message if available (e.g. "Server returned 409", "HTTP 400", etc.)
+        let statusCode = null;
+        const codeMatch = errMsg.match(/(?:status|returned|HTTP)\s*:?\s*(\d{3})/i);
+        if (codeMatch) statusCode = parseInt(codeMatch[1], 10);
+
+        // Record conflict in ConflictStore for investigation if error is non-network rejection
+        // or if retry limit is reached
+        if (this.conflictStore && (statusCode || (op.attempts && op.attempts >= (this.config.MAX_SYNC_RETRIES || 3)))) {
+          try {
+            let entity = 'general';
+            try {
+              const p = new URL(op.url).pathname || '';
+              const seg = p.split('/').filter(Boolean)[0];
+              if (seg) entity = seg;
+            } catch (_) {}
+
+            this.conflictStore.recordConflict({
+              type: statusCode === 409 ? 'merge_conflict' : 'queue_failure',
+              entity,
+              entityId: (op.body && (op.body.id || op.body.patientId || op.body.testId)) || op.id,
+              operation: `${op.method || 'POST'} ${op.url}`,
+              payload: op.body || null,
+              error: errMsg,
+              statusCode
+            });
+          } catch (recErr) {
+            console.warn('[Sync] Failed to record conflict in conflictStore:', recErr && recErr.message);
+          }
+        }
 
         // If the server connection dropped or refused, stop replaying to wait for connection
         const isNetworkDrop = /ERR_CONNECTION|ERR_NAME|timeout|timed out|ECONNREFUSED|ENOTFOUND/i.test(errMsg);
@@ -1585,6 +1620,19 @@ class SyncEngine {
       this.dataStore.setMeta('lastSyncAudit', audit);
       this.dataStore.setMeta('lastFullSync', nowIso);
     } catch (_) {}
+
+    if (this.conflictStore && discrepancies.length > 0) {
+      try {
+        for (const d of discrepancies) {
+          this.conflictStore.recordConflict({
+            type: 'validation_error',
+            entity: d.toLowerCase().includes('patient') ? 'patients' : (d.toLowerCase().includes('test') ? 'tests' : 'database'),
+            operation: 'AUDIT_RECONCILE',
+            error: d
+          });
+        }
+      } catch (_) {}
+    }
 
     // Step 7: Broadcast to UI
     if (progressSender) {

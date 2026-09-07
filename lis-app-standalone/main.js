@@ -41,6 +41,7 @@ const { PageCache } = require('./lib/pageCache');
 const { OperationQueue } = require('./lib/operationQueue');
 const { SyncEngine } = require('./lib/syncEngine');
 const { DataStore } = require('./lib/dataStore');
+const { ConflictStore } = require('./lib/conflictStore');
 const { NetworkMonitor } = require('./lib/networkMonitor');
 const { createLocalServer } = require('./lib/localServer');
 const config = require('./lib/config');
@@ -50,6 +51,7 @@ let pageCache = null;
 let operationQueue = null;
 let syncEngine = null;
 let dataStore = null;
+let conflictStore = null;
 let localServer = null;
 let networkMonitor = null;
 let isOnline = false;
@@ -411,9 +413,10 @@ async function createWindow() {
   operationQueue = new OperationQueue(dataDir);
   // DataStore will persist the full synced DB into Documents/LIS/app_sync/data.json
   try { dataStore = new DataStore(); } catch (e) { dataStore = null; }
+  try { conflictStore = new ConflictStore(dataStore ? dataStore.baseDir : null); } catch (e) { conflictStore = null; }
   // Attach DataStore to operationQueue so replaceTempId can update stored records
   try { if (operationQueue && dataStore) operationQueue.dataStore = dataStore; } catch (e) {}
-  syncEngine = new SyncEngine(operationQueue, config, dataStore);
+  syncEngine = new SyncEngine(operationQueue, config, dataStore, conflictStore);
   localServer = createLocalServer(pageCache, operationQueue, config, dataStore);
 
   // Fresh launch starts with NO pre-authenticated user session (manual login required)
@@ -715,15 +718,65 @@ function injectClientScripts() {
 
 function sendStatus() {
   if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send('network-status', { online: isOnline, pendingCount: operationQueue ? operationQueue.countPending() : 0 });
+    mainWindow.webContents.send('network-status', {
+      online: isOnline,
+      pendingCount: operationQueue ? operationQueue.countPending() : 0,
+      conflictCount: conflictStore ? conflictStore.countUnresolved() : 0,
+    });
   }
 }
 
 /* ==================================================================
  *  IPC handlers
  * ================================================================== */
-ipcMain.handle('get-status', () => ({ online: isOnline, pendingCount: operationQueue.countPending(), serverUrl: config.SERVER_URL, serverConfigured: !!config.SERVER_URL, cachedPages: pageCache.list().length, lastFullSync: dataStore ? dataStore.getMeta('lastFullSync') : null }));
+ipcMain.handle('get-status', () => ({
+  online: isOnline,
+  pendingCount: operationQueue ? operationQueue.countPending() : 0,
+  conflictCount: conflictStore ? conflictStore.countUnresolved() : 0,
+  serverUrl: config.SERVER_URL,
+  serverConfigured: !!config.SERVER_URL,
+  cachedPages: pageCache.list().length,
+  lastFullSync: dataStore ? dataStore.getMeta('lastFullSync') : null
+}));
 ipcMain.handle('get-queue', () => operationQueue.getAll());
+ipcMain.handle('get-conflicts', () => (conflictStore ? conflictStore.getAll() : []));
+ipcMain.handle('resolve-conflict', (_e, { id, note } = {}) => {
+  if (!conflictStore) return { success: false };
+  const res = conflictStore.resolve(id, note || 'Resolved by user');
+  sendStatus();
+  return { success: res, conflictCount: conflictStore.countUnresolved() };
+});
+ipcMain.handle('retry-conflict', async (_e, { id } = {}) => {
+  if (!conflictStore) return { success: false, reason: 'no-conflict-store' };
+  const conflict = conflictStore.getById(id);
+  if (!conflict) return { success: false, reason: 'conflict-not-found' };
+
+  if (operationQueue && conflict.payload && conflict.operation) {
+    const parts = (conflict.operation || '').split(' ');
+    const method = parts[0] || 'POST';
+    const opUrl = parts[1] || `${config.SERVER_URL || 'http://127.0.0.1:3000'}/${conflict.entity || ''}`;
+    operationQueue.add({
+      method,
+      url: opUrl,
+      body: conflict.payload
+    });
+    conflictStore.resolve(id, 'Retried operation re-queued to replay queue');
+    sendStatus();
+    if (isOnline) triggerAutoSync().catch(() => {});
+    return { success: true, retried: true, conflictCount: conflictStore.countUnresolved() };
+  }
+  return { success: false, reason: 'no-payload-to-retry' };
+});
+ipcMain.handle('clear-conflicts', () => {
+  if (!conflictStore) return { success: false };
+  conflictStore.clearResolved();
+  sendStatus();
+  return { success: true, conflictCount: conflictStore.countUnresolved() };
+});
+ipcMain.handle('export-conflicts', () => {
+  if (!conflictStore) return JSON.stringify({ error: 'No conflict store' }, null, 2);
+  return conflictStore.exportReport();
+});
 ipcMain.handle('queue-operation', (_e, operation) => { operationQueue.add(operation); return { success: true, pendingCount: operationQueue.countPending() }; });
 ipcMain.handle('force-sync', async () => { if (!isOnline) return { success: false, reason: 'offline' }; const synced = await syncEngine.processQueue(); sendStatus(); return { success: true, synced }; });
 ipcMain.handle('full-sync', async () => {

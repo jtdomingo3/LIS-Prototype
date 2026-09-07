@@ -35,12 +35,17 @@
   if (!window.lisApp) {
     console.warn('[inject] window.lisApp not found — creating stub');
     window.lisApp = {
-      getStatus: function () { return Promise.resolve({ online: false, pendingCount: 0 }); },
+      getStatus: function () { return Promise.resolve({ online: false, pendingCount: 0, conflictCount: 0 }); },
       getQueue: function () { return Promise.resolve([]); },
       fullSync: function () { return Promise.resolve({}); },
       forceSync: function () { return Promise.resolve({}); },
       retryConnection: function () { return Promise.resolve({}); },
       openSettings: function () { return Promise.resolve(); },
+      getConflicts: function () { return Promise.resolve([]); },
+      resolveConflict: function () { return Promise.resolve({ success: true }); },
+      retryConflict: function () { return Promise.resolve({ success: true }); },
+      clearConflicts: function () { return Promise.resolve({ success: true }); },
+      exportConflicts: function () { return Promise.resolve('{}'); },
       printPreview: function () {},
       onNetworkStatus: function () {},
       onSyncComplete: function () {},
@@ -89,10 +94,14 @@
     '  <div class="lis-status-left">',
     '    <div class="lis-status-indicator" id="lis-status-pill">',
     '      <span class="lis-status-dot online" id="lis-dot"></span>',
-    '      <span id="lis-status-text">Connected</span>',
+    '      <span id="lis-status-text">Connected (GezyneLab DB)</span>',
     '    </div>',
     '    <span class="lis-pending-badge" id="lis-badge" style="display:none" title="Pending offline changes">',
     '      <span id="lis-badge-count">0</span> pending',
+    '    </span>',
+    '    <span class="lis-conflict-badge" id="lis-conflict-badge" style="display:none" title="Sync Conflicts & Non-merging Errors — Click to Inspect">',
+    '      <span class="lis-conflict-dot"></span>',
+    '      <span id="lis-conflict-count">0</span> sync error<span id="lis-conflict-plural">s</span>',
     '    </span>',
     '    <div id="lis-sync-progress-wrap">',
     '      <div id="lis-sync-progress"></div>',
@@ -149,6 +158,9 @@
   var textEl = document.getElementById('lis-status-text');
   var badgeEl = document.getElementById('lis-badge');
   var badgeCountEl = document.getElementById('lis-badge-count');
+  var conflictBadgeEl = document.getElementById('lis-conflict-badge');
+  var conflictCountEl = document.getElementById('lis-conflict-count');
+  var conflictPluralEl = document.getElementById('lis-conflict-plural');
   var syncBtn = document.getElementById('lis-sync-btn');
   var retryBtn = document.getElementById('lis-retry-btn');
   var refreshBtn = document.getElementById('lis-refresh-btn');
@@ -160,6 +172,7 @@
     if (!data) return;
     var online = data.online;
     var count = data.pendingCount || 0;
+    var conflictCount = data.conflictCount || 0;
 
     if (online) {
       bar.className = 'lis-online';
@@ -180,6 +193,16 @@
       badgeCountEl.textContent = count;
     } else {
       badgeEl.style.display = 'none';
+    }
+
+    if (conflictBadgeEl) {
+      if (conflictCount > 0) {
+        conflictBadgeEl.style.display = 'inline-flex';
+        if (conflictCountEl) conflictCountEl.textContent = conflictCount;
+        if (conflictPluralEl) conflictPluralEl.textContent = conflictCount === 1 ? '' : 's';
+      } else {
+        conflictBadgeEl.style.display = 'none';
+      }
     }
   }
 
@@ -269,6 +292,12 @@
     });
   }
 
+  if (conflictBadgeEl) {
+    conflictBadgeEl.addEventListener('click', function () {
+      openConflictModal();
+    });
+  }
+
   if (refreshBtn) {
     refreshBtn.addEventListener('click', function () {
       window.location.reload();
@@ -279,5 +308,232 @@
     settingsBtn.addEventListener('click', function () {
       if (window.lisApp.openSettings) window.lisApp.openSettings();
     });
+  }
+
+  /* ── Conflict Investigation Modal ──────────────────────────────── */
+  function openConflictModal() {
+    var existing = document.getElementById('lis-conflict-modal-overlay');
+    if (existing) existing.remove();
+
+    var overlay = document.createElement('div');
+    overlay.id = 'lis-conflict-modal-overlay';
+    overlay.className = 'lis-modal-overlay';
+
+    overlay.innerHTML = [
+      '<div class="lis-modal-card">',
+      '  <div class="lis-modal-header">',
+      '    <div class="lis-modal-header-left">',
+      '      <div class="lis-modal-icon-badge">⚠</div>',
+      '      <div>',
+      '        <h3 class="lis-modal-title">Sync Conflicts & Non-Merging Changes</h3>',
+      '        <p class="lis-modal-subtitle">Stored changes that could not be reconciled with the central server</p>',
+      '      </div>',
+      '    </div>',
+      '    <button class="lis-modal-close-btn" id="lis-conflict-modal-close" title="Close">✕</button>',
+      '  </div>',
+      '  <div class="lis-modal-body" id="lis-conflict-list">',
+      '    <div style="text-align:center; padding:30px; color:#94a3b8;">Loading conflict items…</div>',
+      '  </div>',
+      '  <div class="lis-modal-footer">',
+      '    <div style="display:flex; gap:8px;">',
+      '      <button class="lis-btn" id="lis-conflict-export-btn">📥 Export JSON Report</button>',
+      '      <button class="lis-btn" id="lis-conflict-clear-resolved-btn">🧹 Clear Resolved</button>',
+      '    </div>',
+      '    <button class="lis-btn lis-btn-primary" id="lis-conflict-close-footer-btn">Close</button>',
+      '  </div>',
+      '</div>'
+    ].join('\n');
+
+    document.body.appendChild(overlay);
+
+    overlay.addEventListener('click', function (e) {
+      if (e.target === overlay) overlay.remove();
+    });
+    var closeBtn = overlay.querySelector('#lis-conflict-modal-close');
+    if (closeBtn) closeBtn.addEventListener('click', function () { overlay.remove(); });
+    var footerCloseBtn = overlay.querySelector('#lis-conflict-close-footer-btn');
+    if (footerCloseBtn) footerCloseBtn.addEventListener('click', function () { overlay.remove(); });
+
+    function loadConflictItems() {
+      if (!window.lisApp || typeof window.lisApp.getConflicts !== 'function') return;
+      window.lisApp.getConflicts().then(function (conflicts) {
+        var listEl = document.getElementById('lis-conflict-list');
+        if (!listEl) return;
+
+        if (!conflicts || conflicts.length === 0) {
+          listEl.innerHTML = [
+            '<div class="lis-empty-conflicts">',
+            '  <div class="lis-empty-conflicts-icon">✓</div>',
+            '  <h4 style="margin:0 0 6px 0; font-size:16px; color:#f8fafc;">Zero Sync Conflicts</h4>',
+            '  <p style="margin:0; font-size:13px;">All local workstation data is harmonized with the central server.</p>',
+            '</div>'
+          ].join('\n');
+          return;
+        }
+
+        listEl.innerHTML = '';
+        conflicts.forEach(function (item) {
+          var isResolved = item.status === 'resolved';
+          var card = document.createElement('div');
+          card.className = 'lis-conflict-item' + (isResolved ? ' resolved' : '');
+          if (isResolved) {
+            card.style.borderLeftColor = '#10b981';
+            card.style.opacity = '0.7';
+          }
+
+          var dateStr = '';
+          try {
+            dateStr = new Date(item.timestamp).toLocaleString();
+          } catch (e) { dateStr = item.timestamp || ''; }
+
+          var payloadStr = '';
+          if (item.payload) {
+            try {
+              payloadStr = JSON.stringify(item.payload, null, 2);
+            } catch (e) { payloadStr = String(item.payload); }
+          }
+
+          var entityBadge = escapeHtml(item.entity || 'general');
+          var opText = escapeHtml(item.operation || 'Sync Replay');
+          var errText = escapeHtml(item.error || 'Conflict or non-merging record detected');
+          var statusBadge = isResolved
+            ? '<span style="background:rgba(16,185,129,0.2); color:#6ee7b7; padding:2px 6px; border-radius:4px; font-size:11px; font-weight:700;">RESOLVED</span>'
+            : '<span class="lis-conflict-tag">UNRESOLVED</span>';
+
+          var html = [
+            '<div class="lis-conflict-item-header">',
+            '  <div class="lis-conflict-meta">',
+            '    ' + statusBadge,
+            '    <span class="lis-conflict-op">' + opText + '</span>',
+            '    <span style="font-size:11px; color:#cbd5e1; font-weight:600;">[' + entityBadge + ']</span>',
+            '  </div>',
+            '  <span class="lis-conflict-time">' + dateStr + '</span>',
+            '</div>',
+            '<div class="lis-conflict-error-box">' + errText + '</div>'
+          ];
+
+          if (item.resolutionNote) {
+            html.push('<div style="font-size:11px; color:#6ee7b7; margin-bottom:6px;">Resolution: ' + escapeHtml(item.resolutionNote) + '</div>');
+          }
+
+          if (payloadStr) {
+            var payloadId = 'payload-' + item.id;
+            html.push(
+              '<button class="lis-conflict-payload-toggle" data-target="' + payloadId + '">▶ View Payload Details</button>',
+              '<div class="lis-conflict-payload-box" id="' + payloadId + '">' + escapeHtml(payloadStr) + '</div>'
+            );
+          }
+
+          if (!isResolved) {
+            html.push(
+              '<div class="lis-conflict-actions">',
+              '  <button class="lis-btn lis-btn-retry" data-id="' + item.id + '" style="background:rgba(56,189,248,0.2); border-color:rgba(56,189,248,0.4); color:#38bdf8;">⟳ Retry Sync</button>',
+              '  <button class="lis-btn lis-btn-resolve" data-id="' + item.id + '" style="background:rgba(16,185,129,0.2); border-color:rgba(16,185,129,0.4); color:#6ee7b7;">✓ Mark Resolved</button>',
+              '</div>'
+            );
+          }
+
+          card.innerHTML = html.join('\n');
+          listEl.appendChild(card);
+        });
+
+        // Wire up toggle buttons
+        var toggles = listEl.querySelectorAll('.lis-conflict-payload-toggle');
+        toggles.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var targetId = btn.getAttribute('data-target');
+            var targetEl = document.getElementById(targetId);
+            if (!targetEl) return;
+            var isHidden = targetEl.style.display === 'none' || !targetEl.style.display;
+            targetEl.style.display = isHidden ? 'block' : 'none';
+            btn.textContent = isHidden ? '▼ Hide Payload Details' : '▶ View Payload Details';
+          });
+        });
+
+        // Wire up retry buttons
+        var retryBtns = listEl.querySelectorAll('.lis-btn-retry');
+        retryBtns.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var id = btn.getAttribute('data-id');
+            btn.disabled = true;
+            btn.textContent = 'Retrying…';
+            window.lisApp.retryConflict(id).then(function () {
+              showToast('Conflict Re-queued', 'Operation added back to sync queue.');
+              loadConflictItems();
+              window.lisApp.getStatus().then(updateStatus).catch(function () {});
+            }).catch(function (err) {
+              btn.disabled = false;
+              btn.textContent = '⟳ Retry Sync';
+              showToast('Retry Failed', (err && err.message) || 'Could not retry', true);
+            });
+          });
+        });
+
+        // Wire up resolve buttons
+        var resolveBtns = listEl.querySelectorAll('.lis-btn-resolve');
+        resolveBtns.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var id = btn.getAttribute('data-id');
+            btn.disabled = true;
+            btn.textContent = 'Resolving…';
+            window.lisApp.resolveConflict(id, 'Manually marked as resolved').then(function () {
+              showToast('Conflict Resolved', 'Marked conflict as resolved.');
+              loadConflictItems();
+              window.lisApp.getStatus().then(updateStatus).catch(function () {});
+            }).catch(function (err) {
+              btn.disabled = false;
+              btn.textContent = '✓ Mark Resolved';
+              showToast('Resolve Failed', (err && err.message) || 'Could not resolve', true);
+            });
+          });
+        });
+      }).catch(function (err) {
+        var listEl = document.getElementById('lis-conflict-list');
+        if (listEl) listEl.innerHTML = '<div style="color:#ef4444; padding:20px; text-align:center;">Failed to load conflicts: ' + escapeHtml(err && err.message) + '</div>';
+      });
+    }
+
+    var exportBtn = overlay.querySelector('#lis-conflict-export-btn');
+    if (exportBtn) {
+      exportBtn.addEventListener('click', function () {
+        if (!window.lisApp || typeof window.lisApp.exportConflicts !== 'function') return;
+        window.lisApp.exportConflicts().then(function (jsonReport) {
+          var blob = new Blob([jsonReport], { type: 'application/json' });
+          var a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = 'lis-sync-conflicts-' + Date.now() + '.json';
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          showToast('Report Exported', 'Conflict report downloaded successfully.');
+        }).catch(function (e) {
+          showToast('Export Failed', (e && e.message) || 'Error exporting', true);
+        });
+      });
+    }
+
+    var clearBtn = overlay.querySelector('#lis-conflict-clear-resolved-btn');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', function () {
+        if (!window.lisApp || typeof window.lisApp.clearConflicts !== 'function') return;
+        window.lisApp.clearConflicts().then(function () {
+          showToast('Cleared', 'Cleaned up resolved conflict items.');
+          loadConflictItems();
+          window.lisApp.getStatus().then(updateStatus).catch(function () {});
+        });
+      });
+    }
+
+    loadConflictItems();
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 })();

@@ -38,6 +38,13 @@ contextBridge.exposeInMainWorld('lisApp', {
   deleteQueueItem:     (id) => ipcRenderer.invoke('delete-queue-item', id),
   clearQueue:          ()   => ipcRenderer.invoke('clear-queue'),
 
+  /* ── sync conflicts & diagnostics ────────────────────────────── */
+  getConflicts:        ()                 => ipcRenderer.invoke('get-conflicts'),
+  resolveConflict:     (id, note)         => ipcRenderer.invoke('resolve-conflict', { id, note }),
+  retryConflict:       (id)               => ipcRenderer.invoke('retry-conflict', { id }),
+  clearConflicts:      ()                 => ipcRenderer.invoke('clear-conflicts'),
+  exportConflicts:     ()                 => ipcRenderer.invoke('export-conflicts'),
+
   /* ── security & app lock ─────────────────────────────────────── */
   getSecuritySettings: ()                 => ipcRenderer.invoke('get-security-settings'),
   changePin:           (curr, newP)       => ipcRenderer.invoke('change-pin', { currentPin: curr, newPin: newP }),
