@@ -177,56 +177,138 @@
     padding: 16px;
     margin-top: 16px;
   }
+  .eq-nav-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 0px;
+    overflow-x: auto;
+  }
+  .eq-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border-radius: 8px 8px 0 0;
+    font-weight: 600;
+    font-size: 0.95em;
+    background: #f8fafc;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    border-bottom: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+  .eq-tab-btn:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+  }
+  .eq-tab-btn.active {
+    background: #0284c7;
+    color: #ffffff;
+    border-color: #0284c7;
+    box-shadow: 0 4px 6px -1px rgba(2, 132, 199, 0.25);
+  }
+  .eq-tab-btn.active i {
+    color: #ffffff !important;
+  }
+  .eq-section-panel {
+    animation: fadeIn 0.2s ease-in-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .nrl-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .nrl-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: all 0.15s ease;
+  }
+  .nrl-card:hover {
+    border-color: #0284c7;
+    box-shadow: 0 3px 10px rgba(2, 132, 199, 0.12);
+  }
 </style>
 
-<!-- KPI Top Summary Row -->
-<div class="eq-stat-grid">
-  <div class="eq-stat-card" style="border-left: 4px solid #0284c7;">
-    <div class="eq-stat-title">Total Equipment</div>
-    <div class="eq-stat-val" style="color: #0284c7;"><%= kpi.total %></div>
-    <div style="font-size: 0.8em; color: #64748b; margin-top: 4px;">Registered Lab & Radiology Units</div>
-  </div>
-
-  <div class="eq-stat-card" style="border-left: 4px solid #16a34a;">
-    <div class="eq-stat-title">Operational / OK</div>
-    <div class="eq-stat-val" style="color: #16a34a;"><%= kpi.operational %></div>
-    <div style="font-size: 0.8em; color: #64748b; margin-top: 4px;">Calibration Current</div>
-  </div>
-
-  <div class="eq-stat-card" style="border-left: 4px solid #d97706; cursor: pointer;" onclick="filterByStatus('CALIBRATION_DUE')">
-    <div class="eq-stat-title">Calibration Due Soon</div>
-    <div class="eq-stat-val" style="color: #d97706;"><%= kpi.calibrationDueSoon %></div>
-    <div style="font-size: 0.8em; color: #64748b; margin-top: 4px;">Within 30 Days</div>
-  </div>
-
-  <div class="eq-stat-card" style="border-left: 4px solid #dc2626; cursor: pointer;" onclick="filterByStatus('CALIBRATION_OVERDUE')">
-    <div class="eq-stat-title">Calibration Overdue</div>
-    <div class="eq-stat-val" style="color: #dc2626;"><%= kpi.calibrationOverdue %></div>
-    <div style="font-size: 0.8em; color: #64748b; margin-top: 4px;">ISO 15189 Action Required</div>
-  </div>
-
-  <div class="eq-stat-card" style="border-left: 4px solid #7c3aed; cursor: pointer;" onclick="openXrayModal()">
-    <div class="eq-stat-title">Diagnostic X-Ray Units</div>
-    <div class="eq-stat-val" style="color: #7c3aed;"><%= kpi.xrayCount %></div>
-    <div style="font-size: 0.8em; color: #64748b; margin-top: 4px;">FDA CDRRHR Radiation Safety</div>
-  </div>
+<!-- Main Dedicated Navigation Tabs (Always at top of Equipment module) -->
+<div class="eq-nav-tabs" style="margin-bottom: 20px;">
+  <button type="button" class="eq-tab-btn active" id="tabBtn_equipment" onclick="switchSection('equipment')">
+    <i class="fa fa-microscope" style="color: #0284c7;"></i> 1. Equipment Registry & Maintenance
+  </button>
+  <button type="button" class="eq-tab-btn" id="tabBtn_qc" onclick="switchSection('qc')">
+    <i class="fa fa-chart-line" style="color: #0284c7;"></i> 2. Internal QC & Levey-Jennings Hub
+  </button>
+  <button type="button" class="eq-tab-btn" id="tabBtn_neqas" onclick="switchSection('neqas')">
+    <i class="fa fa-award" style="color: #16a34a;"></i> 3. NEQAS External Quality Assessment (EQA)
+    <span class="badge badge-info" style="margin-left: 6px; font-size: 0.75em;" id="neqasTabBadge">DOH Accredited</span>
+  </button>
 </div>
 
-<div class="card" style="padding: 20px;">
-  <!-- Action Toolbar -->
-  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;">
-    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-      <% if (canEdit) { %>
-        <button class="button btn-primary" onclick="openCreateModal()">
-          <i class="fa fa-plus"></i> Register Equipment
+<!-- ======================================================== -->
+<!-- SECTION 1: EQUIPMENT REGISTRY & MAINTENANCE              -->
+<!-- ======================================================== -->
+<div id="sectionEquipment" class="eq-section-panel">
+  <!-- KPI Top Summary Row (Exclusively inside Equipment Registry) -->
+  <div class="eq-stat-grid" style="margin-bottom: 20px;">
+    <div class="eq-stat-card" style="border-left: 4px solid #0284c7;">
+      <div class="eq-stat-title">Total Equipment</div>
+      <div class="eq-stat-val" style="color: #0284c7;"><%= kpi.total %></div>
+      <div style="font-size: 0.8em; color: #64748b; margin-top: 4px;">Registered Lab & Radiology Units</div>
+    </div>
+
+    <div class="eq-stat-card" style="border-left: 4px solid #16a34a;">
+      <div class="eq-stat-title">Operational / OK</div>
+      <div class="eq-stat-val" style="color: #16a34a;"><%= kpi.operational %></div>
+      <div style="font-size: 0.8em; color: #64748b; margin-top: 4px;">Calibration Current</div>
+    </div>
+
+    <div class="eq-stat-card" style="border-left: 4px solid #d97706; cursor: pointer;" onclick="filterByStatus('CALIBRATION_DUE')">
+      <div class="eq-stat-title">Calibration Due Soon</div>
+      <div class="eq-stat-val" style="color: #d97706;"><%= kpi.calibrationDueSoon %></div>
+      <div style="font-size: 0.8em; color: #64748b; margin-top: 4px;">Within 30 Days</div>
+    </div>
+
+    <div class="eq-stat-card" style="border-left: 4px solid #dc2626; cursor: pointer;" onclick="filterByStatus('CALIBRATION_OVERDUE')">
+      <div class="eq-stat-title">Calibration Overdue</div>
+      <div class="eq-stat-val" style="color: #dc2626;"><%= kpi.calibrationOverdue %></div>
+      <div style="font-size: 0.8em; color: #64748b; margin-top: 4px;">ISO 15189 Action Required</div>
+    </div>
+
+    <div class="eq-stat-card" style="border-left: 4px solid #7c3aed; cursor: pointer;" onclick="openXrayModal()">
+      <div class="eq-stat-title">Diagnostic X-Ray Units</div>
+      <div class="eq-stat-val" style="color: #7c3aed;"><%= kpi.xrayCount %></div>
+      <div style="font-size: 0.8em; color: #64748b; margin-top: 4px;">FDA CDRRHR Radiation Safety</div>
+    </div>
+  </div>
+
+  <div class="card" style="padding: 20px;">
+    <!-- Action Toolbar -->
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;">
+      <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <% if (canEdit) { %>
+          <button class="button btn-primary" onclick="openCreateModal()">
+            <i class="fa fa-plus"></i> Register Equipment
+          </button>
+        <% } %>
+        <button class="button btn-secondary" onclick="switchSection('qc')">
+          <i class="fa fa-chart-line" style="color: #0284c7;"></i> Levey-Jennings & QC Hub
         </button>
-      <% } %>
-      <button class="button btn-secondary" onclick="openLjModal()">
-        <i class="fa fa-chart-line" style="color: #0284c7;"></i> Levey-Jennings & QC Hub
-      </button>
-      <button class="button btn-secondary" onclick="openNeqasModal()">
-        <i class="fa fa-award" style="color: #16a34a;"></i> NEQAS EQA Hub
-      </button>
+        <button class="button btn-secondary" onclick="switchSection('neqas')">
+          <i class="fa fa-award" style="color: #16a34a;"></i> NEQAS EQA Hub
+        </button>
       <button class="button btn-secondary" onclick="openXrayModal()">
         <i class="fa fa-radiation" style="color: #d97706;"></i> X-Ray Compliance
       </button>
@@ -353,10 +435,13 @@
                   <i class="fa fa-wrench"></i> Log
                 </button>
                 <% if (item.isChemistry || item.department.includes('Chemistry')) { %>
-                  <button class="button btn-small btn-primary" title="Levey-Jennings QC Chart" onclick="openLjModal('<%= item.id %>', '<%= item.name %>')">
+                  <button class="button btn-small btn-primary" title="Levey-Jennings QC Chart" onclick="switchSection('qc', '<%= item.id %>')">
                     <i class="fa fa-chart-line"></i> QC
                   </button>
                 <% } %>
+                <button class="button btn-small btn-secondary" title="View NEQAS EQA Surveys" onclick="switchSection('neqas', '<%= item.id %>')">
+                  <i class="fa fa-award" style="color: #16a34a;"></i> NEQAS
+                </button>
                 <button class="button btn-small btn-secondary" title="View / Edit" onclick="openEditModal('<%= item.id %>')">
                   <i class="fa fa-pen"></i>
                 </button>
@@ -366,6 +451,361 @@
         <% } %>
       </tbody>
     </table>
+  </div>
+</div>
+</div> <!-- closes sectionEquipment -->
+
+<!-- ======================================================== -->
+<!-- SECTION 2: INTERNAL QC & LEVEY-JENNINGS HUB             -->
+<!-- ======================================================== -->
+<div id="sectionQc" class="eq-section-panel" style="display: none;">
+  <div class="card" style="padding: 20px;">
+    <!-- Section Header -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 16px;">
+      <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <button type="button" class="button btn-secondary" onclick="switchSection('equipment')" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; padding: 8px 14px; background: #f1f5f9; border: 1px solid #cbd5e1;" title="Return to Equipment Registry">
+          <i class="fa fa-arrow-left"></i> &larr; Back to Equipment
+        </button>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <i class="fa fa-chart-line" style="color: #0284c7; font-size: 1.5em;"></i>
+          <div>
+            <h3 style="margin: 0; font-size: 1.25em; color: #0f172a;">Internal Quality Control & Levey-Jennings Hub</h3>
+            <div style="font-size: 0.85em; color: #64748b; margin-top: 2px;">
+              CLSI C24-Ed4 Statistical Quality Control, Westgard Multi-Rules Surveillance & DOH Licensing Compliance
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <span class="badge badge-info">ISO 15189:2022 §7.3.7</span>
+        <span class="badge badge-info">DOH AO 2021-0037</span>
+        <span class="badge badge-info">Westgard 6-Rules</span>
+      </div>
+    </div>
+
+    <!-- Analyzer & Analyte Selector + Action Buttons -->
+    <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 16px; background: #f8fafc; padding: 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+      <div class="form-group" style="flex: 1; min-width: 220px;">
+        <label style="font-weight: 600; font-size: 0.85em; color: #334155;">Select Chemistry Analyzer:</label>
+        <select id="lj_analyzerSelect" onchange="onLjAnalyzerChange()"></select>
+      </div>
+      <div class="form-group" style="flex: 1; min-width: 200px;">
+        <label style="font-weight: 600; font-size: 0.85em; color: #334155;">Select Analyte / Parameter:</label>
+        <select id="lj_analyteSelect" onchange="loadLjChart()"></select>
+      </div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button type="button" class="button btn-primary" onclick="printLjReport()" title="Print Single Analyte Levey-Jennings Chart with Westgard Rule Flags">
+          <i class="fa fa-print"></i> 🖨️ Print Levey-Jennings
+        </button>
+        <button type="button" class="button btn-success" style="background: #059669; border-color: #047857; color: #fff;" onclick="printMonthlyQcReport()" title="Print Consolidated Multi-Analyte Chemistry QC Table for DOH Inspection">
+          <i class="fa fa-clipboard-check"></i> 🖨️ Print Multi-Analyte Monthly QC (DOH Inspection)
+        </button>
+        <button type="button" class="button btn-secondary" onclick="exportDohReport()" title="Export JSON Data for Auditing">
+          <i class="fa fa-file-export"></i> DOH Report (JSON)
+        </button>
+      </div>
+    </div>
+
+    <!-- Printable Signatories Configuration Panel -->
+    <details id="lj_signatories_panel" style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
+      <summary style="font-weight: 600; font-size: 0.88em; cursor: pointer; color: #1e293b; display: flex; align-items: center; justify-content: space-between; user-select: none;">
+        <span style="display: inline-flex; align-items: center; gap: 6px;">
+          <i class="fa fa-signature" style="color: #0284c7;"></i>
+          <span><strong>Report Signatories</strong> <span style="font-weight: normal; color: #64748b;">(Operator MedTech, QC Validator & Approving Pathologist)</span></span>
+        </span>
+        <span style="font-size: 0.8em; color: #0284c7; font-weight: 600;">Configure Signatures &darr;</span>
+      </summary>
+
+      <div style="margin-top: 10px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+        <!-- 1. Operator Dropdown -->
+        <div style="background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+          <label style="font-weight: 600; font-size: 0.82em; color: #334155; display: block; margin-bottom: 4px;">
+            <i class="fa fa-user-check" style="color: #0284c7;"></i> 1. Operator (<span id="lj_op_role_label">MedTech</span>)
+          </label>
+          <select id="lj_operatorSelect" onchange="onOperatorSelectChange()" style="width: 100%; font-size: 0.85em; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: 500;">
+          </select>
+          <div id="lj_op_lic_preview" style="font-size: 0.78em; color: #64748b; margin-top: 4px;">PRC License: —</div>
+        </div>
+
+        <!-- 2. Validator Dropdown -->
+        <div style="background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+          <label style="font-weight: 600; font-size: 0.82em; color: #334155; display: block; margin-bottom: 4px;">
+            <i class="fa fa-user-shield" style="color: #0284c7;"></i> 2. Validator (QC Supervisor)
+          </label>
+          <select id="lj_validatorSelect" onchange="onValidatorSelectChange()" style="width: 100%; font-size: 0.85em; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: 500;">
+          </select>
+          <div id="lj_val_lic_preview" style="font-size: 0.78em; color: #64748b; margin-top: 4px;">PRC License: —</div>
+        </div>
+
+        <!-- 3. Pathologist Dropdown -->
+        <div style="background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+          <label style="font-weight: 600; font-size: 0.82em; color: #334155; display: block; margin-bottom: 4px;">
+            <i class="fa fa-user-md" style="color: #0284c7;"></i> 3. <span id="lj_p1_role_label">Approving Pathologist</span>
+          </label>
+          <select id="lj_pathologistSelect" onchange="onPathologistSelectChange()" style="width: 100%; font-size: 0.85em; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: 500;">
+          </select>
+          <div id="lj_p1_lic_preview" style="font-size: 0.78em; color: #64748b; margin-top: 4px;">PRC License: —</div>
+        </div>
+
+        <!-- 4. Second Pathologist (Optional) Dropdown -->
+        <div style="background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px dashed #94a3b8;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+            <label style="font-weight: 600; font-size: 0.82em; color: #334155; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
+              <input type="checkbox" id="lj_enablePathologist2" onchange="togglePathologist2Modal(this.checked)">
+              <span>4. 2nd Pathologist</span>
+            </label>
+            <span id="lj_p2_badge" style="font-size: 0.72em; color: #64748b;">(Optional)</span>
+          </div>
+          <div id="lj_p2_fields" style="opacity: 0.5; pointer-events: none; margin-top: 4px;">
+            <select id="lj_pathologist2Select" onchange="onPathologist2SelectChange()" style="width: 100%; font-size: 0.85em; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: 500;">
+            </select>
+            <div id="lj_p2_lic_preview" style="font-size: 0.78em; color: #64748b; margin-top: 4px;">PRC License: —</div>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <!-- LJ Chart Canvas Area -->
+    <div class="lj-container" style="margin-top: 0; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+        <div>
+          <strong id="lj_chartTitle" style="font-size: 1.1em; color: #0f172a;">Levey-Jennings Plot</strong>
+          <div id="lj_chartSubtitle" style="font-size: 0.8em; color: #64748b;">Assigned Mean & SD reference lines</div>
+        </div>
+        <div id="lj_statsPills" style="display: flex; gap: 8px; font-size: 0.8em; flex-wrap: wrap;"></div>
+      </div>
+      <div style="position: relative; width: 100%; height: 340px; background: #fff; border-radius: 6px; border: 1px solid #cbd5e1; overflow: hidden;">
+        <canvas id="ljCanvas" width="900" height="340" style="display: block; width: 100%; height: 100%;"></canvas>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8em; color: #64748b; margin-top: 8px; flex-wrap: wrap; gap: 6px;">
+        <div>
+          <span style="color: #16a34a; font-weight: 700;">—</span> Target Mean &nbsp;|&nbsp;
+          <span style="color: #94a3b8;">--</span> &plusmn;1SD &nbsp;|&nbsp;
+          <span style="color: #d97706;">--</span> &plusmn;2SD (Warning) &nbsp;|&nbsp;
+          <span style="color: #dc2626;">--</span> &plusmn;3SD (Rejection)
+        </div>
+        <div id="lj_runCount" style="font-weight: 600;">Runs: 0</div>
+      </div>
+    </div>
+
+    <!-- Quick Run Input Bar (Real-Time Westgard Rule Check) -->
+    <div style="margin-top: 20px; padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbd5e1;">
+      <h4 style="margin: 0 0 10px; font-size: 0.95em; color: #1e293b;">
+        <i class="fa fa-vial" style="color: #0284c7;"></i> Record Daily Standard / Control Reading
+      </h4>
+      <form id="formQuickQc" onsubmit="submitQuickQc(event)" style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
+        <div class="form-group" style="width: 140px;">
+          <label>Measured Value</label>
+          <input type="number" step="any" id="qc_value" required placeholder="Reading">
+        </div>
+        <div class="form-group" style="width: 150px;">
+          <label>Run Date</label>
+          <input type="date" id="qc_date" required>
+        </div>
+        <div class="form-group" style="width: 130px;">
+          <label>Reagent Lot #</label>
+          <input type="text" id="qc_lot" placeholder="e.g. RGT-442">
+        </div>
+        <div class="form-group" style="flex: 1; min-width: 140px;">
+          <label>Notes / Operator</label>
+          <input type="text" id="qc_notes" placeholder="Observations">
+        </div>
+        <div>
+          <button type="submit" class="button btn-primary" style="height: 38px;">
+            <i class="fa fa-play"></i> Plot & Evaluate
+          </button>
+        </div>
+      </form>
+      <div id="qc_alertBox" style="display: none; margin-top: 10px; padding: 8px 12px; border-radius: 6px; font-size: 0.85em;"></div>
+    </div>
+
+    <!-- Section Footer Navigation -->
+    <div style="margin-top: 24px; padding-top: 14px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+      <button type="button" class="button btn-secondary" onclick="switchSection('equipment')" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600;">
+        <i class="fa fa-arrow-left"></i> &larr; Back to Equipment Registry
+      </button>
+      <button type="button" class="button btn-secondary" onclick="window.scrollTo({ top: 0, behavior: 'smooth' })">
+        <i class="fa fa-arrow-up"></i> Top of Hub
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================== -->
+<!-- SECTION 3: NEQAS EXTERNAL QUALITY ASSESSMENT (EQA)      -->
+<!-- ======================================================== -->
+<div id="sectionNeqas" class="eq-section-panel" style="display: none;">
+  <div class="card" style="padding: 20px;">
+    <!-- Section Header -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 16px;">
+      <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <button type="button" class="button btn-secondary" onclick="switchSection('equipment')" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; padding: 8px 14px; background: #f1f5f9; border: 1px solid #cbd5e1;" title="Return to Equipment Registry">
+          <i class="fa fa-arrow-left"></i> &larr; Back to Equipment
+        </button>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <i class="fa fa-award" style="color: #16a34a; font-size: 1.5em;"></i>
+          <div>
+            <h3 style="margin: 0; font-size: 1.25em; color: #0f172a;">NEQAS External Quality Assessment (EQA / PT) Dashboard</h3>
+            <div style="font-size: 0.85em; color: #64748b; margin-top: 2px;">
+              National External Quality Assessment Scheme • Mandated by DOH AO 2020-0035 & AO 2021-0037 for Laboratory Accreditation & License to Operate (LTO)
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <button type="button" class="button btn-primary" style="background: #16a34a; border-color: #15803d;" onclick="openNeqasModal()">
+          <i class="fa fa-plus-circle"></i> + Log Survey Submission
+        </button>
+      </div>
+    </div>
+
+    <!-- NEQAS KPI Summary Cards -->
+    <div class="eq-stat-grid" style="margin-bottom: 20px;" id="neqasKpiGrid">
+      <div class="eq-stat-card" style="border-left: 4px solid #0284c7;">
+        <div class="eq-stat-title">Total Surveys Logged</div>
+        <div class="eq-stat-val" id="neqasKpiTotal" style="color: #0284c7;">0</div>
+        <div style="font-size: 0.8em; color: #64748b; margin-top: 4px;">Proficiency survey records</div>
+      </div>
+
+      <div class="eq-stat-card" style="border-left: 4px solid #16a34a;">
+        <div class="eq-stat-title">Acceptable Rating (|SDI| &le; 2.0)</div>
+        <div class="eq-stat-val" id="neqasKpiAcceptable" style="color: #16a34a;">0%</div>
+        <div style="font-size: 0.8em; color: #64748b; margin-top: 4px;">Complies with DOH Standards</div>
+      </div>
+
+      <div class="eq-stat-card" style="border-left: 4px solid #d97706;">
+        <div class="eq-stat-title">Questionable (2.0 &lt; |SDI| &lt; 3.0)</div>
+        <div class="eq-stat-val" id="neqasKpiQuestionable" style="color: #d97706;">0</div>
+        <div style="font-size: 0.8em; color: #64748b; margin-top: 4px;">Warning / Investigation</div>
+      </div>
+
+      <div class="eq-stat-card" style="border-left: 4px solid #dc2626;">
+        <div class="eq-stat-title">Action Required (|SDI| &ge; 3.0)</div>
+        <div class="eq-stat-val" id="neqasKpiUnsatisfactory" style="color: #dc2626;">0</div>
+        <div style="font-size: 0.8em; color: #64748b; margin-top: 4px;">Mandatory Root Cause Analysis</div>
+      </div>
+    </div>
+
+    <!-- Reference Laboratory Programs Grid -->
+    <div style="margin-bottom: 20px;">
+      <h4 style="margin: 0 0 10px; font-size: 0.95em; color: #334155; text-transform: uppercase; letter-spacing: 0.5px;">
+        <i class="fa fa-university" style="color: #0284c7;"></i> Designated National Reference Laboratories (NRLs)
+      </h4>
+      <div class="nrl-grid">
+        <div class="nrl-card" style="border-top: 3px solid #0284c7;">
+          <div>
+            <div style="font-weight: 700; color: #0f172a; font-size: 0.95em;">Lung Center of the Philippines (LCP)</div>
+            <div style="font-size: 0.8em; color: #0284c7; font-weight: 600; margin-bottom: 6px;">Clinical Chemistry NRL</div>
+            <div style="font-size: 0.8em; color: #64748b;">
+              10 Core Analytes: Glucose, BUN, Creatinine, Uric Acid, Cholesterol, Triglycerides, AST/SGOT, ALT/SGPT, Sodium, Potassium.
+            </div>
+          </div>
+          <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <span class="badge" style="background: #e0f2fe; color: #0369a1; font-size: 0.75em;">Bi-Annual Cycles</span>
+            <button class="button btn-small btn-secondary" onclick="filterNeqasByNrl('Lung Center')">View Submissions</button>
+          </div>
+        </div>
+
+        <div class="nrl-card" style="border-top: 3px solid #16a34a;">
+          <div>
+            <div style="font-weight: 700; color: #0f172a; font-size: 0.95em;">Nat'l Kidney & Transplant Inst. (NKTI)</div>
+            <div style="font-size: 0.8em; color: #16a34a; font-weight: 600; margin-bottom: 6px;">Hematology & Coagulation NRL</div>
+            <div style="font-size: 0.8em; color: #64748b;">
+              CBC with Automated 5-Part Differential, Platelet Count, Prothrombin Time (PT/INR), and Activated Partial Thromboplastin Time (APTT).
+            </div>
+          </div>
+          <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <span class="badge" style="background: #dcfce7; color: #15803d; font-size: 0.75em;">Annual Surveys</span>
+            <button class="button btn-small btn-secondary" onclick="filterNeqasByNrl('NKTI')">View Submissions</button>
+          </div>
+        </div>
+
+        <div class="nrl-card" style="border-top: 3px solid #d97706;">
+          <div>
+            <div style="font-weight: 700; color: #0f172a; font-size: 0.95em;">Research Inst. for Tropical Med. (RITM)</div>
+            <div style="font-size: 0.8em; color: #d97706; font-weight: 600; margin-bottom: 6px;">Microbiology & Parasitology NRL</div>
+            <div style="font-size: 0.8em; color: #64748b;">
+              Bacterial Identification & Antimicrobial Susceptibility Testing (AST), Malaria Microscopy, Stool Parasitology, and TB AFB.
+            </div>
+          </div>
+          <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <span class="badge" style="background: #fef3c7; color: #b45309; font-size: 0.75em;">Annual Surveys</span>
+            <button class="button btn-small btn-secondary" onclick="filterNeqasByNrl('RITM')">View Submissions</button>
+          </div>
+        </div>
+
+        <div class="nrl-card" style="border-top: 3px solid #7c3aed;">
+          <div>
+            <div style="font-weight: 700; color: #0f172a; font-size: 0.95em;">San Lazaro Hospital / SACCL</div>
+            <div style="font-size: 0.8em; color: #7c3aed; font-weight: 600; margin-bottom: 6px;">Infectious Disease Serology NRL</div>
+            <div style="font-size: 0.8em; color: #64748b;">
+              Transfusion-Transmissible Infections (TTI) & Serology: HIV-1/2, HBsAg, Anti-HCV, and Syphilis (Treponemal & Non-Treponemal).
+            </div>
+          </div>
+          <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <span class="badge" style="background: #f3e8ff; color: #6b21a8; font-size: 0.75em;">Annual Surveys</span>
+            <button class="button btn-small btn-secondary" onclick="filterNeqasByNrl('San Lazaro')">View Submissions</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NEQAS Filter & Search Bar -->
+    <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; background: #f8fafc; padding: 12px 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+      <input type="text" id="neqasSearchInput" class="search-box" placeholder="Search by Sample ID, Analyte, NRL..." style="flex: 1; min-width: 220px;" oninput="applyNeqasFilters()">
+      
+      <select id="neqasNrlFilter" class="filter-select" onchange="applyNeqasFilters()">
+        <option value="">All Reference Laboratories (NRL)</option>
+        <option value="Lung Center">Lung Center of the Philippines (Clinical Chemistry)</option>
+        <option value="NKTI">NKTI (Hematology & Coagulation)</option>
+        <option value="RITM">RITM (Microbiology & Parasitology)</option>
+        <option value="San Lazaro">San Lazaro / SACCL (Infectious Serology)</option>
+      </select>
+
+      <select id="neqasGradeFilter" class="filter-select" onchange="applyNeqasFilters()">
+        <option value="">All SDI Evaluation Ratings</option>
+        <option value="ACCEPTABLE">✓ Acceptable (|SDI| &le; 2.0)</option>
+        <option value="QUESTIONABLE">⚠️ Questionable (2.0 &lt; |SDI| &lt; 3.0)</option>
+        <option value="UNSATISFACTORY">❌ Action Required (|SDI| &ge; 3.0)</option>
+        <option value="PENDING">⏳ Pending Peer Evaluation</option>
+      </select>
+
+      <button type="button" class="button btn-secondary" onclick="loadNeqasTable()" title="Refresh records">
+        <i class="fa fa-sync-alt"></i> Refresh
+      </button>
+    </div>
+
+    <!-- NEQAS Submissions Table with Print Result Action -->
+    <div class="table-responsive">
+      <table class="eq-table">
+        <thead>
+          <tr>
+            <th>Cycle & Event</th>
+            <th>Reference Laboratory (NRL)</th>
+            <th>Sample ID</th>
+            <th>Analyte / Test</th>
+            <th>Reported Value</th>
+            <th>NRL Peer Mean &plusmn; SD</th>
+            <th>SDI Score</th>
+            <th>Evaluation Rating</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="neqasSectionTableBody">
+          <tr><td colspan="9" style="text-align:center; padding:20px; color:#64748b;"><i class="fa fa-spinner fa-spin"></i> Loading NEQAS records...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Section Footer Navigation -->
+    <div style="margin-top: 24px; padding-top: 14px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+      <button type="button" class="button btn-secondary" onclick="switchSection('equipment')" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600;">
+        <i class="fa fa-arrow-left"></i> &larr; Back to Equipment Registry
+      </button>
+      <button type="button" class="button btn-secondary" onclick="window.scrollTo({ top: 0, behavior: 'smooth' })">
+        <i class="fa fa-arrow-up"></i> Top of Hub
+      </button>
+    </div>
   </div>
 </div>
 
@@ -599,172 +1039,26 @@
 </div>
 
 <!-- ======================================================== -->
-<!-- MODAL 3: LEVEY-JENNINGS & STATISTICAL QC HUB             -->
-<!-- ======================================================== -->
-<div id="modalLj" class="eq-modal">
-  <div class="eq-modal-content" style="max-width: 960px;">
-    <div class="eq-modal-header">
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <i class="fa fa-chart-line" style="color: #0284c7; font-size: 1.3em;"></i>
-        <div>
-          <h3 style="margin: 0; font-size: 1.15em;">Levey-Jennings Quality Control Hub</h3>
-          <div style="font-size: 0.8em; color: #64748b;">CLSI C24-Ed4 Statistical QC & Westgard Multi-Rules</div>
-        </div>
-      </div>
-      <button type="button" onclick="closeModal('modalLj')" style="background:none; border:none; font-size:1.4em; cursor:pointer;">&times;</button>
-    </div>
-    <div class="eq-modal-body">
-      <!-- Analyzer & Analyte Selector -->
-      <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 16px;">
-        <div class="form-group" style="flex: 1; min-width: 200px;">
-          <label>Select Chemistry Analyzer:</label>
-          <select id="lj_analyzerSelect" onchange="onLjAnalyzerChange()"></select>
-        </div>
-        <div class="form-group" style="flex: 1; min-width: 180px;">
-          <label>Select Analyte / Standard:</label>
-          <select id="lj_analyteSelect" onchange="loadLjChart()"></select>
-        </div>
-        <div style="display: flex; gap: 8px;">
-          <button type="button" class="button btn-primary" onclick="printLjReport()">
-            <i class="fa fa-print"></i> 🖨️ Print Levey-Jennings
-          </button>
-          <button type="button" class="button btn-secondary" onclick="exportDohReport()">
-            <i class="fa fa-file-export"></i> DOH Report (JSON)
-          </button>
-        </div>
-      </div>
-
-      <!-- Printable Signatories Configuration Panel -->
-      <details id="lj_signatories_panel" style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px;">
-        <summary style="font-weight: 600; font-size: 0.88em; cursor: pointer; color: #1e293b; display: flex; align-items: center; justify-content: space-between; user-select: none;">
-          <span style="display: inline-flex; align-items: center; gap: 6px;">
-            <i class="fa fa-signature" style="color: #0284c7;"></i>
-            <span><strong>Print Report Signatories</strong> <span style="font-weight: normal; color: #64748b;">(Operator, Validator & Approving Pathologist)</span></span>
-          </span>
-          <span style="font-size: 0.8em; color: #0284c7; font-weight: 600;">Configure &darr;</span>
-        </summary>
-
-        <div style="margin-top: 10px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
-          <!-- 1. Operator Dropdown -->
-          <div style="background: #fff; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
-            <label style="font-weight: 600; font-size: 0.82em; color: #334155; display: block; margin-bottom: 4px;">
-              <i class="fa fa-user-check" style="color: #0284c7;"></i> 1. Operator (<span id="lj_op_role_label">MedTech</span>)
-            </label>
-            <select id="lj_operatorSelect" onchange="onOperatorSelectChange()" style="width: 100%; font-size: 0.85em; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: 500;">
-            </select>
-            <div id="lj_op_lic_preview" style="font-size: 0.78em; color: #64748b; margin-top: 4px;">PRC License: —</div>
-          </div>
-
-          <!-- 2. Validator Dropdown -->
-          <div style="background: #fff; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
-            <label style="font-weight: 600; font-size: 0.82em; color: #334155; display: block; margin-bottom: 4px;">
-              <i class="fa fa-user-shield" style="color: #0284c7;"></i> 2. Validator (QC Supervisor)
-            </label>
-            <select id="lj_validatorSelect" onchange="onValidatorSelectChange()" style="width: 100%; font-size: 0.85em; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: 500;">
-            </select>
-            <div id="lj_val_lic_preview" style="font-size: 0.78em; color: #64748b; margin-top: 4px;">PRC License: —</div>
-          </div>
-
-          <!-- 3. Pathologist Dropdown -->
-          <div style="background: #fff; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
-            <label style="font-weight: 600; font-size: 0.82em; color: #334155; display: block; margin-bottom: 4px;">
-              <i class="fa fa-user-md" style="color: #0284c7;"></i> 3. <span id="lj_p1_role_label">Approving Pathologist</span>
-            </label>
-            <select id="lj_pathologistSelect" onchange="onPathologistSelectChange()" style="width: 100%; font-size: 0.85em; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: 500;">
-            </select>
-            <div id="lj_p1_lic_preview" style="font-size: 0.78em; color: #64748b; margin-top: 4px;">PRC License: —</div>
-          </div>
-
-          <!-- 4. Second Pathologist (Optional) Dropdown -->
-          <div style="background: #fff; padding: 10px; border-radius: 6px; border: 1px dashed #94a3b8;">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-              <label style="font-weight: 600; font-size: 0.82em; color: #334155; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
-                <input type="checkbox" id="lj_enablePathologist2" onchange="togglePathologist2Modal(this.checked)">
-                <span>4. 2nd Pathologist</span>
-              </label>
-              <span id="lj_p2_badge" style="font-size: 0.72em; color: #64748b;">(Optional)</span>
-            </div>
-            <div id="lj_p2_fields" style="opacity: 0.5; pointer-events: none; margin-top: 4px;">
-              <select id="lj_pathologist2Select" onchange="onPathologist2SelectChange()" style="width: 100%; font-size: 0.85em; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: 500;">
-              </select>
-              <div id="lj_p2_lic_preview" style="font-size: 0.78em; color: #64748b; margin-top: 4px;">PRC License: —</div>
-            </div>
-          </div>
-        </div>
-      </details>
-
-      <!-- LJ Chart Canvas Area -->
-      <div class="lj-container">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <div>
-            <strong id="lj_chartTitle" style="font-size: 1.1em; color: #0f172a;">Levey-Jennings Plot</strong>
-            <div id="lj_chartSubtitle" style="font-size: 0.8em; color: #64748b;">Assigned Mean & SD reference lines</div>
-          </div>
-          <div id="lj_statsPills" style="display: flex; gap: 8px; font-size: 0.8em;"></div>
-        </div>
-        <div style="position: relative; width: 100%; height: 320px; background: #fff; border-radius: 6px; border: 1px solid #cbd5e1; overflow: hidden;">
-          <canvas id="ljCanvas" width="880" height="320" style="display: block; width: 100%; height: 100%;"></canvas>
-        </div>
-        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8em; color: #64748b; margin-top: 8px;">
-          <div><span style="color: #16a34a; font-weight: 700;">—</span> Target Mean &nbsp;|&nbsp; <span style="color: #94a3b8;">--</span> &plusmn;1SD &nbsp;|&nbsp; <span style="color: #d97706;">--</span> &plusmn;2SD (Warning) &nbsp;|&nbsp; <span style="color: #dc2626;">--</span> &plusmn;3SD (Rejection)</div>
-          <div id="lj_runCount">Runs: 0</div>
-        </div>
-      </div>
-
-      <!-- Quick Run Input Bar (Real-Time Westgard Rule Check) -->
-      <div style="margin-top: 20px; padding: 14px; background: #f1f5f9; border-radius: 8px; border: 1px solid #cbd5e1;">
-        <h4 style="margin: 0 0 10px; font-size: 0.95em; color: #1e293b;">
-          <i class="fa fa-vial"></i> Record Daily Standard / Control Reading
-        </h4>
-        <form id="formQuickQc" onsubmit="submitQuickQc(event)" style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
-          <div class="form-group" style="width: 140px;">
-            <label>Measured Value</label>
-            <input type="number" step="any" id="qc_value" required placeholder="Reading">
-          </div>
-          <div class="form-group" style="width: 150px;">
-            <label>Run Date</label>
-            <input type="date" id="qc_date" required>
-          </div>
-          <div class="form-group" style="width: 130px;">
-            <label>Reagent Lot #</label>
-            <input type="text" id="qc_lot" placeholder="e.g. RGT-442">
-          </div>
-          <div class="form-group" style="flex: 1; min-width: 140px;">
-            <label>Notes / Operator</label>
-            <input type="text" id="qc_notes" placeholder="Observations">
-          </div>
-          <div>
-            <button type="submit" class="button btn-primary" style="height: 38px;">
-              <i class="fa fa-play"></i> Plot & Evaluate
-            </button>
-          </div>
-        </form>
-        <div id="qc_alertBox" style="display: none; margin-top: 10px; padding: 8px 12px; border-radius: 6px; font-size: 0.85em;"></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ======================================================== -->
-<!-- MODAL 4: NEQAS EQA HUB                                   -->
+<!-- MODAL 3: NEQAS SURVEY SUBMISSION & PEER EVALUATION ENTRY -->
 <!-- ======================================================== -->
 <div id="modalNeqas" class="eq-modal">
-  <div class="eq-modal-content">
+  <div class="eq-modal-content" style="max-width: 750px;">
     <div class="eq-modal-header">
-      <h3 style="margin: 0;"><i class="fa fa-award" style="color: #16a34a;"></i> NEQAS External Quality Assessment</h3>
+      <h3 id="modalNeqasTitle" style="margin: 0;"><i class="fa fa-award" style="color: #16a34a;"></i> Log NEQAS Survey Submission</h3>
       <button type="button" onclick="closeModal('modalNeqas')" style="background:none; border:none; font-size:1.4em; cursor:pointer;">&times;</button>
     </div>
-    <div class="eq-modal-body">
-      <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 0.85em; color: #166534;">
-        <strong>Department of Health (DOH) External Quality Assessment Scheme (NEQAS)</strong><br>
-        Tracks proficiency survey samples from National Reference Laboratories (Lung Center of the Philippines, NKTI, RITM, SACCL). Computes Standard Deviation Index (SDI) with compliance grading.
-      </div>
+    <form id="formNeqas" onsubmit="submitNeqas(event)">
+      <input type="hidden" id="neqas_recordId">
+      <div class="eq-modal-body">
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 0.85em; color: #166534;">
+          <strong>Department of Health (DOH) External Quality Assessment Scheme (NEQAS)</strong><br>
+          Proficiency testing from designated National Reference Laboratories (Lung Center of the Philippines, NKTI, RITM, SACCL).
+          Record your lab result when running survey samples, then enter Peer Mean & SD once the NRL report is published to evaluate SDI.
+        </div>
 
-      <!-- NEQAS Submission Form -->
-      <form id="formNeqas" onsubmit="submitNeqas(event)">
         <div class="form-grid">
           <div class="form-group">
-            <label>Target Equipment *</label>
+            <label>Target Equipment / Analyzer *</label>
             <select id="neqas_eqId" required></select>
           </div>
           <div class="form-group">
@@ -785,48 +1079,30 @@
             <input type="text" id="neqas_sampleId" required placeholder="e.g. LCP-CC-2026-S1A">
           </div>
           <div class="form-group">
-            <label>Analyte *</label>
+            <label>Analyte / Parameter *</label>
             <input type="text" id="neqas_analyte" required placeholder="e.g. Glucose / Fasting Blood Sugar">
           </div>
           <div class="form-group">
-            <label>Reported Value *</label>
-            <input type="number" step="any" id="neqas_reported" required placeholder="Lab Result">
+            <label>Reported Value (Lab Result) *</label>
+            <input type="number" step="any" id="neqas_reported" required placeholder="Measured Lab Result">
           </div>
           <div class="form-group">
             <label>NRL Peer Group Mean (if released)</label>
-            <input type="number" step="any" id="neqas_peerMean" placeholder="Peer Mean">
+            <input type="number" step="any" id="neqas_peerMean" placeholder="Peer Mean (Leave blank if pending)">
           </div>
           <div class="form-group">
-            <label>NRL Peer Group SD</label>
-            <input type="number" step="any" id="neqas_peerSd" placeholder="Peer SD">
+            <label>NRL Peer Group SD (if released)</label>
+            <input type="number" step="any" id="neqas_peerSd" placeholder="Peer SD (Leave blank if pending)">
           </div>
         </div>
-        <div style="margin-top: 14px; text-align: right;">
-          <button type="submit" class="button btn-primary">Save NEQAS Entry & Calculate SDI</button>
-        </div>
-      </form>
-
-      <!-- History Table -->
-      <h4 style="margin: 20px 0 10px; color: #1e293b;">Recent NEQAS Proficiency Survey Records</h4>
-      <div class="table-responsive">
-        <table class="eq-table">
-          <thead>
-            <tr>
-              <th>Cycle</th>
-              <th>Sample ID</th>
-              <th>Analyte</th>
-              <th>Reported</th>
-              <th>Peer Mean &plusmn; SD</th>
-              <th>SDI</th>
-              <th>Evaluation</th>
-            </tr>
-          </thead>
-          <tbody id="neqasTableBody">
-            <tr><td colspan="7" style="text-align:center; padding:15px; color:#64748b;">Loading NEQAS records...</td></tr>
-          </tbody>
-        </table>
       </div>
-    </div>
+      <div class="eq-modal-footer">
+        <button type="button" class="button btn-secondary" onclick="closeModal('modalNeqas')">Cancel</button>
+        <button type="submit" class="button btn-primary" style="background: #16a34a; border-color: #15803d;" id="neqasSubmitBtn">
+          Save Survey Submission & Evaluate SDI
+        </button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -834,6 +1110,7 @@
   // Global state
   let allEquipment = <%- JSON.stringify(equipment || []) %>;
   let allUsers = <%- JSON.stringify((typeof users !== 'undefined' && Array.isArray(users)) ? users.map(u => ({ id: u.id, name: u.name, role: u.role, license: u.licenseNumber || '' })) : []) %>;
+  let allNeqasRecords = [];
   let currentLjData = null;
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -846,6 +1123,7 @@
     });
     populateAnalyzerDropdowns();
     populateSignatoryDropdowns();
+    loadNeqasTable();
   });
 
   function populateSignatoryDropdowns() {
@@ -1301,6 +1579,34 @@
   }
 
   // ==========================================
+  // SECTION SWITCHER
+  // ==========================================
+  function switchSection(sectionId, preselectEqId) {
+    const tabs = ['equipment', 'qc', 'neqas'];
+    tabs.forEach(t => {
+      const btn = document.getElementById('tabBtn_' + t);
+      const sec = document.getElementById('section' + t.charAt(0).toUpperCase() + t.slice(1));
+      if (btn) {
+        if (t === sectionId) btn.classList.add('active');
+        else btn.classList.remove('active');
+      }
+      if (sec) {
+        sec.style.display = (t === sectionId) ? 'block' : 'none';
+      }
+    });
+
+    if (sectionId === 'qc') {
+      if (preselectEqId) {
+        const ljSelect = document.getElementById('lj_analyzerSelect');
+        if (ljSelect) ljSelect.value = preselectEqId;
+      }
+      onLjAnalyzerChange();
+    } else if (sectionId === 'neqas') {
+      loadNeqasTable();
+    }
+  }
+
+  // ==========================================
   // LEVEY-JENNINGS CANVAS CHART ENGINE
   // ==========================================
   async function openLjModal(preselectId) {
@@ -1313,12 +1619,7 @@
       }
     } catch (_) {}
 
-    populateAnalyzerDropdowns();
-    if (preselectId) {
-      document.getElementById('lj_analyzerSelect').value = preselectId;
-    }
-    await onLjAnalyzerChange();
-    document.getElementById('modalLj').style.display = 'block';
+    switchSection('qc', preselectId);
   }
 
   async function onLjAnalyzerChange() {
@@ -1623,45 +1924,199 @@
     window.open(`/equipment/${eqId}/qc/doh-report`, '_blank');
   }
 
+  function printMonthlyQcReport() {
+    const eqId = document.getElementById('lj_analyzerSelect').value;
+    if (!eqId) {
+      alert('Please select an analyzer first.');
+      return;
+    }
+    const params = new URLSearchParams();
+    const opSel = document.getElementById('lj_operatorSelect');
+    const valSel = document.getElementById('lj_validatorSelect');
+    const p1Sel = document.getElementById('lj_pathologistSelect');
+
+    const opOpt = opSel ? opSel.options[opSel.selectedIndex] : null;
+    const valOpt = valSel ? valSel.options[valSel.selectedIndex] : null;
+    const p1Opt = p1Sel ? p1Sel.options[p1Sel.selectedIndex] : null;
+
+    if (opOpt && opOpt.dataset.name) {
+      params.set('operatorName', opOpt.dataset.name);
+      if (opOpt.dataset.license) params.set('operatorLicense', opOpt.dataset.license);
+    }
+    if (valOpt && valOpt.dataset.name) {
+      params.set('validatorName', valOpt.dataset.name);
+      if (valOpt.dataset.license) params.set('validatorLicense', valOpt.dataset.license);
+    }
+    if (p1Opt && p1Opt.dataset.name) {
+      params.set('pathologistName', p1Opt.dataset.name);
+      if (p1Opt.dataset.license) params.set('pathologistLicense', p1Opt.dataset.license);
+    }
+
+    const url = `/equipment/${eqId}/qc/print-monthly-summary?${params.toString()}`;
+    window.open(url, '_blank');
+  }
+
   // ==========================================
   // NEQAS EQA MODULE
   // ==========================================
-  async function openNeqasModal() {
+  function openNeqasModal(preselectEqId) {
     populateAnalyzerDropdowns();
-    await loadNeqasTable();
+    document.getElementById('neqas_recordId').value = '';
+    document.getElementById('formNeqas').reset();
+    document.getElementById('neqas_year').value = new Date().getFullYear();
+    if (preselectEqId) {
+      const eqSel = document.getElementById('neqas_eqId');
+      if (eqSel) eqSel.value = preselectEqId;
+    }
+    document.getElementById('modalNeqasTitle').innerHTML = '<i class="fa fa-award" style="color: #16a34a;"></i> Log NEQAS Survey Submission';
+    document.getElementById('neqasSubmitBtn').textContent = 'Save Survey Submission & Evaluate SDI';
+    document.getElementById('modalNeqas').style.display = 'block';
+  }
+
+  function openNeqasEditModal(recordId) {
+    const r = allNeqasRecords.find(x => x.id === recordId);
+    if (!r) return;
+
+    populateAnalyzerDropdowns();
+    document.getElementById('neqas_recordId').value = r.id;
+    document.getElementById('neqas_eqId').value = r.equipmentId;
+    document.getElementById('neqas_year').value = r.cycleYear || new Date().getFullYear();
+    document.getElementById('neqas_nrl').value = r.nrlName || '';
+    document.getElementById('neqas_sampleId').value = r.sampleId || '';
+    document.getElementById('neqas_analyte').value = r.analyteName || r.analyteCode || '';
+    document.getElementById('neqas_reported').value = r.reportedValue !== undefined ? r.reportedValue : '';
+    document.getElementById('neqas_peerMean').value = (r.nrlEvaluation && r.nrlEvaluation.peerMean !== null && r.nrlEvaluation.peerMean !== undefined) ? r.nrlEvaluation.peerMean : '';
+    document.getElementById('neqas_peerSd').value = (r.nrlEvaluation && r.nrlEvaluation.peerSd !== null && r.nrlEvaluation.peerSd !== undefined) ? r.nrlEvaluation.peerSd : '';
+
+    document.getElementById('modalNeqasTitle').innerHTML = '<i class="fa fa-edit" style="color: #0284c7;"></i> Enter NRL Peer Evaluation Results';
+    document.getElementById('neqasSubmitBtn').textContent = 'Update Evaluation & Recalculate SDI';
     document.getElementById('modalNeqas').style.display = 'block';
   }
 
   async function loadNeqasTable() {
-    const res = await fetch('/equipment/neqas/all');
-    const json = await res.json();
-    const tbody = document.getElementById('neqasTableBody');
+    try {
+      const res = await fetch('/equipment/neqas/all');
+      const json = await res.json();
+      allNeqasRecords = json.records || [];
+
+      // Update KPI metrics
+      const total = allNeqasRecords.length;
+      const evaluated = allNeqasRecords.filter(r => r.nrlEvaluation && r.nrlEvaluation.sdi !== null && r.nrlEvaluation.sdi !== undefined);
+      const acceptable = allNeqasRecords.filter(r => r.isAcceptable || (r.nrlEvaluation && r.nrlEvaluation.evaluationGrade === 'ACCEPTABLE')).length;
+      const questionable = allNeqasRecords.filter(r => r.status === 'EVALUATED_QUESTIONABLE' || (r.nrlEvaluation && r.nrlEvaluation.evaluationGrade === 'QUESTIONABLE')).length;
+      const unsatisfactory = allNeqasRecords.filter(r => r.isUnsatisfactory || (r.nrlEvaluation && r.nrlEvaluation.evaluationGrade === 'UNSATISFACTORY')).length;
+
+      const accRate = evaluated.length > 0 ? Math.round((acceptable / evaluated.length) * 100) + '%' : '100%';
+
+      const kpiTot = document.getElementById('neqasKpiTotal');
+      const kpiAcc = document.getElementById('neqasKpiAcceptable');
+      const kpiQue = document.getElementById('neqasKpiQuestionable');
+      const kpiUns = document.getElementById('neqasKpiUnsatisfactory');
+
+      if (kpiTot) kpiTot.textContent = total;
+      if (kpiAcc) kpiAcc.textContent = accRate;
+      if (kpiQue) kpiQue.textContent = questionable;
+      if (kpiUns) kpiUns.textContent = unsatisfactory;
+
+      applyNeqasFilters();
+    } catch (err) {
+      console.error('Error loading NEQAS records:', err);
+    }
+  }
+
+  function applyNeqasFilters() {
+    const q = (document.getElementById('neqasSearchInput')?.value || '').toLowerCase();
+    const nrlFilter = document.getElementById('neqasNrlFilter')?.value || '';
+    const gradeFilter = document.getElementById('neqasGradeFilter')?.value || '';
+
+    let filtered = allNeqasRecords;
+    if (q) {
+      filtered = filtered.filter(r =>
+        (r.sampleId || '').toLowerCase().includes(q) ||
+        (r.analyteName || '').toLowerCase().includes(q) ||
+        (r.nrlName || '').toLowerCase().includes(q)
+      );
+    }
+    if (nrlFilter) {
+      filtered = filtered.filter(r => (r.nrlName || '').toLowerCase().includes(nrlFilter.toLowerCase()));
+    }
+    if (gradeFilter) {
+      if (gradeFilter === 'PENDING') {
+        filtered = filtered.filter(r => !r.nrlEvaluation || r.nrlEvaluation.sdi === null || r.nrlEvaluation.sdi === undefined);
+      } else {
+        filtered = filtered.filter(r => {
+          const g = (r.nrlEvaluation && r.nrlEvaluation.evaluationGrade) || r.status || '';
+          return g.toUpperCase().includes(gradeFilter);
+        });
+      }
+    }
+
+    renderNeqasSectionTable(filtered);
+  }
+
+  function filterNeqasByNrl(nrlKeyword) {
+    switchSection('neqas');
+    const nrlSel = document.getElementById('neqasNrlFilter');
+    if (nrlSel) nrlSel.value = nrlKeyword;
+    applyNeqasFilters();
+  }
+
+  function renderNeqasSectionTable(records) {
+    const tbody = document.getElementById('neqasSectionTableBody');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
-    const records = json.records || [];
-    if (records.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:15px; color:#64748b;">No NEQAS proficiency records logged yet.</td></tr>';
+    if (!records || records.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:24px; color:#64748b;"><i class="fa fa-info-circle"></i> No NEQAS proficiency records found. Click <strong>"+ Log Survey Submission"</strong> to add an EQA survey.</td></tr>';
       return;
     }
 
     records.forEach(r => {
       const tr = document.createElement('tr');
       const evalData = r.nrlEvaluation || {};
-      const sdi = evalData.sdi !== null ? evalData.sdi : 'Pending';
-      const grade = evalData.evaluationGrade || r.status;
+      const sdi = evalData.sdi !== null && evalData.sdi !== undefined ? evalData.sdi : null;
+      const grade = evalData.evaluationGrade || r.status || 'PENDING';
 
-      let badgeClass = 'badge-duesoon';
-      if (grade === 'ACCEPTABLE') badgeClass = 'badge-operational';
-      else if (grade === 'UNSATISFACTORY') badgeClass = 'badge-overdue';
+      let gradeBadge = '<span class="badge" style="background:#fef3c7; color:#b45309; border:1px solid #fbbf24;">⏳ Pending Peer Eval</span>';
+      if (grade === 'ACCEPTABLE') {
+        gradeBadge = '<span class="badge-operational">✓ ACCEPTABLE</span>';
+      } else if (grade === 'QUESTIONABLE' || grade === 'EVALUATED_QUESTIONABLE') {
+        gradeBadge = '<span class="badge-duesoon">⚠️ QUESTIONABLE</span>';
+      } else if (grade === 'UNSATISFACTORY' || grade === 'ACTION_REQUIRED') {
+        gradeBadge = '<span class="badge-overdue">❌ ACTION REQUIRED</span>';
+      }
+
+      let sdiDisplay = '<span style="color:#64748b;">—</span>';
+      if (sdi !== null) {
+        const abs = Math.abs(sdi);
+        const sdiColor = abs <= 2 ? '#16a34a' : (abs < 3 ? '#d97706' : '#dc2626');
+        const sdiBg = abs <= 2 ? '#dcfce7' : (abs < 3 ? '#fef3c7' : '#fee2e2');
+        sdiDisplay = `<span style="font-family:monospace; font-weight:700; background:${sdiBg}; color:${sdiColor}; padding:2px 6px; border-radius:4px;">${sdi > 0 ? '+' : ''}${sdi}</span>`;
+      }
+
+      let nrlShort = r.nrlName || 'NRL';
+      if (nrlShort.includes('Lung Center')) nrlShort = 'LCP (Clinical Chemistry)';
+      else if (nrlShort.includes('Kidney')) nrlShort = 'NKTI (Hematology)';
+      else if (nrlShort.includes('Tropical')) nrlShort = 'RITM (Microbiology)';
+      else if (nrlShort.includes('San Lazaro') || nrlShort.includes('SACCL')) nrlShort = 'SACCL (Serology)';
 
       tr.innerHTML = `
-        <td>${r.cycleYear} (${r.eventNumber})</td>
-        <td><strong>${r.sampleId}</strong></td>
-        <td>${r.analyteName || r.analyteCode}</td>
-        <td><strong>${r.reportedValue}</strong> ${r.unit}</td>
-        <td>${evalData.peerMean ? `${evalData.peerMean} &plusmn; ${evalData.peerSd}` : 'Pending Peer Eval'}</td>
-        <td style="font-weight:700; color:${Math.abs(sdi) > 2 ? '#dc2626' : '#16a34a'};">${sdi}</td>
-        <td><span class="${badgeClass}">${grade}</span></td>
+        <td><span style="font-weight:600; color:#0f172a;">${r.cycleYear || '2026'}</span> <span style="font-size:0.8em; color:#64748b;">(${r.eventNumber || 'Event 1'})</span></td>
+        <td><span class="badge" style="background:#f1f5f9; color:#334155; font-size:0.8em;">${nrlShort}</span></td>
+        <td><span style="font-family:monospace; font-weight:700; color:#0284c7; background:#e0f2fe; padding:2px 6px; border-radius:4px;">${r.sampleId}</span></td>
+        <td><strong>${r.analyteName || r.analyteCode}</strong></td>
+        <td><span style="font-weight:700; color:#0f172a;">${r.reportedValue}</span> <span style="font-size:0.8em; color:#64748b;">${r.unit || 'mg/dL'}</span></td>
+        <td>${evalData.peerMean ? `${evalData.peerMean} &plusmn; ${evalData.peerSd} ${r.unit || ''}` : '<span style="color:#94a3b8;">Pending Release</span>'}</td>
+        <td style="text-align:center;">${sdiDisplay}</td>
+        <td>${gradeBadge}</td>
+        <td style="text-align:right; white-space:nowrap;">
+          <a href="/equipment/neqas/${r.id}/print" target="_blank" class="button btn-small btn-primary" style="background:#10b981; border-color:#059669; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:600;" title="Print Official NEQAS Performance Certificate">
+            <i class="fa fa-print"></i> 🖨️ Print Certificate
+          </a>
+          <button type="button" class="button btn-small btn-secondary" onclick="openNeqasEditModal('${r.id}')" title="Enter / Update NRL Peer Mean & SD" style="margin-left:4px;">
+            <i class="fa fa-pen"></i> Peer Result
+          </button>
+        </td>
       `;
       tbody.appendChild(tr);
     });
@@ -1669,6 +2124,7 @@
 
   async function submitNeqas(e) {
     e.preventDefault();
+    const recordId = document.getElementById('neqas_recordId').value;
     const eqId = document.getElementById('neqas_eqId').value;
     const payload = {
       cycleYear: document.getElementById('neqas_year').value,
@@ -1682,16 +2138,24 @@
     };
 
     try {
-      const res = await fetch(`/equipment/${eqId}/neqas`, {
-        method: 'POST',
+      let url = `/equipment/${eqId}/neqas`;
+      let method = 'POST';
+      if (recordId) {
+        url = `/equipment/neqas/${recordId}`;
+        method = 'PUT';
+      }
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (data.success) {
-        alert('NEQAS proficiency record saved! SDI evaluated: ' + (data.record.nrlEvaluation.sdi || 'Pending peer mean'));
+        closeModal('modalNeqas');
         document.getElementById('formNeqas').reset();
-        loadNeqasTable();
+        await loadNeqasTable();
+        alert('NEQAS proficiency record saved successfully!');
       } else {
         alert(data.error || 'Failed to save NEQAS entry.');
       }

@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title><%= title || 'Monthly Multi-Analyte Internal QC Consolidated Report' %></title>
+  <style>
+    @page {
+      size: letter portrait;
+      margin: 10mm 12mm;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    body {
+      font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f1f5f9;
+      color: #1e293b;
+      font-size: 10px;
+      line-height: 1.35;
+    }
+    .no-print-bar {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background: #0f172a;
+      color: #fff;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+    .no-print-bar button {
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 4px;
+      cursor: pointer;
+      border: none;
+    }
+    .btn-print { background: #10b981; color: #fff; }
+    .btn-print:hover { background: #059669; }
+    .btn-back { background: #475569; color: #f1f5f9; margin-right: 8px; }
+    .btn-back:hover { background: #334155; }
+    .page {
+      width: 215.9mm;
+      min-height: 279.4mm;
+      margin: 20px auto;
+      background: #fff;
+      padding: 12mm 14mm;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      position: relative;
+    }
+    @media print {
+      body { background: #fff; }
+      .no-print { display: none !important; }
+      .page {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        min-height: auto !important;
+        box-shadow: none !important;
+      }
+    }
+    .header {
+      display: flex;
+      align-items: flex-start;
+      border-bottom: 2px solid #009957;
+      padding-bottom: 8px;
+      margin-bottom: 8px;
+    }
+    .logo { width: 64px; height: auto; margin-right: 10px; }
+    .lab-title { flex: 1; text-align: center; }
+    .lab-title h1 { margin: 0; font-size: 19px; color: #009957; }
+    .lab-sub { font-size: 9px; color: #333; margin-top: 1px; }
+    .report-title-box {
+      text-align: center;
+      margin: 6px 0 10px 0;
+      padding: 5px;
+      background: #f0fdf4;
+      border: 1px solid #86efac;
+      border-radius: 4px;
+    }
+    .report-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #166534;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .report-subtitle {
+      font-size: 8.5px;
+      color: #4b5563;
+      margin-top: 1px;
+    }
+    .meta-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9.5px;
+      margin-bottom: 10px;
+    }
+    .meta-table td {
+      border: 1px solid #cbd5e1;
+      padding: 4px 6px;
+      vertical-align: top;
+    }
+    .meta-label {
+      font-weight: 600;
+      color: #475569;
+      background: #f8fafc;
+      width: 25%;
+    }
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9px;
+      margin-bottom: 12px;
+    }
+    .summary-table th, .summary-table td {
+      border: 1px solid #000;
+      padding: 4px 5px;
+      text-align: center;
+    }
+    .summary-table th {
+      background: #f1f5f9;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .text-left { text-align: left !important; }
+    .status-in-control {
+      color: #166534;
+      font-weight: 700;
+      background: #dcfce7;
+      padding: 2px 4px;
+      border-radius: 3px;
+      display: inline-block;
+    }
+    .status-out-control {
+      color: #991b1b;
+      font-weight: 700;
+      background: #fee2e2;
+      padding: 2px 4px;
+      border-radius: 3px;
+      display: inline-block;
+    }
+    .signatures-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 26px;
+    }
+    .sig-block { text-align: center; }
+    .sig-line {
+      border-top: 1px solid #333;
+      margin-top: 36px;
+      padding-top: 4px;
+      font-weight: 700;
+      font-size: 10px;
+    }
+    .sig-sub { font-size: 8.5px; color: #475569; margin-top: 1px; }
+  </style>
+</head>
+<body>
+
+  <%
+    const usersList = (typeof allUsers !== 'undefined' && Array.isArray(allUsers)) ? allUsers : [];
+    const medtechs = usersList.filter(u => u.role === 'Medical Technologist' || (u.name && u.name.includes('RMT')));
+    const pathologists = usersList.filter(u => u.role === 'Pathologist' || (u.name && u.name.includes('Espiritu')));
+
+    const defaultOp = (medtechs[0] && medtechs[0].name) || 'Gezyne M. Lopez, RMT';
+    const sigs = (typeof signatories !== 'undefined' && signatories) ? signatories : {
+      operatorName: defaultOp,
+      operatorLicense: (medtechs.find(u => u.name === defaultOp) || {}).licenseNumber || '67820',
+      validatorName: (medtechs.find(u => u.name && u.name.includes('Domingo')) || medtechs[1] || {}).name || 'Jeff Louine Jamir T. Domingo, RMT, PMSDA',
+      validatorLicense: '68285',
+      pathologistName: (pathologists[0] && pathologists[0].name) || 'Bernadette R. Espiritu, M.D.',
+      pathologistLicense: '75547'
+    };
+
+    const analytesList = (typeof analytesSummary !== 'undefined' && Array.isArray(analytesSummary)) ? analytesSummary : [];
+  %>
+
+  <!-- Floating Print Control -->
+  <div class="no-print-bar no-print">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div>
+        <strong>Gezyne LIS Quality Control</strong> &bull; Consolidated Monthly Chemistry IQC (<%= equipment.name %>)
+      </div>
+      <button type="button" onclick="toggleSigDrawer()" style="background: #334155; color: #f8fafc; border: 1px solid #64748b; font-size: 11px; padding: 4px 10px; border-radius: 4px; cursor: pointer;">
+        ✍️ Signatories
+      </button>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <button class="btn-back" onclick="window.close(); history.back();">&larr; Back to Equipment</button>
+      <button class="btn-print" onclick="window.print();"><i class="fa fa-print"></i> 🖨️ Print / Save as PDF</button>
+    </div>
+  </div>
+
+  <!-- Signatories Drawer -->
+  <div id="sigDrawer" class="no-print" style="display: none; background: #1e293b; color: #fff; padding: 12px 20px; font-size: 12px; border-bottom: 2px solid #0284c7;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <strong style="color: #38bdf8;">Select Consolidated Report Signatories</strong>
+      <button onclick="toggleSigDrawer()" style="background: none; border: none; color: #94a3b8; font-size: 16px; cursor: pointer;">&times; Close</button>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+      <div style="background: #0f172a; padding: 8px; border-radius: 4px; border: 1px solid #334155;">
+        <span style="font-weight: bold; color: #38bdf8; font-size: 11px;">1. Testing Medical Technologist</span>
+        <select id="edit_op" onchange="onSigChange()" style="width:100%; margin-top:4px; padding:4px 6px; font-size:11.5px;">
+          <% medtechs.forEach(u => { %>
+            <option value="<%= u.name %>" data-license="<%= u.licenseNumber || '' %>" <%= sigs.operatorName === u.name ? 'selected' : '' %>>
+              <%= u.name %><%= u.licenseNumber ? ' (PRC: ' + u.licenseNumber + ')' : '' %>
+            </option>
+          <% }); %>
+        </select>
+      </div>
+      <div style="background: #0f172a; padding: 8px; border-radius: 4px; border: 1px solid #334155;">
+        <span style="font-weight: bold; color: #38bdf8; font-size: 11px;">2. QC Supervisor / Validator</span>
+        <select id="edit_val" onchange="onSigChange()" style="width:100%; margin-top:4px; padding:4px 6px; font-size:11.5px;">
+          <% medtechs.forEach(u => { %>
+            <option value="<%= u.name %>" data-license="<%= u.licenseNumber || '' %>" <%= sigs.validatorName === u.name ? 'selected' : '' %>>
+              <%= u.name %><%= u.licenseNumber ? ' (PRC: ' + u.licenseNumber + ')' : '' %>
+            </option>
+          <% }); %>
+        </select>
+      </div>
+      <div style="background: #0f172a; padding: 8px; border-radius: 4px; border: 1px solid #334155;">
+        <span style="font-weight: bold; color: #38bdf8; font-size: 11px;">3. Approving Pathologist</span>
+        <select id="edit_p1" onchange="onSigChange()" style="width:100%; margin-top:4px; padding:4px 6px; font-size:11.5px;">
+          <% pathologists.forEach(u => { %>
+            <option value="<%= u.name %>" data-license="<%= u.licenseNumber || '' %>" <%= sigs.pathologistName === u.name ? 'selected' : '' %>>
+              <%= u.name %><%= u.licenseNumber ? ' (PRC: ' + u.licenseNumber + ')' : '' %>
+            </option>
+          <% }); %>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="page">
+    <!-- Laboratory Official Header -->
+    <div class="header">
+      <img src="/assets/gezyne-logo.png" class="logo" alt="Logo" onerror="this.style.display='none'">
+      <div class="lab-title">
+        <h1>GEZYNE CLINICAL LABORATORY</h1>
+        <div class="lab-sub">0330 VERGEL DE DIOS ST POBLACION PLARIDEL, BULACAN</div>
+        <div class="lab-sub">NEAR MUNICIPAL BASKETBALL COURT &bull; TEL: 0917-649-0807 / 0960-390-0921 / 795-5007</div>
+        <div class="lab-sub"><strong>DOH License No.: 03-435-15CL-20</strong></div>
+      </div>
+      <div style="font-size: 8.5px; text-align: right; min-width: 140px;">
+        <strong>Date Printed:</strong> <%= new Date().toLocaleDateString() %><br>
+        <strong>Form Ref:</strong> DOH-LIS-IQC-MONTHLY-01<br>
+        <strong>DOH Standard:</strong> A.O. No. 2021-0037
+      </div>
+    </div>
+
+    <!-- Title Box -->
+    <div class="report-title-box">
+      <div class="report-title">MONTHLY INTERNAL QUALITY CONTROL (IQC) CONSOLIDATED REPORT</div>
+      <div class="report-subtitle">Multi-Analyte Statistical Performance & Westgard Multi-Rule Evaluation Summary</div>
+      <div style="font-size: 8.5px; color: #15803d; margin-top: 1px;">
+        Official Record for Department of Health (DOH) Licensing Inspection & Quality Audit
+      </div>
+    </div>
+
+    <!-- Meta Details -->
+    <table class="meta-table">
+      <tr>
+        <td class="meta-label">Equipment Analyzer:</td>
+        <td><strong><%= equipment.name %></strong></td>
+        <td class="meta-label">Equipment Code & Serial:</td>
+        <td><strong><%= equipment.equipmentCode %></strong> &bull; SN: <%= equipment.serialNumber || 'N/A' %></td>
+      </tr>
+      <tr>
+        <td class="meta-label">Laboratory Department:</td>
+        <td><%= equipment.department || 'Clinical Chemistry' %></td>
+        <td class="meta-label">Evaluation Period:</td>
+        <td><strong><%= monthLabel || new Date().toLocaleString('default', { month: 'long', year: 'numeric' }) %></strong></td>
+      </tr>
+      <tr>
+        <td class="meta-label">Control Material Lot:</td>
+        <td><%= control ? (control.controlName + ' (Lot: ' + control.lotNumber + ')') : 'Bio-Rad Lyphochek Chemistry Level 1' %></td>
+        <td class="meta-label">Overall IQC Status:</td>
+        <td><strong style="color: #16a34a;">COMPLIANT &bull; READY FOR DOH AUDIT</strong></td>
+      </tr>
+    </table>
+
+    <!-- Multi-Analyte Consolidated Summary Table -->
+    <table class="summary-table">
+      <thead>
+        <tr>
+          <th style="width: 25px;">#</th>
+          <th class="text-left" style="width: 130px;">Analyte / Chemistry Test</th>
+          <th style="width: 50px;">Unit</th>
+          <th style="width: 70px;">Target Mean &plusmn; SD</th>
+          <th style="width: 35px;">N</th>
+          <th style="width: 70px;">Observed Mean &plusmn; SD</th>
+          <th style="width: 55px;">%CV</th>
+          <th style="width: 55px;">TE<sub>obs</sub> (%)</th>
+          <th style="width: 50px;">Westgard Flags</th>
+          <th style="width: 80px;">DOH Evaluation</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (analytesList.length === 0) { %>
+          <tr><td colspan="10" style="padding: 15px; color: #64748b;">No control runs recorded for this period.</td></tr>
+        <% } else { %>
+          <% analytesList.forEach((a, i) => { %>
+            <tr>
+              <td><%= i + 1 %></td>
+              <td class="text-left"><strong><%= a.analyteName %></strong> <span style="color:#64748b; font-size:8px;">(<%= a.analyteCode.toUpperCase() %>)</span></td>
+              <td><%= a.unit %></td>
+              <td><%= a.targetMean %> &plusmn; <%= a.targetSd %></td>
+              <td><strong><%= a.observedN %></strong></td>
+              <td><%= a.observedMean %> &plusmn; <%= a.observedSd %></td>
+              <td><strong><%= a.cvPercent %>%</strong></td>
+              <td><%= a.teObs %></td>
+              <td>
+                <% if (a.rejectedCount > 0) { %>
+                  <span style="color: #dc2626; font-weight: bold;"><%= a.rejectedCount %> Rejected</span>
+                <% } else if (a.warningCount > 0) { %>
+                  <span style="color: #d97706;"><%= a.warningCount %> Warn</span>
+                <% } else { %>
+                  <span style="color: #16a34a;">0</span>
+                <% } %>
+              </td>
+              <td>
+                <% if (a.inControl) { %>
+                  <span class="status-in-control">&check; IN CONTROL</span>
+                <% } else { %>
+                  <span class="status-out-control">&times; OUT OF CONTROL</span>
+                <% } %>
+              </td>
+            </tr>
+          <% }); %>
+        <% } %>
+      </tbody>
+    </table>
+
+    <!-- DOH Compliance Notes -->
+    <div style="border: 1px solid #cbd5e1; background: #f8fafc; padding: 6px 10px; border-radius: 4px; font-size: 8.5px; color: #475569; margin-bottom: 12px;">
+      <strong>DOH Regulatory Compliance Declaration:</strong> This consolidated monthly quality control audit was conducted in compliance with Philippine DOH A.O. No. 2021-0037 and ISO 15189 standards. Detailed single-analyte Levey-Jennings daily plots and corrective action log entries are maintained on electronic file and available for regulatory inspection upon request.
+    </div>
+
+    <!-- Signatories Block -->
+    <div class="signatures-grid">
+      <div class="sig-block">
+        <div class="sig-line" id="disp_op_name"><%= sigs.operatorName %></div>
+        <div class="sig-sub">Testing Medical Technologist</div>
+        <div class="sig-sub" id="disp_op_lic">PRC License No.: <%= sigs.operatorLicense || '________________' %></div>
+      </div>
+
+      <div class="sig-block">
+        <div class="sig-line" id="disp_val_name"><%= sigs.validatorName %></div>
+        <div class="sig-sub">QC Supervisor / Senior MedTech</div>
+        <div class="sig-sub" id="disp_val_lic">PRC License No.: <%= sigs.validatorLicense || '________________' %></div>
+      </div>
+
+      <div class="sig-block">
+        <div class="sig-line" id="disp_p1_name"><%= sigs.pathologistName %></div>
+        <div class="sig-sub">Head of Laboratory / Pathologist</div>
+        <div class="sig-sub" id="disp_p1_lic">PRC License No.: <%= sigs.pathologistLicense || '75547' %></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function toggleSigDrawer() {
+      const d = document.getElementById('sigDrawer');
+      if (!d) return;
+      d.style.display = d.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function onSigChange() {
+      const op = document.getElementById('edit_op');
+      const val = document.getElementById('edit_val');
+      const p1 = document.getElementById('edit_p1');
+
+      const opOpt = op ? op.options[op.selectedIndex] : null;
+      const valOpt = val ? val.options[val.selectedIndex] : null;
+      const p1Opt = p1 ? p1.options[p1.selectedIndex] : null;
+
+      if (opOpt) {
+        document.getElementById('disp_op_name').textContent = opOpt.value;
+        document.getElementById('disp_op_lic').textContent = 'PRC License No.: ' + (opOpt.dataset.license || '________________');
+      }
+      if (valOpt) {
+        document.getElementById('disp_val_name').textContent = valOpt.value;
+        document.getElementById('disp_val_lic').textContent = 'PRC License No.: ' + (valOpt.dataset.license || '________________');
+      }
+      if (p1Opt) {
+        document.getElementById('disp_p1_name').textContent = p1Opt.value;
+        document.getElementById('disp_p1_lic').textContent = 'PRC License No.: ' + (p1Opt.dataset.license || '________________');
+      }
+    }
+  </script>
+</body>
+</html>

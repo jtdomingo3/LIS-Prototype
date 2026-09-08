@@ -79,6 +79,7 @@ router.get('/', requireAuth, (req, res) => {
     }
 
     const users = (typeof global.db.getUsers === 'function') ? global.db.getUsers() : [];
+    const neqasRecords = (typeof global.db.getNeqasRecords === 'function' ? global.db.getNeqasRecords() : []).map(n => new NeqasRecord(n));
 
     // If server views exist, render; otherwise fallback to JSON
     try {
@@ -87,6 +88,7 @@ router.get('/', requireAuth, (req, res) => {
         kpi,
         equipment: filtered,
         users,
+        neqasRecords,
         query: req.query
       });
     } catch (_) {
@@ -967,6 +969,145 @@ router.get('/neqas/report', requireAuth, (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /equipment/neqas/:recordId/print - Official Printable NEQAS Result Certificate
+router.get('/neqas/:recordId/print', requireAuth, (req, res) => {
+  try {
+    const raw = global.db.getNeqasRecordById(req.params.recordId);
+    if (!raw) return res.status(404).send('NEQAS record not found.');
+
+    const record = new NeqasRecord(raw);
+    const allUsers = (typeof global.db.getUsers === 'function') ? global.db.getUsers() : [];
+
+    const medtechs = allUsers.filter(u => u.role === 'Medical Technologist' || (u.name && u.name.includes('RMT')));
+    const pathologists = allUsers.filter(u => u.role === 'Pathologist' || (u.name && u.name.includes('Espiritu')));
+
+    const defaultOp = record.reportedBy || (medtechs[0] && medtechs[0].name) || 'Gezyne M. Lopez, RMT';
+    const opUser = medtechs.find(u => u.name.toLowerCase() === defaultOp.toLowerCase()) || medtechs[0] || {};
+    const valUser = medtechs.find(u => u.name && u.name.includes('Domingo')) || medtechs[1] || medtechs[0] || {};
+    const pathUser = pathologists[0] || { name: 'Bernadette R. Espiritu, M.D.', licenseNumber: '75547' };
+
+    const signatories = {
+      operatorName: req.query.operatorName || opUser.name || defaultOp,
+      operatorLicense: req.query.operatorLicense || opUser.licenseNumber || '67820',
+      validatorName: req.query.validatorName || valUser.name || 'Jeff Louine Jamir T. Domingo, RMT, PMSDA',
+      validatorLicense: req.query.validatorLicense || valUser.licenseNumber || '68285',
+      pathologistName: req.query.pathologistName || pathUser.name || 'Bernadette R. Espiritu, M.D.',
+      pathologistLicense: req.query.pathologistLicense || pathUser.licenseNumber || '75547'
+    };
+
+    res.render('equipment/print_neqas', {
+      layout: false,
+      title: `NEQAS Result Certificate - ${record.analyteName} (${record.sampleId})`,
+      record,
+      signatories,
+      allUsers
+    });
+  } catch (error) {
+    console.error('[routes/equipment] Print NEQAS error:', error);
+    res.status(500).send('Error generating NEQAS certificate: ' + error.message);
+  }
+});
+
+// GET /equipment/:id/qc/print-monthly-summary - Multi-Analyte Monthly Chemistry QC Consolidated Report (DOH Inspection Format)
+router.get('/:id/qc/print-monthly-summary', requireAuth, (req, res) => {
+  try {
+    const rawEq = global.db.getEquipmentById(req.params.id);
+    if (!rawEq) return res.status(404).send('Equipment not found.');
+
+    const equipment = new Equipment(rawEq);
+    const controls = (global.db.getQcControls(req.params.id) || []).map(c => new QcControl(c));
+    const control = controls[0] || null;
+
+    const { month } = req.query; // YYYY-MM
+    let filterYear, filterMonth;
+    if (month) {
+      const [yr, mo] = month.split('-').map(Number);
+      filterYear = yr;
+      filterMonth = mo;
+    } else {
+      const now = new Date();
+      filterYear = now.getFullYear();
+      filterMonth = now.getMonth() + 1;
+    }
+
+    const monthDate = new Date(filterYear, filterMonth - 1, 1);
+    const monthLabel = monthDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+    // Active analytes in the control (or standard clinical chemistry panel)
+    const defaultAnalytes = (control && control.analytes && control.analytes.length) ? control.analytes : [
+      { analyteCode: 'fbs', analyteName: 'Glucose / Fasting Blood Sugar', unit: 'mg/dL', targetMean: 95.0, targetSd: 3.5 },
+      { analyteCode: 'bun', analyteName: 'Blood Urea Nitrogen', unit: 'mg/dL', targetMean: 15.0, targetSd: 1.2 },
+      { analyteCode: 'crea', analyteName: 'Creatinine', unit: 'mg/dL', targetMean: 1.10, targetSd: 0.08 },
+      { analyteCode: 'chol', analyteName: 'Total Cholesterol', unit: 'mg/dL', targetMean: 180.0, targetSd: 7.5 },
+      { analyteCode: 'trig', analyteName: 'Triglycerides', unit: 'mg/dL', targetMean: 120.0, targetSd: 6.0 },
+      { analyteCode: 'bua', analyteName: 'Uric Acid', unit: 'mg/dL', targetMean: 5.5, targetSd: 0.35 },
+      { analyteCode: 'sgot', analyteName: 'SGOT / AST', unit: 'U/L', targetMean: 32.0, targetSd: 2.1 },
+      { analyteCode: 'sgpt', analyteName: 'SGPT / ALT', unit: 'U/L', targetMean: 28.0, targetSd: 1.9 },
+      { analyteCode: 'na', analyteName: 'Sodium (Na+)', unit: 'mmol/L', targetMean: 140.0, targetSd: 2.2 },
+      { analyteCode: 'k', analyteName: 'Potassium (K+)', unit: 'mmol/L', targetMean: 4.2, targetSd: 0.18 },
+      { analyteCode: 'cl', analyteName: 'Chloride (Cl-)', unit: 'mmol/L', targetMean: 102.0, targetSd: 1.8 }
+    ];
+
+    const analytesSummary = defaultAnalytes.map(a => {
+      let entries = (global.db.getQcEntries(req.params.id, a.analyteCode) || []).map(e => new QcEntry(e));
+      entries = entries.filter(e => {
+        const d = new Date(e.runDate);
+        return d.getFullYear() === filterYear && (d.getMonth() + 1) === filterMonth;
+      });
+
+      const ds = buildLeveyJenningsDataset(control, a.analyteCode, entries, { equipment });
+      const stats = ds.statistics || {};
+
+      return {
+        analyteCode: a.analyteCode,
+        analyteName: a.analyteName,
+        unit: a.unit || 'mg/dL',
+        targetMean: a.targetMean || ds.targetMean || 100,
+        targetSd: a.targetSd || ds.targetSd || 5,
+        observedN: stats.n || entries.length,
+        observedMean: stats.observedMean !== null && stats.observedMean !== undefined ? stats.observedMean : '—',
+        observedSd: stats.observedSd !== null && stats.observedSd !== undefined ? stats.observedSd : '—',
+        cvPercent: stats.cvPercent !== null && stats.cvPercent !== undefined ? stats.cvPercent : '0',
+        teObs: stats.teObs !== null && stats.teObs !== undefined ? stats.teObs + '%' : '0%',
+        inControl: stats.inControl !== undefined ? stats.inControl : true,
+        rejectedCount: (ds.points || []).filter(p => p.status === 'REJECTED').length,
+        warningCount: (ds.points || []).filter(p => p.status === 'WARNING').length
+      };
+    });
+
+    const allUsers = (typeof global.db.getUsers === 'function') ? global.db.getUsers() : [];
+    const medtechs = allUsers.filter(u => u.role === 'Medical Technologist' || (u.name && u.name.includes('RMT')));
+    const pathologists = allUsers.filter(u => u.role === 'Pathologist' || (u.name && u.name.includes('Espiritu')));
+
+    const opUser = medtechs[0] || {};
+    const valUser = medtechs.find(u => u.name && u.name.includes('Domingo')) || medtechs[1] || medtechs[0] || {};
+    const pathUser = pathologists[0] || { name: 'Bernadette R. Espiritu, M.D.', licenseNumber: '75547' };
+
+    const signatories = {
+      operatorName: req.query.operatorName || opUser.name || 'Gezyne M. Lopez, RMT',
+      operatorLicense: req.query.operatorLicense || opUser.licenseNumber || '67820',
+      validatorName: req.query.validatorName || valUser.name || 'Jeff Louine Jamir T. Domingo, RMT, PMSDA',
+      validatorLicense: req.query.validatorLicense || valUser.licenseNumber || '68285',
+      pathologistName: req.query.pathologistName || pathUser.name || 'Bernadette R. Espiritu, M.D.',
+      pathologistLicense: req.query.pathologistLicense || pathUser.licenseNumber || '75547'
+    };
+
+    res.render('equipment/print_monthly_qc', {
+      layout: false,
+      title: `Monthly Chemistry QC Consolidated Report - ${equipment.name} (${monthLabel})`,
+      equipment,
+      control,
+      monthLabel,
+      analytesSummary,
+      signatories,
+      allUsers
+    });
+  } catch (error) {
+    console.error('[routes/equipment] Print Monthly QC error:', error);
+    res.status(500).send('Error generating monthly QC report: ' + error.message);
   }
 });
 
