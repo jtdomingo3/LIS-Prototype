@@ -81,6 +81,13 @@ router.get('/', requireAuth, (req, res) => {
     const users = (typeof global.db.getUsers === 'function') ? global.db.getUsers() : [];
     const neqasRecords = (typeof global.db.getNeqasRecords === 'function' ? global.db.getNeqasRecords() : []).map(n => new NeqasRecord(n));
 
+    // Calculate QC entry counts per equipment to identify machines with LJ data
+    const allQcEntries = (typeof global.db.getQcEntries === 'function') ? global.db.getQcEntries() : [];
+    const qcEntryCounts = {};
+    allQcEntries.forEach(e => {
+      qcEntryCounts[e.equipmentId] = (qcEntryCounts[e.equipmentId] || 0) + 1;
+    });
+
     // If server views exist, render; otherwise fallback to JSON
     try {
       res.render('equipment/index', {
@@ -89,13 +96,39 @@ router.get('/', requireAuth, (req, res) => {
         equipment: filtered,
         users,
         neqasRecords,
+        qcEntryCounts,
         query: req.query
       });
     } catch (_) {
-      res.json({ success: true, kpi, count: filtered.length, equipment: filtered });
+      res.json({ success: true, kpi, count: filtered.length, equipment: filtered, qcEntryCounts });
     }
   } catch (error) {
     console.error('[routes/equipment] GET / error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET /equipment/api/lj-analyzers - Only return machines with actual LJ data (entryCount > 0)
+router.get('/api/lj-analyzers', requireAuth, (req, res) => {
+  try {
+    const rawList = (typeof global.db.getEquipment === 'function') ? global.db.getEquipment() : [];
+    const allQcEntries = (typeof global.db.getQcEntries === 'function') ? global.db.getQcEntries() : [];
+    const counts = {};
+    allQcEntries.forEach(e => {
+      counts[e.equipmentId] = (counts[e.equipmentId] || 0) + 1;
+    });
+    const analyzers = rawList
+      .filter(eq => (counts[eq.id] || 0) > 0)
+      .map(eq => ({
+        id: eq.id,
+        equipmentCode: eq.equipmentCode,
+        name: eq.name,
+        category: eq.category,
+        department: eq.department,
+        entryCount: counts[eq.id] || 0
+      }));
+    res.json({ success: true, count: analyzers.length, analyzers, counts });
+  } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 });
@@ -530,6 +563,78 @@ router.delete('/qc/controls/:controlId', requireAuth, (req, res) => {
   }
 });
 
+// POST /equipment/:id/qc/analytes - Add or update a QC analyte on this equipment's control
+router.post('/:id/qc/analytes', requireAuth, (req, res) => {
+  try {
+    const rawEq = global.db.getEquipmentById(req.params.id);
+    if (!rawEq) return res.status(404).json({ success: false, error: 'Equipment not found.' });
+    const equipment = new Equipment(rawEq);
+
+    const {
+      controlName,
+      lotNumber,
+      level,
+      expirationDate,
+      analyteCode,
+      analyteName,
+      unit,
+      targetMean,
+      targetSd,
+      teaPercent
+    } = req.body;
+
+    if (!analyteName || targetMean === undefined || targetSd === undefined) {
+      return res.status(400).json({ success: false, error: 'Analyte Name, Target Mean, and Target SD are required.' });
+    }
+
+    const cleanCode = (analyteCode || analyteName.toLowerCase().replace(/[^a-z0-9]/g, '_')).substring(0, 30);
+    const analyteObj = {
+      analyteCode: cleanCode,
+      analyteName: analyteName.trim(),
+      unit: unit ? unit.trim() : 'mg/dL',
+      targetMean: Number(targetMean),
+      targetSd: Number(targetSd),
+      teaPercent: Number(teaPercent) || 10.0
+    };
+
+    // Check existing controls for this equipment
+    const controls = (global.db.getQcControls(req.params.id) || []).map(c => new QcControl(c));
+    let ctrl = controls[0];
+
+    if (!ctrl) {
+      ctrl = new QcControl({
+        equipmentId: req.params.id,
+        controlName: controlName || `${equipment.name} Control Lot`,
+        lotNumber: lotNumber || `LOT-${new Date().getFullYear()}-01`,
+        level: level || 'Level 1 (Normal)',
+        expirationDate: expirationDate || null,
+        analytes: [analyteObj],
+        createdBy: getActor(req)
+      });
+    } else {
+      if (controlName) ctrl.controlName = controlName;
+      if (lotNumber) ctrl.lotNumber = lotNumber;
+      if (level) ctrl.level = level;
+      if (expirationDate) ctrl.expirationDate = expirationDate;
+
+      if (!Array.isArray(ctrl.analytes)) ctrl.analytes = [];
+      const idx = ctrl.analytes.findIndex(a => (a.analyteCode || '').toLowerCase() === cleanCode.toLowerCase());
+      if (idx >= 0) {
+        ctrl.analytes[idx] = analyteObj;
+      } else {
+        ctrl.analytes.push(analyteObj);
+      }
+      ctrl.updatedAt = new Date().toISOString();
+    }
+
+    global.db.saveQcControl(ctrl);
+    res.json({ success: true, message: 'Analyte configured successfully.', control: ctrl, analyte: analyteObj });
+  } catch (error) {
+    console.error('[routes/equipment] POST /:id/qc/analytes error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ==========================================
 // 4. QC RUN PLOTTING & LEVEY-JENNINGS
 // ==========================================
@@ -550,17 +655,25 @@ router.post('/:id/qc/entries', requireAuth, (req, res) => {
   try {
     const { controlId, analyteCode, measuredValue, runDate, runNumber, reagentLotNumber, notes } = req.body;
 
-    if (!controlId || !analyteCode || measuredValue === undefined || measuredValue === null) {
-      return res.status(400).json({ success: false, error: 'Missing required parameters: controlId, analyteCode, measuredValue.' });
+    if (!analyteCode || measuredValue === undefined || measuredValue === null) {
+      return res.status(400).json({ success: false, error: 'Missing required parameters: analyteCode, measuredValue.' });
     }
 
-    const rawCtrl = global.db.getQcControlById(controlId);
-    if (!rawCtrl) {
-      return res.status(404).json({ success: false, error: 'QC Control lot not found.' });
+    let ctrl = null;
+    if (controlId) {
+      const rawCtrl = global.db.getQcControlById(controlId);
+      if (rawCtrl) ctrl = new QcControl(rawCtrl);
     }
-    const ctrl = new QcControl(rawCtrl);
+    if (!ctrl) {
+      const controls = (global.db.getQcControls(req.params.id) || []).map(c => new QcControl(c));
+      ctrl = controls.find(c => c.getAnalyte(analyteCode)) || controls[0] || null;
+    }
+
+    if (!ctrl) {
+      return res.status(404).json({ success: false, error: 'No QC Control material configured for this equipment. Please configure an analyte first.' });
+    }
+
     const analyteDef = ctrl.getAnalyte(analyteCode);
-
     if (!analyteDef) {
       return res.status(400).json({ success: false, error: `Analyte "${analyteCode}" not configured on this control lot.` });
     }
@@ -636,10 +749,20 @@ router.post('/qc/entries/:entryId/corrective-action', requireAuth, (req, res) =>
   }
 });
 
+// DELETE /equipment/qc/entries/:entryId - Delete standard/control entry
+router.delete('/qc/entries/:entryId', requireAuth, (req, res) => {
+  try {
+    const success = global.db.deleteQcEntry(req.params.entryId);
+    res.json({ success, message: 'QC entry deleted successfully.' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // GET /equipment/:id/qc/levey-jennings - Complete Levey-Jennings Chart Dataset
 router.get('/:id/qc/levey-jennings', requireAuth, (req, res) => {
   try {
-    const { analyteCode, controlId, month } = req.query;
+    const { analyteCode, controlId, month, startDate, endDate, sort } = req.query;
 
     if (!analyteCode) {
       return res.status(400).json({ success: false, error: 'Analyte code is required (e.g. ?analyteCode=fbs).' });
@@ -659,8 +782,19 @@ router.get('/:id/qc/levey-jennings', requireAuth, (req, res) => {
 
     let entries = (global.db.getQcEntries(req.params.id, analyteCode) || []).map(e => new QcEntry(e));
 
-    // Optional filter by month (YYYY-MM)
-    if (month) {
+    // Optional filter by startDate and endDate (YYYY-MM-DD)
+    if (startDate) {
+      entries = entries.filter(e => {
+        const d = (e.runDate || '').split('T')[0];
+        return d >= startDate;
+      });
+    }
+    if (endDate) {
+      entries = entries.filter(e => {
+        const d = (e.runDate || '').split('T')[0];
+        return d <= endDate;
+      });
+    } else if (month && !startDate) {
       const [yr, mo] = month.split('-').map(Number);
       entries = entries.filter(e => {
         const d = new Date(e.runDate);
@@ -669,6 +803,12 @@ router.get('/:id/qc/levey-jennings', requireAuth, (req, res) => {
     }
 
     const chartDataset = buildLeveyJenningsDataset(control, analyteCode, entries, { equipment });
+    chartDataset.filterRange = {
+      startDate: startDate || null,
+      endDate: endDate || null,
+      month: month || null
+    };
+
     res.json({ success: true, data: chartDataset });
   } catch (error) {
     console.error('[routes/equipment] Levey-Jennings error:', error);
@@ -698,7 +838,7 @@ router.get('/:id/qc/doh-report', requireAuth, (req, res) => {
 // GET /equipment/:id/qc/print - Official Printable Levey-Jennings QC Report (Letter Size)
 router.get('/:id/qc/print', requireAuth, (req, res) => {
   try {
-    const { analyteCode, controlId, month } = req.query;
+    const { analyteCode, controlId, month, startDate, endDate, sort } = req.query;
     const targetAnalyte = analyteCode || 'fbs';
     const rawEq = global.db.getEquipmentById(req.params.id);
     if (!rawEq) return res.status(404).send('Equipment not found.');
@@ -715,7 +855,12 @@ router.get('/:id/qc/print', requireAuth, (req, res) => {
 
     let entries = (global.db.getQcEntries(req.params.id, targetAnalyte) || []).map(e => new QcEntry(e));
 
-    if (month) {
+    if (startDate) {
+      entries = entries.filter(e => (e.runDate || '').split('T')[0] >= startDate);
+    }
+    if (endDate) {
+      entries = entries.filter(e => (e.runDate || '').split('T')[0] <= endDate);
+    } else if (month && !startDate) {
       const [yr, mo] = month.split('-').map(Number);
       entries = entries.filter(e => {
         const d = new Date(e.runDate);
@@ -724,6 +869,10 @@ router.get('/:id/qc/print', requireAuth, (req, res) => {
     }
 
     const dataset = buildLeveyJenningsDataset(control, targetAnalyte, entries, { equipment });
+    dataset.filterRange = {
+      startDate: startDate || null,
+      endDate: endDate || null
+    };
 
     const allUsers = (typeof global.db.getUsers === 'function') ? global.db.getUsers() : [];
 
@@ -1021,10 +1170,14 @@ router.get('/:id/qc/print-monthly-summary', requireAuth, (req, res) => {
     const controls = (global.db.getQcControls(req.params.id) || []).map(c => new QcControl(c));
     const control = controls[0] || null;
 
-    const { month } = req.query; // YYYY-MM
+    const { month, startDate, endDate } = req.query; // YYYY-MM or YYYY-MM-DD
     let filterYear, filterMonth;
     if (month) {
       const [yr, mo] = month.split('-').map(Number);
+      filterYear = yr;
+      filterMonth = mo;
+    } else if (startDate) {
+      const [yr, mo] = startDate.split('-').map(Number);
       filterYear = yr;
       filterMonth = mo;
     } else {
@@ -1034,7 +1187,14 @@ router.get('/:id/qc/print-monthly-summary', requireAuth, (req, res) => {
     }
 
     const monthDate = new Date(filterYear, filterMonth - 1, 1);
-    const monthLabel = monthDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+    let monthLabel = monthDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+    if (startDate && endDate) {
+      monthLabel = `${startDate} to ${endDate}`;
+    } else if (startDate) {
+      monthLabel = `From ${startDate}`;
+    } else if (endDate) {
+      monthLabel = `Up to ${endDate}`;
+    }
 
     // Active analytes in the control (or standard clinical chemistry panel)
     const defaultAnalytes = (control && control.analytes && control.analytes.length) ? control.analytes : [
@@ -1053,10 +1213,21 @@ router.get('/:id/qc/print-monthly-summary', requireAuth, (req, res) => {
 
     const analytesSummary = defaultAnalytes.map(a => {
       let entries = (global.db.getQcEntries(req.params.id, a.analyteCode) || []).map(e => new QcEntry(e));
-      entries = entries.filter(e => {
-        const d = new Date(e.runDate);
-        return d.getFullYear() === filterYear && (d.getMonth() + 1) === filterMonth;
-      });
+      if (startDate && endDate) {
+        entries = entries.filter(e => {
+          const d = (e.runDate || '').split('T')[0];
+          return d >= startDate && d <= endDate;
+        });
+      } else if (startDate) {
+        entries = entries.filter(e => (e.runDate || '').split('T')[0] >= startDate);
+      } else if (endDate) {
+        entries = entries.filter(e => (e.runDate || '').split('T')[0] <= endDate);
+      } else {
+        entries = entries.filter(e => {
+          const d = new Date(e.runDate);
+          return d.getFullYear() === filterYear && (d.getMonth() + 1) === filterMonth;
+        });
+      }
 
       const ds = buildLeveyJenningsDataset(control, a.analyteCode, entries, { equipment });
       const stats = ds.statistics || {};

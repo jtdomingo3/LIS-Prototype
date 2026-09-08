@@ -381,13 +381,18 @@
       <div style="font-size: 9px; text-align: right; min-width: 140px;">
         <strong>Date Printed:</strong> <%= new Date().toLocaleDateString() %><br>
         <strong>Time:</strong> <%= new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %><br>
-        <strong>Form Ref:</strong> DOH-LIS-IQC-01
+        <strong>Form Ref:</strong> DOH-LIS-IQC-01<br>
+        <% if (dataset && dataset.filterRange && (dataset.filterRange.startDate || dataset.filterRange.endDate)) { %>
+          <strong>Period:</strong> <%= dataset.filterRange.startDate || 'Start' %> to <%= dataset.filterRange.endDate || 'Present' %><br>
+        <% } %>
       </div>
     </div>
 
     <!-- Report Title -->
     <div class="report-title-box">
-      <div class="report-title">MONTHLY INTERNAL QUALITY CONTROL (IQC) REPORT &bull; LEVEY-JENNINGS CHART</div>
+      <div class="report-title">
+        <%= (dataset && dataset.filterRange && (dataset.filterRange.startDate || dataset.filterRange.endDate)) ? 'INTERNAL QUALITY CONTROL (IQC) REPORT • LEVEY-JENNINGS CHART' : 'MONTHLY INTERNAL QUALITY CONTROL (IQC) REPORT • LEVEY-JENNINGS CHART' %>
+      </div>
       <div class="report-subtitle">Compliant with Philippine DOH AO No. 2020-0035, AO No. 2021-0037, and CLSI C24-Ed4 Statistical Quality Control</div>
     </div>
 
