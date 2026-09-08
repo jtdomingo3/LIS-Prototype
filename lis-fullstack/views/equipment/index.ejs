@@ -284,7 +284,7 @@
     <div class="eq-stat-card" style="border-left: 4px solid #dc2626; cursor: pointer;" onclick="filterByStatus('CALIBRATION_OVERDUE')">
       <div class="eq-stat-title">Calibration Overdue</div>
       <div class="eq-stat-val" style="color: #dc2626;"><%= kpi.calibrationOverdue %></div>
-      <div style="font-size: 0.8em; color: #64748b; margin-top: 4px;">ISO 15189 Action Required</div>
+      <div style="font-size: 0.8em; color: #64748b; margin-top: 4px;">DOH Action Required</div>
     </div>
 
     <div class="eq-stat-card" style="border-left: 4px solid #7c3aed; cursor: pointer;" onclick="openXrayModal()">
@@ -319,8 +319,8 @@
 
     <div style="display: flex; gap: 8px; align-items: center;">
       <span style="font-size: 0.85em; color: #64748b;">Standards:</span>
-      <span class="badge badge-info" style="font-size: 0.8em;">ISO 15189:2022</span>
       <span class="badge badge-info" style="font-size: 0.8em;">DOH AO 2020-0035</span>
+      <span class="badge badge-info" style="font-size: 0.8em;">DOH AO 2021-0037</span>
       <span class="badge badge-info" style="font-size: 0.8em;">CLSI C24-Ed4</span>
     </div>
   </div>
@@ -477,7 +477,7 @@
         </div>
       </div>
       <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-        <span class="badge badge-info">ISO 15189:2022 §7.3.7</span>
+        <span class="badge badge-info">DOH AO 2020-0035</span>
         <span class="badge badge-info">DOH AO 2021-0037</span>
         <span class="badge badge-info">Westgard 6-Rules</span>
       </div>
@@ -970,7 +970,7 @@
           <div class="form-group">
             <label>Service Provider Type *</label>
             <select id="log_providerType" required>
-              <option value="Accredited Metrology Body (ISO 17025)">Accredited Metrology Body (ISO 17025)</option>
+              <option value="Accredited Metrology Body / Calibration Service">Accredited Metrology Body / Calibration Service</option>
               <option value="Manufacturer Engineer">Manufacturer / Authorized Engineer</option>
               <option value="DOH / FDA Certified Physicist">DOH / FDA Certified Physicist</option>
               <option value="Internal Staff">Internal Biomedical Staff</option>

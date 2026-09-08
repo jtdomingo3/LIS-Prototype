@@ -101,7 +101,8 @@ runTest('views/equipment/index.ejs compiles cleanly without syntax errors', () =
   // Verify DOH regulatory standards badges exist
   assert(html.includes('CLSI C24-Ed4'), 'CLSI C24 standard should be referenced');
   assert(html.includes('DOH AO 2020-0035'), 'DOH AO 2020-0035 should be referenced');
-  assert(html.includes('ISO 15189:2022'), 'ISO 15189 should be referenced');
+  assert(html.includes('DOH AO 2021-0037'), 'DOH AO 2021-0037 should be referenced');
+  assert(!html.includes('ISO 15189'), 'ISO 15189 should NOT be claimed as laboratory is not yet ISO certified');
 
   // Verify buttons for multi-analyte monthly QC and NEQAS exist
   assert(html.includes('printMonthlyQcReport()'), 'printMonthlyQcReport() function call should exist');
