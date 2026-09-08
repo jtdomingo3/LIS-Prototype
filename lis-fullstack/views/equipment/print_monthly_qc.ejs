@@ -311,7 +311,7 @@
           <% analytesList.forEach((a, i) => { %>
             <tr>
               <td><%= i + 1 %></td>
-              <td class="text-left"><strong><%= a.analyteName %></strong> <span style="color:#64748b; font-size:8px;">(<%= a.analyteCode.toUpperCase() %>)</span></td>
+              <td class="text-left"><strong><%= a.analyteName %></strong> <% if (!a.analyteName.includes('(') && !a.analyteName.toUpperCase().includes(a.analyteCode.toUpperCase()) && a.analyteCode.length <= 5) { %><span style="color:#64748b; font-size:8px;">(<%= a.analyteCode.toUpperCase() %>)</span><% } %></td>
               <td><%= a.unit %></td>
               <td><%= a.targetMean %> &plusmn; <%= a.targetSd %></td>
               <td><strong><%= a.observedN %></strong></td>

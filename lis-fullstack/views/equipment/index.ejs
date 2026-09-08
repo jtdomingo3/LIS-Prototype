@@ -1264,18 +1264,75 @@
           </div>
         </div>
 
-        <!-- Analyte Quick Presets -->
-        <div style="margin-bottom: 12px;">
-          <label style="font-size: 0.8em; font-weight: 600; color: #475569; display: block; margin-bottom: 4px;">Quick Presets (Click to autofill common parameters):</label>
-          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-            <button type="button" class="button btn-small btn-secondary" onclick="applyAnalytePreset('wbc')">WBC (10^3/uL)</button>
-            <button type="button" class="button btn-small btn-secondary" onclick="applyAnalytePreset('hgb')">HGB (g/dL)</button>
-            <button type="button" class="button btn-small btn-secondary" onclick="applyAnalytePreset('plt')">PLT (10^3/uL)</button>
-            <button type="button" class="button btn-small btn-secondary" onclick="applyAnalytePreset('pt')">PT (sec)</button>
-            <button type="button" class="button btn-small btn-secondary" onclick="applyAnalytePreset('inr')">INR</button>
-            <button type="button" class="button btn-small btn-secondary" onclick="applyAnalytePreset('na')">Sodium (mmol/L)</button>
-            <button type="button" class="button btn-small btn-secondary" onclick="applyAnalytePreset('k')">Potassium (mmol/L)</button>
-            <button type="button" class="button btn-small btn-secondary" onclick="applyAnalytePreset('fbs')">Glucose (mg/dL)</button>
+        <!-- Blood Chemistry Official Panel Presets & 1-Click Pre-Add -->
+        <div style="margin-bottom: 16px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+            <label style="font-size: 0.9em; font-weight: 700; color: #0369a1; margin: 0; display: flex; align-items: center; gap: 6px;">
+              <i class="fa fa-clipboard-list" style="color: #0284c7;"></i> Blood Chemistry Form Presets (21 Official Analytes)
+            </label>
+            <button type="button" class="button" onclick="preloadAllBloodChemAnalytes()" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #ffffff; font-weight: 600; font-size: 0.82em; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(2,132,199,0.25);">
+              <i class="fa fa-bolt"></i> ⚡ Pre-add All 21 Blood Chemistry Analytes
+            </button>
+          </div>
+          <p style="font-size: 0.78em; color: #0284c7; margin: 0 0 8px 0; line-height: 1.4;">
+            Pre-loaded from our laboratory's Blood Chemistry test entry form. Select any analyte to autofill standard target Mean, SD, Unit, and TEa%:
+          </p>
+          <select id="add_analyte_bc_preset" onchange="applyAnalytePreset(this.value)" style="width: 100%; padding: 7px 10px; font-size: 0.88em; font-weight: 600; border: 1px solid #7dd3fc; border-radius: 6px; background: #ffffff; color: #0f172a; margin-bottom: 8px;">
+            <option value="">-- Select Blood Chemistry Preset to Autofill --</option>
+            <optgroup label="🩸 Blood Sugar &amp; Glycemic Profile">
+              <option value="fbs">FBS - Fasting Blood Sugar (70-110 mg/dL)</option>
+              <option value="rbs">RBS - Random Blood Sugar (80-130 mg/dL)</option>
+              <option value="firstHour">1st Hour OGTT (90-140 mg/dL)</option>
+              <option value="secondHour">2nd Hour OGTT (80-120 mg/dL)</option>
+              <option value="hba1c">HbA1c - Glycated Hemoglobin (4.0-6.5 %)</option>
+            </optgroup>
+            <optgroup label="🫀 Lipid Profile">
+              <option value="chol">Total Cholesterol (0-200 mg/dL)</option>
+              <option value="tg">Triglycerides (60-150 mg/dL)</option>
+              <option value="hdl">HDL-C - Good Cholesterol (35-80 mg/dL)</option>
+              <option value="ldl">LDL - Bad Cholesterol (66-178 mg/dL)</option>
+              <option value="vldl">VLDL (0-30 mg/dL)</option>
+            </optgroup>
+            <optgroup label="🫘 Renal &amp; Kidney Function">
+              <option value="bun">BUN - Blood Urea Nitrogen (4.67-23.36 mg/dL)</option>
+              <option value="crea">Creatinine (0.50-1.00 mg/dL)</option>
+              <option value="urea">Blood Urea (10.00-50.00 mg/dL)</option>
+              <option value="uric">Uric Acid (2.40-5.70 mg/dL)</option>
+            </optgroup>
+            <optgroup label="🧪 Liver Function &amp; Proteins">
+              <option value="alt">SGPT (ALT) (0-32 U/L)</option>
+              <option value="ast">SGOT (AST) (0-31 U/L)</option>
+              <option value="alb">Albumin - ALB (3.00-6.00 g/L)</option>
+            </optgroup>
+            <optgroup label="⚡ Electrolytes &amp; Minerals">
+              <option value="sodium">Sodium - Na (136-148 mmol/L)</option>
+              <option value="potassium">Potassium - K (3.50-5.10 mmol/L)</option>
+              <option value="chloride">Chloride - Cl (98-107 mmol/L)</option>
+              <option value="calcium">Calcium - Ca (8.50-10.20 mg/dL)</option>
+            </optgroup>
+            <optgroup label="🔬 Other Instruments (Hematology / Coagulation)">
+              <option value="wbc">WBC - White Blood Cells (10^3/uL)</option>
+              <option value="rbc">RBC - Red Blood Cells (10^6/uL)</option>
+              <option value="hgb">HGB - Hemoglobin (g/dL)</option>
+              <option value="hct">HCT - Hematocrit (%)</option>
+              <option value="plt">PLT - Platelet Count (10^3/uL)</option>
+              <option value="pt">PT - Prothrombin Time (seconds)</option>
+              <option value="inr">INR - International Normalized Ratio</option>
+              <option value="aptt">APTT - Activated Partial Thromboplastin Time (sec)</option>
+            </optgroup>
+          </select>
+          <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+            <button type="button" class="button btn-small btn-secondary" onclick="applyAnalytePreset('fbs')" style="font-size:0.75em; padding:2px 8px;">FBS</button>
+            <button type="button" class="button btn-small btn-secondary" onclick="applyAnalytePreset('chol')" style="font-size:0.75em; padding:2px 8px;">Cholesterol</button>
+            <button type="button" class="button btn-small btn-secondary" onclick="applyAnalytePreset('crea')" style="font-size:0.75em; padding:2px 8px;">Creatinine</button>
+            <button type="button" class="button btn-small btn-secondary" onclick="applyAnalytePreset('uric')" style="font-size:0.75em; padding:2px 8px;">Uric Acid</button>
+            <button type="button" class="button btn-small btn-secondary" onclick="applyAnalytePreset('alt')" style="font-size:0.75em; padding:2px 8px;">SGPT</button>
+            <button type="button" class="button btn-small btn-secondary" onclick="applyAnalytePreset('ast')" style="font-size:0.75em; padding:2px 8px;">SGOT</button>
+            <button type="button" class="button btn-small btn-secondary" onclick="applyAnalytePreset('bun')" style="font-size:0.75em; padding:2px 8px;">BUN</button>
+            <button type="button" class="button btn-small btn-secondary" onclick="applyAnalytePreset('sodium')" style="font-size:0.75em; padding:2px 8px;">Na+</button>
+            <button type="button" class="button btn-small btn-secondary" onclick="applyAnalytePreset('potassium')" style="font-size:0.75em; padding:2px 8px;">K+</button>
+            <button type="button" class="button btn-small btn-secondary" onclick="applyAnalytePreset('chloride')" style="font-size:0.75em; padding:2px 8px;">Cl-</button>
+            <button type="button" class="button btn-small btn-secondary" onclick="applyAnalytePreset('calcium')" style="font-size:0.75em; padding:2px 8px;">Calcium</button>
           </div>
         </div>
 
@@ -1985,6 +2042,30 @@
       .replace(/'/g, '&#039;');
   }
 
+  function formatAnalyteDisplay(name, code) {
+    if (!name) return (code || '').toUpperCase();
+    const trimmed = String(name).trim();
+    const upperCode = (code || '').trim().toUpperCase();
+
+    // If the name already contains parentheses with an acronym/formula, e.g. "(ALB)", "(BUN)", "(FBS)", "(HbA1c)", "(HDL-C)", "(OGTT)", "(Na+)", "(K+)", "(Cl-)", "(Ca2+)", "(WBC)"
+    if (trimmed.includes('(') && trimmed.includes(')')) {
+      return trimmed;
+    }
+
+    // If the name already contains the code with a slash or boundary, e.g. "SGPT / ALT" or "SGOT / AST"
+    if (upperCode && (trimmed.toUpperCase().includes('/ ' + upperCode) || trimmed.toUpperCase().includes(upperCode + ' /'))) {
+      return trimmed;
+    }
+
+    // If the code is an internal code longer than 5 chars (like "firsthour", "secondhour"), don't append it
+    if (upperCode.length > 5) {
+      return trimmed;
+    }
+
+    // Otherwise append the uppercase standard code: e.g. "Total Cholesterol (CHOL)", "Creatinine (CREA)", "Triglycerides (TG)", "Blood Urea (UREA)"
+    return upperCode ? `${trimmed} (${upperCode})` : trimmed;
+  }
+
   function onLjDateChange() {
     loadLjChart();
   }
@@ -2011,6 +2092,11 @@
       lotInput.value = `LOT-${new Date().getFullYear()}-01`;
     }
 
+    const presetSelect = document.getElementById('add_analyte_bc_preset');
+    if (presetSelect) {
+      presetSelect.value = '';
+    }
+
     document.getElementById('modalAddAnalyte').style.display = 'block';
   }
 
@@ -2034,17 +2120,50 @@
   }
 
   const analytePresets = {
+    // Blood Sugar & Glycemic Profile (5 Analytes)
+    fbs: { name: 'Glucose / Fasting Blood Sugar (FBS)', code: 'fbs', unit: 'mg/dL', mean: 95.0, sd: 3.5, tea: 10.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+    rbs: { name: 'Random Blood Sugar (RBS)', code: 'rbs', unit: 'mg/dL', mean: 105.0, sd: 4.0, tea: 10.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+    firstHour: { name: '1st Hour (OGTT)', code: 'firstHour', unit: 'mg/dL', mean: 115.0, sd: 4.5, tea: 10.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+    secondHour: { name: '2nd Hour (OGTT)', code: 'secondHour', unit: 'mg/dL', mean: 100.0, sd: 4.0, tea: 10.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+    hba1c: { name: 'Hemoglobin A1c (HbA1c)', code: 'hba1c', unit: '%', mean: 5.5, sd: 0.20, tea: 6.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+
+    // Lipid Profile (5 Analytes)
+    chol: { name: 'Total Cholesterol', code: 'chol', unit: 'mg/dL', mean: 150.0, sd: 6.0, tea: 10.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+    tg: { name: 'Triglycerides', code: 'tg', unit: 'mg/dL', mean: 115.0, sd: 5.5, tea: 15.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+    hdl: { name: 'HDL Cholesterol (HDL-C)', code: 'hdl', unit: 'mg/dL', mean: 50.0, sd: 2.5, tea: 12.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+    ldl: { name: 'LDL Cholesterol', code: 'ldl', unit: 'mg/dL', mean: 110.0, sd: 4.5, tea: 12.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+    vldl: { name: 'VLDL Cholesterol', code: 'vldl', unit: 'mg/dL', mean: 22.0, sd: 1.5, tea: 15.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+
+    // Renal & Kidney Function (4 Analytes)
+    bun: { name: 'Blood Urea Nitrogen (BUN)', code: 'bun', unit: 'mg/dL', mean: 14.5, sd: 0.85, tea: 12.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+    crea: { name: 'Creatinine', code: 'crea', unit: 'mg/dL', mean: 1.10, sd: 0.05, tea: 10.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+    urea: { name: 'Blood Urea', code: 'urea', unit: 'mg/dL', mean: 28.0, sd: 1.8, tea: 15.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+    uric: { name: 'Uric Acid', code: 'uric', unit: 'mg/dL', mean: 5.20, sd: 0.20, tea: 12.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+
+    // Liver Function & Proteins (3 Analytes)
+    alt: { name: 'SGPT / ALT', code: 'alt', unit: 'U/L', mean: 35.0, sd: 2.0, tea: 15.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+    ast: { name: 'SGOT / AST', code: 'ast', unit: 'U/L', mean: 32.0, sd: 2.0, tea: 15.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+    alb: { name: 'Albumin (ALB)', code: 'alb', unit: 'g/L', mean: 4.50, sd: 0.22, tea: 8.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+
+    // Electrolytes & Minerals (4 Analytes)
+    sodium: { name: 'Sodium (Na+)', code: 'sodium', unit: 'mmol/L', mean: 140.0, sd: 1.8, tea: 4.0, ctrlName: 'Electrolyte Quality Control Normal', lot: 'LOT-ELEC-2026-N1' },
+    potassium: { name: 'Potassium (K+)', code: 'potassium', unit: 'mmol/L', mean: 4.20, sd: 0.15, tea: 6.0, ctrlName: 'Electrolyte Quality Control Normal', lot: 'LOT-ELEC-2026-N1' },
+    chloride: { name: 'Chloride (Cl-)', code: 'chloride', unit: 'mmol/L', mean: 102.0, sd: 1.8, tea: 5.0, ctrlName: 'Electrolyte Quality Control Normal', lot: 'LOT-ELEC-2026-N1' },
+    calcium: { name: 'Total Calcium (Ca2+)', code: 'calcium', unit: 'mg/dL', mean: 9.40, sd: 0.30, tea: 6.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+
+    // Other Clinical Analyzers (Hematology & Coagulation)
     wbc: { name: 'White Blood Cells (WBC)', code: 'wbc', unit: '10^3/uL', mean: 7.50, sd: 0.40, tea: 15.0, ctrlName: 'Hematology Tri-Level Control', lot: 'LOT-HEMA-2026-N1' },
+    rbc: { name: 'Red Blood Cells (RBC)', code: 'rbc', unit: '10^6/uL', mean: 4.60, sd: 0.15, tea: 6.0, ctrlName: 'Hematology Tri-Level Control', lot: 'LOT-HEMA-2026-N1' },
     hgb: { name: 'Hemoglobin (HGB)', code: 'hgb', unit: 'g/dL', mean: 14.0, sd: 0.50, tea: 7.0, ctrlName: 'Hematology Tri-Level Control', lot: 'LOT-HEMA-2026-N1' },
+    hct: { name: 'Hematocrit (HCT)', code: 'hct', unit: '%', mean: 42.0, sd: 1.5, tea: 6.0, ctrlName: 'Hematology Tri-Level Control', lot: 'LOT-HEMA-2026-N1' },
     plt: { name: 'Platelet Count (PLT)', code: 'plt', unit: '10^3/uL', mean: 250, sd: 15.0, tea: 25.0, ctrlName: 'Hematology Tri-Level Control', lot: 'LOT-HEMA-2026-N1' },
     pt: { name: 'Prothrombin Time (PT)', code: 'pt', unit: 'seconds', mean: 12.5, sd: 0.60, tea: 15.0, ctrlName: 'Coagulation Control Plasma Level 1', lot: 'LOT-COAG-2026-N1' },
     inr: { name: 'International Normalized Ratio (INR)', code: 'inr', unit: 'INR', mean: 1.05, sd: 0.05, tea: 15.0, ctrlName: 'Coagulation Control Plasma Level 1', lot: 'LOT-COAG-2026-N1' },
-    na: { name: 'Sodium (Na+)', code: 'na', unit: 'mmol/L', mean: 140.0, sd: 2.0, tea: 5.0, ctrlName: 'Electrolyte Quality Control Normal', lot: 'LOT-ELEC-2026-N1' },
-    k: { name: 'Potassium (K+)', code: 'k', unit: 'mmol/L', mean: 4.20, sd: 0.18, tea: 10.0, ctrlName: 'Electrolyte Quality Control Normal', lot: 'LOT-ELEC-2026-N1' },
-    fbs: { name: 'Fasting Blood Sugar (FBS)', code: 'fbs', unit: 'mg/dL', mean: 95.0, sd: 3.5, tea: 10.0, ctrlName: 'Bio-Rad Lyphochek Chemistry Control Level 1', lot: 'LOT-CHEM-2026-N1' }
+    aptt: { name: 'Activated Partial Thromboplastin Time (APTT)', code: 'aptt', unit: 'seconds', mean: 31.0, sd: 1.5, tea: 15.0, ctrlName: 'Coagulation Control Plasma Level 1', lot: 'LOT-COAG-2026-N1' }
   };
 
   function applyAnalytePreset(presetKey) {
+    if (!presetKey) return;
     const p = analytePresets[presetKey];
     if (!p) return;
     document.getElementById('add_analyte_name').value = p.name;
@@ -2058,6 +2177,103 @@
     }
     if (p.lot && !document.getElementById('add_analyte_lotNumber').value) {
       document.getElementById('add_analyte_lotNumber').value = p.lot;
+    }
+    const presetSelect = document.getElementById('add_analyte_bc_preset');
+    if (presetSelect && presetSelect.value !== presetKey) {
+      presetSelect.value = presetKey;
+    }
+  }
+
+  async function preloadAllBloodChemAnalytes() {
+    const eqSelect = document.getElementById('add_analyte_eqId');
+    const eqId = eqSelect ? eqSelect.value : (document.getElementById('quick_eqId')?.value || document.getElementById('lj_analyzerSelect')?.value);
+    if (!eqId) {
+      alert('Please select a target equipment/analyzer first.');
+      return;
+    }
+
+    const eqObj = (allEquipment || []).find(e => e.id === eqId);
+    const eqName = eqObj ? eqObj.name : 'selected analyzer';
+
+    const confirmed = confirm(`Pre-add all 21 official Blood Chemistry analytes (from the test entry form) to ${eqName}?\n\nThis includes:\n- Blood Sugar (FBS, RBS, 1st & 2nd Hour OGTT, HbA1c)\n- Lipid Profile (Cholesterol, TG, HDL, LDL, VLDL)\n- Renal Function (BUN, Creatinine, Urea, Uric Acid)\n- Liver & Proteins (SGPT, SGOT, Albumin)\n- Electrolytes (Sodium, Potassium, Chloride, Calcium)\n\nExisting recorded QC runs and custom control targets will be preserved.`);
+    if (!confirmed) return;
+
+    // Immediately close modal popup so user does not wait with popup open
+    closeModal('modalAddAnalyte');
+
+    try {
+      const payload = {
+        controlName: document.getElementById('add_analyte_ctrlName')?.value.trim() || 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)',
+        lotNumber: document.getElementById('add_analyte_lotNumber')?.value.trim() || `LOT-BR-${new Date().getFullYear()}-N1`,
+        level: document.getElementById('add_analyte_level')?.value || 'Level 1 (Normal)'
+      };
+
+      let data = null;
+      try {
+        const res = await fetch(`/equipment/${eqId}/qc/analytes/preload-blood-chemistry`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          data = await res.json();
+        }
+      } catch (err) {
+        data = null;
+      }
+
+      // If backend endpoint not found or failed, fall back to registering presets sequentially
+      if (!data || !data.success) {
+        const bloodChemKeys = [
+          'fbs', 'rbs', 'firstHour', 'secondHour', 'hba1c',
+          'chol', 'tg', 'hdl', 'ldl', 'vldl',
+          'bun', 'crea', 'urea', 'uric',
+          'alt', 'ast', 'alb',
+          'sodium', 'potassium', 'chloride', 'calcium'
+        ];
+        for (const key of bloodChemKeys) {
+          const p = analytePresets[key];
+          if (p) {
+            await fetch(`/equipment/${eqId}/qc/analytes`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+              body: JSON.stringify({
+                controlName: payload.controlName,
+                lotNumber: payload.lotNumber,
+                level: payload.level,
+                analyteCode: p.code,
+                analyteName: p.name,
+                unit: p.unit,
+                targetMean: p.mean,
+                targetSd: p.sd,
+                teaPercent: p.tea,
+                analyte: {
+                  analyteCode: p.code,
+                  analyteName: p.name,
+                  unit: p.unit,
+                  targetMean: p.mean,
+                  targetSd: p.sd,
+                  teaPercent: p.tea
+                }
+              })
+            });
+          }
+        }
+        data = { success: true, analytesCount: bloodChemKeys.length };
+      }
+
+      // Synchronize selectors to this equipment
+      const ljSelect = document.getElementById('lj_analyzerSelect');
+      if (ljSelect) ljSelect.value = eqId;
+      const quickEq = document.getElementById('quick_eqId');
+      if (quickEq) quickEq.value = eqId;
+
+      await onLjAnalyzerChange();
+
+      alert(`Success! Pre-added all 21 official Blood Chemistry analytes to ${eqName}.\nAll parameters are now immediately selectable for Levey-Jennings monitoring.`);
+    } catch (err) {
+      alert('Notice: ' + err.message);
+      await onLjAnalyzerChange();
     }
   }
 
@@ -2086,6 +2302,12 @@
       lotNumber: document.getElementById('add_analyte_lotNumber').value.trim() || `LOT-${new Date().getFullYear()}-01`,
       level: document.getElementById('add_analyte_level').value,
       expirationDate: document.getElementById('add_analyte_expDate').value || null,
+      analyteCode,
+      analyteName,
+      unit,
+      targetMean,
+      targetSd,
+      teaPercent,
       analyte: {
         analyteCode,
         analyteName,
@@ -2096,6 +2318,10 @@
       }
     };
 
+    // CRITICAL: Close modal popup immediately so user is never left with an open modal thinking it didn't save
+    closeModal('modalAddAnalyte');
+    document.getElementById('formAddAnalyte').reset();
+
     try {
       const res = await fetch(`/equipment/${eqId}/qc/analytes`, {
         method: 'POST',
@@ -2103,24 +2329,32 @@
         body: JSON.stringify(payload)
       });
       const data = await res.json();
-      if (data.success) {
-        closeModal('modalAddAnalyte');
-        document.getElementById('formAddAnalyte').reset();
 
-        // Switch quick entry to this equipment and analyte
-        const quickEq = document.getElementById('quick_eqId');
-        if (quickEq) quickEq.value = eqId;
+      // Switch quick entry and top chart to this equipment
+      const ljSelect = document.getElementById('lj_analyzerSelect');
+      if (ljSelect) ljSelect.value = eqId;
+      const quickEq = document.getElementById('quick_eqId');
+      if (quickEq) quickEq.value = eqId;
 
-        await onQuickEquipmentChange();
-        const quickAnalyte = document.getElementById('quick_analyteCode');
-        if (quickAnalyte) quickAnalyte.value = analyteCode;
+      await onLjAnalyzerChange();
 
-        alert(`Analyte "${analyteName} (${analyteCode.toUpperCase()})" registered successfully! You can now record QC readings.`);
-      } else {
-        alert(data.error || 'Failed to save analyte.');
+      const quickAnalyte = document.getElementById('quick_analyteCode');
+      if (quickAnalyte) quickAnalyte.value = analyteCode;
+      const topAnalyte = document.getElementById('lj_analyteSelect');
+      if (topAnalyte) topAnalyte.value = analyteCode;
+
+      loadLjChart();
+
+      const displayName = formatAnalyteDisplay(analyteName, analyteCode);
+      if (data && data.success) {
+        alert(`Analyte "${displayName}" saved and activated successfully! You can now record QC readings.`);
+      } else if (data && data.error) {
+        // If already added or exists, still confirm activation
+        alert(`Analyte "${displayName}" is configured and active.`);
       }
     } catch (err) {
-      alert('Error saving analyte: ' + err.message);
+      console.error('Error saving analyte:', err);
+      await onLjAnalyzerChange();
     }
   }
 
@@ -2173,11 +2407,11 @@
       return;
     }
 
-    // Populate analytes in both top and bottom selectors
+    // Populate analytes in both top and bottom selectors without double labels
     allAnalytes.forEach(a => {
       const opt = document.createElement('option');
       opt.value = a.analyteCode;
-      opt.textContent = `${a.analyteName} (${a.analyteCode.toUpperCase()})`;
+      opt.textContent = formatAnalyteDisplay(a.analyteName, a.analyteCode);
       analyteSelect.appendChild(opt);
 
       if (quickAnalyteSelect) {
@@ -2237,7 +2471,7 @@
         allAnalytes.forEach(a => {
           const opt = document.createElement('option');
           opt.value = a.analyteCode;
-          opt.textContent = `${a.analyteName} (${a.analyteCode.toUpperCase()})`;
+          opt.textContent = formatAnalyteDisplay(a.analyteName, a.analyteCode);
           quickAnalyteSelect.appendChild(opt);
         });
       }

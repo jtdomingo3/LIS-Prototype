@@ -369,7 +369,7 @@
         <td class="meta-label">Sample Identification:</td>
         <td><strong style="color: #0369a1;"><%= record.sampleId %></strong></td>
         <td class="meta-label">Target Analyte:</td>
-        <td><strong><%= record.analyteName %> (<%= record.analyteCode ? record.analyteCode.toUpperCase() : '' %>)</strong></td>
+        <td><strong><%= (record.analyteName && record.analyteName.includes('(')) ? record.analyteName : (record.analyteName + (record.analyteCode && record.analyteCode.length <= 5 && !record.analyteName.toUpperCase().includes(record.analyteCode.toUpperCase()) ? ' (' + record.analyteCode.toUpperCase() + ')' : '')) %></strong></td>
       </tr>
       <tr>
         <td class="meta-label">Analytical Equipment:</td>

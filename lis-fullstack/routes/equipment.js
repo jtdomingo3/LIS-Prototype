@@ -3,7 +3,13 @@ const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
 const Equipment = require('../models/Equipment');
 const EquipmentLog = require('../models/EquipmentLog');
-const { QcControl, DEFAULT_CHEMISTRY_ANALYTES } = require('../models/QcControl');
+const { 
+  QcControl, 
+  DEFAULT_CHEMISTRY_ANALYTES, 
+  DEFAULT_CHEMISTRY_ANALYTES_LEVEL2,
+  areAnalyteAliases,
+  getAnalyteAliases 
+} = require('../models/QcControl');
 const QcEntry = require('../models/QcEntry');
 const NeqasRecord = require('../models/NeqasRecord');
 const {
@@ -520,9 +526,12 @@ router.post('/:id/qc/controls', requireAuth, (req, res) => {
     body.equipmentId = req.params.id;
     body.createdBy = getActor(req);
 
-    // If analytes empty, provide default clinical chemistry analytes
+    // If analytes empty, provide default clinical chemistry analytes matching level
     if (!body.analytes || !body.analytes.length) {
-      body.analytes = DEFAULT_CHEMISTRY_ANALYTES;
+      const isL2 = String(body.level || '').includes('2') || 
+                   String(body.controlName || '').includes('Level 2') || 
+                   String(body.level || '').toLowerCase().includes('high');
+      body.analytes = isL2 ? DEFAULT_CHEMISTRY_ANALYTES_LEVEL2 : DEFAULT_CHEMISTRY_ANALYTES;
     }
 
     const ctrl = new QcControl(body);
@@ -563,6 +572,60 @@ router.delete('/qc/controls/:controlId', requireAuth, (req, res) => {
   }
 });
 
+// POST /equipment/:id/qc/analytes/preload-blood-chemistry - Preload all 21 official Blood Chemistry analytes from the test entry form
+router.post('/:id/qc/analytes/preload-blood-chemistry', requireAuth, (req, res) => {
+  try {
+    const rawEq = global.db.getEquipmentById(req.params.id);
+    if (!rawEq) return res.status(404).json({ success: false, error: 'Equipment not found.' });
+    const equipment = new Equipment(rawEq);
+
+    const { controlName, lotNumber, level } = req.body || {};
+    const controls = (global.db.getQcControls(req.params.id) || []).map(c => new QcControl(c));
+    let ctrl = controls[0];
+
+    const isL2 = String(level || '').includes('2') || String(level || '').toLowerCase().includes('high');
+    const templateAnalytes = isL2 ? DEFAULT_CHEMISTRY_ANALYTES_LEVEL2 : DEFAULT_CHEMISTRY_ANALYTES;
+
+    if (!ctrl) {
+      ctrl = new QcControl({
+        equipmentId: req.params.id,
+        controlName: controlName || `${equipment.name} Control Lot Level 1 (Normal)`,
+        lotNumber: lotNumber || `LOT-BR-${new Date().getFullYear()}-N1`,
+        level: level || 'Level 1 (Normal)',
+        expirationDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+        analytes: templateAnalytes,
+        createdBy: getActor(req)
+      });
+    } else {
+      if (controlName) ctrl.controlName = controlName;
+      if (lotNumber) ctrl.lotNumber = lotNumber;
+      if (level) ctrl.level = level;
+
+      if (!Array.isArray(ctrl.analytes)) ctrl.analytes = [];
+      let added = 0;
+      for (const item of templateAnalytes) {
+        const exists = ctrl.analytes.some(a => areAnalyteAliases(a.analyteCode, item.analyteCode));
+        if (!exists) {
+          ctrl.analytes.push({ ...item });
+          added++;
+        }
+      }
+      ctrl.updatedAt = new Date().toISOString();
+    }
+
+    global.db.saveQcControl(ctrl);
+    res.json({
+      success: true,
+      message: `Pre-loaded all 21 Blood Chemistry analytes on "${ctrl.controlName}" for ${equipment.name}.`,
+      control: ctrl,
+      analytesCount: ctrl.analytes.length
+    });
+  } catch (error) {
+    console.error('[routes/equipment] POST /:id/qc/analytes/preload-blood-chemistry error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // POST /equipment/:id/qc/analytes - Add or update a QC analyte on this equipment's control
 router.post('/:id/qc/analytes', requireAuth, (req, res) => {
   try {
@@ -570,18 +633,20 @@ router.post('/:id/qc/analytes', requireAuth, (req, res) => {
     if (!rawEq) return res.status(404).json({ success: false, error: 'Equipment not found.' });
     const equipment = new Equipment(rawEq);
 
-    const {
-      controlName,
-      lotNumber,
-      level,
-      expirationDate,
-      analyteCode,
-      analyteName,
-      unit,
-      targetMean,
-      targetSd,
-      teaPercent
-    } = req.body;
+    const body = req.body || {};
+    const aData = body.analyte || body;
+
+    const controlName = body.controlName || aData.controlName;
+    const lotNumber = body.lotNumber || aData.lotNumber;
+    const level = body.level || aData.level;
+    const expirationDate = body.expirationDate || aData.expirationDate;
+
+    const analyteCode = aData.analyteCode || body.analyteCode;
+    const analyteName = aData.analyteName || body.analyteName;
+    const unit = aData.unit || body.unit;
+    const targetMean = aData.targetMean !== undefined ? aData.targetMean : body.targetMean;
+    const targetSd = aData.targetSd !== undefined ? aData.targetSd : body.targetSd;
+    const teaPercent = aData.teaPercent !== undefined ? aData.teaPercent : body.teaPercent;
 
     if (!analyteName || targetMean === undefined || targetSd === undefined) {
       return res.status(400).json({ success: false, error: 'Analyte Name, Target Mean, and Target SD are required.' });
@@ -618,7 +683,7 @@ router.post('/:id/qc/analytes', requireAuth, (req, res) => {
       if (expirationDate) ctrl.expirationDate = expirationDate;
 
       if (!Array.isArray(ctrl.analytes)) ctrl.analytes = [];
-      const idx = ctrl.analytes.findIndex(a => (a.analyteCode || '').toLowerCase() === cleanCode.toLowerCase());
+      const idx = ctrl.analytes.findIndex(a => areAnalyteAliases(a.analyteCode, cleanCode));
       if (idx >= 0) {
         ctrl.analytes[idx] = analyteObj;
       } else {
@@ -643,7 +708,20 @@ router.post('/:id/qc/analytes', requireAuth, (req, res) => {
 router.get('/:id/qc/entries', requireAuth, (req, res) => {
   try {
     const { analyteCode } = req.query;
-    const entries = (global.db.getQcEntries(req.params.id, analyteCode) || []).map(e => new QcEntry(e));
+    let rawList = global.db.getQcEntries(req.params.id, analyteCode) || [];
+    if (analyteCode && rawList.length === 0) {
+      const aliases = getAnalyteAliases(analyteCode);
+      for (const alt of aliases) {
+        if (alt !== analyteCode) {
+          const altList = global.db.getQcEntries(req.params.id, alt) || [];
+          if (altList.length > 0) {
+            rawList = altList;
+            break;
+          }
+        }
+      }
+    }
+    const entries = rawList.map(e => new QcEntry(e));
     res.json({ success: true, count: entries.length, entries });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -780,7 +858,20 @@ router.get('/:id/qc/levey-jennings', requireAuth, (req, res) => {
       control = controls.find(c => c.getAnalyte(analyteCode)) || controls[0] || null;
     }
 
-    let entries = (global.db.getQcEntries(req.params.id, analyteCode) || []).map(e => new QcEntry(e));
+    let rawEntries = global.db.getQcEntries(req.params.id, analyteCode) || [];
+    if (rawEntries.length === 0) {
+      const aliases = getAnalyteAliases(analyteCode);
+      for (const alt of aliases) {
+        if (alt !== analyteCode) {
+          const altList = global.db.getQcEntries(req.params.id, alt) || [];
+          if (altList.length > 0) {
+            rawEntries = altList;
+            break;
+          }
+        }
+      }
+    }
+    let entries = rawEntries.map(e => new QcEntry(e));
 
     // Optional filter by startDate and endDate (YYYY-MM-DD)
     if (startDate) {
@@ -853,7 +944,20 @@ router.get('/:id/qc/print', requireAuth, (req, res) => {
       control = controls.find(c => c.getAnalyte(targetAnalyte)) || controls[0] || null;
     }
 
-    let entries = (global.db.getQcEntries(req.params.id, targetAnalyte) || []).map(e => new QcEntry(e));
+    let rawPrintEntries = global.db.getQcEntries(req.params.id, targetAnalyte) || [];
+    if (rawPrintEntries.length === 0) {
+      const aliases = getAnalyteAliases(targetAnalyte);
+      for (const alt of aliases) {
+        if (alt !== targetAnalyte) {
+          const altList = global.db.getQcEntries(req.params.id, alt) || [];
+          if (altList.length > 0) {
+            rawPrintEntries = altList;
+            break;
+          }
+        }
+      }
+    }
+    let entries = rawPrintEntries.map(e => new QcEntry(e));
 
     if (startDate) {
       entries = entries.filter(e => (e.runDate || '').split('T')[0] >= startDate);

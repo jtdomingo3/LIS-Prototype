@@ -418,7 +418,7 @@
       </tr>
       <tr>
         <td class="meta-label">Analyte / Test Parameter:</td>
-        <td><strong><%= dataset.analyteName %> (<%= dataset.analyteCode.toUpperCase() %>)</strong></td>
+        <td><strong><%= (dataset.analyteName && dataset.analyteName.includes('(')) ? dataset.analyteName : (dataset.analyteName + (dataset.analyteCode && dataset.analyteCode.length <= 5 && !dataset.analyteName.toUpperCase().includes(dataset.analyteCode.toUpperCase()) ? ' (' + dataset.analyteCode.toUpperCase() + ')' : '')) %></strong></td>
         <td class="meta-label">Target Mean &plusmn; SD:</td>
         <td><strong><%= dataset.targetMean %> &plusmn; <%= dataset.targetSd %> <%= dataset.unit %></strong></td>
       </tr>
