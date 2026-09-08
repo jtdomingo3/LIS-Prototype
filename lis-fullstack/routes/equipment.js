@@ -78,12 +78,15 @@ router.get('/', requireAuth, (req, res) => {
       return res.json({ success: true, kpi, count: filtered.length, equipment: filtered });
     }
 
+    const users = (typeof global.db.getUsers === 'function') ? global.db.getUsers() : [];
+
     // If server views exist, render; otherwise fallback to JSON
     try {
       res.render('equipment/index', {
         title: 'Laboratory Equipment Management',
         kpi,
         equipment: filtered,
+        users,
         query: req.query
       });
     } catch (_) {
@@ -720,15 +723,140 @@ router.get('/:id/qc/print', requireAuth, (req, res) => {
 
     const dataset = buildLeveyJenningsDataset(control, targetAnalyte, entries, { equipment });
 
+    const allUsers = (typeof global.db.getUsers === 'function') ? global.db.getUsers() : [];
+
+    const isXray = Boolean(
+      equipment.isXRay ||
+      (equipment.department && (equipment.department.toLowerCase().includes('radiolog') || equipment.department.toLowerCase().includes('imaging') || equipment.department.toLowerCase().includes('x-ray'))) ||
+      (equipment.category && (equipment.category.toLowerCase().includes('x-ray') || equipment.category.toLowerCase().includes('radiolog') || equipment.category.toLowerCase().includes('imaging')))
+    );
+
+    // Deduplicate and filter staff strictly by clinical role
+    const uniqueUsersByName = [];
+    const seenNames = new Set();
+    allUsers.forEach(u => {
+      const k = (u.name || '').trim().toLowerCase();
+      if (k && !seenNames.has(k)) {
+        seenNames.add(k);
+        uniqueUsersByName.push(u);
+      }
+    });
+
+    const medtechs = uniqueUsersByName.filter(u =>
+      u.role === 'Medical Technologist' ||
+      ((u.name && u.name.includes('RMT')) && u.role !== 'Admin' && u.role !== 'Receptionist')
+    );
+    const radTechs = uniqueUsersByName.filter(u =>
+      u.role === 'X-Ray Technologist' ||
+      ((u.name && (u.name.includes('RXT') || u.name.includes('RadTech'))) && u.role !== 'Admin')
+    );
+    const pathologists = uniqueUsersByName.filter(u =>
+      u.role === 'Pathologist' || (u.name && u.name.includes('Espiritu'))
+    );
+    const radiologists = uniqueUsersByName.filter(u => u.role === 'Radiologist');
+    const allDoctors = uniqueUsersByName.filter(u =>
+      u.role === 'Pathologist' || u.role === 'Radiologist' || u.role === 'Doctor' || u.role === 'Internist' ||
+      (u.name && (u.name.includes('MD') || u.name.includes('M.D.')))
+    );
+
+    // Operator Candidate pool based strictly on equipment type (clinical = MedTech only, radiology = RadTech only)
+    const opPool = isXray
+      ? (radTechs.length ? radTechs : [{ name: 'John Kevin R. Estanislao, RXT', licenseNumber: '' }])
+      : (medtechs.length ? medtechs : [{ name: 'Gezyne M. Lopez, RMT', licenseNumber: '67820' }]);
+
+    // Default Operator
+    let defaultOperator;
+    if (isXray) {
+      defaultOperator = opPool[0];
+    } else {
+      const entryOp = entries.length > 0 ? entries[entries.length - 1].operatorName : null;
+      const matchedMedtech = entryOp ? opPool.find(u => u.name && u.name.toLowerCase() === entryOp.toLowerCase()) : null;
+      defaultOperator = matchedMedtech || opPool.find(u => u.licenseNumber) || opPool[0];
+    }
+
+    // Default Validator (QC Supervisor)
+    const valPool = opPool;
+    let defaultValidator;
+    if (isXray) {
+      defaultValidator = valPool.find(u => u.id !== defaultOperator.id) || valPool[0];
+    } else {
+      defaultValidator = valPool.find(u => u.name && u.name.includes('Domingo')) || valPool.find(u => u.id !== defaultOperator.id) || valPool[0];
+    }
+
+    // Default Pathologist / Approver
+    const p1Pool = isXray
+      ? (radiologists.length ? radiologists : allDoctors)
+      : (pathologists.length ? pathologists : allDoctors);
+    let defaultPathologist = p1Pool[0] || (isXray ? { name: 'Alberto J. Gabriel, MD, FPCR', licenseNumber: '' } : { name: 'Bernadette R. Espiritu, M.D.', licenseNumber: '75547' });
+
+    // Validate query parameter overrides against allowed personnel
+    const reqOp = req.query.operatorName ? opPool.find(u => u.name.toLowerCase() === req.query.operatorName.trim().toLowerCase()) : null;
+    const reqVal = req.query.validatorName ? valPool.find(u => u.name.toLowerCase() === req.query.validatorName.trim().toLowerCase()) : null;
+    const reqP1 = req.query.pathologistName ? (allDoctors.find(u => u.name.toLowerCase() === req.query.pathologistName.trim().toLowerCase()) || p1Pool.find(u => u.name.toLowerCase() === req.query.pathologistName.trim().toLowerCase())) : null;
+    const reqP2 = req.query.pathologist2Name ? allDoctors.find(u => u.name.toLowerCase() === req.query.pathologist2Name.trim().toLowerCase()) : null;
+
+    const chosenOp = reqOp || defaultOperator;
+    const chosenVal = reqVal || defaultValidator;
+    const chosenP1 = reqP1 || defaultPathologist;
+
+    const hasPathologist2 = req.query.hasPathologist2 === '1' ||
+      req.query.hasPathologist2 === 'true' ||
+      Boolean(req.query.pathologist2Name && req.query.pathologist2Name.trim());
+
+    const signatories = {
+      operatorName: chosenOp.name,
+      operatorTitle: isXray ? 'Performed By (X-Ray Technologist)' : 'Performed By (Medical Technologist)',
+      operatorLicense: (req.query.operatorLicense !== undefined && req.query.operatorLicense !== '' && reqOp)
+        ? req.query.operatorLicense
+        : (chosenOp.licenseNumber || ''),
+
+      validatorName: chosenVal.name,
+      validatorTitle: isXray ? 'Reviewed & Verified By (Radiology Supervisor)' : 'Reviewed & Verified By (QC Supervisor)',
+      validatorLicense: (req.query.validatorLicense !== undefined && req.query.validatorLicense !== '' && reqVal)
+        ? req.query.validatorLicense
+        : (chosenVal.licenseNumber || ''),
+
+      pathologistName: chosenP1.name,
+      pathologistTitle: isXray ? 'Approved By (Radiologist)' : 'Approved By (Head of Laboratory / Pathologist)',
+      pathologistLicense: (req.query.pathologistLicense !== undefined && req.query.pathologistLicense !== '' && reqP1)
+        ? req.query.pathologistLicense
+        : (chosenP1.licenseNumber || (isXray ? '' : '75547')),
+
+      hasPathologist2: hasPathologist2,
+      pathologist2Name: reqP2 ? reqP2.name : (req.query.pathologist2Name || ''),
+      pathologist2Title: isXray ? 'Approved By (Associate Radiologist)' : 'Approved By (Associate Pathologist)',
+      pathologist2License: (req.query.pathologist2License !== undefined && req.query.pathologist2License !== '')
+        ? req.query.pathologist2License
+        : ((reqP2 && reqP2.licenseNumber) || '')
+    };
+
     res.render('equipment/print_lj', {
       layout: false,
       title: `Levey-Jennings QC Report - ${dataset.analyteName} (${dataset.lotNumber})`,
       equipment,
-      dataset
+      dataset,
+      signatories,
+      allUsers
     });
   } catch (error) {
     console.error('[routes/equipment] Print Levey-Jennings error:', error);
     res.status(500).send('Error generating printable QC report: ' + error.message);
+  }
+});
+
+// GET /equipment/api/signatories - Real-time signatory users for dynamic auto-refresh
+router.get('/api/signatories', requireAuth, (req, res) => {
+  try {
+    const rawUsers = (typeof global.db.getUsers === 'function') ? global.db.getUsers() : [];
+    const users = rawUsers.map(u => ({
+      id: u.id,
+      name: u.name,
+      role: u.role,
+      license: u.licenseNumber || ''
+    }));
+    res.json({ success: true, users });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

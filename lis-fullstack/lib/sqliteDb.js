@@ -1205,6 +1205,13 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     saveEquipment(item) {
       if (!item || !item.id) return null;
       try {
+        const code = item.equipmentCode || item.code;
+        if (code) {
+          const existing = this.getEquipmentByCode(code);
+          if (existing && existing.id && existing.id !== item.id) {
+            item.id = existing.id;
+          }
+        }
         const data = {
           id: String(item.id),
           equipmentCode: safeStr(item.equipmentCode || item.code || ''),
@@ -2613,6 +2620,13 @@ function createSqlJsDb(SQL, dbPath) {
     saveEquipment(item) {
       if (!item || !item.id) return null;
       try {
+        const code = item.equipmentCode || item.code;
+        if (code) {
+          const existing = this.getEquipmentByCode(code);
+          if (existing && existing.id && existing.id !== item.id) {
+            item.id = existing.id;
+          }
+        }
         const data = {
           id: String(item.id),
           equipmentCode: item.equipmentCode || item.code || '',

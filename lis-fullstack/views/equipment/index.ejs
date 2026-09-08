@@ -626,13 +626,72 @@
         </div>
         <div style="display: flex; gap: 8px;">
           <button type="button" class="button btn-primary" onclick="printLjReport()">
-            <i class="fa fa-print"></i> 🖨️ Print Levey-Jennings (Letter Size)
+            <i class="fa fa-print"></i> 🖨️ Print Levey-Jennings
           </button>
           <button type="button" class="button btn-secondary" onclick="exportDohReport()">
             <i class="fa fa-file-export"></i> DOH Report (JSON)
           </button>
         </div>
       </div>
+
+      <!-- Printable Signatories Configuration Panel -->
+      <details id="lj_signatories_panel" style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px;">
+        <summary style="font-weight: 600; font-size: 0.88em; cursor: pointer; color: #1e293b; display: flex; align-items: center; justify-content: space-between; user-select: none;">
+          <span style="display: inline-flex; align-items: center; gap: 6px;">
+            <i class="fa fa-signature" style="color: #0284c7;"></i>
+            <span><strong>Print Report Signatories</strong> <span style="font-weight: normal; color: #64748b;">(Operator, Validator & Approving Pathologist)</span></span>
+          </span>
+          <span style="font-size: 0.8em; color: #0284c7; font-weight: 600;">Configure &darr;</span>
+        </summary>
+
+        <div style="margin-top: 10px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+          <!-- 1. Operator Dropdown -->
+          <div style="background: #fff; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+            <label style="font-weight: 600; font-size: 0.82em; color: #334155; display: block; margin-bottom: 4px;">
+              <i class="fa fa-user-check" style="color: #0284c7;"></i> 1. Operator (<span id="lj_op_role_label">MedTech</span>)
+            </label>
+            <select id="lj_operatorSelect" onchange="onOperatorSelectChange()" style="width: 100%; font-size: 0.85em; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: 500;">
+            </select>
+            <div id="lj_op_lic_preview" style="font-size: 0.78em; color: #64748b; margin-top: 4px;">PRC License: —</div>
+          </div>
+
+          <!-- 2. Validator Dropdown -->
+          <div style="background: #fff; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+            <label style="font-weight: 600; font-size: 0.82em; color: #334155; display: block; margin-bottom: 4px;">
+              <i class="fa fa-user-shield" style="color: #0284c7;"></i> 2. Validator (QC Supervisor)
+            </label>
+            <select id="lj_validatorSelect" onchange="onValidatorSelectChange()" style="width: 100%; font-size: 0.85em; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: 500;">
+            </select>
+            <div id="lj_val_lic_preview" style="font-size: 0.78em; color: #64748b; margin-top: 4px;">PRC License: —</div>
+          </div>
+
+          <!-- 3. Pathologist Dropdown -->
+          <div style="background: #fff; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+            <label style="font-weight: 600; font-size: 0.82em; color: #334155; display: block; margin-bottom: 4px;">
+              <i class="fa fa-user-md" style="color: #0284c7;"></i> 3. <span id="lj_p1_role_label">Approving Pathologist</span>
+            </label>
+            <select id="lj_pathologistSelect" onchange="onPathologistSelectChange()" style="width: 100%; font-size: 0.85em; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: 500;">
+            </select>
+            <div id="lj_p1_lic_preview" style="font-size: 0.78em; color: #64748b; margin-top: 4px;">PRC License: —</div>
+          </div>
+
+          <!-- 4. Second Pathologist (Optional) Dropdown -->
+          <div style="background: #fff; padding: 10px; border-radius: 6px; border: 1px dashed #94a3b8;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+              <label style="font-weight: 600; font-size: 0.82em; color: #334155; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
+                <input type="checkbox" id="lj_enablePathologist2" onchange="togglePathologist2Modal(this.checked)">
+                <span>4. 2nd Pathologist</span>
+              </label>
+              <span id="lj_p2_badge" style="font-size: 0.72em; color: #64748b;">(Optional)</span>
+            </div>
+            <div id="lj_p2_fields" style="opacity: 0.5; pointer-events: none; margin-top: 4px;">
+              <select id="lj_pathologist2Select" onchange="onPathologist2SelectChange()" style="width: 100%; font-size: 0.85em; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: 500;">
+              </select>
+              <div id="lj_p2_lic_preview" style="font-size: 0.78em; color: #64748b; margin-top: 4px;">PRC License: —</div>
+            </div>
+          </div>
+        </div>
+      </details>
 
       <!-- LJ Chart Canvas Area -->
       <div class="lj-container">
@@ -774,6 +833,7 @@
 <script>
   // Global state
   let allEquipment = <%- JSON.stringify(equipment || []) %>;
+  let allUsers = <%- JSON.stringify((typeof users !== 'undefined' && Array.isArray(users)) ? users.map(u => ({ id: u.id, name: u.name, role: u.role, license: u.licenseNumber || '' })) : []) %>;
   let currentLjData = null;
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -785,7 +845,203 @@
       if (el) el.value = today;
     });
     populateAnalyzerDropdowns();
+    populateSignatoryDropdowns();
   });
+
+  function populateSignatoryDropdowns() {
+    const eqId = document.getElementById('lj_analyzerSelect')?.value;
+    const eq = allEquipment.find(e => e.id === eqId) || allEquipment[0];
+    const isXray = eq && (
+      (eq.category && eq.category.toLowerCase().includes('x-ray')) ||
+      (eq.department && eq.department.toLowerCase().includes('radiolog'))
+    );
+
+    const opRoleLbl = document.getElementById('lj_op_role_label');
+    const p1RoleLbl = document.getElementById('lj_p1_role_label');
+    if (opRoleLbl) opRoleLbl.textContent = isXray ? 'X-Ray Tech' : 'MedTech';
+    if (p1RoleLbl) p1RoleLbl.textContent = isXray ? 'Approving Radiologist' : 'Approving Pathologist';
+
+    const opSelect = document.getElementById('lj_operatorSelect');
+    const valSelect = document.getElementById('lj_validatorSelect');
+    const p1Select = document.getElementById('lj_pathologistSelect');
+    const p2Select = document.getElementById('lj_pathologist2Select');
+
+    if (!opSelect || !valSelect || !p1Select || !p2Select) return;
+
+    opSelect.innerHTML = '';
+    valSelect.innerHTML = '';
+    p1Select.innerHTML = '';
+    p2Select.innerHTML = '<option value="">-- Choose 2nd Signatory --</option>';
+
+    // Deduplicate staff by name
+    const uniqueUsersByName = [];
+    const seenNames = new Set();
+    (allUsers || []).forEach(u => {
+      const k = (u.name || '').trim().toLowerCase();
+      if (k && !seenNames.has(k)) {
+        seenNames.add(k);
+        uniqueUsersByName.push(u);
+      }
+    });
+
+    // Filter staff strictly according to equipment type
+    const medtechs = uniqueUsersByName.filter(u =>
+      u.role === 'Medical Technologist' ||
+      ((u.name && u.name.includes('RMT')) && u.role !== 'Admin' && u.role !== 'Receptionist')
+    );
+    const radtechs = uniqueUsersByName.filter(u =>
+      u.role === 'X-Ray Technologist' ||
+      ((u.name && (u.name.includes('RXT') || u.name.includes('RadTech'))) && u.role !== 'Admin')
+    );
+    const pathologists = uniqueUsersByName.filter(u =>
+      u.role === 'Pathologist' || (u.name && u.name.includes('Espiritu'))
+    );
+    const radiologists = uniqueUsersByName.filter(u => u.role === 'Radiologist');
+    const otherDoctors = uniqueUsersByName.filter(u =>
+      (u.role === 'Doctor' || u.role === 'Internist' || (u.name && (u.name.includes('MD') || u.name.includes('M.D.')))) &&
+      !pathologists.includes(u) && !radiologists.includes(u)
+    );
+    const allDoctors = [...pathologists, ...otherDoctors];
+
+    // For Clinical equipment: strictly MedTechs only. For Radiology equipment: strictly RadTechs only.
+    const opCandidates = isXray
+      ? (radtechs.length ? radtechs : [{ id: 'rad1', name: 'John Kevin R. Estanislao, RXT', license: '' }])
+      : (medtechs.length ? medtechs : [{ id: 'med1', name: 'Gezyne M. Lopez, RMT', license: '67820' }]);
+
+    const valCandidates = isXray
+      ? (radtechs.length ? radtechs : [{ id: 'rad2', name: 'Chief Radiologic Technologist', license: '' }])
+      : (medtechs.length ? medtechs : [{ id: 'med2', name: 'Jeff Louine Jamir T. Domingo, RMT, PMSDA', license: '68285' }]);
+
+    const p1Candidates = isXray
+      ? (radiologists.length ? radiologists : (allDoctors.length ? allDoctors : [{ id: 'doc1', name: 'Alberto J. Gabriel, MD, FPCR', license: '' }]))
+      : (pathologists.length ? pathologists : (allDoctors.length ? allDoctors : [{ id: 'path1', name: 'Bernadette R. Espiritu, M.D.', license: '75547' }]));
+
+    const p2Candidates = isXray
+      ? (radiologists.length ? radiologists : allDoctors)
+      : (allDoctors.length ? allDoctors : [{ id: 'path1', name: 'Bernadette R. Espiritu, M.D.', license: '75547' }]);
+
+    // 1. Populate Operator
+    opCandidates.forEach(u => {
+      const opt = document.createElement('option');
+      opt.value = u.id;
+      opt.dataset.name = u.name;
+      opt.dataset.license = u.license || '';
+      opt.textContent = `${u.name}${u.license ? ' (PRC: ' + u.license + ')' : ''}`;
+      opSelect.appendChild(opt);
+    });
+
+    // 2. Populate Validator
+    valCandidates.forEach(u => {
+      const opt = document.createElement('option');
+      opt.value = u.id;
+      opt.dataset.name = u.name;
+      opt.dataset.license = u.license || '';
+      opt.textContent = `${u.name}${u.license ? ' (PRC: ' + u.license + ')' : ''}`;
+      valSelect.appendChild(opt);
+    });
+
+    // 3. Populate Pathologist 1
+    p1Candidates.forEach(u => {
+      const opt = document.createElement('option');
+      opt.value = u.id;
+      opt.dataset.name = u.name;
+      opt.dataset.license = u.license || '';
+      opt.textContent = `${u.name}${u.license ? ' (PRC: ' + u.license + ')' : ''}`;
+      p1Select.appendChild(opt);
+    });
+
+    // 4. Populate Pathologist 2
+    p2Candidates.forEach(u => {
+      const opt = document.createElement('option');
+      opt.value = u.id;
+      opt.dataset.name = u.name;
+      opt.dataset.license = u.license || '';
+      opt.textContent = `${u.name}${u.license ? ' (PRC: ' + u.license + ')' : ''}`;
+      p2Select.appendChild(opt);
+    });
+
+    // Set Default Selections:
+    if (!isXray) {
+      const opDef = opCandidates.find(u => u.name && (u.name.includes('Lopez') || u.name.includes('Gezyne M.'))) || opCandidates[0];
+      if (opDef) opSelect.value = opDef.id;
+
+      const valDef = valCandidates.find(u => u.name && u.name.includes('Domingo')) || valCandidates[1] || valCandidates[0];
+      if (valDef) valSelect.value = valDef.id;
+
+      const p1Def = p1Candidates.find(u => u.name && u.name.includes('Espiritu')) || p1Candidates[0];
+      if (p1Def) p1Select.value = p1Def.id;
+    } else {
+      if (opCandidates[0]) opSelect.value = opCandidates[0].id;
+      if (valCandidates.length > 1) valSelect.value = valCandidates[1].id;
+      else if (valCandidates[0]) valSelect.value = valCandidates[0].id;
+      if (p1Candidates[0]) p1Select.value = p1Candidates[0].id;
+    }
+
+    onOperatorSelectChange();
+    onValidatorSelectChange();
+    onPathologistSelectChange();
+    onPathologist2SelectChange();
+  }
+
+  function onOperatorSelectChange() {
+    const sel = document.getElementById('lj_operatorSelect');
+    const opt = sel ? sel.options[sel.selectedIndex] : null;
+    const lic = opt ? (opt.dataset.license || 'None') : 'None';
+    const preview = document.getElementById('lj_op_lic_preview');
+    if (preview) preview.textContent = 'PRC License: ' + lic;
+  }
+
+  function onValidatorSelectChange() {
+    const sel = document.getElementById('lj_validatorSelect');
+    const opt = sel ? sel.options[sel.selectedIndex] : null;
+    const lic = opt ? (opt.dataset.license || 'None') : 'None';
+    const preview = document.getElementById('lj_val_lic_preview');
+    if (preview) preview.textContent = 'PRC License: ' + lic;
+  }
+
+  function onPathologistSelectChange() {
+    const sel = document.getElementById('lj_pathologistSelect');
+    const opt = sel ? sel.options[sel.selectedIndex] : null;
+    const lic = opt ? (opt.dataset.license || 'None') : 'None';
+    const preview = document.getElementById('lj_p1_lic_preview');
+    if (preview) preview.textContent = 'PRC License: ' + lic;
+  }
+
+  function onPathologist2SelectChange() {
+    const sel = document.getElementById('lj_pathologist2Select');
+    const opt = sel ? sel.options[sel.selectedIndex] : null;
+    const lic = opt ? (opt.dataset.license || 'None') : 'None';
+    const preview = document.getElementById('lj_p2_lic_preview');
+    if (preview) preview.textContent = 'PRC License: ' + lic;
+  }
+
+  function togglePathologist2Modal(enabled) {
+    const container = document.getElementById('lj_p2_fields');
+    const badge = document.getElementById('lj_p2_badge');
+    if (!container) return;
+    if (enabled) {
+      container.style.opacity = '1';
+      container.style.pointerEvents = 'auto';
+      if (badge) {
+        badge.textContent = 'Active (2 Pathologists)';
+        badge.style.color = '#0284c7';
+      }
+      const sel = document.getElementById('lj_pathologist2Select');
+      if (sel && (sel.selectedIndex <= 0 || !sel.value)) {
+        if (sel.options.length > 1) {
+          sel.selectedIndex = 1;
+          onPathologist2SelectChange();
+        }
+      }
+    } else {
+      container.style.opacity = '0.5';
+      container.style.pointerEvents = 'none';
+      if (badge) {
+        badge.textContent = '(Optional)';
+        badge.style.color = '#64748b';
+      }
+    }
+  }
 
   function populateAnalyzerDropdowns() {
     const ljSelect = document.getElementById('lj_analyzerSelect');
@@ -1048,6 +1304,15 @@
   // LEVEY-JENNINGS CANVAS CHART ENGINE
   // ==========================================
   async function openLjModal(preselectId) {
+    // Automatically retrieve latest users so any profile or signatory updates are reflected live
+    try {
+      const uRes = await fetch('/equipment/api/signatories');
+      const uData = await uRes.json();
+      if (uData && uData.users && Array.isArray(uData.users) && uData.users.length) {
+        allUsers = uData.users;
+      }
+    } catch (_) {}
+
     populateAnalyzerDropdowns();
     if (preselectId) {
       document.getElementById('lj_analyzerSelect').value = preselectId;
@@ -1059,6 +1324,8 @@
   async function onLjAnalyzerChange() {
     const eqId = document.getElementById('lj_analyzerSelect').value;
     if (!eqId) return;
+
+    populateSignatoryDropdowns();
 
     // Fetch controls for this equipment
     const res = await fetch(`/equipment/${eqId}/qc/controls`);
@@ -1226,12 +1493,15 @@
       ctx.lineWidth = 1.5;
       ctx.stroke();
 
-      // X-axis day label
-      const d = new Date(p.runDate);
-      ctx.fillStyle = '#64748b';
-      ctx.font = '10px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(`${d.getDate()}/${d.getMonth()+1}`, x, H - padB + 16);
+      // X-axis day label (smart thinning when many points are plotted to prevent collision)
+      const step = pts.length > 40 ? Math.ceil(pts.length / 20) : (pts.length > 20 ? 2 : 1);
+      if (i === 0 || i === pts.length - 1 || (i % step === 0)) {
+        const d = new Date(p.runDate);
+        ctx.fillStyle = '#64748b';
+        ctx.font = '10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${d.getDate()}/${d.getMonth()+1}`, x, H - padB + 16);
+      }
 
       // Violation label flag if rejected
       if (p.status === 'REJECTED' && p.rulesViolated && p.rulesViolated.length > 0) {
@@ -1310,7 +1580,40 @@
       alert('Please select an equipment analyzer first.');
       return;
     }
-    const url = `/equipment/${eqId}/qc/print${analyteCode ? '?analyteCode=' + encodeURIComponent(analyteCode) : ''}`;
+    const params = new URLSearchParams();
+    if (analyteCode) params.set('analyteCode', analyteCode);
+
+    const opSel = document.getElementById('lj_operatorSelect');
+    const valSel = document.getElementById('lj_validatorSelect');
+    const p1Sel = document.getElementById('lj_pathologistSelect');
+    const p2Sel = document.getElementById('lj_pathologist2Select');
+
+    const opOpt = opSel ? opSel.options[opSel.selectedIndex] : null;
+    const valOpt = valSel ? valSel.options[valSel.selectedIndex] : null;
+    const p1Opt = p1Sel ? p1Sel.options[p1Sel.selectedIndex] : null;
+    const p2Opt = p2Sel ? p2Sel.options[p2Sel.selectedIndex] : null;
+
+    if (opOpt && opOpt.dataset.name) {
+      params.set('operatorName', opOpt.dataset.name);
+      if (opOpt.dataset.license) params.set('operatorLicense', opOpt.dataset.license);
+    }
+    if (valOpt && valOpt.dataset.name) {
+      params.set('validatorName', valOpt.dataset.name);
+      if (valOpt.dataset.license) params.set('validatorLicense', valOpt.dataset.license);
+    }
+    if (p1Opt && p1Opt.dataset.name) {
+      params.set('pathologistName', p1Opt.dataset.name);
+      if (p1Opt.dataset.license) params.set('pathologistLicense', p1Opt.dataset.license);
+    }
+
+    const hasP2 = document.getElementById('lj_enablePathologist2')?.checked;
+    if (hasP2 && p2Opt && p2Opt.dataset.name) {
+      params.set('hasPathologist2', '1');
+      params.set('pathologist2Name', p2Opt.dataset.name);
+      if (p2Opt.dataset.license) params.set('pathologist2License', p2Opt.dataset.license);
+    }
+
+    const url = `/equipment/${eqId}/qc/print?${params.toString()}`;
     window.open(url, '_blank');
   }
 
