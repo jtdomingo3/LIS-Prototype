@@ -557,6 +557,7 @@ const routePermissionMap = [
   { prefix: '/reports', perm: 'reports' },
   { prefix: '/templates', perm: 'templates' },
   { prefix: '/inventory', perm: 'inventory' },
+  { prefix: '/equipment', perm: 'equipment' },
   { prefix: '/users', perm: 'users' },
   { prefix: '/worksheet', perm: 'worksheet' }
 ];
@@ -625,15 +626,15 @@ app.use((req, res, next) => {
       return next();
     }
 
-    if (perms[mapping.perm]) {
+    if (perms[mapping.perm] || (mapping.perm === 'equipment' && perms.inventory)) {
       console.debug(`[auth-guard] allowing via permission ${mapping.perm}`);
       return next();
     }
 
     // Role-based baseline workflow access for laboratory personnel (templates requires explicit permission)
-    const labRoles = new Set(['Medical Technologist', 'MedTech', 'Technician', 'Doctor', 'Staff', 'Receptionist', 'Encoder']);
+    const labRoles = new Set(['Medical Technologist', 'MedTech', 'Technician', 'Doctor', 'Staff', 'Receptionist', 'Encoder', 'X-Ray Technologist']);
     if (labRoles.has(sessionUser.role)) {
-      if (['reception', 'patients', 'tests', 'reports', 'worksheet'].includes(mapping.perm)) {
+      if (['reception', 'patients', 'tests', 'reports', 'worksheet', 'equipment'].includes(mapping.perm)) {
         console.debug(`[auth-guard] allowing ${sessionUser.role} baseline workflow access to ${mapping.perm}`);
         return next();
       }
@@ -673,6 +674,7 @@ const settingsRoutes = require('./routes/settings');
 const signaturesRoutes = require('./routes/signatures');
 const chatbotRoutes = require('./routes/chatbot');
 const inventoryRoutes = require('./routes/inventory');
+const equipmentRoutes = require('./routes/equipment');
 
 app.use('/', authRoutes);
 app.use('/dashboard', dashboardRoutes);
@@ -686,6 +688,8 @@ app.use('/settings', settingsRoutes);
 app.use('/signatures', signaturesRoutes);
 app.use('/chatbot', chatbotRoutes);
 app.use('/inventory', inventoryRoutes);
+app.use('/equipment', equipmentRoutes);
+app.use('/api/equipment', equipmentRoutes);
 
 // ---- Secure restore endpoints (accessible on fresh installs or by authenticated managers) ----
 const bcryptRestore = require('bcryptjs');

@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title><%= title || 'Levey-Jennings Quality Control Report' %></title>
+  <style>
+    @page {
+      size: letter portrait;
+      margin: 0.35in;
+    }
+    *, *:before, *:after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      background: #f1f5f9;
+      font-family: 'Times New Roman', Times, serif;
+      color: #000;
+      font-size: 11px;
+    }
+    .no-print-bar {
+      position: sticky;
+      top: 0;
+      background: #0f172a;
+      color: #fff;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 9999;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      font-family: Arial, sans-serif;
+      font-size: 13px;
+    }
+    .no-print-bar button {
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      font-size: 13px;
+    }
+    .btn-print {
+      background: #16a34a;
+      color: #fff;
+    }
+    .btn-back {
+      background: #475569;
+      color: #fff;
+      margin-right: 8px;
+    }
+    .page {
+      width: 8.5in;
+      min-height: 11in;
+      padding: 0.35in;
+      margin: 20px auto;
+      background: #fff;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      position: relative;
+    }
+    @media print {
+      body { background: #fff; }
+      .no-print { display: none !important; }
+      .page {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        min-height: auto !important;
+        box-shadow: none !important;
+      }
+    }
+    .header {
+      display: flex;
+      align-items: flex-start;
+      border-bottom: 2px solid #009957;
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+    }
+    .logo {
+      width: 70px;
+      height: auto;
+      margin-right: 12px;
+    }
+    .lab-title {
+      flex: 1;
+      text-align: center;
+    }
+    .lab-title h1 {
+      margin: 0;
+      font-size: 20px;
+      color: #009957;
+      letter-spacing: 0.5px;
+    }
+    .lab-sub {
+      font-size: 9.5px;
+      color: #333;
+      margin-top: 2px;
+    }
+    .report-title-box {
+      text-align: center;
+      margin: 10px 0;
+      padding: 4px;
+      background: #f0fdf4;
+      border: 1px solid #86efac;
+    }
+    .report-title {
+      font-size: 14px;
+      font-weight: bold;
+      color: #166534;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .report-subtitle {
+      font-size: 9px;
+      color: #4b5563;
+      margin-top: 2px;
+    }
+    .meta-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10px;
+      margin-bottom: 10px;
+    }
+    .meta-table td {
+      border: 1px solid #000;
+      padding: 4px 6px;
+      vertical-align: top;
+    }
+    .meta-label {
+      font-weight: bold;
+      color: #333;
+      width: 25%;
+    }
+    .stats-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10px;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    .stats-table th, .stats-table td {
+      border: 1px solid #000;
+      padding: 4px;
+    }
+    .stats-table th {
+      background: #e2e8f0;
+      font-weight: bold;
+    }
+    .chart-box {
+      width: 100%;
+      border: 1px solid #000;
+      padding: 6px;
+      margin-bottom: 10px;
+      background: #fff;
+    }
+    .chart-svg {
+      width: 100%;
+      height: 250px;
+      display: block;
+    }
+    .runs-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9.5px;
+      margin-bottom: 12px;
+    }
+    .runs-table th, .runs-table td {
+      border: 1px solid #000;
+      padding: 3px 5px;
+    }
+    .runs-table th {
+      background: #f1f5f9;
+      font-weight: bold;
+      text-align: left;
+    }
+    .flag-reject {
+      color: #dc2626;
+      font-weight: bold;
+    }
+    .flag-warn {
+      color: #d97706;
+      font-weight: bold;
+    }
+    .signatures-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
+      margin-top: 25px;
+      text-align: center;
+      font-size: 10px;
+    }
+    .sig-line {
+      border-top: 1px solid #000;
+      margin-top: 40px;
+      padding-top: 4px;
+      font-weight: bold;
+    }
+    .sig-sub {
+      font-size: 8.5px;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Floating Print Control (Hidden on Print) -->
+  <div class="no-print-bar no-print">
+    <div>
+      <strong>Gezyne LIS Quality Control</strong> &bull; Levey-Jennings Report (<%= dataset.analyteName %> - <%= dataset.unit %>)
+    </div>
+    <div>
+      <button class="btn-back" onclick="window.close(); history.back();">&larr; Back to Equipment</button>
+      <button class="btn-print" onclick="window.print();"><i class="fa fa-print"></i> 🖨️ Print / Save as PDF</button>
+    </div>
+  </div>
+
+  <div class="page">
+    <!-- Lab Header -->
+    <div class="header">
+      <img src="/assets/gezyne-logo.png" class="logo" alt="Logo" onerror="this.style.display='none'">
+      <div class="lab-title">
+        <h1>GEZYNE CLINICAL LABORATORY</h1>
+        <div class="lab-sub">0330 VERGEL DE DIOS ST POBLACION PLARIDEL, BULACAN</div>
+        <div class="lab-sub">NEAR MUNICIPAL BASKETBALL COURT &bull; TEL: 0917-649-0807 / 0960-390-0921 / 795-5007</div>
+        <div class="lab-sub"><strong>DOH License No.: 03-435-15CL-20</strong></div>
+      </div>
+      <div style="font-size: 9px; text-align: right; min-width: 140px;">
+        <strong>Date Printed:</strong> <%= new Date().toLocaleDateString() %><br>
+        <strong>Time:</strong> <%= new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %><br>
+        <strong>Form Ref:</strong> DOH-LIS-IQC-01
+      </div>
+    </div>
+
+    <!-- Report Title -->
+    <div class="report-title-box">
+      <div class="report-title">MONTHLY INTERNAL QUALITY CONTROL (IQC) REPORT &bull; LEVEY-JENNINGS CHART</div>
+      <div class="report-subtitle">Compliant with Philippine DOH AO No. 2020-0035, ISO 15189:2022 (Clause 7.3.7), and CLSI C24-Ed4</div>
+    </div>
+
+    <!-- Metadata Table -->
+    <table class="meta-table">
+      <tr>
+        <td class="meta-label">Analyzer / Instrument:</td>
+        <td><strong><%= equipment ? equipment.name : 'Clinical Chemistry Analyzer' %></strong></td>
+        <td class="meta-label">Control Material:</td>
+        <td><strong><%= dataset.controlName %></strong></td>
+      </tr>
+      <tr>
+        <td class="meta-label">Asset Code / Tag:</td>
+        <td><%= equipment ? equipment.equipmentCode : 'EQ-CHEM-001' %></td>
+        <td class="meta-label">Control Lot / Expiry:</td>
+        <td><%= dataset.lotNumber %> <%= dataset.expirationDate ? '(Exp: ' + new Date(dataset.expirationDate).toLocaleDateString() + ')' : '' %></td>
+      </tr>
+      <tr>
+        <td class="meta-label">Model & Serial #:</td>
+        <td><%= equipment ? (equipment.modelNumber + ' / SN: ' + equipment.serialNumber) : 'BS-240' %></td>
+        <td class="meta-label">Control Level:</td>
+        <td><%= dataset.level %></td>
+      </tr>
+      <tr>
+        <td class="meta-label">Analyte / Test Parameter:</td>
+        <td><strong><%= dataset.analyteName %> (<%= dataset.analyteCode.toUpperCase() %>)</strong></td>
+        <td class="meta-label">Target Mean &plusmn; SD:</td>
+        <td><strong><%= dataset.targetMean %> &plusmn; <%= dataset.targetSd %> <%= dataset.unit %></strong></td>
+      </tr>
+      <tr>
+        <td class="meta-label">Next Instrument Calibration:</td>
+        <td><%= equipment && equipment.nextCalibrationDate ? new Date(equipment.nextCalibrationDate).toLocaleDateString() : 'Active' %></td>
+        <td class="meta-label">Allowable Total Error (TEa):</td>
+        <td><%= dataset.teaPercent %>% (CLIA / DOH Standard Limit)</td>
+      </tr>
+    </table>
+
+    <!-- Statistical Performance Table -->
+    <% const st = dataset.statistics; %>
+    <table class="stats-table">
+      <thead>
+        <tr>
+          <th>Total Runs (N)</th>
+          <th>Observed Mean (x̄)</th>
+          <th>Observed SD (s)</th>
+          <th>CV% (Precision)</th>
+          <th>Bias% (Accuracy)</th>
+          <th>Total Error (TEobs)</th>
+          <th>Allowable TE (TEa)</th>
+          <th>Overall Evaluation</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong><%= st.n %></strong></td>
+          <td><strong><%= st.observedMean !== null ? st.observedMean : '—' %> <%= dataset.unit %></strong></td>
+          <td><%= st.observedSd !== null ? st.observedSd : '—' %></td>
+          <td><%= st.cvPercent !== null ? st.cvPercent + '%' : '—' %></td>
+          <td><%= st.biasPercent !== null ? st.biasPercent + '%' : '—' %></td>
+          <td><%= st.totalErrorObserved !== null ? st.totalErrorObserved + '%' : '—' %></td>
+          <td>&le; <%= st.teaPercent %>%</td>
+          <td>
+            <% if (st.inControl) { %>
+              <strong style="color: #16a34a;">✓ IN CONTROL (PASS)</strong>
+            <% } else { %>
+              <strong style="color: #dc2626;">❌ OUT OF CONTROL (FAIL)</strong>
+            <% } %>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Vector SVG Levey-Jennings Chart (Prints in crisp 300+ DPI vector graphics!) -->
+    <div class="chart-box">
+      <div style="font-weight: bold; font-size: 10px; margin-bottom: 4px; display: flex; justify-content: space-between;">
+        <span>LEVEY-JENNINGS PLOT: <%= dataset.analyteName.toUpperCase() %> (<%= dataset.unit %>)</span>
+        <span style="font-size: 9px; color: #555;">Target: <%= dataset.targetMean %> &plusmn; <%= dataset.targetSd %></span>
+      </div>
+
+      <%
+        const W = 740;
+        const H = 220;
+        const padL = 70;
+        const padR = 25;
+        const padT = 20;
+        const padB = 30;
+        const gW = W - padL - padR;
+        const gH = H - padT - padB;
+
+        const mean = dataset.targetMean;
+        const sd = dataset.targetSd;
+        const minVal = mean - (3.5 * sd);
+        const maxVal = mean + (3.5 * sd);
+
+        function calcY(v) {
+          const norm = (v - minVal) / (maxVal - minVal);
+          return (H - padB) - (norm * gH);
+        }
+
+        const pts = dataset.points || [];
+        const stepX = pts.length > 1 ? gW / (pts.length - 1) : gW / 2;
+      %>
+
+      <svg viewBox="0 0 <%= W %> <%= H %>" class="chart-svg">
+        <!-- Background grid -->
+        <rect x="<%= padL %>" y="<%= padT %>" width="<%= gW %>" height="<%= gH %>" fill="#fafafa" stroke="#000" stroke-width="1" />
+
+        <!-- Reference Lines -->
+        <!-- +3SD Line -->
+        <line x1="<%= padL %>" y1="<%= calcY(mean + 3*sd) %>" x2="<%= W - padR %>" y2="<%= calcY(mean + 3*sd) %>" stroke="#dc2626" stroke-dasharray="4,4" stroke-width="1" />
+        <text x="<%= padL - 6 %>" y="<%= calcY(mean + 3*sd) + 3 %>" text-anchor="end" font-size="8" fill="#dc2626" font-family="monospace">+3SD (<%= (mean + 3*sd).toFixed(1) %>)</text>
+
+        <!-- +2SD Line -->
+        <line x1="<%= padL %>" y1="<%= calcY(mean + 2*sd) %>" x2="<%= W - padR %>" y2="<%= calcY(mean + 2*sd) %>" stroke="#d97706" stroke-dasharray="4,4" stroke-width="1" />
+        <text x="<%= padL - 6 %>" y="<%= calcY(mean + 2*sd) + 3 %>" text-anchor="end" font-size="8" fill="#d97706" font-family="monospace">+2SD (<%= (mean + 2*sd).toFixed(1) %>)</text>
+
+        <!-- +1SD Line -->
+        <line x1="<%= padL %>" y1="<%= calcY(mean + 1*sd) %>" x2="<%= W - padR %>" y2="<%= calcY(mean + 1*sd) %>" stroke="#94a3b8" stroke-dasharray="2,2" stroke-width="0.8" />
+        <text x="<%= padL - 6 %>" y="<%= calcY(mean + 1*sd) + 3 %>" text-anchor="end" font-size="8" fill="#64748b" font-family="monospace">+1SD</text>
+
+        <!-- Mean Line -->
+        <line x1="<%= padL %>" y1="<%= calcY(mean) %>" x2="<%= W - padR %>" y2="<%= calcY(mean) %>" stroke="#16a34a" stroke-width="1.5" />
+        <text x="<%= padL - 6 %>" y="<%= calcY(mean) + 3 %>" text-anchor="end" font-size="9" fill="#16a34a" font-weight="bold" font-family="monospace">MEAN (<%= mean.toFixed(1) %>)</text>
+
+        <!-- -1SD Line -->
+        <line x1="<%= padL %>" y1="<%= calcY(mean - 1*sd) %>" x2="<%= W - padR %>" y2="<%= calcY(mean - 1*sd) %>" stroke="#94a3b8" stroke-dasharray="2,2" stroke-width="0.8" />
+        <text x="<%= padL - 6 %>" y="<%= calcY(mean - 1*sd) + 3 %>" text-anchor="end" font-size="8" fill="#64748b" font-family="monospace">-1SD</text>
+
+        <!-- -2SD Line -->
+        <line x1="<%= padL %>" y1="<%= calcY(mean - 2*sd) %>" x2="<%= W - padR %>" y2="<%= calcY(mean - 2*sd) %>" stroke="#d97706" stroke-dasharray="4,4" stroke-width="1" />
+        <text x="<%= padL - 6 %>" y="<%= calcY(mean - 2*sd) + 3 %>" text-anchor="end" font-size="8" fill="#d97706" font-family="monospace">-2SD (<%= (mean - 2*sd).toFixed(1) %>)</text>
+
+        <!-- -3SD Line -->
+        <line x1="<%= padL %>" y1="<%= calcY(mean - 3*sd) %>" x2="<%= W - padR %>" y2="<%= calcY(mean - 3*sd) %>" stroke="#dc2626" stroke-dasharray="4,4" stroke-width="1" />
+        <text x="<%= padL - 6 %>" y="<%= calcY(mean - 3*sd) + 3 %>" text-anchor="end" font-size="8" fill="#dc2626" font-family="monospace">-3SD (<%= (mean - 3*sd).toFixed(1) %>)</text>
+
+        <!-- Connecting Line between points -->
+        <% if (pts.length > 1) { %>
+          <% 
+            let pathD = '';
+            pts.forEach((p, i) => {
+              const x = padL + (i * stepX);
+              const y = calcY(p.measuredValue);
+              pathD += (i === 0 ? `M ${x} ${y}` : ` L ${x} ${y}`);
+            });
+          %>
+          <path d="<%= pathD %>" fill="none" stroke="#0284c7" stroke-width="1.8" />
+        <% } %>
+
+        <!-- Point Dots -->
+        <% pts.forEach((p, i) => { %>
+          <%
+            const x = pts.length === 1 ? padL + gW/2 : padL + (i * stepX);
+            const y = calcY(p.measuredValue);
+            let fill = '#0284c7';
+            if (p.status === 'REJECTED') fill = '#dc2626';
+            else if (p.status === 'WARNING') fill = '#d97706';
+            const d = new Date(p.runDate);
+          %>
+          <circle cx="<%= x %>" cy="<%= y %>" r="3.5" fill="<%= fill %>" stroke="#fff" stroke-width="1" />
+          <text x="<%= x %>" y="<%= H - padB + 12 %>" text-anchor="middle" font-size="8" fill="#333"><%= d.getDate() %></text>
+          <% if (p.status === 'REJECTED' && p.rulesViolated && p.rulesViolated.length) { %>
+            <text x="<%= x %>" y="<%= y - 6 %>" text-anchor="middle" font-size="7.5" font-weight="bold" fill="#dc2626"><%= p.rulesViolated.join(',') %></text>
+          <% } %>
+        <% }); %>
+      </svg>
+      <div style="display: flex; justify-content: space-between; font-size: 8.5px; color: #555; margin-top: 2px;">
+        <div>Legend: &bull; Blue = Accepted &nbsp;&bull; Amber = Warning (1:2s) &nbsp;&bull; Red = Rejected (Westgard Rule Failure)</div>
+        <div>Days of the Month plotted on X-axis</div>
+      </div>
+    </div>
+
+    <!-- Daily Control Run Log Table -->
+    <div style="font-weight: bold; font-size: 10px; margin-bottom: 4px;">DAILY CONTROL MEASUREMENTS & WESTGARD MULTI-RULE AUDIT LOG</div>
+    <table class="runs-table">
+      <thead>
+        <tr>
+          <th style="width: 40px;">Run #</th>
+          <th style="width: 85px;">Date & Time</th>
+          <th style="width: 80px;">Measured (x)</th>
+          <th style="width: 70px;">Deviation</th>
+          <th style="width: 55px;">Z-Score</th>
+          <th style="width: 75px;">Status</th>
+          <th style="width: 90px;">Westgard Rules</th>
+          <th>Corrective Action / Resolution (Required if Rejected)</th>
+          <th style="width: 80px;">Operator</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (pts.length === 0) { %>
+          <tr><td colspan="9" style="text-align: center; color: #666; padding: 10px;">No control measurements recorded for this evaluation period.</td></tr>
+        <% } else { %>
+          <% pts.forEach((p, idx) => { %>
+            <tr>
+              <td style="text-align: center;"><%= idx + 1 %></td>
+              <td><%= new Date(p.runDate).toLocaleDateString() %> <%= new Date(p.runDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %></td>
+              <td><strong><%= p.measuredValue %> <%= dataset.unit %></strong></td>
+              <td><%= (p.measuredValue - dataset.targetMean).toFixed(2) %></td>
+              <td><strong><%= p.zScore %></strong></td>
+              <td>
+                <% if (p.status === 'ACCEPTED') { %>
+                  <span style="color: #16a34a; font-weight: bold;">✓ ACCEPT</span>
+                <% } else if (p.status === 'WARNING') { %>
+                  <span class="flag-warn">⚠️ WARN</span>
+                <% } else { %>
+                  <span class="flag-reject">❌ REJECT</span>
+                <% } %>
+              </td>
+              <td><%= (p.rulesViolated && p.rulesViolated.length) ? p.rulesViolated.join(', ') : 'None' %></td>
+              <td>
+                <% if (p.correctiveAction && p.correctiveAction.actionTaken) { %>
+                  <%= p.correctiveAction.actionTaken %>
+                <% } else if (p.status === 'REJECTED') { %>
+                  <span style="color: #dc2626;">Pending Documentation</span>
+                <% } else { %>
+                  <span style="color: #999;">In Tolerance</span>
+                <% } %>
+              </td>
+              <td><%= p.operatorName || 'MedTech' %></td>
+            </tr>
+          <% }); %>
+        <% } %>
+      </tbody>
+    </table>
+
+    <!-- Official Regulatory Sign-Off Section -->
+    <div class="signatures-grid">
+      <div>
+        <div class="sig-line"><%= (pts[0] && pts[0].operatorName) ? pts[0].operatorName : 'Registered Medical Technologist' %></div>
+        <div class="sig-sub">Performed By (Medical Technologist)</div>
+        <div class="sig-sub">PRC License No.: ________________</div>
+      </div>
+      <div>
+        <div class="sig-line">Chief Medical Technologist, RMT</div>
+        <div class="sig-sub">Reviewed & Verified By (QC Supervisor)</div>
+        <div class="sig-sub">PRC License No.: ________________</div>
+      </div>
+      <div>
+        <div class="sig-line">Pathologist / Laboratory Director, MD, FPSP</div>
+        <div class="sig-sub">Approved By (Laboratory Director)</div>
+        <div class="sig-sub">PRC License No.: ________________</div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
