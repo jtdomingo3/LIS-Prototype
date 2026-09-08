@@ -610,8 +610,8 @@
         </div>
         <div id="lj_statsPills" style="display: flex; gap: 8px; font-size: 0.8em; flex-wrap: wrap;"></div>
       </div>
-      <div style="position: relative; width: 100%; height: 340px; background: #fff; border-radius: 6px; border: 1px solid #cbd5e1; overflow: hidden;">
-        <canvas id="ljCanvas" width="900" height="340" style="display: block; width: 100%; height: 100%;"></canvas>
+      <div id="lj_canvasContainer" style="position: relative; width: 100%; height: 380px; background: #ffffff; border-radius: 8px; border: 1px solid #cbd5e1; overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.03);">
+        <canvas id="ljCanvas" style="display: block;"></canvas>
       </div>
       <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8em; color: #64748b; margin-top: 8px; flex-wrap: wrap; gap: 6px;">
         <div>
@@ -1349,6 +1349,13 @@
     populateAnalyzerDropdowns();
     populateSignatoryDropdowns();
     loadNeqasTable();
+
+    // High-DPI dynamic resize listeners for crisp Levey-Jennings canvas across all screen sizes
+    window.addEventListener('resize', handleLjResize);
+    if (window.ResizeObserver) {
+      const ctn = document.getElementById('lj_canvasContainer');
+      if (ctn) new ResizeObserver(handleLjResize).observe(ctn);
+    }
   });
 
   function populateSignatoryDropdowns() {
@@ -1557,6 +1564,47 @@
     });
   }
 
+  // ==========================================
+  // HIGH-DPI LEVEY-JENNINGS CANVAS ENGINE
+  // ==========================================
+  function setupLjCanvas() {
+    const canvas = document.getElementById('ljCanvas');
+    if (!canvas) return null;
+    const container = canvas.parentElement || document.getElementById('lj_canvasContainer');
+    if (!container) return null;
+
+    // Use container width, falling back gracefully if container is hidden during initial load
+    const displayWidth = container.clientWidth > 50 ? container.clientWidth : (window.innerWidth ? Math.min(window.innerWidth - 300, 1400) : 900);
+    const displayHeight = 380;
+    const dpr = Math.max(window.devicePixelRatio || 1, 1);
+
+    canvas.width = Math.round(displayWidth * dpr);
+    canvas.height = Math.round(displayHeight * dpr);
+    canvas.style.width = displayWidth + 'px';
+    canvas.style.height = displayHeight + 'px';
+
+    const ctx = canvas.getContext('2d');
+    if (ctx.resetTransform) {
+      ctx.resetTransform();
+    } else {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+    }
+    ctx.scale(dpr, dpr);
+
+    return { canvas, ctx, W: displayWidth, H: displayHeight, dpr };
+  }
+
+  let ljResizeTimer = null;
+  function handleLjResize() {
+    clearTimeout(ljResizeTimer);
+    ljResizeTimer = setTimeout(() => {
+      const secQc = document.getElementById('sectionQc');
+      if (currentLjData && (!secQc || secQc.style.display !== 'none')) {
+        renderLeveyJenningsCanvas(currentLjData);
+      }
+    }, 60);
+  }
+
   function populateAnalyzerDropdowns() {
     const ljSelect = document.getElementById('lj_analyzerSelect');
     const neqasSelect = document.getElementById('neqas_eqId');
@@ -1625,14 +1673,15 @@
         onQuickEquipmentChange();
       }
       // Clear canvas and table gracefully if no machine has data yet
-      const canvas = document.getElementById('ljCanvas');
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const env = setupLjCanvas();
+      if (env) {
+        const { ctx, W, H } = env;
+        ctx.clearRect(0, 0, W, H);
         ctx.fillStyle = '#94a3b8';
         ctx.font = '14px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('No QC run data recorded yet. Record your first standard reading below.', canvas.width / 2, canvas.height / 2);
+        ctx.textBaseline = 'middle';
+        ctx.fillText('No QC run data recorded yet. Record your first standard reading below.', W / 2, H / 2);
       }
       const tb = document.getElementById('lj_tableBody');
       if (tb) {
@@ -1902,6 +1951,9 @@
         if (ljSelect) ljSelect.value = preselectEqId;
       }
       onLjAnalyzerChange();
+      requestAnimationFrame(() => {
+        if (currentLjData) renderLeveyJenningsCanvas(currentLjData);
+      });
     } else if (sectionId === 'neqas') {
       loadNeqasTable();
     }
@@ -2107,14 +2159,15 @@
       if (quickAnalyteSelect) {
         quickAnalyteSelect.innerHTML = '<option value="">-- No Analytes Configured (Click + Add Analyte) --</option>';
       }
-      const canvas = document.getElementById('ljCanvas');
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const env = setupLjCanvas();
+      if (env) {
+        const { ctx, W, H } = env;
+        ctx.clearRect(0, 0, W, H);
         ctx.fillStyle = '#94a3b8';
         ctx.font = '14px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('No analytes configured for this analyzer. Click + Add Analyte below to configure one.', canvas.width / 2, canvas.height / 2);
+        ctx.textBaseline = 'middle';
+        ctx.fillText('No analytes configured for this analyzer. Click + Add Analyte below to configure one.', W / 2, H / 2);
       }
       renderLjTable({ points: [] });
       return;
@@ -2252,11 +2305,9 @@
   }
 
   function renderLeveyJenningsCanvas(data) {
-    const canvas = document.getElementById('ljCanvas');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const W = canvas.width;
-    const H = canvas.height;
+    const env = setupLjCanvas();
+    if (!env) return;
+    const { ctx, W, H } = env;
 
     ctx.clearRect(0, 0, W, H);
 
@@ -2280,18 +2331,28 @@
       <span class="badge ${st.inControl ? 'badge-operational' : 'badge-overdue'}">${st.inControl ? '✓ IN CONTROL' : '⚠️ OUT OF CONTROL'}</span>
     `;
 
-    // Coordinates mapping
-    const padL = 70;
-    const padR = 30;
+    // Coordinates mapping with generous padding for high-DPI full-screen displays
+    const padL = 95;
+    const padR = 35;
     const padT = 30;
-    const padB = 40;
+    const padB = 45;
     const graphW = W - padL - padR;
     const graphH = H - padT - padB;
 
     const mean = Number(data.targetMean) || 100;
     const sd = Number(data.targetSd) || 5;
-    const minVal = mean - (3.5 * sd);
-    const maxVal = mean + (3.5 * sd);
+
+    // Expand bounds if outliers exist so no points are clipped
+    let maxAbsSd = 3.6;
+    (data.points || []).forEach(p => {
+      if (p.measuredValue !== undefined && p.measuredValue !== null && !isNaN(p.measuredValue) && sd > 0) {
+        const dist = Math.abs(p.measuredValue - mean) / sd;
+        if (dist > maxAbsSd) maxAbsSd = Math.min(dist + 0.5, 6.0);
+      }
+    });
+
+    const minVal = mean - (maxAbsSd * sd);
+    const maxVal = mean + (maxAbsSd * sd);
 
     function getY(val) {
       const normalized = (val - minVal) / (maxVal - minVal);
@@ -2299,11 +2360,11 @@
     }
 
     // Reference Line Helper
-    function drawRefLine(val, label, color, dash = []) {
+    function drawRefLine(val, label, color, dash = [], isMean = false) {
       const y = getY(val);
       ctx.save();
       ctx.strokeStyle = color;
-      ctx.lineWidth = 1.2;
+      ctx.lineWidth = isMean ? 2.0 : 1.2;
       ctx.setLineDash(dash);
       ctx.beginPath();
       ctx.moveTo(padL, y);
@@ -2312,45 +2373,57 @@
 
       ctx.setLineDash([]);
       ctx.fillStyle = color;
-      ctx.font = '10px monospace';
+      ctx.font = isMean ? 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' : '600 10px monospace';
       ctx.textAlign = 'right';
-      ctx.fillText(label, padL - 8, y + 3);
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, padL - 10, y);
       ctx.restore();
     }
 
-    // Draw grid background
-    ctx.fillStyle = '#fafafa';
+    // Draw clean background
+    ctx.fillStyle = '#ffffff';
     ctx.fillRect(padL, padT, graphW, graphH);
 
+    // Subtle green tone for in-control +-1SD zone
+    const yP1 = getY(mean + 1 * sd);
+    const yM1 = getY(mean - 1 * sd);
+    ctx.fillStyle = 'rgba(240, 253, 244, 0.7)';
+    ctx.fillRect(padL, yP1, graphW, yM1 - yP1);
+
     // Draw reference SD lines
-    drawRefLine(mean + 3 * sd, '+3SD (' + (mean + 3 * sd).toFixed(1) + ')', '#dc2626', [4, 4]);
-    drawRefLine(mean + 2 * sd, '+2SD (' + (mean + 2 * sd).toFixed(1) + ')', '#d97706', [4, 4]);
-    drawRefLine(mean + 1 * sd, '+1SD (' + (mean + 1 * sd).toFixed(1) + ')', '#94a3b8', [2, 2]);
-    drawRefLine(mean, 'MEAN (' + mean.toFixed(1) + ')', '#16a34a', []);
-    drawRefLine(mean - 1 * sd, '-1SD (' + (mean - 1 * sd).toFixed(1) + ')', '#94a3b8', [2, 2]);
-    drawRefLine(mean - 2 * sd, '-2SD (' + (mean - 2 * sd).toFixed(1) + ')', '#d97706', [4, 4]);
-    drawRefLine(mean - 3 * sd, '-3SD (' + (mean - 3 * sd).toFixed(1) + ')', '#dc2626', [4, 4]);
+    drawRefLine(mean + 3 * sd, '+3SD (' + (mean + 3 * sd).toFixed(1) + ')', '#ef4444', [5, 4]);
+    drawRefLine(mean + 2 * sd, '+2SD (' + (mean + 2 * sd).toFixed(1) + ')', '#f59e0b', [5, 4]);
+    drawRefLine(mean + 1 * sd, '+1SD (' + (mean + 1 * sd).toFixed(1) + ')', '#94a3b8', [3, 3]);
+    drawRefLine(mean, 'MEAN (' + mean.toFixed(1) + ')', '#10b981', [], true);
+    drawRefLine(mean - 1 * sd, '-1SD (' + (mean - 1 * sd).toFixed(1) + ')', '#94a3b8', [3, 3]);
+    drawRefLine(mean - 2 * sd, '-2SD (' + (mean - 2 * sd).toFixed(1) + ')', '#f59e0b', [5, 4]);
+    drawRefLine(mean - 3 * sd, '-3SD (' + (mean - 3 * sd).toFixed(1) + ')', '#ef4444', [5, 4]);
 
     // Graph bounding box
     ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1;
     ctx.strokeRect(padL, padT, graphW, graphH);
 
     // Plot points
     const points = data.points || [];
     if (points.length === 0) {
-      ctx.fillStyle = '#94a3b8';
+      ctx.fillStyle = '#64748b';
       ctx.font = '14px sans-serif';
       ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
       ctx.fillText('No control runs recorded for the selected period. Enter a reading below.', W / 2, H / 2);
       return;
     }
 
     const stepX = points.length > 1 ? graphW / (points.length - 1) : graphW / 2;
 
-    // Draw connecting line
+    // Draw connecting line with crisp joints
+    ctx.save();
     ctx.beginPath();
     ctx.strokeStyle = '#0284c7';
-    ctx.lineWidth = 1.8;
+    ctx.lineWidth = 2.2;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
     points.forEach((p, i) => {
       const x = points.length === 1 ? padL + graphW / 2 : padL + (i * stepX);
       const y = getY(p.measuredValue);
@@ -2358,6 +2431,7 @@
       else ctx.lineTo(x, y);
     });
     ctx.stroke();
+    ctx.restore();
 
     // Draw dots and violation badges
     points.forEach((p, i) => {
@@ -2365,32 +2439,66 @@
       const y = getY(p.measuredValue);
 
       let dotColor = '#0284c7';
-      if (p.status === 'REJECTED') dotColor = '#dc2626';
-      else if (p.status === 'WARNING') dotColor = '#d97706';
-
-      ctx.beginPath();
-      ctx.fillStyle = dotColor;
-      ctx.arc(x, y, 5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-
-      // X-axis day label (smart thinning when many points are plotted to prevent collision)
-      const step = points.length > 40 ? Math.ceil(points.length / 20) : (points.length > 20 ? 2 : 1);
-      if (i === 0 || i === points.length - 1 || (i % step === 0)) {
-        const d = new Date(p.runDate);
-        ctx.fillStyle = '#64748b';
-        ctx.font = '10px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(`${d.getDate()}/${d.getMonth()+1}`, x, H - padB + 16);
+      let radius = 5;
+      if (p.status === 'REJECTED') {
+        dotColor = '#ef4444';
+        radius = 5.5;
+      } else if (p.status === 'WARNING') {
+        dotColor = '#f59e0b';
+        radius = 5;
       }
 
-      // Violation label flag if rejected
-      if (p.status === 'REJECTED' && p.rulesViolated && p.rulesViolated.length > 0) {
-        ctx.fillStyle = '#dc2626';
+      ctx.save();
+      ctx.beginPath();
+      ctx.fillStyle = dotColor;
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+
+      // X-axis day label (smart thinning when many points are plotted to prevent collision)
+      const step = points.length > 35 ? Math.ceil(points.length / 20) : (points.length > 20 ? 2 : 1);
+      if (i === 0 || i === points.length - 1 || (i % step === 0)) {
+        const d = new Date(p.runDate);
+        ctx.save();
+        ctx.fillStyle = '#64748b';
+        ctx.font = '600 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(`${d.getDate()}/${d.getMonth()+1}`, x, H - padB + 10);
+        ctx.restore();
+      }
+
+      // Violation label flag if rejected or warning
+      if (p.rulesViolated && p.rulesViolated.length > 0) {
+        const ruleText = p.rulesViolated.join(',');
+        ctx.save();
         ctx.font = 'bold 9px sans-serif';
-        ctx.fillText(p.rulesViolated.join(','), x, y - 9);
+        const txtW = ctx.measureText(ruleText).width;
+        const bW = txtW + 8;
+        const bH = 15;
+        const bX = x - bW / 2;
+        const bY = y - 22;
+
+        ctx.fillStyle = p.status === 'REJECTED' ? '#fee2e2' : '#fef3c7';
+        ctx.strokeStyle = p.status === 'REJECTED' ? '#ef4444' : '#f59e0b';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(bX, bY, bW, bH, 3);
+        } else {
+          ctx.rect(bX, bY, bW, bH);
+        }
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = p.status === 'REJECTED' ? '#b91c1c' : '#b45309';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(ruleText, x, bY + bH / 2);
+        ctx.restore();
       }
     });
   }

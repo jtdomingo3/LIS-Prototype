@@ -10,6 +10,17 @@
   - Both the interactive canvas graph (`renderLeveyJenningsCanvas`) and the detailed measurement log table (`renderLjTable`) dynamically re-render in real time.
   - The status filter (Accepted, Warning, Rejected) and sort orders (Date Newest/Oldest, Z-Score Outlier, Violations First) operate dynamically over the active date range.
 
+### 2. Canvas Resolution & Aspect Ratio Optimization in Full Screen
+- **Problem**: In full screen, the `<canvas>` had a hardcoded `width="900" height="340"` buffer scaled up via CSS `width: 100%`, causing the bitmap to stretch horizontally into flat/oval dots, blurry text, and distorted aspect ratios.
+- **Solution**:
+  - Implemented `setupLjCanvas()` with **Device Pixel Ratio (DPR)** physical scaling:
+    - Measures actual container `clientWidth` dynamically (e.g. 1400px - 1920px in full screen).
+    - Sets physical buffer resolution `canvas.width = Math.round(displayWidth * dpr)` and `canvas.height = Math.round(displayHeight * dpr)`.
+    - Normalizes the coordinate system with `ctx.scale(dpr, dpr)`.
+  - Dots now retain a **perfect 1:1 circular aspect ratio** (`ctx.arc()`) regardless of screen aspect ratio or full-screen magnification.
+  - Text, reference lines, and violation badges render with razor-sharp anti-aliased vector clarity on all display types (1080p, 1440p, 4K, and Windows high-DPI scaling).
+  - Attached both a debounced `window.addEventListener('resize', ...)` and a container `ResizeObserver` so resizing or toggling full screen dynamically adjusts the chart in real-time without blur.
+
 ### 2. Strict Date Coverage on Printable Reports
 - **Problem**: The printable monthly multi-analyte QC report only accepted month-level strings and didn't strictly respect custom start and end date bounds.
 - **Solution**:
