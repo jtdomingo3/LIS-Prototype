@@ -444,6 +444,7 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     upsertQcEntry: sqlite.prepare('INSERT OR REPLACE INTO qc_entries (id, equipmentId, controlId, analyteCode, controlLot, runDate, measuredValue, zScore, status, createdAt, json) VALUES (@id, @equipmentId, @controlId, @analyteCode, @controlLot, @runDate, @measuredValue, @zScore, @status, @createdAt, @json)'),
     deleteQcEntryById: sqlite.prepare('DELETE FROM qc_entries WHERE id = ?'),
     deleteQcEntriesByEquipmentId: sqlite.prepare('DELETE FROM qc_entries WHERE equipmentId = ?'),
+    deleteQcEntriesByEquipmentAndAnalyte: sqlite.prepare('DELETE FROM qc_entries WHERE equipmentId = ? AND analyteCode = ?'),
 
     getAllNeqasRecords: sqlite.prepare('SELECT json FROM neqas_records ORDER BY cycleYear DESC, createdAt DESC'),
     getNeqasRecordsByEquipmentId: sqlite.prepare('SELECT json FROM neqas_records WHERE equipmentId = ? ORDER BY cycleYear DESC, createdAt DESC'),
@@ -1397,6 +1398,18 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     deleteQcEntry(id) {
       try {
         stmts.deleteQcEntryById.run(id);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    },
+    deleteQcEntries(equipmentId, analyteCode) {
+      try {
+        if (equipmentId && analyteCode) {
+          stmts.deleteQcEntriesByEquipmentAndAnalyte.run(equipmentId, analyteCode);
+        } else if (equipmentId) {
+          stmts.deleteQcEntriesByEquipmentId.run(equipmentId);
+        }
         return true;
       } catch (e) {
         return false;

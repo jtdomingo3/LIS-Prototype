@@ -633,7 +633,7 @@
           </h4>
           <span class="badge badge-info" id="lj_tableRunCount">0 Runs</span>
         </div>
-        <div style="display: flex; gap: 8px; align-items: center;">
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
           <label style="font-size: 0.82em; color: #64748b; font-weight: 600;">Status Filter:</label>
           <select id="lj_statusFilter" onchange="renderLjTable()" style="font-size: 0.82em; padding: 4px 8px; border-radius: 4px; border: 1px solid #cbd5e1;">
             <option value="">All Runs</option>
@@ -641,6 +641,11 @@
             <option value="WARNING">⚠️ Warnings (1:2s)</option>
             <option value="REJECTED">❌ Rejections (Violations)</option>
           </select>
+          <% if (canEdit) { %>
+            <button type="button" class="button btn-small btn-secondary" onclick="emptyAnalyteEntries()" style="color: #dc2626; border-color: #fca5a5; font-size: 0.78em; padding: 4px 10px; display: inline-flex; align-items: center; gap: 5px; font-weight: 600; background: #fff5f5;" title="Empty / Drop all recorded QC entries for this analyte during testing">
+              <i class="fa fa-trash-alt"></i> Empty / Drop Runs
+            </button>
+          <% } %>
         </div>
       </div>
       <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
@@ -719,10 +724,19 @@
           </div>
         </div>
 
-        <div style="display: flex; justify-content: flex-end;">
-          <button type="submit" class="button btn-primary" style="padding: 8px 20px; font-weight: 600;">
-            <i class="fa fa-play"></i> Record Reading &amp; Evaluate Westgard Rules
-          </button>
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <% if (canEdit) { %>
+              <button type="button" class="button btn-secondary" onclick="deleteLastQcEntry()" style="color: #dc2626; border-color: #fca5a5; font-size: 0.82em; padding: 7px 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; background: #fff5f5;" title="Drop / Delete the most recent QC run recorded for this analyte">
+                <i class="fa fa-undo"></i> Drop / Delete Previous Entry
+              </button>
+            <% } %>
+          </div>
+          <div>
+            <button type="submit" class="button btn-primary" style="padding: 8px 20px; font-weight: 600;">
+              <i class="fa fa-play"></i> Record Reading &amp; Evaluate Westgard Rules
+            </button>
+          </div>
         </div>
       </form>
       <div id="qc_alertBox" style="display: none; margin-top: 12px; padding: 10px 14px; border-radius: 6px; font-size: 0.88em;"></div>
@@ -1380,6 +1394,7 @@
   let allUsers = <%- JSON.stringify((typeof users !== 'undefined' && Array.isArray(users)) ? users.map(u => ({ id: u.id, name: u.name, role: u.role, license: u.licenseNumber || '' })) : []) %>;
   let allNeqasRecords = [];
   let currentLjData = null;
+  let currentEqControls = [];
   let canEditEquipment = <%= Boolean(canEdit) %>;
   let qcEntryCounts = <%- JSON.stringify(typeof qcEntryCounts !== 'undefined' ? qcEntryCounts : {}) %>;
 
@@ -1392,12 +1407,11 @@
       if (el) el.value = today;
     });
 
-    // Initialize Levey-Jennings default date range to current month
+    // Initialize Levey-Jennings default date range to past 30 days so all 25 daily runs are immediately visible
     const now = new Date();
-    const curYear = now.getFullYear();
-    const curMonth = String(now.getMonth() + 1).padStart(2, '0');
-    const firstDay = `${curYear}-${curMonth}-01`;
-    const lastDay = new Date(curYear, now.getMonth() + 1, 0).toISOString().split('T')[0];
+    const past30 = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+    const firstDay = past30.toISOString().split('T')[0];
+    const lastDay = now.toISOString().split('T')[0];
     const ljStart = document.getElementById('lj_startDate');
     const ljEnd = document.getElementById('lj_endDate');
     if (ljStart && !ljStart.value) ljStart.value = firstDay;
@@ -2379,6 +2393,7 @@
     if (quickAnalyteSelect) quickAnalyteSelect.innerHTML = '';
 
     const controls = data.controls || [];
+    currentEqControls = controls;
     const allAnalytes = [];
     controls.forEach(ctrl => {
       (ctrl.analytes || []).forEach(a => {
@@ -2526,6 +2541,11 @@
     const endDate = document.getElementById('lj_endDate')?.value || '';
 
     let url = `/equipment/${eqId}/qc/levey-jennings?analyteCode=${encodeURIComponent(analyteCode)}`;
+    const matchedCtrl = (currentEqControls || []).find(c => (c.level || '').includes('1') && (c.analytes || []).some(a => a.analyteCode === analyteCode))
+                     || (currentEqControls || []).find(c => (c.analytes || []).some(a => a.analyteCode === analyteCode));
+    if (matchedCtrl && matchedCtrl.id) {
+      url += `&controlId=${encodeURIComponent(matchedCtrl.id)}`;
+    }
     if (startDate) url += `&startDate=${encodeURIComponent(startDate)}`;
     if (endDate) url += `&endDate=${encodeURIComponent(endDate)}`;
 
@@ -2873,6 +2893,102 @@
       }
     } catch (err) {
       alert('Error deleting QC entry: ' + err.message);
+    }
+  }
+
+  async function deleteLastQcEntry() {
+    const eqId = document.getElementById('quick_eqId').value || document.getElementById('lj_analyzerSelect').value;
+    const analyteCode = document.getElementById('quick_analyteCode').value || document.getElementById('lj_analyteSelect').value;
+    if (!eqId || !analyteCode) {
+      alert('Please select an analyzer and analyte first.');
+      return;
+    }
+
+    if (!confirm(`Drop / delete the most recent QC run reading for "${analyteCode.toUpperCase()}"?`)) {
+      return;
+    }
+
+    try {
+      // 1. Try dedicated endpoint
+      let res = await fetch(`/equipment/${eqId}/qc/entries/last?analyteCode=${encodeURIComponent(analyteCode)}`, {
+        method: 'DELETE',
+        headers: { 'Accept': 'application/json' }
+      });
+      let data = await res.json().catch(() => null);
+
+      // 2. Fallback to deleting the last point ID from currentLjData
+      if (!data || !data.success) {
+        if (currentLjData && Array.isArray(currentLjData.points) && currentLjData.points.length > 0) {
+          const lastPoint = currentLjData.points[currentLjData.points.length - 1];
+          if (lastPoint && lastPoint.id) {
+            res = await fetch(`/equipment/qc/entries/${lastPoint.id}`, {
+              method: 'DELETE',
+              headers: { 'Accept': 'application/json' }
+            });
+            data = await res.json().catch(() => null);
+          }
+        }
+      }
+
+      if (data && data.success) {
+        loadLjChart();
+        const box = document.getElementById('qc_alertBox');
+        if (box) {
+          box.style.display = 'block';
+          box.style.background = '#fef2f2';
+          box.style.color = '#991b1b';
+          box.innerHTML = `<strong><i class="fa fa-trash"></i> Dropped:</strong> Previous QC entry removed successfully.`;
+        }
+      } else {
+        alert((data && data.error) || 'No previous entry found to drop.');
+      }
+    } catch (err) {
+      alert('Error dropping previous entry: ' + err.message);
+    }
+  }
+
+  async function emptyAnalyteEntries() {
+    const eqId = document.getElementById('lj_analyzerSelect').value || document.getElementById('quick_eqId').value;
+    const analyteCode = document.getElementById('lj_analyteSelect').value || document.getElementById('quick_analyteCode').value;
+    if (!eqId || !analyteCode) {
+      alert('Please select an analyzer and analyte first.');
+      return;
+    }
+
+    const confirmed = confirm(`Are you sure you want to EMPTY / DELETE ALL recorded QC runs for "${analyteCode.toUpperCase()}" on this analyzer?\n\nThis will reset the Levey-Jennings chart and run log for testing. This action cannot be undone.`);
+    if (!confirmed) return;
+
+    try {
+      // 1. Try bulk delete endpoint
+      let res = await fetch(`/equipment/${eqId}/qc/entries?analyteCode=${encodeURIComponent(analyteCode)}`, {
+        method: 'DELETE',
+        headers: { 'Accept': 'application/json' }
+      });
+      let data = await res.json().catch(() => null);
+
+      // 2. Fallback to deleting each point in currentLjData sequentially if bulk route not yet available
+      if (!data || !data.success) {
+        if (currentLjData && Array.isArray(currentLjData.points) && currentLjData.points.length > 0) {
+          for (const pt of currentLjData.points) {
+            if (pt.id) {
+              await fetch(`/equipment/qc/entries/${pt.id}`, {
+                method: 'DELETE',
+                headers: { 'Accept': 'application/json' }
+              });
+            }
+          }
+          data = { success: true };
+        }
+      }
+
+      if (data && data.success) {
+        loadLjChart();
+        alert(`All QC runs for "${analyteCode.toUpperCase()}" have been emptied successfully.`);
+      } else {
+        alert((data && data.error) || 'Failed to empty QC runs.');
+      }
+    } catch (err) {
+      alert('Error emptying QC runs: ' + err.message);
     }
   }
 

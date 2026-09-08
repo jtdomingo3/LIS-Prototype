@@ -837,6 +837,56 @@ router.delete('/qc/entries/:entryId', requireAuth, (req, res) => {
   }
 });
 
+// DELETE /equipment/:id/qc/entries/last - Drop/undo the most recently entered QC run
+router.delete('/:id/qc/entries/last', requireAuth, (req, res) => {
+  try {
+    const { analyteCode } = req.query;
+    let list = global.db.getQcEntries(req.params.id, analyteCode) || [];
+    if (analyteCode && list.length === 0) {
+      const aliases = getAnalyteAliases(analyteCode);
+      for (const alt of aliases) {
+        const altList = global.db.getQcEntries(req.params.id, alt) || [];
+        if (altList.length > 0) {
+          list = altList;
+          break;
+        }
+      }
+    }
+    if (!list || list.length === 0) {
+      return res.status(404).json({ success: false, error: 'No QC entries found to drop.' });
+    }
+    list.sort((a, b) => new Date(b.runDate || b.createdAt) - new Date(a.runDate || a.createdAt));
+    const lastEntry = list[0];
+    global.db.deleteQcEntry(lastEntry.id);
+    res.json({ success: true, message: `Dropped previous reading (${lastEntry.measuredValue}) from ${new Date(lastEntry.runDate).toLocaleDateString()}.`, droppedEntry: lastEntry });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE /equipment/:id/qc/entries - Empty/drop entries for this equipment or specific analyte
+router.delete('/:id/qc/entries', requireAuth, (req, res) => {
+  try {
+    const { analyteCode } = req.query;
+    if (analyteCode) {
+      const aliases = getAnalyteAliases(analyteCode);
+      for (const alt of aliases) {
+        if (typeof global.db.deleteQcEntries === 'function') {
+          global.db.deleteQcEntries(req.params.id, alt);
+        }
+      }
+      res.json({ success: true, message: `All QC run entries for "${analyteCode}" have been emptied.` });
+    } else {
+      if (typeof global.db.deleteQcEntries === 'function') {
+        global.db.deleteQcEntries(req.params.id);
+      }
+      res.json({ success: true, message: 'All QC run entries for this equipment have been emptied.' });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // GET /equipment/:id/qc/levey-jennings - Complete Levey-Jennings Chart Dataset
 router.get('/:id/qc/levey-jennings', requireAuth, (req, res) => {
   try {
@@ -849,15 +899,6 @@ router.get('/:id/qc/levey-jennings', requireAuth, (req, res) => {
     const rawEq = global.db.getEquipmentById(req.params.id);
     const equipment = rawEq ? new Equipment(rawEq) : null;
 
-    let control = null;
-    if (controlId) {
-      const rawCtrl = global.db.getQcControlById(controlId);
-      if (rawCtrl) control = new QcControl(rawCtrl);
-    } else {
-      const controls = (global.db.getQcControls(req.params.id) || []).map(c => new QcControl(c));
-      control = controls.find(c => c.getAnalyte(analyteCode)) || controls[0] || null;
-    }
-
     let rawEntries = global.db.getQcEntries(req.params.id, analyteCode) || [];
     if (rawEntries.length === 0) {
       const aliases = getAnalyteAliases(analyteCode);
@@ -869,6 +910,22 @@ router.get('/:id/qc/levey-jennings', requireAuth, (req, res) => {
             break;
           }
         }
+      }
+    }
+
+    let control = null;
+    if (controlId) {
+      const rawCtrl = global.db.getQcControlById(controlId);
+      if (rawCtrl) control = new QcControl(rawCtrl);
+    } else {
+      const controls = (global.db.getQcControls(req.params.id) || []).map(c => new QcControl(c));
+      if (rawEntries.length > 0 && rawEntries[0].controlId) {
+        control = controls.find(c => c.id === rawEntries[0].controlId);
+      }
+      if (!control) {
+        control = controls.find(c => (c.level || '').includes('1') && c.getAnalyte(analyteCode))
+               || controls.find(c => c.getAnalyte(analyteCode))
+               || controls[0] || null;
       }
     }
     let entries = rawEntries.map(e => new QcEntry(e));
