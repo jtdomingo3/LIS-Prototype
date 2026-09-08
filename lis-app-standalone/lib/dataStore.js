@@ -90,6 +90,11 @@ class DataStore {
       inventory: this.db.getInventory ? this.db.getInventory() : [],
       inventory_batches: this.db.getAllInventoryBatches ? this.db.getAllInventoryBatches() : [],
       inventory_transactions: this.db.getInventoryTransactions ? this.db.getInventoryTransactions() : [],
+      equipment: this.db.getEquipment ? this.db.getEquipment() : [],
+      equipment_logs: this.db.getEquipmentLogs ? this.db.getEquipmentLogs() : [],
+      qc_controls: this.db.getQcControls ? this.db.getQcControls() : [],
+      qc_entries: this.db.getQcEntries ? this.db.getQcEntries() : [],
+      neqas_records: this.db.getNeqasRecords ? this.db.getNeqasRecords() : [],
       settings: readData.settings || {}
     };
   }
@@ -104,6 +109,11 @@ class DataStore {
     if (name === 'inventory') return this.db.getInventory ? this.db.getInventory() : [];
     if (name === 'inventory_batches') return this.db.getAllInventoryBatches ? this.db.getAllInventoryBatches() : [];
     if (name === 'inventory_transactions') return this.db.getAllInventoryTransactions ? this.db.getAllInventoryTransactions() : (this.db.getInventoryTransactions ? this.db.getInventoryTransactions() : []);
+    if (name === 'equipment') return this.db.getEquipment ? this.db.getEquipment() : [];
+    if (name === 'equipment_logs') return this.db.getEquipmentLogs ? this.db.getEquipmentLogs() : [];
+    if (name === 'qc_controls') return this.db.getQcControls ? this.db.getQcControls() : [];
+    if (name === 'qc_entries') return this.db.getQcEntries ? this.db.getQcEntries() : [];
+    if (name === 'neqas_records') return this.db.getNeqasRecords ? this.db.getNeqasRecords() : [];
     return [];
   }
 
@@ -149,6 +159,66 @@ class DataStore {
         }
       }
       items.forEach(t => this.db.saveTransaction && this.db.saveTransaction(t));
+    }
+    else if (name === 'equipment' && Array.isArray(items)) {
+      if (opts && opts.replace && this.db.getEquipment) {
+        const incomingIds = new Set(items.map(i => i && (i.id || i._id)).filter(Boolean));
+        const current = this.db.getEquipment() || [];
+        for (const it of current) {
+          if (it && it.id && !incomingIds.has(it.id) && this.db.deleteEquipment) {
+            this.db.deleteEquipment(it.id);
+          }
+        }
+      }
+      items.forEach(it => this.db.saveEquipment && this.db.saveEquipment(it));
+    }
+    else if (name === 'equipment_logs' && Array.isArray(items)) {
+      if (opts && opts.replace && this.db.getEquipmentLogs) {
+        const incomingIds = new Set(items.map(i => i && (i.id || i._id)).filter(Boolean));
+        const current = this.db.getEquipmentLogs() || [];
+        for (const it of current) {
+          if (it && it.id && !incomingIds.has(it.id) && this.db.deleteEquipmentLog) {
+            this.db.deleteEquipmentLog(it.id);
+          }
+        }
+      }
+      items.forEach(it => this.db.saveEquipmentLog && this.db.saveEquipmentLog(it));
+    }
+    else if (name === 'qc_controls' && Array.isArray(items)) {
+      if (opts && opts.replace && this.db.getQcControls) {
+        const incomingIds = new Set(items.map(i => i && (i.id || i._id)).filter(Boolean));
+        const current = this.db.getQcControls() || [];
+        for (const it of current) {
+          if (it && it.id && !incomingIds.has(it.id) && this.db.deleteQcControl) {
+            this.db.deleteQcControl(it.id);
+          }
+        }
+      }
+      items.forEach(it => this.db.saveQcControl && this.db.saveQcControl(it));
+    }
+    else if (name === 'qc_entries' && Array.isArray(items)) {
+      if (opts && opts.replace && this.db.getQcEntries) {
+        const incomingIds = new Set(items.map(i => i && (i.id || i._id)).filter(Boolean));
+        const current = this.db.getQcEntries() || [];
+        for (const it of current) {
+          if (it && it.id && !incomingIds.has(it.id) && this.db.deleteQcEntry) {
+            this.db.deleteQcEntry(it.id);
+          }
+        }
+      }
+      items.forEach(it => this.db.saveQcEntry && this.db.saveQcEntry(it));
+    }
+    else if (name === 'neqas_records' && Array.isArray(items)) {
+      if (opts && opts.replace && this.db.getNeqasRecords) {
+        const incomingIds = new Set(items.map(i => i && (i.id || i._id)).filter(Boolean));
+        const current = this.db.getNeqasRecords() || [];
+        for (const it of current) {
+          if (it && it.id && !incomingIds.has(it.id) && this.db.deleteNeqasRecord) {
+            this.db.deleteNeqasRecord(it.id);
+          }
+        }
+      }
+      items.forEach(it => this.db.saveNeqasRecord && this.db.saveNeqasRecord(it));
     }
   }
 
@@ -202,7 +272,12 @@ class DataStore {
         name === 'templates' ? this.db.deleteTemplate :
         name === 'inventory' ? this.db.deleteInventory :
         name === 'inventory_batches' ? this.db.deleteBatch :
-        name === 'inventory_transactions' ? this.db.deleteTransaction : null;
+        name === 'inventory_transactions' ? this.db.deleteTransaction :
+        name === 'equipment' ? this.db.deleteEquipment :
+        name === 'equipment_logs' ? this.db.deleteEquipmentLog :
+        name === 'qc_controls' ? this.db.deleteQcControl :
+        name === 'qc_entries' ? this.db.deleteQcEntry :
+        name === 'neqas_records' ? this.db.deleteNeqasRecord : null;
 
       if (deleteFn) {
         for (const id of deletedIds) {

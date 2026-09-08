@@ -354,7 +354,7 @@ class SyncEngine {
           if (!result || typeof result !== 'object') return { success: false, reason: 'invalid-json' };
 
           // Merge known collections (best-effort) or replace when requested
-          const collections = ['users', 'patients', 'tests', 'templates', 'counters', 'inventory', 'inventory_batches', 'inventory_transactions'];
+          const collections = ['users', 'patients', 'tests', 'templates', 'counters', 'inventory', 'inventory_batches', 'inventory_transactions', 'equipment', 'equipment_logs', 'qc_controls', 'qc_entries', 'neqas_records'];
           let imported = 0;
           for (const col of collections) {
             if (Array.isArray(result[col])) {
@@ -822,7 +822,7 @@ class SyncEngine {
       if (!collection) return;
 
       // Only handle known collections where local temp IDs exist
-      if (!['patients','tests','templates','users','inventory'].includes(collection)) return;
+      if (!['patients','tests','templates','users','inventory','equipment','equipment_logs','qc_controls','qc_entries','neqas_records'].includes(collection)) return;
 
       // Prefer deterministic mapping when server echoed back a client_id in JSON response
       let clientId = null;
@@ -1519,7 +1519,7 @@ class SyncEngine {
 
     // Step 4: Authoritatively reconcile local DataStore with server data
     // Use replace: true so local database precisely mirrors authoritative server state
-    const collections = ['users', 'patients', 'tests', 'templates', 'counters', 'inventory', 'inventory_batches', 'inventory_transactions'];
+    const collections = ['users', 'patients', 'tests', 'templates', 'counters', 'inventory', 'inventory_batches', 'inventory_transactions', 'equipment', 'equipment_logs', 'qc_controls', 'qc_entries', 'neqas_records'];
     let totalImported = 0;
 
     for (const col of collections) {

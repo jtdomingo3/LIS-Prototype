@@ -256,6 +256,93 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     CREATE INDEX IF NOT EXISTS idx_inv_trans_batch ON inventory_transactions(batchId);
     CREATE INDEX IF NOT EXISTS idx_inv_trans_type ON inventory_transactions(transactionType);
     CREATE INDEX IF NOT EXISTS idx_inv_trans_date ON inventory_transactions(createdAt);
+
+    CREATE TABLE IF NOT EXISTS equipment (
+      id TEXT PRIMARY KEY,
+      equipmentCode TEXT UNIQUE,
+      name TEXT,
+      category TEXT,
+      department TEXT,
+      serialNumber TEXT,
+      status TEXT,
+      nextCalibrationDate TEXT,
+      nextPmDate TEXT,
+      createdAt TEXT,
+      updatedAt TEXT,
+      json TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_eq_code ON equipment(equipmentCode);
+    CREATE INDEX IF NOT EXISTS idx_eq_category ON equipment(category);
+    CREATE INDEX IF NOT EXISTS idx_eq_dept ON equipment(department);
+    CREATE INDEX IF NOT EXISTS idx_eq_status ON equipment(status);
+    CREATE INDEX IF NOT EXISTS idx_eq_next_cal ON equipment(nextCalibrationDate);
+
+    CREATE TABLE IF NOT EXISTS equipment_logs (
+      id TEXT PRIMARY KEY,
+      equipmentId TEXT,
+      logType TEXT,
+      serviceDate TEXT,
+      resultStatus TEXT,
+      certificateNumber TEXT,
+      createdAt TEXT,
+      json TEXT NOT NULL,
+      FOREIGN KEY(equipmentId) REFERENCES equipment(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_eq_logs_eqid ON equipment_logs(equipmentId);
+    CREATE INDEX IF NOT EXISTS idx_eq_logs_type ON equipment_logs(logType);
+    CREATE INDEX IF NOT EXISTS idx_eq_logs_date ON equipment_logs(serviceDate);
+
+    CREATE TABLE IF NOT EXISTS qc_controls (
+      id TEXT PRIMARY KEY,
+      equipmentId TEXT,
+      controlName TEXT,
+      lotNumber TEXT,
+      level TEXT,
+      expirationDate TEXT,
+      isActive INTEGER DEFAULT 1,
+      createdAt TEXT,
+      json TEXT NOT NULL,
+      FOREIGN KEY(equipmentId) REFERENCES equipment(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_qc_ctrl_eqid ON qc_controls(equipmentId);
+    CREATE INDEX IF NOT EXISTS idx_qc_ctrl_lot ON qc_controls(lotNumber);
+
+    CREATE TABLE IF NOT EXISTS qc_entries (
+      id TEXT PRIMARY KEY,
+      equipmentId TEXT,
+      controlId TEXT,
+      analyteCode TEXT,
+      controlLot TEXT,
+      runDate TEXT,
+      measuredValue REAL,
+      zScore REAL,
+      status TEXT,
+      createdAt TEXT,
+      json TEXT NOT NULL,
+      FOREIGN KEY(equipmentId) REFERENCES equipment(id),
+      FOREIGN KEY(controlId) REFERENCES qc_controls(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_qc_entry_eqid ON qc_entries(equipmentId);
+    CREATE INDEX IF NOT EXISTS idx_qc_entry_ctrl ON qc_entries(controlId);
+    CREATE INDEX IF NOT EXISTS idx_qc_entry_analyte ON qc_entries(analyteCode);
+    CREATE INDEX IF NOT EXISTS idx_qc_entry_date ON qc_entries(runDate);
+
+    CREATE TABLE IF NOT EXISTS neqas_records (
+      id TEXT PRIMARY KEY,
+      equipmentId TEXT,
+      cycleYear TEXT,
+      eventNumber TEXT,
+      nrlName TEXT,
+      sampleId TEXT,
+      analyteCode TEXT,
+      status TEXT,
+      createdAt TEXT,
+      json TEXT NOT NULL,
+      FOREIGN KEY(equipmentId) REFERENCES equipment(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_neqas_eqid ON neqas_records(equipmentId);
+    CREATE INDEX IF NOT EXISTS idx_neqas_year ON neqas_records(cycleYear);
+    CREATE INDEX IF NOT EXISTS idx_neqas_status ON neqas_records(status);
   `);
 
   const stmts = {
@@ -327,7 +414,45 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     getInventoryTransactionsByBatchId: sqlite.prepare('SELECT json FROM inventory_transactions WHERE batchId = ? ORDER BY createdAt DESC'),
     insertInventoryTransaction: sqlite.prepare('INSERT INTO inventory_transactions (id, inventoryId, batchId, transactionType, performedBy, createdAt, json) VALUES (@id, @inventoryId, @batchId, @transactionType, @performedBy, @createdAt, @json)'),
     deleteInventoryTransactionsByItemId: sqlite.prepare('DELETE FROM inventory_transactions WHERE inventoryId = ?'),
-    deleteInventoryTransactionById: sqlite.prepare('DELETE FROM inventory_transactions WHERE id = ?')
+    deleteInventoryTransactionById: sqlite.prepare('DELETE FROM inventory_transactions WHERE id = ?'),
+
+    getAllEquipment: sqlite.prepare('SELECT json FROM equipment ORDER BY name ASC'),
+    getEquipmentById: sqlite.prepare('SELECT json FROM equipment WHERE id = ?'),
+    getEquipmentByCode: sqlite.prepare('SELECT json FROM equipment WHERE equipmentCode = ?'),
+    getEquipmentByDepartment: sqlite.prepare('SELECT json FROM equipment WHERE department = ? ORDER BY name ASC'),
+    getEquipmentByCategory: sqlite.prepare('SELECT json FROM equipment WHERE category = ? ORDER BY name ASC'),
+    upsertEquipment: sqlite.prepare('INSERT OR REPLACE INTO equipment (id, equipmentCode, name, category, department, serialNumber, status, nextCalibrationDate, nextPmDate, createdAt, updatedAt, json) VALUES (@id, @equipmentCode, @name, @category, @department, @serialNumber, @status, @nextCalibrationDate, @nextPmDate, @createdAt, @updatedAt, @json)'),
+    deleteEquipmentById: sqlite.prepare('DELETE FROM equipment WHERE id = ?'),
+
+    getAllEquipmentLogs: sqlite.prepare('SELECT json FROM equipment_logs ORDER BY serviceDate DESC, createdAt DESC'),
+    getEquipmentLogsByEquipmentId: sqlite.prepare('SELECT json FROM equipment_logs WHERE equipmentId = ? ORDER BY serviceDate DESC, createdAt DESC'),
+    getEquipmentLogById: sqlite.prepare('SELECT json FROM equipment_logs WHERE id = ?'),
+    upsertEquipmentLog: sqlite.prepare('INSERT OR REPLACE INTO equipment_logs (id, equipmentId, logType, serviceDate, resultStatus, certificateNumber, createdAt, json) VALUES (@id, @equipmentId, @logType, @serviceDate, @resultStatus, @certificateNumber, @createdAt, @json)'),
+    deleteEquipmentLogById: sqlite.prepare('DELETE FROM equipment_logs WHERE id = ?'),
+    deleteEquipmentLogsByEquipmentId: sqlite.prepare('DELETE FROM equipment_logs WHERE equipmentId = ?'),
+
+    getAllQcControls: sqlite.prepare('SELECT json FROM qc_controls ORDER BY createdAt DESC'),
+    getQcControlsByEquipmentId: sqlite.prepare('SELECT json FROM qc_controls WHERE equipmentId = ? ORDER BY createdAt DESC'),
+    getQcControlById: sqlite.prepare('SELECT json FROM qc_controls WHERE id = ?'),
+    upsertQcControl: sqlite.prepare('INSERT OR REPLACE INTO qc_controls (id, equipmentId, controlName, lotNumber, level, expirationDate, isActive, createdAt, json) VALUES (@id, @equipmentId, @controlName, @lotNumber, @level, @expirationDate, @isActive, @createdAt, @json)'),
+    deleteQcControlById: sqlite.prepare('DELETE FROM qc_controls WHERE id = ?'),
+    deleteQcControlsByEquipmentId: sqlite.prepare('DELETE FROM qc_controls WHERE equipmentId = ?'),
+
+    getAllQcEntries: sqlite.prepare('SELECT json FROM qc_entries ORDER BY runDate DESC, createdAt DESC'),
+    getQcEntriesByEquipmentId: sqlite.prepare('SELECT json FROM qc_entries WHERE equipmentId = ? ORDER BY runDate ASC, createdAt ASC'),
+    getQcEntriesByEquipmentAndAnalyte: sqlite.prepare('SELECT json FROM qc_entries WHERE equipmentId = ? AND analyteCode = ? ORDER BY runDate ASC, createdAt ASC'),
+    getQcEntryById: sqlite.prepare('SELECT json FROM qc_entries WHERE id = ?'),
+    upsertQcEntry: sqlite.prepare('INSERT OR REPLACE INTO qc_entries (id, equipmentId, controlId, analyteCode, controlLot, runDate, measuredValue, zScore, status, createdAt, json) VALUES (@id, @equipmentId, @controlId, @analyteCode, @controlLot, @runDate, @measuredValue, @zScore, @status, @createdAt, @json)'),
+    deleteQcEntryById: sqlite.prepare('DELETE FROM qc_entries WHERE id = ?'),
+    deleteQcEntriesByEquipmentId: sqlite.prepare('DELETE FROM qc_entries WHERE equipmentId = ?'),
+    deleteQcEntriesByEquipmentAndAnalyte: sqlite.prepare('DELETE FROM qc_entries WHERE equipmentId = ? AND analyteCode = ?'),
+
+    getAllNeqasRecords: sqlite.prepare('SELECT json FROM neqas_records ORDER BY cycleYear DESC, createdAt DESC'),
+    getNeqasRecordsByEquipmentId: sqlite.prepare('SELECT json FROM neqas_records WHERE equipmentId = ? ORDER BY cycleYear DESC, createdAt DESC'),
+    getNeqasRecordById: sqlite.prepare('SELECT json FROM neqas_records WHERE id = ?'),
+    upsertNeqasRecord: sqlite.prepare('INSERT OR REPLACE INTO neqas_records (id, equipmentId, cycleYear, eventNumber, nrlName, sampleId, analyteCode, status, createdAt, json) VALUES (@id, @equipmentId, @cycleYear, @eventNumber, @nrlName, @sampleId, @analyteCode, @status, @createdAt, @json)'),
+    deleteNeqasRecordById: sqlite.prepare('DELETE FROM neqas_records WHERE id = ?'),
+    deleteNeqasRecordsByEquipmentId: sqlite.prepare('DELETE FROM neqas_records WHERE equipmentId = ?')
   };
 
   const patientCache = createEntityCache(1000);
@@ -1033,9 +1158,319 @@ function createBetterSqliteDb(dbPath, opts = {}) {
         return null;
       }
     },
+
+    // Equipment Management Methods
+    getEquipment() {
+      try {
+        const rows = stmts.getAllEquipment.all();
+        return parseRows(rows);
+      } catch (e) {
+        return [];
+      }
+    },
+    getEquipmentById(id) {
+      if (!id) return null;
+      try {
+        const row = stmts.getEquipmentById.get(id);
+        return row && row.json ? JSON.parse(row.json) : null;
+      } catch (e) {
+        return null;
+      }
+    },
+    getEquipmentByCode(code) {
+      if (!code) return null;
+      try {
+        const row = stmts.getEquipmentByCode.get(code);
+        return row && row.json ? JSON.parse(row.json) : null;
+      } catch (e) {
+        return null;
+      }
+    },
+    getEquipmentByDepartment(dept) {
+      if (!dept) return [];
+      try {
+        const rows = stmts.getEquipmentByDepartment.all(dept);
+        return parseRows(rows);
+      } catch (e) {
+        return [];
+      }
+    },
+    getEquipmentByCategory(cat) {
+      if (!cat) return [];
+      try {
+        const rows = stmts.getEquipmentByCategory.all(cat);
+        return parseRows(rows);
+      } catch (e) {
+        return [];
+      }
+    },
+    saveEquipment(item) {
+      if (!item || !item.id) return null;
+      try {
+        const code = item.equipmentCode || item.code;
+        if (code) {
+          const existing = this.getEquipmentByCode(code);
+          if (existing && existing.id && existing.id !== item.id) {
+            item.id = existing.id;
+          }
+        }
+        const data = {
+          id: String(item.id),
+          equipmentCode: safeStr(item.equipmentCode || item.code || ''),
+          name: safeStr(item.name || ''),
+          category: safeStr(item.category || ''),
+          department: safeStr(item.department || ''),
+          serialNumber: safeStr(item.serialNumber || ''),
+          status: safeStr(item.status || 'OPERATIONAL'),
+          nextCalibrationDate: safeStr(item.nextCalibrationDate || null),
+          nextPmDate: safeStr(item.nextPmDate || null),
+          createdAt: safeStr(item.createdAt || new Date().toISOString()),
+          updatedAt: safeStr(item.updatedAt || new Date().toISOString()),
+          json: JSON.stringify(item)
+        };
+        stmts.upsertEquipment.run(data);
+        return item;
+      } catch (e) {
+        console.error('[sqliteDb] saveEquipment error:', e.message);
+        return null;
+      }
+    },
     deleteTransaction(id) {
       try {
         stmts.deleteInventoryTransactionById.run(id);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    },
+
+    deleteEquipment(id) {
+      try {
+        stmts.deleteNeqasRecordsByEquipmentId.run(id);
+        stmts.deleteQcEntriesByEquipmentId.run(id);
+        stmts.deleteQcControlsByEquipmentId.run(id);
+        stmts.deleteEquipmentLogsByEquipmentId.run(id);
+        stmts.deleteEquipmentById.run(id);
+        return true;
+      } catch (e) {
+        console.error('[sqliteDb] deleteEquipment error:', e && e.message);
+        return false;
+      }
+    },
+
+    // Equipment Logs Methods
+    getEquipmentLogs(equipmentId) {
+      try {
+        const rows = equipmentId
+          ? stmts.getEquipmentLogsByEquipmentId.all(equipmentId)
+          : stmts.getAllEquipmentLogs.all();
+        return parseRows(rows);
+      } catch (e) {
+        return [];
+      }
+    },
+    getEquipmentLogById(id) {
+      if (!id) return null;
+      try {
+        const row = stmts.getEquipmentLogById.get(id);
+        return row && row.json ? JSON.parse(row.json) : null;
+      } catch (e) {
+        return null;
+      }
+    },
+    saveEquipmentLog(log) {
+      if (!log || !log.id) return null;
+      try {
+        const data = {
+          id: String(log.id),
+          equipmentId: String(log.equipmentId || ''),
+          logType: safeStr(log.logType || 'CALIBRATION'),
+          serviceDate: safeStr(log.serviceDate || new Date().toISOString()),
+          resultStatus: safeStr(log.resultStatus || 'PASS'),
+          certificateNumber: safeStr(log.certificateNumber || ''),
+          createdAt: safeStr(log.createdAt || new Date().toISOString()),
+          json: JSON.stringify(log)
+        };
+        stmts.upsertEquipmentLog.run(data);
+        return log;
+      } catch (e) {
+        console.error('[sqliteDb] saveEquipmentLog error:', e.message);
+        return null;
+      }
+    },
+    deleteEquipmentLog(id) {
+      try {
+        stmts.deleteEquipmentLogById.run(id);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    },
+
+    // QC Controls
+    getQcControls(equipmentId) {
+      try {
+        const rows = equipmentId
+          ? stmts.getQcControlsByEquipmentId.all(equipmentId)
+          : stmts.getAllQcControls.all();
+        return parseRows(rows);
+      } catch (e) {
+        return [];
+      }
+    },
+    getQcControlById(id) {
+      if (!id) return null;
+      try {
+        const row = stmts.getQcControlById.get(id);
+        return row && row.json ? JSON.parse(row.json) : null;
+      } catch (e) {
+        return null;
+      }
+    },
+    saveQcControl(ctrl) {
+      if (!ctrl || !ctrl.id) return null;
+      try {
+        const data = {
+          id: String(ctrl.id),
+          equipmentId: String(ctrl.equipmentId || ''),
+          controlName: safeStr(ctrl.controlName || ''),
+          lotNumber: safeStr(ctrl.lotNumber || ''),
+          level: safeStr(ctrl.level || 'Level 1'),
+          expirationDate: safeStr(ctrl.expirationDate || null),
+          isActive: ctrl.isActive !== false ? 1 : 0,
+          createdAt: safeStr(ctrl.createdAt || new Date().toISOString()),
+          json: JSON.stringify(ctrl)
+        };
+        stmts.upsertQcControl.run(data);
+        return ctrl;
+      } catch (e) {
+        console.error('[sqliteDb] saveQcControl error:', e.message);
+        return null;
+      }
+    },
+    deleteQcControl(id) {
+      try {
+        stmts.deleteQcControlById.run(id);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    },
+
+    // QC Entries
+    getQcEntries(equipmentId, analyteCode) {
+      try {
+        let rows;
+        if (equipmentId && analyteCode) {
+          rows = stmts.getQcEntriesByEquipmentAndAnalyte.all(equipmentId, analyteCode);
+        } else if (equipmentId) {
+          rows = stmts.getQcEntriesByEquipmentId.all(equipmentId);
+        } else {
+          rows = stmts.getAllQcEntries.all();
+        }
+        return parseRows(rows);
+      } catch (e) {
+        return [];
+      }
+    },
+    getQcEntryById(id) {
+      if (!id) return null;
+      try {
+        const row = stmts.getQcEntryById.get(id);
+        return row && row.json ? JSON.parse(row.json) : null;
+      } catch (e) {
+        return null;
+      }
+    },
+    saveQcEntry(entry) {
+      if (!entry || !entry.id) return null;
+      try {
+        const data = {
+          id: String(entry.id),
+          equipmentId: String(entry.equipmentId || ''),
+          controlId: String(entry.controlId || ''),
+          analyteCode: safeStr(entry.analyteCode || ''),
+          controlLot: safeStr(entry.controlLot || ''),
+          runDate: safeStr(entry.runDate || new Date().toISOString()),
+          measuredValue: Number(entry.measuredValue) || 0,
+          zScore: Number.isFinite(Number(entry.zScore)) ? Number(entry.zScore) : 0,
+          status: safeStr(entry.status || 'ACCEPTED'),
+          createdAt: safeStr(entry.createdAt || new Date().toISOString()),
+          json: JSON.stringify(entry)
+        };
+        stmts.upsertQcEntry.run(data);
+        return entry;
+      } catch (e) {
+        console.error('[sqliteDb] saveQcEntry error:', e.message);
+        return null;
+      }
+    },
+    deleteQcEntry(id) {
+      try {
+        stmts.deleteQcEntryById.run(id);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    },
+    deleteQcEntries(equipmentId, analyteCode) {
+      try {
+        if (equipmentId && analyteCode) {
+          stmts.deleteQcEntriesByEquipmentAndAnalyte.run(equipmentId, analyteCode);
+        } else if (equipmentId) {
+          stmts.deleteQcEntriesByEquipmentId.run(equipmentId);
+        }
+        return true;
+      } catch (e) {
+        return false;
+      }
+    },
+
+    // NEQAS Records
+    getNeqasRecords(equipmentId) {
+      try {
+        const rows = equipmentId
+          ? stmts.getNeqasRecordsByEquipmentId.all(equipmentId)
+          : stmts.getAllNeqasRecords.all();
+        return parseRows(rows);
+      } catch (e) {
+        return [];
+      }
+    },
+    getNeqasRecordById(id) {
+      if (!id) return null;
+      try {
+        const row = stmts.getNeqasRecordById.get(id);
+        return row && row.json ? JSON.parse(row.json) : null;
+      } catch (e) {
+        return null;
+      }
+    },
+    saveNeqasRecord(rec) {
+      if (!rec || !rec.id) return null;
+      try {
+        const data = {
+          id: String(rec.id),
+          equipmentId: String(rec.equipmentId || ''),
+          cycleYear: safeStr(rec.cycleYear || String(new Date().getFullYear())),
+          eventNumber: safeStr(rec.eventNumber || '1'),
+          nrlName: safeStr(rec.nrlName || 'LCP'),
+          sampleId: safeStr(rec.sampleId || ''),
+          analyteCode: safeStr(rec.analyteCode || ''),
+          status: safeStr(rec.status || 'PENDING'),
+          createdAt: safeStr(rec.createdAt || new Date().toISOString()),
+          json: JSON.stringify(rec)
+        };
+        stmts.upsertNeqasRecord.run(data);
+        return rec;
+      } catch (e) {
+        console.error('[sqliteDb] saveNeqasRecord error:', e.message);
+        return null;
+      }
+    },
+    deleteNeqasRecord(id) {
+      try {
+        stmts.deleteNeqasRecordById.run(id);
         return true;
       } catch (e) {
         return false;
@@ -1190,6 +1625,93 @@ function createSqlJsDb(SQL, dbPath) {
     CREATE INDEX IF NOT EXISTS idx_inv_trans_batch ON inventory_transactions(batchId);
     CREATE INDEX IF NOT EXISTS idx_inv_trans_type ON inventory_transactions(transactionType);
     CREATE INDEX IF NOT EXISTS idx_inv_trans_date ON inventory_transactions(createdAt);
+
+    CREATE TABLE IF NOT EXISTS equipment (
+      id TEXT PRIMARY KEY,
+      equipmentCode TEXT UNIQUE,
+      name TEXT,
+      category TEXT,
+      department TEXT,
+      serialNumber TEXT,
+      status TEXT,
+      nextCalibrationDate TEXT,
+      nextPmDate TEXT,
+      createdAt TEXT,
+      updatedAt TEXT,
+      json TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_eq_code ON equipment(equipmentCode);
+    CREATE INDEX IF NOT EXISTS idx_eq_category ON equipment(category);
+    CREATE INDEX IF NOT EXISTS idx_eq_dept ON equipment(department);
+    CREATE INDEX IF NOT EXISTS idx_eq_status ON equipment(status);
+    CREATE INDEX IF NOT EXISTS idx_eq_next_cal ON equipment(nextCalibrationDate);
+
+    CREATE TABLE IF NOT EXISTS equipment_logs (
+      id TEXT PRIMARY KEY,
+      equipmentId TEXT,
+      logType TEXT,
+      serviceDate TEXT,
+      resultStatus TEXT,
+      certificateNumber TEXT,
+      createdAt TEXT,
+      json TEXT NOT NULL,
+      FOREIGN KEY(equipmentId) REFERENCES equipment(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_eq_logs_eqid ON equipment_logs(equipmentId);
+    CREATE INDEX IF NOT EXISTS idx_eq_logs_type ON equipment_logs(logType);
+    CREATE INDEX IF NOT EXISTS idx_eq_logs_date ON equipment_logs(serviceDate);
+
+    CREATE TABLE IF NOT EXISTS qc_controls (
+      id TEXT PRIMARY KEY,
+      equipmentId TEXT,
+      controlName TEXT,
+      lotNumber TEXT,
+      level TEXT,
+      expirationDate TEXT,
+      isActive INTEGER DEFAULT 1,
+      createdAt TEXT,
+      json TEXT NOT NULL,
+      FOREIGN KEY(equipmentId) REFERENCES equipment(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_qc_ctrl_eqid ON qc_controls(equipmentId);
+    CREATE INDEX IF NOT EXISTS idx_qc_ctrl_lot ON qc_controls(lotNumber);
+
+    CREATE TABLE IF NOT EXISTS qc_entries (
+      id TEXT PRIMARY KEY,
+      equipmentId TEXT,
+      controlId TEXT,
+      analyteCode TEXT,
+      controlLot TEXT,
+      runDate TEXT,
+      measuredValue REAL,
+      zScore REAL,
+      status TEXT,
+      createdAt TEXT,
+      json TEXT NOT NULL,
+      FOREIGN KEY(equipmentId) REFERENCES equipment(id),
+      FOREIGN KEY(controlId) REFERENCES qc_controls(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_qc_entry_eqid ON qc_entries(equipmentId);
+    CREATE INDEX IF NOT EXISTS idx_qc_entry_ctrl ON qc_entries(controlId);
+    CREATE INDEX IF NOT EXISTS idx_qc_entry_analyte ON qc_entries(analyteCode);
+    CREATE INDEX IF NOT EXISTS idx_qc_entry_date ON qc_entries(runDate);
+
+    CREATE TABLE IF NOT EXISTS neqas_records (
+      id TEXT PRIMARY KEY,
+      equipmentId TEXT,
+      cycleYear TEXT,
+      eventNumber TEXT,
+      nrlName TEXT,
+      sampleId TEXT,
+      analyteCode TEXT,
+      status TEXT,
+      createdAt TEXT,
+      json TEXT NOT NULL,
+      FOREIGN KEY(equipmentId) REFERENCES equipment(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_neqas_eqid ON neqas_records(equipmentId);
+    CREATE INDEX IF NOT EXISTS idx_neqas_year ON neqas_records(cycleYear);
+    CREATE INDEX IF NOT EXISTS idx_neqas_status ON neqas_records(status);
   `);
 
   let persistTimer = null;
@@ -2051,22 +2573,12 @@ function createSqlJsDb(SQL, dbPath) {
       }
     },
 
-    getAllInventoryTransactions() {
-      try {
-        return parseRows(queryAll('SELECT json FROM inventory_transactions ORDER BY createdAt DESC'));
-      } catch (e) {
-        return [];
-      }
-    },
     getInventoryTransactions(inventoryId, batchId) {
       try {
         if (batchId) {
           return parseRows(queryAll('SELECT json FROM inventory_transactions WHERE batchId = ? ORDER BY createdAt DESC', [batchId]));
         }
-        if (inventoryId) {
-          return parseRows(queryAll('SELECT json FROM inventory_transactions WHERE inventoryId = ? ORDER BY createdAt DESC', [inventoryId]));
-        }
-        return parseRows(queryAll('SELECT json FROM inventory_transactions ORDER BY createdAt DESC'));
+        return parseRows(queryAll('SELECT json FROM inventory_transactions WHERE inventoryId = ? ORDER BY createdAt DESC', [inventoryId]));
       } catch (e) {
         return [];
       }
@@ -2095,14 +2607,288 @@ function createSqlJsDb(SQL, dbPath) {
         return null;
       }
     },
+
+    // sql.js Equipment Management Methods
+    getEquipment() {
+      try {
+        return parseRows(queryAll('SELECT json FROM equipment ORDER BY name ASC'));
+      } catch (e) { return []; }
+    },
+    getEquipmentById(id) {
+      if (!id) return null;
+      try {
+        const rows = queryAll('SELECT json FROM equipment WHERE id = ?', [id]);
+        return rows.length ? JSON.parse(rows[0].json) : null;
+      } catch (e) { return null; }
+    },
+    getEquipmentByCode(code) {
+      if (!code) return null;
+      try {
+        const rows = queryAll('SELECT json FROM equipment WHERE equipmentCode = ?', [code]);
+        return rows.length ? JSON.parse(rows[0].json) : null;
+      } catch (e) { return null; }
+    },
+    getEquipmentByDepartment(dept) {
+      if (!dept) return [];
+      try {
+        return parseRows(queryAll('SELECT json FROM equipment WHERE department = ? ORDER BY name ASC', [dept]));
+      } catch (e) { return []; }
+    },
+    getEquipmentByCategory(cat) {
+      if (!cat) return [];
+      try {
+        return parseRows(queryAll('SELECT json FROM equipment WHERE category = ? ORDER BY name ASC', [cat]));
+      } catch (e) { return []; }
+    },
+    saveEquipment(item) {
+      if (!item || !item.id) return null;
+      try {
+        const code = item.equipmentCode || item.code;
+        if (code) {
+          const existing = this.getEquipmentByCode(code);
+          if (existing && existing.id && existing.id !== item.id) {
+            item.id = existing.id;
+          }
+        }
+        const data = {
+          id: String(item.id),
+          equipmentCode: item.equipmentCode || item.code || '',
+          name: item.name || '',
+          category: item.category || '',
+          department: item.department || '',
+          serialNumber: item.serialNumber || '',
+          status: item.status || 'OPERATIONAL',
+          nextCalibrationDate: item.nextCalibrationDate || null,
+          nextPmDate: item.nextPmDate || null,
+          createdAt: item.createdAt || new Date().toISOString(),
+          updatedAt: item.updatedAt || new Date().toISOString(),
+          json: JSON.stringify(item)
+        };
+        queryRun(
+          'INSERT OR REPLACE INTO equipment (id, equipmentCode, name, category, department, serialNumber, status, nextCalibrationDate, nextPmDate, createdAt, updatedAt, json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [data.id, data.equipmentCode, data.name, data.category, data.department, data.serialNumber, data.status, data.nextCalibrationDate, data.nextPmDate, data.createdAt, data.updatedAt, data.json]
+        );
+        persist();
+        return item;
+      } catch (e) {
+        console.error('[sqliteDb sql.js] saveEquipment error:', e.message);
+        return null;
+      }
+    },
     deleteTransaction(id) {
       try {
         queryRun('DELETE FROM inventory_transactions WHERE id = ?', [id]);
         persist();
         return true;
+      } catch (e) { return false; }
+    },
+
+    deleteEquipment(id) {
+      try {
+        queryRun('DELETE FROM neqas_records WHERE equipmentId = ?', [id]);
+        queryRun('DELETE FROM qc_entries WHERE equipmentId = ?', [id]);
+        queryRun('DELETE FROM qc_controls WHERE equipmentId = ?', [id]);
+        queryRun('DELETE FROM equipment_logs WHERE equipmentId = ?', [id]);
+        queryRun('DELETE FROM equipment WHERE id = ?', [id]);
+        persist();
+        return true;
+      } catch (e) { return false; }
+    },
+
+    getEquipmentLogs(equipmentId) {
+      try {
+        if (equipmentId) {
+          return parseRows(queryAll('SELECT json FROM equipment_logs WHERE equipmentId = ? ORDER BY serviceDate DESC, createdAt DESC', [equipmentId]));
+        }
+        return parseRows(queryAll('SELECT json FROM equipment_logs ORDER BY serviceDate DESC, createdAt DESC'));
+      } catch (e) { return []; }
+    },
+    getEquipmentLogById(id) {
+      if (!id) return null;
+      try {
+        const rows = queryAll('SELECT json FROM equipment_logs WHERE id = ?', [id]);
+        return rows.length ? JSON.parse(rows[0].json) : null;
+      } catch (e) { return null; }
+    },
+    saveEquipmentLog(log) {
+      if (!log || !log.id) return null;
+      try {
+        const data = {
+          id: String(log.id),
+          equipmentId: String(log.equipmentId || ''),
+          logType: log.logType || 'CALIBRATION',
+          serviceDate: log.serviceDate || new Date().toISOString(),
+          resultStatus: log.resultStatus || 'PASS',
+          certificateNumber: log.certificateNumber || '',
+          createdAt: log.createdAt || new Date().toISOString(),
+          json: JSON.stringify(log)
+        };
+        queryRun(
+          'INSERT OR REPLACE INTO equipment_logs (id, equipmentId, logType, serviceDate, resultStatus, certificateNumber, createdAt, json) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [data.id, data.equipmentId, data.logType, data.serviceDate, data.resultStatus, data.certificateNumber, data.createdAt, data.json]
+        );
+        persist();
+        return log;
       } catch (e) {
-        return false;
+        console.error('[sqliteDb sql.js] saveEquipmentLog error:', e.message);
+        return null;
       }
+    },
+    deleteEquipmentLog(id) {
+      try {
+        queryRun('DELETE FROM equipment_logs WHERE id = ?', [id]);
+        persist();
+        return true;
+      } catch (e) { return false; }
+    },
+
+    getQcControls(equipmentId) {
+      try {
+        if (equipmentId) {
+          return parseRows(queryAll('SELECT json FROM qc_controls WHERE equipmentId = ? ORDER BY createdAt DESC', [equipmentId]));
+        }
+        return parseRows(queryAll('SELECT json FROM qc_controls ORDER BY createdAt DESC'));
+      } catch (e) { return []; }
+    },
+    getQcControlById(id) {
+      if (!id) return null;
+      try {
+        const rows = queryAll('SELECT json FROM qc_controls WHERE id = ?', [id]);
+        return rows.length ? JSON.parse(rows[0].json) : null;
+      } catch (e) { return null; }
+    },
+    saveQcControl(ctrl) {
+      if (!ctrl || !ctrl.id) return null;
+      try {
+        const data = {
+          id: String(ctrl.id),
+          equipmentId: String(ctrl.equipmentId || ''),
+          controlName: ctrl.controlName || '',
+          lotNumber: ctrl.lotNumber || '',
+          level: ctrl.level || 'Level 1',
+          expirationDate: ctrl.expirationDate || null,
+          isActive: ctrl.isActive !== false ? 1 : 0,
+          createdAt: ctrl.createdAt || new Date().toISOString(),
+          json: JSON.stringify(ctrl)
+        };
+        queryRun(
+          'INSERT OR REPLACE INTO qc_controls (id, equipmentId, controlName, lotNumber, level, expirationDate, isActive, createdAt, json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [data.id, data.equipmentId, data.controlName, data.lotNumber, data.level, data.expirationDate, data.isActive, data.createdAt, data.json]
+        );
+        persist();
+        return ctrl;
+      } catch (e) {
+        console.error('[sqliteDb sql.js] saveQcControl error:', e.message);
+        return null;
+      }
+    },
+    deleteQcControl(id) {
+      try {
+        queryRun('DELETE FROM qc_controls WHERE id = ?', [id]);
+        persist();
+        return true;
+      } catch (e) { return false; }
+    },
+
+    getQcEntries(equipmentId, analyteCode) {
+      try {
+        if (equipmentId && analyteCode) {
+          return parseRows(queryAll('SELECT json FROM qc_entries WHERE equipmentId = ? AND analyteCode = ? ORDER BY runDate ASC, createdAt ASC', [equipmentId, analyteCode]));
+        } else if (equipmentId) {
+          return parseRows(queryAll('SELECT json FROM qc_entries WHERE equipmentId = ? ORDER BY runDate ASC, createdAt ASC', [equipmentId]));
+        }
+        return parseRows(queryAll('SELECT json FROM qc_entries ORDER BY runDate DESC, createdAt DESC'));
+      } catch (e) { return []; }
+    },
+    getQcEntryById(id) {
+      if (!id) return null;
+      try {
+        const rows = queryAll('SELECT json FROM qc_entries WHERE id = ?', [id]);
+        return rows.length ? JSON.parse(rows[0].json) : null;
+      } catch (e) { return null; }
+    },
+    saveQcEntry(entry) {
+      if (!entry || !entry.id) return null;
+      try {
+        const data = {
+          id: String(entry.id),
+          equipmentId: String(entry.equipmentId || ''),
+          controlId: String(entry.controlId || ''),
+          analyteCode: entry.analyteCode || '',
+          controlLot: entry.controlLot || '',
+          runDate: entry.runDate || new Date().toISOString(),
+          measuredValue: Number(entry.measuredValue) || 0,
+          zScore: Number.isFinite(Number(entry.zScore)) ? Number(entry.zScore) : 0,
+          status: entry.status || 'ACCEPTED',
+          createdAt: entry.createdAt || new Date().toISOString(),
+          json: JSON.stringify(entry)
+        };
+        queryRun(
+          'INSERT OR REPLACE INTO qc_entries (id, equipmentId, controlId, analyteCode, controlLot, runDate, measuredValue, zScore, status, createdAt, json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [data.id, data.equipmentId, data.controlId, data.analyteCode, data.controlLot, data.runDate, data.measuredValue, data.zScore, data.status, data.createdAt, data.json]
+        );
+        persist();
+        return entry;
+      } catch (e) {
+        console.error('[sqliteDb sql.js] saveQcEntry error:', e.message);
+        return null;
+      }
+    },
+    deleteQcEntry(id) {
+      try {
+        queryRun('DELETE FROM qc_entries WHERE id = ?', [id]);
+        persist();
+        return true;
+      } catch (e) { return false; }
+    },
+
+    getNeqasRecords(equipmentId) {
+      try {
+        if (equipmentId) {
+          return parseRows(queryAll('SELECT json FROM neqas_records WHERE equipmentId = ? ORDER BY cycleYear DESC, createdAt DESC', [equipmentId]));
+        }
+        return parseRows(queryAll('SELECT json FROM neqas_records ORDER BY cycleYear DESC, createdAt DESC'));
+      } catch (e) { return []; }
+    },
+    getNeqasRecordById(id) {
+      if (!id) return null;
+      try {
+        const rows = queryAll('SELECT json FROM neqas_records WHERE id = ?', [id]);
+        return rows.length ? JSON.parse(rows[0].json) : null;
+      } catch (e) { return null; }
+    },
+    saveNeqasRecord(rec) {
+      if (!rec || !rec.id) return null;
+      try {
+        const data = {
+          id: String(rec.id),
+          equipmentId: String(rec.equipmentId || ''),
+          cycleYear: rec.cycleYear || String(new Date().getFullYear()),
+          eventNumber: rec.eventNumber || '1',
+          nrlName: rec.nrlName || 'LCP',
+          sampleId: rec.sampleId || '',
+          analyteCode: rec.analyteCode || '',
+          status: rec.status || 'PENDING',
+          createdAt: rec.createdAt || new Date().toISOString(),
+          json: JSON.stringify(rec)
+        };
+        queryRun(
+          'INSERT OR REPLACE INTO neqas_records (id, equipmentId, cycleYear, eventNumber, nrlName, sampleId, analyteCode, status, createdAt, json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [data.id, data.equipmentId, data.cycleYear, data.eventNumber, data.nrlName, data.sampleId, data.analyteCode, data.status, data.createdAt, data.json]
+        );
+        persist();
+        return rec;
+      } catch (e) {
+        console.error('[sqliteDb sql.js] saveNeqasRecord error:', e.message);
+        return null;
+      }
+    },
+    deleteNeqasRecord(id) {
+      try {
+        queryRun('DELETE FROM neqas_records WHERE id = ?', [id]);
+        persist();
+        return true;
+      } catch (e) { return false; }
     },
 
     close() {
@@ -2211,10 +2997,38 @@ function createDb(dbPath, opts = {}) {
     getInventoryBatchById(id) { return underlyingDb ? underlyingDb.getInventoryBatchById(id) : null; },
     saveBatch(b) { if (underlyingDb) return underlyingDb.saveBatch(b); else readyPromise.then(d => d.saveBatch(b)); return b; },
     deleteBatch(id) { if (underlyingDb) return underlyingDb.deleteBatch(id); else readyPromise.then(d => d.deleteBatch(id)); return true; },
-    getAllInventoryTransactions() { return underlyingDb ? underlyingDb.getAllInventoryTransactions() : []; },
     getInventoryTransactions(itemId, batchId) { return underlyingDb ? underlyingDb.getInventoryTransactions(itemId, batchId) : []; },
     saveTransaction(tx) { if (underlyingDb) return underlyingDb.saveTransaction(tx); else readyPromise.then(d => d.saveTransaction(tx)); return tx; },
+
+    getEquipment() { return underlyingDb ? underlyingDb.getEquipment() : []; },
+    getEquipmentById(id) { return underlyingDb ? underlyingDb.getEquipmentById(id) : null; },
+    getEquipmentByCode(c) { return underlyingDb ? underlyingDb.getEquipmentByCode(c) : null; },
+    getEquipmentByDepartment(d) { return underlyingDb ? underlyingDb.getEquipmentByDepartment(d) : []; },
+    getEquipmentByCategory(c) { return underlyingDb ? underlyingDb.getEquipmentByCategory(c) : []; },
+    saveEquipment(item) { if (underlyingDb) return underlyingDb.saveEquipment(item); else readyPromise.then(d => d.saveEquipment(item)); return item; },
     deleteTransaction(id) { if (underlyingDb) return underlyingDb.deleteTransaction(id); else readyPromise.then(d => d.deleteTransaction(id)); return true; },
+    deleteEquipment(id) { if (underlyingDb) return underlyingDb.deleteEquipment(id); else readyPromise.then(d => d.deleteEquipment(id)); return true; },
+
+    getEquipmentLogs(eqId) { return underlyingDb ? underlyingDb.getEquipmentLogs(eqId) : []; },
+    getEquipmentLogById(id) { return underlyingDb ? underlyingDb.getEquipmentLogById(id) : null; },
+    saveEquipmentLog(log) { if (underlyingDb) return underlyingDb.saveEquipmentLog(log); else readyPromise.then(d => d.saveEquipmentLog(log)); return log; },
+    deleteEquipmentLog(id) { if (underlyingDb) return underlyingDb.deleteEquipmentLog(id); else readyPromise.then(d => d.deleteEquipmentLog(id)); return true; },
+
+    getQcControls(eqId) { return underlyingDb ? underlyingDb.getQcControls(eqId) : []; },
+    getQcControlById(id) { return underlyingDb ? underlyingDb.getQcControlById(id) : null; },
+    saveQcControl(ctrl) { if (underlyingDb) return underlyingDb.saveQcControl(ctrl); else readyPromise.then(d => d.saveQcControl(ctrl)); return ctrl; },
+    deleteQcControl(id) { if (underlyingDb) return underlyingDb.deleteQcControl(id); else readyPromise.then(d => d.deleteQcControl(id)); return true; },
+
+    getQcEntries(eqId, analyte) { return underlyingDb ? underlyingDb.getQcEntries(eqId, analyte) : []; },
+    getQcEntryById(id) { return underlyingDb ? underlyingDb.getQcEntryById(id) : null; },
+    saveQcEntry(entry) { if (underlyingDb) return underlyingDb.saveQcEntry(entry); else readyPromise.then(d => d.saveQcEntry(entry)); return entry; },
+    deleteQcEntries(eqId, analyte) { if (underlyingDb) return underlyingDb.deleteQcEntries(eqId, analyte); else readyPromise.then(d => d.deleteQcEntries(eqId, analyte)); return true; },
+    deleteQcEntry(id) { if (underlyingDb) return underlyingDb.deleteQcEntry(id); else readyPromise.then(d => d.deleteQcEntry(id)); return true; },
+
+    getNeqasRecords(eqId) { return underlyingDb ? underlyingDb.getNeqasRecords(eqId) : []; },
+    getNeqasRecordById(id) { return underlyingDb ? underlyingDb.getNeqasRecordById(id) : null; },
+    saveNeqasRecord(rec) { if (underlyingDb) return underlyingDb.saveNeqasRecord(rec); else readyPromise.then(d => d.saveNeqasRecord(rec)); return rec; },
+    deleteNeqasRecord(id) { if (underlyingDb) return underlyingDb.deleteNeqasRecord(id); else readyPromise.then(d => d.deleteNeqasRecord(id)); return true; },
 
     close() { if (underlyingDb) underlyingDb.close(); }
   };

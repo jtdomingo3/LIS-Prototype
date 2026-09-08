@@ -117,7 +117,7 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   }
 
   /* ── Feature flags (match server defaults) ─────────────────────── */
-  app.locals.featureFlags = { tests: true, reports: true, templates: true, users: true, worksheet: true, inventory: true };
+  app.locals.featureFlags = { tests: true, reports: true, templates: true, users: true, worksheet: true, inventory: true, equipment: true };
 
   // Expose useful objects to route handlers (operationQueue, dataStore, config)
   try {
@@ -207,6 +207,9 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
         }
         if (!req.body.id && (reqPath === '/inventory' || /^\/inventory\/[^/]+\/batch$/.test(reqPath)) && req.method === 'POST') {
           try { req.body.id = require('crypto').randomUUID(); } catch (e) { req.body.id = 'inv-' + Date.now(); }
+        }
+        if (!req.body.id && (reqPath === '/equipment' || /^\/equipment\//.test(reqPath)) && req.method === 'POST') {
+          try { req.body.id = require('crypto').randomUUID(); } catch (e) { req.body.id = 'eq-' + Date.now(); }
         }
         if (!req.body.client_id) {
           try { req.body.client_id = require('crypto').randomUUID(); } catch (e) { req.body.client_id = 'cli-' + Date.now(); }
@@ -388,7 +391,12 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
           counters: dataStore._data.counters || {},
           inventory: dataStore.getCollection('inventory') || [],
           inventory_batches: dataStore.getCollection('inventory_batches') || [],
-          inventory_transactions: dataStore.getCollection('inventory_transactions') || []
+          inventory_transactions: dataStore.getCollection('inventory_transactions') || [],
+          equipment: dataStore.getCollection('equipment') || [],
+          equipment_logs: dataStore.getCollection('equipment_logs') || [],
+          qc_controls: dataStore.getCollection('qc_controls') || [],
+          qc_entries: dataStore.getCollection('qc_entries') || [],
+          neqas_records: dataStore.getCollection('neqas_records') || []
         };
         return res.json(out);
       } catch (e) { return res.status(500).send('datastore-error'); }
@@ -406,6 +414,7 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     { prefix: '/reports', perm: 'reports' },
     { prefix: '/templates', perm: 'templates' },
     { prefix: '/inventory', perm: 'inventory' },
+    { prefix: '/equipment', perm: 'equipment' },
     { prefix: '/users', perm: 'users' },
     { prefix: '/worksheet', perm: 'worksheet' }
   ];
@@ -448,12 +457,12 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
 
       if (sessionUser.role === 'Admin') return next();
 
-      if (perms[mapping.perm]) return next();
+      if (perms[mapping.perm] || (mapping.perm === 'equipment' && perms.inventory)) return next();
 
       // Role-based baseline workflow access for laboratory personnel (templates and inventory require explicit permission)
       const labRoles = new Set(['Medical Technologist', 'MedTech', 'Technician', 'Doctor', 'Staff', 'Receptionist', 'Encoder']);
       if (labRoles.has(sessionUser.role)) {
-        if (['reception', 'patients', 'tests', 'reports', 'worksheet'].includes(mapping.perm)) {
+        if (['reception', 'patients', 'tests', 'reports', 'worksheet', 'equipment'].includes(mapping.perm)) {
           return next();
         }
       }
@@ -511,6 +520,12 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     const inventoryRoutes = require('../routes/inventory');
     app.use('/inventory', inventoryRoutes);
   } catch (e) { console.error('[LocalServer] failed to load inventory routes:', e && e.message); }
+
+  try {
+    const equipmentRoutes = require('../routes/equipment');
+    app.use('/equipment', equipmentRoutes);
+    app.use('/api/equipment', equipmentRoutes);
+  } catch (e) { console.error('[LocalServer] failed to load equipment routes:', e && e.message); }
 
   try {
     const userRoutes = require('../routes/users');

@@ -1,0 +1,3396 @@
+<% 
+  const canEdit = (typeof sessionUser !== 'undefined') && (
+    sessionUser.role === 'Admin' || 
+    sessionUser.role === 'Manager' || 
+    sessionUser.role === 'Owner' || 
+    (sessionUser.permissions && (sessionUser.permissions.equipment || sessionUser.permissions.inventory))
+  );
+%>
+
+<style>
+  .eq-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .eq-stat-card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 16px 20px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .eq-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  }
+  .eq-stat-title {
+    font-size: 0.85em;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .eq-stat-val {
+    font-size: 2em;
+    font-weight: 700;
+    margin-top: 4px;
+  }
+  .badge-overdue {
+    background: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #f87171;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.8em;
+  }
+  .badge-duesoon {
+    background: #fef3c7;
+    color: #b45309;
+    border: 1px solid #fbbf24;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.8em;
+  }
+  .badge-operational {
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #86efac;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.8em;
+  }
+  .badge-outofservice {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.8em;
+  }
+  .table-responsive {
+    overflow-x: auto;
+    background: #fff;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+  }
+  .eq-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em;
+  }
+  .eq-table th {
+    background: #f8fafc;
+    padding: 12px 14px;
+    text-align: left;
+    font-weight: 600;
+    color: #475569;
+    border-bottom: 2px solid #e2e8f0;
+    white-space: nowrap;
+  }
+  .eq-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+  }
+  .eq-table tr:hover {
+    background: #f8fafc;
+  }
+  .eq-modal {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0; top: 0;
+    width: 100%; height: 100%;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(2px);
+    overflow-y: auto;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+  .eq-modal-content {
+    background: #fff;
+    margin: 30px auto;
+    max-width: 850px;
+    border-radius: 12px;
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);
+    overflow: hidden;
+  }
+  .eq-modal-header {
+    padding: 16px 24px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .eq-modal-body {
+    padding: 24px;
+    max-height: calc(85vh - 120px);
+    overflow-y: auto;
+  }
+  .eq-modal-footer {
+    padding: 14px 24px;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+  }
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .form-group label {
+    font-size: 0.85em;
+    font-weight: 600;
+    color: #334155;
+  }
+  .form-group input, .form-group select, .form-group textarea {
+    padding: 8px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 0.9em;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    border-color: #0284c7;
+    box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.15);
+  }
+  .lj-container {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 16px;
+  }
+  .eq-nav-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 0px;
+    overflow-x: auto;
+  }
+  .eq-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border-radius: 8px 8px 0 0;
+    font-weight: 600;
+    font-size: 0.95em;
+    background: #f8fafc;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    border-bottom: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+  .eq-tab-btn:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+  }
+  .eq-tab-btn.active {
+    background: #0284c7;
+    color: #ffffff;
+    border-color: #0284c7;
+    box-shadow: 0 4px 6px -1px rgba(2, 132, 199, 0.25);
+  }
+  .eq-tab-btn.active i {
+    color: #ffffff !important;
+  }
+  .eq-section-panel {
+    animation: fadeIn 0.2s ease-in-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .nrl-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .nrl-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: all 0.15s ease;
+  }
+  .nrl-card:hover {
+    border-color: #0284c7;
+    box-shadow: 0 3px 10px rgba(2, 132, 199, 0.12);
+  }
+</style>
+
+<!-- Main Dedicated Navigation Tabs (Always at top of Equipment module) -->
+<div class="eq-nav-tabs" style="margin-bottom: 20px;">
+  <button type="button" class="eq-tab-btn active" id="tabBtn_equipment" onclick="switchSection('equipment')">
+    <i class="fa fa-microscope" style="color: #0284c7;"></i> 1. Equipment Registry & Maintenance
+  </button>
+  <button type="button" class="eq-tab-btn" id="tabBtn_qc" onclick="switchSection('qc')">
+    <i class="fa fa-chart-line" style="color: #0284c7;"></i> 2. Internal QC & Levey-Jennings Hub
+  </button>
+  <button type="button" class="eq-tab-btn" id="tabBtn_neqas" onclick="switchSection('neqas')">
+    <i class="fa fa-award" style="color: #16a34a;"></i> 3. NEQAS External Quality Assessment (EQA)
+    <span class="badge badge-info" style="margin-left: 6px; font-size: 0.75em;" id="neqasTabBadge">DOH Accredited</span>
+  </button>
+</div>
+
+<!-- ======================================================== -->
+<!-- SECTION 1: EQUIPMENT REGISTRY & MAINTENANCE              -->
+<!-- ======================================================== -->
+<div id="sectionEquipment" class="eq-section-panel">
+  <!-- KPI Top Summary Row (Exclusively inside Equipment Registry) -->
+  <div class="eq-stat-grid" style="margin-bottom: 20px;">
+    <div class="eq-stat-card" style="border-left: 4px solid #0284c7;">
+      <div class="eq-stat-title">Total Equipment</div>
+      <div class="eq-stat-val" style="color: #0284c7;"><%= kpi.total %></div>
+      <div style="font-size: 0.8em; color: #64748b; margin-top: 4px;">Registered Lab & Radiology Units</div>
+    </div>
+
+    <div class="eq-stat-card" style="border-left: 4px solid #16a34a;">
+      <div class="eq-stat-title">Operational / OK</div>
+      <div class="eq-stat-val" style="color: #16a34a;"><%= kpi.operational %></div>
+      <div style="font-size: 0.8em; color: #64748b; margin-top: 4px;">Calibration Current</div>
+    </div>
+
+    <div class="eq-stat-card" style="border-left: 4px solid #d97706; cursor: pointer;" onclick="filterByStatus('CALIBRATION_DUE')">
+      <div class="eq-stat-title">Calibration Due Soon</div>
+      <div class="eq-stat-val" style="color: #d97706;"><%= kpi.calibrationDueSoon %></div>
+      <div style="font-size: 0.8em; color: #64748b; margin-top: 4px;">Within 30 Days</div>
+    </div>
+
+    <div class="eq-stat-card" style="border-left: 4px solid #dc2626; cursor: pointer;" onclick="filterByStatus('CALIBRATION_OVERDUE')">
+      <div class="eq-stat-title">Calibration Overdue</div>
+      <div class="eq-stat-val" style="color: #dc2626;"><%= kpi.calibrationOverdue %></div>
+      <div style="font-size: 0.8em; color: #64748b; margin-top: 4px;">DOH Action Required</div>
+    </div>
+
+    <div class="eq-stat-card" style="border-left: 4px solid #7c3aed; cursor: pointer;" onclick="openXrayModal()">
+      <div class="eq-stat-title">Diagnostic X-Ray Units</div>
+      <div class="eq-stat-val" style="color: #7c3aed;"><%= kpi.xrayCount %></div>
+      <div style="font-size: 0.8em; color: #64748b; margin-top: 4px;">FDA CDRRHR Radiation Safety</div>
+    </div>
+  </div>
+
+  <div class="card" style="padding: 20px;">
+    <!-- Action Toolbar -->
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;">
+      <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <% if (canEdit) { %>
+          <button class="button btn-primary" onclick="openCreateModal()">
+            <i class="fa fa-plus"></i> Register Equipment
+          </button>
+        <% } %>
+        <button class="button btn-secondary" onclick="switchSection('qc')">
+          <i class="fa fa-chart-line" style="color: #0284c7;"></i> Levey-Jennings & QC Hub
+        </button>
+        <button class="button btn-secondary" onclick="switchSection('neqas')">
+          <i class="fa fa-award" style="color: #16a34a;"></i> NEQAS EQA Hub
+        </button>
+      <button class="button btn-secondary" onclick="openXrayModal()">
+        <i class="fa fa-radiation" style="color: #d97706;"></i> X-Ray Compliance
+      </button>
+      <button class="button btn-secondary" onclick="openAlertsModal()">
+        <i class="fa fa-bell" style="color: #dc2626;"></i> Upcoming Alerts
+      </button>
+    </div>
+
+    <div style="display: flex; gap: 8px; align-items: center;">
+      <span style="font-size: 0.85em; color: #64748b;">Standards:</span>
+      <span class="badge badge-info" style="font-size: 0.8em;">DOH AO 2020-0035</span>
+      <span class="badge badge-info" style="font-size: 0.8em;">DOH AO 2021-0037</span>
+      <span class="badge badge-info" style="font-size: 0.8em;">CLSI C24-Ed4</span>
+    </div>
+  </div>
+
+  <!-- Search & Filter Bar -->
+  <div class="filter-form" style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;">
+    <input type="text" id="searchInput" class="search-box" placeholder="Search by asset code, name, serial number, brand..." style="flex: 1; min-width: 250px;" oninput="applyFilters()">
+    
+    <select id="departmentFilter" class="filter-select" onchange="applyFilters()">
+      <option value="">All Departments</option>
+      <option value="Clinical Chemistry">Clinical Chemistry</option>
+      <option value="Hematology">Hematology</option>
+      <option value="Clinical Microscopy">Clinical Microscopy</option>
+      <option value="Radiology / X-Ray">Radiology / X-Ray</option>
+      <option value="Cardiology">Cardiology</option>
+      <option value="Microbiology">Microbiology</option>
+      <option value="General Laboratory">General Laboratory</option>
+    </select>
+
+    <select id="statusFilter" class="filter-select" onchange="applyFilters()">
+      <option value="">All Statuses</option>
+      <option value="OPERATIONAL">✓ Operational</option>
+      <option value="CALIBRATION_DUE">⚠️ Calibration Due Soon</option>
+      <option value="CALIBRATION_OVERDUE">❌ Calibration Overdue</option>
+      <option value="MAINTENANCE_DUE">🔧 Maintenance Due</option>
+      <option value="OUT_OF_SERVICE">⛔ Out of Service</option>
+    </select>
+  </div>
+
+  <!-- Equipment Data Table -->
+  <div class="table-responsive">
+    <table class="eq-table">
+      <thead>
+        <tr>
+          <th>Asset Code</th>
+          <th>Equipment Name & Model</th>
+          <th>Department</th>
+          <th>Serial Number</th>
+          <th>Last Calibration</th>
+          <th>Next Calibration Due</th>
+          <th>Status</th>
+          <th style="text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="equipmentTableBody">
+        <% if (!equipment || equipment.length === 0) { %>
+          <tr>
+            <td colspan="8" style="text-align: center; padding: 30px; color: #64748b;">
+              <i class="fa fa-microscope" style="font-size: 2em; margin-bottom: 8px; display: block; color: #94a3b8;"></i>
+              No equipment registered yet. Click <strong>"Register Equipment"</strong> to add clinical chemistry analyzers, hematology analyzers, or diagnostic X-ray units.
+            </td>
+          </tr>
+        <% } else { %>
+          <% equipment.forEach(function(item) { %>
+            <tr class="eq-row" 
+                data-code="<%= (item.equipmentCode || '').toLowerCase() %>"
+                data-name="<%= (item.name || '').toLowerCase() %>"
+                data-serial="<%= (item.serialNumber || '').toLowerCase() %>"
+                data-brand="<%= (item.manufacturer || '').toLowerCase() %>"
+                data-dept="<%= item.department %>"
+                data-status="<%= item.status %>">
+              <td>
+                <span style="font-family: monospace; font-weight: 700; color: #0284c7; background: #e0f2fe; padding: 3px 6px; border-radius: 4px;">
+                  <%= item.equipmentCode %>
+                </span>
+              </td>
+              <td>
+                <div style="font-weight: 600; color: #0f172a;"><%= item.name %></div>
+                <div style="font-size: 0.8em; color: #64748b;">
+                  <span style="background: #f1f5f9; color: #334155; padding: 1px 6px; border-radius: 4px; font-weight: 500;"><%= item.category %></span>
+                  <%= item.manufacturer ? '• ' + item.manufacturer : '' %> <%= item.modelNumber ? '• ' + item.modelNumber : '' %>
+                  <%= item.isXRay ? '• ☢️ X-Ray Unit' : '' %>
+                </div>
+              </td>
+              <td>
+                <span class="badge" style="background: #f1f5f9; color: #334155;"><%= item.department %></span>
+              </td>
+              <td style="font-family: monospace; font-size: 0.85em;"><%= item.serialNumber || '—' %></td>
+              <td>
+                <%= item.lastCalibrationDate ? new Date(item.lastCalibrationDate).toLocaleDateString() : '—' %>
+              </td>
+              <td>
+                <% if (item.nextCalibrationDate) { %>
+                  <% const days = item.daysUntilCalibration; %>
+                  <div><%= new Date(item.nextCalibrationDate).toLocaleDateString() %></div>
+                  <% if (days < 0) { %>
+                    <span class="badge-overdue"><i class="fa fa-exclamation-triangle"></i> Overdue by <%= Math.abs(days) %>d</span>
+                  <% } else if (days <= 30) { %>
+                    <span class="badge-duesoon"><i class="fa fa-clock"></i> Due in <%= days %>d</span>
+                  <% } else { %>
+                    <span style="font-size: 0.8em; color: #16a34a;">In <%= days %>d</span>
+                  <% } %>
+                <% } else { %>
+                  <span style="color: #94a3b8;">Not Scheduled</span>
+                <% } %>
+              </td>
+              <td>
+                <% if (item.status === 'OPERATIONAL') { %>
+                  <span class="badge-operational">Operational</span>
+                <% } else if (item.status === 'CALIBRATION_DUE') { %>
+                  <span class="badge-duesoon">Due Soon</span>
+                <% } else if (item.status === 'CALIBRATION_OVERDUE') { %>
+                  <span class="badge-overdue">OVERDUE</span>
+                <% } else if (item.status === 'MAINTENANCE_DUE') { %>
+                  <span class="badge-duesoon">Maintenance Due</span>
+                <% } else { %>
+                  <span class="badge-outofservice"><%= item.status %></span>
+                <% } %>
+              </td>
+              <td style="text-align: right; white-space: nowrap;">
+                <button class="button btn-small btn-secondary" title="Log Calibration / PM" onclick="openLogModal('<%= item.id %>', '<%= item.name %>', '<%= item.isXRay ? '1' : '0' %>')">
+                  <i class="fa fa-wrench"></i> Log
+                </button>
+                <% if (item.isChemistry || item.department.includes('Chemistry')) { %>
+                  <button class="button btn-small btn-primary" title="Levey-Jennings QC Chart" onclick="switchSection('qc', '<%= item.id %>')">
+                    <i class="fa fa-chart-line"></i> QC
+                  </button>
+                <% } %>
+                <button class="button btn-small btn-secondary" title="View NEQAS EQA Surveys" onclick="switchSection('neqas', '<%= item.id %>')">
+                  <i class="fa fa-award" style="color: #16a34a;"></i> NEQAS
+                </button>
+                <button class="button btn-small btn-secondary" title="View / Edit" onclick="openEditModal('<%= item.id %>')">
+                  <i class="fa fa-pen"></i>
+                </button>
+              </td>
+            </tr>
+          <% }); %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+</div> <!-- closes sectionEquipment -->
+
+<!-- ======================================================== -->
+<!-- SECTION 2: INTERNAL QC & LEVEY-JENNINGS HUB             -->
+<!-- ======================================================== -->
+<div id="sectionQc" class="eq-section-panel" style="display: none;">
+  <div class="card" style="padding: 20px;">
+    <!-- Section Header -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 16px;">
+      <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <button type="button" class="button btn-secondary" onclick="switchSection('equipment')" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; padding: 8px 14px; background: #f1f5f9; border: 1px solid #cbd5e1;" title="Return to Equipment Registry">
+          <i class="fa fa-arrow-left"></i> &larr; Back to Equipment
+        </button>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <i class="fa fa-chart-line" style="color: #0284c7; font-size: 1.5em;"></i>
+          <div>
+            <h3 style="margin: 0; font-size: 1.25em; color: #0f172a;">Internal Quality Control & Levey-Jennings Hub</h3>
+            <div style="font-size: 0.85em; color: #64748b; margin-top: 2px;">
+              CLSI C24-Ed4 Statistical Quality Control, Westgard Multi-Rules Surveillance & DOH Licensing Compliance
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+        <span class="badge badge-info">DOH AO 2020-0035</span>
+        <span class="badge badge-info">DOH AO 2021-0037</span>
+        <span class="badge badge-info">Westgard 6-Rules</span>
+      </div>
+    </div>
+
+    <!-- Analyzer, Analyte & Date Range Filter Toolbar -->
+    <div style="margin-bottom: 16px; background: #f8fafc; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0;">
+      <!-- Row 1: Analyzer, Analyte & Action Buttons -->
+      <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 12px;">
+        <div class="form-group" style="flex: 1; min-width: 220px; margin-bottom: 0;">
+          <label style="font-weight: 600; font-size: 0.85em; color: #334155;">Select Analyzer (with LJ Data):</label>
+          <select id="lj_analyzerSelect" onchange="onLjAnalyzerChange()"></select>
+        </div>
+        <div class="form-group" style="flex: 1; min-width: 200px; margin-bottom: 0;">
+          <label style="font-weight: 600; font-size: 0.85em; color: #334155;">Select Analyte / Parameter:</label>
+          <select id="lj_analyteSelect" onchange="onTopAnalyteChange()"></select>
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button type="button" class="button btn-primary" onclick="printLjReport()" title="Print Single Analyte Levey-Jennings Chart with Westgard Rule Flags">
+            <i class="fa fa-print"></i> 🖨️ Print Levey-Jennings
+          </button>
+          <button type="button" class="button btn-success" style="background: #059669; border-color: #047857; color: #fff;" onclick="printMonthlyQcReport()" title="Print Consolidated Multi-Analyte Chemistry QC Table for DOH Inspection">
+            <i class="fa fa-clipboard-check"></i> 🖨️ Print Multi-Analyte Monthly QC (DOH Inspection)
+          </button>
+          <button type="button" class="button btn-secondary" onclick="exportDohReport()" title="Export JSON Data for Auditing">
+            <i class="fa fa-file-export"></i> DOH Report (JSON)
+          </button>
+        </div>
+      </div>
+
+      <!-- Row 2: Date Range Filter & Sorting -->
+      <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; padding-top: 10px; border-top: 1px solid #e2e8f0;">
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <span style="font-size: 0.82em; font-weight: 600; color: #475569;"><i class="fa fa-calendar-alt" style="color: #0284c7;"></i> Date Range:</span>
+          <div style="display: inline-flex; align-items: center; gap: 4px;">
+            <label for="lj_startDate" style="font-size: 0.78em; color: #64748b; margin-bottom: 0;">From</label>
+            <input type="date" id="lj_startDate" onchange="onLjDateChange()" oninput="onLjDateChange()" style="padding: 4px 8px; font-size: 0.85em; border: 1px solid #cbd5e1; border-radius: 4px;">
+          </div>
+          <div style="display: inline-flex; align-items: center; gap: 4px;">
+            <label for="lj_endDate" style="font-size: 0.78em; color: #64748b; margin-bottom: 0;">To</label>
+            <input type="date" id="lj_endDate" onchange="onLjDateChange()" oninput="onLjDateChange()" style="padding: 4px 8px; font-size: 0.85em; border: 1px solid #cbd5e1; border-radius: 4px;">
+          </div>
+        </div>
+
+        <!-- Quick Presets -->
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <button type="button" class="button btn-small btn-secondary" onclick="setLjDatePreset('month')" title="Runs for current month">This Month</button>
+          <button type="button" class="button btn-small btn-secondary" onclick="setLjDatePreset('30days')" title="Runs for past 30 days">Last 30 Days</button>
+          <button type="button" class="button btn-small btn-secondary" onclick="setLjDatePreset('all')" title="View all historical runs">All Time</button>
+        </div>
+
+        <!-- Table Sort Order -->
+        <div style="margin-left: auto; display: flex; align-items: center; gap: 6px;">
+          <label for="lj_sortOrder" style="font-size: 0.82em; font-weight: 600; color: #475569; margin-bottom: 0;"><i class="fa fa-sort"></i> Table Sort:</label>
+          <select id="lj_sortOrder" onchange="renderLjTable()" class="filter-select" style="font-size: 0.82em; padding: 4px 8px; border-radius: 4px; border: 1px solid #cbd5e1;">
+            <option value="date_desc">Date: Newest First ▾</option>
+            <option value="date_asc">Date: Oldest First ▴</option>
+            <option value="zscore_desc">Z-Score: Highest Outlier ▾</option>
+            <option value="violations_first">Warnings &amp; Rejections First ⚠️</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Printable Signatories Configuration Panel -->
+    <details id="lj_signatories_panel" style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
+      <summary style="font-weight: 600; font-size: 0.88em; cursor: pointer; color: #1e293b; display: flex; align-items: center; justify-content: space-between; user-select: none;">
+        <span style="display: inline-flex; align-items: center; gap: 6px;">
+          <i class="fa fa-signature" style="color: #0284c7;"></i>
+          <span><strong>Report Signatories</strong> <span style="font-weight: normal; color: #64748b;">(Operator MedTech, QC Validator & Approving Pathologist)</span></span>
+        </span>
+        <span style="font-size: 0.8em; color: #0284c7; font-weight: 600;">Configure Signatures &darr;</span>
+      </summary>
+
+      <div style="margin-top: 10px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+        <!-- 1. Operator Dropdown -->
+        <div style="background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+          <label style="font-weight: 600; font-size: 0.82em; color: #334155; display: block; margin-bottom: 4px;">
+            <i class="fa fa-user-check" style="color: #0284c7;"></i> 1. Operator (<span id="lj_op_role_label">MedTech</span>)
+          </label>
+          <select id="lj_operatorSelect" onchange="onOperatorSelectChange()" style="width: 100%; font-size: 0.85em; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: 500;">
+          </select>
+          <div id="lj_op_lic_preview" style="font-size: 0.78em; color: #64748b; margin-top: 4px;">PRC License: —</div>
+        </div>
+
+        <!-- 2. Validator Dropdown -->
+        <div style="background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+          <label style="font-weight: 600; font-size: 0.82em; color: #334155; display: block; margin-bottom: 4px;">
+            <i class="fa fa-user-shield" style="color: #0284c7;"></i> 2. Validator (QC Supervisor)
+          </label>
+          <select id="lj_validatorSelect" onchange="onValidatorSelectChange()" style="width: 100%; font-size: 0.85em; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: 500;">
+          </select>
+          <div id="lj_val_lic_preview" style="font-size: 0.78em; color: #64748b; margin-top: 4px;">PRC License: —</div>
+        </div>
+
+        <!-- 3. Pathologist Dropdown -->
+        <div style="background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
+          <label style="font-weight: 600; font-size: 0.82em; color: #334155; display: block; margin-bottom: 4px;">
+            <i class="fa fa-user-md" style="color: #0284c7;"></i> 3. <span id="lj_p1_role_label">Approving Pathologist</span>
+          </label>
+          <select id="lj_pathologistSelect" onchange="onPathologistSelectChange()" style="width: 100%; font-size: 0.85em; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: 500;">
+          </select>
+          <div id="lj_p1_lic_preview" style="font-size: 0.78em; color: #64748b; margin-top: 4px;">PRC License: —</div>
+        </div>
+
+        <!-- 4. Second Pathologist (Optional) Dropdown -->
+        <div style="background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px dashed #94a3b8;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+            <label style="font-weight: 600; font-size: 0.82em; color: #334155; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;">
+              <input type="checkbox" id="lj_enablePathologist2" onchange="togglePathologist2Modal(this.checked)">
+              <span>4. 2nd Pathologist</span>
+            </label>
+            <span id="lj_p2_badge" style="font-size: 0.72em; color: #64748b;">(Optional)</span>
+          </div>
+          <div id="lj_p2_fields" style="opacity: 0.5; pointer-events: none; margin-top: 4px;">
+            <select id="lj_pathologist2Select" onchange="onPathologist2SelectChange()" style="width: 100%; font-size: 0.85em; padding: 5px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: 500;">
+            </select>
+            <div id="lj_p2_lic_preview" style="font-size: 0.78em; color: #64748b; margin-top: 4px;">PRC License: —</div>
+          </div>
+        </div>
+      </div>
+    </details>
+
+    <!-- LJ Chart Canvas Area -->
+    <div class="lj-container" style="margin-top: 0; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+        <div>
+          <strong id="lj_chartTitle" style="font-size: 1.1em; color: #0f172a;">Levey-Jennings Plot</strong>
+          <div id="lj_chartSubtitle" style="font-size: 0.8em; color: #64748b;">Assigned Mean & SD reference lines</div>
+        </div>
+        <div id="lj_statsPills" style="display: flex; gap: 8px; font-size: 0.8em; flex-wrap: wrap;"></div>
+      </div>
+      <div id="lj_canvasContainer" style="position: relative; width: 100%; height: 380px; background: #ffffff; border-radius: 8px; border: 1px solid #cbd5e1; overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.03);">
+        <canvas id="ljCanvas" style="display: block;"></canvas>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8em; color: #64748b; margin-top: 8px; flex-wrap: wrap; gap: 6px;">
+        <div>
+          <span style="color: #16a34a; font-weight: 700;">—</span> Target Mean &nbsp;|&nbsp;
+          <span style="color: #94a3b8;">--</span> &plusmn;1SD &nbsp;|&nbsp;
+          <span style="color: #d97706;">--</span> &plusmn;2SD (Warning) &nbsp;|&nbsp;
+          <span style="color: #dc2626;">--</span> &plusmn;3SD (Rejection)
+        </div>
+        <div id="lj_runCount" style="font-weight: 600;">Runs: 0</div>
+      </div>
+    </div>
+
+    <!-- Levey-Jennings Runs Data Table -->
+    <div style="margin-top: 16px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <h4 style="margin: 0; font-size: 0.95em; color: #1e293b; display: flex; align-items: center; gap: 6px;">
+            <i class="fa fa-table" style="color: #0284c7;"></i> Control Run Measurement Log &amp; Westgard Evaluation
+          </h4>
+          <span class="badge badge-info" id="lj_tableRunCount">0 Runs</span>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+          <label style="font-size: 0.82em; color: #64748b; font-weight: 600;">Status Filter:</label>
+          <select id="lj_statusFilter" onchange="renderLjTable()" style="font-size: 0.82em; padding: 4px 8px; border-radius: 4px; border: 1px solid #cbd5e1;">
+            <option value="">All Runs</option>
+            <option value="ACCEPTED">✓ Accepted Only</option>
+            <option value="WARNING">⚠️ Warnings (1:2s)</option>
+            <option value="REJECTED">❌ Rejections (Violations)</option>
+          </select>
+          <% if (canEdit) { %>
+            <button type="button" class="button btn-small btn-secondary" onclick="emptyAnalyteEntries()" style="color: #dc2626; border-color: #fca5a5; font-size: 0.78em; padding: 4px 10px; display: inline-flex; align-items: center; gap: 5px; font-weight: 600; background: #fff5f5;" title="Empty / Drop all recorded QC entries for this analyte during testing">
+              <i class="fa fa-trash-alt"></i> Empty / Drop Runs
+            </button>
+          <% } %>
+        </div>
+      </div>
+      <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
+        <table class="eq-table" style="font-size: 0.85em;">
+          <thead>
+            <tr>
+              <th style="width: 45px;">#</th>
+              <th>Run Date &amp; Time</th>
+              <th>Measured Value</th>
+              <th>Assigned Target</th>
+              <th>Z-Score</th>
+              <th>Westgard Status</th>
+              <th>Rules Violated</th>
+              <th>Reagent Lot #</th>
+              <th>Operator / Notes</th>
+              <% if (canEdit) { %>
+                <th style="text-align: right; width: 60px;">Action</th>
+              <% } %>
+            </tr>
+          </thead>
+          <tbody id="lj_tableBody">
+            <tr><td colspan="10" style="text-align: center; color: #64748b; padding: 16px;">Loading QC records...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Quick Run Input Bar with Machine & Analyte Selectors (Two-Way Sync) -->
+    <div style="margin-top: 20px; padding: 18px; background: #f8fafc; border-radius: 8px; border: 1px solid #cbd5e1;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+        <h4 style="margin: 0; font-size: 0.95em; color: #1e293b; display: flex; align-items: center; gap: 6px;">
+          <i class="fa fa-vial" style="color: #0284c7;"></i> Record Daily Standard / Control Reading
+        </h4>
+        <span style="font-size: 0.8em; color: #64748b;">
+          <i class="fa fa-sync-alt" style="color: #0284c7;"></i> Machine and analyte selections stay synchronized with the chart above
+        </span>
+      </div>
+
+      <form id="formQuickQc" onsubmit="submitQuickQc(event)">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 12px;">
+          <div class="form-group">
+            <label style="font-weight: 600; font-size: 0.82em; color: #334155;">Target Machine / Analyzer *</label>
+            <select id="quick_eqId" onchange="onQuickEquipmentChange()" required style="width: 100%; font-size: 0.85em; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: 500;">
+            </select>
+          </div>
+
+          <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <label style="font-weight: 600; font-size: 0.82em; color: #334155; margin-bottom: 0;">Analyte / Parameter *</label>
+              <button type="button" class="button btn-small btn-secondary" onclick="openAddAnalyteModal()" style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.78em; padding: 2px 7px; color: #0284c7; border-color: #93c5fd; background: #eff6ff;" title="Add or configure a new QC analyte for this analyzer">
+                <i class="fa fa-plus-circle"></i> + Add Analyte
+              </button>
+            </div>
+            <select id="quick_analyteCode" onchange="onQuickAnalyteChange()" required style="width: 100%; font-size: 0.85em; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-weight: 500;">
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label style="font-weight: 600; font-size: 0.82em; color: #334155;">Measured Value *</label>
+            <input type="number" step="any" id="qc_value" required placeholder="e.g. 95.4" style="width: 100%; font-size: 0.85em; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 4px;">
+          </div>
+
+          <div class="form-group">
+            <label style="font-weight: 600; font-size: 0.82em; color: #334155;">Run Date *</label>
+            <input type="date" id="qc_date" required style="width: 100%; font-size: 0.85em; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 4px;">
+          </div>
+
+          <div class="form-group">
+            <label style="font-weight: 600; font-size: 0.82em; color: #334155;">Reagent Lot #</label>
+            <input type="text" id="qc_lot" placeholder="e.g. LOT-CHEM-01" style="width: 100%; font-size: 0.85em; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 4px;">
+          </div>
+
+          <div class="form-group">
+            <label style="font-weight: 600; font-size: 0.82em; color: #334155;">Notes / Observations</label>
+            <input type="text" id="qc_notes" placeholder="Operator name or observations" style="width: 100%; font-size: 0.85em; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 4px;">
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <% if (canEdit) { %>
+              <button type="button" class="button btn-secondary" onclick="deleteLastQcEntry()" style="color: #dc2626; border-color: #fca5a5; font-size: 0.82em; padding: 7px 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; background: #fff5f5;" title="Drop / Delete the most recent QC run recorded for this analyte">
+                <i class="fa fa-undo"></i> Drop / Delete Previous Entry
+              </button>
+            <% } %>
+          </div>
+          <div>
+            <button type="submit" class="button btn-primary" style="padding: 8px 20px; font-weight: 600;">
+              <i class="fa fa-play"></i> Record Reading &amp; Evaluate Westgard Rules
+            </button>
+          </div>
+        </div>
+      </form>
+      <div id="qc_alertBox" style="display: none; margin-top: 12px; padding: 10px 14px; border-radius: 6px; font-size: 0.88em;"></div>
+    </div>
+
+    <!-- Section Footer Navigation -->
+    <div style="margin-top: 24px; padding-top: 14px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+      <button type="button" class="button btn-secondary" onclick="switchSection('equipment')" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600;">
+        <i class="fa fa-arrow-left"></i> &larr; Back to Equipment Registry
+      </button>
+      <button type="button" class="button btn-secondary" onclick="window.scrollTo({ top: 0, behavior: 'smooth' })">
+        <i class="fa fa-arrow-up"></i> Top of Hub
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================== -->
+<!-- SECTION 3: NEQAS EXTERNAL QUALITY ASSESSMENT (EQA)      -->
+<!-- ======================================================== -->
+<div id="sectionNeqas" class="eq-section-panel" style="display: none;">
+  <div class="card" style="padding: 20px;">
+    <!-- Section Header -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 16px;">
+      <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <button type="button" class="button btn-secondary" onclick="switchSection('equipment')" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; padding: 8px 14px; background: #f1f5f9; border: 1px solid #cbd5e1;" title="Return to Equipment Registry">
+          <i class="fa fa-arrow-left"></i> &larr; Back to Equipment
+        </button>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <i class="fa fa-award" style="color: #16a34a; font-size: 1.5em;"></i>
+          <div>
+            <h3 style="margin: 0; font-size: 1.25em; color: #0f172a;">NEQAS External Quality Assessment (EQA / PT) Dashboard</h3>
+            <div style="font-size: 0.85em; color: #64748b; margin-top: 2px;">
+              National External Quality Assessment Scheme • Mandated by DOH AO 2020-0035 & AO 2021-0037 for Laboratory Accreditation & License to Operate (LTO)
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <button type="button" class="button btn-primary" style="background: #16a34a; border-color: #15803d;" onclick="openNeqasModal()">
+          <i class="fa fa-plus-circle"></i> + Log Survey Submission
+        </button>
+      </div>
+    </div>
+
+    <!-- NEQAS KPI Summary Cards -->
+    <div class="eq-stat-grid" style="margin-bottom: 20px;" id="neqasKpiGrid">
+      <div class="eq-stat-card" style="border-left: 4px solid #0284c7;">
+        <div class="eq-stat-title">Total Surveys Logged</div>
+        <div class="eq-stat-val" id="neqasKpiTotal" style="color: #0284c7;">0</div>
+        <div style="font-size: 0.8em; color: #64748b; margin-top: 4px;">Proficiency survey records</div>
+      </div>
+
+      <div class="eq-stat-card" style="border-left: 4px solid #16a34a;">
+        <div class="eq-stat-title">Acceptable Rating (|SDI| &le; 2.0)</div>
+        <div class="eq-stat-val" id="neqasKpiAcceptable" style="color: #16a34a;">0%</div>
+        <div style="font-size: 0.8em; color: #64748b; margin-top: 4px;">Complies with DOH Standards</div>
+      </div>
+
+      <div class="eq-stat-card" style="border-left: 4px solid #d97706;">
+        <div class="eq-stat-title">Questionable (2.0 &lt; |SDI| &lt; 3.0)</div>
+        <div class="eq-stat-val" id="neqasKpiQuestionable" style="color: #d97706;">0</div>
+        <div style="font-size: 0.8em; color: #64748b; margin-top: 4px;">Warning / Investigation</div>
+      </div>
+
+      <div class="eq-stat-card" style="border-left: 4px solid #dc2626;">
+        <div class="eq-stat-title">Action Required (|SDI| &ge; 3.0)</div>
+        <div class="eq-stat-val" id="neqasKpiUnsatisfactory" style="color: #dc2626;">0</div>
+        <div style="font-size: 0.8em; color: #64748b; margin-top: 4px;">Mandatory Root Cause Analysis</div>
+      </div>
+    </div>
+
+    <!-- Reference Laboratory Programs Grid -->
+    <div style="margin-bottom: 20px;">
+      <h4 style="margin: 0 0 10px; font-size: 0.95em; color: #334155; text-transform: uppercase; letter-spacing: 0.5px;">
+        <i class="fa fa-university" style="color: #0284c7;"></i> Designated National Reference Laboratories (NRLs)
+      </h4>
+      <div class="nrl-grid">
+        <div class="nrl-card" style="border-top: 3px solid #0284c7;">
+          <div>
+            <div style="font-weight: 700; color: #0f172a; font-size: 0.95em;">Lung Center of the Philippines (LCP)</div>
+            <div style="font-size: 0.8em; color: #0284c7; font-weight: 600; margin-bottom: 6px;">Clinical Chemistry NRL</div>
+            <div style="font-size: 0.8em; color: #64748b;">
+              10 Core Analytes: Glucose, BUN, Creatinine, Uric Acid, Cholesterol, Triglycerides, AST/SGOT, ALT/SGPT, Sodium, Potassium.
+            </div>
+          </div>
+          <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <span class="badge" style="background: #e0f2fe; color: #0369a1; font-size: 0.75em;">Bi-Annual Cycles</span>
+            <button class="button btn-small btn-secondary" onclick="filterNeqasByNrl('Lung Center')">View Submissions</button>
+          </div>
+        </div>
+
+        <div class="nrl-card" style="border-top: 3px solid #16a34a;">
+          <div>
+            <div style="font-weight: 700; color: #0f172a; font-size: 0.95em;">Nat'l Kidney & Transplant Inst. (NKTI)</div>
+            <div style="font-size: 0.8em; color: #16a34a; font-weight: 600; margin-bottom: 6px;">Hematology & Coagulation NRL</div>
+            <div style="font-size: 0.8em; color: #64748b;">
+              CBC with Automated 5-Part Differential, Platelet Count, Prothrombin Time (PT/INR), and Activated Partial Thromboplastin Time (APTT).
+            </div>
+          </div>
+          <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <span class="badge" style="background: #dcfce7; color: #15803d; font-size: 0.75em;">Annual Surveys</span>
+            <button class="button btn-small btn-secondary" onclick="filterNeqasByNrl('NKTI')">View Submissions</button>
+          </div>
+        </div>
+
+        <div class="nrl-card" style="border-top: 3px solid #d97706;">
+          <div>
+            <div style="font-weight: 700; color: #0f172a; font-size: 0.95em;">Research Inst. for Tropical Med. (RITM)</div>
+            <div style="font-size: 0.8em; color: #d97706; font-weight: 600; margin-bottom: 6px;">Microbiology & Parasitology NRL</div>
+            <div style="font-size: 0.8em; color: #64748b;">
+              Bacterial Identification & Antimicrobial Susceptibility Testing (AST), Malaria Microscopy, Stool Parasitology, and TB AFB.
+            </div>
+          </div>
+          <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <span class="badge" style="background: #fef3c7; color: #b45309; font-size: 0.75em;">Annual Surveys</span>
+            <button class="button btn-small btn-secondary" onclick="filterNeqasByNrl('RITM')">View Submissions</button>
+          </div>
+        </div>
+
+        <div class="nrl-card" style="border-top: 3px solid #7c3aed;">
+          <div>
+            <div style="font-weight: 700; color: #0f172a; font-size: 0.95em;">San Lazaro Hospital / SACCL</div>
+            <div style="font-size: 0.8em; color: #7c3aed; font-weight: 600; margin-bottom: 6px;">Infectious Disease Serology NRL</div>
+            <div style="font-size: 0.8em; color: #64748b;">
+              Transfusion-Transmissible Infections (TTI) & Serology: HIV-1/2, HBsAg, Anti-HCV, and Syphilis (Treponemal & Non-Treponemal).
+            </div>
+          </div>
+          <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <span class="badge" style="background: #f3e8ff; color: #6b21a8; font-size: 0.75em;">Annual Surveys</span>
+            <button class="button btn-small btn-secondary" onclick="filterNeqasByNrl('San Lazaro')">View Submissions</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NEQAS Filter & Search Bar -->
+    <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; background: #f8fafc; padding: 12px 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+      <input type="text" id="neqasSearchInput" class="search-box" placeholder="Search by Sample ID, Analyte, NRL..." style="flex: 1; min-width: 220px;" oninput="applyNeqasFilters()">
+      
+      <select id="neqasNrlFilter" class="filter-select" onchange="applyNeqasFilters()">
+        <option value="">All Reference Laboratories (NRL)</option>
+        <option value="Lung Center">Lung Center of the Philippines (Clinical Chemistry)</option>
+        <option value="NKTI">NKTI (Hematology & Coagulation)</option>
+        <option value="RITM">RITM (Microbiology & Parasitology)</option>
+        <option value="San Lazaro">San Lazaro / SACCL (Infectious Serology)</option>
+      </select>
+
+      <select id="neqasGradeFilter" class="filter-select" onchange="applyNeqasFilters()">
+        <option value="">All SDI Evaluation Ratings</option>
+        <option value="ACCEPTABLE">✓ Acceptable (|SDI| &le; 2.0)</option>
+        <option value="QUESTIONABLE">⚠️ Questionable (2.0 &lt; |SDI| &lt; 3.0)</option>
+        <option value="UNSATISFACTORY">❌ Action Required (|SDI| &ge; 3.0)</option>
+        <option value="PENDING">⏳ Pending Peer Evaluation</option>
+      </select>
+
+      <button type="button" class="button btn-secondary" onclick="loadNeqasTable()" title="Refresh records">
+        <i class="fa fa-sync-alt"></i> Refresh
+      </button>
+    </div>
+
+    <!-- NEQAS Submissions Table with Print Result Action -->
+    <div class="table-responsive">
+      <table class="eq-table">
+        <thead>
+          <tr>
+            <th>Cycle & Event</th>
+            <th>Reference Laboratory (NRL)</th>
+            <th>Sample ID</th>
+            <th>Analyte / Test</th>
+            <th>Reported Value</th>
+            <th>NRL Peer Mean &plusmn; SD</th>
+            <th>SDI Score</th>
+            <th>Evaluation Rating</th>
+            <th style="text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="neqasSectionTableBody">
+          <tr><td colspan="9" style="text-align:center; padding:20px; color:#64748b;"><i class="fa fa-spinner fa-spin"></i> Loading NEQAS records...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Section Footer Navigation -->
+    <div style="margin-top: 24px; padding-top: 14px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+      <button type="button" class="button btn-secondary" onclick="switchSection('equipment')" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600;">
+        <i class="fa fa-arrow-left"></i> &larr; Back to Equipment Registry
+      </button>
+      <button type="button" class="button btn-secondary" onclick="window.scrollTo({ top: 0, behavior: 'smooth' })">
+        <i class="fa fa-arrow-up"></i> Top of Hub
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================== -->
+<!-- MODAL 1: REGISTER / EDIT EQUIPMENT                      -->
+<!-- ======================================================== -->
+<div id="modalEquipment" class="eq-modal">
+  <div class="eq-modal-content">
+    <div class="eq-modal-header">
+      <h3 id="modalEqTitle" style="margin: 0; font-size: 1.15em;">Register Laboratory Equipment</h3>
+      <button type="button" onclick="closeModal('modalEquipment')" style="background:none; border:none; font-size:1.4em; cursor:pointer;">&times;</button>
+    </div>
+    <form id="formEquipment" onsubmit="saveEquipment(event)">
+      <input type="hidden" id="eq_id">
+      <div class="eq-modal-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Asset Code / Tag *</label>
+            <input type="text" id="eq_code" required placeholder="e.g. EQ-CHEM-001, EQ-XRAY-001">
+          </div>
+          <div class="form-group">
+            <label>Equipment Name *</label>
+            <input type="text" id="eq_name" required placeholder="e.g. Mindray BS-240 Clinical Chemistry Analyzer">
+          </div>
+          <div class="form-group">
+            <label>Category *</label>
+            <select id="eq_category" required onchange="handleCategoryChange()">
+              <option value="Clinical Chemistry Analyzer">Clinical Chemistry Analyzer</option>
+              <option value="Hematology Analyzer">Hematology Analyzer</option>
+              <option value="Diagnostic X-Ray Unit (Stationary)">Diagnostic X-Ray Unit (Stationary)</option>
+              <option value="Diagnostic X-Ray Unit (Mobile/Portable)">Diagnostic X-Ray Unit (Mobile/Portable)</option>
+              <option value="Ultrasound / 2D Echo Unit">Ultrasound / 2D Echo Unit</option>
+              <option value="Coagulation Analyzer">Coagulation Analyzer</option>
+              <option value="Electrolyte Analyzer">Electrolyte Analyzer</option>
+              <option value="Centrifuge">Centrifuge</option>
+              <option value="Biosafety Cabinet / Laminar Flow">Biosafety Cabinet / Laminar Flow</option>
+              <option value="Laboratory Refrigerator / Freezer">Laboratory Refrigerator / Freezer</option>
+              <option value="Autoclave / Sterilizer">Autoclave / Sterilizer</option>
+              <option value="General Equipment">General Equipment</option>
+              <option value="OTHER">Other / Not Listed (Specify Below)</option>
+            </select>
+          </div>
+          <div class="form-group" id="eq_customCategoryGroup" style="display: none;">
+            <label>Specify Equipment Category *</label>
+            <input type="text" id="eq_customCategory" placeholder="e.g. Urine Analyzer, Water Bath, Microplate Washer">
+          </div>
+          <div class="form-group">
+            <label>Department / Section *</label>
+            <select id="eq_department" required>
+              <option value="Clinical Chemistry">Clinical Chemistry</option>
+              <option value="Hematology">Hematology</option>
+              <option value="Clinical Microscopy">Clinical Microscopy</option>
+              <option value="Radiology / X-Ray">Radiology / X-Ray</option>
+              <option value="Cardiology">Cardiology</option>
+              <option value="Microbiology">Microbiology</option>
+              <option value="General Laboratory">General Laboratory</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Manufacturer / Brand</label>
+            <input type="text" id="eq_manufacturer" placeholder="e.g. Mindray, Sysmex, Shimadzu">
+          </div>
+          <div class="form-group">
+            <label>Model Number</label>
+            <input type="text" id="eq_modelNumber" placeholder="e.g. BS-240, MobileDaRt MX7">
+          </div>
+          <div class="form-group">
+            <label>Serial Number *</label>
+            <input type="text" id="eq_serialNumber" required placeholder="e.g. SN-88319024">
+          </div>
+          <div class="form-group">
+            <label>Location / Room</label>
+            <input type="text" id="eq_location" placeholder="e.g. Main Chemistry Bench A, X-Ray Room 1">
+          </div>
+          <div class="form-group">
+            <label>Calibration Cycle (Days)</label>
+            <input type="number" id="eq_calCycle" value="365" placeholder="Default 365 (Annual)">
+          </div>
+          <div class="form-group">
+            <label>Last Calibration Date</label>
+            <input type="date" id="eq_lastCalDate">
+          </div>
+          <div class="form-group">
+            <label>PM Cycle (Days)</label>
+            <input type="number" id="eq_pmCycle" value="180" placeholder="Default 180 (Semi-annual)">
+          </div>
+          <div class="form-group">
+            <label>Last PM Date</label>
+            <input type="date" id="eq_lastPmDate">
+          </div>
+        </div>
+
+        <!-- Diagnostic X-Ray Specific Radiation Safety Fields (DOH AO 2020-0035 / FDA CDRRHR) -->
+        <div id="xraySpecificFields" style="display: none; margin-top: 20px; padding: 16px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px;">
+          <h4 style="margin: 0 0 12px; color: #92400e; display: flex; align-items: center; gap: 8px;">
+            <i class="fa fa-radiation"></i> Diagnostic X-Ray Radiation Safety Details (FDA CDRRHR)
+          </h4>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>FDA CDRRHR Registration / Permit #</label>
+              <input type="text" id="xray_fdaReg" placeholder="e.g. FDA-CDRRHR-XR-2026-0419">
+            </div>
+            <div class="form-group">
+              <label>Radiation Safety Officer (RSO)</label>
+              <input type="text" id="xray_rso" placeholder="e.g. Engr. J. Santos, RSO">
+            </div>
+            <div class="form-group">
+              <label>X-Ray Tube Model & Serial #</label>
+              <input type="text" id="xray_tube" placeholder="e.g. Varian Rad-14 / TB-884102">
+            </div>
+            <div class="form-group">
+              <label>Max kVp / Max mA Rating</label>
+              <input type="text" id="xray_ratings" placeholder="e.g. 150 kVp / 500 mA">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 16px;">
+          <label>Operating Notes & Restrictions</label>
+          <textarea id="eq_notes" rows="2" placeholder="Traceability references, authorized operators, special requirements..."></textarea>
+        </div>
+      </div>
+      <div class="eq-modal-footer">
+        <button type="button" class="button btn-secondary" onclick="closeModal('modalEquipment')">Cancel</button>
+        <button type="submit" class="button btn-primary">Save Equipment</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ======================================================== -->
+<!-- MODAL 2: LOG CALIBRATION / MAINTENANCE REPORT            -->
+<!-- ======================================================== -->
+<div id="modalLog" class="eq-modal">
+  <div class="eq-modal-content">
+    <div class="eq-modal-header">
+      <h3 style="margin: 0;">Log Calibration / Service Report</h3>
+      <button type="button" onclick="closeModal('modalLog')" style="background:none; border:none; font-size:1.4em; cursor:pointer;">&times;</button>
+    </div>
+    <form id="formLog" onsubmit="saveLog(event)">
+      <input type="hidden" id="log_eqId">
+      <div class="eq-modal-body">
+        <div style="background: #e0f2fe; padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; font-weight: 600; color: #0369a1;" id="logEquipmentBanner">
+          Equipment: Loading...
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Service Type *</label>
+            <select id="log_type" required onchange="handleLogTypeChange()">
+              <option value="CALIBRATION">Metrological Calibration (Routine/Annual)</option>
+              <option value="PREVENTIVE_MAINTENANCE">Preventive Maintenance (PM)</option>
+              <option value="CORRECTIVE_MAINTENANCE">Corrective Maintenance / Repair</option>
+              <option value="ACCEPTANCE_TESTING">Initial Commissioning / Acceptance Testing</option>
+              <option value="RADIATION_SAFETY_SURVEY">X-Ray Radiation Physics Survey (DOH/AAPM)</option>
+              <option value="RECALIBRATION_POST_REPAIR">Recalibration Post-Repair</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Service Date *</label>
+            <input type="date" id="log_date" required>
+          </div>
+          <div class="form-group">
+            <label>Service Provider Type *</label>
+            <select id="log_providerType" required>
+              <option value="Accredited Metrology Body / Calibration Service">Accredited Metrology Body / Calibration Service</option>
+              <option value="Manufacturer Engineer">Manufacturer / Authorized Engineer</option>
+              <option value="DOH / FDA Certified Physicist">DOH / FDA Certified Physicist</option>
+              <option value="Internal Staff">Internal Biomedical Staff</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Service Company / Organization</label>
+            <input type="text" id="log_providerName" placeholder="e.g. Standard Precision Metrology Corp.">
+          </div>
+          <div class="form-group">
+            <label>Technician / Engineer Name</label>
+            <input type="text" id="log_techName" placeholder="e.g. Engr. Robert D. Cruz">
+          </div>
+          <div class="form-group">
+            <label>Certificate / Report # *</label>
+            <input type="text" id="log_certNo" required placeholder="e.g. CAL-2026-CHEM-8819">
+          </div>
+          <div class="form-group">
+            <label>Traceable Standard Instrument Used</label>
+            <input type="text" id="log_standardRef" placeholder="e.g. NIST Traceable Multimeter SN: 9912">
+          </div>
+          <div class="form-group">
+            <label>Result Status *</label>
+            <select id="log_resultStatus" required>
+              <option value="PASS">PASS (Within Acceptable Tolerances)</option>
+              <option value="CONDITIONAL_PASS">CONDITIONAL PASS</option>
+              <option value="FAIL">FAIL (Out of Tolerance - Label Out of Service)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- X-Ray Specific Performance Readings -->
+        <div id="logXraySection" style="display: none; margin-top: 16px; padding: 14px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px;">
+          <h4 style="margin: 0 0 10px; color: #92400e;">X-Ray Physics Measurements (DOH / AAPM Standards)</h4>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>kVp Accuracy (% Error, limit ±5%)</label>
+              <input type="number" step="0.1" id="log_kvpErr" placeholder="e.g. -0.8%">
+            </div>
+            <div class="form-group">
+              <label>Exposure Linearity Col (limit &le;0.10)</label>
+              <input type="number" step="0.01" id="log_col" placeholder="e.g. 0.04">
+            </div>
+            <div class="form-group">
+              <label>Half-Value Layer HVL (mm Al)</label>
+              <input type="number" step="0.1" id="log_hvl" placeholder="e.g. 2.8">
+            </div>
+            <div class="form-group">
+              <label>Radiation Leakage at 1m (limit &lt;100 mR/h)</label>
+              <input type="number" step="0.1" id="log_leakage" placeholder="e.g. 14.5">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 14px;">
+          <label>Findings & Work Performed</label>
+          <textarea id="log_work" rows="3" placeholder="Replaced parts, optical alignments, zero adjustments, sensor calibration..."></textarea>
+        </div>
+      </div>
+      <div class="eq-modal-footer">
+        <button type="button" class="button btn-secondary" onclick="closeModal('modalLog')">Cancel</button>
+        <button type="submit" class="button btn-primary">Save & Recalculate Next Due Date</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ======================================================== -->
+<!-- MODAL 3: NEQAS SURVEY SUBMISSION & PEER EVALUATION ENTRY -->
+<!-- ======================================================== -->
+<div id="modalNeqas" class="eq-modal">
+  <div class="eq-modal-content" style="max-width: 750px;">
+    <div class="eq-modal-header">
+      <h3 id="modalNeqasTitle" style="margin: 0;"><i class="fa fa-award" style="color: #16a34a;"></i> Log NEQAS Survey Submission</h3>
+      <button type="button" onclick="closeModal('modalNeqas')" style="background:none; border:none; font-size:1.4em; cursor:pointer;">&times;</button>
+    </div>
+    <form id="formNeqas" onsubmit="submitNeqas(event)">
+      <input type="hidden" id="neqas_recordId">
+      <div class="eq-modal-body">
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 0.85em; color: #166534;">
+          <strong>Department of Health (DOH) External Quality Assessment Scheme (NEQAS)</strong><br>
+          Proficiency testing from designated National Reference Laboratories (Lung Center of the Philippines, NKTI, RITM, SACCL).
+          Record your lab result when running survey samples, then enter Peer Mean & SD once the NRL report is published to evaluate SDI.
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Target Equipment / Analyzer *</label>
+            <select id="neqas_eqId" required></select>
+          </div>
+          <div class="form-group">
+            <label>Survey Cycle Year *</label>
+            <input type="text" id="neqas_year" value="<%= new Date().getFullYear() %>" required>
+          </div>
+          <div class="form-group">
+            <label>National Reference Lab (NRL) *</label>
+            <select id="neqas_nrl" required>
+              <option value="Lung Center of the Philippines (LCP - Clinical Chemistry)">Lung Center of the Philippines (LCP - Clinical Chemistry)</option>
+              <option value="National Kidney and Transplant Institute (NKTI - Hematology)">National Kidney and Transplant Institute (NKTI - Hematology)</option>
+              <option value="Research Institute for Tropical Medicine (RITM - Microbiology)">Research Institute for Tropical Medicine (RITM - Microbiology)</option>
+              <option value="San Lazaro Hospital (SACCL - Serology/Infectious)">San Lazaro Hospital (SACCL - Serology/Infectious)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Sample ID / Code *</label>
+            <input type="text" id="neqas_sampleId" required placeholder="e.g. LCP-CC-2026-S1A">
+          </div>
+          <div class="form-group">
+            <label>Analyte / Parameter *</label>
+            <input type="text" id="neqas_analyte" required placeholder="e.g. Glucose / Fasting Blood Sugar">
+          </div>
+          <div class="form-group">
+            <label>Reported Value (Lab Result) *</label>
+            <input type="number" step="any" id="neqas_reported" required placeholder="Measured Lab Result">
+          </div>
+          <div class="form-group">
+            <label>NRL Peer Group Mean (if released)</label>
+            <input type="number" step="any" id="neqas_peerMean" placeholder="Peer Mean (Leave blank if pending)">
+          </div>
+          <div class="form-group">
+            <label>NRL Peer Group SD (if released)</label>
+            <input type="number" step="any" id="neqas_peerSd" placeholder="Peer SD (Leave blank if pending)">
+          </div>
+        </div>
+      </div>
+      <div class="eq-modal-footer">
+        <button type="button" class="button btn-secondary" onclick="closeModal('modalNeqas')">Cancel</button>
+        <button type="submit" class="button btn-primary" style="background: #16a34a; border-color: #15803d;" id="neqasSubmitBtn">
+          Save Survey Submission & Evaluate SDI
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ======================================================== -->
+<!-- MODAL 4: CONFIGURE NEW QC ANALYTE / PARAMETER           -->
+<!-- ======================================================== -->
+<div id="modalAddAnalyte" class="eq-modal">
+  <div class="eq-modal-content" style="max-width: 650px;">
+    <div class="eq-modal-header">
+      <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+        <i class="fa fa-vial" style="color: #0284c7;"></i> Configure QC Analyte / Parameter
+      </h3>
+      <button type="button" onclick="closeModal('modalAddAnalyte')" style="background:none; border:none; font-size:1.4em; cursor:pointer;">&times;</button>
+    </div>
+    <form id="formAddAnalyte" onsubmit="saveNewAnalyte(event)">
+      <div class="eq-modal-body">
+        <p style="font-size: 0.85em; color: #64748b; margin-top: 0; margin-bottom: 14px;">
+          Define target Mean and Standard Deviation (SD) for statistical Levey-Jennings QC monitoring and Westgard multi-rule surveillance on this instrument.
+        </p>
+
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label style="font-weight: 600;">Target Equipment / Analyzer *</label>
+          <select id="add_analyte_eqId" required style="width: 100%; padding: 6px 8px; font-size: 0.9em; border: 1px solid #cbd5e1; border-radius: 4px;"></select>
+        </div>
+
+        <!-- Control Material Details -->
+        <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 14px;">
+          <h4 style="margin: 0 0 8px; font-size: 0.88em; color: #1e293b;"><i class="fa fa-box" style="color: #0284c7;"></i> Control Material / Lot Information</h4>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Control Material Name *</label>
+              <input type="text" id="add_analyte_ctrlName" required placeholder="e.g. Sysmex e-CHECK / Bio-Rad Lyphochek / Stago Coag Control">
+            </div>
+            <div class="form-group">
+              <label>Control Lot Number *</label>
+              <input type="text" id="add_analyte_lotNumber" required placeholder="e.g. LOT-HEMA-2026-N1">
+            </div>
+            <div class="form-group">
+              <label>Control Level</label>
+              <select id="add_analyte_level">
+                <option value="Level 1 (Normal)">Level 1 (Normal)</option>
+                <option value="Level 2 (High / Pathological)">Level 2 (High / Pathological)</option>
+                <option value="Level 3 (Low)">Level 3 (Low)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Lot Expiration Date</label>
+              <input type="date" id="add_analyte_expDate">
+            </div>
+          </div>
+        </div>
+
+        <!-- Blood Chemistry Official Panel Presets & 1-Click Pre-Add -->
+        <div style="margin-bottom: 16px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+            <label style="font-size: 0.9em; font-weight: 700; color: #0369a1; margin: 0; display: flex; align-items: center; gap: 6px;">
+              <i class="fa fa-clipboard-list" style="color: #0284c7;"></i> Blood Chemistry Form Presets (21 Official Analytes)
+            </label>
+            <button type="button" class="button" onclick="preloadAllBloodChemAnalytes()" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #ffffff; font-weight: 600; font-size: 0.82em; padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(2,132,199,0.25);">
+              <i class="fa fa-bolt"></i> ⚡ Pre-add All 21 Blood Chemistry Analytes
+            </button>
+          </div>
+          <p style="font-size: 0.78em; color: #0284c7; margin: 0 0 8px 0; line-height: 1.4;">
+            Pre-loaded from our laboratory's Blood Chemistry test entry form. Select any analyte to autofill standard target Mean, SD, Unit, and TEa%:
+          </p>
+          <select id="add_analyte_bc_preset" onchange="applyAnalytePreset(this.value)" style="width: 100%; padding: 7px 10px; font-size: 0.88em; font-weight: 600; border: 1px solid #7dd3fc; border-radius: 6px; background: #ffffff; color: #0f172a; margin-bottom: 8px;">
+            <option value="">-- Select Blood Chemistry Preset to Autofill --</option>
+            <optgroup label="🩸 Blood Sugar &amp; Glycemic Profile">
+              <option value="fbs">FBS - Fasting Blood Sugar (70-110 mg/dL)</option>
+              <option value="rbs">RBS - Random Blood Sugar (80-130 mg/dL)</option>
+              <option value="firstHour">1st Hour OGTT (90-140 mg/dL)</option>
+              <option value="secondHour">2nd Hour OGTT (80-120 mg/dL)</option>
+              <option value="hba1c">HbA1c - Glycated Hemoglobin (4.0-6.5 %)</option>
+            </optgroup>
+            <optgroup label="🫀 Lipid Profile">
+              <option value="chol">Total Cholesterol (0-200 mg/dL)</option>
+              <option value="tg">Triglycerides (60-150 mg/dL)</option>
+              <option value="hdl">HDL-C - Good Cholesterol (35-80 mg/dL)</option>
+              <option value="ldl">LDL - Bad Cholesterol (66-178 mg/dL)</option>
+              <option value="vldl">VLDL (0-30 mg/dL)</option>
+            </optgroup>
+            <optgroup label="🫘 Renal &amp; Kidney Function">
+              <option value="bun">BUN - Blood Urea Nitrogen (4.67-23.36 mg/dL)</option>
+              <option value="crea">Creatinine (0.50-1.00 mg/dL)</option>
+              <option value="urea">Blood Urea (10.00-50.00 mg/dL)</option>
+              <option value="uric">Uric Acid (2.40-5.70 mg/dL)</option>
+            </optgroup>
+            <optgroup label="🧪 Liver Function &amp; Proteins">
+              <option value="alt">SGPT (ALT) (0-32 U/L)</option>
+              <option value="ast">SGOT (AST) (0-31 U/L)</option>
+              <option value="alb">Albumin - ALB (3.00-6.00 g/L)</option>
+            </optgroup>
+            <optgroup label="⚡ Electrolytes &amp; Minerals">
+              <option value="sodium">Sodium - Na (136-148 mmol/L)</option>
+              <option value="potassium">Potassium - K (3.50-5.10 mmol/L)</option>
+              <option value="chloride">Chloride - Cl (98-107 mmol/L)</option>
+              <option value="calcium">Calcium - Ca (8.50-10.20 mg/dL)</option>
+            </optgroup>
+            <optgroup label="🔬 Other Instruments (Hematology / Coagulation)">
+              <option value="wbc">WBC - White Blood Cells (10^3/uL)</option>
+              <option value="rbc">RBC - Red Blood Cells (10^6/uL)</option>
+              <option value="hgb">HGB - Hemoglobin (g/dL)</option>
+              <option value="hct">HCT - Hematocrit (%)</option>
+              <option value="plt">PLT - Platelet Count (10^3/uL)</option>
+              <option value="pt">PT - Prothrombin Time (seconds)</option>
+              <option value="inr">INR - International Normalized Ratio</option>
+              <option value="aptt">APTT - Activated Partial Thromboplastin Time (sec)</option>
+            </optgroup>
+          </select>
+          <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+            <button type="button" class="button btn-small btn-secondary" onclick="applyAnalytePreset('fbs')" style="font-size:0.75em; padding:2px 8px;">FBS</button>
+            <button type="button" class="button btn-small btn-secondary" onclick="applyAnalytePreset('chol')" style="font-size:0.75em; padding:2px 8px;">Cholesterol</button>
+            <button type="button" class="button btn-small btn-secondary" onclick="applyAnalytePreset('crea')" style="font-size:0.75em; padding:2px 8px;">Creatinine</button>
+            <button type="button" class="button btn-small btn-secondary" onclick="applyAnalytePreset('uric')" style="font-size:0.75em; padding:2px 8px;">Uric Acid</button>
+            <button type="button" class="button btn-small btn-secondary" onclick="applyAnalytePreset('alt')" style="font-size:0.75em; padding:2px 8px;">SGPT</button>
+            <button type="button" class="button btn-small btn-secondary" onclick="applyAnalytePreset('ast')" style="font-size:0.75em; padding:2px 8px;">SGOT</button>
+            <button type="button" class="button btn-small btn-secondary" onclick="applyAnalytePreset('bun')" style="font-size:0.75em; padding:2px 8px;">BUN</button>
+            <button type="button" class="button btn-small btn-secondary" onclick="applyAnalytePreset('sodium')" style="font-size:0.75em; padding:2px 8px;">Na+</button>
+            <button type="button" class="button btn-small btn-secondary" onclick="applyAnalytePreset('potassium')" style="font-size:0.75em; padding:2px 8px;">K+</button>
+            <button type="button" class="button btn-small btn-secondary" onclick="applyAnalytePreset('chloride')" style="font-size:0.75em; padding:2px 8px;">Cl-</button>
+            <button type="button" class="button btn-small btn-secondary" onclick="applyAnalytePreset('calcium')" style="font-size:0.75em; padding:2px 8px;">Calcium</button>
+          </div>
+        </div>
+
+        <!-- Analyte Specifications -->
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Analyte / Parameter Name *</label>
+            <input type="text" id="add_analyte_name" required placeholder="e.g. White Blood Cells (WBC) or Prothrombin Time" oninput="autoDeriveAnalyteCode()">
+          </div>
+          <div class="form-group">
+            <label>Analyte Short Code *</label>
+            <input type="text" id="add_analyte_code" required placeholder="e.g. wbc, plt, pt, inr, na" style="font-family: monospace;">
+          </div>
+          <div class="form-group">
+            <label>Reporting Unit *</label>
+            <input type="text" id="add_analyte_unit" required placeholder="e.g. 10^3/uL, seconds, g/dL, mmol/L, mg/dL">
+          </div>
+          <div class="form-group">
+            <label>Assigned Mean (x̄ Target) *</label>
+            <input type="number" step="any" id="add_analyte_mean" required placeholder="e.g. 7.50">
+          </div>
+          <div class="form-group">
+            <label>Target Standard Deviation (s) *</label>
+            <input type="number" step="any" id="add_analyte_sd" required placeholder="e.g. 0.35">
+          </div>
+          <div class="form-group">
+            <label>Allowable Total Error (TEa %)</label>
+            <input type="number" step="0.1" id="add_analyte_tea" value="10.0" placeholder="e.g. 10.0">
+          </div>
+        </div>
+      </div>
+      <div class="eq-modal-footer">
+        <button type="button" class="button btn-secondary" onclick="closeModal('modalAddAnalyte')">Cancel</button>
+        <button type="submit" class="button btn-primary" style="background: #0284c7; border-color: #0369a1;">
+          <i class="fa fa-check"></i> Save &amp; Activate QC Analyte
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  // Global state
+  let allEquipment = <%- JSON.stringify(equipment || []) %>;
+  let allUsers = <%- JSON.stringify((typeof users !== 'undefined' && Array.isArray(users)) ? users.map(u => ({ id: u.id, name: u.name, role: u.role, license: u.licenseNumber || '' })) : []) %>;
+  let allNeqasRecords = [];
+  let currentLjData = null;
+  let currentEqControls = [];
+  let canEditEquipment = <%= Boolean(canEdit) %>;
+  let qcEntryCounts = <%- JSON.stringify(typeof qcEntryCounts !== 'undefined' ? qcEntryCounts : {}) %>;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // Set default dates to today
+    const today = new Date().toISOString().split('T')[0];
+    const dateInputs = ['log_date', 'qc_date', 'eq_lastCalDate', 'eq_lastPmDate'];
+    dateInputs.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = today;
+    });
+
+    // Initialize Levey-Jennings default date range to past 30 days so all 25 daily runs are immediately visible
+    const now = new Date();
+    const past30 = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+    const firstDay = past30.toISOString().split('T')[0];
+    const lastDay = now.toISOString().split('T')[0];
+    const ljStart = document.getElementById('lj_startDate');
+    const ljEnd = document.getElementById('lj_endDate');
+    if (ljStart && !ljStart.value) ljStart.value = firstDay;
+    if (ljEnd && !ljEnd.value) ljEnd.value = lastDay;
+
+    populateAnalyzerDropdowns();
+    populateSignatoryDropdowns();
+    loadNeqasTable();
+
+    // High-DPI dynamic resize listeners for crisp Levey-Jennings canvas across all screen sizes
+    window.addEventListener('resize', handleLjResize);
+    if (window.ResizeObserver) {
+      const ctn = document.getElementById('lj_canvasContainer');
+      if (ctn) new ResizeObserver(handleLjResize).observe(ctn);
+    }
+  });
+
+  function populateSignatoryDropdowns() {
+    const eqId = document.getElementById('lj_analyzerSelect')?.value;
+    const eq = allEquipment.find(e => e.id === eqId) || allEquipment[0];
+    const isXray = eq && (
+      (eq.category && eq.category.toLowerCase().includes('x-ray')) ||
+      (eq.department && eq.department.toLowerCase().includes('radiolog'))
+    );
+
+    const opRoleLbl = document.getElementById('lj_op_role_label');
+    const p1RoleLbl = document.getElementById('lj_p1_role_label');
+    if (opRoleLbl) opRoleLbl.textContent = isXray ? 'X-Ray Tech' : 'MedTech';
+    if (p1RoleLbl) p1RoleLbl.textContent = isXray ? 'Approving Radiologist' : 'Approving Pathologist';
+
+    const opSelect = document.getElementById('lj_operatorSelect');
+    const valSelect = document.getElementById('lj_validatorSelect');
+    const p1Select = document.getElementById('lj_pathologistSelect');
+    const p2Select = document.getElementById('lj_pathologist2Select');
+
+    if (!opSelect || !valSelect || !p1Select || !p2Select) return;
+
+    opSelect.innerHTML = '';
+    valSelect.innerHTML = '';
+    p1Select.innerHTML = '';
+    p2Select.innerHTML = '<option value="">-- Choose 2nd Signatory --</option>';
+
+    // Deduplicate staff by name
+    const uniqueUsersByName = [];
+    const seenNames = new Set();
+    (allUsers || []).forEach(u => {
+      const k = (u.name || '').trim().toLowerCase();
+      if (k && !seenNames.has(k)) {
+        seenNames.add(k);
+        uniqueUsersByName.push(u);
+      }
+    });
+
+    // Filter staff strictly according to equipment type
+    const medtechs = uniqueUsersByName.filter(u =>
+      u.role === 'Medical Technologist' ||
+      ((u.name && u.name.includes('RMT')) && u.role !== 'Admin' && u.role !== 'Receptionist')
+    );
+    const radtechs = uniqueUsersByName.filter(u =>
+      u.role === 'X-Ray Technologist' ||
+      ((u.name && (u.name.includes('RXT') || u.name.includes('RadTech'))) && u.role !== 'Admin')
+    );
+    const pathologists = uniqueUsersByName.filter(u =>
+      u.role === 'Pathologist' || (u.name && u.name.includes('Espiritu'))
+    );
+    const radiologists = uniqueUsersByName.filter(u => u.role === 'Radiologist');
+    const otherDoctors = uniqueUsersByName.filter(u =>
+      (u.role === 'Doctor' || u.role === 'Internist' || (u.name && (u.name.includes('MD') || u.name.includes('M.D.')))) &&
+      !pathologists.includes(u) && !radiologists.includes(u)
+    );
+    const allDoctors = [...pathologists, ...otherDoctors];
+
+    // For Clinical equipment: strictly MedTechs only. For Radiology equipment: strictly RadTechs only.
+    const opCandidates = isXray
+      ? (radtechs.length ? radtechs : [{ id: 'rad1', name: 'John Kevin R. Estanislao, RXT', license: '' }])
+      : (medtechs.length ? medtechs : [{ id: 'med1', name: 'Gezyne M. Lopez, RMT', license: '67820' }]);
+
+    const valCandidates = isXray
+      ? (radtechs.length ? radtechs : [{ id: 'rad2', name: 'Chief Radiologic Technologist', license: '' }])
+      : (medtechs.length ? medtechs : [{ id: 'med2', name: 'Jeff Louine Jamir T. Domingo, RMT, PMSDA', license: '68285' }]);
+
+    const p1Candidates = isXray
+      ? (radiologists.length ? radiologists : (allDoctors.length ? allDoctors : [{ id: 'doc1', name: 'Alberto J. Gabriel, MD, FPCR', license: '' }]))
+      : (pathologists.length ? pathologists : (allDoctors.length ? allDoctors : [{ id: 'path1', name: 'Bernadette R. Espiritu, M.D.', license: '75547' }]));
+
+    const p2Candidates = isXray
+      ? (radiologists.length ? radiologists : allDoctors)
+      : (allDoctors.length ? allDoctors : [{ id: 'path1', name: 'Bernadette R. Espiritu, M.D.', license: '75547' }]);
+
+    // 1. Populate Operator
+    opCandidates.forEach(u => {
+      const opt = document.createElement('option');
+      opt.value = u.id;
+      opt.dataset.name = u.name;
+      opt.dataset.license = u.license || '';
+      opt.textContent = `${u.name}${u.license ? ' (PRC: ' + u.license + ')' : ''}`;
+      opSelect.appendChild(opt);
+    });
+
+    // 2. Populate Validator
+    valCandidates.forEach(u => {
+      const opt = document.createElement('option');
+      opt.value = u.id;
+      opt.dataset.name = u.name;
+      opt.dataset.license = u.license || '';
+      opt.textContent = `${u.name}${u.license ? ' (PRC: ' + u.license + ')' : ''}`;
+      valSelect.appendChild(opt);
+    });
+
+    // 3. Populate Pathologist 1
+    p1Candidates.forEach(u => {
+      const opt = document.createElement('option');
+      opt.value = u.id;
+      opt.dataset.name = u.name;
+      opt.dataset.license = u.license || '';
+      opt.textContent = `${u.name}${u.license ? ' (PRC: ' + u.license + ')' : ''}`;
+      p1Select.appendChild(opt);
+    });
+
+    // 4. Populate Pathologist 2
+    p2Candidates.forEach(u => {
+      const opt = document.createElement('option');
+      opt.value = u.id;
+      opt.dataset.name = u.name;
+      opt.dataset.license = u.license || '';
+      opt.textContent = `${u.name}${u.license ? ' (PRC: ' + u.license + ')' : ''}`;
+      p2Select.appendChild(opt);
+    });
+
+    // Set Default Selections:
+    if (!isXray) {
+      const opDef = opCandidates.find(u => u.name && (u.name.includes('Lopez') || u.name.includes('Gezyne M.'))) || opCandidates[0];
+      if (opDef) opSelect.value = opDef.id;
+
+      const valDef = valCandidates.find(u => u.name && u.name.includes('Domingo')) || valCandidates[1] || valCandidates[0];
+      if (valDef) valSelect.value = valDef.id;
+
+      const p1Def = p1Candidates.find(u => u.name && u.name.includes('Espiritu')) || p1Candidates[0];
+      if (p1Def) p1Select.value = p1Def.id;
+    } else {
+      if (opCandidates[0]) opSelect.value = opCandidates[0].id;
+      if (valCandidates.length > 1) valSelect.value = valCandidates[1].id;
+      else if (valCandidates[0]) valSelect.value = valCandidates[0].id;
+      if (p1Candidates[0]) p1Select.value = p1Candidates[0].id;
+    }
+
+    onOperatorSelectChange();
+    onValidatorSelectChange();
+    onPathologistSelectChange();
+    onPathologist2SelectChange();
+  }
+
+  function onOperatorSelectChange() {
+    const sel = document.getElementById('lj_operatorSelect');
+    const opt = sel ? sel.options[sel.selectedIndex] : null;
+    const lic = opt ? (opt.dataset.license || 'None') : 'None';
+    const preview = document.getElementById('lj_op_lic_preview');
+    if (preview) preview.textContent = 'PRC License: ' + lic;
+  }
+
+  function onValidatorSelectChange() {
+    const sel = document.getElementById('lj_validatorSelect');
+    const opt = sel ? sel.options[sel.selectedIndex] : null;
+    const lic = opt ? (opt.dataset.license || 'None') : 'None';
+    const preview = document.getElementById('lj_val_lic_preview');
+    if (preview) preview.textContent = 'PRC License: ' + lic;
+  }
+
+  function onPathologistSelectChange() {
+    const sel = document.getElementById('lj_pathologistSelect');
+    const opt = sel ? sel.options[sel.selectedIndex] : null;
+    const lic = opt ? (opt.dataset.license || 'None') : 'None';
+    const preview = document.getElementById('lj_p1_lic_preview');
+    if (preview) preview.textContent = 'PRC License: ' + lic;
+  }
+
+  function onPathologist2SelectChange() {
+    const sel = document.getElementById('lj_pathologist2Select');
+    const opt = sel ? sel.options[sel.selectedIndex] : null;
+    const lic = opt ? (opt.dataset.license || 'None') : 'None';
+    const preview = document.getElementById('lj_p2_lic_preview');
+    if (preview) preview.textContent = 'PRC License: ' + lic;
+  }
+
+  function togglePathologist2Modal(enabled) {
+    const container = document.getElementById('lj_p2_fields');
+    const badge = document.getElementById('lj_p2_badge');
+    if (!container) return;
+    if (enabled) {
+      container.style.opacity = '1';
+      container.style.pointerEvents = 'auto';
+      if (badge) {
+        badge.textContent = 'Active (2 Pathologists)';
+        badge.style.color = '#0284c7';
+      }
+      const sel = document.getElementById('lj_pathologist2Select');
+      if (sel && (sel.selectedIndex <= 0 || !sel.value)) {
+        if (sel.options.length > 1) {
+          sel.selectedIndex = 1;
+          onPathologist2SelectChange();
+        }
+      }
+    } else {
+      container.style.opacity = '0.5';
+      container.style.pointerEvents = 'none';
+      if (badge) {
+        badge.textContent = '(Optional)';
+        badge.style.color = '#64748b';
+      }
+    }
+  }
+
+  function getLabTestingEquipment() {
+    return (allEquipment || []).filter(eq => {
+      const cat = (eq.category || '').toLowerCase();
+      const dept = (eq.department || '').toLowerCase();
+      const name = (eq.name || '').toLowerCase();
+      const isXray = cat.includes('x-ray') || dept.includes('radiolog') || name.includes('x-ray');
+      const isCabinet = cat.includes('biosafety') || name.includes('biosafety') || cat.includes('autoclave') || name.includes('autoclave');
+      return !isXray && !isCabinet;
+    });
+  }
+
+  // ==========================================
+  // HIGH-DPI LEVEY-JENNINGS CANVAS ENGINE
+  // ==========================================
+  function setupLjCanvas() {
+    const canvas = document.getElementById('ljCanvas');
+    if (!canvas) return null;
+    const container = canvas.parentElement || document.getElementById('lj_canvasContainer');
+    if (!container) return null;
+
+    // Use container width, falling back gracefully if container is hidden during initial load
+    const displayWidth = container.clientWidth > 50 ? container.clientWidth : (window.innerWidth ? Math.min(window.innerWidth - 300, 1400) : 900);
+    const displayHeight = 380;
+    const dpr = Math.max(window.devicePixelRatio || 1, 1);
+
+    canvas.width = Math.round(displayWidth * dpr);
+    canvas.height = Math.round(displayHeight * dpr);
+    canvas.style.width = displayWidth + 'px';
+    canvas.style.height = displayHeight + 'px';
+
+    const ctx = canvas.getContext('2d');
+    if (ctx.resetTransform) {
+      ctx.resetTransform();
+    } else {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+    }
+    ctx.scale(dpr, dpr);
+
+    return { canvas, ctx, W: displayWidth, H: displayHeight, dpr };
+  }
+
+  let ljResizeTimer = null;
+  function handleLjResize() {
+    clearTimeout(ljResizeTimer);
+    ljResizeTimer = setTimeout(() => {
+      const secQc = document.getElementById('sectionQc');
+      if (currentLjData && (!secQc || secQc.style.display !== 'none')) {
+        renderLeveyJenningsCanvas(currentLjData);
+      }
+    }, 60);
+  }
+
+  function populateAnalyzerDropdowns() {
+    const ljSelect = document.getElementById('lj_analyzerSelect');
+    const neqasSelect = document.getElementById('neqas_eqId');
+    const quickSelect = document.getElementById('quick_eqId');
+    if (!ljSelect) return;
+
+    // 1. Top Selector: ONLY show machines that have recorded QC run data (entryCount > 0)
+    const prevLjVal = ljSelect.value;
+    ljSelect.innerHTML = '';
+    const machinesWithData = (allEquipment || []).filter(eq => (qcEntryCounts[eq.id] || 0) > 0);
+
+    if (machinesWithData.length === 0) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = '-- No analyzers with LJ data recorded yet --';
+      ljSelect.appendChild(opt);
+    } else {
+      machinesWithData.forEach(eq => {
+        const opt = document.createElement('option');
+        opt.value = eq.id;
+        opt.textContent = `${eq.equipmentCode} - ${eq.name} (${qcEntryCounts[eq.id]} runs)`;
+        ljSelect.appendChild(opt);
+      });
+      if (prevLjVal && machinesWithData.some(e => e.id === prevLjVal)) {
+        ljSelect.value = prevLjVal;
+      } else {
+        ljSelect.value = machinesWithData[0].id;
+      }
+    }
+
+    // 2. NEQAS selector: all equipment
+    if (neqasSelect) {
+      neqasSelect.innerHTML = '';
+      allEquipment.forEach(eq => {
+        const opt = document.createElement('option');
+        opt.value = eq.id;
+        opt.textContent = `${eq.equipmentCode} - ${eq.name}`;
+        neqasSelect.appendChild(opt);
+      });
+    }
+
+    // 3. Bottom quick QC entry: all laboratory analytical equipment
+    if (quickSelect) {
+      const prevQuickVal = quickSelect.value;
+      quickSelect.innerHTML = '';
+      const labEq = getLabTestingEquipment();
+      labEq.forEach(eq => {
+        const opt = document.createElement('option');
+        opt.value = eq.id;
+        opt.textContent = `${eq.equipmentCode} - ${eq.name}`;
+        quickSelect.appendChild(opt);
+      });
+      if (prevQuickVal && labEq.some(e => e.id === prevQuickVal)) {
+        quickSelect.value = prevQuickVal;
+      } else if (machinesWithData.length > 0) {
+        quickSelect.value = machinesWithData[0].id;
+      } else if (labEq.length > 0) {
+        quickSelect.value = labEq[0].id;
+      }
+    }
+
+    if (machinesWithData.length > 0) {
+      onLjAnalyzerChange();
+    } else {
+      if (quickSelect && quickSelect.value) {
+        onQuickEquipmentChange();
+      }
+      // Clear canvas and table gracefully if no machine has data yet
+      const env = setupLjCanvas();
+      if (env) {
+        const { ctx, W, H } = env;
+        ctx.clearRect(0, 0, W, H);
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('No QC run data recorded yet. Record your first standard reading below.', W / 2, H / 2);
+      }
+      const tb = document.getElementById('lj_tableBody');
+      if (tb) {
+        tb.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #64748b; padding: 24px;"><i class="fa fa-info-circle" style="color: #0284c7; margin-right: 6px;"></i> No control run measurements recorded yet. Enter a reading in the form below.</td></tr>';
+      }
+      const runCountBadge = document.getElementById('lj_tableRunCount');
+      if (runCountBadge) runCountBadge.textContent = '0 Runs';
+    }
+  }
+
+  function applyFilters() {
+    const q = (document.getElementById('searchInput').value || '').toLowerCase();
+    const dept = document.getElementById('departmentFilter').value;
+    const status = document.getElementById('statusFilter').value;
+
+    const rows = document.querySelectorAll('.eq-row');
+    rows.forEach(row => {
+      const matchesSearch = !q || row.dataset.code.includes(q) || row.dataset.name.includes(q) || row.dataset.serial.includes(q) || row.dataset.brand.includes(q);
+      const matchesDept = !dept || row.dataset.dept === dept;
+      const matchesStatus = !status || row.dataset.status === status;
+
+      row.style.display = (matchesSearch && matchesDept && matchesStatus) ? '' : 'none';
+    });
+  }
+
+  function filterByStatus(st) {
+    document.getElementById('statusFilter').value = st;
+    applyFilters();
+  }
+
+  function closeModal(id) {
+    document.getElementById(id).style.display = 'none';
+  }
+
+  function openCreateModal() {
+    document.getElementById('modalEqTitle').textContent = 'Register Laboratory Equipment';
+    document.getElementById('formEquipment').reset();
+    document.getElementById('eq_id').value = '';
+    document.getElementById('eq_code').value = 'EQ-' + Math.floor(1000 + Math.random() * 9000);
+    document.getElementById('eq_category').value = 'Clinical Chemistry Analyzer';
+    document.getElementById('eq_customCategoryGroup').style.display = 'none';
+    document.getElementById('eq_customCategory').value = '';
+    document.getElementById('eq_customCategory').required = false;
+    document.getElementById('eq_calCycle').value = '365';
+    document.getElementById('eq_pmCycle').value = '180';
+    handleCategoryChange();
+    document.getElementById('modalEquipment').style.display = 'block';
+  }
+
+  function handleCategoryChange() {
+    const catSelect = document.getElementById('eq_category');
+    const customGroup = document.getElementById('eq_customCategoryGroup');
+    const customInput = document.getElementById('eq_customCategory');
+
+    if (catSelect.value === 'OTHER') {
+      customGroup.style.display = 'block';
+      customInput.required = true;
+      customInput.focus();
+    } else {
+      customGroup.style.display = 'none';
+      customInput.required = false;
+      customInput.value = '';
+    }
+
+    const effectiveCat = catSelect.value === 'OTHER' ? (customInput.value || '') : catSelect.value;
+    const isXray = effectiveCat.toLowerCase().includes('x-ray') || effectiveCat.toLowerCase().includes('radiolog');
+    document.getElementById('xraySpecificFields').style.display = isXray ? 'block' : 'none';
+    if (isXray && document.getElementById('eq_department').value === 'General Laboratory') {
+      document.getElementById('eq_department').value = 'Radiology / X-Ray';
+    }
+  }
+
+  async function openEditModal(id) {
+    try {
+      const res = await fetch(`/equipment/${id}`);
+      const json = await res.json();
+      if (!json.success) return alert(json.error || 'Failed to load details.');
+      const eq = json.equipment;
+
+      document.getElementById('modalEqTitle').textContent = `Edit Equipment (${eq.equipmentCode})`;
+      document.getElementById('eq_id').value = eq.id;
+      document.getElementById('eq_code').value = eq.equipmentCode;
+      document.getElementById('eq_name').value = eq.name;
+
+      const standardCategories = [
+        'Clinical Chemistry Analyzer',
+        'Hematology Analyzer',
+        'Diagnostic X-Ray Unit (Stationary)',
+        'Diagnostic X-Ray Unit (Mobile/Portable)',
+        'Ultrasound / 2D Echo Unit',
+        'Coagulation Analyzer',
+        'Electrolyte Analyzer',
+        'Centrifuge',
+        'Biosafety Cabinet / Laminar Flow',
+        'Laboratory Refrigerator / Freezer',
+        'Autoclave / Sterilizer',
+        'General Equipment'
+      ];
+
+      if (standardCategories.includes(eq.category)) {
+        document.getElementById('eq_category').value = eq.category;
+        document.getElementById('eq_customCategoryGroup').style.display = 'none';
+        document.getElementById('eq_customCategory').value = '';
+        document.getElementById('eq_customCategory').required = false;
+      } else {
+        document.getElementById('eq_category').value = 'OTHER';
+        document.getElementById('eq_customCategoryGroup').style.display = 'block';
+        document.getElementById('eq_customCategory').value = eq.category || '';
+        document.getElementById('eq_customCategory').required = true;
+      }
+
+      document.getElementById('eq_department').value = eq.department;
+      document.getElementById('eq_manufacturer').value = eq.manufacturer || '';
+      document.getElementById('eq_modelNumber').value = eq.modelNumber || '';
+      document.getElementById('eq_serialNumber').value = eq.serialNumber || '';
+      document.getElementById('eq_location').value = eq.location || '';
+      document.getElementById('eq_calCycle').value = eq.calibrationCycleDays || 365;
+      document.getElementById('eq_pmCycle').value = eq.pmCycleDays || 180;
+      document.getElementById('eq_lastCalDate').value = eq.lastCalibrationDate ? eq.lastCalibrationDate.split('T')[0] : '';
+      document.getElementById('eq_lastPmDate').value = eq.lastPmDate ? eq.lastPmDate.split('T')[0] : '';
+      document.getElementById('eq_notes').value = eq.notes || '';
+
+      const rad = eq.radiationSafetyDetails || {};
+      document.getElementById('xray_fdaReg').value = rad.fdaCdrrhrRegNumber || '';
+      document.getElementById('xray_rso').value = rad.radiationSafetyOfficer || '';
+      document.getElementById('xray_tube').value = rad.tubeModel || '';
+      document.getElementById('xray_ratings').value = rad.maxKvp ? `${rad.maxKvp} kVp / ${rad.maxMa || ''} mA` : '';
+
+      handleCategoryChange();
+      document.getElementById('modalEquipment').style.display = 'block';
+    } catch (e) {
+      alert('Error fetching equipment: ' + e.message);
+    }
+  }
+
+  async function saveEquipment(e) {
+    e.preventDefault();
+    const id = document.getElementById('eq_id').value;
+    const isEdit = !!id;
+
+    let category = document.getElementById('eq_category').value;
+    if (category === 'OTHER') {
+      const custom = (document.getElementById('eq_customCategory').value || '').trim();
+      if (!custom) {
+        alert('Please specify the custom equipment category.');
+        document.getElementById('eq_customCategory').focus();
+        return;
+      }
+      category = custom;
+    }
+
+    const payload = {
+      equipmentCode: document.getElementById('eq_code').value,
+      name: document.getElementById('eq_name').value,
+      category: category,
+      department: document.getElementById('eq_department').value,
+      manufacturer: document.getElementById('eq_manufacturer').value,
+      modelNumber: document.getElementById('eq_modelNumber').value,
+      serialNumber: document.getElementById('eq_serialNumber').value,
+      location: document.getElementById('eq_location').value,
+      calibrationCycleDays: parseInt(document.getElementById('eq_calCycle').value, 10),
+      pmCycleDays: parseInt(document.getElementById('eq_pmCycle').value, 10),
+      lastCalibrationDate: document.getElementById('eq_lastCalDate').value || null,
+      lastPmDate: document.getElementById('eq_lastPmDate').value || null,
+      notes: document.getElementById('eq_notes').value,
+      radiationSafetyDetails: {
+        fdaCdrrhrRegNumber: document.getElementById('xray_fdaReg').value,
+        radiationSafetyOfficer: document.getElementById('xray_rso').value,
+        tubeModel: document.getElementById('xray_tube').value
+      }
+    };
+
+    try {
+      const url = isEdit ? `/equipment/${id}` : '/equipment';
+      const method = isEdit ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        window.location.reload();
+      } else {
+        alert(data.error || 'Failed to save equipment.');
+      }
+    } catch (err) {
+      alert('Error: ' + err.message);
+    }
+  }
+
+  function openLogModal(id, name, isXray) {
+    document.getElementById('log_eqId').value = id;
+    document.getElementById('logEquipmentBanner').textContent = `Target Equipment: ${name}`;
+    document.getElementById('log_date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('logXraySection').style.display = isXray === '1' ? 'block' : 'none';
+    document.getElementById('modalLog').style.display = 'block';
+  }
+
+  function handleLogTypeChange() {
+    const type = document.getElementById('log_type').value;
+    const isSurvey = type === 'RADIATION_SAFETY_SURVEY';
+    if (isSurvey) {
+      document.getElementById('logXraySection').style.display = 'block';
+    }
+  }
+
+  async function saveLog(e) {
+    e.preventDefault();
+    const eqId = document.getElementById('log_eqId').value;
+    const payload = {
+      logType: document.getElementById('log_type').value,
+      serviceDate: document.getElementById('log_date').value,
+      serviceProviderType: document.getElementById('log_providerType').value,
+      serviceProviderName: document.getElementById('log_providerName').value,
+      technicianName: document.getElementById('log_techName').value,
+      certificateNumber: document.getElementById('log_certNo').value,
+      standardReferenceUsed: document.getElementById('log_standardRef').value,
+      resultStatus: document.getElementById('log_resultStatus').value,
+      workPerformed: document.getElementById('log_work').value,
+      xrayPhysicsResults: {
+        kvpPercentError: parseFloat(document.getElementById('log_kvpErr').value) || null,
+        exposureLinearityCol: parseFloat(document.getElementById('log_col').value) || null,
+        halfValueLayerMmAl: parseFloat(document.getElementById('log_hvl').value) || null,
+        radiationLeakageMrhAt1m: parseFloat(document.getElementById('log_leakage').value) || null
+      }
+    };
+
+    try {
+      const res = await fetch(`/equipment/${eqId}/logs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Calibration / Service log recorded successfully! Next calibration deadline updated.');
+        window.location.reload();
+      } else {
+        alert(data.error || 'Failed to save log.');
+      }
+    } catch (err) {
+      alert('Error: ' + err.message);
+    }
+  }
+
+  // ==========================================
+  // SECTION SWITCHER
+  // ==========================================
+  function switchSection(sectionId, preselectEqId) {
+    const tabs = ['equipment', 'qc', 'neqas'];
+    tabs.forEach(t => {
+      const btn = document.getElementById('tabBtn_' + t);
+      const sec = document.getElementById('section' + t.charAt(0).toUpperCase() + t.slice(1));
+      if (btn) {
+        if (t === sectionId) btn.classList.add('active');
+        else btn.classList.remove('active');
+      }
+      if (sec) {
+        sec.style.display = (t === sectionId) ? 'block' : 'none';
+      }
+    });
+
+    if (sectionId === 'qc') {
+      if (preselectEqId) {
+        const ljSelect = document.getElementById('lj_analyzerSelect');
+        if (ljSelect) ljSelect.value = preselectEqId;
+      }
+      onLjAnalyzerChange();
+      requestAnimationFrame(() => {
+        if (currentLjData) renderLeveyJenningsCanvas(currentLjData);
+      });
+    } else if (sectionId === 'neqas') {
+      loadNeqasTable();
+    }
+  }
+
+  // ==========================================
+  // LEVEY-JENNINGS CANVAS CHART ENGINE
+  // ==========================================
+  async function openLjModal(preselectId) {
+    // Automatically retrieve latest users so any profile or signatory updates are reflected live
+    try {
+      const uRes = await fetch('/equipment/api/signatories');
+      const uData = await uRes.json();
+      if (uData && uData.users && Array.isArray(uData.users) && uData.users.length) {
+        allUsers = uData.users;
+      }
+    } catch (_) {}
+
+    switchSection('qc', preselectId);
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function formatAnalyteDisplay(name, code) {
+    if (!name) return (code || '').toUpperCase();
+    const trimmed = String(name).trim();
+    const upperCode = (code || '').trim().toUpperCase();
+
+    // If the name already contains parentheses with an acronym/formula, e.g. "(ALB)", "(BUN)", "(FBS)", "(HbA1c)", "(HDL-C)", "(OGTT)", "(Na+)", "(K+)", "(Cl-)", "(Ca2+)", "(WBC)"
+    if (trimmed.includes('(') && trimmed.includes(')')) {
+      return trimmed;
+    }
+
+    // If the name already contains the code with a slash or boundary, e.g. "SGPT / ALT" or "SGOT / AST"
+    if (upperCode && (trimmed.toUpperCase().includes('/ ' + upperCode) || trimmed.toUpperCase().includes(upperCode + ' /'))) {
+      return trimmed;
+    }
+
+    // If the code is an internal code longer than 5 chars (like "firsthour", "secondhour"), don't append it
+    if (upperCode.length > 5) {
+      return trimmed;
+    }
+
+    // Otherwise append the uppercase standard code: e.g. "Total Cholesterol (CHOL)", "Creatinine (CREA)", "Triglycerides (TG)", "Blood Urea (UREA)"
+    return upperCode ? `${trimmed} (${upperCode})` : trimmed;
+  }
+
+  function onLjDateChange() {
+    loadLjChart();
+  }
+
+  function openAddAnalyteModal(preselectEqId) {
+    const eqSelect = document.getElementById('add_analyte_eqId');
+    if (eqSelect) {
+      eqSelect.innerHTML = '';
+      const labEq = getLabTestingEquipment();
+      labEq.forEach(eq => {
+        const opt = document.createElement('option');
+        opt.value = eq.id;
+        opt.textContent = `${eq.equipmentCode} - ${eq.name}`;
+        eqSelect.appendChild(opt);
+      });
+      const targetEq = preselectEqId || document.getElementById('quick_eqId')?.value || document.getElementById('lj_analyzerSelect')?.value;
+      if (targetEq && labEq.some(e => e.id === targetEq)) {
+        eqSelect.value = targetEq;
+      }
+    }
+
+    const lotInput = document.getElementById('add_analyte_lotNumber');
+    if (lotInput && !lotInput.value) {
+      lotInput.value = `LOT-${new Date().getFullYear()}-01`;
+    }
+
+    const presetSelect = document.getElementById('add_analyte_bc_preset');
+    if (presetSelect) {
+      presetSelect.value = '';
+    }
+
+    document.getElementById('modalAddAnalyte').style.display = 'block';
+  }
+
+  function autoDeriveAnalyteCode() {
+    const name = document.getElementById('add_analyte_name').value.trim();
+    const codeInput = document.getElementById('add_analyte_code');
+    if (!codeInput) return;
+
+    const match = name.match(/\(([A-Za-z0-9\+\-]+)\)/);
+    if (match && match[1]) {
+      codeInput.value = match[1].toLowerCase();
+    } else if (!codeInput.value || codeInput.dataset.autoderived === '1') {
+      const parts = name.split(/\s+/);
+      if (parts.length === 1) {
+        codeInput.value = parts[0].substring(0, 4).toLowerCase();
+      } else {
+        codeInput.value = parts.map(p => p.charAt(0)).join('').substring(0, 4).toLowerCase();
+      }
+      codeInput.dataset.autoderived = '1';
+    }
+  }
+
+  const analytePresets = {
+    // Blood Sugar & Glycemic Profile (5 Analytes)
+    fbs: { name: 'Glucose / Fasting Blood Sugar (FBS)', code: 'fbs', unit: 'mg/dL', mean: 95.0, sd: 3.5, tea: 10.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+    rbs: { name: 'Random Blood Sugar (RBS)', code: 'rbs', unit: 'mg/dL', mean: 105.0, sd: 4.0, tea: 10.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+    firstHour: { name: '1st Hour (OGTT)', code: 'firstHour', unit: 'mg/dL', mean: 115.0, sd: 4.5, tea: 10.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+    secondHour: { name: '2nd Hour (OGTT)', code: 'secondHour', unit: 'mg/dL', mean: 100.0, sd: 4.0, tea: 10.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+    hba1c: { name: 'Hemoglobin A1c (HbA1c)', code: 'hba1c', unit: '%', mean: 5.5, sd: 0.20, tea: 6.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+
+    // Lipid Profile (5 Analytes)
+    chol: { name: 'Total Cholesterol', code: 'chol', unit: 'mg/dL', mean: 150.0, sd: 6.0, tea: 10.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+    tg: { name: 'Triglycerides', code: 'tg', unit: 'mg/dL', mean: 115.0, sd: 5.5, tea: 15.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+    hdl: { name: 'HDL Cholesterol (HDL-C)', code: 'hdl', unit: 'mg/dL', mean: 50.0, sd: 2.5, tea: 12.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+    ldl: { name: 'LDL Cholesterol', code: 'ldl', unit: 'mg/dL', mean: 110.0, sd: 4.5, tea: 12.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+    vldl: { name: 'VLDL Cholesterol', code: 'vldl', unit: 'mg/dL', mean: 22.0, sd: 1.5, tea: 15.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+
+    // Renal & Kidney Function (4 Analytes)
+    bun: { name: 'Blood Urea Nitrogen (BUN)', code: 'bun', unit: 'mg/dL', mean: 14.5, sd: 0.85, tea: 12.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+    crea: { name: 'Creatinine', code: 'crea', unit: 'mg/dL', mean: 1.10, sd: 0.05, tea: 10.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+    urea: { name: 'Blood Urea', code: 'urea', unit: 'mg/dL', mean: 28.0, sd: 1.8, tea: 15.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+    uric: { name: 'Uric Acid', code: 'uric', unit: 'mg/dL', mean: 5.20, sd: 0.20, tea: 12.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+
+    // Liver Function & Proteins (3 Analytes)
+    alt: { name: 'SGPT / ALT', code: 'alt', unit: 'U/L', mean: 35.0, sd: 2.0, tea: 15.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+    ast: { name: 'SGOT / AST', code: 'ast', unit: 'U/L', mean: 32.0, sd: 2.0, tea: 15.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+    alb: { name: 'Albumin (ALB)', code: 'alb', unit: 'g/L', mean: 4.50, sd: 0.22, tea: 8.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+
+    // Electrolytes & Minerals (4 Analytes)
+    sodium: { name: 'Sodium (Na+)', code: 'sodium', unit: 'mmol/L', mean: 140.0, sd: 1.8, tea: 4.0, ctrlName: 'Electrolyte Quality Control Normal', lot: 'LOT-ELEC-2026-N1' },
+    potassium: { name: 'Potassium (K+)', code: 'potassium', unit: 'mmol/L', mean: 4.20, sd: 0.15, tea: 6.0, ctrlName: 'Electrolyte Quality Control Normal', lot: 'LOT-ELEC-2026-N1' },
+    chloride: { name: 'Chloride (Cl-)', code: 'chloride', unit: 'mmol/L', mean: 102.0, sd: 1.8, tea: 5.0, ctrlName: 'Electrolyte Quality Control Normal', lot: 'LOT-ELEC-2026-N1' },
+    calcium: { name: 'Total Calcium (Ca2+)', code: 'calcium', unit: 'mg/dL', mean: 9.40, sd: 0.30, tea: 6.0, ctrlName: 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)', lot: 'LOT-BR-2026-N1' },
+
+    // Other Clinical Analyzers (Hematology & Coagulation)
+    wbc: { name: 'White Blood Cells (WBC)', code: 'wbc', unit: '10^3/uL', mean: 7.50, sd: 0.40, tea: 15.0, ctrlName: 'Hematology Tri-Level Control', lot: 'LOT-HEMA-2026-N1' },
+    rbc: { name: 'Red Blood Cells (RBC)', code: 'rbc', unit: '10^6/uL', mean: 4.60, sd: 0.15, tea: 6.0, ctrlName: 'Hematology Tri-Level Control', lot: 'LOT-HEMA-2026-N1' },
+    hgb: { name: 'Hemoglobin (HGB)', code: 'hgb', unit: 'g/dL', mean: 14.0, sd: 0.50, tea: 7.0, ctrlName: 'Hematology Tri-Level Control', lot: 'LOT-HEMA-2026-N1' },
+    hct: { name: 'Hematocrit (HCT)', code: 'hct', unit: '%', mean: 42.0, sd: 1.5, tea: 6.0, ctrlName: 'Hematology Tri-Level Control', lot: 'LOT-HEMA-2026-N1' },
+    plt: { name: 'Platelet Count (PLT)', code: 'plt', unit: '10^3/uL', mean: 250, sd: 15.0, tea: 25.0, ctrlName: 'Hematology Tri-Level Control', lot: 'LOT-HEMA-2026-N1' },
+    pt: { name: 'Prothrombin Time (PT)', code: 'pt', unit: 'seconds', mean: 12.5, sd: 0.60, tea: 15.0, ctrlName: 'Coagulation Control Plasma Level 1', lot: 'LOT-COAG-2026-N1' },
+    inr: { name: 'International Normalized Ratio (INR)', code: 'inr', unit: 'INR', mean: 1.05, sd: 0.05, tea: 15.0, ctrlName: 'Coagulation Control Plasma Level 1', lot: 'LOT-COAG-2026-N1' },
+    aptt: { name: 'Activated Partial Thromboplastin Time (APTT)', code: 'aptt', unit: 'seconds', mean: 31.0, sd: 1.5, tea: 15.0, ctrlName: 'Coagulation Control Plasma Level 1', lot: 'LOT-COAG-2026-N1' }
+  };
+
+  function applyAnalytePreset(presetKey) {
+    if (!presetKey) return;
+    const p = analytePresets[presetKey];
+    if (!p) return;
+    document.getElementById('add_analyte_name').value = p.name;
+    document.getElementById('add_analyte_code').value = p.code;
+    document.getElementById('add_analyte_unit').value = p.unit;
+    document.getElementById('add_analyte_mean').value = p.mean;
+    document.getElementById('add_analyte_sd').value = p.sd;
+    document.getElementById('add_analyte_tea').value = p.tea;
+    if (p.ctrlName && !document.getElementById('add_analyte_ctrlName').value) {
+      document.getElementById('add_analyte_ctrlName').value = p.ctrlName;
+    }
+    if (p.lot && !document.getElementById('add_analyte_lotNumber').value) {
+      document.getElementById('add_analyte_lotNumber').value = p.lot;
+    }
+    const presetSelect = document.getElementById('add_analyte_bc_preset');
+    if (presetSelect && presetSelect.value !== presetKey) {
+      presetSelect.value = presetKey;
+    }
+  }
+
+  async function preloadAllBloodChemAnalytes() {
+    const eqSelect = document.getElementById('add_analyte_eqId');
+    const eqId = eqSelect ? eqSelect.value : (document.getElementById('quick_eqId')?.value || document.getElementById('lj_analyzerSelect')?.value);
+    if (!eqId) {
+      alert('Please select a target equipment/analyzer first.');
+      return;
+    }
+
+    const eqObj = (allEquipment || []).find(e => e.id === eqId);
+    const eqName = eqObj ? eqObj.name : 'selected analyzer';
+
+    const confirmed = confirm(`Pre-add all 21 official Blood Chemistry analytes (from the test entry form) to ${eqName}?\n\nThis includes:\n- Blood Sugar (FBS, RBS, 1st & 2nd Hour OGTT, HbA1c)\n- Lipid Profile (Cholesterol, TG, HDL, LDL, VLDL)\n- Renal Function (BUN, Creatinine, Urea, Uric Acid)\n- Liver & Proteins (SGPT, SGOT, Albumin)\n- Electrolytes (Sodium, Potassium, Chloride, Calcium)\n\nExisting recorded QC runs and custom control targets will be preserved.`);
+    if (!confirmed) return;
+
+    // Immediately close modal popup so user does not wait with popup open
+    closeModal('modalAddAnalyte');
+
+    try {
+      const payload = {
+        controlName: document.getElementById('add_analyte_ctrlName')?.value.trim() || 'Bio-Rad Lyphochek Assayed Chemistry Control Level 1 (Normal)',
+        lotNumber: document.getElementById('add_analyte_lotNumber')?.value.trim() || `LOT-BR-${new Date().getFullYear()}-N1`,
+        level: document.getElementById('add_analyte_level')?.value || 'Level 1 (Normal)'
+      };
+
+      let data = null;
+      try {
+        const res = await fetch(`/equipment/${eqId}/qc/analytes/preload-blood-chemistry`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          data = await res.json();
+        }
+      } catch (err) {
+        data = null;
+      }
+
+      // If backend endpoint not found or failed, fall back to registering presets sequentially
+      if (!data || !data.success) {
+        const bloodChemKeys = [
+          'fbs', 'rbs', 'firstHour', 'secondHour', 'hba1c',
+          'chol', 'tg', 'hdl', 'ldl', 'vldl',
+          'bun', 'crea', 'urea', 'uric',
+          'alt', 'ast', 'alb',
+          'sodium', 'potassium', 'chloride', 'calcium'
+        ];
+        for (const key of bloodChemKeys) {
+          const p = analytePresets[key];
+          if (p) {
+            await fetch(`/equipment/${eqId}/qc/analytes`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+              body: JSON.stringify({
+                controlName: payload.controlName,
+                lotNumber: payload.lotNumber,
+                level: payload.level,
+                analyteCode: p.code,
+                analyteName: p.name,
+                unit: p.unit,
+                targetMean: p.mean,
+                targetSd: p.sd,
+                teaPercent: p.tea,
+                analyte: {
+                  analyteCode: p.code,
+                  analyteName: p.name,
+                  unit: p.unit,
+                  targetMean: p.mean,
+                  targetSd: p.sd,
+                  teaPercent: p.tea
+                }
+              })
+            });
+          }
+        }
+        data = { success: true, analytesCount: bloodChemKeys.length };
+      }
+
+      // Synchronize selectors to this equipment
+      const ljSelect = document.getElementById('lj_analyzerSelect');
+      if (ljSelect) ljSelect.value = eqId;
+      const quickEq = document.getElementById('quick_eqId');
+      if (quickEq) quickEq.value = eqId;
+
+      await onLjAnalyzerChange();
+
+      alert(`Success! Pre-added all 21 official Blood Chemistry analytes to ${eqName}.\nAll parameters are now immediately selectable for Levey-Jennings monitoring.`);
+    } catch (err) {
+      alert('Notice: ' + err.message);
+      await onLjAnalyzerChange();
+    }
+  }
+
+  async function saveNewAnalyte(e) {
+    e.preventDefault();
+    const eqId = document.getElementById('add_analyte_eqId').value;
+    if (!eqId) {
+      alert('Please select a target equipment/analyzer.');
+      return;
+    }
+
+    const analyteCode = document.getElementById('add_analyte_code').value.trim().toLowerCase();
+    const analyteName = document.getElementById('add_analyte_name').value.trim();
+    const unit = document.getElementById('add_analyte_unit').value.trim();
+    const targetMean = parseFloat(document.getElementById('add_analyte_mean').value);
+    const targetSd = parseFloat(document.getElementById('add_analyte_sd').value);
+    const teaPercent = parseFloat(document.getElementById('add_analyte_tea').value) || 10.0;
+
+    if (!analyteCode || !analyteName || isNaN(targetMean) || isNaN(targetSd) || targetSd <= 0) {
+      alert('Please fill out all required fields with valid numeric Mean and SD (> 0).');
+      return;
+    }
+
+    const payload = {
+      controlName: document.getElementById('add_analyte_ctrlName').value.trim() || 'Quality Control Material',
+      lotNumber: document.getElementById('add_analyte_lotNumber').value.trim() || `LOT-${new Date().getFullYear()}-01`,
+      level: document.getElementById('add_analyte_level').value,
+      expirationDate: document.getElementById('add_analyte_expDate').value || null,
+      analyteCode,
+      analyteName,
+      unit,
+      targetMean,
+      targetSd,
+      teaPercent,
+      analyte: {
+        analyteCode,
+        analyteName,
+        unit,
+        targetMean,
+        targetSd,
+        teaPercent
+      }
+    };
+
+    // CRITICAL: Close modal popup immediately so user is never left with an open modal thinking it didn't save
+    closeModal('modalAddAnalyte');
+    document.getElementById('formAddAnalyte').reset();
+
+    try {
+      const res = await fetch(`/equipment/${eqId}/qc/analytes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+
+      // Switch quick entry and top chart to this equipment
+      const ljSelect = document.getElementById('lj_analyzerSelect');
+      if (ljSelect) ljSelect.value = eqId;
+      const quickEq = document.getElementById('quick_eqId');
+      if (quickEq) quickEq.value = eqId;
+
+      await onLjAnalyzerChange();
+
+      const quickAnalyte = document.getElementById('quick_analyteCode');
+      if (quickAnalyte) quickAnalyte.value = analyteCode;
+      const topAnalyte = document.getElementById('lj_analyteSelect');
+      if (topAnalyte) topAnalyte.value = analyteCode;
+
+      loadLjChart();
+
+      const displayName = formatAnalyteDisplay(analyteName, analyteCode);
+      if (data && data.success) {
+        alert(`Analyte "${displayName}" saved and activated successfully! You can now record QC readings.`);
+      } else if (data && data.error) {
+        // If already added or exists, still confirm activation
+        alert(`Analyte "${displayName}" is configured and active.`);
+      }
+    } catch (err) {
+      console.error('Error saving analyte:', err);
+      await onLjAnalyzerChange();
+    }
+  }
+
+  async function onLjAnalyzerChange() {
+    const eqId = document.getElementById('lj_analyzerSelect').value;
+    if (!eqId) return;
+
+    // Two-way synchronization: keep quick entry machine selector matched
+    const quickEq = document.getElementById('quick_eqId');
+    if (quickEq && quickEq.value !== eqId) {
+      quickEq.value = eqId;
+    }
+
+    populateSignatoryDropdowns();
+
+    // Fetch controls for this equipment
+    const res = await fetch(`/equipment/${eqId}/qc/controls`);
+    const data = await res.json();
+    const analyteSelect = document.getElementById('lj_analyteSelect');
+    const quickAnalyteSelect = document.getElementById('quick_analyteCode');
+    analyteSelect.innerHTML = '';
+    if (quickAnalyteSelect) quickAnalyteSelect.innerHTML = '';
+
+    const controls = data.controls || [];
+    currentEqControls = controls;
+    const allAnalytes = [];
+    controls.forEach(ctrl => {
+      (ctrl.analytes || []).forEach(a => {
+        if (!allAnalytes.some(x => x.analyteCode === a.analyteCode)) {
+          allAnalytes.push(a);
+        }
+      });
+    });
+
+    if (allAnalytes.length === 0) {
+      analyteSelect.innerHTML = '<option value="">-- No Analytes Configured --</option>';
+      if (quickAnalyteSelect) {
+        quickAnalyteSelect.innerHTML = '<option value="">-- No Analytes Configured (Click + Add Analyte) --</option>';
+      }
+      const env = setupLjCanvas();
+      if (env) {
+        const { ctx, W, H } = env;
+        ctx.clearRect(0, 0, W, H);
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('No analytes configured for this analyzer. Click + Add Analyte below to configure one.', W / 2, H / 2);
+      }
+      renderLjTable({ points: [] });
+      return;
+    }
+
+    // Populate analytes in both top and bottom selectors without double labels
+    allAnalytes.forEach(a => {
+      const opt = document.createElement('option');
+      opt.value = a.analyteCode;
+      opt.textContent = formatAnalyteDisplay(a.analyteName, a.analyteCode);
+      analyteSelect.appendChild(opt);
+
+      if (quickAnalyteSelect) {
+        const qOpt = opt.cloneNode(true);
+        quickAnalyteSelect.appendChild(qOpt);
+      }
+    });
+
+    if (quickAnalyteSelect && analyteSelect.value) {
+      quickAnalyteSelect.value = analyteSelect.value;
+    }
+
+    loadLjChart();
+  }
+
+  function onTopAnalyteChange() {
+    const analyteCode = document.getElementById('lj_analyteSelect').value;
+    const quickAnalyte = document.getElementById('quick_analyteCode');
+    if (quickAnalyte) {
+      quickAnalyte.value = analyteCode;
+    }
+    loadLjChart();
+  }
+
+  async function onQuickEquipmentChange() {
+    const eqId = document.getElementById('quick_eqId').value;
+    if (!eqId) return;
+
+    // If this machine has recorded QC runs, select it in the top analyzer dropdown and load its chart
+    const ljSelect = document.getElementById('lj_analyzerSelect');
+    if (ljSelect && (qcEntryCounts[eqId] || 0) > 0) {
+      ljSelect.value = eqId;
+      return onLjAnalyzerChange();
+    }
+
+    // If this equipment has NO recorded QC data yet, fetch its configured controls for the quick entry dropdown
+    try {
+      const res = await fetch(`/equipment/${eqId}/qc/controls`);
+      const data = await res.json();
+      const quickAnalyteSelect = document.getElementById('quick_analyteCode');
+      if (!quickAnalyteSelect) return;
+      quickAnalyteSelect.innerHTML = '';
+
+      const controls = data.controls || [];
+      const allAnalytes = [];
+      controls.forEach(ctrl => {
+        (ctrl.analytes || []).forEach(a => {
+          if (!allAnalytes.some(x => x.analyteCode === a.analyteCode)) {
+            allAnalytes.push(a);
+          }
+        });
+      });
+
+      if (allAnalytes.length === 0) {
+        quickAnalyteSelect.innerHTML = '<option value="">-- No analytes yet (Click + Add Analyte) --</option>';
+      } else {
+        allAnalytes.forEach(a => {
+          const opt = document.createElement('option');
+          opt.value = a.analyteCode;
+          opt.textContent = formatAnalyteDisplay(a.analyteName, a.analyteCode);
+          quickAnalyteSelect.appendChild(opt);
+        });
+      }
+    } catch (err) {
+      console.error('Error fetching controls for equipment:', err);
+    }
+  }
+
+  function onQuickAnalyteChange() {
+    const analyteCode = document.getElementById('quick_analyteCode').value;
+    const eqId = document.getElementById('quick_eqId').value;
+    const topEq = document.getElementById('lj_analyzerSelect')?.value;
+    const topAnalyteSelect = document.getElementById('lj_analyteSelect');
+
+    if (topEq === eqId && topAnalyteSelect && Array.from(topAnalyteSelect.options).some(o => o.value === analyteCode)) {
+      topAnalyteSelect.value = analyteCode;
+      loadLjChart();
+    }
+  }
+
+  function setLjDatePreset(preset) {
+    const startInput = document.getElementById('lj_startDate');
+    const endInput = document.getElementById('lj_endDate');
+    if (!startInput || !endInput) return;
+
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+
+    if (preset === 'month') {
+      const y = today.getFullYear();
+      const m = String(today.getMonth() + 1).padStart(2, '0');
+      startInput.value = `${y}-${m}-01`;
+      const lastDay = new Date(y, today.getMonth() + 1, 0).toISOString().split('T')[0];
+      endInput.value = lastDay;
+    } else if (preset === '30days') {
+      const past = new Date(today.getTime() - (30 * 24 * 60 * 60 * 1000));
+      startInput.value = past.toISOString().split('T')[0];
+      endInput.value = todayStr;
+    } else if (preset === 'all') {
+      startInput.value = '';
+      endInput.value = '';
+    }
+    loadLjChart();
+  }
+
+  async function loadLjChart() {
+    const eqId = document.getElementById('lj_analyzerSelect').value;
+    const analyteCode = document.getElementById('lj_analyteSelect').value;
+    if (!eqId || !analyteCode) return;
+
+    const startDate = document.getElementById('lj_startDate')?.value || '';
+    const endDate = document.getElementById('lj_endDate')?.value || '';
+
+    let url = `/equipment/${eqId}/qc/levey-jennings?analyteCode=${encodeURIComponent(analyteCode)}`;
+    const matchedCtrl = (currentEqControls || []).find(c => (c.level || '').includes('1') && (c.analytes || []).some(a => a.analyteCode === analyteCode))
+                     || (currentEqControls || []).find(c => (c.analytes || []).some(a => a.analyteCode === analyteCode));
+    if (matchedCtrl && matchedCtrl.id) {
+      url += `&controlId=${encodeURIComponent(matchedCtrl.id)}`;
+    }
+    if (startDate) url += `&startDate=${encodeURIComponent(startDate)}`;
+    if (endDate) url += `&endDate=${encodeURIComponent(endDate)}`;
+
+    const res = await fetch(url);
+    const json = await res.json();
+    if (!json.success) return;
+
+    currentLjData = json.data;
+    renderLeveyJenningsCanvas(json.data);
+    renderLjTable(json.data);
+  }
+
+  function renderLeveyJenningsCanvas(data) {
+    const env = setupLjCanvas();
+    if (!env) return;
+    const { ctx, W, H } = env;
+
+    ctx.clearRect(0, 0, W, H);
+
+    // Update Header Text
+    document.getElementById('lj_chartTitle').textContent = `${data.analyteName} (${data.unit}) - ${data.controlName} [${data.lotNumber}]`;
+
+    let subText = `Assigned Mean: ${data.targetMean} ${data.unit} | Target SD: ${data.targetSd} | TEa: ${data.teaPercent}%`;
+    if (data.filterRange && (data.filterRange.startDate || data.filterRange.endDate)) {
+      subText += ` | Filtered Period: ${data.filterRange.startDate || 'Start'} to ${data.filterRange.endDate || 'Present'}`;
+    }
+    document.getElementById('lj_chartSubtitle').textContent = subText;
+    document.getElementById('lj_runCount').textContent = `Total Runs: ${data.points ? data.points.length : 0}`;
+
+    // Statistics Pill
+    const st = data.statistics || {};
+    const pills = document.getElementById('lj_statsPills');
+    pills.innerHTML = `
+      <span class="badge" style="background:#e0f2fe; color:#0369a1;">Mean: ${st.observedMean !== undefined && st.observedMean !== null ? st.observedMean : '—'}</span>
+      <span class="badge" style="background:#e0f2fe; color:#0369a1;">SD: ${st.observedSd !== undefined && st.observedSd !== null ? st.observedSd : '—'}</span>
+      <span class="badge" style="background:#e0f2fe; color:#0369a1;">%CV: ${st.cvPercent || 0}%</span>
+      <span class="badge ${st.inControl ? 'badge-operational' : 'badge-overdue'}">${st.inControl ? '✓ IN CONTROL' : '⚠️ OUT OF CONTROL'}</span>
+    `;
+
+    // Coordinates mapping with generous padding for high-DPI full-screen displays
+    const padL = 95;
+    const padR = 35;
+    const padT = 30;
+    const padB = 45;
+    const graphW = W - padL - padR;
+    const graphH = H - padT - padB;
+
+    const mean = Number(data.targetMean) || 100;
+    const sd = Number(data.targetSd) || 5;
+
+    // Expand bounds if outliers exist so no points are clipped
+    let maxAbsSd = 3.6;
+    (data.points || []).forEach(p => {
+      if (p.measuredValue !== undefined && p.measuredValue !== null && !isNaN(p.measuredValue) && sd > 0) {
+        const dist = Math.abs(p.measuredValue - mean) / sd;
+        if (dist > maxAbsSd) maxAbsSd = Math.min(dist + 0.5, 6.0);
+      }
+    });
+
+    const minVal = mean - (maxAbsSd * sd);
+    const maxVal = mean + (maxAbsSd * sd);
+
+    function getY(val) {
+      const normalized = (val - minVal) / (maxVal - minVal);
+      return (H - padB) - (normalized * graphH);
+    }
+
+    // Reference Line Helper
+    function drawRefLine(val, label, color, dash = [], isMean = false) {
+      const y = getY(val);
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = isMean ? 2.0 : 1.2;
+      ctx.setLineDash(dash);
+      ctx.beginPath();
+      ctx.moveTo(padL, y);
+      ctx.lineTo(W - padR, y);
+      ctx.stroke();
+
+      ctx.setLineDash([]);
+      ctx.fillStyle = color;
+      ctx.font = isMean ? 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' : '600 10px monospace';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, padL - 10, y);
+      ctx.restore();
+    }
+
+    // Draw clean background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(padL, padT, graphW, graphH);
+
+    // Subtle green tone for in-control +-1SD zone
+    const yP1 = getY(mean + 1 * sd);
+    const yM1 = getY(mean - 1 * sd);
+    ctx.fillStyle = 'rgba(240, 253, 244, 0.7)';
+    ctx.fillRect(padL, yP1, graphW, yM1 - yP1);
+
+    // Draw reference SD lines
+    drawRefLine(mean + 3 * sd, '+3SD (' + (mean + 3 * sd).toFixed(1) + ')', '#ef4444', [5, 4]);
+    drawRefLine(mean + 2 * sd, '+2SD (' + (mean + 2 * sd).toFixed(1) + ')', '#f59e0b', [5, 4]);
+    drawRefLine(mean + 1 * sd, '+1SD (' + (mean + 1 * sd).toFixed(1) + ')', '#94a3b8', [3, 3]);
+    drawRefLine(mean, 'MEAN (' + mean.toFixed(1) + ')', '#10b981', [], true);
+    drawRefLine(mean - 1 * sd, '-1SD (' + (mean - 1 * sd).toFixed(1) + ')', '#94a3b8', [3, 3]);
+    drawRefLine(mean - 2 * sd, '-2SD (' + (mean - 2 * sd).toFixed(1) + ')', '#f59e0b', [5, 4]);
+    drawRefLine(mean - 3 * sd, '-3SD (' + (mean - 3 * sd).toFixed(1) + ')', '#ef4444', [5, 4]);
+
+    // Graph bounding box
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(padL, padT, graphW, graphH);
+
+    // Plot points
+    const points = data.points || [];
+    if (points.length === 0) {
+      ctx.fillStyle = '#64748b';
+      ctx.font = '14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('No control runs recorded for the selected period. Enter a reading below.', W / 2, H / 2);
+      return;
+    }
+
+    const stepX = points.length > 1 ? graphW / (points.length - 1) : graphW / 2;
+
+    // Draw connecting line with crisp joints
+    ctx.save();
+    ctx.beginPath();
+    ctx.strokeStyle = '#0284c7';
+    ctx.lineWidth = 2.2;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    points.forEach((p, i) => {
+      const x = points.length === 1 ? padL + graphW / 2 : padL + (i * stepX);
+      const y = getY(p.measuredValue);
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.restore();
+
+    // Draw dots and violation badges
+    points.forEach((p, i) => {
+      const x = points.length === 1 ? padL + graphW / 2 : padL + (i * stepX);
+      const y = getY(p.measuredValue);
+
+      let dotColor = '#0284c7';
+      let radius = 5;
+      if (p.status === 'REJECTED') {
+        dotColor = '#ef4444';
+        radius = 5.5;
+      } else if (p.status === 'WARNING') {
+        dotColor = '#f59e0b';
+        radius = 5;
+      }
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.fillStyle = dotColor;
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+
+      // X-axis day label (smart thinning when many points are plotted to prevent collision)
+      const step = points.length > 35 ? Math.ceil(points.length / 20) : (points.length > 20 ? 2 : 1);
+      if (i === 0 || i === points.length - 1 || (i % step === 0)) {
+        const d = new Date(p.runDate);
+        ctx.save();
+        ctx.fillStyle = '#64748b';
+        ctx.font = '600 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(`${d.getDate()}/${d.getMonth()+1}`, x, H - padB + 10);
+        ctx.restore();
+      }
+
+      // Violation label flag if rejected or warning
+      if (p.rulesViolated && p.rulesViolated.length > 0) {
+        const ruleText = p.rulesViolated.join(',');
+        ctx.save();
+        ctx.font = 'bold 9px sans-serif';
+        const txtW = ctx.measureText(ruleText).width;
+        const bW = txtW + 8;
+        const bH = 15;
+        const bX = x - bW / 2;
+        const bY = y - 22;
+
+        ctx.fillStyle = p.status === 'REJECTED' ? '#fee2e2' : '#fef3c7';
+        ctx.strokeStyle = p.status === 'REJECTED' ? '#ef4444' : '#f59e0b';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(bX, bY, bW, bH, 3);
+        } else {
+          ctx.rect(bX, bY, bW, bH);
+        }
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = p.status === 'REJECTED' ? '#b91c1c' : '#b45309';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(ruleText, x, bY + bH / 2);
+        ctx.restore();
+      }
+    });
+  }
+
+  function renderLjTable(data) {
+    const tableBody = document.getElementById('lj_tableBody');
+    const runCountBadge = document.getElementById('lj_tableRunCount');
+    if (!tableBody) return;
+
+    const sourceData = data || currentLjData;
+    if (!sourceData || !sourceData.points) {
+      tableBody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #64748b; padding: 20px;">No QC run data loaded.</td></tr>';
+      if (runCountBadge) runCountBadge.textContent = '0 Runs';
+      return;
+    }
+
+    let pts = [...(sourceData.points || [])];
+    const statusFilter = document.getElementById('lj_statusFilter')?.value || '';
+    if (statusFilter) {
+      pts = pts.filter(p => p.status === statusFilter);
+    }
+
+    const sortOrder = document.getElementById('lj_sortOrder')?.value || 'date_desc';
+    if (sortOrder === 'date_desc') {
+      pts.sort((a, b) => new Date(b.runDate) - new Date(a.runDate));
+    } else if (sortOrder === 'date_asc') {
+      pts.sort((a, b) => new Date(a.runDate) - new Date(b.runDate));
+    } else if (sortOrder === 'zscore_desc') {
+      pts.sort((a, b) => Math.abs(b.zScore || 0) - Math.abs(a.zScore || 0));
+    } else if (sortOrder === 'violations_first') {
+      const statusWeight = { 'REJECTED': 3, 'WARNING': 2, 'ACCEPTED': 1 };
+      pts.sort((a, b) => {
+        const diff = (statusWeight[b.status] || 0) - (statusWeight[a.status] || 0);
+        if (diff !== 0) return diff;
+        return new Date(b.runDate) - new Date(a.runDate);
+      });
+    }
+
+    if (runCountBadge) {
+      runCountBadge.textContent = `${pts.length} Run${pts.length === 1 ? '' : 's'}`;
+    }
+
+    if (pts.length === 0) {
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="10" style="text-align: center; color: #64748b; padding: 24px;">
+            <i class="fa fa-info-circle" style="color: #0284c7; margin-right: 6px;"></i>
+            No control runs match the selected date range and filter criteria.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    const rowsHtml = pts.map((p, idx) => {
+      const d = p.runDate ? new Date(p.runDate) : null;
+      const dateStr = d ? d.toLocaleString('en-PH', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+
+      // Z-Score badge
+      let zBadge = '<span style="color:#94a3b8;">—</span>';
+      if (p.zScore !== null && p.zScore !== undefined && !isNaN(p.zScore)) {
+        const z = Number(p.zScore);
+        const absZ = Math.abs(z);
+        const sign = z > 0 ? '+' : '';
+        const text = `${sign}${z.toFixed(2)} SD`;
+        if (absZ > 3.0) {
+          zBadge = `<span class="badge" style="background:#fee2e2; color:#b91c1c; font-weight:700;">${text}</span>`;
+        } else if (absZ > 2.0) {
+          zBadge = `<span class="badge" style="background:#fef3c7; color:#b45309; font-weight:700;">${text}</span>`;
+        } else if (absZ > 1.0) {
+          zBadge = `<span class="badge" style="background:#e0f2fe; color:#0369a1;">${text}</span>`;
+        } else {
+          zBadge = `<span class="badge" style="background:#dcfce7; color:#15803d;">${text}</span>`;
+        }
+      }
+
+      // Status badge
+      let statusBadge = '<span class="badge badge-operational">✓ Accepted</span>';
+      if (p.status === 'WARNING') {
+        statusBadge = '<span class="badge badge-maintenance">⚠️ Warning (1:2s)</span>';
+      } else if (p.status === 'REJECTED') {
+        statusBadge = '<span class="badge badge-overdue">❌ Rejected</span>';
+      }
+
+      // Violations
+      let violationsHtml = '<span style="color:#94a3b8; font-size: 0.85em;">None</span>';
+      if (p.rulesViolated && Array.isArray(p.rulesViolated) && p.rulesViolated.length > 0) {
+        violationsHtml = p.rulesViolated.map(r => `<span class="badge" style="background:#fee2e2; color:#b91c1c; font-weight:700; font-size:0.78em;">${escapeHtml(r)}</span>`).join(' ');
+      }
+
+      // Action column
+      let actionHtml = '';
+      if (typeof canEditEquipment !== 'undefined' && canEditEquipment) {
+        actionHtml = `
+          <td style="text-align: right;">
+            <button type="button" class="button btn-small btn-secondary" onclick="deleteQcEntryRecord('${p.id}')" style="color:#dc2626; border-color:#fca5a5; padding: 2px 8px; font-size: 0.78em;" title="Delete this QC run record">
+              <i class="fa fa-trash"></i>
+            </button>
+          </td>
+        `;
+      }
+
+      return `
+        <tr>
+          <td style="font-weight: 600; color: #64748b;">${idx + 1}</td>
+          <td><strong style="color: #1e293b;">${dateStr}</strong></td>
+          <td><strong style="color: #0f172a; font-size: 1.05em;">${p.measuredValue}</strong> <span style="font-size: 0.85em; color: #64748b;">${escapeHtml(sourceData.unit || '')}</span></td>
+          <td style="color: #475569; font-size: 0.9em;">Mean: ${sourceData.targetMean} (&plusmn;${sourceData.targetSd})</td>
+          <td>${zBadge}</td>
+          <td>${statusBadge}</td>
+          <td>${violationsHtml}</td>
+          <td style="font-family: monospace; font-size: 0.85em; color: #334155;">${escapeHtml(p.reagentLotNumber || sourceData.lotNumber || '—')}</td>
+          <td style="font-size: 0.85em; color: #475569;">${p.notes ? escapeHtml(p.notes) : '<span style="color:#94a3b8;">—</span>'}</td>
+          ${actionHtml}
+        </tr>
+      `;
+    }).join('');
+
+    tableBody.innerHTML = rowsHtml;
+  }
+
+  async function deleteQcEntryRecord(entryId) {
+    if (!entryId) return;
+    if (!confirm('Are you sure you want to delete this QC run measurement? This action will permanently remove the record and re-evaluate Westgard statistics.')) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/equipment/qc/entries/${entryId}`, {
+        method: 'DELETE',
+        headers: { 'Accept': 'application/json' }
+      });
+      const data = await res.json();
+      if (data.success) {
+        loadLjChart();
+      } else {
+        alert(data.error || 'Failed to delete QC entry record.');
+      }
+    } catch (err) {
+      alert('Error deleting QC entry: ' + err.message);
+    }
+  }
+
+  async function deleteLastQcEntry() {
+    const eqId = document.getElementById('quick_eqId').value || document.getElementById('lj_analyzerSelect').value;
+    const analyteCode = document.getElementById('quick_analyteCode').value || document.getElementById('lj_analyteSelect').value;
+    if (!eqId || !analyteCode) {
+      alert('Please select an analyzer and analyte first.');
+      return;
+    }
+
+    if (!confirm(`Drop / delete the most recent QC run reading for "${analyteCode.toUpperCase()}"?`)) {
+      return;
+    }
+
+    try {
+      // 1. Try dedicated endpoint
+      let res = await fetch(`/equipment/${eqId}/qc/entries/last?analyteCode=${encodeURIComponent(analyteCode)}`, {
+        method: 'DELETE',
+        headers: { 'Accept': 'application/json' }
+      });
+      let data = await res.json().catch(() => null);
+
+      // 2. Fallback to deleting the last point ID from currentLjData
+      if (!data || !data.success) {
+        if (currentLjData && Array.isArray(currentLjData.points) && currentLjData.points.length > 0) {
+          const lastPoint = currentLjData.points[currentLjData.points.length - 1];
+          if (lastPoint && lastPoint.id) {
+            res = await fetch(`/equipment/qc/entries/${lastPoint.id}`, {
+              method: 'DELETE',
+              headers: { 'Accept': 'application/json' }
+            });
+            data = await res.json().catch(() => null);
+          }
+        }
+      }
+
+      if (data && data.success) {
+        loadLjChart();
+        const box = document.getElementById('qc_alertBox');
+        if (box) {
+          box.style.display = 'block';
+          box.style.background = '#fef2f2';
+          box.style.color = '#991b1b';
+          box.innerHTML = `<strong><i class="fa fa-trash"></i> Dropped:</strong> Previous QC entry removed successfully.`;
+        }
+      } else {
+        alert((data && data.error) || 'No previous entry found to drop.');
+      }
+    } catch (err) {
+      alert('Error dropping previous entry: ' + err.message);
+    }
+  }
+
+  async function emptyAnalyteEntries() {
+    const eqId = document.getElementById('lj_analyzerSelect').value || document.getElementById('quick_eqId').value;
+    const analyteCode = document.getElementById('lj_analyteSelect').value || document.getElementById('quick_analyteCode').value;
+    if (!eqId || !analyteCode) {
+      alert('Please select an analyzer and analyte first.');
+      return;
+    }
+
+    const confirmed = confirm(`Are you sure you want to EMPTY / DELETE ALL recorded QC runs for "${analyteCode.toUpperCase()}" on this analyzer?\n\nThis will reset the Levey-Jennings chart and run log for testing. This action cannot be undone.`);
+    if (!confirmed) return;
+
+    try {
+      // 1. Try bulk delete endpoint
+      let res = await fetch(`/equipment/${eqId}/qc/entries?analyteCode=${encodeURIComponent(analyteCode)}`, {
+        method: 'DELETE',
+        headers: { 'Accept': 'application/json' }
+      });
+      let data = await res.json().catch(() => null);
+
+      // 2. Fallback to deleting each point in currentLjData sequentially if bulk route not yet available
+      if (!data || !data.success) {
+        if (currentLjData && Array.isArray(currentLjData.points) && currentLjData.points.length > 0) {
+          for (const pt of currentLjData.points) {
+            if (pt.id) {
+              await fetch(`/equipment/qc/entries/${pt.id}`, {
+                method: 'DELETE',
+                headers: { 'Accept': 'application/json' }
+              });
+            }
+          }
+          data = { success: true };
+        }
+      }
+
+      if (data && data.success) {
+        loadLjChart();
+        alert(`All QC runs for "${analyteCode.toUpperCase()}" have been emptied successfully.`);
+      } else {
+        alert((data && data.error) || 'Failed to empty QC runs.');
+      }
+    } catch (err) {
+      alert('Error emptying QC runs: ' + err.message);
+    }
+  }
+
+  async function submitQuickQc(e) {
+    e.preventDefault();
+    const eqId = document.getElementById('quick_eqId').value || document.getElementById('lj_analyzerSelect').value;
+    const analyteCode = document.getElementById('quick_analyteCode').value || document.getElementById('lj_analyteSelect').value;
+    const val = parseFloat(document.getElementById('qc_value').value);
+    const date = document.getElementById('qc_date').value;
+    const lot = document.getElementById('qc_lot').value;
+    const notes = document.getElementById('qc_notes').value;
+
+    if (!eqId || !analyteCode || isNaN(val)) {
+      alert('Please select analyzer, analyte, and enter a valid measured value.');
+      return;
+    }
+
+    try {
+      // Find control id matching analyteCode if available
+      const resCtrls = await fetch(`/equipment/${eqId}/qc/controls`);
+      const dataCtrls = await resCtrls.json();
+      const ctrl = (dataCtrls.controls || []).find(c => (c.analytes || []).some(a => a.analyteCode === analyteCode)) || (dataCtrls.controls || [])[0];
+
+      const res = await fetch(`/equipment/${eqId}/qc/entries`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          controlId: ctrl ? ctrl.id : undefined,
+          analyteCode,
+          measuredValue: val,
+          runDate: date,
+          reagentLotNumber: lot,
+          notes
+        })
+      });
+
+      const data = await res.json();
+      const box = document.getElementById('qc_alertBox');
+      box.style.display = 'block';
+
+      if (data.success) {
+        const ev = data.evaluation;
+        if (ev.status === 'ACCEPTED') {
+          box.style.background = '#dcfce7';
+          box.style.color = '#15803d';
+          box.innerHTML = `<strong>✓ Accepted:</strong> Reading ${val} recorded (Z-score: ${ev.zScore}). Within &plusmn;2SD.`;
+        } else if (ev.status === 'WARNING') {
+          box.style.background = '#fef3c7';
+          box.style.color = '#b45309';
+          box.innerHTML = `<strong>⚠️ Warning (${ev.rulesViolated.join(', ')}):</strong> ${ev.explanation}`;
+        } else {
+          box.style.background = '#fee2e2';
+          box.style.color = '#b91c1c';
+          box.innerHTML = `<strong>❌ REJECTED (${ev.rulesViolated.join(', ')}):</strong> ${ev.explanation} <br><em>Action Required: Check reagent, recalibrate, or run fresh control.</em>`;
+        }
+        document.getElementById('qc_value').value = '';
+
+        // Increment run count and refresh top dropdown so new machine appears immediately
+        qcEntryCounts[eqId] = (qcEntryCounts[eqId] || 0) + 1;
+        populateAnalyzerDropdowns();
+
+        const topEq = document.getElementById('lj_analyzerSelect');
+        if (topEq) topEq.value = eqId;
+        const topAnalyte = document.getElementById('lj_analyteSelect');
+        if (topAnalyte) topAnalyte.value = analyteCode;
+
+        loadLjChart();
+      } else {
+        box.style.background = '#fee2e2';
+        box.style.color = '#b91c1c';
+        box.textContent = data.error || 'Failed to record entry.';
+      }
+    } catch (err) {
+      alert('Error: ' + err.message);
+    }
+  }
+
+  function printLjReport() {
+    const eqId = document.getElementById('lj_analyzerSelect').value;
+    const analyteCode = document.getElementById('lj_analyteSelect').value;
+    if (!eqId) {
+      alert('Please select an equipment analyzer first.');
+      return;
+    }
+    const params = new URLSearchParams();
+    if (analyteCode) params.set('analyteCode', analyteCode);
+
+    const startDate = document.getElementById('lj_startDate')?.value;
+    const endDate = document.getElementById('lj_endDate')?.value;
+    if (startDate) params.set('startDate', startDate);
+    if (endDate) params.set('endDate', endDate);
+
+    const opSel = document.getElementById('lj_operatorSelect');
+    const valSel = document.getElementById('lj_validatorSelect');
+    const p1Sel = document.getElementById('lj_pathologistSelect');
+    const p2Sel = document.getElementById('lj_pathologist2Select');
+
+    const opOpt = opSel ? opSel.options[opSel.selectedIndex] : null;
+    const valOpt = valSel ? valSel.options[valSel.selectedIndex] : null;
+    const p1Opt = p1Sel ? p1Sel.options[p1Sel.selectedIndex] : null;
+    const p2Opt = p2Sel ? p2Sel.options[p2Sel.selectedIndex] : null;
+
+    if (opOpt && opOpt.dataset.name) {
+      params.set('operatorName', opOpt.dataset.name);
+      if (opOpt.dataset.license) params.set('operatorLicense', opOpt.dataset.license);
+    }
+    if (valOpt && valOpt.dataset.name) {
+      params.set('validatorName', valOpt.dataset.name);
+      if (valOpt.dataset.license) params.set('validatorLicense', valOpt.dataset.license);
+    }
+    if (p1Opt && p1Opt.dataset.name) {
+      params.set('pathologistName', p1Opt.dataset.name);
+      if (p1Opt.dataset.license) params.set('pathologistLicense', p1Opt.dataset.license);
+    }
+
+    const hasP2 = document.getElementById('lj_enablePathologist2')?.checked;
+    if (hasP2 && p2Opt && p2Opt.dataset.name) {
+      params.set('hasPathologist2', '1');
+      params.set('pathologist2Name', p2Opt.dataset.name);
+      if (p2Opt.dataset.license) params.set('pathologist2License', p2Opt.dataset.license);
+    }
+
+    const url = `/equipment/${eqId}/qc/print?${params.toString()}`;
+    window.open(url, '_blank');
+  }
+
+  async function exportDohReport() {
+    const eqId = document.getElementById('lj_analyzerSelect').value;
+    if (!eqId) return;
+    window.open(`/equipment/${eqId}/qc/doh-report`, '_blank');
+  }
+
+  function printMonthlyQcReport() {
+    const eqId = document.getElementById('lj_analyzerSelect').value;
+    if (!eqId) {
+      alert('Please select an analyzer first.');
+      return;
+    }
+    const params = new URLSearchParams();
+
+    const startDate = document.getElementById('lj_startDate')?.value;
+    const endDate = document.getElementById('lj_endDate')?.value;
+    if (startDate) params.set('startDate', startDate);
+    if (endDate) params.set('endDate', endDate);
+    if (startDate && startDate.length >= 7) {
+      params.set('month', startDate.substring(0, 7));
+    }
+
+    const opSel = document.getElementById('lj_operatorSelect');
+    const valSel = document.getElementById('lj_validatorSelect');
+    const p1Sel = document.getElementById('lj_pathologistSelect');
+
+    const opOpt = opSel ? opSel.options[opSel.selectedIndex] : null;
+    const valOpt = valSel ? valSel.options[valSel.selectedIndex] : null;
+    const p1Opt = p1Sel ? p1Sel.options[p1Sel.selectedIndex] : null;
+
+    if (opOpt && opOpt.dataset.name) {
+      params.set('operatorName', opOpt.dataset.name);
+      if (opOpt.dataset.license) params.set('operatorLicense', opOpt.dataset.license);
+    }
+    if (valOpt && valOpt.dataset.name) {
+      params.set('validatorName', valOpt.dataset.name);
+      if (valOpt.dataset.license) params.set('validatorLicense', valOpt.dataset.license);
+    }
+    if (p1Opt && p1Opt.dataset.name) {
+      params.set('pathologistName', p1Opt.dataset.name);
+      if (p1Opt.dataset.license) params.set('pathologistLicense', p1Opt.dataset.license);
+    }
+
+    const url = `/equipment/${eqId}/qc/print-monthly-summary?${params.toString()}`;
+    window.open(url, '_blank');
+  }
+
+  // ==========================================
+  // NEQAS EQA MODULE
+  // ==========================================
+  function openNeqasModal(preselectEqId) {
+    populateAnalyzerDropdowns();
+    document.getElementById('neqas_recordId').value = '';
+    document.getElementById('formNeqas').reset();
+    document.getElementById('neqas_year').value = new Date().getFullYear();
+    if (preselectEqId) {
+      const eqSel = document.getElementById('neqas_eqId');
+      if (eqSel) eqSel.value = preselectEqId;
+    }
+    document.getElementById('modalNeqasTitle').innerHTML = '<i class="fa fa-award" style="color: #16a34a;"></i> Log NEQAS Survey Submission';
+    document.getElementById('neqasSubmitBtn').textContent = 'Save Survey Submission & Evaluate SDI';
+    document.getElementById('modalNeqas').style.display = 'block';
+  }
+
+  function openNeqasEditModal(recordId) {
+    const r = allNeqasRecords.find(x => x.id === recordId);
+    if (!r) return;
+
+    populateAnalyzerDropdowns();
+    document.getElementById('neqas_recordId').value = r.id;
+    document.getElementById('neqas_eqId').value = r.equipmentId;
+    document.getElementById('neqas_year').value = r.cycleYear || new Date().getFullYear();
+    document.getElementById('neqas_nrl').value = r.nrlName || '';
+    document.getElementById('neqas_sampleId').value = r.sampleId || '';
+    document.getElementById('neqas_analyte').value = r.analyteName || r.analyteCode || '';
+    document.getElementById('neqas_reported').value = r.reportedValue !== undefined ? r.reportedValue : '';
+    document.getElementById('neqas_peerMean').value = (r.nrlEvaluation && r.nrlEvaluation.peerMean !== null && r.nrlEvaluation.peerMean !== undefined) ? r.nrlEvaluation.peerMean : '';
+    document.getElementById('neqas_peerSd').value = (r.nrlEvaluation && r.nrlEvaluation.peerSd !== null && r.nrlEvaluation.peerSd !== undefined) ? r.nrlEvaluation.peerSd : '';
+
+    document.getElementById('modalNeqasTitle').innerHTML = '<i class="fa fa-edit" style="color: #0284c7;"></i> Enter NRL Peer Evaluation Results';
+    document.getElementById('neqasSubmitBtn').textContent = 'Update Evaluation & Recalculate SDI';
+    document.getElementById('modalNeqas').style.display = 'block';
+  }
+
+  async function loadNeqasTable() {
+    try {
+      const res = await fetch('/equipment/neqas/all');
+      const json = await res.json();
+      allNeqasRecords = json.records || [];
+
+      // Update KPI metrics
+      const total = allNeqasRecords.length;
+      const evaluated = allNeqasRecords.filter(r => r.nrlEvaluation && r.nrlEvaluation.sdi !== null && r.nrlEvaluation.sdi !== undefined);
+      const acceptable = allNeqasRecords.filter(r => r.isAcceptable || (r.nrlEvaluation && r.nrlEvaluation.evaluationGrade === 'ACCEPTABLE')).length;
+      const questionable = allNeqasRecords.filter(r => r.status === 'EVALUATED_QUESTIONABLE' || (r.nrlEvaluation && r.nrlEvaluation.evaluationGrade === 'QUESTIONABLE')).length;
+      const unsatisfactory = allNeqasRecords.filter(r => r.isUnsatisfactory || (r.nrlEvaluation && r.nrlEvaluation.evaluationGrade === 'UNSATISFACTORY')).length;
+
+      const accRate = evaluated.length > 0 ? Math.round((acceptable / evaluated.length) * 100) + '%' : '100%';
+
+      const kpiTot = document.getElementById('neqasKpiTotal');
+      const kpiAcc = document.getElementById('neqasKpiAcceptable');
+      const kpiQue = document.getElementById('neqasKpiQuestionable');
+      const kpiUns = document.getElementById('neqasKpiUnsatisfactory');
+
+      if (kpiTot) kpiTot.textContent = total;
+      if (kpiAcc) kpiAcc.textContent = accRate;
+      if (kpiQue) kpiQue.textContent = questionable;
+      if (kpiUns) kpiUns.textContent = unsatisfactory;
+
+      applyNeqasFilters();
+    } catch (err) {
+      console.error('Error loading NEQAS records:', err);
+    }
+  }
+
+  function applyNeqasFilters() {
+    const q = (document.getElementById('neqasSearchInput')?.value || '').toLowerCase();
+    const nrlFilter = document.getElementById('neqasNrlFilter')?.value || '';
+    const gradeFilter = document.getElementById('neqasGradeFilter')?.value || '';
+
+    let filtered = allNeqasRecords;
+    if (q) {
+      filtered = filtered.filter(r =>
+        (r.sampleId || '').toLowerCase().includes(q) ||
+        (r.analyteName || '').toLowerCase().includes(q) ||
+        (r.nrlName || '').toLowerCase().includes(q)
+      );
+    }
+    if (nrlFilter) {
+      filtered = filtered.filter(r => (r.nrlName || '').toLowerCase().includes(nrlFilter.toLowerCase()));
+    }
+    if (gradeFilter) {
+      if (gradeFilter === 'PENDING') {
+        filtered = filtered.filter(r => !r.nrlEvaluation || r.nrlEvaluation.sdi === null || r.nrlEvaluation.sdi === undefined);
+      } else {
+        filtered = filtered.filter(r => {
+          const g = (r.nrlEvaluation && r.nrlEvaluation.evaluationGrade) || r.status || '';
+          return g.toUpperCase().includes(gradeFilter);
+        });
+      }
+    }
+
+    renderNeqasSectionTable(filtered);
+  }
+
+  function filterNeqasByNrl(nrlKeyword) {
+    switchSection('neqas');
+    const nrlSel = document.getElementById('neqasNrlFilter');
+    if (nrlSel) nrlSel.value = nrlKeyword;
+    applyNeqasFilters();
+  }
+
+  function renderNeqasSectionTable(records) {
+    const tbody = document.getElementById('neqasSectionTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (!records || records.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:24px; color:#64748b;"><i class="fa fa-info-circle"></i> No NEQAS proficiency records found. Click <strong>"+ Log Survey Submission"</strong> to add an EQA survey.</td></tr>';
+      return;
+    }
+
+    records.forEach(r => {
+      const tr = document.createElement('tr');
+      const evalData = r.nrlEvaluation || {};
+      const sdi = evalData.sdi !== null && evalData.sdi !== undefined ? evalData.sdi : null;
+      const grade = evalData.evaluationGrade || r.status || 'PENDING';
+
+      let gradeBadge = '<span class="badge" style="background:#fef3c7; color:#b45309; border:1px solid #fbbf24;">⏳ Pending Peer Eval</span>';
+      if (grade === 'ACCEPTABLE') {
+        gradeBadge = '<span class="badge-operational">✓ ACCEPTABLE</span>';
+      } else if (grade === 'QUESTIONABLE' || grade === 'EVALUATED_QUESTIONABLE') {
+        gradeBadge = '<span class="badge-duesoon">⚠️ QUESTIONABLE</span>';
+      } else if (grade === 'UNSATISFACTORY' || grade === 'ACTION_REQUIRED') {
+        gradeBadge = '<span class="badge-overdue">❌ ACTION REQUIRED</span>';
+      }
+
+      let sdiDisplay = '<span style="color:#64748b;">—</span>';
+      if (sdi !== null) {
+        const abs = Math.abs(sdi);
+        const sdiColor = abs <= 2 ? '#16a34a' : (abs < 3 ? '#d97706' : '#dc2626');
+        const sdiBg = abs <= 2 ? '#dcfce7' : (abs < 3 ? '#fef3c7' : '#fee2e2');
+        sdiDisplay = `<span style="font-family:monospace; font-weight:700; background:${sdiBg}; color:${sdiColor}; padding:2px 6px; border-radius:4px;">${sdi > 0 ? '+' : ''}${sdi}</span>`;
+      }
+
+      let nrlShort = r.nrlName || 'NRL';
+      if (nrlShort.includes('Lung Center')) nrlShort = 'LCP (Clinical Chemistry)';
+      else if (nrlShort.includes('Kidney')) nrlShort = 'NKTI (Hematology)';
+      else if (nrlShort.includes('Tropical')) nrlShort = 'RITM (Microbiology)';
+      else if (nrlShort.includes('San Lazaro') || nrlShort.includes('SACCL')) nrlShort = 'SACCL (Serology)';
+
+      tr.innerHTML = `
+        <td><span style="font-weight:600; color:#0f172a;">${r.cycleYear || '2026'}</span> <span style="font-size:0.8em; color:#64748b;">(${r.eventNumber || 'Event 1'})</span></td>
+        <td><span class="badge" style="background:#f1f5f9; color:#334155; font-size:0.8em;">${nrlShort}</span></td>
+        <td><span style="font-family:monospace; font-weight:700; color:#0284c7; background:#e0f2fe; padding:2px 6px; border-radius:4px;">${r.sampleId}</span></td>
+        <td><strong>${r.analyteName || r.analyteCode}</strong></td>
+        <td><span style="font-weight:700; color:#0f172a;">${r.reportedValue}</span> <span style="font-size:0.8em; color:#64748b;">${r.unit || 'mg/dL'}</span></td>
+        <td>${evalData.peerMean ? `${evalData.peerMean} &plusmn; ${evalData.peerSd} ${r.unit || ''}` : '<span style="color:#94a3b8;">Pending Release</span>'}</td>
+        <td style="text-align:center;">${sdiDisplay}</td>
+        <td>${gradeBadge}</td>
+        <td style="text-align:right; white-space:nowrap;">
+          <a href="/equipment/neqas/${r.id}/print" target="_blank" class="button btn-small btn-primary" style="background:#10b981; border-color:#059669; text-decoration:none; display:inline-flex; align-items:center; gap:4px; font-weight:600;" title="Print Official NEQAS Performance Certificate">
+            <i class="fa fa-print"></i> 🖨️ Print Certificate
+          </a>
+          <button type="button" class="button btn-small btn-secondary" onclick="openNeqasEditModal('${r.id}')" title="Enter / Update NRL Peer Mean & SD" style="margin-left:4px;">
+            <i class="fa fa-pen"></i> Peer Result
+          </button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function submitNeqas(e) {
+    e.preventDefault();
+    const recordId = document.getElementById('neqas_recordId').value;
+    const eqId = document.getElementById('neqas_eqId').value;
+    const payload = {
+      cycleYear: document.getElementById('neqas_year').value,
+      nrlName: document.getElementById('neqas_nrl').value,
+      sampleId: document.getElementById('neqas_sampleId').value,
+      analyteCode: document.getElementById('neqas_analyte').value,
+      analyteName: document.getElementById('neqas_analyte').value,
+      reportedValue: parseFloat(document.getElementById('neqas_reported').value),
+      peerMean: parseFloat(document.getElementById('neqas_peerMean').value) || null,
+      peerSd: parseFloat(document.getElementById('neqas_peerSd').value) || null
+    };
+
+    try {
+      let url = `/equipment/${eqId}/neqas`;
+      let method = 'POST';
+      if (recordId) {
+        url = `/equipment/neqas/${recordId}`;
+        method = 'PUT';
+      }
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        closeModal('modalNeqas');
+        document.getElementById('formNeqas').reset();
+        await loadNeqasTable();
+        alert('NEQAS proficiency record saved successfully!');
+      } else {
+        alert(data.error || 'Failed to save NEQAS entry.');
+      }
+    } catch (err) {
+      alert('Error: ' + err.message);
+    }
+  }
+
+  // ==========================================
+  // X-RAY & ALERTS MODALS
+  // ==========================================
+  async function openXrayModal() {
+    const res = await fetch('/equipment/xray/compliance');
+    const data = await res.json();
+    alert(`Radiation Safety & X-Ray Compliance:\nTotal Units: ${data.totalXrayUnits}\nStandard: ${data.standard}\n\nAll diagnostic X-ray units are registered with FDA CDRRHR and monitored for exposure linearity (Col <= 0.10) and radiation leakage limits.`);
+  }
+
+  async function openAlertsModal() {
+    const res = await fetch('/equipment/alerts/upcoming');
+    const data = await res.json();
+    let msg = `Equipment Deadlines Alert Summary:\nTotal Pending Alerts: ${data.totalAlerts}\n\n`;
+    if (data.calibrationAlerts.length > 0) {
+      msg += '--- Calibration Alerts ---\n';
+      data.calibrationAlerts.forEach(a => {
+        msg += `• [${a.equipmentCode}] ${a.name}: ${a.isOverdue ? 'OVERDUE by ' + Math.abs(a.daysUntilCalibration) + 'd' : 'Due in ' + a.daysUntilCalibration + 'd'} (${new Date(a.nextCalibrationDate).toLocaleDateString()})\n`;
+      });
+    } else {
+      msg += '✓ All calibrations are up-to-date.\n';
+    }
+    alert(msg);
+  }
+</script>

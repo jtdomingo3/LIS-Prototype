@@ -358,10 +358,236 @@ function createOfflineDb(dataStore) {
       list = list.filter(t => t && t.id !== id);
       dataStore.setCollection('inventory_transactions', list);
       return true;
+    },
+
+    /* ── Equipment & QC Methods ────────────────────────────────── */
+    getEquipment() {
+      if (sqliteAdapter && typeof sqliteAdapter.getEquipment === 'function') {
+        return sqliteAdapter.getEquipment();
+      }
+      return dataStore.getCollection('equipment') || [];
+    },
+    getEquipmentById(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.getEquipmentById === 'function') {
+        return sqliteAdapter.getEquipmentById(id);
+      }
+      const list = dataStore.getCollection('equipment') || [];
+      return list.find(e => e && e.id === id) || null;
+    },
+    getEquipmentByCode(code) {
+      if (sqliteAdapter && typeof sqliteAdapter.getEquipmentByCode === 'function') {
+        return sqliteAdapter.getEquipmentByCode(code);
+      }
+      const list = dataStore.getCollection('equipment') || [];
+      return list.find(e => e && (e.equipmentCode === code || e.code === code)) || null;
+    },
+    getEquipmentByDepartment(dept) {
+      if (sqliteAdapter && typeof sqliteAdapter.getEquipmentByDepartment === 'function') {
+        return sqliteAdapter.getEquipmentByDepartment(dept);
+      }
+      const list = dataStore.getCollection('equipment') || [];
+      return list.filter(e => e && (e.department || '').toLowerCase() === String(dept).toLowerCase());
+    },
+    getEquipmentByCategory(cat) {
+      if (sqliteAdapter && typeof sqliteAdapter.getEquipmentByCategory === 'function') {
+        return sqliteAdapter.getEquipmentByCategory(cat);
+      }
+      const list = dataStore.getCollection('equipment') || [];
+      return list.filter(e => e && (e.category || '').toLowerCase() === String(cat).toLowerCase());
+    },
+    saveEquipment(item) {
+      if (sqliteAdapter && typeof sqliteAdapter.saveEquipment === 'function') {
+        return sqliteAdapter.saveEquipment(item);
+      }
+      let list = dataStore.getCollection('equipment') || [];
+      const idx = list.findIndex(e => e && e.id === item.id);
+      if (idx >= 0) list[idx] = item;
+      else list.push(item);
+      dataStore.setCollection('equipment', list);
+      return item;
+    },
+    deleteEquipment(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.deleteEquipment === 'function') {
+        return sqliteAdapter.deleteEquipment(id);
+      }
+      let list = dataStore.getCollection('equipment') || [];
+      list = list.filter(e => e && e.id !== id);
+      dataStore.setCollection('equipment', list);
+      return true;
+    },
+
+    getEquipmentLogs(equipmentId) {
+      if (sqliteAdapter && typeof sqliteAdapter.getEquipmentLogs === 'function') {
+        return sqliteAdapter.getEquipmentLogs(equipmentId);
+      }
+      const list = dataStore.getCollection('equipment_logs') || [];
+      return equipmentId ? list.filter(l => l && l.equipmentId === equipmentId) : list;
+    },
+    getEquipmentLogById(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.getEquipmentLogById === 'function') {
+        return sqliteAdapter.getEquipmentLogById(id);
+      }
+      const list = dataStore.getCollection('equipment_logs') || [];
+      return list.find(l => l && l.id === id) || null;
+    },
+    saveEquipmentLog(log) {
+      if (sqliteAdapter && typeof sqliteAdapter.saveEquipmentLog === 'function') {
+        return sqliteAdapter.saveEquipmentLog(log);
+      }
+      let list = dataStore.getCollection('equipment_logs') || [];
+      const idx = list.findIndex(l => l && l.id === log.id);
+      if (idx >= 0) list[idx] = log;
+      else list.push(log);
+      dataStore.setCollection('equipment_logs', list);
+      return log;
+    },
+    deleteEquipmentLog(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.deleteEquipmentLog === 'function') {
+        return sqliteAdapter.deleteEquipmentLog(id);
+      }
+      let list = dataStore.getCollection('equipment_logs') || [];
+      list = list.filter(l => l && l.id !== id);
+      dataStore.setCollection('equipment_logs', list);
+      return true;
+    },
+
+    getQcControls(equipmentId) {
+      if (sqliteAdapter && typeof sqliteAdapter.getQcControls === 'function') {
+        return sqliteAdapter.getQcControls(equipmentId);
+      }
+      const list = dataStore.getCollection('qc_controls') || [];
+      return equipmentId ? list.filter(c => c && c.equipmentId === equipmentId) : list;
+    },
+    getQcControlById(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.getQcControlById === 'function') {
+        return sqliteAdapter.getQcControlById(id);
+      }
+      const list = dataStore.getCollection('qc_controls') || [];
+      return list.find(c => c && c.id === id) || null;
+    },
+    saveQcControl(ctrl) {
+      if (sqliteAdapter && typeof sqliteAdapter.saveQcControl === 'function') {
+        return sqliteAdapter.saveQcControl(ctrl);
+      }
+      let list = dataStore.getCollection('qc_controls') || [];
+      const idx = list.findIndex(c => c && c.id === ctrl.id);
+      if (idx >= 0) list[idx] = ctrl;
+      else list.push(ctrl);
+      dataStore.setCollection('qc_controls', list);
+      return ctrl;
+    },
+    deleteQcControl(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.deleteQcControl === 'function') {
+        return sqliteAdapter.deleteQcControl(id);
+      }
+      let list = dataStore.getCollection('qc_controls') || [];
+      list = list.filter(c => c && c.id !== id);
+      dataStore.setCollection('qc_controls', list);
+      return true;
+    },
+
+    getQcEntries(equipmentId, analyteCode) {
+      if (sqliteAdapter && typeof sqliteAdapter.getQcEntries === 'function') {
+        return sqliteAdapter.getQcEntries(equipmentId, analyteCode);
+      }
+      let list = dataStore.getCollection('qc_entries') || [];
+      if (equipmentId && analyteCode) {
+        list = list.filter(e => e && e.equipmentId === equipmentId && e.analyteCode === analyteCode);
+      } else if (equipmentId) {
+        list = list.filter(e => e && e.equipmentId === equipmentId);
+      }
+      return list;
+    },
+    getQcEntryById(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.getQcEntryById === 'function') {
+        return sqliteAdapter.getQcEntryById(id);
+      }
+      const list = dataStore.getCollection('qc_entries') || [];
+      return list.find(e => e && e.id === id) || null;
+    },
+    saveQcEntry(entry) {
+      if (sqliteAdapter && typeof sqliteAdapter.saveQcEntry === 'function') {
+        return sqliteAdapter.saveQcEntry(entry);
+      }
+      let list = dataStore.getCollection('qc_entries') || [];
+      const idx = list.findIndex(e => e && e.id === entry.id);
+      if (idx >= 0) list[idx] = entry;
+      else list.push(entry);
+      dataStore.setCollection('qc_entries', list);
+      return entry;
+    },
+    deleteQcEntry(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.deleteQcEntry === 'function') {
+        return sqliteAdapter.deleteQcEntry(id);
+      }
+      let list = dataStore.getCollection('qc_entries') || [];
+      list = list.filter(e => e && e.id !== id);
+      dataStore.setCollection('qc_entries', list);
+      return true;
+    },
+    deleteQcEntries(equipmentId, analyteCode) {
+      if (sqliteAdapter && typeof sqliteAdapter.deleteQcEntries === 'function') {
+        return sqliteAdapter.deleteQcEntries(equipmentId, analyteCode);
+      }
+      let list = dataStore.getCollection('qc_entries') || [];
+      if (equipmentId && analyteCode) {
+        list = list.filter(e => !(e && e.equipmentId === equipmentId && e.analyteCode === analyteCode));
+      } else if (equipmentId) {
+        list = list.filter(e => !(e && e.equipmentId === equipmentId));
+      }
+      dataStore.setCollection('qc_entries', list);
+      return true;
+    },
+
+    getNeqasRecords(equipmentId) {
+      if (sqliteAdapter && typeof sqliteAdapter.getNeqasRecords === 'function') {
+        return sqliteAdapter.getNeqasRecords(equipmentId);
+      }
+      const list = dataStore.getCollection('neqas_records') || [];
+      return equipmentId ? list.filter(r => r && r.equipmentId === equipmentId) : list;
+    },
+    getNeqasRecordById(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.getNeqasRecordById === 'function') {
+        return sqliteAdapter.getNeqasRecordById(id);
+      }
+      const list = dataStore.getCollection('neqas_records') || [];
+      return list.find(r => r && r.id === id) || null;
+    },
+    saveNeqasRecord(rec) {
+      if (sqliteAdapter && typeof sqliteAdapter.saveNeqasRecord === 'function') {
+        return sqliteAdapter.saveNeqasRecord(rec);
+      }
+      let list = dataStore.getCollection('neqas_records') || [];
+      const idx = list.findIndex(r => r && r.id === rec.id);
+      if (idx >= 0) list[idx] = rec;
+      else list.push(rec);
+      dataStore.setCollection('neqas_records', list);
+      return rec;
+    },
+    deleteNeqasRecord(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.deleteNeqasRecord === 'function') {
+        return sqliteAdapter.deleteNeqasRecord(id);
+      }
+      let list = dataStore.getCollection('neqas_records') || [];
+      list = list.filter(r => r && r.id !== id);
+      dataStore.setCollection('neqas_records', list);
+      return true;
     }
   };
 
-  return db;
+  return new Proxy(db, {
+    get(target, prop) {
+      if (prop in target) return target[prop];
+      if (sqliteAdapter && typeof sqliteAdapter[prop] === 'function') {
+        return sqliteAdapter[prop].bind(sqliteAdapter);
+      }
+      if (sqliteAdapter && prop in sqliteAdapter) {
+        return sqliteAdapter[prop];
+      }
+      return undefined;
+    }
+  });
+
 }
 
 module.exports = { createOfflineDb };

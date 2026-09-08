@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title><%= title || 'NEQAS Proficiency Testing Evaluation Certificate' %></title>
+  <style>
+    @page {
+      size: letter portrait;
+      margin: 10mm 14mm;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    body {
+      font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f1f5f9;
+      color: #1e293b;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+    .no-print-bar {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background: #0f172a;
+      color: #fff;
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+    .no-print-bar button {
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 4px;
+      cursor: pointer;
+      border: none;
+    }
+    .btn-print {
+      background: #10b981;
+      color: #fff;
+    }
+    .btn-print:hover { background: #059669; }
+    .btn-back {
+      background: #475569;
+      color: #f1f5f9;
+      margin-right: 8px;
+    }
+    .btn-back:hover { background: #334155; }
+    .page {
+      width: 215.9mm;
+      min-height: 279.4mm;
+      margin: 20px auto;
+      background: #fff;
+      padding: 12mm 15mm;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      position: relative;
+    }
+    @media print {
+      body { background: #fff; }
+      .no-print { display: none !important; }
+      .page {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        min-height: auto !important;
+        box-shadow: none !important;
+      }
+    }
+    .header {
+      display: flex;
+      align-items: flex-start;
+      border-bottom: 2px solid #009957;
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+    }
+    .logo {
+      width: 68px;
+      height: auto;
+      margin-right: 12px;
+    }
+    .lab-title {
+      flex: 1;
+      text-align: center;
+    }
+    .lab-title h1 {
+      margin: 0;
+      font-size: 20px;
+      color: #009957;
+      letter-spacing: 0.5px;
+    }
+    .lab-sub {
+      font-size: 9.5px;
+      color: #333;
+      margin-top: 2px;
+    }
+    .report-title-box {
+      text-align: center;
+      margin: 8px 0;
+      padding: 6px;
+      background: #f0fdf4;
+      border: 1px solid #86efac;
+      border-radius: 4px;
+    }
+    .report-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #166534;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .report-subtitle {
+      font-size: 9px;
+      color: #4b5563;
+      margin-top: 2px;
+    }
+    .section-title {
+      font-weight: 700;
+      font-size: 10.5px;
+      color: #0f172a;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin: 10px 0 4px 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .section-title::before {
+      content: '';
+      display: inline-block;
+      width: 4px;
+      height: 12px;
+      background: #0284c7;
+      border-radius: 2px;
+    }
+    .meta-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 10px;
+      margin-bottom: 10px;
+    }
+    .meta-table td {
+      border: 1px solid #cbd5e1;
+      padding: 4px 8px;
+      vertical-align: top;
+    }
+    .meta-label {
+      font-weight: 600;
+      color: #475569;
+      background: #f8fafc;
+      width: 25%;
+    }
+    .eval-card {
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      background: #fafafa;
+    }
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    .kpi-box {
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      padding: 8px;
+      border-radius: 6px;
+    }
+    .kpi-val {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .kpi-lbl {
+      font-size: 9px;
+      color: #64748b;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+    .badge-rating {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 10px;
+      letter-spacing: 0.5px;
+    }
+    .rating-acceptable {
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #86efac;
+    }
+    .rating-questionable {
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fcd34d;
+    }
+    .rating-unsatisfactory {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+    }
+    .rating-pending {
+      background: #e2e8f0;
+      color: #475569;
+      border: 1px solid #cbd5e1;
+    }
+    .gauge-container {
+      width: 100%;
+      height: 52px;
+      margin: 8px 0;
+    }
+    .signatures-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 22px;
+      padding-top: 8px;
+    }
+    .sig-block {
+      text-align: center;
+    }
+    .sig-line {
+      border-top: 1px solid #333;
+      margin-top: 36px;
+      padding-top: 4px;
+      font-weight: 700;
+      font-size: 10.5px;
+      color: #0f172a;
+    }
+    .sig-sub {
+      font-size: 9px;
+      color: #475569;
+      margin-top: 1px;
+    }
+  </style>
+</head>
+<body>
+
+  <%
+    const usersList = (typeof allUsers !== 'undefined' && Array.isArray(allUsers)) ? allUsers : [];
+    const medtechs = usersList.filter(u => u.role === 'Medical Technologist' || (u.name && u.name.includes('RMT')));
+    const pathologists = usersList.filter(u => u.role === 'Pathologist' || (u.name && u.name.includes('Espiritu')));
+
+    const defaultOp = record.reportedBy || (medtechs[0] && medtechs[0].name) || 'Gezyne M. Lopez, RMT';
+    const sigs = (typeof signatories !== 'undefined' && signatories) ? signatories : {
+      operatorName: defaultOp,
+      operatorLicense: (medtechs.find(u => u.name === defaultOp) || {}).licenseNumber || '67820',
+      validatorName: (medtechs.find(u => u.name && u.name.includes('Domingo')) || medtechs[1] || {}).name || 'Jeff Louine Jamir T. Domingo, RMT, PMSDA',
+      validatorLicense: '68285',
+      pathologistName: (pathologists[0] && pathologists[0].name) || 'Bernadette R. Espiritu, M.D.',
+      pathologistLicense: '75547'
+    };
+
+    const nrlEval = record.nrlEvaluation || {};
+    const sdi = nrlEval.sdi;
+    const grade = nrlEval.evaluationGrade || 'PENDING';
+    const hasEval = sdi !== null && sdi !== undefined;
+  %>
+
+  <!-- Floating Print Bar -->
+  <div class="no-print-bar no-print">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div>
+        <strong>Gezyne LIS Quality Assessment</strong> &bull; NEQAS Evaluation (<%= record.analyteName %> - <%= record.sampleId %>)
+      </div>
+      <button type="button" onclick="toggleSigEditor()" style="background: #334155; color: #f8fafc; border: 1px solid #64748b; font-size: 11px; padding: 4px 10px; border-radius: 4px; cursor: pointer;">
+        ✍️ Signatories (<span id="sigCountBadge">3 Signatories</span>)
+      </button>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <button class="btn-back" onclick="window.close(); history.back();">&larr; Back to Equipment</button>
+      <button class="btn-print" onclick="window.print();"><i class="fa fa-print"></i> 🖨️ Print / Save as PDF</button>
+    </div>
+  </div>
+
+  <!-- Interactive Signatory Dropdown Drawer -->
+  <div id="sigEditorDrawer" class="no-print" style="display: none; background: #1e293b; color: #fff; padding: 12px 20px; font-size: 12px; border-bottom: 2px solid #0284c7;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <strong style="color: #38bdf8;">Select NEQAS Report Signatories</strong>
+        <span id="drawerToast" style="display: none; background: #059669; color: #fff; font-size: 10.5px; padding: 2px 8px; border-radius: 4px;"></span>
+      </div>
+      <button onclick="toggleSigEditor()" style="background: none; border: none; color: #94a3b8; font-size: 16px; cursor: pointer;">&times; Close</button>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px;">
+      <!-- 1. Operator -->
+      <div style="background: #0f172a; padding: 8px; border-radius: 4px; border: 1px solid #334155;">
+        <span style="font-weight: bold; color: #38bdf8; font-size: 11px;">1. Testing Medical Technologist</span>
+        <select id="edit_op_select" onchange="onSelectSignatory()" style="width:100%; margin-top:4px; padding:4px 6px; font-size:11.5px; border-radius:3px;">
+          <% medtechs.forEach(u => { %>
+            <option value="<%= u.name %>" data-license="<%= u.licenseNumber || '' %>" <%= sigs.operatorName === u.name ? 'selected' : '' %>>
+              <%= u.name %><%= u.licenseNumber ? ' (PRC: ' + u.licenseNumber + ')' : '' %>
+            </option>
+          <% }); %>
+        </select>
+      </div>
+      <!-- 2. Validator -->
+      <div style="background: #0f172a; padding: 8px; border-radius: 4px; border: 1px solid #334155;">
+        <span style="font-weight: bold; color: #38bdf8; font-size: 11px;">2. QC Supervisor / Validator</span>
+        <select id="edit_val_select" onchange="onSelectSignatory()" style="width:100%; margin-top:4px; padding:4px 6px; font-size:11.5px; border-radius:3px;">
+          <% medtechs.forEach(u => { %>
+            <option value="<%= u.name %>" data-license="<%= u.licenseNumber || '' %>" <%= sigs.validatorName === u.name ? 'selected' : '' %>>
+              <%= u.name %><%= u.licenseNumber ? ' (PRC: ' + u.licenseNumber + ')' : '' %>
+            </option>
+          <% }); %>
+        </select>
+      </div>
+      <!-- 3. Pathologist -->
+      <div style="background: #0f172a; padding: 8px; border-radius: 4px; border: 1px solid #334155;">
+        <span style="font-weight: bold; color: #38bdf8; font-size: 11px;">3. Approving Pathologist</span>
+        <select id="edit_p1_select" onchange="onSelectSignatory()" style="width:100%; margin-top:4px; padding:4px 6px; font-size:11.5px; border-radius:3px;">
+          <% pathologists.forEach(u => { %>
+            <option value="<%= u.name %>" data-license="<%= u.licenseNumber || '' %>" <%= sigs.pathologistName === u.name ? 'selected' : '' %>>
+              <%= u.name %><%= u.licenseNumber ? ' (PRC: ' + u.licenseNumber + ')' : '' %>
+            </option>
+          <% }); %>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="page">
+    <!-- Laboratory Official Header -->
+    <div class="header">
+      <img src="/assets/gezyne-logo.png" class="logo" alt="Logo" onerror="this.style.display='none'">
+      <div class="lab-title">
+        <h1>GEZYNE CLINICAL LABORATORY</h1>
+        <div class="lab-sub">0330 VERGEL DE DIOS ST POBLACION PLARIDEL, BULACAN</div>
+        <div class="lab-sub">NEAR MUNICIPAL BASKETBALL COURT &bull; TEL: 0917-649-0807 / 0960-390-0921 / 795-5007</div>
+        <div class="lab-sub"><strong>DOH License No.: 03-435-15CL-20</strong></div>
+      </div>
+      <div style="font-size: 8.5px; text-align: right; min-width: 140px;">
+        <strong>Date Printed:</strong> <%= new Date().toLocaleDateString() %><br>
+        <strong>Form Code:</strong> DOH-NRL-EQA-01<br>
+        <strong>Regulatory Standard:</strong> DOH AO No. 2020-0035 &amp; AO No. 2021-0037
+      </div>
+    </div>
+
+    <!-- Document Header -->
+    <div class="report-title-box">
+      <div class="report-title">NATIONAL EXTERNAL QUALITY ASSESSMENT SCHEME (NEQAS)</div>
+      <div class="report-subtitle">OFFICIAL PROFICIENCY TESTING EVALUATION &amp; RESULT CERTIFICATE</div>
+      <div style="font-size: 8.5px; color: #15803d; margin-top: 1px;">
+        Mandatory Compliance Record for Department of Health (DOH) Licensing Renewal under DOH A.O. No. 2020-0035 &amp; A.O. No. 2021-0037
+      </div>
+    </div>
+
+    <!-- Survey Meta Table -->
+    <div class="section-title">Survey Event & Specimen Information</div>
+    <table class="meta-table">
+      <tr>
+        <td class="meta-label">Reference Laboratory (NRL):</td>
+        <td><strong><%= record.nrlName %></strong></td>
+        <td class="meta-label">Survey Cycle & Event:</td>
+        <td><strong>Cycle <%= record.cycleYear %> &bull; <%= record.eventNumber %></strong></td>
+      </tr>
+      <tr>
+        <td class="meta-label">Sample Identification:</td>
+        <td><strong style="color: #0369a1;"><%= record.sampleId %></strong></td>
+        <td class="meta-label">Target Analyte:</td>
+        <td><strong><%= (record.analyteName && record.analyteName.includes('(')) ? record.analyteName : (record.analyteName + (record.analyteCode && record.analyteCode.length <= 5 && !record.analyteName.toUpperCase().includes(record.analyteCode.toUpperCase()) ? ' (' + record.analyteCode.toUpperCase() + ')' : '')) %></strong></td>
+      </tr>
+      <tr>
+        <td class="meta-label">Analytical Equipment:</td>
+        <td><%= record.equipmentName || 'Mindray BS-240 Clinical Chemistry Analyzer' %></td>
+        <td class="meta-label">Method / Technology:</td>
+        <td><%= record.methodInstrument || 'Photometric / Spectrophotometry' %></td>
+      </tr>
+      <tr>
+        <td class="meta-label">Reagent Lot & Expiry:</td>
+        <td><%= record.reagentLot || 'LOT-202601-A' %></td>
+        <td class="meta-label">Survey Run Date:</td>
+        <td><%= new Date(record.submissionDate).toLocaleDateString() %> <%= new Date(record.submissionDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %></td>
+      </tr>
+    </table>
+
+    <!-- Performance Evaluation Summary -->
+    <div class="section-title">NRL Peer Group Comparison & Analytical Performance</div>
+    <div class="eval-card">
+      <div class="kpi-row">
+        <div class="kpi-box">
+          <div class="kpi-val" style="color: #0284c7;"><%= record.reportedValue !== null ? record.reportedValue : '—' %> <span style="font-size: 11px; font-weight: normal;"><%= record.unit %></span></div>
+          <div class="kpi-lbl">Laboratory Result (x)</div>
+        </div>
+        <div class="kpi-box">
+          <div class="kpi-val"><%= nrlEval.peerMean !== null && nrlEval.peerMean !== undefined ? nrlEval.peerMean : '—' %> <span style="font-size: 11px; font-weight: normal;"><%= record.unit %></span></div>
+          <div class="kpi-lbl">Peer Group Mean (x̄)</div>
+        </div>
+        <div class="kpi-box">
+          <div class="kpi-val"><%= nrlEval.peerSd !== null && nrlEval.peerSd !== undefined ? nrlEval.peerSd : '—' %></div>
+          <div class="kpi-lbl">Peer Group SD (s)</div>
+        </div>
+        <div class="kpi-box">
+          <div class="kpi-val" style="<%= (sdi !== null && Math.abs(sdi) > 2) ? 'color:#dc2626;' : 'color:#16a34a;' %>">
+            <%= sdi !== null && sdi !== undefined ? (sdi > 0 ? '+' + sdi : sdi) : 'PENDING' %>
+          </div>
+          <div class="kpi-lbl">Standard Deviation Index (SDI)</div>
+        </div>
+      </div>
+
+      <!-- SDI Visual Gauge -->
+      <div style="font-size: 9px; font-weight: 600; color: #475569; margin-top: 4px; display: flex; justify-content: space-between;">
+        <span>SDI Performance Spectrum:</span>
+        <span>
+          Overall Grade:
+          <% if (grade === 'ACCEPTABLE') { %>
+            <span class="badge-rating rating-acceptable">✓ ACCEPTABLE (|SDI| &le; 2.0)</span>
+          <% } else if (grade === 'QUESTIONABLE') { %>
+            <span class="badge-rating rating-questionable">⚠️ QUESTIONABLE (2.0 &lt; |SDI| &lt; 3.0)</span>
+          <% } else if (grade === 'UNSATISFACTORY') { %>
+            <span class="badge-rating rating-unsatisfactory">❌ UNSATISFACTORY (|SDI| &ge; 3.0)</span>
+          <% } else { %>
+            <span class="badge-rating rating-pending">⏳ PENDING NRL EVALUATION</span>
+          <% } %>
+        </span>
+      </div>
+
+      <!-- Vector SVG Scale -->
+      <svg class="gauge-container" viewBox="0 0 600 48" preserveAspectRatio="none">
+        <!-- Scale Bands -->
+        <rect x="20" y="16" width="120" height="12" fill="#fee2e2" />
+        <rect x="140" y="16" width="60" height="12" fill="#fef3c7" />
+        <rect x="200" y="16" width="200" height="12" fill="#dcfce7" />
+        <rect x="400" y="16" width="60" height="12" fill="#fef3c7" />
+        <rect x="460" y="16" width="120" height="12" fill="#fee2e2" />
+        
+        <!-- Border -->
+        <rect x="20" y="16" width="560" height="12" fill="none" stroke="#cbd5e1" stroke-width="1" />
+
+        <!-- Reference Ticks -->
+        <line x1="20" y1="12" x2="20" y2="32" stroke="#64748b" stroke-width="1" />
+        <text x="20" y="42" font-size="8" text-anchor="middle" fill="#64748b">-3.5</text>
+
+        <line x1="140" y1="12" x2="140" y2="32" stroke="#dc2626" stroke-width="1" />
+        <text x="140" y="42" font-size="8" text-anchor="middle" fill="#dc2626">-2.0</text>
+
+        <line x1="300" y1="10" x2="300" y2="34" stroke="#16a34a" stroke-width="1.5" />
+        <text x="300" y="42" font-size="8.5" font-weight="bold" text-anchor="middle" fill="#16a34a">0.0 (Peer Mean)</text>
+
+        <line x1="460" y1="12" x2="460" y2="32" stroke="#dc2626" stroke-width="1" />
+        <text x="460" y="42" font-size="8" text-anchor="middle" fill="#dc2626">+2.0</text>
+
+        <line x1="580" y1="12" x2="580" y2="32" stroke="#64748b" stroke-width="1" />
+        <text x="580" y="42" font-size="8" text-anchor="middle" fill="#64748b">+3.5</text>
+
+        <!-- Current Lab Pointer -->
+        <% if (hasEval) {
+          const clamped = Math.max(-3.5, Math.min(3.5, sdi));
+          const ptrX = 300 + (clamped / 3.5) * 280;
+        %>
+          <polygon points="<%= ptrX %>,16 <%= ptrX - 5 %>,6 <%= ptrX + 5 %>,6" fill="#0f172a" />
+          <line x1="<%= ptrX %>" y1="6" x2="<%= ptrX %>" y2="28" stroke="#0f172a" stroke-width="2" />
+          <text x="<%= ptrX %>" y="5" font-size="8" font-weight="bold" text-anchor="middle" fill="#0f172a">Lab (<%= sdi %>)</text>
+        <% } %>
+      </svg>
+    </div>
+
+    <!-- DOH Corrective Action Audit Section -->
+    <div class="section-title">DOH Quality Assurance & Corrective Action Record</div>
+    <div style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 8px 12px; font-size: 9.5px; background: #fff;">
+      <% const ca = record.correctiveAction || {}; %>
+      <% if (grade === 'UNSATISFACTORY' || grade === 'QUESTIONABLE' || ca.required) { %>
+        <div style="color: #b91c1c; font-weight: bold; margin-bottom: 4px;">
+          ⚠️ REGULATORY NOTICE: DOH Administrative Order No. 2021-0037 mandates a documented root-cause analysis and corrective action for proficiency test results exceeding |SDI| > 2.0.
+        </div>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="width: 25%; font-weight: 600; color: #475569; padding: 3px 0;">Root Cause Investigation:</td>
+            <td><%= ca.investigation || 'Investigation into calibrator lot, photometric lamp intensity, and pipetting verification initiated.' %></td>
+          </tr>
+          <tr>
+            <td style="font-weight: 600; color: #475569; padding: 3px 0;">Corrective Action Taken:</td>
+            <td><%= ca.actionTaken || 'Re-calibrated analyzer with primary standards; recalibration verified against secondary Bio-Rad controls.' %></td>
+          </tr>
+          <tr>
+            <td style="font-weight: 600; color: #475569; padding: 3px 0;">Action Date & Status:</td>
+            <td><%= ca.actionDate ? new Date(ca.actionDate).toLocaleDateString() : new Date().toLocaleDateString() %> &bull; <strong style="color: <%= ca.closed ? '#16a34a' : '#d97706' %>;"><%= ca.closed ? 'CLOSED & RESOLVED' : 'ACTIVE / IN PROGRESS' %></strong></td>
+          </tr>
+        </table>
+      <% } else { %>
+        <div style="color: #166534; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+          <span>✓</span>
+          <span>Laboratory analytical performance verified within acceptable DOH & NRL tolerance limits. No corrective action required.</span>
+        </div>
+        <div style="color: #64748b; font-size: 8.5px; margin-top: 2px;">
+          Certificate Number: <strong><%= nrlEval.certificateNumber || 'LCP-CC-' + record.cycleYear + '-E1-0428' %></strong> &bull; Evaluation Date: <%= nrlEval.evaluationDate ? new Date(nrlEval.evaluationDate).toLocaleDateString() : new Date().toLocaleDateString() %>
+        </div>
+      <% } %>
+    </div>
+
+    <!-- Official Regulatory Sign-Off Block -->
+    <div class="signatures-grid">
+      <div class="sig-block">
+        <div class="sig-line" id="disp_op_name"><%= sigs.operatorName %></div>
+        <div class="sig-sub">Testing Medical Technologist</div>
+        <div class="sig-sub" id="disp_op_lic">PRC License No.: <%= sigs.operatorLicense || '________________' %></div>
+      </div>
+
+      <div class="sig-block">
+        <div class="sig-line" id="disp_val_name"><%= sigs.validatorName %></div>
+        <div class="sig-sub">QC Supervisor / Senior MedTech</div>
+        <div class="sig-sub" id="disp_val_lic">PRC License No.: <%= sigs.validatorLicense || '________________' %></div>
+      </div>
+
+      <div class="sig-block">
+        <div class="sig-line" id="disp_p1_name"><%= sigs.pathologistName %></div>
+        <div class="sig-sub">Head of Laboratory / Pathologist</div>
+        <div class="sig-sub" id="disp_p1_lic">PRC License No.: <%= sigs.pathologistLicense || '75547' %></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function toggleSigEditor() {
+      const d = document.getElementById('sigEditorDrawer');
+      if (!d) return;
+      d.style.display = d.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function onSelectSignatory() {
+      const op = document.getElementById('edit_op_select');
+      const val = document.getElementById('edit_val_select');
+      const p1 = document.getElementById('edit_p1_select');
+
+      const opOpt = op ? op.options[op.selectedIndex] : null;
+      const valOpt = val ? val.options[val.selectedIndex] : null;
+      const p1Opt = p1 ? p1.options[p1.selectedIndex] : null;
+
+      if (opOpt) {
+        document.getElementById('disp_op_name').textContent = opOpt.value;
+        document.getElementById('disp_op_lic').textContent = 'PRC License No.: ' + (opOpt.dataset.license || '________________');
+      }
+      if (valOpt) {
+        document.getElementById('disp_val_name').textContent = valOpt.value;
+        document.getElementById('disp_val_lic').textContent = 'PRC License No.: ' + (valOpt.dataset.license || '________________');
+      }
+      if (p1Opt) {
+        document.getElementById('disp_p1_name').textContent = p1Opt.value;
+        document.getElementById('disp_p1_lic').textContent = 'PRC License No.: ' + (p1Opt.dataset.license || '________________');
+      }
+
+      const toast = document.getElementById('drawerToast');
+      if (toast) {
+        toast.textContent = '✓ Signatories updated!';
+        toast.style.display = 'inline-block';
+        setTimeout(() => { toast.style.display = 'none'; }, 3000);
+      }
+    }
+  </script>
+</body>
+</html>
