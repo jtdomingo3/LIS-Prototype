@@ -12,7 +12,7 @@ const ExcelJS = require('exceljs');
 const { requireAuth, canAccessPatient } = require('../middleware/auth');
 const { logReportError } = require('../lib/reportLogger');
 const reportGenerator = require('../lib/reportGenerator');
-const { getResultTemplate } = require('../lib/templateResolver');
+const { getResultTemplate, isDoctorVisitTest } = require('../lib/templateResolver');
 const { sanitizeTestSignatures } = require('../lib/signatureResolver');
 
 // user reports directory (pre-generated PDFs written here)
@@ -86,7 +86,7 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
     // Find the most recent completed/released test and redirect to its preview
     const allTests = await Test.find({});
     const completedTests = Array.isArray(allTests)
-      ? allTests.filter(t => t && (t.status === 'Completed' || t.status === 'Released' || t.status === 'Checked'))
+      ? allTests.filter(t => t && !isDoctorVisitTest(t) && (t.status === 'Completed' || t.status === 'Released'))
       : [];
     completedTests.sort((a, b) => new Date(b.testDate || b.createdAt) - new Date(a.testDate || a.createdAt));
 
@@ -127,8 +127,13 @@ router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) =
       return res.redirect('/reports');
     }
 
+    if (isDoctorVisitTest(test)) {
+      req.flash('error_msg', 'Doctor check-up records are clinical consultations. View medical charts via the Consultation panel or Medical Record export.');
+      return res.redirect('/reports');
+    }
+
     const hasResults = test.results && (typeof test.results === 'object' ? Object.keys(test.results).length > 0 : String(test.results).trim().length > 0);
-    if (!(test.status === 'Completed' || test.status === 'Released' || test.status === 'Checked' || hasResults)) {
+    if (!(test.status === 'Completed' || test.status === 'Released' || hasResults)) {
       req.flash('error_msg', 'Report preview can only be generated for tests with recorded findings');
       return res.redirect('/reports');
     }
@@ -158,7 +163,7 @@ router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) =
     // in-memory scan of the patients array, NOT one-by-one async lookups.
     const allTests = await Test.find({});
     const completedSorted = Array.isArray(allTests)
-      ? allTests.filter(t => t && (t.status === 'Completed' || t.status === 'Released' || t.status === 'Checked'))
+      ? allTests.filter(t => t && !isDoctorVisitTest(t) && (t.status === 'Completed' || t.status === 'Released'))
       : [];
     completedSorted.sort((a, b) => new Date(b.testDate || b.createdAt) - new Date(a.testDate || a.createdAt));
 
@@ -204,6 +209,10 @@ router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) =
 
     // Render the result partial + print wrapper HTML for the preview iframe srcdoc
     const template = getResultTemplate(populatedTest);
+    if (!template) {
+      req.flash('error_msg', 'No diagnostic report template available for this test.');
+      return res.redirect('/reports');
+    }
     const dbTemplate = await Template.findOne({ testType: populatedTest.testType, isActive: true }) || await Template.findOne({ testType: populatedTest.template, isActive: true });
     const inlineLogo = getInlineLogo();
 
@@ -258,7 +267,12 @@ router.get('/result/:testId', requireAuth, canAccessPatient, async (req, res) =>
       return res.redirect('/reports');
     }
 
-    if (!(test.status === 'Completed' || test.status === 'Released' || test.status === 'Checked')) {
+    if (isDoctorVisitTest(test)) {
+      req.flash('error_msg', 'Doctor consultations do not have laboratory result sheets.');
+      return res.redirect('/reports');
+    }
+
+    if (!(test.status === 'Completed' || test.status === 'Released')) {
       req.flash('error_msg', 'Result template can only be viewed for completed or released tests');
       return res.redirect('/reports');
     }
@@ -277,6 +291,10 @@ router.get('/result/:testId', requireAuth, canAccessPatient, async (req, res) =>
     sanitizeTestSignatures(populatedTest);
 
     const template = getResultTemplate(populatedTest);
+    if (!template) {
+      req.flash('error_msg', 'No diagnostic report template available for this test.');
+      return res.redirect('/reports');
+    }
     const dbTemplate = await Template.findOne({ testType: populatedTest.testType, isActive: true }) || await Template.findOne({ testType: populatedTest.template, isActive: true });
     
     // Render the matching template view under reports/results
@@ -310,7 +328,12 @@ router.get('/pdf/:testId', requireAuth, canAccessPatient, async (req, res) => {
       return res.redirect('/reports');
     }
 
-    if (!(test.status === 'Completed' || test.status === 'Released' || test.status === 'Checked')) {
+    if (isDoctorVisitTest(test)) {
+      req.flash('error_msg', 'Doctor consultations do not have laboratory report PDFs.');
+      return res.redirect('/reports');
+    }
+
+    if (!(test.status === 'Completed' || test.status === 'Released')) {
       req.flash('error_msg', 'PDF can only be generated for completed or released tests');
       return res.redirect('/reports');
     }
@@ -358,7 +381,12 @@ router.get('/print/:testId', requireAuth, canAccessPatient, async (req, res) => 
       return res.redirect('/reports');
     }
 
-    if (!(test.status === 'Completed' || test.status === 'Released' || test.status === 'Checked')) {
+    if (isDoctorVisitTest(test)) {
+      req.flash('error_msg', 'Doctor consultations do not have laboratory print reports.');
+      return res.redirect('/reports');
+    }
+
+    if (!(test.status === 'Completed' || test.status === 'Released')) {
       req.flash('error_msg', 'Report can only be printed for completed tests');
       return res.redirect('/reports');
     }
@@ -378,6 +406,9 @@ router.get('/print/:testId', requireAuth, canAccessPatient, async (req, res) => 
 
     // Render the specific result template into HTML, then render the print wrapper
     const template = getResultTemplate(populatedTest);
+    if (!template) {
+      return res.status(400).send('No diagnostic template found for this test');
+    }
     const dbTemplate = await Template.findOne({ testType: populatedTest.testType, isActive: true }) || await Template.findOne({ testType: populatedTest.template, isActive: true });
     const viewPath = `reports/results/${template}`;
 
@@ -431,7 +462,7 @@ router.all('/print-multiple', requireAuth, canAccessPatient, async (req, res) =>
     // does not support Mongo-style queries with $in, so fetch each id
     // explicitly and preserve the requested order.
     const fetched = await Promise.all(ids.map(id => Test.findById(id)));
-    const ordered = (fetched || []).filter(Boolean).filter(t => t && (t.status === 'Completed' || t.status === 'Released' || t.status === 'Checked'));
+    const ordered = (fetched || []).filter(Boolean).filter(t => t && !isDoctorVisitTest(t) && (t.status === 'Completed' || t.status === 'Released'));
 
     if (!ordered.length) {
       req.flash('error_msg', 'No printable tests found for provided ids');
@@ -454,6 +485,7 @@ router.all('/print-multiple', requireAuth, canAccessPatient, async (req, res) =>
       sanitizeTestSignatures(populatedTest);
 
       const template = getResultTemplate(populatedTest);
+      if (!template) continue;
       const dbTemplate = await Template.findOne({ testType: populatedTest.testType, isActive: true }) || await Template.findOne({ testType: populatedTest.template, isActive: true });
       // Render each template into HTML (no layout)
       try {

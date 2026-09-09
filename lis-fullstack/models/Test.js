@@ -2,6 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 const { logReportError } = require('../lib/reportLogger');
 const reportGenerator = require('../lib/reportGenerator');
+const { isDoctorVisitTest } = require('../lib/templateResolver');
 
 class Test {
   constructor(data) {
@@ -91,7 +92,7 @@ class Test {
     // After persisting, if the test is Completed/Released and has results, regenerate PDF
     try {
       const lockedStates = new Set(['Completed', 'Released']);
-      if (lockedStates.has(this.status) && this.results) {
+      if (lockedStates.has(this.status) && this.results && !isDoctorVisitTest(this)) {
         // generate asynchronously — do not block save
         const testRef = this;
         setImmediate(async () => {
@@ -254,7 +255,7 @@ class Test {
       // Auto-generate PDF if test is Completed/Released and has results
       try {
         const lockedStates2 = new Set(['Completed', 'Released']);
-        if (lockedStates2.has(test.status) && test.results) {
+        if (lockedStates2.has(test.status) && test.results && !isDoctorVisitTest(test)) {
           const testRef = new Test(test);
           setImmediate(async () => {
             try {

@@ -13,7 +13,7 @@ const fs   = require('fs');
 const path = require('path');
 const os   = require('os');
 const ejs  = require('ejs');
-const { getResultTemplate } = require('./templateResolver');
+const { getResultTemplate, isDoctorVisitTest } = require('./templateResolver');
 const { sanitizeTestSignatures } = require('./signatureResolver');
 
 const reportsDir = path.join(os.homedir(), 'Documents', 'LIS', 'reports');
@@ -248,8 +248,10 @@ function enqueue(fn) {
 
 // ── generate a single test's PDF and write to disk (with disk mtime caching) ──
 async function generatePdfForTest(rawTest, forceRegenerate = false) {
+  if (!rawTest || isDoctorVisitTest(rawTest)) return null;
   return enqueue(async () => {
     try {
+      if (!rawTest || isDoctorVisitTest(rawTest)) return null;
       ensureDir();
       const populated    = await populateTestForPdf(rawTest);
       const outPath      = getReportPath(populated);
@@ -266,6 +268,10 @@ async function generatePdfForTest(rawTest, forceRegenerate = false) {
       }
 
       const templateName = getResultTemplate(populated);
+      if (!templateName) {
+        console.warn(`[reportGenerator] skipping PDF generation - no diagnostic template for testId=${rawTest.testId || rawTest.id}`);
+        return null;
+      }
       const html         = await renderHtmlForTest(populated, templateName);
       const buf          = await generatePdfBufferFromHtml(html);
       fs.writeFileSync(outPath, buf);
@@ -285,7 +291,7 @@ async function generateAllMissing() {
 
   const allTests = await Test.find({});
   const eligible = (allTests || []).filter(t =>
-    t && (t.status === 'Completed' || t.status === 'Released') && t.results
+    t && !isDoctorVisitTest(t) && (t.status === 'Completed' || t.status === 'Released') && t.results
   );
 
   let generated = 0;

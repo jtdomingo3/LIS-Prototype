@@ -4,7 +4,27 @@
  * without circular dependencies.
  */
 
+function isDoctorVisitTest(test) {
+  if (!test) return false;
+  const idStr = String(test.testId || test.id || '').toUpperCase();
+  if (idStr.startsWith('DC') || idStr.startsWith('DOC')) return true;
+  const type = String(test.testType || test.template || '').toLowerCase();
+  if (type.includes('doctor') || type.includes('check-up') || type.includes('consultation')) return true;
+  if (Array.isArray(test.requestedTests) && test.requestedTests.some(rr => {
+    const s = String((rr && (rr.label || rr.key || rr.testType || rr.panel)) || '').toLowerCase();
+    return s.includes('doctor') || s.includes('check-up') || s.includes('consultation');
+  })) return true;
+  if (Array.isArray(test.requiredAreas) && test.requiredAreas.some(ra => {
+    const s = String(ra || '').toLowerCase();
+    return s.includes('doctor');
+  })) return true;
+  return false;
+}
+
 function getResultTemplate(test) {
+  if (isDoctorVisitTest(test)) {
+    return null;
+  }
   const type = (test && test.testType ? String(test.testType) : '').toLowerCase();
   let template = 'blood-chemistry';
 
@@ -46,12 +66,12 @@ function getResultTemplate(test) {
     template = 'ct-bt';
   } else if (/\b(?:pt|prothrombin|pt-aptt|ptaptt)\b/.test(type)) {
     template = 'pt-aptt';
-  } else if (type.includes('blood') || type.includes('chem')) {
-    template = 'blood-chemistry';
+  } else if (type.includes('hemato') || type.includes('hematology') || type.includes('cbc') || type.includes('blood count')) {
+    template = 'hematology';
   } else if (type.includes('xray') || type.includes('x-ray') || type.includes('x ray')) {
     template = 'xray';
-  } else if (type.includes('hemato') || type.includes('hematology') || type.includes('cbc')) {
-    template = 'hematology';
+  } else if (type.includes('blood') || type.includes('chem')) {
+    template = 'blood-chemistry';
   } else if (type.includes('thyroid') || type.includes('thyroid panel') || type.includes('thyroid-panel')) {
     template = 'thyroid-panel';
   } else if (type.includes('serol') || type.includes('serology')) {
@@ -88,4 +108,4 @@ function getResultTemplate(test) {
   return template;
 }
 
-module.exports = { getResultTemplate };
+module.exports = { getResultTemplate, isDoctorVisitTest };
