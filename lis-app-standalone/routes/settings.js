@@ -254,6 +254,9 @@ router.get('/', requireAuth, async (req, res) => {
     });
   }
 
+  const u = req.session && req.session.user;
+  const isManagerOrAdmin = !!(u && (u.role === 'Admin' || u.role === 'Manager' || u.role === 'Owner' || (u.permissions && u.permissions.users)));
+
   res.render('settings', {
     title: 'Settings',
     featureFlags,
@@ -271,7 +274,8 @@ router.get('/', requireAuth, async (req, res) => {
     maskedKey,
     currentModel,
     availableModels: AVAILABLE_MODELS,
-    requirePaymentAmount
+    requirePaymentAmount,
+    isManagerOrAdmin
   });
 });
 
@@ -336,53 +340,78 @@ router.post('/test-ai', requireAuth, canManageUsers, async (req, res) => {
   }
 });
 
-router.post('/', requireAuth, canManageUsers, (req, res) => {
+router.post('/', requireAuth, (req, res) => {
   try {
-    // Checkboxes send 'on' when checked; ensure boolean flags
+    const u = req.session && req.session.user;
+    const isManagerOrAdmin = !!(u && (u.role === 'Admin' || u.role === 'Manager' || u.role === 'Owner' || (u.permissions && u.permissions.users)));
     const flags = req.body || {};
-    req.app.locals.featureFlags.tests = !!flags.tests;
-    req.app.locals.featureFlags.reports = !!flags.reports;
-    req.app.locals.featureFlags.templates = !!flags.templates;
-    req.app.locals.featureFlags.worksheet = !!flags.worksheet;
-    req.app.locals.featureFlags.users = !!flags.users;
 
-    // Backup settings: support frequency-based scheduling (daily/weekly/monthly)
-    const autoBackup = !!flags.autoBackup;
-    const frequency = flags.backupFrequency || 'daily';
-    const backupPath = flags.backupPath || DEFAULT_BACKUP_DIR;
-    req.app.locals.backupConfig = { enabled: autoBackup, frequency, path: backupPath };
+    // 1. Clinical & Reception Workflow Settings (Editable by ALL authenticated users)
+    const doc1 = (flags.doctor1Name || '').trim() || 'Dr. Lorenzo';
+    const doc2 = (flags.doctor2Name || '').trim() || 'Dr. Arcilla';
+    const gezyne = (flags.gezynePath || '').trim();
+    const reqPay = (flags.requirePaymentAmount === 'on' || flags.requirePaymentAmount === true || flags.requirePaymentAmount === 'true');
 
-    // Persist backup config into data.json so it survives restarts
-    try {
+    let cur = {};
+    if (global.db && typeof global.db.getSettings === 'function') {
+      cur = global.db.getSettings() || {};
+    } else {
       const data = global.db.read();
-      data.backupConfig = { enabled: autoBackup, frequency, path: backupPath };
-      global.db.write(data);
-      req.app.locals.backupConfig = data.backupConfig;
-    } catch (e) {
-      console.error('Failed to persist backup config:', e);
+      cur = (data && data.settings) || {};
     }
 
-    // Persist GEZYNE / analyzer path, doctor names, & GezyneBot AI OpenRouter key/model
-    try {
-      const doc1 = (flags.doctor1Name || '').trim() || 'Dr. Lorenzo';
-      const doc2 = (flags.doctor2Name || '').trim() || 'Dr. Arcilla';
-      const gezyne = flags.gezynePath || '';
-      const rawAiKey = (flags.openrouterApiKey || '').trim();
-      const aiModel = (flags.openrouterModel || '').trim() || DEFAULT_MODEL;
+    cur.doctor1Name = doc1;
+    cur.doctor2Name = doc2;
+    cur.gezynePath = gezyne;
+    cur.requirePaymentAmount = reqPay;
 
-      let cur = {};
-      if (global.db && typeof global.db.getSettings === 'function') {
-        cur = global.db.getSettings() || {};
-      } else {
+    process.env.DOCTOR_1_NAME = doc1;
+    process.env.DOCTOR_2_NAME = doc2;
+    req.app.locals.DOCTOR_1_NAME = doc1;
+    req.app.locals.DOCTOR_2_NAME = doc2;
+
+    const envUpdates = {
+      DOCTOR_1_NAME: doc1,
+      DOCTOR_2_NAME: doc2
+    };
+
+    // 2. Admin & Manager Only Settings (Feature Flags, Backups, AI, SSE, Printer, .env)
+    if (isManagerOrAdmin) {
+      req.app.locals.featureFlags = req.app.locals.featureFlags || {};
+      req.app.locals.featureFlags.tests = !!flags.tests;
+      req.app.locals.featureFlags.reports = !!flags.reports;
+      req.app.locals.featureFlags.templates = !!flags.templates;
+      req.app.locals.featureFlags.worksheet = !!flags.worksheet;
+      req.app.locals.featureFlags.users = !!flags.users;
+
+      // Backup settings
+      const autoBackup = !!flags.autoBackup;
+      const frequency = flags.backupFrequency || 'daily';
+      const backupPath = flags.backupPath || DEFAULT_BACKUP_DIR;
+      req.app.locals.backupConfig = { enabled: autoBackup, frequency, path: backupPath };
+
+      try {
         const data = global.db.read();
-        cur = data.settings || {};
+        data.backupConfig = { enabled: autoBackup, frequency, path: backupPath };
+        global.db.write(data);
+        req.app.locals.backupConfig = data.backupConfig;
+      } catch (e) {
+        console.error('Failed to persist backup config:', e);
       }
 
-      cur.doctor1Name = doc1;
-      cur.doctor2Name = doc2;
-      cur.gezynePath = gezyne;
+      // AI Settings
+      const rawAiKey = (flags.openrouterApiKey || '').trim();
+      const aiModel = (flags.openrouterModel || '').trim() || DEFAULT_MODEL;
       cur.openrouterModel = aiModel;
-      cur.requirePaymentAmount = (flags.requirePaymentAmount === 'on' || flags.requirePaymentAmount === true || flags.requirePaymentAmount === 'true');
+      envUpdates.OPENROUTER_DEFAULT_MODEL = aiModel;
+
+      if (rawAiKey && rawAiKey.startsWith('sk-or-')) {
+        const encryptedKey = encryptSecret(rawAiKey);
+        cur.openrouterApiKeyEncrypted = encryptedKey;
+        process.env.OPENROUTER_ENCRYPTED_KEY = encryptedKey;
+        process.env.OPENROUTER_API_KEY = rawAiKey;
+        envUpdates.OPENROUTER_ENCRYPTED_KEY = encryptedKey;
+      }
 
       // SSE Real-Time Configuration
       const sseAllowedPages = [];
@@ -419,39 +448,60 @@ router.post('/', requireAuth, canManageUsers, (req, res) => {
       cur.printerName = printer;
       process.env.PRINTER_NAME = printer;
       process.env.THERMAL_PRINTER_NAME = printer;
-
-      const envUpdates = {};
       if (printer) {
         envUpdates.PRINTER_NAME = printer;
       }
-      envUpdates.OPENROUTER_DEFAULT_MODEL = aiModel;
 
-      if (rawAiKey && rawAiKey.startsWith('sk-or-')) {
-        const encryptedKey = encryptSecret(rawAiKey);
-        cur.openrouterApiKeyEncrypted = encryptedKey;
-        process.env.OPENROUTER_ENCRYPTED_KEY = encryptedKey;
-        process.env.OPENROUTER_API_KEY = rawAiKey;
-        envUpdates.OPENROUTER_ENCRYPTED_KEY = encryptedKey;
+      // Auto Backup Timer
+      if (req.app.locals.backupTimeoutId) {
+        clearTimeout(req.app.locals.backupTimeoutId);
+        req.app.locals.backupTimeoutId = null;
+      }
+      if (autoBackup) {
+        function scheduleNextBackup() {
+          const now = new Date();
+          let target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 15, 0, 0, 0);
+          if (now.getTime() >= target.getTime()) {
+            target.setDate(target.getDate() + 1);
+          }
+          const msUntilNext = target.getTime() - now.getTime();
+          req.app.locals.backupTimeoutId = setTimeout(() => {
+            try {
+              performBackup(backupPath);
+              performUserBackup(backupPath);
+              console.log(`[backup] Auto-backup completed successfully at ${new Date().toLocaleString()}`);
+            } catch (e) {
+              console.error('[backup] Auto-backup failed:', e);
+            }
+            scheduleNextBackup();
+          }, msUntilNext);
+          console.log(`[backup] Next auto-backup scheduled for ${target.toLocaleString()}`);
+        }
+        scheduleNextBackup();
       }
 
-      if (global.db && typeof global.db.setSettings === 'function') {
-        global.db.setSettings(cur);
-      } else {
-        const data = global.db.read();
-        data.settings = cur;
-        global.db.write(data);
-      }
-
-      writeEnvFile(envUpdates);
-
-      process.env.DOCTOR_1_NAME = doc1;
-      process.env.DOCTOR_2_NAME = doc2;
-      req.app.locals.DOCTOR_1_NAME = doc1;
-      req.app.locals.DOCTOR_2_NAME = doc2;
-    } catch (e) {
-      console.error('Failed to persist settings:', e);
+      // Environment variables
+      Object.keys(flags).forEach((k) => {
+        if (k && k.startsWith('env_')) {
+          const key = k.slice(4);
+          envUpdates[key] = flags[k];
+          process.env[key] = flags[k];
+        }
+      });
     }
-    // Ensure feature flags remain enabled by default (UI visibility shouldn't be controlled here)
+
+    // Persist settings to database
+    if (global.db && typeof global.db.setSettings === 'function') {
+      global.db.setSettings(cur);
+    } else {
+      const data = global.db.read();
+      data.settings = cur;
+      global.db.write(data);
+    }
+
+    writeEnvFile(envUpdates);
+
+    // Ensure feature flags remain enabled by default
     try {
       req.app.locals.featureFlags = req.app.locals.featureFlags || {};
       req.app.locals.featureFlags.tests = true;
@@ -462,71 +512,15 @@ router.post('/', requireAuth, canManageUsers, (req, res) => {
       req.app.locals.featureFlags.inventory = true;
     } catch (e) {}
 
-    // Frequency -> milliseconds
-    const frequencyToMs = (f) => {
-      const day = 24 * 60 * 60 * 1000;
-      switch ((f || '').toLowerCase()) {
-        case 'daily': return day;
-        case 'weekly': return 7 * day;
-        case 'monthly': return 30 * day;
-        default:
-          // fallback: treat as minutes number
-          const m = Number(f);
-          return (isNaN(m) ? 60 : Math.max(1, m)) * 60 * 1000;
-      }
-    };
-
-    // Manage timeout timer (store id in app.locals)
-    if (req.app.locals.backupTimeoutId) {
-      clearTimeout(req.app.locals.backupTimeoutId);
-      req.app.locals.backupTimeoutId = null;
-    }
-    if (autoBackup) {
-      function scheduleNextBackup() {
-        const now = new Date();
-        let target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 15, 0, 0, 0);
-        if (now.getTime() >= target.getTime()) {
-          target.setDate(target.getDate() + 1);
-        }
-        const msUntilNext = target.getTime() - now.getTime();
-        req.app.locals.backupTimeoutId = setTimeout(() => {
-          try {
-            performBackup(backupPath);
-            performUserBackup(backupPath);
-            console.log(`[backup] Auto-backup completed successfully at ${new Date().toLocaleString()}`);
-          } catch (e) {
-            console.error('[backup] Auto-backup failed:', e);
-          }
-          scheduleNextBackup();
-        }, msUntilNext);
-        console.log(`[backup] Next auto-backup scheduled for ${target.toLocaleString()}`);
-      }
-      scheduleNextBackup();
-    }
-
-    req.flash('success_msg', 'Settings updated locally and queued to override server');
-    // handle .env updates (fields named env_<KEY> in the form)
-    try {
-      const envUpdates = {};
-      Object.keys(req.body || {}).forEach((k) => {
-        if (k && k.indexOf('env_') === 0) {
-          const key = k.slice(4);
-          envUpdates[key] = req.body[k];
-        }
-      });
-      if (Object.keys(envUpdates).length) {
-        writeEnvFile(envUpdates);
-        Object.keys(envUpdates).forEach((kk) => { process.env[kk] = envUpdates[kk]; });
-      }
-    } catch (e) {
-      console.error('Failed to update .env:', e);
-    }
+    const successMessage = isManagerOrAdmin ? 'Settings updated successfully' : 'Clinical workflow settings updated successfully';
+    req.flash('success_msg', successMessage);
 
     if (req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'))) {
-      return res.json({ success: true, message: 'Settings updated successfully and queued for sync' });
+      return res.json({ success: true, message: successMessage });
     }
     return res.redirect('/settings');
   } catch (e) {
+    console.error('Settings update error:', e);
     if (req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'))) {
       return res.status(500).json({ success: false, error: e && e.message ? e.message : 'Failed to update settings' });
     }

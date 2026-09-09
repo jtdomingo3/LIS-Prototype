@@ -1,3 +1,7 @@
+<%
+  const u = (typeof sessionUser !== 'undefined' && sessionUser) ? sessionUser : ((typeof user !== 'undefined' && user) ? user : null);
+  const isMgmt = (typeof isManagerOrAdmin !== 'undefined') ? isManagerOrAdmin : !!(u && (u.role === 'Admin' || u.role === 'Manager' || u.role === 'Owner' || (u.permissions && u.permissions.users)));
+%>
 <div class="page active">
   <div class="card" style="padding: 28px 32px; margin-bottom: 28px;">
     <!-- Header -->
@@ -14,7 +18,7 @@
             <%= (typeof serverConnected !== 'undefined' && serverConnected) ? '✓ Server Synced' : '⚡ Local / Offline' %> (<%= serverUrl %>)
           </span>
           <form method="POST" action="/settings/sync-from-server" style="display:inline; margin:0;">
-            <button type="submit" class="button btn-secondary btn-small" title="Retrieve and apply the exact settings from the central server">
+            <button type="submit" class="button btn-secondary btn-small" title="Retrieve and apply the exact settings from the central server" <%= !isMgmt ? 'disabled' : '' %>>
               🔄 Retrieve Server Settings
             </button>
           </form>
@@ -25,217 +29,47 @@
       </div>
     </div>
 
-    <!-- Clean Tab Navigation Buttons -->
+    <!-- Clean Tab Navigation Buttons (Clinical Workflow is 1st and active) -->
     <div class="settings-nav-tabs" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:24px; border-bottom:2px solid #f1f5f9; padding-bottom:12px;">
-      <button type="button" class="settings-tab-btn active" onclick="switchSettingsTab('tab-sse')">⚡ SSE Real-Time</button>
-      <button type="button" class="settings-tab-btn" onclick="switchSettingsTab('tab-printer')">🖨️ Printer & Hardware</button>
-      <button type="button" class="settings-tab-btn" onclick="switchSettingsTab('tab-ai')">🤖 AI Assistant</button>
-      <button type="button" class="settings-tab-btn" onclick="switchSettingsTab('tab-clinical')">🏥 Clinical Workflow</button>
-      <button type="button" class="settings-tab-btn" onclick="switchSettingsTab('tab-backup')">💾 Data & Backup</button>
-      <button type="button" class="settings-tab-btn" onclick="switchSettingsTab('tab-system')">🌐 System & .env</button>
+      <button type="button" class="settings-tab-btn active" onclick="switchSettingsTab('tab-clinical')">
+        🏥 Clinical Workflow <span style="font-size:0.75em; padding:2px 7px; background:#dcfce7; color:#15803d; border-radius:4px; margin-left:4px; font-weight:700;">All Users</span>
+      </button>
+      <button type="button" class="settings-tab-btn" onclick="switchSettingsTab('tab-sse')">
+        ⚡ SSE Real-Time <% if (!isMgmt) { %><span style="font-size:0.8em; opacity:0.65;" title="Admin / Manager only">🔒</span><% } %>
+      </button>
+      <button type="button" class="settings-tab-btn" onclick="switchSettingsTab('tab-printer')">
+        🖨️ Printer & Hardware <% if (!isMgmt) { %><span style="font-size:0.8em; opacity:0.65;" title="Admin / Manager only">🔒</span><% } %>
+      </button>
+      <button type="button" class="settings-tab-btn" onclick="switchSettingsTab('tab-ai')">
+        🤖 AI Assistant <% if (!isMgmt) { %><span style="font-size:0.8em; opacity:0.65;" title="Admin / Manager only">🔒</span><% } %>
+      </button>
+      <button type="button" class="settings-tab-btn" onclick="switchSettingsTab('tab-backup')">
+        💾 Data & Backup <% if (!isMgmt) { %><span style="font-size:0.8em; opacity:0.65;" title="Admin / Manager only">🔒</span><% } %>
+      </button>
+      <button type="button" class="settings-tab-btn" onclick="switchSettingsTab('tab-system')">
+        🌐 System & .env <% if (!isMgmt) { %><span style="font-size:0.8em; opacity:0.65;" title="Admin / Manager only">🔒</span><% } %>
+      </button>
     </div>
 
     <form method="POST" action="/settings" id="mainSettingsForm">
       
       <!-- ========================================================================= -->
-      <!-- TAB 1: Real-Time SSE Stream & Auto-Refresh Management                     -->
+      <!-- TAB 1: Clinical & Reception Workflow (Editable by ALL Users)              -->
       <!-- ========================================================================= -->
-      <div id="tab-sse" class="settings-tab-pane active">
+      <div id="tab-clinical" class="settings-tab-pane active">
         <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:22px; margin-bottom:24px;">
-          <div style="display:flex; align-items:center; gap:12px; margin-bottom:18px;">
-            <span style="display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; border-radius:10px; background:#e0f2fe; color:#0284c7; font-size:1.4em;">⚡</span>
-            <div>
-              <h4 style="margin:0; font-size:1.15em; color:#0f172a;">Server-Sent Events (SSE) Real-Time Stream Management</h4>
-              <p style="margin:2px 0 0 0; color:#64748b; font-size:0.88em;">Control live updates, page auto-refresh behavior, and connection timings across all LAN clients and workstations.</p>
-            </div>
-          </div>
-
-          <!-- Master Switches -->
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:16px; margin-bottom:20px; background:#ffffff; border:1px solid #e2e8f0; border-radius:10px; padding:16px 18px;">
-            <label style="display:flex; align-items:center; gap:12px; cursor:pointer;">
-              <input type="checkbox" name="sseEnabled" <%= (typeof sseConfig === 'undefined' || sseConfig.enabled !== false) ? 'checked' : '' %> style="width:20px; height:20px; accent-color:var(--secondary-green);" />
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:18px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <span style="display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; border-radius:10px; background:#dcfce7; color:#16a34a; font-size:1.4em;">🏥</span>
               <div>
-                <strong style="display:block; color:#0f172a; font-size:0.95em;">Enable Server-Sent Events (SSE) Globally</strong>
-                <span style="color:#64748b; font-size:0.85em;">Broadcasts live queue, patient arrival, specimen collection, and inventory events.</span>
-              </div>
-            </label>
-
-            <label style="display:flex; align-items:center; gap:12px; cursor:pointer;">
-              <input type="checkbox" name="sseAutoRefreshByDefault" <%= (typeof sseConfig !== 'undefined' && sseConfig && sseConfig.autoRefreshByDefault === true) ? 'checked' : '' %> style="width:20px; height:20px; accent-color:var(--secondary-green);" />
-              <div>
-                <strong style="display:block; color:#0f172a; font-size:0.95em;">Enable Auto-Refresh by Default</strong>
-                <span style="color:#64748b; font-size:0.85em;">When checked, viewing active pages will reload automatically when events occur (disabled by default).</span>
-              </div>
-            </label>
-          </div>
-
-          <!-- Page Selection Grid (ALL 12 Sidebar Navigation Pages) -->
-          <div style="margin-bottom:20px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
-              <div>
-                <h5 style="margin:0; font-size:0.95em; text-transform:uppercase; color:#475569; letter-spacing:0.5px;">
-                  Select Pages with Real-Time SSE Enabled:
-                </h5>
-                <p class="note" style="margin:2px 0 0 0;">Toggle which sidebar pages establish a background SSE connection to stream updates.</p>
-              </div>
-              <div style="display:flex; gap:8px;">
-                <button type="button" class="button btn-secondary btn-small" onclick="toggleAllSsePages(true)">Check All</button>
-                <button type="button" class="button btn-secondary btn-small" onclick="toggleAllSsePages(false)">Uncheck All</button>
+                <h4 style="margin:0; font-size:1.15em; color:#0f172a;">Clinical & Reception Operational Settings</h4>
+                <p style="margin:2px 0 0 0; color:#64748b; font-size:0.88em;">Manage doctor rotation schedules, payment verification requirements, and chemistry analyzer directories.</p>
               </div>
             </div>
-
-            <% 
-              const allowed = (typeof sseConfig !== 'undefined' && Array.isArray(sseConfig.allowedPages)) ? sseConfig.allowedPages : ['/dashboard', '/patients', '/reception', '/tests', '/inventory'];
-              const isPageChecked = (prefix) => allowed.some(p => p === prefix || (p !== '/' && prefix.startsWith(p)));
-              
-              const sidebarPages = [
-                { key: 'dashboard', name: 'Dashboard', path: '/dashboard', icon: '📊', desc: 'Real-time counts & status summary' },
-                { key: 'reception', name: 'Reception', path: '/reception', icon: '🏥', desc: 'Queue & area station assignments' },
-                { key: 'patients', name: 'Patients', path: '/patients', icon: '👥', desc: 'Patient registrations list' },
-                { key: 'tests', name: 'Tests & Results', path: '/tests', icon: '🧪', desc: 'Specimen tracking & worksheets' },
-                { key: 'reports', name: 'Reports', path: '/reports', icon: '📋', desc: 'Diagnostic PDF reports' },
-                { key: 'inventory', name: 'Inventory', path: '/inventory', icon: '📦', desc: 'Stock movements & alerts' },
-                { key: 'signatures', name: 'Signature', path: '/signatures', icon: '✍️', desc: 'Digital signatory uploads' },
-                { key: 'worksheet', name: 'Worksheet', path: '/reports/worksheet', icon: '📊', desc: 'Batch test result worksheets' },
-                { key: 'templates', name: 'Templates', path: '/templates', icon: '📄', desc: 'Report format templates' },
-                { key: 'users', name: 'Users', path: '/users', icon: '👤', desc: 'User accounts & roles' },
-                { key: 'settings', name: 'Settings', path: '/settings', icon: '⚙️', desc: 'System configuration' },
-                { key: 'chatbot', name: 'GezyneBot AI', path: '/chatbot', icon: '🤖', desc: 'Clinical assistant queries' }
-              ];
-            %>
-
-            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:12px;">
-              <% sidebarPages.forEach(function(item) { %>
-                <label class="sse-page-checkbox-card <%= isPageChecked(item.path) ? 'checked' : '' %>">
-                  <input type="checkbox" name="sse_page_<%= item.key %>" class="sse-page-input" <%= isPageChecked(item.path) ? 'checked' : '' %> onchange="this.closest('.sse-page-checkbox-card').classList.toggle('checked', this.checked);" />
-                  <div style="flex:1;">
-                    <div style="display:flex; align-items:center; justify-content:space-between;">
-                      <strong style="color:#0f172a; font-size:0.95em;"><%= item.icon %> <%= item.name %></strong>
-                      <code style="font-size:0.75em; color:#64748b; background:#f1f5f9; padding:2px 6px; border-radius:4px;"><%= item.path %></code>
-                    </div>
-                    <span style="display:block; font-size:0.8em; color:#64748b; margin-top:2px;"><%= item.desc %></span>
-                  </div>
-                </label>
-              <% }); %>
-            </div>
-          </div>
-
-          <!-- Timings & Intervals -->
-          <div>
-            <h5 style="margin:16px 0 10px 0; font-size:0.95em; text-transform:uppercase; color:#475569; letter-spacing:0.5px;">Connection & Timing Settings:</h5>
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:16px;">
-              <div class="field" style="margin:0;">
-                <label>Initial Connect Delay (Seconds)</label>
-                <input type="number" name="sseConnectDelaySec" min="0" max="60" value="<%= (typeof sseConfig !== 'undefined' && sseConfig.connectDelaySec != null) ? sseConfig.connectDelaySec : 3 %>" style="width:100%;" />
-                <p class="note">Time after page load before opening the stream (prevents opening streams during fast navigation clicks).</p>
-              </div>
-              <div class="field" style="margin:0;">
-                <label>Reconnect Retry Interval (Seconds)</label>
-                <input type="number" name="sseRetryDelaySec" min="1" max="120" value="<%= (typeof sseConfig !== 'undefined' && sseConfig.retryDelaySec != null) ? sseConfig.retryDelaySec : 3 %>" style="width:100%;" />
-                <p class="note">Initial delay before retrying connection when network drops or server restarts.</p>
-              </div>
-              <div class="field" style="margin:0;">
-                <label>Page Auto-Refresh Debounce (Milliseconds)</label>
-                <input type="number" name="sseRefreshDebounceMs" min="100" max="10000" step="50" value="<%= (typeof sseConfig !== 'undefined' && sseConfig.refreshDebounceMs != null) ? sseConfig.refreshDebounceMs : 800 %>" style="width:100%;" />
-                <p class="note">Debounce window before reloading the active page when a real-time event is received (800ms recommended).</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ========================================================================= -->
-      <!-- TAB 2: Printer Connection & Test Print                                    -->
-      <!-- ========================================================================= -->
-      <div id="tab-printer" class="settings-tab-pane">
-        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:22px; margin-bottom:24px;">
-          <div style="display:flex; align-items:center; gap:12px; margin-bottom:18px;">
-            <span style="display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; border-radius:10px; background:#fef3c7; color:#d97706; font-size:1.4em;">🖨️</span>
             <div>
-              <h4 style="margin:0; font-size:1.15em; color:#0f172a;">Thermal Printer & Hardware Diagnostics</h4>
-              <p style="margin:2px 0 0 0; color:#64748b; font-size:0.88em;">Configure the direct thermal receipt / barcode printer and test hardware connection on demand.</p>
-            </div>
-          </div>
-
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px; margin-bottom:16px;">
-            <div class="field" style="margin:0;">
-              <label>Thermal Printer Name</label>
-              <input type="text" id="printerNameInput" name="printerName" placeholder="e.g. POS-58, XP-58, or leave blank for system default" value="<%= (typeof printerName !== 'undefined' && printerName) ? printerName : ((settings && settings.printerName) || process.env.PRINTER_NAME || process.env.THERMAL_PRINTER_NAME || '') %>" style="width:100%;" />
-              <p class="note">Windows printer name or network share (syncs with <code>PRINTER_NAME</code> in <code>.env</code>).</p>
-            </div>
-            <div class="field" style="margin:0;">
-              <label>Test Print Format</label>
-              <select id="printerTestType" style="width:100%;">
-                <option value="receipt">🧾 Standard Patient Queue / Receipt Slip</option>
-                <option value="barcode">🏷️ Barcode Specimen Sample Label</option>
-              </select>
-              <p class="note">Select the test payload format to send to the printer.</p>
-            </div>
-          </div>
-
-          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:14px;">
-            <button type="button" class="button btn-primary" id="btnTestPrint" onclick="executeTestPrint()">
-              🖨️ Send Test Print to Printer
-            </button>
-            <span id="testPrintStatusNote" style="color:#64748b; font-size:0.9em;">Click to test hardware communication and paper feed.</span>
-          </div>
-
-          <div id="printerFeedbackBanner" style="display:none; margin-top:16px; padding:12px 16px; border-radius:8px; font-size:0.92em; line-height:1.4;"></div>
-        </div>
-      </div>
-
-      <!-- ========================================================================= -->
-      <!-- TAB 3: AI Assistant (GezyneBot)                                           -->
-      <!-- ========================================================================= -->
-      <div id="tab-ai" class="settings-tab-pane">
-        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:22px; margin-bottom:24px;">
-          <div style="display:flex; align-items:center; gap:12px; margin-bottom:18px;">
-            <span style="display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; border-radius:10px; background:#ede9fe; color:#7c3aed; font-size:1.4em;">🤖</span>
-            <div>
-              <h4 style="margin:0; font-size:1.15em; color:#0f172a;">GezyneBot Clinical AI Assistant</h4>
-              <p style="margin:2px 0 0 0; color:#64748b; font-size:0.88em;">Connect OpenRouter to provide intelligent laboratory diagnostic referencing, phlebotomy orders, and automated assistance.</p>
-            </div>
-          </div>
-
-          <div class="field">
-            <label>OpenRouter API Key</label>
-            <div style="display:flex; gap:8px; align-items:center;">
-              <input type="password" id="openrouterApiKeyInput" name="openrouterApiKey" placeholder="sk-or-v1-..." style="flex:1;" />
-              <button type="button" class="button btn-secondary btn-small" id="btnToggleApiKey" onclick="toggleApiKeyVisibility()">Show</button>
-              <button type="button" class="button btn-secondary btn-small" id="btnTestAi" onclick="testAiConnection()">Test Connection</button>
-            </div>
-            <p class="note" id="apiKeyStatusNote">
-              <% if (typeof hasOpenRouterKey !== 'undefined' && hasOpenRouterKey) { %>
-                <span style="color:#10b981; font-weight:600;">● API Key Configured & Encrypted at Rest (<%= maskedKey %>)</span>. Enter a new key above only if you want to replace it.
-              <% } else { %>
-                <span style="color:#ef4444; font-weight:600;">● No API Key Configured</span>. Enter your OpenRouter key (starts with <code>sk-or-</code>) to enable GezyneBot.
-              <% } %>
-            </p>
-            <div id="aiTestFeedback" style="display:none; margin-top:8px; padding:10px 14px; border-radius:8px; font-size:0.9em;"></div>
-          </div>
-
-          <div class="field" style="margin-bottom:0;">
-            <label>Default AI Model</label>
-            <select name="openrouterModel" id="openrouterModelSelect" style="width:100%;">
-              <% (typeof availableModels !== 'undefined' ? availableModels : []).forEach(function(m) { %>
-                <option value="<%= m.id %>" <%= (typeof currentModel !== 'undefined' && currentModel === m.id) ? 'selected' : '' %>><%= m.name %></option>
-              <% }); %>
-            </select>
-            <p class="note">Select the default model utilized for answering clinical questions and analyzing lab results.</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- ========================================================================= -->
-      <!-- TAB 4: Clinical & Reception Workflow                                      -->
-      <!-- ========================================================================= -->
-      <div id="tab-clinical" class="settings-tab-pane">
-        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:22px; margin-bottom:24px;">
-          <div style="display:flex; align-items:center; gap:12px; margin-bottom:18px;">
-            <span style="display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; border-radius:10px; background:#dcfce7; color:#16a34a; font-size:1.4em;">🏥</span>
-            <div>
-              <h4 style="margin:0; font-size:1.15em; color:#0f172a;">Clinical & Reception Operational Settings</h4>
-              <p style="margin:2px 0 0 0; color:#64748b; font-size:0.88em;">Manage doctor rotation schedules, payment verification requirements, and chemistry analyzer directories.</p>
+              <span class="badge badge-success" style="font-size:0.85em; padding:6px 12px; display:inline-flex; align-items:center; gap:5px;">
+                <span>✓</span> Editable by All Users
+              </span>
             </div>
           </div>
 
@@ -272,10 +106,233 @@
       </div>
 
       <!-- ========================================================================= -->
-      <!-- TAB 5: Data Backup & Recovery                                             -->
+      <!-- TAB 2: Real-Time SSE Stream & Auto-Refresh Management (Admin / Manager)   -->
+      <!-- ========================================================================= -->
+      <div id="tab-sse" class="settings-tab-pane">
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:22px; margin-bottom:24px;">
+          <% if (!isMgmt) { %>
+            <div style="background:#fffbeb; border:1px solid #fde68a; border-left:4px solid #f59e0b; border-radius:8px; padding:12px 16px; margin-bottom:18px; display:flex; align-items:center; gap:10px; color:#92400e; font-size:0.92em;">
+              <span style="font-size:1.2em;">🔒</span>
+              <div>
+                <strong>Admin / Manager Access Required:</strong> Only administrators or managers can modify SSE stream configurations. These options are view-only for your account.
+              </div>
+            </div>
+          <% } %>
+          <div style="display:flex; align-items:center; gap:12px; margin-bottom:18px;">
+            <span style="display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; border-radius:10px; background:#e0f2fe; color:#0284c7; font-size:1.4em;">⚡</span>
+            <div>
+              <h4 style="margin:0; font-size:1.15em; color:#0f172a;">Server-Sent Events (SSE) Real-Time Stream Management</h4>
+              <p style="margin:2px 0 0 0; color:#64748b; font-size:0.88em;">Control live updates, page auto-refresh behavior, and connection timings across all LAN clients and workstations.</p>
+            </div>
+          </div>
+
+          <!-- Master Switches -->
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:16px; margin-bottom:20px; background:#ffffff; border:1px solid #e2e8f0; border-radius:10px; padding:16px 18px;">
+            <label style="display:flex; align-items:center; gap:12px; cursor:<%= isMgmt ? 'pointer' : 'default' %>;">
+              <input type="checkbox" name="sseEnabled" <%= (typeof sseConfig === 'undefined' || sseConfig.enabled !== false) ? 'checked' : '' %> <%= !isMgmt ? 'disabled' : '' %> style="width:20px; height:20px; accent-color:var(--secondary-green);" />
+              <div>
+                <strong style="display:block; color:#0f172a; font-size:0.95em;">Enable Server-Sent Events (SSE) Globally</strong>
+                <span style="color:#64748b; font-size:0.85em;">Broadcasts live queue, patient arrival, specimen collection, and inventory events.</span>
+              </div>
+            </label>
+
+            <label style="display:flex; align-items:center; gap:12px; cursor:<%= isMgmt ? 'pointer' : 'default' %>;">
+              <input type="checkbox" name="sseAutoRefreshByDefault" <%= (typeof sseConfig !== 'undefined' && sseConfig && sseConfig.autoRefreshByDefault === true) ? 'checked' : '' %> <%= !isMgmt ? 'disabled' : '' %> style="width:20px; height:20px; accent-color:var(--secondary-green);" />
+              <div>
+                <strong style="display:block; color:#0f172a; font-size:0.95em;">Enable Auto-Refresh by Default</strong>
+                <span style="color:#64748b; font-size:0.85em;">When checked, viewing active pages will reload automatically when events occur (disabled by default).</span>
+              </div>
+            </label>
+          </div>
+
+          <!-- Page Selection Grid (ALL 12 Sidebar Navigation Pages) -->
+          <div style="margin-bottom:20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+              <div>
+                <h5 style="margin:0; font-size:0.95em; text-transform:uppercase; color:#475569; letter-spacing:0.5px;">
+                  Select Pages with Real-Time SSE Enabled:
+                </h5>
+                <p class="note" style="margin:2px 0 0 0;">Toggle which sidebar pages establish a background SSE connection to stream updates.</p>
+              </div>
+              <% if (isMgmt) { %>
+              <div style="display:flex; gap:8px;">
+                <button type="button" class="button btn-secondary btn-small" onclick="toggleAllSsePages(true)">Check All</button>
+                <button type="button" class="button btn-secondary btn-small" onclick="toggleAllSsePages(false)">Uncheck All</button>
+              </div>
+              <% } %>
+            </div>
+
+            <% 
+              const allowed = (typeof sseConfig !== 'undefined' && Array.isArray(sseConfig.allowedPages)) ? sseConfig.allowedPages : ['/dashboard', '/patients', '/reception', '/tests', '/inventory'];
+              const isPageChecked = (prefix) => allowed.some(p => p === prefix || (p !== '/' && prefix.startsWith(p)));
+              
+              const sidebarPages = [
+                { key: 'dashboard', name: 'Dashboard', path: '/dashboard', icon: '📊', desc: 'Real-time counts & status summary' },
+                { key: 'reception', name: 'Reception', path: '/reception', icon: '🏥', desc: 'Queue & area station assignments' },
+                { key: 'patients', name: 'Patients', path: '/patients', icon: '👥', desc: 'Patient registrations list' },
+                { key: 'tests', name: 'Tests & Results', path: '/tests', icon: '🧪', desc: 'Specimen tracking & worksheets' },
+                { key: 'reports', name: 'Reports', path: '/reports', icon: '📋', desc: 'Diagnostic PDF reports' },
+                { key: 'inventory', name: 'Inventory', path: '/inventory', icon: '📦', desc: 'Stock movements & alerts' },
+                { key: 'signatures', name: 'Signature', path: '/signatures', icon: '✍️', desc: 'Digital signatory uploads' },
+                { key: 'worksheet', name: 'Worksheet', path: '/reports/worksheet', icon: '📊', desc: 'Batch test result worksheets' },
+                { key: 'templates', name: 'Templates', path: '/templates', icon: '📄', desc: 'Report format templates' },
+                { key: 'users', name: 'Users', path: '/users', icon: '👤', desc: 'User accounts & roles' },
+                { key: 'settings', name: 'Settings', path: '/settings', icon: '⚙️', desc: 'System configuration' },
+                { key: 'chatbot', name: 'GezyneBot AI', path: '/chatbot', icon: '🤖', desc: 'Clinical assistant queries' }
+              ];
+            %>
+
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:12px;">
+              <% sidebarPages.forEach(function(item) { %>
+                <label class="sse-page-checkbox-card <%= isPageChecked(item.path) ? 'checked' : '' %>" style="<%= !isMgmt ? 'cursor:default; opacity:0.85;' : '' %>">
+                  <input type="checkbox" name="sse_page_<%= item.key %>" class="sse-page-input" <%= isPageChecked(item.path) ? 'checked' : '' %> <%= !isMgmt ? 'disabled' : '' %> onchange="this.closest('.sse-page-checkbox-card').classList.toggle('checked', this.checked);" />
+                  <div style="flex:1;">
+                    <div style="display:flex; align-items:center; justify-content:space-between;">
+                      <strong style="color:#0f172a; font-size:0.95em;"><%= item.icon %> <%= item.name %></strong>
+                      <code style="font-size:0.75em; color:#64748b; background:#f1f5f9; padding:2px 6px; border-radius:4px;"><%= item.path %></code>
+                    </div>
+                    <span style="display:block; font-size:0.8em; color:#64748b; margin-top:2px;"><%= item.desc %></span>
+                  </div>
+                </label>
+              <% }); %>
+            </div>
+          </div>
+
+          <!-- Timings & Intervals -->
+          <div>
+            <h5 style="margin:16px 0 10px 0; font-size:0.95em; text-transform:uppercase; color:#475569; letter-spacing:0.5px;">Connection & Timing Settings:</h5>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:16px;">
+              <div class="field" style="margin:0;">
+                <label>Initial Connect Delay (Seconds)</label>
+                <input type="number" name="sseConnectDelaySec" min="0" max="60" value="<%= (typeof sseConfig !== 'undefined' && sseConfig.connectDelaySec != null) ? sseConfig.connectDelaySec : 3 %>" <%= !isMgmt ? 'disabled' : '' %> style="width:100%;" />
+                <p class="note">Time after page load before opening the stream (prevents opening streams during fast navigation clicks).</p>
+              </div>
+              <div class="field" style="margin:0;">
+                <label>Reconnect Retry Interval (Seconds)</label>
+                <input type="number" name="sseRetryDelaySec" min="1" max="120" value="<%= (typeof sseConfig !== 'undefined' && sseConfig.retryDelaySec != null) ? sseConfig.retryDelaySec : 3 %>" <%= !isMgmt ? 'disabled' : '' %> style="width:100%;" />
+                <p class="note">Initial delay before retrying connection when network drops or server restarts.</p>
+              </div>
+              <div class="field" style="margin:0;">
+                <label>Page Auto-Refresh Debounce (Milliseconds)</label>
+                <input type="number" name="sseRefreshDebounceMs" min="100" max="10000" step="50" value="<%= (typeof sseConfig !== 'undefined' && sseConfig.refreshDebounceMs != null) ? sseConfig.refreshDebounceMs : 800 %>" <%= !isMgmt ? 'disabled' : '' %> style="width:100%;" />
+                <p class="note">Debounce window before reloading the active page when a real-time event is received (800ms recommended).</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================================================= -->
+      <!-- TAB 3: Printer Connection & Test Print                                    -->
+      <!-- ========================================================================= -->
+      <div id="tab-printer" class="settings-tab-pane">
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:22px; margin-bottom:24px;">
+          <% if (!isMgmt) { %>
+            <div style="background:#fffbeb; border:1px solid #fde68a; border-left:4px solid #f59e0b; border-radius:8px; padding:12px 16px; margin-bottom:18px; display:flex; align-items:center; gap:10px; color:#92400e; font-size:0.92em;">
+              <span style="font-size:1.2em;">🔒</span>
+              <div>
+                <strong>Admin / Manager Access Required:</strong> Only administrators or managers can modify thermal printer hardware names.
+              </div>
+            </div>
+          <% } %>
+          <div style="display:flex; align-items:center; gap:12px; margin-bottom:18px;">
+            <span style="display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; border-radius:10px; background:#fef3c7; color:#d97706; font-size:1.4em;">🖨️</span>
+            <div>
+              <h4 style="margin:0; font-size:1.15em; color:#0f172a;">Thermal Printer & Hardware Diagnostics</h4>
+              <p style="margin:2px 0 0 0; color:#64748b; font-size:0.88em;">Configure the direct thermal receipt / barcode printer and test hardware connection on demand.</p>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px; margin-bottom:16px;">
+            <div class="field" style="margin:0;">
+              <label>Thermal Printer Name</label>
+              <input type="text" id="printerNameInput" name="printerName" placeholder="e.g. POS-58, XP-58, or leave blank for system default" value="<%= (typeof printerName !== 'undefined' && printerName) ? printerName : ((settings && settings.printerName) || process.env.PRINTER_NAME || process.env.THERMAL_PRINTER_NAME || '') %>" <%= !isMgmt ? 'disabled' : '' %> style="width:100%;" />
+              <p class="note">Windows printer name or network share (syncs with <code>PRINTER_NAME</code> in <code>.env</code>).</p>
+            </div>
+            <div class="field" style="margin:0;">
+              <label>Test Print Format</label>
+              <select id="printerTestType" style="width:100%;">
+                <option value="receipt">🧾 Standard Patient Queue / Receipt Slip</option>
+                <option value="barcode">🏷️ Barcode Specimen Sample Label</option>
+              </select>
+              <p class="note">Select the test payload format to send to the printer.</p>
+            </div>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:14px;">
+            <button type="button" class="button btn-primary" id="btnTestPrint" onclick="executeTestPrint()">
+              🖨️ Send Test Print to Printer
+            </button>
+            <span id="testPrintStatusNote" style="color:#64748b; font-size:0.9em;">Click to test hardware communication and paper feed.</span>
+          </div>
+
+          <div id="printerFeedbackBanner" style="display:none; margin-top:16px; padding:12px 16px; border-radius:8px; font-size:0.92em; line-height:1.4;"></div>
+        </div>
+      </div>
+
+      <!-- ========================================================================= -->
+      <!-- TAB 4: AI Assistant (GezyneBot) (Admin / Manager)                         -->
+      <!-- ========================================================================= -->
+      <div id="tab-ai" class="settings-tab-pane">
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:22px; margin-bottom:24px;">
+          <% if (!isMgmt) { %>
+            <div style="background:#fffbeb; border:1px solid #fde68a; border-left:4px solid #f59e0b; border-radius:8px; padding:12px 16px; margin-bottom:18px; display:flex; align-items:center; gap:10px; color:#92400e; font-size:0.92em;">
+              <span style="font-size:1.2em;">🔒</span>
+              <div>
+                <strong>Admin / Manager Access Required:</strong> Only administrators or managers can update AI API keys or change the default model.
+              </div>
+            </div>
+          <% } %>
+          <div style="display:flex; align-items:center; gap:12px; margin-bottom:18px;">
+            <span style="display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; border-radius:10px; background:#ede9fe; color:#7c3aed; font-size:1.4em;">🤖</span>
+            <div>
+              <h4 style="margin:0; font-size:1.15em; color:#0f172a;">GezyneBot Clinical AI Assistant</h4>
+              <p style="margin:2px 0 0 0; color:#64748b; font-size:0.88em;">Connect OpenRouter to provide intelligent laboratory diagnostic referencing, phlebotomy orders, and automated assistance.</p>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>OpenRouter API Key</label>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <input type="password" id="openrouterApiKeyInput" name="openrouterApiKey" placeholder="sk-or-v1-..." <%= !isMgmt ? 'disabled' : '' %> style="flex:1;" />
+              <button type="button" class="button btn-secondary btn-small" id="btnToggleApiKey" onclick="toggleApiKeyVisibility()">Show</button>
+              <button type="button" class="button btn-secondary btn-small" id="btnTestAi" onclick="testAiConnection()" <%= !isMgmt ? 'disabled' : '' %>>Test Connection</button>
+            </div>
+            <p class="note" id="apiKeyStatusNote">
+              <% if (typeof hasOpenRouterKey !== 'undefined' && hasOpenRouterKey) { %>
+                <span style="color:#10b981; font-weight:600;">● API Key Configured & Encrypted at Rest (<%= maskedKey %>)</span>. Enter a new key above only if you want to replace it.
+              <% } else { %>
+                <span style="color:#ef4444; font-weight:600;">● No API Key Configured</span>. Enter your OpenRouter key (starts with <code>sk-or-</code>) to enable GezyneBot.
+              <% } %>
+            </p>
+            <div id="aiTestFeedback" style="display:none; margin-top:8px; padding:10px 14px; border-radius:8px; font-size:0.9em;"></div>
+          </div>
+
+          <div class="field" style="margin-bottom:0;">
+            <label>Default AI Model</label>
+            <select name="openrouterModel" id="openrouterModelSelect" style="width:100%;" <%= !isMgmt ? 'disabled' : '' %>>
+              <% (typeof availableModels !== 'undefined' ? availableModels : []).forEach(function(m) { %>
+                <option value="<%= m.id %>" <%= (typeof currentModel !== 'undefined' && currentModel === m.id) ? 'selected' : '' %>><%= m.name %></option>
+              <% }); %>
+            </select>
+            <p class="note">Select the default model utilized for answering clinical questions and analyzing lab results.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========================================================================= -->
+      <!-- TAB 5: Data Backup & Recovery (Admin / Manager)                           -->
       <!-- ========================================================================= -->
       <div id="tab-backup" class="settings-tab-pane">
         <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:22px; margin-bottom:24px;">
+          <% if (!isMgmt) { %>
+            <div style="background:#fffbeb; border:1px solid #fde68a; border-left:4px solid #f59e0b; border-radius:8px; padding:12px 16px; margin-bottom:18px; display:flex; align-items:center; gap:10px; color:#92400e; font-size:0.92em;">
+              <span style="font-size:1.2em;">🔒</span>
+              <div>
+                <strong>Admin / Manager Access Required:</strong> Automated backup retention policies and manual restore tools are restricted to administrators.
+              </div>
+            </div>
+          <% } %>
           <div style="display:flex; align-items:center; gap:12px; margin-bottom:18px;">
             <span style="display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; border-radius:10px; background:#fce7f3; color:#db2777; font-size:1.4em;">💾</span>
             <div>
@@ -285,14 +342,14 @@
           </div>
 
           <div class="field" style="display:flex; align-items:center; gap:12px; background:#fff; border:1px solid #cbd5e1; border-radius:10px; padding:14px; margin-bottom:16px;">
-            <input type="checkbox" name="autoBackup" id="autoBackupCheckbox" <%= (backupConfig && backupConfig.enabled) ? 'checked' : '' %> style="width:20px; height:20px; accent-color:var(--secondary-green);" />
-            <label for="autoBackupCheckbox" style="margin:0; font-weight:600; cursor:pointer;">Enable Automated Scheduled Backups (3:00 PM Daily Snapshot)</label>
+            <input type="checkbox" name="autoBackup" id="autoBackupCheckbox" <%= (backupConfig && backupConfig.enabled) ? 'checked' : '' %> <%= !isMgmt ? 'disabled' : '' %> style="width:20px; height:20px; accent-color:var(--secondary-green);" />
+            <label for="autoBackupCheckbox" style="margin:0; font-weight:600; cursor:<%= isMgmt ? 'pointer' : 'default' %>;">Enable Automated Scheduled Backups (3:00 PM Daily Snapshot)</label>
           </div>
 
           <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px;">
             <div class="field" style="margin:0;">
               <label>Backup Frequency</label>
-              <select name="backupFrequency" style="width:100%;">
+              <select name="backupFrequency" style="width:100%;" <%= !isMgmt ? 'disabled' : '' %>>
                 <option value="daily" <%= (backupConfig && backupConfig.frequency === 'daily') ? 'selected' : '' %>>Daily</option>
                 <option value="weekly" <%= (backupConfig && backupConfig.frequency === 'weekly') ? 'selected' : '' %>>Weekly</option>
                 <option value="monthly" <%= (backupConfig && backupConfig.frequency === 'monthly') ? 'selected' : '' %>>Monthly</option>
@@ -300,7 +357,7 @@
             </div>
             <div class="field" style="margin:0;">
               <label>Backup Destination Folder</label>
-              <input type="text" name="backupPath" placeholder="e.g. C:\\Users\\You\\Documents\\LIS\\backup" value="<%= (backupConfig && backupConfig.path) || '' %>" style="width:100%;" />
+              <input type="text" name="backupPath" placeholder="e.g. C:\\Users\\You\\Documents\\LIS\\backup" value="<%= (backupConfig && backupConfig.path) || '' %>" <%= !isMgmt ? 'disabled' : '' %> style="width:100%;" />
               <p class="note">Default: My Documents\LIS\backup</p>
             </div>
           </div>
@@ -310,10 +367,10 @@
           <h4 style="margin:0 0 14px 0; font-size:1.1em; color:#0f172a;">Manual Snapshot & Restore Tools</h4>
           
           <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
-            <button type="submit" formaction="/settings/backup" class="button btn-primary">
+            <button type="submit" formaction="/settings/backup" class="button btn-primary" <%= !isMgmt ? 'disabled' : '' %>>
               💾 Create Clinical Backup Now
             </button>
-            <button type="submit" formaction="/settings/backup-users" class="button btn-secondary">
+            <button type="submit" formaction="/settings/backup-users" class="button btn-secondary" <%= !isMgmt ? 'disabled' : '' %>>
               👤 Backup User Accounts
             </button>
           </div>
@@ -322,16 +379,16 @@
             <div>
               <strong style="display:block; margin-bottom:6px; font-size:0.9em; color:#334155;">Restore Clinical Database from JSON:</strong>
               <div style="display:flex; gap:8px;">
-                <input type="file" id="restoreClinicalFileInput" name="backupFile" form="restoreClinicalForm" accept=".json" style="flex:1;" />
-                <button type="button" id="btnRestoreClinical" class="button btn-danger btn-small" onclick="handleRestoreClinical()">Restore</button>
+                <input type="file" id="restoreClinicalFileInput" name="backupFile" form="restoreClinicalForm" accept=".json" style="flex:1;" <%= !isMgmt ? 'disabled' : '' %> />
+                <button type="button" id="btnRestoreClinical" class="button btn-danger btn-small" onclick="handleRestoreClinical()" <%= !isMgmt ? 'disabled' : '' %>>Restore</button>
               </div>
               <p class="note" style="margin:4px 0 0 0;">Restores patients, tests, counters, templates, and clinical settings.</p>
             </div>
             <div>
               <strong style="display:block; margin-bottom:6px; font-size:0.9em; color:#334155;">Restore User Credentials from JSON:</strong>
               <div style="display:flex; gap:8px;">
-                <input type="file" id="restoreUsersFileInput" name="backupFileUsers" form="restoreUsersForm" accept=".json" style="flex:1;" />
-                <button type="button" id="btnRestoreUsers" class="button btn-danger btn-small" onclick="handleRestoreUsers()">Restore</button>
+                <input type="file" id="restoreUsersFileInput" name="backupFileUsers" form="restoreUsersForm" accept=".json" style="flex:1;" <%= !isMgmt ? 'disabled' : '' %> />
+                <button type="button" id="btnRestoreUsers" class="button btn-danger btn-small" onclick="handleRestoreUsers()" <%= !isMgmt ? 'disabled' : '' %>>Restore</button>
               </div>
               <p class="note" style="margin:4px 0 0 0;">Restores staff accounts and system access roles.</p>
             </div>
@@ -340,10 +397,18 @@
       </div>
 
       <!-- ========================================================================= -->
-      <!-- TAB 6: System & Environment (.env)                                        -->
+      <!-- TAB 6: System & Environment (.env) (Admin / Manager)                      -->
       <!-- ========================================================================= -->
       <div id="tab-system" class="settings-tab-pane">
         <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:22px; margin-bottom:24px;">
+          <% if (!isMgmt) { %>
+            <div style="background:#fffbeb; border:1px solid #fde68a; border-left:4px solid #f59e0b; border-radius:8px; padding:12px 16px; margin-bottom:18px; display:flex; align-items:center; gap:10px; color:#92400e; font-size:0.92em;">
+              <span style="font-size:1.2em;">🔒</span>
+              <div>
+                <strong>Admin / Manager Access Required:</strong> Editing persistent environment variables (.env) and purging log files requires administrator permissions.
+              </div>
+            </div>
+          <% } %>
           <div style="display:flex; align-items:center; gap:12px; margin-bottom:18px;">
             <span style="display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; border-radius:10px; background:#e2e8f0; color:#475569; font-size:1.4em;">🌐</span>
             <div>
@@ -365,7 +430,7 @@
                 <% if (e.type === 'kv' && !['OPENROUTER_ENCRYPTED_KEY', 'OPENROUTER_API_KEY', 'OPENROUTER_DEFAULT_MODEL', 'PRINTER_NAME', 'THERMAL_PRINTER_NAME', 'DOCTOR_1_NAME', 'DOCTOR_2_NAME'].includes(e.key)) { %>
                   <div class="field" style="margin:0;">
                     <label style="font-family:monospace; font-size:0.88em;"><%= e.key %></label>
-                    <input type="text" name="env_<%= e.key %>" value="<%= e.value %>" style="width:100%; font-family:monospace;" />
+                    <input type="text" name="env_<%= e.key %>" value="<%= e.value %>" <%= !isMgmt ? 'disabled' : '' %> style="width:100%; font-family:monospace;" />
                   </div>
                 <% } %>
               <% }); %>
@@ -376,7 +441,7 @@
 
           <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; padding-top:16px; border-top:1px solid #e2e8f0;">
             <a href="/settings/export-logs" class="button btn-secondary btn-small">📥 Download Application Logs</a>
-            <button type="button" class="button btn-secondary btn-small" onclick="handleClearLogs()">🧹 Clear Logs</button>
+            <button type="button" class="button btn-secondary btn-small" onclick="handleClearLogs()" <%= !isMgmt ? 'disabled' : '' %>>🧹 Clear Logs</button>
           </div>
         </div>
       </div>
@@ -384,16 +449,17 @@
       <!-- Action Bar -->
       <div style="display:flex; justify-content:space-between; align-items:center; padding-top:20px; border-top:1px solid #e2e8f0; margin-top:20px; flex-wrap:wrap; gap:12px;">
         <span style="color:#64748b; font-size:0.9em; display:flex; align-items:center; gap:6px;">
-          <span>💡</span> <span>Changes will take effect immediately across server and connected clients.</span>
+          <span>💡</span> <span><%= isMgmt ? 'Changes will take effect immediately across server and connected clients.' : 'Clinical workflow changes will take effect immediately across server and connected clients.' %></span>
         </span>
         <div style="display:flex; align-items:center; gap:12px;">
           <a href="/dashboard" class="button btn-secondary" style="padding:10px 20px;">Cancel</a>
           <button type="submit" class="button btn-primary" style="padding:10px 28px; font-size:1em; font-weight:700;">
-            💾 Save & Apply All Settings
+            <%- isMgmt ? '💾 Save & Apply All Settings' : '💾 Save Clinical Workflow Settings' %>
           </button>
         </div>
       </div>
     </form>
+
     <!-- Dedicated Isolated Forms for Clinical & User JSON Restore (with multipart/form-data) -->
     <form id="restoreClinicalForm" method="POST" action="/settings/restore" enctype="multipart/form-data" style="display:none;"></form>
     <form id="restoreUsersForm" method="POST" action="/settings/restore-users" enctype="multipart/form-data" style="display:none;"></form>
