@@ -301,6 +301,20 @@
                   <% } else { %>
                     <!-- Non-Payment Areas Actions -->
                     <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-end; min-width: 120px;">
+                      <% if (isDoctor) { 
+                           let doctorTestId = '';
+                           if (Array.isArray(row.tests) && row.tests.length) {
+                             const dt = row.tests.find(t => String(t.testType || '').toLowerCase().includes('doctor') || (Array.isArray(t.requestedTests) && t.requestedTests.some(rr => String((rr && (rr.label || rr.key)) || '').toLowerCase().includes('doctor'))));
+                             if (dt) doctorTestId = dt.id || dt.testId;
+                           }
+                           if (!doctorTestId && row.testIds && row.testIds.length) {
+                             doctorTestId = row.testIds[0];
+                           }
+                      %>
+                        <a href="/consultations/<%= doctorTestId %>?area=<%= encodeURIComponent(areaName) %>" class="button" style="width: 100%; height: 36px; border-radius: 8px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: #0d9488; color: #ffffff; text-decoration: none; border: 1px solid #0f766e; box-shadow: 0 1px 3px rgba(13,148,136,0.3); font-size: 0.88em;" title="Open Clinical Consultation Panel">
+                          <i class="fa fa-user-md"></i> Start Consultation
+                        </a>
+                      <% } %>
                       <form action="/reception/complete" method="POST" class="complete-form" style="margin: 0; width: 100%;">
                         <input type="hidden" name="patientId" value="<%= row.patient ? row.patient.id : '' %>">
                         <input type="hidden" name="testIds" value="<%= (row.testIds || []).join(',') %>">
