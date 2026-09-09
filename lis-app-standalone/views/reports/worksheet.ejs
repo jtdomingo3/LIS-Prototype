@@ -171,6 +171,374 @@
   </script>
 </div>
 
+<!-- Doctor Consultations & Medical Records Export Card -->
+<div class="card" style="padding:24px 28px; border-radius:16px; box-shadow:0 4px 18px rgba(0,0,0,0.03); margin-bottom:24px; border: 1px solid #ccfbf1; background: #ffffff;">
+  <!-- Header -->
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-bottom:1px solid #f1f5f9; padding-bottom:16px; margin-bottom:20px;">
+    <div>
+      <h3 style="margin:0; font-size:1.4em; display:flex; align-items:center; gap:10px; color:#0f172a;">
+        <span style="font-size:1.1em;">🩺</span> Doctor Consultations & Medical Records Export
+      </h3>
+      <p style="margin:4px 0 0 0; color:#64748b; font-size:0.9em;">Export outpatient clinical consultation records, SOAP notes, vital signs, diagnoses, and doctor visit logs into Excel (.xlsx) or CSV format.</p>
+    </div>
+  </div>
+
+  <!-- Consultation Form -->
+  <form id="consultForm" action="/reports/consultations-export/download" method="POST">
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-bottom:16px;">
+      <div class="field" style="margin:0;">
+        <label>Attending Doctor</label>
+        <select name="doctor" style="width:100%; height:40px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; padding:0 10px;">
+          <option value="">-- All Doctors --</option>
+          <% if (typeof doctors !== 'undefined' && doctors && doctors.length) { doctors.forEach(function(doc){ %>
+            <option value="<%= doc %>"><%= doc %></option>
+          <% }) } %>
+        </select>
+      </div>
+
+      <div class="field" style="margin:0;">
+        <label>Visit Date Range (From - To)</label>
+        <div style="display:flex; gap:8px;">
+          <input type="date" name="dateFrom" style="flex:1; height:40px; border-radius:8px; border:1px solid #cbd5e1; padding:0 8px;" />
+          <input type="date" name="dateTo" style="flex:1; height:40px; border-radius:8px; border:1px solid #cbd5e1; padding:0 8px;" />
+        </div>
+      </div>
+
+      <div class="field" style="margin:0;">
+        <label>File Export Format</label>
+        <select name="format" style="width:100%; height:40px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; padding:0 10px;">
+          <option value="xlsx">Excel Spreadsheet (.xlsx)</option>
+          <option value="csv">Comma-Separated Values (.csv)</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:20px;">
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.9em; font-weight:600; color:#0f766e;">
+        <input type="checkbox" name="excludeEmpty" value="1" checked style="width:18px; height:18px; accent-color:#0d9488;" />
+        Exclude Empty Visits (Skip queue-only visits with no documented clinical notes or vitals)
+      </label>
+    </div>
+
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <button type="submit" class="button btn-primary" style="padding:10px 22px; font-weight:600; background:#0d9488; border-color:#0f766e;">
+        📥 Download Medical Records
+      </button>
+      <button type="button" id="consultPreviewBtn" class="button btn-secondary" style="padding:10px 20px;">
+        👁️ Preview Consultations
+      </button>
+    </div>
+  </form>
+
+  <!-- Consultation Preview Area -->
+  <div id="consultPreviewArea" style="width:100%; margin-top:20px; display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+      <h4 style="margin:0; font-size:1em; color:#0f172a;">Consultations Preview: <span id="consultPreviewCount" style="color:#0d9488; font-weight:700;">0</span> records found</h4>
+      <span style="background:#ccfbf1; color:#0f766e; padding:4px 10px; border-radius:6px; font-size:0.82em; font-weight:700; border:1px solid #99f6e4;">
+        ⚡ 75 ML Parameters in Full Export (Complete SOAP + Demographics + Joins)
+      </span>
+    </div>
+    <div style="overflow:auto; max-height:480px; border:1px solid #cbd5e1; border-radius:10px; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.02);">
+      <table id="consultPreviewTable" style="border-collapse:collapse; width:100%; font-size:0.86em; min-width:1100px;">
+        <thead>
+          <tr id="consultPreviewHead" style="background:#0f766e; color:#fff; position:sticky; top:0; z-index:2;">
+            <th style="padding:10px 12px; text-align:left; white-space:nowrap;">Date & Time</th>
+            <th style="padding:10px 12px; text-align:left; white-space:nowrap;">Patient ID</th>
+            <th style="padding:10px 12px; text-align:left; white-space:nowrap;">Patient Name</th>
+            <th style="padding:10px 12px; text-align:left; white-space:nowrap;">Age / Sex</th>
+            <th style="padding:10px 12px; text-align:left; white-space:nowrap;">Doctor</th>
+            <th style="padding:10px 12px; text-align:left; min-width:200px;">[S] Subjective History</th>
+            <th style="padding:10px 12px; text-align:left; min-width:180px;">[O] Vitals & Exam</th>
+            <th style="padding:10px 12px; text-align:left; min-width:170px;">[A] Diagnosis & Impression</th>
+            <th style="padding:10px 12px; text-align:left; min-width:200px;">[P] Plan, Rx & Orders</th>
+            <th style="padding:10px 12px; text-align:center; white-space:nowrap;">Action</th>
+          </tr>
+        </thead>
+        <tbody id="consultPreviewBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Full SOAP Record Modal -->
+  <div id="soapRecordModal" style="display:none; position:fixed; inset:0; width:100vw; height:100vh; background:rgba(15, 23, 42, 0.65); backdrop-filter:blur(4px); z-index:99999; align-items:center; justify-content:center; padding:16px; box-sizing:border-box;">
+    <div style="background:#ffffff; width:100%; max-width:880px; max-height:90vh; border-radius:16px; box-shadow:0 25px 50px -12px rgba(15, 23, 42, 0.35); border:1px solid #cbd5e1; display:flex; flex-direction:column; overflow:hidden;">
+      <!-- Modal Header -->
+      <div style="padding:16px 22px; background:#0f766e; color:#ffffff; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #0d9488;">
+        <div>
+          <h3 id="soapModalTitle" style="margin:0; font-size:1.15em; font-weight:700; display:flex; align-items:center; gap:8px;">
+            <span>🩺</span> Full Clinical Consultation & SOAP Record
+          </h3>
+          <span id="soapModalSubtitle" style="font-size:0.82em; color:#ccfbf1;"></span>
+        </div>
+        <button type="button" id="soapModalCloseBtn" style="background:transparent; border:none; color:#ffffff; font-size:1.4em; cursor:pointer; line-height:1;">&times;</button>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div id="soapModalBody" style="padding:20px 24px; overflow-y:auto; font-size:0.88em; display:flex; flex-direction:column; gap:16px; line-height:1.5;">
+        <!-- Populated via JS -->
+      </div>
+
+      <!-- Modal Footer -->
+      <div style="padding:12px 20px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:flex-end;">
+        <button type="button" id="soapModalCloseBtn2" class="button btn-secondary" style="padding:8px 18px; border-radius:8px;">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const cForm = document.getElementById('consultForm');
+      const cPreviewBtn = document.getElementById('consultPreviewBtn');
+      const cPreviewArea = document.getElementById('consultPreviewArea');
+      const cPreviewCount = document.getElementById('consultPreviewCount');
+      const cPreviewBody = document.getElementById('consultPreviewBody');
+
+      const soapModal = document.getElementById('soapRecordModal');
+      const soapModalCloseBtn = document.getElementById('soapModalCloseBtn');
+      const soapModalCloseBtn2 = document.getElementById('soapModalCloseBtn2');
+      const soapModalTitle = document.getElementById('soapModalTitle');
+      const soapModalSubtitle = document.getElementById('soapModalSubtitle');
+      const soapModalBody = document.getElementById('soapModalBody');
+
+      let currentRows = [];
+
+      function closeSoapModal() {
+        if (soapModal) soapModal.style.display = 'none';
+      }
+      if (soapModalCloseBtn) soapModalCloseBtn.addEventListener('click', closeSoapModal);
+      if (soapModalCloseBtn2) soapModalCloseBtn2.addEventListener('click', closeSoapModal);
+      if (soapModal) {
+        soapModal.addEventListener('click', function(e){
+          if (e.target === soapModal) closeSoapModal();
+        });
+      }
+
+      function openSoapModal(idx) {
+        const r = currentRows[idx];
+        if (!r || !soapModalBody) return;
+
+        soapModalTitle.innerHTML = `<span>🩺</span> Clinical Record: ${r.patientName || 'Patient'} (${r.patientId || 'N/A'})`;
+        soapModalSubtitle.textContent = `Encounter Date: ${r.visitDate} ${r.visitTime || ''} • Attending: ${r.doctorName || 'N/A'} (PRC: ${r.doctorLicenseNumber || '—'})`;
+
+        soapModalBody.innerHTML = `
+          <!-- Demographics & Doctor Bar -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:10px;">
+            <div><strong>Patient ID:</strong> <code>${r.patientId}</code></div>
+            <div><strong>Short Code:</strong> <code>${r.patientCode}</code></div>
+            <div><strong>Age / Sex:</strong> ${r.ageSex}</div>
+            <div><strong>Contact:</strong> ${r.contactNo || '—'}</div>
+            <div><strong>Doctor:</strong> ${r.doctorName}</div>
+            <div><strong>PRC License:</strong> ${r.doctorLicenseNumber || '—'}</div>
+            <div><strong>Encounter Type:</strong> ${r.visitType} (${r.status})</div>
+            <div><strong>Completed At:</strong> ${r.completedAt ? new Date(r.completedAt).toLocaleString() : '—'}</div>
+          </div>
+
+          <!-- [S] SUBJECTIVE -->
+          <div style="background:#ffffff; border:1px solid #ccfbf1; border-radius:10px; padding:14px 16px; border-left:4px solid #0d9488;">
+            <h4 style="margin:0 0 8px 0; color:#0f766e; display:flex; align-items:center; gap:6px;">
+              <span style="background:#0d9488; color:#fff; width:20px; height:20px; border-radius:4px; display:inline-flex; align-items:center; justify-content:center; font-size:0.85em;">S</span>
+              Subjective History
+            </h4>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              <div><strong>Chief Complaint:</strong> <span style="color:#0f172a; font-weight:600;">${r.chiefComplaint}</span></div>
+              <div><strong>History of Present Illness (HPI):</strong> ${r.historyOfPresentIllness}</div>
+              <div><strong>Past Medical History (PMH):</strong> ${r.pastMedicalHistory}</div>
+              <div><strong>Current Medications:</strong> ${r.currentMedications}</div>
+              <div><strong>Allergies:</strong> <span style="color:#dc2626; font-weight:600;">${r.allergies}</span></div>
+              <div><strong>Review of Systems (ROS):</strong> ${r.reviewOfSystems}</div>
+              <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; padding:8px 10px; margin-top:4px;">
+                <strong style="color:#475569;">DOH PhilPEN Lifestyle & Familial Risks:</strong>
+                <div>• Smoking: ${r.smokingStatus}${r.smokingPackYears ? ` (${r.smokingPackYears} pack-years, ${r.smokingSticksPerDay || ''} sticks/day)` : ''}</div>
+                <div>• Alcohol: ${r.alcoholStatus}${r.alcoholFrequency ? ` (${r.alcoholFrequency})` : ''}</div>
+                <div>• Hereditary Family Diseases: ${r.familyDiseases}</div>
+                ${r.familyHistoryNotes && r.familyHistoryNotes !== '—' ? `<div>• Kinship Notes: ${r.familyHistoryNotes}</div>` : ''}
+                <div>• Physical Activity: ${r.physicalActivity} | Occupation: ${r.occupation}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- [O] OBJECTIVE -->
+          <div style="background:#ffffff; border:1px solid #e0f2fe; border-radius:10px; padding:14px 16px; border-left:4px solid #0284c7;">
+            <h4 style="margin:0 0 8px 0; color:#0369a1; display:flex; align-items:center; gap:6px;">
+              <span style="background:#0284c7; color:#fff; width:20px; height:20px; border-radius:4px; display:inline-flex; align-items:center; justify-content:center; font-size:0.85em;">O</span>
+              Objective Findings (Vital Signs & Physical Examination)
+            </h4>
+            <!-- Vitals Grid -->
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:8px; background:#f0f9ff; border:1px solid #bae6fd; border-radius:8px; padding:10px; margin-bottom:10px;">
+              <div>BP: <strong>${r.bloodPressureCombined}</strong></div>
+              <div>Pulse / HR: <strong>${r.pulseRate} ${r.pulseRate !== '—' ? 'bpm' : ''}</strong></div>
+              <div>Resp Rate: <strong>${r.respiratoryRate} ${r.respiratoryRate !== '—' ? 'cpm' : ''}</strong></div>
+              <div>Temperature: <strong>${r.temperature}</strong></div>
+              <div>SpO₂: <strong>${r.oxygenSaturation}</strong></div>
+              <div>Weight: <strong>${r.weight}</strong></div>
+              <div>Height: <strong>${r.height}</strong></div>
+              <div>BMI: <strong>${r.bmi} ${r.bmiCategory !== '—' ? `(${r.bmiCategory})` : ''}</strong></div>
+              <div>Waist: <strong>${r.waistCircumference}</strong></div>
+              <div>Blood Glucose: <strong>${r.bloodGlucose}</strong></div>
+              <div>Pain Scale: <strong>${r.painScale}</strong></div>
+            </div>
+            <div><strong>Physical Examination Findings:</strong> ${r.physicalExamFindings}</div>
+          </div>
+
+          <!-- [A] ASSESSMENT -->
+          <div style="background:#ffffff; border:1px solid #fef3c7; border-radius:10px; padding:14px 16px; border-left:4px solid #d97706;">
+            <h4 style="margin:0 0 8px 0; color:#b45309; display:flex; align-items:center; gap:6px;">
+              <span style="background:#d97706; color:#fff; width:20px; height:20px; border-radius:4px; display:inline-flex; align-items:center; justify-content:center; font-size:0.85em;">A</span>
+              Assessment (Clinical Diagnosis)
+            </h4>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              <div><strong>Primary Diagnosis:</strong> <span style="font-size:1.05em; font-weight:700; color:#0f766e;">${r.primaryDiagnosis}</span></div>
+              <div><strong>Suspected Pathology / Etiology:</strong> ${r.suspectedPathology}</div>
+              <div><strong>Clinical Impression / Summary:</strong> ${r.clinicalImpression}</div>
+              <div><strong>Differential Diagnoses:</strong> ${r.differentialDiagnosis}</div>
+            </div>
+          </div>
+
+          <!-- [P] PLAN -->
+          <div style="background:#ffffff; border:1px solid #ede9fe; border-radius:10px; padding:14px 16px; border-left:4px solid #7c3aed;">
+            <h4 style="margin:0 0 8px 0; color:#6d28d9; display:flex; align-items:center; gap:6px;">
+              <span style="background:#7c3aed; color:#fff; width:20px; height:20px; border-radius:4px; display:inline-flex; align-items:center; justify-content:center; font-size:0.85em;">P</span>
+              Plan & Interventions
+            </h4>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <div><strong>Treatment Plan & Recommendations:</strong> ${r.treatmentPlan}</div>
+              <div>
+                <strong>Medical Prescriptions (Rx) [${r.prescriptionsCount} items]:</strong>
+                <div style="background:#fbfbfe; border:1px solid #e0e7ff; border-radius:6px; padding:8px 10px; margin-top:4px;">
+                  ${r.prescriptionsFormatted !== '—' ? r.prescriptionsFormatted.split('; ').map(rx => `<div>• ${rx}</div>`).join('') : 'None prescribed'}
+                </div>
+              </div>
+              <div>
+                <strong>Diagnostic Orders / Lab Requests [${r.labOrdersCount} items]:</strong>
+                <div style="background:#f0fdfa; border:1px solid #ccfbf1; border-radius:6px; padding:8px 10px; margin-top:4px;">
+                  ${r.labOrdersFormatted !== '—' ? r.labOrdersFormatted.split('; ').map(lo => `<div>• ${lo}</div>`).join('') : 'None ordered'}
+                </div>
+              </div>
+              <div><strong>Referrals:</strong> ${r.referrals}</div>
+              <div><strong>Follow-up Schedule:</strong> ${r.followUpDate} ${r.followUpNotes && r.followUpNotes !== '—' ? `(${r.followUpNotes})` : ''}</div>
+            </div>
+          </div>
+        `;
+
+        soapModal.style.display = 'flex';
+      }
+
+      if (!cForm || !cPreviewBtn) return;
+
+      function serializeForm(f){
+        const data = {};
+        new FormData(f).forEach((v, k) => { data[k] = v; });
+        return data;
+      }
+
+      cPreviewBtn.addEventListener('click', async function(){
+        const data = serializeForm(cForm);
+        if (!cForm.querySelector('input[name="excludeEmpty"]').checked) {
+          data.excludeEmpty = '';
+        }
+        try {
+          cPreviewBtn.disabled = true;
+          cPreviewBtn.textContent = 'Loading...';
+          const resp = await fetch('/reports/consultations-export/preview', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(Object.assign({}, data, { limit: 500 }))
+          });
+          if (!resp.ok) throw new Error('Preview failed');
+          const json = await resp.json();
+          cPreviewBody.innerHTML = '';
+          if (!json || !Array.isArray(json.rows)) {
+            cPreviewArea.style.display = 'none';
+            alert('No preview data available');
+            return;
+          }
+          currentRows = json.rows;
+          currentRows.forEach((r, idx) => {
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid #f1f5f9';
+            tr.onmouseover = function(){ this.style.background = '#f8fafc'; };
+            tr.onmouseout = function(){ this.style.background = 'transparent'; };
+
+            // Subjective Summary Cell
+            const sParts = [];
+            if (r.chiefComplaint && r.chiefComplaint !== '—') sParts.push(`<strong>CC:</strong> ${r.chiefComplaint}`);
+            if (r.historyOfPresentIllness && r.historyOfPresentIllness !== '—') sParts.push(`<strong>HPI:</strong> ${r.historyOfPresentIllness.slice(0, 75)}${r.historyOfPresentIllness.length > 75 ? '...' : ''}`);
+            if (r.allergies && r.allergies !== '—') sParts.push(`<span style="color:#dc2626;"><strong>Allergy:</strong> ${r.allergies}</span>`);
+            const sHtml = sParts.length ? sParts.join('<br>') : '—';
+
+            // Objective Summary Cell
+            const oParts = [];
+            if (r.vitalsSummary && r.vitalsSummary !== '—') oParts.push(r.vitalsSummary);
+            if (r.physicalExamFindings && r.physicalExamFindings !== '—') oParts.push(`<strong>PE:</strong> ${r.physicalExamFindings.slice(0, 60)}${r.physicalExamFindings.length > 60 ? '...' : ''}`);
+            const oHtml = oParts.length ? oParts.join('<br>') : '—';
+
+            // Assessment Summary Cell
+            const aParts = [];
+            if (r.primaryDiagnosis && r.primaryDiagnosis !== '—') aParts.push(`<strong style="color:#0f766e;">${r.primaryDiagnosis}</strong>`);
+            if (r.clinicalImpression && r.clinicalImpression !== '—') aParts.push(r.clinicalImpression.slice(0, 60) + (r.clinicalImpression.length > 60 ? '...' : ''));
+            const aHtml = aParts.length ? aParts.join('<br>') : '—';
+
+            // Plan Summary Cell
+            const pParts = [];
+            if (r.treatmentPlan && r.treatmentPlan !== '—') pParts.push(r.treatmentPlan.slice(0, 65) + (r.treatmentPlan.length > 65 ? '...' : ''));
+            if (r.prescriptionsFormatted && r.prescriptionsFormatted !== '—') pParts.push(`<span style="color:#0284c7;"><strong>Rx:</strong> ${r.prescriptionsFormatted.slice(0, 65)}${r.prescriptionsFormatted.length > 65 ? '...' : ''}</span>`);
+            if (r.labOrdersFormatted && r.labOrdersFormatted !== '—') pParts.push(`<span style="color:#7c3aed;"><strong>Labs:</strong> ${r.labOrdersFormatted.slice(0, 50)}${r.labOrdersFormatted.length > 50 ? '...' : ''}</span>`);
+            const pHtml = pParts.length ? pParts.join('<br>') : '—';
+
+            tr.innerHTML = `
+              <td style="padding:10px 12px; white-space:nowrap; vertical-align:top; font-size:0.95em;">
+                <strong>${r.visitDate || ''}</strong><br><span style="color:#64748b; font-size:0.85em;">${r.visitTime || ''}</span>
+              </td>
+              <td style="padding:10px 12px; white-space:nowrap; vertical-align:top;">
+                <strong style="color:#0f766e;">${r.patientId || r.patientCode}</strong>
+              </td>
+              <td style="padding:10px 12px; vertical-align:top; font-weight:600; color:#0f172a;">
+                ${r.patientName}
+              </td>
+              <td style="padding:10px 12px; white-space:nowrap; vertical-align:top; color:#475569;">
+                ${r.ageSex}
+              </td>
+              <td style="padding:10px 12px; vertical-align:top; font-weight:600; color:#334155;">
+                ${r.doctorName}
+              </td>
+              <td style="padding:10px 12px; vertical-align:top; line-height:1.45; font-size:0.9em; max-width:260px;">
+                ${sHtml}
+              </td>
+              <td style="padding:10px 12px; vertical-align:top; line-height:1.45; font-size:0.9em; max-width:240px;">
+                ${oHtml}
+              </td>
+              <td style="padding:10px 12px; vertical-align:top; line-height:1.45; font-size:0.9em; max-width:220px;">
+                ${aHtml}
+              </td>
+              <td style="padding:10px 12px; vertical-align:top; line-height:1.45; font-size:0.9em; max-width:260px;">
+                ${pHtml}
+              </td>
+              <td style="padding:10px 12px; vertical-align:top; text-align:center; white-space:nowrap;">
+                <button type="button" class="button btn-secondary btn-small" onclick="window.__viewSoapRecord(${idx})" style="height:32px; padding:0 10px; font-size:0.82em; font-weight:600; border-color:#99f6e4; color:#0f766e; background:#f0fdfa; border-radius:6px; cursor:pointer;">
+                  📋 Full Record
+                </button>
+              </td>
+            `;
+            cPreviewBody.appendChild(tr);
+          });
+          cPreviewCount.textContent = json.count || currentRows.length || 0;
+          cPreviewArea.style.display = 'block';
+        } catch (e) {
+          console.error(e);
+          alert('Preview failed');
+        } finally {
+          cPreviewBtn.disabled = false;
+          cPreviewBtn.textContent = '👁️ Preview Consultations';
+        }
+      });
+
+      window.__viewSoapRecord = function(idx) {
+        openSoapModal(idx);
+      };
+    })();
+  </script>
+</div>
+
 <!-- Patient Registry Export Card -->
 <div class="card" style="padding:24px 28px; border-radius:16px; box-shadow:0 4px 18px rgba(0,0,0,0.03);">
   <div style="border-bottom:1px solid #f1f5f9; padding-bottom:16px; margin-bottom:20px;">

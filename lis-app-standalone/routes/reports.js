@@ -4,6 +4,7 @@ const Test = require('../models/Test');
 const Patient = require('../models/Patient');
 const User = require('../models/User');
 const Template = require('../models/Template');
+const Consultation = require('../models/Consultation');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -512,6 +513,10 @@ router.get('/worksheet', requireAuth, canAccessPatient, async (req, res) => {
       if (!t) return;
       const s = String(t).trim();
       const low = s.toLowerCase();
+      // Exclude doctor visits / check-up test types from diagnostic test choices
+      if (low.includes('doctor') || low.includes('check-up') || low.includes('consultation')) {
+        return;
+      }
       // Treat Blood Chemistry and common variant labels (BUN/Creat, creatinine, SGPT/SGOT, lipid, hba1c, albumin, blood sugar, etc.)
       // as a single "Blood Chemistry" choice so they don't appear separately in the dropdown.
       if (/^blood[\s-]*chemistry/.test(low) || low.indexOf('blood-chemistry') !== -1 || /(bun\b|\bbun\b|creat(inine)?|creat\/?creat|sgpt|sgot|lipid|hba1c|albumin|blood\s*urea|blood\s*sugar)/.test(low)) {
@@ -521,7 +526,10 @@ router.get('/worksheet', requireAuth, canAccessPatient, async (req, res) => {
       normalized.push(s);
     });
     if (sawBloodChem) normalized.push('Blood Chemistry');
-    const finalTypes = Array.from(new Set(normalized)).filter(Boolean).sort();
+    const finalTypes = Array.from(new Set(normalized)).filter(Boolean).filter(t => {
+      const low = String(t).toLowerCase();
+      return !low.includes('doctor') && !low.includes('check-up') && !low.includes('consultation');
+    }).sort();
     // collect unique companies from patients for the Patient Export dropdown
     let companies = [];
     try {
@@ -530,7 +538,44 @@ router.get('/worksheet', requireAuth, canAccessPatient, async (req, res) => {
     } catch (e) {
       companies = [];
     }
-    res.render('reports/worksheet', { title: 'Worksheet', types: finalTypes, companies });
+
+    // Collect configured & active doctor names for Medical Record Export dropdown
+    let doctors = [];
+    try {
+      const s = global.db && typeof global.db.getSettings === 'function' ? global.db.getSettings() : {};
+      if (s.doctor1Name) doctors.push(s.doctor1Name.trim());
+      if (s.doctor2Name) doctors.push(s.doctor2Name.trim());
+      if (s.doctorRooms && Array.isArray(s.doctorRooms)) {
+        s.doctorRooms.forEach(r => { if (r && r.name) doctors.push(r.name.trim()); });
+      }
+      const allUsers = await User.find({});
+      (allUsers || []).forEach(u => {
+        const r = (u.role || '').toLowerCase();
+        const n = (u.name || '').trim();
+        if (r.includes('doctor') || r.includes('physician') || r.includes('internist') || n.toLowerCase().startsWith('dr.') || n.toLowerCase().startsWith('dr ')) {
+          if (n) doctors.push(n);
+        }
+      });
+      if (global.db && typeof global.db.getConsultations === 'function') {
+        const consults = global.db.getConsultations() || [];
+        consults.forEach(c => {
+          if (c && c.doctorName && String(c.doctorName).trim()) doctors.push(String(c.doctorName).trim());
+        });
+      }
+      const allTestsForDoc = await Test.find({});
+      (allTestsForDoc || []).forEach(t => {
+        const typeStr = String(t.testType || '');
+        if (typeStr.toLowerCase().includes('doctor')) {
+          const match = typeStr.match(/doctor(?:'?s)?\s*check-?up\s*[-–—:]\s*(.+)/i);
+          if (match && match[1] && match[1].trim()) doctors.push(match[1].trim());
+        }
+      });
+    } catch (e) {
+      console.warn('Error loading doctors for worksheet:', e);
+    }
+    const cleanDoctors = Array.from(new Set(doctors.map(d => String(d).trim()).filter(Boolean))).sort();
+
+    res.render('reports/worksheet', { title: 'Worksheet', types: finalTypes, companies, doctors: cleanDoctors });
   } catch (err) {
     console.error('Worksheet page error:', err);
     req.flash('error_msg', 'Error loading worksheet page');
@@ -553,6 +598,11 @@ router.post('/worksheet/download', requireAuth, canAccessPatient, async (req, re
     }
 
     let testsRaw = await Test.find(q);
+    // Exclude doctor check-up visits from diagnostic worksheet
+    testsRaw = (testsRaw || []).filter(t => {
+      const typeStr = String(t.testType || t.template || '').toLowerCase();
+      return !typeStr.includes('doctor') && !typeStr.includes('check-up') && !typeStr.includes('consultation');
+    });
     // Test.find returns an array for this file-based model; apply filters in-memory because model supports limited query keys
     if (!allData) {
       if (testType) {
@@ -806,6 +856,11 @@ router.post('/worksheet/preview', requireAuth, canAccessPatient, async (req, res
     const q = {};
     // fetch all then filter in-memory (same logic as download)
     let testsRaw = await Test.find(q);
+    // Exclude doctor check-up visits from diagnostic worksheet
+    testsRaw = (testsRaw || []).filter(t => {
+      const typeStr = String(t.testType || t.template || '').toLowerCase();
+      return !typeStr.includes('doctor') && !typeStr.includes('check-up') && !typeStr.includes('consultation');
+    });
     if (!allData) {
       if (testType) {
         const ttLower = String(testType).toLowerCase().trim();
@@ -1185,5 +1240,715 @@ router.post('/patient-export/preview', requireAuth, canAccessPatient, async (req
   } catch (err) {
     console.error('Patient preview error:', err);
     return res.status(500).json({ error: 'Error generating patient preview' });
+  }
+});
+
+// --- Doctor Consultations & Medical Records Export ---
+
+async function getConsultationVisits(filters = {}) {
+  const { doctor, dateFrom, dateTo, excludeEmpty } = filters;
+
+  // 1. Get all consultation records
+  let allConsultations = [];
+  try {
+    allConsultations = await Consultation.find({});
+  } catch (e) {
+    console.warn('Error fetching consultations:', e);
+  }
+
+  const consultByTestId = new Map();
+  for (const c of allConsultations) {
+    if (c.testId) consultByTestId.set(String(c.testId), c);
+    if (c.id) consultByTestId.set(String(c.id), c);
+  }
+
+  // 2. Get all tests representing doctor check-ups
+  const allTests = (global.db && typeof global.db.getTests === 'function')
+    ? global.db.getTests()
+    : await Test.find({});
+
+  const doctorTests = (allTests || []).filter(t => {
+    const typeStr = String(t.testType || t.template || '').toLowerCase();
+    return typeStr.includes('doctor') || typeStr.includes('check-up') || typeStr.includes('consultation');
+  });
+
+  // 3. Patients map
+  const allPatients = (global.db && typeof global.db.getPatients === 'function')
+    ? global.db.getPatients()
+    : await Patient.find({});
+  const patientMap = new Map();
+  for (const p of allPatients) {
+    if (p && p.id) patientMap.set(String(p.id), p);
+  }
+
+  // Helper to determine if consultation has documented clinical data
+  function hasClinicalData(c) {
+    if (!c) return false;
+    const vit = c.vitalSigns || {};
+    const hasVitals = Boolean(vit.bloodPressureSystolic || vit.pulseRate || vit.temperature || vit.weight || vit.height || vit.bloodGlucose);
+    const hasSoap = Boolean(c.chiefComplaint || c.historyOfPresentIllness || c.pastMedicalHistory || c.physicalExamFindings || c.primaryDiagnosis || c.treatmentPlan);
+    const hasRx = Array.isArray(c.prescriptions) && c.prescriptions.length > 0;
+    const hasLab = Array.isArray(c.labRequestTests) && c.labRequestTests.length > 0;
+    return hasVitals || hasSoap || hasRx || hasLab;
+  }
+
+  const visits = [];
+  const seenTestIds = new Set();
+
+  for (const t of doctorTests) {
+    const tId = String(t.id || t.testId || '');
+    seenTestIds.add(tId);
+    if (t.testId) seenTestIds.add(String(t.testId));
+
+    const consult = consultByTestId.get(tId) || (t.testId ? consultByTestId.get(String(t.testId)) : null);
+    const pId = t.patient || (consult && consult.patientId);
+    const patient = pId ? patientMap.get(String(pId)) : null;
+
+    let docName = (consult && consult.doctorName) ? consult.doctorName : '';
+    if (!docName) {
+      const m = String(t.testType || '').match(/doctor(?:'?s)?\s*check-?up\s*[-–—:]\s*(.+)/i);
+      if (m && m[1]) docName = m[1].trim();
+    }
+    if (!docName) docName = 'Attending Physician';
+
+    const visitDate = (consult && consult.consultationDate) ? new Date(consult.consultationDate) : new Date(t.testDate || t.createdAt);
+
+    visits.push({
+      id: consult ? consult.id : tId,
+      testId: t.testId || t.id,
+      patient: patient,
+      consultation: consult,
+      doctorName: docName,
+      doctorLicenseNumber: (consult && consult.doctorLicenseNumber) || '',
+      visitType: (consult && consult.visitType) || 'New',
+      status: (consult && consult.status) || t.status || 'Pending',
+      visitDate: isNaN(visitDate.getTime()) ? new Date() : visitDate,
+      hasData: hasClinicalData(consult)
+    });
+  }
+
+  // Include consultations not matching any doctor test
+  for (const c of allConsultations) {
+    if (c.testId && seenTestIds.has(String(c.testId))) continue;
+    const patient = c.patientId ? patientMap.get(String(c.patientId)) : null;
+    const visitDate = new Date(c.consultationDate || c.createdAt);
+    visits.push({
+      id: c.id,
+      testId: c.testId || c.id,
+      patient: patient,
+      consultation: c,
+      doctorName: c.doctorName || 'Attending Physician',
+      doctorLicenseNumber: c.doctorLicenseNumber || '',
+      visitType: c.visitType || 'New',
+      status: c.status || 'Completed',
+      visitDate: isNaN(visitDate.getTime()) ? new Date() : visitDate,
+      hasData: hasClinicalData(c)
+    });
+  }
+
+  // Apply filters
+  let filtered = visits;
+
+  // Filter: Doctor
+  if (doctor && String(doctor).trim()) {
+    const docLower = String(doctor).toLowerCase().trim();
+    filtered = filtered.filter(v => {
+      const vDoc = String(v.doctorName || '').toLowerCase();
+      return vDoc.includes(docLower) || docLower.includes(vDoc);
+    });
+  }
+
+  // Filter: Date Range
+  if (dateFrom) {
+    const from = new Date(dateFrom);
+    filtered = filtered.filter(v => v.visitDate >= from);
+  }
+  if (dateTo) {
+    const end = new Date(dateTo);
+    end.setHours(23, 59, 59, 999);
+    filtered = filtered.filter(v => v.visitDate <= end);
+  }
+
+  // Filter: Exclude Empty
+  if (excludeEmpty === '1' || excludeEmpty === true || excludeEmpty === 'true') {
+    filtered = filtered.filter(v => v.hasData);
+  }
+
+  // Sort by visit date descending (newest first)
+  filtered.sort((a, b) => b.visitDate - a.visitDate);
+
+  return filtered;
+}
+
+function safeField(val) {
+  if (val === null || val === undefined) return '';
+  return String(val).trim();
+}
+
+function safeJson(val) {
+  if (!val) return {};
+  if (typeof val === 'object') return val;
+  if (typeof val === 'string') {
+    try { return JSON.parse(val); } catch (_) { return {}; }
+  }
+  return {};
+}
+
+function safeArray(val) {
+  if (!val) return [];
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (_) {}
+    }
+    if (trimmed.includes(';') || trimmed.includes('\n')) {
+      return trimmed.split(/[;\n]+/).map(s => s.trim()).filter(Boolean);
+    }
+    return trimmed ? [trimmed] : [];
+  }
+  return [];
+}
+
+function formatPrescriptionsList(raw) {
+  const list = safeArray(raw);
+  return list.map(rx => {
+    if (!rx) return '';
+    if (typeof rx === 'string') return rx.trim();
+    const drug = rx.drug || rx.drugName || rx.name || '';
+    const generic = rx.genericName ? `(${rx.genericName})` : '';
+    const dosage = rx.dosage || '';
+    const route = rx.route ? `via ${rx.route}` : '';
+    const freq = rx.frequency || '';
+    const duration = rx.duration ? `x ${rx.duration}` : '';
+    const qty = rx.quantity ? `Qty: ${rx.quantity}` : '';
+    const sig = rx.instructions ? `Sig: ${rx.instructions}` : (rx.sig ? `Sig: ${rx.sig}` : '');
+    const parts = [drug, generic, dosage, route, freq, duration, qty, sig].filter(Boolean);
+    return parts.join(' ');
+  }).filter(Boolean);
+}
+
+function formatLabOrdersList(raw) {
+  const list = safeArray(raw);
+  return list.map(lo => {
+    if (!lo) return '';
+    if (typeof lo === 'string') return lo.trim();
+    const testType = lo.testType || lo.name || lo.label || lo.key || '';
+    const remarks = lo.remarks || lo.instructions || '';
+    if (testType && remarks && !testType.toLowerCase().includes(remarks.toLowerCase()) && !remarks.toLowerCase().includes(testType.toLowerCase())) {
+      return `${testType} (${remarks})`;
+    }
+    return (testType || remarks || '').trim();
+  }).filter(Boolean);
+}
+
+// POST /reports/consultations-export/preview - comprehensive preview JSON of consultations with all SOAP data
+router.post('/consultations-export/preview', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const { doctor, dateFrom, dateTo, excludeEmpty, limit } = req.body || {};
+    const visits = await getConsultationVisits({ doctor, dateFrom, dateTo, excludeEmpty });
+
+    const max = Math.min(1000, parseInt(limit || '200', 10) || 200);
+    const rows = visits.slice(0, max).map(v => {
+      const p = v.patient || {};
+      const c = v.consultation || {};
+      const vit = safeJson(c.vitalSigns);
+      const smk = safeJson(c.smoking);
+      const alc = safeJson(c.alcohol);
+      const fam = safeJson(c.familyHistory);
+      const soc = safeJson(c.socialHistory);
+
+      const rawCode = String(p.patientCode || p.patientId || '');
+      const shortCode = rawCode ? (rawCode.includes('-') ? rawCode.split('-').pop() : (rawCode.length > 5 ? rawCode.slice(-5) : rawCode)) : '—';
+      const fullCode = p.patientCode || p.patientId || '—';
+      const patientFullName = p.firstName || p.lastName ? `${p.lastName || ''}, ${p.firstName || ''} ${p.middleName || ''}`.trim() : (p.fullName || '—');
+
+      const bpSys = vit.bloodPressureSystolic !== undefined && vit.bloodPressureSystolic !== null ? String(vit.bloodPressureSystolic).trim() : '';
+      const bpDia = vit.bloodPressureDiastolic !== undefined && vit.bloodPressureDiastolic !== null ? String(vit.bloodPressureDiastolic).trim() : '';
+      const bpCombined = (bpSys && bpDia) ? `${bpSys}/${bpDia}` : (bpSys || '—');
+
+      // Vitals summary
+      const vitList = [];
+      if (bpCombined !== '—') vitList.push(`BP: ${bpCombined}`);
+      if (vit.temperature) vitList.push(`${vit.temperature}°C`);
+      if (vit.pulseRate) vitList.push(`HR: ${vit.pulseRate}`);
+      if (vit.respiratoryRate) vitList.push(`RR: ${vit.respiratoryRate}`);
+      if (vit.oxygenSaturation) vitList.push(`SpO₂: ${vit.oxygenSaturation}%`);
+      if (vit.bmi) vitList.push(`BMI: ${vit.bmi}${vit.bmiCategory ? ` (${vit.bmiCategory})` : ''}`);
+      if (vit.bloodGlucose) vitList.push(`Glucose: ${vit.bloodGlucose}`);
+      const vitalsText = vitList.length ? vitList.join(' • ') : '—';
+
+      // Lifestyle & Risk factors summary
+      const riskList = [];
+      if (smk.status && smk.status !== 'Never Smoked') riskList.push(`Smoke: ${smk.status}${smk.packYears ? ` (${smk.packYears}pk/yr)` : ''}`);
+      if (alc.status && alc.status !== 'Non-drinker') riskList.push(`Alcohol: ${alc.status}`);
+      const famDiseasesList = safeArray(fam.diseases);
+      const famDis = famDiseasesList.join(', ');
+      if (famDis) riskList.push(`Fam: ${famDis}`);
+      if (c.allergies) riskList.push(`Allergy: ${c.allergies}`);
+      const risksText = riskList.length ? riskList.join('; ') : 'None Reported';
+
+      const rxList = safeArray(c.prescriptions);
+      const rxFormattedList = formatPrescriptionsList(rxList);
+      const rxStr = rxFormattedList.join('; ');
+
+      const labList = safeArray(c.labRequestTests);
+      const labFormattedList = formatLabOrdersList(labList);
+      const labStr = labFormattedList.join('; ');
+
+      const diffList = safeArray(c.differentialDiagnosis);
+      const diffStr = diffList.map(s => String(s).trim()).filter(Boolean).join('; ');
+
+      const famNotesClean = typeof fam.notes === 'string' && fam.notes !== '[object Object]' ? fam.notes : '';
+
+      return {
+        // Encounter Metadata
+        consultationId: c.id || v.id || '',
+        testId: v.testId || '',
+        visitDate: v.visitDate ? v.visitDate.toISOString().slice(0, 10) : '',
+        visitTime: v.visitDate ? v.visitDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+        visitType: v.visitType || c.visitType || 'New',
+        doctorName: v.doctorName || '—',
+        doctorLicenseNumber: v.doctorLicenseNumber || c.doctorLicenseNumber || '',
+        doctorDesignation: c.doctorDesignation || '',
+        status: v.status || 'Pending',
+        completedAt: c.completedAt ? new Date(c.completedAt).toISOString() : '',
+
+        // Patient Demographics
+        patientId: p.patientId || p.id || '—',
+        patientUuid: p.id || p.patientId || '',
+        patientCode: shortCode,
+        patientCodeFull: fullCode,
+        patientName: patientFullName,
+        age: (p.age !== undefined && p.age !== null && p.age !== '') ? p.age : (p.ageManual || '—'),
+        gender: p.gender || p.sex || '—',
+        ageSex: `${(p.age !== undefined && p.age !== null && p.age !== '') ? p.age : (p.ageManual || '—')} / ${p.gender || p.sex || '—'}`,
+        contactNo: p.phone || p.contactNo || '',
+        address: p.address || (p.city ? `${p.street || ''} ${p.barangay || ''} ${p.city || ''} ${p.province || ''}`.trim() : ''),
+
+        // SOAP: Subjective (S)
+        chiefComplaint: c.chiefComplaint || '—',
+        historyOfPresentIllness: c.historyOfPresentIllness || '—',
+        pastMedicalHistory: c.pastMedicalHistory || '—',
+        currentMedications: c.currentMedications || '—',
+        allergies: c.allergies || '—',
+        reviewOfSystems: c.reviewOfSystems || '—',
+
+        // DOH PhilPEN Lifestyle & Risk Factors
+        smokingStatus: smk.status || 'Never Smoked',
+        smokingSticksPerDay: smk.sticksPerDay || '',
+        smokingYears: smk.years || '',
+        smokingPackYears: smk.packYears || '',
+        smokingQuitYears: smk.quitYears || '',
+        smokingNotes: smk.notes || '',
+        alcoholStatus: alc.status || 'Non-drinker',
+        alcoholFrequency: alc.frequency || '',
+        alcoholDrinksPerSession: alc.drinksPerSession || '',
+        alcoholBingeDrinking: alc.bingeDrinking || 'No',
+        alcoholNotes: alc.notes || '',
+        familyDiseases: famDis || 'None Reported',
+        familyHistoryNotes: famNotesClean || '—',
+        occupation: soc.occupation || '—',
+        physicalActivity: soc.physicalActivity || 'Active (≥150 mins/week)',
+        dietaryHabits: soc.dietaryHabits || '—',
+        socialHistoryNotes: soc.notes || '',
+        risksLifestyle: risksText,
+
+        // SOAP: Objective (O)
+        vitalsSummary: vitalsText,
+        bloodPressureSystolic: bpSys || '—',
+        bloodPressureDiastolic: bpDia || '—',
+        bloodPressureCombined: bpCombined,
+        pulseRate: vit.pulseRate || '—',
+        respiratoryRate: vit.respiratoryRate || '—',
+        temperature: vit.temperature ? `${vit.temperature}°C` : '—',
+        oxygenSaturation: vit.oxygenSaturation ? `${vit.oxygenSaturation}%` : '—',
+        weight: vit.weight ? `${vit.weight} kg` : '—',
+        height: vit.height ? `${vit.height} cm` : '—',
+        bmi: vit.bmi || '—',
+        bmiCategory: vit.bmiCategory || '—',
+        waistCircumference: vit.waistCircumference ? `${vit.waistCircumference} cm` : '—',
+        bloodGlucose: vit.bloodGlucose ? `${vit.bloodGlucose} mg/dL` : '—',
+        painScale: vit.painScale !== undefined && vit.painScale !== '' ? `${vit.painScale}/10` : 'None',
+        physicalExamFindings: c.physicalExamFindings || '—',
+
+        // SOAP: Assessment (A)
+        primaryDiagnosis: c.primaryDiagnosis || '—',
+        suspectedPathology: c.suspectedPathology || '—',
+        clinicalImpression: c.clinicalImpression || '—',
+        differentialDiagnosis: diffStr || '—',
+
+        // SOAP: Plan (P)
+        treatmentPlan: c.treatmentPlan || '—',
+        prescriptionsCount: rxList.length,
+        prescriptionsFormatted: rxStr || '—',
+        prescriptionsRaw: rxList,
+        labOrdersCount: labList.length,
+        labOrdersFormatted: labStr || '—',
+        labOrdersRaw: labList,
+        referrals: c.referrals || '—',
+        followUpDate: c.followUpDate ? c.followUpDate.slice(0, 10) : '—',
+        followUpNotes: c.followUpNotes || '—',
+
+        hasData: v.hasData
+      };
+    });
+
+    return res.json({ count: visits.length, rows });
+  } catch (err) {
+    console.error('Consultations preview error:', err);
+    return res.status(500).json({ error: 'Error generating consultations preview' });
+  }
+});
+
+// POST /reports/consultations-export/download - export consultations to Excel or CSV
+router.post('/consultations-export/download', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const { doctor, dateFrom, dateTo, excludeEmpty, format } = req.body || {};
+    const visits = await getConsultationVisits({ doctor, dateFrom, dateTo, excludeEmpty });
+
+    // Comprehensive 75 ML-Ready Parameters (with Patient ID & UUID first for joins, and all individual SOAP parameters)
+    const headers = [
+      // 1. Encounter & Doctor Metadata
+      'Consultation ID',
+      'Test ID',
+      'Visit Date',
+      'Visit Time',
+      'Visit Type',
+      'Encounter Status',
+      'Attending Doctor',
+      'Doctor License No.',
+      'Doctor Designation',
+      'Completed At',
+
+      // 2. Patient Demographics (ML Profile & Foreign Keys for Joins)
+      'Patient ID',
+      'Patient UUID',
+      'Patient Code',
+      'Patient Code (Full)',
+      'Patient Full Name',
+      'First Name',
+      'Middle Name',
+      'Last Name',
+      'Age',
+      'Sex / Gender',
+      'Date of Birth',
+      'Civil Status',
+      'Blood Type',
+      'Contact Number',
+      'Email',
+      'Address',
+      'Company / Account',
+      'PhilHealth Number',
+      'PhilHealth Consent',
+
+      // 3. Subjective Clinical History (SOAP: S)
+      'Chief Complaint',
+      'History of Present Illness (HPI)',
+      'Past Medical History (PMH)',
+      'Current Medications & Maintenance',
+      'Allergies & Adverse Reactions',
+      'Review of Systems (ROS)',
+
+      // 4. DOH PhilPEN Lifestyle & Risk Factors (ML Features)
+      'Smoking Status',
+      'Smoking Sticks Per Day',
+      'Smoking Duration (Years)',
+      'Smoking Pack Years',
+      'Smoking Quit Years',
+      'Smoking Notes',
+      'Alcohol Status',
+      'Alcohol Frequency',
+      'Alcohol Drinks Per Session',
+      'Alcohol Binge Drinking',
+      'Alcohol Notes',
+      'Family Medical History (Hereditary)',
+      'Family History Notes',
+      'Family Hx: Hypertension',
+      'Family Hx: Type 2 Diabetes',
+      'Family Hx: Heart Disease / CAD',
+      'Family Hx: Stroke / CVD',
+      'Family Hx: Cancer / Malignancy',
+      'Family Hx: Bronchial Asthma / Allergies',
+      'Family Hx: Chronic Kidney Disease',
+      'Occupation',
+      'Physical Activity Level',
+      'Dietary Habits',
+      'Social History Notes',
+
+      // 5. Objective — Vital Signs & Anthropometrics (SOAP: O)
+      'Systolic BP (mmHg)',
+      'Diastolic BP (mmHg)',
+      'Blood Pressure (Combined)',
+      'Heart Rate / Pulse (bpm)',
+      'Respiratory Rate (cpm)',
+      'Temperature (°C)',
+      'SpO2 (%)',
+      'Weight (kg)',
+      'Height (cm)',
+      'BMI (kg/m²)',
+      'BMI Category (DOH PhilPEN)',
+      'Waist Circumference (cm)',
+      'Bedside Blood Glucose (mg/dL)',
+      'Pain Scale (0-10)',
+
+      // 6. Objective — Physical Exam Findings (SOAP: O)
+      'Physical Exam Findings',
+
+      // 7. Assessment & Clinical Diagnosis (SOAP: A)
+      'Primary Diagnosis',
+      'Suspected Pathology / Etiology',
+      'Clinical Impression / Medical Summary',
+      'Differential Diagnoses',
+
+      // 8. Plan & Medical Interventions (SOAP: P)
+      'Treatment Plan & Recommendations',
+      'Prescriptions Count',
+      'Prescriptions (Full Rx Details)',
+      'Prescriptions (Structured JSON)',
+      'Diagnostic Orders Count',
+      'Diagnostic Lab Requests (List)',
+      'Diagnostic Lab Requests (Structured JSON)',
+      'Referrals',
+      'Follow-up Date',
+      'Follow-up Instructions / Notes'
+    ];
+
+    function mapVisitToRow(v) {
+      const p = v.patient || {};
+      const c = v.consultation || {};
+      const vit = safeJson(c.vitalSigns);
+      const smk = safeJson(c.smoking);
+      const alc = safeJson(c.alcohol);
+      const fam = safeJson(c.familyHistory);
+      const soc = safeJson(c.socialHistory);
+
+      const rawCode = String(p.patientCode || p.patientId || '');
+      const shortCode = rawCode ? (rawCode.includes('-') ? rawCode.split('-').pop() : (rawCode.length > 5 ? rawCode.slice(-5) : rawCode)) : '';
+      const fullCode = p.patientCode || p.patientId || '';
+
+      const dateStr = v.visitDate ? v.visitDate.toISOString().slice(0, 10) : '';
+      const timeStr = v.visitDate ? v.visitDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
+      const patientFullName = p.fullName || (p.firstName || p.lastName ? `${p.lastName || ''}, ${p.firstName || ''} ${p.middleName || ''}`.trim() : '');
+
+      const bpSys = vit.bloodPressureSystolic !== undefined && vit.bloodPressureSystolic !== null ? String(vit.bloodPressureSystolic).trim() : '';
+      const bpDia = vit.bloodPressureDiastolic !== undefined && vit.bloodPressureDiastolic !== null ? String(vit.bloodPressureDiastolic).trim() : '';
+      const bpCombined = (bpSys && bpDia) ? `${bpSys}/${bpDia}` : (bpSys || '');
+
+      // Family diseases string & one-hot binary flags for ML feature engineering
+      const famDiseasesList = safeArray(fam.diseases);
+      const famDiseases = famDiseasesList.join('; ');
+      const hasDisease = (term) => famDiseasesList.some(d => String(d).toLowerCase().includes(term.toLowerCase())) ? 1 : 0;
+      const famHxHypertension = hasDisease('hypertension');
+      const famHxDiabetes = hasDisease('diabetes');
+      const famHxCad = hasDisease('heart') || hasDisease('cad');
+      const famHxStroke = hasDisease('stroke') || hasDisease('cvd');
+      const famHxCancer = hasDisease('cancer') || hasDisease('malignancy');
+      const famHxAsthma = hasDisease('asthma') || hasDisease('allergies');
+      const famHxCkd = hasDisease('kidney') || hasDisease('ckd');
+
+      const famNotesClean = typeof fam.notes === 'string' && fam.notes !== '[object Object]' ? fam.notes : '';
+
+      // Prescriptions formatted
+      const rxList = safeArray(c.prescriptions);
+      const rxFormattedList = formatPrescriptionsList(rxList);
+      const rxStr = rxFormattedList.join(' | ');
+      const rxJsonStr = rxList.length ? JSON.stringify(rxList) : '';
+
+      // Lab requests formatted
+      const labList = safeArray(c.labRequestTests);
+      const labFormattedList = formatLabOrdersList(labList);
+      const labStr = labFormattedList.join('; ');
+      const labJsonStr = labList.length ? JSON.stringify(labList) : '';
+
+      // Differential diagnoses formatted
+      const diffList = safeArray(c.differentialDiagnosis);
+      const diffStr = diffList.map(s => String(s).trim()).filter(Boolean).join('; ');
+
+      const completedAtStr = c.completedAt ? new Date(c.completedAt).toISOString() : '';
+      const dobStr = p.dateOfBirth ? (new Date(p.dateOfBirth)).toISOString().slice(0, 10) : '';
+
+      return [
+        // 1. Encounter & Doctor Metadata
+        c.id || v.id || '',
+        v.testId || '',
+        dateStr,
+        timeStr,
+        v.visitType || c.visitType || 'New',
+        v.status || c.status || 'Completed',
+        v.doctorName || c.doctorName || '',
+        v.doctorLicenseNumber || c.doctorLicenseNumber || '',
+        c.doctorDesignation || '',
+        completedAtStr,
+
+        // 2. Patient Demographics
+        p.patientId || p.id || '',
+        p.id || p.patientId || '',
+        shortCode,
+        fullCode,
+        patientFullName,
+        p.firstName || '',
+        p.middleName || '',
+        p.lastName || '',
+        (p.age !== undefined && p.age !== null && p.age !== '') ? p.age : (p.ageManual || ''),
+        p.gender || p.sex || '',
+        dobStr,
+        p.civilStatus || '',
+        p.bloodType || '',
+        p.phone || p.contactNo || '',
+        p.email || '',
+        p.address || (p.city ? `${p.street || ''} ${p.barangay || ''} ${p.city || ''} ${p.province || ''}`.trim() : ''),
+        p.company || '',
+        p.philhealthNumber || '',
+        p.philhealthConsent ? 'Yes' : 'No',
+
+        // 3. Subjective History (SOAP: S)
+        c.chiefComplaint || '',
+        c.historyOfPresentIllness || '',
+        c.pastMedicalHistory || '',
+        c.currentMedications || '',
+        c.allergies || '',
+        c.reviewOfSystems || '',
+
+        // 4. DOH PhilPEN Risk Factors & Lifestyle
+        smk.status || '',
+        smk.sticksPerDay || '',
+        smk.years || '',
+        smk.packYears || '',
+        smk.quitYears || '',
+        smk.notes || '',
+        alc.status || '',
+        alc.frequency || '',
+        alc.drinksPerSession || '',
+        alc.bingeDrinking || '',
+        alc.notes || '',
+        famDiseases,
+        famNotesClean,
+        famHxHypertension,
+        famHxDiabetes,
+        famHxCad,
+        famHxStroke,
+        famHxCancer,
+        famHxAsthma,
+        famHxCkd,
+        soc.occupation || '',
+        soc.physicalActivity || '',
+        soc.dietaryHabits || '',
+        soc.notes || '',
+
+        // 5. Objective — Vital Signs & Anthropometrics (SOAP: O)
+        bpSys,
+        bpDia,
+        bpCombined,
+        vit.pulseRate || '',
+        vit.respiratoryRate || '',
+        vit.temperature || '',
+        vit.oxygenSaturation || '',
+        vit.weight || '',
+        vit.height || '',
+        vit.bmi || '',
+        vit.bmiCategory || '',
+        vit.waistCircumference || '',
+        vit.bloodGlucose || '',
+        vit.painScale !== undefined && vit.painScale !== '' ? String(vit.painScale) : '',
+
+        // 6. Objective — Physical Exam Findings (SOAP: O)
+        c.physicalExamFindings || '',
+
+        // 7. Assessment & Clinical Diagnosis (SOAP: A)
+        c.primaryDiagnosis || '',
+        c.suspectedPathology || '',
+        c.clinicalImpression || '',
+        diffStr,
+
+        // 8. Plan & Interventions (SOAP: P)
+        c.treatmentPlan || '',
+        rxList.length,
+        rxStr,
+        rxJsonStr,
+        labList.length,
+        labStr,
+        labJsonStr,
+        c.referrals || '',
+        c.followUpDate ? c.followUpDate.slice(0, 10) : '',
+        c.followUpNotes || ''
+      ];
+    }
+
+    const filenameBase = `medical_records_ml_export_${(new Date()).toISOString().slice(0, 19).replace(/[:T]/g, '-')}`;
+    const fmt = (format || '').toLowerCase();
+
+    if (fmt === 'xlsx') {
+      const workbook = new ExcelJS.Workbook();
+      const ws = workbook.addWorksheet('Clinical Consultations (ML)');
+
+      const cols = headers.map(h => ({
+        header: h,
+        key: h,
+        width: Math.min(48, Math.max(13, String(h).length + 3))
+      }));
+      ws.columns = cols;
+
+      // Header styling: professional deep teal with white bold text
+      const headerRow = ws.getRow(1);
+      headerRow.eachCell(cell => {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF0D9488' }
+        };
+        cell.font = {
+          name: 'Calibri',
+          color: { argb: 'FFFFFFFF' },
+          bold: true,
+          size: 11
+        };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      });
+      headerRow.height = 28;
+
+      for (const v of visits) {
+        const rowVals = mapVisitToRow(v);
+        const rowObj = {};
+        headers.forEach((h, i) => { rowObj[h] = rowVals[i]; });
+        const row = ws.addRow(rowObj);
+        row.height = 20;
+      }
+
+      ws.views = [{ state: 'frozen', ySplit: 1 }];
+      ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: headers.length } };
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      res.setHeader('Content-Disposition', `attachment; filename="${filenameBase}.xlsx"`);
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      return res.send(buffer);
+    }
+
+    // Default CSV export
+    function escapeCsvCell(val) {
+      if (val === null || val === undefined) return '';
+      const s = String(val);
+      if (s.includes('"') || s.includes(',') || s.includes('\n') || s.includes('\r')) {
+        return '"' + s.replace(/"/g, '""') + '"';
+      }
+      return s;
+    }
+
+    const csvLines = [headers.map(escapeCsvCell).join(',')];
+    for (const v of visits) {
+      const rowVals = mapVisitToRow(v);
+      csvLines.push(rowVals.map(escapeCsvCell).join(','));
+    }
+
+    res.setHeader('Content-Disposition', `attachment; filename="${filenameBase}.csv"`);
+    res.setHeader('Content-Type', 'text/csv; charset=UTF-8');
+    return res.send(csvLines.join('\n'));
+  } catch (error) {
+    console.error('Consultations export error:', error);
+    req.flash('error_msg', 'Error generating medical records export');
+    res.redirect('/reports/worksheet');
   }
 });

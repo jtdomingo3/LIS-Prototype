@@ -89,14 +89,18 @@ class Consultation {
     // DOH Familial NCD Screening (Hereditary Diseases)
     const rawFamily = safeJsonParse(data.familyHistory, null);
     if (typeof rawFamily === 'object' && rawFamily !== null && !Array.isArray(rawFamily)) {
+      const n = rawFamily.notes;
       this.familyHistory = {
         diseases: Array.isArray(rawFamily.diseases) ? rawFamily.diseases : [],
-        notes: rawFamily.notes || ''
+        notes: (n && n !== '[object Object]') ? (typeof n === 'string' ? n : JSON.stringify(n)) : ''
       };
     } else {
+      const fNotes = typeof data.familyHistory === 'string' && data.familyHistory !== '[object Object]'
+        ? data.familyHistory
+        : (typeof data.familyHistoryNotes === 'string' && data.familyHistoryNotes !== '[object Object]' ? data.familyHistoryNotes : '');
       this.familyHistory = {
         diseases: Array.isArray(data.familyHistoryDiseases) ? data.familyHistoryDiseases : (Array.isArray(rawFamily) ? rawFamily : []),
-        notes: typeof data.familyHistory === 'string' ? data.familyHistory : (data.familyHistoryNotes || '')
+        notes: fNotes
       };
     }
 
