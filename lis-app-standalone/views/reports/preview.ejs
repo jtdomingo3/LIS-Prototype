@@ -1,18 +1,53 @@
-<div class="card" style="padding:24px 28px; border-radius:16px; box-shadow:0 4px 18px rgba(0,0,0,0.03);">
+<style>
+  .reports-floating-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 12px;
+    border: 1px solid #cbd5e1;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+    padding: 12px 20px;
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    box-sizing: border-box;
+    width: 100%;
+  }
+  @media (max-width: 900px) {
+    .reports-floating-meta {
+      display: none !important;
+    }
+  }
+</style>
+
 <% if (!test) { %>
-  <div style="padding:48px 16px; text-align:center; color:#94a3b8;">
-    <span style="font-size:2.4em; display:block; margin-bottom:8px;">📋</span>
-    <strong style="font-size:1.1em; color:#475569; display:block;">No Completed Diagnostic Reports Yet</strong>
-    <span style="font-size:0.9em;">When tests are completed and results are saved, clinical reports will appear here for preview and release.</span>
+  <div class="card" style="padding:24px 28px; border-radius:16px; box-shadow:0 4px 18px rgba(0,0,0,0.03);">
+    <div style="padding:48px 16px; text-align:center; color:#94a3b8;">
+      <span style="font-size:2.4em; display:block; margin-bottom:8px;">📋</span>
+      <strong style="font-size:1.1em; color:#475569; display:block;">No Completed Diagnostic Reports Yet</strong>
+      <span style="font-size:0.9em;">When tests are completed and results are saved, clinical reports will appear here for preview and release.</span>
+    </div>
   </div>
 <% } else { %>
-  <!-- Structured Two-Line Toolbar -->
-  <!-- Line 1: Report Navigation & Output Actions -->
-  <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid #f1f5f9; flex-wrap:nowrap; width:100%;">
+  <!-- Floating Window: Report Navigation & Output Actions -->
+  <div class="reports-floating-toolbar">
     <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
       <a id="prevBtn" class="button btn-secondary<%= (typeof prevId === 'undefined' || !prevId) ? ' disabled' : '' %>" <%= (typeof prevId !== 'undefined' && prevId) ? ('href="/reports/preview/' + prevId + (typeof filterQuery !== 'undefined' ? filterQuery : '') + '"') : '' %> style="padding:0 14px; height:38px; font-size:13.5px; display:inline-flex; align-items:center; border-radius:8px;">← Previous</a>
       <a id="nextBtn" class="button btn-secondary<%= (typeof nextId === 'undefined' || !nextId) ? ' disabled' : '' %>" <%= (typeof nextId !== 'undefined' && nextId) ? ('href="/reports/preview/' + nextId + (typeof filterQuery !== 'undefined' ? filterQuery : '') + '"') : '' %> style="padding:0 14px; height:38px; font-size:13.5px; display:inline-flex; align-items:center; border-radius:8px;">Next →</a>
       <a href="/reports/worksheet" class="button btn-secondary" style="padding:0 14px; height:38px; font-size:13.5px; display:inline-flex; align-items:center; border-radius:8px;" title="View Batch Worksheets">📊 Worksheets</a>
+    </div>
+
+    <div class="reports-floating-meta" style="display:flex; align-items:center; gap:8px; font-size:0.88em;">
+      <strong style="color:#0f172a;" id="floatingPatientName"><% if (test.patient) { %><%= test.patient.firstName %> <%= test.patient.lastName %><% } else { %><%= test.patientName || '' %><% } %></strong>
+      <span style="color:#cbd5e1;">•</span>
+      <span style="color:#0d9488; font-weight:600; text-transform:uppercase; font-size:0.82em; background:#f0fdfa; padding:2px 8px; border-radius:6px; border:1px solid #ccfbf1;" id="floatingTestType"><%= test.testType || '' %></span>
+      <span style="color:#cbd5e1;">•</span>
+      <code style="color:#64748b; font-size:0.85em; font-weight:600;" id="floatingTestId"><%= test.testId || '' %></code>
     </div>
 
     <div style="display:flex; gap:10px; align-items:center; flex-shrink:0;">
@@ -25,8 +60,9 @@
     </div>
   </div>
 
-  <!-- Line 2: Search, Filters & Batch Actions -->
-  <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px; flex-wrap:nowrap; width:100%;">
+  <div class="card" style="padding:24px 28px; border-radius:16px; box-shadow:0 4px 18px rgba(0,0,0,0.03);">
+    <!-- Line 2: Search, Filters & Batch Actions (Normal document flow, not floating) -->
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px; flex-wrap:nowrap; width:100%;">
     <div style="position:relative; flex:1; min-width:180px;">
       <span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:0.9em; pointer-events:none;">🔍</span>
       <input id="patientSearch" type="text" placeholder="Search patient name..." autocomplete="off" style="width:100%; height:38px; padding:0 12px 0 34px; font-size:13.5px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; margin:0; box-sizing:border-box;">
@@ -553,6 +589,12 @@
       if (elDisplayTestDate) elDisplayTestDate.textContent = t.testDate ? new Date(t.testDate).toLocaleDateString() : '';
       if (downloadPdf) downloadPdf.href = '/reports/pdf/' + id;
       if (printLink) printLink.href = '/reports/result/' + id + '?embedded=1&print=1';
+      const elFloatingPatient = document.getElementById('floatingPatientName');
+      const elFloatingTestType = document.getElementById('floatingTestType');
+      const elFloatingTestId = document.getElementById('floatingTestId');
+      if (elFloatingPatient) elFloatingPatient.textContent = t.patientName || '';
+      if (elFloatingTestType) elFloatingTestType.textContent = t.testType || '';
+      if (elFloatingTestId) elFloatingTestId.textContent = t.testId || '';
       const newPath = '/reports/preview/' + id + qs; try { history.replaceState(null, '', newPath); } catch (e) {}
       window.currentTestId = id; applyParamsToNavLinks(); updatePager();
       const anyFilter = !!(patientInput.value || getSelectedTestTypes().length || dateFilter.value);

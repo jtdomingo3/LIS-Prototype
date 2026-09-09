@@ -101,8 +101,8 @@ router.get('/:testId', requireAuth, canAccessPatient, async (req, res) => {
     // 5. Fetch all laboratory test results for this patient
     let allTests = [];
     try {
-      if (global.db && typeof global.db.getTestsByPatient === 'function') {
-        allTests = global.db.getTestsByPatient(patient.id) || [];
+      if (global.db && typeof global.db.queryTests === 'function') {
+        allTests = global.db.queryTests({ patient: patient.id }) || [];
       } else {
         allTests = await Test.find({ patient: patient.id }) || [];
       }
@@ -114,13 +114,23 @@ router.get('/:testId', requireAuth, canAccessPatient, async (req, res) => {
     const formattedLabTests = allTests.map(t => {
       let resultsSummary = 'No results recorded';
       if (t.results) {
-        if (typeof t.results === 'object') {
-          const keys = Object.keys(t.results).filter(k => !k.startsWith('_') && k !== 'notes' && k !== 'remarks');
+        let resObj = t.results;
+        if (typeof resObj === 'string') {
+          try { resObj = JSON.parse(resObj); } catch (_) {}
+        }
+        if (typeof resObj === 'object' && resObj !== null) {
+          const keys = Object.keys(resObj).filter(k => !k.startsWith('_') && k !== 'notes' && k !== 'remarks');
           if (keys.length) {
-            resultsSummary = keys.slice(0, 4).map(k => `${k}: ${t.results[k]}`).join(', ');
+            resultsSummary = keys.slice(0, 4).map(k => {
+              const val = resObj[k];
+              if (val && typeof val === 'object' && val.value !== undefined) {
+                return `${k.toUpperCase()}: ${val.value}${val.unit ? ' ' + val.unit : ''}`;
+              }
+              return `${k}: ${val}`;
+            }).join(', ');
             if (keys.length > 4) resultsSummary += ` (+${keys.length - 4} more)`;
-          } else if (t.results.notes || t.results.remarks) {
-            resultsSummary = t.results.notes || t.results.remarks;
+          } else if (resObj.notes || resObj.remarks) {
+            resultsSummary = resObj.notes || resObj.remarks;
           }
         } else if (typeof t.results === 'string' && t.results.trim()) {
           resultsSummary = t.results.length > 80 ? t.results.substring(0, 77) + '...' : t.results;
@@ -137,6 +147,24 @@ router.get('/:testId', requireAuth, canAccessPatient, async (req, res) => {
       };
     });
 
+    // 6. Map doctor licenses for auto-filling PRC numbers
+    const doctorLicenses = {};
+    try {
+      const allUsers = global.db && typeof global.db.getUsers === 'function' ? global.db.getUsers() : [];
+      for (const u of allUsers) {
+        if (u && u.licenseNumber) {
+          if (u.name) doctorLicenses[u.name] = u.licenseNumber;
+          if (u.username) doctorLicenses[u.username] = u.licenseNumber;
+          if (u.name && u.name.toLowerCase().includes('lorenzo')) doctorLicenses['Dr. Lorenzo'] = u.licenseNumber;
+          if (u.name && u.name.toLowerCase().includes('arcilla')) doctorLicenses['Dr. Arcilla'] = u.licenseNumber;
+        }
+      }
+    } catch (_) {}
+
+    if (consultation && !consultation.doctorLicenseNumber && consultation.doctorName && doctorLicenses[consultation.doctorName]) {
+      consultation.doctorLicenseNumber = doctorLicenses[consultation.doctorName];
+    }
+
     res.render('consultations/panel', {
       title: `Clinical Consultation — ${patient.firstName} ${patient.lastName}`,
       consultation,
@@ -145,6 +173,7 @@ router.get('/:testId', requireAuth, canAccessPatient, async (req, res) => {
       formattedLabTests,
       previousConsultations,
       doctorOptions,
+      doctorLicenses,
       areaName: areaParam || (areaDoctor ? `Doctor's Check-up - ${areaDoctor}` : "Doctor's Check-up"),
       user: req.session.user
     });
@@ -212,8 +241,12 @@ router.post('/:testId', requireAuth, canAccessPatient, async (req, res) => {
     if (b.suspectedPathology !== undefined) consultation.suspectedPathology = b.suspectedPathology;
     if (b.clinicalImpression !== undefined) consultation.clinicalImpression = b.clinicalImpression;
 
-    // Differential Diagnosis (parse JSON array or newline-delimited)
-    if (b.differentialDiagnosis !== undefined) {
+    // Differential Diagnosis (parse items array or JSON array or newline-delimited)
+    if (b.differential_items !== undefined) {
+      consultation.differentialDiagnosis = Array.isArray(b.differential_items)
+        ? b.differential_items.map(s => String(s).trim()).filter(Boolean)
+        : [String(b.differential_items).trim()].filter(Boolean);
+    } else if (b.differentialDiagnosis !== undefined) {
       if (Array.isArray(b.differentialDiagnosis)) {
         consultation.differentialDiagnosis = b.differentialDiagnosis.filter(Boolean);
       } else if (typeof b.differentialDiagnosis === 'string') {
@@ -300,6 +333,11 @@ router.post('/:testId/complete', requireAuth, canAccessPatient, async (req, res)
     if (b.clinicalImpression) consultation.clinicalImpression = b.clinicalImpression;
     if (b.treatmentPlan) consultation.treatmentPlan = b.treatmentPlan;
     if (b.doctorName) consultation.doctorName = b.doctorName.trim();
+    if (b.differential_items !== undefined) {
+      consultation.differentialDiagnosis = Array.isArray(b.differential_items)
+        ? b.differential_items.map(s => String(s).trim()).filter(Boolean)
+        : [String(b.differential_items).trim()].filter(Boolean);
+    }
 
     consultation.status = 'Completed';
     consultation.completedAt = new Date().toISOString();

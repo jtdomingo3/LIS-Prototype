@@ -162,7 +162,11 @@
               </td>
               <td style="padding:14px; text-align:right; white-space:nowrap;">
                 <% 
-                  const isDoctor = String(test.testType || '').toLowerCase().includes('doctor') || (Array.isArray(test.requestedTests) && test.requestedTests.some(rr => String(rr && (rr.label || rr.key) || '').toLowerCase().includes('doctor')));
+                  const isDoctor = String(test.testType || '').toLowerCase().includes('doctor') ||
+                    String(test.status || '').toLowerCase().includes('doctor') ||
+                    String(test.testId || '').toUpperCase().startsWith('DC') ||
+                    (Array.isArray(test.requestedTests) && test.requestedTests.some(rr => String(rr && (rr.label || rr.key || rr.panel) || '').toLowerCase().includes('doctor'))) ||
+                    (Array.isArray(test.requiredAreas) && test.requiredAreas.some(ra => String(ra || '').toLowerCase().includes('doctor')));
                   const isSendout = String(test.status || '').toLowerCase() === 'sendout' || (Array.isArray(test.requestedTests) && test.requestedTests.some(rr => {
                     try { const lab = String(rr.lab || '').toLowerCase(); const lbl = String(rr.label || '').toLowerCase(); return lab === 'external' || lbl.includes('send out') || lbl.includes('sendout') || lbl.includes('for send'); } catch (e) { return false; }
                   }));

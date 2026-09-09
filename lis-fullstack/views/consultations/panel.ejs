@@ -4,20 +4,198 @@
   const vitals = c.vitalSigns || {};
   const isCompleted = (c.status === 'Completed');
   const patientAge = p.age || p.ageManual || '';
-  const diffList = Array.isArray(c.differentialDiagnosis) ? c.differentialDiagnosis : [];
+  
+  let rawDiffs = [];
+  if (Array.isArray(c.differentialDiagnosis)) {
+    rawDiffs = c.differentialDiagnosis;
+  } else if (typeof c.differentialDiagnosis === 'string' && c.differentialDiagnosis.trim()) {
+    try {
+      const parsed = JSON.parse(c.differentialDiagnosis);
+      rawDiffs = Array.isArray(parsed) ? parsed : [c.differentialDiagnosis.trim()];
+    } catch (_) {
+      rawDiffs = [c.differentialDiagnosis.trim()];
+    }
+  }
+  const diffList = rawDiffs.map(item => {
+    if (typeof item === 'string') {
+      let s = item.trim();
+      if (s.startsWith('[') && s.endsWith(']')) {
+        try {
+          const p = JSON.parse(s);
+          if (Array.isArray(p)) return p[0] || '';
+        } catch (_) {}
+      }
+      return s;
+    }
+    return item;
+  }).filter(Boolean);
+
   const rxList = Array.isArray(c.prescriptions) ? c.prescriptions : [];
   const labOrders = Array.isArray(c.labRequestTests) ? c.labRequestTests : [];
 %>
 
-<div style="max-width: 1200px; margin: 0 auto; padding-bottom: 60px;">
+<style>
+  /* Full-width container & box sizing */
+  .consultation-panel {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 4px 60px 4px !important;
+    box-sizing: border-box !important;
+  }
+  .consultation-panel * {
+    box-sizing: border-box;
+  }
 
-  <!-- Sticky Top Bar -->
-  <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; padding: 14px 20px; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
+  /* Scoped styling to override global layout.ejs padding: 12px 16px */
+  .consultation-panel select,
+  .consultation-panel select.form-input {
+    height: 38px !important;
+    min-height: 38px !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    padding-left: 10px !important;
+    padding-right: 28px !important;
+    line-height: 38px !important;
+    font-size: 0.9em !important;
+    color: #0f172a !important;
+    background-color: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    vertical-align: middle !important;
+    display: inline-block !important;
+    -webkit-appearance: auto !important;
+    appearance: auto !important;
+  }
+  .consultation-panel select:focus,
+  .consultation-panel select.form-input:focus {
+    border-color: #0d9488 !important;
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15) !important;
+    outline: none !important;
+  }
+
+  .consultation-panel input[type="text"],
+  .consultation-panel input[type="number"],
+  .consultation-panel input[type="date"],
+  .consultation-panel input[type="datetime-local"] {
+    height: 38px !important;
+    min-height: 38px !important;
+    padding: 0 10px !important;
+    line-height: 38px !important;
+    font-size: 0.9em !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+  }
+  .consultation-panel input[type="text"]:focus,
+  .consultation-panel input[type="number"]:focus,
+  .consultation-panel input[type="date"]:focus,
+  .consultation-panel input[type="datetime-local"]:focus {
+    border-color: #0d9488 !important;
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15) !important;
+    outline: none !important;
+  }
+
+  .consultation-panel textarea {
+    padding: 10px 12px !important;
+    font-size: 0.9em !important;
+    line-height: 1.5 !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+  }
+  .consultation-panel textarea:focus {
+    border-color: #0d9488 !important;
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15) !important;
+    outline: none !important;
+  }
+
+  /* Vitals card inputs & selects */
+  .consultation-panel .vitals-box input {
+    height: 36px !important;
+    min-height: 36px !important;
+    line-height: 36px !important;
+    padding: 0 6px !important;
+    text-align: center !important;
+    font-weight: 700 !important;
+  }
+  .consultation-panel .vitals-box select {
+    height: 36px !important;
+    min-height: 36px !important;
+    line-height: 36px !important;
+    padding: 0 8px !important;
+    text-align: center !important;
+    font-weight: 700 !important;
+  }
+
+  /* Small inputs inside tables */
+  .consultation-panel .rx-table input,
+  .consultation-panel .rx-table select {
+    height: 34px !important;
+    min-height: 34px !important;
+    line-height: 34px !important;
+    padding: 0 8px !important;
+    font-size: 0.88em !important;
+  }
+
+  /* Multipanel Tabs Navigation */
+  .consult-tabs-nav {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  .consult-tab-btn {
+    padding: 10px 18px !important;
+    border-radius: 10px !important;
+    font-weight: 700 !important;
+    font-size: 0.9em !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    background: #ffffff !important;
+    color: #475569 !important;
+    border: 1px solid #cbd5e1 !important;
+    transition: all 0.2s ease !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02) !important;
+  }
+  .consult-tab-btn:hover {
+    background: #f8fafc !important;
+    color: #0f172a !important;
+    border-color: #94a3b8 !important;
+  }
+  .consult-tab-btn.active {
+    background: #0d9488 !important;
+    color: #ffffff !important;
+    border-color: #0f766e !important;
+    box-shadow: 0 2px 6px rgba(13, 148, 136, 0.3) !important;
+  }
+  .consult-tab-btn .tab-badge {
+    background: rgba(0, 0, 0, 0.08);
+    color: inherit;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8em;
+    font-weight: 800;
+  }
+  .consult-tab-btn.active .tab-badge {
+    background: rgba(255, 255, 255, 0.28);
+    color: #ffffff;
+  }
+</style>
+
+<div class="consultation-panel">
+
+  <!-- Sticky Top Action Bar -->
+  <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; padding: 12px 20px; background: #ffffff; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.03); position: sticky; top: 0; z-index: 60;">
     <div style="display: flex; align-items: center; gap: 12px;">
       <a href="/reception/area/<%= encodeURIComponent(areaName || "Doctor's Check-up") %>" class="button btn-secondary" style="height: 36px; padding: 0 12px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.85em; text-decoration: none;">
         <i class="fa fa-arrow-left"></i> Back to Queue
       </a>
-      <h2 style="margin: 0; font-size: 1.3em; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+      <h2 style="margin: 0; font-size: 1.25em; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
         <span style="color: #0d9488;">🩺</span> Clinical Consultation
       </h2>
       <span id="statusBadge" style="background: <%= isCompleted ? '#dcfce7' : '#ccfbf1' %>; color: <%= isCompleted ? '#15803d' : '#0f766e' %>; border: 1px solid <%= isCompleted ? '#bbf7d0' : '#99f6e4' %>; font-size: 0.78em; font-weight: 700; text-transform: uppercase; padding: 3px 10px; border-radius: 20px;">
@@ -48,41 +226,53 @@
     <input type="hidden" name="patientId" value="<%= p.id %>">
     <input type="hidden" name="areaName" value="<%= areaName %>">
 
-    <!-- 1. Patient Header & Encounter Metadata Card -->
-    <div class="card" style="padding: 22px 26px; border-radius: 14px; background: #ffffff; border: 1px solid #e2e8f0; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.02);">
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; flex-wrap: wrap;">
-        <!-- Patient Identity -->
-        <div style="display: flex; gap: 16px; align-items: center;">
-          <div style="width: 52px; height: 52px; border-radius: 12px; background: #f0fdfa; border: 1.5px solid #99f6e4; color: #0d9488; display: flex; align-items: center; justify-content: center; font-size: 1.5em; font-weight: 700;">
+    <!-- 1. Patient Header & Encounter Metadata Card (Full Width) -->
+    <div class="card" style="padding: 18px 24px; border-radius: 14px; background: #ffffff; border: 1px solid #e2e8f0; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.02);">
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap;">
+        <!-- Patient Demographics & Quick Pills -->
+        <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+          <div style="width: 50px; height: 50px; border-radius: 12px; background: #f0fdfa; border: 1.5px solid #99f6e4; color: #0d9488; display: flex; align-items: center; justify-content: center; font-size: 1.4em; font-weight: 700;">
             <%= (p.firstName ? p.firstName.charAt(0) : 'P') %><%= (p.lastName ? p.lastName.charAt(0) : '') %>
           </div>
           <div>
-            <div style="font-size: 1.25em; font-weight: 700; color: #0f172a;">
-              <%= p.firstName %> <%= p.middleName ? p.middleName + ' ' : '' %><%= p.lastName %>
-            </div>
-            <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px; flex-wrap: wrap;">
-              <span style="background: #0f172a; color: #ffffff; font-size: 0.76em; font-weight: 700; padding: 2px 8px; border-radius: 4px;">
+            <div style="font-size: 1.25em; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <span><%= p.firstName %> <%= p.middleName ? p.middleName + ' ' : '' %><%= p.lastName %></span>
+              <span style="background: #0f172a; color: #ffffff; font-size: 0.65em; font-weight: 700; padding: 2px 8px; border-radius: 4px;">
                 Code: <%= p.patientCode || p.patientId || 'N/A' %>
               </span>
-              <span style="background: #f1f5f9; color: #475569; font-size: 0.78em; font-weight: 600; padding: 2px 8px; border-radius: 4px;">
+            </div>
+            <div style="display: flex; gap: 10px; align-items: center; margin-top: 4px; flex-wrap: wrap;">
+              <span style="background: #f1f5f9; color: #475569; font-size: 0.8em; font-weight: 600; padding: 2px 8px; border-radius: 4px;">
                 <%= p.gender || 'Unknown' %> <%= patientAge ? ' • ' + patientAge + ' yrs' : '' %>
               </span>
               <% if (p.dateOfBirth) { %>
-                <span style="color: #64748b; font-size: 0.8em;">
+                <span style="color: #64748b; font-size: 0.82em;">
                   DOB: <%= new Date(p.dateOfBirth).toLocaleDateString() %>
+                </span>
+              <% } %>
+              <!-- Quick Jump Pills -->
+              <button type="button" onclick="switchConsultTab('tab-labs', document.getElementById('tabNavLabs'))" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; border-radius: 6px; padding: 2px 8px; font-size: 0.78em; font-weight: 700; cursor: pointer;">
+                <i class="fa fa-flask"></i> <%= formattedLabTests.length %> Lab Records
+              </button>
+              <button type="button" onclick="switchConsultTab('tab-history', document.getElementById('tabNavHistory'))" style="background: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe; border-radius: 6px; padding: 2px 8px; font-size: 0.78em; font-weight: 700; cursor: pointer;">
+                <i class="fa fa-history"></i> <%= previousConsultations.length %> Prior Visits
+              </button>
+              <% if (c.allergies && c.allergies.trim()) { %>
+                <span style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; border-radius: 6px; padding: 2px 8px; font-size: 0.78em; font-weight: 700;">
+                  <i class="fa fa-allergies"></i> Allergies: <%= c.allergies.trim() %>
                 </span>
               <% } %>
             </div>
           </div>
         </div>
 
-        <!-- Attending Doctor & Visit Config -->
+        <!-- Attending Doctor & Encounter Metadata Controls -->
         <div style="display: flex; gap: 14px; flex-wrap: wrap; align-items: center;">
           <div>
-            <label style="display: block; font-size: 0.76em; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 4px;">Visit Type</label>
-            <div style="display: flex; gap: 8px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 4px 8px;">
+            <label style="display: block; font-size: 0.74em; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 4px;">Visit Type</label>
+            <div style="display: flex; gap: 8px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 4px 8px; height: 38px; align-items: center;">
               <label style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.86em; font-weight: 600; color: #1e293b; cursor: pointer; margin: 0;">
-                <input type="radio" name="visitType" value="New" <%= (c.visitType === 'New' || !c.visitType) ? 'checked' : '' %>> New Visit
+                <input type="radio" name="visitType" value="New" <%= (c.visitType === 'New' || !c.visitType) ? 'checked' : '' %>> New
               </label>
               <label style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.86em; font-weight: 600; color: #1e293b; cursor: pointer; margin: 0;">
                 <input type="radio" name="visitType" value="Follow-up" <%= (c.visitType === 'Follow-up') ? 'checked' : '' %>> Follow-up
@@ -91,8 +281,8 @@
           </div>
 
           <div>
-            <label style="display: block; font-size: 0.76em; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 4px;">Attending Physician</label>
-            <select name="doctorName" id="doctorNameSelect" class="form-input" style="height: 38px; border-radius: 8px; font-weight: 600; min-width: 190px;">
+            <label style="display: block; font-size: 0.74em; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 4px;">Attending Physician</label>
+            <select name="doctorName" id="doctorNameSelect" class="form-input" style="height: 38px; border-radius: 8px; font-weight: 600; min-width: 210px; padding: 0 10px !important; line-height: 38px !important;">
               <% doctorOptions.forEach(doc => { %>
                 <option value="<%= doc %>" <%= (c.doctorName === doc) ? 'selected' : '' %>><%= doc %></option>
               <% }) %>
@@ -103,153 +293,497 @@
           </div>
 
           <div>
-            <label style="display: block; font-size: 0.76em; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 4px;">PRC License No.</label>
-            <input type="text" name="doctorLicenseNumber" value="<%= c.doctorLicenseNumber || '' %>" placeholder="PRC #" class="form-input" style="height: 38px; width: 120px; border-radius: 8px; font-size: 0.86em;">
+            <label style="display: block; font-size: 0.74em; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 4px;">PRC License No.</label>
+            <input type="text" name="doctorLicenseNumber" value="<%= c.doctorLicenseNumber || '' %>" placeholder="PRC #" class="form-input" style="height: 38px; width: 125px; border-radius: 8px; font-size: 0.86em; padding: 0 10px !important; line-height: 38px !important;">
           </div>
 
           <div>
-            <label style="display: block; font-size: 0.76em; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 4px;">Encounter Date</label>
-            <input type="datetime-local" name="consultationDate" value="<%= (c.consultationDate ? new Date(c.consultationDate).toISOString().slice(0,16) : new Date().toISOString().slice(0,16)) %>" class="form-input" style="height: 38px; border-radius: 8px; font-size: 0.84em;">
+            <label style="display: block; font-size: 0.74em; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 4px;">Encounter Date</label>
+            <input type="datetime-local" name="consultationDate" value="<%= (c.consultationDate ? new Date(c.consultationDate).toISOString().slice(0,16) : new Date().toISOString().slice(0,16)) %>" class="form-input" style="height: 38px; border-radius: 8px; font-size: 0.84em; padding: 0 8px !important; line-height: 38px !important;">
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 2. Prior Consultations with Other Doctors Accordion Card -->
-    <div class="card" style="padding: 18px 24px; border-radius: 14px; background: #ffffff; border: 1px solid #e2e8f0; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
-      <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleSection('prevVisitsBody', 'prevVisitsIcon')">
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <i class="fa fa-history" style="color: #6366f1; font-size: 1.1em;"></i>
-          <span style="font-weight: 700; color: #0f172a; font-size: 1em;">
-            Previous Clinical Consultations
-          </span>
-          <span style="background: <%= previousConsultations.length > 0 ? '#e0e7ff' : '#f1f5f9' %>; color: <%= previousConsultations.length > 0 ? '#4338ca' : '#64748b' %>; font-size: 0.76em; font-weight: 700; padding: 2px 8px; border-radius: 12px;">
-            <%= previousConsultations.length %> prior visit<%= previousConsultations.length === 1 ? '' : 's' %>
-          </span>
-        </div>
-        <i id="prevVisitsIcon" class="fa fa-chevron-<%= previousConsultations.length > 0 ? 'down' : 'right' %>" style="color: #94a3b8; font-size: 0.9em;"></i>
-      </div>
+    <!-- 2. Multipanel Navigation Tabs Bar -->
+    <div class="consult-tabs-nav">
+      <button type="button" class="consult-tab-btn active" onclick="switchConsultTab('tab-soap', this)" id="tabNavSoap">
+        <i class="fa fa-stethoscope"></i> SOAP Clinical Encounter
+      </button>
+      <button type="button" class="consult-tab-btn" onclick="switchConsultTab('tab-labs', this)" id="tabNavLabs">
+        <i class="fa fa-flask"></i> Patient Lab History & Diagnostic Results
+        <span class="tab-badge"><%= formattedLabTests.length %></span>
+      </button>
+      <button type="button" class="consult-tab-btn" onclick="switchConsultTab('tab-history', this)" id="tabNavHistory">
+        <i class="fa fa-history"></i> Previous Clinical Consultations
+        <span class="tab-badge"><%= previousConsultations.length %></span>
+      </button>
+      <button type="button" class="consult-tab-btn" onclick="switchConsultTab('tab-docs', this)" id="tabNavDocs">
+        <i class="fa fa-file-medical"></i> Official Documents & Rx
+      </button>
+    </div>
 
-      <div id="prevVisitsBody" style="margin-top: 14px; display: <%= previousConsultations.length > 0 ? 'block' : 'none' %>; border-top: 1px solid #f1f5f9; padding-top: 12px;">
-        <% if (previousConsultations.length > 0) { %>
-          <div style="overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse; font-size: 0.86em;">
-              <thead>
-                <tr style="background: #f8fafc; border-bottom: 1.5px solid #e2e8f0; text-align: left; color: #475569;">
-                  <th style="padding: 10px 12px;">Date & Time</th>
-                  <th style="padding: 10px 12px;">Attending Doctor</th>
-                  <th style="padding: 10px 12px;">Visit Type</th>
-                  <th style="padding: 10px 12px;">Primary Diagnosis</th>
-                  <th style="padding: 10px 12px;">Suspected Pathology</th>
-                  <th style="padding: 10px 12px;">Key Vitals</th>
-                  <th style="padding: 10px 12px; text-align: right;">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                <% previousConsultations.forEach((pc, idx) => { 
-                     const pv = pc.vitalSigns || {};
-                     const isDiffDoctor = pc.doctorName && c.doctorName && (pc.doctorName.toLowerCase() !== c.doctorName.toLowerCase());
-                %>
-                  <tr style="border-bottom: 1px solid #f1f5f9;">
-                    <td style="padding: 10px 12px; white-space: nowrap;">
-                      <%= pc.consultationDate ? new Date(pc.consultationDate).toLocaleString() : 'N/A' %>
-                    </td>
-                    <td style="padding: 10px 12px;">
-                      <span style="background: <%= isDiffDoctor ? '#fef3c7' : '#f1f5f9' %>; color: <%= isDiffDoctor ? '#92400e' : '#334155' %>; border: 1px solid <%= isDiffDoctor ? '#fde68a' : '#e2e8f0' %>; padding: 2px 8px; border-radius: 6px; font-weight: 700; font-size: 0.9em;">
-                        <i class="fa fa-user-md"></i> <%= pc.doctorName || 'Attending Physician' %>
-                      </span>
-                    </td>
-                    <td style="padding: 10px 12px;">
-                      <span style="background: #f1f5f9; color: #475569; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; font-weight: 600;">
-                        <%= pc.visitType || 'Visit' %>
-                      </span>
-                    </td>
-                    <td style="padding: 10px 12px; font-weight: 600; color: #0f172a;">
-                      <%= pc.primaryDiagnosis || '—' %>
-                    </td>
-                    <td style="padding: 10px 12px; color: #64748b;">
-                      <%= pc.suspectedPathology || '—' %>
-                    </td>
-                    <td style="padding: 10px 12px; font-size: 0.82em; color: #475569;">
-                      <% if (pv.bloodPressureSystolic && pv.bloodPressureDiastolic) { %>BP: <%= pv.bloodPressureSystolic %>/<%= pv.bloodPressureDiastolic %><% } %>
-                      <% if (pv.pulseRate) { %> • HR: <%= pv.pulseRate %><% } %>
-                      <% if (pv.temperature) { %> • Temp: <%= pv.temperature %>°C<% } %>
-                    </td>
-                    <td style="padding: 10px 12px; text-align: right;">
-                      <button type="button" class="button btn-secondary btn-small" onclick="viewPriorVisitModal('<%= idx %>')" style="height: 28px; padding: 0 8px; font-size: 0.8em;">
-                        <i class="fa fa-eye"></i> Notes
+    <!-- TAB 1: 🩺 SOAP CLINICAL ENCOUNTER (2-COLUMN RESPONSIVE MULTI-PANEL SPLIT) -->
+    <div id="tab-soap" class="consult-tab-page" style="display: block;">
+      <div style="display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); gap: 20px; align-items: start;">
+        
+        <!-- =================== LEFT PANEL: S (Subjective) & O (Objective) =================== -->
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+          
+          <!-- [S] SUBJECTIVE CARD -->
+          <div class="card" style="padding: 20px; border-radius: 12px; background: #ffffff; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">
+              <span style="background: #0d9488; color: #ffffff; width: 24px; height: 24px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.85em;">S</span>
+              <h3 style="margin: 0; font-size: 1.05em; font-weight: 700; color: #0f172a;">Subjective (Patient History & Complaints)</h3>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <div>
+                <label style="display: block; font-size: 0.8em; font-weight: 700; color: #334155; margin-bottom: 4px;">
+                  Chief Complaint <span style="color: #dc2626;">*</span>
+                </label>
+                <input type="text" name="chiefComplaint" value="<%= c.chiefComplaint || '' %>" placeholder="e.g. High fever x 3 days, productive cough, flank pain" class="form-input auto-save-input" style="width: 100%; height: 38px; border-radius: 8px; font-weight: 600; font-size: 0.92em;">
+              </div>
+
+              <div>
+                <label style="display: block; font-size: 0.8em; font-weight: 700; color: #334155; margin-bottom: 4px;">History of Present Illness (HPI)</label>
+                <textarea name="historyOfPresentIllness" rows="3" placeholder="Onset, duration, severity, aggravating/alleviating factors..." class="form-input auto-save-input" style="width: 100%; border-radius: 8px; padding: 8px 10px; font-family: inherit; font-size: 0.88em;"><%= c.historyOfPresentIllness || '' %></textarea>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div>
+                  <label style="display: block; font-size: 0.8em; font-weight: 700; color: #334155; margin-bottom: 4px;">Past Medical History</label>
+                  <textarea name="pastMedicalHistory" rows="2" placeholder="Hypertension, DM, Asthma..." class="form-input auto-save-input" style="width: 100%; border-radius: 8px; padding: 6px 8px; font-family: inherit; font-size: 0.85em;"><%= c.pastMedicalHistory || '' %></textarea>
+                </div>
+
+                <div>
+                  <label style="display: block; font-size: 0.8em; font-weight: 700; color: #dc2626; margin-bottom: 4px;">
+                    <i class="fa fa-allergies"></i> Allergies & Adverse Reactions
+                  </label>
+                  <textarea name="allergies" rows="2" placeholder="Penicillin, NSAIDs, seafood..." class="form-input auto-save-input" style="width: 100%; border-radius: 8px; padding: 6px 8px; font-family: inherit; font-size: 0.85em; border-color: #fecaca; background: #fffaf0;"><%= c.allergies || '' %></textarea>
+                </div>
+              </div>
+
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div>
+                  <label style="display: block; font-size: 0.8em; font-weight: 700; color: #334155; margin-bottom: 4px;">Current Medications</label>
+                  <input type="text" name="currentMedications" value="<%= c.currentMedications || '' %>" placeholder="Maintenance drugs, vitamins" class="form-input auto-save-input" style="width: 100%; height: 36px; border-radius: 8px; font-size: 0.85em;">
+                </div>
+
+                <div>
+                  <label style="display: block; font-size: 0.8em; font-weight: 700; color: #334155; margin-bottom: 4px;">Family & Social History</label>
+                  <input type="text" name="socialHistory" value="<%= c.socialHistory || '' %>" placeholder="Smoking, alcohol, family HTN/DM" class="form-input auto-save-input" style="width: 100%; height: 36px; border-radius: 8px; font-size: 0.85em;">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- [O] OBJECTIVE CARD (VITALS & PHYSICAL EXAM) -->
+          <div class="card" style="padding: 20px; border-radius: 12px; background: #ffffff; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="background: #0d9488; color: #ffffff; width: 24px; height: 24px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.85em;">O</span>
+                <h3 style="margin: 0; font-size: 1.05em; font-weight: 700; color: #0f172a;">Objective (Vital Signs & Physical Examination)</h3>
+              </div>
+              <span style="font-size: 0.76em; color: #64748b; font-weight: 600;">BMI auto-calculates from Weight & Height</span>
+            </div>
+
+            <!-- Vital Signs 10-Card Interactive Grid -->
+            <div class="vitals-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 16px;">
+              
+              <!-- Blood Pressure -->
+              <div class="vitals-box" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px;">
+                <label style="display: block; font-size: 0.7em; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">
+                  Blood Pressure <span style="font-weight: 400;">(mmHg)</span>
+                </label>
+                <div style="display: flex; align-items: center; gap: 3px;">
+                  <input type="number" name="bloodPressureSystolic" id="bpSys" value="<%= vitals.bloodPressureSystolic || '' %>" placeholder="120" min="40" max="300" class="form-input auto-save-input" style="width: 50%;">
+                  <span style="font-weight: 700; color: #94a3b8;">/</span>
+                  <input type="number" name="bloodPressureDiastolic" id="bpDia" value="<%= vitals.bloodPressureDiastolic || '' %>" placeholder="80" min="20" max="200" class="form-input auto-save-input" style="width: 50%;">
+                </div>
+              </div>
+
+              <!-- Pulse Rate -->
+              <div class="vitals-box" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px;">
+                <label style="display: block; font-size: 0.7em; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">
+                  Pulse <span style="font-weight: 400;">(bpm)</span>
+                </label>
+                <input type="number" name="pulseRate" value="<%= vitals.pulseRate || '' %>" placeholder="72" min="30" max="250" class="form-input auto-save-input" style="width: 100%;">
+              </div>
+
+              <!-- Respiratory Rate -->
+              <div class="vitals-box" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px;">
+                <label style="display: block; font-size: 0.7em; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">
+                  Resp. Rate <span style="font-weight: 400;">(cpm)</span>
+                </label>
+                <input type="number" name="respiratoryRate" value="<%= vitals.respiratoryRate || '' %>" placeholder="18" min="5" max="80" class="form-input auto-save-input" style="width: 100%;">
+              </div>
+
+              <!-- Temperature -->
+              <div class="vitals-box" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px;">
+                <label style="display: block; font-size: 0.7em; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">
+                  Temp <span style="font-weight: 400;">(°C)</span>
+                </label>
+                <input type="number" step="0.1" name="temperature" value="<%= vitals.temperature || '' %>" placeholder="36.5" min="30" max="45" class="form-input auto-save-input" style="width: 100%;">
+              </div>
+
+              <!-- SpO2 -->
+              <div class="vitals-box" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px;">
+                <label style="display: block; font-size: 0.7em; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">
+                  SpO₂ <span style="font-weight: 400;">(%)</span>
+                </label>
+                <input type="number" name="oxygenSaturation" value="<%= vitals.oxygenSaturation || '' %>" placeholder="98" min="50" max="100" class="form-input auto-save-input" style="width: 100%;">
+              </div>
+
+              <!-- Weight -->
+              <div class="vitals-box" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px;">
+                <label style="display: block; font-size: 0.7em; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">
+                  Weight <span style="font-weight: 400;">(kg)</span>
+                </label>
+                <input type="number" step="0.1" name="weight" id="vitalWeight" value="<%= vitals.weight || '' %>" placeholder="65.0" min="1" max="400" class="form-input auto-save-input" style="width: 100%;" oninput="recalcBmiUI()">
+              </div>
+
+              <!-- Height -->
+              <div class="vitals-box" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px;">
+                <label style="display: block; font-size: 0.7em; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">
+                  Height <span style="font-weight: 400;">(cm)</span>
+                </label>
+                <input type="number" step="0.5" name="height" id="vitalHeight" value="<%= vitals.height || '' %>" placeholder="165" min="30" max="250" class="form-input auto-save-input" style="width: 100%;" oninput="recalcBmiUI()">
+              </div>
+
+              <!-- Auto BMI -->
+              <div class="vitals-box" style="background: #f0fdfa; border: 1.5px solid #99f6e4; border-radius: 8px; padding: 8px 10px;">
+                <label style="display: block; font-size: 0.7em; font-weight: 700; text-transform: uppercase; color: #0f766e; margin-bottom: 4px;">
+                  BMI <span style="font-weight: 400;">(kg/m²)</span>
+                </label>
+                <div style="display: flex; align-items: center; justify-content: space-between; height: 36px;">
+                  <span id="bmiDisplay" style="font-size: 1.1em; font-weight: 800; color: #0f766e;">
+                    <%= vitals.bmi || '—' %>
+                  </span>
+                  <span id="bmiBadge" style="font-size: 0.7em; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: #ccfbf1; color: #115e59;">
+                    <%= vitals.bmiCategory || 'Normal' %>
+                  </span>
+                </div>
+              </div>
+
+              <!-- Pain Scale -->
+              <div class="vitals-box" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px;">
+                <label style="display: block; font-size: 0.7em; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">
+                  Pain Scale <span style="font-weight: 400;">(0-10)</span>
+                </label>
+                <select name="painScale" class="form-input auto-save-input" style="width: 100%; height: 36px; border-radius: 6px; font-weight: 700; font-size: 0.88em; text-align: center; padding: 0 6px !important; line-height: 36px !important;">
+                  <option value="">None</option>
+                  <% for (let i = 0; i <= 10; i++) { %>
+                    <option value="<%= i %>" <%= String(vitals.painScale) === String(i) ? 'selected' : '' %>><%= i %> / 10</option>
+                  <% } %>
+                </select>
+              </div>
+
+              <!-- Bedside Blood Glucose -->
+              <div class="vitals-box" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px;">
+                <label style="display: block; font-size: 0.7em; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">
+                  Blood Glucose <span style="font-weight: 400;">(mg/dL)</span>
+                </label>
+                <input type="number" step="1" name="bloodGlucose" value="<%= vitals.bloodGlucose || '' %>" placeholder="e.g. 100" class="form-input auto-save-input" style="width: 100%;">
+              </div>
+
+            </div>
+
+            <!-- Physical Examination Findings -->
+            <div>
+              <label style="display: block; font-size: 0.8em; font-weight: 700; color: #334155; margin-bottom: 4px;">
+                Physical Examination Findings (HEENT, Chest/Lungs, CVS, Abdomen, Extremities, Neurologic)
+              </label>
+              <textarea name="physicalExamFindings" rows="3" placeholder="Clear breath sounds, normal heart sounds, soft non-tender abdomen, no edema..." class="form-input auto-save-input" style="width: 100%; border-radius: 8px; padding: 8px 10px; font-family: inherit; font-size: 0.88em;"><%= c.physicalExamFindings || '' %></textarea>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- =================== RIGHT PANEL: A (Assessment) & P (Plan) =================== -->
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+          
+          <!-- [A] ASSESSMENT CARD -->
+          <div class="card" style="padding: 20px; border-radius: 12px; background: #ffffff; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">
+              <span style="background: #0d9488; color: #ffffff; width: 24px; height: 24px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.85em;">A</span>
+              <h3 style="margin: 0; font-size: 1.05em; font-weight: 700; color: #0f172a;">Assessment (Clinical Diagnosis & Differentials)</h3>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <div>
+                <label style="display: block; font-size: 0.8em; font-weight: 700; color: #334155; margin-bottom: 4px;">
+                  Primary Diagnosis <span style="color: #dc2626;">*</span>
+                </label>
+                <input type="text" name="primaryDiagnosis" id="primaryDiagnosisInput" value="<%= c.primaryDiagnosis || '' %>" placeholder="e.g. Acute Bronchitis, Essential Hypertension Stage 1" class="form-input auto-save-input" style="width: 100%; height: 38px; border-radius: 8px; font-weight: 700; font-size: 0.95em; border-color: #99f6e4;">
+              </div>
+
+              <div>
+                <label style="display: block; font-size: 0.8em; font-weight: 700; color: #334155; margin-bottom: 4px;">
+                  Suspected Pathology / Etiology
+                </label>
+                <input type="text" name="suspectedPathology" value="<%= c.suspectedPathology || '' %>" placeholder="e.g. Viral respiratory infection, bacterial superinfection" class="form-input auto-save-input" style="width: 100%; height: 36px; border-radius: 8px; font-size: 0.88em;">
+              </div>
+
+              <!-- Dynamic Differential Diagnoses List -->
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                  <label style="font-size: 0.8em; font-weight: 700; color: #334155; margin: 0;">
+                    Differential Diagnoses
+                  </label>
+                  <button type="button" class="button btn-secondary btn-small" onclick="addDifferentialRow()" style="height: 28px; padding: 0 10px; font-size: 0.78em; border-radius: 6px;">
+                    <i class="fa fa-plus"></i> Add Differential
+                  </button>
+                </div>
+
+                <div id="differentialContainer" style="display: flex; flex-direction: column; gap: 6px;">
+                  <% if (diffList && diffList.length) { %>
+                    <% diffList.forEach((diff, idx) => { %>
+                      <div class="diff-item-row" style="display: flex; gap: 6px; align-items: center;">
+                        <input type="text" name="differential_items[]" value="<%= diff %>" placeholder="e.g. Rule out Community Acquired Pneumonia" class="form-input auto-save-input" style="flex: 1; height: 34px; font-size: 0.86em; border-radius: 6px;">
+                        <button type="button" class="button btn-small" onclick="removeRow(this)" style="height: 32px; padding: 0 8px; background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; border-radius: 6px;" title="Remove differential">
+                          <i class="fa fa-times"></i>
+                        </button>
+                      </div>
+                    <% }) %>
+                  <% } else { %>
+                    <div class="diff-item-row" style="display: flex; gap: 6px; align-items: center;">
+                      <input type="text" name="differential_items[]" value="" placeholder="e.g. Rule out Community Acquired Pneumonia" class="form-input auto-save-input" style="flex: 1; height: 34px; font-size: 0.86em; border-radius: 6px;">
+                      <button type="button" class="button btn-small" onclick="removeRow(this)" style="height: 32px; padding: 0 8px; background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; border-radius: 6px;">
+                        <i class="fa fa-times"></i>
                       </button>
-                    </td>
-                  </tr>
+                    </div>
+                  <% } %>
+                </div>
+              </div>
+
+              <div>
+                <label style="display: block; font-size: 0.8em; font-weight: 700; color: #334155; margin-bottom: 4px;">Clinical Impression / Medical Summary</label>
+                <textarea name="clinicalImpression" rows="2" placeholder="Overall medical synthesis and prognosis..." class="form-input auto-save-input" style="width: 100%; border-radius: 8px; padding: 6px 8px; font-family: inherit; font-size: 0.85em;"><%= c.clinicalImpression || '' %></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- [P] PLAN CARD (PRESCRIPTIONS & MANAGEMENT) -->
+          <div class="card" style="padding: 20px; border-radius: 12px; background: #ffffff; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="background: #0d9488; color: #ffffff; width: 24px; height: 24px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.85em;">P</span>
+                <h3 style="margin: 0; font-size: 1.05em; font-weight: 700; color: #0f172a;">Plan (Management, Prescriptions & Follow-up)</h3>
+              </div>
+            </div>
+
+            <!-- Prescriptions Rx Table -->
+            <div style="margin-bottom: 16px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <label style="font-size: 0.8em; font-weight: 700; color: #0f766e; margin: 0; display: flex; align-items: center; gap: 6px;">
+                  <i class="fa fa-pills"></i> Medical Prescriptions (Rx)
+                </label>
+                <button type="button" class="button btn-secondary btn-small" onclick="addRxRow()" style="height: 28px; padding: 0 10px; font-size: 0.78em; border-radius: 6px;">
+                  <i class="fa fa-plus"></i> Add Medication
+                </button>
+              </div>
+
+              <div style="overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 8px;">
+                <table class="rx-table" style="width: 100%; border-collapse: collapse; font-size: 0.84em;">
+                  <thead>
+                    <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; text-align: left; color: #475569;">
+                      <th style="padding: 6px 8px;">Drug & Strength</th>
+                      <th style="padding: 6px 8px; width: 85px;">Dosage</th>
+                      <th style="padding: 6px 8px; width: 100px;">Route</th>
+                      <th style="padding: 6px 8px; width: 120px;">Frequency</th>
+                      <th style="padding: 6px 8px; width: 80px;">Duration</th>
+                      <th style="padding: 6px 8px;">Instructions / Qty</th>
+                      <th style="padding: 6px 8px; width: 34px; text-align: center;"></th>
+                    </tr>
+                  </thead>
+                  <tbody id="rxTableBody">
+                    <% if (rxList && rxList.length) { %>
+                      <% rxList.forEach((rx, idx) => { %>
+                        <tr class="rx-row" style="border-bottom: 1px solid #f1f5f9;">
+                          <td style="padding: 4px 6px;">
+                            <input type="text" name="rx_drug[]" value="<%= rx.drug || '' %>" placeholder="e.g. Amoxicillin 500mg" class="form-input auto-save-input" style="width: 100%;">
+                          </td>
+                          <td style="padding: 4px 6px;">
+                            <input type="text" name="rx_dosage[]" value="<%= rx.dosage || '' %>" placeholder="1 cap" class="form-input auto-save-input" style="width: 100%;">
+                          </td>
+                          <td style="padding: 4px 6px;">
+                            <select name="rx_route[]" class="form-input auto-save-input" style="width: 100%;">
+                              <option value="Oral" <%= rx.route === 'Oral' ? 'selected' : '' %>>Oral (PO)</option>
+                              <option value="Topical" <%= rx.route === 'Topical' ? 'selected' : '' %>>Topical</option>
+                              <option value="Inhalation" <%= rx.route === 'Inhalation' ? 'selected' : '' %>>Inhalation</option>
+                              <option value="Sublingual" <%= rx.route === 'Sublingual' ? 'selected' : '' %>>Sublingual</option>
+                              <option value="IV" <%= rx.route === 'IV' ? 'selected' : '' %>>IV</option>
+                              <option value="IM" <%= rx.route === 'IM' ? 'selected' : '' %>>IM</option>
+                            </select>
+                          </td>
+                          <td style="padding: 4px 6px;">
+                            <input type="text" name="rx_frequency[]" value="<%= rx.frequency || '' %>" placeholder="TID (3x a day)" class="form-input auto-save-input" style="width: 100%;">
+                          </td>
+                          <td style="padding: 4px 6px;">
+                            <input type="text" name="rx_duration[]" value="<%= rx.duration || '' %>" placeholder="7 days" class="form-input auto-save-input" style="width: 100%;">
+                          </td>
+                          <td style="padding: 4px 6px;">
+                            <input type="text" name="rx_instructions[]" value="<%= rx.instructions || '' %>" placeholder="#21 after meals" class="form-input auto-save-input" style="width: 100%;">
+                          </td>
+                          <td style="padding: 4px 6px; text-align: center;">
+                            <button type="button" class="button btn-small" onclick="removeRow(this)" style="height: 28px; padding: 0 6px; background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; border-radius: 6px;">
+                              <i class="fa fa-trash"></i>
+                            </button>
+                          </td>
+                        </tr>
+                      <% }) %>
+                    <% } else { %>
+                      <tr class="rx-row" style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 4px 6px;">
+                          <input type="text" name="rx_drug[]" value="" placeholder="e.g. Paracetamol 500mg" class="form-input auto-save-input" style="width: 100%;">
+                        </td>
+                        <td style="padding: 4px 6px;">
+                          <input type="text" name="rx_dosage[]" value="" placeholder="1 tab" class="form-input auto-save-input" style="width: 100%;">
+                        </td>
+                        <td style="padding: 4px 6px;">
+                          <select name="rx_route[]" class="form-input auto-save-input" style="width: 100%;">
+                            <option value="Oral" selected>Oral (PO)</option>
+                            <option value="Topical">Topical</option>
+                            <option value="Inhalation">Inhalation</option>
+                            <option value="Sublingual">Sublingual</option>
+                            <option value="IV">IV</option>
+                            <option value="IM">IM</option>
+                          </select>
+                        </td>
+                        <td style="padding: 4px 6px;">
+                          <input type="text" name="rx_frequency[]" value="" placeholder="q6h PRN for fever" class="form-input auto-save-input" style="width: 100%;">
+                        </td>
+                        <td style="padding: 4px 6px;">
+                          <input type="text" name="rx_duration[]" value="" placeholder="3 days" class="form-input auto-save-input" style="width: 100%;">
+                        </td>
+                        <td style="padding: 4px 6px;">
+                          <input type="text" name="rx_instructions[]" value="" placeholder="#10 after meals" class="form-input auto-save-input" style="width: 100%;">
+                        </td>
+                        <td style="padding: 4px 6px; text-align: center;">
+                          <button type="button" class="button btn-small" onclick="removeRow(this)" style="height: 28px; padding: 0 6px; background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; border-radius: 6px;">
+                            <i class="fa fa-trash"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    <% } %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Treatment Plan & Follow-up in 2-column -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+              <div>
+                <label style="display: block; font-size: 0.8em; font-weight: 700; color: #334155; margin-bottom: 4px;">Treatment Plan & Recommendations</label>
+                <textarea name="treatmentPlan" rows="3" placeholder="Rest, increased oral fluid intake, dietary modifications, wound care..." class="form-input auto-save-input" style="width: 100%; border-radius: 8px; padding: 6px 8px; font-family: inherit; font-size: 0.85em;"><%= c.treatmentPlan || '' %></textarea>
+              </div>
+
+              <div>
+                <label style="display: block; font-size: 0.8em; font-weight: 700; color: #334155; margin-bottom: 4px;">Follow-up Schedule</label>
+                <input type="date" name="followUpDate" value="<%= c.followUpDate ? c.followUpDate.slice(0,10) : '' %>" class="form-input auto-save-input" style="width: 100%; height: 36px; border-radius: 8px; margin-bottom: 6px;">
+                <input type="text" name="followUpNotes" value="<%= c.followUpNotes || '' %>" placeholder="Follow-up instructions or referral..." class="form-input auto-save-input" style="width: 100%; height: 36px; border-radius: 8px; font-size: 0.85em;">
+              </div>
+            </div>
+
+            <!-- Diagnostic Orders Checkboxes -->
+            <div>
+              <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 6px;">
+                Recommended Diagnostic Orders (For Lab Request Form)
+              </label>
+              <div style="display: flex; gap: 10px; flex-wrap: wrap; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
+                <% 
+                  const orderOptions = [
+                    { id: 'cbc', label: 'CBC with Platelet' },
+                    { id: 'urinalysis', label: 'Urinalysis' },
+                    { id: 'fecalysis', label: 'Fecalysis' },
+                    { id: 'fbs', label: 'Fasting Blood Sugar (FBS)' },
+                    { id: 'lipid', label: 'Lipid Profile' },
+                    { id: 'bua', label: 'Blood Uric Acid (BUA)' },
+                    { id: 'bun_crea', label: 'BUN & Creatinine' },
+                    { id: 'sgpt', label: 'SGPT / ALT' },
+                    { id: 'xray', label: 'Chest X-Ray' },
+                    { id: 'ecg', label: '12-Lead ECG' }
+                  ];
+                  const existingLabKeys = labOrders.map(lo => lo.testType || lo.key || '');
+                %>
+                <% orderOptions.forEach(opt => { 
+                     const isChecked = existingLabKeys.some(k => k.toLowerCase().includes(opt.id) || k.toLowerCase().includes(opt.label.toLowerCase().slice(0,4)));
+                %>
+                  <label style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.82em; font-weight: 600; color: #334155; cursor: pointer; background: #ffffff; border: 1px solid #cbd5e1; padding: 3px 8px; border-radius: 6px; margin: 0;">
+                    <input type="checkbox" name="labOrders" value="<%= opt.label %>" <%= isChecked ? 'checked' : '' %> class="auto-save-input">
+                    <%= opt.label %>
+                  </label>
                 <% }) %>
-              </tbody>
-            </table>
+              </div>
+            </div>
+
           </div>
-        <% } else { %>
-          <div style="color: #64748b; font-size: 0.88em; font-style: italic; padding: 6px 0;">
-            No prior clinical consultations recorded for this patient. This is their initial consultation record.
-          </div>
-        <% } %>
+
+        </div>
+
       </div>
     </div>
 
-    <!-- 3. Patient Laboratory Results History Accordion Card -->
-    <div class="card" style="padding: 18px 24px; border-radius: 14px; background: #ffffff; border: 1px solid #e2e8f0; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
-      <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleSection('labResultsBody', 'labResultsIcon')">
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <i class="fa fa-flask" style="color: #0284c7; font-size: 1.1em;"></i>
-          <span style="font-weight: 700; color: #0f172a; font-size: 1em;">
-            Patient Laboratory & Diagnostic Results History
-          </span>
-          <span style="background: #e0f2fe; color: #0369a1; font-size: 0.76em; font-weight: 700; padding: 2px 8px; border-radius: 12px;">
-            <%= formattedLabTests.length %> test record<%= formattedLabTests.length === 1 ? '' : 's' %>
+    <!-- TAB 2: 🧪 PATIENT LABORATORY & DIAGNOSTIC RESULTS HISTORY (FULL WIDTH) -->
+    <div id="tab-labs" class="consult-tab-page" style="display: none;">
+      <div class="card" style="padding: 22px 26px; border-radius: 12px; background: #ffffff; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 10px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <i class="fa fa-flask" style="color: #0284c7; font-size: 1.2em;"></i>
+            <h3 style="margin: 0; font-size: 1.15em; font-weight: 700; color: #0f172a;">
+              Complete Patient Diagnostic Test History
+            </h3>
+            <span style="background: #e0f2fe; color: #0369a1; font-size: 0.8em; font-weight: 700; padding: 2px 10px; border-radius: 12px;">
+              <%= formattedLabTests.length %> records
+            </span>
+          </div>
+          <span style="font-size: 0.85em; color: #64748b;">
+            All laboratory tests conducted in this facility for <%= p.firstName %> <%= p.lastName %>
           </span>
         </div>
-        <i id="labResultsIcon" class="fa fa-chevron-down" style="color: #94a3b8; font-size: 0.9em;"></i>
-      </div>
 
-      <div id="labResultsBody" style="margin-top: 14px; border-top: 1px solid #f1f5f9; padding-top: 12px;">
         <% if (formattedLabTests.length > 0) { %>
           <div style="overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse; font-size: 0.86em;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.9em;">
               <thead>
-                <tr style="background: #f8fafc; border-bottom: 1.5px solid #e2e8f0; text-align: left; color: #475569;">
-                  <th style="padding: 10px 12px;">Date Conducted</th>
-                  <th style="padding: 10px 12px;">Test ID</th>
-                  <th style="padding: 10px 12px;">Test Category / Name</th>
-                  <th style="padding: 10px 12px;">Status</th>
-                  <th style="padding: 10px 12px;">Recorded Findings / Highlights</th>
-                  <th style="padding: 10px 12px; text-align: right;">View Details</th>
+                <tr style="background: #f8fafc; border-bottom: 1.5px solid #cbd5e1; text-align: left; color: #475569;">
+                  <th style="padding: 12px 14px;">Date Conducted</th>
+                  <th style="padding: 12px 14px;">Test ID</th>
+                  <th style="padding: 12px 14px;">Diagnostic Panel / Category</th>
+                  <th style="padding: 12px 14px;">Status</th>
+                  <th style="padding: 12px 14px;">Recorded Findings / Parameters Highlight</th>
+                  <th style="padding: 12px 14px; text-align: right;">Action</th>
                 </tr>
               </thead>
               <tbody>
                 <% formattedLabTests.forEach(lt => { 
                      const isCurrentTest = (lt.id === test.id || lt.testId === test.testId);
                 %>
-                  <tr style="border-bottom: 1px solid #f1f5f9; <%= isCurrentTest ? 'background: #f0fdfa;' : '' %>">
-                    <td style="padding: 10px 12px; white-space: nowrap;">
+                  <tr style="border-bottom: 1px solid #f1f5f9; <%= isCurrentTest ? 'background: #f0fdfa;' : '' %>" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='<%= isCurrentTest ? '#f0fdfa' : 'transparent' %>'">
+                    <td style="padding: 12px 14px; white-space: nowrap; color: #475569;">
                       <%= lt.date ? new Date(lt.date).toLocaleDateString() : 'N/A' %>
                     </td>
-                    <td style="padding: 10px 12px; font-weight: 700; color: #0f172a;">
-                      <%= lt.testId %>
+                    <td style="padding: 12px 14px; font-weight: 700; color: #0f172a; white-space: nowrap;">
+                      <code><%= lt.testId %></code>
                       <% if (isCurrentTest) { %>
-                        <span style="font-size: 0.72em; background: #0d9488; color: #fff; padding: 1px 6px; border-radius: 4px; margin-left: 4px;">Active</span>
+                        <span style="font-size: 0.72em; background: #0d9488; color: #fff; padding: 1px 6px; border-radius: 4px; margin-left: 6px;">Active Consultation</span>
                       <% } %>
                     </td>
-                    <td style="padding: 10px 12px; font-weight: 600; color: #1e293b;">
+                    <td style="padding: 12px 14px; font-weight: 600; color: #1e293b;">
                       <%= lt.testType %>
                     </td>
-                    <td style="padding: 10px 12px;">
-                      <span style="background: <%= lt.status === 'Completed' || lt.status === 'Released' ? '#dcfce7' : '#eff6ff' %>; color: <%= lt.status === 'Completed' || lt.status === 'Released' ? '#15803d' : '#1d4ed8' %>; padding: 2px 8px; border-radius: 4px; font-size: 0.78em; font-weight: 700; text-transform: uppercase;">
+                    <td style="padding: 12px 14px;">
+                      <span style="background: <%= lt.status === 'Completed' || lt.status === 'Released' ? '#dcfce7' : '#eff6ff' %>; color: <%= lt.status === 'Completed' || lt.status === 'Released' ? '#15803d' : '#1d4ed8' %>; border: 1px solid <%= lt.status === 'Completed' || lt.status === 'Released' ? '#bbf7d0' : '#bfdbfe' %>; padding: 3px 8px; border-radius: 4px; font-size: 0.78em; font-weight: 700; text-transform: uppercase;">
                         <%= lt.status %>
                       </span>
                     </td>
-                    <td style="padding: 10px 12px; color: #334155;">
+                    <td style="padding: 12px 14px; color: #334155; font-size: 0.9em; max-width: 450px;">
                       <%= lt.summary %>
                     </td>
-                    <td style="padding: 10px 12px; text-align: right;">
-                      <a href="/tests/<%= lt.id %>" target="_blank" class="button btn-secondary btn-small" style="height: 28px; padding: 0 8px; font-size: 0.8em; text-decoration: none;">
-                        <i class="fa fa-external-link-alt"></i> View
+                    <td style="padding: 12px 14px; text-align: right; white-space: nowrap;">
+                      <a href="/tests/<%= lt.id %>" target="_blank" class="button btn-secondary btn-small" style="height: 30px; padding: 0 10px; font-size: 0.82em; text-decoration: none;">
+                        <i class="fa fa-external-link-alt"></i> View Result
                       </a>
                     </td>
                   </tr>
@@ -258,422 +792,166 @@
             </table>
           </div>
         <% } else { %>
-          <div style="color: #64748b; font-size: 0.88em; font-style: italic; padding: 6px 0;">
-            No prior laboratory results found for this patient.
+          <div style="text-align: center; padding: 40px 16px; color: #94a3b8;">
+            <i class="fa fa-flask" style="font-size: 2.5em; margin-bottom: 8px; display: block; color: #cbd5e1;"></i>
+            <strong style="color: #475569; font-size: 1.05em; display: block;">No Laboratory Results On File</strong>
+            <span>No previous diagnostic laboratory examinations have been recorded for this patient.</span>
           </div>
         <% } %>
       </div>
     </div>
 
-    <!-- 4. SOAP Sections -->
-
-    <!-- [S] SUBJECTIVE -->
-    <div class="card" style="padding: 24px; border-radius: 14px; background: #ffffff; border: 1px solid #e2e8f0; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
-      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
-        <span style="background: #0d9488; color: #ffffff; width: 26px; height: 26px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9em;">S</span>
-        <h3 style="margin: 0; font-size: 1.1em; font-weight: 700; color: #0f172a;">Subjective (Patient History & Complaints)</h3>
-      </div>
-
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-        <div style="grid-column: 1 / -1;">
-          <label style="display: block; font-size: 0.82em; font-weight: 700; color: #334155; margin-bottom: 4px;">
-            Chief Complaint <span style="color: #dc2626;">*</span>
-          </label>
-          <input type="text" name="chiefComplaint" value="<%= c.chiefComplaint || '' %>" placeholder="e.g. High fever x 3 days, productive cough, flank pain" class="form-input auto-save-input" style="width: 100%; height: 40px; border-radius: 8px; font-weight: 600; font-size: 0.95em;">
-        </div>
-
-        <div style="grid-column: 1 / -1;">
-          <label style="display: block; font-size: 0.82em; font-weight: 700; color: #334155; margin-bottom: 4px;">History of Present Illness (HPI)</label>
-          <textarea name="historyOfPresentIllness" rows="3" placeholder="Onset, duration, severity, aggravating/alleviating factors..." class="form-input auto-save-input" style="width: 100%; border-radius: 8px; padding: 10px; font-family: inherit; font-size: 0.9em;"><%= c.historyOfPresentIllness || '' %></textarea>
-        </div>
-
-        <div>
-          <label style="display: block; font-size: 0.82em; font-weight: 700; color: #334155; margin-bottom: 4px;">Past Medical History</label>
-          <textarea name="pastMedicalHistory" rows="2" placeholder="Hypertension, Diabetes Mellitus, Asthma, previous surgeries..." class="form-input auto-save-input" style="width: 100%; border-radius: 8px; padding: 8px; font-family: inherit; font-size: 0.88em;"><%= c.pastMedicalHistory || '' %></textarea>
-        </div>
-
-        <div>
-          <label style="display: block; font-size: 0.82em; font-weight: 700; color: #dc2626; margin-bottom: 4px;">
-            <i class="fa fa-allergies"></i> Allergies & Adverse Drug Reactions
-          </label>
-          <textarea name="allergies" rows="2" placeholder="Penicillin, NSAIDs, seafood allergies, etc." class="form-input auto-save-input" style="width: 100%; border-radius: 8px; padding: 8px; font-family: inherit; font-size: 0.88em; border-color: #fecaca; background: #fffaf0;"><%= c.allergies || '' %></textarea>
-        </div>
-
-        <div>
-          <label style="display: block; font-size: 0.82em; font-weight: 700; color: #334155; margin-bottom: 4px;">Current Medications</label>
-          <input type="text" name="currentMedications" value="<%= c.currentMedications || '' %>" placeholder="Maintenance drugs, vitamins, supplements" class="form-input auto-save-input" style="width: 100%; height: 38px; border-radius: 8px; font-size: 0.88em;">
-        </div>
-
-        <div>
-          <label style="display: block; font-size: 0.82em; font-weight: 700; color: #334155; margin-bottom: 4px;">Family & Social History</label>
-          <input type="text" name="socialHistory" value="<%= c.socialHistory || '' %>" placeholder="Smoking, alcohol, family history of DM/HTN" class="form-input auto-save-input" style="width: 100%; height: 38px; border-radius: 8px; font-size: 0.88em;">
-        </div>
-      </div>
-    </div>
-
-    <!-- [O] OBJECTIVE: Vital Signs & Physical Exam -->
-    <div class="card" style="padding: 24px; border-radius: 14px; background: #ffffff; border: 1px solid #e2e8f0; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
-      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="background: #0d9488; color: #ffffff; width: 26px; height: 26px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9em;">O</span>
-          <h3 style="margin: 0; font-size: 1.1em; font-weight: 700; color: #0f172a;">Objective (Vital Signs & Physical Examination)</h3>
-        </div>
-        <span style="font-size: 0.8em; color: #64748b; font-weight: 600;">BMI auto-calculates from Weight & Height</span>
-      </div>
-
-      <!-- Vital Signs 10-Card Interactive Grid -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 20px;">
-        
-        <!-- Blood Pressure -->
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px;">
-          <label style="display: block; font-size: 0.74em; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">
-            Blood Pressure <span style="font-weight: 400;">(mmHg)</span>
-          </label>
-          <div style="display: flex; align-items: center; gap: 4px;">
-            <input type="number" name="bloodPressureSystolic" id="bpSys" value="<%= vitals.bloodPressureSystolic || '' %>" placeholder="120" min="40" max="300" class="form-input auto-save-input" style="width: 50%; height: 36px; border-radius: 6px; font-weight: 700; text-align: center;">
-            <span style="font-weight: 700; color: #94a3b8;">/</span>
-            <input type="number" name="bloodPressureDiastolic" id="bpDia" value="<%= vitals.bloodPressureDiastolic || '' %>" placeholder="80" min="20" max="200" class="form-input auto-save-input" style="width: 50%; height: 36px; border-radius: 6px; font-weight: 700; text-align: center;">
-          </div>
-        </div>
-
-        <!-- Pulse Rate -->
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px;">
-          <label style="display: block; font-size: 0.74em; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">
-            Pulse / Heart Rate <span style="font-weight: 400;">(bpm)</span>
-          </label>
-          <input type="number" name="pulseRate" value="<%= vitals.pulseRate || '' %>" placeholder="72" min="30" max="250" class="form-input auto-save-input" style="width: 100%; height: 36px; border-radius: 6px; font-weight: 700; text-align: center;">
-        </div>
-
-        <!-- Respiratory Rate -->
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px;">
-          <label style="display: block; font-size: 0.74em; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">
-            Resp. Rate <span style="font-weight: 400;">(breaths/min)</span>
-          </label>
-          <input type="number" name="respiratoryRate" value="<%= vitals.respiratoryRate || '' %>" placeholder="18" min="5" max="80" class="form-input auto-save-input" style="width: 100%; height: 36px; border-radius: 6px; font-weight: 700; text-align: center;">
-        </div>
-
-        <!-- Temperature -->
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px;">
-          <label style="display: block; font-size: 0.74em; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">
-            Temperature <span style="font-weight: 400;">(°C)</span>
-          </label>
-          <input type="number" step="0.1" name="temperature" value="<%= vitals.temperature || '' %>" placeholder="36.5" min="30" max="45" class="form-input auto-save-input" style="width: 100%; height: 36px; border-radius: 6px; font-weight: 700; text-align: center;">
-        </div>
-
-        <!-- SpO2 -->
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px;">
-          <label style="display: block; font-size: 0.74em; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">
-            Oxygen Sat. <span style="font-weight: 400;">(SpO₂ %)</span>
-          </label>
-          <input type="number" name="oxygenSaturation" value="<%= vitals.oxygenSaturation || '' %>" placeholder="98" min="50" max="100" class="form-input auto-save-input" style="width: 100%; height: 36px; border-radius: 6px; font-weight: 700; text-align: center;">
-        </div>
-
-        <!-- Weight -->
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px;">
-          <label style="display: block; font-size: 0.74em; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">
-            Weight <span style="font-weight: 400;">(kg)</span>
-          </label>
-          <input type="number" step="0.1" name="weight" id="vitalWeight" value="<%= vitals.weight || '' %>" placeholder="65.0" min="1" max="400" class="form-input auto-save-input" style="width: 100%; height: 36px; border-radius: 6px; font-weight: 700; text-align: center;" oninput="recalcBmiUI()">
-        </div>
-
-        <!-- Height -->
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px;">
-          <label style="display: block; font-size: 0.74em; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">
-            Height <span style="font-weight: 400;">(cm)</span>
-          </label>
-          <input type="number" step="0.5" name="height" id="vitalHeight" value="<%= vitals.height || '' %>" placeholder="165" min="30" max="250" class="form-input auto-save-input" style="width: 100%; height: 36px; border-radius: 6px; font-weight: 700; text-align: center;" oninput="recalcBmiUI()">
-        </div>
-
-        <!-- Auto BMI -->
-        <div style="background: #f0fdfa; border: 1.5px solid #99f6e4; border-radius: 10px; padding: 12px;">
-          <label style="display: block; font-size: 0.74em; font-weight: 700; text-transform: uppercase; color: #0f766e; margin-bottom: 4px;">
-            BMI <span style="font-weight: 400;">(kg/m²)</span>
-          </label>
-          <div style="display: flex; align-items: center; justify-content: space-between; height: 36px;">
-            <span id="bmiDisplay" style="font-size: 1.15em; font-weight: 800; color: #0f766e;">
-              <%= vitals.bmi || '—' %>
-            </span>
-            <span id="bmiBadge" style="font-size: 0.72em; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: #ccfbf1; color: #115e59;">
-              <%= vitals.bmiCategory || 'Normal' %>
+    <!-- TAB 3: 📜 PREVIOUS CLINICAL CONSULTATIONS (FULL WIDTH) -->
+    <div id="tab-history" class="consult-tab-page" style="display: none;">
+      <div class="card" style="padding: 22px 26px; border-radius: 12px; background: #ffffff; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 10px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <i class="fa fa-history" style="color: #6366f1; font-size: 1.2em;"></i>
+            <h3 style="margin: 0; font-size: 1.15em; font-weight: 700; color: #0f172a;">
+              Previous Outpatient Encounters & Doctor History
+            </h3>
+            <span style="background: <%= previousConsultations.length > 0 ? '#e0e7ff' : '#f1f5f9' %>; color: <%= previousConsultations.length > 0 ? '#4338ca' : '#64748b' %>; font-size: 0.8em; font-weight: 700; padding: 2px 10px; border-radius: 12px;">
+              <%= previousConsultations.length %> prior visit<%= previousConsultations.length === 1 ? '' : 's' %>
             </span>
           </div>
+          <span style="font-size: 0.85em; color: #64748b;">
+            Chronological log across all clinic physicians
+          </span>
         </div>
 
-        <!-- Pain Scale -->
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px;">
-          <label style="display: block; font-size: 0.74em; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">
-            Pain Scale <span style="font-weight: 400;">(0-10)</span>
-          </label>
-          <select name="painScale" class="form-input auto-save-input" style="width: 100%; height: 36px; border-radius: 6px; font-weight: 700; font-size: 0.88em; text-align: center;">
-            <option value="">None</option>
-            <% for (let i = 0; i <= 10; i++) { %>
-              <option value="<%= i %>" <%= String(vitals.painScale) === String(i) ? 'selected' : '' %>><%= i %> / 10</option>
-            <% } %>
-          </select>
-        </div>
-
-        <!-- Bedside Blood Glucose -->
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px;">
-          <label style="display: block; font-size: 0.74em; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">
-            Blood Glucose <span style="font-weight: 400;">(mg/dL)</span>
-          </label>
-          <input type="number" step="1" name="bloodGlucose" value="<%= vitals.bloodGlucose || '' %>" placeholder="e.g. 100" class="form-input auto-save-input" style="width: 100%; height: 36px; border-radius: 6px; font-weight: 700; text-align: center;">
-        </div>
-
-      </div>
-
-      <!-- Physical Examination Findings -->
-      <div>
-        <label style="display: block; font-size: 0.82em; font-weight: 700; color: #334155; margin-bottom: 4px;">
-          Physical Examination Findings (HEENT, Chest/Lungs, CVS, Abdomen, Extremities, Neurologic)
-        </label>
-        <textarea name="physicalExamFindings" rows="3" placeholder="Clear breath sounds, normal heart sounds, soft non-tender abdomen, no edema..." class="form-input auto-save-input" style="width: 100%; border-radius: 8px; padding: 10px; font-family: inherit; font-size: 0.9em;"><%= c.physicalExamFindings || '' %></textarea>
-      </div>
-    </div>
-
-    <!-- [A] ASSESSMENT: Diagnoses & Suspected Pathology -->
-    <div class="card" style="padding: 24px; border-radius: 14px; background: #ffffff; border: 1px solid #e2e8f0; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
-      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
-        <span style="background: #0d9488; color: #ffffff; width: 26px; height: 26px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9em;">A</span>
-        <h3 style="margin: 0; font-size: 1.1em; font-weight: 700; color: #0f172a;">Assessment (Clinical Diagnosis & Suspected Pathology)</h3>
-      </div>
-
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-        <div>
-          <label style="display: block; font-size: 0.82em; font-weight: 700; color: #0f172a; margin-bottom: 4px;">
-            Primary / Working Diagnosis <span style="color: #dc2626;">*</span>
-          </label>
-          <input type="text" name="primaryDiagnosis" id="primaryDiagnosisInput" value="<%= c.primaryDiagnosis || '' %>" placeholder="e.g. Acute Upper Respiratory Tract Infection" class="form-input auto-save-input" style="width: 100%; height: 40px; border-radius: 8px; font-weight: 700; font-size: 0.95em;">
-        </div>
-
-        <div>
-          <label style="display: block; font-size: 0.82em; font-weight: 700; color: #0f172a; margin-bottom: 4px;">
-            Suspected Pathology / Etiology
-          </label>
-          <input type="text" name="suspectedPathology" value="<%= c.suspectedPathology || '' %>" placeholder="e.g. Viral pharyngitis vs. bacterial tonsillopharyngitis" class="form-input auto-save-input" style="width: 100%; height: 40px; border-radius: 8px; font-weight: 600; font-size: 0.9em;">
-        </div>
-
-        <!-- Dynamic Differential Diagnosis List -->
-        <div style="grid-column: 1 / -1;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <label style="font-size: 0.82em; font-weight: 700; color: #334155; margin: 0;">
-              Differential Diagnoses (Add other potential conditions)
-            </label>
-            <button type="button" class="button btn-secondary btn-small" onclick="addDifferentialRow()" style="height: 30px; padding: 0 10px; font-size: 0.82em; font-weight: 700;">
-              <i class="fa fa-plus"></i> Add Differential
-            </button>
-          </div>
-          <div id="differentialContainer" style="display: flex; flex-direction: column; gap: 8px;">
-            <% if (diffList.length > 0) { %>
-              <% diffList.forEach((diff, i) => { %>
-                <div class="diff-item-row" style="display: flex; gap: 8px; align-items: center;">
-                  <span style="font-weight: 700; color: #94a3b8; font-size: 0.85em; width: 20px;"><%= i + 1 %>.</span>
-                  <input type="text" name="differentialDiagnosis[]" value="<%= diff %>" placeholder="Differential condition..." class="form-input auto-save-input" style="flex: 1; height: 36px; border-radius: 6px; font-size: 0.9em;">
-                  <button type="button" class="button btn-small" onclick="removeRow(this)" style="height: 34px; padding: 0 10px; background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; border-radius: 6px;">
-                    <i class="fa fa-times"></i>
-                  </button>
-                </div>
-              <% }) %>
-            <% } else { %>
-              <div class="diff-item-row" style="display: flex; gap: 8px; align-items: center;">
-                <span style="font-weight: 700; color: #94a3b8; font-size: 0.85em; width: 20px;">1.</span>
-                <input type="text" name="differentialDiagnosis[]" value="" placeholder="e.g. Acute Bronchitis" class="form-input auto-save-input" style="flex: 1; height: 36px; border-radius: 6px; font-size: 0.9em;">
-                <button type="button" class="button btn-small" onclick="removeRow(this)" style="height: 34px; padding: 0 10px; background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; border-radius: 6px;">
-                  <i class="fa fa-times"></i>
-                </button>
-              </div>
-            <% } %>
-          </div>
-        </div>
-
-        <div style="grid-column: 1 / -1;">
-          <label style="display: block; font-size: 0.82em; font-weight: 700; color: #334155; margin-bottom: 4px;">Clinical Impression / Synthesis</label>
-          <textarea name="clinicalImpression" rows="2" placeholder="Overall physician impression and clinical course notes..." class="form-input auto-save-input" style="width: 100%; border-radius: 8px; padding: 8px; font-family: inherit; font-size: 0.9em;"><%= c.clinicalImpression || '' %></textarea>
-        </div>
-      </div>
-    </div>
-
-    <!-- [P] PLAN: Treatment, Prescriptions & Orders -->
-    <div class="card" style="padding: 24px; border-radius: 14px; background: #ffffff; border: 1px solid #e2e8f0; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
-      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
-        <span style="background: #0d9488; color: #ffffff; width: 26px; height: 26px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9em;">P</span>
-        <h3 style="margin: 0; font-size: 1.1em; font-weight: 700; color: #0f172a;">Plan (Management, Prescriptions & Follow-up)</h3>
-      </div>
-
-      <!-- Prescriptions Table -->
-      <div style="margin-bottom: 20px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <label style="font-size: 0.85em; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 6px;">
-            <i class="fa fa-pills" style="color: #0d9488;"></i> Medical Prescriptions (Rx)
-          </label>
-          <button type="button" class="button btn-secondary btn-small" onclick="addRxRow()" style="height: 30px; padding: 0 10px; font-size: 0.82em; font-weight: 700;">
-            <i class="fa fa-plus"></i> Add Medication
-          </button>
-        </div>
-
-        <div style="overflow-x: auto; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px;">
-          <table style="width: 100%; border-collapse: collapse; font-size: 0.85em;">
-            <thead>
-              <tr style="text-align: left; color: #475569; border-bottom: 1px solid #cbd5e1;">
-                <th style="padding: 6px 8px; width: 28%;">Drug Name & Strength</th>
-                <th style="padding: 6px 8px; width: 14%;">Dosage</th>
-                <th style="padding: 6px 8px; width: 12%;">Route</th>
-                <th style="padding: 6px 8px; width: 16%;">Frequency</th>
-                <th style="padding: 6px 8px; width: 12%;">Duration</th>
-                <th style="padding: 6px 8px; width: 14%;">Qty / Inst.</th>
-                <th style="padding: 6px 8px; width: 4%;"></th>
-              </tr>
-            </thead>
-            <tbody id="rxTableBody">
-              <% if (rxList.length > 0) { %>
-                <% rxList.forEach((rx, idx) => { %>
-                  <tr class="rx-row" style="border-bottom: 1px solid #f1f5f9;">
-                    <td style="padding: 4px 6px;">
-                      <input type="text" name="rx_drug[]" value="<%= rx.drug || '' %>" placeholder="e.g. Amoxicillin 500mg" class="form-input auto-save-input" style="width: 100%; height: 34px; font-size: 0.88em; border-radius: 6px;">
+        <% if (previousConsultations.length > 0) { %>
+          <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.9em;">
+              <thead>
+                <tr style="background: #f8fafc; border-bottom: 1.5px solid #cbd5e1; text-align: left; color: #475569;">
+                  <th style="padding: 12px 14px;">Encounter Date</th>
+                  <th style="padding: 12px 14px;">Attending Physician</th>
+                  <th style="padding: 12px 14px;">Visit Type</th>
+                  <th style="padding: 12px 14px;">Chief Complaint</th>
+                  <th style="padding: 12px 14px;">Primary Diagnosis</th>
+                  <th style="padding: 12px 14px;">Key Vitals</th>
+                  <th style="padding: 12px 14px; text-align: right;">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% previousConsultations.forEach((pc, idx) => { 
+                     const pv = pc.vitalSigns || {};
+                     const isDiffDoctor = pc.doctorName && c.doctorName && (pc.doctorName.toLowerCase() !== c.doctorName.toLowerCase());
+                %>
+                  <tr style="border-bottom: 1px solid #f1f5f9;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                    <td style="padding: 12px 14px; white-space: nowrap; color: #475569;">
+                      <%= pc.consultationDate ? new Date(pc.consultationDate).toLocaleString() : 'N/A' %>
                     </td>
-                    <td style="padding: 4px 6px;">
-                      <input type="text" name="rx_dosage[]" value="<%= rx.dosage || '' %>" placeholder="1 tab" class="form-input auto-save-input" style="width: 100%; height: 34px; font-size: 0.88em; border-radius: 6px;">
+                    <td style="padding: 12px 14px;">
+                      <span style="background: <%= isDiffDoctor ? '#fef3c7' : '#f0fdf4' %>; color: <%= isDiffDoctor ? '#92400e' : '#166534' %>; border: 1px solid <%= isDiffDoctor ? '#fde68a' : '#bbf7d0' %>; padding: 3px 10px; border-radius: 6px; font-weight: 700; font-size: 0.88em; display: inline-flex; align-items: center; gap: 5px;">
+                        <i class="fa fa-user-md"></i> <%= pc.doctorName || 'Attending Physician' %>
+                      </span>
                     </td>
-                    <td style="padding: 4px 6px;">
-                      <select name="rx_route[]" class="form-input auto-save-input" style="width: 100%; height: 34px; font-size: 0.88em; border-radius: 6px;">
-                        <option value="Oral" <%= rx.route === 'Oral' ? 'selected' : '' %>>Oral (PO)</option>
-                        <option value="Topical" <%= rx.route === 'Topical' ? 'selected' : '' %>>Topical</option>
-                        <option value="Inhalation" <%= rx.route === 'Inhalation' ? 'selected' : '' %>>Inhalation</option>
-                        <option value="Sublingual" <%= rx.route === 'Sublingual' ? 'selected' : '' %>>Sublingual</option>
-                        <option value="IV" <%= rx.route === 'IV' ? 'selected' : '' %>>IV</option>
-                        <option value="IM" <%= rx.route === 'IM' ? 'selected' : '' %>>IM</option>
-                      </select>
+                    <td style="padding: 12px 14px;">
+                      <span style="background: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 4px; font-size: 0.8em; font-weight: 600;">
+                        <%= pc.visitType || 'Visit' %>
+                      </span>
                     </td>
-                    <td style="padding: 4px 6px;">
-                      <input type="text" name="rx_frequency[]" value="<%= rx.frequency || '' %>" placeholder="TID (3x a day)" class="form-input auto-save-input" style="width: 100%; height: 34px; font-size: 0.88em; border-radius: 6px;">
+                    <td style="padding: 12px 14px; color: #334155; max-width: 200px;">
+                      <%= pc.chiefComplaint || '—' %>
                     </td>
-                    <td style="padding: 4px 6px;">
-                      <input type="text" name="rx_duration[]" value="<%= rx.duration || '' %>" placeholder="7 days" class="form-input auto-save-input" style="width: 100%; height: 34px; font-size: 0.88em; border-radius: 6px;">
+                    <td style="padding: 12px 14px; font-weight: 700; color: #0f172a;">
+                      <%= pc.primaryDiagnosis || '—' %>
                     </td>
-                    <td style="padding: 4px 6px;">
-                      <input type="text" name="rx_instructions[]" value="<%= rx.instructions || '' %>" placeholder="#21 after meals" class="form-input auto-save-input" style="width: 100%; height: 34px; font-size: 0.88em; border-radius: 6px;">
+                    <td style="padding: 12px 14px; font-size: 0.84em; color: #475569; white-space: nowrap;">
+                      <% if (pv.bloodPressureSystolic && pv.bloodPressureDiastolic) { %><strong>BP:</strong> <%= pv.bloodPressureSystolic %>/<%= pv.bloodPressureDiastolic %><% } %>
+                      <% if (pv.pulseRate) { %> • <strong>HR:</strong> <%= pv.pulseRate %><% } %>
+                      <% if (pv.temperature) { %> • <strong>Temp:</strong> <%= pv.temperature %>°C<% } %>
                     </td>
-                    <td style="padding: 4px 6px; text-align: center;">
-                      <button type="button" class="button btn-small" onclick="removeRow(this)" style="height: 30px; padding: 0 6px; background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; border-radius: 6px;">
-                        <i class="fa fa-trash"></i>
+                    <td style="padding: 12px 14px; text-align: right; white-space: nowrap;">
+                      <button type="button" class="button btn-secondary btn-small" onclick="viewPriorVisitModal('<%= idx %>')" style="height: 30px; padding: 0 12px; font-size: 0.82em;">
+                        <i class="fa fa-file-alt"></i> View Full Notes
                       </button>
                     </td>
                   </tr>
                 <% }) %>
-              <% } else { %>
-                <tr class="rx-row" style="border-bottom: 1px solid #f1f5f9;">
-                  <td style="padding: 4px 6px;">
-                    <input type="text" name="rx_drug[]" value="" placeholder="e.g. Paracetamol 500mg" class="form-input auto-save-input" style="width: 100%; height: 34px; font-size: 0.88em; border-radius: 6px;">
-                  </td>
-                  <td style="padding: 4px 6px;">
-                    <input type="text" name="rx_dosage[]" value="" placeholder="1 tab" class="form-input auto-save-input" style="width: 100%; height: 34px; font-size: 0.88em; border-radius: 6px;">
-                  </td>
-                  <td style="padding: 4px 6px;">
-                    <select name="rx_route[]" class="form-input auto-save-input" style="width: 100%; height: 34px; font-size: 0.88em; border-radius: 6px;">
-                      <option value="Oral" selected>Oral (PO)</option>
-                      <option value="Topical">Topical</option>
-                      <option value="Inhalation">Inhalation</option>
-                      <option value="Sublingual">Sublingual</option>
-                      <option value="IV">IV</option>
-                      <option value="IM">IM</option>
-                    </select>
-                  </td>
-                  <td style="padding: 4px 6px;">
-                    <input type="text" name="rx_frequency[]" value="" placeholder="q6h PRN for fever" class="form-input auto-save-input" style="width: 100%; height: 34px; font-size: 0.88em; border-radius: 6px;">
-                  </td>
-                  <td style="padding: 4px 6px;">
-                    <input type="text" name="rx_duration[]" value="" placeholder="3 days" class="form-input auto-save-input" style="width: 100%; height: 34px; font-size: 0.88em; border-radius: 6px;">
-                  </td>
-                  <td style="padding: 4px 6px;">
-                    <input type="text" name="rx_instructions[]" value="" placeholder="#10 after meals" class="form-input auto-save-input" style="width: 100%; height: 34px; font-size: 0.88em; border-radius: 6px;">
-                  </td>
-                  <td style="padding: 4px 6px; text-align: center;">
-                    <button type="button" class="button btn-small" onclick="removeRow(this)" style="height: 30px; padding: 0 6px; background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; border-radius: 6px;">
-                      <i class="fa fa-trash"></i>
-                    </button>
-                  </td>
-                </tr>
-              <% } %>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Treatment Plan Notes & Follow Up -->
-      <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px;">
-        <div>
-          <label style="display: block; font-size: 0.82em; font-weight: 700; color: #334155; margin-bottom: 4px;">Treatment Plan & Recommendations</label>
-          <textarea name="treatmentPlan" rows="3" placeholder="Rest, increased oral fluid intake, dietary modifications, wound care..." class="form-input auto-save-input" style="width: 100%; border-radius: 8px; padding: 10px; font-family: inherit; font-size: 0.9em;"><%= c.treatmentPlan || '' %></textarea>
-        </div>
-
-        <div>
-          <label style="display: block; font-size: 0.82em; font-weight: 700; color: #334155; margin-bottom: 4px;">Follow-up Schedule</label>
-          <input type="date" name="followUpDate" value="<%= c.followUpDate || '' %>" class="form-input auto-save-input" style="width: 100%; height: 38px; border-radius: 8px; font-size: 0.88em; margin-bottom: 6px;">
-          <input type="text" name="followUpNotes" value="<%= c.followUpNotes || '' %>" placeholder="Follow-up instructions or referral" class="form-input auto-save-input" style="width: 100%; height: 36px; border-radius: 8px; font-size: 0.85em;">
-        </div>
-      </div>
-
-      <!-- Quick Lab Test Orders -->
-      <div>
-        <label style="display: block; font-size: 0.82em; font-weight: 700; color: #334155; margin-bottom: 6px;">
-          Recommended Diagnostic Orders (For Lab Request Form)
-        </label>
-        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-          <% 
-            const commonOrders = ['CBC with Platelet', 'Urinalysis', 'Fecalysis', 'Fasting Blood Sugar (FBS)', 'Lipid Profile', 'Blood Uric Acid (BUA)', 'BUN & Creatinine', 'SGPT / ALT', 'Chest X-Ray', '12-Lead ECG'];
-            commonOrders.forEach(co => {
-              const checked = labOrders.some(lo => lo === co || (lo && lo.testType === co));
-          %>
-            <label style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 10px; font-size: 0.82em; font-weight: 600; color: #1e293b; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-              <input type="checkbox" name="labOrders[]" value="<%= co %>" <%= checked ? 'checked' : '' %> class="auto-save-input">
-              <%= co %>
-            </label>
-          <% }) %>
-        </div>
-      </div>
-    </div>
-
-    <!-- 5. Printable Document Generation Card -->
-    <div class="card" style="padding: 22px 26px; border-radius: 14px; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border: 1.5px solid #cbd5e1; margin-bottom: 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
-      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-        <div>
-          <h4 style="margin: 0 0 4px 0; font-size: 1.05em; font-weight: 700; color: #0f172a;">
-            Printable Encounter Documents
-          </h4>
-          <p style="margin: 0; font-size: 0.85em; color: #64748b;">
-            Generate official laboratory requests, prescriptions, or Philippine medical certificates.
-          </p>
-        </div>
-
-        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-          <a href="/consultations/<%= test.id %>/print/lab-request" target="_blank" class="button btn-secondary" style="height: 38px; padding: 0 16px; border-radius: 8px; font-weight: 700; font-size: 0.85em; display: inline-flex; align-items: center; gap: 6px; background: #ffffff;">
-            <i class="fa fa-file-medical" style="color: #0284c7;"></i> Lab Request Form
-          </a>
-          <a href="/consultations/<%= test.id %>/print/prescription" target="_blank" class="button btn-secondary" style="height: 38px; padding: 0 16px; border-radius: 8px; font-weight: 700; font-size: 0.85em; display: inline-flex; align-items: center; gap: 6px; background: #ffffff;">
-            <i class="fa fa-prescription" style="color: #0d9488;"></i> Prescription (Rx)
-          </a>
-          <a href="/consultations/<%= test.id %>/print/med-cert" target="_blank" class="button btn-secondary" style="height: 38px; padding: 0 16px; border-radius: 8px; font-weight: 700; font-size: 0.85em; display: inline-flex; align-items: center; gap: 6px; background: #ffffff;">
-            <i class="fa fa-certificate" style="color: #f59e0b;"></i> Medical Certificate
-          </a>
-        </div>
-      </div>
-    </div>
-
-    <!-- Bottom Actions -->
-    <div style="display: flex; justify-content: space-between; align-items: center; padding: 18px 24px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.03);">
-      <a href="/reception/area/<%= encodeURIComponent(areaName || "Doctor's Check-up") %>" class="button btn-secondary" style="height: 40px; padding: 0 16px; border-radius: 8px; font-weight: 600; font-size: 0.88em; text-decoration: none;">
-        <i class="fa fa-arrow-left"></i> Return to Area Queue
-      </a>
-
-      <div style="display: flex; gap: 12px; align-items: center;">
-        <button type="submit" class="button btn-secondary" style="height: 40px; padding: 0 18px; border-radius: 8px; font-weight: 600; font-size: 0.88em;">
-          <i class="fa fa-save"></i> Save Draft
-        </button>
-        <% if (!isCompleted) { %>
-          <button type="button" onclick="confirmComplete()" class="button btn-primary" style="height: 40px; padding: 0 22px; border-radius: 8px; font-weight: 700; font-size: 0.9em; background: #0d9488; border-color: #0f766e; color: #ffffff; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 8px rgba(13,148,136,0.35);">
-            <i class="fa fa-check-circle"></i> Complete Consultation
-          </button>
+              </tbody>
+            </table>
+          </div>
+        <% } else { %>
+          <div style="text-align: center; padding: 40px 16px; color: #94a3b8;">
+            <i class="fa fa-calendar-check" style="font-size: 2.5em; margin-bottom: 8px; display: block; color: #cbd5e1;"></i>
+            <strong style="color: #475569; font-size: 1.05em; display: block;">Initial Clinic Encounter</strong>
+            <span>No previous clinical consultations recorded for this patient. This is their baseline encounter record.</span>
+          </div>
         <% } %>
+      </div>
+    </div>
+
+    <!-- TAB 4: 🖨️ OFFICIAL DOCUMENTS & RX (FULL WIDTH) -->
+    <div id="tab-docs" class="consult-tab-page" style="display: none;">
+      <div class="card" style="padding: 22px 26px; border-radius: 12px; background: #ffffff; border: 1px solid #e2e8f0; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
+        <div style="margin-bottom: 20px; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 10px;">
+          <h3 style="margin: 0 0 4px 0; font-size: 1.15em; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+            <i class="fa fa-file-medical" style="color: #0d9488;"></i> Official Printable Encounter Documents
+          </h3>
+          <span style="font-size: 0.86em; color: #64748b;">
+            Generate ready-to-print clinic certificates, doctor laboratory requisitions, and standard Philippine prescriptions.
+          </span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+          
+          <!-- Document 1: Lab Request Form -->
+          <div style="border: 1px solid #bae6fd; background: #f0f9ff; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <div style="width: 44px; height: 44px; border-radius: 10px; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 1.3em; margin-bottom: 12px;">
+                <i class="fa fa-vial"></i>
+              </div>
+              <h4 style="margin: 0 0 6px 0; font-size: 1.05em; font-weight: 700; color: #0369a1;">
+                Laboratory Request Form
+              </h4>
+              <p style="margin: 0 0 16px 0; font-size: 0.85em; color: #475569; line-height: 1.5;">
+                Official laboratory requisition order pre-checked with requested diagnostic panels and physician signature line.
+              </p>
+            </div>
+            <a href="/consultations/<%= test.id %>/print/lab-request" target="_blank" class="button btn-secondary" style="height: 38px; justify-content: center; font-size: 0.86em; font-weight: 700; text-decoration: none; border-color: #7dd3fc; color: #0369a1; background: #ffffff;">
+              <i class="fa fa-print"></i> Print Lab Request
+            </a>
+          </div>
+
+          <!-- Document 2: Prescription Sheet -->
+          <div style="border: 1px solid #a7f3d0; background: #f0fdf4; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <div style="width: 44px; height: 44px; border-radius: 10px; background: #dcfce7; color: #16a34a; display: flex; align-items: center; justify-content: center; font-size: 1.3em; margin-bottom: 12px;">
+                <i class="fa fa-prescription"></i>
+              </div>
+              <h4 style="margin: 0 0 6px 0; font-size: 1.05em; font-weight: 700; color: #15803d;">
+                Medical Prescription (Rx)
+              </h4>
+              <p style="margin: 0 0 16px 0; font-size: 0.85em; color: #475569; line-height: 1.5;">
+                Official ℞ pad with clinic letterhead, numbered medications, dosages, sig instructions, and doctor's PRC / PTR info.
+              </p>
+            </div>
+            <a href="/consultations/<%= test.id %>/print/prescription" target="_blank" class="button btn-secondary" style="height: 38px; justify-content: center; font-size: 0.86em; font-weight: 700; text-decoration: none; border-color: #6ee7b7; color: #15803d; background: #ffffff;">
+              <i class="fa fa-print"></i> Print Prescription
+            </a>
+          </div>
+
+          <!-- Document 3: Medical Certificate -->
+          <div style="border: 1px solid #fde68a; background: #fffdf5; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <div style="width: 44px; height: 44px; border-radius: 10px; background: #fef3c7; color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 1.3em; margin-bottom: 12px;">
+                <i class="fa fa-certificate"></i>
+              </div>
+              <h4 style="margin: 0 0 6px 0; font-size: 1.05em; font-weight: 700; color: #b45309;">
+                Philippine Medical Certificate
+              </h4>
+              <p style="margin: 0 0 16px 0; font-size: 0.85em; color: #475569; line-height: 1.5;">
+                Standard clinical certification stating diagnosis, physical examination evaluation, rest recommendation, and legal disclaimer.
+              </p>
+            </div>
+            <a href="/consultations/<%= test.id %>/print/med-cert" target="_blank" class="button btn-secondary" style="height: 38px; justify-content: center; font-size: 0.86em; font-weight: 700; text-decoration: none; border-color: #fcd34d; color: #b45309; background: #ffffff;">
+              <i class="fa fa-print"></i> Print Med Certificate
+            </a>
+          </div>
+
+        </div>
       </div>
     </div>
 
@@ -705,17 +983,29 @@
 <script>
   // Global previous visits data for modal display
   const previousVisitsData = <%- JSON.stringify(previousConsultations) %>;
+  const doctorLicensesData = <%- JSON.stringify(typeof doctorLicenses !== 'undefined' ? doctorLicenses : {}) %>;
 
-  function toggleSection(bodyId, iconId) {
-    const body = document.getElementById(bodyId);
-    const icon = document.getElementById(iconId);
-    if (!body) return;
-    if (body.style.display === 'none') {
-      body.style.display = 'block';
-      if (icon) { icon.classList.remove('fa-chevron-right'); icon.classList.add('fa-chevron-down'); }
-    } else {
-      body.style.display = 'none';
-      if (icon) { icon.classList.remove('fa-chevron-down'); icon.classList.add('fa-chevron-right'); }
+  // Auto-populate PRC license on doctor selection
+  const docSelect = document.getElementById('doctorNameSelect');
+  if (docSelect) {
+    docSelect.addEventListener('change', function() {
+      const licInput = document.querySelector('input[name="doctorLicenseNumber"]');
+      if (licInput && doctorLicensesData[this.value]) {
+        licInput.value = doctorLicensesData[this.value];
+      }
+      triggerAutoSave();
+    });
+  }
+
+  // Multipanel Tab Switcher
+  function switchConsultTab(tabId, btn) {
+    document.querySelectorAll('.consult-tab-page').forEach(page => page.style.display = 'none');
+    const target = document.getElementById(tabId);
+    if (target) target.style.display = 'block';
+
+    document.querySelectorAll('.consult-tab-btn').forEach(b => b.classList.remove('active'));
+    if (btn) {
+      btn.classList.add('active');
     }
   }
 
@@ -752,19 +1042,19 @@
   function addDifferentialRow() {
     const container = document.getElementById('differentialContainer');
     if (!container) return;
-    const count = container.querySelectorAll('.diff-item-row').length + 1;
     const div = document.createElement('div');
     div.className = 'diff-item-row';
-    div.style.cssText = 'display: flex; gap: 8px; align-items: center;';
+    div.style.cssText = 'display: flex; gap: 6px; align-items: center;';
     div.innerHTML = `
-      <span style="font-weight: 700; color: #94a3b8; font-size: 0.85em; width: 20px;">${count}.</span>
-      <input type="text" name="differentialDiagnosis[]" placeholder="Differential condition..." class="form-input auto-save-input" style="flex: 1; height: 36px; border-radius: 6px; font-size: 0.9em;">
-      <button type="button" class="button btn-small" onclick="removeRow(this)" style="height: 34px; padding: 0 10px; background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; border-radius: 6px;">
+      <input type="text" name="differential_items[]" placeholder="Enter differential diagnosis..." class="form-input auto-save-input" style="flex: 1; height: 34px; font-size: 0.86em; border-radius: 6px;">
+      <button type="button" class="button btn-small" onclick="removeRow(this)" style="height: 32px; padding: 0 8px; background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; border-radius: 6px;">
         <i class="fa fa-times"></i>
       </button>
     `;
     container.appendChild(div);
-    attachAutoSave(div.querySelector('input'));
+    const input = div.querySelector('input');
+    attachAutoSave(input);
+    input.focus();
   }
 
   function addRxRow() {
@@ -775,13 +1065,13 @@
     tr.style.cssText = 'border-bottom: 1px solid #f1f5f9;';
     tr.innerHTML = `
       <td style="padding: 4px 6px;">
-        <input type="text" name="rx_drug[]" placeholder="Drug name & strength" class="form-input auto-save-input" style="width: 100%; height: 34px; font-size: 0.88em; border-radius: 6px;">
+        <input type="text" name="rx_drug[]" placeholder="Drug name & dosage form" class="form-input auto-save-input" style="width: 100%;">
       </td>
       <td style="padding: 4px 6px;">
-        <input type="text" name="rx_dosage[]" placeholder="1 tab" class="form-input auto-save-input" style="width: 100%; height: 34px; font-size: 0.88em; border-radius: 6px;">
+        <input type="text" name="rx_dosage[]" placeholder="1 cap" class="form-input auto-save-input" style="width: 100%;">
       </td>
       <td style="padding: 4px 6px;">
-        <select name="rx_route[]" class="form-input auto-save-input" style="width: 100%; height: 34px; font-size: 0.88em; border-radius: 6px;">
+        <select name="rx_route[]" class="form-input auto-save-input" style="width: 100%;">
           <option value="Oral" selected>Oral (PO)</option>
           <option value="Topical">Topical</option>
           <option value="Inhalation">Inhalation</option>
@@ -791,16 +1081,16 @@
         </select>
       </td>
       <td style="padding: 4px 6px;">
-        <input type="text" name="rx_frequency[]" placeholder="e.g. TID" class="form-input auto-save-input" style="width: 100%; height: 34px; font-size: 0.88em; border-radius: 6px;">
+        <input type="text" name="rx_frequency[]" placeholder="e.g. TID" class="form-input auto-save-input" style="width: 100%;">
       </td>
       <td style="padding: 4px 6px;">
-        <input type="text" name="rx_duration[]" placeholder="7 days" class="form-input auto-save-input" style="width: 100%; height: 34px; font-size: 0.88em; border-radius: 6px;">
+        <input type="text" name="rx_duration[]" placeholder="7 days" class="form-input auto-save-input" style="width: 100%;">
       </td>
       <td style="padding: 4px 6px;">
-        <input type="text" name="rx_instructions[]" placeholder="#21 after meals" class="form-input auto-save-input" style="width: 100%; height: 34px; font-size: 0.88em; border-radius: 6px;">
+        <input type="text" name="rx_instructions[]" placeholder="#21 after meals" class="form-input auto-save-input" style="width: 100%;">
       </td>
       <td style="padding: 4px 6px; text-align: center;">
-        <button type="button" class="button btn-small" onclick="removeRow(this)" style="height: 30px; padding: 0 6px; background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; border-radius: 6px;">
+        <button type="button" class="button btn-small" onclick="removeRow(this)" style="height: 28px; padding: 0 6px; background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; border-radius: 6px;">
           <i class="fa fa-trash"></i>
         </button>
       </td>
@@ -825,50 +1115,82 @@
     const body = document.getElementById('modalBody');
     if (!modal || !title || !body) return;
 
-    title.innerHTML = `<i class="fa fa-user-md" style="color:#0d9488;"></i> Visit with ${item.doctorName || 'Doctor'} on ${new Date(item.consultationDate).toLocaleDateString()}`;
-
-    const pv = item.vitalSigns || {};
-    const rx = Array.isArray(item.prescriptions) ? item.prescriptions : [];
+    title.textContent = `Consultation — ${item.consultationDate ? new Date(item.consultationDate).toLocaleDateString() : 'Encounter'}`;
+    const v = item.vitalSigns || {};
+    const diffs = Array.isArray(item.differentialDiagnosis) ? item.differentialDiagnosis : [];
+    const rxs = Array.isArray(item.prescriptions) ? item.prescriptions : [];
 
     body.innerHTML = `
-      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 14px;">
-        <div style="display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.88em;">
-          <span><strong>Visit Type:</strong> ${item.visitType || 'New'}</span>
-          <span><strong>Attending Doctor:</strong> ${item.doctorName || 'N/A'}</span>
-          <span><strong>PRC License:</strong> ${item.doctorLicenseNumber || 'N/A'}</span>
+      <div style="background: #f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+        <div><strong>Doctor:</strong> ${item.doctorName || 'N/A'} (PRC: ${item.doctorLicenseNumber || '—'})</div>
+        <div><strong>Visit Type:</strong> ${item.visitType || 'Visit'}</div>
+        <div><strong>Status:</strong> <span style="color:#16a34a; font-weight:700;">${item.status || 'Completed'}</span></div>
+      </div>
+
+      <div style="margin-bottom: 10px;">
+        <strong style="color: #0f172a;">Chief Complaint:</strong>
+        <div style="padding: 4px 0;">${item.chiefComplaint || 'None recorded'}</div>
+      </div>
+
+      <div style="margin-bottom: 10px;">
+        <strong style="color: #0f172a;">History of Present Illness:</strong>
+        <div style="padding: 4px 0;">${item.historyOfPresentIllness || 'None recorded'}</div>
+      </div>
+
+      <div style="background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 8px; padding: 10px; margin-bottom: 12px;">
+        <strong style="color: #0f766e; display: block; margin-bottom: 4px;">Vital Signs Recorded:</strong>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 6px; font-size: 0.9em;">
+          <div>BP: <strong>${v.bloodPressureSystolic || '—'}/${v.bloodPressureDiastolic || '—'}</strong></div>
+          <div>HR: <strong>${v.pulseRate || '—'} bpm</strong></div>
+          <div>RR: <strong>${v.respiratoryRate || '—'} cpm</strong></div>
+          <div>Temp: <strong>${v.temperature || '—'} °C</strong></div>
+          <div>SpO2: <strong>${v.oxygenSaturation || '—'} %</strong></div>
+          <div>BMI: <strong>${v.bmi || '—'} (${v.bmiCategory || '—'})</strong></div>
+          <div>Pain: <strong>${v.painScale !== undefined && v.painScale !== '' ? v.painScale + '/10' : 'None'}</strong></div>
+          <div>Sugar: <strong>${v.bloodGlucose || '—'} mg/dL</strong></div>
         </div>
       </div>
 
-      <div style="margin-bottom: 12px;">
-        <strong>Chief Complaint:</strong>
-        <p style="margin: 4px 0 0 0; color: #0f172a;">${item.chiefComplaint || 'None specified'}</p>
+      <div style="margin-bottom: 10px;">
+        <strong style="color: #0f172a;">Physical Examination:</strong>
+        <div style="padding: 4px 0;">${item.physicalExamFindings || 'None recorded'}</div>
       </div>
 
-      <div style="margin-bottom: 12px;">
-        <strong>Primary Diagnosis:</strong>
-        <p style="margin: 4px 0 0 0; font-weight: 700; color: #0d9488;">${item.primaryDiagnosis || 'None specified'}</p>
+      <div style="margin-bottom: 10px;">
+        <strong style="color: #0f172a;">Primary Diagnosis:</strong>
+        <div style="padding: 4px 0; font-weight: 700; color: #0d9488;">${item.primaryDiagnosis || 'None recorded'}</div>
       </div>
 
-      <div style="margin-bottom: 12px;">
-        <strong>Suspected Pathology:</strong>
-        <p style="margin: 4px 0 0 0; color: #475569;">${item.suspectedPathology || 'None'}</p>
-      </div>
-
-      <div style="background: #f1f5f9; padding: 10px; border-radius: 8px; margin-bottom: 12px; font-size: 0.85em;">
-        <strong>Vital Signs:</strong> BP: ${pv.bloodPressureSystolic || '—'}/${pv.bloodPressureDiastolic || '—'} mmHg • HR: ${pv.pulseRate || '—'} bpm • RR: ${pv.respiratoryRate || '—'} • Temp: ${pv.temperature || '—'} °C • Weight: ${pv.weight || '—'} kg • BMI: ${pv.bmi || '—'}
-      </div>
-
-      <div style="margin-bottom: 12px;">
-        <strong>Treatment & Recommendations:</strong>
-        <p style="margin: 4px 0 0 0; color: #334155;">${item.treatmentPlan || 'None recorded'}</p>
-      </div>
-
-      ${rx.length ? `
-        <div>
-          <strong>Prescriptions Given:</strong>
-          <ul style="margin: 6px 0 0 16px; padding: 0;">
-            ${rx.map(r => `<li><strong>${r.drug}</strong> — ${r.dosage || ''} ${r.frequency || ''} for ${r.duration || ''} (${r.instructions || ''})</li>`).join('')}
+      ${diffs.length ? `
+        <div style="margin-bottom: 10px;">
+          <strong style="color: #0f172a;">Differential Diagnoses:</strong>
+          <ul style="margin: 4px 0 0 20px; padding: 0;">
+            ${diffs.map(d => `<li>${d}</li>`).join('')}
           </ul>
+        </div>
+      ` : ''}
+
+      ${item.suspectedPathology ? `
+        <div style="margin-bottom: 10px;">
+          <strong style="color: #0f172a;">Suspected Pathology:</strong>
+          <div>${item.suspectedPathology}</div>
+        </div>
+      ` : ''}
+
+      ${rxs.length ? `
+        <div style="margin-bottom: 10px;">
+          <strong style="color: #0f172a;">Prescriptions Given:</strong>
+          <table style="width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 0.9em;">
+            <tr style="background: #f1f5f9; text-align: left;"><th style="padding:4px 6px;">Drug</th><th style="padding:4px 6px;">Sig</th></tr>
+            ${rxs.map(r => `<tr><td style="padding:4px 6px; border-bottom:1px solid #f1f5f9;"><strong>${r.drug}</strong> ${r.dosage || ''}</td><td style="padding:4px 6px; border-bottom:1px solid #f1f5f9;">${r.frequency || ''} ${r.duration ? 'x ' + r.duration : ''} ${r.instructions ? '(' + r.instructions + ')' : ''}</td></tr>`).join('')}
+          </table>
+        </div>
+      ` : ''}
+
+      ${item.treatmentPlan ? `
+        <div style="margin-bottom: 10px;">
+          <strong style="color: #0f172a;">Treatment Plan:</strong>
+          <div>${item.treatmentPlan}</div>
         </div>
       ` : ''}
     `;
@@ -982,6 +1304,8 @@
     const diag = document.getElementById('primaryDiagnosisInput');
     if (diag && !diag.value.trim()) {
       alert('Please enter a Primary Diagnosis before marking the consultation complete.');
+      // Switch to SOAP tab if not already on it
+      switchConsultTab('tab-soap', document.getElementById('tabNavSoap'));
       diag.focus();
       return;
     }
