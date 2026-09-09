@@ -10,9 +10,9 @@ Recommended approach (current repo behavior):
 Files of interest
 
 - `scripts/start-lis.ps1`: PowerShell launcher. Changes in this repo:
-	- Sets `NODE_ENV=production` and `PORT` before starting.
-	- Prefers `pm2 start ecosystem.config.js --env production` (falls back to `pm2 start server.js` or `npm start`).
-	- Calls `pm2 save` and runs `pm2 monit` so the console shows PM2's interactive monitor.
+  - Sets `NODE_ENV=production` and `PORT` before starting.
+  - Prefers `pm2 start ecosystem.config.js --env production` (falls back to `pm2 start server.js` or `npm start`).
+  - Calls `pm2 save` and runs `pm2 monit` so the console shows PM2's interactive monitor.
 - `ecosystem.config.js`: PM2 config shipped in the repo — used when starting with PM2.
 - `scripts/launcher.js` and `scripts/build-launcher.js`: helpers for producing a small pkg-based launcher.
 - `scripts/create-shortcut.ps1`: creates a Desktop shortcut that points to `dist/start-lis.exe` (preferred) or `dist/laboratory-information-system.exe`.
@@ -55,7 +55,6 @@ pm2-service-install -n PM2
 Build the native PowerShell launcher
 
 1. Open PowerShell in the project root.
-
 2. (If you need `ps2exe`) install it in the current user scope:
 
 ```powershell
@@ -128,5 +127,3 @@ If you want, I can:
 
 - Install and configure PM2 globally and set up `pm2-windows-service` so the app auto-starts on boot.
 - Update the `scripts/start-lis.ps1` launcher to always call `pm2 start --update-env` so env changes are applied to an existing process.
-
-Choose which you'd prefer and I'll implement it.

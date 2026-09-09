@@ -1,6 +1,6 @@
-# Gezyne LIS Standalone Desktop Client v2.4.0
+# Gezyne LIS Standalone Desktop Client v2.5.0
 
-[![Version](https://img.shields.io/badge/version-2.4.0-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
+[![Version](https://img.shields.io/badge/version-2.5.0-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
 [![Electron](https://img.shields.io/badge/Electron-v28-47848F.svg?style=flat-square&logo=electron)](https://www.electronjs.org/)
 [![Database](https://img.shields.io/badge/database-SQLite%20(Local--First)-blue.svg?style=flat-square&logo=sqlite)](https://www.sqlite.org/)
 [![Offline](https://img.shields.io/badge/offline-100%25%20capable-success.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
@@ -14,7 +14,35 @@ The standalone desktop application operates **100% autonomously without network 
 
 ## 📜 Version History & Release Notes
 
-### **v2.4.0 (Enterprise Clinical Intelligence & Operations) — Current Release**
+### **v2.5.0 (Quality Assurance, NEQAS EAMC PT Surveys, Equipment QC & Security Hardening) — Current Release**
+- 🔬 **Equipment Management & Levey-Jennings Quality Control (QC)**:
+  - Full-lifecycle instrumentation registry supporting Clinical Chemistry, Hematology, Electrolyte, Urinalysis analyzers, and Radiology/X-Ray equipment (with DOH/FDA CDRRHR specifications).
+  - High-precision Levey-Jennings (LJ) statistical charting engine with Westgard Multi-Rule Evaluation (1:2s, 1:3s, 2:2s, R:4s, 4:1s, 10:x), automated Z-score computations, and violation alerts.
+  - Multi-level control lots (Level 1 Normal & Level 2 High) with pre-populated multi-analyte standard panels (e.g. 21 clinical chemistry analytes).
+  - Interactive date filtering (Month-to-Date, custom date ranges) dynamically recalculating observed mean, standard deviation, coefficient of variation (%CV), and total error (TEobs).
+  - Multi-signatory stamping options supporting MedTech, Reviewing Senior MedTech, and Pathologist credentials.
+  - Granular QC run management with "Drop Previous Run" feature for rapid clerical error rectification.
+- 🏛️ **National External Quality Assessment Scheme (NEQAS) & Dynamic NRL Registration**:
+  - Full integration with East Avenue Medical Center (EAMC) National Reference Laboratory for Environmental and Occupational Health, Toxicology and Micronutrient Assay (NRL-EOHTMA) for accredited Drug Testing PT surveys (Cannabinoids/THC & Methamphetamine/MET).
+  - Dynamic National Reference Laboratory (NRL) management: register, view, and manage custom reference institutions (EAMC, LCP, NKTI, RITM, PHC) with persistent storage across central and offline workstations.
+  - DOH-compliant printable NEQAS Quality Assurance Assessment Certificates with automatic Standard Deviation Index (SDI) categorization and mandatory Corrective Action Form generation for out-of-tolerance surveys (|SDI| >= 3.0).
+  - Consolidated multi-analyte Monthly QC Summary inspection reports ready for DOH regulatory licensing audits.
+- 👥 **Expanded Role-Based Access Control (RBAC) & Process Owner Delegation**:
+  - Added dedicated **Equipment & QC Module Permission** (`equipment`) across User Management (`new.ejs`, `edit.ejs`, `show.ejs`).
+  - Seamless delegation to laboratory Process Owners, Chief Medical Technologists, and Quality Managers without requiring full Administrator access.
+  - Automated home-route redirection routing designated equipment process owners directly to `/equipment`.
+- 🛡️ **Enterprise Security Hardening & Credential Sanitization**:
+  - Complete elimination of default/legacy test passwords (`password123`) across the entire repository codebase, documentation, seeders, and views.
+  - Untracked `.env` files from version control and strengthened `.gitignore` with universal recursive patterns (`*.env`, `**/.env`).
+  - Strict SQL injection prevention using pre-compiled parameterized queries, type validation, and defensive data access layers.
+  - 100% compliance score achieved across automated OWASP Top 10, NIST SP 800-63B, and CIS benchmark security audit checks on both Server and Standalone targets.
+- 🔄 **Two-Way Standalone Offline Synchronization**:
+  - Real-time and queued offline synchronization for Equipment maintenance logs, QC entries, and NEQAS proficiency records.
+  - Deterministic ID mapping and conflict-free data merge between standalone desktop workstations and central server.
+
+---
+
+### **v2.4.0 (Enterprise Clinical Intelligence & Operations)**
 - 🤖 **Clinical & Operational AI Chatbot Assistant**:
   - In-app desktop assistant providing immediate access to laboratory Standard Operating Procedures (SOP), reference ranges, specimen requirements, and operational guidelines.
 - 📦 **Reagent & Supply Inventory Tracking System**:
@@ -153,7 +181,7 @@ node test/settings-system.test.js
 
 ---
 
-## 📦 Building the Windows Installer (v2.4.0)
+## 📦 Building the Windows Installer (v2.5.0)
 
 To compile the production Windows desktop installer package:
 
@@ -165,7 +193,7 @@ npm run dist:win
 npm run dist:dir
 ```
 
-Installer Artifact: `lis-app-standalone/dist/Gezyne LIS Setup 2.4.0.exe`
+Installer Artifact: `lis-app-standalone/dist/Gezyne LIS Setup 2.5.0.exe`
 
 ---
 

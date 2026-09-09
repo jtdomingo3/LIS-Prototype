@@ -1,13 +1,13 @@
-# Gezyne Laboratory Information System (LIS) v2.4.0
+# Gezyne Laboratory Information System (LIS) v2.5.0
 
-[![Version](https://img.shields.io/badge/version-2.4.0-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
+[![Version](https://img.shields.io/badge/version-2.5.0-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-green.svg?style=flat-square&logo=node.js)](https://nodejs.org/)
 [![Database](https://img.shields.io/badge/database-SQLite%20(WAL%20Enabled)-blue.svg?style=flat-square&logo=sqlite)](https://www.sqlite.org/)
 [![Electron](https://img.shields.io/badge/desktop-Electron%20v28-47848F.svg?style=flat-square&logo=electron)](https://www.electronjs.org/)
 [![Offline](https://img.shields.io/badge/offline-100%25%20Capable-success.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
 [![License](https://img.shields.io/badge/license-MIT-amber.svg?style=flat-square)](LICENSE)
 
-> **Gezyne Clinical Laboratory - Laboratory Information System (LIS) v2.4.0** is an enterprise-grade clinical diagnostic and laboratory management platform. It pairs a centralized full-stack Node.js/Express server with 100% offline-capable standalone desktop workstations, multi-station patient processing pipelines, real-time telemetry, AI clinical assistant, reagent inventory tracking, and robust SQLite WAL backups.
+> **Gezyne Clinical Laboratory - Laboratory Information System (LIS) v2.5.0** is an enterprise-grade clinical diagnostic and laboratory management platform. It pairs a centralized full-stack Node.js/Express server with 100% offline-capable standalone desktop workstations, multi-station patient processing pipelines, real-time telemetry, AI clinical assistant, reagent inventory tracking, Levey-Jennings QC & NEQAS proficiency testing, and robust SQLite WAL backups.
 
 ---
 
@@ -15,10 +15,10 @@
 
 ```
 .
-├── README.md                  # Central system documentation (v2.4.0)
+├── README.md                  # Central system documentation (v2.5.0)
 ├── ads.json                   # Kiosk announcement configuration
 │
-├── lis-fullstack/             # Central LIS Server & Electron Tray Launcher (v2.4.0)
+├── lis-fullstack/             # Central LIS Server & Electron Tray Launcher (v2.5.0)
 │   ├── build/                 # Bundled installer resources & seed data
 │   ├── dist/                  # Packaged standalone executable (via pkg)
 │   ├── lib/                   # SQLite database adapter (better-sqlite3), tokens, PDF engine
@@ -30,7 +30,7 @@
 │   ├── views/                 # Responsive EJS views, layouts & print templates
 │   └── server.js              # Central LIS Server entrypoint
 │
-├── lis-app-standalone/        # Local-First Standalone Desktop Client (Electron) (v2.4.0)
+├── lis-app-standalone/        # Local-First Standalone Desktop Client (Electron) (v2.5.0)
 │   ├── lib/                   # Local Express engine, sync engine, network monitor & queue
 │   ├── models/                # Local SQLite models with offline support
 │   ├── renderer/              # Desktop modals, status banners & print preview
@@ -46,7 +46,35 @@
 
 ## 📜 Version History & Release Notes
 
-### **v2.4.0 (Enterprise Clinical Intelligence & Operations) — Current Release**
+### **v2.5.0 (Quality Assurance, NEQAS EAMC PT Surveys, Equipment QC & Security Hardening) — Current Release**
+- 🔬 **Equipment Management & Levey-Jennings Quality Control (QC)**:
+  - Full-lifecycle instrumentation registry supporting Clinical Chemistry, Hematology, Electrolyte, Urinalysis analyzers, and Radiology/X-Ray equipment (with DOH/FDA CDRRHR specifications).
+  - High-precision Levey-Jennings (LJ) statistical charting engine with Westgard Multi-Rule Evaluation (1:2s, 1:3s, 2:2s, R:4s, 4:1s, 10:x), automated Z-score computations, and violation alerts.
+  - Multi-level control lots (Level 1 Normal & Level 2 High) with pre-populated multi-analyte standard panels (e.g. 21 clinical chemistry analytes).
+  - Interactive date filtering (Month-to-Date, custom date ranges) dynamically recalculating observed mean, standard deviation, coefficient of variation (%CV), and total error (TEobs).
+  - Multi-signatory stamping options supporting MedTech, Reviewing Senior MedTech, and Pathologist credentials.
+  - Granular QC run management with "Drop Previous Run" feature for rapid clerical error rectification.
+- 🏛️ **National External Quality Assessment Scheme (NEQAS) & Dynamic NRL Registration**:
+  - Full integration with East Avenue Medical Center (EAMC) National Reference Laboratory for Environmental and Occupational Health, Toxicology and Micronutrient Assay (NRL-EOHTMA) for accredited Drug Testing PT surveys (Cannabinoids/THC & Methamphetamine/MET).
+  - Dynamic National Reference Laboratory (NRL) management: register, view, and manage custom reference institutions (EAMC, LCP, NKTI, RITM, PHC) with persistent storage across central and offline workstations.
+  - DOH-compliant printable NEQAS Quality Assurance Assessment Certificates with automatic Standard Deviation Index (SDI) categorization and mandatory Corrective Action Form generation for out-of-tolerance surveys (|SDI| >= 3.0).
+  - Consolidated multi-analyte Monthly QC Summary inspection reports ready for DOH regulatory licensing audits.
+- 👥 **Expanded Role-Based Access Control (RBAC) & Process Owner Delegation**:
+  - Added dedicated **Equipment & QC Module Permission** (`equipment`) across User Management (`new.ejs`, `edit.ejs`, `show.ejs`).
+  - Seamless delegation to laboratory Process Owners, Chief Medical Technologists, and Quality Managers without requiring full Administrator access.
+  - Automated home-route redirection routing designated equipment process owners directly to `/equipment`.
+- 🛡️ **Enterprise Security Hardening & Credential Sanitization**:
+  - Complete elimination of default/legacy test passwords (`password123`) across the entire repository codebase, documentation, seeders, and views.
+  - Untracked `.env` files from version control and strengthened `.gitignore` with universal recursive patterns (`*.env`, `**/.env`).
+  - Strict SQL injection prevention using pre-compiled parameterized queries, type validation, and defensive data access layers.
+  - 100% compliance score achieved across automated OWASP Top 10, NIST SP 800-63B, and CIS benchmark security audit checks on both Server and Standalone targets.
+- 🔄 **Two-Way Standalone Offline Synchronization**:
+  - Real-time and queued offline synchronization for Equipment maintenance logs, QC entries, and NEQAS proficiency records.
+  - Deterministic ID mapping and conflict-free data merge between standalone desktop workstations and central server.
+
+---
+
+### **v2.4.0 (Enterprise Clinical Intelligence & Operations)**
 - 🤖 **Clinical & Operational AI Chatbot Assistant**:
   - In-app intelligent assistant embedded in the navigation bar.
   - Guides clinical staff, medtechs, and receptionists on laboratory Standard Operating Procedures (SOP), specimen collection criteria, diagnostic test parameters, reference ranges, and system operational guidance.
@@ -126,9 +154,9 @@ The desktop client runs an embedded local engine on `http://127.0.0.1:30099` wit
 
 ---
 
-## 📦 Packaging Windows Installers (v2.4.0)
+## 📦 Packaging Windows Installers (v2.5.0)
 
-### 1. Build Central Server Installer (`Gezyne LIS Server Setup 2.4.0.exe`)
+### 1. Build Central Server Installer (`Gezyne LIS Server Setup 2.5.0.exe`)
 
 ```powershell
 cd lis-fullstack
@@ -139,16 +167,16 @@ cd tray
 npm install
 npm run dist:win
 ```
-*Output: `lis-fullstack/tray/dist/Gezyne LIS Server Setup 2.4.0.exe`*
+*Output: `lis-fullstack/tray/dist/Gezyne LIS Server Setup 2.5.0.exe`*
 
-### 2. Build Standalone Client Installer (`Gezyne LIS Setup 2.4.0.exe`)
+### 2. Build Standalone Client Installer (`Gezyne LIS Setup 2.5.0.exe`)
 
 ```powershell
 cd lis-app-standalone
 npm install
 npm run dist:win
 ```
-*Output: `lis-app-standalone/dist/Gezyne LIS Setup 2.4.0.exe`*
+*Output: `lis-app-standalone/dist/Gezyne LIS Setup 2.5.0.exe`*
 
 ---
 
