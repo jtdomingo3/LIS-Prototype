@@ -61,6 +61,8 @@ function getUserHomeRoute(user) {
   if (perms.tests) return '/tests';
   if (perms.templates) return '/templates';
   if (perms.reports) return '/reports';
+  if (perms.inventory) return '/inventory';
+  if (perms.equipment) return '/equipment';
   if (perms.users) return '/users';
   if (perms.dashboard) return '/dashboard';
 

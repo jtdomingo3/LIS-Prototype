@@ -727,7 +727,7 @@ app.post('/api/restore/users', async (req, res) => {
         permissions: {
           dashboard: true, patients: true, reception: true,
           tests: true, reports: true, worksheet: true,
-          templates: true, users: true, delete: true
+          templates: true, inventory: true, equipment: true, users: true, delete: true
         },
         status: 'Active',
         createdAt: new Date().toISOString(),
@@ -738,7 +738,7 @@ app.post('/api/restore/users', async (req, res) => {
       admin.password = hash;
       admin.role = 'Admin';
       admin.status = 'Active';
-      admin.permissions = { dashboard: true, patients: true, reception: true, tests: true, reports: true, worksheet: true, templates: true, users: true, delete: true };
+      admin.permissions = { dashboard: true, patients: true, reception: true, tests: true, reports: true, worksheet: true, templates: true, inventory: true, equipment: true, users: true, delete: true };
     }
 
     db.saveUsers(existing);
