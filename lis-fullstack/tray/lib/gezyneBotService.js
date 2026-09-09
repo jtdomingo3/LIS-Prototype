@@ -467,6 +467,7 @@ async function queryOpenRouter({ question, history = [], user = null, model = DE
 module.exports = {
   AVAILABLE_MODELS,
   DEFAULT_MODEL,
+  buildKnowledgeContext,
   queryOpenRouter,
   resolveApiKey,
   testOpenRouterConnection
