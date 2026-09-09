@@ -553,6 +553,7 @@ const routePermissionMap = [
   { prefix: '/dashboard', perm: 'dashboard' },
   { prefix: '/patients', perm: 'patients' },
   { prefix: '/reception', perm: 'reception' },
+  { prefix: '/consultations', perm: 'reception' },
   { prefix: '/tests', perm: 'tests' },
   { prefix: '/reports', perm: 'reports' },
   { prefix: '/templates', perm: 'templates' },
@@ -675,6 +676,7 @@ const signaturesRoutes = require('./routes/signatures');
 const chatbotRoutes = require('./routes/chatbot');
 const inventoryRoutes = require('./routes/inventory');
 const equipmentRoutes = require('./routes/equipment');
+const consultationRoutes = require('./routes/consultations');
 
 app.use('/', authRoutes);
 app.use('/dashboard', dashboardRoutes);
@@ -684,6 +686,7 @@ app.use('/reports', reportRoutes);
 app.use('/templates', templateRoutes);
 app.use('/users', userRoutes);
 app.use('/reception', receptionRoutes);
+app.use('/consultations', consultationRoutes);
 app.use('/settings', settingsRoutes);
 app.use('/signatures', signaturesRoutes);
 app.use('/chatbot', chatbotRoutes);
@@ -831,6 +834,7 @@ app.get('/export/data.json', (req, res) => {
     data.inventory = typeof db.getInventory === 'function' ? db.getInventory() : [];
     data.inventory_batches = typeof db.getAllInventoryBatches === 'function' ? db.getAllInventoryBatches() : [];
     data.inventory_transactions = typeof db.getInventoryTransactions === 'function' ? db.getInventoryTransactions() : [];
+    data.consultations = typeof db.getConsultations === 'function' ? db.getConsultations() : [];
 
     res.json(data);
   } catch (e) {

@@ -61,6 +61,11 @@
       <a href="/tests/<%= test.id %>/edit" class="button btn-secondary" style="height: 38px; padding: 0 14px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em;">
         <i class="fa fa-edit"></i> Edit
       </a>
+      <% if (isDoctor) { %>
+        <a href="/consultations/<%= test.id %>" class="button" style="height: 38px; padding: 0 16px; border-radius: 8px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; font-size: 0.88em; background: #0d9488; color: #ffffff; text-decoration: none; border: 1px solid #0f766e; box-shadow: 0 2px 4px rgba(13,148,136,0.25);">
+          <i class="fa fa-user-md"></i> Clinical Consultation
+        </a>
+      <% } %>
       <% if (canEnterResults) { %>
         <a href="/tests/<%= test.id %>/results" class="button btn-primary" style="height: 38px; padding: 0 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em;">
           <i class="fa fa-pencil-alt"></i> Enter Results
@@ -109,6 +114,31 @@
       </span>
     </div>
   </div>
+
+  <% if (isDoctor) { %>
+    <!-- Clinical Consultation Overview Card -->
+    <div style="background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%); border: 1.5px solid #99f6e4; border-radius: 12px; padding: 18px 22px; margin-top: 24px; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <div style="width: 44px; height: 44px; border-radius: 10px; background: #0d9488; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 1.3em;">
+          <i class="fa fa-user-md"></i>
+        </div>
+        <div>
+          <div style="font-weight: 700; color: #0f766e; font-size: 1.05em;">Clinical Consultation Record</div>
+          <div style="font-size: 0.86em; color: #115e59; margin-top: 2px;">
+            Physician encounter notes, vital signs, differential diagnosis, and prescriptions.
+            <% if (test.assignedDoctorName) { %>
+              Attending: <strong><%= test.assignedDoctorName %></strong>
+            <% } %>
+          </div>
+        </div>
+      </div>
+      <div>
+        <a href="/consultations/<%= test.id %>" class="button" style="height: 38px; padding: 0 18px; border-radius: 8px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; font-size: 0.88em; background: #0d9488; color: #ffffff; text-decoration: none; border: 1px solid #0f766e; box-shadow: 0 2px 5px rgba(13,148,136,0.3);">
+          <i class="fa fa-notes-medical"></i> Open Consultation Panel
+        </a>
+      </div>
+    </div>
+  <% } %>
 
   <!-- Test Results Section -->
   <div style="margin-top: 28px;">

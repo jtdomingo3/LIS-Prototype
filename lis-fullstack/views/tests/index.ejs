@@ -167,7 +167,11 @@
                     try { const lab = String(rr.lab || '').toLowerCase(); const lbl = String(rr.label || '').toLowerCase(); return lab === 'external' || lbl.includes('send out') || lbl.includes('sendout') || lbl.includes('for send'); } catch (e) { return false; }
                   }));
                 %>
-                <% if (!isDoctor && !isSendout) { %>
+                <% if (isDoctor) { %>
+                  <a href="/consultations/<%= test.id %>" class="button btn-small" style="padding:6px 12px; font-size:0.82em; font-weight:700; background:#0d9488; color:#ffffff; border:1px solid #0f766e; text-decoration:none; display:inline-flex; align-items:center; gap:5px; box-shadow:0 1px 3px rgba(13,148,136,0.25);" title="Start / Open Clinical Consultation">
+                    <i class="fa fa-user-md"></i> Start Consultation
+                  </a>
+                <% } else if (!isSendout) { %>
                   <a href="/tests/<%= test.id %>/results" class="button btn-primary btn-small" style="padding:6px 12px; font-size:0.82em; font-weight:600;">Enter Result</a>
                 <% } %>
                 <a href="/tests/<%= test.id %>" class="button btn-secondary btn-small" style="padding:6px 12px; font-size:0.82em;">View</a>
