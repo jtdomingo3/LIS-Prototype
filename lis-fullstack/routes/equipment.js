@@ -731,7 +731,7 @@ router.get('/:id/qc/entries', requireAuth, (req, res) => {
 // POST /equipment/:id/qc/entries - Record Standard / Control Run with Automated Westgard Multi-Rule Check
 router.post('/:id/qc/entries', requireAuth, (req, res) => {
   try {
-    const { controlId, analyteCode, measuredValue, runDate, runNumber, reagentLotNumber, notes } = req.body;
+    const { controlId, analyteCode, measuredValue, runDate, runNumber, reagentLotNumber, notes, operatorName } = req.body;
 
     if (!analyteCode || measuredValue === undefined || measuredValue === null) {
       return res.status(400).json({ success: false, error: 'Missing required parameters: analyteCode, measuredValue.' });
@@ -784,7 +784,7 @@ router.post('/:id/qc/entries', requireAuth, (req, res) => {
       rulesViolated: evaluation.rulesViolated,
       violationType: evaluation.violationType,
       reagentLotNumber: reagentLotNumber || '',
-      operatorName: getActor(req),
+      operatorName: (operatorName && operatorName.trim()) ? operatorName.trim() : getActor(req),
       notes: notes || evaluation.explanation
     });
 
@@ -920,16 +920,16 @@ router.get('/:id/qc/levey-jennings', requireAuth, (req, res) => {
       if (rawCtrl) control = new QcControl(rawCtrl);
     } else {
       const controls = (global.db.getQcControls(req.params.id) || []).map(c => new QcControl(c));
-      if (rawEntries.length > 0 && rawEntries[0].controlId) {
-        control = controls.find(c => c.id === rawEntries[0].controlId);
-      }
-      if (!control) {
-        control = controls.find(c => (c.level || '').includes('1') && c.getAnalyte(analyteCode))
-               || controls.find(c => c.getAnalyte(analyteCode))
-               || controls[0] || null;
-      }
+      control = controls.find(c => (c.level || '').includes('1') && c.getAnalyte(analyteCode))
+             || controls.find(c => (c.level || '').includes('1'))
+             || (rawEntries.length > 0 && rawEntries[0].controlId ? controls.find(c => c.id === rawEntries[0].controlId) : null)
+             || controls.find(c => c.getAnalyte(analyteCode))
+             || controls[0] || null;
     }
     let entries = rawEntries.map(e => new QcEntry(e));
+    if (control && control.id) {
+      entries = entries.filter(e => !e.controlId || e.controlId === control.id);
+    }
 
     // Optional filter by startDate and endDate (YYYY-MM-DD)
     if (startDate) {
@@ -993,15 +993,6 @@ router.get('/:id/qc/print', requireAuth, (req, res) => {
     if (!rawEq) return res.status(404).send('Equipment not found.');
 
     const equipment = new Equipment(rawEq);
-    let control = null;
-    if (controlId) {
-      const rawCtrl = global.db.getQcControlById(controlId);
-      if (rawCtrl) control = new QcControl(rawCtrl);
-    } else {
-      const controls = (global.db.getQcControls(req.params.id) || []).map(c => new QcControl(c));
-      control = controls.find(c => c.getAnalyte(targetAnalyte)) || controls[0] || null;
-    }
-
     let rawPrintEntries = global.db.getQcEntries(req.params.id, targetAnalyte) || [];
     if (rawPrintEntries.length === 0) {
       const aliases = getAnalyteAliases(targetAnalyte);
@@ -1015,7 +1006,25 @@ router.get('/:id/qc/print', requireAuth, (req, res) => {
         }
       }
     }
+
+    let control = null;
+    if (controlId) {
+      const rawCtrl = global.db.getQcControlById(controlId);
+      if (rawCtrl) control = new QcControl(rawCtrl);
+    }
+    if (!control) {
+      const controls = (global.db.getQcControls(req.params.id) || []).map(c => new QcControl(c));
+      control = controls.find(c => (c.level || '').includes('1') && c.getAnalyte(targetAnalyte))
+             || controls.find(c => (c.level || '').includes('1'))
+             || (rawPrintEntries.length > 0 && rawPrintEntries[0].controlId ? controls.find(c => c.id === rawPrintEntries[0].controlId) : null)
+             || controls.find(c => c.getAnalyte(targetAnalyte))
+             || controls[0] || null;
+    }
+
     let entries = rawPrintEntries.map(e => new QcEntry(e));
+    if (control && control.id) {
+      entries = entries.filter(e => !e.controlId || e.controlId === control.id);
+    }
 
     if (startDate) {
       entries = entries.filter(e => (e.runDate || '').split('T')[0] >= startDate);
@@ -1330,7 +1339,14 @@ router.get('/:id/qc/print-monthly-summary', requireAuth, (req, res) => {
 
     const equipment = new Equipment(rawEq);
     const controls = (global.db.getQcControls(req.params.id) || []).map(c => new QcControl(c));
-    const control = controls[0] || null;
+    let control = null;
+    if (req.query.controlId) {
+      const rawCtrl = global.db.getQcControlById(req.query.controlId);
+      if (rawCtrl) control = new QcControl(rawCtrl);
+    }
+    if (!control) {
+      control = controls.find(c => (c.level || '').includes('1')) || controls[0] || null;
+    }
 
     const { month, startDate, endDate } = req.query; // YYYY-MM or YYYY-MM-DD
     let filterYear, filterMonth;
@@ -1374,7 +1390,23 @@ router.get('/:id/qc/print-monthly-summary', requireAuth, (req, res) => {
     ];
 
     const analytesSummary = defaultAnalytes.map(a => {
-      let entries = (global.db.getQcEntries(req.params.id, a.analyteCode) || []).map(e => new QcEntry(e));
+      let rawList = global.db.getQcEntries(req.params.id, a.analyteCode) || [];
+      if (rawList.length === 0) {
+        const aliases = getAnalyteAliases(a.analyteCode);
+        for (const alt of aliases) {
+          if (alt !== a.analyteCode) {
+            const altList = global.db.getQcEntries(req.params.id, alt) || [];
+            if (altList.length > 0) {
+              rawList = altList;
+              break;
+            }
+          }
+        }
+      }
+      let entries = rawList.map(e => new QcEntry(e));
+      if (control && control.id) {
+        entries = entries.filter(e => !e.controlId || e.controlId === control.id);
+      }
       if (startDate && endDate) {
         entries = entries.filter(e => {
           const d = (e.runDate || '').split('T')[0];

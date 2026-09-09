@@ -484,11 +484,21 @@
 
         const mean = dataset.targetMean;
         const sd = dataset.targetSd;
-        const minVal = mean - (3.5 * sd);
-        const maxVal = mean + (3.5 * sd);
+
+        let maxAbsSd = 3.6;
+        (pts || []).forEach(p => {
+          if (p.measuredValue !== undefined && p.measuredValue !== null && !isNaN(p.measuredValue) && sd > 0) {
+            const dist = Math.abs(p.measuredValue - mean) / sd;
+            if (dist > maxAbsSd) maxAbsSd = Math.min(dist + 0.5, 6.0);
+          }
+        });
+
+        const minVal = mean - (maxAbsSd * sd);
+        const maxVal = mean + (maxAbsSd * sd);
 
         function calcY(v) {
-          const norm = (v - minVal) / (maxVal - minVal);
+          const clamped = Math.max(minVal, Math.min(maxVal, v));
+          const norm = (clamped - minVal) / (maxVal - minVal);
           return (H - padB) - (norm * gH);
         }
 
@@ -499,6 +509,10 @@
       <svg viewBox="0 0 <%= W %> <%= H %>" class="chart-svg">
         <!-- Background grid -->
         <rect x="<%= padL %>" y="<%= padT %>" width="<%= gW %>" height="<%= gH %>" fill="#fafafa" stroke="#000" stroke-width="1" />
+
+        <% if (pts.length === 0) { %>
+          <text x="<%= padL + gW/2 %>" y="<%= padT + gH/2 %>" text-anchor="middle" font-size="11" fill="#94a3b8" font-style="italic">No control runs recorded for <%= dataset.level %> during this period.</text>
+        <% } %>
 
         <!-- Reference Lines -->
         <!-- +3SD Line -->
