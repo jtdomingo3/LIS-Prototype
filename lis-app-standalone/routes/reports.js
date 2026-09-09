@@ -631,10 +631,7 @@ router.post('/worksheet/download', requireAuth, canAccessPatient, async (req, re
 
     let testsRaw = await Test.find(q);
     // Exclude doctor check-up visits from diagnostic worksheet
-    testsRaw = (testsRaw || []).filter(t => {
-      const typeStr = String(t.testType || t.template || '').toLowerCase();
-      return !typeStr.includes('doctor') && !typeStr.includes('check-up') && !typeStr.includes('consultation');
-    });
+    testsRaw = (testsRaw || []).filter(t => !isDoctorVisitTest(t));
     // Test.find returns an array for this file-based model; apply filters in-memory because model supports limited query keys
     if (!allData) {
       if (testType) {
@@ -889,10 +886,7 @@ router.post('/worksheet/preview', requireAuth, canAccessPatient, async (req, res
     // fetch all then filter in-memory (same logic as download)
     let testsRaw = await Test.find(q);
     // Exclude doctor check-up visits from diagnostic worksheet
-    testsRaw = (testsRaw || []).filter(t => {
-      const typeStr = String(t.testType || t.template || '').toLowerCase();
-      return !typeStr.includes('doctor') && !typeStr.includes('check-up') && !typeStr.includes('consultation');
-    });
+    testsRaw = (testsRaw || []).filter(t => !isDoctorVisitTest(t));
     if (!allData) {
       if (testType) {
         const ttLower = String(testType).toLowerCase().trim();
