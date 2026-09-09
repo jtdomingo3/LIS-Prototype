@@ -1692,18 +1692,26 @@
           if (okBtn) {
             okBtn.style.display = 'inline-block';
             okBtn.textContent = opts.btnText || (isPrimary ? 'Confirm' : 'Yes, Delete');
-            if (isPrimary) {
+            if (opts.type === 'success') {
+              okBtn.className = 'button btn-primary';
+              okBtn.style.background = '#0d9488';
+              okBtn.style.borderColor = '#0f766e';
+              okBtn.style.color = '#ffffff';
+            } else if (isPrimary) {
               okBtn.className = 'button btn-primary';
               okBtn.style.background = '#0284c7';
               okBtn.style.borderColor = '#0284c7';
+              okBtn.style.color = '#ffffff';
             } else if (opts.type === 'warning') {
               okBtn.className = 'button btn-orange';
               okBtn.style.background = '';
               okBtn.style.borderColor = '';
+              okBtn.style.color = '#ffffff';
             } else {
               okBtn.className = 'button btn-danger';
               okBtn.style.background = '';
               okBtn.style.borderColor = '';
+              okBtn.style.color = '#ffffff';
             }
           }
           pendingCallback = onConfirm;

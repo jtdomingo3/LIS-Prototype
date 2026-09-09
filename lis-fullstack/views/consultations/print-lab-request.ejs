@@ -98,12 +98,84 @@
     </table>
 
     <!-- Tests Checklist -->
-    <div class="section-title">Hematology & Microscopy</div>
+    <% 
+      const allOrderedNames = labOrders.map(lo => {
+        if (typeof lo === 'string') return lo.trim();
+        if (lo && typeof lo === 'object') return (lo.testType || lo.name || lo.label || lo.key || '').trim();
+        return '';
+      }).filter(Boolean);
+
+      function isTestOrdered(testName) {
+        const target = testName.toLowerCase();
+        return allOrderedNames.some(o => {
+          const low = o.toLowerCase();
+          return low === target || low.includes(target) || target.includes(low) || (low.length > 3 && target.includes(low.slice(0, 4)));
+        });
+      }
+
+      const hemList = [
+        'Complete Blood Count (CBC) with Platelet',
+        'Blood Typing (ABO & Rh)',
+        'ESR (Erythrocyte Sedimentation Rate)',
+        'Clotting Time & Bleeding Time (CT/BT)',
+        'PT / APTT (Coagulation Profile)',
+        'Peripheral Blood Smear'
+      ];
+
+      const microList = [
+        'Routine Urinalysis',
+        'Routine Fecalysis',
+        'Fecal Occult Blood Test (FOBT)',
+        'Urine Pregnancy Test (hCG)'
+      ];
+
+      const chemList = [
+        'Fasting Blood Sugar (FBS)',
+        'Random Blood Sugar (RBS)',
+        'HbA1c (Glycated Hemoglobin)',
+        'Lipid Profile (Chol, Trig, HDL, LDL)',
+        'Blood Uric Acid (BUA)',
+        'BUN & Creatinine (Renal Function)',
+        'SGPT / ALT (Liver Function)',
+        'SGOT / AST (Liver Function)',
+        'Serum Electrolytes (Na, K, Cl)',
+        'Alkaline Phosphatase (ALP)',
+        'Total Protein & Albumin (A/G Ratio)',
+        'Total & Direct Bilirubin'
+      ];
+
+      const seroList = [
+        'Thyroid Panel (TSH, FT3, FT4)',
+        'Dengue Duo (NS1 Ag, IgG, IgM)',
+        'Hepatitis B Surface Antigen (HBsAg)',
+        'Anti-HBs (Hepatitis B Surface Antibody)',
+        'Anti-HCV (Hepatitis C Antibody)',
+        'Syphilis Screening (VDRL / RPR)',
+        'Typhoid Test (Widal / Typhidot)',
+        'PSA (Prostate Specific Antigen)'
+      ];
+
+      const imgList = [
+        'Chest X-Ray (PA / AP)',
+        '12-Lead ECG (Electrocardiogram)',
+        'Ultrasound - Whole Abdomen',
+        'Ultrasound - KUB / Pelvic',
+        '2D Echocardiogram with Doppler',
+        'Drug Screening Test (Methamphetamine & THC)',
+        'Sputum AFB / GeneXpert (TB Screening)',
+        'Pap Smear / Cervical Cytology'
+      ];
+
+      const allStandardItems = [...hemList, ...microList, ...chemList, ...seroList, ...imgList];
+      const customOrders = allOrderedNames.filter(o => {
+        return !allStandardItems.some(s => s.toLowerCase() === o.toLowerCase() || s.toLowerCase().includes(o.toLowerCase()) || o.toLowerCase().includes(s.toLowerCase()));
+      });
+    %>
+
+    <div class="section-title">Hematology, Coagulation & Clinical Microscopy</div>
     <div class="test-grid">
-      <% 
-        const hemList = ['Complete Blood Count (CBC)', 'CBC with Platelet Count', 'Blood Typing & Rh', 'ESR', 'Clotting & Bleeding Time', 'Urinalysis', 'Fecalysis', 'Pregnancy Test (Urine)'];
-        hemList.forEach(testName => {
-          const isChecked = labOrders.some(lo => lo === testName || (lo && lo.testType && lo.testType.toLowerCase().includes(testName.toLowerCase().slice(0,6))));
+      <% [...hemList, ...microList].forEach(testName => {
+           const isChecked = isTestOrdered(testName);
       %>
         <div class="test-item">
           <span class="checkbox-box <%= isChecked ? 'checked-box' : '' %>"><%= isChecked ? '✓' : '' %></span>
@@ -112,12 +184,10 @@
       <% }) %>
     </div>
 
-    <div class="section-title">Clinical Chemistry</div>
+    <div class="section-title">Clinical Chemistry & Metabolic Profile</div>
     <div class="test-grid">
-      <% 
-        const chemList = ['Fasting Blood Sugar (FBS)', 'Random Blood Sugar (RBS)', 'HbA1c', 'Lipid Profile', 'Total Cholesterol', 'Triglycerides', 'Blood Uric Acid (BUA)', 'BUN', 'Serum Creatinine', 'SGPT / ALT', 'SGOT / AST', 'Electrolytes (Na, K, Cl)'];
-        chemList.forEach(testName => {
-          const isChecked = labOrders.some(lo => lo === testName || (lo && lo.testType && lo.testType.toLowerCase().includes(testName.toLowerCase().slice(0,6))));
+      <% chemList.forEach(testName => {
+           const isChecked = isTestOrdered(testName);
       %>
         <div class="test-item">
           <span class="checkbox-box <%= isChecked ? 'checked-box' : '' %>"><%= isChecked ? '✓' : '' %></span>
@@ -126,12 +196,10 @@
       <% }) %>
     </div>
 
-    <div class="section-title">Diagnostic Imaging & Special Procedures</div>
+    <div class="section-title">Thyroid, Serology & Immunology</div>
     <div class="test-grid">
-      <% 
-        const imgList = ['Chest X-Ray (PA/AP)', '12-Lead ECG', 'Ultrasound - Whole Abdomen', '2D Echocardiography', 'Drug Test (Screening)'];
-        imgList.forEach(testName => {
-          const isChecked = labOrders.some(lo => lo === testName || (lo && lo.testType && lo.testType.toLowerCase().includes(testName.toLowerCase().slice(0,6))));
+      <% seroList.forEach(testName => {
+           const isChecked = isTestOrdered(testName);
       %>
         <div class="test-item">
           <span class="checkbox-box <%= isChecked ? 'checked-box' : '' %>"><%= isChecked ? '✓' : '' %></span>
@@ -139,6 +207,30 @@
         </div>
       <% }) %>
     </div>
+
+    <div class="section-title">Diagnostic Imaging, Cardiovascular & Special Procedures</div>
+    <div class="test-grid">
+      <% imgList.forEach(testName => {
+           const isChecked = isTestOrdered(testName);
+      %>
+        <div class="test-item">
+          <span class="checkbox-box <%= isChecked ? 'checked-box' : '' %>"><%= isChecked ? '✓' : '' %></span>
+          <span><%= testName %></span>
+        </div>
+      <% }) %>
+    </div>
+
+    <% if (customOrders.length > 0) { %>
+      <div class="section-title" style="color: #0284c7; border-bottom-color: #bae6fd;">Other Requested Diagnostic Procedures & Custom Orders</div>
+      <div class="test-grid">
+        <% customOrders.forEach(testName => { %>
+          <div class="test-item" style="font-weight: 700; color: #0284c7;">
+            <span class="checkbox-box checked-box">✓</span>
+            <span><%= testName %></span>
+          </div>
+        <% }) %>
+      </div>
+    <% } %>
 
     <% if (c.treatmentPlan || c.followUpNotes) { %>
       <div style="margin-top: 14px; padding: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.85em;">

@@ -4,6 +4,17 @@
   const vitals = c.vitalSigns || {};
   const isCompleted = (c.status === 'Completed');
   const patientAge = p.age || p.ageManual || '';
+  const patientGender = String(p.gender || p.sex || '').toLowerCase();
+
+  // DOH PhilPEN Data
+  const smoking = (typeof c.smoking === 'object' && c.smoking !== null) ? c.smoking : {};
+  const alcohol = (typeof c.alcohol === 'object' && c.alcohol !== null) ? c.alcohol : {};
+  const famHistory = (typeof c.familyHistory === 'object' && c.familyHistory !== null && !Array.isArray(c.familyHistory))
+    ? c.familyHistory
+    : { diseases: [], notes: typeof c.familyHistory === 'string' ? c.familyHistory : '' };
+  const socHistory = (typeof c.socialHistory === 'object' && c.socialHistory !== null && !Array.isArray(c.socialHistory))
+    ? c.socialHistory
+    : { occupation: '', physicalActivity: 'Active (≥150 mins/week)', dietaryHabits: '', notes: typeof c.socialHistory === 'string' ? c.socialHistory : '' };
   
   let rawDiffs = [];
   if (Array.isArray(c.differentialDiagnosis)) {
@@ -42,6 +53,82 @@
     margin: 0 !important;
     padding: 0 4px 60px 4px !important;
     box-sizing: border-box !important;
+  }
+
+  /* Interactive NCD Screening Pills */
+  .ncd-pill {
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #334155;
+    font-size: 0.8em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .ncd-pill:hover {
+    background: #e2e8f0;
+    border-color: #94a3b8;
+  }
+  .ncd-pill.selected {
+    background: #0d9488;
+    color: #ffffff;
+    border-color: #0f766e;
+    box-shadow: 0 1px 4px rgba(13,148,136,0.3);
+  }
+
+  /* Diagnostic Orders Styling */
+  .diag-cat-title {
+    font-size: 0.76em;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #0369a1;
+    margin: 8px 0 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .diag-item-lbl {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.8em;
+    font-weight: 600;
+    color: #334155;
+    cursor: pointer;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    padding: 4px 8px;
+    border-radius: 6px;
+    margin: 0;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    user-select: none;
+  }
+  .diag-item-lbl:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+  }
+  .diag-item-lbl input[type="checkbox"]:checked + span {
+    color: #0f766e;
+    font-weight: 700;
+  }
+  .custom-lab-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 0.82em;
+    font-weight: 600;
   }
   .consultation-panel * {
     box-sizing: border-box;
@@ -364,16 +451,165 @@
                 </div>
               </div>
 
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                <div>
-                  <label style="display: block; font-size: 0.8em; font-weight: 700; color: #334155; margin-bottom: 4px;">Current Medications</label>
-                  <input type="text" name="currentMedications" value="<%= c.currentMedications || '' %>" placeholder="Maintenance drugs, vitamins" class="form-input auto-save-input" style="width: 100%; height: 36px; border-radius: 8px; font-size: 0.85em;">
+              <!-- Current Medications -->
+              <div>
+                <label style="display: block; font-size: 0.8em; font-weight: 700; color: #334155; margin-bottom: 4px;">
+                  Current Medications & Maintenance
+                </label>
+                <input type="text" name="currentMedications" value="<%= c.currentMedications || '' %>" placeholder="Maintenance antihypertensives, antidiabetics, statins, OTC, vitamins..." class="form-input auto-save-input" style="width: 100%; height: 36px; border-radius: 8px; font-size: 0.85em;">
+              </div>
+
+              <!-- DOH PhilPEN Personal & Social History (Tobacco & Alcohol Assessment) -->
+              <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid #cbd5e1; padding-bottom: 5px;">
+                  <span style="font-size: 0.82em; font-weight: 800; color: #0f766e; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+                    <i class="fa fa-smoking-ban" style="color: #0d9488;"></i> DOH PhilPEN Personal & Social History
+                  </span>
+                  <span style="font-size: 0.72em; color: #64748b; font-weight: 600;">CVD & NCD Risk Stratification</span>
                 </div>
 
-                <div>
-                  <label style="display: block; font-size: 0.8em; font-weight: 700; color: #334155; margin-bottom: 4px;">Family & Social History</label>
-                  <input type="text" name="socialHistory" value="<%= c.socialHistory || '' %>" placeholder="Smoking, alcohol, family HTN/DM" class="form-input auto-save-input" style="width: 100%; height: 36px; border-radius: 8px; font-size: 0.85em;">
+                <!-- Smoking / Tobacco Grid -->
+                <div style="margin-bottom: 10px;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                    <label style="font-size: 0.76em; font-weight: 700; color: #334155; text-transform: uppercase;">
+                      Tobacco & Smoking History
+                    </label>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                      <span id="packYearsDisplay" style="font-size: 0.82em; font-weight: 800; color: #0d9488; background: #ccfbf1; padding: 1px 8px; border-radius: 4px;">
+                        <%= Number(smoking.packYears || 0).toFixed(1) %> Pack-Years
+                      </span>
+                      <span id="packYearsRiskBadge" style="display: none; font-size: 0.72em; font-weight: 700; padding: 1px 6px; border-radius: 4px;"></span>
+                    </div>
+                  </div>
+                  
+                  <div style="display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 8px;">
+                    <div>
+                      <select name="smokingStatus" id="smokingStatusSelect" class="form-input auto-save-input" style="width: 100%; height: 34px; border-radius: 6px; font-size: 0.82em;" onchange="recalcPackYearsUI()">
+                        <option value="Never Smoked" <%= (smoking.status === 'Never Smoked' || !smoking.status) ? 'selected' : '' %>>Never Smoked</option>
+                        <option value="Current Smoker" <%= smoking.status === 'Current Smoker' ? 'selected' : '' %>>Current Smoker</option>
+                        <option value="Former Smoker" <%= smoking.status === 'Former Smoker' ? 'selected' : '' %>>Former Smoker</option>
+                        <option value="Passive / Secondhand Smoke Exposure" <%= smoking.status === 'Passive / Secondhand Smoke Exposure' ? 'selected' : '' %>>Passive / Secondhand</option>
+                        <option value="Vape / E-Cigarette User" <%= smoking.status === 'Vape / E-Cigarette User' ? 'selected' : '' %>>Vape / E-Cigarette</option>
+                      </select>
+                    </div>
+                    <div>
+                      <input type="number" step="1" min="0" max="120" name="smokingSticksPerDay" id="smokingSticksInput" value="<%= smoking.sticksPerDay !== undefined ? smoking.sticksPerDay : '' %>" placeholder="Sticks/day" class="form-input auto-save-input" style="width: 100%; height: 34px; border-radius: 6px; font-size: 0.82em;" oninput="recalcPackYearsUI()">
+                    </div>
+                    <div>
+                      <input type="number" step="0.5" min="0" max="80" name="smokingYears" id="smokingYearsInput" value="<%= smoking.years !== undefined ? smoking.years : '' %>" placeholder="Years smoked" class="form-input auto-save-input" style="width: 100%; height: 34px; border-radius: 6px; font-size: 0.82em;" oninput="recalcPackYearsUI()">
+                    </div>
+                    <div>
+                      <input type="number" step="0.5" min="0" max="80" name="smokingQuitYears" id="smokingQuitInput" value="<%= smoking.quitYears !== undefined ? smoking.quitYears : '' %>" placeholder="Years quit" class="form-input auto-save-input" style="width: 100%; height: 34px; border-radius: 6px; font-size: 0.82em;">
+                    </div>
+                  </div>
+                  <input type="hidden" name="smokingPackYears" id="smokingPackYearsInput" value="<%= smoking.packYears || 0 %>">
                 </div>
+
+                <!-- Alcohol Consumption Grid (AUDIT-C / CPG) -->
+                <div style="margin-bottom: 10px;">
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                    <label style="font-size: 0.76em; font-weight: 700; color: #334155; text-transform: uppercase;">
+                      Alcohol Consumption & Binge Screening
+                    </label>
+                    <span id="alcoholBingeBadge" style="display: none; font-size: 0.72em; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: #fee2e2; color: #b91c1c;">
+                      <i class="fa fa-exclamation-triangle"></i> Binge Drinking Risk
+                    </span>
+                  </div>
+
+                  <div style="display: grid; grid-template-columns: 1.4fr 1.2fr 1fr; gap: 8px;">
+                    <div>
+                      <select name="alcoholStatus" id="alcoholStatusSelect" class="form-input auto-save-input" style="width: 100%; height: 34px; border-radius: 6px; font-size: 0.82em;" onchange="recalcAlcoholRiskUI()">
+                        <option value="Non-drinker" <%= (alcohol.status === 'Non-drinker' || !alcohol.status) ? 'selected' : '' %>>Non-drinker</option>
+                        <option value="Occasional / Social (< monthly)" <%= alcohol.status === 'Occasional / Social (< monthly)' ? 'selected' : '' %>>Occasional / Social (< monthly)</option>
+                        <option value="Regular (1-3 times/week)" <%= alcohol.status === 'Regular (1-3 times/week)' ? 'selected' : '' %>>Regular (1-3 times/week)</option>
+                        <option value="Heavy / Frequent (≥4 times/week)" <%= alcohol.status === 'Heavy / Frequent (≥4 times/week)' ? 'selected' : '' %>>Heavy / Frequent (≥4 times/week)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <select name="alcoholFrequency" id="alcoholFreqSelect" class="form-input auto-save-input" style="width: 100%; height: 34px; border-radius: 6px; font-size: 0.82em;">
+                        <option value="Never" <%= (alcohol.frequency === 'Never' || !alcohol.frequency) ? 'selected' : '' %>>Never</option>
+                        <option value="Monthly or less" <%= alcohol.frequency === 'Monthly or less' ? 'selected' : '' %>>Monthly or less</option>
+                        <option value="2 to 4 times a month" <%= alcohol.frequency === '2 to 4 times a month' ? 'selected' : '' %>>2 to 4 times a month</option>
+                        <option value="2 to 3 times a week" <%= alcohol.frequency === '2 to 3 times a week' ? 'selected' : '' %>>2 to 3 times a week</option>
+                        <option value="4 or more times a week" <%= alcohol.frequency === '4 or more times a week' ? 'selected' : '' %>>4 or more times a week</option>
+                      </select>
+                    </div>
+                    <div>
+                      <input type="number" min="0" max="50" name="alcoholDrinksPerSession" id="alcoholDrinksInput" value="<%= alcohol.drinksPerSession !== undefined ? alcohol.drinksPerSession : '' %>" placeholder="Drinks/session" title="Standard drinks per drinking day (1 beer = 1 drink, 1 wine = 1 drink, 1 shot = 1 drink)" class="form-input auto-save-input" style="width: 100%; height: 34px; border-radius: 6px; font-size: 0.82em;" oninput="recalcAlcoholRiskUI()">
+                    </div>
+                  </div>
+                  <input type="hidden" name="alcoholBingeDrinking" id="alcoholBingeInput" value="<%= alcohol.bingeDrinking || 'No' %>">
+                </div>
+
+                <!-- Physical Activity, Occupation, & Diet -->
+                <div style="display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 8px;">
+                  <div>
+                    <label style="display: block; font-size: 0.72em; font-weight: 700; color: #64748b; margin-bottom: 2px;">Physical Activity</label>
+                    <select name="physicalActivity" class="form-input auto-save-input" style="width: 100%; height: 34px; border-radius: 6px; font-size: 0.82em;">
+                      <option value="Active (≥150 mins/week)" <%= socHistory.physicalActivity === 'Active (≥150 mins/week)' ? 'selected' : '' %>>Active (≥150 min/wk target)</option>
+                      <option value="Sedentary (<150 mins/week)" <%= socHistory.physicalActivity === 'Sedentary (<150 mins/week)' ? 'selected' : '' %>>Sedentary (<150 min/wk)</option>
+                      <option value="Light / Minimal Activity" <%= socHistory.physicalActivity === 'Light / Minimal Activity' ? 'selected' : '' %>>Light / Minimal Activity</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style="display: block; font-size: 0.72em; font-weight: 700; color: #64748b; margin-bottom: 2px;">Occupation</label>
+                    <input type="text" name="occupation" value="<%= socHistory.occupation || '' %>" placeholder="e.g. Office Clerk, Driver" class="form-input auto-save-input" style="width: 100%; height: 34px; border-radius: 6px; font-size: 0.82em;">
+                  </div>
+                  <div>
+                    <label style="display: block; font-size: 0.72em; font-weight: 700; color: #64748b; margin-bottom: 2px;">Dietary Habit</label>
+                    <input type="text" name="dietaryHabits" value="<%= socHistory.dietaryHabits || '' %>" placeholder="Low salt, balanced..." class="form-input auto-save-input" style="width: 100%; height: 34px; border-radius: 6px; font-size: 0.82em;">
+                  </div>
+                </div>
+              </div>
+
+              <!-- DOH Familial NCD History (Hereditary Diseases) -->
+              <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid #cbd5e1; padding-bottom: 5px;">
+                  <span style="font-size: 0.82em; font-weight: 800; color: #0f766e; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;">
+                    <i class="fa fa-users" style="color: #0d9488;"></i> Family Medical History (Hereditary NCDs)
+                  </span>
+                  <span style="font-size: 0.72em; color: #64748b; font-weight: 600;">DOH PhilPEN / PhilHealth Konsulta</span>
+                </div>
+
+                <!-- Clickable Interactive NCD Pills -->
+                <div id="famHistoryTags" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px;">
+                  <% 
+                    const ncdList = [
+                      'Hypertension', 'Type 2 Diabetes', 'Heart Attack / CAD', 'Stroke (CVD)',
+                      'Cancer / Malignancy', 'Bronchial Asthma / Allergies', 'Chronic Kidney Disease (CKD)',
+                      'Tuberculosis (TB Contact)', 'Mental Health / Depression', 'Thyroid Disease', 'None Reported'
+                    ];
+                    const activeNcds = Array.isArray(famHistory.diseases) ? famHistory.diseases : [];
+                  %>
+                  <% ncdList.forEach(item => { 
+                       const isSel = activeNcds.includes(item);
+                  %>
+                    <button type="button" class="ncd-pill <%= isSel ? 'selected' : '' %>" data-ncd="<%= item %>" onclick="toggleNcdPill(this, '<%= item %>')">
+                      <i class="fa <%= isSel ? 'fa-check-circle' : 'fa-circle-o' %>"></i> <%= item %>
+                    </button>
+                  <% }) %>
+                </div>
+
+                <div id="familyHistoryDiseasesInputs" style="display: none;">
+                  <% activeNcds.forEach(item => { %>
+                    <input type="hidden" name="familyHistoryDiseases[]" value="<%= item %>">
+                  <% }) %>
+                </div>
+
+                <textarea name="familyHistoryNotes" rows="2" placeholder="Kinship details: e.g. Father: Hypertension at age 52; Mother: Type 2 Diabetes; Sibling: Asthma..." class="form-input auto-save-input" style="width: 100%; border-radius: 6px; padding: 6px 8px; font-family: inherit; font-size: 0.82em;"><%= famHistory.notes || c.socialHistory || '' %></textarea>
+              </div>
+
+              <!-- Review of Systems (ROS) -->
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <label style="font-size: 0.8em; font-weight: 700; color: #334155; margin: 0;">
+                    Review of Systems (ROS)
+                  </label>
+                  <button type="button" class="button btn-secondary btn-small" onclick="quickFillRos()" style="height: 26px; padding: 0 8px; font-size: 0.74em; border-radius: 6px; color: #0f766e; border-color: #99f6e4; background: #f0fdfa;">
+                    <i class="fa fa-bolt"></i> All Systems Unremarkable
+                  </button>
+                </div>
+                <textarea name="reviewOfSystems" id="reviewOfSystemsInput" rows="2" placeholder="General, HEENT, Respiratory, CVS, GI, GU, Musculoskeletal, Neuro, Skin..." class="form-input auto-save-input" style="width: 100%; border-radius: 8px; padding: 6px 8px; font-family: inherit; font-size: 0.84em;"><%= c.reviewOfSystems || '' %></textarea>
               </div>
             </div>
           </div>
@@ -487,14 +723,30 @@
                 <input type="number" step="1" name="bloodGlucose" value="<%= vitals.bloodGlucose || '' %>" placeholder="e.g. 100" class="form-input auto-save-input" style="width: 100%;">
               </div>
 
+              <!-- Waist Circumference (DOH PhilPEN Central Adiposity Screening) -->
+              <div class="vitals-box" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <label style="font-size: 0.7em; font-weight: 700; text-transform: uppercase; color: #64748b;">
+                    Waist <span style="font-weight: 400;">(cm)</span>
+                  </label>
+                  <span id="waistRiskBadge" style="display: none; font-size: 0.66em; font-weight: 700; padding: 1px 5px; border-radius: 4px;"></span>
+                </div>
+                <input type="number" step="0.5" name="waistCircumference" id="vitalWaist" value="<%= vitals.waistCircumference || '' %>" placeholder="<%= patientGender === 'female' || patientGender === 'f' ? 'e.g. 75 (<80)' : 'e.g. 82 (<90)' %>" min="30" max="250" class="form-input auto-save-input" style="width: 100%;" oninput="recalcWaistRiskUI()">
+              </div>
+
             </div>
 
             <!-- Physical Examination Findings -->
             <div>
-              <label style="display: block; font-size: 0.8em; font-weight: 700; color: #334155; margin-bottom: 4px;">
-                Physical Examination Findings (HEENT, Chest/Lungs, CVS, Abdomen, Extremities, Neurologic)
-              </label>
-              <textarea name="physicalExamFindings" rows="3" placeholder="Clear breath sounds, normal heart sounds, soft non-tender abdomen, no edema..." class="form-input auto-save-input" style="width: 100%; border-radius: 8px; padding: 8px 10px; font-family: inherit; font-size: 0.88em;"><%= c.physicalExamFindings || '' %></textarea>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <label style="font-size: 0.8em; font-weight: 700; color: #334155; margin: 0;">
+                  Physical Examination Findings (HEENT, Chest/Lungs, CVS, Abdomen, Extremities, Neurologic)
+                </label>
+                <button type="button" class="button btn-secondary btn-small" onclick="quickFillPe()" style="height: 26px; padding: 0 8px; font-size: 0.74em; border-radius: 6px; color: #0d9488; border-color: #99f6e4; background: #f0fdfa;">
+                  <i class="fa fa-bolt"></i> Normal PE Findings
+                </button>
+              </div>
+              <textarea name="physicalExamFindings" id="peFindingsInput" rows="3" placeholder="Normocephalic, clear breath sounds, normal heart sounds, soft non-tender abdomen, full pulses..." class="form-input auto-save-input" style="width: 100%; border-radius: 8px; padding: 8px 10px; font-family: inherit; font-size: 0.88em;"><%= c.physicalExamFindings || '' %></textarea>
             </div>
 
           </div>
@@ -686,36 +938,165 @@
               </div>
             </div>
 
-            <!-- Diagnostic Orders Checkboxes -->
-            <div>
-              <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 6px;">
-                Recommended Diagnostic Orders (For Lab Request Form)
-              </label>
-              <div style="display: flex; gap: 10px; flex-wrap: wrap; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
-                <% 
-                  const orderOptions = [
-                    { id: 'cbc', label: 'CBC with Platelet' },
-                    { id: 'urinalysis', label: 'Urinalysis' },
-                    { id: 'fecalysis', label: 'Fecalysis' },
-                    { id: 'fbs', label: 'Fasting Blood Sugar (FBS)' },
-                    { id: 'lipid', label: 'Lipid Profile' },
-                    { id: 'bua', label: 'Blood Uric Acid (BUA)' },
-                    { id: 'bun_crea', label: 'BUN & Creatinine' },
-                    { id: 'sgpt', label: 'SGPT / ALT' },
-                    { id: 'xray', label: 'Chest X-Ray' },
-                    { id: 'ecg', label: '12-Lead ECG' }
-                  ];
-                  const existingLabKeys = labOrders.map(lo => lo.testType || lo.key || '');
-                %>
-                <% orderOptions.forEach(opt => { 
-                     const isChecked = existingLabKeys.some(k => k.toLowerCase().includes(opt.id) || k.toLowerCase().includes(opt.label.toLowerCase().slice(0,4)));
-                %>
-                  <label style="display: inline-flex; align-items: center; gap: 4px; font-size: 0.82em; font-weight: 600; color: #334155; cursor: pointer; background: #ffffff; border: 1px solid #cbd5e1; padding: 3px 8px; border-radius: 6px; margin: 0;">
-                    <input type="checkbox" name="labOrders" value="<%= opt.label %>" <%= isChecked ? 'checked' : '' %> class="auto-save-input">
-                    <%= opt.label %>
-                  </label>
+            <!-- Comprehensive Diagnostic Orders (For Lab Request Form) -->
+            <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px 16px; margin-top: 6px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; border-bottom: 1.5px solid #cbd5e1; padding-bottom: 6px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="background: #0284c7; color: #ffffff; width: 22px; height: 22px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8em; font-weight: 800;">
+                    <i class="fa fa-vials"></i>
+                  </span>
+                  <strong style="font-size: 0.86em; color: #0f172a; text-transform: uppercase; letter-spacing: 0.5px;">
+                    Recommended Diagnostic Orders (For Official Lab Request Form)
+                  </strong>
+                </div>
+                <span style="font-size: 0.74em; color: #64748b; font-weight: 600;">Check services or type custom orders</span>
+              </div>
+
+              <% 
+                const existingLabKeys = labOrders.map(lo => (typeof lo === 'string' ? lo : (lo.testType || lo.key || lo.label || ''))).filter(Boolean);
+                
+                const catalogCategories = [
+                  {
+                    category: 'Hematology & Coagulation',
+                    icon: 'fa-tint',
+                    color: '#e11d48',
+                    items: [
+                      'Complete Blood Count (CBC) with Platelet',
+                      'Blood Typing (ABO & Rh)',
+                      'ESR (Erythrocyte Sedimentation Rate)',
+                      'Clotting Time & Bleeding Time (CT/BT)',
+                      'PT / APTT (Coagulation Profile)',
+                      'Peripheral Blood Smear'
+                    ]
+                  },
+                  {
+                    category: 'Clinical Microscopy & Parasitology',
+                    icon: 'fa-microscope',
+                    color: '#0d9488',
+                    items: [
+                      'Routine Urinalysis',
+                      'Routine Fecalysis',
+                      'Fecal Occult Blood Test (FOBT)',
+                      'Urine Pregnancy Test (hCG)'
+                    ]
+                  },
+                  {
+                    category: 'Clinical Chemistry & Metabolic',
+                    icon: 'fa-flask',
+                    color: '#2563eb',
+                    items: [
+                      'Fasting Blood Sugar (FBS)',
+                      'Random Blood Sugar (RBS)',
+                      'HbA1c (Glycated Hemoglobin)',
+                      'Lipid Profile (Chol, Trig, HDL, LDL)',
+                      'Blood Uric Acid (BUA)',
+                      'BUN & Creatinine (Renal Function)',
+                      'SGPT / ALT (Liver Function)',
+                      'SGOT / AST (Liver Function)',
+                      'Serum Electrolytes (Na, K, Cl)',
+                      'Alkaline Phosphatase (ALP)',
+                      'Total Protein & Albumin (A/G Ratio)',
+                      'Total & Direct Bilirubin'
+                    ]
+                  },
+                  {
+                    category: 'Thyroid, Serology & Immunology',
+                    icon: 'fa-dna',
+                    color: '#7c3aed',
+                    items: [
+                      'Thyroid Panel (TSH, FT3, FT4)',
+                      'Dengue Duo (NS1 Ag, IgG, IgM)',
+                      'Hepatitis B Surface Antigen (HBsAg)',
+                      'Anti-HBs (Hepatitis B Surface Antibody)',
+                      'Anti-HCV (Hepatitis C Antibody)',
+                      'Syphilis Screening (VDRL / RPR)',
+                      'Typhoid Test (Widal / Typhidot)',
+                      'PSA (Prostate Specific Antigen)'
+                    ]
+                  },
+                  {
+                    category: 'Imaging, Radiology & Cardiovascular',
+                    icon: 'fa-heartbeat',
+                    color: '#d97706',
+                    items: [
+                      'Chest X-Ray (PA / AP)',
+                      '12-Lead ECG (Electrocardiogram)',
+                      'Ultrasound - Whole Abdomen',
+                      'Ultrasound - KUB / Pelvic',
+                      '2D Echocardiogram with Doppler'
+                    ]
+                  },
+                  {
+                    category: 'Special & Occupational Screening',
+                    icon: 'fa-id-card',
+                    color: '#475569',
+                    items: [
+                      'Drug Screening Test (Methamphetamine & THC)',
+                      'Sputum AFB / GeneXpert (TB Screening)',
+                      'Pap Smear / Cervical Cytology'
+                    ]
+                  }
+                ];
+
+                // Detect any custom or typed orders that aren't in the standard catalog
+                const allCatalogItems = catalogCategories.flatMap(c => c.items);
+                const customExistingOrders = existingLabKeys.filter(k => {
+                  return !allCatalogItems.some(item => item.toLowerCase() === k.toLowerCase() || item.toLowerCase().includes(k.toLowerCase()) || k.toLowerCase().includes(item.toLowerCase()));
+                });
+              %>
+
+              <!-- Grouped Category Panels -->
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <% catalogCategories.forEach((cat) => { %>
+                  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+                    <div style="padding: 6px 10px; background: #f8fafc; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between;">
+                      <span style="font-size: 0.78em; font-weight: 700; color: <%= cat.color %>; display: flex; align-items: center; gap: 6px;">
+                        <i class="fa <%= cat.icon %>"></i> <%= cat.category %>
+                      </span>
+                      <span style="font-size: 0.7em; color: #94a3b8;"><%= cat.items.length %> items</span>
+                    </div>
+                    <div style="padding: 8px 10px; display: flex; gap: 6px; flex-wrap: wrap;">
+                      <% cat.items.forEach(testItem => { 
+                           const isChecked = existingLabKeys.some(k => k.toLowerCase() === testItem.toLowerCase() || testItem.toLowerCase().includes(k.toLowerCase()) || k.toLowerCase().includes(testItem.toLowerCase().slice(0, 5)));
+                      %>
+                        <label class="diag-item-lbl">
+                          <input type="checkbox" name="labOrders" value="<%= testItem %>" <%= isChecked ? 'checked' : '' %> class="auto-save-input">
+                          <span><%= testItem %></span>
+                        </label>
+                      <% }) %>
+                    </div>
+                  </div>
                 <% }) %>
               </div>
+
+              <!-- Dedicated "Others / Custom Lab Procedures" Section -->
+              <div style="margin-top: 12px; background: #ffffff; border: 1.5px dashed #0284c7; border-radius: 8px; padding: 10px 12px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                  <label style="font-size: 0.78em; font-weight: 800; color: #0284c7; text-transform: uppercase; margin: 0; display: flex; align-items: center; gap: 6px;">
+                    <i class="fa fa-pencil-square-o"></i> Others / Additional Diagnostic Procedures
+                  </label>
+                  <span style="font-size: 0.72em; color: #64748b;">Type any procedure needed for the patient</span>
+                </div>
+                
+                <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 8px;">
+                  <input type="text" id="customLabInput" placeholder="Type test name (e.g. Serum Ferritin, Troponin I, 24-hr Urine Protein, etc.)..." style="flex: 1; height: 34px; border-radius: 6px; font-size: 0.84em; padding: 0 10px; border: 1px solid #cbd5e1; box-sizing: border-box;" onkeydown="if(event.key==='Enter'){event.preventDefault(); addCustomLabOrder();}">
+                  <button type="button" class="button btn-secondary btn-small" onclick="addCustomLabOrder()" style="height: 34px; padding: 0 12px; font-size: 0.8em; font-weight: 700; border-radius: 6px; white-space: nowrap; background: #0284c7; color: #ffffff; border-color: #0284c7;">
+                    <i class="fa fa-plus-circle"></i> Add Procedure
+                  </button>
+                </div>
+
+                <!-- Custom Tags Container -->
+                <div id="customLabTagsContainer" style="display: flex; gap: 6px; flex-wrap: wrap; min-height: 24px;">
+                  <% customExistingOrders.forEach(custTest => { %>
+                    <span class="custom-lab-tag">
+                      <span><%= custTest %></span>
+                      <input type="hidden" class="custom-lab-tag-val" value="<%= custTest %>">
+                      <button type="button" onclick="removeCustomLabTag(this)" style="background: none; border: none; color: #0284c7; cursor: pointer; font-size: 1.1em; line-height: 1; padding: 0 2px;">&times;</button>
+                    </span>
+                  <% }) %>
+                </div>
+              </div>
+
             </div>
 
           </div>
@@ -980,6 +1361,80 @@
   </div>
 </div>
 
+<!-- Modal: Complete Consultation Warning & Confirmation (Matches App UI) -->
+<div id="completeConsultationModal" style="display: none; position: fixed; inset: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); z-index: 99999; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box;">
+  <div style="background: #ffffff; width: 100%; max-width: 480px; border-radius: 18px; padding: 28px 30px; box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35); border: 1px solid #e2e8f0; text-align: center;">
+    
+    <!-- Top Icon -->
+    <div style="width: 60px; height: 60px; border-radius: 50%; background: #ccfbf1; border: 2px solid #99f6e4; color: #0d9488; display: flex; align-items: center; justify-content: center; font-size: 26px; margin: 0 auto 16px; box-shadow: 0 4px 14px rgba(13, 148, 136, 0.2);">
+      <i class="fa fa-clipboard-check"></i>
+    </div>
+
+    <!-- Title & Subtitle -->
+    <h3 style="margin: 0 0 6px; font-size: 1.25rem; font-weight: 700; color: #0f172a;">Complete Consultation</h3>
+    <p style="margin: 0 0 20px; font-size: 0.88rem; color: #64748b;">
+      Encounter for <strong style="color: #0f172a;"><%= p.firstName %> <%= p.lastName %></strong>
+    </p>
+
+    <!-- Detailed Bullet Points Box -->
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 18px; margin-bottom: 22px; text-align: left;">
+      <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px;">
+        <div style="width: 22px; height: 22px; border-radius: 50%; background: #dcfce7; color: #15803d; display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; margin-top: 2px;">
+          <i class="fa fa-check"></i>
+        </div>
+        <div style="font-size: 0.88rem; color: #334155; line-height: 1.45;">
+          The consultation encounter will be marked as <strong style="color: #15803d;">Completed</strong>.
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px;">
+        <div style="width: 22px; height: 22px; border-radius: 50%; background: #ccfbf1; color: #0d9488; display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; margin-top: 2px;">
+          <i class="fa fa-user-doctor"></i>
+        </div>
+        <div style="font-size: 0.88rem; color: #334155; line-height: 1.45;">
+          The patient will be marked as checked at the doctor station.
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: flex-start; gap: 10px;">
+        <div style="width: 22px; height: 22px; border-radius: 50%; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; margin-top: 2px;">
+          <i class="fa fa-arrows-rotate"></i>
+        </div>
+        <div style="font-size: 0.88rem; color: #334155; line-height: 1.45;">
+          Real-time reception board will update automatically.
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div style="display: flex; gap: 12px; justify-content: center;">
+      <button type="button" id="btnCancelCompleteModal" class="button btn-secondary" style="flex: 1; height: 42px; font-weight: 600; font-size: 0.9rem; border-radius: 10px;">
+        Cancel
+      </button>
+      <button type="button" id="btnConfirmCompleteModal" class="button btn-primary" style="flex: 1.3; height: 42px; font-weight: 700; font-size: 0.9rem; border-radius: 10px; background: #0d9488; border-color: #0f766e; color: #ffffff; display: inline-flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 14px rgba(13, 148, 136, 0.3);">
+        <i class="fa fa-check-circle"></i> Complete Consultation
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<!-- Modal: Primary Diagnosis Required Alert -->
+<div id="validationAlertModal" style="display: none; position: fixed; inset: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); z-index: 99999; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box;">
+  <div style="background: #ffffff; width: 100%; max-width: 440px; border-radius: 18px; padding: 26px 28px; box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.35); border: 1px solid #fed7aa; text-align: center;">
+    <div style="width: 56px; height: 56px; border-radius: 50%; background: #ffedd5; border: 2px solid #fed7aa; color: #ea580c; display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto 14px;">
+      <i class="fa fa-stethoscope"></i>
+    </div>
+    <h3 id="valModalTitle" style="margin: 0 0 8px; font-size: 1.2rem; font-weight: 700; color: #0f172a;">Primary Diagnosis Required</h3>
+    <p id="valModalMsg" style="margin: 0 0 20px; font-size: 0.88rem; color: #475569; line-height: 1.55;">
+      Please enter a <strong>Primary Diagnosis</strong> in the Assessment section before marking this clinical consultation as completed.
+    </p>
+    <button type="button" id="btnCloseValidationModal" class="button btn-orange" style="width: 100%; height: 42px; font-weight: 600; border-radius: 10px;">
+      Go to Assessment
+    </button>
+  </div>
+</div>
+
 <script>
   // Global previous visits data for modal display
   const previousVisitsData = <%- JSON.stringify(previousConsultations) %>;
@@ -1037,6 +1492,145 @@
     bmiBadge.textContent = cat;
     bmiBadge.style.background = bg;
     bmiBadge.style.color = color;
+  }
+
+  // DOH PhilPEN Calculations & UI Helpers
+  function recalcPackYearsUI() {
+    const spd = parseFloat(document.getElementById('smokingSticksInput')?.value) || 0;
+    const yrs = parseFloat(document.getElementById('smokingYearsInput')?.value) || 0;
+    const packYears = +((spd / 20) * yrs).toFixed(1);
+    const disp = document.getElementById('packYearsDisplay');
+    const inp = document.getElementById('smokingPackYearsInput');
+    const badge = document.getElementById('packYearsRiskBadge');
+    if (inp) inp.value = packYears;
+    if (disp) disp.textContent = packYears.toFixed(1) + ' Pack-Years';
+    if (badge) {
+      if (packYears >= 20) {
+        badge.style.display = 'inline-block';
+        badge.textContent = 'High CVD/COPD Risk (≥20 PY)';
+        badge.style.background = '#fee2e2';
+        badge.style.color = '#b91c1c';
+      } else if (packYears >= 10) {
+        badge.style.display = 'inline-block';
+        badge.textContent = 'Moderate Risk (≥10 PY)';
+        badge.style.background = '#fef3c7';
+        badge.style.color = '#92400e';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+  }
+
+  function recalcAlcoholRiskUI() {
+    const drinks = parseFloat(document.getElementById('alcoholDrinksInput')?.value) || 0;
+    const badge = document.getElementById('alcoholBingeBadge');
+    const bingeInp = document.getElementById('alcoholBingeInput');
+    const gender = '<%= patientGender %>';
+    const threshold = (gender === 'female' || gender === 'f') ? 4 : 5;
+    const isBinge = drinks >= threshold;
+    if (bingeInp) bingeInp.value = isBinge ? 'Yes' : 'No';
+    if (badge) {
+      if (isBinge) {
+        badge.style.display = 'inline-flex';
+        badge.innerHTML = `<i class="fa fa-exclamation-triangle" style="margin-right:4px;"></i> Binge Risk (≥${threshold} drinks/session)`;
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+  }
+
+  function recalcWaistRiskUI() {
+    const waist = parseFloat(document.getElementById('vitalWaist')?.value) || 0;
+    const badge = document.getElementById('waistRiskBadge');
+    const gender = '<%= patientGender %>';
+    // Asian WHO / DOH PhilPEN Cutoffs: Men >= 90 cm, Women >= 80 cm
+    const threshold = (gender === 'female' || gender === 'f') ? 80 : 90;
+    if (badge) {
+      if (waist >= threshold) {
+        badge.style.display = 'inline-block';
+        badge.textContent = `High CVD Risk (≥${threshold}cm)`;
+        badge.style.background = '#fee2e2';
+        badge.style.color = '#b91c1c';
+      } else if (waist > 0) {
+        badge.style.display = 'inline-block';
+        badge.textContent = `Normal (<${threshold}cm)`;
+        badge.style.background = '#d1fae5';
+        badge.style.color = '#065f46';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+  }
+
+  function toggleNcdPill(btn, name) {
+    btn.classList.toggle('selected');
+    const icon = btn.querySelector('i');
+    if (icon) {
+      if (btn.classList.contains('selected')) {
+        icon.className = 'fa fa-check-circle';
+      } else {
+        icon.className = 'fa fa-circle-o';
+      }
+    }
+    syncNcdInputs();
+    triggerAutoSave();
+  }
+
+  function syncNcdInputs() {
+    const container = document.getElementById('familyHistoryDiseasesInputs');
+    if (!container) return;
+    container.innerHTML = '';
+    document.querySelectorAll('.ncd-pill.selected').forEach(b => {
+      const inp = document.createElement('input');
+      inp.type = 'hidden';
+      inp.name = 'familyHistoryDiseases[]';
+      inp.value = b.getAttribute('data-ncd') || b.textContent.trim();
+      container.appendChild(inp);
+    });
+  }
+
+  function quickFillRos() {
+    const el = document.getElementById('reviewOfSystemsInput');
+    if (!el) return;
+    el.value = "General: No fever, unintentional weight loss, or fatigue.\nHEENT: No blurring of vision, headache, or dizziness.\nRespiratory: No cough, hemoptysis, or dyspnea.\nCardiovascular: No chest pain, orthopnea, or palpitations.\nGastrointestinal: No abdominal pain, nausea, vomiting, or change in bowel habits.\nGenitourinary: No dysuria, frequency, or flank pain.\nMusculoskeletal: No joint swelling, stiffness, or muscle pain.\nNeurologic: No numbness, motor weakness, or focal deficits.\nSkin: No rashes, lesions, or jaundice.";
+    triggerAutoSave();
+  }
+
+  function quickFillPe() {
+    const el = document.getElementById('peFindingsInput');
+    if (!el) return;
+    el.value = "General: Conscious, coherent, ambulatory, not in acute cardiopulmonary distress.\nHEENT: Normocephalic, anicteric sclera, pink palpebral conjunctiva, supple neck, no cervical lymphadenopathy.\nChest & Lungs: Symmetrical chest expansion, vesicular breath sounds, no rales or wheezes.\nCardiovascular: Normal rate, regular rhythm, normal S1 and S2, no murmurs or thrills.\nAbdomen: Soft, non-tender, non-distended, normoactive bowel sounds, no palpable organomegaly.\nExtremities: Full and equal peripheral pulses, no cyanosis, no clubbing, no pedal edema.\nNeurologic: Awake, alert, oriented x 3, GCS 15, no gross focal motor or sensory deficit.";
+    triggerAutoSave();
+  }
+
+  function addCustomLabOrder() {
+    const inp = document.getElementById('customLabInput');
+    if (!inp) return;
+    const val = inp.value.trim();
+    if (!val) return;
+    
+    const container = document.getElementById('customLabTagsContainer');
+    if (container) {
+      const existing = Array.from(container.querySelectorAll('.custom-lab-tag-val')).map(el => el.value.toLowerCase());
+      if (!existing.includes(val.toLowerCase())) {
+        const tag = document.createElement('span');
+        tag.className = 'custom-lab-tag';
+        tag.innerHTML = `
+          <span>${val}</span>
+          <input type="hidden" class="custom-lab-tag-val" value="${val}">
+          <button type="button" onclick="removeCustomLabTag(this)" style="background: none; border: none; color: #0284c7; cursor: pointer; font-size: 1.1em; line-height: 1; padding: 0 2px;">&times;</button>
+        `;
+        container.appendChild(tag);
+      }
+    }
+    inp.value = '';
+    triggerAutoSave();
+  }
+
+  function removeCustomLabTag(btn) {
+    const tag = btn.closest('.custom-lab-tag');
+    if (tag) tag.remove();
+    triggerAutoSave();
   }
 
   function addDifferentialRow() {
@@ -1242,10 +1836,15 @@
     }
     obj.prescriptions = JSON.stringify(rxList);
 
-    // Assemble dynamic lab orders
-    if (Array.isArray(obj.labOrders)) {
-      obj.labRequestTests = JSON.stringify(obj.labOrders.map(t => ({ testType: t })));
-    }
+    // Assemble dynamic lab orders (checked catalog items + custom typed procedures)
+    const checkedLabs = Array.from(document.querySelectorAll('input[name="labOrders"]:checked')).map(el => el.value);
+    const customBadges = Array.from(document.querySelectorAll('.custom-lab-tag-val')).map(el => el.value || el.textContent.trim());
+    const allLabOrders = Array.from(new Set([...checkedLabs, ...customBadges])).filter(Boolean);
+    obj.labRequestTests = JSON.stringify(allLabOrders.map(t => ({ testType: t })));
+
+    // Assemble selected NCD pills
+    const ncds = Array.from(document.querySelectorAll('.ncd-pill.selected')).map(b => b.getAttribute('data-ncd') || b.textContent.trim());
+    obj.familyHistoryDiseases = ncds;
 
     return obj;
   }
@@ -1299,51 +1898,127 @@
     triggerAutoSave();
   });
 
-  // Complete Consultation Action
-  async function confirmComplete() {
+  // Custom UI Modals for Consultation Completion & Validation
+  const completeModal = document.getElementById('completeConsultationModal');
+  const cancelCompleteModalBtn = document.getElementById('btnCancelCompleteModal');
+  const confirmCompleteModalBtn = document.getElementById('btnConfirmCompleteModal');
+
+  const validationModal = document.getElementById('validationAlertModal');
+  const closeValidationModalBtn = document.getElementById('btnCloseValidationModal');
+
+  function openCompleteModal() {
+    if (completeModal) completeModal.style.display = 'flex';
+  }
+
+  function closeCompleteModal() {
+    if (completeModal) completeModal.style.display = 'none';
+  }
+
+  function openValidationModal() {
+    if (validationModal) validationModal.style.display = 'flex';
+  }
+
+  function closeValidationModal() {
+    if (validationModal) validationModal.style.display = 'none';
+    switchConsultTab('tab-soap', document.getElementById('tabNavSoap'));
     const diag = document.getElementById('primaryDiagnosisInput');
-    if (diag && !diag.value.trim()) {
-      alert('Please enter a Primary Diagnosis before marking the consultation complete.');
-      // Switch to SOAP tab if not already on it
-      switchConsultTab('tab-soap', document.getElementById('tabNavSoap'));
-      diag.focus();
-      return;
-    }
-
-    if (!confirm('Complete this clinical consultation?\n\n• The consultation encounter will be marked as Completed.\n• The patient will be marked as checked at the doctor station.\n• Real-time reception board will update automatically.')) {
-      return;
-    }
-
-    const completeBtn = document.getElementById('btnCompleteConsultation');
-    if (completeBtn) {
-      completeBtn.disabled = true;
-      completeBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Finalizing...';
-    }
-
-    try {
-      const data = buildFormDataObject();
-      const res = await fetch('/consultations/<%= test.id %>/complete', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(data)
-      });
-      const json = await res.json();
-      if (json && json.success) {
-        window.location.href = json.redirectUrl || '/reception/area/<%= encodeURIComponent(areaName || "Doctor\'s Check-up") %>';
-      } else {
-        alert(json.message || 'Error completing consultation');
-        if (completeBtn) { completeBtn.disabled = false; completeBtn.innerHTML = '<i class="fa fa-check-circle"></i> Complete Consultation'; }
-      }
-    } catch (err) {
-      console.error('Complete failed', err);
-      alert('Network error while completing consultation. Please try again.');
-      if (completeBtn) { completeBtn.disabled = false; completeBtn.innerHTML = '<i class="fa fa-check-circle"></i> Complete Consultation'; }
+    if (diag) {
+      setTimeout(() => {
+        diag.focus();
+        diag.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
     }
   }
 
+  if (cancelCompleteModalBtn) cancelCompleteModalBtn.addEventListener('click', closeCompleteModal);
+  if (closeValidationModalBtn) closeValidationModalBtn.addEventListener('click', closeValidationModal);
+
+  // Close modals on backdrop click or ESC key
+  if (completeModal) {
+    completeModal.addEventListener('click', function(e) {
+      if (e.target === completeModal) closeCompleteModal();
+    });
+  }
+  if (validationModal) {
+    validationModal.addEventListener('click', function(e) {
+      if (e.target === validationModal) closeValidationModal();
+    });
+  }
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closeCompleteModal();
+      closeValidationModal();
+    }
+  });
+
+  // Clicking "Complete Consultation" in the top bar
+  function handleCompleteClick() {
+    const diag = document.getElementById('primaryDiagnosisInput');
+    if (diag && !diag.value.trim()) {
+      openValidationModal();
+      return;
+    }
+    openCompleteModal();
+  }
+
   const compBtn = document.getElementById('btnCompleteConsultation');
-  if (compBtn) compBtn.addEventListener('click', confirmComplete);
+  if (compBtn) compBtn.addEventListener('click', handleCompleteClick);
+
+  // Clicking "Complete Consultation" inside the custom modal
+  if (confirmCompleteModalBtn) {
+    confirmCompleteModalBtn.addEventListener('click', async function() {
+      closeCompleteModal();
+
+      const topCompleteBtn = document.getElementById('btnCompleteConsultation');
+      if (topCompleteBtn) {
+        topCompleteBtn.disabled = true;
+        topCompleteBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Finalizing...';
+      }
+
+      try {
+        const data = buildFormDataObject();
+        const res = await fetch('/consultations/<%= test.id %>/complete', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(data)
+        });
+        const json = await res.json();
+        if (json && json.success) {
+          window.location.href = json.redirectUrl || '/reception/area/<%= encodeURIComponent(areaName || "Doctor\'s Check-up") %>';
+        } else {
+          const errMsg = json.message || 'Error completing consultation';
+          if (typeof window.showCustomAlert === 'function') {
+            window.showCustomAlert(errMsg, { title: 'Completion Error', type: 'danger', btnText: 'Dismiss' });
+          } else {
+            alert(errMsg);
+          }
+          if (topCompleteBtn) {
+            topCompleteBtn.disabled = false;
+            topCompleteBtn.innerHTML = '<i class="fa fa-check-circle"></i> Complete Consultation';
+          }
+        }
+      } catch (err) {
+        console.error('Complete failed', err);
+        const errMsg = 'Network error while completing consultation. Please try again.';
+        if (typeof window.showCustomAlert === 'function') {
+          window.showCustomAlert(errMsg, { title: 'Network Error', type: 'danger', btnText: 'Dismiss' });
+        } else {
+          alert(errMsg);
+        }
+        if (topCompleteBtn) {
+          topCompleteBtn.disabled = false;
+          topCompleteBtn.innerHTML = '<i class="fa fa-check-circle"></i> Complete Consultation';
+        }
+      }
+    });
+  }
+
+  // Initial calculation checks on page load
+  recalcBmiUI();
+  recalcPackYearsUI();
+  recalcAlcoholRiskUI();
+  recalcWaistRiskUI();
 </script>

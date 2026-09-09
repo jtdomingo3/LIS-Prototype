@@ -34,8 +34,64 @@ class Consultation {
     this.currentMedications = data.currentMedications || '';
     this.allergies = data.allergies || '';
     this.reviewOfSystems = data.reviewOfSystems || '';
-    this.familyHistory = data.familyHistory || '';
-    this.socialHistory = data.socialHistory || '';
+
+    // DOH PhilPEN: Smoking / Tobacco Reporting
+    const rawSmoking = data.smoking || {};
+    this.smoking = {
+      status: rawSmoking.status || data.smokingStatus || 'Never Smoked',
+      sticksPerDay: rawSmoking.sticksPerDay !== undefined ? rawSmoking.sticksPerDay : (data.smokingSticksPerDay || ''),
+      years: rawSmoking.years !== undefined ? rawSmoking.years : (data.smokingYears || ''),
+      packYears: rawSmoking.packYears !== undefined ? rawSmoking.packYears : (data.smokingPackYears || ''),
+      quitYears: rawSmoking.quitYears !== undefined ? rawSmoking.quitYears : (data.smokingQuitYears || ''),
+      notes: rawSmoking.notes || data.smokingNotes || ''
+    };
+    if ((this.smoking.packYears === '' || this.smoking.packYears === undefined) && this.smoking.sticksPerDay && this.smoking.years) {
+      const spd = parseFloat(this.smoking.sticksPerDay);
+      const yrs = parseFloat(this.smoking.years);
+      if (!isNaN(spd) && !isNaN(yrs)) {
+        this.smoking.packYears = +((spd / 20) * yrs).toFixed(1);
+      }
+    }
+
+    // DOH PhilPEN: Alcohol Consumption Reporting
+    const rawAlcohol = data.alcohol || {};
+    this.alcohol = {
+      status: rawAlcohol.status || data.alcoholStatus || 'Non-drinker',
+      frequency: rawAlcohol.frequency || data.alcoholFrequency || '',
+      drinksPerSession: rawAlcohol.drinksPerSession !== undefined ? rawAlcohol.drinksPerSession : (data.alcoholDrinksPerSession || ''),
+      bingeDrinking: rawAlcohol.bingeDrinking !== undefined ? rawAlcohol.bingeDrinking : (data.alcoholBingeDrinking || 'No'),
+      notes: rawAlcohol.notes || data.alcoholNotes || ''
+    };
+
+    // DOH Familial NCD Screening (Hereditary Diseases)
+    if (typeof data.familyHistory === 'object' && data.familyHistory !== null && !Array.isArray(data.familyHistory)) {
+      this.familyHistory = {
+        diseases: Array.isArray(data.familyHistory.diseases) ? data.familyHistory.diseases : [],
+        notes: data.familyHistory.notes || ''
+      };
+    } else {
+      this.familyHistory = {
+        diseases: Array.isArray(data.familyHistoryDiseases) ? data.familyHistoryDiseases : [],
+        notes: typeof data.familyHistory === 'string' ? data.familyHistory : (data.familyHistoryNotes || '')
+      };
+    }
+
+    // DOH Social & Lifestyle History
+    if (typeof data.socialHistory === 'object' && data.socialHistory !== null && !Array.isArray(data.socialHistory)) {
+      this.socialHistory = {
+        occupation: data.socialHistory.occupation || data.occupation || '',
+        physicalActivity: data.socialHistory.physicalActivity || data.physicalActivity || 'Active (≥150 mins/week)',
+        dietaryHabits: data.socialHistory.dietaryHabits || data.dietaryHabits || '',
+        notes: data.socialHistory.notes || ''
+      };
+    } else {
+      this.socialHistory = {
+        occupation: data.occupation || '',
+        physicalActivity: data.physicalActivity || 'Active (≥150 mins/week)',
+        dietaryHabits: data.dietaryHabits || '',
+        notes: typeof data.socialHistory === 'string' ? data.socialHistory : (data.socialHistoryNotes || '')
+      };
+    }
 
     // SOAP: Objective — Vital Signs
     const rawVitals = data.vitalSigns || {};
@@ -55,7 +111,8 @@ class Consultation {
       bmi: computedBmi !== null ? computedBmi : (rawVitals.bmi || data.bmi || ''),
       bmiCategory: computedCat || rawVitals.bmiCategory || '',
       painScale: rawVitals.painScale !== undefined ? rawVitals.painScale : (data.painScale || ''),
-      bloodGlucose: rawVitals.bloodGlucose !== undefined ? rawVitals.bloodGlucose : (data.bloodGlucose || '')
+      bloodGlucose: rawVitals.bloodGlucose !== undefined ? rawVitals.bloodGlucose : (data.bloodGlucose || ''),
+      waistCircumference: rawVitals.waistCircumference !== undefined ? rawVitals.waistCircumference : (data.waistCircumference || '')
     };
 
     // SOAP: Objective — Physical Exam

@@ -200,95 +200,159 @@ router.post('/:testId', requireAuth, canAccessPatient, async (req, res) => {
       consultation = new Consultation({ testId: testId });
     }
 
+function applyConsultationPayload(consultation, b) {
+  if (!consultation || !b) return;
+
+  // Basic & Doctor fields
+  if (b.patientId) consultation.patientId = b.patientId;
+  if (b.doctorName) consultation.doctorName = b.doctorName.trim();
+  if (b.doctorLicenseNumber !== undefined) consultation.doctorLicenseNumber = b.doctorLicenseNumber.trim();
+  if (b.visitType) consultation.visitType = b.visitType;
+  if (b.consultationDate) consultation.consultationDate = b.consultationDate;
+
+  // Subjective
+  if (b.chiefComplaint !== undefined) consultation.chiefComplaint = b.chiefComplaint;
+  if (b.historyOfPresentIllness !== undefined) consultation.historyOfPresentIllness = b.historyOfPresentIllness;
+  if (b.pastMedicalHistory !== undefined) consultation.pastMedicalHistory = b.pastMedicalHistory;
+  if (b.currentMedications !== undefined) consultation.currentMedications = b.currentMedications;
+  if (b.allergies !== undefined) consultation.allergies = b.allergies;
+  if (b.reviewOfSystems !== undefined) consultation.reviewOfSystems = b.reviewOfSystems;
+
+  // DOH PhilPEN: Smoking / Tobacco
+  consultation.smoking = consultation.smoking || {};
+  if (b.smokingStatus !== undefined) consultation.smoking.status = b.smokingStatus;
+  if (b.smokingSticksPerDay !== undefined) consultation.smoking.sticksPerDay = b.smokingSticksPerDay;
+  if (b.smokingYears !== undefined) consultation.smoking.years = b.smokingYears;
+  if (b.smokingPackYears !== undefined) consultation.smoking.packYears = b.smokingPackYears;
+  else if (b.smokingSticksPerDay && b.smokingYears) {
+    const spd = parseFloat(b.smokingSticksPerDay);
+    const yrs = parseFloat(b.smokingYears);
+    if (!isNaN(spd) && !isNaN(yrs)) consultation.smoking.packYears = +((spd / 20) * yrs).toFixed(1);
+  }
+  if (b.smokingQuitYears !== undefined) consultation.smoking.quitYears = b.smokingQuitYears;
+  if (b.smokingNotes !== undefined) consultation.smoking.notes = b.smokingNotes;
+
+  // DOH PhilPEN: Alcohol Consumption
+  consultation.alcohol = consultation.alcohol || {};
+  if (b.alcoholStatus !== undefined) consultation.alcohol.status = b.alcoholStatus;
+  if (b.alcoholFrequency !== undefined) consultation.alcohol.frequency = b.alcoholFrequency;
+  if (b.alcoholDrinksPerSession !== undefined) consultation.alcohol.drinksPerSession = b.alcoholDrinksPerSession;
+  if (b.alcoholBingeDrinking !== undefined) consultation.alcohol.bingeDrinking = b.alcoholBingeDrinking;
+  if (b.alcoholNotes !== undefined) consultation.alcohol.notes = b.alcoholNotes;
+
+  // DOH Familial NCD History
+  consultation.familyHistory = (typeof consultation.familyHistory === 'object' && consultation.familyHistory !== null && !Array.isArray(consultation.familyHistory))
+    ? consultation.familyHistory
+    : { diseases: [], notes: typeof consultation.familyHistory === 'string' ? consultation.familyHistory : '' };
+  if (b.familyHistoryDiseases !== undefined) {
+    consultation.familyHistory.diseases = Array.isArray(b.familyHistoryDiseases)
+      ? b.familyHistoryDiseases.filter(Boolean)
+      : [String(b.familyHistoryDiseases)].filter(Boolean);
+  }
+  if (b.familyHistoryNotes !== undefined) consultation.familyHistory.notes = b.familyHistoryNotes;
+  else if (b.familyHistory !== undefined && typeof b.familyHistory === 'string') consultation.familyHistory.notes = b.familyHistory;
+
+  // DOH Social & Lifestyle History
+  consultation.socialHistory = (typeof consultation.socialHistory === 'object' && consultation.socialHistory !== null && !Array.isArray(consultation.socialHistory))
+    ? consultation.socialHistory
+    : { occupation: '', physicalActivity: 'Active (≥150 mins/week)', dietaryHabits: '', notes: typeof consultation.socialHistory === 'string' ? consultation.socialHistory : '' };
+  if (b.occupation !== undefined) consultation.socialHistory.occupation = b.occupation;
+  if (b.physicalActivity !== undefined) consultation.socialHistory.physicalActivity = b.physicalActivity;
+  if (b.dietaryHabits !== undefined) consultation.socialHistory.dietaryHabits = b.dietaryHabits;
+  if (b.socialHistoryNotes !== undefined) consultation.socialHistory.notes = b.socialHistoryNotes;
+  else if (b.socialHistory !== undefined && typeof b.socialHistory === 'string') consultation.socialHistory.notes = b.socialHistory;
+
+  // Objective — Vital Signs
+  consultation.vitalSigns = consultation.vitalSigns || {};
+  if (b.bloodPressureSystolic !== undefined) consultation.vitalSigns.bloodPressureSystolic = b.bloodPressureSystolic;
+  if (b.bloodPressureDiastolic !== undefined) consultation.vitalSigns.bloodPressureDiastolic = b.bloodPressureDiastolic;
+  if (b.pulseRate !== undefined) consultation.vitalSigns.pulseRate = b.pulseRate;
+  if (b.respiratoryRate !== undefined) consultation.vitalSigns.respiratoryRate = b.respiratoryRate;
+  if (b.temperature !== undefined) consultation.vitalSigns.temperature = b.temperature;
+  if (b.oxygenSaturation !== undefined) consultation.vitalSigns.oxygenSaturation = b.oxygenSaturation;
+  if (b.weight !== undefined) consultation.vitalSigns.weight = b.weight;
+  if (b.height !== undefined) consultation.vitalSigns.height = b.height;
+  if (b.painScale !== undefined) consultation.vitalSigns.painScale = b.painScale;
+  if (b.bloodGlucose !== undefined) consultation.vitalSigns.bloodGlucose = b.bloodGlucose;
+  if (b.waistCircumference !== undefined) consultation.vitalSigns.waistCircumference = b.waistCircumference;
+  if (typeof consultation.recalculateBmi === 'function') consultation.recalculateBmi();
+
+  // Objective — Physical Exam
+  if (b.physicalExamFindings !== undefined) consultation.physicalExamFindings = b.physicalExamFindings;
+
+  // Assessment
+  if (b.primaryDiagnosis !== undefined) consultation.primaryDiagnosis = b.primaryDiagnosis;
+  if (b.suspectedPathology !== undefined) consultation.suspectedPathology = b.suspectedPathology;
+  if (b.clinicalImpression !== undefined) consultation.clinicalImpression = b.clinicalImpression;
+
+  // Differential Diagnosis (parse items array or JSON array or newline-delimited)
+  if (b.differential_items !== undefined) {
+    consultation.differentialDiagnosis = Array.isArray(b.differential_items)
+      ? b.differential_items.map(s => String(s).trim()).filter(Boolean)
+      : [String(b.differential_items).trim()].filter(Boolean);
+  } else if (b.differentialDiagnosis !== undefined) {
+    if (Array.isArray(b.differentialDiagnosis)) {
+      consultation.differentialDiagnosis = b.differentialDiagnosis.filter(Boolean);
+    } else if (typeof b.differentialDiagnosis === 'string') {
+      try {
+        const parsed = JSON.parse(b.differentialDiagnosis);
+        consultation.differentialDiagnosis = Array.isArray(parsed) ? parsed.filter(Boolean) : [b.differentialDiagnosis];
+      } catch (_) {
+        consultation.differentialDiagnosis = b.differentialDiagnosis.split('\n').map(s => s.trim()).filter(Boolean);
+      }
+    }
+  }
+
+  // Plan — Prescriptions
+  if (b.prescriptions !== undefined) {
+    if (Array.isArray(b.prescriptions)) {
+      consultation.prescriptions = b.prescriptions;
+    } else if (typeof b.prescriptions === 'string') {
+      try {
+        consultation.prescriptions = JSON.parse(b.prescriptions);
+      } catch (_) {
+        consultation.prescriptions = [];
+      }
+    }
+  }
+
+  // Plan — Lab Request Tests
+  if (b.labRequestTests !== undefined) {
+    if (Array.isArray(b.labRequestTests)) {
+      consultation.labRequestTests = b.labRequestTests;
+    } else if (typeof b.labRequestTests === 'string') {
+      try {
+        consultation.labRequestTests = JSON.parse(b.labRequestTests);
+      } catch (_) {
+        consultation.labRequestTests = [];
+      }
+    }
+  }
+
+  if (b.treatmentPlan !== undefined) consultation.treatmentPlan = b.treatmentPlan;
+  if (b.referrals !== undefined) consultation.referrals = b.referrals;
+  if (b.followUpDate !== undefined) consultation.followUpDate = b.followUpDate;
+  if (b.followUpNotes !== undefined) consultation.followUpNotes = b.followUpNotes;
+}
+
+// POST /consultations/:testId - Save or update consultation draft
+router.post('/:testId', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const { testId } = req.params;
+    let consultation = await Consultation.findByTestId(testId);
+    if (!consultation) {
+      const test = await Test.findById(testId) || await Test.findOne({ testId: testId });
+      if (test) {
+        consultation = await Consultation.findByTestId(test.id);
+      }
+    }
+
+    if (!consultation) {
+      consultation = new Consultation({ testId: testId });
+    }
+
     const b = req.body || {};
-
-    // Basic & Doctor fields
-    if (b.patientId) consultation.patientId = b.patientId;
-    if (b.doctorName) consultation.doctorName = b.doctorName.trim();
-    if (b.doctorLicenseNumber !== undefined) consultation.doctorLicenseNumber = b.doctorLicenseNumber.trim();
-    if (b.visitType) consultation.visitType = b.visitType;
-    if (b.consultationDate) consultation.consultationDate = b.consultationDate;
-
-    // Subjective
-    if (b.chiefComplaint !== undefined) consultation.chiefComplaint = b.chiefComplaint;
-    if (b.historyOfPresentIllness !== undefined) consultation.historyOfPresentIllness = b.historyOfPresentIllness;
-    if (b.pastMedicalHistory !== undefined) consultation.pastMedicalHistory = b.pastMedicalHistory;
-    if (b.currentMedications !== undefined) consultation.currentMedications = b.currentMedications;
-    if (b.allergies !== undefined) consultation.allergies = b.allergies;
-    if (b.reviewOfSystems !== undefined) consultation.reviewOfSystems = b.reviewOfSystems;
-    if (b.familyHistory !== undefined) consultation.familyHistory = b.familyHistory;
-    if (b.socialHistory !== undefined) consultation.socialHistory = b.socialHistory;
-
-    // Objective — Vital Signs
-    consultation.vitalSigns = consultation.vitalSigns || {};
-    if (b.bloodPressureSystolic !== undefined) consultation.vitalSigns.bloodPressureSystolic = b.bloodPressureSystolic;
-    if (b.bloodPressureDiastolic !== undefined) consultation.vitalSigns.bloodPressureDiastolic = b.bloodPressureDiastolic;
-    if (b.pulseRate !== undefined) consultation.vitalSigns.pulseRate = b.pulseRate;
-    if (b.respiratoryRate !== undefined) consultation.vitalSigns.respiratoryRate = b.respiratoryRate;
-    if (b.temperature !== undefined) consultation.vitalSigns.temperature = b.temperature;
-    if (b.oxygenSaturation !== undefined) consultation.vitalSigns.oxygenSaturation = b.oxygenSaturation;
-    if (b.weight !== undefined) consultation.vitalSigns.weight = b.weight;
-    if (b.height !== undefined) consultation.vitalSigns.height = b.height;
-    if (b.painScale !== undefined) consultation.vitalSigns.painScale = b.painScale;
-    if (b.bloodGlucose !== undefined) consultation.vitalSigns.bloodGlucose = b.bloodGlucose;
-    consultation.recalculateBmi();
-
-    // Objective — Physical Exam
-    if (b.physicalExamFindings !== undefined) consultation.physicalExamFindings = b.physicalExamFindings;
-
-    // Assessment
-    if (b.primaryDiagnosis !== undefined) consultation.primaryDiagnosis = b.primaryDiagnosis;
-    if (b.suspectedPathology !== undefined) consultation.suspectedPathology = b.suspectedPathology;
-    if (b.clinicalImpression !== undefined) consultation.clinicalImpression = b.clinicalImpression;
-
-    // Differential Diagnosis (parse items array or JSON array or newline-delimited)
-    if (b.differential_items !== undefined) {
-      consultation.differentialDiagnosis = Array.isArray(b.differential_items)
-        ? b.differential_items.map(s => String(s).trim()).filter(Boolean)
-        : [String(b.differential_items).trim()].filter(Boolean);
-    } else if (b.differentialDiagnosis !== undefined) {
-      if (Array.isArray(b.differentialDiagnosis)) {
-        consultation.differentialDiagnosis = b.differentialDiagnosis.filter(Boolean);
-      } else if (typeof b.differentialDiagnosis === 'string') {
-        try {
-          const parsed = JSON.parse(b.differentialDiagnosis);
-          consultation.differentialDiagnosis = Array.isArray(parsed) ? parsed.filter(Boolean) : [b.differentialDiagnosis];
-        } catch (_) {
-          consultation.differentialDiagnosis = b.differentialDiagnosis.split('\n').map(s => s.trim()).filter(Boolean);
-        }
-      }
-    }
-
-    // Plan — Prescriptions
-    if (b.prescriptions !== undefined) {
-      if (Array.isArray(b.prescriptions)) {
-        consultation.prescriptions = b.prescriptions;
-      } else if (typeof b.prescriptions === 'string') {
-        try {
-          consultation.prescriptions = JSON.parse(b.prescriptions);
-        } catch (_) {
-          consultation.prescriptions = [];
-        }
-      }
-    }
-
-    // Plan — Lab Request Tests
-    if (b.labRequestTests !== undefined) {
-      if (Array.isArray(b.labRequestTests)) {
-        consultation.labRequestTests = b.labRequestTests;
-      } else if (typeof b.labRequestTests === 'string') {
-        try {
-          consultation.labRequestTests = JSON.parse(b.labRequestTests);
-        } catch (_) {
-          consultation.labRequestTests = [];
-        }
-      }
-    }
-
-    if (b.treatmentPlan !== undefined) consultation.treatmentPlan = b.treatmentPlan;
-    if (b.referrals !== undefined) consultation.referrals = b.referrals;
-    if (b.followUpDate !== undefined) consultation.followUpDate = b.followUpDate;
-    if (b.followUpNotes !== undefined) consultation.followUpNotes = b.followUpNotes;
+    applyConsultationPayload(consultation, b);
 
     await consultation.save();
 
@@ -327,17 +391,8 @@ router.post('/:testId/complete', requireAuth, canAccessPatient, async (req, res)
     if (!consultation && test.testId) consultation = await Consultation.findByTestId(test.testId);
     if (!consultation) consultation = new Consultation({ testId: test.id });
 
-    // Apply any final fields submitted with complete action
-    if (b.primaryDiagnosis) consultation.primaryDiagnosis = b.primaryDiagnosis;
-    if (b.suspectedPathology) consultation.suspectedPathology = b.suspectedPathology;
-    if (b.clinicalImpression) consultation.clinicalImpression = b.clinicalImpression;
-    if (b.treatmentPlan) consultation.treatmentPlan = b.treatmentPlan;
-    if (b.doctorName) consultation.doctorName = b.doctorName.trim();
-    if (b.differential_items !== undefined) {
-      consultation.differentialDiagnosis = Array.isArray(b.differential_items)
-        ? b.differential_items.map(s => String(s).trim()).filter(Boolean)
-        : [String(b.differential_items).trim()].filter(Boolean);
-    }
+    // Apply any updated fields submitted with complete action
+    applyConsultationPayload(consultation, b);
 
     consultation.status = 'Completed';
     consultation.completedAt = new Date().toISOString();
