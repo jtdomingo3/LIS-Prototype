@@ -67,6 +67,9 @@
         <!-- Quick Knowledge Filter Chips -->
         <div class="main-chips-bar">
             <span style="font-size:0.8em; font-weight:600; color:#64748b; margin-right:4px;">Quick Queries:</span>
+            <button type="button" class="main-chip" data-query="How do I use the Equipment & QC module, track calibrations, record Levey-Jennings QC runs, and evaluate Westgard rules in Gezyne LIS?">⚙️ Equipment & QC Guide</button>
+            <button type="button" class="main-chip" data-query="How does the NEQAS EQA module work with East Avenue Medical Center (EAMC) Drug Testing PT surveys, and how is the SDI calculated?">🏛️ NEQAS & EAMC Surveys</button>
+            <button type="button" class="main-chip" data-query="How do I track reagent lots, open-vial stability, and stock deductions in the Inventory Management module?">📦 Reagent Inventory</button>
             <button type="button" class="main-chip" data-query="What is the standard order of draw for phlebotomy blood collection tubes according to CLSI guidelines?">🧪 Tube Order of Draw</button>
             <button type="button" class="main-chip" data-query="What are the patient preparation and fasting requirements for Fasting Blood Sugar (FBS) and Lipid Profile?">🩸 Fasting Guidelines</button>
             <button type="button" class="main-chip" data-query="What are the critical/panic laboratory values for Glucose, Potassium, Hemoglobin, and Platelets, and what is the reporting protocol?">⚠️ Panic Values Protocol</button>
@@ -80,22 +83,27 @@
                 <div class="main-welcome-card" id="main-welcome">
                     <div class="welcome-avatar">🤖</div>
                     <h3>Welcome to GezyneBot AI</h3>
-                    <p>I am your specialized AI Assistant for Gezyne Clinical Laboratory. I can assist you with both software operations and clinical diagnostic inquiries:</p>
+                    <p>I am your specialized AI Assistant for Gezyne Clinical Laboratory (LIS v2.5.0). I can assist you with software operations, quality assurance, and clinical diagnostic inquiries:</p>
                     <div class="welcome-features-grid">
                         <div class="feature-box">
                             <div class="feature-icon">🏥</div>
                             <div class="feature-title">LIS Operations</div>
-                            <div class="feature-desc">Queue management, station routing, kiosk setup, test entry worksheets, analyzer direct import, and PDF reports.</div>
+                            <div class="feature-desc">Queue management, multi-station routing, kiosk setup, test worksheets, analyzer direct import, and PDF reports.</div>
+                        </div>
+                        <div class="feature-box">
+                            <div class="feature-icon">⚙️</div>
+                            <div class="feature-title">Equipment & QC / NEQAS</div>
+                            <div class="feature-desc">Instrument calibrations, Levey-Jennings statistical charts, Westgard multi-rules, EAMC Drug Testing PT surveys, and DOH inspection reports.</div>
+                        </div>
+                        <div class="feature-box">
+                            <div class="feature-icon">📦</div>
+                            <div class="feature-title">Reagent Inventory</div>
+                            <div class="feature-desc">Lot/batch tracking, open-vial stability, per-test automated deductions, and department low-stock alerts.</div>
                         </div>
                         <div class="feature-box">
                             <div class="feature-icon">🧪</div>
                             <div class="feature-title">Clinical Laboratory Guide</div>
-                            <div class="feature-desc">CLSI phlebotomy order of draw, additives, fasting rules, sample collection criteria, and tube color codes.</div>
-                        </div>
-                        <div class="feature-box">
-                            <div class="feature-icon">📊</div>
-                            <div class="feature-title">Diagnostic References</div>
-                            <div class="feature-desc">Reference ranges for hematology, chemistry, urinalysis, thyroid panels, and critical panic values.</div>
+                            <div class="feature-desc">CLSI phlebotomy order of draw, additives, fasting rules, sample collection criteria, tube color codes, and panic values.</div>
                         </div>
                     </div>
                     <p style="font-size:0.85em; color:#94a3b8; margin-top:20px;">Choose a quick query above or type a question below to start.</p>

@@ -46,6 +46,9 @@
 
         <!-- Quick Suggestions Chips -->
         <div class="gezynebot-chips">
+            <button type="button" class="gezynebot-chip" data-query="How do I use the Equipment & QC module, track calibrations, and evaluate Westgard rules?">⚙️ Equipment & QC</button>
+            <button type="button" class="gezynebot-chip" data-query="How does the NEQAS module work with EAMC Drug Testing PT surveys?">🏛️ NEQAS & EAMC</button>
+            <button type="button" class="gezynebot-chip" data-query="How do I track reagent lots, open-vial stability, and deductions in Inventory?">📦 Reagent Inventory</button>
             <button type="button" class="gezynebot-chip" data-query="What is the phlebotomy order of draw for blood collection tubes?">🧪 Order of Draw</button>
             <button type="button" class="gezynebot-chip" data-query="What are the patient fasting guidelines for Lipid Profile and FBS?">🩸 Fasting Rules</button>
             <button type="button" class="gezynebot-chip" data-query="What are the laboratory critical panic values and reporting protocol?">⚠️ Panic Values</button>
@@ -57,7 +60,7 @@
             <div class="gezynebot-msg gezynebot-msg-bot">
                 <div class="gezynebot-bubble">
                     <p>Hello <strong><%= sessionUser ? sessionUser.name : 'there' %></strong>! 👋</p>
-                    <p>I am <strong>GezyneBot</strong>, your LIS and clinical laboratory assistant. You can ask me how to use the LIS system (reception queue, test entry, analyzer capture, reports) or ask medical questions (normal ranges, tube order of draw, fasting guidelines, panic values).</p>
+                    <p>I am <strong>GezyneBot</strong>, your LIS and clinical laboratory assistant. You can ask me how to use the LIS system (reception queue, test entry, analyzer capture, reports, equipment & QC, NEQAS EQA, inventory) or ask medical questions (normal ranges, tube order of draw, fasting guidelines, panic values).</p>
                     <p style="font-size:0.85em;color:#64748b;margin-top:6px;">💡 <em>Tip: Click the <strong>⤢</strong> icon above anytime to maximize our discussion into a full dedicated page!</em></p>
                 </div>
             </div>
