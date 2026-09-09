@@ -543,6 +543,10 @@
 // Global handler for floating widget chips (direct inline execution & visual feedback)
 window.handleWidgetChipClick = function(btn) {
     if (!btn) return;
+    if (window.__gezynebotWidgetSubmitting) {
+        console.warn('[GezyneBot Widget] Submission in progress, ignoring chip click');
+        return;
+    }
     const query = btn.getAttribute('data-query') || (btn.dataset && btn.dataset.query);
     if (!query) return;
 
@@ -626,14 +630,6 @@ window.handleWidgetChipClick = function(btn) {
     }
 
     if (sendBtn) sendBtn.addEventListener('click', () => sendMessage());
-
-    // Quick chips programmatic listener
-    chips.forEach(chip => {
-        chip.addEventListener('click', (e) => {
-            e.preventDefault();
-            window.handleWidgetChipClick(chip);
-        });
-    });
 
     function scrollToBottom() {
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -785,12 +781,13 @@ window.handleWidgetChipClick = function(btn) {
         const text = (overrideText || (input ? input.value : '') || '').trim();
         if (!text) return;
 
-        if (isSending) {
-            console.warn('[GezyneBot Widget] Previous query active, resetting');
-            isSending = false;
+        if (isSending || window.__gezynebotWidgetSubmitting) {
+            console.warn('[GezyneBot Widget] Previous query active, ignoring duplicate trigger');
+            return;
         }
 
         isSending = true;
+        window.__gezynebotWidgetSubmitting = true;
         if (sendBtn) sendBtn.disabled = true;
         if (input) {
             input.value = '';
@@ -840,8 +837,9 @@ window.handleWidgetChipClick = function(btn) {
             appendMessage('bot', 'Network error: could not contact the server.');
         } finally {
             isSending = false;
-            sendBtn.disabled = false;
-            input.focus();
+            window.__gezynebotWidgetSubmitting = false;
+            if (sendBtn) sendBtn.disabled = false;
+            if (input) input.focus();
         }
     }
 })();

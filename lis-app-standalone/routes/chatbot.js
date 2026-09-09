@@ -133,6 +133,9 @@ router.get('/api/status', requireAuth, async (req, res) => {
     });
 });
 
+// In-flight query deduplication map to prevent double uploads to central server
+const inFlightStandaloneQueries = new Map();
+
 // Query endpoint: strictly proxies to the central server when online
 router.post('/api/query', requireAuth, async (req, res) => {
     const serverUrl = getServerUrl(req);
@@ -147,39 +150,73 @@ router.post('/api/query', requireAuth, async (req, res) => {
         });
     }
 
-    try {
+    const question = String((req.body && req.body.question) || '').trim();
+    const convId = (req.body && req.body.conversationId) || 'new';
+    const userId = req.session.user ? (req.session.user.id || req.session.user.username) : 'anon';
+    const dedupeKey = `${userId}:${convId}:${question}`;
+
+    if (inFlightStandaloneQueries.has(dedupeKey)) {
+        console.log('[Standalone Proxy] In-flight query already active, attaching to existing request:', dedupeKey);
+        try {
+            const sharedResult = await inFlightStandaloneQueries.get(dedupeKey);
+            return res.json(sharedResult);
+        } catch (e) {
+            return res.status(500).json({ success: false, error: e && e.message });
+        }
+    }
+
+    const executeProxy = async () => {
         const headers = getForwardHeaders(req);
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), 20000);
 
-        const response = await fetch(`${serverUrl}/chatbot/api/query`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(req.body || {}),
-            signal: controller.signal
-        });
-        clearTimeout(timer);
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            let parsedErr;
-            try { parsedErr = JSON.parse(errorText); } catch (_) {}
-            return res.status(response.status).json(parsedErr || {
-                success: false,
-                error: `Server responded with status ${response.status}`,
-                answer: `⚠️ Server returned error status ${response.status}.`
+        try {
+            const response = await fetch(`${serverUrl}/chatbot/api/query`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(req.body || {}),
+                signal: controller.signal
             });
-        }
+            clearTimeout(timer);
 
-        const data = await response.json();
-        return res.json(data);
-    } catch (err) {
-        console.error('[Standalone Chatbot Proxy Error]', err && err.message);
-        return res.json({
-            success: false,
-            offline: true,
-            answer: `⚠️ **Connection Error**\n\nFailed to reach the central LIS server at \`${serverUrl}\`: ${err.message || 'Server timeout'}.\n\nGezyneBot is unavailable until the server connection is restored.`
-        });
+            if (!response.ok) {
+                const errorText = await response.text();
+                let parsedErr;
+                try { parsedErr = JSON.parse(errorText); } catch (_) {}
+                return {
+                    status: response.status,
+                    body: parsedErr || {
+                        success: false,
+                        error: `Server responded with status ${response.status}`,
+                        answer: `⚠️ Server returned error status ${response.status}.`
+                    }
+                };
+            }
+
+            const data = await response.json();
+            return { status: 200, body: data };
+        } catch (err) {
+            clearTimeout(timer);
+            console.error('[Standalone Chatbot Proxy Error]', err && err.message);
+            return {
+                status: 200,
+                body: {
+                    success: false,
+                    offline: true,
+                    answer: `⚠️ **Connection Error**\n\nFailed to reach the central LIS server at \`${serverUrl}\`: ${err.message || 'Server timeout'}.\n\nGezyneBot is unavailable until the server connection is restored.`
+                }
+            };
+        }
+    };
+
+    const taskPromise = executeProxy();
+    inFlightStandaloneQueries.set(dedupeKey, taskPromise);
+
+    try {
+        const result = await taskPromise;
+        return res.status(result.status || 200).json(result.body);
+    } finally {
+        inFlightStandaloneQueries.delete(dedupeKey);
     }
 });
 

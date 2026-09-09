@@ -164,6 +164,9 @@ router.delete('/api/conversations/:id', requireAuth, (req, res) => {
   }
 });
 
+// In-flight query deduplication map to prevent duplicate AI invocations on concurrent requests
+const inFlightServerQueries = new Map();
+
 /**
  * POST /api/chatbot/query - Main query endpoint (used by both floating widget and full page)
  */
@@ -177,6 +180,7 @@ router.post('/api/query', requireAuth, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Question is required' });
     }
 
+    const trimmedQuestion = String(question).trim();
     const selectedModel = model
       || (global.db && typeof global.db.getSettings === 'function' && (global.db.getSettings() || {}).openrouterModel)
       || process.env.OPENROUTER_DEFAULT_MODEL
@@ -184,7 +188,6 @@ router.post('/api/query', requireAuth, async (req, res) => {
 
     let activeConvId = conversationId;
     let isNewConv = false;
-    let assistantMessage = null;
 
     // Ensure or create conversation in database
     let existingConv = null;
@@ -198,7 +201,7 @@ router.post('/api/query', requireAuth, async (req, res) => {
       if (!activeConvId) {
         activeConvId = 'conv_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
       }
-      const titleCandidate = String(question).trim().slice(0, 42);
+      const titleCandidate = trimmedQuestion.slice(0, 42);
       const newConv = {
         id: activeConvId,
         user_id: userId,
@@ -213,21 +216,34 @@ router.post('/api/query', requireAuth, async (req, res) => {
       isNewConv = true;
     }
 
+    // In-flight deduplication: if identical query is currently executing for this conversation, attach and share result
+    const flightKey = `${userId}:${activeConvId}:${trimmedQuestion}`;
+    if (inFlightServerQueries.has(flightKey)) {
+      console.log('[Chatbot] Duplicate query in-flight, attaching to running execution:', flightKey);
+      try {
+        const sharedResult = await inFlightServerQueries.get(flightKey);
+        return res.json({
+          ...sharedResult,
+          deduplicated: true
+        });
+      } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+      }
+    }
+
     // Retrieve previous messages for context
     let history = [];
     if (activeConvId && global.db && typeof global.db.getChatbotMessages === 'function') {
       try { history = global.db.getChatbotMessages(activeConvId) || []; } catch (_) {}
     }
 
-    const trimmedQuestion = String(question).trim();
-
-    // Deduplication guard: if an identical question was answered in this conversation within the last 20 seconds, return the cached result
+    // Deduplication guard 1: if identical question was answered in this conversation within the last 30 seconds, return cached result
     if (history.length >= 2) {
       const lastMsg = history[history.length - 1];
       const secondLastMsg = history[history.length - 2];
       if (secondLastMsg && secondLastMsg.role === 'user' && secondLastMsg.content === trimmedQuestion && lastMsg && lastMsg.role === 'assistant') {
         const timeDiff = Date.now() - new Date(secondLastMsg.created_at).getTime();
-        if (timeDiff >= 0 && timeDiff < 20000) {
+        if (timeDiff >= 0 && timeDiff < 30000) {
           console.log('[Chatbot] Returning deduplicated response for repeat query in conv:', activeConvId);
           return res.json({
             success: true,
@@ -241,74 +257,102 @@ router.post('/api/query', requireAuth, async (req, res) => {
       }
     }
 
-    // Save user's question to message history
-    if (activeConvId && global.db && typeof global.db.addChatbotMessage === 'function') {
+    // Deduplication guard 2: avoid inserting duplicate user question into DB if already present in last 25s
+    let userMsgAlreadySaved = false;
+    if (history.length > 0) {
+      const lastMsg = history[history.length - 1];
+      if (lastMsg && lastMsg.role === 'user' && lastMsg.content === trimmedQuestion) {
+        const elapsed = Date.now() - new Date(lastMsg.created_at).getTime();
+        if (elapsed >= 0 && elapsed < 25000) {
+          userMsgAlreadySaved = true;
+          console.log('[Chatbot] User message already exists in DB (received within 25s), skipping redundant insert');
+        }
+      }
+    }
+
+    // Save user's question to message history only if not already saved
+    if (!userMsgAlreadySaved && activeConvId && global.db && typeof global.db.addChatbotMessage === 'function') {
       try {
         global.db.addChatbotMessage({
           conversation_id: activeConvId,
           user_id: userId,
           role: 'user',
-          content: String(question).trim(),
+          content: trimmedQuestion,
           created_at: new Date().toISOString()
         });
       } catch (_) {}
     }
 
-    // Query OpenRouter with clinical knowledge context
-    const aiResult = await queryOpenRouter({
-      question: String(question).trim(),
-      history,
-      user: req.session.user || null,
-      model: selectedModel
-    });
+    // Wrap the query execution to register into in-flight tracker
+    const executeQuery = async () => {
+      let assistantMessage = null;
 
-    // Save assistant's answer to message history
-    if (activeConvId && global.db && aiResult.answer && typeof global.db.addChatbotMessage === 'function') {
-      try {
-        assistantMessage = global.db.addChatbotMessage({
-          conversation_id: activeConvId,
-          user_id: 'gezynebot',
-          role: 'assistant',
-          content: aiResult.answer,
-          sources: aiResult.sources || [
-            { source: 'Gezyne LIS Standard Operating Procedures' },
-            { source: 'CLSI Clinical Laboratory Reference Guidelines' }
-          ],
-          created_at: new Date().toISOString()
-        });
-      } catch (_) {}
+      // Query OpenRouter with clinical knowledge context
+      const aiResult = await queryOpenRouter({
+        question: trimmedQuestion,
+        history,
+        user: req.session.user || null,
+        model: selectedModel
+      });
 
-      // Update conversation title and last updated timestamp
-      if (typeof global.db.getChatbotConversation === 'function' && typeof global.db.saveChatbotConversation === 'function') {
+      // Save assistant's answer to message history
+      if (activeConvId && global.db && aiResult.answer && typeof global.db.addChatbotMessage === 'function') {
         try {
-          const conv = global.db.getChatbotConversation(activeConvId, userId) || global.db.getChatbotConversation(activeConvId);
-          if (conv) {
-            conv.updated_at = new Date().toISOString();
-            if (isNewConv || !conv.title || conv.title === 'New Discussion' || conv.title === 'New Topic') {
-              let smartTitle = String(question).trim();
-              smartTitle = smartTitle.replace(/^[?.,\s]+|[?.,\s]+$/g, '');
-              if (smartTitle.length > 40) smartTitle = smartTitle.slice(0, 38) + '...';
-              conv.title = smartTitle;
-            }
-            conv.last_model = selectedModel;
-            global.db.saveChatbotConversation(conv);
-          }
+          assistantMessage = global.db.addChatbotMessage({
+            conversation_id: activeConvId,
+            user_id: 'gezynebot',
+            role: 'assistant',
+            content: aiResult.answer,
+            sources: aiResult.sources || [
+              { source: 'Gezyne LIS Standard Operating Procedures' },
+              { source: 'CLSI Clinical Laboratory Reference Guidelines' }
+            ],
+            created_at: new Date().toISOString()
+          });
         } catch (_) {}
+
+        // Update conversation title and last updated timestamp
+        if (typeof global.db.getChatbotConversation === 'function' && typeof global.db.saveChatbotConversation === 'function') {
+          try {
+            const conv = global.db.getChatbotConversation(activeConvId, userId) || global.db.getChatbotConversation(activeConvId);
+            if (conv) {
+              conv.updated_at = new Date().toISOString();
+              if (isNewConv || !conv.title || conv.title === 'New Discussion' || conv.title === 'New Topic') {
+                let smartTitle = trimmedQuestion;
+                smartTitle = smartTitle.replace(/^[?.,\s]+|[?.,\s]+$/g, '');
+                if (smartTitle.length > 40) smartTitle = smartTitle.slice(0, 38) + '...';
+                conv.title = smartTitle;
+              }
+              conv.last_model = selectedModel;
+              global.db.saveChatbotConversation(conv);
+            }
+          } catch (_) {}
+        }
+
+        // Flush immediately to disk in sql.js adapter
+        if (global.db && typeof global.db.checkpoint === 'function') {
+          global.db.checkpoint();
+        }
       }
 
-      // Flush immediately to disk in sql.js adapter
-      if (global.db && typeof global.db.checkpoint === 'function') {
-        global.db.checkpoint();
-      }
+      return {
+        success: true,
+        answer: aiResult.answer,
+        conversationId: activeConvId,
+        model: aiResult.model || selectedModel,
+        messageId: assistantMessage ? assistantMessage.id : null
+      };
+    };
+
+    const taskPromise = executeQuery();
+    inFlightServerQueries.set(flightKey, taskPromise);
+
+    try {
+      const resultData = await taskPromise;
+      return res.json(resultData);
+    } finally {
+      inFlightServerQueries.delete(flightKey);
     }
-
-    res.json({
-      success: true,
-      answer: aiResult.answer,
-      conversationId: activeConvId,
-      model: aiResult.model || selectedModel,
-      messageId: assistantMessage ? assistantMessage.id : null
-    });
   } catch (err) {
     console.error('[chatbot route query error]:', err);
     res.status(500).json({ success: false, error: err.message, answer: 'Sorry, an unexpected server error occurred.' });

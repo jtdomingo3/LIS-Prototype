@@ -649,6 +649,10 @@
 // Global handler for Quick Knowledge Chips (direct inline execution & visual feedback)
 window.handleQuickChipClick = function(btn) {
     if (!btn) return;
+    if (window.__gezynebotSubmitting) {
+        console.warn('[GezyneBot] Submission in progress, ignoring chip click');
+        return;
+    }
     const query = btn.getAttribute('data-query') || (btn.dataset && btn.dataset.query);
     if (!query) return;
 
@@ -672,6 +676,8 @@ window.handleQuickChipClick = function(btn) {
 };
 
 function initChatbot() {
+    if (window.__chatbotInitialized) return;
+    window.__chatbotInitialized = true;
     let activeConversationId = '<%= activeConversation ? activeConversation.id : "" %>';
     const topicsList = document.getElementById('topics-list');
     const topicSearch = document.getElementById('topic-search-input');
@@ -843,14 +849,6 @@ function initChatbot() {
 
     sendBtn.addEventListener('click', sendQuestion);
 
-    // Quick chips programmatic listener
-    quickChips.forEach(chip => {
-        chip.addEventListener('click', (e) => {
-            e.preventDefault();
-            window.handleQuickChipClick(chip);
-        });
-    });
-
     // New Topic Button
     newTopicBtn.addEventListener('click', async () => {
         try {
@@ -973,12 +971,13 @@ function initChatbot() {
         const question = (overrideText || (chatInput ? chatInput.value : '') || '').trim();
         if (!question) return;
 
-        if (isSubmitting) {
-            console.warn('[GezyneBot] Chat submission busy, resetting state');
-            isSubmitting = false;
+        if (isSubmitting || window.__gezynebotSubmitting) {
+            console.warn('[GezyneBot] Chat submission already in progress, ignoring duplicate trigger');
+            return;
         }
 
         isSubmitting = true;
+        window.__gezynebotSubmitting = true;
         if (sendBtn) sendBtn.disabled = true;
         if (chatInput) {
             chatInput.value = '';
@@ -1031,6 +1030,7 @@ function initChatbot() {
             appendMainMessage('bot', 'Network error: could not connect to the server.');
         } finally {
             isSubmitting = false;
+            window.__gezynebotSubmitting = false;
             if (sendBtn) sendBtn.disabled = false;
             if (chatInput) chatInput.focus();
         }
