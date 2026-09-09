@@ -7,30 +7,124 @@ const sseEmitter = require('../lib/sseEmitter');
 const { requireAuth, canAccessPatient } = require('../middleware/auth');
 
 // Helper to get configured doctor names
-function getDoctorOptions() {
-  const doctors = [];
-  try {
-    const s = global.db && typeof global.db.getSettings === 'function' ? global.db.getSettings() : {};
-    const d1 = (s.doctor1Name || process.env.DOCTOR_1_NAME || 'Dr. Lorenzo').trim();
-    const d2 = (s.doctor2Name || process.env.DOCTOR_2_NAME || 'Dr. Arcilla').trim();
-    if (d1) doctors.push(d1);
-    if (d2 && !doctors.includes(d2)) doctors.push(d2);
-  } catch (_) {
-    doctors.push('Dr. Lorenzo', 'Dr. Arcilla');
-  }
+// Check if a user account represents a medical doctor / physician
+function isDoctorUser(u) {
+  if (!u) return false;
+  const r = (u.role || '').toLowerCase();
+  const n = (u.name || '').toLowerCase();
+  const doctorRoles = ['doctor', 'internist', 'physician', 'pediatrician', 'cardiologist', 'radiologist', 'pathologist', 'general practitioner', 'consultant', 'specialist'];
+  if (doctorRoles.includes(r)) return true;
+  if (n.startsWith('dr.') || n.startsWith('dr ') || n.includes(', md') || n.includes(' md') || n.includes(', m.d.')) return true;
+  return false;
+}
 
-  // Also include any users with Doctor role
+// Get official designation from user account (e.g. Internist, Radiologist, Attending Physician)
+function getDoctorDesignation(u) {
+  if (!u) return 'Attending Physician';
+  if (u.designation && String(u.designation).trim()) return String(u.designation).trim();
+  const r = (u.role || '').trim();
+  if (r && r.toLowerCase() !== 'doctor') return r; // e.g. 'Internist', 'Radiologist', 'Pathologist'
+  return 'Attending Physician';
+}
+
+// Build a comprehensive directory of doctor accounts with their license and designation
+function getDoctorDirectory() {
+  const directory = {};
   try {
     const allUsers = global.db && typeof global.db.getUsers === 'function' ? global.db.getUsers() : [];
     for (const u of allUsers) {
-      if (u && (u.role === 'Doctor' || (u.name && u.name.toLowerCase().startsWith('dr.')))) {
-        const docName = u.name || u.username;
-        if (docName && !doctors.includes(docName)) {
-          doctors.push(docName);
+      if (isDoctorUser(u)) {
+        const info = {
+          id: u.id,
+          name: u.name || u.username,
+          licenseNumber: u.licenseNumber || '',
+          designation: getDoctorDesignation(u),
+          role: u.role || 'Doctor'
+        };
+        if (info.name) {
+          directory[info.name] = info;
+          const lower = info.name.toLowerCase();
+          if (lower.includes('lorenzo')) {
+            directory['Dr. Lorenzo'] = info;
+          }
+          if (lower.includes('arcilla')) {
+            directory['Dr. Arcilla'] = info;
+          }
+          if (lower.includes('cundangan')) {
+            directory['Dr. Cundangan'] = info;
+            directory['Dr. Melissa'] = info;
+          }
+          if (lower.includes('espiritu')) {
+            directory['Dr. Espiritu'] = info;
+          }
+          if (lower.includes('gabriel')) {
+            directory['Dr. Gabriel'] = info;
+          }
+          if (lower.includes('braga')) {
+            directory['Dr. Braga'] = info;
+          }
         }
       }
     }
+  } catch (err) {
+    console.warn('Error building doctor directory:', err);
+  }
+  return directory;
+}
+
+// Resolve doctor details by name or alias
+function resolveDoctorInfo(docName) {
+  if (!docName) return null;
+  const dir = getDoctorDirectory();
+  const clean = String(docName).trim();
+  if (dir[clean]) return dir[clean];
+
+  const lower = clean.toLowerCase();
+  for (const [k, v] of Object.entries(dir)) {
+    if (k.toLowerCase() === lower || (v.name && v.name.toLowerCase() === lower)) {
+      return v;
+    }
+  }
+  for (const [k, v] of Object.entries(dir)) {
+    if (lower.includes('lorenzo') && (k.toLowerCase().includes('lorenzo') || (v.name && v.name.toLowerCase().includes('lorenzo')))) {
+      return v;
+    }
+    if (lower.includes('cundangan') && (k.toLowerCase().includes('cundangan') || (v.name && v.name.toLowerCase().includes('cundangan')))) {
+      return v;
+    }
+    if (lower.includes('arcilla') && (k.toLowerCase().includes('arcilla') || (v.name && v.name.toLowerCase().includes('arcilla')))) {
+      return v;
+    }
+  }
+  return null;
+}
+
+// Helper to get configured doctor names for dropdowns
+function getDoctorOptions() {
+  const doctors = [];
+  const dir = getDoctorDirectory();
+
+  // Settings or env doctors
+  try {
+    const s = global.db && typeof global.db.getSettings === 'function' ? global.db.getSettings() : {};
+    const d1 = (s.doctor1Name || process.env.DOCTOR_1_NAME || '').trim();
+    const d2 = (s.doctor2Name || process.env.DOCTOR_2_NAME || '').trim();
+    if (d1 && !doctors.includes(d1)) doctors.push(d1);
+    if (d2 && !doctors.includes(d2)) doctors.push(d2);
   } catch (_) {}
+
+  // Add all doctor accounts from directory (full names first)
+  for (const docName of Object.keys(dir)) {
+    const info = dir[docName];
+    if (info && info.name && !doctors.includes(info.name)) {
+      doctors.push(info.name);
+    }
+  }
+
+  // Fallbacks if no doctors found in database
+  if (doctors.length === 0) {
+    doctors.push('Dr. Mark Joseph Yap Lorenzo', 'Dr. Melissa Cundangan');
+  }
 
   return doctors;
 }
@@ -79,9 +173,34 @@ router.get('/:testId', requireAuth, canAccessPatient, async (req, res) => {
     }
 
     const doctorOptions = getDoctorOptions();
+    const doctorDirectory = getDoctorDirectory();
     const areaDoctor = extractDoctorFromArea(areaParam) || (test.assignedDoctorName ? test.assignedDoctorName.trim() : null);
-    const sessionDoctor = req.session && req.session.user && req.session.user.name ? req.session.user.name : null;
-    const defaultDoctor = areaDoctor || sessionDoctor || (doctorOptions.length ? doctorOptions[0] : 'Dr. Lorenzo');
+    
+    // Check if the currently logged-in user is a doctor
+    const sessionUser = req.session && req.session.user ? req.session.user : null;
+    const sessionIsDoctor = isDoctorUser(sessionUser);
+
+    // If logged in as a doctor, auto-capture their name, license, and designation
+    let resolvedDoctorName = null;
+    let resolvedLicense = '';
+    let resolvedDesignation = '';
+
+    if (sessionIsDoctor && sessionUser) {
+      resolvedDoctorName = sessionUser.name ? sessionUser.name.trim() : (sessionUser.username || '');
+      resolvedLicense = sessionUser.licenseNumber || '';
+      resolvedDesignation = getDoctorDesignation(sessionUser);
+    } else if (areaDoctor) {
+      const info = resolveDoctorInfo(areaDoctor);
+      resolvedDoctorName = info ? info.name : areaDoctor;
+      resolvedLicense = info ? info.licenseNumber : '';
+      resolvedDesignation = info ? info.designation : 'Attending Physician';
+    } else {
+      const defaultName = doctorOptions.length ? doctorOptions[0] : 'Dr. Mark Joseph Yap Lorenzo';
+      const info = resolveDoctorInfo(defaultName);
+      resolvedDoctorName = info ? info.name : defaultName;
+      resolvedLicense = info ? info.licenseNumber : '';
+      resolvedDesignation = info ? info.designation : 'Attending Physician';
+    }
 
     // 4. Fetch previous consultations for this patient
     const allPatientConsultations = await Consultation.findByPatientId(patient.id);
@@ -91,11 +210,42 @@ router.get('/:testId', requireAuth, canAccessPatient, async (req, res) => {
       consultation = new Consultation({
         patientId: patient.id,
         testId: test.id,
-        doctorName: defaultDoctor,
+        doctorId: (sessionIsDoctor && sessionUser) ? sessionUser.id : null,
+        doctorName: resolvedDoctorName,
+        doctorLicenseNumber: resolvedLicense,
+        doctorDesignation: resolvedDesignation,
         visitType: previousConsultations.length > 0 ? 'Follow-up' : 'New',
         status: 'In Progress'
       });
       await consultation.save();
+    } else {
+      // If a doctor opened their patient's consultation and it's not finalized yet, automatically set them as attending physician
+      let shouldUpdateExisting = false;
+      if (sessionIsDoctor && sessionUser && consultation.status !== 'Completed') {
+        consultation.doctorId = sessionUser.id;
+        consultation.doctorName = resolvedDoctorName;
+        consultation.doctorLicenseNumber = resolvedLicense || consultation.doctorLicenseNumber || '';
+        consultation.doctorDesignation = resolvedDesignation || consultation.doctorDesignation || '';
+        shouldUpdateExisting = true;
+      } else {
+        // Ensure license and designation are filled if known and missing
+        if (!consultation.doctorLicenseNumber || !consultation.doctorDesignation) {
+          const docInfo = resolveDoctorInfo(consultation.doctorName);
+          if (docInfo) {
+            if (!consultation.doctorLicenseNumber && docInfo.licenseNumber) {
+              consultation.doctorLicenseNumber = docInfo.licenseNumber;
+              shouldUpdateExisting = true;
+            }
+            if (!consultation.doctorDesignation && docInfo.designation) {
+              consultation.doctorDesignation = docInfo.designation;
+              shouldUpdateExisting = true;
+            }
+          }
+        }
+      }
+      if (shouldUpdateExisting) {
+        await consultation.save();
+      }
     }
 
     // 5. Fetch all laboratory test results for this patient
@@ -147,22 +297,16 @@ router.get('/:testId', requireAuth, canAccessPatient, async (req, res) => {
       };
     });
 
-    // 6. Map doctor licenses for auto-filling PRC numbers
+    // 6. Map doctor licenses and directory for auto-filling
     const doctorLicenses = {};
-    try {
-      const allUsers = global.db && typeof global.db.getUsers === 'function' ? global.db.getUsers() : [];
-      for (const u of allUsers) {
-        if (u && u.licenseNumber) {
-          if (u.name) doctorLicenses[u.name] = u.licenseNumber;
-          if (u.username) doctorLicenses[u.username] = u.licenseNumber;
-          if (u.name && u.name.toLowerCase().includes('lorenzo')) doctorLicenses['Dr. Lorenzo'] = u.licenseNumber;
-          if (u.name && u.name.toLowerCase().includes('arcilla')) doctorLicenses['Dr. Arcilla'] = u.licenseNumber;
-        }
+    for (const [name, info] of Object.entries(doctorDirectory)) {
+      if (info && info.licenseNumber) {
+        doctorLicenses[name] = info.licenseNumber;
       }
-    } catch (_) {}
+    }
 
-    if (consultation && !consultation.doctorLicenseNumber && consultation.doctorName && doctorLicenses[consultation.doctorName]) {
-      consultation.doctorLicenseNumber = doctorLicenses[consultation.doctorName];
+    if (consultation && typeof consultation.recalculateBmi === 'function') {
+      consultation.recalculateBmi();
     }
 
     res.render('consultations/panel', {
@@ -174,6 +318,7 @@ router.get('/:testId', requireAuth, canAccessPatient, async (req, res) => {
       previousConsultations,
       doctorOptions,
       doctorLicenses,
+      doctorDirectory,
       areaName: areaParam || (areaDoctor ? `Doctor's Check-up - ${areaDoctor}` : "Doctor's Check-up"),
       user: req.session.user
     });
@@ -184,22 +329,7 @@ router.get('/:testId', requireAuth, canAccessPatient, async (req, res) => {
   }
 });
 
-// POST /consultations/:testId - Save Draft / Auto-save
-router.post('/:testId', requireAuth, canAccessPatient, async (req, res) => {
-  try {
-    const { testId } = req.params;
-    let consultation = await Consultation.findByTestId(testId);
-    if (!consultation) {
-      const test = await Test.findById(testId) || await Test.findOne({ testId: testId });
-      if (test) {
-        consultation = await Consultation.findByTestId(test.id);
-      }
-    }
-
-    if (!consultation) {
-      consultation = new Consultation({ testId: testId });
-    }
-
+// Helper to apply consultation payload to consultation model
 function applyConsultationPayload(consultation, b) {
   if (!consultation || !b) return;
 
@@ -207,6 +337,21 @@ function applyConsultationPayload(consultation, b) {
   if (b.patientId) consultation.patientId = b.patientId;
   if (b.doctorName) consultation.doctorName = b.doctorName.trim();
   if (b.doctorLicenseNumber !== undefined) consultation.doctorLicenseNumber = b.doctorLicenseNumber.trim();
+  if (b.doctorDesignation !== undefined) consultation.doctorDesignation = b.doctorDesignation.trim();
+
+  // Auto-resolve license or designation if missing but doctor name is provided
+  if (consultation.doctorName && (!consultation.doctorLicenseNumber || !consultation.doctorDesignation)) {
+    const docInfo = resolveDoctorInfo(consultation.doctorName);
+    if (docInfo) {
+      if (!consultation.doctorLicenseNumber && docInfo.licenseNumber) {
+        consultation.doctorLicenseNumber = docInfo.licenseNumber;
+      }
+      if (!consultation.doctorDesignation && docInfo.designation) {
+        consultation.doctorDesignation = docInfo.designation;
+      }
+    }
+  }
+
   if (b.visitType) consultation.visitType = b.visitType;
   if (b.consultationDate) consultation.consultationDate = b.consultationDate;
 
@@ -275,7 +420,22 @@ function applyConsultationPayload(consultation, b) {
   if (b.painScale !== undefined) consultation.vitalSigns.painScale = b.painScale;
   if (b.bloodGlucose !== undefined) consultation.vitalSigns.bloodGlucose = b.bloodGlucose;
   if (b.waistCircumference !== undefined) consultation.vitalSigns.waistCircumference = b.waistCircumference;
-  if (typeof consultation.recalculateBmi === 'function') consultation.recalculateBmi();
+  if (typeof consultation.recalculateBmi === 'function') {
+    consultation.recalculateBmi();
+  } else {
+    const w = parseFloat(consultation.vitalSigns.weight);
+    const h = parseFloat(consultation.vitalSigns.height);
+    if (w > 0 && h > 0) {
+      const hM = h / 100.0;
+      const bmi = +(w / (hM * hM)).toFixed(1);
+      consultation.vitalSigns.bmi = bmi;
+      if (bmi < 18.5) consultation.vitalSigns.bmiCategory = 'Underweight';
+      else if (bmi <= 22.9) consultation.vitalSigns.bmiCategory = 'Normal';
+      else if (bmi <= 24.9) consultation.vitalSigns.bmiCategory = 'Overweight';
+      else if (bmi <= 29.9) consultation.vitalSigns.bmiCategory = 'Obese I';
+      else consultation.vitalSigns.bmiCategory = 'Obese II';
+    }
+  }
 
   // Objective — Physical Exam
   if (b.physicalExamFindings !== undefined) consultation.physicalExamFindings = b.physicalExamFindings;
@@ -487,12 +647,19 @@ router.get('/:testId/print/lab-request', requireAuth, canAccessPatient, async (r
     const consultation = await Consultation.findByTestId(test.id) || await Consultation.findByTestId(testId) || new Consultation();
     const settings = (global.db && typeof global.db.getSettings === 'function') ? (global.db.getSettings() || {}) : {};
 
+    const docInfo = resolveDoctorInfo(consultation.doctorName);
+    const doctorDesignation = consultation.doctorDesignation || (docInfo && docInfo.designation) || 'Attending Physician';
+    if (!consultation.doctorLicenseNumber && docInfo && docInfo.licenseNumber) {
+      consultation.doctorLicenseNumber = docInfo.licenseNumber;
+    }
+
     res.render('consultations/print-lab-request', {
       layout: false,
       consultation,
       patient,
       test,
       settings,
+      doctorDesignation,
       inlineLogo: req.app.locals.inlineLogo || '/assets/gezyne-logo.png'
     });
   } catch (err) {
@@ -513,12 +680,19 @@ router.get('/:testId/print/prescription', requireAuth, canAccessPatient, async (
     const consultation = await Consultation.findByTestId(test.id) || await Consultation.findByTestId(testId) || new Consultation();
     const settings = (global.db && typeof global.db.getSettings === 'function') ? (global.db.getSettings() || {}) : {};
 
+    const docInfo = resolveDoctorInfo(consultation.doctorName);
+    const doctorDesignation = consultation.doctorDesignation || (docInfo && docInfo.designation) || 'Attending Physician';
+    if (!consultation.doctorLicenseNumber && docInfo && docInfo.licenseNumber) {
+      consultation.doctorLicenseNumber = docInfo.licenseNumber;
+    }
+
     res.render('consultations/print-prescription', {
       layout: false,
       consultation,
       patient,
       test,
       settings,
+      doctorDesignation,
       inlineLogo: req.app.locals.inlineLogo || '/assets/gezyne-logo.png'
     });
   } catch (err) {
@@ -539,17 +713,57 @@ router.get('/:testId/print/med-cert', requireAuth, canAccessPatient, async (req,
     const consultation = await Consultation.findByTestId(test.id) || await Consultation.findByTestId(testId) || new Consultation();
     const settings = (global.db && typeof global.db.getSettings === 'function') ? (global.db.getSettings() || {}) : {};
 
+    const docInfo = resolveDoctorInfo(consultation.doctorName);
+    const doctorDesignation = consultation.doctorDesignation || (docInfo && docInfo.designation) || 'Attending Physician';
+    if (!consultation.doctorLicenseNumber && docInfo && docInfo.licenseNumber) {
+      consultation.doctorLicenseNumber = docInfo.licenseNumber;
+    }
+
     res.render('consultations/print-med-cert', {
       layout: false,
       consultation,
       patient,
       test,
       settings,
+      doctorDesignation,
       inlineLogo: req.app.locals.inlineLogo || '/assets/gezyne-logo.png'
     });
   } catch (err) {
     console.error('Error rendering medical certificate print view:', err);
     res.status(500).send('Error generating Medical Certificate');
+  }
+});
+
+// GET /consultations/:testId/print/chart - Printable Patient Medical Chart / Encounter Record
+router.get('/:testId/print/chart', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const { testId } = req.params;
+    let test = await Test.findById(testId) || await Test.findOne({ testId: testId });
+    if (!test) return res.status(404).send('Test record not found');
+
+    const patientId = (test.patient && typeof test.patient === 'object') ? test.patient.id : test.patient;
+    const patient = await Patient.findById(patientId) || (typeof test.patient === 'object' ? new Patient(test.patient) : null);
+    const consultation = await Consultation.findByTestId(test.id) || await Consultation.findByTestId(testId) || new Consultation();
+    const settings = (global.db && typeof global.db.getSettings === 'function') ? (global.db.getSettings() || {}) : {};
+
+    const docInfo = resolveDoctorInfo(consultation.doctorName);
+    const doctorDesignation = consultation.doctorDesignation || (docInfo && docInfo.designation) || 'Attending Physician';
+    if (!consultation.doctorLicenseNumber && docInfo && docInfo.licenseNumber) {
+      consultation.doctorLicenseNumber = docInfo.licenseNumber;
+    }
+
+    res.render('consultations/print-chart', {
+      layout: false,
+      consultation,
+      patient,
+      test,
+      settings,
+      doctorDesignation,
+      inlineLogo: req.app.locals.inlineLogo || '/assets/gezyne-logo.png'
+    });
+  } catch (err) {
+    console.error('Error rendering patient medical chart print view:', err);
+    res.status(500).send('Error generating Patient Medical Chart');
   }
 });
 

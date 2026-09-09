@@ -297,6 +297,9 @@
       <button type="button" id="btnSaveDraft" class="button btn-secondary" style="height: 38px; padding: 0 16px; border-radius: 8px; font-weight: 600; font-size: 0.86em; display: inline-flex; align-items: center; gap: 6px;">
         <i class="fa fa-save"></i> Save Draft
       </button>
+      <a href="/consultations/<%= test.id %>/print/chart" target="_blank" class="button btn-secondary" style="height: 38px; padding: 0 14px; border-radius: 8px; font-weight: 600; font-size: 0.86em; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; border-color: #cbd5e1; color: #334155; background: #ffffff;">
+        <i class="fa fa-print"></i> Print Chart
+      </a>
       <% if (!isCompleted) { %>
         <button type="button" id="btnCompleteConsultation" class="button btn-primary" style="height: 38px; padding: 0 18px; border-radius: 8px; font-weight: 700; font-size: 0.88em; background: #0d9488; border-color: #0f766e; color: #ffffff; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(13,148,136,0.3);">
           <i class="fa fa-check-circle"></i> Complete Consultation
@@ -381,7 +384,12 @@
 
           <div>
             <label style="display: block; font-size: 0.74em; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 4px;">PRC License No.</label>
-            <input type="text" name="doctorLicenseNumber" value="<%= c.doctorLicenseNumber || '' %>" placeholder="PRC #" class="form-input" style="height: 38px; width: 125px; border-radius: 8px; font-size: 0.86em; padding: 0 10px !important; line-height: 38px !important;">
+            <input type="text" name="doctorLicenseNumber" id="doctorLicenseInput" value="<%= c.doctorLicenseNumber || '' %>" placeholder="PRC #" class="form-input auto-save-input" style="height: 38px; width: 125px; border-radius: 8px; font-size: 0.86em; padding: 0 10px !important; line-height: 38px !important;">
+          </div>
+
+          <div>
+            <label style="display: block; font-size: 0.74em; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 4px;">Designation / Role</label>
+            <input type="text" name="doctorDesignation" id="doctorDesignationInput" value="<%= c.doctorDesignation || '' %>" placeholder="e.g. Internist" class="form-input auto-save-input" style="height: 38px; width: 155px; border-radius: 8px; font-size: 0.86em; padding: 0 10px !important; line-height: 38px !important;">
           </div>
 
           <div>
@@ -676,7 +684,7 @@
                 <label style="display: block; font-size: 0.7em; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">
                   Weight <span style="font-weight: 400;">(kg)</span>
                 </label>
-                <input type="number" step="0.1" name="weight" id="vitalWeight" value="<%= vitals.weight || '' %>" placeholder="65.0" min="1" max="400" class="form-input auto-save-input" style="width: 100%;" oninput="recalcBmiUI()">
+                <input type="number" step="0.1" name="weight" id="vitalWeight" value="<%= vitals.weight || '' %>" placeholder="65.0" min="1" max="400" class="form-input auto-save-input" style="width: 100%;" oninput="recalcBmiUI()" onchange="recalcBmiUI()">
               </div>
 
               <!-- Height -->
@@ -684,20 +692,25 @@
                 <label style="display: block; font-size: 0.7em; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px;">
                   Height <span style="font-weight: 400;">(cm)</span>
                 </label>
-                <input type="number" step="0.5" name="height" id="vitalHeight" value="<%= vitals.height || '' %>" placeholder="165" min="30" max="250" class="form-input auto-save-input" style="width: 100%;" oninput="recalcBmiUI()">
+                <input type="number" step="0.5" name="height" id="vitalHeight" value="<%= vitals.height || '' %>" placeholder="165" min="30" max="250" class="form-input auto-save-input" style="width: 100%;" oninput="recalcBmiUI()" onchange="recalcBmiUI()">
               </div>
 
-              <!-- Auto BMI -->
+              <!-- Auto BMI (DOH Philippines / PhilPEN Standard) -->
               <div class="vitals-box" style="background: #f0fdfa; border: 1.5px solid #99f6e4; border-radius: 8px; padding: 8px 10px;">
-                <label style="display: block; font-size: 0.7em; font-weight: 700; text-transform: uppercase; color: #0f766e; margin-bottom: 4px;">
-                  BMI <span style="font-weight: 400;">(kg/m²)</span>
-                </label>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <label style="display: block; font-size: 0.7em; font-weight: 700; text-transform: uppercase; color: #0f766e; margin: 0;">
+                    BMI <span style="font-weight: 400;">(kg/m²)</span>
+                  </label>
+                  <span style="font-size: 0.62em; color: #0f766e; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px;">DOH PhilPEN</span>
+                </div>
+                <input type="hidden" name="bmi" id="vitalBmiInput" value="<%= vitals.bmi || '' %>">
+                <input type="hidden" name="bmiCategory" id="vitalBmiCategoryInput" value="<%= vitals.bmiCategory || '' %>">
                 <div style="display: flex; align-items: center; justify-content: space-between; height: 36px;">
-                  <span id="bmiDisplay" style="font-size: 1.1em; font-weight: 800; color: #0f766e;">
-                    <%= vitals.bmi || '—' %>
+                  <span id="bmiDisplay" style="font-size: 1.15em; font-weight: 800; color: #0f766e;">
+                    <%= vitals.bmi ? Number(vitals.bmi).toFixed(1) : '—' %>
                   </span>
-                  <span id="bmiBadge" style="font-size: 0.7em; font-weight: 700; padding: 2px 6px; border-radius: 4px; background: #ccfbf1; color: #115e59;">
-                    <%= vitals.bmiCategory || 'Normal' %>
+                  <span id="bmiBadge" style="font-size: 0.72em; font-weight: 700; padding: 2px 7px; border-radius: 5px; <%= (vitals.bmiCategory === 'Overweight') ? 'background: #ffedd5; color: #c2410c;' : (vitals.bmiCategory === 'Obese I' || vitals.bmiCategory === 'Obese II' ? 'background: #fee2e2; color: #b91c1c;' : (vitals.bmiCategory === 'Underweight' ? 'background: #fef3c7; color: #b45309;' : (vitals.bmi ? 'background: #dcfce7; color: #15803d;' : 'background: #f1f5f9; color: #64748b;'))) %>">
+                    <%= vitals.bmiCategory || '—' %>
                   </span>
                 </div>
               </div>
@@ -1163,8 +1176,15 @@
                       <%= lt.summary %>
                     </td>
                     <td style="padding: 12px 14px; text-align: right; white-space: nowrap;">
-                      <a href="/tests/<%= lt.id %>" target="_blank" class="button btn-secondary btn-small" style="height: 30px; padding: 0 10px; font-size: 0.82em; text-decoration: none;">
-                        <i class="fa fa-external-link-alt"></i> View Result
+                      <% 
+                        const isDocCheckup = (lt.testType && String(lt.testType).toLowerCase().includes('check-up'));
+                        const hasFindings = (lt.status === 'Completed' || lt.status === 'Released' || lt.status === 'Checked' || (lt.summary && !String(lt.summary).toLowerCase().includes('no results')));
+                        const reportUrl = hasFindings 
+                          ? `/reports/preview/${lt.id || lt.testId}` 
+                          : (isDocCheckup ? `/consultations/${lt.id || lt.testId}` : `/tests/${lt.id || lt.testId}`);
+                      %>
+                      <a href="<%= reportUrl %>" target="_blank" class="button btn-secondary btn-small" style="height: 30px; padding: 0 12px; font-size: 0.82em; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; font-weight: 600;">
+                        <i class="fa fa-file-text-o" style="color: #0284c7;"></i> View Result
                       </a>
                     </td>
                   </tr>
@@ -1332,6 +1352,24 @@
             </a>
           </div>
 
+          <!-- Document 4: Patient Medical Chart -->
+          <div style="border: 1px solid #c7d2fe; background: #f5f7ff; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <div style="width: 44px; height: 44px; border-radius: 10px; background: #e0e7ff; color: #4338ca; display: flex; align-items: center; justify-content: center; font-size: 1.3em; margin-bottom: 12px;">
+                <i class="fa fa-notes-medical"></i>
+              </div>
+              <h4 style="margin: 0 0 6px 0; font-size: 1.05em; font-weight: 700; color: #3730a3;">
+                Patient Medical Chart
+              </h4>
+              <p style="margin: 0 0 16px 0; font-size: 0.85em; color: #475569; line-height: 1.5;">
+                Complete outpatient clinical encounter chart (SOAP notes, vitals, PE, DOH risk metrics, diagnosis, prescriptions, and lab orders) for doctor records and hard-copy archiving.
+              </p>
+            </div>
+            <a href="/consultations/<%= test.id %>/print/chart" target="_blank" class="button btn-secondary" style="height: 38px; justify-content: center; font-size: 0.86em; font-weight: 700; text-decoration: none; border-color: #a5b4fc; color: #3730a3; background: #ffffff;">
+              <i class="fa fa-print"></i> Print Medical Chart
+            </a>
+          </div>
+
         </div>
       </div>
     </div>
@@ -1439,14 +1477,22 @@
   // Global previous visits data for modal display
   const previousVisitsData = <%- JSON.stringify(previousConsultations) %>;
   const doctorLicensesData = <%- JSON.stringify(typeof doctorLicenses !== 'undefined' ? doctorLicenses : {}) %>;
+  const doctorDirectoryData = <%- JSON.stringify(typeof doctorDirectory !== 'undefined' ? doctorDirectory : {}) %>;
 
-  // Auto-populate PRC license on doctor selection
+  // Auto-populate PRC license and designation on doctor selection
   const docSelect = document.getElementById('doctorNameSelect');
   if (docSelect) {
     docSelect.addEventListener('change', function() {
-      const licInput = document.querySelector('input[name="doctorLicenseNumber"]');
-      if (licInput && doctorLicensesData[this.value]) {
-        licInput.value = doctorLicensesData[this.value];
+      const val = this.value;
+      const info = (doctorDirectoryData && doctorDirectoryData[val]) || {};
+      const licInput = document.getElementById('doctorLicenseInput') || document.querySelector('input[name="doctorLicenseNumber"]');
+      const desInput = document.getElementById('doctorDesignationInput') || document.querySelector('input[name="doctorDesignation"]');
+      if (licInput) {
+        if (info.licenseNumber) licInput.value = info.licenseNumber;
+        else if (doctorLicensesData && doctorLicensesData[val]) licInput.value = doctorLicensesData[val];
+      }
+      if (desInput && info.designation) {
+        desInput.value = info.designation;
       }
       triggerAutoSave();
     });
@@ -1465,33 +1511,82 @@
   }
 
   function recalcBmiUI() {
-    const w = parseFloat(document.getElementById('vitalWeight').value);
-    const h = parseFloat(document.getElementById('vitalHeight').value);
+    const weightEl = document.getElementById('vitalWeight');
+    const heightEl = document.getElementById('vitalHeight');
     const bmiDisp = document.getElementById('bmiDisplay');
     const bmiBadge = document.getElementById('bmiBadge');
-    if (!bmiDisp || !bmiBadge) return;
+    const bmiInp = document.getElementById('vitalBmiInput');
+    const catInp = document.getElementById('vitalBmiCategoryInput');
 
-    if (!w || !h || w <= 0 || h <= 0) {
-      bmiDisp.textContent = '—';
-      bmiBadge.textContent = 'Normal';
-      bmiBadge.style.background = '#f1f5f9';
-      bmiBadge.style.color = '#475569';
+    const w = weightEl ? parseFloat(weightEl.value) : 0;
+    const h = heightEl ? parseFloat(heightEl.value) : 0;
+
+    if (!w || !h || isNaN(w) || isNaN(h) || w <= 0 || h <= 0) {
+      if (bmiDisp) bmiDisp.textContent = '—';
+      if (bmiBadge) {
+        bmiBadge.textContent = '—';
+        bmiBadge.style.background = '#f1f5f9';
+        bmiBadge.style.color = '#64748b';
+      }
+      if (bmiInp) bmiInp.value = '';
+      if (catInp) catInp.value = '';
       return;
     }
 
     const hM = h / 100.0;
     const bmi = +(w / (hM * hM)).toFixed(1);
-    bmiDisp.textContent = bmi;
+    if (bmiDisp) bmiDisp.textContent = bmi.toFixed(1);
+    if (bmiInp) bmiInp.value = bmi.toFixed(1);
 
+    // DOH Philippines / Asia-Pacific (PhilPEN & FNRI) Standard:
+    // Underweight: < 18.5
+    // Normal: 18.5 – 22.9
+    // Overweight (At Risk): 23.0 – 24.9
+    // Obese I: 25.0 – 29.9
+    // Obese II: ≥ 30.0
     let cat = 'Normal', bg = '#dcfce7', color = '#15803d';
-    if (bmi < 18.5) { cat = 'Underweight'; bg = '#fef3c7'; color = '#b45309'; }
-    else if (bmi < 25.0) { cat = 'Normal'; bg = '#dcfce7'; color = '#15803d'; }
-    else if (bmi < 30.0) { cat = 'Overweight'; bg = '#ffedd5'; color = '#c2410c'; }
-    else { cat = 'Obese'; bg = '#fee2e2'; color = '#b91c1c'; }
+    if (bmi < 18.5) {
+      cat = 'Underweight';
+      bg = '#fef3c7';
+      color = '#b45309';
+    } else if (bmi <= 22.9) {
+      cat = 'Normal';
+      bg = '#dcfce7';
+      color = '#15803d';
+    } else if (bmi <= 24.9) {
+      cat = 'Overweight';
+      bg = '#ffedd5';
+      color = '#c2410c';
+    } else if (bmi <= 29.9) {
+      cat = 'Obese I';
+      bg = '#fee2e2';
+      color = '#b91c1c';
+    } else {
+      cat = 'Obese II';
+      bg = '#fee2e2';
+      color = '#991b1b';
+    }
 
-    bmiBadge.textContent = cat;
-    bmiBadge.style.background = bg;
-    bmiBadge.style.color = color;
+    if (bmiBadge) {
+      bmiBadge.textContent = cat;
+      bmiBadge.style.background = bg;
+      bmiBadge.style.color = color;
+    }
+    if (catInp) catInp.value = cat;
+  }
+
+  // Explicit event binding for weight and height
+  const vitalWeightEl = document.getElementById('vitalWeight');
+  const vitalHeightEl = document.getElementById('vitalHeight');
+  if (vitalWeightEl) {
+    vitalWeightEl.addEventListener('input', recalcBmiUI);
+    vitalWeightEl.addEventListener('change', recalcBmiUI);
+    vitalWeightEl.addEventListener('keyup', recalcBmiUI);
+  }
+  if (vitalHeightEl) {
+    vitalHeightEl.addEventListener('input', recalcBmiUI);
+    vitalHeightEl.addEventListener('change', recalcBmiUI);
+    vitalHeightEl.addEventListener('keyup', recalcBmiUI);
   }
 
   // DOH PhilPEN Calculations & UI Helpers
@@ -2017,8 +2112,14 @@
   }
 
   // Initial calculation checks on page load
-  recalcBmiUI();
-  recalcPackYearsUI();
-  recalcAlcoholRiskUI();
-  recalcWaistRiskUI();
+  function initAllCalculations() {
+    recalcBmiUI();
+    recalcPackYearsUI();
+    recalcAlcoholRiskUI();
+    recalcWaistRiskUI();
+  }
+  initAllCalculations();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAllCalculations);
+  }
 </script>

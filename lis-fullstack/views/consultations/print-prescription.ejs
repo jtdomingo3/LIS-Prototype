@@ -141,9 +141,10 @@
     <div class="sig-block">
       <div class="sig-inner">
         <div class="sig-line"></div>
-        <div style="font-weight: 800; font-size: 1em; color: #0f172a;"><%= c.doctorName || 'Attending Physician' %>, M.D.</div>
+        <div style="font-weight: 800; font-size: 1em; color: #0f172a;"><%= c.doctorName || 'Attending Physician' %><%= (c.doctorName && (c.doctorName.includes('M.D.') || c.doctorName.includes('MD'))) ? '' : ', M.D.' %></div>
         <div style="font-size: 0.84em; color: #475569;">PRC License No.: <%= c.doctorLicenseNumber || '________________' %></div>
-        <div style="font-size: 0.8em; color: #64748b;">PTR No.: ____________ / S2 No.: ____________</div>
+        <div style="font-size: 0.82em; color: #475569; font-weight: 600;"><%= doctorDesignation || c.doctorDesignation || 'Attending Physician' %></div>
+        <div style="font-size: 0.76em; color: #94a3b8; margin-top: 2px;">PTR No.: ____________ / S2 No.: ____________</div>
       </div>
     </div>
   </div>

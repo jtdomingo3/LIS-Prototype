@@ -49,3 +49,7 @@ tools/security-audit/audit-report-latest.json
 **/.env.local
 **/.env.*.local
 !**/.env.example
+
+# Walkthrough and temporary dev documentation
+lis-fullstack/walkthrough.md
+walkthrough.md

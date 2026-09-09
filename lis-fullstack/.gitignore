@@ -7,3 +7,5 @@
 # Environment variables
 .env
 *.env
+
+/walkthrough.md

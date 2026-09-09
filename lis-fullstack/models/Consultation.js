@@ -1,17 +1,39 @@
 const { v4: uuidv4 } = require('uuid');
 
+// DOH Philippines / Asia-Pacific (PhilPEN & FNRI) adult BMI classification:
+// Underweight: < 18.5
+// Normal: 18.5 – 22.9
+// Overweight (At Risk): 23.0 – 24.9
+// Obese Class I: 25.0 – 29.9
+// Obese Class II: ≥ 30.0
 function calculateBmi(weightKg, heightCm) {
   const w = parseFloat(weightKg);
   const h = parseFloat(heightCm);
-  if (!w || !h || w <= 0 || h <= 0) return { bmi: null, category: '' };
+  if (!w || !h || isNaN(w) || isNaN(h) || w <= 0 || h <= 0) return { bmi: null, category: '' };
   const hM = h / 100.0;
   const val = +(w / (hM * hM)).toFixed(1);
   let cat = 'Normal';
   if (val < 18.5) cat = 'Underweight';
-  else if (val < 25.0) cat = 'Normal';
-  else if (val < 30.0) cat = 'Overweight';
-  else cat = 'Obese';
+  else if (val <= 22.9) cat = 'Normal';
+  else if (val <= 24.9) cat = 'Overweight';
+  else if (val <= 29.9) cat = 'Obese I';
+  else cat = 'Obese II';
   return { bmi: val, category: cat };
+}
+
+function safeJsonParse(val, fallback) {
+  if (val === undefined || val === null) return fallback;
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+      try {
+        return JSON.parse(trimmed);
+      } catch (_) {
+        return fallback;
+      }
+    }
+  }
+  return val;
 }
 
 class Consultation {
@@ -22,6 +44,7 @@ class Consultation {
     this.doctorId = data.doctorId || null;
     this.doctorName = data.doctorName || '';
     this.doctorLicenseNumber = data.doctorLicenseNumber || '';
+    this.doctorDesignation = data.doctorDesignation || '';
 
     this.visitType = data.visitType || 'New';
     this.consultationDate = data.consultationDate || new Date().toISOString();
@@ -36,7 +59,7 @@ class Consultation {
     this.reviewOfSystems = data.reviewOfSystems || '';
 
     // DOH PhilPEN: Smoking / Tobacco Reporting
-    const rawSmoking = data.smoking || {};
+    const rawSmoking = safeJsonParse(data.smoking, {}) || {};
     this.smoking = {
       status: rawSmoking.status || data.smokingStatus || 'Never Smoked',
       sticksPerDay: rawSmoking.sticksPerDay !== undefined ? rawSmoking.sticksPerDay : (data.smokingSticksPerDay || ''),
@@ -54,7 +77,7 @@ class Consultation {
     }
 
     // DOH PhilPEN: Alcohol Consumption Reporting
-    const rawAlcohol = data.alcohol || {};
+    const rawAlcohol = safeJsonParse(data.alcohol, {}) || {};
     this.alcohol = {
       status: rawAlcohol.status || data.alcoholStatus || 'Non-drinker',
       frequency: rawAlcohol.frequency || data.alcoholFrequency || '',
@@ -64,25 +87,27 @@ class Consultation {
     };
 
     // DOH Familial NCD Screening (Hereditary Diseases)
-    if (typeof data.familyHistory === 'object' && data.familyHistory !== null && !Array.isArray(data.familyHistory)) {
+    const rawFamily = safeJsonParse(data.familyHistory, null);
+    if (typeof rawFamily === 'object' && rawFamily !== null && !Array.isArray(rawFamily)) {
       this.familyHistory = {
-        diseases: Array.isArray(data.familyHistory.diseases) ? data.familyHistory.diseases : [],
-        notes: data.familyHistory.notes || ''
+        diseases: Array.isArray(rawFamily.diseases) ? rawFamily.diseases : [],
+        notes: rawFamily.notes || ''
       };
     } else {
       this.familyHistory = {
-        diseases: Array.isArray(data.familyHistoryDiseases) ? data.familyHistoryDiseases : [],
+        diseases: Array.isArray(data.familyHistoryDiseases) ? data.familyHistoryDiseases : (Array.isArray(rawFamily) ? rawFamily : []),
         notes: typeof data.familyHistory === 'string' ? data.familyHistory : (data.familyHistoryNotes || '')
       };
     }
 
     // DOH Social & Lifestyle History
-    if (typeof data.socialHistory === 'object' && data.socialHistory !== null && !Array.isArray(data.socialHistory)) {
+    const rawSocial = safeJsonParse(data.socialHistory, null);
+    if (typeof rawSocial === 'object' && rawSocial !== null && !Array.isArray(rawSocial)) {
       this.socialHistory = {
-        occupation: data.socialHistory.occupation || data.occupation || '',
-        physicalActivity: data.socialHistory.physicalActivity || data.physicalActivity || 'Active (≥150 mins/week)',
-        dietaryHabits: data.socialHistory.dietaryHabits || data.dietaryHabits || '',
-        notes: data.socialHistory.notes || ''
+        occupation: rawSocial.occupation || data.occupation || '',
+        physicalActivity: rawSocial.physicalActivity || data.physicalActivity || 'Active (≥150 mins/week)',
+        dietaryHabits: rawSocial.dietaryHabits || data.dietaryHabits || '',
+        notes: rawSocial.notes || ''
       };
     } else {
       this.socialHistory = {
@@ -94,7 +119,7 @@ class Consultation {
     }
 
     // SOAP: Objective — Vital Signs
-    const rawVitals = data.vitalSigns || {};
+    const rawVitals = safeJsonParse(data.vitalSigns, {}) || {};
     const weight = rawVitals.weight !== undefined ? rawVitals.weight : (data.weight !== undefined ? data.weight : '');
     const height = rawVitals.height !== undefined ? rawVitals.height : (data.height !== undefined ? data.height : '');
     const { bmi: computedBmi, category: computedCat } = calculateBmi(weight, height);
@@ -120,16 +145,19 @@ class Consultation {
 
     // SOAP: Assessment
     this.primaryDiagnosis = data.primaryDiagnosis || '';
-    this.differentialDiagnosis = Array.isArray(data.differentialDiagnosis)
-      ? data.differentialDiagnosis
-      : (data.differentialDiagnosis ? [String(data.differentialDiagnosis)] : []);
+    const rawDifferential = safeJsonParse(data.differentialDiagnosis, data.differentialDiagnosis);
+    this.differentialDiagnosis = Array.isArray(rawDifferential)
+      ? rawDifferential
+      : (rawDifferential ? [String(rawDifferential)] : []);
     this.suspectedPathology = data.suspectedPathology || '';
     this.clinicalImpression = data.clinicalImpression || '';
 
     // SOAP: Plan
     this.treatmentPlan = data.treatmentPlan || '';
-    this.prescriptions = Array.isArray(data.prescriptions) ? data.prescriptions : [];
-    this.labRequestTests = Array.isArray(data.labRequestTests) ? data.labRequestTests : [];
+    const rawRx = safeJsonParse(data.prescriptions, data.prescriptions);
+    this.prescriptions = Array.isArray(rawRx) ? rawRx : [];
+    const rawLab = safeJsonParse(data.labRequestTests, data.labRequestTests);
+    this.labRequestTests = Array.isArray(rawLab) ? rawLab : [];
     this.referrals = data.referrals || '';
     this.followUpDate = data.followUpDate || '';
     this.followUpNotes = data.followUpNotes || '';
@@ -162,6 +190,16 @@ class Consultation {
       global.db.saveConsultation(this);
     }
     return this;
+  }
+
+  recalculateBmi() {
+    this.vitalSigns = this.vitalSigns || {};
+    const w = this.vitalSigns.weight;
+    const h = this.vitalSigns.height;
+    const res = calculateBmi(w, h);
+    this.vitalSigns.bmi = res.bmi !== null ? res.bmi : '';
+    this.vitalSigns.bmiCategory = res.category || '';
+    return res;
   }
 
   toJSON() {

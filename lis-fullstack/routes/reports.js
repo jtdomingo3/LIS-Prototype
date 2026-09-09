@@ -116,15 +116,19 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
 // GET /reports/preview/:testId - Preview report
 router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) => {
   try {
-    const test = await Test.findById(req.params.testId);
+    let test = await Test.findById(req.params.testId);
+    if (!test) {
+      test = await Test.findOne({ testId: req.params.testId });
+    }
 
     if (!test) {
-      req.flash('error_msg', 'Test not found');
+      req.flash('error_msg', 'Test record not found');
       return res.redirect('/reports');
     }
 
-    if (!(test.status === 'Completed' || test.status === 'Released')) {
-      req.flash('error_msg', 'Report can only be generated for completed or released tests');
+    const hasResults = test.results && (typeof test.results === 'object' ? Object.keys(test.results).length > 0 : String(test.results).trim().length > 0);
+    if (!(test.status === 'Completed' || test.status === 'Released' || test.status === 'Checked' || hasResults)) {
+      req.flash('error_msg', 'Report preview can only be generated for tests with recorded findings');
       return res.redirect('/reports');
     }
 

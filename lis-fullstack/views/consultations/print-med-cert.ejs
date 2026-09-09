@@ -130,9 +130,9 @@
     <div class="sig-block">
       <div class="sig-inner">
         <div class="sig-line"></div>
-        <div style="font-weight: 800; font-size: 1.05em; color: #0f172a;"><%= c.doctorName || 'Attending Physician' %>, M.D.</div>
+        <div style="font-weight: 800; font-size: 1.05em; color: #0f172a;"><%= c.doctorName || 'Attending Physician' %><%= (c.doctorName && (c.doctorName.includes('M.D.') || c.doctorName.includes('MD'))) ? '' : ', M.D.' %></div>
         <div style="font-size: 0.86em; color: #475569;">PRC License No.: <%= c.doctorLicenseNumber || '________________' %></div>
-        <div style="font-size: 0.8em; color: #64748b;">Attending Physician</div>
+        <div style="font-size: 0.82em; color: #475569; font-weight: 600;"><%= doctorDesignation || c.doctorDesignation || 'Attending Physician' %></div>
       </div>
     </div>
 

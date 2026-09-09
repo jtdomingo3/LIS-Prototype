@@ -245,9 +245,9 @@
       </div>
       <div class="sig-box">
         <div class="sig-line"></div>
-        <div style="font-weight: 700; font-size: 0.95em; color: #0f172a;"><%= c.doctorName || 'Attending Physician' %></div>
+        <div style="font-weight: 700; font-size: 0.95em; color: #0f172a;"><%= c.doctorName || 'Attending Physician' %><%= (c.doctorName && (c.doctorName.includes('M.D.') || c.doctorName.includes('MD'))) ? '' : ', M.D.' %></div>
         <div style="font-size: 0.82em; color: #475569;">PRC License No.: <%= c.doctorLicenseNumber || '________________' %></div>
-        <div style="font-size: 0.78em; color: #64748b; margin-top: 2px;">Physician's Signature</div>
+        <div style="font-size: 0.78em; color: #64748b; margin-top: 2px; font-weight: 600;"><%= doctorDesignation || c.doctorDesignation || 'Attending Physician' %></div>
       </div>
     </div>
   </div>
