@@ -2,7 +2,7 @@
   const p = patient || {};
   const c = consultation || {};
   const vitals = c.vitalSigns || {};
-  const isCompleted = (c.status === 'Completed');
+  const isCompleted = (c.status === 'Completed' || String(test.status || '').toLowerCase() === 'checked' || String(test.status || '').toLowerCase() === 'completed');
   const patientAge = p.age || p.ageManual || '';
   const patientGender = String(p.gender || p.sex || '').toLowerCase();
 
@@ -286,7 +286,7 @@
         <span style="color: #0d9488;">🩺</span> Clinical Consultation
       </h2>
       <span id="statusBadge" style="background: <%= isCompleted ? '#dcfce7' : '#ccfbf1' %>; color: <%= isCompleted ? '#15803d' : '#0f766e' %>; border: 1px solid <%= isCompleted ? '#bbf7d0' : '#99f6e4' %>; font-size: 0.78em; font-weight: 700; text-transform: uppercase; padding: 3px 10px; border-radius: 20px;">
-        <%= c.status || 'In Progress' %>
+        <%= isCompleted ? 'Completed' : (c.status || test.status || 'In Progress') %>
       </span>
     </div>
 
@@ -1168,7 +1168,7 @@
                       <%= lt.testType %>
                     </td>
                     <td style="padding: 12px 14px;">
-                      <span style="background: <%= lt.status === 'Completed' || lt.status === 'Released' ? '#dcfce7' : '#eff6ff' %>; color: <%= lt.status === 'Completed' || lt.status === 'Released' ? '#15803d' : '#1d4ed8' %>; border: 1px solid <%= lt.status === 'Completed' || lt.status === 'Released' ? '#bbf7d0' : '#bfdbfe' %>; padding: 3px 8px; border-radius: 4px; font-size: 0.78em; font-weight: 700; text-transform: uppercase;">
+                      <span style="background: <%= lt.status === 'Completed' || lt.status === 'Released' || lt.status === 'Checked' ? '#dcfce7' : '#eff6ff' %>; color: <%= lt.status === 'Completed' || lt.status === 'Released' || lt.status === 'Checked' ? '#15803d' : '#1d4ed8' %>; border: 1px solid <%= lt.status === 'Completed' || lt.status === 'Released' || lt.status === 'Checked' ? '#bbf7d0' : '#bfdbfe' %>; padding: 3px 8px; border-radius: 4px; font-size: 0.78em; font-weight: 700; text-transform: uppercase;">
                         <%= lt.status %>
                       </span>
                     </td>

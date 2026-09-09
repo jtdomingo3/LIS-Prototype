@@ -5,7 +5,7 @@
   }));
   const hasResults = (test.results && (typeof test.results === 'object' ? Object.keys(test.results).length > 0 : String(test.results).trim().length > 0));
   const statusStr = String(test.status || '').toLowerCase();
-  const isCompleted = (statusStr === 'completed' || statusStr === 'released' || Boolean(test.completedAt));
+  const isCompleted = (statusStr === 'completed' || statusStr === 'released' || statusStr === 'checked' || Boolean(test.completedAt));
   const showReport = hasResults || isCompleted;
 
   const tt = String(test.testType || '').toLowerCase();
@@ -14,9 +14,9 @@
   const canEnterResults = !isDoctor && !isSendout && test.testType && (basicMatch || isCtBt);
 
   let badgeBg = '#f1f5f9', badgeColor = '#475569', badgeBorder = '#cbd5e1';
-  if (statusStr === 'completed' || statusStr === 'released') {
+  if (statusStr === 'completed' || statusStr === 'released' || statusStr === 'checked') {
     badgeBg = '#dcfce7'; badgeColor = '#15803d'; badgeBorder = '#bbf7d0';
-  } else if (statusStr === 'in progress' || statusStr === 'checked') {
+  } else if (statusStr === 'in progress') {
     badgeBg = '#fef3c7'; badgeColor = '#b45309'; badgeBorder = '#fde68a';
   } else if (statusStr === 'awaiting' || statusStr === 'pending') {
     badgeBg = '#eff6ff'; badgeColor = '#1d4ed8'; badgeBorder = '#bfdbfe';
@@ -72,9 +72,15 @@
         </a>
       <% } %>
       <% if (showReport) { %>
-        <a href="/reports/preview/<%= test.id %>" class="button btn-orange" target="_blank" style="height: 38px; padding: 0 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em;">
-          <i class="fa fa-file-pdf"></i> View Report
-        </a>
+        <% if (isDoctor) { %>
+          <a href="/consultations/<%= test.id %>/print/chart" class="button btn-orange" target="_blank" style="height: 38px; padding: 0 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em;">
+            <i class="fa fa-file-medical"></i> View Chart
+          </a>
+        <% } else { %>
+          <a href="/reports/preview/<%= test.id %>" class="button btn-orange" target="_blank" style="height: 38px; padding: 0 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em;">
+            <i class="fa fa-file-pdf"></i> View Report
+          </a>
+        <% } %>
       <% } %>
       <a href="/tests" class="button btn-secondary" style="height: 38px; padding: 0 14px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em;">
         <i class="fa fa-arrow-left"></i> Back to Tests

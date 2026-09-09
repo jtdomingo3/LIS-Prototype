@@ -202,10 +202,10 @@ router.get('/', requireAuth, async (req, res) => {
         }
 
         // 2. Completed on or before atDate
-        if (test.status === 'Completed' || test.completedAt) {
+        if (test.status === 'Completed' || test.status === 'Checked' || test.completedAt) {
           const compDate = test.completedAt ? new Date(test.completedAt) : (test.createdAt ? new Date(test.createdAt) : null);
           if (!compDate || compDate <= atDate) {
-            return 'Completed';
+            return test.status === 'Checked' ? 'Checked' : 'Completed';
           }
         }
 
@@ -241,7 +241,7 @@ router.get('/', requireAuth, async (req, res) => {
         if (!s) continue;
         const sLower = String(s).toLowerCase();
 
-        if (sLower === 'completed' || sLower === 'released') completedTests++;
+        if (sLower === 'completed' || sLower === 'released' || sLower === 'checked') completedTests++;
         if (sLower === 'in progress') activeTests++;
         if (sLower === 'released') releasedTests++;
         if (sLower === 'pending' || (!NON_PENDING_STATUSES.some(ns => ns.toLowerCase() === sLower) && sLower !== 'completed' && sLower !== 'released' && sLower !== 'in progress')) {

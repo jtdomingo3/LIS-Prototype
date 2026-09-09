@@ -72,6 +72,17 @@ function getDoctorDirectory() {
   return directory;
 }
 
+// Helper to extract distinctive name keywords / surnames
+function extractDoctorKeywords(docName) {
+  if (!docName) return [];
+  const clean = String(docName)
+    .replace(/^dr\.?\s+/i, '')
+    .replace(/,\s*(?:md|m\.d\.|rmt|fpcr|dpbr|pmsda)\b/gi, '')
+    .replace(/\b(?:md|m\.d\.|rmt|fpcr|dpbr|pmsda)\b/gi, '')
+    .trim();
+  return clean.split(/\s+/).map(w => w.toLowerCase().replace(/[^a-z0-9]/gi, '')).filter(w => w.length >= 3);
+}
+
 // Resolve doctor details by name or alias
 function resolveDoctorInfo(docName) {
   if (!docName) return null;
@@ -85,17 +96,18 @@ function resolveDoctorInfo(docName) {
       return v;
     }
   }
+
+  // Check keyword / surname token matching
+  const searchKeywords = extractDoctorKeywords(docName);
   for (const [k, v] of Object.entries(dir)) {
-    if (lower.includes('lorenzo') && (k.toLowerCase().includes('lorenzo') || (v.name && v.name.toLowerCase().includes('lorenzo')))) {
-      return v;
-    }
-    if (lower.includes('cundangan') && (k.toLowerCase().includes('cundangan') || (v.name && v.name.toLowerCase().includes('cundangan')))) {
-      return v;
-    }
-    if (lower.includes('arcilla') && (k.toLowerCase().includes('arcilla') || (v.name && v.name.toLowerCase().includes('arcilla')))) {
-      return v;
+    const candidateName = (v.name || k).toLowerCase();
+    for (const kw of searchKeywords) {
+      if (candidateName.includes(kw)) {
+        return v;
+      }
     }
   }
+
   return null;
 }
 
@@ -104,24 +116,42 @@ function getDoctorOptions() {
   const doctors = [];
   const dir = getDoctorDirectory();
 
-  // Settings or env doctors
+  const hasDoctor = (name) => {
+    if (!name) return true;
+    const clean = String(name).trim().toLowerCase();
+    return doctors.some(d => String(d).trim().toLowerCase() === clean);
+  };
+
+  const addDoctor = (name) => {
+    if (!name) return;
+    const trimmed = String(name).trim();
+    if (trimmed && !hasDoctor(trimmed)) {
+      doctors.push(trimmed);
+    }
+  };
+
+  // 1. Settings or room-configured doctors: map to user account if one exists, otherwise keep room name (e.g. Dr. Arcilla)
   try {
     const s = global.db && typeof global.db.getSettings === 'function' ? global.db.getSettings() : {};
-    const d1 = (s.doctor1Name || process.env.DOCTOR_1_NAME || '').trim();
-    const d2 = (s.doctor2Name || process.env.DOCTOR_2_NAME || '').trim();
-    if (d1 && !doctors.includes(d1)) doctors.push(d1);
-    if (d2 && !doctors.includes(d2)) doctors.push(d2);
+    const rawD1 = (s.doctor1Name || process.env.DOCTOR_1_NAME || 'Dr. Lorenzo').trim();
+    const rawD2 = (s.doctor2Name || process.env.DOCTOR_2_NAME || 'Dr. Arcilla').trim();
+
+    const match1 = resolveDoctorInfo(rawD1);
+    const match2 = resolveDoctorInfo(rawD2);
+
+    addDoctor(match1 ? match1.name : rawD1);
+    addDoctor(match2 ? match2.name : rawD2);
   } catch (_) {}
 
-  // Add all doctor accounts from directory (full names first)
+  // 2. Add all doctor accounts from user directory (deduplicating)
   for (const docName of Object.keys(dir)) {
     const info = dir[docName];
-    if (info && info.name && !doctors.includes(info.name)) {
-      doctors.push(info.name);
+    if (info && info.name) {
+      addDoctor(info.name);
     }
   }
 
-  // Fallbacks if no doctors found in database
+  // 3. Fallbacks if no doctors found in database
   if (doctors.length === 0) {
     doctors.push('Dr. Mark Joseph Yap Lorenzo', 'Dr. Melissa Cundangan');
   }
@@ -134,7 +164,9 @@ function extractDoctorFromArea(areaName) {
   if (!areaName) return null;
   const match = String(areaName).match(/doctor(?:'?s)?\s*check-?up\s*[-–—:]\s*(.+)/i);
   if (match && match[1] && match[1].trim()) {
-    return match[1].trim();
+    const rawName = match[1].trim();
+    const info = resolveDoctorInfo(rawName);
+    return info ? info.name : rawName;
   }
   return null;
 }
@@ -232,6 +264,10 @@ router.get('/:testId', requireAuth, canAccessPatient, async (req, res) => {
         if (!consultation.doctorLicenseNumber || !consultation.doctorDesignation) {
           const docInfo = resolveDoctorInfo(consultation.doctorName);
           if (docInfo) {
+            if (docInfo.name && docInfo.name !== consultation.doctorName) {
+              consultation.doctorName = docInfo.name;
+              shouldUpdateExisting = true;
+            }
             if (!consultation.doctorLicenseNumber && docInfo.licenseNumber) {
               consultation.doctorLicenseNumber = docInfo.licenseNumber;
               shouldUpdateExisting = true;

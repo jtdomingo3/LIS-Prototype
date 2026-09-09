@@ -85,7 +85,7 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
     // Find the most recent completed/released test and redirect to its preview
     const allTests = await Test.find({});
     const completedTests = Array.isArray(allTests)
-      ? allTests.filter(t => t && (t.status === 'Completed' || t.status === 'Released'))
+      ? allTests.filter(t => t && (t.status === 'Completed' || t.status === 'Released' || t.status === 'Checked'))
       : [];
     completedTests.sort((a, b) => new Date(b.testDate || b.createdAt) - new Date(a.testDate || a.createdAt));
 
@@ -157,7 +157,7 @@ router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) =
     // in-memory scan of the patients array, NOT one-by-one async lookups.
     const allTests = await Test.find({});
     const completedSorted = Array.isArray(allTests)
-      ? allTests.filter(t => t && (t.status === 'Completed' || t.status === 'Released'))
+      ? allTests.filter(t => t && (t.status === 'Completed' || t.status === 'Released' || t.status === 'Checked'))
       : [];
     completedSorted.sort((a, b) => new Date(b.testDate || b.createdAt) - new Date(a.testDate || a.createdAt));
 
@@ -257,7 +257,7 @@ router.get('/result/:testId', requireAuth, canAccessPatient, async (req, res) =>
       return res.redirect('/reports');
     }
 
-    if (!(test.status === 'Completed' || test.status === 'Released')) {
+    if (!(test.status === 'Completed' || test.status === 'Released' || test.status === 'Checked')) {
       req.flash('error_msg', 'Result template can only be viewed for completed or released tests');
       return res.redirect('/reports');
     }
@@ -309,7 +309,7 @@ router.get('/pdf/:testId', requireAuth, canAccessPatient, async (req, res) => {
       return res.redirect('/reports');
     }
 
-    if (!(test.status === 'Completed' || test.status === 'Released')) {
+    if (!(test.status === 'Completed' || test.status === 'Released' || test.status === 'Checked')) {
       req.flash('error_msg', 'PDF can only be generated for completed or released tests');
       return res.redirect('/reports');
     }
@@ -357,7 +357,7 @@ router.get('/print/:testId', requireAuth, canAccessPatient, async (req, res) => 
       return res.redirect('/reports');
     }
 
-    if (test.status !== 'Completed') {
+    if (!(test.status === 'Completed' || test.status === 'Released' || test.status === 'Checked')) {
       req.flash('error_msg', 'Report can only be printed for completed tests');
       return res.redirect('/reports');
     }
@@ -430,7 +430,7 @@ router.all('/print-multiple', requireAuth, canAccessPatient, async (req, res) =>
     // does not support Mongo-style queries with $in, so fetch each id
     // explicitly and preserve the requested order.
     const fetched = await Promise.all(ids.map(id => Test.findById(id)));
-    const ordered = (fetched || []).filter(Boolean).filter(t => t && (t.status === 'Completed' || t.status === 'Released'));
+    const ordered = (fetched || []).filter(Boolean).filter(t => t && (t.status === 'Completed' || t.status === 'Released' || t.status === 'Checked'));
 
     if (!ordered.length) {
       req.flash('error_msg', 'No printable tests found for provided ids');

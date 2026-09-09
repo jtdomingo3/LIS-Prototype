@@ -11,8 +11,18 @@ const sigDir = path.join(__dirname, '..', 'assets', 'signature');
  */
 function sanitizeTestSignatures(populatedTest) {
   if (!populatedTest) return populatedTest;
-  populatedTest.results = populatedTest.results || {};
-  populatedTest.results.signatures = populatedTest.results.signatures || {};
+  if (typeof populatedTest.results === 'string') {
+    try { populatedTest.results = JSON.parse(populatedTest.results); } catch (_) { populatedTest.results = {}; }
+  }
+  if (!populatedTest.results || typeof populatedTest.results !== 'object') {
+    populatedTest.results = {};
+  }
+  if (typeof populatedTest.results.signatures === 'string') {
+    try { populatedTest.results.signatures = JSON.parse(populatedTest.results.signatures); } catch (_) { populatedTest.results.signatures = {}; }
+  }
+  if (!populatedTest.results.signatures || typeof populatedTest.results.signatures !== 'object') {
+    populatedTest.results.signatures = {};
+  }
   const sigs = populatedTest.results.signatures;
 
   let allUsers = [];

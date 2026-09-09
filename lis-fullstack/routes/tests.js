@@ -451,7 +451,7 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
     systemStats.total = allTests.length;
     allTests.forEach(t => {
       const s = String(t.status || '').toLowerCase();
-      if (s === 'completed' || s === 'released') systemStats.completed++;
+      if (s === 'completed' || s === 'released' || s === 'checked') systemStats.completed++;
       else if (s === 'in progress') systemStats.inProgress++;
       else systemStats.queue++;
     });
@@ -510,7 +510,12 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
       } else if (sf === 'completed') {
         allTests = allTests.filter(t => {
           const s = (t.status || '').toString().toLowerCase().trim();
-          return s === 'completed' || s === 'released';
+          return s === 'completed' || s === 'released' || s === 'checked';
+        });
+      } else if (sf === 'checked') {
+        allTests = allTests.filter(t => {
+          const s = (t.status || '').toString().toLowerCase().trim();
+          return s === 'checked';
         });
       } else {
         allTests = allTests.filter(t => ((t.status || '').toString().toLowerCase().trim() === sf));

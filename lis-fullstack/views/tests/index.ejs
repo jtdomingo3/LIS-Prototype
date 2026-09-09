@@ -9,7 +9,7 @@
   if (!hasSystemStats && Array.isArray(tests)) {
     tests.forEach(t => {
       const s = String(t.status || '').toLowerCase();
-      if (s === 'completed' || s === 'released') countCompleted++;
+      if (s === 'completed' || s === 'released' || s === 'checked') countCompleted++;
       else if (s === 'in progress') countInProgress++;
       else countQueue++;
     });
@@ -76,6 +76,7 @@
         <option value="Awaiting" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Awaiting') ? 'selected' : '' %>>Awaiting</option>
         <option value="In Progress" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'In Progress') ? 'selected' : '' %>>In Progress</option>
         <option value="Completed" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Completed') ? 'selected' : '' %>>Completed</option>
+        <option value="Checked" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Checked') ? 'selected' : '' %>>Checked</option>
         <option value="Released" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Released') ? 'selected' : '' %>>Released</option>
       </select>
 
@@ -113,7 +114,7 @@
             const statusStr = String(test.status || 'Pending');
             const sLower = statusStr.toLowerCase();
             let badgeStyle = 'background:#f1f5f9; color:#475569; border:1px solid #cbd5e1;';
-            if (sLower === 'completed' || sLower === 'released') badgeStyle = 'background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0;';
+            if (sLower === 'completed' || sLower === 'released' || sLower === 'checked') badgeStyle = 'background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0;';
             else if (sLower === 'in progress') badgeStyle = 'background:#fef3c7; color:#92400e; border:1px solid #fde68a;';
             else if (sLower.includes('extraction')) badgeStyle = 'background:#ede9fe; color:#5b21b6; border:1px solid #ddd6fe;';
             else if (sLower.includes('payment')) badgeStyle = 'background:#fee2e2; color:#991b1b; border:1px solid #fecaca;';
@@ -133,8 +134,8 @@
                   </div>
                 </div>
               </td>
-              <td style="padding:14px;">
-                <span style="font-weight:600; color:#1e293b;"><%= test.testType %></span>
+              <td style="padding:14px; color:#334155; font-size:0.95em;">
+                <strong style="color:#0f172a;"><%= test.testType %></strong>
                 <%
                   let rowRemark = '';
                   if (typeof test.remarks === 'string' && test.remarks.trim()) rowRemark = test.remarks.trim();
@@ -146,7 +147,7 @@
                   }
                 %>
                 <% if (rowRemark) { %>
-                  <div style="font-size: 0.78em; color: #0284c7; background: #f0f9ff; border: 1px solid #bae6fd; padding: 2px 8px; border-radius: 6px; margin-top: 5px; display: inline-flex; align-items: center; gap: 5px; max-width: 240px; white-space: normal; line-height: 1.3;">
+                  <div style="font-size: 0.78em; color: #0284c7; background: #f0fdfa; border: 1px solid #bae6fd; padding: 2px 8px; border-radius: 6px; margin-top: 5px; display: inline-flex; align-items: center; gap: 5px; max-width: 240px; white-space: normal; line-height: 1.3;">
                     <i class="fa fa-info-circle" style="flex-shrink: 0; color: #0284c7;"></i>
                     <span><%= rowRemark %></span>
                   </div>
@@ -170,17 +171,22 @@
                   const isSendout = String(test.status || '').toLowerCase() === 'sendout' || (Array.isArray(test.requestedTests) && test.requestedTests.some(rr => {
                     try { const lab = String(rr.lab || '').toLowerCase(); const lbl = String(rr.label || '').toLowerCase(); return lab === 'external' || lbl.includes('send out') || lbl.includes('sendout') || lbl.includes('for send'); } catch (e) { return false; }
                   }));
+                  const isDone = test.status === 'Checked' || test.status === 'Completed' || test.status === 'Released';
                 %>
                 <% if (isDoctor) { %>
-                  <a href="/consultations/<%= test.id %>" class="button btn-small" style="padding:6px 12px; font-size:0.82em; font-weight:700; background:#0d9488; color:#ffffff; border:1px solid #0f766e; text-decoration:none; display:inline-flex; align-items:center; gap:5px; box-shadow:0 1px 3px rgba(13,148,136,0.25);" title="Start / Open Clinical Consultation">
-                    <i class="fa fa-user-md"></i> Start Consultation
+                  <a href="/consultations/<%= test.id %>" class="button btn-small" style="padding:6px 12px; font-size:0.82em; font-weight:700; background:<%= isDone ? '#0f766e' : '#0d9488' %>; color:#ffffff; border:1px solid #0f766e; text-decoration:none; display:inline-flex; align-items:center; gap:5px; box-shadow:0 1px 3px rgba(13,148,136,0.25);" title="<%= isDone ? 'View Consultation Encounter' : 'Start / Open Clinical Consultation' %>">
+                    <i class="fa <%= isDone ? 'fa-clipboard-check' : 'fa-user-md' %>"></i> <%= isDone ? 'Consultation' : 'Start Consultation' %>
                   </a>
                 <% } else if (!isSendout) { %>
                   <a href="/tests/<%= test.id %>/results" class="button btn-primary btn-small" style="padding:6px 12px; font-size:0.82em; font-weight:600;">Enter Result</a>
                 <% } %>
                 <a href="/tests/<%= test.id %>" class="button btn-secondary btn-small" style="padding:6px 12px; font-size:0.82em;">View</a>
-                <% if (test.status === 'Completed' || test.status === 'Released') { %>
-                  <a href="/reports/preview/<%= test.id %>" class="button btn-orange btn-small" style="padding:6px 12px; font-size:0.82em;">Report</a>
+                <% if (test.status === 'Completed' || test.status === 'Released' || test.status === 'Checked') { %>
+                  <% if (isDoctor) { %>
+                    <a href="/consultations/<%= test.id %>/print/chart" target="_blank" class="button btn-orange btn-small" style="padding:6px 12px; font-size:0.82em;"><i class="fa fa-file-medical"></i> Chart</a>
+                  <% } else { %>
+                    <a href="/reports/preview/<%= test.id %>" class="button btn-orange btn-small" style="padding:6px 12px; font-size:0.82em;">Report</a>
+                  <% } %>
                 <% } %>
                 <form action="/tests/<%= test.id %>?_method=DELETE" method="POST" style="display:inline;" onsubmit="return confirm('⚠️ Are you sure you want to delete test <%= test.testId %>? This will permanently remove its results.');">
                   <button type="submit" class="button btn-small btn-danger" style="padding:6px 10px; font-size:0.82em; margin-left:4px;" title="Delete test">Delete</button>
