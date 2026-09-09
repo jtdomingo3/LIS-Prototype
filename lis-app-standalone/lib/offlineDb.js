@@ -586,6 +586,56 @@ function createOfflineDb(dataStore) {
       dataStore.setCollection('custom_nrls', list || []);
       return true;
     },
+
+    /* ── Consultations ─────────────────────────────────────────── */
+    getConsultations() {
+      if (sqliteAdapter && typeof sqliteAdapter.getConsultations === 'function') {
+        return sqliteAdapter.getConsultations();
+      }
+      return dataStore.getCollection('consultations') || [];
+    },
+    getConsultationById(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.getConsultationById === 'function') {
+        return sqliteAdapter.getConsultationById(id);
+      }
+      const list = dataStore.getCollection('consultations') || [];
+      return list.find(c => c && (c.id === id || c._id === id)) || null;
+    },
+    getConsultationByTestId(testId) {
+      if (sqliteAdapter && typeof sqliteAdapter.getConsultationByTestId === 'function') {
+        return sqliteAdapter.getConsultationByTestId(testId);
+      }
+      const list = dataStore.getCollection('consultations') || [];
+      return list.find(c => c && (c.testId === testId || c.test === testId)) || null;
+    },
+    getConsultationsByPatientId(patientId) {
+      if (sqliteAdapter && typeof sqliteAdapter.getConsultationsByPatientId === 'function') {
+        return sqliteAdapter.getConsultationsByPatientId(patientId);
+      }
+      const list = dataStore.getCollection('consultations') || [];
+      return list.filter(c => c && (c.patientId === patientId || c.patient === patientId));
+    },
+    saveConsultation(c) {
+      if (sqliteAdapter && typeof sqliteAdapter.saveConsultation === 'function') {
+        return sqliteAdapter.saveConsultation(c);
+      }
+      if (!c || !c.id) return null;
+      let list = dataStore.getCollection('consultations') || [];
+      const idx = list.findIndex(item => item && item.id === c.id);
+      if (idx >= 0) list[idx] = c;
+      else list.push(c);
+      dataStore.setCollection('consultations', list);
+      return c;
+    },
+    deleteConsultation(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.deleteConsultation === 'function') {
+        return sqliteAdapter.deleteConsultation(id);
+      }
+      let list = dataStore.getCollection('consultations') || [];
+      list = list.filter(c => !(c && c.id === id));
+      dataStore.setCollection('consultations', list);
+      return true;
+    },
   };
 
   return new Proxy(db, {

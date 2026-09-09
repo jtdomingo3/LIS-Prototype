@@ -1519,7 +1519,7 @@ class SyncEngine {
 
     // Step 4: Authoritatively reconcile local DataStore with server data
     // Use replace: true so local database precisely mirrors authoritative server state
-    const collections = ['users', 'patients', 'tests', 'templates', 'counters', 'inventory', 'inventory_batches', 'inventory_transactions', 'equipment', 'equipment_logs', 'qc_controls', 'qc_entries', 'neqas_records'];
+    const collections = ['users', 'patients', 'tests', 'templates', 'counters', 'inventory', 'inventory_batches', 'inventory_transactions', 'equipment', 'equipment_logs', 'qc_controls', 'qc_entries', 'neqas_records', 'consultations'];
     let totalImported = 0;
 
     for (const col of collections) {

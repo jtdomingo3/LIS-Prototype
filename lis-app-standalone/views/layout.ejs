@@ -1427,6 +1427,7 @@
 
                                 // Check if this browser tab just completed a form action (prevent double-reload on the active tab)
                                 const lastLocalAction = parseInt(sessionStorage.getItem('lis-last-local-action') || '0', 10);
+                                const isRecentLocalAction = (Date.now() - lastLocalAction < 2200);
                                 // Enforce reload cooldown to prevent rapid reconnect storms
                                 const reloadCooldown = (Date.now() - _pageLoadTs) > RELOAD_COOLDOWN_MS;
 

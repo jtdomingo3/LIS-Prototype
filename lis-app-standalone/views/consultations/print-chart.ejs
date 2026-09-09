@@ -1,0 +1,801 @@
+<%
+  function safeJson(val, fallback) {
+    if (val === undefined || val === null) return fallback;
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
+      if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+        try { return JSON.parse(trimmed); } catch (_) { return fallback; }
+      }
+    }
+    return val;
+  }
+
+  const p = patient || {};
+  const c = consultation || {};
+  const vitals = safeJson(c.vitalSigns, {}) || {};
+  
+  let rxList = safeJson(c.prescriptions, []);
+  if (!Array.isArray(rxList)) rxList = [];
+
+  let labOrders = safeJson(c.labRequestTests, []);
+  if (!Array.isArray(labOrders)) labOrders = [];
+
+  function formatLabOrder(order) {
+    if (!order) return '';
+    if (typeof order === 'string') return order.trim();
+    if (typeof order === 'object') {
+      const genericCategories = ['hematology', 'urinalysis', 'fecalysis', 'clinical-microscopy', 'chemistry', 'serology', 'imaging', 'others', 'other'];
+      if (order.remarks && order.testType && genericCategories.includes(String(order.testType).toLowerCase())) {
+        return String(order.remarks).trim();
+      }
+      if (order.testType && order.remarks && String(order.testType).trim() !== String(order.remarks).trim()) {
+        return `${String(order.testType).trim()} (${String(order.remarks).trim()})`;
+      }
+      return String(order.testType || order.name || order.label || order.remarks || '').trim();
+    }
+    return String(order);
+  }
+
+  const patientAge = p.age || p.ageManual || '';
+  const smoking = safeJson(c.smoking, {}) || {};
+  const alcohol = safeJson(c.alcohol, {}) || {};
+  
+  let familyHistory = safeJson(c.familyHistory, null);
+  if (typeof familyHistory !== 'object' || familyHistory === null) {
+    familyHistory = { diseases: [], notes: typeof c.familyHistory === 'string' ? c.familyHistory : '' };
+  }
+  const famDiseases = Array.isArray(familyHistory.diseases) ? familyHistory.diseases : [];
+
+  let socialHistory = safeJson(c.socialHistory, null);
+  if (typeof socialHistory !== 'object' || socialHistory === null) {
+    socialHistory = { occupation: '', physicalActivity: 'Active', dietaryHabits: '', notes: typeof c.socialHistory === 'string' ? c.socialHistory : '' };
+  }
+  
+  let diffList = safeJson(c.differentialDiagnosis, []);
+  if (!Array.isArray(diffList)) {
+    diffList = (typeof diffList === 'string' && diffList.trim()) ? [diffList.trim()] : [];
+  }
+  
+  let consultDateStr = '';
+  try {
+    consultDateStr = c.consultationDate ? new Date(c.consultationDate).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : new Date().toLocaleString();
+  } catch (e) {
+    consultDateStr = c.consultationDate || '';
+  }
+
+  let dobStr = '';
+  try {
+    dobStr = p.dateOfBirth ? new Date(p.dateOfBirth).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+  } catch (e) {
+    dobStr = p.dateOfBirth || '';
+  }
+%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Medical Chart — <%= p.firstName %> <%= p.lastName %> (<%= consultDateStr %>)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #0f172a;
+      background: #f8fafc;
+      padding: 24px;
+      font-size: 12.5px;
+      line-height: 1.5;
+    }
+    .chart-sheet {
+      background: #ffffff;
+      max-width: 850px;
+      margin: 0 auto;
+      padding: 32px 38px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+      position: relative;
+    }
+    .header-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16px;
+      border-bottom: 2.5px solid #0d9488;
+      padding-bottom: 12px;
+    }
+    .header-logo { width: 75px; vertical-align: middle; }
+    .header-logo img { width: 68px; height: auto; display: block; }
+    .header-text { vertical-align: middle; text-align: center; }
+    .header-text h1 {
+      font-size: 1.35em;
+      font-weight: 800;
+      color: #0f766e;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
+    }
+    .header-text p { font-size: 0.82em; color: #475569; }
+
+    .doc-banner {
+      background: #0f766e;
+      color: #ffffff;
+      text-align: center;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.95em;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .doc-banner span.tag {
+      background: rgba(255, 255, 255, 0.2);
+      font-size: 0.78em;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    /* Demographic / Encounter Details Box */
+    .meta-box {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      overflow: hidden;
+      font-size: 0.88em;
+    }
+    .meta-box td {
+      padding: 6px 10px;
+      border: 1px solid #e2e8f0;
+      vertical-align: middle;
+    }
+    .meta-box .lbl {
+      color: #64748b;
+      font-weight: 700;
+      font-size: 0.8em;
+      text-transform: uppercase;
+      background: #f8fafc;
+      width: 15%;
+    }
+    .meta-box .val {
+      color: #0f172a;
+      font-weight: 600;
+      width: 35%;
+    }
+
+    /* Section Styles */
+    .section-container {
+      margin-bottom: 16px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      overflow: hidden;
+      page-break-inside: avoid;
+    }
+    .section-header {
+      background: #f1f5f9;
+      padding: 6px 12px;
+      font-size: 0.88em;
+      font-weight: 800;
+      color: #0f766e;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1.5px solid #cbd5e1;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .section-header .sec-badge {
+      background: #0d9488;
+      color: #ffffff;
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85em;
+    }
+    .section-content {
+      padding: 10px 14px;
+      background: #ffffff;
+    }
+
+    /* Grid layout for fields */
+    .field-row {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+    .field-row:last-child { margin-bottom: 0; }
+    .field-col { flex: 1; min-width: 0; }
+    .field-label {
+      font-size: 0.78em;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+    .field-value {
+      font-size: 0.9em;
+      color: #1e293b;
+      line-height: 1.45;
+      background: #f8fafc;
+      border: 1px solid #f1f5f9;
+      padding: 5px 8px;
+      border-radius: 4px;
+      min-height: 26px;
+    }
+
+    /* Allergies Highlight */
+    .allergy-alert {
+      background: #fef2f2;
+      border: 1.5px solid #fca5a5;
+      color: #991b1b;
+      font-weight: 700;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 0.88em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Vitals Grid Table */
+    .vitals-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 0.84em;
+    }
+    .vitals-table th {
+      background: #f8fafc;
+      color: #475569;
+      font-weight: 700;
+      font-size: 0.76em;
+      text-transform: uppercase;
+      padding: 6px 4px;
+      border: 1px solid #cbd5e1;
+    }
+    .vitals-table td {
+      padding: 6px 4px;
+      border: 1px solid #e2e8f0;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    /* Prescriptions Table */
+    .rx-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85em;
+      margin-top: 4px;
+    }
+    .rx-table th {
+      background: #f8fafc;
+      color: #475569;
+      font-weight: 700;
+      font-size: 0.78em;
+      text-transform: uppercase;
+      padding: 6px 8px;
+      border: 1px solid #cbd5e1;
+      text-align: left;
+    }
+    .rx-table td {
+      padding: 6px 8px;
+      border: 1px solid #e2e8f0;
+      vertical-align: top;
+    }
+
+    /* Tags & Pills */
+    .pill {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 12px;
+      font-size: 0.76em;
+      font-weight: 700;
+    }
+    .pill-green { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+    .pill-orange { background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; }
+    .pill-red { background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+    .pill-blue { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+
+    /* Diagnostic Orders Grid */
+    .lab-orders-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .lab-order-chip {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+      font-size: 0.82em;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+
+    /* Diagnosis Highlight */
+    .diag-banner {
+      background: #f0fdfa;
+      border: 1.5px solid #5eead4;
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin-bottom: 8px;
+    }
+    .diag-title {
+      font-size: 1.05em;
+      font-weight: 800;
+      color: #0f766e;
+    }
+
+    /* Signature & Attestation */
+    .sig-section {
+      margin-top: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      page-break-inside: avoid;
+    }
+    .disclaimer {
+      font-size: 0.72em;
+      color: #64748b;
+      max-width: 480px;
+      line-height: 1.4;
+      font-style: italic;
+    }
+    .sig-box {
+      text-align: center;
+      width: 250px;
+    }
+    .sig-line {
+      border-bottom: 1.5px solid #0f172a;
+      margin-bottom: 6px;
+    }
+
+    /* Print & Action Controls */
+    .no-print {
+      text-align: center;
+      margin-bottom: 18px;
+    }
+    @media print {
+      body { background: #ffffff; padding: 0; }
+      .chart-sheet {
+        border: none;
+        box-shadow: none;
+        padding: 0;
+        max-width: 100%;
+      }
+      .no-print { display: none !important; }
+      @page {
+        size: A4 portrait;
+        margin: 12mm 14mm;
+      }
+      .page-break { page-break-before: always; }
+      .avoid-break { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Action Toolbar (Hidden during printing) -->
+  <div class="no-print">
+    <button onclick="window.print()" style="padding: 9px 22px; font-size: 13.5px; font-weight: 700; background: #0d9488; color: #fff; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 2px 8px rgba(13,148,136,0.3); display: inline-flex; align-items: center; gap: 6px;">
+      🖨️ Print Medical Chart
+    </button>
+    <button onclick="window.close()" style="padding: 9px 18px; font-size: 13.5px; font-weight: 600; background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; border-radius: 8px; margin-left: 8px; cursor: pointer;">
+      Close Window
+    </button>
+  </div>
+
+  <div class="chart-sheet">
+    
+    <!-- Clinic Header & Letterhead -->
+    <table class="header-table">
+      <tr>
+        <td class="header-logo">
+          <img src="<%= inlineLogo %>" alt="Gezyne Logo" onerror="this.style.display='none'">
+        </td>
+        <td class="header-text">
+          <h1>Gezyne Clinical Laboratory & Medical Clinic</h1>
+          <p>Outpatient Medical Consultation • Clinical Diagnostics • Preventive Healthcare</p>
+          <p style="font-size: 0.78em; color: #64748b; margin-top: 1px;">Republic of the Philippines • DOH Accredited Facility</p>
+        </td>
+        <td style="width: 75px; text-align: right; vertical-align: top;">
+          <div style="font-size: 0.72em; color: #64748b; font-weight: 600;">ENCOUNTER ID</div>
+          <div style="font-size: 0.82em; font-weight: 800; color: #0f172a;"><%= test.testId || test.id || 'N/A' %></div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Document Banner Title -->
+    <div class="doc-banner">
+      <span>Outpatient Clinical Encounter & Medical Chart</span>
+      <span class="tag">Visit: <%= c.visitType || 'New Encounter' %> • Status: <%= c.status || 'Active' %></span>
+    </div>
+
+    <!-- Patient Demographics & Encounter Metadata Strip -->
+    <table class="meta-box">
+      <tr>
+        <td class="lbl">Patient Name</td>
+        <td class="val">
+          <strong><%= p.firstName %> <%= p.middleName ? p.middleName + ' ' : '' %><%= p.lastName %></strong>
+        </td>
+        <td class="lbl">Patient Code</td>
+        <td class="val"><strong><%= p.patientCode || p.patientId || 'N/A' %></strong></td>
+      </tr>
+      <tr>
+        <td class="lbl">Age / Sex</td>
+        <td class="val"><%= patientAge ? patientAge + ' yrs' : 'N/A' %> / <%= p.gender || 'N/A' %></td>
+        <td class="lbl">Birthdate</td>
+        <td class="val"><%= dobStr || 'N/A' %></td>
+      </tr>
+      <tr>
+        <td class="lbl">Contact No.</td>
+        <td class="val"><%= p.contactNumber || p.phone || 'N/A' %></td>
+        <td class="lbl">Address</td>
+        <td class="val"><%= p.address || 'N/A' %></td>
+      </tr>
+      <tr>
+        <td class="lbl">Encounter Date</td>
+        <td class="val"><%= consultDateStr %></td>
+        <td class="lbl">Attending MD</td>
+        <td class="val">
+          <strong><%= c.doctorName || 'Attending Physician' %><%= (c.doctorName && (c.doctorName.includes('M.D.') || c.doctorName.includes('MD'))) ? '' : ', M.D.' %></strong>
+          <div style="font-size: 0.85em; color: #475569; font-weight: 500;">
+            <%= doctorDesignation || c.doctorDesignation || 'Attending Physician' %> • PRC: <%= c.doctorLicenseNumber || 'N/A' %>
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- ======================= SECTION 1: [S] SUBJECTIVE ======================= -->
+    <div class="section-container">
+      <div class="section-header">
+        <span class="sec-badge">S</span>
+        <span>Subjective — Clinical History & Complaints</span>
+      </div>
+      <div class="section-content">
+        
+        <div class="field-row">
+          <div class="field-col" style="flex: 1.2;">
+            <div class="field-label">Chief Complaint (CC)</div>
+            <div class="field-value"><strong><%= c.chiefComplaint || 'None recorded' %></strong></div>
+          </div>
+          <div class="field-col" style="flex: 0.8;">
+            <div class="field-label">Drug / Food Allergies</div>
+            <% if (c.allergies && c.allergies.trim()) { %>
+              <div class="allergy-alert">⚠️ <%= c.allergies.trim() %></div>
+            <% } else { %>
+              <div class="field-value" style="color: #16a34a; font-weight: 600;">No Known Drug Allergies (NKDA)</div>
+            <% } %>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field-col">
+            <div class="field-label">History of Present Illness (HPI)</div>
+            <div class="field-value" style="white-space: pre-line;"><%= c.historyOfPresentIllness || 'No detailed HPI reported.' %></div>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field-col">
+            <div class="field-label">Past Medical & Surgical History (PMH)</div>
+            <div class="field-value"><%= c.pastMedicalHistory || 'Non-contributory / None reported.' %></div>
+          </div>
+          <div class="field-col">
+            <div class="field-label">Current Maintenance Medications</div>
+            <div class="field-value"><%= c.currentMedications || 'None recorded.' %></div>
+          </div>
+        </div>
+
+        <% if (c.reviewOfSystems) { %>
+          <div class="field-row">
+            <div class="field-col">
+              <div class="field-label">Review of Systems (ROS)</div>
+              <div class="field-value"><%= c.reviewOfSystems %></div>
+            </div>
+          </div>
+        <% } %>
+
+        <!-- DOH PhilPEN Risk Evaluation Strip -->
+        <div style="margin-top: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px;">
+          <div style="font-size: 0.78em; font-weight: 800; color: #0f766e; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.5px;">
+            DOH PhilPEN / Asia-Pacific Health Risk Assessment
+          </div>
+          
+          <div class="field-row">
+            <div class="field-col">
+              <div class="field-label">Tobacco / Smoking</div>
+              <div style="font-size: 0.86em; color: #1e293b;">
+                <strong><%= smoking.status || 'Never Smoked' %></strong>
+                <% if (smoking.status === 'Current Smoker') { %>
+                  • <%= smoking.sticksPerDay || '?' %> sticks/day for <%= smoking.years || '?' %> yrs 
+                  <span class="pill pill-orange"><%= smoking.packYears ? smoking.packYears + ' pack-yrs' : '' %></span>
+                <% } else if (smoking.status === 'Past Smoker') { %>
+                  • Quit <%= smoking.quitYears || '?' %> yrs ago (<%= smoking.packYears ? smoking.packYears + ' pack-yrs' : '' %>)
+                <% } %>
+                <% if (smoking.notes) { %> <em>(<%= smoking.notes %>)</em> <% } %>
+              </div>
+            </div>
+
+            <div class="field-col">
+              <div class="field-label">Alcohol Consumption</div>
+              <div style="font-size: 0.86em; color: #1e293b;">
+                <strong><%= alcohol.status || 'Non-drinker' %></strong>
+                <% if (alcohol.status && alcohol.status !== 'Non-drinker') { %>
+                  • <%= alcohol.frequency || 'Occasional' %> (<%= alcohol.drinksPerSession || '1-2' %> drinks/session)
+                  <% if (alcohol.bingeDrinking === 'Yes') { %>
+                    <span class="pill pill-red">Binge Risk: Yes</span>
+                  <% } %>
+                <% } %>
+                <% if (alcohol.notes) { %> <em>(<%= alcohol.notes %>)</em> <% } %>
+              </div>
+            </div>
+          </div>
+
+          <div class="field-row" style="margin-top: 6px;">
+            <div class="field-col">
+              <div class="field-label">Familial NCD History (Hereditary)</div>
+              <div style="font-size: 0.85em; color: #1e293b;">
+                <% if (famDiseases.length > 0) { %>
+                  <% famDiseases.forEach(d => { %>
+                    <span class="pill pill-blue" style="margin-right: 4px; margin-bottom: 2px;"><%= d %></span>
+                  <% }) %>
+                <% } else { %>
+                  <span style="color: #64748b;">No major familial NCDs reported.</span>
+                <% } %>
+                <% if (familyHistory.notes) { %>
+                  <div style="margin-top: 2px; font-size: 0.9em; color: #475569;"><em>Note: <%= familyHistory.notes %></em></div>
+                <% } %>
+              </div>
+            </div>
+
+            <div class="field-col">
+              <div class="field-label">Social & Lifestyle Profile</div>
+              <div style="font-size: 0.85em; color: #1e293b;">
+                <strong>Occupation:</strong> <%= socialHistory.occupation || 'Not specified' %> • 
+                <strong>Activity:</strong> <%= socialHistory.physicalActivity || 'Active' %>
+                <% if (socialHistory.dietaryHabits) { %> • <strong>Diet:</strong> <%= socialHistory.dietaryHabits %> <% } %>
+                <% if (socialHistory.notes) { %> <em>(<%= socialHistory.notes %>)</em> <% } %>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ======================= SECTION 2: [O] OBJECTIVE ======================= -->
+    <div class="section-container avoid-break">
+      <div class="section-header">
+        <span class="sec-badge">O</span>
+        <span>Objective — Vital Signs & Physical Examination</span>
+      </div>
+      <div class="section-content">
+        
+        <!-- Vital Signs Table -->
+        <table class="vitals-table">
+          <thead>
+            <tr>
+              <th>Blood Pressure</th>
+              <th>Pulse Rate</th>
+              <th>Resp Rate</th>
+              <th>Temp</th>
+              <th>SpO2</th>
+              <th>Weight / Height</th>
+              <th>BMI & Category</th>
+              <th>Glucose</th>
+              <th>Pain Score</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <%= (vitals.bloodPressureSystolic && vitals.bloodPressureDiastolic) ? (vitals.bloodPressureSystolic + '/' + vitals.bloodPressureDiastolic + ' mmHg') : (vitals.bloodPressureSystolic || vitals.bloodPressureDiastolic || '—') %>
+              </td>
+              <td><%= vitals.pulseRate ? vitals.pulseRate + ' bpm' : '—' %></td>
+              <td><%= vitals.respiratoryRate ? vitals.respiratoryRate + ' cpm' : '—' %></td>
+              <td><%= vitals.temperature ? vitals.temperature + ' °C' : '—' %></td>
+              <td><%= vitals.oxygenSaturation ? vitals.oxygenSaturation + ' %' : '—' %></td>
+              <td>
+                <%= (vitals.weight ? vitals.weight + ' kg' : '—') %> / <%= (vitals.height ? vitals.height + ' cm' : '—') %>
+              </td>
+              <td>
+                <% if (vitals.bmi) { %>
+                  <strong><%= vitals.bmi %></strong>
+                  <% if (vitals.bmiCategory) { %>
+                    <br><span class="pill <%= vitals.bmiCategory === 'Normal' ? 'pill-green' : (vitals.bmiCategory === 'Underweight' ? 'pill-blue' : (vitals.bmiCategory === 'Overweight' ? 'pill-orange' : 'pill-red')) %>"><%= vitals.bmiCategory %></span>
+                  <% } %>
+                <% } else { %>
+                  —
+                <% } %>
+              </td>
+              <td><%= vitals.bloodGlucose ? vitals.bloodGlucose + ' mg/dL' : '—' %></td>
+              <td><%= (vitals.painScale !== undefined && vitals.painScale !== '') ? (vitals.painScale + ' / 10') : '—' %></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Physical Examination Findings -->
+        <div class="field-label" style="margin-top: 6px;">Physical Examination Findings (PE)</div>
+        <div class="field-value" style="white-space: pre-line; min-height: 48px;"><%= c.physicalExamFindings || 'General physical examination non-contributory / within normal limits.' %></div>
+
+      </div>
+    </div>
+
+    <!-- ======================= SECTION 3: [A] ASSESSMENT ======================= -->
+    <div class="section-container avoid-break">
+      <div class="section-header">
+        <span class="sec-badge">A</span>
+        <span>Assessment — Clinical Diagnosis & Impressions</span>
+      </div>
+      <div class="section-content">
+        
+        <div class="diag-banner">
+          <div style="font-size: 0.76em; font-weight: 700; color: #0f766e; text-transform: uppercase;">Primary Clinical Diagnosis</div>
+          <div class="diag-title"><%= c.primaryDiagnosis || 'Clinical Assessment In Progress / Under Investigation' %></div>
+        </div>
+
+        <div class="field-row">
+          <% if (c.suspectedPathology) { %>
+            <div class="field-col">
+              <div class="field-label">Suspected Pathology / Etiology</div>
+              <div class="field-value"><%= c.suspectedPathology %></div>
+            </div>
+          <% } %>
+
+          <% if (c.clinicalImpression) { %>
+            <div class="field-col">
+              <div class="field-label">Clinical Impression / Working Formulation</div>
+              <div class="field-value"><%= c.clinicalImpression %></div>
+            </div>
+          <% } %>
+        </div>
+
+        <% if (diffList.length > 0 && diffList.some(d => d && String(d).trim())) { %>
+          <div class="field-row" style="margin-top: 4px;">
+            <div class="field-col">
+              <div class="field-label">Differential Diagnoses</div>
+              <div class="field-value">
+                <%= diffList.filter(d => d && String(d).trim()).map(d => String(d).trim()).join(' • ') %>
+              </div>
+            </div>
+          </div>
+        <% } %>
+
+      </div>
+    </div>
+
+    <!-- ======================= SECTION 4: [P] PLAN ======================= -->
+    <div class="section-container avoid-break">
+      <div class="section-header">
+        <span class="sec-badge">P</span>
+        <span>Plan — Prescriptions, Diagnostics & Disposition</span>
+      </div>
+      <div class="section-content">
+        
+        <!-- Prescriptions Ordered (Rx) -->
+        <div class="field-label" style="display: flex; justify-content: space-between; align-items: center;">
+          <span>Pharmacologic Prescriptions (Rx)</span>
+          <span style="font-size: 0.85em; font-weight: 600; text-transform: none; color: #0f766e;"><%= rxList.length %> item(s)</span>
+        </div>
+        <% if (rxList.length > 0) { %>
+          <table class="rx-table">
+            <thead>
+              <tr>
+                <th style="width: 5%;">#</th>
+                <th style="width: 30%;">Medication & Strength</th>
+                <th style="width: 14%;">Route</th>
+                <th style="width: 18%;">Frequency</th>
+                <th style="width: 13%;">Duration</th>
+                <th style="width: 20%;">Instructions / Sig</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% rxList.forEach((rx, idx) => { %>
+                <% 
+                  const drug = typeof rx === 'object' ? (rx.drug || rx.name || '') : String(rx);
+                  const dosage = typeof rx === 'object' ? (rx.dosage || '') : '';
+                  const route = typeof rx === 'object' ? (rx.route || 'Oral') : 'Oral';
+                  const frequency = typeof rx === 'object' ? (rx.frequency || 'As directed') : 'As directed';
+                  const duration = typeof rx === 'object' ? (rx.duration || '—') : '—';
+                  const instructions = typeof rx === 'object' ? (rx.instructions || 'Follow doctor\'s advice') : 'Follow doctor\'s advice';
+                %>
+                <tr>
+                  <td><%= idx + 1 %></td>
+                  <td><strong><%= drug %></strong> <%= dosage ? '— ' + dosage : '' %></td>
+                  <td><%= route %></td>
+                  <td><%= frequency %></td>
+                  <td><%= duration %></td>
+                  <td><%= instructions %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        <% } else { %>
+          <div class="field-value" style="color: #64748b; font-style: italic; margin-bottom: 8px;">
+            No pharmacologic medications prescribed for this visit.
+          </div>
+        <% } %>
+
+        <!-- Ordered Laboratory & Diagnostic Investigations -->
+        <% 
+          const cleanLabOrders = labOrders.map(formatLabOrder).filter(Boolean);
+        %>
+        <% if (cleanLabOrders.length > 0) { %>
+          <div class="field-label" style="margin-top: 10px;">Diagnostic & Laboratory Tests Ordered (<%= cleanLabOrders.length %>)</div>
+          <div class="lab-orders-list">
+            <% cleanLabOrders.forEach(orderName => { %>
+              <div class="lab-order-chip">🧪 <%= orderName %></div>
+            <% }) %>
+          </div>
+        <% } %>
+
+        <!-- Non-Pharmacologic Advice / Treatment Plan -->
+        <% if (c.treatmentPlan) { %>
+          <div class="field-label" style="margin-top: 10px;">Physician's Non-Pharmacologic Advice & Management</div>
+          <div class="field-value" style="white-space: pre-line;"><%= c.treatmentPlan %></div>
+        <% } %>
+
+        <!-- Follow-up & Referrals -->
+        <div class="field-row" style="margin-top: 8px;">
+          <% if (c.followUpDate) { %>
+            <div class="field-col">
+              <div class="field-label">Follow-up Schedule</div>
+              <div class="field-value" style="font-weight: 700; color: #0f766e;">
+                📅 <%= new Date(c.followUpDate).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }) %>
+                <% if (c.followUpNotes) { %> — <span style="font-weight: normal; color: #334155;"><%= c.followUpNotes %></span><% } %>
+              </div>
+            </div>
+          <% } %>
+
+          <% if (c.referrals) { %>
+            <div class="field-col">
+              <div class="field-label">Specialist Referrals</div>
+              <div class="field-value"><%= c.referrals %></div>
+            </div>
+          <% } %>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Attestation, Physician Signature & Disclaimer Block -->
+    <div class="sig-section avoid-break">
+      <div class="disclaimer">
+        <strong>Confidentiality Notice:</strong> This document is an official outpatient clinical chart generated for patient health records in compliance with Republic Act No. 10173 (Data Privacy Act of 2012) and DOH clinical record retention standards. For authorized clinical reference only.
+      </div>
+
+      <div class="sig-box">
+        <div class="sig-line"></div>
+        <div style="font-weight: 800; font-size: 1em; color: #0f172a;">
+          <%= c.doctorName || 'Attending Physician' %><%= (c.doctorName && (c.doctorName.includes('M.D.') || c.doctorName.includes('MD'))) ? '' : ', M.D.' %>
+        </div>
+        <div style="font-size: 0.84em; color: #475569;">
+          PRC License No.: <%= c.doctorLicenseNumber || '________________' %>
+        </div>
+        <div style="font-size: 0.82em; color: #475569; font-weight: 700;">
+          <%= doctorDesignation || c.doctorDesignation || 'Attending Physician' %>
+        </div>
+        <div style="font-size: 0.74em; color: #94a3b8; margin-top: 2px;">
+          PTR No.: ____________ / S2 No.: ____________
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

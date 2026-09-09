@@ -343,6 +343,29 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     CREATE INDEX IF NOT EXISTS idx_neqas_eqid ON neqas_records(equipmentId);
     CREATE INDEX IF NOT EXISTS idx_neqas_year ON neqas_records(cycleYear);
     CREATE INDEX IF NOT EXISTS idx_neqas_status ON neqas_records(status);
+
+    CREATE TABLE IF NOT EXISTS consultations (
+      id TEXT PRIMARY KEY,
+      patientId TEXT NOT NULL,
+      testId TEXT,
+      doctorId TEXT,
+      doctorName TEXT,
+      doctorLicenseNumber TEXT,
+      visitType TEXT DEFAULT 'New',
+      consultationDate TEXT,
+      status TEXT DEFAULT 'In Progress',
+      chiefComplaint TEXT,
+      primaryDiagnosis TEXT,
+      createdAt TEXT,
+      updatedAt TEXT,
+      completedAt TEXT,
+      json TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_consult_patient ON consultations(patientId);
+    CREATE INDEX IF NOT EXISTS idx_consult_test ON consultations(testId);
+    CREATE INDEX IF NOT EXISTS idx_consult_doctor ON consultations(doctorName);
+    CREATE INDEX IF NOT EXISTS idx_consult_date ON consultations(consultationDate);
+    CREATE INDEX IF NOT EXISTS idx_consult_status ON consultations(status);
   `);
 
   const stmts = {
@@ -414,7 +437,6 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     getInventoryTransactionsByBatchId: sqlite.prepare('SELECT json FROM inventory_transactions WHERE batchId = ? ORDER BY createdAt DESC'),
     insertInventoryTransaction: sqlite.prepare('INSERT INTO inventory_transactions (id, inventoryId, batchId, transactionType, performedBy, createdAt, json) VALUES (@id, @inventoryId, @batchId, @transactionType, @performedBy, @createdAt, @json)'),
     deleteInventoryTransactionsByItemId: sqlite.prepare('DELETE FROM inventory_transactions WHERE inventoryId = ?'),
-    deleteInventoryTransactionById: sqlite.prepare('DELETE FROM inventory_transactions WHERE id = ?'),
 
     getAllEquipment: sqlite.prepare('SELECT json FROM equipment ORDER BY name ASC'),
     getEquipmentById: sqlite.prepare('SELECT json FROM equipment WHERE id = ?'),
@@ -452,7 +474,15 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     getNeqasRecordById: sqlite.prepare('SELECT json FROM neqas_records WHERE id = ?'),
     upsertNeqasRecord: sqlite.prepare('INSERT OR REPLACE INTO neqas_records (id, equipmentId, cycleYear, eventNumber, nrlName, sampleId, analyteCode, status, createdAt, json) VALUES (@id, @equipmentId, @cycleYear, @eventNumber, @nrlName, @sampleId, @analyteCode, @status, @createdAt, @json)'),
     deleteNeqasRecordById: sqlite.prepare('DELETE FROM neqas_records WHERE id = ?'),
-    deleteNeqasRecordsByEquipmentId: sqlite.prepare('DELETE FROM neqas_records WHERE equipmentId = ?')
+    deleteNeqasRecordsByEquipmentId: sqlite.prepare('DELETE FROM neqas_records WHERE equipmentId = ?'),
+
+    getAllConsultations: sqlite.prepare('SELECT json FROM consultations ORDER BY consultationDate DESC, createdAt DESC'),
+    getConsultationById: sqlite.prepare('SELECT json FROM consultations WHERE id = ?'),
+    getConsultationByTestId: sqlite.prepare('SELECT json FROM consultations WHERE testId = ? ORDER BY createdAt DESC LIMIT 1'),
+    getConsultationsByPatientId: sqlite.prepare('SELECT json FROM consultations WHERE patientId = ? ORDER BY consultationDate DESC, createdAt DESC'),
+    upsertConsultation: sqlite.prepare('INSERT OR REPLACE INTO consultations (id, patientId, testId, doctorId, doctorName, doctorLicenseNumber, visitType, consultationDate, status, chiefComplaint, primaryDiagnosis, createdAt, updatedAt, completedAt, json) VALUES (@id, @patientId, @testId, @doctorId, @doctorName, @doctorLicenseNumber, @visitType, @consultationDate, @status, @chiefComplaint, @primaryDiagnosis, @createdAt, @updatedAt, @completedAt, @json)'),
+    deleteConsultationById: sqlite.prepare('DELETE FROM consultations WHERE id = ?'),
+    deleteConsultationsByPatientId: sqlite.prepare('DELETE FROM consultations WHERE patientId = ?')
   };
 
   const patientCache = createEntityCache(1000);
@@ -1235,15 +1265,6 @@ function createBetterSqliteDb(dbPath, opts = {}) {
         return null;
       }
     },
-    deleteTransaction(id) {
-      try {
-        stmts.deleteInventoryTransactionById.run(id);
-        return true;
-      } catch (e) {
-        return false;
-      }
-    },
-
     deleteEquipment(id) {
       try {
         stmts.deleteNeqasRecordsByEquipmentId.run(id);
@@ -1495,6 +1516,79 @@ function createBetterSqliteDb(dbPath, opts = {}) {
       }
     },
 
+    // Consultations
+    getConsultations() {
+      try {
+        const rows = stmts.getAllConsultations.all();
+        return parseRows(rows);
+      } catch (e) {
+        return [];
+      }
+    },
+    getConsultationById(id) {
+      if (!id) return null;
+      try {
+        const row = stmts.getConsultationById.get(id);
+        return row && row.json ? JSON.parse(row.json) : null;
+      } catch (e) {
+        return null;
+      }
+    },
+    getConsultationByTestId(testId) {
+      if (!testId) return null;
+      try {
+        const row = stmts.getConsultationByTestId.get(testId);
+        return row && row.json ? JSON.parse(row.json) : null;
+      } catch (e) {
+        return null;
+      }
+    },
+    getConsultationsByPatientId(patientId) {
+      if (!patientId) return [];
+      try {
+        const rows = stmts.getConsultationsByPatientId.all(patientId);
+        return parseRows(rows);
+      } catch (e) {
+        return [];
+      }
+    },
+    saveConsultation(c) {
+      if (!c || !c.id) return null;
+      try {
+        const now = new Date().toISOString();
+        const data = {
+          id: String(c.id),
+          patientId: safeStr(c.patientId || ''),
+          testId: safeStr(c.testId || ''),
+          doctorId: safeStr(c.doctorId || ''),
+          doctorName: safeStr(c.doctorName || ''),
+          doctorLicenseNumber: safeStr(c.doctorLicenseNumber || ''),
+          visitType: safeStr(c.visitType || 'New'),
+          consultationDate: safeStr(c.consultationDate || now),
+          status: safeStr(c.status || 'In Progress'),
+          chiefComplaint: safeStr(c.chiefComplaint || ''),
+          primaryDiagnosis: safeStr(c.primaryDiagnosis || ''),
+          createdAt: safeStr(c.createdAt || now),
+          updatedAt: safeStr(c.updatedAt || now),
+          completedAt: safeStr(c.completedAt || null),
+          json: JSON.stringify(c)
+        };
+        stmts.upsertConsultation.run(data);
+        return c;
+      } catch (e) {
+        console.error('[sqliteDb] saveConsultation error:', e.message);
+        return null;
+      }
+    },
+    deleteConsultation(id) {
+      try {
+        stmts.deleteConsultationById.run(id);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    },
+
     close() { try { sqlite.close(); } catch (e) {} }
   };
 }
@@ -1730,6 +1824,29 @@ function createSqlJsDb(SQL, dbPath) {
     CREATE INDEX IF NOT EXISTS idx_neqas_eqid ON neqas_records(equipmentId);
     CREATE INDEX IF NOT EXISTS idx_neqas_year ON neqas_records(cycleYear);
     CREATE INDEX IF NOT EXISTS idx_neqas_status ON neqas_records(status);
+
+    CREATE TABLE IF NOT EXISTS consultations (
+      id TEXT PRIMARY KEY,
+      patientId TEXT NOT NULL,
+      testId TEXT,
+      doctorId TEXT,
+      doctorName TEXT,
+      doctorLicenseNumber TEXT,
+      visitType TEXT DEFAULT 'New',
+      consultationDate TEXT,
+      status TEXT DEFAULT 'In Progress',
+      chiefComplaint TEXT,
+      primaryDiagnosis TEXT,
+      createdAt TEXT,
+      updatedAt TEXT,
+      completedAt TEXT,
+      json TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_sqljs_consult_patient ON consultations(patientId);
+    CREATE INDEX IF NOT EXISTS idx_sqljs_consult_test ON consultations(testId);
+    CREATE INDEX IF NOT EXISTS idx_sqljs_consult_doctor ON consultations(doctorName);
+    CREATE INDEX IF NOT EXISTS idx_sqljs_consult_date ON consultations(consultationDate);
+    CREATE INDEX IF NOT EXISTS idx_sqljs_consult_status ON consultations(status);
   `);
 
   let persistTimer = null;
@@ -2693,14 +2810,6 @@ function createSqlJsDb(SQL, dbPath) {
         return null;
       }
     },
-    deleteTransaction(id) {
-      try {
-        queryRun('DELETE FROM inventory_transactions WHERE id = ?', [id]);
-        persist();
-        return true;
-      } catch (e) { return false; }
-    },
-
     deleteEquipment(id) {
       try {
         queryRun('DELETE FROM neqas_records WHERE equipmentId = ?', [id]);
@@ -2927,6 +3036,72 @@ function createSqlJsDb(SQL, dbPath) {
       }
     },
 
+    // Consultations
+    getConsultations() {
+      try {
+        return parseRows(queryAll('SELECT json FROM consultations ORDER BY consultationDate DESC, createdAt DESC'));
+      } catch (e) { return []; }
+    },
+    getConsultationById(id) {
+      if (!id) return null;
+      try {
+        const rows = queryAll('SELECT json FROM consultations WHERE id = ?', [id]);
+        return rows.length ? JSON.parse(rows[0].json) : null;
+      } catch (e) { return null; }
+    },
+    getConsultationByTestId(testId) {
+      if (!testId) return null;
+      try {
+        const rows = queryAll('SELECT json FROM consultations WHERE testId = ? ORDER BY createdAt DESC LIMIT 1', [testId]);
+        return rows.length ? JSON.parse(rows[0].json) : null;
+      } catch (e) { return null; }
+    },
+    getConsultationsByPatientId(patientId) {
+      if (!patientId) return [];
+      try {
+        return parseRows(queryAll('SELECT json FROM consultations WHERE patientId = ? ORDER BY consultationDate DESC, createdAt DESC', [patientId]));
+      } catch (e) { return []; }
+    },
+    saveConsultation(c) {
+      if (!c || !c.id) return null;
+      try {
+        const now = new Date().toISOString();
+        const data = {
+          id: String(c.id),
+          patientId: safeStr(c.patientId || ''),
+          testId: safeStr(c.testId || ''),
+          doctorId: safeStr(c.doctorId || ''),
+          doctorName: safeStr(c.doctorName || ''),
+          doctorLicenseNumber: safeStr(c.doctorLicenseNumber || ''),
+          visitType: safeStr(c.visitType || 'New'),
+          consultationDate: safeStr(c.consultationDate || now),
+          status: safeStr(c.status || 'In Progress'),
+          chiefComplaint: safeStr(c.chiefComplaint || ''),
+          primaryDiagnosis: safeStr(c.primaryDiagnosis || ''),
+          createdAt: safeStr(c.createdAt || now),
+          updatedAt: safeStr(c.updatedAt || now),
+          completedAt: safeStr(c.completedAt || null),
+          json: JSON.stringify(c)
+        };
+        queryRun(
+          'INSERT OR REPLACE INTO consultations (id, patientId, testId, doctorId, doctorName, doctorLicenseNumber, visitType, consultationDate, status, chiefComplaint, primaryDiagnosis, createdAt, updatedAt, completedAt, json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [data.id, data.patientId, data.testId, data.doctorId, data.doctorName, data.doctorLicenseNumber, data.visitType, data.consultationDate, data.status, data.chiefComplaint, data.primaryDiagnosis, data.createdAt, data.updatedAt, data.completedAt, data.json]
+        );
+        persist();
+        return c;
+      } catch (e) {
+        console.error('[sqliteDb sql.js] saveConsultation error:', e.message);
+        return null;
+      }
+    },
+    deleteConsultation(id) {
+      try {
+        queryRun('DELETE FROM consultations WHERE id = ?', [id]);
+        persist();
+        return true;
+      } catch (e) { return false; }
+    },
+
     close() {
       persist(true);
       try { sqlite.close(); } catch (e) {}
@@ -3042,7 +3217,6 @@ function createDb(dbPath, opts = {}) {
     getEquipmentByDepartment(d) { return underlyingDb ? underlyingDb.getEquipmentByDepartment(d) : []; },
     getEquipmentByCategory(c) { return underlyingDb ? underlyingDb.getEquipmentByCategory(c) : []; },
     saveEquipment(item) { if (underlyingDb) return underlyingDb.saveEquipment(item); else readyPromise.then(d => d.saveEquipment(item)); return item; },
-    deleteTransaction(id) { if (underlyingDb) return underlyingDb.deleteTransaction(id); else readyPromise.then(d => d.deleteTransaction(id)); return true; },
     deleteEquipment(id) { if (underlyingDb) return underlyingDb.deleteEquipment(id); else readyPromise.then(d => d.deleteEquipment(id)); return true; },
 
     getEquipmentLogs(eqId) { return underlyingDb ? underlyingDb.getEquipmentLogs(eqId) : []; },
@@ -3058,13 +3232,19 @@ function createDb(dbPath, opts = {}) {
     getQcEntries(eqId, analyte) { return underlyingDb ? underlyingDb.getQcEntries(eqId, analyte) : []; },
     getQcEntryById(id) { return underlyingDb ? underlyingDb.getQcEntryById(id) : null; },
     saveQcEntry(entry) { if (underlyingDb) return underlyingDb.saveQcEntry(entry); else readyPromise.then(d => d.saveQcEntry(entry)); return entry; },
-    deleteQcEntries(eqId, analyte) { if (underlyingDb) return underlyingDb.deleteQcEntries(eqId, analyte); else readyPromise.then(d => d.deleteQcEntries(eqId, analyte)); return true; },
     deleteQcEntry(id) { if (underlyingDb) return underlyingDb.deleteQcEntry(id); else readyPromise.then(d => d.deleteQcEntry(id)); return true; },
 
     getNeqasRecords(eqId) { return underlyingDb ? underlyingDb.getNeqasRecords(eqId) : []; },
     getNeqasRecordById(id) { return underlyingDb ? underlyingDb.getNeqasRecordById(id) : null; },
     saveNeqasRecord(rec) { if (underlyingDb) return underlyingDb.saveNeqasRecord(rec); else readyPromise.then(d => d.saveNeqasRecord(rec)); return rec; },
     deleteNeqasRecord(id) { if (underlyingDb) return underlyingDb.deleteNeqasRecord(id); else readyPromise.then(d => d.deleteNeqasRecord(id)); return true; },
+
+    getConsultations() { return underlyingDb ? underlyingDb.getConsultations() : []; },
+    getConsultationById(id) { return underlyingDb ? underlyingDb.getConsultationById(id) : null; },
+    getConsultationByTestId(testId) { return underlyingDb ? underlyingDb.getConsultationByTestId(testId) : null; },
+    getConsultationsByPatientId(patientId) { return underlyingDb ? underlyingDb.getConsultationsByPatientId(patientId) : []; },
+    saveConsultation(c) { if (underlyingDb) return underlyingDb.saveConsultation(c); else readyPromise.then(d => d.saveConsultation(c)); return c; },
+    deleteConsultation(id) { if (underlyingDb) return underlyingDb.deleteConsultation(id); else readyPromise.then(d => d.deleteConsultation(id)); return true; },
 
     close() { if (underlyingDb) underlyingDb.close(); }
   };

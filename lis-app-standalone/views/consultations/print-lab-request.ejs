@@ -1,0 +1,256 @@
+<%
+  const p = patient || {};
+  const c = consultation || {};
+  const labOrders = Array.isArray(c.labRequestTests) ? c.labRequestTests : [];
+  const patientAge = p.age || p.ageManual || '';
+%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Laboratory Request Form — <%= p.firstName %> <%= p.lastName %></title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #0f172a;
+      background: #f8fafc;
+      padding: 24px;
+      font-size: 13px;
+    }
+    .print-sheet {
+      background: #ffffff;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 32px 36px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .header-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; border-bottom: 2px solid #0d9488; padding-bottom: 14px; }
+    .header-logo { width: 80px; vertical-align: middle; }
+    .header-logo img { width: 72px; height: auto; display: block; }
+    .header-text { vertical-align: middle; text-align: center; }
+    .header-text h1 { font-size: 1.4em; font-weight: 800; color: #0f766e; text-transform: uppercase; letter-spacing: 0.5px; }
+    .header-text p { font-size: 0.85em; color: #475569; margin-top: 3px; }
+    .doc-title { text-align: center; font-size: 1.15em; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #0f172a; margin: 16px 0; background: #f0fdfa; padding: 6px; border: 1px solid #99f6e4; border-radius: 4px; }
+    .patient-box { width: 100%; border-collapse: collapse; margin-bottom: 20px; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; }
+    .patient-box td { padding: 6px 10px; font-size: 0.88em; border: 1px solid #e2e8f0; }
+    .patient-box td strong { color: #334155; }
+    .section-title { font-size: 0.9em; font-weight: 700; color: #0f766e; text-transform: uppercase; letter-spacing: 0.5px; margin: 16px 0 8px 0; border-bottom: 1.5px solid #ccfbf1; padding-bottom: 4px; }
+    .test-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 18px; }
+    .test-item { display: flex; align-items: center; gap: 8px; font-size: 0.85em; padding: 4px 6px; border-radius: 4px; }
+    .checkbox-box { width: 14px; height: 14px; border: 1.5px solid #475569; border-radius: 3px; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 800; color: #0d9488; }
+    .checked-box { background: #0d9488; border-color: #0d9488; color: #ffffff; }
+    .signature-section { margin-top: 36px; display: flex; justify-content: space-between; align-items: flex-end; }
+    .sig-box { text-align: center; min-width: 240px; }
+    .sig-line { border-bottom: 1.5px solid #0f172a; width: 100%; margin-bottom: 6px; }
+    .no-print { text-align: center; margin-bottom: 18px; }
+    @media print {
+      body { background: #ffffff; padding: 0; }
+      .print-sheet { border: none; box-shadow: none; padding: 10px 15px; }
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="no-print">
+    <button onclick="window.print()" style="padding: 10px 24px; font-size: 14px; font-weight: 700; background: #0d9488; color: #fff; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 2px 8px rgba(13,148,136,0.3);">
+      🖨️ Print Laboratory Request
+    </button>
+    <button onclick="window.close()" style="padding: 10px 18px; font-size: 14px; font-weight: 600; background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; border-radius: 8px; margin-left: 8px; cursor: pointer;">
+      Close Window
+    </button>
+  </div>
+
+  <div class="print-sheet">
+    <table class="header-table">
+      <tr>
+        <td class="header-logo">
+          <img src="<%= inlineLogo %>" alt="Gezyne Logo" onerror="this.style.display='none'">
+        </td>
+        <td class="header-text">
+          <h1>Gezyne Clinical Laboratory</h1>
+          <p>Complete Clinical Diagnostics • Hematology • Blood Chemistry • Radiology</p>
+          <p style="font-size: 0.78em; color: #64748b;">Licensed by the Department of Health (DOH) • Republic of the Philippines</p>
+        </td>
+        <td style="width: 80px;"></td>
+      </tr>
+    </table>
+
+    <div class="doc-title">OFFICIAL LABORATORY REQUEST FORM</div>
+
+    <table class="patient-box">
+      <tr>
+        <td style="width: 50%;"><strong>Patient Name:</strong> <%= p.firstName %> <%= p.middleName ? p.middleName + ' ' : '' %><%= p.lastName %></td>
+        <td style="width: 25%;"><strong>Patient Code:</strong> <%= p.patientCode || p.patientId || 'N/A' %></td>
+        <td style="width: 25%;"><strong>Date:</strong> <%= new Date().toLocaleDateString() %></td>
+      </tr>
+      <tr>
+        <td><strong>Age / Gender:</strong> <%= patientAge ? patientAge + ' yrs' : 'N/A' %> • <%= p.gender || 'N/A' %></td>
+        <td colspan="2"><strong>Attending Physician:</strong> <%= c.doctorName || 'Attending Physician' %></td>
+      </tr>
+      <tr>
+        <td colspan="3"><strong>Clinical Diagnosis / Indication:</strong> <%= c.primaryDiagnosis || 'Clinical Evaluation' %></td>
+      </tr>
+    </table>
+
+    <!-- Tests Checklist -->
+    <% 
+      const allOrderedNames = labOrders.map(lo => {
+        if (typeof lo === 'string') return lo.trim();
+        if (lo && typeof lo === 'object') return (lo.testType || lo.name || lo.label || lo.key || '').trim();
+        return '';
+      }).filter(Boolean);
+
+      function isTestOrdered(testName) {
+        const target = testName.toLowerCase();
+        return allOrderedNames.some(o => {
+          const low = o.toLowerCase();
+          return low === target || low.includes(target) || target.includes(low) || (low.length > 3 && target.includes(low.slice(0, 4)));
+        });
+      }
+
+      const hemList = [
+        'Complete Blood Count (CBC) with Platelet',
+        'Blood Typing (ABO & Rh)',
+        'ESR (Erythrocyte Sedimentation Rate)',
+        'Clotting Time & Bleeding Time (CT/BT)',
+        'PT / APTT (Coagulation Profile)',
+        'Peripheral Blood Smear'
+      ];
+
+      const microList = [
+        'Routine Urinalysis',
+        'Routine Fecalysis',
+        'Fecal Occult Blood Test (FOBT)',
+        'Urine Pregnancy Test (hCG)'
+      ];
+
+      const chemList = [
+        'Fasting Blood Sugar (FBS)',
+        'Random Blood Sugar (RBS)',
+        'HbA1c (Glycated Hemoglobin)',
+        'Lipid Profile (Chol, Trig, HDL, LDL)',
+        'Blood Uric Acid (BUA)',
+        'BUN & Creatinine (Renal Function)',
+        'SGPT / ALT (Liver Function)',
+        'SGOT / AST (Liver Function)',
+        'Serum Electrolytes (Na, K, Cl)',
+        'Alkaline Phosphatase (ALP)',
+        'Total Protein & Albumin (A/G Ratio)',
+        'Total & Direct Bilirubin'
+      ];
+
+      const seroList = [
+        'Thyroid Panel (TSH, FT3, FT4)',
+        'Dengue Duo (NS1 Ag, IgG, IgM)',
+        'Hepatitis B Surface Antigen (HBsAg)',
+        'Anti-HBs (Hepatitis B Surface Antibody)',
+        'Anti-HCV (Hepatitis C Antibody)',
+        'Syphilis Screening (VDRL / RPR)',
+        'Typhoid Test (Widal / Typhidot)',
+        'PSA (Prostate Specific Antigen)'
+      ];
+
+      const imgList = [
+        'Chest X-Ray (PA / AP)',
+        '12-Lead ECG (Electrocardiogram)',
+        'Ultrasound - Whole Abdomen',
+        'Ultrasound - KUB / Pelvic',
+        '2D Echocardiogram with Doppler',
+        'Drug Screening Test (Methamphetamine & THC)',
+        'Sputum AFB / GeneXpert (TB Screening)',
+        'Pap Smear / Cervical Cytology'
+      ];
+
+      const allStandardItems = [...hemList, ...microList, ...chemList, ...seroList, ...imgList];
+      const customOrders = allOrderedNames.filter(o => {
+        return !allStandardItems.some(s => s.toLowerCase() === o.toLowerCase() || s.toLowerCase().includes(o.toLowerCase()) || o.toLowerCase().includes(s.toLowerCase()));
+      });
+    %>
+
+    <div class="section-title">Hematology, Coagulation & Clinical Microscopy</div>
+    <div class="test-grid">
+      <% [...hemList, ...microList].forEach(testName => {
+           const isChecked = isTestOrdered(testName);
+      %>
+        <div class="test-item">
+          <span class="checkbox-box <%= isChecked ? 'checked-box' : '' %>"><%= isChecked ? '✓' : '' %></span>
+          <span><%= testName %></span>
+        </div>
+      <% }) %>
+    </div>
+
+    <div class="section-title">Clinical Chemistry & Metabolic Profile</div>
+    <div class="test-grid">
+      <% chemList.forEach(testName => {
+           const isChecked = isTestOrdered(testName);
+      %>
+        <div class="test-item">
+          <span class="checkbox-box <%= isChecked ? 'checked-box' : '' %>"><%= isChecked ? '✓' : '' %></span>
+          <span><%= testName %></span>
+        </div>
+      <% }) %>
+    </div>
+
+    <div class="section-title">Thyroid, Serology & Immunology</div>
+    <div class="test-grid">
+      <% seroList.forEach(testName => {
+           const isChecked = isTestOrdered(testName);
+      %>
+        <div class="test-item">
+          <span class="checkbox-box <%= isChecked ? 'checked-box' : '' %>"><%= isChecked ? '✓' : '' %></span>
+          <span><%= testName %></span>
+        </div>
+      <% }) %>
+    </div>
+
+    <div class="section-title">Diagnostic Imaging, Cardiovascular & Special Procedures</div>
+    <div class="test-grid">
+      <% imgList.forEach(testName => {
+           const isChecked = isTestOrdered(testName);
+      %>
+        <div class="test-item">
+          <span class="checkbox-box <%= isChecked ? 'checked-box' : '' %>"><%= isChecked ? '✓' : '' %></span>
+          <span><%= testName %></span>
+        </div>
+      <% }) %>
+    </div>
+
+    <% if (customOrders.length > 0) { %>
+      <div class="section-title" style="color: #0284c7; border-bottom-color: #bae6fd;">Other Requested Diagnostic Procedures & Custom Orders</div>
+      <div class="test-grid">
+        <% customOrders.forEach(testName => { %>
+          <div class="test-item" style="font-weight: 700; color: #0284c7;">
+            <span class="checkbox-box checked-box">✓</span>
+            <span><%= testName %></span>
+          </div>
+        <% }) %>
+      </div>
+    <% } %>
+
+    <% if (c.treatmentPlan || c.followUpNotes) { %>
+      <div style="margin-top: 14px; padding: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 0.85em;">
+        <strong>Clinical Instructions:</strong> <%= c.treatmentPlan || c.followUpNotes %>
+      </div>
+    <% } %>
+
+    <div class="signature-section">
+      <div style="font-size: 0.8em; color: #64748b;">
+        * Please present this request form at the laboratory reception.<br>
+        * Fasting requirements: 10-12 hours for FBS and Lipid Profile.
+      </div>
+      <div class="sig-box">
+        <div class="sig-line"></div>
+        <div style="font-weight: 700; font-size: 0.95em; color: #0f172a;"><%= c.doctorName || 'Attending Physician' %><%= (c.doctorName && (c.doctorName.includes('M.D.') || c.doctorName.includes('MD'))) ? '' : ', M.D.' %></div>
+        <div style="font-size: 0.82em; color: #475569;">PRC License No.: <%= c.doctorLicenseNumber || '________________' %></div>
+        <div style="font-size: 0.78em; color: #64748b; margin-top: 2px; font-weight: 600;"><%= doctorDesignation || c.doctorDesignation || 'Attending Physician' %></div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

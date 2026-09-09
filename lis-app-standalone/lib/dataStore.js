@@ -95,6 +95,7 @@ class DataStore {
       qc_controls: this.db.getQcControls ? this.db.getQcControls() : [],
       qc_entries: this.db.getQcEntries ? this.db.getQcEntries() : [],
       neqas_records: this.db.getNeqasRecords ? this.db.getNeqasRecords() : [],
+      consultations: this.db.getConsultations ? this.db.getConsultations() : [],
       settings: readData.settings || {}
     };
   }
@@ -106,6 +107,7 @@ class DataStore {
     if (name === 'users') return this.db.getUsers();
     if (name === 'templates') return this.db.getTemplates();
     if (name === 'counters') return this.db.getCounters();
+    if (name === 'consultations') return this.db.getConsultations ? this.db.getConsultations() : [];
     if (name === 'inventory') return this.db.getInventory ? this.db.getInventory() : [];
     if (name === 'inventory_batches') return this.db.getAllInventoryBatches ? this.db.getAllInventoryBatches() : [];
     if (name === 'inventory_transactions') return this.db.getAllInventoryTransactions ? this.db.getAllInventoryTransactions() : (this.db.getInventoryTransactions ? this.db.getInventoryTransactions() : []);
@@ -219,6 +221,18 @@ class DataStore {
         }
       }
       items.forEach(it => this.db.saveNeqasRecord && this.db.saveNeqasRecord(it));
+    }
+    else if (name === 'consultations' && Array.isArray(items)) {
+      if (opts && opts.replace && this.db.getConsultations) {
+        const incomingIds = new Set(items.map(i => i && (i.id || i._id)).filter(Boolean));
+        const current = this.db.getConsultations() || [];
+        for (const it of current) {
+          if (it && it.id && !incomingIds.has(it.id) && this.db.deleteConsultation) {
+            this.db.deleteConsultation(it.id);
+          }
+        }
+      }
+      items.forEach(it => this.db.saveConsultation && this.db.saveConsultation(it));
     }
   }
 

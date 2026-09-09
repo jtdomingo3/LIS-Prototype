@@ -12,6 +12,7 @@ const { requireAuth, canAccessPatient } = require('../middleware/auth');
 const { logReportError } = require('../lib/reportLogger');
 const reportGenerator = require('../lib/reportGenerator');
 const { getResultTemplate } = require('../lib/templateResolver');
+const { sanitizeTestSignatures } = require('../lib/signatureResolver');
 
 // user reports directory (pre-generated PDFs written here)
 const userReportsDir = reportGenerator.reportsDir;
@@ -84,7 +85,7 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
     // Find the most recent completed/released test and redirect to its preview
     const allTests = await Test.find({});
     const completedTests = Array.isArray(allTests)
-      ? allTests.filter(t => t && (t.status === 'Completed' || t.status === 'Released'))
+      ? allTests.filter(t => t && (t.status === 'Completed' || t.status === 'Released' || t.status === 'Checked'))
       : [];
     completedTests.sort((a, b) => new Date(b.testDate || b.createdAt) - new Date(a.testDate || a.createdAt));
 
@@ -115,15 +116,19 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
 // GET /reports/preview/:testId - Preview report
 router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) => {
   try {
-    const test = await Test.findById(req.params.testId);
+    let test = await Test.findById(req.params.testId);
+    if (!test) {
+      test = await Test.findOne({ testId: req.params.testId });
+    }
 
     if (!test) {
-      req.flash('error_msg', 'Test not found');
+      req.flash('error_msg', 'Test record not found');
       return res.redirect('/reports');
     }
 
-    if (!(test.status === 'Completed' || test.status === 'Released')) {
-      req.flash('error_msg', 'Report can only be generated for completed or released tests');
+    const hasResults = test.results && (typeof test.results === 'object' ? Object.keys(test.results).length > 0 : String(test.results).trim().length > 0);
+    if (!(test.status === 'Completed' || test.status === 'Released' || test.status === 'Checked' || hasResults)) {
+      req.flash('error_msg', 'Report preview can only be generated for tests with recorded findings');
       return res.redirect('/reports');
     }
 
@@ -146,12 +151,13 @@ router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) =
     if ((!populatedTest.performedBy || !populatedTest.performedBy.name) && populatedTest.results && populatedTest.results.performedByName) {
       populatedTest.performedBy = { name: populatedTest.results.performedByName, license: populatedTest.results.performedByLicense || null };
     }
+    sanitizeTestSignatures(populatedTest);
 
     // Build navigation list — lightweight: read patient names from a single
     // in-memory scan of the patients array, NOT one-by-one async lookups.
     const allTests = await Test.find({});
     const completedSorted = Array.isArray(allTests)
-      ? allTests.filter(t => t && (t.status === 'Completed' || t.status === 'Released'))
+      ? allTests.filter(t => t && (t.status === 'Completed' || t.status === 'Released' || t.status === 'Checked'))
       : [];
     completedSorted.sort((a, b) => new Date(b.testDate || b.createdAt) - new Date(a.testDate || a.createdAt));
 
@@ -251,7 +257,7 @@ router.get('/result/:testId', requireAuth, canAccessPatient, async (req, res) =>
       return res.redirect('/reports');
     }
 
-    if (!(test.status === 'Completed' || test.status === 'Released')) {
+    if (!(test.status === 'Completed' || test.status === 'Released' || test.status === 'Checked')) {
       req.flash('error_msg', 'Result template can only be viewed for completed or released tests');
       return res.redirect('/reports');
     }
@@ -267,6 +273,7 @@ router.get('/result/:testId', requireAuth, canAccessPatient, async (req, res) =>
       requestedBy: isRequestedByMedical ? { name: requestedBy.name, role: requestedBy.role } : null,
       performedBy: performedBy ? { name: performedBy.name } : null
     };
+    sanitizeTestSignatures(populatedTest);
 
     const template = getResultTemplate(populatedTest);
     const dbTemplate = await Template.findOne({ testType: populatedTest.testType, isActive: true }) || await Template.findOne({ testType: populatedTest.template, isActive: true });
@@ -302,7 +309,7 @@ router.get('/pdf/:testId', requireAuth, canAccessPatient, async (req, res) => {
       return res.redirect('/reports');
     }
 
-    if (!(test.status === 'Completed' || test.status === 'Released')) {
+    if (!(test.status === 'Completed' || test.status === 'Released' || test.status === 'Checked')) {
       req.flash('error_msg', 'PDF can only be generated for completed or released tests');
       return res.redirect('/reports');
     }
@@ -350,7 +357,7 @@ router.get('/print/:testId', requireAuth, canAccessPatient, async (req, res) => 
       return res.redirect('/reports');
     }
 
-    if (test.status !== 'Completed') {
+    if (!(test.status === 'Completed' || test.status === 'Released' || test.status === 'Checked')) {
       req.flash('error_msg', 'Report can only be printed for completed tests');
       return res.redirect('/reports');
     }
@@ -366,6 +373,7 @@ router.get('/print/:testId', requireAuth, canAccessPatient, async (req, res) => 
       requestedBy: isRequestedByMedical ? { name: requestedBy.name, role: requestedBy.role } : null,
       performedBy: performedBy ? { name: performedBy.name } : null
     };
+    sanitizeTestSignatures(populatedTest);
 
     // Render the specific result template into HTML, then render the print wrapper
     const template = getResultTemplate(populatedTest);
@@ -375,36 +383,26 @@ router.get('/print/:testId', requireAuth, canAccessPatient, async (req, res) => 
     // Render the result template without layout to get its HTML
     const inlineLogo = getInlineLogo();
     res.render(viewPath, { title: 'Result Print', test: populatedTest, dbTemplate, layout: false, inlineLogo }, (err, renderedHtml) => {
-      if (testType) {
-        const ttLower = String(testType).toLowerCase().trim();
-        if (/^blood\s*chemistry$/.test(ttLower)) {
-          // For Blood Chemistry, match by testId prefix (BC) primarily,
-          // with a fallback to testType/template name containing blood/chemistry.
-          testsRaw = (testsRaw || []).filter(t => {
-            const tid = String(t.testId || '').toUpperCase();
-            const candidate = String(t.testType || t.template || '').toLowerCase().trim();
-            if (tid && tid.startsWith('BC')) return true;
-            if (candidate.indexOf('blood') !== -1 && candidate.indexOf('chemistry') !== -1) return true;
-            if (candidate.indexOf('blood-chemistry') !== -1) return true;
-            return false;
-          });
-        } else {
-          const ttLowerLoose = ttLower;
-          testsRaw = (testsRaw || []).filter(t => {
-            const candidate = String(t.testType || t.template || '').toLowerCase().trim();
-            return candidate.includes(ttLowerLoose) || ttLowerLoose.includes(candidate);
-          });
+        if (err) {
+          console.error('Error rendering result template for print:', err);
+          return res.status(500).send('Error preparing print preview');
         }
-      }
 
-      return res.render('reports/print', {
-                title: 'Print Report',
-                test: populatedTest,
-                currentDate: new Date().toLocaleDateString(),
-                renderedResultHtml: renderedHtml,
-                layout: 'print',
-               suppressPrint: !!req.query.suppressPrint
-            });
+        // Now wrap with the print layout
+        res.render('reports/print', {
+          title: 'Print Report',
+          test: populatedTest,
+          currentDate: new Date().toLocaleDateString(),
+          renderedResultHtml: renderedHtml,
+          layout: 'print',
+          suppressPrint: !!req.query.suppressPrint
+        }, (err2, finalHtml) => {
+          if (err2) {
+            console.error('Error rendering print wrapper:', err2);
+            return res.status(500).send('Error preparing print preview');
+          }
+          res.send(finalHtml);
+        });
     });
 
   } catch (error) {
@@ -432,7 +430,7 @@ router.all('/print-multiple', requireAuth, canAccessPatient, async (req, res) =>
     // does not support Mongo-style queries with $in, so fetch each id
     // explicitly and preserve the requested order.
     const fetched = await Promise.all(ids.map(id => Test.findById(id)));
-    const ordered = (fetched || []).filter(Boolean).filter(t => t && (t.status === 'Completed' || t.status === 'Released'));
+    const ordered = (fetched || []).filter(Boolean).filter(t => t && (t.status === 'Completed' || t.status === 'Released' || t.status === 'Checked'));
 
     if (!ordered.length) {
       req.flash('error_msg', 'No printable tests found for provided ids');
@@ -452,6 +450,7 @@ router.all('/print-multiple', requireAuth, canAccessPatient, async (req, res) =>
         requestedBy: isRequestedByMedical ? { name: requestedBy.name, role: requestedBy.role } : null,
         performedBy: performedBy ? { name: performedBy.name } : null
       };
+      sanitizeTestSignatures(populatedTest);
 
       const template = getResultTemplate(populatedTest);
       const dbTemplate = await Template.findOne({ testType: populatedTest.testType, isActive: true }) || await Template.findOne({ testType: populatedTest.template, isActive: true });

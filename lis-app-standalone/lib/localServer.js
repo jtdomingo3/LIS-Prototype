@@ -211,6 +211,9 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
         if (!req.body.id && (reqPath === '/equipment' || /^\/equipment\//.test(reqPath)) && req.method === 'POST') {
           try { req.body.id = require('crypto').randomUUID(); } catch (e) { req.body.id = 'eq-' + Date.now(); }
         }
+        if (!req.body.id && reqPath.startsWith('/consultations') && req.method === 'POST') {
+          try { req.body.id = require('crypto').randomUUID(); } catch (e) { req.body.id = 'con-' + Date.now(); }
+        }
         if (!req.body.client_id) {
           try { req.body.client_id = require('crypto').randomUUID(); } catch (e) { req.body.client_id = 'cli-' + Date.now(); }
         }
@@ -396,7 +399,8 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
           equipment_logs: dataStore.getCollection('equipment_logs') || [],
           qc_controls: dataStore.getCollection('qc_controls') || [],
           qc_entries: dataStore.getCollection('qc_entries') || [],
-          neqas_records: dataStore.getCollection('neqas_records') || []
+          neqas_records: dataStore.getCollection('neqas_records') || [],
+          consultations: dataStore.getCollection('consultations') || (typeof global.db.getConsultations === 'function' ? global.db.getConsultations() : []) || []
         };
         return res.json(out);
       } catch (e) { return res.status(500).send('datastore-error'); }
@@ -410,6 +414,7 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     { prefix: '/dashboard', perm: 'dashboard' },
     { prefix: '/patients', perm: 'patients' },
     { prefix: '/reception', perm: 'reception' },
+    { prefix: '/consultations', perm: 'reception' },
     { prefix: '/tests', perm: 'tests' },
     { prefix: '/reports', perm: 'reports' },
     { prefix: '/templates', perm: 'templates' },
@@ -500,6 +505,11 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     const receptionRoutes = require('../routes/reception');
     app.use('/reception', receptionRoutes);
   } catch (e) { console.error('[LocalServer] failed to load reception routes:', e && e.message); }
+
+  try {
+    const consultationRoutes = require('../routes/consultations');
+    app.use('/consultations', consultationRoutes);
+  } catch (e) { console.error('[LocalServer] failed to load consultation routes:', e && e.message); }
 
   try {
     const testRoutes = require('../routes/tests');
