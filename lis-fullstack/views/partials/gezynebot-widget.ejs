@@ -44,15 +44,14 @@
             </div>
         </div>
 
-        <!-- Quick Suggestions Chips -->
+        <!-- Quick Suggestions Chips (Top 6 Operational & Medical Queries) -->
         <div class="gezynebot-chips">
-            <button type="button" class="gezynebot-chip" data-query="How do I use the Equipment & QC module, track calibrations, and evaluate Westgard rules?">⚙️ Equipment & QC</button>
-            <button type="button" class="gezynebot-chip" data-query="How does the NEQAS module work with EAMC Drug Testing PT surveys?">🏛️ NEQAS & EAMC</button>
-            <button type="button" class="gezynebot-chip" data-query="How do I track reagent lots, open-vial stability, and deductions in Inventory?">📦 Reagent Inventory</button>
-            <button type="button" class="gezynebot-chip" data-query="What is the phlebotomy order of draw for blood collection tubes?">🧪 Order of Draw</button>
-            <button type="button" class="gezynebot-chip" data-query="What are the patient fasting guidelines for Lipid Profile and FBS?">🩸 Fasting Rules</button>
-            <button type="button" class="gezynebot-chip" data-query="What are the laboratory critical panic values and reporting protocol?">⚠️ Panic Values</button>
-            <button type="button" class="gezynebot-chip" data-query="How do I capture and import chemistry results from Analyser.MDB in the LIS?">🔬 Import Analyzer</button>
+            <button type="button" class="gezynebot-chip" onclick="handleWidgetChipClick(this)" data-query="How do I use the Equipment &amp; QC module, track calibrations, and evaluate Westgard rules?">⚙️ Equipment &amp; QC</button>
+            <button type="button" class="gezynebot-chip" onclick="handleWidgetChipClick(this)" data-query="How does the NEQAS module work with EAMC Drug Testing PT surveys?">🏛️ NEQAS &amp; EAMC</button>
+            <button type="button" class="gezynebot-chip" onclick="handleWidgetChipClick(this)" data-query="How do I track reagent lots, open-vial stability, and deductions in Inventory?">📦 Reagent Inventory</button>
+            <button type="button" class="gezynebot-chip" onclick="handleWidgetChipClick(this)" data-query="What is the phlebotomy order of draw for blood collection tubes?">🧪 Order of Draw</button>
+            <button type="button" class="gezynebot-chip" onclick="handleWidgetChipClick(this)" data-query="What are the patient fasting guidelines for Lipid Profile and FBS?">🩸 Fasting Rules</button>
+            <button type="button" class="gezynebot-chip" onclick="handleWidgetChipClick(this)" data-query="What are the laboratory critical panic values and reporting protocol?">⚠️ Panic Values</button>
         </div>
 
         <!-- Message Stream -->
@@ -280,15 +279,17 @@
 
 .gezynebot-chip {
     background: #ffffff;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #cbd5e1;
     border-radius: 20px;
-    padding: 5px 11px;
+    padding: 5px 12px;
     font-size: 0.78em;
-    font-weight: 500;
-    color: #334155;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    font-weight: 600;
+    color: #1e293b;
+    cursor: pointer !important;
+    user-select: none;
+    transition: all 0.15s ease;
     flex-shrink: 0;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 .gezynebot-chip:hover {
@@ -296,6 +297,15 @@
     border-color: #10b981;
     color: #065f46;
     transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(16,185,129,0.15);
+}
+
+.gezynebot-chip:active,
+.gezynebot-chip.active-pressed {
+    transform: scale(0.96) !important;
+    background: #d1fae5 !important;
+    border-color: #059669 !important;
+    color: #064e3b !important;
 }
 
 /* Messages */
@@ -530,6 +540,32 @@
 </style>
 
 <script>
+// Global handler for floating widget chips (direct inline execution & visual feedback)
+window.handleWidgetChipClick = function(btn) {
+    if (!btn) return;
+    const query = btn.getAttribute('data-query') || (btn.dataset && btn.dataset.query);
+    if (!query) return;
+
+    btn.classList.add('active-pressed');
+    setTimeout(() => btn.classList.remove('active-pressed'), 350);
+
+    const input = document.getElementById('gezynebot-input');
+    if (input) {
+        input.value = query;
+        input.style.height = '42px';
+        const h = Math.max(42, Math.min(input.scrollHeight, 100));
+        input.style.height = h + 'px';
+        input.focus();
+    }
+
+    if (typeof window.executeWidgetChatSubmit === 'function') {
+        window.executeWidgetChatSubmit(query);
+    } else {
+        const sendBtn = document.getElementById('gezynebot-send-btn');
+        if (sendBtn) sendBtn.click();
+    }
+};
+
 (function() {
     const launcher = document.getElementById('gezynebot-launcher');
     const panel = document.getElementById('gezynebot-panel');
@@ -542,6 +578,11 @@
 
     let currentConversationId = localStorage.getItem('gezynebot_active_conv') || null;
     let isSending = false;
+
+    // Bridge global caller
+    window.executeWidgetChatSubmit = function(overrideText) {
+        sendMessage(overrideText);
+    };
 
     // Toggle panel open/close
     function togglePanel() {
@@ -584,16 +625,13 @@
         });
     }
 
-    if (sendBtn) sendBtn.addEventListener('click', sendMessage);
+    if (sendBtn) sendBtn.addEventListener('click', () => sendMessage());
 
-    // Quick chips
+    // Quick chips programmatic listener
     chips.forEach(chip => {
-        chip.addEventListener('click', () => {
-            const query = chip.dataset.query;
-            if (query) {
-                input.value = query;
-                sendMessage();
-            }
+        chip.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.handleWidgetChipClick(chip);
         });
     });
 
@@ -742,15 +780,22 @@
         return msgDiv;
     }
 
-    // Send Message function
-    async function sendMessage() {
-        const text = (input.value || '').trim();
-        if (!text || isSending) return;
+    // Send Message function (supports direct string or input)
+    async function sendMessage(overrideText) {
+        const text = (overrideText || (input ? input.value : '') || '').trim();
+        if (!text) return;
+
+        if (isSending) {
+            console.warn('[GezyneBot Widget] Previous query active, resetting');
+            isSending = false;
+        }
 
         isSending = true;
-        sendBtn.disabled = true;
-        input.value = '';
-        input.style.height = '42px';
+        if (sendBtn) sendBtn.disabled = true;
+        if (input) {
+            input.value = '';
+            input.style.height = '42px';
+        }
 
         // Add user message
         appendMessage('user', text);

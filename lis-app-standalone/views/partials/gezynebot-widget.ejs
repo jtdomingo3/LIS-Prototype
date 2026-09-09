@@ -1,4 +1,4 @@
-<!-- GezyneBot Floating Chatbot Widget (Lower Right - Green Edition) -->
+<!-- GezyneBot Floating Chatbot Widget (Lower Right) -->
 <% if (typeof sessionUser !== 'undefined' && sessionUser) { %>
 <div id="gezynebot-container" class="gezynebot-container">
     <!-- Floating Launcher Button -->
@@ -8,8 +8,8 @@
                 <path d="M12 2C6.48 2 2 6.48 2 12C2 13.85 2.5 15.55 3.39 17L2 22L7.25 20.65C8.65 21.5 10.28 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM8.5 10C9.33 10 10 9.33 10 8.5C10 7.67 9.33 7 8.5 7C7.67 7 7 7.67 7 8.5C7 9.33 7.67 10 8.5 10ZM15.5 10C16.33 10 17 9.33 17 8.5C17 7.67 16.33 7 15.5 7C14.67 7 14 7.67 14 8.5C14 9.33 14.67 10 15.5 10ZM12 17.5C9.67 17.5 7.69 16.04 6.89 14H17.11C16.31 16.04 14.33 17.5 12 17.5Z" fill="currentColor"/>
             </svg>
         </span>
-        <span class="gezynebot-badge-pulse" id="gezynebot-badge"></span>
-        <span class="gezynebot-tooltip" id="gezynebot-tooltip-text">GezyneBot</span>
+        <span class="gezynebot-badge-pulse"></span>
+        <span class="gezynebot-tooltip">GezyneBot</span>
     </button>
 
     <!-- Floating Chat Window Panel -->
@@ -19,11 +19,11 @@
             <div class="gezynebot-header-left">
                 <div class="gezynebot-avatar">
                     <span>🤖</span>
-                    <span class="gezynebot-online-dot" id="gezynebot-online-dot" title="Online"></span>
+                    <span class="gezynebot-online-dot" title="Online"></span>
                 </div>
                 <div>
                     <div class="gezynebot-title">GezyneBot</div>
-                    <div class="gezynebot-subtitle" id="gezynebot-status-text">LIS & Clinical Laboratory Assistant</div>
+                    <div class="gezynebot-subtitle">LIS & Clinical Laboratory Assistant</div>
                 </div>
             </div>
             <div class="gezynebot-header-actions">
@@ -44,21 +44,14 @@
             </div>
         </div>
 
-        <!-- Offline Notice Alert (Shown when disconnected) -->
-        <div id="gezynebot-offline-alert" style="display:none; background:#fffbeb; border-bottom:1px solid #fef3c7; color:#b45309; padding:8px 14px; font-size:0.8em; align-items:center; gap:8px;">
-            <span>⚠️</span>
-            <span><strong>Offline:</strong> Central LIS server connection required to chat.</span>
-        </div>
-
-        <!-- Quick Suggestions Chips -->
+        <!-- Quick Suggestions Chips (Top 6 Operational & Medical Queries) -->
         <div class="gezynebot-chips">
-            <button type="button" class="gezynebot-chip" data-query="How do I use the Equipment & QC module, track calibrations, and evaluate Westgard rules?">⚙️ Equipment & QC</button>
-            <button type="button" class="gezynebot-chip" data-query="How does the NEQAS module work with EAMC Drug Testing PT surveys?">🏛️ NEQAS & EAMC</button>
-            <button type="button" class="gezynebot-chip" data-query="How do I track reagent lots, open-vial stability, and deductions in Inventory?">📦 Reagent Inventory</button>
-            <button type="button" class="gezynebot-chip" data-query="What is the phlebotomy order of draw for blood collection tubes?">🧪 Order of Draw</button>
-            <button type="button" class="gezynebot-chip" data-query="What are the patient fasting guidelines for Lipid Profile and FBS?">🩸 Fasting Rules</button>
-            <button type="button" class="gezynebot-chip" data-query="What are the laboratory critical panic values and reporting protocol?">⚠️ Panic Values</button>
-            <button type="button" class="gezynebot-chip" data-query="How do I capture and import chemistry results from Analyser.MDB in the LIS?">🔬 Import Analyzer</button>
+            <button type="button" class="gezynebot-chip" onclick="handleWidgetChipClick(this)" data-query="How do I use the Equipment &amp; QC module, track calibrations, and evaluate Westgard rules?">⚙️ Equipment &amp; QC</button>
+            <button type="button" class="gezynebot-chip" onclick="handleWidgetChipClick(this)" data-query="How does the NEQAS module work with EAMC Drug Testing PT surveys?">🏛️ NEQAS &amp; EAMC</button>
+            <button type="button" class="gezynebot-chip" onclick="handleWidgetChipClick(this)" data-query="How do I track reagent lots, open-vial stability, and deductions in Inventory?">📦 Reagent Inventory</button>
+            <button type="button" class="gezynebot-chip" onclick="handleWidgetChipClick(this)" data-query="What is the phlebotomy order of draw for blood collection tubes?">🧪 Order of Draw</button>
+            <button type="button" class="gezynebot-chip" onclick="handleWidgetChipClick(this)" data-query="What are the patient fasting guidelines for Lipid Profile and FBS?">🩸 Fasting Rules</button>
+            <button type="button" class="gezynebot-chip" onclick="handleWidgetChipClick(this)" data-query="What are the laboratory critical panic values and reporting protocol?">⚠️ Panic Values</button>
         </div>
 
         <!-- Message Stream -->
@@ -132,11 +125,6 @@
     background: #34d399;
     border: 2px solid #ffffff;
     animation: gezynebot-pulse 2s infinite;
-}
-
-.gezynebot-badge-pulse.offline {
-    background: #ef4444;
-    animation: none;
 }
 
 @keyframes gezynebot-pulse {
@@ -235,10 +223,6 @@
     border: 2px solid #09090b;
 }
 
-.gezynebot-online-dot.offline {
-    background: #ef4444;
-}
-
 .gezynebot-title {
     font-size: 1.05em;
     font-weight: 700;
@@ -295,15 +279,17 @@
 
 .gezynebot-chip {
     background: #ffffff;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #cbd5e1;
     border-radius: 20px;
-    padding: 5px 11px;
+    padding: 5px 12px;
     font-size: 0.78em;
-    font-weight: 500;
-    color: #334155;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    font-weight: 600;
+    color: #1e293b;
+    cursor: pointer !important;
+    user-select: none;
+    transition: all 0.15s ease;
     flex-shrink: 0;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 .gezynebot-chip:hover {
@@ -311,6 +297,15 @@
     border-color: #10b981;
     color: #065f46;
     transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(16,185,129,0.15);
+}
+
+.gezynebot-chip:active,
+.gezynebot-chip.active-pressed {
+    transform: scale(0.96) !important;
+    background: #d1fae5 !important;
+    border-color: #059669 !important;
+    color: #064e3b !important;
 }
 
 /* Messages */
@@ -545,13 +540,34 @@
 </style>
 
 <script>
+// Global handler for floating widget chips (direct inline execution & visual feedback)
+window.handleWidgetChipClick = function(btn) {
+    if (!btn) return;
+    const query = btn.getAttribute('data-query') || (btn.dataset && btn.dataset.query);
+    if (!query) return;
+
+    btn.classList.add('active-pressed');
+    setTimeout(() => btn.classList.remove('active-pressed'), 350);
+
+    const input = document.getElementById('gezynebot-input');
+    if (input) {
+        input.value = query;
+        input.style.height = '42px';
+        const h = Math.max(42, Math.min(input.scrollHeight, 100));
+        input.style.height = h + 'px';
+        input.focus();
+    }
+
+    if (typeof window.executeWidgetChatSubmit === 'function') {
+        window.executeWidgetChatSubmit(query);
+    } else {
+        const sendBtn = document.getElementById('gezynebot-send-btn');
+        if (sendBtn) sendBtn.click();
+    }
+};
+
 (function() {
     const launcher = document.getElementById('gezynebot-launcher');
-    const badge = document.getElementById('gezynebot-badge');
-    const onlineDot = document.getElementById('gezynebot-online-dot');
-    const tooltipText = document.getElementById('gezynebot-tooltip-text');
-    const statusText = document.getElementById('gezynebot-status-text');
-    const offlineAlert = document.getElementById('gezynebot-offline-alert');
     const panel = document.getElementById('gezynebot-panel');
     const closeBtn = document.getElementById('gezynebot-close-btn');
     const maxBtn = document.getElementById('gezynebot-maximize-btn');
@@ -562,57 +578,11 @@
 
     let currentConversationId = localStorage.getItem('gezynebot_active_conv') || null;
     let isSending = false;
-    let isOnline = false;
 
-    // Check connectivity status
-    async function updateConnectivity() {
-        let serverOnline = false;
-        try {
-            if (window.lisApp && typeof window.lisApp.getStatus === 'function') {
-                const s = await window.lisApp.getStatus();
-                if (s && s.online) serverOnline = true;
-            }
-            if (!serverOnline) {
-                const res = await fetch('/chatbot/api/status');
-                const data = await res.json();
-                if (data && data.online) serverOnline = true;
-            }
-        } catch (_) {
-            serverOnline = false;
-        }
-
-        isOnline = serverOnline;
-        if (isOnline) {
-            if (badge) badge.className = 'gezynebot-badge-pulse';
-            if (onlineDot) onlineDot.className = 'gezynebot-online-dot';
-            if (tooltipText) tooltipText.textContent = 'GezyneBot (Online)';
-            if (statusText) statusText.textContent = 'LIS & Clinical Laboratory Assistant';
-            if (offlineAlert) offlineAlert.style.display = 'none';
-            if (input) {
-                input.disabled = false;
-                input.placeholder = 'Ask GezyneBot anything...';
-            }
-            if (sendBtn) sendBtn.disabled = isSending;
-        } else {
-            if (badge) badge.className = 'gezynebot-badge-pulse offline';
-            if (onlineDot) onlineDot.className = 'gezynebot-online-dot offline';
-            if (tooltipText) tooltipText.textContent = 'GezyneBot (Offline - Server Required)';
-            if (statusText) statusText.textContent = 'Offline (Central Server Required)';
-            if (offlineAlert) offlineAlert.style.display = 'flex';
-            if (input) {
-                input.disabled = true;
-                input.placeholder = 'Offline: Central LIS server connection required...';
-            }
-            if (sendBtn) sendBtn.disabled = true;
-        }
-    }
-
-    if (window.lisApp && typeof window.lisApp.onNetworkStatus === 'function') {
-        window.lisApp.onNetworkStatus(() => updateConnectivity());
-    }
-
-    updateConnectivity();
-    setInterval(updateConnectivity, 8000);
+    // Bridge global caller
+    window.executeWidgetChatSubmit = function(overrideText) {
+        sendMessage(overrideText);
+    };
 
     // Toggle panel open/close
     function togglePanel() {
@@ -621,8 +591,7 @@
             panel.classList.remove('active');
         } else {
             panel.classList.add('active');
-            updateConnectivity();
-            if (isOnline) input.focus();
+            input.focus();
             scrollToBottom();
         }
     }
@@ -656,20 +625,13 @@
         });
     }
 
-    if (sendBtn) sendBtn.addEventListener('click', sendMessage);
+    if (sendBtn) sendBtn.addEventListener('click', () => sendMessage());
 
-    // Quick chips
+    // Quick chips programmatic listener
     chips.forEach(chip => {
-        chip.addEventListener('click', () => {
-            if (!isOnline) {
-                alert('GezyneBot is disabled while offline. Please connect to the central LIS server.');
-                return;
-            }
-            const query = chip.dataset.query;
-            if (query) {
-                input.value = query;
-                sendMessage();
-            }
+        chip.addEventListener('click', (e) => {
+            e.preventDefault();
+            window.handleWidgetChipClick(chip);
         });
     });
 
@@ -677,7 +639,7 @@
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
 
-    // Comprehensive markdown parser
+    // Comprehensive markdown to clean HTML parser
     function formatMarkdown(text) {
         if (!text) return '';
         let escaped = text
@@ -685,13 +647,16 @@
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;');
 
+        // Inline code
         escaped = escaped.replace(/`([^`]+)`/g, '<code>$1</code>');
+        // Bold
         escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        // Italic
         escaped = escaped.replace(/\*(.*?)\*/g, '<em>$1</em>');
 
         const lines = escaped.split('\n');
         let html = '';
-        let inList = null;
+        let inList = null; // 'ul' or 'ol'
         let inTable = false;
 
         for (let i = 0; i < lines.length; i++) {
@@ -704,9 +669,13 @@
                 continue;
             }
 
+            // Table row: | cell | cell |
             if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
                 const cells = trimmed.split('|').slice(1, -1).map(c => c.trim());
-                if (cells.every(c => /^:?-+:?$/.test(c))) continue;
+                // Skip separator row |---|---|
+                if (cells.every(c => /^:?-+:?$/.test(c))) {
+                    continue;
+                }
                 if (!inTable) {
                     if (inList) { html += inList === 'ul' ? '</ul>' : '</ol>'; inList = null; }
                     inTable = true;
@@ -720,6 +689,7 @@
                 inTable = false;
             }
 
+            // Headings
             if (trimmed.startsWith('#### ')) {
                 if (inList) { html += inList === 'ul' ? '</ul>' : '</ol>'; inList = null; }
                 html += '<h5>' + trimmed.substring(5) + '</h5>';
@@ -741,18 +711,21 @@
                 continue;
             }
 
+            // Blockquote
             if (trimmed.startsWith('> ')) {
                 if (inList) { html += inList === 'ul' ? '</ul>' : '</ol>'; inList = null; }
                 html += '<blockquote>' + trimmed.substring(2) + '</blockquote>';
                 continue;
             }
 
+            // Horizontal rule
             if (/^(\-{3,}|\*{3,}|_{3,})$/.test(trimmed)) {
                 if (inList) { html += inList === 'ul' ? '</ul>' : '</ol>'; inList = null; }
                 html += '<hr>';
                 continue;
             }
 
+            // Unordered list item
             if (/^[-*+]\s+/.test(trimmed)) {
                 if (inList !== 'ul') {
                     if (inList) html += inList === 'ul' ? '</ul>' : '</ol>';
@@ -763,6 +736,7 @@
                 continue;
             }
 
+            // Ordered list item
             if (/^\d+\.\s+/.test(trimmed)) {
                 if (inList !== 'ol') {
                     if (inList) html += inList === 'ul' ? '</ul>' : '</ol>';
@@ -773,6 +747,7 @@
                 continue;
             }
 
+            // Regular paragraph
             if (inList) { html += inList === 'ul' ? '</ul>' : '</ol>'; inList = null; }
             html += '<p>' + trimmed + '</p>';
         }
@@ -781,6 +756,7 @@
         if (inTable) html += '</tbody></table>';
         return html;
     }
+
 
     // Append Message to UI
     function appendMessage(role, text) {
@@ -804,23 +780,27 @@
         return msgDiv;
     }
 
-    // Send Message function
-    async function sendMessage() {
-        if (!isOnline) {
-            alert('GezyneBot requires connection to the central LIS server.');
-            return;
+    // Send Message function (supports direct string or input)
+    async function sendMessage(overrideText) {
+        const text = (overrideText || (input ? input.value : '') || '').trim();
+        if (!text) return;
+
+        if (isSending) {
+            console.warn('[GezyneBot Widget] Previous query active, resetting');
+            isSending = false;
         }
 
-        const text = (input.value || '').trim();
-        if (!text || isSending) return;
-
         isSending = true;
-        sendBtn.disabled = true;
-        input.value = '';
-        input.style.height = '42px';
+        if (sendBtn) sendBtn.disabled = true;
+        if (input) {
+            input.value = '';
+            input.style.height = '42px';
+        }
 
+        // Add user message
         appendMessage('user', text);
 
+        // Add typing indicator
         const typingDiv = document.createElement('div');
         typingDiv.className = 'gezynebot-msg gezynebot-msg-bot';
         typingDiv.innerHTML = `
@@ -834,7 +814,7 @@
         scrollToBottom();
 
         try {
-            const res = await fetch('/chatbot/api/query', {
+            const response = await fetch('/chatbot/api/query', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -843,29 +823,25 @@
                 })
             });
 
-            const data = await res.json();
+            const data = await response.json();
             typingDiv.remove();
 
-            if (data && data.offline) {
-                updateConnectivity();
-                appendMessage('bot', data.answer || 'GezyneBot is unavailable in offline mode.');
-            } else if (data && data.answer) {
+            if (data && data.success) {
                 appendMessage('bot', data.answer);
                 if (data.conversationId) {
                     currentConversationId = data.conversationId;
                     localStorage.setItem('gezynebot_active_conv', currentConversationId);
                 }
             } else {
-                appendMessage('bot', '⚠️ Sorry, an error occurred while querying GezyneBot.');
+                appendMessage('bot', data.answer || data.error || 'Sorry, I encountered an error processing your request.');
             }
         } catch (err) {
             typingDiv.remove();
-            appendMessage('bot', '⚠️ Failed to connect to server: ' + err.message);
-            updateConnectivity();
+            appendMessage('bot', 'Network error: could not contact the server.');
         } finally {
             isSending = false;
-            sendBtn.disabled = !isOnline;
-            if (isOnline) input.focus();
+            sendBtn.disabled = false;
+            input.focus();
         }
     }
 })();
