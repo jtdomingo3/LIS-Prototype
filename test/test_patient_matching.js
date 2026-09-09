@@ -3,9 +3,11 @@ const https = require('https');
 const http = require('http');
 
 // Login first
+const testAdminEmail = process.env.TEST_ADMIN_EMAIL || 'admin@lab.com';
+const testAdminPassword = process.env.TEST_ADMIN_PASSWORD || '';
 const loginData = JSON.stringify({
-  email: 'admin@lab.com',
-  password: 'admin123'
+  email: testAdminEmail,
+  password: testAdminPassword
 });
 
 const loginOptions = {

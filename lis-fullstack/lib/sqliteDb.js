@@ -1466,6 +1466,24 @@ function createBetterSqliteDb(dbPath, opts = {}) {
         return false;
       }
     },
+    getCustomNrls() {
+      try {
+        const row = sqlite.prepare("SELECT json FROM settings WHERE key = 'custom_nrls'").get();
+        return row && row.json ? JSON.parse(row.json) : [];
+      } catch (e) {
+        return [];
+      }
+    },
+    saveCustomNrls(list) {
+      try {
+        const json = JSON.stringify(list || []);
+        sqlite.prepare("INSERT OR REPLACE INTO settings (key, json) VALUES ('custom_nrls', ?)").run(json);
+        return true;
+      } catch (e) {
+        console.error('[sqliteDb] saveCustomNrls error:', e.message);
+        return false;
+      }
+    },
 
     close() { try { sqlite.close(); } catch (e) {} }
   };
@@ -2871,6 +2889,24 @@ function createSqlJsDb(SQL, dbPath) {
         persist();
         return true;
       } catch (e) { return false; }
+    },
+    getCustomNrls() {
+      try {
+        const rows = queryAll("SELECT json FROM settings WHERE key = 'custom_nrls'");
+        return rows[0] && rows[0].json ? JSON.parse(rows[0].json) : [];
+      } catch (e) {
+        return [];
+      }
+    },
+    saveCustomNrls(list) {
+      try {
+        const json = JSON.stringify(list || []);
+        queryRun("INSERT OR REPLACE INTO settings (key, json) VALUES ('custom_nrls', ?)", [json]);
+        persist();
+        return true;
+      } catch (e) {
+        return false;
+      }
     },
 
     close() {

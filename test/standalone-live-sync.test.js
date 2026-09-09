@@ -43,7 +43,13 @@ async function runLiveSyncTests() {
   try {
     // 2. Initial Full Download (Pull from Central Server)
     console.log('\n2. Testing Background Full Database Download (Pull)...');
-    engine.setCredentials('admin@lab.com', 'password123');
+    const testAdminEmail = process.env.TEST_ADMIN_EMAIL || 'admin@lab.com';
+    const testAdminPassword = process.env.TEST_ADMIN_PASSWORD || process.env.DEFAULT_ADMIN_PASSWORD;
+    if (testAdminPassword) {
+      engine.setCredentials(testAdminEmail, testAdminPassword);
+    } else {
+      engine.setAutoLoginEmail(testAdminEmail);
+    }
 
     const downloadResult = await engine.fullSync(null, { replace: true });
     assert.strictEqual(downloadResult.success, true, 'Full sync download should succeed');

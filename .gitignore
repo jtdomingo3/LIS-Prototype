@@ -43,4 +43,9 @@ lis-fullstack/lis-data.db-wal
 lis-fullstack/lis-data.db
 lis-fullstack/logs/print.log
 tools/security-audit/audit-report-latest.json
-lis-fullstack/.env
+# Environment variable files and secrets
+*.env
+**/.env
+**/.env.local
+**/.env.*.local
+!**/.env.example

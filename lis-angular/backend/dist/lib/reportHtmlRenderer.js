@@ -43,6 +43,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.SHARED_CSS = void 0;
 exports.renderReportHtml = renderReportHtml;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
@@ -141,7 +142,7 @@ function getSignatureDataUri(filename) {
     return '';
 }
 // ── shared CSS ─────────────────────────────────────────────────────────
-const SHARED_CSS = `
+exports.SHARED_CSS = `
 @page { size: Letter; margin: 0.25in; }
 body { margin:0; padding:0; box-sizing:border-box; font-family: 'Times New Roman', Times, serif; color:#000; font-size:12px; }
 *, *:before, *:after { box-sizing:inherit; }
@@ -188,8 +189,8 @@ body { margin:0; padding:0; box-sizing:border-box; font-family: 'Times New Roman
 }
 `;
 // ── header + patient info ──────────────────────────────────────────────
-function renderHeader(test, patient, baseUrl) {
-    const logo = getInlineLogo() || `${baseUrl}/assets/gezyne-logo.png`;
+function renderHeader(test, patient, baseUrl, inlineImages = true) {
+    const logo = inlineImages ? (getInlineLogo() || `${baseUrl}/assets/gezyne-logo.png`) : `${baseUrl}/assets/gezyne-logo.png`;
     const sex = esc(patient.gender || '');
     const dob = fmtDate(patient.date_of_birth);
     const age = calcAge(patient.date_of_birth, patient.age_manual);
@@ -247,12 +248,11 @@ function findSig(results, displayName) {
     }
     return null;
 }
-function renderSigBlock(name, license, role, results, baseUrl) {
+function renderSigBlock(name, license, role, results, baseUrl, inlineImages = true) {
     const sig = findSig(results, name);
     let sigImg = '';
     if (sig?.filename) {
-        const dataUri = getSignatureDataUri(sig.filename);
-        const src = dataUri || `${baseUrl}/assets/signature/${sig.filename}`;
+        const src = inlineImages ? (getSignatureDataUri(sig.filename) || `${baseUrl}/assets/signature/${sig.filename}`) : `${baseUrl}/assets/signature/${sig.filename}`;
         const p = sig.placement || { x: 0, y: -56, scale: 1.25 };
         sigImg = `<img src="${src}" class="signature-overlay" style="top:${p.y || -56}px; transform:translateX(-50%) scale(${p.scale || 1.25}); max-height:96px;" alt="signature">`;
     }
@@ -265,7 +265,7 @@ function renderSigBlock(name, license, role, results, baseUrl) {
       <div class="role">${esc(role)}</div>
     </div>`;
 }
-function renderSignatures(results, baseUrl) {
+function renderSignatures(results, baseUrl, inlineImages = true) {
     const r = results || {};
     const performedName = r.performedByName || '';
     const performedLic = r.performedByLicense || '';
@@ -275,21 +275,21 @@ function renderSignatures(results, baseUrl) {
     const requestedLic = r.requestedByLicense || '';
     return `
     <div class="signatures">
-      ${renderSigBlock(performedName, performedLic, 'Medical Technologist', results, baseUrl)}
-      ${renderSigBlock(validatedName, validatedLic, 'Validated By', results, baseUrl)}
-      ${renderSigBlock(requestedName, requestedLic, 'Pathologist', results, baseUrl)}
+      ${renderSigBlock(performedName, performedLic, 'Medical Technologist', results, baseUrl, inlineImages)}
+      ${renderSigBlock(validatedName, validatedLic, 'Validated By', results, baseUrl, inlineImages)}
+      ${renderSigBlock(requestedName, requestedLic, 'Pathologist', results, baseUrl, inlineImages)}
     </div>`;
 }
 // ── watermark ──────────────────────────────────────────────────────────
-function renderWatermark(baseUrl) {
-    const logo = getInlineLogo() || `${baseUrl}/assets/gezyne-logo.png`;
+function renderWatermark(baseUrl, inlineImages = true) {
+    const logo = inlineImages ? (getInlineLogo() || `${baseUrl}/assets/gezyne-logo.png`) : `${baseUrl}/assets/gezyne-logo.png`;
     return `<img class="watermark" src="${logo}" alt="">`;
 }
 // ── wrap full document ─────────────────────────────────────────────────
 function wrapDocument(body, print = false) {
     return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Laboratory Report</title>
-<style>${SHARED_CSS}</style>
+<style>${exports.SHARED_CSS}</style>
 </head><body>${body}
 ${print ? '<script>setTimeout(function(){ window.print(); },300);</script>' : ''}
 </body></html>`;
@@ -693,10 +693,11 @@ function renderReportHtml(test, patient, baseUrl, options) {
     const results = typeof test.results === 'string' ? JSON.parse(test.results) : (test.results || {});
     const template = (0, templateResolver_1.getResultTemplate)({ test_type: test.test_type, template: test.template });
     const sex = patient.gender || '';
-    const header = renderHeader(test, patient, baseUrl);
+    const inlineImages = options?.inlineImages !== false; // defaults to true for single page standalone preview compatibility
+    const header = renderHeader(test, patient, baseUrl, inlineImages);
     const body = renderBody(template, results, sex, test.test_type || '');
-    const sigs = renderSignatures(results, baseUrl);
-    const watermark = renderWatermark(baseUrl);
+    const sigs = renderSignatures(results, baseUrl, inlineImages);
+    const watermark = renderWatermark(baseUrl, inlineImages);
     const page = `
 <div class="report-page">
   <div class="report-container">

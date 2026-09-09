@@ -1182,9 +1182,142 @@ router.get('/api/signatories', requireAuth, (req, res) => {
   }
 });
 
-// ==========================================
-// 5. NEQAS EXTERNAL QUALITY ASSESSMENT
-// ==========================================
+const DEFAULT_NRLS = [
+  {
+    id: 'lcp',
+    name: 'Lung Center of the Philippines (LCP - Clinical Chemistry)',
+    shortName: 'LCP',
+    specialty: 'Clinical Chemistry NRL',
+    analytes: '10 Core Analytes: Glucose, BUN, Creatinine, Uric Acid, Cholesterol, Triglycerides, AST/SGOT, ALT/SGPT, Sodium, Potassium.',
+    cycle: 'Bi-Annual Cycles',
+    filterKeyword: 'Lung Center',
+    color: '#0284c7',
+    badgeBg: '#e0f2fe',
+    badgeColor: '#0369a1',
+    isStandard: true
+  },
+  {
+    id: 'nkti',
+    name: 'National Kidney and Transplant Institute (NKTI - Hematology & Coagulation)',
+    shortName: 'NKTI',
+    specialty: 'Hematology & Coagulation NRL',
+    analytes: 'CBC with Automated 5-Part Differential, Platelet Count, Prothrombin Time (PT/INR), and Activated Partial Thromboplastin Time (APTT).',
+    cycle: 'Annual Surveys',
+    filterKeyword: 'NKTI',
+    color: '#16a34a',
+    badgeBg: '#dcfce7',
+    badgeColor: '#15803d',
+    isStandard: true
+  },
+  {
+    id: 'ritm',
+    name: 'Research Institute for Tropical Medicine (RITM - Microbiology & Parasitology)',
+    shortName: 'RITM',
+    specialty: 'Microbiology & Parasitology NRL',
+    analytes: 'Bacterial Identification & Antimicrobial Susceptibility Testing (AST), Malaria Microscopy, Stool Parasitology, and TB AFB.',
+    cycle: 'Annual Surveys',
+    filterKeyword: 'RITM',
+    color: '#d97706',
+    badgeBg: '#fef3c7',
+    badgeColor: '#b45309',
+    isStandard: true
+  },
+  {
+    id: 'saccl',
+    name: 'San Lazaro Hospital (SACCL - Infectious Disease Serology)',
+    shortName: 'SACCL',
+    specialty: 'Infectious Disease Serology NRL',
+    analytes: 'Transfusion-Transmissible Infections (TTI) & Serology: HIV-1/2, HBsAg, Anti-HCV, and Syphilis (Treponemal & Non-Treponemal).',
+    cycle: 'Annual Surveys',
+    filterKeyword: 'San Lazaro',
+    color: '#7c3aed',
+    badgeBg: '#f3e8ff',
+    badgeColor: '#6b21a8',
+    isStandard: true
+  },
+  {
+    id: 'eamc',
+    name: 'East Avenue Medical Center (EAMC - Toxicology & Drug Testing)',
+    shortName: 'EAMC',
+    specialty: 'Toxicology, Micronutrients & Drug Testing NRL',
+    analytes: 'Screening & Confirmatory Drug Testing: Methamphetamine (MET/Shabu), Cannabinoids (THC/Marijuana), Heavy Metals, and Water Testing.',
+    cycle: 'Annual Surveys',
+    filterKeyword: 'East Avenue',
+    color: '#ea580c',
+    badgeBg: '#ffedd5',
+    badgeColor: '#c2410c',
+    isStandard: true
+  }
+];
+
+// GET /equipment/neqas/nrl-list - List all official & custom National Reference Laboratories
+router.get('/neqas/nrl-list', requireAuth, (req, res) => {
+  try {
+    const custom = (typeof global.db.getCustomNrls === 'function') ? global.db.getCustomNrls() : [];
+    res.json({ success: true, nrls: [...DEFAULT_NRLS, ...custom] });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /equipment/neqas/nrl-list - Add new custom National Reference Laboratory
+router.post('/neqas/nrl-list', requireAuth, (req, res) => {
+  try {
+    const { name, shortName, specialty, analytes, cycle, color } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, error: 'NRL name is required.' });
+    }
+
+    const trimmedName = name.trim();
+    const custom = (typeof global.db.getCustomNrls === 'function') ? global.db.getCustomNrls() : [];
+    
+    // Check if already exists in defaults or custom
+    const existing = DEFAULT_NRLS.find(n => n.name.toLowerCase() === trimmedName.toLowerCase())
+                  || custom.find(n => n.name.toLowerCase() === trimmedName.toLowerCase());
+    if (existing) {
+      return res.json({ success: true, message: 'NRL already exists.', nrl: existing });
+    }
+
+    const id = 'custom-' + Date.now();
+    const short = shortName ? shortName.trim() : (trimmedName.match(/\(([^)]+)\)/) ? trimmedName.match(/\(([^)]+)\)/)[1] : trimmedName.slice(0, 10));
+    const newNrl = {
+      id,
+      name: trimmedName,
+      shortName: short,
+      specialty: specialty ? specialty.trim() : 'Specialized Reference Laboratory',
+      analytes: analytes ? analytes.trim() : 'Specialized Proficiency Testing Parameters',
+      cycle: cycle || 'Annual Surveys',
+      filterKeyword: short,
+      color: color || '#0d9488',
+      badgeBg: '#ccfbf1',
+      badgeColor: '#0f766e',
+      isCustom: true
+    };
+
+    custom.push(newNrl);
+    if (typeof global.db.saveCustomNrls === 'function') {
+      global.db.saveCustomNrls(custom);
+    }
+
+    res.status(201).json({ success: true, message: 'Custom NRL registered successfully.', nrl: newNrl });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// DELETE /equipment/neqas/nrl-list/:id - Remove custom National Reference Laboratory
+router.delete('/neqas/nrl-list/:id', requireAuth, (req, res) => {
+  try {
+    let custom = (typeof global.db.getCustomNrls === 'function') ? global.db.getCustomNrls() : [];
+    custom = custom.filter(n => n.id !== req.params.id);
+    if (typeof global.db.saveCustomNrls === 'function') {
+      global.db.saveCustomNrls(custom);
+    }
+    res.json({ success: true, message: 'Custom NRL removed.' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 // GET /equipment/:id/neqas & GET /equipment/neqas/all - List NEQAS survey entries
 router.get('/:id/neqas', requireAuth, (req, res) => {
@@ -1218,6 +1351,30 @@ router.post('/:id/neqas', requireAuth, (req, res) => {
 
     const record = new NeqasRecord(body);
     const saved = global.db.saveNeqasRecord(record);
+
+    // Auto-register custom NRL if not currently recognized
+    if (record.nrlName && !DEFAULT_NRLS.some(n => n.name.toLowerCase() === record.nrlName.toLowerCase())) {
+      const custom = (typeof global.db.getCustomNrls === 'function') ? global.db.getCustomNrls() : [];
+      if (!custom.some(n => n.name.toLowerCase() === record.nrlName.toLowerCase())) {
+        const short = record.nrlName.match(/\(([^)]+)\)/) ? record.nrlName.match(/\(([^)]+)\)/)[1] : record.nrlName.slice(0, 10);
+        custom.push({
+          id: 'custom-' + Date.now(),
+          name: record.nrlName,
+          shortName: short,
+          specialty: 'Specialized Reference Laboratory',
+          analytes: 'Proficiency Testing Assays',
+          cycle: 'Annual Surveys',
+          filterKeyword: short,
+          color: '#0d9488',
+          badgeBg: '#ccfbf1',
+          badgeColor: '#0f766e',
+          isCustom: true
+        });
+        if (typeof global.db.saveCustomNrls === 'function') {
+          global.db.saveCustomNrls(custom);
+        }
+      }
+    }
 
     res.status(201).json({ success: true, message: 'NEQAS record saved.', record: saved });
   } catch (error) {

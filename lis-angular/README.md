@@ -21,9 +21,9 @@ npm install
 npm run dev        # starts at http://localhost:3000
 ```
 
-On first run it creates `data/lis.db` with schema and seeds an admin user:
+On first run it creates `data/lis.db` with schema and seeds an initial admin user:
 - **Email:** admin@lab.com
-- **Password:** password123
+- **Password:** Set via `DEFAULT_ADMIN_PASSWORD` in `.env` (or check console startup logs for the auto-generated one-time temporary password)
 
 ### 2. Frontend
 

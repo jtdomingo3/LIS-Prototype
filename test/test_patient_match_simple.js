@@ -1,12 +1,15 @@
 // Test patient matching for ROMEO FELICIA test
 const base = 'http://localhost:3000';
+const testAdminEmail = process.env.TEST_ADMIN_EMAIL || 'admin@lab.com';
+const testAdminPassword = process.env.TEST_ADMIN_PASSWORD || '';
+
 (async () => {
   // login
   const loginResp = await fetch(base + '/login', {
     method: 'POST',
     redirect: 'manual',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: 'email=admin%40lab.com&password=password123'
+    body: `email=${encodeURIComponent(testAdminEmail)}&password=${encodeURIComponent(testAdminPassword)}`
   });
   console.log('login status', loginResp.status);
   const setCookie = loginResp.headers.get('set-cookie');

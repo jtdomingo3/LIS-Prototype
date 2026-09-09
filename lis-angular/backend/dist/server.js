@@ -214,7 +214,7 @@ const limiter = (0, express_rate_limit_1.default)({
 app.use(limiter);
 // Body parsing
 app.use(express_1.default.json({ limit: '50mb' }));
-app.use(express_1.default.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express_1.default.urlencoded({ extended: true, limit: '50mb', parameterLimit: 100000 }));
 // Serve static assets (signatures, images, etc.)
 app.use('/assets', express_1.default.static(path_1.default.join(__dirname, '..', 'assets')));
 // Request logger

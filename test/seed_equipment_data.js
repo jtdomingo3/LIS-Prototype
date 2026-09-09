@@ -477,6 +477,44 @@ async function seed() {
         actionDate: daysAgo(80),
         closed: true
       }
+    }),
+    new NeqasRecord({
+      equipmentId: chem.id,
+      equipmentName: chem.name,
+      cycleYear: '2026',
+      eventNumber: 'Survey 1',
+      nrlName: 'East Avenue Medical Center (EAMC - Toxicology & Drug Testing)',
+      sampleId: 'EAMC-DT-2026-PT01',
+      analyteCode: 'met',
+      analyteName: 'Methamphetamine (MET / Shabu Screening)',
+      unit: 'ng/mL',
+      reportedValue: 620.0,
+      reportedDate: daysAgo(25),
+      reportedBy: 'J. Domingo, RMT',
+      peerMean: 615.0,
+      peerSd: 22.5,
+      peerCount: 142,
+      resultDate: daysAgo(7),
+      notes: 'Proficiency testing for screening drug testing laboratory accreditation (DOH AO 2020-0035).'
+    }),
+    new NeqasRecord({
+      equipmentId: chem.id,
+      equipmentName: chem.name,
+      cycleYear: '2026',
+      eventNumber: 'Survey 1',
+      nrlName: 'East Avenue Medical Center (EAMC - Toxicology & Drug Testing)',
+      sampleId: 'EAMC-DT-2026-PT02',
+      analyteCode: 'thc',
+      analyteName: 'Cannabinoids / THC (Marijuana Screening)',
+      unit: 'ng/mL',
+      reportedValue: 78.0,
+      reportedDate: daysAgo(25),
+      reportedBy: 'J. Domingo, RMT',
+      peerMean: 76.5,
+      peerSd: 4.2,
+      peerCount: 142,
+      resultDate: daysAgo(7),
+      notes: 'NRL-EAMC national proficiency survey for accredited drug testing centers.'
     })
   ];
 

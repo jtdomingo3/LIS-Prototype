@@ -13,12 +13,21 @@ const JWT_SECRET = process.env.JWT_SECRET || 'change-this-to-a-strong-secret';
  * Require a valid JWT token in the Authorization header.
  */
 function requireAuth(req, res, next) {
+    let token;
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.split(' ')[1];
+    }
+    else if (req.query.token) {
+        token = req.query.token;
+    }
+    else if (req.body && req.body.token) {
+        token = req.body.token;
+    }
+    if (!token) {
         res.status(401).json({ error: 'Authentication required' });
         return;
     }
-    const token = authHeader.split(' ')[1];
     try {
         const decoded = jsonwebtoken_1.default.verify(token, JWT_SECRET);
         req.user = decoded;

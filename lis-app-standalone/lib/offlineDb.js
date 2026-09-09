@@ -569,10 +569,23 @@ function createOfflineDb(dataStore) {
         return sqliteAdapter.deleteNeqasRecord(id);
       }
       let list = dataStore.getCollection('neqas_records') || [];
-      list = list.filter(r => r && r.id !== id);
+      list = list.filter(r => !(r && r.id === id));
       dataStore.setCollection('neqas_records', list);
       return true;
-    }
+    },
+    getCustomNrls() {
+      if (sqliteAdapter && typeof sqliteAdapter.getCustomNrls === 'function') {
+        return sqliteAdapter.getCustomNrls();
+      }
+      return dataStore.getCollection('custom_nrls') || [];
+    },
+    saveCustomNrls(list) {
+      if (sqliteAdapter && typeof sqliteAdapter.saveCustomNrls === 'function') {
+        return sqliteAdapter.saveCustomNrls(list);
+      }
+      dataStore.setCollection('custom_nrls', list || []);
+      return true;
+    },
   };
 
   return new Proxy(db, {

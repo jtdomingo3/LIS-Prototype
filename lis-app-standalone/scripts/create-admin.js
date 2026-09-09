@@ -4,10 +4,17 @@ const { dataFile } = require('../lib/dataPath');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 
+const crypto = require('crypto');
+
 async function main() {
   const args = require('minimist')(process.argv.slice(2));
   const email = args.email || args.e || 'admin@local';
-  const password = args.password || args.p || 'admin123';
+  let generated = false;
+  let password = args.password || args.p;
+  if (!password) {
+    password = crypto.randomBytes(8).toString('hex') + '!';
+    generated = true;
+  }
   const name = args.name || args.n || 'Administrator';
 
   const dataFilePath = dataFile('data.json');
@@ -46,6 +53,9 @@ async function main() {
   data.users.push(user);
   fs.writeFileSync(dataFilePath, JSON.stringify(data, null, 2));
   console.log('Admin user created:', email);
+  if (generated) {
+    console.log('Temporary generated password:', password);
+  }
 }
 
 main().catch(e => { console.error(e); process.exit(1); });

@@ -815,10 +815,15 @@
 
     <!-- Reference Laboratory Programs Grid -->
     <div style="margin-bottom: 20px;">
-      <h4 style="margin: 0 0 10px; font-size: 0.95em; color: #334155; text-transform: uppercase; letter-spacing: 0.5px;">
-        <i class="fa fa-university" style="color: #0284c7;"></i> Designated National Reference Laboratories (NRLs)
-      </h4>
-      <div class="nrl-grid">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+        <h4 style="margin: 0; font-size: 0.95em; color: #334155; text-transform: uppercase; letter-spacing: 0.5px;">
+          <i class="fa fa-university" style="color: #0284c7;"></i> Designated National Reference Laboratories (NRLs)
+        </h4>
+        <button type="button" class="button btn-small btn-secondary" onclick="openAddCustomNrlModal()" style="font-size: 0.8em; display: inline-flex; align-items: center; gap: 5px; color: #0f766e; border-color: #99f6e4; background: #f0fdfa; font-weight: 600;" title="Register new or future National Reference Laboratory">
+          <i class="fa fa-plus-circle"></i> + Add Custom NRL
+        </button>
+      </div>
+      <div class="nrl-grid" id="nrlCardsGrid">
         <div class="nrl-card" style="border-top: 3px solid #0284c7;">
           <div>
             <div style="font-weight: 700; color: #0f172a; font-size: 0.95em;">Lung Center of the Philippines (LCP)</div>
@@ -835,8 +840,8 @@
 
         <div class="nrl-card" style="border-top: 3px solid #16a34a;">
           <div>
-            <div style="font-weight: 700; color: #0f172a; font-size: 0.95em;">Nat'l Kidney & Transplant Inst. (NKTI)</div>
-            <div style="font-size: 0.8em; color: #16a34a; font-weight: 600; margin-bottom: 6px;">Hematology & Coagulation NRL</div>
+            <div style="font-weight: 700; color: #0f172a; font-size: 0.95em;">Nat'l Kidney &amp; Transplant Inst. (NKTI)</div>
+            <div style="font-size: 0.8em; color: #16a34a; font-weight: 600; margin-bottom: 6px;">Hematology &amp; Coagulation NRL</div>
             <div style="font-size: 0.8em; color: #64748b;">
               CBC with Automated 5-Part Differential, Platelet Count, Prothrombin Time (PT/INR), and Activated Partial Thromboplastin Time (APTT).
             </div>
@@ -850,9 +855,9 @@
         <div class="nrl-card" style="border-top: 3px solid #d97706;">
           <div>
             <div style="font-weight: 700; color: #0f172a; font-size: 0.95em;">Research Inst. for Tropical Med. (RITM)</div>
-            <div style="font-size: 0.8em; color: #d97706; font-weight: 600; margin-bottom: 6px;">Microbiology & Parasitology NRL</div>
+            <div style="font-size: 0.8em; color: #d97706; font-weight: 600; margin-bottom: 6px;">Microbiology &amp; Parasitology NRL</div>
             <div style="font-size: 0.8em; color: #64748b;">
-              Bacterial Identification & Antimicrobial Susceptibility Testing (AST), Malaria Microscopy, Stool Parasitology, and TB AFB.
+              Bacterial Identification &amp; Antimicrobial Susceptibility Testing (AST), Malaria Microscopy, Stool Parasitology, and TB AFB.
             </div>
           </div>
           <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
@@ -866,7 +871,7 @@
             <div style="font-weight: 700; color: #0f172a; font-size: 0.95em;">San Lazaro Hospital / SACCL</div>
             <div style="font-size: 0.8em; color: #7c3aed; font-weight: 600; margin-bottom: 6px;">Infectious Disease Serology NRL</div>
             <div style="font-size: 0.8em; color: #64748b;">
-              Transfusion-Transmissible Infections (TTI) & Serology: HIV-1/2, HBsAg, Anti-HCV, and Syphilis (Treponemal & Non-Treponemal).
+              Transfusion-Transmissible Infections (TTI) &amp; Serology: HIV-1/2, HBsAg, Anti-HCV, and Syphilis (Treponemal &amp; Non-Treponemal).
             </div>
           </div>
           <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
@@ -874,6 +879,23 @@
             <button class="button btn-small btn-secondary" onclick="filterNeqasByNrl('San Lazaro')">View Submissions</button>
           </div>
         </div>
+
+        <div class="nrl-card" style="border-top: 3px solid #ea580c;">
+          <div>
+            <div style="font-weight: 700; color: #0f172a; font-size: 0.95em;">East Avenue Medical Center (EAMC)</div>
+            <div style="font-size: 0.8em; color: #ea580c; font-weight: 600; margin-bottom: 6px;">Toxicology, Micronutrients &amp; Drug Testing NRL</div>
+            <div style="font-size: 0.8em; color: #64748b;">
+              Screening &amp; Confirmatory Drug Testing: Methamphetamine (MET/Shabu), Cannabinoids (THC/Marijuana), Heavy Metals, and Water Testing.
+            </div>
+          </div>
+          <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <span class="badge" style="background: #ffedd5; color: #c2410c; font-size: 0.75em;">Annual Surveys</span>
+            <button class="button btn-small btn-secondary" onclick="filterNeqasByNrl('East Avenue')">View Submissions</button>
+          </div>
+        </div>
+
+        <!-- Dynamic Container for Custom Registered NRL Cards -->
+        <div id="customNrlCards" style="display: contents;"></div>
       </div>
     </div>
 
@@ -884,9 +906,10 @@
       <select id="neqasNrlFilter" class="filter-select" onchange="applyNeqasFilters()">
         <option value="">All Reference Laboratories (NRL)</option>
         <option value="Lung Center">Lung Center of the Philippines (Clinical Chemistry)</option>
-        <option value="NKTI">NKTI (Hematology & Coagulation)</option>
-        <option value="RITM">RITM (Microbiology & Parasitology)</option>
+        <option value="NKTI">NKTI (Hematology &amp; Coagulation)</option>
+        <option value="RITM">RITM (Microbiology &amp; Parasitology)</option>
         <option value="San Lazaro">San Lazaro / SACCL (Infectious Serology)</option>
+        <option value="East Avenue">East Avenue Medical Center (EAMC - Toxicology &amp; Drug Testing)</option>
       </select>
 
       <select id="neqasGradeFilter" class="filter-select" onchange="applyNeqasFilters()">
@@ -1179,8 +1202,8 @@
       <div class="eq-modal-body">
         <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 0.85em; color: #166534;">
           <strong>Department of Health (DOH) External Quality Assessment Scheme (NEQAS)</strong><br>
-          Proficiency testing from designated National Reference Laboratories (Lung Center of the Philippines, NKTI, RITM, SACCL).
-          Record your lab result when running survey samples, then enter Peer Mean & SD once the NRL report is published to evaluate SDI.
+          Proficiency testing from designated National Reference Laboratories (LCP, NKTI, RITM, SACCL, EAMC) or registered specialized NRLs.
+          Record your lab result when running survey samples, then enter Peer Mean &amp; SD once the NRL report is published to evaluate SDI.
         </div>
 
         <div class="form-grid">
@@ -1192,22 +1215,27 @@
             <label>Survey Cycle Year *</label>
             <input type="text" id="neqas_year" value="<%= new Date().getFullYear() %>" required>
           </div>
-          <div class="form-group">
+          <div class="form-group" style="grid-column: 1 / -1;">
             <label>National Reference Lab (NRL) *</label>
-            <select id="neqas_nrl" required>
+            <select id="neqas_nrl" onchange="onNeqasNrlChange()" required>
               <option value="Lung Center of the Philippines (LCP - Clinical Chemistry)">Lung Center of the Philippines (LCP - Clinical Chemistry)</option>
-              <option value="National Kidney and Transplant Institute (NKTI - Hematology)">National Kidney and Transplant Institute (NKTI - Hematology)</option>
-              <option value="Research Institute for Tropical Medicine (RITM - Microbiology)">Research Institute for Tropical Medicine (RITM - Microbiology)</option>
-              <option value="San Lazaro Hospital (SACCL - Serology/Infectious)">San Lazaro Hospital (SACCL - Serology/Infectious)</option>
+              <option value="National Kidney and Transplant Institute (NKTI - Hematology &amp; Coagulation)">National Kidney and Transplant Institute (NKTI - Hematology &amp; Coagulation)</option>
+              <option value="Research Institute for Tropical Medicine (RITM - Microbiology &amp; Parasitology)">Research Institute for Tropical Medicine (RITM - Microbiology &amp; Parasitology)</option>
+              <option value="San Lazaro Hospital (SACCL - Infectious Disease Serology)">San Lazaro Hospital (SACCL - Infectious Disease Serology)</option>
+              <option value="East Avenue Medical Center (EAMC - Toxicology &amp; Drug Testing)">East Avenue Medical Center (EAMC - Toxicology &amp; Drug Testing)</option>
+              <option value="__CUSTOM__">+ Other / Custom National Reference Laboratory...</option>
             </select>
+            <div id="neqas_customNrlContainer" style="display: none; margin-top: 8px;">
+              <input type="text" id="neqas_customNrl" placeholder="Enter Full Reference Laboratory Name (e.g. Philippine Heart Center - Specialized NRL)">
+            </div>
           </div>
           <div class="form-group">
             <label>Sample ID / Code *</label>
-            <input type="text" id="neqas_sampleId" required placeholder="e.g. LCP-CC-2026-S1A">
+            <input type="text" id="neqas_sampleId" required placeholder="e.g. EAMC-DT-2026-PT01">
           </div>
           <div class="form-group">
             <label>Analyte / Parameter *</label>
-            <input type="text" id="neqas_analyte" required placeholder="e.g. Glucose / Fasting Blood Sugar">
+            <input type="text" id="neqas_analyte" required placeholder="e.g. Methamphetamine (MET) / Glucose">
           </div>
           <div class="form-group">
             <label>Reported Value (Lab Result) *</label>
@@ -1226,7 +1254,73 @@
       <div class="eq-modal-footer">
         <button type="button" class="button btn-secondary" onclick="closeModal('modalNeqas')">Cancel</button>
         <button type="submit" class="button btn-primary" style="background: #16a34a; border-color: #15803d;" id="neqasSubmitBtn">
-          Save Survey Submission & Evaluate SDI
+          Save Survey Submission &amp; Evaluate SDI
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ======================================================== -->
+<!-- MODAL: ADD CUSTOM NATIONAL REFERENCE LABORATORY (NRL)   -->
+<!-- ======================================================== -->
+<div id="modalAddCustomNrl" class="eq-modal">
+  <div class="eq-modal-content" style="max-width: 580px;">
+    <div class="eq-modal-header">
+      <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+        <i class="fa fa-university" style="color: #0d9488;"></i> Add National Reference Laboratory (NRL)
+      </h3>
+      <button type="button" onclick="closeModal('modalAddCustomNrl')" style="background:none; border:none; font-size:1.4em; cursor:pointer;">&times;</button>
+    </div>
+    <form id="formAddCustomNrl" onsubmit="submitCustomNrl(event)">
+      <div class="eq-modal-body">
+        <div style="background: #f0fdfa; border: 1px solid #ccfbf1; padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 0.85em; color: #0f766e;">
+          <strong>Register Future or Specialized NRL Program</strong><br>
+          Configure newly accredited DOH National Reference Laboratories or regional proficiency testing centers. The laboratory will immediately appear in the NEQAS hub cards, filter dropdowns, and submission selectors.
+        </div>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label>Full NRL Name &amp; Code *</label>
+          <input type="text" id="custom_nrl_name" required placeholder="e.g. Philippine Heart Center (PHC - Cardiovascular NRL)">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label>Specialty / Department *</label>
+          <input type="text" id="custom_nrl_specialty" required placeholder="e.g. Cardiovascular &amp; Cardiac Biomarkers NRL">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label>Proficiency Testing Analytes / Scope</label>
+          <textarea id="custom_nrl_analytes" rows="2" placeholder="e.g. Troponin I/T, CK-MB, BNP, High-Sensitivity CRP, and Lipid Biomarkers."></textarea>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Survey Frequency</label>
+            <select id="custom_nrl_cycle">
+              <option value="Annual Surveys">Annual Surveys</option>
+              <option value="Bi-Annual Cycles">Bi-Annual Cycles</option>
+              <option value="Quarterly Cycles">Quarterly Cycles</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Card Accent Color</label>
+            <select id="custom_nrl_color">
+              <option value="#0d9488">Teal (#0d9488)</option>
+              <option value="#0284c7">Sky Blue (#0284c7)</option>
+              <option value="#e11d48">Rose / Crimson (#e11d48)</option>
+              <option value="#7c3aed">Purple (#7c3aed)</option>
+              <option value="#d97706">Amber (#d97706)</option>
+              <option value="#16a34a">Green (#16a34a)</option>
+              <option value="#ea580c">Orange (#ea580c)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="eq-modal-footer">
+        <button type="button" class="button btn-secondary" onclick="closeModal('modalAddCustomNrl')">Cancel</button>
+        <button type="submit" class="button btn-primary" style="background: #0d9488; border-color: #0f766e;">
+          <i class="fa fa-save"></i> Save &amp; Register NRL
         </button>
       </div>
     </form>
@@ -1424,6 +1518,7 @@
     populateAnalyzerDropdowns();
     populateSignatoryDropdowns();
     loadNeqasTable();
+    loadNrlList();
 
     // High-DPI dynamic resize listeners for crisp Levey-Jennings canvas across all screen sizes
     window.addEventListener('resize', handleLjResize);
@@ -2031,6 +2126,7 @@
       });
     } else if (sectionId === 'neqas') {
       loadNeqasTable();
+      loadNrlList();
     }
   }
 
@@ -3210,13 +3306,20 @@
   }
 
   // ==========================================
-  // NEQAS EQA MODULE
+  // NEQAS EQA MODULE & NRL MANAGEMENT
   // ==========================================
+  let allNrlList = [];
+
   function openNeqasModal(preselectEqId) {
     populateAnalyzerDropdowns();
     document.getElementById('neqas_recordId').value = '';
     document.getElementById('formNeqas').reset();
     document.getElementById('neqas_year').value = new Date().getFullYear();
+    const customCont = document.getElementById('neqas_customNrlContainer');
+    if (customCont) customCont.style.display = 'none';
+    const customInp = document.getElementById('neqas_customNrl');
+    if (customInp) customInp.required = false;
+
     if (preselectEqId) {
       const eqSel = document.getElementById('neqas_eqId');
       if (eqSel) eqSel.value = preselectEqId;
@@ -3224,6 +3327,21 @@
     document.getElementById('modalNeqasTitle').innerHTML = '<i class="fa fa-award" style="color: #16a34a;"></i> Log NEQAS Survey Submission';
     document.getElementById('neqasSubmitBtn').textContent = 'Save Survey Submission & Evaluate SDI';
     document.getElementById('modalNeqas').style.display = 'block';
+  }
+
+  function onNeqasNrlChange() {
+    const sel = document.getElementById('neqas_nrl');
+    const cont = document.getElementById('neqas_customNrlContainer');
+    const inp = document.getElementById('neqas_customNrl');
+    if (!sel || !cont || !inp) return;
+    if (sel.value === '__CUSTOM__') {
+      cont.style.display = 'block';
+      inp.required = true;
+      inp.focus();
+    } else {
+      cont.style.display = 'none';
+      inp.required = false;
+    }
   }
 
   function openNeqasEditModal(recordId) {
@@ -3234,7 +3352,34 @@
     document.getElementById('neqas_recordId').value = r.id;
     document.getElementById('neqas_eqId').value = r.equipmentId;
     document.getElementById('neqas_year').value = r.cycleYear || new Date().getFullYear();
-    document.getElementById('neqas_nrl').value = r.nrlName || '';
+    
+    // Select NRL or toggle custom field if custom
+    const nrlSel = document.getElementById('neqas_nrl');
+    const customCont = document.getElementById('neqas_customNrlContainer');
+    const customInp = document.getElementById('neqas_customNrl');
+    let optionExists = false;
+    for (let i = 0; i < nrlSel.options.length; i++) {
+      if (nrlSel.options[i].value === r.nrlName) {
+        optionExists = true;
+        break;
+      }
+    }
+    if (optionExists) {
+      nrlSel.value = r.nrlName;
+      if (customCont) customCont.style.display = 'none';
+      if (customInp) {
+        customInp.value = '';
+        customInp.required = false;
+      }
+    } else {
+      nrlSel.value = '__CUSTOM__';
+      if (customCont) customCont.style.display = 'block';
+      if (customInp) {
+        customInp.value = r.nrlName || '';
+        customInp.required = true;
+      }
+    }
+
     document.getElementById('neqas_sampleId').value = r.sampleId || '';
     document.getElementById('neqas_analyte').value = r.analyteName || r.analyteCode || '';
     document.getElementById('neqas_reported').value = r.reportedValue !== undefined ? r.reportedValue : '';
@@ -3244,6 +3389,135 @@
     document.getElementById('modalNeqasTitle').innerHTML = '<i class="fa fa-edit" style="color: #0284c7;"></i> Enter NRL Peer Evaluation Results';
     document.getElementById('neqasSubmitBtn').textContent = 'Update Evaluation & Recalculate SDI';
     document.getElementById('modalNeqas').style.display = 'block';
+  }
+
+  async function loadNrlList() {
+    try {
+      const res = await fetch('/equipment/neqas/nrl-list');
+      const data = await res.json();
+      if (!data.success || !Array.isArray(data.nrls)) return;
+      allNrlList = data.nrls;
+
+      // 1. Render custom cards in #customNrlCards
+      const customCardsContainer = document.getElementById('customNrlCards');
+      if (customCardsContainer) {
+        const customNrls = data.nrls.filter(n => n.isCustom);
+        customCardsContainer.innerHTML = customNrls.map(n => `
+          <div class="nrl-card" style="border-top: 3px solid ${n.color || '#0d9488'}; position: relative;">
+            <button type="button" onclick="deleteCustomNrl('${n.id}', '${encodeURIComponent(n.name)}')" style="position: absolute; top: 8px; right: 8px; background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1.2em; line-height: 1;" title="Remove Custom NRL">
+              &times;
+            </button>
+            <div>
+              <div style="font-weight: 700; color: #0f172a; font-size: 0.95em; padding-right: 18px;">${n.name}</div>
+              <div style="font-size: 0.8em; color: ${n.color || '#0d9488'}; font-weight: 600; margin-bottom: 6px;">${n.specialty || 'Specialized Reference Lab'}</div>
+              <div style="font-size: 0.8em; color: #64748b;">
+                ${n.analytes || 'Specialized proficiency testing parameters.'}
+              </div>
+            </div>
+            <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+              <span class="badge" style="background: ${n.badgeBg || '#ccfbf1'}; color: ${n.badgeColor || '#0f766e'}; font-size: 0.75em;">${n.cycle || 'Annual Surveys'}</span>
+              <button class="button btn-small btn-secondary" onclick="filterNeqasByNrl('${n.filterKeyword || n.shortName || n.name}')">View Submissions</button>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      // 2. Update #neqasNrlFilter dropdown with custom NRLs
+      const nrlFilter = document.getElementById('neqasNrlFilter');
+      if (nrlFilter) {
+        const currentFilterVal = nrlFilter.value;
+        // Keep first 6 default options (All, Lung Center, NKTI, RITM, San Lazaro, East Avenue)
+        while (nrlFilter.options.length > 6) {
+          nrlFilter.remove(6);
+        }
+        data.nrls.filter(n => n.isCustom).forEach(n => {
+          const opt = document.createElement('option');
+          opt.value = n.filterKeyword || n.shortName || n.name;
+          opt.textContent = `${n.name} (${n.specialty || 'Custom NRL'})`;
+          nrlFilter.appendChild(opt);
+        });
+        nrlFilter.value = currentFilterVal;
+      }
+
+      // 3. Update #neqas_nrl modal dropdown with custom NRL options
+      const nrlModalSelect = document.getElementById('neqas_nrl');
+      if (nrlModalSelect) {
+        const currentModalVal = nrlModalSelect.value;
+        const customOpts = nrlModalSelect.querySelectorAll('option[data-custom="1"]');
+        customOpts.forEach(o => o.remove());
+
+        const customOptionEntry = nrlModalSelect.querySelector('option[value="__CUSTOM__"]');
+        data.nrls.filter(n => n.isCustom).forEach(n => {
+          const opt = document.createElement('option');
+          opt.value = n.name;
+          opt.textContent = n.name;
+          opt.setAttribute('data-custom', '1');
+          if (customOptionEntry) {
+            nrlModalSelect.insertBefore(opt, customOptionEntry);
+          } else {
+            nrlModalSelect.appendChild(opt);
+          }
+        });
+        nrlModalSelect.value = currentModalVal;
+      }
+    } catch (err) {
+      console.error('Error loading NRL list:', err);
+    }
+  }
+
+  function openAddCustomNrlModal() {
+    const form = document.getElementById('formAddCustomNrl');
+    if (form) form.reset();
+    document.getElementById('modalAddCustomNrl').style.display = 'block';
+  }
+
+  async function submitCustomNrl(e) {
+    e.preventDefault();
+    const name = document.getElementById('custom_nrl_name').value.trim();
+    const specialty = document.getElementById('custom_nrl_specialty').value.trim();
+    const analytes = document.getElementById('custom_nrl_analytes').value.trim();
+    const cycle = document.getElementById('custom_nrl_cycle').value;
+    const color = document.getElementById('custom_nrl_color').value;
+
+    if (!name) return alert('Reference Laboratory name is required.');
+
+    try {
+      const res = await fetch('/equipment/neqas/nrl-list', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ name, specialty, analytes, cycle, color })
+      });
+      const data = await res.json();
+      if (data.success) {
+        closeModal('modalAddCustomNrl');
+        await loadNrlList();
+        alert('National Reference Laboratory registered successfully!');
+      } else {
+        alert(data.error || 'Failed to register NRL.');
+      }
+    } catch (err) {
+      alert('Error registering NRL: ' + err.message);
+    }
+  }
+
+  async function deleteCustomNrl(id, encodedName) {
+    const name = decodeURIComponent(encodedName);
+    if (!confirm(`Are you sure you want to remove the custom NRL "${name}"?`)) return;
+
+    try {
+      const res = await fetch(`/equipment/neqas/nrl-list/${id}`, {
+        method: 'DELETE',
+        headers: { 'Accept': 'application/json' }
+      });
+      const data = await res.json();
+      if (data.success) {
+        await loadNrlList();
+      } else {
+        alert(data.error || 'Failed to remove custom NRL.');
+      }
+    } catch (err) {
+      alert('Error removing custom NRL: ' + err.message);
+    }
   }
 
   async function loadNeqasTable() {
@@ -3348,17 +3622,32 @@
       }
 
       let nrlShort = r.nrlName || 'NRL';
-      if (nrlShort.includes('Lung Center')) nrlShort = 'LCP (Clinical Chemistry)';
-      else if (nrlShort.includes('Kidney')) nrlShort = 'NKTI (Hematology)';
-      else if (nrlShort.includes('Tropical')) nrlShort = 'RITM (Microbiology)';
-      else if (nrlShort.includes('San Lazaro') || nrlShort.includes('SACCL')) nrlShort = 'SACCL (Serology)';
+      let nrlBadgeStyle = 'background:#f1f5f9; color:#334155;';
+      if (nrlShort.includes('Lung Center')) {
+        nrlShort = 'LCP (Clinical Chemistry)';
+        nrlBadgeStyle = 'background:#e0f2fe; color:#0369a1;';
+      } else if (nrlShort.includes('Kidney')) {
+        nrlShort = 'NKTI (Hematology)';
+        nrlBadgeStyle = 'background:#dcfce7; color:#15803d;';
+      } else if (nrlShort.includes('Tropical')) {
+        nrlShort = 'RITM (Microbiology)';
+        nrlBadgeStyle = 'background:#fef3c7; color:#b45309;';
+      } else if (nrlShort.includes('San Lazaro') || nrlShort.includes('SACCL')) {
+        nrlShort = 'SACCL (Serology)';
+        nrlBadgeStyle = 'background:#f3e8ff; color:#6b21a8;';
+      } else if (nrlShort.includes('East Avenue') || nrlShort.includes('EAMC')) {
+        nrlShort = 'EAMC (Drug Testing)';
+        nrlBadgeStyle = 'background:#ffedd5; color:#c2410c;';
+      } else {
+        nrlBadgeStyle = 'background:#ccfbf1; color:#0f766e;';
+      }
 
       tr.innerHTML = `
         <td><span style="font-weight:600; color:#0f172a;">${r.cycleYear || '2026'}</span> <span style="font-size:0.8em; color:#64748b;">(${r.eventNumber || 'Event 1'})</span></td>
-        <td><span class="badge" style="background:#f1f5f9; color:#334155; font-size:0.8em;">${nrlShort}</span></td>
+        <td><span class="badge" style="${nrlBadgeStyle} font-size:0.8em; font-weight:600;">${nrlShort}</span></td>
         <td><span style="font-family:monospace; font-weight:700; color:#0284c7; background:#e0f2fe; padding:2px 6px; border-radius:4px;">${r.sampleId}</span></td>
         <td><strong>${r.analyteName || r.analyteCode}</strong></td>
-        <td><span style="font-weight:700; color:#0f172a;">${r.reportedValue}</span> <span style="font-size:0.8em; color:#64748b;">${r.unit || 'mg/dL'}</span></td>
+        <td><span style="font-weight:700; color:#0f172a;">${r.reportedValue}</span> <span style="font-size:0.8em; color:#64748b;">${r.unit || 'ng/mL'}</span></td>
         <td>${evalData.peerMean ? `${evalData.peerMean} &plusmn; ${evalData.peerSd} ${r.unit || ''}` : '<span style="color:#94a3b8;">Pending Release</span>'}</td>
         <td style="text-align:center;">${sdiDisplay}</td>
         <td>${gradeBadge}</td>
@@ -3379,9 +3668,19 @@
     e.preventDefault();
     const recordId = document.getElementById('neqas_recordId').value;
     const eqId = document.getElementById('neqas_eqId').value;
+    
+    let nrlName = document.getElementById('neqas_nrl').value;
+    if (nrlName === '__CUSTOM__') {
+      nrlName = (document.getElementById('neqas_customNrl')?.value || '').trim();
+      if (!nrlName) {
+        alert('Please enter the custom National Reference Laboratory name.');
+        return;
+      }
+    }
+
     const payload = {
       cycleYear: document.getElementById('neqas_year').value,
-      nrlName: document.getElementById('neqas_nrl').value,
+      nrlName: nrlName,
       sampleId: document.getElementById('neqas_sampleId').value,
       analyteCode: document.getElementById('neqas_analyte').value,
       analyteName: document.getElementById('neqas_analyte').value,
@@ -3407,6 +3706,7 @@
       if (data.success) {
         closeModal('modalNeqas');
         document.getElementById('formNeqas').reset();
+        await loadNrlList();
         await loadNeqasTable();
         alert('NEQAS proficiency record saved successfully!');
       } else {
