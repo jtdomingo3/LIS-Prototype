@@ -284,7 +284,7 @@ router.get('/:testId', requireAuth, canAccessPatient, async (req, res) => {
       }
     }
 
-    // 5. Fetch all laboratory test results for this patient
+    // 5. Fetch all laboratory test results for this patient (excluding clinical consultations / doctor check-up encounters)
     let allTests = [];
     try {
       if (global.db && typeof global.db.queryTests === 'function') {
@@ -296,8 +296,27 @@ router.get('/:testId', requireAuth, canAccessPatient, async (req, res) => {
       allTests = [];
     }
 
+    // Helper to detect if a test is a doctor check-up / clinical consultation encounter
+    const isConsultationTest = (t) => {
+      if (!t) return false;
+      const tt = String(t.testType || '').toLowerCase();
+      const tid = String(t.testId || '').toUpperCase();
+      if (tt.includes('doctor') || tt.includes('consultation') || tt.includes('check-up') || tt.includes('checkup')) return true;
+      if (tid.startsWith('DC')) return true;
+      if (Array.isArray(t.requestedTests) && t.requestedTests.some(rr => {
+        const s = String((rr && (rr.label || rr.key || rr.testType)) || '').toLowerCase();
+        return s.includes('doctor') || s.includes('consultation') || s.includes('check-up') || s.includes('checkup');
+      })) {
+        return true;
+      }
+      return false;
+    };
+
+    // Keep only true laboratory diagnostic tests in the lab history tab
+    const labOnlyTests = allTests.filter(t => !isConsultationTest(t));
+
     // Format tests with dates and result summaries for display
-    const formattedLabTests = allTests.map(t => {
+    const formattedLabTests = labOnlyTests.map(t => {
       let resultsSummary = 'No results recorded';
       if (t.results) {
         let resObj = t.results;
@@ -679,18 +698,55 @@ router.post('/:testId/complete', requireAuth, canAccessPatient, async (req, res)
   }
 });
 
+// Helper to resolve test, consultation, and patient from either test ID or consultation ID
+async function resolveEncounterForPrint(identifier) {
+  if (!identifier) return null;
+  let test = await Test.findById(identifier) || await Test.findOne({ testId: identifier });
+  let consultation = null;
+
+  if (test) {
+    consultation = await Consultation.findByTestId(test.id) || await Consultation.findByTestId(test.testId);
+  }
+  if (!consultation) {
+    consultation = await Consultation.findById(identifier);
+    if (consultation && !test && consultation.testId) {
+      test = await Test.findById(consultation.testId) || await Test.findOne({ testId: consultation.testId });
+    }
+  }
+
+  if (!consultation && !test) return null;
+
+  consultation = consultation || new Consultation();
+  if (!test) {
+    test = new Test({
+      id: consultation.testId || identifier,
+      testId: consultation.testId || identifier,
+      patient: consultation.patientId
+    });
+  }
+
+  const patientId = (test.patient && typeof test.patient === 'object') ? test.patient.id : (test.patient || consultation.patientId);
+  let patient = null;
+  if (patientId) {
+    patient = await Patient.findById(patientId);
+  }
+  if (!patient && test.patient && typeof test.patient === 'object') {
+    patient = new Patient(test.patient);
+  }
+  patient = patient || new Patient();
+
+  return { test, consultation, patient };
+}
+
 // GET /consultations/:testId/print/lab-request - Printable Laboratory Request Form
 router.get('/:testId/print/lab-request', requireAuth, canAccessPatient, async (req, res) => {
   try {
     const { testId } = req.params;
-    let test = await Test.findById(testId) || await Test.findOne({ testId: testId });
-    if (!test) return res.status(404).send('Test record not found');
+    const encounter = await resolveEncounterForPrint(testId);
+    if (!encounter) return res.status(404).send('Encounter record not found');
+    const { test, consultation, patient } = encounter;
 
-    const patientId = (test.patient && typeof test.patient === 'object') ? test.patient.id : test.patient;
-    const patient = await Patient.findById(patientId) || (typeof test.patient === 'object' ? new Patient(test.patient) : null);
-    const consultation = await Consultation.findByTestId(test.id) || await Consultation.findByTestId(testId) || new Consultation();
     const settings = (global.db && typeof global.db.getSettings === 'function') ? (global.db.getSettings() || {}) : {};
-
     const docInfo = resolveDoctorInfo(consultation.doctorName);
     const doctorDesignation = consultation.doctorDesignation || (docInfo && docInfo.designation) || 'Attending Physician';
     if (!consultation.doctorLicenseNumber && docInfo && docInfo.licenseNumber) {
@@ -716,14 +772,11 @@ router.get('/:testId/print/lab-request', requireAuth, canAccessPatient, async (r
 router.get('/:testId/print/prescription', requireAuth, canAccessPatient, async (req, res) => {
   try {
     const { testId } = req.params;
-    let test = await Test.findById(testId) || await Test.findOne({ testId: testId });
-    if (!test) return res.status(404).send('Test record not found');
+    const encounter = await resolveEncounterForPrint(testId);
+    if (!encounter) return res.status(404).send('Encounter record not found');
+    const { test, consultation, patient } = encounter;
 
-    const patientId = (test.patient && typeof test.patient === 'object') ? test.patient.id : test.patient;
-    const patient = await Patient.findById(patientId) || (typeof test.patient === 'object' ? new Patient(test.patient) : null);
-    const consultation = await Consultation.findByTestId(test.id) || await Consultation.findByTestId(testId) || new Consultation();
     const settings = (global.db && typeof global.db.getSettings === 'function') ? (global.db.getSettings() || {}) : {};
-
     const docInfo = resolveDoctorInfo(consultation.doctorName);
     const doctorDesignation = consultation.doctorDesignation || (docInfo && docInfo.designation) || 'Attending Physician';
     if (!consultation.doctorLicenseNumber && docInfo && docInfo.licenseNumber) {
@@ -749,14 +802,11 @@ router.get('/:testId/print/prescription', requireAuth, canAccessPatient, async (
 router.get('/:testId/print/med-cert', requireAuth, canAccessPatient, async (req, res) => {
   try {
     const { testId } = req.params;
-    let test = await Test.findById(testId) || await Test.findOne({ testId: testId });
-    if (!test) return res.status(404).send('Test record not found');
+    const encounter = await resolveEncounterForPrint(testId);
+    if (!encounter) return res.status(404).send('Encounter record not found');
+    const { test, consultation, patient } = encounter;
 
-    const patientId = (test.patient && typeof test.patient === 'object') ? test.patient.id : test.patient;
-    const patient = await Patient.findById(patientId) || (typeof test.patient === 'object' ? new Patient(test.patient) : null);
-    const consultation = await Consultation.findByTestId(test.id) || await Consultation.findByTestId(testId) || new Consultation();
     const settings = (global.db && typeof global.db.getSettings === 'function') ? (global.db.getSettings() || {}) : {};
-
     const docInfo = resolveDoctorInfo(consultation.doctorName);
     const doctorDesignation = consultation.doctorDesignation || (docInfo && docInfo.designation) || 'Attending Physician';
     if (!consultation.doctorLicenseNumber && docInfo && docInfo.licenseNumber) {
@@ -782,14 +832,11 @@ router.get('/:testId/print/med-cert', requireAuth, canAccessPatient, async (req,
 router.get('/:testId/print/chart', requireAuth, canAccessPatient, async (req, res) => {
   try {
     const { testId } = req.params;
-    let test = await Test.findById(testId) || await Test.findOne({ testId: testId });
-    if (!test) return res.status(404).send('Test record not found');
+    const encounter = await resolveEncounterForPrint(testId);
+    if (!encounter) return res.status(404).send('Encounter record not found');
+    const { test, consultation, patient } = encounter;
 
-    const patientId = (test.patient && typeof test.patient === 'object') ? test.patient.id : test.patient;
-    const patient = await Patient.findById(patientId) || (typeof test.patient === 'object' ? new Patient(test.patient) : null);
-    const consultation = await Consultation.findByTestId(test.id) || await Consultation.findByTestId(testId) || new Consultation();
     const settings = (global.db && typeof global.db.getSettings === 'function') ? (global.db.getSettings() || {}) : {};
-
     const docInfo = resolveDoctorInfo(consultation.doctorName);
     const doctorDesignation = consultation.doctorDesignation || (docInfo && docInfo.designation) || 'Attending Physician';
     if (!consultation.doctorLicenseNumber && docInfo && docInfo.licenseNumber) {
