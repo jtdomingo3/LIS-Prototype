@@ -12,6 +12,10 @@
   const famHistory = (typeof c.familyHistory === 'object' && c.familyHistory !== null && !Array.isArray(c.familyHistory))
     ? c.familyHistory
     : { diseases: [], notes: typeof c.familyHistory === 'string' ? c.familyHistory : '' };
+  let cleanFamNotes = '';
+  if (famHistory.notes && typeof famHistory.notes === 'string' && famHistory.notes.trim() !== '[object Object]') {
+    cleanFamNotes = famHistory.notes.trim();
+  }
   const socHistory = (typeof c.socialHistory === 'object' && c.socialHistory !== null && !Array.isArray(c.socialHistory))
     ? c.socialHistory
     : { occupation: '', physicalActivity: 'Active (≥150 mins/week)', dietaryHabits: '', notes: typeof c.socialHistory === 'string' ? c.socialHistory : '' };
@@ -604,7 +608,7 @@
                   <% }) %>
                 </div>
 
-                <textarea name="familyHistoryNotes" rows="2" placeholder="Kinship details: e.g. Father: Hypertension at age 52; Mother: Type 2 Diabetes; Sibling: Asthma..." class="form-input auto-save-input" style="width: 100%; border-radius: 6px; padding: 6px 8px; font-family: inherit; font-size: 0.82em;"><%= famHistory.notes || c.socialHistory || '' %></textarea>
+                <textarea name="familyHistoryNotes" id="familyHistoryNotesInput" rows="2" placeholder="Kinship details: e.g. Father: Hypertension at age 52; Mother: Type 2 Diabetes; Sibling: Asthma..." class="form-input auto-save-input" style="width: 100%; border-radius: 6px; padding: 6px 8px; font-family: inherit; font-size: 0.82em;"><%= cleanFamNotes %></textarea>
               </div>
 
               <!-- Review of Systems (ROS) -->
@@ -1657,16 +1661,87 @@
     }
   }
 
+  function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function updateFamilyHistoryNotesFromPills(clickedName, isSelected) {
+    const notesEl = document.getElementById('familyHistoryNotesInput') || document.querySelector('textarea[name="familyHistoryNotes"]');
+    if (!notesEl) return;
+
+    if (notesEl.value.trim() === '[object Object]') {
+      notesEl.value = '';
+    }
+
+    const selectedPills = Array.from(document.querySelectorAll('.ncd-pill.selected'))
+      .map(b => b.getAttribute('data-ncd') || b.textContent.trim());
+
+    if (clickedName === 'None Reported' && isSelected) {
+      notesEl.value = 'No known hereditary or familial non-communicable diseases (NCDs) reported.';
+      return;
+    }
+
+    if (notesEl.value.includes('No known hereditary')) {
+      notesEl.value = '';
+    }
+
+    const diseasePills = selectedPills.filter(p => p !== 'None Reported');
+
+    if (diseasePills.length === 0) {
+      if (notesEl.value.includes('(Father/Mother)') || notesEl.value.includes('No known hereditary')) {
+        notesEl.value = '';
+      }
+      return;
+    }
+
+    let curVal = notesEl.value.trim();
+
+    if (!curVal) {
+      notesEl.value = diseasePills.map(d => `${d} (Father/Mother)`).join('; ');
+      return;
+    }
+
+    if (isSelected && clickedName && clickedName !== 'None Reported') {
+      if (!curVal.toLowerCase().includes(clickedName.toLowerCase())) {
+        notesEl.value = `${curVal}; ${clickedName} (Father/Mother)`;
+      }
+    } else if (!isSelected && clickedName && clickedName !== 'None Reported') {
+      const regex = new RegExp(`(?:;\\s*)?${escapeRegExp(clickedName)}\\s*\\(Father\\/Mother\\)(?:;\\s*)?`, 'gi');
+      let updated = curVal.replace(regex, '; ').trim();
+      updated = updated.replace(/^;\s*|;\s*$/g, '').trim();
+      notesEl.value = updated;
+    }
+  }
+
   function toggleNcdPill(btn, name) {
-    btn.classList.toggle('selected');
-    const icon = btn.querySelector('i');
-    if (icon) {
-      if (btn.classList.contains('selected')) {
-        icon.className = 'fa fa-check-circle';
-      } else {
-        icon.className = 'fa fa-circle-o';
+    if (name === 'None Reported') {
+      const willSelect = !btn.classList.contains('selected');
+      if (willSelect) {
+        document.querySelectorAll('.ncd-pill').forEach(p => {
+          if (p !== btn) {
+            p.classList.remove('selected');
+            const icon = p.querySelector('i');
+            if (icon) icon.className = 'fa fa-circle-o';
+          }
+        });
+      }
+    } else {
+      const nonePill = Array.from(document.querySelectorAll('.ncd-pill')).find(p => (p.getAttribute('data-ncd') || p.textContent.trim()) === 'None Reported');
+      if (nonePill && nonePill.classList.contains('selected')) {
+        nonePill.classList.remove('selected');
+        const icon = nonePill.querySelector('i');
+        if (icon) icon.className = 'fa fa-circle-o';
       }
     }
+
+    btn.classList.toggle('selected');
+    const isSelected = btn.classList.contains('selected');
+    const icon = btn.querySelector('i');
+    if (icon) {
+      icon.className = isSelected ? 'fa fa-check-circle' : 'fa fa-circle-o';
+    }
+
+    updateFamilyHistoryNotesFromPills(name, isSelected);
     syncNcdInputs();
     triggerAutoSave();
   }
@@ -1940,6 +2015,9 @@
     // Assemble selected NCD pills
     const ncds = Array.from(document.querySelectorAll('.ncd-pill.selected')).map(b => b.getAttribute('data-ncd') || b.textContent.trim());
     obj.familyHistoryDiseases = ncds;
+    if (obj.familyHistoryNotes && obj.familyHistoryNotes.trim() === '[object Object]') {
+      obj.familyHistoryNotes = '';
+    }
 
     return obj;
   }
@@ -2113,6 +2191,10 @@
 
   // Initial calculation checks on page load
   function initAllCalculations() {
+    const famEl = document.getElementById('familyHistoryNotesInput') || document.querySelector('textarea[name="familyHistoryNotes"]');
+    if (famEl && famEl.value.trim() === '[object Object]') {
+      famEl.value = '';
+    }
     recalcBmiUI();
     recalcPackYearsUI();
     recalcAlcoholRiskUI();

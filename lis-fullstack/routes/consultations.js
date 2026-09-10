@@ -430,8 +430,12 @@ function applyConsultationPayload(consultation, b) {
       ? b.familyHistoryDiseases.filter(Boolean)
       : [String(b.familyHistoryDiseases)].filter(Boolean);
   }
-  if (b.familyHistoryNotes !== undefined) consultation.familyHistory.notes = b.familyHistoryNotes;
-  else if (b.familyHistory !== undefined && typeof b.familyHistory === 'string') consultation.familyHistory.notes = b.familyHistory;
+  if (b.familyHistoryNotes !== undefined) {
+    const rawFNotes = String(b.familyHistoryNotes).trim();
+    consultation.familyHistory.notes = (rawFNotes === '[object Object]') ? '' : rawFNotes;
+  } else if (b.familyHistory !== undefined && typeof b.familyHistory === 'string') {
+    consultation.familyHistory.notes = (b.familyHistory.trim() === '[object Object]') ? '' : b.familyHistory.trim();
+  }
 
   // DOH Social & Lifestyle History
   consultation.socialHistory = (typeof consultation.socialHistory === 'object' && consultation.socialHistory !== null && !Array.isArray(consultation.socialHistory))
@@ -440,8 +444,12 @@ function applyConsultationPayload(consultation, b) {
   if (b.occupation !== undefined) consultation.socialHistory.occupation = b.occupation;
   if (b.physicalActivity !== undefined) consultation.socialHistory.physicalActivity = b.physicalActivity;
   if (b.dietaryHabits !== undefined) consultation.socialHistory.dietaryHabits = b.dietaryHabits;
-  if (b.socialHistoryNotes !== undefined) consultation.socialHistory.notes = b.socialHistoryNotes;
-  else if (b.socialHistory !== undefined && typeof b.socialHistory === 'string') consultation.socialHistory.notes = b.socialHistory;
+  if (b.socialHistoryNotes !== undefined) {
+    const rawSNotes = String(b.socialHistoryNotes).trim();
+    consultation.socialHistory.notes = (rawSNotes === '[object Object]') ? '' : rawSNotes;
+  } else if (b.socialHistory !== undefined && typeof b.socialHistory === 'string') {
+    consultation.socialHistory.notes = (b.socialHistory.trim() === '[object Object]') ? '' : b.socialHistory.trim();
+  }
 
   // Objective — Vital Signs
   consultation.vitalSigns = consultation.vitalSigns || {};

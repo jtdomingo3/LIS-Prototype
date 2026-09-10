@@ -69,6 +69,7 @@
   } catch (e) {
     dobStr = p.dateOfBirth || '';
   }
+  const docDesignation = (typeof doctorDesignation !== 'undefined' ? doctorDesignation : '') || c.doctorDesignation || 'Attending Physician';
 %>
 <!DOCTYPE html>
 <html lang="en">
@@ -99,22 +100,25 @@
     .header-table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
       border-bottom: 2.5px solid #0d9488;
-      padding-bottom: 12px;
+      padding-bottom: 10px;
     }
-    .header-logo { width: 75px; vertical-align: middle; }
-    .header-logo img { width: 68px; height: auto; display: block; }
+    .header-logo { width: 65px; vertical-align: middle; }
+    .header-logo img { width: 58px; height: auto; display: block; }
     .header-text { vertical-align: middle; text-align: center; }
     .header-text h1 {
-      font-size: 1.35em;
+      font-size: 1.25em;
       font-weight: 800;
       color: #0f766e;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      margin-bottom: 2px;
+      white-space: nowrap;
+      margin: 0 0 2px 0;
     }
-    .header-text p { font-size: 0.82em; color: #475569; }
+    .header-addr { font-size: 0.78em; color: #334155; font-weight: 500; line-height: 1.3; }
+    .header-contact { font-size: 0.74em; color: #475569; margin-top: 1px; }
+    .header-text p { font-size: 0.78em; color: #0d9488; font-weight: 600; margin-top: 2px; }
 
     .doc-banner {
       background: #0f766e;
@@ -406,9 +410,10 @@
           <img src="<%= inlineLogo %>" alt="Gezyne Logo" onerror="this.style.display='none'">
         </td>
         <td class="header-text">
-          <h1>Gezyne Clinical Laboratory & Medical Clinic</h1>
-          <p>Outpatient Medical Consultation • Clinical Diagnostics • Preventive Healthcare</p>
-          <p style="font-size: 0.78em; color: #64748b; margin-top: 1px;">Republic of the Philippines • DOH Accredited Facility</p>
+          <h1>Gezyne Clinical Laboratory &amp; Medical Clinic</h1>
+          <div class="header-addr">0330 Vergel De Dios St., Poblacion, Plaridel, Bulacan (Near Municipal Basketball Court)</div>
+          <div class="header-contact">Tel: 0917-649-0807 / 0960-390-0921 / (044) 795-5007 &bull; Lic. No. 03-435-15CL-20</div>
+          <p>Outpatient Medical Consultation &bull; Clinical Diagnostics &bull; Preventive Healthcare</p>
         </td>
         <td style="width: 75px; text-align: right; vertical-align: top;">
           <div style="font-size: 0.72em; color: #64748b; font-weight: 600;">ENCOUNTER ID</div>
@@ -452,7 +457,7 @@
         <td class="val">
           <strong><%= c.doctorName || 'Attending Physician' %><%= (c.doctorName && (c.doctorName.includes('M.D.') || c.doctorName.includes('MD'))) ? '' : ', M.D.' %></strong>
           <div style="font-size: 0.85em; color: #475569; font-weight: 500;">
-            <%= doctorDesignation || c.doctorDesignation || 'Attending Physician' %> • PRC: <%= c.doctorLicenseNumber || 'N/A' %>
+            <%= docDesignation %> • PRC: <%= c.doctorLicenseNumber || 'N/A' %>
           </div>
         </td>
       </tr>
@@ -787,7 +792,7 @@
           PRC License No.: <%= c.doctorLicenseNumber || '________________' %>
         </div>
         <div style="font-size: 0.82em; color: #475569; font-weight: 700;">
-          <%= doctorDesignation || c.doctorDesignation || 'Attending Physician' %>
+          <%= docDesignation %>
         </div>
         <div style="font-size: 0.74em; color: #94a3b8; margin-top: 2px;">
           PTR No.: ____________ / S2 No.: ____________

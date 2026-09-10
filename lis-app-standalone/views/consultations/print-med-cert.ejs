@@ -3,6 +3,7 @@
   const c = consultation || {};
   const vitals = c.vitalSigns || {};
   const patientAge = p.age || p.ageManual || '';
+  const docDesignation = (typeof doctorDesignation !== 'undefined' ? doctorDesignation : '') || c.doctorDesignation || 'Attending Physician';
 %>
 <!DOCTYPE html>
 <html lang="en">
@@ -30,12 +31,14 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.05);
       position: relative;
     }
-    .header-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; border-bottom: 2px solid #0d9488; padding-bottom: 16px; }
-    .header-logo { width: 85px; vertical-align: middle; }
-    .header-logo img { width: 75px; height: auto; display: block; }
+    .header-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; border-bottom: 2px solid #0d9488; padding-bottom: 12px; }
+    .header-logo { width: 65px; vertical-align: middle; }
+    .header-logo img { width: 58px; height: auto; display: block; }
     .header-text { vertical-align: middle; text-align: center; }
-    .header-text h1 { font-size: 1.45em; font-weight: 800; color: #0f766e; text-transform: uppercase; letter-spacing: 0.5px; }
-    .header-text p { font-size: 0.85em; color: #475569; margin-top: 2px; }
+    .header-text h1 { font-size: 1.22em; font-weight: 800; color: #0f766e; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; margin: 0 0 2px 0; }
+    .header-addr { font-size: 0.78em; color: #334155; font-weight: 500; line-height: 1.3; }
+    .header-contact { font-size: 0.74em; color: #475569; margin-top: 1px; }
+    .header-text p { font-size: 0.78em; color: #0d9488; font-weight: 600; margin-top: 2px; }
     .cert-title { text-align: center; font-family: 'Playfair Display', Georgia, serif; font-size: 1.7em; font-weight: 700; letter-spacing: 2px; color: #0f172a; margin: 28px 0 24px 0; text-transform: uppercase; }
     .date-line { text-align: right; margin-bottom: 28px; font-size: 0.95em; color: #334155; }
     .salutation { font-weight: 800; font-size: 1.05em; color: #0f172a; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -73,11 +76,12 @@
           <img src="<%= inlineLogo %>" alt="Gezyne Logo" onerror="this.style.display='none'">
         </td>
         <td class="header-text">
-          <h1>Gezyne Clinical Laboratory & Medical Clinic</h1>
-          <p>Medical Consultation • Clinical Laboratory • Diagnostic Imaging</p>
-          <p style="font-size: 0.78em; color: #64748b;">DOH Licensed Outpatient Clinical Health Facility</p>
+          <h1>Gezyne Clinical Laboratory &amp; Medical Clinic</h1>
+          <div class="header-addr">0330 Vergel De Dios St., Poblacion, Plaridel, Bulacan (Near Municipal Basketball Court)</div>
+          <div class="header-contact">Tel: 0917-649-0807 / 0960-390-0921 / (044) 795-5007 &bull; Lic. No. 03-435-15CL-20</div>
+          <p>Medical Consultation &bull; Clinical Laboratory &bull; Diagnostic Imaging</p>
         </td>
-        <td style="width: 85px;"></td>
+        <td style="width: 65px;"></td>
       </tr>
     </table>
 
@@ -132,7 +136,7 @@
         <div class="sig-line"></div>
         <div style="font-weight: 800; font-size: 1.05em; color: #0f172a;"><%= c.doctorName || 'Attending Physician' %><%= (c.doctorName && (c.doctorName.includes('M.D.') || c.doctorName.includes('MD'))) ? '' : ', M.D.' %></div>
         <div style="font-size: 0.86em; color: #475569;">PRC License No.: <%= c.doctorLicenseNumber || '________________' %></div>
-        <div style="font-size: 0.82em; color: #475569; font-weight: 600;"><%= doctorDesignation || c.doctorDesignation || 'Attending Physician' %></div>
+        <div style="font-size: 0.82em; color: #475569; font-weight: 600;"><%= docDesignation %></div>
       </div>
     </div>
 
