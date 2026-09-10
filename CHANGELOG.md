@@ -37,6 +37,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Real-time dropdown synchronization linking physician selection to verified license numbers and designations.
 - **Encounter Status Integrity**:
   - Unified system-wide recognition of "Checked" status as completed encounters across dashboard metrics, census statistics, status badges, and table filters.
+- **NEQAS External Quality Assessment (EQA) Report Signatories Hub**:
+  - Added dedicated Report Signatories configuration panel to the NEQAS Hub section matching the Levey-Jennings Hub layout, enabling users to select the Testing Medical Technologist, QC Supervisor / Validator, Approving Pathologist, and optional 2nd Pathologist directly before printing.
+  - Seamlessly serializes chosen signatories into printable NEQAS Result Certificates (`/equipment/neqas/:recordId/print`) across both Central Server and Standalone Electron clients.
+  - Upgraded official NEQAS certificate print view to dynamically support 3 or 4 signatory columns (`.signatures-grid.grid-4`) with live drawer preview and auto-capture of PRC license numbers.
 
 ### Changed
 - **Clinical Batch Worksheet & Diagnostic Report Separation**:

@@ -260,6 +260,56 @@ runTest('print_neqas.ejs flags mandatory DOH corrective action form when |SDI| >
   assert(html.includes('Reagent blank degradation'), 'Should display root cause');
 });
 
+runTest('print_neqas.ejs renders 4-signatory layout with 2nd Pathologist when enabled', () => {
+  const mockRecord = {
+    id: 'neqas-003',
+    cycleYear: '2026',
+    eventNumber: 'Event 1',
+    nrlName: 'East Avenue Medical Center (EAMC - Toxicology & Drug Testing)',
+    sampleId: 'EAMC-DT-2026-PT01',
+    analyteCode: 'met',
+    analyteName: 'Methamphetamine',
+    reportedValue: 520,
+    unit: 'ng/mL',
+    methodology: 'Screening Immunoassay',
+    reagentBrand: 'SD Bioline',
+    reagentLotNumber: 'LOT-MET-2026',
+    dateReported: '2026-03-15',
+    dateEvaluated: '2026-04-02',
+    status: 'EVALUATED_ACCEPTABLE',
+    nrlEvaluation: {
+      peerMean: 500,
+      peerSd: 25,
+      sdi: 0.8,
+      evaluationGrade: 'ACCEPTABLE',
+      certificateNumber: 'EAMC-PT-2026-001'
+    }
+  };
+
+  const signatories = {
+    operatorName: 'Gezyne M. Lopez, RMT',
+    operatorLicense: '67820',
+    validatorName: 'Jeff Louine Jamir T. Domingo, RMT, PMSDA',
+    validatorLicense: '68285',
+    pathologistName: 'Bernadette R. Espiritu, M.D.',
+    pathologistLicense: '75547',
+    hasPathologist2: true,
+    pathologist2Name: 'Alberto J. Gabriel, MD, FPCR',
+    pathologist2License: '88391'
+  };
+
+  const html = ejs.render(printNeqasContent, {
+    title: 'NEQAS Result Certificate - Methamphetamine',
+    record: mockRecord,
+    signatories,
+    allUsers: []
+  }, { filename: printNeqasPath });
+
+  assert(html.includes('grid-4'), 'Should apply grid-4 class for 4 signatories');
+  assert(html.includes('Alberto J. Gabriel, MD, FPCR'), 'Should render 2nd Pathologist name');
+  assert(html.includes('88391'), 'Should render 2nd Pathologist license');
+});
+
 // ==========================================
 // TEST SUITE 3: Multi-Analyte Monthly Chemistry QC Consolidated Report (print_monthly_qc.ejs)
 // ==========================================

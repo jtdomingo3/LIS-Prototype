@@ -227,6 +227,10 @@
       margin-top: 22px;
       padding-top: 8px;
     }
+    .signatures-grid.grid-4 {
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
     .sig-block {
       text-align: center;
     }
@@ -259,7 +263,10 @@
       validatorName: (medtechs.find(u => u.name && u.name.includes('Domingo')) || medtechs[1] || {}).name || 'Jeff Louine Jamir T. Domingo, RMT, PMSDA',
       validatorLicense: '68285',
       pathologistName: (pathologists[0] && pathologists[0].name) || 'Bernadette R. Espiritu, M.D.',
-      pathologistLicense: '75547'
+      pathologistLicense: '75547',
+      hasPathologist2: false,
+      pathologist2Name: '',
+      pathologist2License: ''
     };
 
     const nrlEval = record.nrlEvaluation || {};
@@ -275,7 +282,7 @@
         <strong>Gezyne LIS Quality Assessment</strong> &bull; NEQAS Evaluation (<%= record.analyteName %> - <%= record.sampleId %>)
       </div>
       <button type="button" onclick="toggleSigEditor()" style="background: #334155; color: #f8fafc; border: 1px solid #64748b; font-size: 11px; padding: 4px 10px; border-radius: 4px; cursor: pointer;">
-        ✍️ Signatories (<span id="sigCountBadge">3 Signatories</span>)
+        ✍️ Signatories (<span id="sigCountBadge"><%= (sigs.hasPathologist2 && sigs.pathologist2Name) ? '4 Signatories' : '3 Signatories' %></span>)
       </button>
     </div>
     <div style="display: flex; gap: 8px;">
@@ -322,6 +329,24 @@
         <select id="edit_p1_select" onchange="onSelectSignatory()" style="width:100%; margin-top:4px; padding:4px 6px; font-size:11.5px; border-radius:3px;">
           <% pathologists.forEach(u => { %>
             <option value="<%= u.name %>" data-license="<%= u.licenseNumber || '' %>" <%= sigs.pathologistName === u.name ? 'selected' : '' %>>
+              <%= u.name %><%= u.licenseNumber ? ' (PRC: ' + u.licenseNumber + ')' : '' %>
+            </option>
+          <% }); %>
+        </select>
+      </div>
+      <!-- 4. Second Pathologist (Optional) -->
+      <div style="background: #0f172a; padding: 8px; border-radius: 4px; border: 1px dashed #64748b;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <label style="font-weight: bold; color: #38bdf8; font-size: 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+            <input type="checkbox" id="edit_has_p2" onchange="toggleDrawerP2(this.checked)" <%= (sigs.hasPathologist2 && sigs.pathologist2Name) ? 'checked' : '' %>>
+            <span>4. 2nd Pathologist</span>
+          </label>
+          <span style="font-size: 10px; color: #94a3b8;">(Optional)</span>
+        </div>
+        <select id="edit_p2_select" onchange="onSelectSignatory()" style="width:100%; margin-top:4px; padding:4px 6px; font-size:11.5px; border-radius:3px; <%= (sigs.hasPathologist2 && sigs.pathologist2Name) ? '' : 'display:none;' %>">
+          <option value="">-- Choose 2nd Pathologist --</option>
+          <% pathologists.forEach(u => { %>
+            <option value="<%= u.name %>" data-license="<%= u.licenseNumber || '' %>" <%= sigs.pathologist2Name === u.name ? 'selected' : '' %>>
               <%= u.name %><%= u.licenseNumber ? ' (PRC: ' + u.licenseNumber + ')' : '' %>
             </option>
           <% }); %>
@@ -500,7 +525,7 @@
     </div>
 
     <!-- Official Regulatory Sign-Off Block -->
-    <div class="signatures-grid">
+    <div class="signatures-grid <%= (sigs.hasPathologist2 && sigs.pathologist2Name) ? 'grid-4' : '' %>" id="sigContainerGrid">
       <div class="sig-block">
         <div class="sig-line" id="disp_op_name"><%= sigs.operatorName %></div>
         <div class="sig-sub">Testing Medical Technologist</div>
@@ -518,6 +543,12 @@
         <div class="sig-sub">Head of Laboratory / Pathologist</div>
         <div class="sig-sub" id="disp_p1_lic">PRC License No.: <%= sigs.pathologistLicense || '75547' %></div>
       </div>
+
+      <div class="sig-block" id="disp_p2_block" style="<%= (sigs.hasPathologist2 && sigs.pathologist2Name) ? '' : 'display: none;' %>">
+        <div class="sig-line" id="disp_p2_name"><%= sigs.pathologist2Name || '' %></div>
+        <div class="sig-sub">Associate Pathologist / Laboratory Physician</div>
+        <div class="sig-sub" id="disp_p2_lic">PRC License No.: <%= sigs.pathologist2License || '________________' %></div>
+      </div>
     </div>
   </div>
 
@@ -526,6 +557,15 @@
       const d = document.getElementById('sigEditorDrawer');
       if (!d) return;
       d.style.display = d.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function toggleDrawerP2(checked) {
+      const sel = document.getElementById('edit_p2_select');
+      if (sel) sel.style.display = checked ? 'block' : 'none';
+      if (checked && sel && sel.selectedIndex <= 0 && sel.options.length > 1) {
+        sel.selectedIndex = 1;
+      }
+      onSelectSignatory();
     }
 
     function onSelectSignatory() {
@@ -548,6 +588,27 @@
       if (p1Opt) {
         document.getElementById('disp_p1_name').textContent = p1Opt.value;
         document.getElementById('disp_p1_lic').textContent = 'PRC License No.: ' + (p1Opt.dataset.license || '________________');
+      }
+
+      const hasP2 = document.getElementById('edit_has_p2')?.checked;
+      const p2Sel = document.getElementById('edit_p2_select');
+      const p2Opt = p2Sel ? p2Sel.options[p2Sel.selectedIndex] : null;
+      const p2Block = document.getElementById('disp_p2_block');
+      const sigGrid = document.getElementById('sigContainerGrid');
+      const badge = document.getElementById('sigCountBadge');
+
+      if (hasP2 && p2Opt && p2Opt.value) {
+        if (p2Block) {
+          p2Block.style.display = 'block';
+          document.getElementById('disp_p2_name').textContent = p2Opt.value;
+          document.getElementById('disp_p2_lic').textContent = 'PRC License No.: ' + (p2Opt.dataset.license || '________________');
+        }
+        if (sigGrid) sigGrid.classList.add('grid-4');
+        if (badge) badge.textContent = '4 Signatories';
+      } else {
+        if (p2Block) p2Block.style.display = 'none';
+        if (sigGrid) sigGrid.classList.remove('grid-4');
+        if (badge) badge.textContent = '3 Signatories';
       }
 
       const toast = document.getElementById('drawerToast');

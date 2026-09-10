@@ -1472,7 +1472,10 @@ router.get('/neqas/:recordId/print', requireAuth, (req, res) => {
       validatorName: req.query.validatorName || valUser.name || 'Jeff Louine Jamir T. Domingo, RMT, PMSDA',
       validatorLicense: req.query.validatorLicense || valUser.licenseNumber || '68285',
       pathologistName: req.query.pathologistName || pathUser.name || 'Bernadette R. Espiritu, M.D.',
-      pathologistLicense: req.query.pathologistLicense || pathUser.licenseNumber || '75547'
+      pathologistLicense: req.query.pathologistLicense || pathUser.licenseNumber || '75547',
+      hasPathologist2: req.query.hasPathologist2 === '1' || req.query.hasPathologist2 === 'true',
+      pathologist2Name: req.query.pathologist2Name || '',
+      pathologist2License: req.query.pathologist2License || ''
     };
 
     res.render('equipment/print_neqas', {
