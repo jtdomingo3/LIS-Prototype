@@ -79,6 +79,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    @page {
+      size: portrait;
+      margin: 6mm 8mm;
+    }
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       color: #0f172a;
@@ -372,18 +376,21 @@
       margin-bottom: 18px;
     }
     @media print {
-      body { background: #ffffff; padding: 0; }
+      html, body {
+        background: #ffffff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+      }
       .chart-sheet {
-        border: none;
-        box-shadow: none;
-        padding: 0;
-        max-width: 100%;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
       }
       .no-print { display: none !important; }
-      @page {
-        size: A4 portrait;
-        margin: 12mm 14mm;
-      }
       .page-break { page-break-before: always; }
       .avoid-break { page-break-inside: avoid; }
     }
