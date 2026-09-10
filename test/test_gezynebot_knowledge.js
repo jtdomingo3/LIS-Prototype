@@ -1,13 +1,14 @@
 const assert = require('assert');
 const path = require('path');
 
-console.log('=== TESTING GEZYNEBOT KNOWLEDGE BASE COVERAGE (v2.5.0) ===\n');
+console.log('=== TESTING GEZYNEBOT KNOWLEDGE BASE COVERAGE (v2.6.0) ===\n');
 
 const fullstackService = require('../lis-fullstack/lib/gezyneBotService');
 const standaloneService = require('../lis-app-standalone/lib/gezyneBotService');
 const trayService = require('../lis-fullstack/tray/lib/gezyneBotService');
 
 const requiredKeywords = [
+  'LIS Version 2.6.0',
   'Equipment & Levey-Jennings QC',
   'EQUIPMENT MANAGEMENT & LEVEY-JENNINGS QUALITY CONTROL',
   'Mindray BS-240',
@@ -31,7 +32,11 @@ const requiredKeywords = [
   'REAGENT & CLINICAL SUPPLY INVENTORY MANAGEMENT',
   'Open-Vial Stability',
   'USER MANAGEMENT & GRANULAR MODULE PERMISSIONS',
-  'Equipment & QC (equipment)'
+  'Equipment & QC (equipment)',
+  'CLINICAL CONSULTATION & OUTPATIENT DOCTOR ENCOUNTERS',
+  'DOH Philippine Package of Essential NCD Interventions (PhilPEN)',
+  'Patient Medical Chart (/consultations/:testId/print/chart)',
+  'Gezyne Clinical Laboratory & Medical Clinic'
 ];
 
 const services = [

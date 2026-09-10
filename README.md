@@ -1,13 +1,13 @@
-# Gezyne Laboratory Information System (LIS) v2.5.0
+# Gezyne Laboratory Information System (LIS) v2.6.0
 
-[![Version](https://img.shields.io/badge/version-2.5.0-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
+[![Version](https://img.shields.io/badge/version-2.6.0-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-green.svg?style=flat-square&logo=node.js)](https://nodejs.org/)
 [![Database](https://img.shields.io/badge/database-SQLite%20(WAL%20Enabled)-blue.svg?style=flat-square&logo=sqlite)](https://www.sqlite.org/)
 [![Electron](https://img.shields.io/badge/desktop-Electron%20v28-47848F.svg?style=flat-square&logo=electron)](https://www.electronjs.org/)
 [![Offline](https://img.shields.io/badge/offline-100%25%20Capable-success.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
 [![License](https://img.shields.io/badge/license-MIT-amber.svg?style=flat-square)](LICENSE)
 
-> **Gezyne Clinical Laboratory - Laboratory Information System (LIS) v2.5.0** is an enterprise-grade clinical diagnostic and laboratory management platform. It pairs a centralized full-stack Node.js/Express server with 100% offline-capable standalone desktop workstations, multi-station patient processing pipelines, real-time telemetry, AI clinical assistant, reagent inventory tracking, Levey-Jennings QC & NEQAS proficiency testing, and robust SQLite WAL backups.
+> **Gezyne Clinical Laboratory - Laboratory Information System (LIS) v2.6.0** is an enterprise-grade clinical diagnostic and laboratory management platform. It pairs a centralized full-stack Node.js/Express server with 100% offline-capable standalone desktop workstations, multi-station patient processing pipelines, real-time telemetry, AI clinical assistant, outpatient clinical consultation management, reagent inventory tracking, Levey-Jennings QC & NEQAS proficiency testing, and robust SQLite WAL backups.
 
 ---
 
@@ -15,22 +15,22 @@
 
 ```
 .
-├── README.md                  # Central system documentation (v2.5.0)
+├── README.md                  # Central system documentation (v2.6.0)
 ├── ads.json                   # Kiosk announcement configuration
 │
-├── lis-fullstack/             # Central LIS Server & Electron Tray Launcher (v2.5.0)
+├── lis-fullstack/             # Central LIS Server & Electron Tray Launcher (v2.6.0)
 │   ├── build/                 # Bundled installer resources & seed data
 │   ├── dist/                  # Packaged standalone executable (via pkg)
 │   ├── lib/                   # SQLite database adapter (better-sqlite3), tokens, PDF engine
 │   ├── middleware/            # Bearer token auth, role gates & rate limiting
-│   ├── models/                # Domain models (Patient, Test, User, Template, Inventory)
+│   ├── models/                # Domain models (Patient, Test, User, Template, Inventory, Consultation)
 │   ├── routes/                # Express MVC routes & RESTful endpoints
 │   ├── scripts/               # Build, encryption & Windows service scripts
 │   ├── tray/                  # Electron System Tray launcher & NSIS Windows installer
 │   ├── views/                 # Responsive EJS views, layouts & print templates
 │   └── server.js              # Central LIS Server entrypoint
 │
-├── lis-app-standalone/        # Local-First Standalone Desktop Client (Electron) (v2.5.0)
+├── lis-app-standalone/        # Local-First Standalone Desktop Client (Electron) (v2.6.0)
 │   ├── lib/                   # Local Express engine, sync engine, network monitor & queue
 │   ├── models/                # Local SQLite models with offline support
 │   ├── renderer/              # Desktop modals, status banners & print preview
@@ -46,7 +46,40 @@
 
 ## 📜 Version History & Release Notes
 
-### **v2.5.0 (Quality Assurance, NEQAS EAMC PT Surveys, Equipment QC & Security Hardening) — Current Release**
+### **v2.6.0 (Clinical Consultation Module, DOH PhilPEN Risk Assessment, Clinical Document Printing & Worksheet Isolation) — Current Release**
+- 🩺 **Clinical Consultation & Outpatient Doctor Check-up Module (`/consultations/:testId`)**:
+  - Full outpatient encounter management adhering to SOAP (Subjective, Objective, Assessment, Plan) guidelines and Philippine DOH PhilPEN CPG.
+  - **Subjective**: Chief Complaint (CC), History of Present Illness (HPI), Past Medical History (PMH), Current Medications, Review of Systems (ROS), and prominent allergy warning alerts (with NKDA flag).
+  - **DOH PhilPEN Lifestyle Risk Profiling**:
+    - Interactive Familial NCD checklist with clickable disease pills (Hypertension, Type 2 Diabetes, Premature CAD, Stroke, Cancer, Asthma/Allergies, CKD) auto-populating structured kinship notes into clinical records.
+    - Smoking / Tobacco screening with automated pack-years formula `(sticksPerDay / 20) * yearsSmoked`.
+    - Alcohol consumption screening with binge drinking hazard alerts.
+  - **Objective Clinical Vitals & Real-Time BMI Engine**:
+    - Complete vitals grid: BP (Systolic/Diastolic), Heart/Pulse Rate, Respiratory Rate, Temperature (°C), SpO2 (%), Blood Glucose (mg/dL), Pain Scale (0-10), and Waist Circumference (cm).
+    - Real-time client & server calculation of BMI under Philippine DOH / Asia-Pacific (PhilPEN & FNRI) guidelines with dynamic color-coded badges: Underweight (< 18.5), Normal (18.5 – 22.9), Overweight / At Risk (23.0 – 24.9), Obese Class I (25.0 – 29.9), and Obese Class II (>= 30.0).
+    - Multi-system Physical Examination (PE) checklist.
+    - Integrated Patient Diagnostic History displaying previous laboratory and imaging test results with one-click direct report previewing (`/reports/preview/:id`).
+  - **Assessment & Plan**: Searchable ICD-10 diagnostic directory, differential diagnoses, multi-item Rx prescription builder (brand/generic, dose, route, frequency, duration, sig), laboratory and imaging requisitions with custom test ordering, lifestyle advice, follow-up scheduling, and specialist referrals.
+- 🖨️ **Clinical Document Printing Suite**:
+  - **Patient Medical Chart** (`/consultations/:testId/print/chart`): Full encounter hard-copy printout with official facility letterhead, complete SOAP documentation, vitals grid, DOH PhilPEN risk assessment, prescriptions table, and physician signature block.
+  - **Optimized Print Layout**: Top-level `@page { size: portrait; margin: 6mm 8mm; }` eliminating oversized paper margins across Letter and A4 sizes, paired with a borderless `.chart-sheet` print container matching the on-screen form view proportions.
+  - **Official Prescription Pad** (`/consultations/:testId/print/prescription`): Philippine standard Rx pad with attending physician's PRC License, PTR, and S2 credentials.
+  - **Medical Certificate** (`/consultations/:testId/print/med-cert`): Formal fit-to-work / illness certificate with diagnosis, recommended rest periods, and physician designation.
+  - **Laboratory Request Requisition** (`/consultations/:testId/print/lab-request`): Standard requisition sheet for laboratory and imaging orders.
+  - **Standardized Official Clinic Header**: Strictly one-line clinic title (`Gezyne Clinical Laboratory & Medical Clinic`) featuring complete facility address (`0330 Vergel De Dios St., Poblacion, Plaridel, Bulacan (Near Municipal Basketball Court)`), official DOH License Number (`Lic. No. 03-435-15CL-20`), and contact hotlines (`Tel: 0917-649-0807 / 0960-390-0921 / (044) 795-5007`).
+- 👨‍⚕️ **Physician Auto-Capture & Status Lifecycle**:
+  - Automatic identity capture for logged-in physician accounts, auto-populating PRC license, PTR, and professional designation (e.g., "Internist").
+  - Clinic room name matching without duplicate accounts, and real-time dropdown synchronization linking physician selection to credentials.
+  - Universal recognition of "Checked" status as completed encounters across all dashboards, census reports, badges, and filters.
+- 🔬 **Clinical Batch Worksheet & Diagnostic Report Separation**:
+  - Standardized `isDoctorVisitTest` helper isolating outpatient doctor check-up visits from laboratory batch worksheets (`/worksheet/download` and `/worksheet/preview`) and diagnostic report exports.
+  - Laboratory worksheets strictly display diagnostic laboratory specimens (CBC, Urinalysis, Blood Chemistry, etc.), keeping MedTech worklists focused.
+- 🔄 **Two-Way Offline Workstation Parity**:
+  - 100% offline consultation recording, prescription drafting, and chart completion on standalone workstations with automatic two-way background sync and discrepancy auditing.
+
+---
+
+### **v2.5.0 (Quality Assurance, NEQAS EAMC PT Surveys, Equipment QC & Security Hardening)**
 - 🔬 **Equipment Management & Levey-Jennings Quality Control (QC)**:
   - Full-lifecycle instrumentation registry supporting Clinical Chemistry, Hematology, Electrolyte, Urinalysis analyzers, and Radiology/X-Ray equipment (with DOH/FDA CDRRHR specifications).
   - High-precision Levey-Jennings (LJ) statistical charting engine with Westgard Multi-Rule Evaluation (1:2s, 1:3s, 2:2s, R:4s, 4:1s, 10:x), automated Z-score computations, and violation alerts.
@@ -154,9 +187,9 @@ The desktop client runs an embedded local engine on `http://127.0.0.1:30099` wit
 
 ---
 
-## 📦 Packaging Windows Installers (v2.5.0)
+## 📦 Packaging Windows Installers (v2.6.0)
 
-### 1. Build Central Server Installer (`Gezyne LIS Server Setup 2.5.0.exe`)
+### 1. Build Central Server Installer (`Gezyne LIS Server Setup 2.6.0.exe`)
 
 ```powershell
 cd lis-fullstack
@@ -167,16 +200,16 @@ cd tray
 npm install
 npm run dist:win
 ```
-*Output: `lis-fullstack/tray/dist/Gezyne LIS Server Setup 2.5.0.exe`*
+*Output: `lis-fullstack/tray/dist/Gezyne LIS Server Setup 2.6.0.exe`*
 
-### 2. Build Standalone Client Installer (`Gezyne LIS Setup 2.5.0.exe`)
+### 2. Build Standalone Client Installer (`Gezyne LIS Setup 2.6.0.exe`)
 
 ```powershell
 cd lis-app-standalone
 npm install
 npm run dist:win
 ```
-*Output: `lis-app-standalone/dist/Gezyne LIS Setup 2.5.0.exe`*
+*Output: `lis-app-standalone/dist/Gezyne LIS Setup 2.6.0.exe`*
 
 ---
 

@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.6.0] - 2026-09-10
+
+### Added
+- **Clinical Consultation & Outpatient Doctor Check-up Module (`/consultations/:testId`)**:
+  - Full outpatient clinical encounter documentation adhering to international SOAP (Subjective, Objective, Assessment, Plan) guidelines and DOH Philippine Package of Essential NCD Interventions (PhilPEN) Clinical Practice Guidelines (CPG).
+  - **Subjective Assessment**: Chief complaint, History of Present Illness (HPI), Past Medical History (PMH), current medications, Review of Systems (ROS), and prominent allergy warning alerts / NKDA flag.
+  - **DOH PhilPEN Lifestyle Risk Profiling**:
+    - Interactive Family Medical History with selectable Non-Communicable Disease (NCD) pills (Hypertension, Type 2 Diabetes, Premature CAD/Heart Disease, Stroke, Cancer, Asthma/Allergies, Chronic Kidney Disease) that auto-populate kinship details into clinical notes.
+    - Tobacco & smoking screening with automated pack-years formula `(sticksPerDay / 20) * yearsSmoked`.
+    - Alcohol consumption assessment with binge drinking risk indicators.
+  - **Objective Clinical Vitals & Real-Time BMI Engine**:
+    - Multi-metric vitals tracking: Blood Pressure (Systolic/Diastolic), Heart/Pulse Rate, Respiratory Rate, Temperature (°C), Oxygen Saturation (SpO2 %), Blood Glucose (mg/dL), Pain Scale (0-10), and Waist Circumference (cm).
+    - Real-time Asia-Pacific / DOH Philippines BMI classification with color-coded status badges: Underweight (< 18.5), Normal (18.5 – 22.9), Overweight / At Risk (23.0 – 24.9), Obese Class I (25.0 – 29.9), and Obese Class II (>= 30.0).
+    - Multi-system Physical Examination (PE) checklist and documentation.
+    - Integrated Patient Diagnostic History displaying previous laboratory and imaging test results with one-click direct report previews (`/reports/preview/:id`).
+  - **Clinical Assessment & Diagnosis**: Searchable ICD-10 diagnostic directory, suspected etiology, differential diagnoses list, and clinical impressions.
+  - **Plan & Treatment**: Multi-item prescription builder (generic/brand names, dosage, route, frequency, duration, sig instructions), diagnostic requisitions for laboratory and imaging with custom input option, lifestyle/non-pharmacologic advice, follow-up scheduler, and specialist referrals.
+- **Clinical Document Printing Suite**:
+  - **Patient Medical Chart** (`/consultations/:testId/print/chart`): Full encounter hard-copy printout with official facility letterhead, complete SOAP documentation, vitals grid, DOH PhilPEN risk assessment, prescriptions table, and physician signature block.
+  - **Optimized Print Layout**: Top-level `@page { size: portrait; margin: 6mm 8mm; }` eliminating oversized paper margins across Letter and A4 sizes, paired with a borderless `.chart-sheet` print container matching the on-screen form proportions.
+  - **Official Prescription Pad** (`/consultations/:testId/print/prescription`): Philippine standard Rx pad with attending physician's PRC License, PTR, and S2 credentials.
+  - **Medical Certificate** (`/consultations/:testId/print/med-cert`): Formal fit-to-work / illness certificate with diagnosis, recommended rest periods, and physician designation.
+  - **Laboratory Request Requisition** (`/consultations/:testId/print/lab-request`): Standard requisition sheet for laboratory and imaging orders.
+  - **Standardized Official Clinic Header**: Strictly one-line clinic title (`Gezyne Clinical Laboratory & Medical Clinic`) featuring complete facility address (`0330 Vergel De Dios St., Poblacion, Plaridel, Bulacan (Near Municipal Basketball Court)`), official DOH License Number (`Lic. No. 03-435-15CL-20`), and contact hotlines (`Tel: 0917-649-0807 / 0960-390-0921 / (044) 795-5007`).
+- **Physician Identity & Credential Auto-Capture**:
+  - Automatic detection of logged-in doctor accounts (roles: Doctor, Physician, Internist, Cardiologist, etc.) pre-filling attending physician details, PRC license, and clinical designation.
+  - Room name matching (e.g., "Doctor's Check-up - Dr. Lorenzo") mapping directly to doctor accounts without duplicate entries.
+  - Real-time dropdown synchronization linking physician selection to verified license numbers and designations.
+- **Encounter Status Integrity**:
+  - Unified system-wide recognition of "Checked" status as completed encounters across dashboard metrics, census statistics, status badges, and table filters.
+
+### Changed
+- **Clinical Batch Worksheet & Diagnostic Report Separation**:
+  - Implemented standardized `isDoctorVisitTest` helper isolating outpatient doctor check-up visits from laboratory batch worksheets (`/worksheet/download` and `/worksheet/preview`) and diagnostic report exports.
+  - Laboratory worksheets strictly display diagnostic laboratory specimens (CBC, Urinalysis, Blood Chemistry, etc.), preventing doctor check-ups from cluttering laboratory technologist worklists.
+- **Two-Way Offline Synchronization Parity**:
+  - Complete two-way offline synchronization for consultations, medical chart records, prescription entries, and physician signatures between standalone desktop clients and central server.
+  - Comprehensive sync discrepancy audit log verification.
+
+### Fixed
+- **Family Medical History Notes Sanitization**:
+  - Fixed an issue where clicking Family Medical History items or rendering notes resulted in `[object Object]` text in textareas.
+  - Added robust sanitization filters across client event handlers, autosave pipelines, route handlers, and database persistence layers.
+
+---
+
 ## [2.5.0] - 2026-09-09
 
 ### Added
