@@ -118,9 +118,10 @@ function migrateJsonToSqlite(db, opts = {}) {
         users = JSON.parse(raw);
       }
 
-      if (Array.isArray(users) && users.length > 0) {
-        db.saveUsers(users);
-        counts.users = users.length;
+      const userList = Array.isArray(users) ? users : (users && Array.isArray(users.users) ? users.users : (users && Array.isArray(users.data) ? users.data : []));
+      if (userList.length > 0) {
+        db.saveUsers(userList);
+        counts.users = userList.length;
         log(`[migration] Imported ${counts.users} users`);
       }
 

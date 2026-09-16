@@ -258,29 +258,14 @@ function startServerDirect(cb) {
 }
 
 // compute the directory the server will use for data, mirroring the
-// logic in lib/dataPath.js but without requiring the helper (which isn't
-// included in the tray ASAR).  This allows the tray to create/migrate the
-// folder ahead of time and avoids crashes when the module is absent.
+// logic in lib/dataPath.js. ~/Documents/LIS/data is always writable without admin privileges.
 function computeDataDir() {
-  // When pm2 is available the tray always launches the server with
-  // DATA_DIR = ProgramData\GezyneLIS.  We must use the same directory so
-  // that uploads / restores write to the location the server actually reads.
-  if (pm2Available) {
-    const programDataBase = process.env.PROGRAMDATA || path.join('C:', 'ProgramData');
-    const d = path.join(programDataBase, 'GezyneLIS');
-    try { fs.mkdirSync(d, { recursive: true }); } catch (_) {}
-    return d;
+  if (process.env.DATA_DIR && process.env.DATA_DIR.length) {
+    return process.env.DATA_DIR;
   }
-  try {
-    const { getDataDir } = require('../lib/dataPath');
-    return getDataDir();
-  } catch (err) {
-    // module not available (packaged tray); fall back to ProgramData
-    const programDataBase = process.env.PROGRAMDATA || path.join('C:', 'ProgramData');
-    const d = path.join(programDataBase, 'GezyneLIS');
-    try { fs.mkdirSync(d, { recursive: true }); } catch (_) {}
-    return d;
-  }
+  const docsDataDir = path.join(os.homedir(), 'Documents', 'LIS', 'data');
+  try { fs.mkdirSync(docsDataDir, { recursive: true }); } catch (_) {}
+  return docsDataDir;
 }
 
 let isPm2Starting = false;
@@ -304,8 +289,7 @@ function startViaPm2(cb) {
   ];
   const cfg = cfgCandidates.find(p => { try { return fs.existsSync(p); } catch { return false; } }) || path.join(PROJECT_ROOT, 'ecosystem.config.js');
 
-  const programDataBase = process.env.PROGRAMDATA || path.join('C:', 'ProgramData');
-  const dataDir = process.env.DATA_DIR || path.join(programDataBase, 'GezyneLIS');
+  const dataDir = computeDataDir();
   const pm2Env = Object.assign({}, process.env, { DATA_DIR: dataDir });
 
   // Force clean reload from ecosystem configuration to ensure binary paths and env are up to date
@@ -345,8 +329,7 @@ function restartViaPm2(cb) {
     path.join(process.resourcesPath || '', 'server', 'ecosystem.config.js')
   ];
   const cfg = cfgCandidates.find(p => { try { return fs.existsSync(p); } catch { return false; } }) || path.join(PROJECT_ROOT, 'ecosystem.config.js');
-  const programDataBase = process.env.PROGRAMDATA || path.join('C:', 'ProgramData');
-  const dataDir = process.env.DATA_DIR || path.join(programDataBase, 'GezyneLIS');
+  const dataDir = computeDataDir();
   const pm2Env = Object.assign({}, process.env, { DATA_DIR: dataDir });
 
   exec(`pm2 delete lis-app`, { cwd: path.dirname(cfg), env: pm2Env }, () => {
@@ -861,30 +844,56 @@ function restartServerAsync() {
   }
 }
 
-// Helper: import JSON into SQLite if available
-function importIntoSqlite(dbFile, jsonPath, type) {
-  try {
-    const modules = getSqliteModules();
-    if (!modules) {
-      appendLog('[settings] SQLite direct sync module not available; server auto-migration will process file on startup');
-      return;
-    }
-    const { createDb, importJsonFile } = modules;
-    const sdb = createDb(dbFile);
-    importJsonFile(sdb, jsonPath, type);
-    sdb.close();
-    appendLog('[settings] Synced ' + type + ' into SQLite database');
-  } catch (e) {
-    appendLog('[settings] SQLite sync notice: ' + e.message);
-  }
+// Helper: trigger maintenance on active server (or restart server to apply)
+function triggerMaintenanceSync(action, cb) {
+  const http = require('http');
+  const port = process.env.PORT || 3000;
+  appendLog(`[settings] Applying maintenance (${action})...`);
+
+  const req = http.request({
+    hostname: '127.0.0.1',
+    port: port,
+    path: '/api/internal/maintenance/execute',
+    method: 'POST',
+    timeout: 1500
+  }, (res) => {
+    let buf = '';
+    res.on('data', d => { buf += d; });
+    res.on('end', () => {
+      try {
+        const parsed = JSON.parse(buf);
+        if (parsed.ok) {
+          appendLog(`[settings] Maintenance (${action}) applied immediately to active server`);
+          return cb && cb(null, true);
+        }
+      } catch (_) {}
+      appendLog(`[settings] Restarting server to ensure maintenance (${action}) takes effect...`);
+      restartServerAsync();
+      cb && cb(null, true);
+    });
+  });
+
+  req.on('error', () => {
+    appendLog(`[settings] Server not reachable on port ${port}; restarting server to apply maintenance (${action})...`);
+    restartServerAsync();
+    cb && cb(null, true);
+  });
+
+  req.on('timeout', () => {
+    req.destroy();
+    appendLog(`[settings] Server request timed out; restarting server to apply maintenance (${action})...`);
+    restartServerAsync();
+    cb && cb(null, true);
+  });
+
+  req.end();
 }
 
-// Restore users: seed the default admin account into data-users.json and SQLite DB
+// Restore users: seed the default admin account into data-users.json and set .restore-admin flag
 ipcMain.handle('restore-users', async () => {
   try {
-    const bcrypt = require('bcryptjs');
     const { v4: uuidv4 } = require('uuid');
-    const { usersFile, dbFile, dataDir } = resolveDataFiles();
+    const { usersFile, dataDir } = resolveDataFiles();
 
     // ensure directory exists
     fs.mkdirSync(dataDir, { recursive: true });
@@ -917,7 +926,7 @@ ipcMain.handle('restore-users', async () => {
         permissions: {
           dashboard: true, patients: true, reception: true,
           tests: true, reports: true, worksheet: true,
-          templates: true, users: true, delete: true
+          templates: true, inventory: true, equipment: true, users: true, delete: true
         },
         status: 'Active',
         createdAt: new Date().toISOString(),
@@ -925,40 +934,24 @@ ipcMain.handle('restore-users', async () => {
       };
       existing.push(admin);
     } else {
-      // reset password and ensure admin role
       admin.password = hash;
       admin.role = 'Admin';
       admin.status = 'Active';
       admin.permissions = {
         dashboard: true, patients: true, reception: true,
         tests: true, reports: true, worksheet: true,
-        templates: true, users: true, delete: true
+        templates: true, inventory: true, equipment: true, users: true, delete: true
       };
     }
 
     fs.writeFileSync(usersFile, JSON.stringify(existing, null, 2), 'utf8');
-    appendLog('[settings] Restored admin user in ' + usersFile);
+    appendLog('[settings] Prepared default admin user in ' + usersFile);
 
-    // Also update SQLite database directly if it exists
-    try {
-      if (fs.existsSync(dbFile)) {
-        const modules = getSqliteModules();
-        if (modules) {
-          const { createDb } = modules;
-          const sdb = createDb(dbFile);
-          const currentUsers = sdb.getUsers() || [];
-          const idx = currentUsers.findIndex(u => u.email === 'admin@lab.com');
-          if (idx >= 0) currentUsers[idx] = admin;
-          else currentUsers.push(admin);
-          sdb.saveUsers(currentUsers);
-          sdb.close();
-          appendLog('[settings] Restored admin user in SQLite database ' + dbFile);
-        }
-      }
-    } catch (e) { appendLog('[settings] warning: could not update sqlite users: ' + String(e)); }
+    // Set trigger flag so the server SQLite database updates immediately or on reboot
+    fs.writeFileSync(path.join(dataDir, '.restore-admin'), new Date().toISOString(), 'utf8');
 
-    // restart server so it picks up the new user data
-    restartServerAsync();
+    // Trigger maintenance on the server
+    await new Promise(resolve => triggerMaintenanceSync('restore-users', resolve));
     return { ok: true };
   } catch (e) {
     appendLog('[settings] restore-users failed: ' + String(e));
@@ -998,24 +991,11 @@ ipcMain.handle('restore-data', async () => {
 
     fs.writeFileSync(df, JSON.stringify(initialData, null, 2), 'utf8');
 
-    // Reset SQLite database directly
-    try {
-      if (fs.existsSync(dbFile)) {
-        const modules = getSqliteModules();
-        if (modules) {
-          const { createDb } = modules;
-          const sdb = createDb(dbFile);
-          sdb.write(initialData);
-          sdb.close();
-          appendLog('[settings] Reset SQLite database ' + dbFile);
-        }
-      }
-    } catch (e) {
-      appendLog('[settings] SQLite reset notice: ' + e.message);
-    }
+    // Set trigger flag so the server SQLite database resets immediately or on reboot
+    fs.writeFileSync(path.join(dataDir, '.reset-database'), new Date().toISOString(), 'utf8');
 
-    appendLog('[settings] Restored database to empty initial state');
-    restartServerAsync();
+    appendLog('[settings] Queued database reset to empty initial state');
+    await new Promise(resolve => triggerMaintenanceSync('restore-data', resolve));
     return { ok: true };
   } catch (e) {
     appendLog('[settings] restore-data failed: ' + String(e));
@@ -1045,20 +1025,23 @@ ipcMain.handle('upload-data', async () => {
     fs.mkdirSync(dataDir, { recursive: true });
 
     // backup current before overwriting
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
     if (fs.existsSync(df)) {
-      const ts = new Date().toISOString().replace(/[:.]/g, '-');
       const backupPath = path.join(dataDir, `data-backup-${ts}.json`);
       try { fs.copyFileSync(df, backupPath); appendLog('[settings] backed up data.json to ' + backupPath); } catch (e) {}
+    }
+    if (fs.existsSync(dbFile)) {
+      const backupDbPath = path.join(dataDir, `lis-data-backup-${ts}.db`);
+      try { fs.copyFileSync(dbFile, backupDbPath); appendLog('[settings] backed up lis-data.db to ' + backupDbPath); } catch (e) {}
     }
 
     fs.writeFileSync(df, raw, 'utf8');
     appendLog('[settings] Uploaded data.json from ' + srcPath + ' to ' + df);
 
-    // Sync into SQLite
-    importIntoSqlite(dbFile, df, 'data');
+    // Set trigger flag so the server SQLite database imports the new data
+    fs.writeFileSync(path.join(dataDir, '.import-data'), new Date().toISOString(), 'utf8');
 
-    // restart server so it picks up the new file
-    restartServerAsync();
+    await new Promise(resolve => triggerMaintenanceSync('upload-data', resolve));
     return { ok: true };
   } catch (e) {
     appendLog('[settings] upload-data failed: ' + String(e));
@@ -1082,26 +1065,31 @@ ipcMain.handle('upload-users', async () => {
     // validate JSON
     const raw = fs.readFileSync(srcPath, 'utf8');
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) throw new Error('Users file must be a JSON array');
+    if (!Array.isArray(parsed) && (!parsed || typeof parsed !== 'object')) {
+      throw new Error('Users file must be a JSON array or object with users list');
+    }
 
     // ensure directory exists
     fs.mkdirSync(dataDir, { recursive: true });
 
     // backup current before overwriting
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
     if (fs.existsSync(usersFile)) {
-      const ts = new Date().toISOString().replace(/[:.]/g, '-');
       const backupPath = path.join(dataDir, `data-users-backup-${ts}.json`);
       try { fs.copyFileSync(usersFile, backupPath); appendLog('[settings] backed up data-users.json to ' + backupPath); } catch (e) {}
+    }
+    if (fs.existsSync(dbFile)) {
+      const backupDbPath = path.join(dataDir, `lis-data-backup-${ts}.db`);
+      try { fs.copyFileSync(dbFile, backupDbPath); appendLog('[settings] backed up lis-data.db to ' + backupDbPath); } catch (e) {}
     }
 
     fs.writeFileSync(usersFile, raw, 'utf8');
     appendLog('[settings] Uploaded data-users.json from ' + srcPath + ' to ' + usersFile);
 
-    // Sync into SQLite
-    importIntoSqlite(dbFile, usersFile, 'users');
+    // Set trigger flag so the server SQLite database imports the new users
+    fs.writeFileSync(path.join(dataDir, '.import-users'), new Date().toISOString(), 'utf8');
 
-    // restart server so it picks up the new file
-    restartServerAsync();
+    await new Promise(resolve => triggerMaintenanceSync('upload-users', resolve));
     return { ok: true };
   } catch (e) {
     appendLog('[settings] upload-users failed: ' + String(e));

@@ -44,6 +44,7 @@ function getSqlJs() {
         path.join(execDir, file),
         path.join(path.dirname(process.execPath || ''), file),
         path.join(__dirname, '..', 'node_modules', 'sql.js', 'dist', file),
+        path.join(__dirname, '..', '..', 'node_modules', 'sql.js', 'dist', file),
         path.join(process.resourcesPath || '', 'server', file),
         path.join(process.resourcesPath || '', file)
       ];
@@ -1850,8 +1851,10 @@ function createSqlJsDb(SQL, dbPath) {
   `);
 
   let persistTimer = null;
+  let isClosed = false;
 
   function flushToDisk() {
+    if (isClosed) return;
     if (persistTimer) {
       clearTimeout(persistTimer);
       persistTimer = null;
@@ -1859,16 +1862,34 @@ function createSqlJsDb(SQL, dbPath) {
     if (!dbPath || dbPath === ':memory:') return;
     try {
       const data = sqlite.export();
+      const buf = Buffer.from(data);
       const tmp = dbPath + '.tmp';
-      fs.writeFileSync(tmp, Buffer.from(data));
-      fs.renameSync(tmp, dbPath);
-    } catch (e) {
+
+      // Ensure directory exists
+      try { fs.mkdirSync(path.dirname(dbPath), { recursive: true }); } catch (_) {}
+
+      // Write to temp file then rename atomically
       try {
-        const data = sqlite.export();
-        fs.writeFileSync(dbPath, Buffer.from(data));
-      } catch (err) {
-        console.error('[sqliteDb] persist to disk error:', err.message);
+        fs.writeFileSync(tmp, buf);
+        fs.renameSync(tmp, dbPath);
+      } catch (renameErr) {
+        // Fallback for Windows file locking issues during rename
+        fs.writeFileSync(dbPath, buf);
+        try { fs.unlinkSync(tmp); } catch (_) {}
       }
+
+      // Verify file was written and is not empty
+      try {
+        const st = fs.statSync(dbPath);
+        if (st.size === 0 && buf.length > 0) {
+          console.error('[sqliteDb sql.js] CRITICAL: DB file is 0 bytes after flush! Rewriting directly...');
+          fs.writeFileSync(dbPath, buf);
+        }
+      } catch (statErr) {
+        console.error('[sqliteDb sql.js] Flush verification warning:', statErr.message);
+      }
+    } catch (err) {
+      console.error('[sqliteDb sql.js] CRITICAL: Failed to flush database to disk:', err && err.message ? err.message : err);
     }
   }
 
@@ -1885,9 +1906,19 @@ function createSqlJsDb(SQL, dbPath) {
     }
   }
 
+  // Periodic flush every 30s as safety net to guarantee in-memory data reaches disk
+  const periodicFlushTimer = setInterval(() => {
+    try { flushToDisk(); } catch (e) {}
+  }, 30000);
+  if (periodicFlushTimer && typeof periodicFlushTimer.unref === 'function') {
+    periodicFlushTimer.unref();
+  }
+
   try {
     process.on('beforeExit', () => { flushToDisk(); });
     process.on('exit', () => { flushToDisk(); });
+    process.on('SIGTERM', () => { flushToDisk(); });
+    process.on('SIGINT', () => { flushToDisk(); });
   } catch (_) {}
 
   function queryAll(sql, params = []) {
@@ -3103,7 +3134,12 @@ function createSqlJsDb(SQL, dbPath) {
     },
 
     close() {
+      if (isClosed) return;
       persist(true);
+      isClosed = true;
+      if (periodicFlushTimer) {
+        clearInterval(periodicFlushTimer);
+      }
       try { sqlite.close(); } catch (e) {}
     }
   };

@@ -19,6 +19,7 @@ const AVAILABLE_MODELS = [
 
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
 /**
  * Resolve OpenRouter API key from:
@@ -65,6 +66,8 @@ function resolveApiKey() {
     if (process.env.DATA_DIR) {
       candidates.push(path.join(process.env.DATA_DIR, '.env'));
     }
+    const documentsLisDir = path.join(os.homedir(), 'Documents', 'LIS', 'data');
+    candidates.push(path.join(documentsLisDir, '.env'));
     const programDataBase = process.env.PROGRAMDATA || path.join('C:', 'ProgramData');
     candidates.push(path.join(programDataBase, 'GezyneLIS', '.env'));
     if (process.execPath) {

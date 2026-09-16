@@ -3,12 +3,15 @@ const express = require('express');
 (function loadEnv() {
   const path = require('path');
   const fs = require('fs');
+  const os = require('os');
   try {
     const dotenv = require('dotenv');
     const candidates = [];
     if (process.env.DATA_DIR) {
       candidates.push(path.join(process.env.DATA_DIR, '.env'));
     }
+    const documentsLisDir = path.join(os.homedir(), 'Documents', 'LIS', 'data');
+    candidates.push(path.join(documentsLisDir, '.env'));
     const programDataBase = process.env.PROGRAMDATA || path.join('C:', 'ProgramData');
     candidates.push(path.join(programDataBase, 'GezyneLIS', '.env'));
     if (process.execPath) {
@@ -102,42 +105,242 @@ try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch (e) {}
 // Create the SQLite database adapter (tables are auto-created)
 const db = createDb(SQLITE_FILE);
 
-// Auto-migrate from JSON if this is first startup with SQLite
-// (JSON files exist but SQLite DB has no data yet)
-(function autoMigrate() {
-  const hasJsonData = fs.existsSync(DATA_FILE);
-  const hasJsonUsers = fs.existsSync(USERS_FILE);
-  if (!hasJsonData && !hasJsonUsers) return; // fresh install, nothing to migrate
+// Startup diagnostic banner for data directory and persistence verification
+console.log('=== LIS Data Configuration ===');
+console.log('  DATA_DIR:', DATA_DIR);
+console.log('  SQLITE_FILE:', SQLITE_FILE);
+console.log('  Engine:', db._engine || (process.pkg ? 'sql.js (WebAssembly)' : 'better-sqlite3'));
+console.log('  Writable:', (() => {
+  try {
+    const t = path.join(DATA_DIR, `.writetest_${process.pid}`);
+    fs.writeFileSync(t, '');
+    fs.unlinkSync(t);
+    return 'YES';
+  } catch (e) {
+    return 'NO - ' + e.message;
+  }
+})());
+console.log('==============================');
 
-  // Decouple data and users migration checks:
-  // - Migrate clinical data if data.json exists and patients table is empty
-  // - Migrate users if data-users.json exists and users table has <= 1 user (fresh or default admin only)
-  const existingPatients = typeof db.getPatients === 'function' ? db.getPatients() : [];
-  const existingUsers = typeof db.getUsers === 'function' ? db.getUsers() : [];
-
-  const shouldMigrateData = hasJsonData && existingPatients.length === 0;
-  const shouldMigrateUsers = hasJsonUsers && (existingUsers.length <= 1);
-
-  if (!shouldMigrateData && !shouldMigrateUsers) {
-    console.log('[server] SQLite database already populated, skipping JSON migration');
-    return;
+// Process maintenance requests triggered via flag files (from electron tray or IT manual action)
+async function processMaintenanceFlags() {
+  if (db && db._readyPromise) {
+    try { await db._readyPromise; } catch (_) {}
   }
 
-  console.log(`[server] Detected legacy JSON files (data=${shouldMigrateData}, users=${shouldMigrateUsers}), performing migration to SQLite...`);
-  const result = migrateJsonToSqlite(db, {
-    dataJsonPath: shouldMigrateData ? DATA_FILE : null,
-    usersJsonPath: shouldMigrateUsers ? USERS_FILE : null,
-    userDataKey: USER_DATA_KEY,
-    renameAfter: true
-  });
-
-  if (result.success) {
-    console.log('[server] JSON → SQLite migration completed successfully');
-    if (typeof db.checkpoint === 'function') {
-      db.checkpoint();
+  // 1. .restore-admin: force reset/creation of default admin account
+  const restoreAdminFlag = path.join(DATA_DIR, '.restore-admin');
+  if (fs.existsSync(restoreAdminFlag)) {
+    try {
+      const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$t1ORj/D94UYW057qZm1Ga.KU07BHErrr3BzmeO7fNbu5h5encZvD2';
+      let existing = [];
+      try { existing = db.getUsers(); if (!Array.isArray(existing)) existing = []; } catch (e) { existing = []; }
+      let admin = existing.find(u => u.email === 'admin@lab.com');
+      if (!admin) {
+        const { v4: uuidv4 } = require('uuid');
+        admin = {
+          id: uuidv4(),
+          name: 'Admin User',
+          email: 'admin@lab.com',
+          password: hash,
+          role: 'Admin',
+          status: 'Active',
+          licenseNumber: null,
+          signature: null,
+          autoSignature: { enabled: false, until: null },
+          permissions: {
+            dashboard: true, patients: true, reception: true,
+            tests: true, reports: true, worksheet: true,
+            templates: true, inventory: true, equipment: true, users: true, delete: true
+          },
+          createdAt: new Date().toISOString(),
+          lastLogin: null
+        };
+        existing.push(admin);
+      } else {
+        admin.password = hash;
+        admin.role = 'Admin';
+        admin.status = 'Active';
+        admin.permissions = {
+          dashboard: true, patients: true, reception: true,
+          tests: true, reports: true, worksheet: true,
+          templates: true, inventory: true, equipment: true, users: true, delete: true
+        };
+      }
+      db.saveUsers(existing);
+      if (typeof db.checkpoint === 'function') db.checkpoint();
+      try { fs.writeFileSync(USERS_FILE, JSON.stringify(existing, null, 2), 'utf8'); } catch (_) {}
+      console.log('[server] Maintenance: Restored default admin user (admin@lab.com)');
+      try { fs.unlinkSync(restoreAdminFlag); } catch (_) {}
+    } catch (e) {
+      console.error('[server] Maintenance error restoring admin user:', e);
     }
-  } else {
-    console.error('[server] JSON → SQLite migration had errors:', result.errors);
+  }
+
+  // 2. .reset-database: reset clinical data to empty initial state
+  const resetDbFlag = path.join(DATA_DIR, '.reset-database');
+  if (fs.existsSync(resetDbFlag)) {
+    try {
+      // Backup before wiping
+      const ts = new Date().toISOString().replace(/[:.]/g, '-');
+      try {
+        if (fs.existsSync(SQLITE_FILE)) {
+          fs.copyFileSync(SQLITE_FILE, path.join(DATA_DIR, `lis-data-backup-${ts}.db`));
+        }
+      } catch (_) {}
+
+      const initialData = { users: [], patients: [], tests: [], templates: [], counters: {} };
+      db.write(initialData);
+
+      // Re-seed default admin user
+      const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$t1ORj/D94UYW057qZm1Ga.KU07BHErrr3BzmeO7fNbu5h5encZvD2';
+      const { v4: uuidv4 } = require('uuid');
+      const defaultAdmin = {
+        id: uuidv4(),
+        name: 'Admin User',
+        email: 'admin@lab.com',
+        password: hash,
+        role: 'Admin',
+        status: 'Active',
+        permissions: {
+          dashboard: true, patients: true, reception: true,
+          tests: true, reports: true, worksheet: true,
+          templates: true, inventory: true, equipment: true, users: true, delete: true
+        },
+        createdAt: new Date().toISOString(),
+        lastLogin: null
+      };
+      db.saveUsers([defaultAdmin]);
+      if (typeof db.checkpoint === 'function') db.checkpoint();
+      try { fs.writeFileSync(DATA_FILE, JSON.stringify(initialData, null, 2), 'utf8'); } catch (_) {}
+      try { fs.writeFileSync(USERS_FILE, JSON.stringify([defaultAdmin], null, 2), 'utf8'); } catch (_) {}
+      console.log('[server] Maintenance: Reset database to empty state and ensured default admin');
+      try { fs.unlinkSync(resetDbFlag); } catch (_) {}
+    } catch (e) {
+      console.error('[server] Maintenance error resetting database:', e);
+    }
+  }
+
+  // 3. .import-data: import uploaded data.json into SQLite
+  const importDataFlag = path.join(DATA_DIR, '.import-data');
+  if (fs.existsSync(importDataFlag)) {
+    try {
+      if (fs.existsSync(DATA_FILE)) {
+        console.log('[server] Maintenance: Importing data.json into SQLite...');
+        const result = migrateJsonToSqlite(db, {
+          dataJsonPath: DATA_FILE,
+          renameAfter: false,
+          log: console.log
+        });
+        if (result.success && typeof db.checkpoint === 'function') {
+          db.checkpoint();
+        }
+        console.log('[server] Maintenance: data.json import completed. Success:', result.success);
+      }
+      try { fs.unlinkSync(importDataFlag); } catch (_) {}
+    } catch (e) {
+      console.error('[server] Maintenance error importing data.json:', e);
+    }
+  }
+
+  // 4. .import-users: import uploaded data-users.json into SQLite
+  const importUsersFlag = path.join(DATA_DIR, '.import-users');
+  if (fs.existsSync(importUsersFlag)) {
+    try {
+      if (fs.existsSync(USERS_FILE)) {
+        console.log('[server] Maintenance: Importing data-users.json into SQLite...');
+        const result = migrateJsonToSqlite(db, {
+          usersJsonPath: USERS_FILE,
+          userDataKey: USER_DATA_KEY,
+          renameAfter: false,
+          log: console.log
+        });
+        if (result.success && typeof db.checkpoint === 'function') {
+          db.checkpoint();
+        }
+        console.log('[server] Maintenance: data-users.json import completed. Success:', result.success);
+      }
+      try { fs.unlinkSync(importUsersFlag); } catch (_) {}
+    } catch (e) {
+      console.error('[server] Maintenance error importing data-users.json:', e);
+    }
+  }
+}
+
+// Auto-migrate from JSON and ensure default admin user exists
+(async function initDatabaseData() {
+  if (db && db._readyPromise) {
+    try { await db._readyPromise; } catch (_) {}
+  }
+
+  // Process any pending maintenance requests first
+  await processMaintenanceFlags();
+
+  // Auto-migrate from JSON if this is first startup with SQLite
+  // (JSON files exist but SQLite DB has no data yet)
+  try {
+    const hasJsonData = fs.existsSync(DATA_FILE);
+    const hasJsonUsers = fs.existsSync(USERS_FILE);
+    if (hasJsonData || hasJsonUsers) {
+      // Decouple data and users migration checks:
+      // - Migrate clinical data if data.json exists and patients table is empty
+      // - Migrate users if data-users.json exists and users table has <= 1 user (fresh or default admin only)
+      const existingPatients = typeof db.getPatients === 'function' ? db.getPatients() : [];
+      const existingUsers = typeof db.getUsers === 'function' ? db.getUsers() : [];
+
+      const shouldMigrateData = hasJsonData && existingPatients.length === 0;
+      const shouldMigrateUsers = hasJsonUsers && (existingUsers.length <= 1);
+
+      if (shouldMigrateData || shouldMigrateUsers) {
+        console.log(`[server] Detected legacy JSON files (data=${shouldMigrateData}, users=${shouldMigrateUsers}), performing migration to SQLite...`);
+        const result = migrateJsonToSqlite(db, {
+          dataJsonPath: shouldMigrateData ? DATA_FILE : null,
+          usersJsonPath: shouldMigrateUsers ? USERS_FILE : null,
+          userDataKey: USER_DATA_KEY,
+          renameAfter: true
+        });
+
+        if (result.success) {
+          console.log('[server] JSON → SQLite migration completed successfully');
+          if (typeof db.checkpoint === 'function') {
+            db.checkpoint();
+          }
+        } else {
+          console.error('[server] JSON → SQLite migration had errors:', result.errors);
+        }
+      } else {
+        console.log('[server] SQLite database already populated, skipping JSON migration');
+      }
+    }
+  } catch (e) {
+    console.error('[server] autoMigrate error:', e);
+  }
+
+  // Ensure a default admin user exists in SQLite if users table is empty
+  try {
+    const existingUsers = typeof db.getUsers === 'function' ? db.getUsers() : [];
+    if (existingUsers.length === 0) {
+      const { v4: uuidv4 } = require('uuid');
+      const defaultAdmin = {
+        id: uuidv4(),
+        name: 'Admin User',
+        email: 'admin@lab.com',
+        // Pre-hashed default administrator credential ($2a$12$t1ORj/D94UYW057qZm1Ga.KU07BHErrr3BzmeO7fNbu5h5encZvD2)
+        password: process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$t1ORj/D94UYW057qZm1Ga.KU07BHErrr3BzmeO7fNbu5h5encZvD2',
+        role: 'Admin',
+        status: 'Active',
+        permissions: {},
+        createdAt: new Date().toISOString(),
+        lastLogin: null
+      };
+      db.upsertUser(defaultAdmin);
+      if (typeof db.checkpoint === 'function') {
+        db.checkpoint();
+      }
+      console.log('[server] Seeded default admin user (admin@lab.com) into empty SQLite database');
+    }
+  } catch (e) {
+    console.error('[server] Failed to seed default admin user:', e);
   }
 })();
 
@@ -184,6 +387,15 @@ function verifyStartupRequirements() {
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.json({ limit: '50mb' }));
 app.use(methodOverride('_method'));
+
+// Ensure database is ready before processing requests (important when sql.js async proxy is initializing)
+app.use((req, res, next) => {
+  if (db && db._readyPromise && !db._isReady) {
+    db._readyPromise.then(() => next()).catch(next);
+  } else {
+    next();
+  }
+});
 
 // Static asset caching options (1 day maxAge with ETag validation)
 const staticCacheOpts = {
@@ -693,6 +905,22 @@ app.use('/chatbot', chatbotRoutes);
 app.use('/inventory', inventoryRoutes);
 app.use('/equipment', equipmentRoutes);
 app.use('/api/equipment', equipmentRoutes);
+
+// POST /api/internal/maintenance/execute – executes pending maintenance flags immediately from localhost
+app.post('/api/internal/maintenance/execute', async (req, res) => {
+  try {
+    const remote = (req.socket && req.socket.remoteAddress) || req.ip || '';
+    const isLocal = remote === '127.0.0.1' || remote === '::1' || remote === '::ffff:127.0.0.1';
+    if (!isLocal) {
+      return res.status(403).json({ ok: false, error: 'Maintenance endpoint only accessible locally' });
+    }
+    await processMaintenanceFlags();
+    res.json({ ok: true, message: 'Maintenance flags processed successfully' });
+  } catch (e) {
+    console.error('[server] Internal maintenance error:', e);
+    res.status(500).json({ ok: false, error: 'Maintenance execution failed' });
+  }
+});
 
 // ---- Secure restore endpoints (accessible on fresh installs or by authenticated managers) ----
 const bcryptRestore = require('bcryptjs');

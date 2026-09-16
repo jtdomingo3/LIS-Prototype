@@ -15,23 +15,16 @@ const { testOpenRouterConnection, resolveApiKey, AVAILABLE_MODELS, DEFAULT_MODEL
 const DEFAULT_BACKUP_DIR = path.join(os.homedir(), 'Documents', 'LIS', 'backup');
 
 function getEnvFilePath() {
-  // If running in packaged exe or DATA_DIR is set, use writable persistent location
-  if (process.pkg) {
-    const dataDir = process.env.DATA_DIR || path.join(process.env.PROGRAMDATA || 'C:\\ProgramData', 'GezyneLIS');
-    try { fs.mkdirSync(dataDir, { recursive: true }); } catch (_) {}
-    return path.join(dataDir, '.env');
+  // If running in packaged exe or DATA_DIR is set, use writable persistent location from dataPath
+  if (process.pkg || process.env.DATA_DIR) {
+    return dataFile('.env');
   }
 
   // Next check if .env exists in project root
   const rootEnv = path.join(__dirname, '..', '.env');
   if (fs.existsSync(rootEnv)) return rootEnv;
 
-  // Fallback to DATA_DIR if set
-  if (process.env.DATA_DIR) {
-    return path.join(process.env.DATA_DIR, '.env');
-  }
-
-  return rootEnv;
+  return dataFile('.env');
 }
 
 function parseEnvContent(content) {
