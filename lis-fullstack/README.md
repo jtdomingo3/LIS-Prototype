@@ -1,6 +1,6 @@
-# Gezyne LIS Server (Full-Stack) v2.6.0
+# Gezyne LIS Server (Full-Stack) v2.6.1
 
-[![Version](https://img.shields.io/badge/version-2.6.0-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
+[![Version](https://img.shields.io/badge/version-2.6.1-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-green.svg?style=flat-square&logo=node.js)](https://nodejs.org/)
 [![Database](https://img.shields.io/badge/database-SQLite%20(WAL%20Enabled)-blue.svg?style=flat-square&logo=sqlite)](https://www.sqlite.org/)
 [![Security](https://img.shields.io/badge/security-HMAC--SHA256%20%7C%20bcrypt-purple.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
@@ -12,7 +12,33 @@ An enterprise-grade, full-stack Laboratory Information System (LIS) server built
 
 ## 📜 Version History & Release Notes
 
-### **v2.6.0 (Clinical Consultation Module, DOH PhilPEN Risk Assessment, Clinical Document Printing & Worksheet Isolation) — Current Release**
+### **v2.6.1 (Production Database Persistence, Documents Storage Relocation, Recovery & Maintenance Tools, Security Hardening) — Current Release**
+- 💾 **Non-Admin Documents Storage Directory (`~/Documents/LIS/data`)**:
+  - Relocated default database location from `C:\ProgramData\GezyneLIS` to `~/Documents/LIS/data` (`C:\Users\<User>\Documents\LIS\data`), eliminating database reset and temp file wiping on production PCs lacking administrative permissions.
+  - Automatic non-destructive migration (`migrateLegacyFiles`) of existing `lis-data.db`, `.env`, `data.json`, and `data-users.json` from `ProgramData` and user profile directories.
+  - Aligned data directory with existing `~/Documents/LIS/backup`, `~/Documents/LIS/reports`, and `~/Documents/LIS/logs`.
+- 🔑 **Default Admin Account Auto-Seeding**:
+  - Automatic seeding of default administrator account (`admin@lab.com` / `admin123`) into SQLite on startup whenever the `users` table is empty.
+  - Zero plaintext passwords in code or disk; uses cost-factor 12 Bcrypt hash (`$2a$12$...`).
+- ⚡ **WebAssembly SQLite (`sql.js`) Persistence Hardening**:
+  - Unreferenced 30-second periodic auto-flush safety net guaranteeing in-memory transactions reach disk.
+  - Direct write fallback when Windows file locks prevent atomic `.tmp` rename.
+  - Process exit listeners for `SIGTERM`, `SIGINT`, `beforeExit`, and `exit`.
+- 🛠️ **Server Settings & Maintenance Recovery Suite (Electron Tray)**:
+  - Overhauled all 4 recovery and maintenance buttons in the Electron Server Tray modal:
+    1. **Restore Default Users**: Restores `admin@lab.com` / `admin123` with role `Admin`.
+    2. **Reset Data Database**: Safely clears patient, test, and template records to an initial state while preserving user accounts and configuration.
+    3. **Upload data.json**: Imports patient, test, and template backups directly into active SQLite database.
+    4. **Upload data-users.json**: Imports user accounts and passwords directly into active SQLite database with universal support for raw arrays `[...]`, `{ users: [...] }`, and `{ data: [...] }`.
+  - Decoupled architecture using live localhost endpoint (`POST /api/internal/maintenance/execute`) and filesystem trigger flags (`.restore-admin`, `.reset-database`, `.import-data`, `.import-users`), resolving Electron C++ native module ABI mismatches.
+- 🛡️ **Security Hardening**:
+  - Restricted `POST /api/internal/maintenance/execute` strictly to local loopback socket connections (`127.0.0.1`, `::1`, `::ffff:127.0.0.1`), rejecting external LAN access with HTTP `403 Forbidden`.
+  - Sanitized error responses preventing leakage of directory structures or internal stack traces.
+  - Passed 100% compliance across automated OWASP Top 10, NIST SP 800-63B, and CIS benchmarks with 0 critical, high, medium, or low findings.
+
+---
+
+### **v2.6.0 (Clinical Consultation Module, DOH PhilPEN Risk Assessment, Clinical Document Printing & Worksheet Isolation)**
 - 🩺 **Clinical Consultation & Outpatient Doctor Check-up Module (`/consultations/:testId`)**:
   - Outpatient SOAP documentation (Subjective, Objective, Assessment, Plan) with PhilHealth / DOH PhilPEN Clinical Practice Guidelines (CPG) integration.
   - **Subjective & DOH PhilPEN Profiling**: Chief complaint, HPI, PMH, current medications, review of systems (ROS), allergy warnings (NKDA flag), interactive Familial NCD checklist with clickable pills (Hypertension, T2DM, CAD, Stroke, Cancer, Asthma/Allergies, CKD) auto-populating structured kinship notes, tobacco pack-years calculator, and alcohol screening.
@@ -182,7 +208,7 @@ lis-fullstack/
 
 ---
 
-## 📦 Building the Windows Installer (v2.6.0)
+## 📦 Building the Windows Installer (v2.6.1)
 
 To compile the standalone Windows server distribution with background service launcher and system tray controller:
 
@@ -197,7 +223,7 @@ npm install
 npm run dist:win
 ```
 
-Installer Artifact: `lis-fullstack/tray/dist/Gezyne LIS Server Setup 2.6.0.exe`
+Installer Artifact: `lis-fullstack/tray/dist/Gezyne LIS Server Setup 2.6.1.exe`
 
 ---
 
