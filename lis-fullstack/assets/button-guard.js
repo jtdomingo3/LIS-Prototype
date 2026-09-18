@@ -56,22 +56,35 @@
   // EXCLUSION: buttons we should NOT guard (text-match, case-insensitive)
   function isExcludedButton(el){
     if (!el) return false;
+    // Exempt all buttons on Dashboard page
+    if (typeof window !== 'undefined' && window.location && window.location.pathname && (window.location.pathname === '/dashboard' || window.location.pathname === '/')) return true;
+    if (el.closest && el.closest('.dashboard-container, #dashboardView, [data-page="dashboard"]')) return true;
+    if (el.classList && el.classList.contains('no-guard')) return true;
+    if (el.getAttribute && (el.getAttribute('data-no-guard') === '1' || el.getAttribute('data-no-guard') === 'true')) return true;
     // prefer explicit attributes (aria-label/title/data-label), fallback to text/value
     const attrLabel = (el.getAttribute && (el.getAttribute('aria-label') || el.getAttribute('title') || el.getAttribute('data-label')));
     const raw = (attrLabel || el.textContent || el.innerText || el.value || '').replace(/[→←↶↷]/g, '').trim();
     if (!raw) return false;
-    const txt = raw.replace(/\s+/g, ' ').toLowerCase();
-    const exceptions = ['previous','next','print','print filtered','download','clear filter','clear filters', 'all test types', 'Open Patient Queue Display (new tab)', 'preview'];
-    const esc = exceptions.map(function(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }).join('|');
-    const re = new RegExp('\\b(' + esc + ')\\b');
-    return re.test(txt);
+    const exceptions = [
+      'previous', 'next', 'print', 'print filtered', 'download', 'clear filter', 'clear filters', 
+      'all test types', 'patient queue display', 'kiosk', 'open kiosk', 'open kiosk queue display', 
+      'add new test field', 'add test field', 'add field', 'remove field', 'preview', 'fullscreen', 
+      'create new template', 'edit', 'view', 'clear reception queue', 'clear queue', 'clear queues', 
+      'total', 'selected', 'today', 'yesterday', 'monthly', 'daily', 'hourly'
+    ];
+    for (let i=0; i<exceptions.length; i++) {
+      if (txt.indexOf(exceptions[i]) !== -1) return true;
+    }
+    if (el.id === 'addFieldBtn' || el.classList.contains('add-field-btn') || el.classList.contains('remove-field-btn') || el.classList.contains('preset-pill')) return true;
+    return false;
   }
 
   // Global click guard for buttons/inputs
   document.addEventListener('click', function(ev){
     const el = ev.target.closest('button, input[type="submit"], input[type="button"], .button');
     if (!el) return;
-    // Respect explicit exclusions (Previous/Next/Print/Download/Clear Filter)
+    // Respect explicit exclusions
+    if (el.classList.contains('no-guard')) return;
     if (isExcludedButton(el)) return;
     // If already loading, prevent duplicate actions
     if (el.disabled || el.dataset.__loading === '1') {

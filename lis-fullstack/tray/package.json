@@ -1,7 +1,8 @@
 {
   "name": "lis-tray",
-  "version": "1.1.1",
+  "version": "2.6.1",
   "description": "Tray launcher for Gezyne LIS: open browser, control service",
+  "author": "Gezyne-Jamir Software Tech",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -17,6 +18,7 @@
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^13.0.3",
     "uuid": "^9.0.1"
   },
   "build": {

@@ -78,40 +78,13 @@ router.post('/login', requireGuest, async (req, res) => {
     sessionUserObj.signature = sessionUserObj.signature || null;
     req.session.user = sessionUserObj;
 
-    req.flash('success_msg', `Welcome back, ${user.name}!`);
-
-    // Redirect user to the first page they have permission to access.
-    const sessionUser = req.session.user;
-    const perms = sessionUser.permissions || {};
-    const allowedDashboardRoles = new Set(['Admin', 'Manager', 'Owner']);
-
-    // If user role is allowed for dashboard, send them there.
-    if (allowedDashboardRoles.has(sessionUser.role)) {
-      // explicit fullscreen query removed so login no longer auto‑maximises
-      return res.redirect('/dashboard');
-    }
-
-    // Ordered destination preferences for non-dashboard users
-    const routes = [
-      { path: '/reception', perm: 'reception' },
-      { path: '/patients', perm: 'patients' },
-      { path: '/tests', perm: 'tests' },
-      { path: '/reports', perm: 'reports' },
-      { path: '/templates', perm: 'templates' },
-      { path: '/users', perm: 'users' }
-    ];
-
-    for (const r of routes) {
-      if (perms[r.perm]) return res.redirect(r.path);
-    }
-
-    // Fallback to dashboard only if role allows; otherwise redirect to login with message
-    req.flash('error_msg', 'You do not have access to the dashboard. Please contact administrator for access.');
-    return res.redirect('/');
+    const { getUserHomeRoute } = require('../middleware/auth');
+    const targetRoute = getUserHomeRoute(req.session.user);
+    return res.redirect(targetRoute);
 
   } catch (error) {
     console.error('Login error:', error);
-    req.flash('error_msg', 'An error occurred during login');
+    if (req.flash) req.flash('error_msg', 'An error occurred during login');
     res.redirect('/');
   }
 });
@@ -173,7 +146,6 @@ if (process.env.NODE_ENV === 'development') {
 
       req.flash('success_msg', 'Registration successful! Please login.');
       res.redirect('/');
-
     } catch (error) {
       console.error('Registration error:', error);
       req.flash('error_msg', 'An error occurred during registration');
@@ -181,5 +153,72 @@ if (process.env.NODE_ENV === 'development') {
     }
   });
 }
+
+// POST /api/auth/token - Issue a signed Bearer token for client apps
+const { generateToken, verifyToken } = require('../lib/tokenHelper');
+
+router.post('/api/auth/token', async (req, res) => {
+  try {
+    const { email, password } = req.body || {};
+
+    if (!email || !password) {
+      return res.status(400).json({ success: false, error: 'Email and password are required' });
+    }
+
+    const user = await User.findOne({ email: String(email).toLowerCase() });
+    if (!user) {
+      return res.status(401).json({ success: false, error: 'Invalid email or password' });
+    }
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, error: 'Invalid email or password' });
+    }
+
+    if (user.status !== 'Active') {
+      return res.status(403).json({ success: false, error: 'Account is inactive' });
+    }
+
+    user.lastLogin = new Date();
+    await user.save();
+
+    const token = generateToken(user);
+    const userProfile = (typeof user.toJSON === 'function') ? user.toJSON() : {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      permissions: user.permissions || {}
+    };
+
+    return res.json({
+      success: true,
+      token,
+      tokenType: 'Bearer',
+      user: userProfile
+    });
+  } catch (error) {
+    console.error('Token generation error:', error);
+    return res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// POST /api/auth/verify - Verify Bearer token
+router.post('/api/auth/verify', (req, res) => {
+  try {
+    const { extractBearerToken } = require('../lib/tokenHelper');
+    const token = extractBearerToken(req);
+    if (!token) {
+      return res.status(401).json({ valid: false, error: 'No token provided' });
+    }
+    const payload = verifyToken(token);
+    if (!payload) {
+      return res.status(401).json({ valid: false, error: 'Invalid or expired token' });
+    }
+    return res.json({ valid: true, user: payload });
+  } catch (error) {
+    return res.status(500).json({ valid: false, error: 'Verification failed' });
+  }
+});
 
 module.exports = router;

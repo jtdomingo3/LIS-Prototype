@@ -747,7 +747,7 @@
         <p class="login-subtitle">Laboratory Information System</p>
         
         <div class="alert alert-info active" style="margin-bottom: 25px;">
-            <strong>Demo Credentials:</strong><br>Email: admin@lab.com<br>Password: password123
+            <strong>Demo Access:</strong><br>Email: admin@lab.com<br>Enter any password to test demo
         </div>
 
         <div class="form-group">
@@ -757,7 +757,7 @@
 
         <div class="form-group">
             <label>Password</label>
-            <input type="password" id="loginPassword" placeholder="Enter password" value="password123">
+            <input type="password" id="loginPassword" placeholder="Enter password" value="">
         </div>
 
         <button class="button btn-primary" style="width: 100%; margin-bottom: 15px; padding: 14px;" onclick="login()">Login to Dashboard</button>
@@ -1173,9 +1173,9 @@
         ];
 
         users = [
-            { id: 'U001', name: 'Admin User', email: 'admin@lab.com', role: 'Admin', status: 'Active', password: 'password123' },
-            { id: 'U002', name: 'Dr. Sarah Chen', email: 'sarah@lab.com', role: 'Doctor', status: 'Active', password: 'password123' },
-            { id: 'U003', name: 'Tech Michael Brown', email: 'mike@lab.com', role: 'Technician', status: 'Active', password: 'password123' }
+            { id: 'U001', name: 'Admin User', email: 'admin@lab.com', role: 'Admin', status: 'Active' },
+            { id: 'U002', name: 'Dr. Sarah Chen', email: 'sarah@lab.com', role: 'Doctor', status: 'Active' },
+            { id: 'U003', name: 'Tech Michael Brown', email: 'mike@lab.com', role: 'Technician', status: 'Active' }
         ];
     }
 
@@ -1192,7 +1192,7 @@
             return;
         }
 
-        const user = users.find(u => u.email === email && u.password === password);
+        const user = users.find(u => u.email.toLowerCase() === email.toLowerCase() && (!u.password || u.password === password));
         
         if (user) {
             currentUser = user;
@@ -1208,7 +1208,7 @@
             setInterval(updateTime, 1000);
             showAlert(`Successfully logged in as ${user.name}!`, 'success');
         } else {
-            showAlert('Invalid email or password. Try admin@lab.com / password123', 'error');
+            showAlert('Invalid email or password. For demo, try admin@lab.com with any password', 'error');
         }
     }
 

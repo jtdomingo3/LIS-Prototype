@@ -25,24 +25,61 @@ function allowKioskOrAuth(req, res, next) {
   });
 }
 
-// Define the reception areas. Doctor names are configurable via environment variables
-// DOCTOR_1_NAME and DOCTOR_2_NAME (defaults kept for backwards compatibility).
-const DOCTOR_1_NAME = process.env.DOCTOR_1_NAME;
-const DOCTOR_2_NAME = process.env.DOCTOR_2_NAME;
-function doctorArea(name) { return `Doctor's Check-up - ${name}`; }
-const AREAS = [
-  'Payment Area',
-  'Sendout',
-  'Extraction Area',
-  'Drug Test',
-  'Ultrasound',
-  '2D Echo',
-  'X-ray',
-  'ECG',
-  'Releasing of Result',
-  doctorArea(DOCTOR_1_NAME),
-  doctorArea(DOCTOR_2_NAME)
-];
+// Define helper functions for dynamic doctor area resolution
+function getDoctor1Name() {
+  try {
+    const s = global.db && typeof global.db.getSettings === 'function' ? global.db.getSettings() : null;
+    if (s && s.doctor1Name && String(s.doctor1Name).trim()) return String(s.doctor1Name).trim();
+  } catch (e) {}
+  const env = (process.env.DOCTOR_1_NAME || '').trim();
+  if (env && env !== 'undefined') return env;
+  return 'Dr. Lorenzo';
+}
+
+function getDoctor2Name() {
+  try {
+    const s = global.db && typeof global.db.getSettings === 'function' ? global.db.getSettings() : null;
+    if (s && s.doctor2Name && String(s.doctor2Name).trim()) return String(s.doctor2Name).trim();
+  } catch (e) {}
+  const env = (process.env.DOCTOR_2_NAME || '').trim();
+  if (env && env !== 'undefined') return env;
+  return 'Dr. Arcilla';
+}
+
+function doctorArea(name) {
+  const clean = (name && String(name).trim() && String(name).trim() !== 'undefined') ? String(name).trim() : 'Dr. Lorenzo';
+  return `Doctor's Check-up - ${clean}`;
+}
+
+function getAreas() {
+  const d1 = getDoctor1Name();
+  const d2 = getDoctor2Name();
+  const list = [
+    'Payment Area',
+    'Sendout',
+    'Extraction Area',
+    'Drug Test',
+    'Ultrasound',
+    '2D Echo',
+    'X-ray',
+    'ECG'
+  ];
+  if (d1) list.push(doctorArea(d1));
+  if (d2 && d2 !== d1) list.push(doctorArea(d2));
+
+  // Also include any active doctor areas present in tests
+  try {
+    const allTests = (typeof global.db.getTests === 'function' ? global.db.getTests() : []) || [];
+    for (const t of allTests) {
+      if (t && t.status && String(t.status).toLowerCase().includes("doctor's check-up") && !list.includes(t.status)) {
+        list.push(t.status);
+      }
+    }
+  } catch (e) {}
+
+  list.push('Releasing of Result');
+  return list;
+}
 
 // Simple in-memory advertisement text for kiosk marquee (editable from /reception)
 let kioskAdText = '';
@@ -54,17 +91,14 @@ let kioskAdText = '';
 //   (test.completedAt or non-empty test.results). Also, do NOT map Doctor's Check-up to Releasing.
 function mapAreaForTest(test) {
   if (!test || !test.status) return test && test.status ? test.status : null;
-  // Treat explicit 'Released' status as final Completed (do not map back to Releasing)
-  if (test.status === 'Released') return 'Completed';
+  // If stashed (patient unavailable), hold in stashed section
+  if (test.stashed || test.status === 'Stashed') return 'Stashed';
+  // If explicitly released or released flag set, it is completely done (do not map to any active queue area)
+  if (test.released || test.status === 'Released') return 'Completed';
   if (test.status === 'Completed') {
-    // If a test has been released (finalized), keep it as Completed and do not
-    // map it back to the 'Releasing of Result' area.
-    if (test.released) return 'Completed';
     const hasResults = Boolean(test.completedAt || (test.results && String(test.results).trim()));
-    // Determine if this is a doctor's checkup based on testType or testType containing 'doctor'
     const isDoctorCheckup = test.testType && String(test.testType).toLowerCase().includes('doctor');
     const isRegistration = test.testType === 'Registration';
-    // Only send to Releasing when results exist and it's not Doctor's Check-up or Registration
     if (hasResults && !isDoctorCheckup && !isRegistration) return 'Releasing of Result';
     return 'Completed';
   }
@@ -75,18 +109,49 @@ function mapAreaForTest(test) {
 // This is used when deciding where to forward tests after payment or after completing a step.
 function getTargetAreaForTest(t) {
   if (!t) return null;
+  const d1 = getDoctor1Name();
+  const d2 = getDoctor2Name();
+  const d1Lower = d1.toLowerCase();
+  const d2Lower = d2.toLowerCase();
+
+  const label = String(t.testType || '').toLowerCase();
+
+  // 1. Direct testType matching
+  if (label.includes('doctor')) {
+    const match = String(t.testType || '').match(/doctor(?:'?s)?\s*check-?up\s*[-–—:]\s*(.+)/i);
+    if (match && match[1] && match[1].trim()) {
+      return doctorArea(match[1].trim());
+    }
+    if (t.assignedDoctorName && String(t.assignedDoctorName).trim()) {
+      return doctorArea(t.assignedDoctorName.trim());
+    }
+    if (d2 && label.includes(d2Lower)) return doctorArea(d2);
+    return doctorArea(d1);
+  }
+  if (label.includes('drug')) return 'Drug Test';
+  if (label.includes('2d') || label.includes('echocardiography') || label.includes('2d echo') || label === 'echo') return '2D Echo';
+  if (label.includes('ultrasound')) return 'Ultrasound';
+  if (label.includes('xray') || label.includes('x-ray')) return 'X-ray';
+  if (label.includes('ecg')) return 'ECG';
+  if (/send\s*out|for\s*send|sendout|send-out/.test(label)) return 'Sendout';
+  if (label.includes('fecal') || label.includes('pregnan') || label.includes('fob') || label.includes('pregnancy') || label.includes('urinal')) return null;
+  if (/blood|chemistry|bun|crea|creatinine|hematology|serology|pt|aptt|typing|dengue|esr|thyroid|ct-bt|cbc|hba1c/.test(label)) return 'Extraction Area';
+
+  // 2. Fallback to inspect requestedTests
   try {
     if (Array.isArray(t.requestedTests) && t.requestedTests.length) {
+      if (t.requestedTests.length === 1 && t.requestedTests[0]) {
+        return getTargetAreaForRequest(t.requestedTests[0]);
+      }
       for (const rr of t.requestedTests) {
         if (rr && rr.area) {
           const ra = String(rr.area || '').toLowerCase();
           if (ra.includes('send')) return 'Sendout';
-          // If the area mentions a doctor, map to the configured doctor area (try to detect specific doctor)
           if (ra.includes("dr.") || ra.includes('doctor')) {
-            const d1 = String(DOCTOR_1_NAME || '').toLowerCase();
-            const d2 = String(DOCTOR_2_NAME || '').toLowerCase();
-            if (d2 && ra.includes(d2)) return doctorArea(DOCTOR_2_NAME);
-            return doctorArea(DOCTOR_1_NAME);
+            const m = String(rr.label || rr.key || '').match(/doctor(?:'?s)?\s*check-?up\s*[-–—:]\s*(.+)/i);
+            if (m && m[1] && m[1].trim()) return doctorArea(m[1].trim());
+            if (d2 && ra.includes(d2Lower)) return doctorArea(d2);
+            return doctorArea(d1);
           }
           return rr.area;
         }
@@ -97,39 +162,25 @@ function getTargetAreaForTest(t) {
       if (anyTyping) return 'Extraction Area';
     }
   } catch (e) { console.warn('getTargetAreaForTest failed to inspect requestedTests', e); }
-  const label = String(t.testType || '').toLowerCase();
-  // If the testType indicates a doctor's checkup, map to configured doctor area
-  try {
-    if (label.includes('doctor')) {
-      const d2 = String(DOCTOR_2_NAME || '').toLowerCase();
-      if (d2 && label.includes(d2)) return doctorArea(DOCTOR_2_NAME);
-      return doctorArea(DOCTOR_1_NAME);
-    }
-  } catch (e) {}
-  if (label.includes('xray')) return 'X-ray';
-  if (label.includes('ultrasound') || label.includes('echo')) return 'Ultrasound';
-  if (label.includes('ecg')) return 'ECG';
-  if (label.includes('drug')) return 'Drug Test';
-  // Explicit exclusions that should remain Awaiting (handled separately)
-  if (label.includes('fecal') || label.includes('pregnan') || label.includes('fob') || label.includes('pregnancy') || label.includes('urinal')) return null;
-  // Common blood/serology/hematology templates map to Extraction Area
-  if (/blood|chemistry|bun|crea|creatinine|hematology|serology|pt|aptt|typing|dengue|esr|thyroid|ct-bt|cbc|hba1c/.test(label)) return 'Extraction Area';
+
   return null;
 }
 
 // Determine target area for an individual requestedTests entry (rr)
 function getTargetAreaForRequest(rr) {
   if (!rr) return null;
+  const d1 = getDoctor1Name();
+  const d2 = getDoctor2Name();
+  const d1Lower = d1.toLowerCase();
+  const d2Lower = d2.toLowerCase();
   try {
     // Normalize legacy 'For Send Out' to internal 'Sendout' area
     if (rr.area) {
       const ra = String(rr.area || '').toLowerCase();
       if (ra.includes('send')) return 'Sendout';
       if (ra.includes("dr.") || ra.includes('doctor')) {
-        const d1 = String(DOCTOR_1_NAME || '').toLowerCase();
-        const d2 = String(DOCTOR_2_NAME || '').toLowerCase();
-        if (d2 && ra.includes(d2)) return doctorArea(DOCTOR_2_NAME);
-        return doctorArea(DOCTOR_1_NAME);
+        if (d2 && ra.includes(d2Lower)) return doctorArea(d2);
+        return doctorArea(d1);
       }
       return rr.area;
     }
@@ -137,13 +188,36 @@ function getTargetAreaForRequest(rr) {
     if (lab === 'xray') return 'X-ray';
     const label = String(rr.label || '').toLowerCase();
     if (label.includes('typing')) return 'Extraction Area';
-    if (label.includes('ultrasound') || label.includes('echo')) return 'Ultrasound';
+    if (label.includes('2d') || label.includes('echocardiography') || label.includes('2d echo') || label === 'echo') return '2D Echo';
+    if (label.includes('ultrasound')) return 'Ultrasound';
+    if (label.includes('xray') || label.includes('x-ray')) return 'X-ray';
     if (label.includes('ecg')) return 'ECG';
     if (label.includes('drug')) return 'Drug Test';
     if (label.includes('send')) return 'Sendout';
     if (/blood|chemistry|bun|crea|creatinine|hematology|serology|pt|aptt/.test(label)) return 'Extraction Area';
   } catch (e) { }
   return null;
+}
+
+// Helper to determine if a test has already completed or passed a specific clinical queue area
+function hasTestCompletedArea(test, areaName) {
+  if (!test) return false;
+  // If test is already in In Progress, Completed, Checked, or Released, it has finished its physical queue station
+  if (test.released || test.status === 'Released' || test.status === 'Completed' || test.status === 'Checked' || test.status === 'In Progress') {
+    const directTarget = getTargetAreaForTest(test);
+    if (!areaName || directTarget === areaName) return true;
+  }
+  // Check test status history for any completed transition for this area
+  if (Array.isArray(test.statusHistory)) {
+    const visited = test.statusHistory.some(entry => {
+      if (!entry) return false;
+      const matchArea = !areaName || entry.area === areaName || entry.from === areaName;
+      const isExit = entry.to === 'In Progress' || entry.to === 'Completed' || entry.to === 'Checked' || entry.to === 'Released';
+      return matchArea && isExit;
+    });
+    if (visited) return true;
+  }
+  return false;
 }
 
 // GET /reception - show areas and counts
@@ -159,6 +233,7 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
       : [];
 
     // Build display areas (exclude internal-only areas like 'Sendout' from kiosk/dashboard tiles)
+    const AREAS = getAreas();
     const DISPLAY_AREAS = AREAS.filter(a => String(a).toLowerCase() !== 'sendout');
 
     // Count unique patients per area (deduplicate by patientCode) so dashboard shows patient counts
@@ -184,9 +259,38 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
       delete c._seen;
     }
 
+    // Build stashed results list grouped by patient
+    const stashedByPatient = {};
+    if (Array.isArray(allTests)) {
+      const allPatients = global.db.getPatients() || [];
+      const patientsById = Object.fromEntries((allPatients || []).map(p => [p.id, p]));
+      for (const t of allTests) {
+        if (mapAreaForTest(t) === 'Stashed') {
+          const pid = t.patient;
+          if (!pid) continue;
+          if (!stashedByPatient[pid]) {
+            stashedByPatient[pid] = {
+              patient: patientsById[pid] || { id: pid, firstName: 'Unknown', lastName: '' },
+              testIds: [],
+              testNames: [],
+              stashedAt: t.updatedAt || t.testDate || new Date()
+            };
+          }
+          stashedByPatient[pid].testIds.push(t.id);
+          const tName = (t.testType || 'Test').toString().replace(/-/g,' ').replace(/\b\w/g, ch=>ch.toUpperCase());
+          if (!stashedByPatient[pid].testNames.includes(tName)) {
+            stashedByPatient[pid].testNames.push(tName);
+          }
+        }
+      }
+    }
+    const stashedList = Object.values(stashedByPatient);
+
     res.render('reception/index', {
       title: 'Reception',
       areas: counts,
+      stashedCount: stashedList.length,
+      stashedList: stashedList,
       ad: kioskAdText
     });
   } catch (err) {
@@ -200,9 +304,6 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
 router.get('/assigned', allowKioskOrAuth, async (req, res) => {
   try {
     console.log('GET /reception/assigned called', { user: req.session && req.session.user ? req.session.user.username : null, kiosk: !!req.query && (req.query.kiosk === '1' || String(req.query.kiosk).toLowerCase() === 'true') });
-    // Diagnostic: show cookie header and session object to debug why user may be undefined
-    try { console.log('GET /reception/assigned headers.cookie:', req.headers && req.headers.cookie ? req.headers.cookie : null); } catch (e) {}
-    try { console.log('GET /reception/assigned session:', req.session ? JSON.stringify(Object.keys(req.session)) : null); } catch (e) { }
     const allTestsRaw = await Test.find({});
     const allTests = Array.isArray(allTestsRaw)
       ? allTestsRaw.slice().sort((a, b) => {
@@ -212,6 +313,7 @@ router.get('/assigned', allowKioskOrAuth, async (req, res) => {
         })
       : [];
     // For assigned (kiosk) view we expose DISPLAY_AREAS only (hide internal-only 'Sendout')
+    const AREAS = getAreas();
     const DISPLAY_AREAS = AREAS.filter(a => String(a).toLowerCase() !== 'sendout');
     const areaAssignments = {};
     for (const area of DISPLAY_AREAS) {
@@ -327,7 +429,16 @@ router.get('/assigned-events', (req, res) => {
 
   sseEmitter.on('update', onUpdate);
 
+  const keepaliveInterval = setInterval(() => {
+    try {
+      res.write(': keepalive\n\n');
+    } catch (e) {
+      clearInterval(keepaliveInterval);
+    }
+  }, 25000);
+
   req.on('close', () => {
+    clearInterval(keepaliveInterval);
     sseEmitter.removeListener('update', onUpdate);
     console.log('SSE client disconnected');
   });
@@ -345,6 +456,7 @@ router.get('/assigned-data', allowKioskOrAuth, async (req, res) => {
         return aDate - bDate;
       })
     : [];
+      const AREAS = getAreas();
       const DISPLAY_AREAS = AREAS.filter(a => String(a).toLowerCase() !== 'sendout');
       const areaAssignments = {};
       for (const area of DISPLAY_AREAS) areaAssignments[area] = [];
@@ -417,6 +529,183 @@ router.post('/advert', requireAuth, async (req, res) => {
     console.error('Failed to update kiosk ad', e);
     req.flash && req.flash('error_msg', 'Failed to update advertisement');
     return res.redirect('/reception');
+  }
+});
+
+// POST /reception/clear-queues - Clear all active reception queues (admin only)
+router.post('/clear-queues', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const user = req.session && req.session.user;
+    if (!user || user.role !== 'Admin') {
+      req.flash('error_msg', 'Admin access required to clear reception queues');
+      return res.redirect('/reception');
+    }
+
+    const tests = (typeof global.db.getTests === 'function' ? global.db.getTests() : []) || [];
+    let count = 0;
+    const nowIso = new Date().toISOString();
+    const userName = (user && (user.name || user.username)) ? (user.name || user.username) : 'Admin';
+
+    for (let i = 0; i < tests.length; i++) {
+      const t = tests[i];
+      if (t) {
+        const prevStatus = t.status || null;
+        t.status = 'Released';
+        t.released = true;
+        if (!t.completedAt) t.completedAt = nowIso;
+        if (!Array.isArray(t.statusHistory)) t.statusHistory = [];
+        t.statusHistory.push({ from: prevStatus, to: 'Released', user: userName, area: 'Released', timestamp: nowIso });
+        t.updatedAt = nowIso;
+        count++;
+      }
+    }
+
+    // Save all updated tests to database ONCE in a single atomic operation
+    global.db.saveTests(tests);
+
+    console.log(`[RECEPTION] Admin ${userName} cleared ${count} test(s) from reception queues in bulk`);
+
+    try {
+      sseEmitter.emit('update', { action: 'clear_queues', time: nowIso });
+    } catch (e) { console.warn('SSE emit for clear_queues failed', e); }
+
+    req.flash('success_msg', `Successfully cleared all reception queues (${count} test(s) set to Released). Reception is ready for a fresh start!`);
+    return res.redirect('/reception');
+  } catch (err) {
+    console.error('Error clearing reception queues:', err);
+    req.flash('error_msg', 'Failed to clear reception queues');
+    return res.redirect('/reception');
+  }
+});
+
+// POST /reception/stash - Stash results when patient is unavailable
+router.post('/stash', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const { patientId, testIds } = req.body;
+    const user = req.session && req.session.user;
+    const userName = user ? (user.name || user.username) : 'System';
+    const nowIso = new Date().toISOString();
+
+    const idsToStash = Array.isArray(testIds) ? testIds : (testIds ? String(testIds).split(',').map(s => s.trim()).filter(Boolean) : []);
+    const allTests = await Test.find({});
+    let count = 0;
+    let patientName = '';
+
+    for (const t of allTests) {
+      const matchPatient = patientId && String(t.patient) === String(patientId);
+      const matchId = idsToStash.includes(String(t.id)) || (t.testId && idsToStash.includes(String(t.testId)));
+      if (matchPatient || matchId) {
+        if (mapAreaForTest(t) === 'Releasing of Result' || t.status === 'Completed') {
+          t.stashed = true;
+          t.status = 'Stashed';
+          t.updatedAt = nowIso;
+          t.addStatusEntry({ from: 'Releasing of Result', to: 'Stashed', user: userName, area: 'Stashed', timestamp: nowIso });
+          await t.save();
+          count++;
+          if (t.patient && !patientName) {
+            const p = await Patient.findById(t.patient);
+            if (p) patientName = `${p.firstName} ${p.lastName}`;
+          }
+        }
+      }
+    }
+
+    try {
+      sseEmitter.emit('update', { action: 'stash', count, patientName, time: nowIso });
+    } catch (e) {}
+
+    req.flash('success_msg', `Stashed ${count} result(s) for ${patientName || 'patient'}. Held in Reception Stashed section.`);
+    return res.redirect('/reception/area/Releasing%20of%20Result');
+  } catch (err) {
+    console.error('Error stashing results:', err);
+    req.flash('error_msg', 'Failed to stash results');
+    return res.redirect('/reception');
+  }
+});
+
+// GET /reception/stashed - Dedicated page for stashed results
+router.get('/stashed', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const allTestsRaw = await Test.find({});
+    const allTests = Array.isArray(allTestsRaw) ? allTestsRaw : [];
+    const allPatients = global.db.getPatients() || [];
+    const patientsById = Object.fromEntries((allPatients || []).map(p => [p.id, p]));
+
+    const stashedByPatient = {};
+    for (const t of allTests) {
+      if (mapAreaForTest(t) === 'Stashed') {
+        const pid = t.patient;
+        if (!pid) continue;
+        if (!stashedByPatient[pid]) {
+          stashedByPatient[pid] = {
+            patient: patientsById[pid] || { id: pid, firstName: 'Unknown', lastName: '' },
+            testIds: [],
+            testNames: [],
+            stashedAt: t.updatedAt || t.testDate || new Date()
+          };
+        }
+        stashedByPatient[pid].testIds.push(t.id);
+        const tName = (t.testType || 'Test').toString().replace(/-/g,' ').replace(/\b\w/g, ch=>ch.toUpperCase());
+        if (!stashedByPatient[pid].testNames.includes(tName)) {
+          stashedByPatient[pid].testNames.push(tName);
+        }
+      }
+    }
+
+    const stashedList = Object.values(stashedByPatient);
+    res.render('reception/stashed', {
+      title: 'Stashed Results',
+      stashedList: stashedList
+    });
+  } catch (err) {
+    console.error('Error rendering stashed page:', err);
+    req.flash('error_msg', 'Failed to load stashed results page');
+    return res.redirect('/reception');
+  }
+});
+
+// POST /reception/release-stashed - Release stashed results without triggering kiosk audio call
+router.post('/release-stashed', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const { patientId, testIds, redirectUrl } = req.body;
+    const user = req.session && req.session.user;
+    const userName = user ? (user.name || user.username) : 'System';
+    const nowIso = new Date().toISOString();
+
+    const idsToRelease = Array.isArray(testIds) ? testIds : (testIds ? String(testIds).split(',').map(s => s.trim()).filter(Boolean) : []);
+    const allTests = await Test.find({});
+    let count = 0;
+    let patientName = '';
+
+    for (const t of allTests) {
+      const matchPatient = patientId && String(t.patient) === String(patientId);
+      const matchId = idsToRelease.includes(String(t.id)) || (t.testId && idsToRelease.includes(String(t.testId)));
+      if (matchPatient || matchId) {
+        t.stashed = false;
+        t.status = 'Released';
+        t.released = true;
+        t.updatedAt = nowIso;
+        t.addStatusEntry({ from: 'Stashed', to: 'Released', user: userName, area: 'Released', timestamp: nowIso });
+        await t.save();
+        count++;
+        if (t.patient && !patientName) {
+          const p = await Patient.findById(t.patient);
+          if (p) patientName = `${p.firstName} ${p.lastName}`;
+        }
+      }
+    }
+
+    // Emit a quiet background SSE update (does NOT alert/ring the kiosk audio!)
+    try {
+      sseEmitter.emit('update', { action: 'release_stashed', quiet: true, count, patientName, time: nowIso });
+    } catch (e) {}
+
+    req.flash('success_msg', `Successfully released ${count} stashed result(s) for ${patientName || 'patient'}.`);
+    return res.redirect(redirectUrl || '/reception/stashed');
+  } catch (err) {
+    console.error('Error releasing stashed results:', err);
+    req.flash('error_msg', 'Failed to release stashed results');
+    return res.redirect(redirectUrl || '/reception/stashed');
   }
 });
 
@@ -562,6 +851,10 @@ router.get('/area/:name', requireAuth, canAccessPatient, async (req, res) => {
 
     // Load available doctors for assignment dropdown
     const users = await User.find({ role: 'Doctor' });
+    const AREAS = getAreas();
+
+    const settings = (global.db && typeof global.db.getSettings === 'function') ? (global.db.getSettings() || {}) : {};
+    const requirePaymentAmount = (typeof settings.requirePaymentAmount !== 'undefined') ? !!settings.requirePaymentAmount : true;
 
     res.render('reception/area', {
       title: `Reception - ${areaName}`,
@@ -570,7 +863,8 @@ router.get('/area/:name', requireAuth, canAccessPatient, async (req, res) => {
       areas: AREAS,
       specimens,
       encodedPatients,
-      users
+      users,
+      requirePaymentAmount
     });
   } catch (err) {
     console.error('Reception area error:', err);
@@ -596,7 +890,8 @@ router.post('/assign', requireAuth, canAccessPatient, async (req, res) => {
       return res.redirect('/reception');
     }
 
-    const test = await Test.findById(testId);
+    let test = await Test.findById(testId);
+    if (!test) test = await Test.findOne({ testId: testId });
     if (!test) {
       const msg = `Test not found: ${testId}`;
       console.warn(msg);
@@ -628,63 +923,93 @@ router.post('/assign', requireAuth, canAccessPatient, async (req, res) => {
       return res.redirect('/reception');
     }
 
-    // Restrict a patient to be assigned to only one active area at a time (ignore 'Releasing of Result')
+    // Manage area assignments for the patient's tests
     const existingTests = await Test.find({ patient: patientObj.id });
-    if (Array.isArray(existingTests)) {
-      const conflict = existingTests.find(t => t && t.status && AREAS.includes(t.status) && t.status !== 'Releasing of Result' && t.status !== area);
-      if (conflict) {
-        // Previously we blocked reassignment when a patient already had an active assignment.
-        // Allow manual transfer: clear the conflicting active assignment (mark as Completed)
-        // and proceed to assign the selected test to the requested area.
-        console.warn('Assign conflict - clearing existing active assignment', { testId, conflict: conflict.testId, patient: patientObj.id });
-        try {
-          // record history with user info
-          // When clearing an active assignment that is a doctor's check-up, mark as 'Checked'
-          const isDoctorType = (conflict.testType === "Doctor's Check-up") || (conflict.testType && String(conflict.testType).toLowerCase().includes('doctor')) || (String(conflict.status || '').toLowerCase().includes('doctor'));
-          const finalStatus = isDoctorType ? 'Checked' : 'Completed';
-          conflict.addStatusEntry({ from: conflict.status, to: finalStatus, user: req.session && req.session.user ? req.session.user.username : null, area: finalStatus, timestamp: (new Date()).toISOString() });
-          conflict.status = finalStatus;
-          // completedAt is set by Test.save() when status === 'Completed'
-          await conflict.save();
-          // notify clients that the other test was completed/cleared
-          try {
-            const payloadCleared = { action: 'complete', testId: conflict.testId, status: conflict.status, time: (new Date()).toISOString() };
-            sseEmitter.emit('update', payloadCleared);
-          } catch (e) { console.warn('SSE emit for cleared conflict failed', e); }
-        } catch (clearErr) {
-          console.error('Failed to clear conflicting test assignment', clearErr);
-        }
-        // continue - the current test will be assigned below
-      }
-    }
+    const AREAS = getAreas();
 
-    // record history entry including user and area
-    test.addStatusEntry({ from: test.status, to: area, user: req.session && req.session.user ? req.session.user.username : null, area, timestamp: (new Date()).toISOString() });
-    test.status = area;
-    // If a specimen code was provided, record it for this area
-    if (specimen && String(specimen).trim()) {
-      if (!test.specimenNumbers || typeof test.specimenNumbers !== 'object') test.specimenNumbers = {};
-      test.specimenNumbers[area] = String(specimen).trim();
-    }
-    // If a doctor assignment was provided, persist it on the test
-    if (assignedDoctor && String(assignedDoctor).trim()) {
-      try {
-        const doc = await User.findById(assignedDoctor);
-        if (doc) {
-          test.assignedDoctorId = doc.id;
-          test.assignedDoctorName = doc.name;
-        } else {
-          // store raw value if lookup fails
-          test.assignedDoctorId = String(assignedDoctor).trim();
-          test.assignedDoctorName = String(assignedDoctor).trim();
+    if (area === 'Payment Area') {
+      // Reassigning patient back to Payment Area: only return tests that have not yet completed their clinical procedure
+      const unperformedTests = (existingTests || []).filter(t => {
+        if (!t || t.released || t.status === 'Released' || t.status === 'Completed' || t.status === 'In Progress' || t.status === 'Checked') return false;
+        if (hasTestCompletedArea(t)) return false;
+        return true;
+      });
+      const toReassign = unperformedTests.length ? unperformedTests : [test];
+      for (const t of toReassign) {
+        if (!t || t.released || t.status === 'Released') continue;
+        t.allowReassign = true;
+        t.completedAt = undefined;
+        t.released = false;
+        t.addStatusEntry({ from: t.status, to: 'Payment Area', user: req.session && req.session.user ? req.session.user.username : null, area: 'Payment Area', timestamp: (new Date()).toISOString() });
+        t.status = 'Payment Area';
+        await t.save();
+        try {
+          sseEmitter.emit('update', { action: 'assign', testId: t.testId, area: 'Payment Area', time: (new Date()).toISOString(), patientCode: patientObj.patientCode });
+        } catch (e) {}
+      }
+    } else {
+      // Reassigning to an active service area (e.g. Extraction Area, Drug Test, ECG, etc.)
+      const inputIds = (req.body.testIds || '').split(',').map(s => String(s || '').trim()).filter(Boolean);
+      let activeTests = [];
+      if (inputIds.length) {
+        activeTests = (existingTests || []).filter(t => t && (inputIds.includes(t.id) || inputIds.includes(t.testId)));
+      }
+      if (!activeTests.length) {
+        // Find tests of this patient that naturally belong to this target area
+        const matchingTests = (existingTests || []).filter(t => t && getTargetAreaForTest(t) === area);
+        activeTests = matchingTests.length ? matchingTests : [test];
+      }
+      const activeIds = new Set(activeTests.map(m => m.id || m.testId));
+
+      // 1. Activate only the tests that belong to the target area
+      for (const t of activeTests) {
+        t.allowReassign = true;
+        t.completedAt = undefined;
+        t.released = false;
+        t.addStatusEntry({ from: t.status, to: area, user: req.session && req.session.user ? req.session.user.username : null, area, timestamp: (new Date()).toISOString() });
+        t.status = area;
+        if (specimen && String(specimen).trim()) {
+          if (!t.specimenNumbers || typeof t.specimenNumbers !== 'object') t.specimenNumbers = {};
+          t.specimenNumbers[area] = String(specimen).trim();
         }
-      } catch (e) {
-        console.warn('Failed to lookup assigned doctor', e);
-        test.assignedDoctorId = String(assignedDoctor).trim();
-        test.assignedDoctorName = String(assignedDoctor).trim();
+        if (assignedDoctor && String(assignedDoctor).trim()) {
+          try {
+            const doc = await User.findById(assignedDoctor);
+            if (doc) {
+              t.assignedDoctorId = doc.id;
+              t.assignedDoctorName = doc.name;
+            } else {
+              t.assignedDoctorId = String(assignedDoctor).trim();
+              t.assignedDoctorName = String(assignedDoctor).trim();
+            }
+          } catch (e) {
+            t.assignedDoctorId = String(assignedDoctor).trim();
+            t.assignedDoctorName = String(assignedDoctor).trim();
+          }
+        }
+        await t.save();
+        try {
+          sseEmitter.emit('update', { action: 'assign', testId: t.testId, area, time: (new Date()).toISOString(), patientCode: patientObj.patientCode });
+        } catch (e) {}
+      }
+
+      // 2. All other active tests for this patient should be set to 'Pending' to prevent double entries
+      for (const t of (existingTests || [])) {
+        if (!t || activeIds.has(t.id) || activeIds.has(t.testId)) continue;
+        if (t.released || t.status === 'Released') continue;
+        if (t.status === area || AREAS.includes(t.status)) {
+          t.allowReassign = true;
+          t.completedAt = undefined;
+          t.released = false;
+          t.addStatusEntry({ from: t.status, to: 'Pending', user: req.session && req.session.user ? req.session.user.username : null, area: 'Pending', timestamp: (new Date()).toISOString() });
+          t.status = 'Pending';
+          await t.save();
+          try {
+            sseEmitter.emit('update', { action: 'pending', testId: t.testId, status: t.status, time: (new Date()).toISOString() });
+          } catch (e) {}
+        }
       }
     }
-    await test.save();
 
     // notify any connected clients that assignments changed
     try {
@@ -725,8 +1050,10 @@ router.post('/assign', requireAuth, canAccessPatient, async (req, res) => {
 // POST /reception/complete - mark patient/tests as completed for the area or advance from Payment Area
 router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
   try {
-    const { patientId, testIds, area, amount_clinical, amount_xray } = req.body || {};
-    console.log('POST /reception/complete', { patientId, testIds, area, amount_clinical, amount_xray });
+    const { patientId, testIds, area, amount_clinical, amount_xray, charged_to_philhealth, charged_to_healthcard } = req.body || {};
+    const isChargedToPhilhealth = charged_to_philhealth === '1' || charged_to_philhealth === 'true' || charged_to_philhealth === true;
+    const isChargedToHealthCard = charged_to_healthcard === '1' || charged_to_healthcard === 'true' || charged_to_healthcard === true;
+    console.log('POST /reception/complete', { patientId, testIds, area, amount_clinical, amount_xray, isChargedToPhilhealth, isChargedToHealthCard });
 
     if (!patientId) {
       const msg = 'Missing patientId';
@@ -739,28 +1066,51 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
     const ids = (testIds || '').split(',').map(s => String(s || '').trim()).filter(Boolean);
 
     const processed = [];
+    // Always load all tests belonging to this patient to ensure consistent progression across the entire pipeline
+    let allPatientTests = [];
+    try {
+      allPatientTests = await Test.find({ patient: patientId }) || [];
+    } catch (e) {
+      console.warn('Failed loading patient tests in /reception/complete', e);
+    }
+
+    const AREAS = getAreas();
+
     if (area === 'Payment Area') {
-      // Load all tests referenced and determine each test's target area
-      const testsToProcess = [];
-      for (const tid of ids) {
-        try {
-          const t = await Test.findOne({ testId: tid });
-          if (!t) continue;
-          testsToProcess.push(t);
-        } catch (e) { console.warn('Failed loading test', tid, e); }
+      const settings = (global.db && typeof global.db.getSettings === 'function') ? (global.db.getSettings() || {}) : {};
+      const requirePaymentAmount = (typeof settings.requirePaymentAmount !== 'undefined') ? !!settings.requirePaymentAmount : true;
+      if (requirePaymentAmount && !isChargedToPhilhealth && !isChargedToHealthCard) {
+        const clinVal = parseFloat(String(amount_clinical || '').replace(/[,\s]/g, '')) || 0;
+        const xrayVal = parseFloat(String(amount_xray || '').replace(/[,\s]/g, '')) || 0;
+        if (clinVal <= 0 && xrayVal <= 0) {
+          const msg = 'Please enter an amount for either Clinical Lab or X-ray Lab before marking complete.';
+          if (req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'))) {
+            return res.status(400).json({ success: false, message: msg });
+          }
+          req.flash && req.flash('error_msg', msg);
+          return res.redirect('/reception/area/Payment%20Area');
+        }
       }
 
-      // Map each test to a candidate target area (null => Awaiting)
-      const candidates = testsToProcess.map(t => ({ test: t, target: getTargetAreaForTest(t) }));
-      console.log('DEBUG Payment Area candidates:', candidates.map(c => ({ testId: c.test && c.test.testId, target: c.target })));
-      // Choose the earliest area in AREAS order among non-null targets; this area becomes active for the patient
-      // Prefer non-Sendout targets when multiple targets exist so patients with mixed requests
-      // (e.g., Sendout + Extraction Area) will be advanced to clinical/xray/etc. while the
-      // Sendout test remains tagged for sendout processing.
+      // Find all tests currently in Payment Area (or matching the submitted IDs)
+      const testsToProcess = (allPatientTests || []).filter(t => {
+        if (!t) return false;
+        if (ids.length && (ids.includes(t.testId) || ids.includes(t.id))) return true;
+        return t.status === 'Payment Area' || !t.status;
+      });
+
+      // Map each test to a candidate target area (null => Awaiting, or In Progress if already done)
+      const candidates = testsToProcess.map(t => {
+        const rawTarget = getTargetAreaForTest(t);
+        const alreadyDone = rawTarget && hasTestCompletedArea(t, rawTarget);
+        return { test: t, target: alreadyDone ? null : rawTarget, alreadyDone };
+      });
+      console.log('DEBUG Payment Area candidates:', candidates.map(c => ({ testId: c.test && c.test.testId, target: c.target, alreadyDone: c.alreadyDone })));
+
+      // Choose earliest area in AREAS order among non-null targets (preferring non-sendout)
       const nonNullTargets = candidates.map(c => c.target).filter(Boolean);
       let chosenTarget = null;
       if (nonNullTargets.length) {
-        // If there are any non-sendout targets, prefer them
         const nonSendout = nonNullTargets.filter(t => String(t || '').toLowerCase() !== 'sendout');
         const consider = nonSendout.length ? nonSendout : nonNullTargets;
         let bestIdx = Infinity;
@@ -770,41 +1120,68 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
         }
       }
 
-      // If no chosen target, everything stays Awaiting
       for (const c of candidates) {
         try {
-          console.log('DEBUG Payment Area processing test', { testId: c.test && c.test.testId, originalStatus: c.test && c.test.status, candidateTarget: c.target, chosenTarget });
           const t = c.test;
           const label = String(t.testType || '').toLowerCase();
           const isSampleOnDemand = /fecal|pregnan|fob|urinal|fecalysis|fecal-occult-blood|pregnancy/.test(label) ||
                                   (Array.isArray(t.requestedTests) && t.requestedTests.some(rr => rr && /(fecal|pregnan|fob|urinal|pregnancy|fecalysis)/i.test(String(rr.label || ''))));
-          // If this test is for external sendout, tag it as Sendout immediately
           let targ;
           if (String(c.target || '').toLowerCase() === 'sendout') {
             targ = 'Sendout';
+          } else if (c.alreadyDone) {
+            targ = 'In Progress';
+          } else if (chosenTarget && c.target === chosenTarget) {
+            targ = chosenTarget;
+          } else if (isSampleOnDemand) {
+            targ = 'Awaiting';
+          } else if (c.target) {
+            targ = 'Pending';
           } else {
-            targ = chosenTarget && c.target === chosenTarget ? chosenTarget : (isSampleOnDemand ? 'Awaiting' : 'Pending');
+            targ = 'In Progress';
           }
-          t.addStatusEntry({ from: t.status, to: targ, user: req.session && req.session.user ? req.session.user.username : null, area: targ, timestamp: (new Date()).toISOString() });
+          t.addStatusEntry({
+            from: t.status,
+            to: targ,
+            user: req.session && req.session.user ? req.session.user.username : null,
+            area: targ,
+            timestamp: (new Date()).toISOString(),
+            notes: isChargedToPhilhealth ? 'Charged to PhilHealth' : (isChargedToHealthCard ? 'Charged to Health Card' : undefined)
+          });
           t.status = targ;
+          if (isChargedToPhilhealth) {
+            t.chargedToPhilhealth = true;
+            t.paymentMethod = 'PhilHealth';
+          } else if (isChargedToHealthCard) {
+            t.chargedToHealthCard = true;
+            t.paymentMethod = 'Health Card';
+          }
           await t.save();
           processed.push(t.testId || t.id);
           try { sseEmitter.emit('update', { action: 'complete', testId: t.testId, status: t.status, patient: t.patient, time: (new Date()).toISOString() }); } catch (e) { console.warn('SSE emit failed', e); }
-        } catch (e) { console.warn('Failed saving processed test', e); }
+        } catch (e) { console.warn('Failed saving processed test in Payment Area complete', e); }
       }
 
-      // Record payment amounts on the patient so dashboard can sum by lab
+      // Record payment amounts on the patient
       try {
         const patientObj = await Patient.findById(patientId);
         if (patientObj) {
-          const clin = Number(amount_clinical || 0) || 0;
-          const xray = Number(amount_xray || 0) || 0;
+          const isCovered = isChargedToPhilhealth || isChargedToHealthCard;
+          const clin = isCovered ? 0 : (Number(amount_clinical || 0) || 0);
+          const xray = isCovered ? 0 : (Number(amount_xray || 0) || 0);
+          const method = isChargedToPhilhealth
+            ? 'PhilHealth'
+            : (isChargedToHealthCard ? ('Health Card (' + (patientObj.healthInsuranceProvider || 'HMO') + ')') : 'Cash');
           const entry = {
             timestamp: (new Date()).toISOString(),
             area: 'Payment Area',
             clinical: clin,
             xray: xray,
             total: clin + xray,
+            chargedToPhilhealth: !!isChargedToPhilhealth,
+            chargedToHealthCard: !!isChargedToHealthCard,
+            healthInsuranceProvider: patientObj.healthInsuranceProvider || '',
+            paymentMethod: method,
             tests: ids.slice()
           };
           patientObj.paymentHistory = Array.isArray(patientObj.paymentHistory) ? patientObj.paymentHistory : [];
@@ -814,152 +1191,146 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
       } catch (e) { console.warn('Failed recording patient paymentHistory', e); }
 
     } else {
-      // Non-payment area marking: if specific testIds provided, use them; otherwise
-      // complete all tests for this patient that currently map to this area.
-      let targets = [];
-      if (ids && ids.length) {
-        for (const tid of ids) {
-          try {
-            const t = await Test.findOne({ testId: tid });
-            if (t) targets.push(t);
-          } catch (e) { console.warn('Failed loading test', tid, e); }
+      // Non-payment area completion:
+      // 1. Identify tests that belong to the currently completed area
+      const currentAreaTests = [];
+      const remainingTests = [];
+
+      for (const t of allPatientTests) {
+        if (!t) continue;
+        const mapped = mapAreaForTest(t);
+        const matchArea = mapped === area || t.status === area;
+
+        if (matchArea) {
+          currentAreaTests.push(t);
+        } else {
+          remainingTests.push(t);
         }
-      } else {
-        // load all tests for patient and pick those that currently map to this area
-        // or whose requested pipeline includes this area, or whose pipeline has a later area
-        // after the completed area (so they should be advanced). Exclude sample-on-demand tests.
-        try {
-          const all = await Test.find({ patient: patientId });
-          const currentIdx = AREAS.indexOf(area);
-          if (Array.isArray(all)) {
-            for (const t of all) {
-              try {
-                const mapped = mapAreaForTest(t);
-                if (mapped === area) { targets.push(t); continue; }
-                const rlist = Array.isArray(t.requestedTests) ? t.requestedTests : [];
-                const reqAreas = [];
-                for (const rr of rlist) {
-                  try { const a = getTargetAreaForRequest(rr); if (a) reqAreas.push(a); } catch (e) {}
-                }
-                // unique and ordered by AREAS
-                const uniq = Array.from(new Set(reqAreas)).sort((a, b) => (AREAS.indexOf(a) - AREAS.indexOf(b)));
-                // skip sample-on-demand tests from being auto-advanced
-                const label = String(t.testType || '').toLowerCase();
-                const isSampleOnDemand = /fecal|pregnan|fob|urinal|fecalysis|fecal-occult-blood|pregnancy/.test(label) ||
-                                        (Array.isArray(t.requestedTests) && t.requestedTests.some(rr => rr && /(fecal|pregnan|fob|urinal|pregnancy|fecalysis)/i.test(String(rr.label || ''))));
-                // If the patient's requested pipeline explicitly includes this area, include.
-                if (uniq.indexOf(area) >= 0) { targets.push(t); continue; }
-                // Otherwise, if the pipeline has any later area after the completed area
-                // (meaning this test should be advanced to that later area), include it
-                if (!isSampleOnDemand && currentIdx >= 0 && uniq.some(a => AREAS.indexOf(a) > currentIdx)) {
-                  targets.push(t);
-                  continue;
-                }
-              } catch (e) {}
-            }
-          }
-        } catch (e) { console.warn('Failed loading patient tests for completion', e); }
       }
 
-      // Build per-test next-area info first so we can choose a single next area
-      const work = [];
-      for (const t of targets) {
+      const isDoctorArea = String(area || '').toLowerCase().includes("doctor's check-up");
+      const isReleasingArea = String(area || '') === 'Releasing of Result';
+
+      // 2. Mark the current area tests as completed / in progress / released / checked
+      for (const t of currentAreaTests) {
         try {
-          const reqAreas = [];
+          let nextStatus;
+          if (isReleasingArea) {
+            nextStatus = 'Released';
+            t.released = true;
+            if (!t.completedAt) t.completedAt = (new Date()).toISOString();
+          } else if (isDoctorArea) {
+            nextStatus = 'Checked';
+          } else {
+            nextStatus = 'In Progress';
+          }
+
+          t.addStatusEntry({ from: t.status, to: nextStatus, user: req.session && req.session.user ? req.session.user.username : null, area: nextStatus, timestamp: (new Date()).toISOString() });
+          t.status = nextStatus;
+          await t.save();
+          processed.push(t.testId || t.id);
           try {
-            const rlist = Array.isArray(t.requestedTests) ? t.requestedTests : [];
-            for (const rr of rlist) {
-              try { const a = getTargetAreaForRequest(rr); if (a) reqAreas.push(a); } catch (e) {}
+            sseEmitter.emit('update', { action: isReleasingArea ? 'release' : 'complete', testId: t.testId, status: t.status, patient: t.patient, time: (new Date()).toISOString() });
+          } catch (e) { console.warn('SSE emit failed', e); }
+        } catch (e) { console.warn('Failed updating current area test', e); }
+      }
+
+      // 3. Inspect remaining active tests for this patient to advance to the next pipeline station
+      // Filter strictly for tests that are still awaiting their physical station
+      // (Tests that are already In Progress, Completed, Checked, Released, or already visited their area MUST NEVER be re-queued)
+      const currentIdx = AREAS.indexOf(area);
+      let chosenNextArea = null;
+      let bestNextIdx = Infinity;
+
+      const pendingStationTests = remainingTests.filter(t => {
+        if (!t || t.released || t.status === 'Released' || t.status === 'Checked' || t.status === 'Completed' || t.status === 'In Progress' || t.status === 'Stashed') {
+          return false;
+        }
+        if (hasTestCompletedArea(t)) return false;
+        return true;
+      });
+
+      for (const t of pendingStationTests) {
+        // Check target areas for this test
+        const reqAreas = [];
+        try {
+          const directTarget = getTargetAreaForTest(t);
+          if (directTarget && !hasTestCompletedArea(t, directTarget)) reqAreas.push(directTarget);
+          const rlist = Array.isArray(t.requestedTests) ? t.requestedTests : [];
+          for (const rr of rlist) {
+            const a = getTargetAreaForRequest(rr);
+            if (a && !hasTestCompletedArea(t, a)) reqAreas.push(a);
+          }
+        } catch (e) {}
+
+        const uniqAreas = Array.from(new Set(reqAreas));
+        for (const cand of uniqAreas) {
+          let idx = AREAS.indexOf(cand);
+          if (idx < 0 && String(cand).toLowerCase().includes("doctor's check-up")) {
+            idx = AREAS.findIndex(a => String(a).toLowerCase().includes("doctor's check-up"));
+          }
+          if (idx > currentIdx && idx < bestNextIdx) {
+            bestNextIdx = idx;
+            chosenNextArea = cand;
+          }
+        }
+      }
+
+      // If no subsequent area found (e.g. late test added for an earlier station), look for any uncompleted station among pending tests
+      if (!chosenNextArea && pendingStationTests.length) {
+        let earliestIdx = Infinity;
+        for (const t of pendingStationTests) {
+          const directTarget = getTargetAreaForTest(t);
+          if (directTarget && !hasTestCompletedArea(t, directTarget)) {
+            let idx = AREAS.indexOf(directTarget);
+            if (idx < 0 && String(directTarget).toLowerCase().includes("doctor's check-up")) {
+              idx = AREAS.findIndex(a => String(a).toLowerCase().includes("doctor's check-up"));
             }
-          } catch (e) {}
-          const uniqAreas = Array.from(new Set(reqAreas)).sort((a, b) => (AREAS.indexOf(a) - AREAS.indexOf(b)));
-          const currentIdx = AREAS.indexOf(area);
-          let nextArea = null;
-          if (uniqAreas.length) {
-            for (const cand of uniqAreas) {
-              const idx = AREAS.indexOf(cand);
-              if (idx > currentIdx) { nextArea = cand; break; }
+            if (idx >= 0 && idx < earliestIdx) {
+              earliestIdx = idx;
+              chosenNextArea = directTarget;
             }
           }
+        }
+      }
+
+      // 4. Advance matching pending tests to the chosen target station
+      for (const t of pendingStationTests) {
+        try {
           const label = String(t.testType || '').toLowerCase();
           const isSampleOnDemand = /fecal|pregnan|fob|urinal|fecalysis|fecal-occult-blood|pregnancy/.test(label) ||
                                   (Array.isArray(t.requestedTests) && t.requestedTests.some(rr => rr && /(fecal|pregnan|fob|urinal|pregnancy|fecalysis)/i.test(String(rr.label || ''))));
-          work.push({ test: t, uniqAreas, nextArea, isSampleOnDemand });
-        } catch (e) { console.warn('Failed preparing work item for test', t && (t.testId || t.id), e); }
-      }
+          const directTarget = getTargetAreaForTest(t);
+          if (directTarget && hasTestCompletedArea(t, directTarget)) continue;
 
-      // Choose a single earliest next area among all candidate nextAreas (non-null)
-      let chosenNextArea = null;
-      const candidateNexts = work.map(w => w.nextArea).filter(Boolean);
-      if (candidateNexts.length) {
-        let bestIdx = Infinity;
-        for (const cand of candidateNexts) {
-          const idx = AREAS.indexOf(cand);
-          if (idx >= 0 && idx < bestIdx) { bestIdx = idx; chosenNextArea = cand; }
-        }
-      }
+          const isDirectMatch = chosenNextArea && (
+            directTarget === chosenNextArea ||
+            (String(directTarget).toLowerCase().includes("doctor's check-up") && String(chosenNextArea).toLowerCase().includes("doctor's check-up"))
+          );
 
-      // Special-case: if we are completing a Doctor's Check-up area, mark tests as 'Checked'
-      const isDoctorArea = String(area || '').toLowerCase().includes("doctor's check-up");
-
-      // Now apply the chosenNextArea: only tests whose nextArea === chosenNextArea
-      // should be moved there. Other tests with a nextArea remain Awaiting. Tests
-      // with no nextArea are handled as before (Awaiting for sample-on-demand,
-      // In Progress otherwise).
-      for (const w of work) {
-        try {
-          const t = w.test;
-          // Special-case: if we are in the Releasing of Result area, marking complete
-          // should finalize the test as Released rather than moving it back to In Progress.
-          if (String(area || '') === 'Releasing of Result') {
-            try {
-              t.addStatusEntry({ from: t.status, to: 'Released', user: req.session && req.session.user ? req.session.user.username : null, area: 'Released', timestamp: (new Date()).toISOString() });
-              t.status = 'Released';
-              t.released = true;
-              if (!t.completedAt) t.completedAt = (new Date()).toISOString();
-              await t.save();
-              processed.push(t.testId || t.id);
-              try { sseEmitter.emit('update', { action: 'release', testId: t.testId, status: t.status, patient: t.patient, time: (new Date()).toISOString() }); } catch (e) { console.warn('SSE emit failed', e); }
-            } catch (e) { console.warn('Failed releasing test', t && (t.testId || t.id), e); }
-            continue;
-          }
-          if (isDoctorArea) {
-            // Mark as Checked (doctor completed the check)
-            t.addStatusEntry({ from: t.status, to: 'Checked', user: req.session && req.session.user ? req.session.user.username : null, area: 'Checked', timestamp: (new Date()).toISOString() });
-            t.status = 'Checked';
+          if (isDirectMatch) {
+            const targetStatus = directTarget || chosenNextArea;
+            t.addStatusEntry({ from: t.status, to: targetStatus, user: req.session && req.session.user ? req.session.user.username : null, area: targetStatus, timestamp: (new Date()).toISOString() });
+            t.status = targetStatus;
             await t.save();
             processed.push(t.testId || t.id);
-            try { sseEmitter.emit('update', { action: 'complete', testId: t.testId, status: t.status, patient: t.patient, time: (new Date()).toISOString() }); } catch (e) { console.warn('SSE emit failed', e); }
-            continue;
+            try { sseEmitter.emit('update', { action: 'complete', testId: t.testId, status: t.status, patient: t.patient, time: (new Date()).toISOString() }); } catch (e) {}
+          } else if (t.status === 'Payment Area' || !t.status) {
+            // Any lingering Payment Area tests are moved out of Payment Area so patient never gets stuck
+            const fallbackStatus = isSampleOnDemand ? 'Awaiting' : (directTarget ? 'Pending' : 'In Progress');
+            t.addStatusEntry({ from: t.status, to: fallbackStatus, user: req.session && req.session.user ? req.session.user.username : null, area: fallbackStatus, timestamp: (new Date()).toISOString() });
+            t.status = fallbackStatus;
+            await t.save();
+            processed.push(t.testId || t.id);
+            try { sseEmitter.emit('update', { action: 'complete', testId: t.testId, status: t.status, patient: t.patient, time: (new Date()).toISOString() }); } catch (e) {}
           }
-          if (w.nextArea && chosenNextArea && w.nextArea === chosenNextArea) {
-            t.addStatusEntry({ from: t.status, to: w.nextArea, user: req.session && req.session.user ? req.session.user.username : null, area: w.nextArea, timestamp: (new Date()).toISOString() });
-            t.status = w.nextArea;
-          } else if (w.nextArea && chosenNextArea && w.nextArea !== chosenNextArea) {
-            // this test needs a later area but it's not the chosen one -> Pending,
-            // except sample-on-demand tests remain Awaiting
-            const holdStatus = w.isSampleOnDemand ? 'Awaiting' : 'Pending';
-            t.addStatusEntry({ from: t.status, to: holdStatus, user: req.session && req.session.user ? req.session.user.username : null, area: holdStatus, timestamp: (new Date()).toISOString() });
-            t.status = holdStatus;
-          } else {
-            // no next area required
-            if (w.isSampleOnDemand) {
-              t.addStatusEntry({ from: t.status, to: 'Awaiting', user: req.session && req.session.user ? req.session.user.username : null, area: 'Awaiting', timestamp: (new Date()).toISOString() });
-              t.status = 'Awaiting';
-            } else {
-              t.addStatusEntry({ from: t.status, to: 'In Progress', user: req.session && req.session.user ? req.session.user.username : null, area: 'In Progress', timestamp: (new Date()).toISOString() });
-              t.status = 'In Progress';
-            }
-          }
-
-          await t.save();
-          processed.push(t.testId || t.id);
-          try { sseEmitter.emit('update', { action: 'complete', testId: t.testId, status: t.status, patient: t.patient, time: (new Date()).toISOString() }); } catch (e) { console.warn('SSE emit failed', e); }
-        } catch (e) { console.warn('Failed processing work item during complete non-payment', w && w.test && (w.test.testId || w.test.id), e); }
+        } catch (e) { console.warn('Failed advancing remaining test', e); }
       }
     }
 
-    const message = processed.length ? `Marked ${processed.length} test(s) complete` : 'No tests processed';
+    const message = processed.length
+      ? (isChargedToPhilhealth ? `Charged ${processed.length} test(s) to PhilHealth & advanced queue` : `Marked ${processed.length} test(s) complete`)
+      : 'No tests processed';
     if (req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'))) {
       return res.json({ success: true, message });
     }
@@ -984,7 +1355,11 @@ router.post('/delete', requireAuth, canAccessPatient, async (req, res) => {
       req.flash('error_msg', 'Missing test id');
       return res.redirect('/reception');
     }
-    const deleted = await Test.findByIdAndDelete(testId);
+    let deleted = await Test.findByIdAndDelete(testId);
+    if (!deleted) {
+      const found = await Test.findOne({ testId: testId });
+      if (found) deleted = await Test.findByIdAndDelete(found.id);
+    }
     try {
       const payload = { action: 'delete', testId: deleted ? deleted.testId : testId, time: (new Date()).toISOString() };
       console.log('SSE emit', payload.action, payload.testId);

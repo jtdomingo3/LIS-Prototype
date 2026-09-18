@@ -17,8 +17,11 @@ contextBridge.exposeInMainWorld('lisAppPrint', {
    *  We must use IPC because sandboxed preloads cannot require('fs'). */
   readPdfFile: (filePath) => ipcRenderer.invoke('read-pdf-file', { filePath }),
   savePdf:     (sourcePath) => ipcRenderer.invoke('save-pdf', { sourcePath }),
-  // Open the PDF with the system default PDF viewer (provides full preview + printer UI)
   openPdf:     (filePath) => ipcRenderer.invoke('open-pdf', { filePath }),
+  getPrinters: () => ipcRenderer.invoke('get-printers'),
+  printSilent: (opts) => ipcRenderer.invoke('print-silent', opts),
+  print:       () => ipcRenderer.invoke('print-current-window'),
+  close:       () => ipcRenderer.invoke('close-current-window'),
 });
 
 // Prevent page scripts from calling window.print() and opening the

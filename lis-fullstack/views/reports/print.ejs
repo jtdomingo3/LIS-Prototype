@@ -10,8 +10,17 @@
   </style>
   <style>
     /* Signature overlay styling applied globally to reports */
-    .signature-overlay { position:absolute; pointer-events:none; left:50%; transform-origin:center; }
+    .signature-overlay { position:absolute; pointer-events:none; left:50%; transform-origin:bottom center !important; max-height:64px !important; }
     .signatures .sig { position:relative }
+
+    /* Global overrides to soften print borders */
+    #rendered-result .patient-box td,
+    #rendered-result .results-frame {
+      border-color: #9ca3af !important;
+    }
+    #rendered-result .results-frame {
+      border-width: 1px !important;
+    }
   </style>
 </head>
 <body>

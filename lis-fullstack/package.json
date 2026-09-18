@@ -1,6 +1,6 @@
 {
   "name": "laboratory-information-system",
-  "version": "1.1.0",
+  "version": "2.6.1",
   "description": "Full-stack Laboratory Information System with Node.js, Express, MongoDB",
   "main": "server.js",
   "bin": "server.js",
@@ -15,7 +15,12 @@
     "service:install": "node ./scripts/register-service.js install",
     "service:uninstall": "node ./scripts/register-service.js uninstall",
     "tray": "cd tray && npm install && npm start",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "security-audit": "node ../tools/security-audit/run-security-audit.js",
+    "test:inventory": "node ../test/run-all-inventory-tests.js",
+    "test:equipment": "node ../test/equipment-backend.test.js",
+    "test:lj-signatories": "node ../test/test_lj_signatories.js",
+    "seed:equipment": "node ../test/seed_equipment_data.js",
+    "test": "node ../test/run-all-inventory-tests.js && node ../test/equipment-backend.test.js && node ../test/run-all-offline-tests.js && node ../test/test-signature-sync-e2e.js"
   },
   "keywords": [
     "laboratory",
@@ -24,10 +29,11 @@
     "nodejs",
     "mongodb"
   ],
-  "author": "Your Name",
+  "author": "Gezyne-Jamir Software Tech",
   "license": "MIT",
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^13.0.3",
     "bwip-js": "^4.8.0",
     "connect-flash": "^0.1.1",
     "cors": "^2.8.5",
@@ -41,15 +47,15 @@
     "express-validator": "^7.0.1",
     "google-tts-api": "^2.0.1",
     "helmet": "^7.0.0",
-    "html-pdf": "^3.0.1",
     "mdb-reader": "^3.1.0",
     "method-override": "^3.0.0",
     "minimist": "^1.2.8",
     "multer": "^2.0.2",
+    "node-windows": "*",
     "puppeteer": "^24.35.0",
     "sharp": "^0.34.5",
-    "uuid": "^9.0.0",
-    "node-windows": "*"
+    "sql.js": "^1.14.2",
+    "uuid": "^9.0.0"
   },
   "devDependencies": {
     "jimp": "^0.16.1",
@@ -64,7 +70,6 @@
       "views/**/*",
       "public/**/*",
       "assets/**/*",
-      "data.json",
       "lib/**/*",
       "routes/**/*",
       "templates/**/*"

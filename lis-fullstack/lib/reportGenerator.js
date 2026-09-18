@@ -13,7 +13,8 @@ const fs   = require('fs');
 const path = require('path');
 const os   = require('os');
 const ejs  = require('ejs');
-const { getResultTemplate } = require('./templateResolver');
+const { getResultTemplate, isDoctorVisitTest } = require('./templateResolver');
+const { sanitizeTestSignatures } = require('./signatureResolver');
 
 const reportsDir = path.join(os.homedir(), 'Documents', 'LIS', 'reports');
 
@@ -37,35 +38,55 @@ function findBrowserExe() {
   return undefined;
 }
 
-// ── singleton browser instance ─────────────────────────────────────────
+// ── singleton browser instance with idle timer ─────────────────────────
 let _browser = null;
 let _browserLaunchPromise = null;
+let _browserIdleTimer = null;
+
+function resetBrowserIdleTimer() {
+  if (_browserIdleTimer) clearTimeout(_browserIdleTimer);
+  _browserIdleTimer = setTimeout(async () => {
+    try {
+      if (_browser) {
+        console.log('[reportGenerator] closing idle browser instance to conserve RAM');
+        await _browser.close();
+        _browser = null;
+      }
+    } catch (_) {}
+  }, 60000);
+}
 
 async function getBrowser() {
+  resetBrowserIdleTimer();
   if (_browser && _browser.isConnected()) return _browser;
-  // avoid multiple parallel launches
   if (_browserLaunchPromise) return _browserLaunchPromise;
   _browserLaunchPromise = (async () => {
-    // prefer puppeteer-core (no auto-download), fall back to puppeteer
     let puppeteer;
     try { puppeteer = require('puppeteer-core'); } catch (e) {
-      puppeteer = require('puppeteer');
+      try { puppeteer = require('puppeteer'); } catch (ee) {
+        return null;
+      }
     }
     const executablePath = findBrowserExe();
+    if (!executablePath) return null;
     console.log(`[reportGenerator] launching browser: ${executablePath || '(default)'}`);
-    _browser = await puppeteer.launch({
-      headless: 'new',
-      executablePath,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-gpu',
-        '--disable-dev-shm-usage',
-        '--disable-extensions',
-      ],
-    });
-    // auto-reconnect
-    _browser.on('disconnected', () => { _browser = null; _browserLaunchPromise = null; });
+    try {
+      _browser = await puppeteer.launch({
+        headless: 'new',
+        executablePath,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-gpu',
+          '--disable-dev-shm-usage',
+          '--disable-extensions',
+        ],
+      });
+      _browser.on('disconnected', () => { _browser = null; _browserLaunchPromise = null; });
+    } catch (launchErr) {
+      console.warn('[reportGenerator] browser launch failed:', launchErr && launchErr.message);
+      _browser = null;
+    }
     _browserLaunchPromise = null;
     return _browser;
   })();
@@ -141,6 +162,8 @@ async function populateTestForPdf(test) {
   if ((!populated.performedBy || !populated.performedBy.name) && populated.results && populated.results.performedByName) {
     populated.performedBy = { name: populated.results.performedByName, license: populated.results.performedByLicense || null };
   }
+
+  sanitizeTestSignatures(populated);
 
   return populated;
 }
@@ -223,16 +246,34 @@ function enqueue(fn) {
   return _queue;
 }
 
-// ── generate a single test's PDF and write to disk ─────────────────────
-async function generatePdfForTest(rawTest) {
+// ── generate a single test's PDF and write to disk (with disk mtime caching) ──
+async function generatePdfForTest(rawTest, forceRegenerate = false) {
+  if (!rawTest || isDoctorVisitTest(rawTest)) return null;
   return enqueue(async () => {
     try {
+      if (!rawTest || isDoctorVisitTest(rawTest)) return null;
       ensureDir();
       const populated    = await populateTestForPdf(rawTest);
+      const outPath      = getReportPath(populated);
+
+      // Fast path: if PDF exists on disk and is newer than test.updatedAt, serve cached
+      if (!forceRegenerate && fs.existsSync(outPath)) {
+        try {
+          const stat = fs.statSync(outPath);
+          const testUpdatedAt = rawTest.updatedAt ? new Date(rawTest.updatedAt).getTime() : 0;
+          if (stat.mtimeMs >= testUpdatedAt && stat.size > 1000) {
+            return outPath;
+          }
+        } catch (_) {}
+      }
+
       const templateName = getResultTemplate(populated);
+      if (!templateName) {
+        console.warn(`[reportGenerator] skipping PDF generation - no diagnostic template for testId=${rawTest.testId || rawTest.id}`);
+        return null;
+      }
       const html         = await renderHtmlForTest(populated, templateName);
       const buf          = await generatePdfBufferFromHtml(html);
-      const outPath      = getReportPath(populated);
       fs.writeFileSync(outPath, buf);
       console.log(`[reportGenerator] wrote ${path.basename(outPath)}`);
       return outPath;
@@ -250,7 +291,7 @@ async function generateAllMissing() {
 
   const allTests = await Test.find({});
   const eligible = (allTests || []).filter(t =>
-    t && (t.status === 'Completed' || t.status === 'Released') && t.results
+    t && !isDoctorVisitTest(t) && (t.status === 'Completed' || t.status === 'Released') && t.results
   );
 
   let generated = 0;

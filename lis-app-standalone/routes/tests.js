@@ -63,10 +63,24 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
     if (!test) return res.status(404).json({ error: 'Test not found' });
     const patient = test.patient ? await Patient.findById(test.patient) : null;
 
-    // Determine gezyne folder from app settings, env, or default relative path
-    const gezynePath = (req.app && req.app.locals && req.app.locals.settings && req.app.locals.settings.gezynePath)
-      ? req.app.locals.settings.gezynePath
-      : (process.env.GEZYNE_PATH || path.resolve(__dirname, '..', '..', 'new-gezyne'));
+    // Determine gezyne folder from app settings, persistent settings, env, or default
+    let gezynePath = null;
+    if (req.app && req.app.locals && req.app.locals.settings && req.app.locals.settings.gezynePath) {
+      gezynePath = req.app.locals.settings.gezynePath;
+    } else {
+      // try to read from data.json directly in case settings haven't been loaded yet
+      try {
+        const data = global.db.read();
+        if (data && data.settings && data.settings.gezynePath) {
+          gezynePath = data.settings.gezynePath;
+          req.app.locals.settings = req.app.locals.settings || {};
+          req.app.locals.settings.gezynePath = gezynePath;
+        }
+      } catch (e) {}
+      gezynePath = gezynePath || (process.env.GEZYNE_PATH || path.resolve(__dirname, '..', '..', 'new-gezyne'));
+    }
+    console.log('[analyzer] using gezynePath value', gezynePath);
+    // resolve target mdb file flexibly
     let mdbFile = null;
     function findMDB(start) {
       try {
@@ -98,9 +112,7 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
     }
     console.log('[analyzer] resolved mdb path', mdbFile);
     if (!mdbFile || !fs.existsSync(mdbFile)) {
-      const msg = 'Analyzer MDB not found under ' + gezynePath +
-                  '. please set correct path in Settings (gezynePath) or via GEZYNE_PATH env var';
-      return res.json({ error: msg });
+      return res.json({ error: 'Analyzer MDB not found under ' + gezynePath });
     }
 
     const MDBReader = await loadMdbReader();
@@ -140,64 +152,75 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
       const first = lisFirstName ? String(lisFirstName).toLowerCase().trim() : '';
       const last = lisLastName ? String(lisLastName).toLowerCase().trim() : '';
       
+      // Check if it matches "LASTNAME, FIRSTNAME" format
       if (last && first) {
-        const expected1 = `${last}, ${first}`;
-        const expected2 = `${last},${first}`;
+        const expected1 = `${last}, ${first}`; // "felicia, romeo"
+        const expected2 = `${last},${first}`;  // "felicia,romeo" (no space)
         if (normalized === expected1 || normalized === expected2) return true;
       }
+      
+      // Check if it matches "FIRSTNAME LASTNAME" format
       if (first && last) {
-        const expected3 = `${first} ${last}`;
+        const expected3 = `${first} ${last}`; // "romeo felicia"
         if (normalized === expected3) return true;
       }
+      
+      // Check if both name parts appear in the field (partial match for minor typos)
+      // But require BOTH parts to be present, not just one
       if (first && last) {
         const hasFirst = normalized.includes(first);
         const hasLast = normalized.includes(last);
+        // Only accept if BOTH parts are present
         if (hasFirst && hasLast) {
+          // Additional check: ensure they're reasonably close (not too far apart)
           const firstPos = normalized.indexOf(first);
           const lastPos = normalized.indexOf(last);
           const distance = Math.abs(firstPos - lastPos);
+          // If parts are within 20 chars of each other, likely same person
           if (distance < 20) return true;
         }
       }
+      
       return false;
     };
+    
+    console.log('[analyzer] patient object', patient ? {firstName: patient.firstName, lastName: patient.lastName, fullName: patient.fullName} : null);
 
-    // date range based on test date
+    const patientTables = tables.filter(t => /^PATIENT/i.test(t));
+    console.log('[analyzer] patient tables found:', patientTables.length, 'recent ones:', patientTables.filter(t => t.includes('2025') || t.includes('2026')));
+    const matchingPatients = [];
+    
+    // Determine date range for filtering: use test date if available, otherwise use current date
     let targetDate = test && test.testDate ? new Date(test.testDate) : new Date();
     const dateBefore = new Date(targetDate);
-    dateBefore.setDate(dateBefore.getDate() - 7);
+    dateBefore.setDate(dateBefore.getDate() - 7); // 7 days before
     const dateAfter = new Date(targetDate);
-    dateAfter.setDate(dateAfter.getDate() + 2);
+    dateAfter.setDate(dateAfter.getDate() + 2); // 2 days after
     console.log('[analyzer] filtering by date range:', dateBefore.toISOString().slice(0, 10), 'to', dateAfter.toISOString().slice(0, 10));
-
-    // months to inspect for patient tables
+    
+    // Determine which months to check based on date range
     const monthsToCheck = new Set();
     const cursorDate = new Date(dateBefore);
     while (cursorDate <= dateAfter) {
-      const ym = cursorDate.toISOString().slice(0, 7).replace('-', '');
+      const ym = cursorDate.toISOString().slice(0, 7).replace('-', ''); // YYYYMM
       monthsToCheck.add(`PATIENTINFO${ym}`);
       cursorDate.setMonth(cursorDate.getMonth() + 1);
     }
     console.log('[analyzer] checking patient tables:', Array.from(monthsToCheck));
-
-    // collect patient records matching name tokens or date range
-    const nameTokens = [];
-    if (patient) {
-      if (patient.firstName) nameTokens.push(String(patient.firstName).toLowerCase());
-      if (patient.lastName) nameTokens.push(String(patient.lastName).toLowerCase());
-      if (patient.fullName) nameTokens.push(String(patient.fullName).toLowerCase());
-    }
-
-    const patientTables = tables.filter(t => /^PATIENT/i.test(t));
-    const matchingPatients = [];
+    
     for (const t of patientTables) {
       try {
+        // Only process tables in our date range OR check for name matches
+        const isInDateRange = monthsToCheck.has(t);
+        
         const table = reader.getTable(t);
         const rows = table.getData({ start: 0, length: 500 });
         let matchCount = 0;
+        
         for (const r of rows) {
           let shouldInclude = false;
-          const isInDateRange = monthsToCheck.has(t);
+          
+          // Check date range if this table is in the target months
           if (isInDateRange && r.COLLECT_DATE) {
             try {
               const collectDate = new Date(r.COLLECT_DATE);
@@ -206,25 +229,45 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
               }
             } catch (e) {}
           }
+          
+          // Also check for strict name matches (only if we have patient name)
           if (!shouldInclude && patient && (patient.firstName || patient.lastName)) {
             shouldInclude = isNameMatch(r.FIRST_NAME, patient.firstName, patient.lastName);
           }
+          
           if (shouldInclude) {
             matchingPatients.push({ table: t, row: r });
             matchCount++;
           }
         }
+        
         if (matchCount > 0) {
           console.log(`[analyzer] ${t}: ${matchCount} matches${isInDateRange ? ' (date range)' : ' (name match)'} out of ${rows.length} rows`);
+          console.log(`[analyzer] ${t}: ${matchCount} matches${isInDateRange ? ' (date range)' : ' (name match)'} out of ${rows.length} rows`);
         }
-      } catch (e) {}
+      } catch (e) {
+        console.log(`[analyzer] error reading table ${t}:`, e.message);
+      }
     }
     console.log('[analyzer] matchingPatients count', matchingPatients.length);
+    if (matchingPatients.length > 0) {
+      console.log('[analyzer] sample matchingPatients (first 5):');
+      matchingPatients.slice(0, 5).forEach((mp, idx) => {
+        console.log(`  ${idx + 1}. ${mp.row.FIRST_NAME || '(no name)'} (ID: ${mp.row.ID}, Table: ${mp.table})`);
+      });
+    }
+    // extract ID values from patient rows for filtering
     const patientIds = new Set();
     matchingPatients.forEach(mp => {
       if (mp.row && mp.row.ID) patientIds.add(String(mp.row.ID));
     });
-    console.log('[analyzer] patientIds', Array.from(patientIds));
+    console.log('[analyzer] patientIds count:', patientIds.size);
+    console.log('[analyzer] first 10 patientIds:', Array.from(patientIds).slice(0, 10));
+    // Also get recent patient IDs for 202601 table specifically
+    const recent202601 = matchingPatients.filter(mp => mp.table.includes('202601')).map(mp => mp.row.ID);
+    if (recent202601.length > 0) {
+      console.log('[analyzer] 202601 patient IDs:', recent202601);
+    }
 
     // Collect recent CHECK_RESULT* rows
     const checkTables = tables.filter(t => /^CHECK_RESULT/i.test(t));
@@ -236,9 +279,14 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
         for (const r of rows) checkRows.push(Object.assign({ __table: t }, r));
       } catch (e) {}
     }
+
     console.log('[analyzer] raw checkRows count', checkRows.length);
-    // try narrowing by patientIds if available; check both PATIENTID and ID
-    // fields on checkRows since exports vary.
+    // try narrowing by patientIds if we were able to determine any (from
+    // PATIENT* tables). the value used in CHECK_RESULT rows appears under
+    // different keys depending on the analyzer export; r.PATIENTID is the one
+    // we observed, but some rows may also provide r.ID which is ambiguous.
+    // we don’t rely on name filtering anymore as those fields typically don’t
+    // contain anything useful.
     let filteredRows = checkRows;
     if (patientIds.size > 0) {
       const beforeCount = filteredRows.length;
@@ -248,9 +296,9 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
       });
       console.log('[analyzer] filtered checkRows by patientIds, new count', filteredRows.length, 'from', beforeCount);
     }
-    // no automatic date filter; we let the picker display all candidate runs
-    // and the operator chooses which one to import.
-    // (keeping previous code commented out for reference)
+    // no automatic date filtering; user will choose the run manually in the
+    // popup.  keeping the code here as comment in case automatic mode is ever
+    // desired again.
     // if (test && test.testDate) {
     //   const want = new Date(test.testDate).toISOString().slice(0,10);
     //   const before = filteredRows.length;
@@ -306,7 +354,7 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
         const hdl = parseFloat(mapped.hdl);
         if (!isNaN(tc) && !isNaN(hdl)) {
           const lcalc = Math.round((tc - hdl - (tg / 5.0)) * 100) / 100;
-          if ((!mapped.ldl || mapped.ldl === '') || String(mapped.ldl) !== String(lcalc)) {
+          if (( !mapped.ldl || mapped.ldl === '' ) || String(mapped.ldl) !== String(lcalc)) {
             mapped.ldl = String(lcalc);
             derived.push('LDL');
           }
@@ -324,6 +372,9 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
     console.log('[analyzer] seen codes', seenCodes.sort());
     console.log('[analyzer] missing mapped codes (not in export)', missingCodes.sort());
 
+    // send only whatever we filtered; do not fall back to full data (it was
+    // confusing when the date wasn’t found in the MDB). log when empty so the
+    // caller can diagnose missing export.
     let rowsToSend = filteredRows;
     console.log('[analyzer] returning rows count', rowsToSend.length);
     if (rowsToSend.length === 0) {
@@ -332,6 +383,7 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
     console.log('[analyzer] sample filtered row keys', Object.keys(filteredRows[0] || {}));
     if (filteredRows.length > 0) {
       console.log('[analyzer] sample filtered row object', filteredRows[0]);
+      // list all unique ITEM codes present
       const codes = new Set(filteredRows.map(r => (r.ITEM||r.Item||r.item||'').toString().toUpperCase()));
       console.log('[analyzer] unique ITEM codes', Array.from(codes).sort());
     }
@@ -348,6 +400,7 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
         }
       }
       if (dt && dt instanceof Date) dt = dt.toISOString();
+      // include patient ID so client can correlate with patient names
       const pid = r.PATIENTID || r['PATIENT_ID'] || r.ID;
       return {
         DATE: dt || null,
@@ -358,6 +411,7 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
       };
     });
     
+    // Only send patients that are actually referenced in the rows we're sending
     const rowPatientIds = new Set(rowsToSend.map(r => r.PATIENT_ID).filter(Boolean));
     const relevantPatients = matchingPatients.filter(mp => 
       mp.row && mp.row.ID && rowPatientIds.has(String(mp.row.ID))
@@ -368,7 +422,6 @@ router.get('/:id/analyzer/capture', requireAuth, async (req, res) => {
     }
     
     res.json({ patients: relevantPatients, checkCount: checkRows.length, mapped, rows: rowsToSend });
-    console.log('[analyzer] capture handler completed, returning', Object.keys(mapped));
   } catch (err) {
     console.error('Analyzer capture error', err);
     res.json({ error: String(err) });
@@ -391,6 +444,18 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
   // Get all tests and patients
   let allTests = await Test.find({});
   const allPatients = await Patient.find({});
+
+  // Compute system-wide diagnostic test stats
+  const systemStats = { total: 0, completed: 0, inProgress: 0, queue: 0 };
+  if (Array.isArray(allTests)) {
+    systemStats.total = allTests.length;
+    allTests.forEach(t => {
+      const s = String(t.status || '').toLowerCase();
+      if (s === 'completed' || s === 'released' || s === 'checked') systemStats.completed++;
+      else if (s === 'in progress') systemStats.inProgress++;
+      else systemStats.queue++;
+    });
+  }
 
     // Available test types for filter dropdown
     // Collapse blood-chemistry variants (including BUN/Creat and common synonyms)
@@ -436,8 +501,25 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
 
     // Apply status filter
     if (statusFilter) {
-      const sf = statusFilter.toString().toLowerCase();
-      allTests = allTests.filter(t => ((t.status || '').toString().toLowerCase() === sf));
+      const sf = statusFilter.toString().toLowerCase().trim();
+      if (sf === 'pending') {
+        allTests = allTests.filter(t => {
+          const s = (t.status || '').toString().toLowerCase().trim();
+          return s === 'pending' || s === 'payment area' || s === 'extraction area' || s === 'awaiting' || !s;
+        });
+      } else if (sf === 'completed') {
+        allTests = allTests.filter(t => {
+          const s = (t.status || '').toString().toLowerCase().trim();
+          return s === 'completed' || s === 'released' || s === 'checked';
+        });
+      } else if (sf === 'checked') {
+        allTests = allTests.filter(t => {
+          const s = (t.status || '').toString().toLowerCase().trim();
+          return s === 'checked';
+        });
+      } else {
+        allTests = allTests.filter(t => ((t.status || '').toString().toLowerCase().trim() === sf));
+      }
     }
 
     // Apply testType filter (substring match) with special handling for Blood Chemistry
@@ -502,7 +584,8 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
       statusFilter,
       typeFilter,
       dateFilter,
-      availableTestTypes
+      availableTestTypes,
+      systemStats
     });
   } catch (error) {
     console.error('Tests list error:', error);
@@ -540,13 +623,7 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       'ecg.ejs',
       'hematology.ejs',
       'serology.ejs',
-      'ultrasound-abd-kubp-hbt.ejs',
       'echocardiography-2d.ejs',
-      'ultrasound-transvaginal.ejs',
-      'ultrasound-biophysical.ejs',
-      'ultrasound-1st-trimester-obstetrics.ejs',
-      'ultrasound-pelvic.ejs',
-      'ultrasound-pelvic-biometry.ejs',
       'drugtest.ejs'
     ];
     const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
@@ -558,38 +635,25 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       if (f === 'blood-chemistry-sgpt-sgot.ejs') {
         return { name: 'Blood Chemistry - SGPT/SGOT', testType: 'Blood Chemistry - SGPT/SGOT' };
       }
-      if (f === 'ultrasound-abd-kubp-hbt.ejs') {
-        return { name: 'Ultrasound - ABD / KUBP / HBT', testType: 'ultrasound-abd-kubp-hbt' };
-      }
       if (f === 'echocardiography-2d.ejs') {
         return { name: 'Echocardiography - 2D', testType: 'echocardiography-2d' };
       }
-      if (f === 'ultrasound-transvaginal.ejs') {
-        return { name: 'Ultrasound - Transvaginal', testType: 'ultrasound-transvaginal' };
-      }
-      if (f === 'ultrasound-biophysical.ejs') {
-        return { name: 'Ultrasound - Biophysical', testType: 'ultrasound-biophysical' };
-      }
-      if (f === 'ultrasound-1st-trimester-obstetrics.ejs') {
-        return { name: 'Ultrasound - Trimester Obstetrics', testType: 'ultrasound-trimester-obstetrics' };
-      }
-      if (f === 'ultrasound-pelvic.ejs') {
-        return { name: 'Ultrasound - Pelvic Ultrasound', testType: 'ultrasound-pelvic' };
-      }
-      if (f === 'ultrasound-pelvic-biometry.ejs') {
-        return { name: 'Ultrasound - Pelvic Biometry', testType: 'ultrasound-pelvic-biometry' };
+      if (f === 'xray.ejs') {
+        return { name: 'X-ray', testType: 'X-ray' };
       }
       const name = f.replace('.ejs', '').replace(/-/g, ' ');
       return { name: name.charAt(0).toUpperCase() + name.slice(1), testType: f.replace('.ejs','') };
     });
+    staticTemplates.push({ name: 'Ultrasound', testType: 'Ultrasound' });
     templates = templates.concat(staticTemplates);
-    // Ensure trimester ultrasound static template is available in selection
-    try {
-      const exists = templates.some(t => (t.testType || '').toLowerCase() === 'ultrasound-trimester-obstetrics');
-      if (!exists) {
-        templates.push({ name: 'Ultrasound - Trimester Obstetrics', testType: 'ultrasound-trimester-obstetrics' });
-      }
-    } catch (e) {}
+    // Deduplicate templates by normalized testType/name
+    const seenTypes = new Set();
+    templates = (templates || []).filter(t => {
+      const k = String(t.testType || t.name || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '');
+      if (!k || seenTypes.has(k)) return false;
+      seenTypes.add(k);
+      return true;
+    });
   } catch (e) {
     // ignore static templates on error
   }
@@ -600,11 +664,27 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
     if (req.query && req.query.patient) {
       test.printAfterAssign = '1';
     }
+
+    // Determine return destination
+    let returnTo = req.query.returnTo || '';
+    if (!returnTo && req.get('Referer')) {
+      try {
+        const refUrl = new URL(req.get('Referer'));
+        if (refUrl.pathname !== '/tests/new') {
+          returnTo = refUrl.pathname + (refUrl.search || '');
+        }
+      } catch (e) {}
+    }
+    if (!returnTo && req.query.patient) {
+      returnTo = `/patients/${req.query.patient}`;
+    }
+
     res.render('tests/new', {
       title: 'Create New Test',
       test,
       patients,
-      templates
+      templates,
+      returnTo
     });
   } catch (error) {
     console.error('New test error:', error);
@@ -643,9 +723,13 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
         const amtRaw = req.body['amount_' + slug];
         const amt = amtRaw ? parseFloat(String(amtRaw).replace(/,/g,'')) : 0;
         const remark = req.body['remark_' + slug] || '';
+        const qtyRaw = parseInt(req.body['qty_' + slug] || req.body['qty_' + slug.replace(/_/g, '')] || '1', 10);
+        const qty = Math.max(1, Math.min(isNaN(qtyRaw) ? 1 : qtyRaw, 10));
         const area = mapTestToArea(raw);
         if (area) mappedAreas.add(area);
-        requestedTestsDetailed.push({ key: raw, label: raw, amount: isNaN(amt) ? 0 : amt, lab: (area === 'X-ray') ? 'xray' : 'clinical', area: area || null, remarks: remark });
+        for (let q = 0; q < qty; q++) {
+          requestedTestsDetailed.push({ key: raw, label: raw, amount: isNaN(amt) ? 0 : amt, lab: (area === 'X-ray') ? 'xray' : 'clinical', area: area || null, remarks: remark });
+        }
       }
       awaitingOnly = selectedTests.length > 0 && mappedAreas.size === 0;
       // Add For Send Out if present
@@ -742,8 +826,6 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
     const createdTests = [];
 
     // Helper to detect doctor-only requested item
-
-    // Helper to detect doctor-only requested item
     const isDoctorRequest = (rt) => {
       try {
         const lab = String(rt.lab || '').toLowerCase();
@@ -786,8 +868,67 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       return null;
     };
 
-    // Group blood chemistry variants into single 'Blood Chemistry' test when multiple selected
-    if (requestedTestsDetailed && requestedTestsDetailed.length) {
+    // If incoming request contains pre-created tests (from offline sync replay)
+    let incomingList = null;
+    if (req.body) {
+      if (typeof req.body.createdTests === 'string') {
+        try { incomingList = JSON.parse(req.body.createdTests); } catch (_) {}
+      } else if (typeof req.body.tests === 'string') {
+        try { incomingList = JSON.parse(req.body.tests); } catch (_) {}
+      } else if (Array.isArray(req.body.createdTests)) {
+        incomingList = req.body.createdTests;
+      } else if (Array.isArray(req.body.tests)) {
+        incomingList = req.body.tests;
+      } else if (req.body.createdTests && typeof req.body.createdTests === 'object') {
+        incomingList = Object.values(req.body.createdTests);
+      } else if (req.body.tests && typeof req.body.tests === 'object') {
+        incomingList = Object.values(req.body.tests);
+      }
+    }
+
+    // Filter out invalid or [object Object] string elements
+    if (Array.isArray(incomingList)) {
+      incomingList = incomingList.filter(item => item && typeof item === 'object' && typeof item !== 'string' && Object.keys(item).length > 0);
+      if (incomingList.length === 0) incomingList = null;
+    }
+
+    if (Array.isArray(incomingList) && incomingList.length) {
+      for (const item of incomingList) {
+        if (!item || typeof item !== 'object') continue;
+        const inferredType = item.testType || (Array.isArray(item.requestedTests) && item.requestedTests[0] ? (item.requestedTests[0].label || item.requestedTests[0].key) : null) || testType || 'Test';
+        const prefix = getPrefixForLabel(inferredType);
+        const payload = {
+          id: item.id || undefined,
+          testId: item.testId || getNextTestId(prefix),
+          patient: item.patient || patient,
+          testType: inferredType,
+          testDate: item.testDate || (new Date()).toISOString(),
+          status: item.status || 'Payment Area',
+          priority: item.priority || priority || 'Normal',
+          results: item.results || undefined,
+          notes: item.notes || undefined,
+          specimenNumbers: item.specimenNumbers || undefined,
+          assignedDoctorId: item.assignedDoctorId || undefined,
+          assignedDoctorName: item.assignedDoctorName || undefined,
+          requestedBy: (req.session && req.session.user && req.session.user.id) || item.requestedBy,
+          requestedTests: (Array.isArray(item.requestedTests) && item.requestedTests.length)
+            ? item.requestedTests
+            : (inferredType !== 'Test' ? [{ key: inferredType, label: inferredType }] : (requestedTestsDetailed || [])),
+          awaitingOnly: item.awaitingOnly !== undefined ? item.awaitingOnly : awaitingOnly,
+          client_id: item.client_id || item.id || undefined
+        };
+        const existing = payload.id ? await Test.findById(payload.id) : (payload.testId ? await Test.findOne({ testId: payload.testId }) : null);
+        if (existing) {
+          Object.assign(existing, payload);
+          await existing.save();
+          createdTests.push(existing);
+        } else {
+          const t = new Test(payload);
+          await t.save();
+          createdTests.push(t);
+        }
+      }
+    } else if (requestedTestsDetailed && requestedTestsDetailed.length) {
       const copyRequested = requestedTestsDetailed.slice();
       // Treat specific requested items as Blood Chemistry only when they match chemistry-related keywords
       // but explicitly exclude 'typing' (e.g., 'Blood Typing') which is a separate serology/hematology test.
@@ -835,10 +976,10 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
           status: 'Payment Area',
           priority: (priority && String(priority).trim()) ? priority : 'Normal',
           requestedBy: req.session.user.id,
+          notes: (rt && rt.remarks) ? rt.remarks : (notes || undefined),
           requestedTests: [rt],
           awaitingOnly: awaitingOnly
         };
-        if (req.body && req.body.client_id) payload.client_id = req.body.client_id;
         // If this single requested item is a doctor-only request and no other non-doctor items
         // are present for this patient creation flow, queue directly to doctor's checkup.
         try {
@@ -879,7 +1020,6 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
         priority: (priority && String(priority).trim()) ? priority : 'Normal',
         requestedBy: req.session.user.id
       };
-      if (req.body && req.body.client_id) payload.client_id = req.body.client_id;
       // If the form requested a Send Out but no detailed requestedTests were provided
       // (single testType path), attach a normalized For Send Out requested item so
       // the Payment Area processing can route it to the internal 'Sendout' area.
@@ -928,6 +1068,12 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       sseEmitter.emit('update', { action: 'assigned', patientId: patient, tests: createdTests.map(ct => ({ testId: ct.testId, id: ct.id, testType: ct.testType })), time: (new Date()).toISOString() });
     } catch (e) { console.warn('SSE emit failed', e); }
 
+    // If this request is from the standalone sync engine, return JSON with created ids + client_id
+    if (req.headers['x-lis-sync-email'] || req.headers['x-lis-sync-hash']) {
+      const created = createdTests.map(ct => ({ id: ct.id, testId: ct.testId || null, client_id: ct.client_id || null }));
+      return res.json(created);
+    }
+
     // If UI requested printing after assign, invoke print helper once for the patient with all created tests
     try {
       const doctorSelected = requiredAreas.some(r => String(r || '').toLowerCase().includes('doctor') && String(r || '').toLowerCase().includes('check'));
@@ -951,29 +1097,62 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
 
     req.flash('success_msg', `Tests created successfully!`);
 
+    const isSyncClient = !!(req.headers['x-lis-sync-email'] || req.headers['x-lis-sync-hash'] || req.headers['x-lis-sync-replay']);
+    const isExplicitJson = req.xhr || (req.headers['accept'] && req.headers['accept'].includes('application/json') && !req.headers['accept'].includes('text/html'));
+    if (isSyncClient || isExplicitJson) {
+      return res.json({
+        success: true,
+        tests: createdTests.map(t => ({ id: t.id, testId: t.testId, client_id: t.client_id || null })),
+        id: createdTests.length === 1 ? createdTests[0].id : (createdTests[0] ? createdTests[0].id : null),
+        client_id: req.body && req.body.client_id ? req.body.client_id : null
+      });
+    }
+
     // Determine where to redirect after creating/assigning tests.
-    // Priority: explicit hidden `returnTo` form field -> query param -> Referer -> fallback '/tests'
-    let returnTo = (req.body && req.body.returnTo) || req.query.returnTo || req.get('Referer') || '/tests';
+    // Priority: explicit hidden `returnTo` form field -> query param -> Referer (if not /tests/new) -> fallback
+    let returnTo = (req.body && req.body.returnTo) || req.query.returnTo;
+    if (!returnTo && req.get('Referer')) {
+      try {
+        const refUrl = new URL(req.get('Referer'));
+        if (refUrl.pathname !== '/tests/new') {
+          returnTo = refUrl.pathname + (refUrl.search || '');
+        }
+      } catch (e) {}
+    }
+
+    // If still no returnTo, check if a patient was selected/assigned: return to that patient; otherwise /tests
+    if (!returnTo || returnTo === '/tests/new' || returnTo.startsWith('/tests/new')) {
+      returnTo = patient ? `/patients/${patient}` : '/tests';
+    }
+
     try {
       // If it's an absolute URL, only allow same-host paths to avoid open-redirects
       if (/^https?:\/\//i.test(returnTo)) {
         const u = new URL(returnTo);
-        if (u.host === req.get('host')) {
+        if (u.host === req.get('host') && u.pathname !== '/tests/new') {
           returnTo = u.pathname + (u.search || '');
         } else {
-          returnTo = '/tests';
+          returnTo = patient ? `/patients/${patient}` : '/tests';
         }
       } else if (!returnTo.startsWith('/')) {
-        // try to resolve relative URLs against current host
         try {
           const u = new URL(returnTo, `${req.protocol}://${req.get('host')}`);
-          returnTo = u.pathname + (u.search || '');
+          if (u.pathname !== '/tests/new') {
+            returnTo = u.pathname + (u.search || '');
+          } else {
+            returnTo = patient ? `/patients/${patient}` : '/tests';
+          }
         } catch (e) {
-          returnTo = '/tests';
+          returnTo = patient ? `/patients/${patient}` : '/tests';
         }
       }
     } catch (e) {
-      returnTo = '/tests';
+      returnTo = patient ? `/patients/${patient}` : '/tests';
+    }
+
+    // Final safety check: Never redirect back to /tests/new form
+    if (returnTo === '/tests/new' || returnTo.startsWith('/tests/new')) {
+      returnTo = patient ? `/patients/${patient}` : '/tests';
     }
 
     return res.redirect(returnTo);
@@ -1031,7 +1210,8 @@ router.get('/:id', requireAuth, canAccessPatient, async (req, res) => {
 // GET /tests/:id/results - Results entry form (supports fecalysis for now)
 router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
   try {
-    const test = await Test.findById(req.params.id);
+    let test = await Test.findById(req.params.id);
+    if (!test) test = await Test.findOne({ testId: req.params.id });
     if (!test) {
       req.flash('error_msg', 'Test not found');
       return res.redirect('/tests');
@@ -1058,6 +1238,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
       pt: /\b(?:pt|prothrombin|pt-aptt|ptaptt)\b/i.test(tt),
       blood_chem: /(blood\s*chemistry|blood-chemistry|blood\s*chem|(?:bun|creat|creatinine))/i.test(tt),
         echocardiography: /(echo|echocardiograph|echocardiography|2d\s*echo|2decho)/i.test(tt),
+      ultrasound: /(ultra|ultrasound)/i.test(tt),
       ultrasound_abd: /(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(tt),
       ultrasound_transvaginal: /(ultrasound[-\s]?transvaginal|transvaginal)/i.test(tt),
       ultrasound_biophysical: /(ultrasound[-\s]?biophysical|biophysical)/i.test(tt),
@@ -1122,13 +1303,8 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     if (/\b(?:pt|prothrombin|pt-aptt|ptaptt)\b/i.test(test.testType)) view = 'tests/results_entry_pt_aptt';
     if (/(bun|creatinine|bun[\s\/-]?crea|bun\/?crea)/i.test(test.testType)) view = 'tests/results_entry_blood_chemistry_bun_crea';
     if (/(blood\s*chemistry|blood-chemistry|blood\s*chem)/i.test(normalizedType) && !/(lipid|lipid\s*profile|blood\s*chemistry\s*-?\s*lipid|blood\s*chemistry\s*lipid\s*profile|blood\s*chemistry\s*lipid|electrolyte|electrolytes|sodium|potassium|chloride|hba1c|hb\s*a1c|hb-a1c|blood sugar|blood-sugar|sugar|fbs|rbs|1st hour|2nd hour|bun|creatinine|bun[\s\/\-]?crea|bun\/?crea|sgpt|sgot|albumin|alb)/i.test(normalizedType)) view = 'tests/results_entry_blood_chemistry';
-    if (/(ultrasound[-\s]?transvaginal|transvaginal)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_transvaginal';
-    if (/(ultrasound[-\s]?biophysical|biophysical)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_biophysical';
-    if (/(?:1st|first|2nd|second|3rd|third|trimester|ultrasound[-_\s]?trimester)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_1st_trimester_obstetrics';
-    if (/(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(test.testType)) view = 'tests/results_entry_ultrasound_abd_kubp_hbt';
+    if (/(ultra|ultrasound)/i.test(test.testType)) view = 'tests/results_entry_ultrasound';
     if (/(echo|echocardiograph|echocardiography|2d\s*echo|2decho)/i.test(test.testType)) view = 'tests/results_entry_echocardiography_2d';
-    if (/(static:)?(ultrasound[-_\s]?pelvic[-_\s]?biometry|pelvic\s*biometry|pelvic-biometry|ultrasound[-_\s]?pelvicbiometry)(\.ejs)?/i.test(test.testType)) view = 'tests/results_entry_ultrasound_pelvic_biometry';
-    if (/(static:)?(ultrasound[-_\s]?pelvic(?![-_\s]?biometry)(\.ejs)?|pelvic(?![-_\s]?biometry))/i.test(test.testType)) view = 'tests/results_entry_ultrasound_pelvic';
     if (/(drug\s*test|drugtest)/i.test(test.testType)) view = 'tests/results_entry_drugtest';
     console.log(`DEBUG GET /tests/${req.params.id}/results - selected view='${view}'`);
 
@@ -1157,6 +1333,7 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
     res.render(view, {
       title: `Enter ${test.testType} Results`,
       test: testForView,
+      patient: testForView.patient || null,
       users,
       nextCaseNumber,
       ANALYZER_MAP
@@ -1172,7 +1349,8 @@ router.get('/:id/results', requireAuth, canAccessPatient, async (req, res) => {
 // POST /tests/:id/results - Save results for fecalysis
 router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoFile'), async (req, res) => {
   try {
-    const test = await Test.findById(req.params.id);
+    let test = await Test.findById(req.params.id);
+    if (!test) test = await Test.findOne({ testId: req.params.id });
     if (!test) {
       req.flash('error_msg', 'Test not found');
       return res.redirect('/tests');
@@ -1196,11 +1374,12 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
       lipid: /(lipid|lipid\s*profile|blood\s*chemistry\s*-?\s*lipid|blood\s*chemistry\s*lipid\s*profile|blood\s*chemistry\s*lipid)/i.test(tt),
       electrolytes: /(electrolyte|electrolytes|sodium|potassium|chloride)/i.test(tt),
       blood_sugar: /(blood sugar|blood-sugar|sugar|fbs|rbs|1st hour|2nd hour)/i.test(tt),
-      ultrasound_abd: /(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(tt),
-      ultrasound_transvaginal: /(ultrasound[-\s]?transvaginal|transvaginal)/i.test(tt),
-      ultrasound_biophysical: /(ultrasound[-\s]?biophysical|biophysical)/i.test(tt),
-      ultrasound_pelvic: /(ultrasound[-_\s]?pelvic(\.ejs)?|pelvic)/i.test(tt),
-      ultrasound_1st_trimester: /(1st\s*trimester|first\s*trimester|1st[-\s]?trimester|trimester\s*obstetrics|ultrasound[-\s]?.*1st)/i.test(tt),
+      ultrasound: /(ultra|ultrasound)/i.test(tt) || Boolean(req.body && req.body.ultrasoundType),
+      ultrasound_abd: /(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(tt) || (req.body && req.body.ultrasoundType === 'ultrasound-abd-kubp-hbt'),
+      ultrasound_transvaginal: /(ultrasound[-\s]?transvaginal|transvaginal)/i.test(tt) || (req.body && req.body.ultrasoundType === 'ultrasound-transvaginal'),
+      ultrasound_biophysical: /(ultrasound[-\s]?biophysical|biophysical)/i.test(tt) || (req.body && req.body.ultrasoundType === 'ultrasound-biophysical'),
+      ultrasound_pelvic: /(ultrasound[-_\s]?pelvic(\.ejs)?|pelvic)/i.test(tt) || (req.body && (req.body.ultrasoundType === 'ultrasound-pelvic' || req.body.ultrasoundType === 'ultrasound-pelvic-biometry')),
+      ultrasound_1st_trimester: /(1st\s*trimester|first\s*trimester|1st[-\s]?trimester|trimester\s*obstetrics|ultrasound[-\s]?.*1st)/i.test(tt) || (req.body && req.body.ultrasoundType === 'ultrasound-1st-trimester-obstetrics'),
       esr: /(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(tt),
       drugtest: /(drug\s*test|drugtest)/i.test(tt),
       ct_bt: /(bleeding|clotting|ct[-_\s]*&?\s*bt|ct[-_\s]*and[-_\s]*bt|ct[-_\s]*bt)/i.test(tt)
@@ -1837,6 +2016,19 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
 
       if (note) resultsObj.note = String(note).trim();
 
+      // Merge any extra dynamically added fields from dbTemplate
+      const extraFields = { ...req.body };
+      delete extraFields._csrf;
+      delete extraFields.submitBtn;
+      delete extraFields.performedBy;
+      delete extraFields.mtName;
+      delete extraFields.mtLicense;
+      delete extraFields.pathName;
+      delete extraFields.pathLicense;
+      delete extraFields.patient;
+      
+      resultsObj = { ...extraFields, ...resultsObj };
+
       console.log('DEBUG: blood chemistry fallback matched, results keys:', Object.keys(resultsObj));
 
     } else if (/(ecg|electrocardio|electrocardiogram)/i.test(test.testType)) {
@@ -1886,8 +2078,12 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
         sample: (sample || '').trim(),
         result: (result || '').trim()
       };
-    } else if (/(ultrasound[-\s]?biophysical|biophysical|ultrasound[-_\s]?pelvic[-_\s]?biometry|pelvic[-_\s]?biometry|pelvic\s*biometry)/i.test(test.testType)) {
-      // Biophysical ultrasound parsing
+    } else if (
+      req.body.ultrasoundType === 'ultrasound-biophysical' ||
+      req.body.ultrasoundType === 'ultrasound-pelvic-biometry' ||
+      ((/(ultrasound[-\s]?biophysical|biophysical|ultrasound[-_\s]?pelvic[-_\s]?biometry|pelvic[-_\s]?biometry|pelvic\s*biometry)/i.test(test.testType)) && !req.body.ultrasoundType)
+    ) {
+      // Biophysical / Pelvic Biometry ultrasound parsing
       const bpd_size = (req.body.bpd_size || '').toString().trim();
       const bpd_label = (req.body.bpd_label || '').toString().trim();
       const hc_size = (req.body.hc_size || '').toString().trim();
@@ -1980,8 +2176,12 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
       // store editable section title
       resultsObj.section_title = (req.body.section_title || req.body.sectionTitle || (test && test.results && test.results.section_title) || 'BIOPHYSICAL ULTRASOUND').toString().trim();
 
-    } else if (/(static:)?(ultrasound[-_\s]?(transvaginal|pelvic(?:[-_\s]?biometry)?)(\.ejs)?|transvaginal|pelvic(?:[-_\s]?biometry)?)/i.test(test.testType)) {
-      // Transvaginal ultrasound: structured fields per checklist
+    } else if (
+      req.body.ultrasoundType === 'ultrasound-transvaginal' ||
+      req.body.ultrasoundType === 'ultrasound-pelvic' ||
+      ((/(static:)?(ultrasound[-_\s]?(transvaginal|pelvic)(\.ejs)?|transvaginal|pelvic)/i.test(test.testType)) && !req.body.ultrasoundType)
+    ) {
+      // Transvaginal & Pelvic ultrasound: structured fields per checklist
       const gestational_sac_length = (req.body.gestational_sac_length || req.body.gestationalSacLength || '').toString().trim();
       const gestational_sac_age = (req.body.gestational_sac_age || req.body.gestationalSacAge || '').toString().trim();
       const crl_length = (req.body.crl_length || req.body.crlLength || '').toString().trim();
@@ -2044,7 +2244,10 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
       if (req.body.impression_spacing && String(req.body.impression_spacing).trim()) {
         resultsObj.impression_spacing = String(req.body.impression_spacing).trim();
       }
-    } else if (/(?:1st|first|2nd|second|3rd|third|trimester|ultrasound[-_\s]?trimester|trimester[-_\s]?obstetrics)/i.test(test.testType)) {
+    } else if (
+      req.body.ultrasoundType === 'ultrasound-1st-trimester-obstetrics' ||
+      ((/(?:1st|first|2nd|second|3rd|third|trimester|ultrasound[-_\s]?trimester|trimester[-_\s]?obstetrics)/i.test(test.testType)) && !req.body.ultrasoundType)
+    ) {
       // 1st Trimester Obstetrics - unified single/twin parsing
       const isTwinRaw = req.body.isTwin;
       const isTwin = (isTwinRaw === 'on' || isTwinRaw === 'true' || isTwinRaw === true || String(isTwinRaw).toLowerCase() === 'on');
@@ -2205,8 +2408,12 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
           resultsObj.impression_spacing = String(req.body.impression_spacing).trim();
         }
       }
-    } else if (/(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(test.testType)) {
-      // Ultrasound ABD / KUBP / HBT variant: accept examination select, findings paragraphs, and impression
+    } else if (
+      req.body.ultrasoundType === 'ultrasound-abd-kubp-hbt' ||
+      ((/(ultrasound[-\s]?abd[-\s]?kubp[-\s]?hbt)/i.test(test.testType)) && !req.body.ultrasoundType) ||
+      ((/(ultra|ultrasound)/i.test(test.testType)) && !req.body.ultrasoundType)
+    ) {
+      // Ultrasound ABD / KUBP / HBT variant (and general ultrasound fallback): accept examination select, findings paragraphs, and impression
       const examination = (req.body.examination || '').toString().trim();
       const paragraphs = (req.body.paragraphs || req.body.findings || req.body.result || '').toString().trim();
       const impression = (req.body.impression || '').toString().trim();
@@ -2308,6 +2515,11 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
       ...topUpdates
     };
 
+    if (req.body.ultrasoundType) {
+      updateData.template = req.body.ultrasoundType;
+      resultsObj.ultrasoundType = req.body.ultrasoundType;
+    }
+
     // set performedBy only if explicitly provided (performer management is handled separately)
     if (performedBy) {
       updateData.performedBy = performedBy;
@@ -2381,13 +2593,8 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
       'ecg.ejs',
       'hematology.ejs',
       'serology.ejs',
-      'ultrasound-abd-kubp-hbt.ejs',
       'echocardiography-2d.ejs',
-      'ultrasound-transvaginal.ejs',
-      'ultrasound-biophysical.ejs',
-      'ultrasound-1st-trimester-obstetrics.ejs',
-      'drugtest.ejs',
-      'ultrasound-pelvic.ejs'
+      'drugtest.ejs'
     ];
     const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
     const staticTemplates = files.map(f => {
@@ -2398,16 +2605,14 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
       if (f === 'blood-chemistry-sgpt-sgot.ejs') {
         return { name: 'Blood Chemistry - SGPT/SGOT', testType: 'Blood Chemistry - SGPT/SGOT' };
       }
+      if (f === 'xray.ejs') {
+        return { name: 'X-ray', testType: 'X-ray' };
+      }
       const name = f.replace('.ejs', '').replace(/-/g, ' ');
       return { name: name.charAt(0).toUpperCase() + name.slice(1), testType: name };
     });
+    staticTemplates.push({ name: 'Ultrasound', testType: 'Ultrasound' });
     templates = templates.concat(staticTemplates);
-    try {
-      const exists2 = templates.some(t => (t.testType || '').toLowerCase() === 'ultrasound-trimester-obstetrics');
-      if (!exists2) {
-        templates.push({ name: 'Ultrasound - Trimester Obstetrics', testType: 'ultrasound-trimester-obstetrics' });
-      }
-    } catch (e) {}
   } catch (e) {
     // ignore
   }
@@ -2482,6 +2687,8 @@ router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
     try {
       if (updateData && updateData.results && Object.keys(updateData.results).length) {
         try { sseEmitter.emit('update', { action: 'result_encoded', testId: test.testId, status: test.status, patient: test.patient, time: (new Date()).toISOString() }); } catch (e) { console.warn('SSE emit (result_encoded) failed', e); }
+      } else {
+        try { sseEmitter.emit('update', { action: 'test_updated', testId: test.testId, status: test.status, patient: test.patient, time: (new Date()).toISOString(), message: `Test #${test.testId} updated` }); } catch (e) {}
       }
     } catch (e) {}
 
@@ -2503,6 +2710,16 @@ router.delete('/:id', requireAuth, canAccessPatient, async (req, res) => {
       req.flash('error_msg', 'Test not found');
       return res.redirect('/tests');
     }
+
+    try {
+      sseEmitter.emit('update', {
+        action: 'test_deleted',
+        testId: test.testId,
+        patient: test.patient,
+        time: (new Date()).toISOString(),
+        message: `🗑️ Test #${test.testId} deleted`
+      });
+    } catch (e) {}
 
     req.flash('success_msg', 'Test deleted successfully');
     res.redirect('/tests');

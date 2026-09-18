@@ -26,18 +26,19 @@ let pngToIco;
       process.exit(2);
     }
 
-    if (!pngToIco) {
-      console.error('png-to-ico module not available. Run: npm install --save-dev png-to-ico');
-      process.exit(3);
-    }
-    if (!sharp) {
-      console.error('sharp module not available. Run: npm install --save-dev sharp');
-      process.exit(4);
-    }
-
     const outDir = path.join(projectRoot, 'build');
     fs.mkdirSync(outDir, { recursive: true });
     const out = path.join(outDir, 'icon.ico');
+
+    if (!pngToIco || !sharp) {
+      if (fs.existsSync(out)) {
+        console.log('Reusing existing icon.ico at:', out);
+        process.exit(0);
+      }
+      console.error('png-to-ico or sharp module not available and no existing icon.ico found.');
+      process.exit(3);
+    }
+
     console.log('Generating', out, 'from', src);
 
     const sizes = [16,32,48,64,128,256];

@@ -2,6 +2,7 @@ const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 const { logReportError } = require('../lib/reportLogger');
 const reportGenerator = require('../lib/reportGenerator');
+const { isDoctorVisitTest } = require('../lib/templateResolver');
 
 class Test {
   constructor(data) {
@@ -26,6 +27,10 @@ class Test {
     this.updatedAt = data.updatedAt || new Date();
     // Preserve requestedTests (array of { key,label,amount,lab }) when provided
     this.requestedTests = Array.isArray(data.requestedTests) ? data.requestedTests : (data.requestedTests || []);
+    // Flag indicating test results have been released (cleared from Releasing of Result queue)
+    this.released = !!data.released;
+    // Flag indicating test results are stashed (patient unavailable, held at reception)
+    this.stashed = !!data.stashed;
     // Flag indicating all requested tests are awaiting-only (no routing)
     this.awaitingOnly = !!data.awaitingOnly;
     // statusHistory: array of { from, to, user, area, timestamp }
@@ -40,48 +45,54 @@ class Test {
     if (this.status === 'Completed' && !this.completedAt) {
       try { this.completedAt = new Date().toISOString(); } catch (e) { this.completedAt = String(new Date()); }
     }
-    const tests = global.db.getTests();
-    const index = tests.findIndex(t => t.id === this.id);
+    const prev = global.db && typeof global.db.getTestById === 'function'
+      ? global.db.getTestById(this.id)
+      : (global.db.getTests().find(t => t.id === this.id) || null);
+
     // Ensure initial statusHistory entry exists for new records
-    if (index < 0) {
+    if (!prev) {
       if (!Array.isArray(this.statusHistory) || this.statusHistory.length === 0) {
         this.statusHistory = [{ from: null, to: this.status || null, user: null, area: this.status || null, timestamp: (new Date()).toISOString() }];
       }
-      tests.push(this);
     } else {
-      // If updating, ensure we don't duplicate history entries — only add if last entry differs
-      const prev = tests[index];
-      // Guard: once a test is Completed or Released, do not allow reverting to a non-completed state
+      // Guard: once a test is Completed or Released, do not allow reverting to a non-completed state unless allowReassign is explicitly set
       try {
         const lockedStates = new Set(['Completed', 'Released']);
-        if (prev && prev.status && lockedStates.has(prev.status) && !(this.status && lockedStates.has(this.status))) {
-          // attempted revert detected
+        if (!this.allowReassign && prev && prev.status && lockedStates.has(prev.status) && !(this.status && lockedStates.has(this.status))) {
           const msg = `Attempted to revert locked test id=${this.id} from ${prev.status} to ${this.status}`;
           console.warn('[GUARD]', msg);
           try { logReportError(msg, 'guard:revert-test'); } catch (e) {}
-          // enforce previous completed/released status
           this.status = prev.status;
-          // keep completedAt from prev
           this.completedAt = prev.completedAt || this.completedAt;
+        } else if (this.allowReassign && !(this.status && lockedStates.has(this.status))) {
+          this.completedAt = undefined;
+          this.released = false;
         }
       } catch (e) {}
+
       const last = Array.isArray(this.statusHistory) && this.statusHistory.length ? this.statusHistory[this.statusHistory.length - 1] : null;
       const prevStatus = prev && prev.status ? prev.status : null;
       if (prevStatus !== this.status) {
-        // Only append if last recorded 'to' is different
         if (!last || last.to !== this.status) {
           const entry = { from: prevStatus, to: this.status, user: null, area: this.status, timestamp: (new Date()).toISOString() };
           this.statusHistory = Array.isArray(this.statusHistory) ? this.statusHistory : [];
           this.statusHistory.push(entry);
         }
       }
-      tests[index] = this;
     }
-    global.db.saveTests(tests);
+
+    if (global.db && typeof global.db.upsertTest === 'function') {
+      global.db.upsertTest(this);
+    } else {
+      const tests = global.db.getTests();
+      const index = tests.findIndex(t => t.id === this.id);
+      if (index >= 0) tests[index] = this; else tests.push(this);
+      global.db.saveTests(tests);
+    }
     // After persisting, if the test is Completed/Released and has results, regenerate PDF
     try {
       const lockedStates = new Set(['Completed', 'Released']);
-      if (lockedStates.has(this.status) && this.results) {
+      if (lockedStates.has(this.status) && this.results && !isDoctorVisitTest(this)) {
         // generate asynchronously — do not block save
         const testRef = this;
         setImmediate(async () => {
@@ -115,13 +126,29 @@ class Test {
 
   // Static methods
   static async findById(id) {
-    const tests = global.db.getTests();
-    const test = tests.find(t => t.id === id);
+    if (!id) return null;
+    if (global.db) {
+      if (typeof global.db.getTestById === 'function') {
+        const test = global.db.getTestById(id);
+        if (test) return new Test(test);
+      }
+      if (typeof global.db.getTestByTestId === 'function') {
+        const test = global.db.getTestByTestId(id);
+        if (test) return new Test(test);
+      }
+    }
+    const tests = global.db && global.db.getTests ? global.db.getTests() : [];
+    let test = tests.find(t => t.id === id);
+    if (!test) test = tests.find(t => t.testId === id);
     return test ? new Test(test) : null;
   }
 
   static async find(query = {}) {
-    let tests = global.db.getTests();
+    if (global.db && typeof global.db.queryTests === 'function') {
+      const results = global.db.queryTests(query);
+      return results.map(t => new Test(t));
+    }
+    let tests = global.db && global.db.getTests ? global.db.getTests() : [];
 
     if (query.patient) {
       tests = tests.filter(t => t.patient === query.patient);
@@ -137,14 +164,30 @@ class Test {
     return tests.map(t => new Test(t));
   }
 
-  static async findOne(query) {
-    const tests = global.db.getTests();
+  static async findOne(query = {}) {
+    if (!query) return null;
+    if (global.db) {
+      if (query.testId && typeof global.db.getTestByTestId === 'function') {
+        const test = global.db.getTestByTestId(query.testId);
+        if (test) return new Test(test);
+      }
+      if ((query._id || query.id) && typeof global.db.getTestById === 'function') {
+        const test = global.db.getTestById(query._id || query.id);
+        if (test) return new Test(test);
+      }
+      if (typeof global.db.queryTests === 'function') {
+        const results = global.db.queryTests(query, { limit: 1 });
+        if (results && results.length) return new Test(results[0]);
+      }
+    }
+    const tests = global.db && global.db.getTests ? global.db.getTests() : [];
     let test = null;
 
     if (query.testId) {
       test = tests.find(t => t.testId === query.testId);
     } else if (query._id || query.id) {
       test = tests.find(t => t.id === (query._id || query.id));
+      if (!test) test = tests.find(t => t.testId === (query._id || query.id));
     } else if (query.patient) {
       test = tests.find(t => t.patient === query.patient);
     }
@@ -153,19 +196,15 @@ class Test {
   }
 
   static async countDocuments(query = {}) {
+    if (global.db && typeof global.db.countTests === 'function') {
+      return global.db.countTests(query);
+    }
     const tests = await this.find(query);
     return tests.length;
   }
 
   static async findOneAndUpdate(query, updateData, options = {}) {
-    const tests = global.db.getTests();
-    let test = null;
-
-    if (query.testId) {
-      test = tests.find(t => t.testId === query.testId);
-    } else if (query._id || query.id) {
-      test = tests.find(t => t.id === (query._id || query.id));
-    }
+    let test = await this.findOne(query);
 
     if (test) {
       // Instrumentation: set/normalize incoming updatedAt
@@ -184,10 +223,10 @@ class Test {
         }
       } catch (e) {}
 
-      // Guard: prevent reverting Completed/Released via findOneAndUpdate
+      // Guard: prevent reverting Completed/Released via findOneAndUpdate unless allowReassign is set
       try {
         const locked = new Set(['Completed', 'Released']);
-        if (test && test.status && locked.has(test.status) && incoming && incoming.status && !locked.has(incoming.status)) {
+        if (!incoming.allowReassign && test && test.status && locked.has(test.status) && incoming && incoming.status && !locked.has(incoming.status)) {
           const msg = `Attempted to revert locked test id=${test.id} from ${test.status} to ${incoming.status} (findOneAndUpdate)`;
           console.warn('[GUARD]', msg);
           try { logReportError(msg, 'guard:revert-test'); } catch (e) {}
@@ -195,6 +234,9 @@ class Test {
           delete incoming.status;
           // don't touch completedAt
           if (incoming.completedAt) delete incoming.completedAt;
+        } else if (incoming.allowReassign && !(incoming.status && locked.has(incoming.status))) {
+          incoming.completedAt = undefined;
+          incoming.released = false;
         }
       } catch (e) {}
 
@@ -202,18 +244,25 @@ class Test {
       Object.assign(test, incoming);
       // ensure updatedAt normalization on disk object
       test.updatedAt = incoming.updatedAt;
-      global.db.saveTests(tests);
+
+      if (global.db && typeof global.db.upsertTest === 'function') {
+        global.db.upsertTest(test);
+      } else {
+        global.db.saveTests(tests);
+      }
       console.log(`[DEBUG Test.findOneAndUpdate] id=${test.id} afterStatus=${test.status} updatedAt=${test.updatedAt}`);
 
       // Auto-generate PDF if test is Completed/Released and has results
       try {
         const lockedStates2 = new Set(['Completed', 'Released']);
-        if (lockedStates2.has(test.status) && test.results) {
+        if (lockedStates2.has(test.status) && test.results && !isDoctorVisitTest(test)) {
           const testRef = new Test(test);
           setImmediate(async () => {
             try {
-              await reportGenerator.generatePdfForTest(testRef);
-              console.log(`[Test.findOneAndUpdate] auto-generated PDF for testId=${testRef.testId || testRef.id}`);
+              const pdfPath = await reportGenerator.generatePdfForTest(testRef);
+              if (pdfPath) {
+                console.log(`[Test.findOneAndUpdate] auto-generated PDF for testId=${testRef.testId || testRef.id}`);
+              }
             } catch (e) {
               try { logReportError(e, 'auto-generate-pdf-findOneAndUpdate'); } catch (er) {}
             }
@@ -232,24 +281,28 @@ class Test {
   }
 
   static async findByIdAndDelete(id) {
-    const tests = global.db.getTests();
-    const index = tests.findIndex(t => t.id === id);
-    if (index >= 0) {
-      const deletedTest = tests.splice(index, 1)[0];
-      // Persist deletion by writing the full data object directly to disk.
-      // `db.saveTests` performs a merge overlay which can unintentionally
-      // preserve entries that were removed from the incoming array. For
-      // deletions we must replace the on-disk tests list with the updated
-      // array to ensure the removed test does not remain.
-      try {
-        const data = global.db.read();
-        data.tests = tests;
-        global.db.write(data);
-      } catch (e) {
-        // Fallback to the existing API if direct write fails
-        try { global.db.saveTests(tests); } catch (e2) { console.error('Failed to persist deleted test:', e2); }
+    if (!id) return null;
+    let existing = null;
+    if (global.db && typeof global.db.getTestById === 'function') {
+      existing = global.db.getTestById(id);
+    }
+    if (!existing) {
+      const tests = global.db.getTests();
+      existing = tests.find(t => t.id === id || t.testId === id);
+    }
+
+    if (existing) {
+      if (global.db && typeof global.db.deleteTest === 'function') {
+        global.db.deleteTest(existing.id);
+      } else {
+        const tests = global.db.getTests();
+        const index = tests.findIndex(t => t.id === existing.id);
+        if (index >= 0) {
+          tests.splice(index, 1);
+          global.db.saveTests(tests);
+        }
       }
-      return new Test(deletedTest);
+      return new Test(existing);
     }
     return null;
   }

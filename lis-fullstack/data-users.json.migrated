@@ -1,0 +1,468 @@
+[
+  {
+    "id": "2349040a-9d75-41d0-a69d-39ab7575405f",
+    "name": "Admin User",
+    "email": "admin@lab.com",
+    "password": "$2a$12$I4VdBqwlt/mSExp7aM02je5tVTiec5pE1xhrya1Ul2QD.v4SABV/C",
+    "role": "Admin",
+    "licenseNumber": null,
+    "signature": null,
+    "autoSignature": {
+      "enabled": false,
+      "until": null
+    },
+    "permissions": {
+      "dashboard": true,
+      "patients": true,
+      "reception": true,
+      "tests": true,
+      "reports": true,
+      "worksheet": true,
+      "templates": true,
+      "users": true,
+      "delete": true
+    },
+    "status": "Active",
+    "createdAt": "2026-01-15T01:12:10.333Z",
+    "lastLogin": "2026-08-29T00:27:09.342Z"
+  },
+  {
+    "id": "151c918b-f347-414c-b1df-e4e6f530cd92",
+    "name": "Bernadette R. Espiritu, M.D.",
+    "email": "espiritu@gezyne.com",
+    "password": "$2a$12$/VgV0qqth74aiqdkNqNdxOX0zUZkX4ytsa7LoRxAhsGEb1FMWviDK",
+    "role": "Pathologist",
+    "licenseNumber": "75547",
+    "signature": "espiritu_gezyne_com_signature.png",
+    "autoSignature": {
+      "enabled": true,
+      "until": null
+    },
+    "permissions": {
+      "dashboard": false,
+      "patients": true,
+      "reception": true,
+      "tests": false,
+      "reports": true,
+      "worksheet": false,
+      "templates": false,
+      "users": false,
+      "delete": false
+    },
+    "status": "Active",
+    "createdAt": "2026-01-29T08:00:18.450Z",
+    "lastLogin": "2026-02-18T11:31:19.494Z"
+  },
+  {
+    "id": "ec6282ce-cd95-473e-9d9b-f82dc3eaada5",
+    "name": "Alberto J. Gabriel, MD, FPCR",
+    "email": "gabriel@gezyne.com",
+    "password": "$2a$12$39mG9sr7euynqtxVgf17ju1UeSp6BhFGQ7WiYkEuMz/OQ5JI2IcNW",
+    "licenseNumber": null,
+    "permissions": {
+      "dashboard": true,
+      "patients": true,
+      "reception": true,
+      "tests": false,
+      "reports": false,
+      "worksheet": false,
+      "templates": false,
+      "users": false,
+      "delete": false
+    },
+    "role": "Radiologist",
+    "status": "Active",
+    "createdAt": "2026-01-29T08:07:30.584Z",
+    "lastLogin": null
+  },
+  {
+    "id": "11898e72-d2ec-4acf-80e5-4c8eada45418",
+    "name": "Dr. Melissa Cundangan",
+    "email": "cundangan@gezyne.com",
+    "password": "$2a$12$lTE2BzVnuqPyWqSEEIu96u2yFDP9.10gsh.fU0Ad22vvOudeq1Evy",
+    "licenseNumber": null,
+    "permissions": {
+      "dashboard": false,
+      "patients": true,
+      "reception": false,
+      "tests": false,
+      "reports": false,
+      "worksheet": false,
+      "templates": false,
+      "users": false,
+      "delete": false
+    },
+    "role": "Doctor",
+    "status": "Active",
+    "createdAt": "2026-01-29T08:08:35.268Z",
+    "lastLogin": null
+  },
+  {
+    "id": "cada8aa5-0f97-4bb0-a45d-9279db9d3cbf",
+    "name": "Dr. Mark Joseph Yap Lorenzo",
+    "email": "lorenzo@gezyne.com",
+    "password": "$2a$12$oe2OTtolTZiOnKdEEJI.Q.xvog6uKx7VWpXGHAhOr7SOYwEP1l3B2",
+    "licenseNumber": "013104",
+    "permissions": {
+      "dashboard": false,
+      "patients": true,
+      "reception": true,
+      "tests": false,
+      "reports": false,
+      "worksheet": false,
+      "templates": false,
+      "users": false,
+      "delete": false
+    },
+    "role": "Internist",
+    "status": "Active",
+    "createdAt": "2026-01-29T08:09:56.224Z",
+    "lastLogin": null
+  },
+  {
+    "id": "58dbca90-8da0-4183-80ae-b8c36710eccb",
+    "name": "John Kevin R. Estanislao, RXT",
+    "email": "kevin@gezyne.com",
+    "password": "$2a$12$crHfFkluG9ODwaxSlePGVO5MX98o7YixQcelGcmeS9I/vO7LUG/qu",
+    "role": "X-Ray Technologist",
+    "licenseNumber": null,
+    "signature": "kevin_gezyne_com_signature.png",
+    "autoSignature": {
+      "enabled": false,
+      "until": null
+    },
+    "permissions": {
+      "dashboard": true,
+      "patients": true,
+      "reception": true,
+      "tests": true,
+      "reports": true,
+      "worksheet": false,
+      "templates": false,
+      "users": false,
+      "delete": false
+    },
+    "status": "Active",
+    "createdAt": "2026-01-29T08:13:00.050Z",
+    "lastLogin": "2026-02-18T11:29:15.779Z"
+  },
+  {
+    "id": "45813b1b-e7b8-4271-899f-9c0408d79ee4",
+    "name": "Dr. Omar Braga, DPBR",
+    "email": "braga@gezyne.com",
+    "password": "$2a$12$PbetytczWb2e3eCH9AQat.h7zgpSLO6Jo9W8auIftyH19/wAWLPoe",
+    "licenseNumber": null,
+    "permissions": {
+      "dashboard": false,
+      "patients": true,
+      "reception": false,
+      "tests": true,
+      "reports": false,
+      "worksheet": false,
+      "templates": false,
+      "users": false,
+      "delete": false
+    },
+    "role": "Radiologist",
+    "status": "Active",
+    "createdAt": "2026-01-29T08:14:17.847Z",
+    "lastLogin": null
+  },
+  {
+    "id": "3d2e8fd3-ce3e-4306-b9d0-85619c4eaadd",
+    "name": "Ken Sporling",
+    "email": "ken@gezyne.com",
+    "password": "$2a$12$fjC4k4V7x3203NLx6CgbSemU56ym7x6h.YHRgNrm8BPq0x.uLDfNW",
+    "role": "Encoder",
+    "licenseNumber": null,
+    "permissions": {
+      "dashboard": true,
+      "patients": true,
+      "reception": true,
+      "tests": true,
+      "reports": true,
+      "worksheet": false,
+      "templates": false,
+      "users": false,
+      "delete": false
+    },
+    "status": "Active",
+    "createdAt": "2026-01-30T08:26:40.969Z",
+    "lastLogin": null
+  },
+  {
+    "id": "91dd40a3-5505-461a-9445-dd316493807d",
+    "name": "Genalyn Lopez",
+    "email": "genalyn@lab.com",
+    "password": "$2a$12$6Ot681iuqFXbfjLVFUfpReBOAWVKX4OAgyhdCgRp2LA5b2p/4por2",
+    "role": "Owner",
+    "licenseNumber": null,
+    "permissions": {
+      "dashboard": true,
+      "patients": true,
+      "reception": true,
+      "tests": true,
+      "reports": true,
+      "worksheet": true,
+      "templates": false,
+      "users": false,
+      "delete": true
+    },
+    "status": "Active",
+    "createdAt": "2026-01-30T08:31:53.803Z",
+    "lastLogin": "2026-01-30T08:34:52.993Z"
+  },
+  {
+    "id": "6e42ee33-18b1-452b-8420-6f98804eb01f",
+    "name": "Reception",
+    "email": "reception@lab.com",
+    "password": "$2a$12$nmDTi0ju3aMfOF8Fe.pbCuyca9HeRKHVav5TQBpvJVHH0JYvzuE92",
+    "role": "Receptionist",
+    "licenseNumber": null,
+    "signature": null,
+    "permissions": {
+      "dashboard": true,
+      "patients": true,
+      "reception": true,
+      "tests": true,
+      "reports": true,
+      "worksheet": true,
+      "templates": false,
+      "users": false,
+      "delete": false
+    },
+    "status": "Active",
+    "createdAt": "2026-01-30T08:55:29.304Z",
+    "lastLogin": "2026-01-31T03:40:16.775Z"
+  },
+  {
+    "id": "3b93848a-cc5b-4c52-a0ec-fc6133375609",
+    "name": "IT User",
+    "email": "it@lab.com",
+    "password": "$2a$12$i9iXzTsCuBWdcvQJ1Qf39uB3AtiyCZ8cgqyRkr6BuZxTteMGS83KO",
+    "role": "Technician",
+    "licenseNumber": null,
+    "permissions": {
+      "dashboard": true,
+      "patients": true,
+      "reception": true,
+      "tests": true,
+      "reports": true,
+      "worksheet": true,
+      "templates": false,
+      "users": false,
+      "delete": false
+    },
+    "status": "Active",
+    "createdAt": "2026-01-30T08:56:22.596Z",
+    "lastLogin": null
+  },
+  {
+    "id": "5caad043-3c4b-4d91-8bdb-a2d15400d157",
+    "name": "Gezyne Clinical Lab",
+    "email": "gezyneclinical@lab.com",
+    "password": "$2a$12$N6vkmXJjtJFigrPWnPfeMuhG.bCDn9zwzj.nkFq8Ddhz.0tX.GAo6",
+    "role": "Admin",
+    "licenseNumber": null,
+    "permissions": {
+      "dashboard": true,
+      "patients": true,
+      "reception": true,
+      "tests": true,
+      "reports": true,
+      "worksheet": true,
+      "templates": true,
+      "users": true,
+      "delete": true
+    },
+    "status": "Active",
+    "createdAt": "2026-01-30T08:57:23.130Z",
+    "lastLogin": "2026-01-30T08:57:41.219Z"
+  },
+  {
+    "id": "3b64f812-4767-43bb-9235-fc55ff809797",
+    "name": "R-jelyn T. Mahilum",
+    "email": "rjelyn@gezyne.com",
+    "password": "$2a$12$gwNtdRcRGJr8G99EE9ebRucGLpI3qwN/CLraL0DvJGMB9S1PjnwJS",
+    "role": "X-Ray Technologist",
+    "licenseNumber": null,
+    "permissions": {
+      "dashboard": false,
+      "patients": true,
+      "reception": true,
+      "tests": true,
+      "reports": true,
+      "worksheet": false,
+      "templates": false,
+      "users": false,
+      "delete": false
+    },
+    "status": "Active",
+    "createdAt": "2026-01-30T09:04:08.374Z",
+    "lastLogin": null
+  },
+  {
+    "id": "827acbd7-bf27-4ea1-9acb-4a666643c867",
+    "name": "Gezyne M. Lopez, RMT",
+    "email": "gezyne@lab.com",
+    "password": "$2a$12$RMiSFTXxVMj1uT95LnYlbuJ0UNAwXO4OeCR5M4c5VPgALx0jIy8ka",
+    "role": "Medical Technologist",
+    "licenseNumber": "67820",
+    "signature": "gezyne_lab_com_signature.png",
+    "autoSignature": {
+      "enabled": true,
+      "until": null
+    },
+    "permissions": {
+      "dashboard": true,
+      "patients": true,
+      "reception": true,
+      "tests": true,
+      "reports": true,
+      "worksheet": true,
+      "templates": false,
+      "users": false,
+      "delete": false
+    },
+    "status": "Active",
+    "createdAt": "2026-01-30T09:07:26.871Z",
+    "lastLogin": "2026-02-20T13:23:02.367Z"
+  },
+  {
+    "id": "7c8be026-d06e-40cb-a3af-a6ac39667f2a",
+    "name": "Gerald Lopez",
+    "email": "gerald@lab.com",
+    "password": "$2a$12$KezAxJz76LsQN04SotfgiuFJqlOb0qIvjRIEMyW4NX45vhPPJZApC",
+    "role": "Manager",
+    "licenseNumber": null,
+    "permissions": {
+      "dashboard": true,
+      "patients": true,
+      "reception": true,
+      "tests": true,
+      "reports": true,
+      "worksheet": true,
+      "templates": false,
+      "users": false,
+      "delete": false
+    },
+    "status": "Active",
+    "createdAt": "2026-01-30T09:08:10.883Z",
+    "lastLogin": null
+  },
+  {
+    "id": "15829bf8-4c04-47a5-812d-6b18198f5dda",
+    "name": "Gelaine Morales",
+    "email": "gelaine@gezyne.com",
+    "password": "$2a$12$tVfE.Kg24DA2Pm2JEPNuGellmiVEHLRemDVtuoGvwlR1LQgGB31de",
+    "role": "Sonographer",
+    "licenseNumber": null,
+    "permissions": {
+      "dashboard": true,
+      "patients": true,
+      "reception": true,
+      "tests": true,
+      "reports": true,
+      "worksheet": true,
+      "templates": false,
+      "users": false,
+      "delete": false
+    },
+    "status": "Active",
+    "createdAt": "2026-01-30T09:19:51.934Z",
+    "lastLogin": null
+  },
+  {
+    "id": "c2e0fef1-4de6-4a35-8c38-a957d8e61ef0",
+    "name": "Gally Morales",
+    "email": "gally@gezyne.com",
+    "password": "$2a$12$4rQvYq8xOfQ6qS5orNsTdeLSMNZiu5LaUgb26UcnIrV4QZU58wxQC",
+    "role": "Technician",
+    "licenseNumber": null,
+    "permissions": {
+      "dashboard": true,
+      "patients": true,
+      "reception": true,
+      "tests": true,
+      "reports": true,
+      "worksheet": true,
+      "templates": false,
+      "users": false,
+      "delete": false
+    },
+    "status": "Active",
+    "createdAt": "2026-01-30T09:20:21.205Z",
+    "lastLogin": null
+  },
+  {
+    "id": "e0a3a99c-6105-4cb2-beef-e1a48373cf37",
+    "name": "Andrew Punongbayan, RMT",
+    "email": "andrew@gezyne.com",
+    "password": "$2a$12$nAiiWlHIpLCYSabsg0/Xz.LenlSMdsohZ6thQvaVzZqGZJ/rr8Hei",
+    "role": "Medical Technologist",
+    "licenseNumber": null,
+    "permissions": {
+      "dashboard": false,
+      "patients": true,
+      "reception": true,
+      "tests": true,
+      "reports": true,
+      "worksheet": true,
+      "templates": false,
+      "users": false,
+      "delete": false
+    },
+    "status": "Active",
+    "createdAt": "2026-01-30T09:21:44.075Z",
+    "lastLogin": null
+  },
+  {
+    "id": "76b56491-ad08-4c74-9e6a-e4ac5065d0fb",
+    "name": "Nicole S. Ramos, RMT",
+    "email": "nicole@gezyne.com",
+    "password": "$2a$12$0RL5QQ1xHFUEjKpz/hCDG.kV2ktytL2Mw44.pAzKpA8CqqAlTg0We",
+    "role": "Medical Technologist",
+    "licenseNumber": null,
+    "permissions": {
+      "dashboard": false,
+      "patients": true,
+      "reception": true,
+      "tests": true,
+      "reports": true,
+      "worksheet": true,
+      "templates": false,
+      "users": false,
+      "delete": false
+    },
+    "status": "Active",
+    "createdAt": "2026-01-30T09:23:51.432Z",
+    "lastLogin": null
+  },
+  {
+    "id": "32fc4ec2-a35d-419a-a4d3-75b39fc994cc",
+    "name": "Jeff Louine Jamir T. Domingo, RMT, PMSDA",
+    "email": "jeff@gezyne.com",
+    "password": "$2a$12$18/yZYhTx7P8kMZY.k/FsOuOsgmO0fsjCQhunTvZ/2MxdzC3mZA7O",
+    "role": "Medical Technologist",
+    "licenseNumber": "68285",
+    "signature": "jeff_gezyne_com_signature.png",
+    "autoSignature": {
+      "enabled": true,
+      "until": null
+    },
+    "permissions": {
+      "dashboard": false,
+      "patients": true,
+      "reception": true,
+      "tests": true,
+      "reports": true,
+      "worksheet": true,
+      "templates": false,
+      "users": false,
+      "delete": false
+    },
+    "status": "Active",
+    "createdAt": "2026-01-30T09:29:07.879Z",
+    "lastLogin": "2026-08-28T06:31:09.413Z"
+  }
+]

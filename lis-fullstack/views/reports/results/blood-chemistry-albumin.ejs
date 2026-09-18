@@ -62,7 +62,7 @@
         <td>Name:</td>
         <td colspan="3"><strong><%= test && test.patient ? (test.patient.lastName + ', ' + test.patient.firstName) : '' %></strong></td>
         <td>Age:</td>
-        <td><strong><%= test && test.patient && test.patient.dateOfBirth ? Math.max(0, new Date().getFullYear() - new Date(test.patient.dateOfBirth).getFullYear()) : (test && test.patient && test.patient.ageManual ? test.patient.ageManual : '') %></strong></td>
+        <td><strong><%= test && test.patient ? (test.patient.age !== null && test.patient.age !== undefined && test.patient.age !== '' ? test.patient.age : (test.patient.ageManual || '')) : '' %></strong></td>
       </tr>
       <tr>
         <td>Physician:</td>

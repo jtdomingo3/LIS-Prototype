@@ -8,9 +8,8 @@ fs.mkdirSync(OUT_DIR, { recursive: true });
 
 async function make() {
   const now = new Date().toISOString();
-  const plaintext = 'password123';
-  const salt = await bcrypt.genSalt(12);
-  const hash = await bcrypt.hash(plaintext, salt);
+  // Pre-hashed default administrator credential (cost factor 12)
+  const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$t1ORj/D94UYW057qZm1Ga.KU07BHErrr3BzmeO7fNbu5h5encZvD2';
 
   const admin = {
     id: uuidv4(),
@@ -19,27 +18,71 @@ async function make() {
     password: hash,
     role: 'Admin',
     status: 'Active',
+    permissions: {
+      dashboard: true, patients: true, reception: true,
+      tests: true, reports: true, worksheet: true,
+      templates: true, users: true, delete: true
+    },
     createdAt: now,
     lastLogin: null
   };
 
   const usersPath = path.join(OUT_DIR, 'data-users.json');
   const dataPath = path.join(OUT_DIR, 'data.json');
+  const dbPath = path.join(OUT_DIR, 'lis-data.db');
 
   fs.writeFileSync(usersPath, JSON.stringify([admin], null, 2), 'utf8');
+
+  // Read any existing key or configuration from local project .env
+  try {
+    require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+  } catch (_) {}
 
   const initialData = {
     users: [],
     patients: [],
     tests: [],
     templates: [],
-    counters: {}
+    counters: {},
+    settings: {
+      openrouterApiKeyEncrypted: process.env.OPENROUTER_ENCRYPTED_KEY || null,
+      openrouterModel: process.env.OPENROUTER_DEFAULT_MODEL || 'openai/gpt-4o-mini'
+    }
   };
   fs.writeFileSync(dataPath, JSON.stringify(initialData, null, 2), 'utf8');
+
+  // Seed default .env into installer resources
+  const envLines = [
+    'NODE_ENV=production',
+    'PORT=3000',
+    'DISABLE_REPORT_GENERATION=1'
+  ];
+  if (process.env.OPENROUTER_ENCRYPTED_KEY) {
+    envLines.push(`OPENROUTER_ENCRYPTED_KEY=${process.env.OPENROUTER_ENCRYPTED_KEY}`);
+  }
+  if (process.env.OPENROUTER_DEFAULT_MODEL) {
+    envLines.push(`OPENROUTER_DEFAULT_MODEL=${process.env.OPENROUTER_DEFAULT_MODEL}`);
+  }
+  const envPath = path.join(OUT_DIR, '.env');
+  fs.writeFileSync(envPath, envLines.join('\n') + '\n', 'utf8');
+
+  // Create clean seed SQLite database
+  try {
+    if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
+    const { createDb } = require('../lib/sqliteDb');
+    const db = createDb(dbPath);
+    db.saveUsers([admin]);
+    db.write(initialData);
+    db.close();
+    console.log(' -', dbPath);
+  } catch (e) {
+    console.warn('Warning: could not create seed SQLite db in installer-resources:', e.message);
+  }
 
   console.log('Wrote installer resources to', OUT_DIR);
   console.log(' -', usersPath);
   console.log(' -', dataPath);
+  console.log(' -', envPath);
 }
 
 make().catch(err => { console.error(err); process.exit(1); });

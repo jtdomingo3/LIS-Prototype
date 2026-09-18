@@ -1,6 +1,36 @@
 const express = require('express');
-// Load environment variables from .env when present
-try { require('dotenv').config({ path: require('path').join(__dirname, '.env') }); } catch (e) {}
+// Load environment variables from .env across multiple persistent candidates
+(function loadEnv() {
+  const path = require('path');
+  const fs = require('fs');
+  const os = require('os');
+  try {
+    const dotenv = require('dotenv');
+    const candidates = [];
+    if (process.env.DATA_DIR) {
+      candidates.push(path.join(process.env.DATA_DIR, '.env'));
+    }
+    const documentsLisDir = path.join(os.homedir(), 'Documents', 'LIS', 'data');
+    candidates.push(path.join(documentsLisDir, '.env'));
+    const programDataBase = process.env.PROGRAMDATA || path.join('C:', 'ProgramData');
+    candidates.push(path.join(programDataBase, 'GezyneLIS', '.env'));
+    if (process.execPath) {
+      candidates.push(path.join(path.dirname(process.execPath), '.env'));
+    }
+    candidates.push(path.join(process.cwd(), '.env'));
+    candidates.push(path.join(__dirname, '.env'));
+
+    for (const p of candidates) {
+      if (fs.existsSync(p)) {
+        dotenv.config({ path: p });
+        console.log('[server] Loaded environment from:', p);
+        break;
+      }
+    }
+  } catch (e) {
+    console.warn('[server] dotenv load notice:', e.message);
+  }
+})();
 const session = require('express-session');
 const flash = require('connect-flash');
 const helmet = require('helmet');
@@ -21,42 +51,18 @@ const PORT = process.env.PORT || 3000;
 // If you prefer localhost-only, set HOST=127.0.0.1 before starting.
 const HOST = process.env.HOST || '0.0.0.0';
 // data files live in a directory determined by dataPath.getDataDir();
-const DATA_FILE = dataFile('data.json');
-const USERS_FILE = dataFile('data-users.json');
-console.log('[server] using DATA_FILE', DATA_FILE, 'USERS_FILE', USERS_FILE, 'DATA_DIR', path.dirname(DATA_FILE));
+const { initAppLogger } = require('./lib/appLogger');
+const DATA_DIR = require('./lib/dataPath').getDataDir();
+initAppLogger(DATA_DIR);
+const SQLITE_FILE = path.join(DATA_DIR, 'lis-data.db');
+// Legacy JSON paths (used for migration and backward compatibility)
+const DATA_FILE = path.join(DATA_DIR, 'data.json');
+const USERS_FILE = path.join(DATA_DIR, 'data-users.json');
+console.log('[server] using SQLITE_FILE', SQLITE_FILE, 'DATA_DIR', DATA_DIR);
 const crypto = require('crypto');
 const USER_DATA_KEY = process.env.DATA_USERS_KEY || process.env.USER_DATA_KEY || null;
 
-// Initialize data file if it doesn't exist
-if (!fs.existsSync(DATA_FILE)) {
-  const initialData = {
-    users: [],
-    patients: [],
-    tests: [],
-    templates: [],
-    // persistent counters for per-test-type IDs
-    counters: {}
-  };
-  // ensure parent directory exists (DATA_DIR may not have been created yet)
-  try {
-    fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-  } catch (e) {
-    console.error('[server] failed to create data directory', path.dirname(DATA_FILE), e);
-  }
-  try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(initialData, null, 2));
-  } catch (e) {
-    console.error('[server] initial write to DATA_FILE failed', DATA_FILE, e);
-    throw e;
-  }
-} // end ensure data file exists (location may vary when packaged)
-
-
-// Ensure users file exists
-if (!fs.existsSync(USERS_FILE)) {
-  fs.writeFileSync(USERS_FILE, USER_DATA_KEY ? JSON.stringify([]) : JSON.stringify([], null, 2));
-}
-
+// Encryption helpers (kept for migration of encrypted data-users.json)
 function deriveKey(secret) {
   return crypto.createHash('sha256').update(String(secret)).digest();
 }
@@ -89,87 +95,254 @@ function decryptJson(raw) {
   return JSON.parse(dec.toString('utf8'));
 }
 
-// Simple file-based database functions with atomic write and merge protection
-const db = {
-  read: () => JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')),
-  write: (data) => {
-    try {
-      const dir = path.dirname(DATA_FILE);
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      const tmp = `${DATA_FILE}.tmp-${process.pid}-${Date.now()}`;
-      // create a timestamp on top-level to help detect staleness when needed
-      if (data && typeof data === 'object') data.__lastWrite = (new Date()).toISOString();
-      fs.writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf8');
-      try { fs.renameSync(tmp, DATA_FILE); } catch (e) {
-        // fallback to copy+unlink on platforms that behave differently
-        try { fs.copyFileSync(tmp, DATA_FILE); fs.unlinkSync(tmp); } catch (e2) { throw e2; }
-      }
-    } catch (e) {
-      console.error('DB write failed:', e);
-      throw e;
-    }
-  },
-  // Users stored separately in data-users.json (optional encrypted)
-  getUsers: () => {
-    try {
-      const raw = fs.readFileSync(USERS_FILE, 'utf8');
-      return decryptJson(raw);
-    } catch (e) {
-      return [];
-    }
-  },
-  saveUsers: (users) => {
-    try {
-      fs.writeFileSync(USERS_FILE, encryptJson(users), 'utf8');
-    } catch (e) {
-      console.error('Failed to write users file:', e);
-    }
-  },
-  getPatients: () => db.read().patients,
-  getTests: () => db.read().tests,
-  getTemplates: () => db.read().templates,
-  getCounters: () => db.read().counters || {},
-  savePatients: (patients) => { const data = db.read(); data.patients = patients; db.write(data); },
-  // saveTests now merges incoming tests with on-disk tests using `updatedAt` to avoid
-  // older writes overwriting newer changes when concurrent requests are processed.
-  saveTests: (tests) => {
-    try {
-      const disk = db.read();
-      const existing = Array.isArray(disk.tests) ? disk.tests : [];
-      const mergedMap = new Map();
+// ---- SQLite Database ----
+const { createDb } = require('./lib/sqliteDb');
+const { migrateJsonToSqlite } = require('./lib/migrateJsonToSqlite');
 
-      // seed with existing
-      for (const t of existing) {
-        if (t && t.id) mergedMap.set(t.id, t);
-      }
+// Ensure data directory exists
+try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch (e) {}
 
-      // overlay with incoming tests when newer (or absent on disk)
-      for (const t of (Array.isArray(tests) ? tests : [])) {
-        if (!t || !t.id) continue;
-        const cur = mergedMap.get(t.id);
-        const curTs = cur && cur.updatedAt ? Date.parse(cur.updatedAt) : 0;
-        const incomingTs = t.updatedAt ? Date.parse(t.updatedAt) : 0;
-        if (!cur || incomingTs >= curTs) {
-          mergedMap.set(t.id, t);
-        } else {
-          console.log(`[DB] skipping stale write for test id=${t.id} incoming=${new Date(incomingTs).toISOString()} disk=${new Date(curTs).toISOString()}`);
+// Create the SQLite database adapter (tables are auto-created)
+const db = createDb(SQLITE_FILE);
+
+// Startup diagnostic banner for data directory and persistence verification
+console.log('=== LIS Data Configuration ===');
+console.log('  DATA_DIR:', DATA_DIR);
+console.log('  SQLITE_FILE:', SQLITE_FILE);
+console.log('  Engine:', db._engine || (process.pkg ? 'sql.js (WebAssembly)' : 'better-sqlite3'));
+console.log('  Writable:', (() => {
+  try {
+    const t = path.join(DATA_DIR, `.writetest_${process.pid}`);
+    fs.writeFileSync(t, '');
+    fs.unlinkSync(t);
+    return 'YES';
+  } catch (e) {
+    return 'NO - ' + e.message;
+  }
+})());
+console.log('==============================');
+
+// Process maintenance requests triggered via flag files (from electron tray or IT manual action)
+async function processMaintenanceFlags() {
+  if (db && db._readyPromise) {
+    try { await db._readyPromise; } catch (_) {}
+  }
+
+  // 1. .restore-admin: force reset/creation of default admin account
+  const restoreAdminFlag = path.join(DATA_DIR, '.restore-admin');
+  if (fs.existsSync(restoreAdminFlag)) {
+    try {
+      const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$t1ORj/D94UYW057qZm1Ga.KU07BHErrr3BzmeO7fNbu5h5encZvD2';
+      let existing = [];
+      try { existing = db.getUsers(); if (!Array.isArray(existing)) existing = []; } catch (e) { existing = []; }
+      let admin = existing.find(u => u.email === 'admin@lab.com');
+      if (!admin) {
+        const { v4: uuidv4 } = require('uuid');
+        admin = {
+          id: uuidv4(),
+          name: 'Admin User',
+          email: 'admin@lab.com',
+          password: hash,
+          role: 'Admin',
+          status: 'Active',
+          licenseNumber: null,
+          signature: null,
+          autoSignature: { enabled: false, until: null },
+          permissions: {
+            dashboard: true, patients: true, reception: true,
+            tests: true, reports: true, worksheet: true,
+            templates: true, inventory: true, equipment: true, users: true, delete: true
+          },
+          createdAt: new Date().toISOString(),
+          lastLogin: null
+        };
+        existing.push(admin);
+      } else {
+        admin.password = hash;
+        admin.role = 'Admin';
+        admin.status = 'Active';
+        admin.permissions = {
+          dashboard: true, patients: true, reception: true,
+          tests: true, reports: true, worksheet: true,
+          templates: true, inventory: true, equipment: true, users: true, delete: true
+        };
+      }
+      db.saveUsers(existing);
+      if (typeof db.checkpoint === 'function') db.checkpoint();
+      try { fs.writeFileSync(USERS_FILE, JSON.stringify(existing, null, 2), 'utf8'); } catch (_) {}
+      console.log('[server] Maintenance: Restored default admin user (admin@lab.com)');
+      try { fs.unlinkSync(restoreAdminFlag); } catch (_) {}
+    } catch (e) {
+      console.error('[server] Maintenance error restoring admin user:', e);
+    }
+  }
+
+  // 2. .reset-database: reset clinical data to empty initial state
+  const resetDbFlag = path.join(DATA_DIR, '.reset-database');
+  if (fs.existsSync(resetDbFlag)) {
+    try {
+      // Backup before wiping
+      const ts = new Date().toISOString().replace(/[:.]/g, '-');
+      try {
+        if (fs.existsSync(SQLITE_FILE)) {
+          fs.copyFileSync(SQLITE_FILE, path.join(DATA_DIR, `lis-data-backup-${ts}.db`));
         }
-      }
+      } catch (_) {}
 
-      // Preserve any tests that existed on disk but were omitted from the incoming payload
-      const merged = Array.from(mergedMap.values());
-      const data = disk || { users: [], patients: [], tests: [], templates: [], counters: {} };
-      data.tests = merged;
-      db.write(data);
+      const initialData = { users: [], patients: [], tests: [], templates: [], counters: {} };
+      db.write(initialData);
+
+      // Re-seed default admin user
+      const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$t1ORj/D94UYW057qZm1Ga.KU07BHErrr3BzmeO7fNbu5h5encZvD2';
+      const { v4: uuidv4 } = require('uuid');
+      const defaultAdmin = {
+        id: uuidv4(),
+        name: 'Admin User',
+        email: 'admin@lab.com',
+        password: hash,
+        role: 'Admin',
+        status: 'Active',
+        permissions: {
+          dashboard: true, patients: true, reception: true,
+          tests: true, reports: true, worksheet: true,
+          templates: true, inventory: true, equipment: true, users: true, delete: true
+        },
+        createdAt: new Date().toISOString(),
+        lastLogin: null
+      };
+      db.saveUsers([defaultAdmin]);
+      if (typeof db.checkpoint === 'function') db.checkpoint();
+      try { fs.writeFileSync(DATA_FILE, JSON.stringify(initialData, null, 2), 'utf8'); } catch (_) {}
+      try { fs.writeFileSync(USERS_FILE, JSON.stringify([defaultAdmin], null, 2), 'utf8'); } catch (_) {}
+      console.log('[server] Maintenance: Reset database to empty state and ensured default admin');
+      try { fs.unlinkSync(resetDbFlag); } catch (_) {}
     } catch (e) {
-      console.error('saveTests failed:', e);
-      // fallback to naive write if merge fails
-      const data = db.read(); data.tests = tests; db.write(data);
+      console.error('[server] Maintenance error resetting database:', e);
     }
-  },
-  saveTemplates: (templates) => { const data = db.read(); data.templates = templates; db.write(data); },
-  saveCounters: (counters) => { const data = db.read(); data.counters = counters; db.write(data); }
-};
+  }
+
+  // 3. .import-data: import uploaded data.json into SQLite
+  const importDataFlag = path.join(DATA_DIR, '.import-data');
+  if (fs.existsSync(importDataFlag)) {
+    try {
+      if (fs.existsSync(DATA_FILE)) {
+        console.log('[server] Maintenance: Importing data.json into SQLite...');
+        const result = migrateJsonToSqlite(db, {
+          dataJsonPath: DATA_FILE,
+          renameAfter: false,
+          log: console.log
+        });
+        if (result.success && typeof db.checkpoint === 'function') {
+          db.checkpoint();
+        }
+        console.log('[server] Maintenance: data.json import completed. Success:', result.success);
+      }
+      try { fs.unlinkSync(importDataFlag); } catch (_) {}
+    } catch (e) {
+      console.error('[server] Maintenance error importing data.json:', e);
+    }
+  }
+
+  // 4. .import-users: import uploaded data-users.json into SQLite
+  const importUsersFlag = path.join(DATA_DIR, '.import-users');
+  if (fs.existsSync(importUsersFlag)) {
+    try {
+      if (fs.existsSync(USERS_FILE)) {
+        console.log('[server] Maintenance: Importing data-users.json into SQLite...');
+        const result = migrateJsonToSqlite(db, {
+          usersJsonPath: USERS_FILE,
+          userDataKey: USER_DATA_KEY,
+          renameAfter: false,
+          log: console.log
+        });
+        if (result.success && typeof db.checkpoint === 'function') {
+          db.checkpoint();
+        }
+        console.log('[server] Maintenance: data-users.json import completed. Success:', result.success);
+      }
+      try { fs.unlinkSync(importUsersFlag); } catch (_) {}
+    } catch (e) {
+      console.error('[server] Maintenance error importing data-users.json:', e);
+    }
+  }
+}
+
+// Auto-migrate from JSON and ensure default admin user exists
+(async function initDatabaseData() {
+  if (db && db._readyPromise) {
+    try { await db._readyPromise; } catch (_) {}
+  }
+
+  // Process any pending maintenance requests first
+  await processMaintenanceFlags();
+
+  // Auto-migrate from JSON if this is first startup with SQLite
+  // (JSON files exist but SQLite DB has no data yet)
+  try {
+    const hasJsonData = fs.existsSync(DATA_FILE);
+    const hasJsonUsers = fs.existsSync(USERS_FILE);
+    if (hasJsonData || hasJsonUsers) {
+      // Decouple data and users migration checks:
+      // - Migrate clinical data if data.json exists and patients table is empty
+      // - Migrate users if data-users.json exists and users table has <= 1 user (fresh or default admin only)
+      const existingPatients = typeof db.getPatients === 'function' ? db.getPatients() : [];
+      const existingUsers = typeof db.getUsers === 'function' ? db.getUsers() : [];
+
+      const shouldMigrateData = hasJsonData && existingPatients.length === 0;
+      const shouldMigrateUsers = hasJsonUsers && (existingUsers.length <= 1);
+
+      if (shouldMigrateData || shouldMigrateUsers) {
+        console.log(`[server] Detected legacy JSON files (data=${shouldMigrateData}, users=${shouldMigrateUsers}), performing migration to SQLite...`);
+        const result = migrateJsonToSqlite(db, {
+          dataJsonPath: shouldMigrateData ? DATA_FILE : null,
+          usersJsonPath: shouldMigrateUsers ? USERS_FILE : null,
+          userDataKey: USER_DATA_KEY,
+          renameAfter: true
+        });
+
+        if (result.success) {
+          console.log('[server] JSON → SQLite migration completed successfully');
+          if (typeof db.checkpoint === 'function') {
+            db.checkpoint();
+          }
+        } else {
+          console.error('[server] JSON → SQLite migration had errors:', result.errors);
+        }
+      } else {
+        console.log('[server] SQLite database already populated, skipping JSON migration');
+      }
+    }
+  } catch (e) {
+    console.error('[server] autoMigrate error:', e);
+  }
+
+  // Ensure a default admin user exists in SQLite if users table is empty
+  try {
+    const existingUsers = typeof db.getUsers === 'function' ? db.getUsers() : [];
+    if (existingUsers.length === 0) {
+      const { v4: uuidv4 } = require('uuid');
+      const defaultAdmin = {
+        id: uuidv4(),
+        name: 'Admin User',
+        email: 'admin@lab.com',
+        // Pre-hashed default administrator credential ($2a$12$t1ORj/D94UYW057qZm1Ga.KU07BHErrr3BzmeO7fNbu5h5encZvD2)
+        password: process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$t1ORj/D94UYW057qZm1Ga.KU07BHErrr3BzmeO7fNbu5h5encZvD2',
+        role: 'Admin',
+        status: 'Active',
+        permissions: {},
+        createdAt: new Date().toISOString(),
+        lastLogin: null
+      };
+      db.upsertUser(defaultAdmin);
+      if (typeof db.checkpoint === 'function') {
+        db.checkpoint();
+      }
+      console.log('[server] Seeded default admin user (admin@lab.com) into empty SQLite database');
+    }
+  } catch (e) {
+    console.error('[server] Failed to seed default admin user:', e);
+  }
+})();
 
 // Make db available globally
 global.db = db;
@@ -184,7 +357,7 @@ function verifyStartupRequirements() {
   const assetsDir = path.join(__dirname, 'assets');
 
   if (!fs.existsSync(viewsDir)) required.push({ path: viewsDir, reason: 'EJS views are required to render pages (views folder missing)' });
-  if (!fs.existsSync(DATA_FILE)) required.push({ path: DATA_FILE, reason: 'data.json missing; used as the simple file DB' });
+  if (!fs.existsSync(SQLITE_FILE)) optionalWarnings.push({ path: SQLITE_FILE, reason: 'SQLite database not found; will be created on first run' });
   if (!fs.existsSync(publicDir)) optionalWarnings.push({ path: publicDir, reason: 'static public folder not found; some static assets may be missing' });
   if (!fs.existsSync(assetsDir)) optionalWarnings.push({ path: assetsDir, reason: 'assets folder not found; logos/sounds may be missing' });
 
@@ -210,23 +383,41 @@ function verifyStartupRequirements() {
   }
 }
 
-// Middleware
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+// Middleware (50mb limit to support large sync snapshots and base64 digital signatures)
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '50mb' }));
 app.use(methodOverride('_method'));
-app.use(express.static(path.join(__dirname, 'public')));
-// Serve assets folder (for notification sounds, logos, etc.)
-app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
-// Simple request logger to help debug routes and payloads
+// Ensure database is ready before processing requests (important when sql.js async proxy is initializing)
+app.use((req, res, next) => {
+  if (db && db._readyPromise && !db._isReady) {
+    db._readyPromise.then(() => next()).catch(next);
+  } else {
+    next();
+  }
+});
+
+// Static asset caching options (1 day maxAge with ETag validation)
+const staticCacheOpts = {
+  maxAge: '1d',
+  etag: true,
+  lastModified: true
+};
+app.use(express.static(path.join(__dirname, 'public'), staticCacheOpts));
+app.use('/assets', express.static(path.join(__dirname, 'assets'), staticCacheOpts));
+
+// Simple request logger to help debug routes and payloads with sensitive field masking
 function maskSensitive(obj) {
-  const SENSITIVE = new Set(['password','pwd','pass','confirmPassword','confirm_password','passwordConfirm']);
+  const SENSITIVE = new Set([
+    'password','pwd','pass','confirmPassword','confirm_password','passwordConfirm',
+    'token','authtoken','bearer','authorization','hash','synchash','x-lis-sync-hash','secret'
+  ]);
   if (obj == null) return obj;
   if (Array.isArray(obj)) return obj.map(v => maskSensitive(v));
   if (typeof obj === 'object') {
     const out = {};
     for (const k of Object.keys(obj)) {
-      if (SENSITIVE.has(k)) out[k] = '[FILTERED]';
+      if (SENSITIVE.has(k.toLowerCase())) out[k] = '[FILTERED]';
       else out[k] = maskSensitive(obj[k]);
     }
     return out;
@@ -248,6 +439,24 @@ app.use((req, res, next) => {
   next();
 });
 
+// Security headers (configured to permit inline styles/scripts and local assets)
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
+}));
+
+// Rate limiter for authentication endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // max 100 attempts per window
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many authentication attempts, please try again later' }
+});
+app.use('/login', authLimiter);
+app.use('/api/auth/token', authLimiter);
+
 // EJS Layouts - enable the global layout wrapper so views get the
 // shared HTML, CSS and JS defined in `views/layout.ejs`.
 app.use(expressLayouts);
@@ -258,7 +467,7 @@ app.set('layout extractStyles', true);
 
 // Session configuration
 app.use(session({
-  secret: 'your-secret-key-change-in-production',
+  secret: process.env.SESSION_SECRET || 'gezyne-lis-session-secret-change-in-prod',
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -269,31 +478,52 @@ app.use(session({
 
 app.use(flash());
 
-// ── Hash-based session bootstrap for standalone app sync requests ──
-// If the request has X-LIS-Sync-Email + X-LIS-Sync-Hash headers and no
-// active session, verify the hash against stored user passwords and
-// create a session automatically.  This runs BEFORE any route-specific
-// auth middleware so req.session.user is available everywhere.
+// ── Bearer Token & Hash-based session bootstrap for API and standalone sync ──
+const { extractBearerToken, verifyToken } = require('./lib/tokenHelper');
+
 app.use((req, res, next) => {
   try {
     // Skip if session already exists
     if (req.session && req.session.user) return next();
+
+    // 1. Bearer Token Auth
+    const bearerToken = extractBearerToken(req);
+    if (bearerToken) {
+      const userPayload = verifyToken(bearerToken);
+      if (userPayload) {
+        req.session.user = {
+          id: userPayload.id,
+          name: userPayload.name,
+          email: userPayload.email,
+          role: userPayload.role,
+          permissions: userPayload.permissions || {},
+          signature: userPayload.signature || null,
+          licenseNumber: userPayload.licenseNumber || ''
+        };
+        req.user = req.session.user;
+        return next();
+      }
+    }
+
+    // 2. Verified Hash-based sync token from standalone desktop client
     const syncEmail = req.headers['x-lis-sync-email'];
     const syncHash  = req.headers['x-lis-sync-hash'];
-    if (!syncEmail || !syncHash) return next();
-    const allUsers = global.db && typeof global.db.getUsers === 'function' ? global.db.getUsers() : [];
-    const matchUser = allUsers.find(u => u.email && u.email.toLowerCase() === syncEmail.toLowerCase());
-    if (matchUser && matchUser.password && matchUser.password === syncHash) {
-      req.session.user = {
-        id: matchUser.id || matchUser.email,
-        name: matchUser.name || matchUser.email,
-        email: matchUser.email,
-        role: matchUser.role || 'User',
-        permissions: matchUser.permissions || {},
-        signature: matchUser.signature || null,
-        licenseNumber: matchUser.licenseNumber || '',
-      };
-      console.log('[auth] hash-based session bootstrap for', syncEmail);
+    if (syncEmail && syncHash && global.db) {
+      const allUsers = typeof global.db.getUsers === 'function' ? global.db.getUsers() : [];
+      const matchUser = allUsers.find(u => u && u.email && u.email.toLowerCase() === syncEmail.toLowerCase());
+      if (matchUser && matchUser.password && matchUser.password === syncHash && matchUser.status !== 'Inactive') {
+        req.session.user = {
+          id: matchUser.id || matchUser.email,
+          name: matchUser.name || matchUser.email,
+          email: matchUser.email,
+          role: matchUser.role || 'User',
+          permissions: matchUser.permissions || {},
+          signature: matchUser.signature || null,
+          licenseNumber: matchUser.licenseNumber || '',
+        };
+        req.user = req.session.user;
+        console.log('[auth] hash-based session bootstrap for', syncEmail);
+      }
     }
   } catch (e) { /* ignore */ }
   next();
@@ -342,6 +572,21 @@ app.use((req, res, next) => {
   // Also expose the session's user under `sessionUser` so layout can rely on the
   // logged-in user even when a view passes a `user` variable for other purposes
   res.locals.sessionUser = req.session.user || null;
+
+  let currentSettings = {};
+  try {
+    if (global.db && typeof global.db.getSettings === 'function') currentSettings = global.db.getSettings() || {};
+    else if (global.db && typeof global.db.read === 'function') currentSettings = (global.db.read() || {}).settings || {};
+  } catch (_) {}
+  res.locals.sseConfig = currentSettings.sseConfig || app.locals.sseConfig || {
+    enabled: true,
+    autoRefreshByDefault: false,
+    allowedPages: ['/dashboard', '/patients', '/reception', '/tests', '/inventory'],
+    connectDelaySec: 3,
+    retryDelaySec: 3,
+    refreshDebounceMs: 800
+  };
+
   next();
 });
 
@@ -357,21 +602,28 @@ app.use((req, res, next) => {
   next();
 });
 
-// Expose configured doctor names and derived doctor area labels to views
-const DOCTOR_1_NAME = process.env.DOCTOR_1_NAME || '';
-const DOCTOR_2_NAME = process.env.DOCTOR_2_NAME || '';
+// Expose configured doctor names and derived doctor area labels to views dynamically
 app.use((req, res, next) => {
   try {
-    res.locals.DOCTOR_1_NAME = DOCTOR_1_NAME;
-    res.locals.DOCTOR_2_NAME = DOCTOR_2_NAME;
+    let d1 = (process.env.DOCTOR_1_NAME || '').trim();
+    let d2 = (process.env.DOCTOR_2_NAME || '').trim();
+    try {
+      const s = global.db && typeof global.db.getSettings === 'function' ? global.db.getSettings() : null;
+      if (s && s.doctor1Name) d1 = s.doctor1Name.trim();
+      if (s && s.doctor2Name) d2 = s.doctor2Name.trim();
+    } catch (_) {}
+    d1 = d1 || 'Dr. Lorenzo';
+    d2 = d2 || 'Dr. Arcilla';
+    res.locals.DOCTOR_1_NAME = d1;
+    res.locals.DOCTOR_2_NAME = d2;
     const areas = [];
-    if (DOCTOR_1_NAME) areas.push(`Doctor's Check-up - ${DOCTOR_1_NAME}`);
-    if (DOCTOR_2_NAME) areas.push(`Doctor's Check-up - ${DOCTOR_2_NAME}`);
+    if (d1) areas.push(`Doctor's Check-up - ${d1}`);
+    if (d2 && d2 !== d1) areas.push(`Doctor's Check-up - ${d2}`);
     res.locals.DOCTOR_AREAS = areas;
   } catch (e) {
-    res.locals.DOCTOR_1_NAME = '';
-    res.locals.DOCTOR_2_NAME = '';
-    res.locals.DOCTOR_AREAS = [];
+    res.locals.DOCTOR_1_NAME = 'Dr. Lorenzo';
+    res.locals.DOCTOR_2_NAME = 'Dr. Arcilla';
+    res.locals.DOCTOR_AREAS = [`Doctor's Check-up - Dr. Lorenzo`, `Doctor's Check-up - Dr. Arcilla`];
   }
   next();
 });
@@ -392,7 +644,8 @@ app.locals.featureFlags = {
   reports: true,
   templates: true,
   users: true,
-  worksheet: true
+  worksheet: true,
+  inventory: true
 };
 
 // Expose current feature flags to all views via res.locals
@@ -401,40 +654,81 @@ app.use((req, res, next) => {
   const sessionFlags = (req.session && req.session.featureFlags) ? req.session.featureFlags : {};
   res.locals.featureFlags = Object.assign({}, app.locals.featureFlags, sessionFlags);
   // expose backupConfig from app.locals (may have been persisted)
-  res.locals.backupConfig = app.locals.backupConfig || { enabled: false, frequency: 'daily', path: path.join(os.homedir(), 'Documents', 'LIS', 'backup') };
+  res.locals.backupConfig = app.locals.backupConfig || { enabled: true, frequency: 'daily', path: path.join(os.homedir(), 'Documents', 'LIS', 'backup') };
   next();
 });
 
 // Restore persisted backup config and start auto-backup interval if enabled
 try {
   const data = global.db.read();
-  const bc = data && data.backupConfig ? data.backupConfig : null;
-  if (bc) {
-    app.locals.backupConfig = bc;
-    if (bc.enabled) {
-      const frequencyToMs = (f) => {
-        const day = 24 * 60 * 60 * 1000;
-        switch ((f || '').toLowerCase()) {
-          case 'daily': return day;
-          case 'weekly': return 7 * day;
-          case 'monthly': return 30 * day;
-          default: const m = Number(f); return (isNaN(m) ? 60 : Math.max(1, m)) * 60 * 1000;
-        }
-      };
-      const ms = frequencyToMs(bc.frequency);
-      app.locals.backupIntervalId = setInterval(() => {
+  const bc = data && data.backupConfig ? data.backupConfig : { enabled: true, frequency: 'daily', path: path.join(os.homedir(), 'Documents', 'LIS', 'backup') };
+  app.locals.backupConfig = bc;
+  if (bc.enabled) {
+    const dir = bc.path && String(bc.path).length ? bc.path : path.join(os.homedir(), 'Documents', 'LIS', 'backup');
+    
+    function scheduleNextBackup() {
+      const now = new Date();
+      // Target 3:00 PM today (local time)
+      let target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 15, 0, 0, 0);
+      
+      // If it's already past 3 PM, schedule for tomorrow 3 PM
+      if (now.getTime() >= target.getTime()) {
+        target.setDate(target.getDate() + 1);
+      }
+      
+      const msUntilNext = target.getTime() - now.getTime();
+      
+      app.locals.backupTimeoutId = setTimeout(() => {
         try {
-          const DATA_FILE = dataFile('data.json');
-          const dir = bc.path && String(bc.path).length ? bc.path : path.join(os.homedir(), 'Documents', 'LIS', 'backup');
           fs.mkdirSync(dir, { recursive: true });
           const ts = new Date().toISOString().replace(/[:.]/g, '-');
-          const dest = path.join(dir, `backup_${ts}.json`);
-          fs.copyFileSync(DATA_FILE, dest);
-        } catch (e) { console.error('Auto-backup failed:', e); }
-      }, ms);
+          
+          // Checkpoint WAL journal for consistent on-disk SQLite snapshot
+          if (global.db && typeof global.db.checkpoint === 'function') {
+            global.db.checkpoint();
+          }
+
+          // 1. Primary SQLite database backup
+          if (fs.existsSync(SQLITE_FILE)) {
+            fs.copyFileSync(SQLITE_FILE, path.join(dir, `backup_db_${ts}.db`));
+          }
+
+          // 2. Secondary human-readable JSON snapshot backup
+          const fullData = global.db && typeof global.db.read === 'function' ? global.db.read() : null;
+          if (fullData) {
+            fs.writeFileSync(path.join(dir, `backup_${ts}.json`), JSON.stringify(fullData, null, 2), 'utf8');
+          }
+
+          // 3. Rolling retention: prune backups older than 30 days
+          try {
+            const files = fs.readdirSync(dir);
+            const nowMs = Date.now();
+            const maxAgeMs = 30 * 24 * 60 * 60 * 1000;
+            for (const f of files) {
+              if (f.startsWith('backup_') || f.startsWith('backup_db_')) {
+                const fp = path.join(dir, f);
+                const stat = fs.statSync(fp);
+                if (nowMs - stat.mtimeMs > maxAgeMs) {
+                  fs.unlinkSync(fp);
+                }
+              }
+            }
+          } catch (cleanErr) {}
+
+          console.log(`[backup] Auto-backup of SQLite database and JSON snapshot completed successfully at ${new Date().toLocaleString()}`);
+        } catch (e) {
+          console.error('[backup] Auto-backup failed:', e);
+        }
+        // Reschedule the next one
+        scheduleNextBackup();
+      }, msUntilNext);
+      
+      console.log(`[backup] Next auto-backup scheduled for ${target.toLocaleString()}`);
     }
+    
+    scheduleNextBackup();
   }
-} catch (e) { /* ignore startup backup restore errors */ }
+} catch (e) { console.error('[backup] Startup backup error:', e); }
 
 // Server-side result highlighting helper (for PDFs / serverside renders where client JS may not run)
 function escapeHtml(str) {
@@ -471,9 +765,12 @@ const routePermissionMap = [
   { prefix: '/dashboard', perm: 'dashboard' },
   { prefix: '/patients', perm: 'patients' },
   { prefix: '/reception', perm: 'reception' },
+  { prefix: '/consultations', perm: 'reception' },
   { prefix: '/tests', perm: 'tests' },
   { prefix: '/reports', perm: 'reports' },
   { prefix: '/templates', perm: 'templates' },
+  { prefix: '/inventory', perm: 'inventory' },
+  { prefix: '/equipment', perm: 'equipment' },
   { prefix: '/users', perm: 'users' },
   { prefix: '/worksheet', perm: 'worksheet' }
 ];
@@ -503,6 +800,11 @@ app.use((req, res, next) => {
       return next();
     }
 
+    // Allow authenticated users to check critical inventory alerts for global notification
+    if (path.indexOf('/inventory/critical-check') === 0) {
+      return next();
+    }
+
     // allow public auth routes (login/register)
     if (path === '/' || path.indexOf('/login') === 0) return next();
 
@@ -513,13 +815,22 @@ app.use((req, res, next) => {
       return res.redirect('/');
     }
 
-    const perms = sessionUser.permissions || {};
-    console.debug(`[auth-guard] sessionUser=${sessionUser.email} role=${sessionUser.role} perms=${JSON.stringify(perms)}`);
+    let perms = sessionUser.permissions || {};
+    if (typeof perms === 'string') {
+      try { perms = JSON.parse(perms); } catch (_) { perms = {}; }
+    }
+    const managementRoles = new Set(['Admin', 'Manager', 'Owner']);
+    const isManagement = managementRoles.has(sessionUser.role);
 
-    // Dashboard: allow any authenticated user (temporary easy fix)
+    // Dashboard: only allow management roles or explicit perms.dashboard
     if (mapping.perm === 'dashboard') {
-      console.debug('[auth-guard] allowing access to dashboard for authenticated user');
-      return next();
+      if (isManagement || perms.dashboard) {
+        console.debug('[auth-guard] allowing access to dashboard for management user');
+        return next();
+      }
+      const { getUserHomeRoute } = require('./middleware/auth');
+      const target = getUserHomeRoute(sessionUser);
+      return res.redirect(target !== '/dashboard' ? target : '/reception');
     }
 
     // Allow Admin role everywhere
@@ -528,15 +839,29 @@ app.use((req, res, next) => {
       return next();
     }
 
-    if (perms[mapping.perm]) {
+    if (perms[mapping.perm] || (mapping.perm === 'equipment' && perms.inventory)) {
       console.debug(`[auth-guard] allowing via permission ${mapping.perm}`);
       return next();
     }
 
+    // Role-based baseline workflow access for laboratory personnel (templates requires explicit permission)
+    const labRoles = new Set(['Medical Technologist', 'MedTech', 'Technician', 'Doctor', 'Staff', 'Receptionist', 'Encoder', 'X-Ray Technologist']);
+    if (labRoles.has(sessionUser.role)) {
+      if (['reception', 'patients', 'tests', 'reports', 'worksheet', 'equipment'].includes(mapping.perm)) {
+        console.debug(`[auth-guard] allowing ${sessionUser.role} baseline workflow access to ${mapping.perm}`);
+        return next();
+      }
+    }
+
     // Not allowed
     console.warn(`[auth-guard] denying ${sessionUser.email} access to ${path} (required=${mapping.perm})`);
-    req.flash('error_msg', 'You do not have permission to access that page');
-    return res.redirect('/dashboard');
+    if (req.flash) req.flash('error_msg', 'You do not have permission to access that page');
+    const { getUserHomeRoute } = require('./middleware/auth');
+    const target = getUserHomeRoute(sessionUser);
+    if (target === path) {
+      return res.redirect('/users/profile');
+    }
+    return res.redirect(target);
   } catch (e) {
     return next();
   }
@@ -545,6 +870,9 @@ app.use((req, res, next) => {
 // Set view engine
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+if (process.pkg || process.env.NODE_ENV === 'production') {
+  app.set('view cache', true);
+}
 
 // Routes
 const authRoutes = require('./routes/auth');
@@ -557,6 +885,10 @@ const userRoutes = require('./routes/users');
 const receptionRoutes = require('./routes/reception');
 const settingsRoutes = require('./routes/settings');
 const signaturesRoutes = require('./routes/signatures');
+const chatbotRoutes = require('./routes/chatbot');
+const inventoryRoutes = require('./routes/inventory');
+const equipmentRoutes = require('./routes/equipment');
+const consultationRoutes = require('./routes/consultations');
 
 app.use('/', authRoutes);
 app.use('/dashboard', dashboardRoutes);
@@ -566,21 +898,52 @@ app.use('/reports', reportRoutes);
 app.use('/templates', templateRoutes);
 app.use('/users', userRoutes);
 app.use('/reception', receptionRoutes);
+app.use('/consultations', consultationRoutes);
 app.use('/settings', settingsRoutes);
 app.use('/signatures', signaturesRoutes);
+app.use('/chatbot', chatbotRoutes);
+app.use('/inventory', inventoryRoutes);
+app.use('/equipment', equipmentRoutes);
+app.use('/api/equipment', equipmentRoutes);
 
-// ---- Unauthenticated restore endpoints (for fresh installs with no user data) ----
+// POST /api/internal/maintenance/execute – executes pending maintenance flags immediately from localhost
+app.post('/api/internal/maintenance/execute', async (req, res) => {
+  try {
+    const remote = (req.socket && req.socket.remoteAddress) || req.ip || '';
+    const isLocal = remote === '127.0.0.1' || remote === '::1' || remote === '::ffff:127.0.0.1';
+    if (!isLocal) {
+      return res.status(403).json({ ok: false, error: 'Maintenance endpoint only accessible locally' });
+    }
+    await processMaintenanceFlags();
+    res.json({ ok: true, message: 'Maintenance flags processed successfully' });
+  } catch (e) {
+    console.error('[server] Internal maintenance error:', e);
+    res.status(500).json({ ok: false, error: 'Maintenance execution failed' });
+  }
+});
+
+// ---- Secure restore endpoints (accessible on fresh installs or by authenticated managers) ----
 const bcryptRestore = require('bcryptjs');
 const { v4: uuidRestore } = require('uuid');
 
-// POST /api/restore/users – seeds the default admin account
+// POST /api/restore/users – seeds the default admin account on fresh installs or when authorized
 app.post('/api/restore/users', async (req, res) => {
   try {
     let existing = [];
     try { existing = db.getUsers(); if (!Array.isArray(existing)) existing = []; } catch (e) { existing = []; }
 
+    // If accounts already exist, require authenticated manager session
+    if (existing.length > 0) {
+      const u = req.session && req.session.user;
+      const isMgmt = u && (u.role === 'Admin' || u.role === 'Manager' || u.role === 'Owner' || (u.permissions && u.permissions.users));
+      if (!isMgmt) {
+        return res.status(403).json({ ok: false, error: 'Administrator authentication required to restore users' });
+      }
+    }
+
     let admin = existing.find(u => u.email === 'admin@lab.com');
-    const hash = await bcryptRestore.hash('password123', 12);
+    // Pre-hashed default administrator credential (cost factor 12)
+    const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$t1ORj/D94UYW057qZm1Ga.KU07BHErrr3BzmeO7fNbu5h5encZvD2';
 
     if (!admin) {
       admin = {
@@ -595,7 +958,7 @@ app.post('/api/restore/users', async (req, res) => {
         permissions: {
           dashboard: true, patients: true, reception: true,
           tests: true, reports: true, worksheet: true,
-          templates: true, users: true, delete: true
+          templates: true, inventory: true, equipment: true, users: true, delete: true
         },
         status: 'Active',
         createdAt: new Date().toISOString(),
@@ -606,7 +969,7 @@ app.post('/api/restore/users', async (req, res) => {
       admin.password = hash;
       admin.role = 'Admin';
       admin.status = 'Active';
-      admin.permissions = { dashboard: true, patients: true, reception: true, tests: true, reports: true, worksheet: true, templates: true, users: true, delete: true };
+      admin.permissions = { dashboard: true, patients: true, reception: true, tests: true, reports: true, worksheet: true, templates: true, inventory: true, equipment: true, users: true, delete: true };
     }
 
     db.saveUsers(existing);
@@ -618,20 +981,31 @@ app.post('/api/restore/users', async (req, res) => {
   }
 });
 
-// POST /api/restore/data – resets data.json to empty initial structure
+// POST /api/restore/data – resets data to empty initial structure (requires manager authorization)
 app.post('/api/restore/data', (req, res) => {
   try {
+    let existing = [];
+    try { existing = db.getUsers(); if (!Array.isArray(existing)) existing = []; } catch (e) { existing = []; }
+
+    if (existing.length > 0) {
+      const u = req.session && req.session.user;
+      const isMgmt = u && (u.role === 'Admin' || u.role === 'Manager' || u.role === 'Owner' || (u.permissions && u.permissions.users));
+      if (!isMgmt) {
+        return res.status(403).json({ ok: false, error: 'Administrator authentication required to reset data' });
+      }
+    }
+
     // backup before reset
     try {
       const ts = new Date().toISOString().replace(/[:.]/g, '-');
-      const backupPath = dataFile(`data-backup-${ts}.json`);
-      fs.copyFileSync(DATA_FILE, backupPath);
-      console.log('[restore] backed up data.json to', backupPath);
+      if (fs.existsSync(SQLITE_FILE)) {
+        fs.copyFileSync(SQLITE_FILE, dataFile(`lis-data-backup-${ts}.db`));
+      }
     } catch (e) {}
 
     const initialData = { users: [], patients: [], tests: [], templates: [], counters: {} };
     db.write(initialData);
-    console.log('[restore] data.json reset via /api/restore/data');
+    console.log('[restore] data reset via /api/restore/data');
     res.json({ ok: true, message: 'Data reset to empty database' });
   } catch (e) {
     console.error('[restore] /api/restore/data failed:', e);
@@ -639,15 +1013,20 @@ app.post('/api/restore/data', (req, res) => {
   }
 });
 
-// Export endpoint for full-sync (requires authenticated session or sync token)
+// Export endpoint for full-sync (requires authenticated session, Bearer token, or verified sync credentials)
 app.get('/export/data.json', (req, res) => {
   try {
-    // Primary auth: session-based
-    let authorized = !!(req.session && req.session.user);
+    let authorized = !!(req.session && req.session.user) || (process.env.ALLOW_PUBLIC_DATA_EXPORT === '1');
 
-    // Fallback auth: hash-based sync token from the standalone app.
-    // The standalone app sends X-LIS-Sync-Email + X-LIS-Sync-Hash headers.
-    // We verify the email exists and the stored bcrypt hash matches.
+    // 1. Bearer Token Auth
+    if (!authorized) {
+      const token = extractBearerToken(req);
+      if (token && verifyToken(token)) {
+        authorized = true;
+      }
+    }
+
+    // 2. Hash-based sync token from standalone desktop app
     if (!authorized) {
       const syncEmail = req.headers['x-lis-sync-email'];
       const syncHash  = req.headers['x-lis-sync-hash'];
@@ -655,7 +1034,7 @@ app.get('/export/data.json', (req, res) => {
         try {
           const allUsers = db.getUsers();
           const matchUser = allUsers.find(u => u.email && u.email.toLowerCase() === syncEmail.toLowerCase());
-          if (matchUser && matchUser.password && matchUser.password === syncHash) {
+          if (matchUser && matchUser.password && matchUser.password === syncHash && matchUser.status !== 'Inactive') {
             authorized = true;
             console.log('[export] hash-based auth accepted for', syncEmail);
           }
@@ -663,14 +1042,10 @@ app.get('/export/data.json', (req, res) => {
       }
     }
 
-    if (!authorized) return res.status(401).send('Authentication required');
+    if (!authorized) return res.status(401).json({ success: false, error: 'Authentication required' });
     const data = db.read();
-    // Include user accounts WITH hashed passwords so the standalone app
-    // can authenticate users offline.  Passwords are already bcrypt-hashed
-    // so they are safe to transmit over the local network.
-    // Users are stored in a separate file (data-users.json), so we always
-    // pull them via getUsers() and merge them into the export.
     const allUsers = db.getUsers();
+
     data.users = allUsers.map(u => ({
       id: u.id || u.email,
       name: u.name || u.email,
@@ -683,11 +1058,128 @@ app.get('/export/data.json', (req, res) => {
       signature: u.signature || null,
       autoSignature: u.autoSignature || { enabled: false, until: null },
     }));
+
+    data.inventory = typeof db.getInventory === 'function' ? db.getInventory() : [];
+    data.inventory_batches = typeof db.getAllInventoryBatches === 'function' ? db.getAllInventoryBatches() : [];
+    data.inventory_transactions = typeof db.getInventoryTransactions === 'function' ? db.getInventoryTransactions() : [];
+    data.consultations = typeof db.getConsultations === 'function' ? db.getConsultations() : [];
+
     res.json(data);
   } catch (e) {
     console.error('export/data.json failed:', e && e.message);
-    res.status(500).send('Export failed');
+    res.status(500).json({ success: false, error: 'Export failed' });
   }
+});
+
+// Endpoint for syncing signatures between standalone app and server
+app.post('/api/signatures/sync', express.json({ limit: '15mb' }), express.urlencoded({ extended: true, limit: '15mb' }), async (req, res) => {
+  try {
+    let authorized = !!(req.session && req.session.user) || (process.env.ALLOW_PUBLIC_DATA_EXPORT === '1');
+
+    // 1. Bearer Token Auth
+    if (!authorized) {
+      const token = extractBearerToken(req);
+      if (token && verifyToken(token)) {
+        authorized = true;
+      }
+    }
+
+    // 2. Hash-based sync token from standalone desktop app
+    if (!authorized) {
+      const syncEmail = req.headers['x-lis-sync-email'];
+      const syncHash  = req.headers['x-lis-sync-hash'];
+      if (syncEmail && syncHash) {
+        try {
+          const allUsers = db.getUsers();
+          const matchUser = allUsers.find(u => u.email && u.email.toLowerCase() === syncEmail.toLowerCase());
+          if (matchUser && matchUser.password && matchUser.password === syncHash && matchUser.status !== 'Inactive') {
+            authorized = true;
+          }
+        } catch (e) { /* ignore auth check errors */ }
+      }
+    }
+
+    if (!authorized) return res.status(401).json({ success: false, error: 'Authentication required' });
+
+    const { filename, data, email } = req.body || {};
+    if (!filename || !data) {
+      return res.status(400).json({ success: false, error: 'Missing filename or base64 data' });
+    }
+
+    // Sanitize filename to prevent path traversal
+    const safeFilename = path.basename(filename).replace(/[^a-zA-Z0-9._-]/g, '_');
+    if (!safeFilename.toLowerCase().endsWith('.png') && !safeFilename.toLowerCase().endsWith('.jpg') && !safeFilename.toLowerCase().endsWith('.jpeg')) {
+      return res.status(400).json({ success: false, error: 'Invalid file extension - only PNG and JPEG allowed' });
+    }
+
+    const targetDir = path.join(__dirname, 'assets', 'signature');
+    if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
+    const targetPath = path.join(targetDir, safeFilename);
+
+    // Write file from base64
+    const buffer = Buffer.from(data, 'base64');
+    fs.writeFileSync(targetPath, buffer);
+    console.log(`[Signatures] saved synced signature: ${safeFilename} (${buffer.length} bytes) for ${email || 'unknown'}`);
+
+    // If user email provided, update User record on the server
+    if (email) {
+      try {
+        const User = require('./models/User');
+        await User.findOneAndUpdate({ email: email.toLowerCase() }, { signature: safeFilename });
+      } catch (uErr) {
+        console.warn('[Signatures] User signature update warning:', uErr && uErr.message);
+      }
+    }
+
+    return res.json({ success: true, filename: safeFilename });
+  } catch (err) {
+    console.error('[Signatures] sync failed:', err && err.message);
+    return res.status(500).json({ success: false, error: err && err.message });
+  }
+});
+
+// Fullscreen persistent shell
+app.get('/shell', (req, res) => {
+  const targetUrl = req.query.url || '/dashboard';
+  res.send(`<!DOCTYPE html>
+<html lang="en" style="margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#000;">
+<head>
+  <meta charset="UTF-8">
+  <title>Gezyne LIS - Fullscreen</title>
+</head>
+<body style="margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#000;">
+  <iframe src="${escapeHtml(targetUrl)}" style="width:100%; height:100%; border:none; margin:0; padding:0; display:block;"></iframe>
+  <script>
+    function enterFS() {
+      const el = document.documentElement;
+      const p = el.requestFullscreen ? el.requestFullscreen() : (el.webkitRequestFullscreen ? el.webkitRequestFullscreen() : Promise.reject());
+      if (p && p.catch) p.catch(() => {});
+    }
+    // Attempt immediately and on first click
+    enterFS();
+    document.addEventListener('click', enterFS, {once:true, capture:true});
+    
+    // Listen for fullscreen exit via Escape key to sync iframe location back to main window
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement) {
+         try {
+           const iframe = document.querySelector('iframe');
+           if (iframe && iframe.contentWindow) {
+             window.location.href = iframe.contentWindow.location.href;
+           } else {
+             window.location.href = '/dashboard';
+           }
+         } catch(e){ window.location.href = '/dashboard'; }
+      }
+    });
+  </script>
+</body>
+</html>`);
+});
+
+// Shortcut for kiosk
+app.get('/kiosk', (req, res) => {
+  res.redirect('/reception/assigned?kiosk=1');
 });
 
 // 404 handler
@@ -697,8 +1189,18 @@ app.use((req, res) => {
 
 // Error handler
 app.use((err, req, res, next) => {
+  if (err.type === 'entity.too.large' || err.status === 413) {
+    console.warn(`[server] PayloadTooLarge on ${req.method} ${req.originalUrl}:`, err.message);
+    if (req.xhr || (req.headers.accept && req.headers.accept.includes('json')) || req.originalUrl.startsWith('/api/') || req.originalUrl.startsWith('/reception/')) {
+      return res.status(413).json({ success: false, error: 'Payload too large', message: err.message });
+    }
+    return res.status(413).send('Payload too large');
+  }
   console.error('Unhandled error:', err && err.stack ? err.stack : err);
   try { logReportError(err, `express error ${req.method} ${req.originalUrl}`); } catch (e) { console.error('Failed to write express error to log:', e); }
+  if (req.xhr || (req.headers.accept && req.headers.accept.includes('json')) || req.originalUrl.startsWith('/api/') || req.originalUrl.startsWith('/reception/')) {
+    return res.status(500).json({ success: false, error: 'Internal Server Error', message: err && err.message });
+  }
   // Show the error details in development, otherwise show generic message
   res.status(500).render('500', { title: 'Server Error', error: process.env.NODE_ENV === 'development' ? err : {} });
 });

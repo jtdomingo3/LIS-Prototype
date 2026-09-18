@@ -1,0 +1,25 @@
+{
+  "auditVersion": "2026.1.0",
+  "name": "LIS Security Risk Assessment & Compliance Suite",
+  "targets": {
+    "server": {
+      "path": "../../lis-fullstack",
+      "url": "http://127.0.0.1:3000"
+    },
+    "standalone": {
+      "path": "../../lis-app-standalone",
+      "url": "http://127.0.0.1:30099"
+    }
+  },
+  "standards": [
+    "OWASP Top 10 - 2025/2026 Web Application Security",
+    "NIST SP 800-63B - Digital Identity Guidelines (Authentication & Password Cryptography)",
+    "CIS Benchmarks - Web Application & Database Hardening",
+    "PHI/PII Data Protection & Healthcare Audit Logging Guidelines"
+  ],
+  "thresholds": {
+    "minScore": 85,
+    "maxCriticalIssues": 0,
+    "maxHighIssues": 0
+  }
+}

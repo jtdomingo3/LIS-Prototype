@@ -60,7 +60,7 @@
         <td>Name:</td>
         <td colspan="3"><strong><%= test && test.patient ? (test.patient.lastName + ', ' + test.patient.firstName) : '' %></strong></td>
         <td>Age:</td>
-        <td><strong><%= test && test.patient && test.patient.dateOfBirth ? Math.max(0, new Date().getFullYear() - new Date(test.patient.dateOfBirth).getFullYear()) : (test && test.patient && test.patient.ageManual ? test.patient.ageManual : '') %></strong></td>
+        <td><strong><%= test && test.patient ? (test.patient.age !== null && test.patient.age !== undefined && test.patient.age !== '' ? test.patient.age : (test.patient.ageManual || '')) : '' %></strong></td>
       </tr>
       <tr>
         <td>Physician:</td>
@@ -70,7 +70,7 @@
 
     <div class="section-title"><%= (test && test.results && test.results.section_title) ? test.results.section_title : 'PELVIC ULTRASOUND' %></div>
 
-    <div style="font-family:'Courier New', monospace; font-size:12px; padding-left:5.5em; padding-right:1.25em; line-height:1.5">
+    <div style="font-family:'Courier New', monospace; font-size:<%= (test && test.results && test.results.paragraphs_font_size) ? test.results.paragraphs_font_size : '12px' %>; padding-left:5.5em; padding-right:1.25em; line-height:1.5">
       <table class="measure" style="width:100%; border-collapse:collapse; border:none; table-layout:fixed;">
         <colgroup>
           <col style="width:26%">

@@ -6,10 +6,13 @@ node_modules/
 /sample results/
 
 # Common extras
+*.log
+**/logs/
 npm-debug.log*
 lis-fullstack/data.json
 lis-fullstack/data-users.json
 lis-fullstack/logs/report-errors.log
+lis-fullstack/build/
 # Ignore uploaded e-signatures stored by the app
 lis-fullstack/assets/signature/
 new-gezyne/
@@ -17,3 +20,40 @@ lis-app-standalone/dist
 lis-fullstack/tray/dist
 lis-fullstack/dist
 lis-fullstack/logs
+lis-fullstack/build/installer-resources/
+lis-app-standalone/build/installer-resources/
+**/installer-resources/
+
+lis-angular/backend/assets
+
+# Test directories and temporary test artifacts
+/test/tmp-*
+*.test.db
+*.test.db-journal
+*.test.db-wal
+*.test.db-shm
+test-results/
+lis-app-standalone/test-tmp/
+lis-app-standalone/tests/
+lis-app-standalone/test-offline-*.js
+test/tmp/
+tmp-e2e-offline/
+lis-fullstack/lis-data.db-shm
+lis-fullstack/lis-data.db-wal
+lis-fullstack/lis-data.db
+lis-fullstack/logs/print.log
+tools/security-audit/audit-report-latest.json
+# Environment variable files and secrets
+*.env
+**/.env
+**/.env.local
+**/.env.*.local
+!**/.env.example
+
+# IDE and editor directories
+.idea/
+*.iml
+
+# Walkthrough and temporary dev documentation
+lis-fullstack/walkthrough.md
+walkthrough.md

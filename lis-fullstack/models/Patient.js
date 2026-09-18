@@ -25,6 +25,10 @@ class Patient {
     this.company = data.company || '';
     this.philhealthConsent = !!data.philhealthConsent;
     this.philhealthId = data.philhealthId || '';
+    this.healthInsuranceConsent = !!(data.healthInsuranceConsent === '1' || data.healthInsuranceConsent === 1 || data.healthInsuranceConsent === true || data.healthInsuranceConsent === 'true');
+    this.healthInsuranceProvider = data.healthInsuranceProvider || data.healthCardProvider || '';
+    this.healthInsuranceId = data.healthInsuranceId || data.healthCardNumber || '';
+    this.client_id = data.client_id || data.clientId || null;
     this.createdAt = data.createdAt || new Date();
     this.updatedAt = data.updatedAt || new Date();
     this.createdBy = data.createdBy;
@@ -39,23 +43,58 @@ class Patient {
 
   // Virtual for age
   get age() {
-    // If dateOfBirth is present and valid, compute age from DOB
-    if (this.dateOfBirth) {
-      const today = new Date();
-      const birthDate = new Date(this.dateOfBirth);
-      if (!isNaN(birthDate.getTime())) {
-        let age = today.getFullYear() - birthDate.getFullYear();
-        const monthDiff = today.getMonth() - birthDate.getMonth();
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-          age--;
-        }
-        return age;
-      }
-    }
-    // Fallback: use manual age if provided (preserve numeric when possible)
+    // 1. If manual age is provided, prioritize it (supports numeric e.g. 32 or text e.g. '5 mos', '28 days')
     if (this.ageManual !== undefined && this.ageManual !== null && String(this.ageManual).trim() !== '') {
-      const maybeNum = Number(this.ageManual);
-      return !isNaN(maybeNum) ? maybeNum : String(this.ageManual);
+      const trimmed = String(this.ageManual).trim();
+      const maybeNum = Number(trimmed);
+      return (!isNaN(maybeNum) && /^\d+$/.test(trimmed)) ? maybeNum : trimmed;
+    }
+
+    // 2. Compute from dateOfBirth
+    if (this.dateOfBirth) {
+      let birthDate = null;
+      if (typeof this.dateOfBirth === 'string') {
+        const str = this.dateOfBirth.trim();
+        // Check MM/DD/YYYY format
+        const mmddMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+        if (mmddMatch) {
+          birthDate = new Date(parseInt(mmddMatch[3], 10), parseInt(mmddMatch[1], 10) - 1, parseInt(mmddMatch[2], 10));
+        } else if (str.includes('-')) {
+          const parts = str.split('T')[0].split('-');
+          if (parts.length === 3) {
+            birthDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+          }
+        }
+      }
+      if (!birthDate || isNaN(birthDate.getTime())) {
+        birthDate = new Date(this.dateOfBirth);
+      }
+
+      if (birthDate && !isNaN(birthDate.getTime())) {
+        const today = new Date();
+        let years = today.getFullYear() - birthDate.getFullYear();
+        let months = today.getMonth() - birthDate.getMonth();
+        let days = today.getDate() - birthDate.getDate();
+
+        if (days < 0) {
+          months--;
+          const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+          days += prevMonth.getDate();
+        }
+        if (months < 0) {
+          years--;
+          months += 12;
+        }
+
+        if (years >= 1) {
+          return years;
+        } else if (months >= 1) {
+          return `${months} ${months === 1 ? 'mo' : 'mos'}`;
+        } else {
+          const dCount = Math.max(0, days);
+          return `${dCount} ${dCount === 1 ? 'day' : 'days'}`;
+        }
+      }
     }
     return null;
   }
@@ -63,14 +102,25 @@ class Patient {
   // Save to database
   async save() {
     this.updatedAt = new Date();
-    const patients = global.db.getPatients();
-    const index = patients.findIndex(p => p.id === this.id);
-    if (index >= 0) {
-      patients[index] = this;
-    } else {
-      patients.push(this);
+    const patients = global.db && global.db.getPatients ? global.db.getPatients() : [];
+    if (!this.patientId) {
+      const maxNum = patients.reduce((max, p) => {
+        const n = parseInt((p.patientId || 'P0').replace(/\D/g, '')) || 0;
+        return Math.max(max, n);
+      }, 0);
+      this.patientId = 'P' + String(maxNum + 1).padStart(3, '0');
     }
-    global.db.savePatients(patients);
+    if (global.db && typeof global.db.upsertPatient === 'function') {
+      global.db.upsertPatient(this);
+    } else if (global.db && typeof global.db.savePatients === 'function') {
+      const index = patients.findIndex(p => p.id === this.id);
+      if (index >= 0) {
+        patients[index] = this;
+      } else {
+        patients.push(this);
+      }
+      global.db.savePatients(patients);
+    }
     return this;
   }
 
@@ -81,18 +131,11 @@ class Patient {
     obj.paymentHistory = Array.isArray(this.paymentHistory) ? this.paymentHistory : [];
     obj.fullName = this.fullName;
     obj.middleName = this.middleName || '';
-    // Prefer computed age from DOB; fallback to manual age if provided (preserve 0)
-    if (this.age !== null && this.age !== undefined) {
-      obj.age = this.age;
-    } else if (this.ageManual !== undefined && this.ageManual !== null && String(this.ageManual).trim() !== '') {
-      const maybeNum = Number(this.ageManual);
-      obj.age = !isNaN(maybeNum) ? maybeNum : String(this.ageManual);
-    } else {
-      obj.age = null;
-    }
+    // Age property (supports number or string e.g. '5 mos')
+    obj.age = (this.age !== null && this.age !== undefined && this.age !== '') ? this.age : null;
     obj.physician = this.physician || null;
-    // Preserve manual age as string so values like 0 are not treated as missing
-    obj.ageManual = (this.ageManual !== undefined && this.ageManual !== null && String(this.ageManual).trim() !== '') ? String(this.ageManual) : null;
+    // Preserve manual age as string or number so infant ages like '5 mos' are not lost
+    obj.ageManual = (this.ageManual !== undefined && this.ageManual !== null && String(this.ageManual).trim() !== '') ? String(this.ageManual).trim() : null;
     obj.requiredAreas = this.requiredAreas || [];
     obj.requestedTests = Array.isArray(this.requestedTests) ? this.requestedTests : [];
     // Provide legacy `sex` alias for templates that expect `patient.sex`
@@ -101,18 +144,41 @@ class Patient {
     obj.company = this.company || '';
     obj.philhealthConsent = !!this.philhealthConsent;
     obj.philhealthId = this.philhealthId || null;
+    obj.healthInsuranceConsent = !!this.healthInsuranceConsent;
+    obj.healthInsuranceProvider = this.healthInsuranceProvider || '';
+    obj.healthInsuranceId = this.healthInsuranceId || '';
     return obj;
   }
 
   // Static methods
   static async findById(id) {
-    const patients = global.db.getPatients();
-    const patient = patients.find(p => p.id === id);
+    if (!id) return null;
+    if (global.db) {
+      if (typeof global.db.getPatientById === 'function') {
+        const patient = global.db.getPatientById(id);
+        if (patient) return new Patient(patient);
+      }
+      if (typeof global.db.getPatientByCode === 'function') {
+        const patient = global.db.getPatientByCode(id);
+        if (patient) return new Patient(patient);
+      }
+      if (typeof global.db.getPatientByPatientId === 'function') {
+        const patient = global.db.getPatientByPatientId(id);
+        if (patient) return new Patient(patient);
+      }
+    }
+    const patients = global.db && global.db.getPatients ? global.db.getPatients() : [];
+    let patient = patients.find(p => p.id === id);
+    if (!patient) patient = patients.find(p => p.patientId === id || p.patientCode === id);
     return patient ? new Patient(patient) : null;
   }
 
   static async find(query = {}) {
-    let patients = global.db.getPatients();
+    if (global.db && typeof global.db.queryPatients === 'function') {
+      const results = global.db.queryPatients(query);
+      return results.map(p => new Patient(p));
+    }
+    let patients = global.db && global.db.getPatients ? global.db.getPatients() : [];
 
     if (query.createdBy) {
       patients = patients.filter(p => p.createdBy === query.createdBy);
@@ -124,8 +190,27 @@ class Patient {
     return patients.map(p => new Patient(p));
   }
 
-  static async findOne(query) {
-    const patients = global.db.getPatients();
+  static async findOne(query = {}) {
+    if (!query) return null;
+    if (global.db) {
+      if (query.patientId && typeof global.db.getPatientByPatientId === 'function') {
+        const patient = global.db.getPatientByPatientId(query.patientId);
+        if (patient) return new Patient(patient);
+      }
+      if (query.patientCode && typeof global.db.getPatientByCode === 'function') {
+        const patient = global.db.getPatientByCode(query.patientCode);
+        if (patient) return new Patient(patient);
+      }
+      if ((query._id || query.id) && typeof global.db.getPatientById === 'function') {
+        const patient = global.db.getPatientById(query._id || query.id);
+        if (patient) return new Patient(patient);
+      }
+      if (typeof global.db.queryPatients === 'function') {
+        const results = global.db.queryPatients(query, { limit: 1 });
+        if (results && results.length) return new Patient(results[0]);
+      }
+    }
+    const patients = global.db && global.db.getPatients ? global.db.getPatients() : [];
     let patient = null;
 
     if (query.patientId) {
@@ -140,23 +225,26 @@ class Patient {
   }
 
   static async countDocuments(query = {}) {
+    if (global.db && typeof global.db.countPatients === 'function' && !Object.keys(query).length) {
+      return global.db.countPatients();
+    }
     const patients = await this.find(query);
     return patients.length;
   }
 
   static async findOneAndUpdate(query, updateData, options = {}) {
-    const patients = global.db.getPatients();
-    let patient = null;
-
-    if (query.patientId) {
-      patient = patients.find(p => p.patientId === query.patientId);
-    } else if (query._id || query.id) {
-      patient = patients.find(p => p.id === (query._id || query.id));
-    }
+    let patient = await this.findOne(query);
 
     if (patient) {
       Object.assign(patient, updateData, { updatedAt: new Date() });
-      global.db.savePatients(patients);
+      if (global.db && typeof global.db.upsertPatient === 'function') {
+        global.db.upsertPatient(patient);
+      } else {
+        const patients = global.db.getPatients();
+        const index = patients.findIndex(p => p.id === patient.id);
+        if (index >= 0) patients[index] = patient;
+        global.db.savePatients(patients);
+      }
       return options.new !== false ? new Patient(patient) : new Patient(patient);
     }
 
@@ -168,12 +256,28 @@ class Patient {
   }
 
   static async findByIdAndDelete(id) {
-    const patients = global.db.getPatients();
-    const index = patients.findIndex(p => p.id === id);
-    if (index >= 0) {
-      const deletedPatient = patients.splice(index, 1)[0];
-      global.db.savePatients(patients);
-      return new Patient(deletedPatient);
+    if (!id) return null;
+    let existing = null;
+    if (global.db && typeof global.db.getPatientById === 'function') {
+      existing = global.db.getPatientById(id);
+    }
+    if (!existing) {
+      const patients = global.db.getPatients();
+      existing = patients.find(p => p.id === id || p.patientId === id);
+    }
+
+    if (existing) {
+      if (global.db && typeof global.db.deletePatient === 'function') {
+        global.db.deletePatient(existing.id);
+      } else {
+        const patients = global.db.getPatients();
+        const index = patients.findIndex(p => p.id === existing.id);
+        if (index >= 0) {
+          patients.splice(index, 1);
+          global.db.savePatients(patients);
+        }
+      }
+      return new Patient(existing);
     }
     return null;
   }

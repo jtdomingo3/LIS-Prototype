@@ -45,14 +45,21 @@ async function run() {
     process.exit(1);
   }
 
-  console.log('Embedding icon into exe...');
-  rcedit(exePath, { icon: icoPath }, (err) => {
-    if (err) {
-      console.error('Failed to embed icon:', err);
-      process.exit(1);
-    }
-    console.log('Successfully embedded icon into', exePath);
-  });
+  // Copy sql-wasm.wasm to dist folder alongside the EXE
+  const wasmSrc = path.join(projectRoot, 'node_modules', 'sql.js', 'dist', 'sql-wasm.wasm');
+  const wasmDest = path.join(distDir, 'sql-wasm.wasm');
+  if (fs.existsSync(wasmSrc)) {
+    fs.copyFileSync(wasmSrc, wasmDest);
+    console.log('Copied sql-wasm.wasm to', wasmDest);
+  }
+
+  // Remove any conflicting native better_sqlite3.node in dist to avoid N-API version abort
+  const nativeNodeDest = path.join(distDir, 'better_sqlite3.node');
+  if (fs.existsSync(nativeNodeDest)) {
+    try { fs.unlinkSync(nativeNodeDest); } catch (_) {}
+  }
+
+  console.log('Executable build completed successfully.');
 }
 
 run();

@@ -37,6 +37,18 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
     // Get all patients and filter/search
     let allPatients = await Patient.find({});
 
+    // Compute system-wide patient stats across whole database
+    let systemStats = { total: 0, female: 0, male: 0, philhealth: 0 };
+    if (Array.isArray(allPatients)) {
+      systemStats.total = allPatients.length;
+      allPatients.forEach(p => {
+        const g = String(p.gender || '').toLowerCase();
+        if (g.startsWith('f')) systemStats.female++;
+        else if (g.startsWith('m')) systemStats.male++;
+        if (p.philhealthConsent) systemStats.philhealth++;
+      });
+    }
+
     // Available companies for the company filter
     const availableCompanies = Array.isArray(allPatients) ? Array.from(new Set(allPatients.map(p => (p.company || '').toString()).filter(Boolean))).sort() : [];
 
@@ -111,37 +123,63 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
       }
     });
 
-    // Attach hasTests flag per patient so the view can decide which action button to show.
-    // Fallback: prefer reading the file-based DB `data.json` directly when available
+// Helper: Check if a test has actual recorded clinical result values
+function testHasResultValues(test) {
+  if (!test) return false;
+  const statusLower = String(test.status || '').toLowerCase();
+  if (statusLower === 'completed') return true;
+  if (!test.results || typeof test.results !== 'object') return false;
+  
+  // Exclude purely metadata/formatting keys
+  const metaKeys = new Set(['signatures', 'paragraphs_font_family', 'paragraphs_font_size', 'impression_spacing', 'ultrasoundType', 'section_title']);
+  const resultKeys = Object.keys(test.results).filter(k => !metaKeys.has(k));
+  if (resultKeys.length === 0) return false;
+
+  return resultKeys.some(k => {
+    const val = test.results[k];
+    if (val === null || val === undefined || val === '') return false;
+    if (Array.isArray(val)) return val.length > 0;
+    if (typeof val === 'object') {
+      return Object.entries(val).some(([subK, subV]) => {
+        if (subK === 'unit' || subK === 'normalRange' || subK === 'flag') return false;
+        return subV !== null && subV !== undefined && String(subV).trim() !== '';
+      });
+    }
+    return String(val).trim() !== '';
+  });
+}
+
+    // Attach hasTests and hasTestResults flag per patient so the view can decide which action buttons to show
     try {
       const testsCountByPatient = {};
-      // try file DB first (handle packaged path)
-      const { dataFile } = require('../lib/dataPath');
-      const dbPath = dataFile('data.json');
-      let fileTests = null;
-      try {
-        const raw = fs.readFileSync(dbPath, 'utf8');
-        const parsed = JSON.parse(raw || '{}');
-        if (Array.isArray(parsed.tests)) fileTests = parsed.tests;
-      } catch (e) {
-        fileTests = null;
-      }
-
-      if (Array.isArray(fileTests)) {
-        fileTests.forEach(t => { if (t && t.patient) testsCountByPatient[String(t.patient)] = (testsCountByPatient[String(t.patient)] || 0) + 1; });
-      } else {
-        // fallback to model API
-        const allTests = await Test.find({});
-        if (Array.isArray(allTests)) {
-          allTests.forEach(t => { if (t && t.patient) testsCountByPatient[String(t.patient)] = (testsCountByPatient[String(t.patient)] || 0) + 1; });
-        }
+      const testsWithResultsByPatient = {};
+      const allTests = (global.db && typeof global.db.getTests === 'function')
+        ? global.db.getTests()
+        : await Test.find({});
+      if (Array.isArray(allTests)) {
+        allTests.forEach(t => {
+          if (t && t.patient) {
+            const pKey = String(t.patient);
+            testsCountByPatient[pKey] = (testsCountByPatient[pKey] || 0) + 1;
+            if (testHasResultValues(t)) {
+              testsWithResultsByPatient[pKey] = (testsWithResultsByPatient[pKey] || 0) + 1;
+            }
+          }
+        });
       }
 
       patients = patients.map(p => {
         const plain = (p && typeof p.toJSON === 'function') ? p.toJSON() : p;
-        return Object.assign({}, plain, { hasTests: !!testsCountByPatient[String(plain.id)] });
+        const pId = String(plain.id);
+        const pCode = plain.patientCode ? String(plain.patientCode) : null;
+        const pPid = plain.patientId ? String(plain.patientId) : null;
+        const hasTests = !!(testsCountByPatient[pId] || (pCode && testsCountByPatient[pCode]) || (pPid && testsCountByPatient[pPid]));
+        const hasResults = !!(testsWithResultsByPatient[pId] || (pCode && testsWithResultsByPatient[pCode]) || (pPid && testsWithResultsByPatient[pPid]));
+        return Object.assign({}, plain, { 
+          hasTests,
+          hasTestResults: hasResults
+        });
       });
-      console.log('DEBUG patients hasTests map:', testsCountByPatient);
     } catch (e) {
       console.warn('Failed to compute patient test flags:', e);
     }
@@ -159,7 +197,8 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
       philhealthFilter,
       companyFilter,
       dateFilter,
-      availableCompanies
+      availableCompanies,
+      systemStats
     });
   } catch (error) {
     console.error('Patients list error:', error);
@@ -182,7 +221,7 @@ router.get('/new', requireAuth, canAccessPatient, (req, res) => {
         const path = require('path');
         const resultsDir = path.join(__dirname, '..', 'views', 'reports', 'results');
         const allowed = [
-          'fecalysis.ejs','esr.ejs','fecal-occult-blood.ejs','urinalysis.ejs','ct-bt.ejs','blood-typing.ejs','pregnancy-test.ejs','dengue-duo.ejs','thyroid-panel.ejs','blood-chemistry.ejs','pt-aptt.ejs','xray.ejs','ecg.ejs','hematology.ejs','serology.ejs','ultrasound-abd-kubp-hbt.ejs','echocardiography-2d.ejs','ultrasound-transvaginal.ejs','ultrasound-biophysical.ejs','ultrasound-1st-trimester-obstetrics.ejs','ultrasound-pelvic.ejs','ultrasound-pelvic-biometry.ejs','drugtest.ejs'
+          'fecalysis.ejs','esr.ejs','fecal-occult-blood.ejs','urinalysis.ejs','ct-bt.ejs','blood-typing.ejs','pregnancy-test.ejs','dengue-duo.ejs','thyroid-panel.ejs','blood-chemistry.ejs','pt-aptt.ejs','xray.ejs','ecg.ejs','hematology.ejs','serology.ejs','echocardiography-2d.ejs','drugtest.ejs'
         ];
         try {
           const files = fs.readdirSync(resultsDir).filter(f => allowed.includes(f));
@@ -190,16 +229,11 @@ router.get('/new', requireAuth, canAccessPatient, (req, res) => {
             if (f === 'drugtest.ejs') return { name: 'Drug Test', testType: 'drugtest' };
             if (f === 'blood-chemistry-bun-crea.ejs') return { name: 'Blood Chemistry - BUN/Crea', testType: 'BUN/Creat' };
             if (f === 'blood-chemistry-sgpt-sgot.ejs') return { name: 'Blood Chemistry - SGPT/SGOT', testType: 'Blood Chemistry - SGPT/SGOT' };
-            if (f === 'ultrasound-abd-kubp-hbt.ejs') return { name: 'Ultrasound - ABD / KUBP / HBT', testType: 'ultrasound-abd-kubp-hbt' };
             if (f === 'echocardiography-2d.ejs') return { name: 'Echocardiography - 2D', testType: 'echocardiography-2d' };
-            if (f === 'ultrasound-transvaginal.ejs') return { name: 'Ultrasound - Transvaginal', testType: 'ultrasound-transvaginal' };
-            if (f === 'ultrasound-biophysical.ejs') return { name: 'Ultrasound - Biophysical', testType: 'ultrasound-biophysical' };
-            if (f === 'ultrasound-pelvic.ejs') return { name: 'Ultrasound - Pelvic Ultrasound', testType: 'ultrasound-pelvic' };
-            if (f === 'ultrasound-pelvic-biometry.ejs') return { name: 'Ultrasound - Pelvic Biometry', testType: 'ultrasound-pelvic-biometry' };
-            if (f === 'ultrasound-1st-trimester-obstetrics.ejs') return { name: 'Ultrasound - Trimester Obstetrics', testType: 'ultrasound-trimester-obstetrics' };
             const name = f.replace('.ejs', '').replace(/-/g, ' ');
             return { name: name.charAt(0).toUpperCase() + name.slice(1), testType: f.replace('.ejs','') };
           });
+          staticTemplates.push({ name: 'Ultrasound', testType: 'Ultrasound' });
           templates = templates.concat(staticTemplates);
         } catch (e) {}
       } catch (e) {
@@ -224,9 +258,23 @@ router.get('/new', requireAuth, canAccessPatient, (req, res) => {
 router.post('/', requireAuth, canAccessPatient, async (req, res) => {
   try {
     const { firstName, middleName, lastName, dateOfBirth, gender, phone, email, address, physician } = req.body;
+    let normalizedDob = dateOfBirth;
+    if (typeof dateOfBirth === 'string' && dateOfBirth.trim()) {
+      const trimmed = dateOfBirth.trim();
+      const mmdd = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (mmdd) {
+        const mm = String(mmdd[1]).padStart(2, '0');
+        const dd = String(mmdd[2]).padStart(2, '0');
+        const yyyy = mmdd[3];
+        normalizedDob = `${yyyy}-${mm}-${dd}`;
+      }
+    }
     const company = req.body.company || '';
     const philhealthConsent = req.body.philhealthConsent === 'on' || req.body.philhealthConsent === '1' || req.body.philhealthConsent === 'true';
     const philhealthId = req.body.philhealthId || '';
+    const healthInsuranceConsent = req.body.healthInsuranceConsent === 'on' || req.body.healthInsuranceConsent === '1' || req.body.healthInsuranceConsent === 'true';
+    const healthInsuranceProvider = req.body.healthInsuranceProvider || req.body.healthCardProvider || '';
+    const healthInsuranceId = req.body.healthInsuranceId || req.body.healthCardNumber || '';
     // encoder may provide age instead of DOB -> accept either
     const ageManual = req.body.ageManual || req.body.age || null;
     // normalize doctor's checkup selection (checkboxes)
@@ -360,12 +408,13 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
     }
 
     const patient = new Patient({
+      id: req.body.id || req.body._id || undefined,
       patientId,
       patientCode,
       firstName,
       middleName: middleName || '',
       lastName,
-      dateOfBirth,
+      dateOfBirth: normalizedDob,
       ageManual,
       physician,
       gender,
@@ -375,11 +424,14 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       company,
       philhealthConsent,
       philhealthId,
+      healthInsuranceConsent,
+      healthInsuranceProvider,
+      healthInsuranceId,
       requiredAreas: finalRequiredAreas,
       // preserve selected tests for extraction/medtech visibility (detailed objects)
       requestedTests: requestedTestsDetailed,
       client_id: (req.body && req.body.client_id) ? req.body.client_id : undefined,
-      createdBy: req.session.user.id
+      createdBy: (req.session && req.session.user && req.session.user.id) ? req.session.user.id : 'system'
     });
 
     await patient.save();
@@ -393,10 +445,12 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
     // Patient saved — tests will be assigned from patient management. Printing is manual.
     req.flash('success_msg', `Patient ${firstName} ${middleName ? middleName + ' ' : ''}${lastName} added successfully!`);
 
-    // If this request came from the standalone sync engine (hash-based headers),
+    // If this request came from the standalone sync engine or explicit JSON API client,
     // return JSON including the created id and client_id so the client can map records deterministically.
-    if (req.headers['x-lis-sync-email'] || req.headers['x-lis-sync-hash']) {
-      return res.json({ success: true, id: patient.id, client_id: req.body && req.body.client_id ? req.body.client_id : null });
+    const isSyncClient = !!(req.headers['x-lis-sync-email'] || req.headers['x-lis-sync-hash'] || req.headers['x-lis-sync-replay']);
+    const isExplicitJson = req.xhr || (req.headers['accept'] && req.headers['accept'].includes('application/json') && !req.headers['accept'].includes('text/html'));
+    if (isSyncClient || isExplicitJson) {
+      return res.json({ success: true, id: patient.id, client_id: patient.client_id || (req.body && req.body.client_id) || null, patientCode: patient.patientCode, patientId: patient.patientId });
     }
 
     // Stay on the new patient form so users can continue adding patients
@@ -417,13 +471,18 @@ router.post('/thermal-print', requireAuth, canAccessPatient, (req, res) => {
   try {
     const { spawnSync } = require('child_process');
     const pathMod = require('path');
+    const fsMod = require('fs');
     const scriptPath = pathMod.join(__dirname, '..', 'scripts', 'thermal_test.js');
+    if (!fsMod.existsSync(scriptPath)) {
+      return res.status(404).json({ success: false, error: 'thermal_test.js not found' });
+    }
 
     // Build args: call Node with the script and --receipt
     const args = [scriptPath, '--receipt'];
     if (req.body && req.body.printer) args.push('--printer', req.body.printer);
 
-    const proc = spawnSync(process.execPath, args, { cwd: pathMod.join(__dirname, '..'), encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 });
+    const spawnEnv = Object.assign({}, process.env, { ELECTRON_RUN_AS_NODE: '1' });
+    const proc = spawnSync(process.execPath, args, { cwd: pathMod.join(__dirname, '..'), encoding: 'utf8', maxBuffer: 10 * 1024 * 1024, env: spawnEnv });
     // append log
     try {
       const entry = {
@@ -538,9 +597,21 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
     // PUT /patients/:id - Update patient
 router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
   try {
-    const { firstName, middleName, lastName, dateOfBirth, gender, phone, email, address, physician, company, philhealthConsent, philhealthId } = req.body;
+    const { firstName, middleName, lastName, dateOfBirth, gender, phone, email, address, physician, company, philhealthConsent, philhealthId, healthInsuranceConsent, healthInsuranceProvider, healthInsuranceId } = req.body;
+    let normalizedDob = dateOfBirth;
+    if (typeof dateOfBirth === 'string' && dateOfBirth.trim()) {
+      const trimmed = dateOfBirth.trim();
+      const mmdd = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (mmdd) {
+        const mm = String(mmdd[1]).padStart(2, '0');
+        const dd = String(mmdd[2]).padStart(2, '0');
+        const yyyy = mmdd[3];
+        normalizedDob = `${yyyy}-${mm}-${dd}`;
+      }
+    }
     const ageManual = req.body.ageManual || req.body.age || null;
     const philhealthConsentBool = (philhealthConsent === 'on' || philhealthConsent === '1' || philhealthConsent === 'true');
+    const healthInsuranceConsentBool = (healthInsuranceConsent === 'on' || healthInsuranceConsent === '1' || healthInsuranceConsent === 'true');
     const requiredAreas = Array.isArray(req.body.requiredAreas)
       ? req.body.requiredAreas
       : req.body.requiredAreas ? [req.body.requiredAreas] : [];
@@ -557,7 +628,7 @@ router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
         firstName,
         middleName: middleName || '',
         lastName,
-        dateOfBirth,
+        dateOfBirth: normalizedDob,
         ageManual,
         physician,
         gender,
@@ -567,7 +638,10 @@ router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
         requiredAreas,
         company: company || '',
         philhealthConsent: !!philhealthConsentBool,
-        philhealthId: philhealthId || ''
+        philhealthId: philhealthId || '',
+        healthInsuranceConsent: !!healthInsuranceConsentBool,
+        healthInsuranceProvider: healthInsuranceProvider || req.body.healthCardProvider || '',
+        healthInsuranceId: healthInsuranceId || req.body.healthCardNumber || ''
       },
       { new: true }
     );
@@ -576,6 +650,18 @@ router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
       req.flash('error_msg', 'Patient not found');
       return res.redirect('/patients');
     }
+
+    try {
+      sseEmitter.emit('update', {
+        action: 'patient_updated',
+        patientId: patient.id,
+        patientName: `${patient.firstName} ${patient.lastName}`,
+        patientCode: patient.patientCode || null,
+        patientIdLabel: patient.patientId || null,
+        time: (new Date()).toISOString(),
+        message: `Patient ${patient.firstName} ${patient.lastName} updated`
+      });
+    } catch (e) { console.warn('SSE emit failed for patient_updated', e); }
 
     req.flash('success_msg', `Patient ${firstName} ${lastName} updated successfully!`);
     res.redirect(`/patients/${req.params.id}`);
@@ -590,22 +676,70 @@ router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
 // DELETE /patients/:id - Delete patient
 router.delete('/:id', requireAuth, canAccessPatient, async (req, res) => {
   try {
-    // Check if patient has any tests
     const Test = require('../models/Test');
-    const testCount = await Test.countDocuments({ patient: req.params.id });
+    
+    const targetId = req.params.id;
 
-    if (testCount > 0) {
-      req.flash('error_msg', 'Cannot delete patient with existing test records');
+    // Resolve patient by any identifier (id, _id, patientId, patientCode)
+    let patient = await Patient.findById(targetId);
+    if (!patient) patient = await Patient.findOne({ patientId: targetId });
+    if (!patient) patient = await Patient.findOne({ patientCode: targetId });
+    if (!patient) patient = await Patient.findOne({ id: targetId });
+
+    const allTests = await Test.find();
+    let patientTests = [];
+    if (patient) {
+      patientTests = allTests.filter(t => t && (
+        t.patient === patient.id || 
+        t.patient === patient._id || 
+        t.patient === patient.patientId || 
+        t.patient === patient.patientCode ||
+        t.patient === targetId
+      ));
+    } else {
+      patientTests = allTests.filter(t => t && t.patient === targetId);
+    }
+
+    // Protection: Disallow deleting patient if any associated test has recorded result values
+    const testsWithResults = patientTests.filter(t => testHasResultValues(t));
+    if (testsWithResults.length > 0) {
+      const testNames = testsWithResults.map(t => `${t.testType || 'Test'} (${t.testId || t.id})`).slice(0, 3).join(', ');
+      const moreCount = testsWithResults.length > 3 ? ` and ${testsWithResults.length - 3} more` : '';
+      const msg = `Cannot delete patient: Patient has ${testsWithResults.length} test record(s) with recorded results [${testNames}${moreCount}]. Please clear or delete all test results first before deleting this patient.`;
+
+      const isSyncClient = !!(req.headers['x-lis-sync-email'] || req.headers['x-lis-sync-hash'] || req.headers['x-lis-sync-replay']);
+      const isExplicitJson = req.xhr || (req.headers['accept'] && req.headers['accept'].includes('application/json') && !req.headers['accept'].includes('text/html'));
+      if (isSyncClient || isExplicitJson) {
+        return res.status(400).json({ success: false, error: msg });
+      }
+
+      req.flash('error_msg', msg);
       return res.redirect('/patients');
     }
 
-    const patient = await Patient.findByIdAndDelete(req.params.id);
-    if (!patient) {
-      req.flash('error_msg', 'Patient not found');
-      return res.redirect('/patients');
+    // If all tests are empty (or no tests exist), delete empty test orders and patient
+    for (const t of patientTests) {
+      await Test.findByIdAndDelete(t.id);
+    }
+    if (patient) {
+      await Patient.findByIdAndDelete(patient.id);
+    } else {
+      await Patient.findByIdAndDelete(targetId);
     }
 
-    req.flash('success_msg', 'Patient deleted successfully');
+    // Emit SSE event so all active client pages (and standalone sync) update immediately
+    try {
+      const pName = patient ? `${patient.firstName} ${patient.lastName}` : 'Patient';
+      sseEmitter.emit('update', {
+        action: 'patient_deleted',
+        patientId: targetId,
+        patientName: pName,
+        time: (new Date()).toISOString(),
+        message: `🗑️ Patient ${pName} deleted`
+      });
+    } catch (e) { console.warn('SSE emit failed for patient_deleted', e); }
+
+    req.flash('success_msg', 'Patient and associated tests deleted successfully');
     res.redirect('/patients');
 
   } catch (error) {

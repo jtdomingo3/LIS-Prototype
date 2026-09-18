@@ -18,6 +18,9 @@ const { createOfflineDb } = require('./offlineDb');
 
 function createLocalServer(pageCache, operationQueue, config, dataStore) {
   const app = express();
+  app.locals.config = config;
+  app.locals.dataStore = dataStore;
+  app.locals.operationQueue = operationQueue;
 
   /* ── Auto-login state (set by main process for seamless transitions) ── */
   let _autoLoginEmail = null;
@@ -30,9 +33,9 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   app.set('layout extractScripts', true);
   app.set('layout extractStyles', true);
 
-  /* ── Body parsers ─────────────────────────────────────────────── */
-  app.use(express.urlencoded({ extended: true }));
-  app.use(express.json());
+  /* ── Body parsers (50mb limit for large sync payloads and signatures) ─ */
+  app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+  app.use(express.json({ limit: '50mb' }));
 
   // Support HTML form method overrides (POST with ?_method=PUT/DELETE or hidden _method field)
   try {
@@ -43,8 +46,13 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   }
 
   /* ── Static assets (served from copied server assets) ─────────── */
-  app.use('/assets', express.static(path.join(__dirname, '..', 'server-assets')));
-  app.use(express.static(path.join(__dirname, '..', 'server-public')));
+  const staticCacheOpts = {
+    maxAge: '1d',
+    etag: true,
+    lastModified: true
+  };
+  app.use('/assets', express.static(path.join(__dirname, '..', 'server-assets'), staticCacheOpts));
+  app.use(express.static(path.join(__dirname, '..', 'server-public'), staticCacheOpts));
 
   /* ── Session + flash ──────────────────────────────────────────── */
   app.use(session({
@@ -55,18 +63,46 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   }));
   app.use(flash());
 
-  /* ── CORS middleware ──────────────────────────────────────────── */
+  /* ── Sensitive payload sanitizer for logging ──────────────────── */
+  function maskSensitive(obj) {
+    const SENSITIVE = new Set([
+      'password','pwd','pass','confirmpassword','confirm_password','passwordconfirm',
+      'token','authtoken','bearer','authorization','hash','synchash','x-lis-sync-hash','secret'
+    ]);
+    if (obj == null) return obj;
+    if (Array.isArray(obj)) return obj.map(v => maskSensitive(v));
+    if (typeof obj === 'object') {
+      const out = {};
+      for (const k of Object.keys(obj)) {
+        if (SENSITIVE.has(k.toLowerCase())) out[k] = '[FILTERED]';
+        else out[k] = maskSensitive(obj[k]);
+      }
+      return out;
+    }
+    return obj;
+  }
+
+  /* ── Security headers & CORS middleware ────────────────────────── */
   app.use((req, res, next) => {
+    // Standard defensive HTTP security headers
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('X-Download-Options', 'noopen');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+
     try {
       const origin = req.get('Origin') || '';
       const allowed = [];
       if (config && config.SERVER_URL) allowed.push(config.SERVER_URL.replace(/\/$/, ''));
       allowed.push(`http://127.0.0.1:${config.LOCAL_PORT}`);
-      const allowOrigin = allowed.includes(origin) ? origin : '*';
-      res.setHeader('Access-Control-Allow-Origin', allowOrigin);
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
-      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+      allowed.push(`http://localhost:${config.LOCAL_PORT}`);
+
+      if (origin && allowed.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+      }
       if (req.method === 'OPTIONS') return res.sendStatus(204);
     } catch (e) { /* ignore */ }
     next();
@@ -81,7 +117,7 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   }
 
   /* ── Feature flags (match server defaults) ─────────────────────── */
-  app.locals.featureFlags = { tests: true, reports: true, templates: true, users: true, worksheet: true };
+  app.locals.featureFlags = { tests: true, reports: true, templates: true, users: true, worksheet: true, inventory: true, equipment: true };
 
   // Expose useful objects to route handlers (operationQueue, dataStore, config)
   try {
@@ -115,10 +151,7 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     return escaped;
   }
 
-  /* ── Auto-login middleware — seamlessly restore session on offline
-   *  transition so the user doesn't see a login page when the server
-   *  goes down. The main process sets _autoLoginEmail via
-   *  server.setAutoLoginEmail(email). ──────────────────────────────── */
+  /* ── User session bridge for active logged-in user ────────────────── */
   app.use((req, res, next) => {
     try {
       if (_autoLoginEmail && req.session && !req.session.user) {
@@ -134,10 +167,9 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
             signature: user.signature || null,
             licenseNumber: user.licenseNumber || '',
           };
-          console.log('[LocalServer] auto-login:', user.email);
         }
       }
-    } catch (e) { /* ignore auto-login errors */ }
+    } catch (e) { }
     next();
   });
 
@@ -159,24 +191,75 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
       if (reqPath === '/' || reqPath === '/login' || reqPath === '/logout') return next();
       // Skip export/sync endpoints
       if (reqPath.startsWith('/export/')) return next();
+      // Skip chatbot routes — interactive AI queries are live-proxied to server directly
+      if (reqPath.startsWith('/chatbot')) return next();
 
-      // Build the real server URL for this request
+      // Build the real server URL for this request preserving query parameters
       const base = config.SERVER_URL.replace(/\/$/, '');
-      const serverUrl = base + reqPath;
+      const queryString = (req.originalUrl && req.originalUrl.includes('?')) ? ('?' + req.originalUrl.split('?')[1]) : '';
+      const serverUrl = base + req.path + queryString;
+      const effectiveMethod = (req.query && req.query._method) ? req.query._method.toUpperCase() : (req.method || 'POST');
 
-      // Ensure a deterministic client-generated id for offline-created records
-      if (req.body && !req.body.client_id) {
-        try { req.body.client_id = require('crypto').randomUUID(); } catch (e) { req.body.client_id = 'cli-' + Date.now(); }
+      // Ensure a deterministic client-generated id and UUID for offline-created records
+      if (req.body) {
+        if (!req.body.id && reqPath === '/patients' && req.method === 'POST') {
+          try { req.body.id = require('crypto').randomUUID(); } catch (e) { req.body.id = 'pat-' + Date.now(); }
+        }
+        if (!req.body.id && (reqPath === '/inventory' || /^\/inventory\/[^/]+\/batch$/.test(reqPath)) && req.method === 'POST') {
+          try { req.body.id = require('crypto').randomUUID(); } catch (e) { req.body.id = 'inv-' + Date.now(); }
+        }
+        if (!req.body.id && (reqPath === '/equipment' || /^\/equipment\//.test(reqPath)) && req.method === 'POST') {
+          try { req.body.id = require('crypto').randomUUID(); } catch (e) { req.body.id = 'eq-' + Date.now(); }
+        }
+        if (!req.body.id && reqPath.startsWith('/consultations') && req.method === 'POST') {
+          try { req.body.id = require('crypto').randomUUID(); } catch (e) { req.body.id = 'con-' + Date.now(); }
+        }
+        if (!req.body.client_id) {
+          try { req.body.client_id = require('crypto').randomUUID(); } catch (e) { req.body.client_id = 'cli-' + Date.now(); }
+        }
       }
       // Queue with the request body for later replay
       if (operationQueue) {
-        operationQueue.add({
-          method: 'POST', // HTML forms always POST with ?_method for PUT/DELETE
+        const entry = operationQueue.add({
+          method: effectiveMethod,
           url: serverUrl,
           body: req.body || {},
           timestamp: new Date().toISOString(),
         });
-        console.log('[LocalServer] queued mutation for server:', req.method, reqPath);
+        console.log('[LocalServer] queued mutation for server:', effectiveMethod, serverUrl, req.body && req.body.id ? ('id=' + req.body.id) : '');
+
+        // If creating tests, hook response finish to attach created test definitions to the queued op
+        if (reqPath === '/tests' && req.method === 'POST' && entry) {
+          const patientIdForTests = req.body && req.body.patient;
+          const origEnd = res.end;
+          res.end = function(...args) {
+            try {
+              if (global.db && patientIdForTests) {
+                const allTests = (typeof global.db.getTests === 'function' ? global.db.getTests() : []) || [];
+                const patientTests = allTests.filter(t => t && String(t.patient) === String(patientIdForTests));
+                if (patientTests.length) {
+                  entry.body.createdTests = JSON.stringify(patientTests.map(t => ({
+                    id: t.id,
+                    testId: t.testId,
+                    testType: t.testType,
+                    status: t.status,
+                    patient: t.patient,
+                    requestedTests: t.requestedTests,
+                    specimenNumbers: t.specimenNumbers,
+                    assignedDoctorId: t.assignedDoctorId,
+                    assignedDoctorName: t.assignedDoctorName,
+                    priority: t.priority,
+                    notes: t.notes,
+                    results: t.results,
+                    client_id: t.client_id || t.id
+                  })));
+                  operationQueue._save();
+                }
+              }
+            } catch (e) {}
+            return origEnd.apply(this, args);
+          };
+        }
       }
     } catch (e) {
       console.error('[LocalServer] mutation queue error:', e && e.message);
@@ -185,10 +268,12 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   });
 
   /* ── Clear auto-login on explicit logout ───────────────────────── */
-  app.post('/logout', (req, res, next) => {
+  const clearAutoLogin = (req, res, next) => {
     _autoLoginEmail = null;
-    next(); // let the real logout route handle session destroy + redirect
-  });
+    next();
+  };
+  app.get('/logout', clearAutoLogin);
+  app.post('/logout', clearAutoLogin);
 
   /* ── Make flash messages & user available to all views ─────────── */
   app.use((req, res, next) => {
@@ -224,14 +309,21 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
 
   /* ── Expose doctor names & areas to views ──────────────────────── */
   app.use((req, res, next) => {
-    // Read from environment or DataStore settings (fallback to empty)
-    const d1 = process.env.DOCTOR_1_NAME || '';
-    const d2 = process.env.DOCTOR_2_NAME || '';
+    // Read from environment or DataStore settings (fallback to clean defaults)
+    let d1 = (process.env.DOCTOR_1_NAME || '').trim();
+    let d2 = (process.env.DOCTOR_2_NAME || '').trim();
+    try {
+      const s = (dataStore && typeof dataStore.getSettings === 'function' ? dataStore.getSettings() : (global.db && typeof global.db.getSettings === 'function' ? global.db.getSettings() : null)) || null;
+      if (s && s.doctor1Name) d1 = s.doctor1Name.trim();
+      if (s && s.doctor2Name) d2 = s.doctor2Name.trim();
+    } catch (_) {}
+    d1 = d1 || 'Dr. Lorenzo';
+    d2 = d2 || 'Dr. Arcilla';
     res.locals.DOCTOR_1_NAME = d1;
     res.locals.DOCTOR_2_NAME = d2;
     const areas = [];
     if (d1) areas.push("Doctor's Check-up - " + d1);
-    if (d2) areas.push("Doctor's Check-up - " + d2);
+    if (d2 && d2 !== d1) areas.push("Doctor's Check-up - " + d2);
     res.locals.DOCTOR_AREAS = areas;
     next();
   });
@@ -242,19 +334,52 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     global.db = offlineDb;
   }
 
-  /* ── SSE shim (no-op while offline) ───────────────────────────── */
+  /* ── Active SSE Broadcaster for local windows & kiosk ───────── */
+  const localSseClients = new Set();
+
+  function broadcastEvent(eventData) {
+    if (!eventData) return;
+    const payload = `data: ${JSON.stringify(eventData)}\n\n`;
+    for (const client of localSseClients) {
+      try {
+        client.write(payload);
+      } catch (e) {
+        localSseClients.delete(client);
+      }
+    }
+  }
+
+  // Attach global broadcaster and wire sseEmitter so route actions trigger local SSE
+  global.broadcastLocalEvent = broadcastEvent;
+  try {
+    const sseEmitter = require('./sseEmitter');
+    sseEmitter.on('update', (payload) => {
+      broadcastEvent(payload);
+    });
+  } catch (e) {
+    console.warn('[LocalServer] failed to wire sseEmitter:', e && e.message);
+  }
+
   app.get('/reception/assigned-events', (req, res) => {
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       'Connection': 'keep-alive',
     });
-    res.write('data: {"type":"connected","offline":true}\n\n');
-    // Keep connection open but don't send events
+
+    localSseClients.add(res);
+    res.write(': sse-connected-local\n\n');
+    res.write('data: {"init":true,"connected":true}\n\n');
+
+    // Keep connection alive with periodic heartbeat
     const interval = setInterval(() => {
       try { res.write(': keepalive\n\n'); } catch (e) { clearInterval(interval); }
-    }, 30000);
-    req.on('close', () => clearInterval(interval));
+    }, 25000);
+
+    req.on('close', () => {
+      clearInterval(interval);
+      localSseClients.delete(res);
+    });
   });
 
   /* ── Export endpoint (JSON API for DataStore data) ────────────── */
@@ -267,11 +392,94 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
           tests: dataStore.getCollection('tests') || [],
           templates: dataStore.getCollection('templates') || [],
           counters: dataStore._data.counters || {},
+          inventory: dataStore.getCollection('inventory') || [],
+          inventory_batches: dataStore.getCollection('inventory_batches') || [],
+          inventory_transactions: dataStore.getCollection('inventory_transactions') || [],
+          equipment: dataStore.getCollection('equipment') || [],
+          equipment_logs: dataStore.getCollection('equipment_logs') || [],
+          qc_controls: dataStore.getCollection('qc_controls') || [],
+          qc_entries: dataStore.getCollection('qc_entries') || [],
+          neqas_records: dataStore.getCollection('neqas_records') || [],
+          consultations: dataStore.getCollection('consultations') || (typeof global.db.getConsultations === 'function' ? global.db.getConsultations() : []) || []
         };
         return res.json(out);
       } catch (e) { return res.status(500).send('datastore-error'); }
     });
   }
+
+  /* ══════════════════════════════════════════════════════════════
+   *  Authorization & Route Permission Guard
+   * ══════════════════════════════════════════════════════════════ */
+  const routePermissionMap = [
+    { prefix: '/dashboard', perm: 'dashboard' },
+    { prefix: '/patients', perm: 'patients' },
+    { prefix: '/reception', perm: 'reception' },
+    { prefix: '/consultations', perm: 'reception' },
+    { prefix: '/tests', perm: 'tests' },
+    { prefix: '/reports', perm: 'reports' },
+    { prefix: '/templates', perm: 'templates' },
+    { prefix: '/inventory', perm: 'inventory' },
+    { prefix: '/equipment', perm: 'equipment' },
+    { prefix: '/users', perm: 'users' },
+    { prefix: '/worksheet', perm: 'worksheet' }
+  ];
+
+  app.use((req, res, next) => {
+    try {
+      const path = req.originalUrl || req.url || '';
+      const mapping = routePermissionMap.find(m => path.indexOf(m.prefix) === 0);
+
+      if (!mapping) return next();
+
+      // Allow users to access their own profile
+      if (path.indexOf('/users/profile') === 0) return next();
+
+      // Allow authenticated users to check critical inventory alerts for global notification
+      if (path.indexOf('/inventory/critical-check') === 0) return next();
+
+      // Allow public auth routes
+      if (path === '/' || path.indexOf('/login') === 0) return next();
+
+      const sessionUser = req.session && req.session.user;
+      if (!sessionUser) {
+        req.flash('error_msg', 'Please login to access that page');
+        return res.redirect('/');
+      }
+
+      let perms = sessionUser.permissions || {};
+      if (typeof perms === 'string') {
+        try { perms = JSON.parse(perms); } catch (_) { perms = {}; }
+      }
+      const managementRoles = new Set(['Admin', 'Manager', 'Owner']);
+      const isManagement = managementRoles.has(sessionUser.role);
+
+      if (mapping.perm === 'dashboard') {
+        if (isManagement || perms.dashboard) return next();
+        const { getUserHomeRoute } = require('../middleware/auth');
+        const target = getUserHomeRoute(sessionUser);
+        return res.redirect(target !== '/dashboard' ? target : '/reception');
+      }
+
+      if (sessionUser.role === 'Admin') return next();
+
+      if (perms[mapping.perm] || (mapping.perm === 'equipment' && perms.inventory)) return next();
+
+      // Role-based baseline workflow access for laboratory personnel (templates and inventory require explicit permission)
+      const labRoles = new Set(['Medical Technologist', 'MedTech', 'Technician', 'Doctor', 'Staff', 'Receptionist', 'Encoder']);
+      if (labRoles.has(sessionUser.role)) {
+        if (['reception', 'patients', 'tests', 'reports', 'worksheet', 'equipment'].includes(mapping.perm)) {
+          return next();
+        }
+      }
+
+      if (req.flash) req.flash('error_msg', 'You do not have permission to access that page');
+      const { getUserHomeRoute } = require('../middleware/auth');
+      const target = getUserHomeRoute(sessionUser);
+      return res.redirect(target === path ? '/users/profile' : target);
+    } catch (e) {
+      return next();
+    }
+  });
 
   /* ══════════════════════════════════════════════════════════════
    *  Mount the real server routes
@@ -299,6 +507,11 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   } catch (e) { console.error('[LocalServer] failed to load reception routes:', e && e.message); }
 
   try {
+    const consultationRoutes = require('../routes/consultations');
+    app.use('/consultations', consultationRoutes);
+  } catch (e) { console.error('[LocalServer] failed to load consultation routes:', e && e.message); }
+
+  try {
     const testRoutes = require('../routes/tests');
     app.use('/tests', testRoutes);
   } catch (e) { console.error('[LocalServer] failed to load test routes:', e && e.message); }
@@ -314,6 +527,17 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   } catch (e) { console.error('[LocalServer] failed to load template routes:', e && e.message); }
 
   try {
+    const inventoryRoutes = require('../routes/inventory');
+    app.use('/inventory', inventoryRoutes);
+  } catch (e) { console.error('[LocalServer] failed to load inventory routes:', e && e.message); }
+
+  try {
+    const equipmentRoutes = require('../routes/equipment');
+    app.use('/equipment', equipmentRoutes);
+    app.use('/api/equipment', equipmentRoutes);
+  } catch (e) { console.error('[LocalServer] failed to load equipment routes:', e && e.message); }
+
+  try {
     const userRoutes = require('../routes/users');
     app.use('/users', userRoutes);
   } catch (e) { console.error('[LocalServer] failed to load user routes:', e && e.message); }
@@ -327,6 +551,11 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     const signaturesRoutes = require('../routes/signatures');
     app.use('/signatures', signaturesRoutes);
   } catch (e) { console.error('[LocalServer] failed to load signatures routes:', e && e.message); }
+
+  try {
+    const chatbotRoutes = require('../routes/chatbot');
+    app.use('/chatbot', chatbotRoutes);
+  } catch (e) { console.error('[LocalServer] failed to load chatbot routes:', e && e.message); }
 
   /* ── 404 handler ──────────────────────────────────────────────── */
   app.use((req, res) => {
@@ -367,6 +596,8 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   server.getAutoLoginEmail = () => _autoLoginEmail;
   /* ── Expose operationQueue getter for status checks ────────────── */
   server.getOperationQueue = () => operationQueue;
+  /* ── Expose live event broadcaster for main/syncEngine ─────────── */
+  server.broadcastEvent = broadcastEvent;
 
   return server;
 }

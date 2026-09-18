@@ -1,174 +1,241 @@
-# lis-app-standalone
+# Gezyne LIS Standalone Desktop Client v2.6.0
 
-**Standalone desktop client for Gezyne Clinical Laboratory LIS** with offline support.
+[![Version](https://img.shields.io/badge/version-2.6.0-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
+[![Electron](https://img.shields.io/badge/Electron-v28-47848F.svg?style=flat-square&logo=electron)](https://www.electronjs.org/)
+[![Database](https://img.shields.io/badge/database-SQLite%20(Local--First)-blue.svg?style=flat-square&logo=sqlite)](https://www.sqlite.org/)
+[![Offline](https://img.shields.io/badge/offline-100%25%20capable-success.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](LICENSE)
 
-This Electron-based app connects to your LIS server and provides the **exact same UI** — but if the network goes down, it keeps working:
+An enterprise-grade, **local-first standalone desktop workstation client** for Gezyne Clinical Laboratory LIS. Features an embedded Express engine, local SQLite database (`lis-data.db`), multi-station reception workflow, outpatient clinical consultation module, and automated background two-way synchronization with the central LIS server.
 
-- ✅ View recently visited pages (cached locally)
-- ✅ Encode patient data (queued for sync)
-- ✅ Enter test results (queued for sync)
-- ✅ Print previously viewed reports (from cache)
-- ✅ Automatic sync when connection is restored
+The standalone desktop application operates **100% autonomously without network connection**. When online connectivity is detected, queued offline operations are automatically replayed and reconciled with the central server using deterministic ID mapping.
 
 ---
 
-## Quick Start
+## 📜 Version History & Release Notes
+
+### **v2.6.0 (Clinical Consultation Module, DOH PhilPEN Risk Assessment, Clinical Document Printing & Worksheet Isolation) — Current Release**
+- 🩺 **Clinical Consultation & Outpatient Doctor Check-up Module (`/consultations/:testId`)**:
+  - Full outpatient clinical encounter documentation adhering to international SOAP (Subjective, Objective, Assessment, Plan) guidelines and DOH Philippine Package of Essential NCD Interventions (PhilPEN) Clinical Practice Guidelines (CPG).
+  - **Subjective & DOH PhilPEN Profiling**: Chief complaint, HPI, PMH, current medications, review of systems (ROS), allergy warnings (with NKDA flag), interactive Familial NCD checklist with clickable pills (Hypertension, T2DM, CAD, Stroke, Cancer, Asthma/Allergies, CKD) auto-populating structured kinship notes, tobacco pack-years calculator, and alcohol screening.
+  - **Objective Clinical Vitals & Real-Time BMI Engine**: Vital signs grid (BP, HR, RR, Temp, SpO2, Blood Glucose, Pain Scale, Waist) with real-time Asia-Pacific / DOH Philippines BMI calculation and color-coded status badges, physical exam breakdown, and integrated patient diagnostic history with one-click report previews.
+  - **Assessment & Plan**: Searchable ICD-10 diagnostic directory, differential diagnoses, multi-item Rx prescription builder, laboratory and imaging diagnostic requisitions with custom test ordering, lifestyle advice, and follow-up scheduling.
+- 🖨️ **Clinical Document Printing Suite**:
+  - **Patient Medical Chart** (`/consultations/:testId/print/chart`): Full encounter hard-copy printout with official facility letterhead, complete SOAP documentation, vitals grid, DOH PhilPEN risk assessment, prescriptions table, and physician signature block.
+  - **Optimized Print Layout**: Top-level `@page { size: portrait; margin: 6mm 8mm; }` eliminating oversized paper margins across Letter and A4 sizes, paired with a borderless `.chart-sheet` print container matching the on-screen form view proportions.
+  - **Official Prescription Pad** (`/consultations/:testId/print/prescription`): Philippine standard Rx pad with attending physician's PRC License, PTR, and S2 credentials.
+  - **Medical Certificate** (`/consultations/:testId/print/med-cert`): Formal fit-to-work / illness certificate with diagnosis, recommended rest periods, and physician designation.
+  - **Laboratory Request Requisition** (`/consultations/:testId/print/lab-request`): Standard requisition sheet for laboratory and imaging orders.
+  - **Standardized Official Clinic Header**: Strictly one-line clinic title (`Gezyne Clinical Laboratory & Medical Clinic`) featuring complete facility address (`0330 Vergel De Dios St., Poblacion, Plaridel, Bulacan (Near Municipal Basketball Court)`), official DOH License Number (`Lic. No. 03-435-15CL-20`), and contact hotlines (`Tel: 0917-649-0807 / 0960-390-0921 / (044) 795-5007`).
+- 👨‍⚕️ **Physician Auto-Capture & Status Lifecycle**:
+  - Automatic identity capture for logged-in physician accounts, auto-populating PRC license, PTR, and professional designation (e.g., "Internist").
+  - Clinic room name matching without duplicate accounts, and real-time dropdown synchronization linking physician selection to credentials.
+  - Universal recognition of "Checked" status as completed encounters across all dashboards, census reports, badges, and filters.
+- 🔬 **Clinical Batch Worksheet & Diagnostic Report Separation**:
+  - Standardized `isDoctorVisitTest` helper isolating outpatient doctor check-up visits from laboratory batch worksheets (`/worksheet/download` and `/worksheet/preview`) and diagnostic report exports.
+  - Laboratory worksheets strictly display diagnostic laboratory specimens (CBC, Urinalysis, Blood Chemistry, etc.), keeping MedTech worklists focused.
+- 🔄 **Two-Way Offline Workstation Parity**:
+  - 100% offline consultation recording, prescription drafting, and chart completion on standalone workstations with automatic two-way background sync and discrepancy auditing.
+
+---
+
+### **v2.5.0 (Quality Assurance, NEQAS EAMC PT Surveys, Equipment QC & Security Hardening)**
+- 🔬 **Equipment Management & Levey-Jennings Quality Control (QC)**:
+  - Full-lifecycle instrumentation registry supporting Clinical Chemistry, Hematology, Electrolyte, Urinalysis analyzers, and Radiology/X-Ray equipment (with DOH/FDA CDRRHR specifications).
+  - High-precision Levey-Jennings (LJ) statistical charting engine with Westgard Multi-Rule Evaluation (1:2s, 1:3s, 2:2s, R:4s, 4:1s, 10:x), automated Z-score computations, and violation alerts.
+  - Multi-level control lots (Level 1 Normal & Level 2 High) with pre-populated multi-analyte standard panels (e.g. 21 clinical chemistry analytes).
+  - Interactive date filtering (Month-to-Date, custom date ranges) dynamically recalculating observed mean, standard deviation, coefficient of variation (%CV), and total error (TEobs).
+  - Multi-signatory stamping options supporting MedTech, Reviewing Senior MedTech, and Pathologist credentials.
+  - Granular QC run management with "Drop Previous Run" feature for rapid clerical error rectification.
+- 🏛️ **National External Quality Assessment Scheme (NEQAS) & Dynamic NRL Registration**:
+  - Full integration with East Avenue Medical Center (EAMC) National Reference Laboratory for Environmental and Occupational Health, Toxicology and Micronutrient Assay (NRL-EOHTMA) for accredited Drug Testing PT surveys (Cannabinoids/THC & Methamphetamine/MET).
+  - Dynamic National Reference Laboratory (NRL) management: register, view, and manage custom reference institutions (EAMC, LCP, NKTI, RITM, PHC) with persistent storage across central and offline workstations.
+  - DOH-compliant printable NEQAS Quality Assurance Assessment Certificates with automatic Standard Deviation Index (SDI) categorization and mandatory Corrective Action Form generation for out-of-tolerance surveys (|SDI| >= 3.0).
+  - Consolidated multi-analyte Monthly QC Summary inspection reports ready for DOH regulatory licensing audits.
+- 👥 **Expanded Role-Based Access Control (RBAC) & Process Owner Delegation**:
+  - Added dedicated **Equipment & QC Module Permission** (`equipment`) across User Management (`new.ejs`, `edit.ejs`, `show.ejs`).
+  - Seamless delegation to laboratory Process Owners, Chief Medical Technologists, and Quality Managers without requiring full Administrator access.
+  - Automated home-route redirection routing designated equipment process owners directly to `/equipment`.
+- 🛡️ **Enterprise Security Hardening & Credential Sanitization**:
+  - Complete elimination of default/legacy test passwords (`password123`) across the entire repository codebase, documentation, seeders, and views.
+  - Untracked `.env` files from version control and strengthened `.gitignore` with universal recursive patterns (`*.env`, `**/.env`).
+  - Strict SQL injection prevention using pre-compiled parameterized queries, type validation, and defensive data access layers.
+  - 100% compliance score achieved across automated OWASP Top 10, NIST SP 800-63B, and CIS benchmark security audit checks on both Server and Standalone targets.
+- 🔄 **Two-Way Standalone Offline Synchronization**:
+  - Real-time and queued offline synchronization for Equipment maintenance logs, QC entries, and NEQAS proficiency records.
+  - Deterministic ID mapping and conflict-free data merge between standalone desktop workstations and central server.
+
+---
+
+### **v2.4.0 (Enterprise Clinical Intelligence & Operations)**
+- 🤖 **Clinical & Operational AI Chatbot Assistant**:
+  - In-app desktop assistant providing immediate access to laboratory Standard Operating Procedures (SOP), reference ranges, specimen requirements, and operational guidelines.
+- 📦 **Reagent & Supply Inventory Tracking System**:
+  - Full desktop inventory management for laboratory reagents, test cartridges, extraction kits, and consumables.
+  - Expiry date monitoring, Lot/Batch tracking, low-stock alerts, and automated stock deductions per test.
+- 🎨 **Modernized UI / UX Design**:
+  - Polished desktop layout with rich analytical cards, status badges, responsive modals, and subtle micro-animations.
+  - Floating auto-expanding patient autocomplete search overlay in report preview screens.
+  - Persistent fullscreen mode across page transitions (`F11`).
+- 📊 **Clinical Batch Worksheet & Registry Retrieval Overhaul**:
+  - **Standardized Batch Diagnostic Worksheet**:
+    - Renamed approving pathologist / doctor column to **`APPROVED BY`** and **`APPROVED BY LICENSE`**.
+    - Corrected **`REQUESTED BY`** to display the attending physician from patient registration (`patient.physician`).
+    - Added patient **`Age`** and **`Sex`** directly after **`Last Name`**.
+    - Removed redundant `SIGNATORY` column and filtered out raw signature images and coordinate metadata (`signatures.*.filename`, `placement.x`, `placement.y`).
+    - Clean exports to Excel Spreadsheet (`.xlsx`), `.xls`, and `.csv`.
+  - **Patient Demographics Registry Export**:
+    - Replaced `Created By` with date-specific **`Tests Requested`** for census and audit tracking.
+    - Added **`Sex`** column directly after **`Age`** in both live preview and exported spreadsheets.
+- 🛡️ **Reception Multi-Station Sequence Protection**:
+  - Prevents patients with late-added tests from being routed back to stations they have already completed.
+  - PhilHealth membership verification and zero-charge routing with confirmation security prompts.
+- 🖨️ **Hardware Thermal Printing & Stream Sync**:
+  - Dedicated thermal barcode printer integration (ESC/POS) with environment variable fallback (`PRINTER_NAME`) and diagnostic testing tools.
+  - Granular SSE sync control with configurable page allowlist and rate limiters.
+
+---
+
+### **v2.0.0 – v2.3.0 (Local-First Architecture & Two-Way Sync)**
+- **Embedded SQLite Core (`lis-data.db`)**: High-performance local-first storage using `sql.js` / SQLite.
+- **Two-Way Synchronization Engine**: Background push of queued offline mutations and periodic pull of central server snapshots.
+- **Deterministic ID Mapping**: Automatic translation of offline temporary IDs (`temp-*`) to central server IDs across pending queues and local SQLite tables.
+- **Bearer Token Authentication**: Secure HMAC-SHA256 authenticated server communication without plaintext credential exposure.
+- **Multi-Station Reception Pipeline**: Autonomous offline progression across Payment, Extraction, Imaging, Consultation, and Results.
+- **Auto-Collapsing Sidebar**: Context-aware sidebar layout for compact workstation displays (`<= 1100px`) and child preview windows.
+
+---
+
+### **v1.0.0 (Foundational Baseline Release)**
+- **Basic Offline Patient Intake**: Local patient demographic entry, MRN generation, and basic search.
+- **Core Diagnostic Test Entry**: Offline recording of Hematology, Routine Urinalysis, Routine Fecalysis, and Blood Chemistry results.
+- **PDF Report Generation**: Standard diagnostic result rendering with A4 paper print formatting.
+- **Role-Based Workstation Access**: Basic session login for MedTechs and Receptionists.
+- **Local File Storage**: Initial JSON-based local data storage.
+
+---
+
+## 🚀 Quick Start
 
 ### Prerequisites
 - **Node.js 18+** installed on the workstation
-- The LIS server (`lis-fullstack`) running on the network
+- Optional: Central LIS server (`lis-fullstack`) accessible on the local network for central synchronization
 
-### Install & Run
+### Installation & Execution
 
 ```powershell
 cd lis-app-standalone
 npm install
+
+# Start the desktop application
 npm start
 ```
 
-The desktop app will launch and connect to the server configured in the app Settings.
+For development mode with Electron DevTools enabled:
+```powershell
+npm run dev
+```
 
-### Change Server Address
+### Workstation Configuration
 
-Edit `lib/config.js` and update `SERVER_URL`:
+Edit `lib/config.js` or configure via the in-app Desktop Settings modal:
 
-```js
+```javascript
 module.exports = {
-  SERVER_URL: 'http://YOUR_SERVER_IP:3000',
-  // ...
+  SERVER_URL: 'http://192.168.1.100:3000', // Central LIS Server URL
+  LOCAL_PORT: 30099,                       // Embedded local Express loopback port
+  SYNC_INTERVAL: 15000,                    // Background sync interval (ms)
+  MAX_SYNC_RETRIES: 3
 };
 ```
 
 ---
 
-## How It Works
-
-### Architecture
+## 🏗️ Architecture & Synchronization Flow
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                  Electron App                       │
-│                                                     │
-│   ┌──────────────┐    ┌───────────────────────┐     │
-│   │ BrowserWindow │───>│  LIS Server (remote)  │     │
-│   │  (Same UI)   │    │  <your-server>:3000   │     │
-│   └──────┬───────┘    └───────────────────────┘     │
-│          │                                          │
-│          │  When offline:                           │
-│          │                                          │
-│   ┌──────▼───────┐    ┌───────────────────────┐     │
-│   │ Request      │───>│  Local Cache Server    │     │
-│   │ Interceptor  │    │  127.0.0.1:30099      │     │
-│   └──────────────┘    └───────┬───────────────┘     │
-│                               │                     │
-│   ┌────────────────┐   ┌──────▼─────────┐           │
-│   │ Network Monitor│   │ Page Cache     │           │
-│   │ (ping / 5sec) │   │ (HTML on disk) │           │
-│   └────────────────┘   └────────────────┘           │
-│                                                     │
-│   ┌────────────────┐   ┌────────────────┐           │
-│   │ Operation Queue│   │ Sync Engine    │           │
-│   │ (JSON on disk) │──>│ (auto-replay)  │           │
-│   └────────────────┘   └────────────────┘           │
-└─────────────────────────────────────────────────────┘
-```
-
-### Online Mode
-1. The BrowserWindow loads pages directly from the LIS server
-2. Every page you visit is **cached locally** (HTML snapshot)
-3. A green status bar at the bottom shows "Connected to Server"
-
-### Offline Mode (automatic)
-1. Network monitor detects the server is unreachable
-2. Status bar turns **red** → "Offline Mode"
-3. **Page navigation** → cached pages are served from the local server
-4. **Form submissions** (create patient, enter results, etc.) are **intercepted and queued** to a local JSON file
-5. A yellow banner shows "Saved offline — will sync when connection is restored"
-
-### Sync (automatic)
-1. Network monitor detects the server is back
-2. Status bar shows syncing activity
-3. Queued operations (patient creation, result entry, etc.) are **replayed to the server** in the exact order they were performed
-4. Session cookies from the BrowserWindow are used for authentication
-5. Page refreshes to show the latest data from the server
-
----
-
-## Status Bar
-
-The injected status bar at the bottom of every page shows:
-
-| State | Indicator | Actions |
-|-------|-----------|---------|
-| **Online** | 🟢 Green bar — "Connected to Server" | — |
-| **Online + pending** | 🟢 Green bar + "X pending sync" | **Sync Now** button |
-| **Offline** | 🔴 Red bar — "Offline Mode" | Data entry is queued |
-
----
-
-## File Structure
-
-```
-lis-app-standalone/
-├── main.js                # Electron main process
-├── preload.js             # Context bridge (renderer ↔ main)
-├── package.json           # Dependencies & build config
-├── lib/
-│   ├── config.js          # Server URL, ports, intervals
-│   ├── networkMonitor.js  # Ping-based connectivity checker
-│   ├── pageCache.js       # HTML page cache (disk-backed)
-│   ├── operationQueue.js  # Pending mutations queue (JSON)
-│   ├── syncEngine.js      # Replays queue using Electron net
-│   └── localServer.js     # Express server for offline pages
-├── renderer/
-│   ├── offline.html       # Fallback when no cache is available
-│   ├── inject.css         # Status bar styles
-│   └── inject.js          # Status bar + event handlers
-└── README.md
+┌────────────────────────────────────────────────────────────────────────┐
+│               Standalone Desktop Client Workstation (v2.4.0)           │
+│                                                                        │
+│   ┌───────────────────┐               ┌────────────────────────────┐   │
+│   │   BrowserWindow   │◄─────────────►│    Local Express Engine    │   │
+│   │ (127.0.0.1:30099) │   Loopback    │    (Full MVC & Controllers)│   │
+│   └───────────────────┘   Navigation  └──────────────┬─────────────┘   │
+│                                                      │                 │
+│                                       ┌──────────────▼─────────────┐   │
+│                                       │     SQLite Database        │   │
+│                                       │       lis-data.db          │   │
+│                                       └──────────────┬─────────────┘   │
+│                                                      │                 │
+│   ┌───────────────────┐               ┌──────────────▼─────────────┐   │
+│   │  Network Monitor  │               │      Operation Queue       │   │
+│   │ (Ping / 5 seconds)│               │  (pending-operations.json) │   │
+│   └─────────┬─────────┘               └──────────────┬─────────────┘   │
+│             │                                        │                 │
+│             │ When Online                            │                 │
+│   ┌─────────▼────────────────────────────────────────▼─────────────┐   │
+│   │                       Sync Engine                              │   │
+│   │   • Pull: /export/data.json ──► Reconcile into local SQLite    │   │
+│   │   • Push: Replay queued mutations with deterministic ID map    │   │
+│   └──────────────────────────────────┬─────────────────────────────┘   │
+└──────────────────────────────────────┼─────────────────────────────────┘
+                                       │ HTTP / HTTPS (HMAC-SHA256 Bearer)
+                                       ▼
+                     ┌──────────────────────────────────┐
+                     │     Central LIS Server           │
+                     │    http://<server-ip>:3000       │
+                     └──────────────────────────────────┘
 ```
 
 ---
 
-## Building an Installer
+## 🧪 Automated Testing Suite
+
+All automated tests are centralized in the root [`test/`](../test) directory.
 
 ```powershell
-# Build Windows installer (.exe)
-npm run build:win
+# Run all offline workstation tests (Server Offline)
+node test/run-all-offline-tests.js
 
-# Output goes to dist/
+# Run live server synchronization tests (Server Online)
+node test/standalone-live-sync.test.js
+
+# Run system settings & SSE hardware diagnostic tests
+node test/settings-system.test.js
 ```
 
-The installer is created using `electron-builder`. You can customize the app icon by placing `icon.ico` in the `assets/` folder.
+---
+
+## 📦 Building the Windows Installer (v2.6.0)
+
+To compile the production Windows desktop installer package:
+
+```powershell
+# Compile NSIS Windows Setup (.exe)
+npm run dist:win
+
+# Compile unpacked executable directory for testing
+npm run dist:dir
+```
+
+Installer Artifact: `lis-app-standalone/dist/Gezyne LIS Setup 2.6.0.exe`
 
 ---
 
-## Tips for Best Offline Experience
+## 💾 Local Storage Directory
 
-1. **Visit all important pages while online first** — the app caches each page as you navigate. Walk through: Dashboard → Patients → Tests → Reports
-2. **Login once** — session cookies are stored persistently, so the app remembers your login across restarts
-3. **Results entry offline** — enter results and they'll be queued. When back online, the results are submitted to the server
-4. **Print from cache** — previously viewed report pages can be printed offline via Ctrl+P
-
----
-
-## Limitations (v1)
-
-- **Multi-step operations**: Creating a patient offline and immediately creating a test for that patient may not work perfectly (the patient doesn't exist on the server yet until sync)
-- **File uploads**: Signatures and image uploads while offline are not supported — use these features when online
-- **Real-time features**: SSE notifications (reception kiosk) don't work offline
-- **Static assets**: Some CSS/images may not render perfectly offline if they weren't cached by the browser
-
----
-
-## Data Storage Location
-
-All local data is stored in Electron's user data directory:
+All local databases, offline queues, and cached assets are persisted under the user profile:
 
 ```
 %APPDATA%/lis-app-standalone/
-├── page-cache/          # Cached HTML pages
-│   ├── index.json       # URL → filename mapping
-│   └── *.html           # Cached page files
-└── data/
-    └── pending-operations.json  # Queued offline operations
+├── lis-data.db                    # High-performance local SQLite database
+├── data/
+│   └── pending-operations.json    # Queued offline mutations awaiting sync
+└── page-cache/                    # Cached HTML views
 ```
+
+---
+
+## 📌 License
+
+Distributed under the **MIT License**. Engineered for **Gezyne Clinical Laboratory**.

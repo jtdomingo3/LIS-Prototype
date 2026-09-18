@@ -1,24 +1,43 @@
-<div class="card">
-  <h3>Generate & View Reports</h3>
+<div class="card" style="padding:28px 32px; border-radius:16px; box-shadow:0 4px 18px rgba(0,0,0,0.03); max-width:900px; margin:0 auto;">
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-bottom:1px solid #f1f5f9; padding-bottom:16px; margin-bottom:20px;">
+    <div>
+      <h3 style="margin:0; font-size:1.4em; display:flex; align-items:center; gap:10px; color:#0f172a;">
+        <span style="font-size:1.1em;">📋</span> Diagnostic Clinical Reports Hub
+      </h3>
+      <p style="margin:4px 0 0 0; color:#64748b; font-size:0.9em;">Select a validated laboratory test to generate, preview, download, or print official diagnostic reports.</p>
+    </div>
+    <div>
+      <a href="/reports/worksheet" class="button btn-secondary" style="padding:8px 16px; font-size:0.88em;">📊 Batch Worksheets</a>
+    </div>
+  </div>
 
-  <div class="form-group">
-    <label>Select Test Result to Generate Report:</label>
-    <select class="search-box" onchange="if(this.value) window.location.href='/reports/preview/'+this.value">
-      <option value="">-- Select a Test Result --</option>
+  <div class="field" style="margin-bottom:20px;">
+    <label style="font-size:0.92em; font-weight:700; color:#334155; margin-bottom:8px; display:block;">Select Patient Work Order to Preview & Release:</label>
+    <select class="form-select" id="reportSelect" onchange="if(this.value) window.location.href='/reports/preview/'+this.value" style="width:100%; height:44px; padding:0 14px; font-size:14px; border-radius:10px; border:1px solid #cbd5e1; background:#fff;">
+      <option value="">-- Select Completed Test Result --</option>
       <% if (tests && tests.length) { %>
         <% tests.forEach(t => { %>
-          <option value="<%= t.id %>"><%= t.testId %> - <%= t.patient ? (t.patient.firstName + ' ' + t.patient.lastName) : 'Unknown' %> - <%= t.testType || t.template || 'Unknown Test' %> (<%= t.testDate ? new Date(t.testDate).toLocaleDateString() : '' %>)</option>
+          <option value="<%= t.id %>">
+            <%= t.testId %> — <%= t.patient ? (t.patient.firstName + ' ' + t.patient.lastName) : 'Unknown Patient' %> — <%= t.testType || t.template || 'Diagnostic Test' %> (<%= t.testDate ? new Date(t.testDate).toLocaleDateString() : '' %>)
+          </option>
         <% }) %>
       <% } %>
     </select>
+    <p class="note">Choosing a record will open the full interactive diagnostic report viewer with digital signatory validation stamps.</p>
   </div>
 
-  <div class="action-buttons">
-    <button class="button btn-primary" onclick="(function(){var sel=document.querySelector('select'); if(sel && sel.value) window.location.href='/reports/pdf/'+sel.value;})();">Download PDF</button>
-    <button class="button btn-orange" onclick="(function(){var sel=document.querySelector('select'); if(sel && sel.value) window.open('/reports/print/'+sel.value, '_blank');})();">Print Report</button>
+  <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:24px;">
+    <button type="button" class="button btn-primary" onclick="(function(){var sel=document.getElementById('reportSelect'); if(sel && sel.value) window.location.href='/reports/pdf/'+sel.value; else alert('Please select a test result first');})();" style="display:inline-flex; align-items:center; gap:8px; padding:10px 20px; font-weight:600;">
+      📥 Download PDF
+    </button>
+    <button type="button" class="button btn-orange" onclick="(function(){var sel=document.getElementById('reportSelect'); if(sel && sel.value) window.open('/reports/print/'+sel.value, '_blank'); else alert('Please select a test result first');})();" style="display:inline-flex; align-items:center; gap:8px; padding:10px 20px; font-weight:600;">
+      🖨️ Print Report
+    </button>
   </div>
 
-  <div class="card mt-20">
-    <p style="color:var(--text-gray);">Select a test result to preview report</p>
+  <div style="background:#f8fafc; border:1px dashed #cbd5e1; border-radius:12px; padding:32px 20px; text-align:center; color:#64748b;">
+    <span style="font-size:2em; display:block; margin-bottom:8px;">📄</span>
+    <strong style="color:#334155; font-size:1em; display:block;">Select a Patient Record from Dropdown Above</strong>
+    <span style="font-size:0.85em;">Direct report preview and signatory controls will open automatically.</span>
   </div>
 </div>

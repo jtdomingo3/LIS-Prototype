@@ -1,6 +1,6 @@
 {
   "name": "lis-app-standalone",
-  "version": "1.1.0",
+  "version": "2.6.1",
   "description": "Standalone desktop client for Gezyne LIS with offline support",
   "main": "main.js",
   "scripts": {
@@ -9,8 +9,10 @@
     "build": "electron-builder",
     "dist:win": "electron-builder --win nsis",
     "dist:dir": "electron-builder --dir",
-    "generate-icon": "node build/generate-icon.js",
-    "test": "node ../test/e2e-offline-sync.js && node ../test/sync-mapping.js"
+    "security-audit": "node ../tools/security-audit/run-security-audit.js",
+    "test": "node ../test/run-all-inventory-tests.js && node ../test/run-all-offline-tests.js && node ../test/standalone-sqlite-datastore.test.js && node ../test/standalone-integrated-sync.test.js && node ../test/test-signature-sync-e2e.js && node ../test/test_standalone_server_equipment.js",
+    "test:equipment": "node ../test/test_standalone_server_equipment.js",
+    "test:inventory": "node ../test/run-all-inventory-tests.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -25,10 +27,11 @@
     "google-tts-api": "^2.0.2",
     "html-pdf": "^3.0.1",
     "jimp": "^1.6.0",
+    "method-override": "^3.0.0",
     "multer": "^2.0.2",
     "pdfjs-dist": "^3.11.174",
-    "uuid": "^9.0.1",
-    "method-override": "^3.0.0"
+    "sql.js": "^1.14.2",
+    "uuid": "^9.0.1"
   },
   "devDependencies": {
     "electron": "^28.1.0",
@@ -52,7 +55,8 @@
       "target": [
         "nsis"
       ],
-      "icon": "build/icon.ico"
+      "icon": "build/icon.ico",
+      "publisherName": "Gezyne-Jamir Software Tech"
     },
     "nsis": {
       "oneClick": false,
@@ -63,6 +67,6 @@
       "license": "build/TERMS.txt"
     }
   },
-  "author": "Gezyne Clinical Laboratory",
+  "author": "Gezyne-Jamir Software Tech",
   "license": "MIT"
 }

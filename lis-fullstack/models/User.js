@@ -20,7 +20,7 @@ class User {
 
   // Hash password before saving
   async hashPassword() {
-    if (this.password && !this.password.startsWith('$2a$')) {
+    if (this.password && !/^\$2[aby]\$/.test(this.password)) {
       const salt = await bcrypt.genSalt(12);
       this.password = await bcrypt.hash(this.password, salt);
     }
@@ -31,7 +31,7 @@ class User {
     return await bcrypt.compare(candidatePassword, this.password);
   }
 
-  // Convert to plain object (without password)
+  // Convert to plain object (WITHOUT password — strictly safe for JSON responses, sessions, and views)
   toJSON() {
     const obj = { ...this };
     obj.autoSignature = this.autoSignature || { enabled: false, until: null };
@@ -39,48 +39,79 @@ class User {
     return obj;
   }
 
-  // Save to database
-  async save() {
-    await this.hashPassword();
-    const users = global.db.getUsers();
-    const index = users.findIndex(u => u.id === this.id);
-    // Create a plain object for saving (avoid toJSON which removes password)
-    const userData = {
+  // Safe object for views/APIs
+  toSafeJSON() {
+    return this.toJSON();
+  }
+
+  // Complete object INCLUDING password (internal database persistence only)
+  toRawObject() {
+    return {
       id: this.id,
       name: this.name,
       email: this.email,
       password: this.password,
       role: this.role,
+      status: this.status,
       licenseNumber: this.licenseNumber,
       signature: this.signature,
-      autoSignature: this.autoSignature,
-      permissions: this.permissions,
-      status: this.status,
+      autoSignature: this.autoSignature || { enabled: false, until: null },
+      permissions: this.permissions || {},
       createdAt: this.createdAt,
       lastLogin: this.lastLogin
     };
-    if (index >= 0) {
-      users[index] = userData;
+  }
+
+  // Save to database
+  async save() {
+    await this.hashPassword();
+    const userData = this.toRawObject();
+
+    if (global.db && typeof global.db.upsertUser === 'function') {
+      global.db.upsertUser(userData);
     } else {
-      users.push(userData);
+      const users = global.db.getUsers();
+      const index = users.findIndex(u => u.id === this.id);
+      if (index >= 0) {
+        users[index] = userData;
+      } else {
+        users.push(userData);
+      }
+      global.db.saveUsers(users);
     }
-    global.db.saveUsers(users);
+
     return this;
   }
 
   // Static methods
   static async findById(id) {
+    if (!id) return null;
+    if (global.db && typeof global.db.getUserById === 'function') {
+      const user = global.db.getUserById(id);
+      return user ? new User(user) : null;
+    }
     const users = global.db.getUsers();
     const user = users.find(u => u.id === id);
     return user ? new User(user) : null;
   }
 
   static async findOne(query) {
+    if (!query) return null;
+    if (query.email && global.db && typeof global.db.getUserByEmail === 'function') {
+      const user = global.db.getUserByEmail(query.email);
+      return user ? new User(user) : null;
+    }
+    if ((query._id || query.id) && global.db && typeof global.db.getUserById === 'function') {
+      const user = global.db.getUserById(query._id || query.id);
+      return user ? new User(user) : null;
+    }
     const users = global.db.getUsers();
     let user = null;
 
     if (query.email) {
       user = users.find(u => u.email === query.email);
+    } else if (query._id || query.id) {
+      user = users.find(u => u.id === (query._id || query.id));
     }
 
     return user ? new User(user) : null;
@@ -102,22 +133,28 @@ class User {
   }
 
   static async findOneAndUpdate(query, updateData, options = {}) {
-    const users = global.db.getUsers();
-    let user = null;
-
-    if (query.email) {
-      user = users.find(u => u.email === query.email);
-    } else if (query._id || query.id) {
-      user = users.find(u => u.id === (query._id || query.id));
-    }
+    let user = await this.findOne(query);
 
     if (user) {
+      const existingPassword = user.password;
       Object.assign(user, updateData);
       if (updateData.password) {
         const salt = await bcrypt.genSalt(12);
         user.password = await bcrypt.hash(updateData.password, salt);
+      } else if (!user.password && existingPassword) {
+        user.password = existingPassword;
       }
-      global.db.saveUsers(users);
+      const rawUser = (typeof user.toRawObject === 'function') ? user.toRawObject() : { ...user };
+      if (!rawUser.password && existingPassword) rawUser.password = existingPassword;
+
+      if (global.db && typeof global.db.upsertUser === 'function') {
+        global.db.upsertUser(rawUser);
+      } else {
+        const users = global.db.getUsers();
+        const index = users.findIndex(u => u.id === user.id);
+        if (index >= 0) users[index] = rawUser;
+        global.db.saveUsers(users);
+      }
       return options.new !== false ? new User(user) : new User(user);
     }
 
@@ -129,12 +166,28 @@ class User {
   }
 
   static async findByIdAndDelete(id) {
-    const users = global.db.getUsers();
-    const index = users.findIndex(u => u.id === id);
-    if (index >= 0) {
-      const deletedUser = users.splice(index, 1)[0];
-      global.db.saveUsers(users);
-      return new User(deletedUser);
+    if (!id) return null;
+    let existing = null;
+    if (global.db && typeof global.db.getUserById === 'function') {
+      existing = global.db.getUserById(id);
+    }
+    if (!existing) {
+      const users = global.db.getUsers();
+      existing = users.find(u => u.id === id);
+    }
+
+    if (existing) {
+      if (global.db && typeof global.db.deleteUser === 'function') {
+        global.db.deleteUser(existing.id);
+      } else {
+        const users = global.db.getUsers();
+        const index = users.findIndex(u => u.id === existing.id);
+        if (index >= 0) {
+          users.splice(index, 1);
+          global.db.saveUsers(users);
+        }
+      }
+      return new User(existing);
     }
     return null;
   }

@@ -9,6 +9,27 @@ const { requireAuth, canManageUsers } = require('../middleware/auth');
 // Allow users to manage their own profile
 const { requireGuest } = require('../middleware/auth');
 
+// Configure multer storage for signatures
+const sigDir = path.join(__dirname, '..', 'assets', 'signature');
+function ensureSigDir() {
+  try { fs.mkdirSync(sigDir, { recursive: true }); } catch (e) {}
+}
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    ensureSigDir();
+    cb(null, sigDir);
+  },
+  filename: function (req, file, cb) {
+    // Use email (from form or session) to build safe filename
+    const emailRaw = (req.body && req.body.email) ? req.body.email : (req.session && req.session.user && req.session.user.email ? req.session.user.email : 'user');
+    const safe = String(emailRaw).toLowerCase().replace(/[^a-z0-9]/g, '_');
+    cb(null, `${safe}_signature.png`);
+  }
+});
+
+const upload = multer({ storage });
+
 // GET /users - List all users
 router.get('/', requireAuth, canManageUsers, async (req, res) => {
   try {
@@ -51,7 +72,7 @@ router.get('/new', requireAuth, canManageUsers, (req, res) => {
 });
 
 // POST /users - Create new user
-router.post('/', requireAuth, canManageUsers, async (req, res) => {
+router.post('/', requireAuth, canManageUsers, upload.single('signature'), async (req, res) => {
   try {
     const { name, email, password, confirmPassword, role, status, licenseNumber } = req.body;
 
@@ -92,11 +113,12 @@ router.post('/', requireAuth, canManageUsers, async (req, res) => {
       });
     }
 
-    // Build permissions object from nested form inputs
+    // Build permissions object from nested or flattened form inputs
     const permissionsRaw = req.body.permissions || {};
     const permissions = {};
-    ['dashboard','patients','reception','tests','reports','worksheet','templates','users','delete'].forEach(k => {
-      permissions[k] = !!(permissionsRaw[k] === '1' || permissionsRaw[k] === 1 || permissionsRaw[k] === true || permissionsRaw[k] === 'on' || permissionsRaw[k]);
+    ['dashboard','patients','reception','tests','reports','worksheet','templates','inventory','equipment','users','delete','signatures','signature'].forEach(k => {
+      const val = (permissionsRaw && permissionsRaw[k] !== undefined) ? permissionsRaw[k] : (req.body[`permissions[${k}]`] !== undefined ? req.body[`permissions[${k}]`] : req.body[`permissions.${k}`]);
+      permissions[k] = !!(val === '1' || val === 1 || val === true || val === 'on' || val === 'true');
     });
 
     const user = new User({
@@ -106,6 +128,7 @@ router.post('/', requireAuth, canManageUsers, async (req, res) => {
       role: role || 'Receptionist',
       status: status || 'Active',
       licenseNumber: licenseNumber || null,
+      signature: req.file && req.file.filename ? req.file.filename : null,
       permissions
     });
 
@@ -142,27 +165,6 @@ router.get('/profile', requireAuth, async (req, res) => {
 });
 
 // PUT /profile - update current user's profile (name, email, password)
-// Configure multer storage for signatures
-const sigDir = path.join(__dirname, '..', 'assets', 'signature');
-function ensureSigDir() {
-  try { fs.mkdirSync(sigDir, { recursive: true }); } catch (e) {}
-}
-
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    ensureSigDir();
-    cb(null, sigDir);
-  },
-  filename: function (req, file, cb) {
-    // Use email (from form or session) to build safe filename
-    const emailRaw = (req.body && req.body.email) ? req.body.email : (req.session && req.session.user && req.session.user.email ? req.session.user.email : 'user');
-    const safe = String(emailRaw).toLowerCase().replace(/[^a-z0-9]/g, '_');
-    cb(null, `${safe}_signature.png`);
-  }
-});
-
-const upload = multer({ storage });
-
 router.put('/profile', requireAuth, upload.single('signature'), async (req, res) => {
   try {
     const { name, email, password, confirmPassword, licenseNumber, autoSignatureOption } = req.body;
@@ -282,7 +284,7 @@ router.get('/:id/edit', requireAuth, canManageUsers, async (req, res) => {
 });
 
 // PUT /users/:id - Update user
-router.put('/:id', requireAuth, canManageUsers, async (req, res) => {
+router.put('/:id', requireAuth, canManageUsers, upload.single('signature'), async (req, res) => {
   try {
     const { name, email, role, status, password, confirmPassword, licenseNumber } = req.body;
 
@@ -299,11 +301,12 @@ router.put('/:id', requireAuth, canManageUsers, async (req, res) => {
       return res.redirect(`/users/${req.params.id}/edit`);
     }
 
-    // Build permissions object from nested form inputs
+    // Build permissions object from nested or flattened form inputs
     const permissionsRaw = req.body.permissions || {};
     const permissions = {};
-    ['dashboard','patients','reception','tests','reports','worksheet','templates','users','delete'].forEach(k => {
-      permissions[k] = !!(permissionsRaw[k] === '1' || permissionsRaw[k] === 1 || permissionsRaw[k] === true || permissionsRaw[k] === 'on' || permissionsRaw[k]);
+    ['dashboard','patients','reception','tests','reports','worksheet','templates','inventory','equipment','users','delete','signatures','signature'].forEach(k => {
+      const val = (permissionsRaw && permissionsRaw[k] !== undefined) ? permissionsRaw[k] : (req.body[`permissions[${k}]`] !== undefined ? req.body[`permissions[${k}]`] : req.body[`permissions.${k}`]);
+      permissions[k] = !!(val === '1' || val === 1 || val === true || val === 'on' || val === 'true');
     });
 
     const updateData = {
@@ -314,6 +317,10 @@ router.put('/:id', requireAuth, canManageUsers, async (req, res) => {
       licenseNumber: licenseNumber || null,
       permissions
     };
+
+    if (req.file && req.file.filename) {
+      updateData.signature = req.file.filename;
+    }
 
     // Update password if provided
     if (password) {

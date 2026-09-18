@@ -3,3 +3,9 @@
 
 # Ignore local user data file
 /data-users.json
+
+# Environment variables
+.env
+*.env
+
+/walkthrough.md

@@ -48,19 +48,55 @@ process.on('uncaughtException', (err) => {
 const SERVICE_NAME = 'GezyneLIS';
 const PORT = process.env.PORT || 3000;
 
-function getLocalIp() {
-  // prefer explicit HOST env var if provided
-  if (process.env.HOST) return process.env.HOST;
+function getNetworkAddresses() {
+  const port = process.env.PORT || 3000;
   const nets = os.networkInterfaces();
+  const all = [];
+  const physical = [];
+
   for (const name of Object.keys(nets)) {
-    for (const net of nets[name]) {
+    const isVirtualName = /virtual|vbox|vmware|vethernet|wsl|docker|loopback|bluetooth|hyper-v/i.test(name);
+    for (const net of nets[name] || []) {
       if (net.family === 'IPv4' && !net.internal) {
-        // skip docker/virtual adapters with local-only addresses like 169.254
-        if (net.address && !net.address.startsWith('169.254')) return net.address;
+        const addr = net.address;
+        if (!addr || addr.startsWith('169.254')) continue;
+        const isVirtualIp = addr.startsWith('192.168.56.'); // Common VirtualBox Host-Only IP range
+        const isVirtual = isVirtualName || isVirtualIp;
+        
+        const item = {
+          name,
+          address: addr,
+          url: `http://${addr}:${port}`,
+          isVirtual
+        };
+        all.push(item);
+        if (!isVirtual) {
+          physical.push(item);
+        }
       }
     }
   }
-  return 'localhost';
+
+  // Preferred network LAN address: first non-virtual IPv4, else first available IPv4, else 127.0.0.1
+  const primaryNet = physical.length > 0 ? physical[0] : (all.length > 0 ? all[0] : null);
+  const networkIp = primaryNet ? primaryNet.address : (process.env.HOST || 'localhost');
+
+  return {
+    port,
+    localUrl: `http://localhost:${port}`,
+    localHostIp: '127.0.0.1',
+    networkUrl: `http://${networkIp}:${port}`,
+    networkIp: networkIp,
+    primaryName: primaryNet ? primaryNet.name : 'Local Network',
+    allAddresses: all,
+    hasMultiple: all.length > 1
+  };
+}
+
+function getLocalIp() {
+  if (process.env.HOST) return process.env.HOST;
+  const netInfo = getNetworkAddresses();
+  return netInfo.networkIp;
 }
 
 const HOST = getLocalIp();
@@ -85,8 +121,12 @@ let SERVER_IS_EXE = false;
   }
   // fallback: packaged EXE names we might bundle in installer
   const exeCandidates = [
+    path.join(process.resourcesPath || '', 'server', 'laboratory-information-system.exe'),
+    path.join(PROJECT_ROOT, 'dist', 'laboratory-information-system.exe'),
     path.join(PROJECT_ROOT, 'laboratory-information-system.exe'),
     path.join(process.resourcesPath || '', 'laboratory-information-system.exe'),
+    path.join(process.resourcesPath || '', 'server', 'GezyneLIS.exe'),
+    path.join(PROJECT_ROOT, 'dist', 'GezyneLIS.exe'),
     path.join(PROJECT_ROOT, 'GezyneLIS.exe'),
     path.join(process.resourcesPath || '', 'GezyneLIS.exe')
   ];
@@ -119,17 +159,15 @@ function runServiceCommand(cmd, cb) {
 }
 
 function detectPm2(cb) {
-  // avoid using pm2 when we’re running a packaged executable – environment
-  // variables (DATA_DIR) don’t propagate reliably and pm2 can keep restarting
-  // the process inside the snapshot.  Direct spawn is simpler and more
-  // predictable for the Windows installer.
-  if (SERVER_IS_EXE) {
-    pm2Available = false;
-    return cb && cb(false);
-  }
-  exec('pm2 -v', (err) => {
-    pm2Available = !err;
-    cb && cb(pm2Available);
+  exec('pm2 -v', (err, stdout) => {
+    if (!err && stdout && String(stdout).trim().length > 0) {
+      pm2Available = true;
+      return cb && cb(true);
+    }
+    exec('npx pm2 -v', (err2, stdout2) => {
+      pm2Available = (!err2 && !!stdout2 && String(stdout2).trim().length > 0);
+      return cb && cb(pm2Available);
+    });
   });
 }
 
@@ -165,8 +203,16 @@ function createMainWindow() {
   mainWindow.webContents.on('did-finish-load', () => {
     if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
       mainWindow.webContents.send('log-update', logBuffer.join('\n'));
-      // send server address info
-      try { mainWindow.webContents.send('server-address', { host: HOST, port: PORT }); } catch (e) {}
+      // send server address info and status
+      try {
+        const addrInfo = getNetworkAddresses();
+        mainWindow.webContents.send('server-address', addrInfo);
+        checkServerUp().then(isUp => {
+          if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+            mainWindow.webContents.send('server-status', { isUp, status: isUp ? 'online' : 'offline' });
+          }
+        });
+      } catch (e) {}
     }
   });
   return mainWindow;
@@ -212,77 +258,57 @@ function startServerDirect(cb) {
 }
 
 // compute the directory the server will use for data, mirroring the
-// logic in lib/dataPath.js but without requiring the helper (which isn't
-// included in the tray ASAR).  This allows the tray to create/migrate the
-// folder ahead of time and avoids crashes when the module is absent.
+// logic in lib/dataPath.js. ~/Documents/LIS/data is always writable without admin privileges.
 function computeDataDir() {
-  // When pm2 is available the tray always launches the server with
-  // DATA_DIR = ProgramData\GezyneLIS.  We must use the same directory so
-  // that uploads / restores write to the location the server actually reads.
-  if (pm2Available) {
-    const programDataBase = process.env.PROGRAMDATA || path.join('C:', 'ProgramData');
-    const d = path.join(programDataBase, 'GezyneLIS');
-    try { fs.mkdirSync(d, { recursive: true }); } catch (_) {}
-    return d;
+  if (process.env.DATA_DIR && process.env.DATA_DIR.length) {
+    return process.env.DATA_DIR;
   }
-  try {
-    const { getDataDir } = require('../lib/dataPath');
-    return getDataDir();
-  } catch (err) {
-    // module not available (packaged tray); fall back to ProgramData
-    const programDataBase = process.env.PROGRAMDATA || path.join('C:', 'ProgramData');
-    const d = path.join(programDataBase, 'GezyneLIS');
-    try { fs.mkdirSync(d, { recursive: true }); } catch (_) {}
-    return d;
-  }
+  const docsDataDir = path.join(os.homedir(), 'Documents', 'LIS', 'data');
+  try { fs.mkdirSync(docsDataDir, { recursive: true }); } catch (_) {}
+  return docsDataDir;
 }
 
+let isPm2Starting = false;
+
 function startViaPm2(cb) {
-  // ensure the data directory exists/migrated before pm2 spins up the server.
+  if (isPm2Starting) return cb && cb(null, 'PM2 start in progress');
+  isPm2Starting = true;
+
   try {
     const chosen = computeDataDir();
-    console.log('[tray] pm2 startup will use DATA_DIR', chosen);
+    console.log('[tray] pm2 startup using DATA_DIR', chosen);
   } catch (err) {
     console.error('[tray] failed to prepare data dir for pm2', err);
   }
 
-  // locate ecosystem.config.js in likely locations and pass absolute path to pm2
   const cfgCandidates = [
     path.join(PROJECT_ROOT, 'ecosystem.config.js'),
     path.join(PROJECT_ROOT, '..', 'ecosystem.config.js'),
-    path.join(process.resourcesPath || '', 'ecosystem.config.js')
+    path.join(process.resourcesPath || '', 'ecosystem.config.js'),
+    path.join(process.resourcesPath || '', 'server', 'ecosystem.config.js')
   ];
   const cfg = cfgCandidates.find(p => { try { return fs.existsSync(p); } catch { return false; } }) || path.join(PROJECT_ROOT, 'ecosystem.config.js');
 
-  // include DATA_DIR in the environment for pm2-launched processes as well
-  const programDataBase = process.env.PROGRAMDATA || path.join('C:', 'ProgramData');
-  const dataDir = path.join(programDataBase, 'GezyneLIS');
+  const dataDir = computeDataDir();
   const pm2Env = Object.assign({}, process.env, { DATA_DIR: dataDir });
-  exec(`pm2 start "${cfg}" --env production`, { cwd: path.dirname(cfg), env: pm2Env }, (err, stdout, stderr) => {
-    if (!err) {
-      exec('pm2 save', { cwd: path.dirname(cfg) }, (e) => {
-        if (e) appendLog('[pm2] pm2 save failed: ' + String(e));
-        appendLog('[pm2] started via ' + cfg);
-        cb && cb(null, stdout || 'pm2 started');
-      });
-      return;
-    }
 
-    // If pm2 failed because the configured script wasn't found in the packaged layout,
-    // try to start the packaged EXE directly (fallback).
-    const stderrText = String(stderr || err || stdout || '');
-    appendLog('[pm2] start failed: ' + stderrText.trim());
+  // Force clean reload from ecosystem configuration to ensure binary paths and env are up to date
+  exec(`pm2 delete lis-app`, { cwd: path.dirname(cfg), env: pm2Env }, () => {
+    const command = `pm2 start "${cfg}" --env production`;
+    exec(command, { cwd: path.dirname(cfg), env: pm2Env }, (err, stdout, stderr) => {
+      isPm2Starting = false;
+      if (!err) {
+        exec('pm2 save', { cwd: path.dirname(cfg) }, () => {});
+        appendLog('[pm2] Server started via PM2 (reloaded config)');
+        return cb && cb(null, stdout || 'PM2 started');
+      }
 
-    // fallback: if we have a packaged EXE, ask pm2 to run it directly
-    if (!SERVER_IS_EXE) return cb && cb(err, stdout || stderr);
+      const stderrText = String(stderr || err || stdout || '').trim();
+      appendLog('[pm2] PM2 start notice: ' + stderrText);
 
-    appendLog('[pm2] Attempting fallback: start packaged EXE via pm2');
-    const exePath = SERVER_SCRIPT; // should point to the EXE by locateServer logic
-    exec(`pm2 start "${exePath}" --name lis-app --interpreter none --env production`, { cwd: SERVER_DIR, env: pm2Env }, (err2, out2, errOut2) => {
-      if (err2) return cb && cb(err2, out2 || errOut2 || stderrText);
-      exec('pm2 save', { cwd: SERVER_DIR }, (e2) => { if (e2) appendLog('[pm2] pm2 save failed: ' + String(e2)); });
-      appendLog('[pm2] started packaged EXE via pm2: ' + exePath);
-      cb && cb(null, out2 || 'pm2 started exe');
+      // Fallback: spawn server directly so the system is guaranteed to start
+      appendLog('[pm2] Falling back to direct process spawn for 100% uptime');
+      startServerDirect(cb);
     });
   });
 }
@@ -296,30 +322,52 @@ function stopViaPm2(cb) {
 }
 
 function restartViaPm2(cb) {
-  exec('pm2 restart lis-app', { cwd: PROJECT_ROOT }, (err, stdout, stderr) => {
-    if (err) return cb && cb(err, stdout || stderr);
-    appendLog('[pm2] restarted lis-app');
-    cb && cb(null, stdout || 'pm2 restarted');
+  const cfgCandidates = [
+    path.join(PROJECT_ROOT, 'ecosystem.config.js'),
+    path.join(PROJECT_ROOT, '..', 'ecosystem.config.js'),
+    path.join(process.resourcesPath || '', 'ecosystem.config.js'),
+    path.join(process.resourcesPath || '', 'server', 'ecosystem.config.js')
+  ];
+  const cfg = cfgCandidates.find(p => { try { return fs.existsSync(p); } catch { return false; } }) || path.join(PROJECT_ROOT, 'ecosystem.config.js');
+  const dataDir = computeDataDir();
+  const pm2Env = Object.assign({}, process.env, { DATA_DIR: dataDir });
+
+  exec(`pm2 delete lis-app`, { cwd: path.dirname(cfg), env: pm2Env }, () => {
+    exec(`pm2 start "${cfg}" --env production`, { cwd: path.dirname(cfg), env: pm2Env }, (err, stdout, stderr) => {
+      if (err) return cb && cb(err, stdout || stderr);
+      appendLog('[pm2] restarted lis-app with fresh configuration');
+      cb && cb(null, stdout || 'pm2 restarted');
+    });
   });
 }
 
 function stopServerDirect(cb) {
   if (!serverChild) return cb && cb(new Error('not running'));
-  try {
-    process.kill(serverChild.pid);
-    serverChild = null;
-    cb && cb(null, 'stopped');
-  } catch (e) {
-    cb && cb(e);
+  const pid = serverChild.pid;
+  serverChild = null;
+  if (process.platform === 'win32') {
+    exec(`taskkill /pid ${pid} /T /F`, () => {
+      // Allow OS time to release port 3000
+      setTimeout(() => cb && cb(null, 'stopped'), 1500);
+    });
+  } else {
+    try { process.kill(pid, 'SIGTERM'); } catch (_) {}
+    setTimeout(() => cb && cb(null, 'stopped'), 1000);
   }
 }
 
+let _logSendTimer = null;
 function appendLog(line) {
   const ts = new Date().toISOString();
   const out = `[${ts}] ${String(line).trim()}`;
   logBuffer.push(out);
   if (logBuffer.length > 2000) logBuffer = logBuffer.slice(logBuffer.length - 2000);
-  try { if (mainWindow && mainWindow.webContents) mainWindow.webContents.send('log-update', logBuffer.join('\n')); } catch (e) {}
+  if (!_logSendTimer) {
+    _logSendTimer = setTimeout(() => {
+      _logSendTimer = null;
+      try { if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('log-update', logBuffer.join('\n')); } catch (e) {}
+    }, 400);
+  }
 }
 
 // If pm2/pm2 logs exist, tail them and append
@@ -452,17 +500,33 @@ function createTray() {
   // detect pm2 and service presence then set menu (run pm2 detection first to avoid races)
   detectPm2((avail) => {
     pm2Available = !!avail;
-    checkServiceExists((err, exists) => { serviceInstalled = !!exists; if (serviceInstalled) watchPm2Logs(); checkServerUp().then(isUp => tray.setContextMenu(buildContextMenu(isUp))); });
+    watchPm2Logs(); // Always start log tailing
+    checkServiceExists((err, exists) => {
+      serviceInstalled = !!exists;
+      checkServerUp().then(isUp => tray.setContextMenu(buildContextMenu(isUp)));
+    });
   });
 
-  // update every 5s
+  // update every 3s
   setInterval(async () => {
     // re-check service presence periodically in case installer registered it
-    checkServiceExists((err, exists) => { if (exists && !serviceInstalled) { serviceInstalled = true; watchPm2Logs(); } else serviceInstalled = !!exists; });
+    checkServiceExists((err, exists) => {
+      if (exists && !serviceInstalled) {
+        serviceInstalled = true;
+        watchPm2Logs();
+      } else serviceInstalled = !!exists;
+    });
     const isUp = await checkServerUp();
     tray.setContextMenu(buildContextMenu(isUp));
     try { tray.setTitle(isUp ? 'LIS: Up' : 'LIS: Down'); } catch (e) {}
-  }, 5000);
+    try {
+      if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+        const addrInfo = getNetworkAddresses();
+        mainWindow.webContents.send('server-address', addrInfo);
+        mainWindow.webContents.send('server-status', { isUp, status: isUp ? 'online' : 'offline' });
+      }
+    } catch (e) {}
+  }, 3000);
 }
 
 // Return first existing icon path across common dev/packaged locations
@@ -612,6 +676,70 @@ ipcMain.on('request-logs', (e) => {
   e.sender.send('log-update', logBuffer.join('\n'));
 });
 
+ipcMain.on('run-log-command', (e, rawCmd) => {
+  const cmd = String(rawCmd || '').trim();
+  if (!cmd) return;
+
+  appendLog(`$ ${cmd}`);
+
+  // Built-in commands
+  if (cmd.toLowerCase() === 'help' || cmd.toLowerCase() === '?') {
+    appendLog('[terminal] Available Commands:');
+    appendLog('  • pm2 status          - Check status of PM2 managed processes');
+    appendLog('  • pm2 restart lis-app - Restart the PM2 server application');
+    appendLog('  • pm2 logs            - Display PM2 logs');
+    appendLog('  • pm2 list            - List running PM2 processes');
+    appendLog('  • start / stop        - Control the LIS server process');
+    appendLog('  • clear / cls         - Clear log terminal output view');
+    appendLog('  • ip                  - List all local & network IP addresses');
+    appendLog('  • <command>           - Execute CLI command in server environment');
+    return;
+  }
+
+  if (cmd.toLowerCase() === 'clear' || cmd.toLowerCase() === 'cls') {
+    logBuffer = [];
+    appendLog('[terminal] Log view cleared');
+    return;
+  }
+
+  if (cmd.toLowerCase() === 'ip') {
+    const net = getNetworkAddresses();
+    appendLog(`[terminal] Local URL:   ${net.localUrl}`);
+    appendLog(`[terminal] Network URL: ${net.networkUrl}`);
+    if (net.allAddresses && net.allAddresses.length) {
+      net.allAddresses.forEach(a => {
+        appendLog(`  • ${a.name}: http://${a.address}:${net.port} ${a.isVirtual ? '(Virtual)' : '(LAN)'}`);
+      });
+    }
+    return;
+  }
+
+  if (cmd.toLowerCase() === 'start') {
+    if (pm2Available) return startViaPm2();
+    if (serviceInstalled) return runServiceCommand(`sc start ${SERVICE_NAME}`, () => {});
+    return startServerDirect();
+  }
+
+  if (cmd.toLowerCase() === 'stop') {
+    if (pm2Available) return stopViaPm2();
+    if (serviceInstalled) return runServiceCommand(`sc stop ${SERVICE_NAME}`, () => {});
+    return stopServerDirect();
+  }
+
+  // Execute shell / CLI command
+  exec(cmd, { cwd: SERVER_DIR, timeout: 30000, env: process.env }, (err, stdout, stderr) => {
+    if (stdout && stdout.trim()) {
+      appendLog(stdout.trim());
+    }
+    if (stderr && stderr.trim()) {
+      appendLog(`[ERR] ${stderr.trim()}`);
+    }
+    if (err && !stdout && !stderr) {
+      appendLog(`[ERR] Command failed: ${err.message}`);
+    }
+  });
+});
+
 // Provide app icon as data URL to renderer so UI img tags can display it reliably
 ipcMain.handle('get-app-icon', async () => {
   try {
@@ -654,7 +782,41 @@ function resolveDataFiles() {
     dataDir,
     dataFile: path.join(dataDir, 'data.json'),
     usersFile: path.join(dataDir, 'data-users.json'),
+    dbFile: path.join(dataDir, 'lis-data.db')
   };
+}
+
+// Helper: safely resolve sqliteDb and migrateJsonToSqlite across dev and packaged modes
+function getSqliteModules() {
+  const candidates = [
+    { db: path.join(__dirname, 'lib', 'sqliteDb.js'), mig: path.join(__dirname, 'lib', 'migrateJsonToSqlite.js') },
+    { db: path.join(__dirname, '..', 'lib', 'sqliteDb.js'), mig: path.join(__dirname, '..', 'lib', 'migrateJsonToSqlite.js') },
+    { db: path.join(process.resourcesPath || '', 'server', 'lib', 'sqliteDb.js'), mig: path.join(process.resourcesPath || '', 'server', 'lib', 'migrateJsonToSqlite.js') },
+    { db: path.join(PROJECT_ROOT, 'lib', 'sqliteDb.js'), mig: path.join(PROJECT_ROOT, 'lib', 'migrateJsonToSqlite.js') }
+  ];
+  for (const c of candidates) {
+    try {
+      if (fs.existsSync(c.db) && fs.existsSync(c.mig)) {
+        return {
+          createDb: require(c.db).createDb,
+          importJsonFile: require(c.mig).importJsonFile
+        };
+      }
+    } catch (_) {}
+  }
+  try {
+    return {
+      createDb: require('./lib/sqliteDb').createDb,
+      importJsonFile: require('./lib/migrateJsonToSqlite').importJsonFile
+    };
+  } catch (_) {}
+  try {
+    return {
+      createDb: require('../lib/sqliteDb').createDb,
+      importJsonFile: require('../lib/migrateJsonToSqlite').importJsonFile
+    };
+  } catch (_) {}
+  return null;
 }
 
 // Helper: restart server asynchronously so uploads take effect
@@ -671,17 +833,65 @@ function restartServerAsync() {
       else appendLog('[settings] server restarted via service');
     });
   } else {
-    stopServerDirect(() => startServerDirect((err) => {
-      if (err) appendLog('[settings] direct restart failed: ' + String(err));
-      else appendLog('[settings] server restarted via direct spawn');
-    }));
+    stopServerDirect(() => {
+      setTimeout(() => {
+        startServerDirect((err) => {
+          if (err) appendLog('[settings] direct restart failed: ' + String(err));
+          else appendLog('[settings] server restarted via direct spawn');
+        });
+      }, 800);
+    });
   }
 }
 
-// Restore users: seed the default admin account into data-users.json
+// Helper: trigger maintenance on active server (or restart server to apply)
+function triggerMaintenanceSync(action, cb) {
+  const http = require('http');
+  const port = process.env.PORT || 3000;
+  appendLog(`[settings] Applying maintenance (${action})...`);
+
+  const req = http.request({
+    hostname: '127.0.0.1',
+    port: port,
+    path: '/api/internal/maintenance/execute',
+    method: 'POST',
+    timeout: 1500
+  }, (res) => {
+    let buf = '';
+    res.on('data', d => { buf += d; });
+    res.on('end', () => {
+      try {
+        const parsed = JSON.parse(buf);
+        if (parsed.ok) {
+          appendLog(`[settings] Maintenance (${action}) applied immediately to active server`);
+          return cb && cb(null, true);
+        }
+      } catch (_) {}
+      appendLog(`[settings] Restarting server to ensure maintenance (${action}) takes effect...`);
+      restartServerAsync();
+      cb && cb(null, true);
+    });
+  });
+
+  req.on('error', () => {
+    appendLog(`[settings] Server not reachable on port ${port}; restarting server to apply maintenance (${action})...`);
+    restartServerAsync();
+    cb && cb(null, true);
+  });
+
+  req.on('timeout', () => {
+    req.destroy();
+    appendLog(`[settings] Server request timed out; restarting server to apply maintenance (${action})...`);
+    restartServerAsync();
+    cb && cb(null, true);
+  });
+
+  req.end();
+}
+
+// Restore users: seed the default admin account into data-users.json and set .restore-admin flag
 ipcMain.handle('restore-users', async () => {
   try {
-    const bcrypt = require('bcryptjs');
     const { v4: uuidv4 } = require('uuid');
     const { usersFile, dataDir } = resolveDataFiles();
 
@@ -700,7 +910,8 @@ ipcMain.handle('restore-users', async () => {
 
     // check if admin already exists
     let admin = existing.find(u => u.email === 'admin@lab.com');
-    const hash = await bcrypt.hash('password123', 12);
+    // Pre-hashed default administrator credential (cost factor 12)
+    const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$t1ORj/D94UYW057qZm1Ga.KU07BHErrr3BzmeO7fNbu5h5encZvD2';
 
     if (!admin) {
       admin = {
@@ -715,7 +926,7 @@ ipcMain.handle('restore-users', async () => {
         permissions: {
           dashboard: true, patients: true, reception: true,
           tests: true, reports: true, worksheet: true,
-          templates: true, users: true, delete: true
+          templates: true, inventory: true, equipment: true, users: true, delete: true
         },
         status: 'Active',
         createdAt: new Date().toISOString(),
@@ -723,37 +934,24 @@ ipcMain.handle('restore-users', async () => {
       };
       existing.push(admin);
     } else {
-      // reset password and ensure admin role
       admin.password = hash;
       admin.role = 'Admin';
       admin.status = 'Active';
       admin.permissions = {
         dashboard: true, patients: true, reception: true,
         tests: true, reports: true, worksheet: true,
-        templates: true, users: true, delete: true
+        templates: true, inventory: true, equipment: true, users: true, delete: true
       };
     }
 
     fs.writeFileSync(usersFile, JSON.stringify(existing, null, 2), 'utf8');
-    appendLog('[settings] Restored admin user in ' + usersFile);
+    appendLog('[settings] Prepared default admin user in ' + usersFile);
 
-    // Also update the users array inside data.json if it exists
-    try {
-      const { dataFile: df } = resolveDataFiles();
-      if (fs.existsSync(df)) {
-        const data = JSON.parse(fs.readFileSync(df, 'utf8'));
-        if (data && Array.isArray(data.users)) {
-          const idx = data.users.findIndex(u => u.email === 'admin@lab.com');
-          const stripped = { id: admin.id, name: admin.name, email: admin.email, password: admin.password, role: admin.role, status: admin.status, createdAt: admin.createdAt, lastLogin: admin.lastLogin };
-          if (idx >= 0) data.users[idx] = stripped;
-          else data.users.push(stripped);
-          fs.writeFileSync(df, JSON.stringify(data, null, 2), 'utf8');
-        }
-      }
-    } catch (e) { appendLog('[settings] warning: could not update data.json users: ' + String(e)); }
+    // Set trigger flag so the server SQLite database updates immediately or on reboot
+    fs.writeFileSync(path.join(dataDir, '.restore-admin'), new Date().toISOString(), 'utf8');
 
-    // restart server so it picks up the new user data
-    restartServerAsync();
+    // Trigger maintenance on the server
+    await new Promise(resolve => triggerMaintenanceSync('restore-users', resolve));
     return { ok: true };
   } catch (e) {
     appendLog('[settings] restore-users failed: ' + String(e));
@@ -761,19 +959,26 @@ ipcMain.handle('restore-users', async () => {
   }
 });
 
-// Restore data: reset data.json to empty initial structure
+// Restore data: reset database to empty initial structure
 ipcMain.handle('restore-data', async () => {
   try {
-    const { dataFile: df, dataDir } = resolveDataFiles();
+    const { dataFile: df, dbFile, dataDir } = resolveDataFiles();
 
     // ensure directory exists
     fs.mkdirSync(dataDir, { recursive: true });
 
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+
     // backup current data.json before overwriting
     if (fs.existsSync(df)) {
-      const ts = new Date().toISOString().replace(/[:.]/g, '-');
       const backupPath = path.join(dataDir, `data-backup-${ts}.json`);
       try { fs.copyFileSync(df, backupPath); appendLog('[settings] backed up data.json to ' + backupPath); } catch (e) {}
+    }
+
+    // backup SQLite db before resetting
+    if (fs.existsSync(dbFile)) {
+      const backupDbPath = path.join(dataDir, `lis-data-backup-${ts}.db`);
+      try { fs.copyFileSync(dbFile, backupDbPath); appendLog('[settings] backed up lis-data.db to ' + backupDbPath); } catch (e) {}
     }
 
     const initialData = {
@@ -785,7 +990,12 @@ ipcMain.handle('restore-data', async () => {
     };
 
     fs.writeFileSync(df, JSON.stringify(initialData, null, 2), 'utf8');
-    appendLog('[settings] Restored data.json to empty initial state in ' + df);
+
+    // Set trigger flag so the server SQLite database resets immediately or on reboot
+    fs.writeFileSync(path.join(dataDir, '.reset-database'), new Date().toISOString(), 'utf8');
+
+    appendLog('[settings] Queued database reset to empty initial state');
+    await new Promise(resolve => triggerMaintenanceSync('restore-data', resolve));
     return { ok: true };
   } catch (e) {
     appendLog('[settings] restore-data failed: ' + String(e));
@@ -793,10 +1003,10 @@ ipcMain.handle('restore-data', async () => {
   }
 });
 
-// Upload data.json: let user pick a JSON file and copy it as data.json
+// Upload data.json: let user pick a JSON file and import it
 ipcMain.handle('upload-data', async () => {
   try {
-    const { dataFile: df, dataDir } = resolveDataFiles();
+    const { dataFile: df, dbFile, dataDir } = resolveDataFiles();
     const result = await dialog.showOpenDialog(mainWindow, {
       title: 'Select data.json to upload',
       filters: [{ name: 'JSON Files', extensions: ['json'] }],
@@ -815,16 +1025,23 @@ ipcMain.handle('upload-data', async () => {
     fs.mkdirSync(dataDir, { recursive: true });
 
     // backup current before overwriting
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
     if (fs.existsSync(df)) {
-      const ts = new Date().toISOString().replace(/[:.]/g, '-');
       const backupPath = path.join(dataDir, `data-backup-${ts}.json`);
       try { fs.copyFileSync(df, backupPath); appendLog('[settings] backed up data.json to ' + backupPath); } catch (e) {}
+    }
+    if (fs.existsSync(dbFile)) {
+      const backupDbPath = path.join(dataDir, `lis-data-backup-${ts}.db`);
+      try { fs.copyFileSync(dbFile, backupDbPath); appendLog('[settings] backed up lis-data.db to ' + backupDbPath); } catch (e) {}
     }
 
     fs.writeFileSync(df, raw, 'utf8');
     appendLog('[settings] Uploaded data.json from ' + srcPath + ' to ' + df);
-    // restart server so it picks up the new file
-    restartServerAsync();
+
+    // Set trigger flag so the server SQLite database imports the new data
+    fs.writeFileSync(path.join(dataDir, '.import-data'), new Date().toISOString(), 'utf8');
+
+    await new Promise(resolve => triggerMaintenanceSync('upload-data', resolve));
     return { ok: true };
   } catch (e) {
     appendLog('[settings] upload-data failed: ' + String(e));
@@ -832,10 +1049,10 @@ ipcMain.handle('upload-data', async () => {
   }
 });
 
-// Upload data-users.json: let user pick a JSON file and copy it as data-users.json
+// Upload data-users.json: let user pick a JSON file and import it
 ipcMain.handle('upload-users', async () => {
   try {
-    const { usersFile, dataDir } = resolveDataFiles();
+    const { usersFile, dbFile, dataDir } = resolveDataFiles();
     const result = await dialog.showOpenDialog(mainWindow, {
       title: 'Select data-users.json to upload',
       filters: [{ name: 'JSON Files', extensions: ['json'] }],
@@ -848,22 +1065,31 @@ ipcMain.handle('upload-users', async () => {
     // validate JSON
     const raw = fs.readFileSync(srcPath, 'utf8');
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) throw new Error('Users file must be a JSON array');
+    if (!Array.isArray(parsed) && (!parsed || typeof parsed !== 'object')) {
+      throw new Error('Users file must be a JSON array or object with users list');
+    }
 
     // ensure directory exists
     fs.mkdirSync(dataDir, { recursive: true });
 
     // backup current before overwriting
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
     if (fs.existsSync(usersFile)) {
-      const ts = new Date().toISOString().replace(/[:.]/g, '-');
       const backupPath = path.join(dataDir, `data-users-backup-${ts}.json`);
       try { fs.copyFileSync(usersFile, backupPath); appendLog('[settings] backed up data-users.json to ' + backupPath); } catch (e) {}
+    }
+    if (fs.existsSync(dbFile)) {
+      const backupDbPath = path.join(dataDir, `lis-data-backup-${ts}.db`);
+      try { fs.copyFileSync(dbFile, backupDbPath); appendLog('[settings] backed up lis-data.db to ' + backupDbPath); } catch (e) {}
     }
 
     fs.writeFileSync(usersFile, raw, 'utf8');
     appendLog('[settings] Uploaded data-users.json from ' + srcPath + ' to ' + usersFile);
-    // restart server so it picks up the new file
-    restartServerAsync();
+
+    // Set trigger flag so the server SQLite database imports the new users
+    fs.writeFileSync(path.join(dataDir, '.import-users'), new Date().toISOString(), 'utf8');
+
+    await new Promise(resolve => triggerMaintenanceSync('upload-users', resolve));
     return { ok: true };
   } catch (e) {
     appendLog('[settings] upload-users failed: ' + String(e));

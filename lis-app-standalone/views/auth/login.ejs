@@ -1,29 +1,836 @@
-<div class="login-container">
-    <div class="login-box">
-        <div style="text-align:center; margin-bottom:12px;">
-            <img src="<%= typeof inlineLogo !== 'undefined' && inlineLogo ? inlineLogo : '/assets/gezyne-logo.png' %>" alt="Gezyne Clinical Laboratory" style="width:120px; height:auto; object-fit:contain; border-radius:6px; background:white; padding:6px; box-shadow:0 3px 10px rgba(0,0,0,0.12);">
-            <h2 style="margin-top:10px; color:var(--primary-black); font-weight:800; font-size:1.15rem;">Gezyne Clinical Laboratory</h2>
-            <p style="margin:6px 0 0; color:var(--secondary-green-dark); font-weight:700; letter-spacing:0.6px;">Laboratory Information System (LIS)</p>
+<style>
+  /* Scoped Login Styling */
+  .login-page-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 120px);
+    padding: 20px 10px;
+  }
+
+  .login-card-container {
+    display: flex;
+    width: 100%;
+    max-width: 1060px;
+    background: #ffffff;
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08), 0 4px 15px rgba(15, 23, 42, 0.03);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    transition: all 0.3s ease;
+  }
+
+  /* Left Side: Lab Information Showcase */
+  .lab-info-panel {
+    flex: 1.1;
+    background: linear-gradient(135deg, #047857 0%, #064e3b 60%, #0f172a 100%);
+    color: #ffffff;
+    padding: 44px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .lab-info-panel::before {
+    content: '';
+    position: absolute;
+    top: -50px;
+    right: -50px;
+    width: 250px;
+    height: 250px;
+    background: radial-gradient(circle, rgba(52, 211, 153, 0.15) 0%, rgba(255,255,255,0) 70%);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .lab-info-panel::after {
+    content: '';
+    position: absolute;
+    bottom: -80px;
+    left: -80px;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.12) 0%, rgba(255,255,255,0) 70%);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .lab-brand-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    z-index: 1;
+  }
+
+  .lab-logo-img {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    border-radius: 14px;
+    background: #ffffff;
+    padding: 4px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .lab-brand-title {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: #ffffff;
+    line-height: 1.25;
+    letter-spacing: -0.2px;
+  }
+
+  .lab-category-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #a7f3d0;
+    margin-top: 4px;
+  }
+
+  .lab-intro-text {
+    font-size: 0.95rem;
+    color: #d1fae5;
+    line-height: 1.6;
+    margin-bottom: 24px;
+    z-index: 1;
+  }
+
+  /* Contact & Address List */
+  .lab-details-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 24px;
+    z-index: 1;
+  }
+
+  .lab-detail-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    font-size: 0.88rem;
+    color: #e2e8f0;
+    line-height: 1.45;
+  }
+
+  .lab-detail-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #34d399;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+  }
+
+  .lab-detail-item a {
+    color: #a7f3d0;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .lab-detail-item a:hover {
+    color: #ffffff;
+    text-decoration: underline;
+  }
+
+  /* Feature Badges */
+  .lab-badges-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    z-index: 1;
+  }
+
+  .lab-pill {
+    font-size: 0.76rem;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #e2e8f0;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .lab-pill.status-open {
+    background: rgba(16, 185, 129, 0.2);
+    color: #6ee7b7;
+    border-color: rgba(52, 211, 153, 0.4);
+  }
+
+  /* Right Side: Login Panel */
+  .login-form-panel {
+    flex: 1;
+    padding: 48px 44px;
+    background: #ffffff;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .login-header-section {
+    margin-bottom: 28px;
+  }
+
+  .login-main-title {
+    font-size: 1.65rem;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.3px;
+    margin-bottom: 6px;
+  }
+
+  .login-sub-title {
+    font-size: 0.88rem;
+    color: #64748b;
+    line-height: 1.5;
+  }
+
+  .input-group-custom {
+    position: relative;
+    margin-bottom: 20px;
+  }
+
+  .input-group-custom label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #334155;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .input-field-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .input-field-wrapper i.field-icon {
+    position: absolute;
+    left: 14px;
+    color: #94a3b8;
+    font-size: 0.95rem;
+    pointer-events: none;
+    transition: color 0.2s;
+  }
+
+  .input-field-wrapper input {
+    width: 100%;
+    padding: 13px 14px 13px 42px;
+    border-radius: 12px;
+    border: 1.5px solid #e2e8f0;
+    background: #f8fafc;
+    font-size: 0.93rem;
+    color: #0f172a;
+    font-weight: 500;
+    outline: none;
+    transition: all 0.2s ease;
+  }
+
+  .input-field-wrapper input:focus {
+    background: #ffffff;
+    border-color: #10b981;
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.12);
+  }
+
+  .input-field-wrapper input:focus + i.field-icon,
+  .input-field-wrapper input:focus ~ i.field-icon {
+    color: #10b981;
+  }
+
+  .toggle-pw-btn {
+    position: absolute;
+    right: 14px;
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 4px;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+  }
+
+  .toggle-pw-btn:hover {
+    color: #0f172a;
+  }
+
+  /* Saved Accounts Dropdown (Browser-like Password Manager) */
+  .saved-accounts-container {
+    position: relative;
+  }
+
+  .saved-accounts-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    background: #1e293b;
+    color: #f8fafc;
+    border: 1px solid #334155;
+    border-radius: 14px;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.35), 0 4px 12px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    overflow: hidden;
+    display: none;
+    animation: dropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes dropdownFadeIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .saved-accounts-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    border-bottom: 1px solid #334155;
+    font-size: 0.78rem;
+    color: #94a3b8;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .saved-accounts-header .close-dropdown-btn {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  .saved-accounts-header .close-dropdown-btn:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .saved-accounts-list {
+    max-height: 220px;
+    overflow-y: auto;
+    list-style: none;
+    margin: 0;
+    padding: 4px 0;
+  }
+
+  .saved-account-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+  }
+
+  .saved-account-item:last-child {
+    border-bottom: none;
+  }
+
+  .saved-account-item:hover, .saved-account-item.active {
+    background: #334155;
+  }
+
+  .saved-account-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .saved-account-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+  }
+
+  .saved-account-texts {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .saved-account-name {
+    font-weight: 600;
+    font-size: 0.88rem;
+    color: #f1f5f9;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .saved-account-email {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .saved-account-dots {
+    font-size: 0.85rem;
+    color: #64748b;
+    letter-spacing: 2px;
+    margin-top: -2px;
+  }
+
+  .saved-account-role-badge {
+    font-size: 0.68rem;
+    padding: 2px 7px;
+    border-radius: 12px;
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+    font-weight: 600;
+    margin-left: 6px;
+  }
+
+  .saved-account-delete-btn {
+    background: transparent;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+  }
+
+  .saved-account-delete-btn:hover {
+    color: #f87171;
+    background: rgba(239, 68, 68, 0.15);
+  }
+
+  .saved-accounts-footer {
+    padding: 8px 14px;
+    border-top: 1px solid #334155;
+    background: #0f172a;
+    font-size: 0.78rem;
+    color: #38bdf8;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .remember-me-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 12px 0 16px 0;
+    font-size: 0.88rem;
+    color: #64748b;
+  }
+
+  .remember-me-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .remember-me-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: #10b981;
+  }
+
+  .login-submit-btn {
+    width: 100%;
+    padding: 14px 20px;
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    color: #ffffff;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    box-shadow: 0 4px 14px rgba(5, 150, 105, 0.3);
+    transition: all 0.25s ease;
+    margin-top: 4px;
+    margin-bottom: 20px;
+  }
+
+  .login-submit-btn:hover {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(5, 150, 105, 0.4);
+  }
+
+  .login-submit-btn:active {
+    transform: translateY(0);
+  }
+
+  .login-footer-info {
+    text-align: center;
+    padding-top: 16px;
+    border-top: 1px solid #f1f5f9;
+    font-size: 0.8rem;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  /* Responsive Adjustments */
+  @media (max-width: 860px) {
+    .login-card-container {
+      flex-direction: column;
+      max-width: 480px;
+    }
+
+    .lab-info-panel {
+      padding: 32px 28px;
+    }
+
+    .login-form-panel {
+      padding: 36px 28px;
+    }
+  }
+</style>
+
+<div class="login-page-wrapper">
+  <div class="login-card-container">
+
+    <!-- Left Side: Gezyne Laboratory Details -->
+    <div class="lab-info-panel">
+      <div>
+        <div class="lab-brand-header">
+          <img src="<%= typeof inlineLogo !== 'undefined' && inlineLogo ? inlineLogo : '/assets/gezyne-logo.png' %>" alt="Gezyne Clinical Laboratory" class="lab-logo-img">
+          <div>
+            <h2 class="lab-brand-title">Gezyne Clinical Laboratory</h2>
+            <div class="lab-category-badge">
+              <i class="fas fa-microscope"></i> Medical & Clinical Laboratory
+            </div>
+          </div>
         </div>
 
-        <form action="/login" method="POST">
-            <div class="form-group">
-                <label>Email Address</label>
-                <input type="email" name="email" placeholder="Enter your email"  required>
-            </div>
-
-            <div class="form-group">
-                <label>Password</label>
-                <input type="password" name="password" placeholder="Enter password"  required>
-            </div>
-
-            <button type="submit" class="button btn-primary" style="width: 100%; margin-bottom: 15px; padding: 14px;">
-                Login to Dashboard
-            </button>
-        </form>
-
-        <p style="text-align: center; color: var(--text-gray); font-size: 0.85em; margin: 8px 0 0;">
-            Professional Laboratory Information Management System
+        <p class="lab-intro-text">
+          Dedicated to providing high-accuracy medical diagnostic testing, comprehensive clinical analysis, and real-time patient care management.
         </p>
+
+        <!-- Lab Location & Contact Information from Facebook -->
+        <div class="lab-details-list">
+          <div class="lab-detail-item">
+            <div class="lab-detail-icon"><i class="fas fa-map-marker-alt"></i></div>
+            <div>
+              <strong>Address:</strong><br>
+              0330 VERGEL DE DIOS STREET, POBLACION, Plaridel, Philippines
+            </div>
+          </div>
+
+          <div class="lab-detail-item">
+            <div class="lab-detail-icon"><i class="fas fa-phone-alt"></i></div>
+            <div>
+              <strong>Contact Number:</strong><br>
+              <a href="tel:09603900921">0960 390 0921</a>
+            </div>
+          </div>
+
+          <div class="lab-detail-item">
+            <div class="lab-detail-icon"><i class="fas fa-envelope"></i></div>
+            <div>
+              <strong>Email Address:</strong><br>
+              <a href="mailto:laboratorygezyne@gmail.com">laboratorygezyne@gmail.com</a>
+            </div>
+          </div>
+
+          <div class="lab-detail-item">
+            <div class="lab-detail-icon"><i class="fab fa-facebook"></i></div>
+            <div>
+              <strong>Facebook Page:</strong><br>
+              <a href="https://www.facebook.com/gezyneclinicallaboratory" target="_blank" rel="noopener noreferrer">
+                @gezyneclinicallaboratory <i class="fas fa-external-link-alt" style="font-size: 0.75em; margin-left: 2px;"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feature Badges -->
+      <div>
+        <div class="lab-badges-row">
+          <span class="lab-pill status-open"><i class="fas fa-clock"></i> Open Now</span>
+          <span class="lab-pill"><i class="fas fa-chair"></i> Outdoor Seating</span>
+          <span class="lab-pill"><i class="fas fa-tags"></i> Price Range: ₱₱</span>
+          <span class="lab-pill"><i class="fas fa-network-wired"></i> LIS Standalone v2.0</span>
+        </div>
+      </div>
+
     </div>
+
+    <!-- Right Side: Login Panel -->
+    <div class="login-form-panel">
+      <div class="login-header-section">
+        <h1 class="login-main-title">System Login</h1>
+        <p class="login-sub-title">Enter your credentials or select a saved user account below</p>
+      </div>
+
+      <form action="/login" method="POST" id="loginForm" autocomplete="on">
+        <div class="input-group-custom saved-accounts-container">
+          <label for="emailInput">Email Address</label>
+          <div class="input-field-wrapper">
+            <i class="fas fa-envelope field-icon"></i>
+            <input type="email" id="emailInput" name="email" placeholder="name@lab.com" required autofocus autocomplete="email">
+          </div>
+
+          <!-- Floating Saved Accounts / Passwords Manager Dropdown -->
+          <div class="saved-accounts-dropdown" id="savedAccountsDropdown">
+            <div class="saved-accounts-header">
+              <span><i class="fas fa-key" style="color:#f59e0b; margin-right:4px;"></i> Saved Accounts on this PC</span>
+              <button type="button" class="close-dropdown-btn" id="closeSavedDropdownBtn" title="Close">✕</button>
+            </div>
+            <ul class="saved-accounts-list" id="savedAccountsList">
+              <!-- Dynamically populated by JS -->
+            </ul>
+            <div class="saved-accounts-footer">
+              <i class="fas fa-shield-alt"></i> Click an account to auto-fill & login instantly
+            </div>
+          </div>
+        </div>
+
+        <div class="input-group-custom">
+          <label for="passwordInput">Password</label>
+          <div class="input-field-wrapper">
+            <i class="fas fa-lock field-icon"></i>
+            <input type="password" id="passwordInput" name="password" placeholder="Enter your password" required autocomplete="current-password">
+            <button type="button" class="toggle-pw-btn" id="togglePasswordBtn" title="Show/Hide Password">
+              <i class="fas fa-eye" id="togglePasswordIcon"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="remember-me-wrapper">
+          <label class="remember-me-label" for="rememberMeCheck">
+            <input type="checkbox" id="rememberMeCheck">
+            <span>Remember password on this PC</span>
+          </label>
+          <span style="font-size:0.8em; color:#10b981;"><i class="fas fa-shield-alt"></i> Optional Quick Login</span>
+        </div>
+
+        <button type="submit" class="login-submit-btn" id="loginBtn">
+          <i class="fas fa-sign-in-alt"></i> Login to Workspace
+        </button>
+      </form>
+
+      <div class="login-footer-info">
+        <i class="fas fa-shield-alt" style="color:#10b981;"></i> Secure Desktop LIS &bull; Offline-First System
+      </div>
+    </div>
+
+  </div>
 </div>
+
+<script>
+  (function() {
+    // Password Visibility Toggle
+    const toggleBtn = document.getElementById('togglePasswordBtn');
+    const passwordInput = document.getElementById('passwordInput');
+    const toggleIcon = document.getElementById('togglePasswordIcon');
+    const emailInput = document.getElementById('emailInput');
+    const loginForm = document.getElementById('loginForm');
+    const rememberMeCheck = document.getElementById('rememberMeCheck');
+    const dropdown = document.getElementById('savedAccountsDropdown');
+    const listEl = document.getElementById('savedAccountsList');
+    const closeBtn = document.getElementById('closeSavedDropdownBtn');
+
+    if (toggleBtn && passwordInput && toggleIcon) {
+      toggleBtn.addEventListener('click', function() {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        
+        if (type === 'text') {
+          toggleIcon.classList.remove('fa-eye');
+          toggleIcon.classList.add('fa-eye-slash');
+        } else {
+          toggleIcon.classList.remove('fa-eye-slash');
+          toggleIcon.classList.add('fa-eye');
+        }
+      });
+    }
+
+    // Load saved accounts from localStorage (starts empty by default)
+    function getSavedAccounts() {
+      try {
+        const raw = localStorage.getItem('gezyne_saved_logins_v2');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) return parsed;
+        }
+      } catch (e) {}
+      return [];
+    }
+
+    function saveAccounts(accounts) {
+      try {
+        localStorage.setItem('gezyne_saved_logins_v2', JSON.stringify(accounts));
+      } catch (e) {}
+    }
+
+    function renderSavedAccounts(filterText = '') {
+      const accounts = getSavedAccounts();
+      if (!accounts || accounts.length === 0) {
+        if (dropdown) dropdown.style.display = 'none';
+        return;
+      }
+
+      const filtered = filterText 
+        ? accounts.filter(a => (a.email && a.email.toLowerCase().includes(filterText.toLowerCase())) || 
+                               (a.name && a.name.toLowerCase().includes(filterText.toLowerCase())))
+        : accounts;
+
+      if (!filtered.length) {
+        if (dropdown) dropdown.style.display = 'none';
+        return;
+      }
+
+      listEl.innerHTML = '';
+      filtered.forEach((acc) => {
+        const li = document.createElement('li');
+        li.className = 'saved-account-item';
+        
+        const initial = (acc.name || acc.email || 'U').charAt(0).toUpperCase();
+        const roleLabel = acc.role || 'Staff';
+        
+        li.innerHTML = `
+          <div class="saved-account-info">
+            <div class="saved-account-avatar">${initial}</div>
+            <div class="saved-account-texts">
+              <div class="saved-account-name">
+                ${acc.name || acc.email}
+                <span class="saved-account-role-badge">${roleLabel}</span>
+              </div>
+              <div class="saved-account-email">${acc.email}</div>
+              <div class="saved-account-dots">••••••••</div>
+            </div>
+          </div>
+          <button type="button" class="saved-account-delete-btn" title="Remove from this PC" data-email="${acc.email}">
+            ✕
+          </button>
+        `;
+
+        li.addEventListener('click', (e) => {
+          if (e.target.closest('.saved-account-delete-btn')) return;
+          emailInput.value = acc.email;
+          if (acc.pass) passwordInput.value = acc.pass;
+          dropdown.style.display = 'none';
+          passwordInput.focus();
+        });
+
+        const delBtn = li.querySelector('.saved-account-delete-btn');
+        if (delBtn) {
+          delBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const emailToDelete = delBtn.getAttribute('data-email');
+            const updated = getSavedAccounts().filter(a => a.email.toLowerCase() !== emailToDelete.toLowerCase());
+            saveAccounts(updated);
+            renderSavedAccounts(emailInput.value);
+          });
+        }
+
+        listEl.appendChild(li);
+      });
+
+      if (dropdown) dropdown.style.display = 'block';
+    }
+
+    // Show dropdown on input focus / click only if accounts exist
+    if (emailInput && dropdown) {
+      emailInput.addEventListener('focus', () => {
+        renderSavedAccounts(emailInput.value);
+      });
+
+      emailInput.addEventListener('input', () => {
+        renderSavedAccounts(emailInput.value);
+      });
+
+      if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+          dropdown.style.display = 'none';
+        });
+      }
+
+      // Close dropdown when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.saved-accounts-container')) {
+          dropdown.style.display = 'none';
+        }
+      });
+    }
+
+    // On Form Submit, record login ONLY if remember me was explicitly checked
+    if (loginForm && emailInput && passwordInput) {
+      loginForm.addEventListener('submit', () => {
+        const email = emailInput.value.trim().toLowerCase();
+        const pass = passwordInput.value;
+        if (!email) return;
+
+        const accounts = getSavedAccounts();
+        if (rememberMeCheck && rememberMeCheck.checked) {
+          const existingIdx = accounts.findIndex(a => a.email && a.email.toLowerCase() === email);
+          if (existingIdx >= 0) {
+            accounts[existingIdx].pass = pass;
+            accounts[existingIdx].lastUsed = Date.now();
+          } else {
+            const displayName = email.split('@')[0].toUpperCase();
+            accounts.unshift({
+              name: displayName,
+              email: email,
+              role: 'Staff',
+              pass: pass,
+              lastUsed: Date.now()
+            });
+          }
+          saveAccounts(accounts);
+        } else {
+          // If remember me is unchecked, remove this account from saved logins
+          const filtered = accounts.filter(a => a.email.toLowerCase() !== email);
+          saveAccounts(filtered);
+        }
+      });
+    }
+
+  })();
+</script>
