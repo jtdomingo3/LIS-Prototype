@@ -324,6 +324,15 @@ router.get('/', requireAuth, async (req, res) => {
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
 
+    // Compute month expenses for financial KPI
+    let monthExpenses = 0;
+    try {
+      const Expense = require('../models/Expense');
+      const currentYm = (selectedDate ? new Date(selectedDate) : new Date()).toISOString().slice(0, 7);
+      const exps = await Expense.find({ month: currentYm });
+      monthExpenses = exps.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+    } catch (_) {}
+
     res.render('dashboard/index', {
       title: 'Dashboard',
       stats: {
@@ -333,6 +342,8 @@ router.get('/', requireAuth, async (req, res) => {
         activeTests,
         releasedTests,
         totalSales, todaySales, monthSales, clinicalSales, xraySales, clinicalToday, xrayToday, clinicalMonth, xrayMonth,
+        monthExpenses,
+        monthProfit: monthSales - monthExpenses,
         salesTrendDaily, salesTrendMonthly, salesTrendHourly, salesTrendOverall,
         testTotals, testTotalsToday, testTotalsSelected, selectedDate: (selectedDate ? (new Date(selectedDate)).toISOString().slice(0,10) : null),
         topAges, sexMap, philhealthMap

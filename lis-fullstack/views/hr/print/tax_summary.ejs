@@ -1,0 +1,215 @@
+<div class="content-wrapper" style="padding: 24px; max-width: 900px; margin: 0 auto; background: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border-radius: 8px;">
+    <!-- Controls (hidden on print) -->
+    <div class="no-print" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid #e2e8f0;">
+        <button onclick="window.history.back()" style="padding: 6px 14px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600; cursor: pointer;">
+            ← Back
+        </button>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <select id="yearSelect" onchange="changeYear(this.value)" style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600; font-size: 0.88rem;">
+                <% for (let y = new Date().getFullYear(); y >= 2023; y--) { %>
+                    <option value="<%= y %>" <%= year == y ? 'selected' : '' %>><%= y %></option>
+                <% } %>
+            </select>
+            <button onclick="window.print()" style="padding: 8px 18px; background: #4f46e5; color: white; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                <span>🖨️</span> Print BIR 2316 Summary
+            </button>
+        </div>
+    </div>
+
+    <!-- Official BIR 2316 Reference Header -->
+    <div style="border: 2px solid #0f172a; padding: 14px 18px; margin-bottom: 16px; background: #f8fafc;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+            <div>
+                <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Republic of the Philippines • Bureau of Internal Revenue</div>
+                <div style="font-size: 1.35rem; font-weight: 900; color: #0f172a; letter-spacing: 0.5px;">
+                    BIR FORM NO. 2316 REFERENCE SUMMARY
+                </div>
+                <div style="font-size: 0.82rem; font-weight: 600; color: #475569;">
+                    Certificate of Compensation Payment / Tax Withheld (TRAIN Law)
+                </div>
+            </div>
+            <div style="text-align: right; background: white; border: 1.5px solid #0f172a; padding: 8px 16px; border-radius: 4px;">
+                <div style="font-size: 0.72rem; color: #64748b; font-weight: 700;">FOR TAX YEAR</div>
+                <div style="font-size: 1.6rem; font-weight: 900; color: #4338ca;"><%= year %></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Part I & II: Employee and Employer Identification -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px;">
+        <!-- Employee Info -->
+        <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px; font-size: 0.82rem;">
+            <div style="font-weight: 800; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 8px; text-transform: uppercase; font-size: 0.78rem;">
+                Part I: Employee Information
+            </div>
+            <div><strong>Taxpayer Identification No. (TIN):</strong> <%= employee.tin || 'Not Provided' %></div>
+            <div><strong>Employee Name:</strong> <span style="font-weight: 700; color: #1e293b;"><%= employee.name %></span></div>
+            <div><strong>Employee ID:</strong> <%= employee.employeeCode %></div>
+            <div><strong>Position:</strong> <%= employee.position %> (<%= employee.department %>)</div>
+            <div><strong>SSS No.:</strong> <%= employee.sssNumber || '—' %> | <strong>PHIC:</strong> <%= employee.philhealthNumber || '—' %></div>
+            <div><strong>HDMF No.:</strong> <%= employee.pagibigNumber || '—' %></div>
+        </div>
+
+        <!-- Employer Info -->
+        <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px; font-size: 0.82rem;">
+            <div style="font-weight: 800; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 8px; text-transform: uppercase; font-size: 0.78rem;">
+                Part II: Present Employer Information
+            </div>
+            <div><strong>Employer TIN:</strong> 009-876-543-000</div>
+            <div><strong>Employer Name:</strong> <span style="font-weight: 700; color: #1e293b;">GEZYNE CLINICAL LABORATORY</span></div>
+            <div><strong>Registered Address:</strong> Metro Manila, Philippines</div>
+            <div><strong>Type of Employer:</strong> Private Clinical Diagnostic Laboratory</div>
+            <div><strong>Contact No.:</strong> (02) 8123-4567</div>
+        </div>
+    </div>
+
+    <!-- Part III: Summary of Compensation & Taxes -->
+    <div style="border: 2px solid #334155; border-radius: 6px; overflow: hidden; margin-bottom: 20px;">
+        <div style="background: #0f172a; color: white; padding: 8px 14px; font-size: 0.82rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">
+            Part III: Annual Compensation & Tax Withheld Computation
+        </div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.88rem;">
+            <tbody>
+                <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <td style="padding: 10px 14px; color: #334155;">1. Total Gross Compensation Income from Present Employer</td>
+                    <td style="padding: 10px 14px; text-align: right; font-weight: 700; color: #0f172a;">
+                        ₱<%= totalGross.toLocaleString('en-US', { minimumFractionDigits: 2 }) %>
+                    </td>
+                </tr>
+                <tr style="border-bottom: 1px solid #f1f5f9; background: #fafafa;">
+                    <td style="padding: 8px 14px 8px 28px; color: #64748b; font-size: 0.82rem;">Less: Mandatory SSS Employee Contributions</td>
+                    <td style="padding: 8px 14px; text-align: right; color: #dc2626; font-size: 0.82rem;">
+                        (₱<%= totalSss.toLocaleString('en-US', { minimumFractionDigits: 2 }) %>)
+                    </td>
+                </tr>
+                <tr style="border-bottom: 1px solid #f1f5f9; background: #fafafa;">
+                    <td style="padding: 8px 14px 8px 28px; color: #64748b; font-size: 0.82rem;">Less: Mandatory PhilHealth Employee Premiums</td>
+                    <td style="padding: 8px 14px; text-align: right; color: #dc2626; font-size: 0.82rem;">
+                        (₱<%= totalPh.toLocaleString('en-US', { minimumFractionDigits: 2 }) %>)
+                    </td>
+                </tr>
+                <tr style="border-bottom: 1px solid #f1f5f9; background: #fafafa;">
+                    <td style="padding: 8px 14px 8px 28px; color: #64748b; font-size: 0.82rem;">Less: Mandatory Pag-IBIG / HDMF Contributions</td>
+                    <td style="padding: 8px 14px; text-align: right; color: #dc2626; font-size: 0.82rem;">
+                        (₱<%= totalPagibig.toLocaleString('en-US', { minimumFractionDigits: 2 }) %>)
+                    </td>
+                </tr>
+                <tr style="border-bottom: 1px solid #e2e8f0; background: #f8fafc; font-weight: 600;">
+                    <td style="padding: 8px 14px; color: #475569;">2. Total Non-Taxable / Exempt Statutory Deductions</td>
+                    <td style="padding: 8px 14px; text-align: right; color: #dc2626;">
+                        (₱<%= totalNonTaxable.toLocaleString('en-US', { minimumFractionDigits: 2 }) %>)
+                    </td>
+                </tr>
+                <tr style="border-bottom: 2px solid #0f172a; font-weight: 800; background: #f0fdf4;">
+                    <td style="padding: 10px 14px; color: #166534;">3. TAXABLE COMPENSATION INCOME (Item 1 minus Item 2)</td>
+                    <td style="padding: 10px 14px; text-align: right; color: #166534; font-size: 1rem;">
+                        ₱<%= taxableIncome.toLocaleString('en-US', { minimumFractionDigits: 2 }) %>
+                    </td>
+                </tr>
+                <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <td style="padding: 10px 14px; color: #334155;">4. Tax Due (Calculated under TRAIN Law Annual Tax Table)</td>
+                    <td style="padding: 10px 14px; text-align: right; font-weight: 700; color: #4338ca;">
+                        ₱<%= totalTaxWithheld.toLocaleString('en-US', { minimumFractionDigits: 2 }) %>
+                    </td>
+                </tr>
+                <tr style="border-bottom: 2px solid #0f172a; font-weight: 900; background: #eff6ff;">
+                    <td style="padding: 12px 14px; color: #1e3a8a;">5. TOTAL TAX WITHHELD AND REMITTED TO BIR (Item 4)</td>
+                    <td style="padding: 12px 14px; text-align: right; color: #1e3a8a; font-size: 1.15rem;">
+                        ₱<%= totalTaxWithheld.toLocaleString('en-US', { minimumFractionDigits: 2 }) %>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Monthly Breakdown Table -->
+    <div style="border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; margin-bottom: 24px;">
+        <div style="background: #f1f5f9; padding: 8px 14px; font-weight: 700; font-size: 0.8rem; color: #334155; text-transform: uppercase;">
+            Monthly Payroll Breakdown (<%= yearPayrolls.length %> Cycles in <%= year %>)
+        </div>
+        <% if (yearPayrolls.length === 0) { %>
+            <div style="padding: 20px; text-align: center; color: #94a3b8; font-size: 0.85rem;">
+                No payroll records found for year <%= year %>.
+            </div>
+        <% } else { %>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.78rem; text-align: left;">
+                    <thead style="background: #f8fafc; border-bottom: 1px solid #cbd5e1;">
+                        <tr>
+                            <th style="padding: 6px 10px;">Month</th>
+                            <th style="padding: 6px 10px; text-align: right;">Gross Pay</th>
+                            <th style="padding: 6px 10px; text-align: right;">SSS EE</th>
+                            <th style="padding: 6px 10px; text-align: right;">PHIC EE</th>
+                            <th style="padding: 6px 10px; text-align: right;">HDMF EE</th>
+                            <th style="padding: 6px 10px; text-align: right;">Tax Withheld</th>
+                            <th style="padding: 6px 10px; text-align: right;">Net Pay</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% yearPayrolls.forEach(function(p) { %>
+                            <tr style="border-bottom: 1px solid #f1f5f9;">
+                                <td style="padding: 6px 10px; font-weight: 600;"><%= p.month %></td>
+                                <td style="padding: 6px 10px; text-align: right;">₱<%= (Number(p.grossPay) || 0).toFixed(2) %></td>
+                                <td style="padding: 6px 10px; text-align: right; color: #64748b;">₱<%= (Number(p.sssContribution) || 0).toFixed(2) %></td>
+                                <td style="padding: 6px 10px; text-align: right; color: #64748b;">₱<%= (Number(p.philhealthContribution) || 0).toFixed(2) %></td>
+                                <td style="padding: 6px 10px; text-align: right; color: #64748b;">₱<%= (Number(p.pagibigContribution) || 0).toFixed(2) %></td>
+                                <td style="padding: 6px 10px; text-align: right; font-weight: 700; color: #4338ca;">₱<%= (Number(p.withholdingTax) || 0).toFixed(2) %></td>
+                                <td style="padding: 6px 10px; text-align: right; font-weight: 700; color: #059669;">₱<%= (Number(p.netPay) || 0).toFixed(2) %></td>
+                            </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+            </div>
+        <% } %>
+    </div>
+
+    <!-- Signatures Section -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 30px; font-size: 0.78rem;">
+        <div style="text-align: center;">
+            <div style="margin-bottom: 30px; color: #64748b;">I declare under penalties of perjury that this certificate has been made in good faith, verified by me, and to the best of my knowledge and belief, is true and correct:</div>
+            <div style="border-top: 1px solid #0f172a; padding-top: 4px; font-weight: 800; color: #0f172a;">
+                <%= employee.name.toUpperCase() %>
+            </div>
+            <div style="color: #64748b;">Signature of Employee / Taxpayer</div>
+        </div>
+        <div style="text-align: center;">
+            <div style="margin-bottom: 30px; color: #64748b;">I declare under penalties of perjury that I have examined this certificate and to the best of my knowledge and belief, is true, correct, and compliant with BIR regulations:</div>
+            <div style="border-top: 1px solid #0f172a; padding-top: 4px; font-weight: 800; color: #0f172a;">
+                GEZYNE CLINICAL LABORATORY / HR HEAD
+            </div>
+            <div style="color: #64748b;">Signature of Employer / Authorized Representative</div>
+        </div>
+    </div>
+</div>
+
+<script>
+function changeYear(y) {
+    const parts = window.location.pathname.split('/');
+    // /hr/print/tax-summary/:employeeId/:year
+    parts[4] = y;
+    window.location.href = parts.join('/');
+}
+</script>
+
+<style>
+@media print {
+    body {
+        margin: 0;
+        padding: 0;
+        background: white;
+    }
+    .no-print, .sidebar, .header, #fullscreenBtn, .hamburger {
+        display: none !important;
+    }
+    .main-content {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    .content-wrapper {
+        border: none !important;
+        box-shadow: none !important;
+        padding: 10px !important;
+        max-width: 100% !important;
+    }
+}
+</style>

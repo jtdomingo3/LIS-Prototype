@@ -1,0 +1,152 @@
+<div class="content-wrapper" style="padding: 30px; max-width: 850px; margin: 0 auto; background: white; font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border-radius: 8px;">
+    <!-- Print controls -->
+    <div class="no-print" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid #e2e8f0;">
+        <button onclick="window.history.back()" style="padding: 6px 14px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600; cursor: pointer;">
+            ← Back
+        </button>
+        <button onclick="window.print()" style="padding: 8px 18px; background: #4f46e5; color: white; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+            <span>🖨️</span> Print Clearance Form
+        </button>
+    </div>
+
+    <!-- Official Header -->
+    <div style="text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 14px; margin-bottom: 20px;">
+        <div style="font-size: 1.35rem; font-weight: 800; color: #0f172a; letter-spacing: 0.5px; text-transform: uppercase;">
+            GEZYNE CLINICAL LABORATORY
+        </div>
+        <div style="font-size: 0.8rem; color: #475569;">DOH Licensed Clinical Diagnostic Laboratory • Republic of the Philippines</div>
+        <div style="font-size: 1.1rem; font-weight: 800; color: #b45309; margin-top: 8px; text-transform: uppercase; letter-spacing: 1px;">
+            EMPLOYEE EXIT CLEARANCE & ACCOUNTABILITY CHECKLIST
+        </div>
+        <div style="font-size: 0.78rem; color: #64748b; margin-top: 2px;">
+            Mandatory clearance form prior to the release of Final Pay, BIR Form 2316, and Certificate of Employment
+        </div>
+    </div>
+
+    <!-- Employee Information Grid -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 0.85rem; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px;">
+        <div>
+            <div><strong>Employee Name:</strong> <span style="font-weight: 700; color: #0f172a;"><%= employee.name %></span></div>
+            <div><strong>Employee ID:</strong> <%= employee.employeeCode %></div>
+            <div><strong>Position:</strong> <%= employee.position || 'Laboratory Staff' %></div>
+            <div><strong>Department:</strong> <%= employee.department || 'Clinical Laboratory' %></div>
+        </div>
+        <div>
+            <div><strong>Date Hired:</strong> <%= employee.dateHired || '—' %></div>
+            <div><strong>Separation Date:</strong> <%= employee.dateTerminated || currentDate %></div>
+            <div><strong>Employment Status:</strong> <%= employee.employmentStatus %></div>
+            <div><strong>Reason for Clearance:</strong> <%= employee.employmentStatus === 'Resigned' ? 'Voluntary Resignation' : 'Separation / End of Contract' %></div>
+        </div>
+    </div>
+
+    <!-- Instructions Notice -->
+    <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 8px 12px; font-size: 0.78rem; color: #92400e; margin-bottom: 20px; border-radius: 4px;">
+        <strong>Instructions for Resigning/Separating Employee:</strong> Obtain clearance signatures from all designated department heads and in-charges below. Completed and signed form must be submitted to the HR Department.
+    </div>
+
+    <!-- 11-Point Clearance Checklist Table -->
+    <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-bottom: 24px;">
+        <thead>
+            <tr style="background: #0f172a; color: white;">
+                <th style="padding: 8px 10px; width: 35px; text-align: center;">#</th>
+                <th style="padding: 8px 10px; text-align: left; width: 32%;">Department / Accountability</th>
+                <th style="padding: 8px 10px; text-align: left; width: 28%;">Items & Responsibilities</th>
+                <th style="padding: 8px 10px; text-align: center; width: 15%;">Status</th>
+                <th style="padding: 8px 10px; text-align: center; width: 25%;">Officer Signature & Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% 
+                const checklist = [
+                    { num: 1, dept: 'Laboratory / Clinical Unit', head: 'Chief Medical Technologist', items: 'Reagent turnover, laboratory equipment, glassware, bench logbooks' },
+                    { num: 2, dept: 'Radiology / Imaging', head: 'Chief RadTech / RSO', items: 'X-ray accessories, lead aprons, TLD radiation badge return' },
+                    { num: 3, dept: 'Information Technology', head: 'LIS System Admin', items: 'Revocation of LIS login account, email deactivation, password reset' },
+                    { num: 4, dept: 'Facilities & Security', head: 'Facilities Officer', items: 'Building keys, locker keys, laboratory door pass / RFID badges' },
+                    { num: 5, dept: 'Administration & HR', head: 'Supply / HR Assistant', items: 'Return of company ID, scrub suits, laboratory coats, name tags' },
+                    { num: 6, dept: 'Reception & Medical Records', head: 'Records Supervisor', items: 'Turnover of patient physical charts, test registers, release logbooks' },
+                    { num: 7, dept: 'Finance & Cashiering', head: 'Cashier / Petty Cash Custodian', items: 'Settlement of petty cash advances, daily collection turnover' },
+                    { num: 8, dept: 'Payroll & Accounting', head: 'Payroll Officer', items: 'Settlement of company loans, salary deductions, travel liquidation' },
+                    { num: 9, dept: 'Statutory Compliance', head: 'HR Benefits Officer', items: 'SSS, PhilHealth, Pag-IBIG contributions up-to-date, BIR 2316 prep' },
+                    { num: 10, dept: 'Human Resources Management', head: 'HR Manager', items: 'Exit interview conducted, handover documentation endorsed' },
+                    { num: 11, dept: 'Executive Management', head: 'Medical Director / Owner', items: 'Final authorization for release of separation pay and final check' }
+                ];
+
+                checklist.forEach(function(item, idx) {
+            %>
+                <tr style="border-bottom: 1px solid #cbd5e1; <%= idx % 2 === 1 ? 'background: #f8fafc;' : '' %>">
+                    <td style="padding: 8px 6px; text-align: center; font-weight: 700; color: #475569;"><%= item.num %></td>
+                    <td style="padding: 8px 10px;">
+                        <strong style="color: #1e293b;"><%= item.dept %></strong>
+                        <div style="font-size: 0.72rem; color: #64748b;"><%= item.head %></div>
+                    </td>
+                    <td style="padding: 8px 10px; color: #475569; font-size: 0.78rem;">
+                        <%= item.items %>
+                    </td>
+                    <td style="padding: 8px 10px; text-align: center;">
+                        <div style="display: inline-flex; gap: 6px; font-size: 0.72rem;">
+                            <label><input type="checkbox" checked style="accent-color: #10b981;"> Cleared</label>
+                        </div>
+                    </td>
+                    <td style="padding: 8px 10px; text-align: center;">
+                        <div style="height: 18px;"></div>
+                        <div style="border-top: 1px solid #94a3b8; font-size: 0.68rem; color: #64748b; padding-top: 2px;">
+                            Signature / Date
+                        </div>
+                    </td>
+                </tr>
+            <% }); %>
+        </tbody>
+    </table>
+
+    <!-- Employee Quitclaim & Waiver Section -->
+    <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 14px; background: #f8fafc; margin-bottom: 24px;">
+        <div style="font-size: 0.82rem; font-weight: 800; color: #0f172a; margin-bottom: 6px; text-transform: uppercase;">
+            Employee Acknowledgment, Waiver & Quitclaim Statement
+        </div>
+        <p style="font-size: 0.76rem; color: #475569; line-height: 1.5; text-align: justify; margin: 0 0 14px 0;">
+            I hereby acknowledge that I have turned over all company property, equipment, supplies, records, and proprietary laboratory information in my custody. Upon receipt of my full and final pay, I unconditionally release and discharge Gezyne Clinical Laboratory from any and all claims, actions, or liabilities arising out of or in connection with my employment.
+        </p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 18px;">
+            <div style="text-align: center;">
+                <div style="border-top: 1px solid #334155; padding-top: 4px; font-weight: 700; font-size: 0.82rem; color: #0f172a;">
+                    <%= employee.name.toUpperCase() %>
+                </div>
+                <div style="font-size: 0.72rem; color: #64748b;">Signature of Resigned/Separated Employee & Date</div>
+            </div>
+            <div style="text-align: center;">
+                <div style="border-top: 1px solid #334155; padding-top: 4px; font-weight: 700; font-size: 0.82rem; color: #0f172a;">
+                    LABORATORY DIRECTOR / HR HEAD
+                </div>
+                <div style="font-size: 0.72rem; color: #64748b;">Authorized Management Clearance Sign-off & Date</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer Notes -->
+    <div style="font-size: 0.7rem; color: #94a3b8; text-align: center;">
+        Form Ref: CLR-<%= employee.employeeCode %>-<%= new Date().getFullYear() %> • Gezyne Clinical Laboratory HR Records
+    </div>
+</div>
+
+<style>
+@media print {
+    body {
+        margin: 0;
+        padding: 0;
+        background: white;
+    }
+    .no-print, .sidebar, .header, #fullscreenBtn, .hamburger {
+        display: none !important;
+    }
+    .main-content {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    .content-wrapper {
+        border: none !important;
+        box-shadow: none !important;
+        padding: 10px !important;
+        max-width: 100% !important;
+    }
+}
+</style>

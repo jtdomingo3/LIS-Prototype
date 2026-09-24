@@ -152,7 +152,8 @@ async function processMaintenanceFlags() {
           permissions: {
             dashboard: true, patients: true, reception: true,
             tests: true, reports: true, worksheet: true,
-            templates: true, inventory: true, equipment: true, users: true, delete: true
+            templates: true, inventory: true, equipment: true, users: true, delete: true,
+            costing: true, hr: true
           },
           createdAt: new Date().toISOString(),
           lastLogin: null
@@ -165,7 +166,8 @@ async function processMaintenanceFlags() {
         admin.permissions = {
           dashboard: true, patients: true, reception: true,
           tests: true, reports: true, worksheet: true,
-          templates: true, inventory: true, equipment: true, users: true, delete: true
+          templates: true, inventory: true, equipment: true, users: true, delete: true,
+          costing: true, hr: true
         };
       }
       db.saveUsers(existing);
@@ -206,7 +208,8 @@ async function processMaintenanceFlags() {
         permissions: {
           dashboard: true, patients: true, reception: true,
           tests: true, reports: true, worksheet: true,
-          templates: true, inventory: true, equipment: true, users: true, delete: true
+          templates: true, inventory: true, equipment: true, users: true, delete: true,
+          costing: true, hr: true
         },
         createdAt: new Date().toISOString(),
         lastLogin: null
@@ -406,6 +409,9 @@ const staticCacheOpts = {
 };
 app.use(express.static(path.join(__dirname, 'public'), staticCacheOpts));
 app.use('/assets', express.static(path.join(__dirname, 'assets'), staticCacheOpts));
+const hrDocsDir = path.join(DATA_DIR, 'hr-documents');
+try { fs.mkdirSync(hrDocsDir, { recursive: true }); } catch (e) {}
+app.use('/hr-documents', express.static(hrDocsDir, staticCacheOpts));
 
 // Simple request logger to help debug routes and payloads with sensitive field masking
 function maskSensitive(obj) {
@@ -646,7 +652,9 @@ app.locals.featureFlags = {
   templates: true,
   users: true,
   worksheet: true,
-  inventory: true
+  inventory: true,
+  costing: true,
+  hr: true
 };
 
 // Expose current feature flags to all views via res.locals
@@ -773,7 +781,9 @@ const routePermissionMap = [
   { prefix: '/inventory', perm: 'inventory' },
   { prefix: '/equipment', perm: 'equipment' },
   { prefix: '/users', perm: 'users' },
-  { prefix: '/worksheet', perm: 'worksheet' }
+  { prefix: '/worksheet', perm: 'worksheet' },
+  { prefix: '/costing', perm: 'costing' },
+  { prefix: '/hr', perm: 'hr' }
 ];
 
 app.use((req, res, next) => {
@@ -798,6 +808,12 @@ app.use((req, res, next) => {
     // Allow users to access their own profile regardless of broader '/users' permission
     if (path.indexOf('/users/profile') === 0) {
       console.debug('[auth-guard] allowing /users/profile for authenticated users');
+      return next();
+    }
+
+    // Allow authenticated staff to access their own HR self-service portal & printable records
+    if (path.indexOf('/hr/my') === 0 || path.indexOf('/hr/print/') === 0) {
+      console.debug('[auth-guard] allowing staff self-service HR access');
       return next();
     }
 
@@ -837,6 +853,12 @@ app.use((req, res, next) => {
     // Allow Admin role everywhere
     if (sessionUser.role === 'Admin') {
       console.debug('[auth-guard] allowing Admin user');
+      return next();
+    }
+
+    // Allow management access to Costing & HR
+    if (['costing', 'hr'].includes(mapping.perm) && isManagement) {
+      console.debug(`[auth-guard] allowing management access to ${mapping.perm}`);
       return next();
     }
 
@@ -890,6 +912,8 @@ const chatbotRoutes = require('./routes/chatbot');
 const inventoryRoutes = require('./routes/inventory');
 const equipmentRoutes = require('./routes/equipment');
 const consultationRoutes = require('./routes/consultations');
+const costingRoutes = require('./routes/costing');
+const hrRoutes = require('./routes/hr');
 
 app.use('/', authRoutes);
 app.use('/dashboard', dashboardRoutes);
@@ -906,6 +930,8 @@ app.use('/chatbot', chatbotRoutes);
 app.use('/inventory', inventoryRoutes);
 app.use('/equipment', equipmentRoutes);
 app.use('/api/equipment', equipmentRoutes);
+app.use('/costing', costingRoutes);
+app.use('/hr', hrRoutes);
 
 // POST /api/internal/maintenance/execute – executes pending maintenance flags immediately from localhost
 app.post('/api/internal/maintenance/execute', async (req, res) => {
@@ -959,7 +985,8 @@ app.post('/api/restore/users', async (req, res) => {
         permissions: {
           dashboard: true, patients: true, reception: true,
           tests: true, reports: true, worksheet: true,
-          templates: true, inventory: true, equipment: true, users: true, delete: true
+          templates: true, inventory: true, equipment: true, users: true, delete: true,
+          costing: true, hr: true
         },
         status: 'Active',
         createdAt: new Date().toISOString(),

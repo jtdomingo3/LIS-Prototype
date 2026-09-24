@@ -1,0 +1,934 @@
+<div class="dtr-page-wrapper" style="width: 100%; box-sizing: border-box;">
+    <!-- Print Stylesheet specifically for Philippine Civil Service Form No. 48 -->
+    <style>
+        @media print {
+            body {
+                background: white !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            .sidebar, .header, .top-header, .flash-message, .no-print, .btn, #dtrControls, #dtrKpiBar {
+                display: none !important;
+            }
+            .main-content {
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+            }
+            .dtr-page-wrapper {
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .ph-dtr-grid {
+                display: flex !important;
+                flex-direction: row !important;
+                justify-content: center !important;
+                gap: 20px !important;
+                width: 100% !important;
+            }
+            .ph-dtr-sheet {
+                box-shadow: none !important;
+                border: 1px solid #000 !important;
+                padding: 12px 14px !important;
+                page-break-inside: avoid !important;
+                width: 48% !important;
+                max-width: 48% !important;
+            }
+            .ph-dtr-table {
+                font-size: 8pt !important;
+            }
+            .ph-dtr-table th, .ph-dtr-table td {
+                padding: 1px 2px !important;
+                line-height: 1.15 !important;
+            }
+            .dashed-row {
+                border-bottom: 1px dashed #000 !important;
+            }
+            @page {
+                size: letter portrait;
+                margin: 0.3in 0.3in 0.3in 0.3in;
+            }
+        }
+
+        /* Screen Styles for Philippine CSC Form 48 */
+        .ph-dtr-sheet {
+            background: #ffffff;
+            border: 1.5px solid #1e293b;
+            border-radius: 4px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            padding: 20px 24px;
+            box-sizing: border-box;
+            font-family: 'Times New Roman', Times, 'Liberation Serif', serif;
+            color: #000000;
+        }
+
+        .ph-dtr-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 2px solid #000000;
+            font-size: 0.82rem;
+            margin-top: 8px;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .ph-dtr-table th {
+            background: #ffffff;
+            color: #000000;
+            font-weight: 700;
+            text-align: center;
+            border-top: 2px solid #000000;
+            border-bottom: 1.5px solid #000000;
+            padding: 4px 2px;
+            line-height: 1.15;
+        }
+
+        .ph-dtr-table td {
+            padding: 2px 4px;
+            height: 20px;
+            line-height: 1.15;
+            font-size: 0.8rem;
+            color: #000000;
+        }
+
+        .dashed-row {
+            border-bottom: 1px dashed #64748b;
+        }
+
+        .dashed-row:hover {
+            background-color: #f8fafc;
+            cursor: pointer;
+        }
+
+        /* Philippine CSC Form 48 Border Conventions */
+        .b-double-r {
+            border-right: 3px double #000000 !important;
+        }
+        .b-solid-r {
+            border-right: 1px solid #000000 !important;
+        }
+        .b-solid-b {
+            border-bottom: 2px solid #000000 !important;
+        }
+        .b-solid-t {
+            border-top: 2px solid #000000 !important;
+        }
+
+        .action-hover-btn {
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+        .dashed-row:hover .action-hover-btn {
+            opacity: 1;
+        }
+    </style>
+
+    <!-- Top Management & Staff Control Bar (Hidden on Print) -->
+    <div id="dtrControls" class="no-print" style="margin-bottom: 18px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 12px;">
+            <div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <a href="/hr/my" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #e0e7ff; color: #4338ca; border-radius: 8px; font-weight: 700; font-size: 0.85rem; text-decoration: none;">
+                        ← Back to My HR Portal
+                    </a>
+                    <% if (isManagement) { %>
+                        <a href="/hr" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: #f1f5f9; color: #475569; border-radius: 8px; font-weight: 600; font-size: 0.85rem; text-decoration: none;">
+                            HR Panel
+                        </a>
+                    <% } %>
+                </div>
+                <h2 style="margin: 8px 0 0 0; font-size: 1.45rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                    <span>🇵🇭</span> Civil Service Form No. 48 (Daily Time Record)
+                </h2>
+                <div style="font-size: 0.85rem; color: #64748b; margin-top: 2px;">
+                    Official Philippine Standard DTR for <strong><%= employee.name %></strong> (<%= employee.position || 'Staff' %> • <%= employee.department %>)
+                </div>
+            </div>
+
+            <!-- Action Buttons & Selectors -->
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <!-- Month Filter Form -->
+                <form action="/hr/my/dtr" method="GET" style="display: inline-flex; align-items: center; gap: 6px; margin: 0;">
+                    <% if (isManagement && typeof employee !== 'undefined' && employee.id) { %>
+                        <input type="hidden" name="employeeId" value="<%= employee.id %>">
+                    <% } %>
+                    <input type="month" name="month" value="<%= selectedMonth %>" onchange="this.form.submit()" style="height: 38px; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.88rem; font-weight: 700; color: #1e1b4b; background: white; cursor: pointer;">
+                </form>
+
+                <!-- Management Employee Switcher -->
+                <% if (isManagement && typeof allEmployees !== 'undefined' && allEmployees.length > 0) { %>
+                    <form action="/hr/my/dtr" method="GET" style="display: inline-flex; align-items: center; margin: 0;">
+                        <input type="hidden" name="month" value="<%= selectedMonth %>">
+                        <select name="employeeId" onchange="this.form.submit()" style="height: 38px; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem; font-weight: 600; background: white; color: #0f172a; cursor: pointer;">
+                            <% allEmployees.forEach(emp => { %>
+                                <option value="<%= emp.id %>" <%= emp.id === employee.id ? 'selected' : '' %>>
+                                    <%= emp.name %> (<%= emp.position || 'Staff' %>)
+                                </option>
+                            <% }) %>
+                        </select>
+                    </form>
+                <% } %>
+
+                <!-- View Mode Toggle (1-Up vs 2-Up Side-by-Side) -->
+                <div style="display: inline-flex; background: #e2e8f0; border-radius: 8px; padding: 2px;">
+                    <button type="button" id="btnMode1Up" onclick="switchDtrViewMode('1up')" style="padding: 6px 12px; border: none; border-radius: 6px; font-size: 0.8rem; font-weight: 700; cursor: pointer; background: #ffffff; color: #0f172a; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">
+                        📄 Single Card
+                    </button>
+                    <button type="button" id="btnMode2Up" onclick="switchDtrViewMode('2up')" style="padding: 6px 12px; border: none; border-radius: 6px; font-size: 0.8rem; font-weight: 700; cursor: pointer; background: transparent; color: #64748b;">
+                        📑 2-Up (PH CSC Standard)
+                    </button>
+                </div>
+
+                <!-- Log Punch Modal Button -->
+                <button type="button" onclick="openDtrModal('', '08:00', '12:00', '13:00', '17:00', '')" style="height: 38px; padding: 0 14px; background: #059669; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(5, 150, 105, 0.25);">
+                    <span>➕</span> Add / Correct Punch
+                </button>
+
+                <!-- Print Form 48 Button -->
+                <button type="button" onclick="printPhDtr()" style="height: 38px; padding: 0 14px; background: #0f172a; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.85rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.25);">
+                    <span>🖨️</span> Print CSC Form 48
+                </button>
+            </div>
+        </div>
+
+        <!-- Compact Summary & Compliance Bar -->
+        <div id="dtrKpiBar" style="background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-size: 0.84rem;">
+            <div style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap;">
+                <span><strong>Completed Duties:</strong> <span style="color: #059669; font-weight: 800;"><%= stats.completedDuties %></span> (<%= stats.full8HourDuties %> Full 8-hr)</span>
+                <span style="color: #cbd5e1;">|</span>
+                <span><strong>Valid Duty Rendered:</strong> <span style="color: #4f46e5; font-weight: 800;"><%= Number(stats.totalRenderedHours || 0).toFixed(1) %> hrs</span></span>
+                <% if (stats.totalOvertimeHours > 0) { %>
+                    <span style="color: #2563eb; font-weight: 700; font-size: 0.78rem;">(+<%= Number(stats.totalOvertimeHours).toFixed(1) %>h Approved OT)</span>
+                <% } %>
+                <span style="color: #cbd5e1;">|</span>
+                <span><strong>Undertime:</strong> <span style="color: <%= stats.totalUndertimeMins > 0 ? '#d97706' : '#64748b' %>; font-weight: 800;"><%= stats.totalUndertimeHours %>h <%= stats.totalUndertimeRemMinutes %>m</span></span>
+                <span style="color: #cbd5e1;">|</span>
+                <span><strong>Accrued Compensation:</strong> 
+                    <% if (employee.payType === 'Commission Only' || employee.isPayrollExempt) { %>
+                        <span style="color: #64748b; font-weight: 700;">Commission Only (Exempt)</span>
+                    <% } else if (employee.payType === 'Fixed Monthly') { %>
+                        <span style="color: #047857; font-weight: 800;">₱<%= (Number(stats.accruedPay) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></span> (Monthly Retainer)
+                    <% } else { %>
+                        <span style="color: #047857; font-weight: 800;">₱<%= (Number(stats.accruedPay) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></span> (₱<%= Number(employee.dailyRate || 0).toFixed(2) %>/duty)
+                    <% } %>
+                </span>
+            </div>
+
+            <!-- Weekly Compliance Badge -->
+            <% if (!stats.isDoctor) { %>
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 0.78rem;">
+                    <span style="color: #64748b; font-weight: 600;">Max 5 Duties/Wk:</span>
+                    <% for (let w = 1; w <= 5; w++) { 
+                        const cnt = stats.weekDutyCounts[w] || 0;
+                        const ok = cnt <= stats.maxDaysPerWeek;
+                    %>
+                        <span style="padding: 1px 6px; border-radius: 4px; font-weight: 700; <%= ok ? (cnt > 0 ? 'background: #dcfce7; color: #166534;' : 'background: #f1f5f9; color: #64748b;') : 'background: #fee2e2; color: #991b1b;' %>">
+                            W<%= w %>:<%= cnt %>
+                        </span>
+                    <% } %>
+                </div>
+            <% } else { %>
+                <span style="background: #e0e7ff; color: #4338ca; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">
+                    Doctor Retainer (Exempt from 5-day week limit)
+                </span>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- DTR Card Container (1-Up Centered OR 2-Up Side-by-Side matching Philippine CSC Form 48) -->
+    <div id="dtrGridContainer" class="ph-dtr-grid" style="display: flex; justify-content: center; gap: 24px; width: 100%; box-sizing: border-box;">
+        
+        <!-- ======================= FORM COPY 1 ======================= -->
+        <div class="ph-dtr-sheet" style="width: 100%; max-width: 540px; box-sizing: border-box;">
+            <!-- Form Header -->
+            <div style="font-size: 0.76rem; font-style: italic; margin-bottom: 2px;">
+                Civil Service Form No. 48
+            </div>
+
+            <div style="text-align: center; margin-bottom: 6px;">
+                <div style="font-size: 1.15rem; font-weight: 900; letter-spacing: 0.05em; display: inline-block; border-bottom: 2px solid #000000; padding-bottom: 1px;">
+                    DAILY TIME RECORD
+                </div>
+            </div>
+
+            <!-- Employee Name Line -->
+            <div style="margin-top: 10px; text-align: center;">
+                <div style="border-bottom: 1px dashed #000000; padding-bottom: 2px; font-size: 1.02rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;">
+                    <%= employee.name %>
+                </div>
+                <div style="font-size: 0.74rem; font-style: italic; margin-top: 1px; color: #333333;">
+                    (Name)
+                </div>
+            </div>
+
+            <!-- Month & Official Hours Block -->
+            <div style="margin-top: 8px; font-size: 0.82rem; line-height: 1.35;">
+                <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                    <div>
+                        For the month of <span style="border-bottom: 1px solid #000; font-weight: 700; padding: 0 8px;"><%= monthName %></span>, 20<span style="border-bottom: 1px solid #000; font-weight: 700; padding: 0 4px;"><%= String(year).slice(-2) %></span>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 3px;">
+                    <div style="width: 48%;">
+                        Official hours for arrival<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;and departure
+                    </div>
+                    <div style="width: 52%; text-align: right;">
+                        Regular Days: <span style="border-bottom: 1px solid #000; font-weight: 600; padding: 0 4px;">8:00 AM - 5:00 PM</span><br>
+                        Saturdays: <span style="border-bottom: 1px solid #000; font-weight: 600; padding: 0 4px;">As scheduled / Off</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Standard Philippine CSC Form 48 Table -->
+            <table class="ph-dtr-table">
+                <thead>
+                    <tr>
+                        <th rowspan="2" class="b-double-r" style="width: 42px;">Days</th>
+                        <th colspan="2" class="b-double-r">A. M.</th>
+                        <th colspan="2" class="b-double-r">P. M.</th>
+                        <th colspan="2" style="width: 90px;">UNDER TIME</th>
+                        <th rowspan="2" class="no-print" style="width: 32px; background: #f8fafc; font-size: 0.7rem; border-left: 1px solid #cbd5e1;">Edit</th>
+                    </tr>
+                    <tr>
+                        <th class="b-solid-r" style="width: 60px; font-size: 0.72rem;">ARRIVAL</th>
+                        <th class="b-double-r" style="width: 65px; font-size: 0.72rem;">DEPARTURE</th>
+                        <th class="b-solid-r" style="width: 60px; font-size: 0.72rem;">ARRIVAL</th>
+                        <th class="b-double-r" style="width: 65px; font-size: 0.72rem;">DEPARTURE</th>
+                        <th class="b-solid-r" style="width: 45px; font-size: 0.72rem;">Hours</th>
+                        <th style="width: 45px; font-size: 0.72rem;">Minutes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% dayRows.forEach(row => { 
+                        const r = row.record;
+                        const hasDuty = r && (r.amIn || r.pmIn || r.totalHours > 0);
+                    %>
+                        <tr class="dashed-row" 
+                            <% if (!row.isPastMonthEnd) { %>
+                                onclick="openDtrModal('<%= row.date %>', '<%= r ? r.amIn : '' %>', '<%= r ? r.amOut : '' %>', '<%= r ? r.pmIn : '' %>', '<%= r ? r.pmOut : '' %>', '<%= r && r.notes ? r.notes.replace(/'/g, "\\'") : '' %>', '<%= r && r.isOtApproved ? '1' : '0' %>', '<%= r && r.approvedOtHours ? r.approvedOtHours : '' %>', '<%= r ? r.totalHours : '' %>', '<%= r ? (r.rawTotalHours || r.totalHours) : '' %>')"
+                                title="Click to log or correct duty punches for day <%= row.dayNum %>"
+                            <% } %>>
+                            
+                            <!-- Day Number (1 - 31) -->
+                            <td class="b-double-r" style="text-align: center; font-weight: 700; <%= row.isWeekend ? 'color: #475569;' : '' %>">
+                                <%= row.dayNum %>
+                            </td>
+
+                            <% if (row.isPastMonthEnd) { %>
+                                <!-- Blank beyond end of month -->
+                                <td class="b-solid-r" style="text-align: center; color: #cbd5e1;">—</td>
+                                <td class="b-double-r" style="text-align: center; color: #cbd5e1;">—</td>
+                                <td class="b-solid-r" style="text-align: center; color: #cbd5e1;">—</td>
+                                <td class="b-double-r" style="text-align: center; color: #cbd5e1;">—</td>
+                                <td class="b-solid-r"></td>
+                                <td></td>
+                                <td class="no-print"></td>
+                            <% } else if (hasDuty) { %>
+                                <!-- Punches Present -->
+                                <td class="b-solid-r" style="text-align: center; font-weight: 600;">
+                                    <%= r.amIn || '—' %>
+                                </td>
+                                <td class="b-double-r" style="text-align: center; font-weight: 600;">
+                                    <%= r.amOut || '—' %>
+                                </td>
+                                <td class="b-solid-r" style="text-align: center; font-weight: 600;">
+                                    <%= r.pmIn || '—' %>
+                                </td>
+                                <td class="b-double-r" style="text-align: center; font-weight: 600;">
+                                    <%= r.pmOut || '—' %>
+                                </td>
+                                <td class="b-solid-r" style="text-align: center; font-weight: 600; color: <%= row.underHours ? '#b91c1c' : '#000' %>;">
+                                    <%= row.underHours !== '' ? row.underHours : '' %>
+                                </td>
+                                <td style="text-align: center; font-weight: 600; color: <%= row.underMinutes ? '#b91c1c' : '#000' %>;">
+                                    <%= row.underMinutes !== '' ? row.underMinutes : '' %>
+                                </td>
+                                <td class="no-print" style="text-align: center; padding: 0;">
+                                    <button type="button" class="action-hover-btn" 
+                                        data-date="<%= row.date %>"
+                                        data-amin="<%= r ? r.amIn : '' %>"
+                                        data-amout="<%= r ? r.amOut : '' %>"
+                                        data-pmin="<%= r ? r.pmIn : '' %>"
+                                        data-pmout="<%= r ? r.pmOut : '' %>"
+                                        data-notes="<%= r && r.notes ? r.notes : '' %>"
+                                        data-isotapproved="<%= r && r.isOtApproved ? '1' : '0' %>"
+                                        data-approvedot="<%= r && r.approvedOtHours ? r.approvedOtHours : '' %>"
+                                        data-totalhours="<%= r ? r.totalHours : '' %>"
+                                        data-rawhours="<%= r ? (r.rawTotalHours || r.totalHours) : '' %>"
+                                        onclick="event.stopPropagation(); openDtrModalFromBtn(this);"
+                                        style="background: transparent; border: none; cursor: pointer; padding: 2px;">
+                                        ✏️
+                                    </button>
+                                </td>
+                            <% } else if (row.isWeekend) { %>
+                                <!-- Weekend Rest Day (Standard PH DTR notation) -->
+                                <td colspan="4" class="b-double-r" style="text-align: center; font-weight: 700; font-size: 0.75rem; letter-spacing: 0.12em; color: #64748b;">
+                                    <%= row.dayName === 'Sat' ? 'SATURDAY' : 'SUNDAY' %>
+                                </td>
+                                <td class="b-solid-r"></td>
+                                <td></td>
+                                <td class="no-print" style="text-align: center; padding: 0;">
+                                    <span class="action-hover-btn" style="font-size: 0.75rem; color: #4338ca;">✏️</span>
+                                </td>
+                            <% } else { %>
+                                <!-- Weekday with no duty logged yet -->
+                                <td class="b-solid-r" style="text-align: center; color: #94a3b8;"></td>
+                                <td class="b-double-r" style="text-align: center; color: #94a3b8;"></td>
+                                <td class="b-solid-r" style="text-align: center; color: #94a3b8;"></td>
+                                <td class="b-double-r" style="text-align: center; color: #94a3b8;"></td>
+                                <td class="b-solid-r"></td>
+                                <td></td>
+                                <td class="no-print" style="text-align: center; padding: 0;">
+                                    <span class="action-hover-btn" style="font-size: 0.75rem; color: #4338ca;">✏️</span>
+                                </td>
+                            <% } %>
+                        </tr>
+                    <% }) %>
+
+                    <!-- Total Row -->
+                    <tr class="b-solid-t b-solid-b" style="background: #ffffff; font-weight: 700;">
+                        <td colspan="5" class="b-double-r" style="text-align: left; padding-left: 12px; font-weight: 800; letter-spacing: 0.05em;">
+                            TOTAL ....................................................................
+                        </td>
+                        <td class="b-solid-r" style="text-align: center; font-weight: 800;">
+                            <%= totalUndertimeHours > 0 ? totalUndertimeHours : '' %>
+                        </td>
+                        <td style="text-align: center; font-weight: 800;">
+                            <%= totalUndertimeRemMinutes > 0 ? totalUndertimeRemMinutes : '' %>
+                        </td>
+                        <td class="no-print"></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Bottom Certification & Signature Lines (Mandatory PH CSC Form 48) -->
+            <div style="margin-top: 14px; font-size: 0.78rem; line-height: 1.35;">
+                <p style="text-align: justify; font-style: italic; margin: 0 0 16px 0; text-indent: 20px;">
+                    I certify on my honor that the above is a true and correct report of the hours of work performed, record of which was made daily at the time of arrival and departure from office.
+                </p>
+
+                <!-- Employee Signature Line -->
+                <div style="width: 82%; margin: 26px auto 0 auto; text-align: center;">
+                    <div style="border-bottom: 1.5px solid #000000; padding-bottom: 2px; font-weight: 800; text-transform: uppercase;">
+                        <%= employee.name %>
+                    </div>
+                    <div style="font-size: 0.74rem; font-style: italic; margin-top: 2px;">
+                        (Signature of Employee)
+                    </div>
+                </div>
+
+                <!-- Verification Block -->
+                <div style="margin-top: 18px;">
+                    <div style="font-style: italic; font-size: 0.78rem;">
+                        Verified as to the prescribed office hours:
+                    </div>
+                    <div style="width: 82%; margin: 26px auto 0 auto; text-align: center;">
+                        <div style="border-bottom: 1.5px solid #000000; padding-bottom: 2px; font-weight: 800; text-transform: uppercase;">
+                            <%= employee.department === 'Clinical Laboratory' ? 'Pathologist / Laboratory Director' : 'HR Officer / Head of Clinic' %>
+                        </div>
+                        <div style="font-size: 0.74rem; font-style: italic; margin-top: 2px;">
+                            In Charge
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======================= FORM COPY 2 (Only visible in 2-Up mode matching uploaded picture) ======================= -->
+        <div id="dtrCopy2" class="ph-dtr-sheet" style="display: none; width: 100%; max-width: 540px; box-sizing: border-box;">
+            <!-- Form Header -->
+            <div style="font-size: 0.76rem; font-style: italic; margin-bottom: 2px;">
+                Civil Service Form No. 48
+            </div>
+
+            <div style="text-align: center; margin-bottom: 6px;">
+                <div style="font-size: 1.15rem; font-weight: 900; letter-spacing: 0.05em; display: inline-block; border-bottom: 2px solid #000000; padding-bottom: 1px;">
+                    DAILY TIME RECORD
+                </div>
+            </div>
+
+            <!-- Employee Name Line -->
+            <div style="margin-top: 10px; text-align: center;">
+                <div style="border-bottom: 1px dashed #000000; padding-bottom: 2px; font-size: 1.02rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;">
+                    <%= employee.name %>
+                </div>
+                <div style="font-size: 0.74rem; font-style: italic; margin-top: 1px; color: #333333;">
+                    (Name)
+                </div>
+            </div>
+
+            <!-- Month & Official Hours Block -->
+            <div style="margin-top: 8px; font-size: 0.82rem; line-height: 1.35;">
+                <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                    <div>
+                        For the month of <span style="border-bottom: 1px solid #000; font-weight: 700; padding: 0 8px;"><%= monthName %></span>, 20<span style="border-bottom: 1px solid #000; font-weight: 700; padding: 0 4px;"><%= String(year).slice(-2) %></span>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 3px;">
+                    <div style="width: 48%;">
+                        Official hours for arrival<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;and departure
+                    </div>
+                    <div style="width: 52%; text-align: right;">
+                        Regular Days: <span style="border-bottom: 1px solid #000; font-weight: 600; padding: 0 4px;">8:00 AM - 5:00 PM</span><br>
+                        Saturdays: <span style="border-bottom: 1px solid #000; font-weight: 600; padding: 0 4px;">As scheduled / Off</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table Duplicate -->
+            <table class="ph-dtr-table">
+                <thead>
+                    <tr>
+                        <th rowspan="2" class="b-double-r" style="width: 42px;">Days</th>
+                        <th colspan="2" class="b-double-r">A. M.</th>
+                        <th colspan="2" class="b-double-r">P. M.</th>
+                        <th colspan="2" style="width: 90px;">UNDER TIME</th>
+                        <th rowspan="2" class="no-print" style="width: 32px; background: #f8fafc; font-size: 0.7rem; border-left: 1px solid #cbd5e1;">Edit</th>
+                    </tr>
+                    <tr>
+                        <th class="b-solid-r" style="width: 60px; font-size: 0.72rem;">ARRIVAL</th>
+                        <th class="b-double-r" style="width: 65px; font-size: 0.72rem;">DEPARTURE</th>
+                        <th class="b-solid-r" style="width: 60px; font-size: 0.72rem;">ARRIVAL</th>
+                        <th class="b-double-r" style="width: 65px; font-size: 0.72rem;">DEPARTURE</th>
+                        <th class="b-solid-r" style="width: 45px; font-size: 0.72rem;">Hours</th>
+                        <th style="width: 45px; font-size: 0.72rem;">Minutes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% dayRows.forEach(row => { 
+                        const r = row.record;
+                        const hasDuty = r && (r.amIn || r.pmIn || r.totalHours > 0);
+                    %>
+                        <tr class="dashed-row" 
+                            <% if (!row.isPastMonthEnd) { %>
+                                onclick="openDtrModal('<%= row.date %>', '<%= r ? r.amIn : '' %>', '<%= r ? r.amOut : '' %>', '<%= r ? r.pmIn : '' %>', '<%= r ? r.pmOut : '' %>', '<%= r && r.notes ? r.notes.replace(/'/g, "\\'") : '' %>', '<%= r && r.isOtApproved ? '1' : '0' %>', '<%= r && r.approvedOtHours ? r.approvedOtHours : '' %>', '<%= r ? r.totalHours : '' %>', '<%= r ? (r.rawTotalHours || r.totalHours) : '' %>')"
+                            <% } %>>
+                            
+                            <td class="b-double-r" style="text-align: center; font-weight: 700; <%= row.isWeekend ? 'color: #475569;' : '' %>">
+                                <%= row.dayNum %>
+                            </td>
+
+                            <% if (row.isPastMonthEnd) { %>
+                                <td class="b-solid-r" style="text-align: center; color: #cbd5e1;">—</td>
+                                <td class="b-double-r" style="text-align: center; color: #cbd5e1;">—</td>
+                                <td class="b-solid-r" style="text-align: center; color: #cbd5e1;">—</td>
+                                <td class="b-double-r" style="text-align: center; color: #cbd5e1;">—</td>
+                                <td class="b-solid-r"></td>
+                                <td></td>
+                                <td class="no-print"></td>
+                            <% } else if (hasDuty) { %>
+                                <td class="b-solid-r" style="text-align: center; font-weight: 600;">
+                                    <%= r.amIn || '—' %>
+                                </td>
+                                <td class="b-double-r" style="text-align: center; font-weight: 600;">
+                                    <%= r.amOut || '—' %>
+                                </td>
+                                <td class="b-solid-r" style="text-align: center; font-weight: 600;">
+                                    <%= r.pmIn || '—' %>
+                                </td>
+                                <td class="b-double-r" style="text-align: center; font-weight: 600;">
+                                    <%= r.pmOut || '—' %>
+                                </td>
+                                <td class="b-solid-r" style="text-align: center; font-weight: 600; color: <%= row.underHours ? '#b91c1c' : '#000' %>;">
+                                    <%= row.underHours !== '' ? row.underHours : '' %>
+                                </td>
+                                <td style="text-align: center; font-weight: 600; color: <%= row.underMinutes ? '#b91c1c' : '#000' %>;">
+                                    <%= row.underMinutes !== '' ? row.underMinutes : '' %>
+                                </td>
+                                <td class="no-print" style="text-align: center; padding: 0;">
+                                    <button type="button" class="action-hover-btn" 
+                                        data-date="<%= row.date %>"
+                                        data-amin="<%= r ? r.amIn : '' %>"
+                                        data-amout="<%= r ? r.amOut : '' %>"
+                                        data-pmin="<%= r ? r.pmIn : '' %>"
+                                        data-pmout="<%= r ? r.pmOut : '' %>"
+                                        data-notes="<%= r && r.notes ? r.notes : '' %>"
+                                        data-isotapproved="<%= r && r.isOtApproved ? '1' : '0' %>"
+                                        data-approvedot="<%= r && r.approvedOtHours ? r.approvedOtHours : '' %>"
+                                        data-totalhours="<%= r ? r.totalHours : '' %>"
+                                        data-rawhours="<%= r ? (r.rawTotalHours || r.totalHours) : '' %>"
+                                        onclick="event.stopPropagation(); openDtrModalFromBtn(this);"
+                                        style="background: transparent; border: none; cursor: pointer; padding: 2px;">
+                                        ✏️
+                                    </button>
+                                </td>
+                            <% } else if (row.isWeekend) { %>
+                                <td colspan="4" class="b-double-r" style="text-align: center; font-weight: 700; font-size: 0.75rem; letter-spacing: 0.12em; color: #64748b;">
+                                    <%= row.dayName === 'Sat' ? 'SATURDAY' : 'SUNDAY' %>
+                                </td>
+                                <td class="b-solid-r"></td>
+                                <td></td>
+                                <td class="no-print" style="text-align: center; padding: 0;">
+                                    <span class="action-hover-btn" style="font-size: 0.75rem; color: #4338ca;">✏️</span>
+                                </td>
+                            <% } else { %>
+                                <td class="b-solid-r" style="text-align: center; color: #94a3b8;"></td>
+                                <td class="b-double-r" style="text-align: center; color: #94a3b8;"></td>
+                                <td class="b-solid-r" style="text-align: center; color: #94a3b8;"></td>
+                                <td class="b-double-r" style="text-align: center; color: #94a3b8;"></td>
+                                <td class="b-solid-r"></td>
+                                <td></td>
+                                <td class="no-print" style="text-align: center; padding: 0;">
+                                    <span class="action-hover-btn" style="font-size: 0.75rem; color: #4338ca;">✏️</span>
+                                </td>
+                            <% } %>
+                        </tr>
+                    <% }) %>
+
+                    <tr class="b-solid-t b-solid-b" style="background: #ffffff; font-weight: 700;">
+                        <td colspan="5" class="b-double-r" style="text-align: left; padding-left: 12px; font-weight: 800; letter-spacing: 0.05em;">
+                            TOTAL ....................................................................
+                        </td>
+                        <td class="b-solid-r" style="text-align: center; font-weight: 800;">
+                            <%= totalUndertimeHours > 0 ? totalUndertimeHours : '' %>
+                        </td>
+                        <td style="text-align: center; font-weight: 800;">
+                            <%= totalUndertimeRemMinutes > 0 ? totalUndertimeRemMinutes : '' %>
+                        </td>
+                        <td class="no-print"></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Signature Lines -->
+            <div style="margin-top: 14px; font-size: 0.78rem; line-height: 1.35;">
+                <p style="text-align: justify; font-style: italic; margin: 0 0 16px 0; text-indent: 20px;">
+                    I certify on my honor that the above is a true and correct report of the hours of work performed, record of which was made daily at the time of arrival and departure from office.
+                </p>
+
+                <div style="width: 82%; margin: 26px auto 0 auto; text-align: center;">
+                    <div style="border-bottom: 1.5px solid #000000; padding-bottom: 2px; font-weight: 800; text-transform: uppercase;">
+                        <%= employee.name %>
+                    </div>
+                    <div style="font-size: 0.74rem; font-style: italic; margin-top: 2px;">
+                        (Signature of Employee)
+                    </div>
+                </div>
+
+                <div style="margin-top: 18px;">
+                    <div style="font-style: italic; font-size: 0.78rem;">
+                        Verified as to the prescribed office hours:
+                    </div>
+                    <div style="width: 82%; margin: 26px auto 0 auto; text-align: center;">
+                        <div style="border-bottom: 1.5px solid #000000; padding-bottom: 2px; font-weight: 800; text-transform: uppercase;">
+                            <%= employee.department === 'Clinical Laboratory' ? 'Pathologist / Laboratory Director' : 'HR Officer / Head of Clinic' %>
+                        </div>
+                        <div style="font-size: 0.74rem; font-style: italic; margin-top: 2px;">
+                            In Charge
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- DTR Correction & Entry Modal (Clean Modal) -->
+<div id="dtrModal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(2px); z-index: 9999; align-items: center; justify-content: center; padding: 16px;">
+    <div style="background: white; border-radius: 16px; width: 100%; max-width: 500px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); overflow: hidden;">
+        <!-- Modal Header -->
+        <div style="padding: 16px 22px; background: #0f172a; color: white; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 1.35rem;">⏱️</span>
+                <div>
+                    <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: white;">Log / Correct DTR (CSC Form 48)</h3>
+                    <div id="modalDtrSubtitle" style="font-size: 0.82rem; color: #94a3b8; margin-top: 2px;">
+                        Duty for: <%= employee.name %>
+                    </div>
+                </div>
+            </div>
+            <button type="button" onclick="closeDtrModal()" style="background: transparent; border: none; color: #94a3b8; font-size: 1.5rem; cursor: pointer; padding: 0 4px; line-height: 1;">&times;</button>
+        </div>
+
+        <!-- Modal Form -->
+        <form id="dtrModalForm" method="POST" action="/hr/my/dtr/correct" style="padding: 20px 22px; margin: 0;">
+            <% if (isManagement && typeof employee !== 'undefined' && employee.id) { %>
+                <input type="hidden" name="employeeIdOverride" value="<%= employee.id %>">
+            <% } %>
+
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+                <!-- Date Input -->
+                <div>
+                    <label style="display: block; font-size: 0.8rem; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 6px;">Duty Date *</label>
+                    <input type="date" name="date" id="dtrDate" required style="width: 100%; height: 38px; box-sizing: border-box; padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; font-weight: 600;">
+                </div>
+
+                <!-- Morning Shift (AM) -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+                    <div style="font-size: 0.8rem; font-weight: 700; color: #4338ca; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                        <span>🌅</span> Morning Shift (A. M.)
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; margin-bottom: 4px;">ARRIVAL (Time IN)</label>
+                            <input type="time" name="amIn" id="dtrAmIn" oninput="recomputeDtrModalHours()" style="width: 100%; height: 36px; box-sizing: border-box; padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.88rem; background: white;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; margin-bottom: 4px;">DEPARTURE (Time OUT)</label>
+                            <input type="time" name="amOut" id="dtrAmOut" oninput="recomputeDtrModalHours()" style="width: 100%; height: 36px; box-sizing: border-box; padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.88rem; background: white;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Afternoon Shift (PM) -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+                    <div style="font-size: 0.8rem; font-weight: 700; color: #0284c7; text-transform: uppercase; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+                        <span>☀️</span> Afternoon Shift (P. M.)
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; margin-bottom: 4px;">ARRIVAL (Time IN)</label>
+                            <input type="time" name="pmIn" id="dtrPmIn" oninput="recomputeDtrModalHours()" style="width: 100%; height: 36px; box-sizing: border-box; padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.88rem; background: white;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; margin-bottom: 4px;">DEPARTURE (Time OUT)</label>
+                            <input type="time" name="pmOut" id="dtrPmOut" oninput="recomputeDtrModalHours()" style="width: 100%; height: 36px; box-sizing: border-box; padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.88rem; background: white;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Auto-Calculation Box -->
+                <div id="dtrComputeBox" style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 10px; padding: 12px 16px; transition: all 0.2s ease;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.82rem; font-weight: 700; color: #065f46;">Credited Valid Duty:</span>
+                        <span id="dtrComputeHours" style="font-size: 1.15rem; font-weight: 800; color: #065f46;">0.0 hrs</span>
+                    </div>
+                    <div id="dtrComputeBadge" style="font-size: 0.8rem; font-weight: 700; color: #047857; margin-top: 4px;">
+                        Fill in punches above to compute duty credit.
+                    </div>
+                </div>
+
+                <!-- Head / Management Overtime Approval & Shift Adjustment (Owner/Manager/HR only) -->
+                <% if (isManagement) { %>
+                    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 12px 14px;">
+                        <div style="font-size: 0.78rem; font-weight: 700; color: #166534; text-transform: uppercase; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+                            <span>⚙️ Supervisor Overtime Approval</span>
+                            <span style="font-size: 0.7rem; background: #dcfce7; color: #166534; padding: 1px 6px; border-radius: 4px; font-weight: 700;">Owner / Manager / HR</span>
+                        </div>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; font-weight: 700; color: #14532d; cursor: pointer;">
+                                <input type="checkbox" name="isOtApproved" id="modalIsOtApproved" value="1" onchange="recomputeDtrModalHours()" style="width: 16px; height: 16px; cursor: pointer;">
+                                Approve Overtime for this Shift
+                            </label>
+
+                            <div id="modalOtFields" style="display: none; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px;">
+                                <div>
+                                    <label style="display: block; font-size: 0.72rem; font-weight: 700; color: #374151; margin-bottom: 2px;">Approved OT (Hours)</label>
+                                    <input type="number" step="0.25" min="0" name="approvedOtHours" id="modalApprovedOtHours" oninput="recomputeDtrModalHours()" placeholder="e.g. 1.0" style="width: 100%; height: 34px; box-sizing: border-box; padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; background: white;">
+                                </div>
+                                <div>
+                                    <label style="display: block; font-size: 0.72rem; font-weight: 700; color: #374151; margin-bottom: 2px;">Manual Duty Override (hrs)</label>
+                                    <input type="number" step="0.25" min="0" max="24" name="dutyHoursOverride" id="modalDutyHoursOverride" oninput="recomputeDtrModalHours()" placeholder="Default: 8.0 hrs" style="width: 100%; height: 34px; box-sizing: border-box; padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; background: white;">
+                                </div>
+                            </div>
+                            <div style="font-size: 0.72rem; color: #475569; line-height: 1.3;">
+                                Standard duty is strictly 8.0 hrs per day. Time beyond 8 hrs requires approval above to be counted as paid overtime.
+                            </div>
+                        </div>
+                    </div>
+                <% } %>
+
+                <!-- Notes / Reason -->
+                <div>
+                    <label style="display: block; font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 4px;">Reason / Correction Note (Optional)</label>
+                    <input type="text" name="notes" id="dtrNotes" placeholder="e.g. Adjusted manual biometric punch, swap duty" style="width: 100%; height: 36px; box-sizing: border-box; padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem;">
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; padding-top: 14px; border-top: 1px solid #e2e8f0;">
+                <button type="button" onclick="closeDtrModal()" style="padding: 8px 16px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 8px; font-weight: 600; font-size: 0.88rem; cursor: pointer;">
+                    Cancel
+                </button>
+                <button type="submit" style="padding: 8px 20px; background: #059669; color: white; border: none; border-radius: 8px; font-weight: 700; font-size: 0.88rem; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(5, 150, 105, 0.3);">
+                    <span>💾</span> Save Record
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Switch between Single Card and 2-Up Side-by-Side View
+function switchDtrViewMode(mode) {
+    const copy2 = document.getElementById('dtrCopy2');
+    const btn1 = document.getElementById('btnMode1Up');
+    const btn2 = document.getElementById('btnMode2Up');
+
+    if (mode === '2up') {
+        if (copy2) copy2.style.display = 'block';
+        btn2.style.background = '#ffffff';
+        btn2.style.color = '#0f172a';
+        btn2.style.boxShadow = '0 1px 2px rgba(0,0,0,0.1)';
+        btn1.style.background = 'transparent';
+        btn1.style.color = '#64748b';
+        btn1.style.boxShadow = 'none';
+    } else {
+        if (copy2) copy2.style.display = 'none';
+        btn1.style.background = '#ffffff';
+        btn1.style.color = '#0f172a';
+        btn1.style.boxShadow = '0 1px 2px rgba(0,0,0,0.1)';
+        btn2.style.background = 'transparent';
+        btn2.style.color = '#64748b';
+        btn2.style.boxShadow = 'none';
+    }
+}
+
+// Print Handler ensuring 2-Up is rendered for authentic CSC Form 48 bond paper layout
+function printPhDtr() {
+    const copy2 = document.getElementById('dtrCopy2');
+    const wasHidden = (copy2 && copy2.style.display === 'none');
+    if (copy2) copy2.style.display = 'block'; // Ensure 2-up in print
+    window.print();
+    if (wasHidden && copy2) {
+        copy2.style.display = 'none'; // Restore view if user was in 1-up mode
+    }
+}
+
+function openDtrModalFromBtn(btn) {
+    const date = btn.getAttribute('data-date') || '';
+    const amIn = btn.getAttribute('data-amin') || '';
+    const amOut = btn.getAttribute('data-amout') || '';
+    const pmIn = btn.getAttribute('data-pmin') || '';
+    const pmOut = btn.getAttribute('data-pmout') || '';
+    const notes = btn.getAttribute('data-notes') || '';
+    const isOtApproved = btn.getAttribute('data-isotapproved') || '0';
+    const approvedOt = btn.getAttribute('data-approvedot') || '';
+    const totalHours = btn.getAttribute('data-totalhours') || '';
+    const rawHours = btn.getAttribute('data-rawhours') || '';
+    openDtrModal(date, amIn, amOut, pmIn, pmOut, notes, isOtApproved, approvedOt, totalHours, rawHours);
+}
+
+function openDtrModal(date, amIn, amOut, pmIn, pmOut, notes, isOtApproved, approvedOt, totalHours, rawHours) {
+    const modal = document.getElementById('dtrModal');
+    const dateInput = document.getElementById('dtrDate');
+    const amInInput = document.getElementById('dtrAmIn');
+    const amOutInput = document.getElementById('dtrAmOut');
+    const pmInInput = document.getElementById('dtrPmIn');
+    const pmOutInput = document.getElementById('dtrPmOut');
+    const notesInput = document.getElementById('dtrNotes');
+    const isOtApprovedEl = document.getElementById('modalIsOtApproved');
+    const approvedOtEl = document.getElementById('modalApprovedOtHours');
+    const dutyOverrideEl = document.getElementById('modalDutyHoursOverride');
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    dateInput.value = date || todayStr;
+    amInInput.value = amIn || '';
+    amOutInput.value = amOut || '';
+    pmInInput.value = pmIn || '';
+    pmOutInput.value = pmOut || '';
+    notesInput.value = notes || '';
+
+    if (isOtApprovedEl) {
+        isOtApprovedEl.checked = (isOtApproved === '1' || isOtApproved === 1);
+    }
+    if (approvedOtEl) {
+        approvedOtEl.value = approvedOt || '';
+    }
+    if (dutyOverrideEl) {
+        dutyOverrideEl.value = '';
+    }
+
+    recomputeDtrModalHours();
+    modal.style.display = 'flex';
+}
+
+function closeDtrModal() {
+    const modal = document.getElementById('dtrModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function timeToMins(t) {
+    if (!t || !t.includes(':')) return null;
+    const parts = t.split(':');
+    return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+}
+
+function recomputeDtrModalHours() {
+    const amIn = timeToMins(document.getElementById('dtrAmIn').value);
+    const amOut = timeToMins(document.getElementById('dtrAmOut').value);
+    const pmIn = timeToMins(document.getElementById('dtrPmIn').value);
+    const pmOut = timeToMins(document.getElementById('dtrPmOut').value);
+
+    let amMins = (amIn !== null && amOut !== null && amOut > amIn) ? (amOut - amIn) : 0;
+    let pmMins = (pmIn !== null && pmOut !== null && pmOut > pmIn) ? (pmOut - pmIn) : 0;
+
+    const totalMinutes = amMins + pmMins;
+    const rawTotalHours = Math.round((totalMinutes / 60) * 100) / 100;
+
+    const isOtApprovedEl = document.getElementById('modalIsOtApproved');
+    const approvedOtHoursEl = document.getElementById('modalApprovedOtHours');
+    const otFieldsEl = document.getElementById('modalOtFields');
+    const dutyOverrideEl = document.getElementById('modalDutyHoursOverride');
+
+    const isApproved = (isOtApprovedEl && isOtApprovedEl.checked);
+    if (otFieldsEl) {
+        otFieldsEl.style.display = isApproved ? 'grid' : 'none';
+    }
+
+    let approvedOt = 0;
+    if (isApproved && approvedOtHoursEl && approvedOtHoursEl.value) {
+        approvedOt = Math.max(0, parseFloat(approvedOtHoursEl.value) || 0);
+    } else if (isApproved && rawTotalHours > 8.0 && approvedOtHoursEl && !approvedOtHoursEl.value) {
+        approvedOtHoursEl.value = (rawTotalHours - 8.0).toFixed(2);
+        approvedOt = Math.round((rawTotalHours - 8.0) * 100) / 100;
+    }
+
+    let creditedHours = 0;
+    if (dutyOverrideEl && dutyOverrideEl.value && !isNaN(parseFloat(dutyOverrideEl.value))) {
+        creditedHours = Math.max(0, parseFloat(dutyOverrideEl.value));
+    } else if (rawTotalHours >= 8.0) {
+        // Standard rule: Valid duty is strictly 8.0 hours unless OT is approved
+        creditedHours = isApproved ? Math.round((8.0 + approvedOt) * 100) / 100 : 8.0;
+    } else {
+        creditedHours = rawTotalHours;
+    }
+
+    const hoursEl = document.getElementById('dtrComputeHours');
+    const badgeEl = document.getElementById('dtrComputeBadge');
+    const boxEl = document.getElementById('dtrComputeBox');
+
+    hoursEl.textContent = creditedHours.toFixed(1) + ' hrs';
+
+    if (rawTotalHours >= 8.0) {
+        boxEl.style.background = '#ecfdf5';
+        boxEl.style.borderColor = '#86efac';
+        hoursEl.style.color = '#065f46';
+
+        if (isApproved && approvedOt > 0) {
+            badgeEl.innerHTML = '✅ <strong>8-Hour Valid Duty Completed + ' + approvedOt.toFixed(2) + ' hrs Approved Overtime (' + creditedHours.toFixed(2) + ' hrs total credited)</strong>';
+            badgeEl.style.color = '#065f46';
+        } else {
+            let noteStr = '';
+            if (rawTotalHours > 8.0) {
+                noteStr = '<div style="font-size: 0.74rem; color: #475569; margin-top: 4px; font-weight: normal;">ℹ️ Actual punch shift: <strong>' + rawTotalHours.toFixed(2) + ' hrs</strong>. Per laboratory policy, valid duty is counted as <strong>8.0 hrs</strong>. Any overtime requires head/manager approval to be credited.</div>';
+            }
+            badgeEl.innerHTML = '✅ <strong>8-Hour Valid Duty Completed (1.0 Duty Credit • 8.0 hrs credited)</strong>' + noteStr;
+            badgeEl.style.color = '#065f46';
+        }
+    } else if (rawTotalHours > 0) {
+        boxEl.style.background = '#fffbeb';
+        boxEl.style.borderColor = '#fde68a';
+        hoursEl.style.color = '#92400e';
+        const shortMins = 480 - totalMinutes;
+        badgeEl.innerHTML = '⚠️ <strong>Undertime: ' + rawTotalHours.toFixed(1) + ' hrs (' + shortMins + ' mins short of 8-hour duty)</strong>';
+        badgeEl.style.color = '#92400e';
+    } else {
+        boxEl.style.background = '#f8fafc';
+        boxEl.style.borderColor = '#e2e8f0';
+        hoursEl.style.color = '#64748b';
+        badgeEl.textContent = 'Enter morning and afternoon in/out times above.';
+        badgeEl.style.color = '#64748b';
+    }
+}
+
+// Close on backdrop click
+document.getElementById('dtrModal').addEventListener('click', function(e) {
+    if (e.target === this) closeDtrModal();
+});
+
+// Close on Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeDtrModal();
+});
+</script>

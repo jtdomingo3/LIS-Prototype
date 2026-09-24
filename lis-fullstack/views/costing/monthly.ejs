@@ -1,0 +1,150 @@
+<div class="content-wrapper" style="width: 100%; box-sizing: border-box; background: white; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0,0,0,0.06); padding: 32px 40px;">
+    <!-- Print controls (hidden during print) -->
+    <div class="no-print" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; border-bottom: 1px solid #f1f5f9; padding-bottom: 14px;">
+        <a href="/costing?month=<%= yearMonth %>" style="color: #64748b; text-decoration: none; font-size: 0.9rem; font-weight: 600;">← Back to Costing Dashboard</a>
+        <div style="display: flex; gap: 10px;">
+            <a href="/costing/export/excel?month=<%= yearMonth %>&type=pnl" class="btn btn-secondary btn-small" style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 6px; text-decoration: none; font-size: 0.85rem; font-weight: 600; color: #334155;">Excel Export</a>
+            <button onclick="window.print()" class="btn btn-primary btn-small" style="padding: 6px 14px; background: #0f172a; color: white; border: none; border-radius: 6px; font-size: 0.85rem; font-weight: 600; cursor: pointer;">🖨️ Print Statement</button>
+        </div>
+    </div>
+
+    <!-- Letterhead -->
+    <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #0f172a; padding-bottom: 20px;">
+        <h1 style="margin: 0; font-size: 1.4rem; color: #0f172a; font-weight: 800; letter-spacing: 0.5px;">GEZYNE CLINICAL LABORATORY</h1>
+        <p style="margin: 4px 0; color: #475569; font-size: 0.85rem;">Comprehensive Diagnostic & Laboratory Services</p>
+        <div style="font-size: 1.1rem; font-weight: 700; color: #059669; margin-top: 12px; letter-spacing: 0.5px;">
+            STATEMENT OF PROFIT AND LOSS
+        </div>
+        <div style="font-size: 0.9rem; color: #64748b; font-weight: 600; margin-top: 2px;">
+            For the Month Ended: <%= yearMonth %>
+        </div>
+    </div>
+
+    <!-- Statement Table -->
+    <table style="width: 100%; border-collapse: collapse; font-size: 0.95rem; margin-bottom: 30px;">
+        <tbody>
+            <!-- REVENUE SECTION -->
+            <tr style="background: #f8fafc; font-weight: 800; color: #0f172a; border-top: 1px solid #cbd5e1; border-bottom: 1px solid #cbd5e1;">
+                <td colspan="2" style="padding: 10px 8px; text-transform: uppercase; letter-spacing: 0.5px;">I. Operating Revenue</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 8px 16px; color: #334155;">Clinical Laboratory Service Fees</td>
+                <td style="padding: 8px 16px; text-align: right; font-weight: 600;">₱<%= summary.clinicalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+            </tr>
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 8px 16px; color: #334155;">Radiology & X-Ray Examination Fees</td>
+                <td style="padding: 8px 16px; text-align: right; font-weight: 600;">₱<%= summary.xrayRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+            </tr>
+            <tr style="border-bottom: 1px solid #e2e8f0; font-weight: 700;">
+                <td style="padding: 8px 16px; color: #0f172a;">Total Gross Sales</td>
+                <td style="padding: 8px 16px; text-align: right; color: #0f172a;">₱<%= summary.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+            </tr>
+            <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 8px 16px; color: #64748b; font-style: italic;">Less: Senior Citizen / PWD / Corporate Discounts</td>
+                <td style="padding: 8px 16px; text-align: right; color: #dc2626;">(₱<%= summary.discountTotal.toLocaleString('en-US', { minimumFractionDigits: 2 }) %>)</td>
+            </tr>
+            <tr style="border-bottom: 2px solid #0f172a; font-weight: 800; background: #f8fafc;">
+                <td style="padding: 10px 16px; color: #059669;">NET REVENUE</td>
+                <td style="padding: 10px 16px; text-align: right; color: #059669;">₱<%= summary.netRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+            </tr>
+
+            <!-- COST OF GOODS SOLD -->
+            <tr style="background: #f8fafc; font-weight: 800; color: #0f172a; border-top: 2px solid #cbd5e1; border-bottom: 1px solid #cbd5e1;">
+                <td colspan="2" style="padding: 10px 8px; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 14px;">II. Cost of Laboratory Consumables (COGS)</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 8px 16px; color: #334155;">Reagents, Test Kits, Collection Tubes & Direct Supplies</td>
+                <td style="padding: 8px 16px; text-align: right; font-weight: 600; color: #dc2626;">₱<%= summary.categories.reagent_purchase.toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+            </tr>
+            <% const grossProfit = summary.netRevenue - summary.categories.reagent_purchase; %>
+            <tr style="border-bottom: 2px solid #cbd5e1; font-weight: 800; background: #f8fafc;">
+                <td style="padding: 10px 16px; color: #0f172a;">GROSS PROFIT</td>
+                <td style="padding: 10px 16px; text-align: right; color: #0f172a;">₱<%= grossProfit.toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+            </tr>
+
+            <!-- OPERATING EXPENSES -->
+            <tr style="background: #f8fafc; font-weight: 800; color: #0f172a; border-top: 2px solid #cbd5e1; border-bottom: 1px solid #cbd5e1;">
+                <td colspan="2" style="padding: 10px 8px; text-transform: uppercase; letter-spacing: 0.5px;">III. Operating & Administrative Expenses</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 8px 16px; color: #334155;">Personnel Costs (Staff Basic Salaries, Allowances, SSS/PhilHealth/HDMF Employer Shares)</td>
+                <td style="padding: 8px 16px; text-align: right; font-weight: 600;">₱<%= summary.categories.personnel.toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+            </tr>
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 8px 16px; color: #334155;">Facility Overhead (Rent, Electric Power, Water, Internet, Telco)</td>
+                <td style="padding: 8px 16px; text-align: right; font-weight: 600;">₱<%= summary.categories.overhead.toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+            </tr>
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 8px 16px; color: #334155;">Equipment Calibration, Preventative Maintenance & Service Contracts</td>
+                <td style="padding: 8px 16px; text-align: right; font-weight: 600;">₱<%= summary.categories.equipment_service.toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+            </tr>
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 8px 16px; color: #334155;">Miscellaneous & Sundry Operating Expenses</td>
+                <td style="padding: 8px 16px; text-align: right; font-weight: 600;">₱<%= summary.categories.misc.toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+            </tr>
+            <% const totalOpex = summary.categories.personnel + summary.categories.overhead + summary.categories.equipment_service + summary.categories.misc; %>
+            <tr style="border-bottom: 2px solid #cbd5e1; font-weight: 700;">
+                <td style="padding: 8px 16px; color: #475569;">Total Operating Expenses</td>
+                <td style="padding: 8px 16px; text-align: right; color: #dc2626;">(₱<%= totalOpex.toLocaleString('en-US', { minimumFractionDigits: 2 }) %>)</td>
+            </tr>
+
+            <!-- NET INCOME -->
+            <% const isProfit = summary.netProfit >= 0; %>
+            <tr style="border-top: 3px double #0f172a; border-bottom: 3px double #0f172a; font-weight: 900; font-size: 1.1rem; background: #f8fafc;">
+                <td style="padding: 14px 16px; color: #0f172a;">NET OPERATING INCOME / (LOSS)</td>
+                <td style="padding: 14px 16px; text-align: right; color: <%= isProfit ? '#2563eb' : '#dc2626' %>;">
+                    ₱<%= summary.netProfit.toLocaleString('en-US', { minimumFractionDigits: 2 }) %>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <!-- Financial Ratios -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; text-align: center; margin-bottom: 40px; padding: 16px; background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; font-size: 0.85rem;">
+        <div>
+            <div style="color: #64748b; font-weight: 600;">Net Profit Margin</div>
+            <div style="font-size: 1.25rem; font-weight: 800; color: <%= isProfit ? '#059669' : '#dc2626' %>; margin-top: 4px;"><%= summary.marginPercent %>%</div>
+        </div>
+        <div>
+            <div style="color: #64748b; font-weight: 600;">Reagent Cost Ratio</div>
+            <div style="font-size: 1.25rem; font-weight: 800; color: #475569; margin-top: 4px;">
+                <%= summary.netRevenue > 0 ? (Math.round((summary.categories.reagent_purchase / summary.netRevenue) * 1000) / 10) : 0 %>%
+            </div>
+        </div>
+        <div>
+            <div style="color: #64748b; font-weight: 600;">Personnel Cost Ratio</div>
+            <div style="font-size: 1.25rem; font-weight: 800; color: #475569; margin-top: 4px;">
+                <%= summary.netRevenue > 0 ? (Math.round((summary.categories.personnel / summary.netRevenue) * 1000) / 10) : 0 %>%
+            </div>
+        </div>
+    </div>
+
+    <!-- Signatures -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 60px; margin-top: 50px; padding: 0 20px;">
+        <div style="text-align: center;">
+            <div style="border-top: 1px solid #0f172a; padding-top: 6px; font-weight: 700; font-size: 0.88rem; color: #0f172a;">Prepared by / Accountant</div>
+            <div style="font-size: 0.78rem; color: #64748b; margin-top: 2px;">Date: ________________________</div>
+        </div>
+        <div style="text-align: center;">
+            <div style="border-top: 1px solid #0f172a; padding-top: 6px; font-weight: 700; font-size: 0.88rem; color: #0f172a;">Approved by / Laboratory Owner & Manager</div>
+            <div style="font-size: 0.78rem; color: #64748b; margin-top: 2px;">Date: ________________________</div>
+        </div>
+    </div>
+</div>
+
+<style>
+@media print {
+    .no-print, .sidebar, .header, #fullscreenBtn, .hamburger {
+        display: none !important;
+    }
+    .main-content {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    .content-wrapper {
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+    }
+}
+</style>

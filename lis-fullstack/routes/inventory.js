@@ -996,6 +996,31 @@ router.post('/:id/batch', requireInventoryAccess, (req, res) => {
 
     global.db.saveTransaction(transaction);
 
+    // Auto-record to expenses for Financial Costing & Analytics
+    try {
+      const unitCost = Number(item.cost) || 0;
+      if (unitCost > 0) {
+        const Expense = require('../models/Expense');
+        const nowIso = new Date().toISOString();
+        const exp = new Expense({
+          category: 'reagent_purchase',
+          subcategory: item.category || 'Clinical Reagents',
+          description: `Received ${qty} ${item.unit || 'unit(s)'} of ${item.name} (Lot: ${savedBatch.lotNumber})`,
+          amount: Math.round(unitCost * qty * 100) / 100,
+          currency: 'PHP',
+          vendorSupplier: item.supplier || '',
+          referenceId: transaction.id,
+          referenceType: 'inventory_transaction',
+          expenseDate: nowIso,
+          month: nowIso.slice(0, 7),
+          recordedBy: getUserIdentifier(req)
+        });
+        exp.save().catch(e => console.warn('[inventory] Expense save error:', e.message));
+      }
+    } catch (expErr) {
+      console.warn('[inventory] Auto-recording expense on receive failed:', expErr.message);
+    }
+
     // Broadcast SSE stock receive event
     try { sseEmitter.emit('update', { action: 'inventory_stock', itemId: item.id, name: item.name, batchId: savedBatch.id, lotNumber: savedBatch.lotNumber, delta: qty, totalStock: getTotalStock(item.id), time: new Date().toISOString() }); } catch (_) {}
 

@@ -1,0 +1,179 @@
+<div style="width: 100%; box-sizing: border-box;">
+    <!-- Flash Notifications -->
+    <% if (typeof success_msg !== 'undefined' && success_msg && success_msg.length > 0) { %>
+        <div style="background: #ecfdf5; border-left: 4px solid #10b981; color: #065f46; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; font-weight: 500;">
+            <%= success_msg %>
+        </div>
+    <% } %>
+    <% if (typeof error_msg !== 'undefined' && error_msg && error_msg.length > 0) { %>
+        <div style="background: #fef2f2; border-left: 4px solid #ef4444; color: #991b1b; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; font-weight: 500;">
+            <%= error_msg %>
+        </div>
+    <% } %>
+
+    <!-- Header -->
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 24px;">
+        <div>
+            <h2 style="margin: 0; font-size: 1.6rem; color: #1e1b4b; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+                <span style="background: #4f46e5; color: white; border-radius: 8px; width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.1rem;">✈️</span>
+                Leave Requests Management
+            </h2>
+            <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.9rem;">
+                Review and approve staff leaves (Vacation, Sick, Emergency, Maternity/Paternity)
+            </p>
+        </div>
+    </div>
+
+    <!-- HR Navigation Bar with Indigo Identity -->
+    <div style="display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 2px solid #e0e7ff; padding-bottom: 12px; overflow-x: auto;">
+        <a href="/hr" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #475569;">Dashboard</a>
+        <a href="/hr/employees" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #475569;">Employees</a>
+        <a href="/hr/payroll" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #475569;">Payroll Register</a>
+        <a href="/hr/leaves" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #4f46e5; color: white;">Leaves (<%= leaves ? leaves.length : 0 %>)</a>
+        <a href="/hr/documents" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #475569;">Documents & Tax Forms</a>
+        <a href="/hr/my" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #4f46e5; margin-left: auto;">👤 View My Portal</a>
+    </div>
+
+    <!-- Filter Pills -->
+    <div style="background: white; border-radius: 12px; padding: 14px 20px; border: 1px solid #e2e8f0; margin-bottom: 24px; display: flex; gap: 8px; flex-wrap: wrap;">
+        <a href="/hr/leaves" style="padding: 6px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 600; text-decoration: none; <%= !statusFilter ? 'background: #4f46e5; color: white;' : 'background: #f1f5f9; color: #475569;' %>">
+            All Statuses
+        </a>
+        <a href="/hr/leaves?status=Pending" style="padding: 6px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 600; text-decoration: none; <%= statusFilter === 'Pending' ? 'background: #d97706; color: white;' : 'background: #f1f5f9; color: #475569;' %>">
+            Pending Approval
+        </a>
+        <a href="/hr/leaves?status=Approved" style="padding: 6px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 600; text-decoration: none; <%= statusFilter === 'Approved' ? 'background: #16a34a; color: white;' : 'background: #f1f5f9; color: #475569;' %>">
+            Approved
+        </a>
+        <a href="/hr/leaves?status=Rejected" style="padding: 6px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 600; text-decoration: none; <%= statusFilter === 'Rejected' ? 'background: #dc2626; color: white;' : 'background: #f1f5f9; color: #475569;' %>">
+            Rejected
+        </a>
+    </div>
+
+    <!-- Leave Requests List -->
+    <div style="background: white; border-radius: 14px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+        <% if (!leaves || leaves.length === 0) { %>
+            <div style="padding: 60px 20px; text-align: center; color: #94a3b8;">
+                <div style="font-size: 3rem; margin-bottom: 12px;">🏖️</div>
+                <div style="font-size: 1.1rem; font-weight: 600; color: #475569;">No Leave Requests Found</div>
+                <p style="font-size: 0.85rem; margin-top: 4px;">Staff leave applications will appear here for manager review and approval.</p>
+            </div>
+        <% } else { %>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.88rem;">
+                    <thead style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                        <tr>
+                            <th style="padding: 12px 18px; color: #64748b; font-weight: 600;">Employee</th>
+                            <th style="padding: 12px 18px; color: #64748b; font-weight: 600;">Type & Duration</th>
+                            <th style="padding: 12px 18px; color: #64748b; font-weight: 600;">Schedule</th>
+                            <th style="padding: 12px 18px; color: #64748b; font-weight: 600;">Reason / Notes</th>
+                            <th style="padding: 12px 18px; color: #64748b; font-weight: 600; text-align: center;">Status</th>
+                            <th style="padding: 12px 18px; color: #64748b; font-weight: 600; text-align: right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% leaves.forEach(function(l) { 
+                            const emp = (typeof l.getEmployee === 'function' ? l.getEmployee() : null) || { name: 'Staff Member', employeeCode: '—', department: 'Laboratory' };
+                        %>
+                            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" onmouseover="this.style.background='#faf5ff'" onmouseout="this.style.background='white'">
+                                <td style="padding: 14px 18px;">
+                                    <div style="font-weight: 700; color: #1e293b;"><%= emp.name %></div>
+                                    <div style="font-size: 0.78rem; color: #64748b;">
+                                        <%= emp.employeeCode %> • <%= emp.department %>
+                                    </div>
+                                </td>
+                                <td style="padding: 14px 18px;">
+                                    <span style="background: #ede9fe; color: #6d28d9; padding: 3px 8px; border-radius: 6px; font-size: 0.78rem; font-weight: 700;">
+                                        <%= l.leaveType %>
+                                    </span>
+                                    <div style="font-size: 0.8rem; color: #475569; margin-top: 4px; font-weight: 600;">
+                                        <%= l.totalDays %> Day<%= l.totalDays > 1 ? 's' : '' %>
+                                    </div>
+                                </td>
+                                <td style="padding: 14px 18px; color: #334155;">
+                                    <div style="font-weight: 600;"><%= l.startDate %> to <%= l.endDate %></div>
+                                    <div style="font-size: 0.75rem; color: #94a3b8;">
+                                        Filed: <%= l.createdAt ? l.createdAt.split('T')[0] : '—' %>
+                                    </div>
+                                </td>
+                                <td style="padding: 14px 18px; color: #475569; max-width: 250px;">
+                                    <div><%= l.reason || '—' %></div>
+                                    <% if (l.notes) { %>
+                                        <div style="font-size: 0.75rem; color: #dc2626; margin-top: 3px; font-style: italic;">
+                                            Note: <%= l.notes %>
+                                        </div>
+                                    <% } %>
+                                </td>
+                                <td style="padding: 14px 18px; text-align: center;">
+                                    <% if (l.status === 'Approved') { %>
+                                        <span style="background: #dcfce7; color: #166534; padding: 4px 10px; border-radius: 20px; font-size: 0.78rem; font-weight: 700;">✓ Approved</span>
+                                        <% if (l.approvedBy) { %>
+                                            <div style="font-size: 0.7rem; color: #64748b; margin-top: 3px;">by <%= l.approvedBy %></div>
+                                        <% } %>
+                                    <% } else if (l.status === 'Rejected') { %>
+                                        <span style="background: #fee2e2; color: #991b1b; padding: 4px 10px; border-radius: 20px; font-size: 0.78rem; font-weight: 700;">✕ Rejected</span>
+                                        <% if (l.approvedBy) { %>
+                                            <div style="font-size: 0.7rem; color: #64748b; margin-top: 3px;">by <%= l.approvedBy %></div>
+                                        <% } %>
+                                    <% } else { %>
+                                        <span style="background: #fef3c7; color: #92400e; padding: 4px 10px; border-radius: 20px; font-size: 0.78rem; font-weight: 700;">⏳ Pending</span>
+                                    <% } %>
+                                </td>
+                                <td style="padding: 14px 18px; text-align: right;">
+                                    <% if (l.status === 'Pending') { %>
+                                        <div style="display: inline-flex; gap: 6px;">
+                                            <form action="/hr/leaves/<%= l.id %>/approve" method="POST" style="margin: 0;" onsubmit="return confirm('Approve leave request for <%= emp.name %>?');">
+                                                <button type="submit" style="padding: 6px 12px; background: #16a34a; color: white; border: none; border-radius: 6px; font-size: 0.78rem; font-weight: 700; cursor: pointer;">
+                                                    Approve
+                                                </button>
+                                            </form>
+                                            <button onclick="openRejectModal('<%= l.id %>', '<%= emp.name %>')" style="padding: 6px 12px; background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; border-radius: 6px; font-size: 0.78rem; font-weight: 700; cursor: pointer;">
+                                                Reject
+                                            </button>
+                                        </div>
+                                    <% } else { %>
+                                        <span style="color: #94a3b8; font-size: 0.8rem;">Completed</span>
+                                    <% } %>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+            </div>
+        <% } %>
+    </div>
+
+    <!-- Reject Leave Modal -->
+    <div id="rejectModal" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(3px);">
+        <div style="background: white; border-radius: 16px; padding: 28px; width: 100%; max-width: 450px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); margin: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                <h3 style="margin: 0; font-size: 1.2rem; color: #991b1b; font-weight: 700;">Disapprove Leave Request</h3>
+                <button type="button" onclick="document.getElementById('rejectModal').style.display='none'" style="background: transparent; border: none; font-size: 1.3rem; color: #94a3b8; cursor: pointer;">✕</button>
+            </div>
+            <p style="font-size: 0.88rem; color: #64748b; margin: 0 0 16px 0;" id="rejectModalText">
+                Please provide a reason for rejecting this leave application:
+            </p>
+            <form id="rejectForm" method="POST">
+                <div style="margin-bottom: 18px;">
+                    <textarea name="reason" rows="3" required placeholder="e.g. Insufficient coverage during lab operating hours..." style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; font-family: inherit; resize: vertical;"></textarea>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" onclick="document.getElementById('rejectModal').style.display='none'" style="padding: 8px 16px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        Cancel
+                    </button>
+                    <button type="submit" style="padding: 8px 18px; background: #dc2626; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;">
+                        Reject Request
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function openRejectModal(id, empName) {
+    document.getElementById('rejectForm').action = '/hr/leaves/' + id + '/reject';
+    document.getElementById('rejectModalText').innerText = 'Rejecting leave request for ' + empName + '. Please specify reason:';
+    document.getElementById('rejectModal').style.display = 'flex';
+}
+</script>

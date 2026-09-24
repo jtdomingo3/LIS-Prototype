@@ -1187,6 +1187,26 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
           patientObj.paymentHistory = Array.isArray(patientObj.paymentHistory) ? patientObj.paymentHistory : [];
           patientObj.paymentHistory.push(entry);
           await patientObj.save();
+
+          // Auto-record to revenue_entries for Financial Costing & Analytics
+          try {
+            const RevenueEntry = require('../models/RevenueEntry');
+            const revDate = new Date().toISOString();
+            const revEntry = new RevenueEntry({
+              patientId: patientObj.id,
+              testId: ids.join(','),
+              paymentMethod: method,
+              clinicalAmount: clin,
+              xrayAmount: xray,
+              totalAmount: clin + xray,
+              revenueDate: revDate,
+              month: revDate.slice(0, 7),
+              recordedBy: (req.session && req.session.user && (req.session.user.name || req.session.user.email)) || 'Reception'
+            });
+            await revEntry.save();
+          } catch (rErr) {
+            console.warn('[reception] Auto-recording revenue_entry failed:', rErr.message);
+          }
         }
       } catch (e) { console.warn('Failed recording patient paymentHistory', e); }
 

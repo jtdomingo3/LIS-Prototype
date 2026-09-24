@@ -1,0 +1,109 @@
+<div style="width: 100%; box-sizing: border-box;">
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
+        <a href="/hr/payroll" style="color: #64748b; text-decoration: none; font-size: 1.3rem;">←</a>
+        <div>
+            <h2 style="margin: 0; font-size: 1.5rem; color: #1e1b4b; font-weight: 700;">
+                Payroll Computation Wizard
+            </h2>
+            <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.88rem;">
+                Automatically calculate salaries, allowances, Philippine statutory deductions, and withholding tax
+            </p>
+        </div>
+    </div>
+
+    <!-- Statutory Reference Card -->
+    <div style="background: rgba(79, 70, 229, 0.05); border: 1px solid #c7d2fe; border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; display: flex; gap: 14px; align-items: flex-start;">
+        <span style="font-size: 1.5rem;">ℹ️</span>
+        <div style="font-size: 0.85rem; color: #3730a3; line-height: 1.5;">
+            <strong>Philippine Statutory Engine Active:</strong> Computations automatically apply 2024 SSS (14% EE/ER + WISP), PhilHealth (5% total premium rate), Pag-IBIG (₱200 cap), and BIR TRAIN Law withholding tax tables. Non-taxable de minimis allowances are protected from tax.
+        </div>
+    </div>
+
+    <form action="/hr/payroll/compute" method="POST" style="display: flex; flex-direction: column; gap: 20px;">
+        <!-- Card 1: Pay Period Configuration -->
+        <div style="background: white; border-radius: 14px; padding: 22px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);">
+            <h3 style="margin: 0 0 16px 0; font-size: 1.05rem; color: #1e1b4b; font-weight: 700; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+                1. Select Pay Period
+            </h3>
+
+            <%
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+                const defaultStart = `${year}-${month}-01`;
+                const defaultEnd = `${year}-${month}-${lastDay}`;
+            %>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Pay Period Start *</label>
+                    <input type="date" name="payPeriodStart" value="<%= defaultStart %>" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Pay Period End *</label>
+                    <input type="date" name="payPeriodEnd" value="<%= defaultEnd %>" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Scheduled Pay Date</label>
+                    <input type="date" name="payDate" value="<%= defaultEnd %>" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Computation Cycle</label>
+                    <select name="frequency" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; background: #fff;">
+                        <option value="Monthly">Monthly Full Cycle</option>
+                        <option value="Semi-Monthly">Semi-Monthly (15th or 30th Cut-off)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 2: Employees to Include -->
+        <div style="background: white; border-radius: 14px; padding: 22px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+                <h3 style="margin: 0; font-size: 1.05rem; color: #1e1b4b; font-weight: 700;">
+                    2. Select Eligible Staff (<%= activeEmployees.length %> Active)
+                </h3>
+                <label style="font-size: 0.82rem; font-weight: 600; color: #4f46e5; cursor: pointer;">
+                    <input type="checkbox" id="selectAll" checked onchange="toggleSelectAll(this)" style="vertical-align: middle;"> Select All
+                </label>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 8px; max-height: 350px; overflow-y: auto;">
+                <% activeEmployees.forEach(e => { %>
+                    <label style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; cursor: pointer; hover: background #f8fafc;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" name="selectedEmployeeIds" value="<%= e.id %>" checked class="emp-check">
+                            <div>
+                                <span style="font-weight: 700; color: #0f172a; font-size: 0.9rem;"><%= e.name %></span>
+                                <span style="font-size: 0.8rem; color: #64748b;">(<%= e.employeeCode %>) • <%= e.position || e.role %></span>
+                            </div>
+                        </div>
+                        <div style="font-weight: 700; color: #059669; font-size: 0.9rem;">
+                            ₱<%= (Number(e.basicSalary) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %>
+                        </div>
+                    </label>
+                <% }) %>
+            </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div style="display: flex; justify-content: flex-end; gap: 12px;">
+            <a href="/hr/payroll" style="padding: 12px 24px; border: 1px solid #cbd5e1; background: white; color: #475569; border-radius: 8px; font-weight: 600; text-decoration: none;">Cancel</a>
+            <button type="submit" style="padding: 12px 32px; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 0.95rem;">
+                ⚡ Calculate & Save Drafts
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    function toggleSelectAll(master) {
+        document.querySelectorAll('.emp-check').forEach(cb => {
+            cb.checked = master.checked;
+        });
+    }
+</script>

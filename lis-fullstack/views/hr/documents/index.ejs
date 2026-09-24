@@ -1,0 +1,246 @@
+<div style="width: 100%; box-sizing: border-box;">
+    <!-- Flash Notifications -->
+    <% if (typeof success_msg !== 'undefined' && success_msg && success_msg.length > 0) { %>
+        <div style="background: #ecfdf5; border-left: 4px solid #10b981; color: #065f46; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; font-weight: 500;">
+            <%= success_msg %>
+        </div>
+    <% } %>
+    <% if (typeof error_msg !== 'undefined' && error_msg && error_msg.length > 0) { %>
+        <div style="background: #fef2f2; border-left: 4px solid #ef4444; color: #991b1b; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; font-weight: 500;">
+            <%= error_msg %>
+        </div>
+    <% } %>
+
+    <!-- Header -->
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 24px;">
+        <div>
+            <h2 style="margin: 0; font-size: 1.6rem; color: #1e1b4b; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+                <span style="background: #4f46e5; color: white; border-radius: 8px; width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.1rem;">📁</span>
+                HR Documents & Tax Forms
+            </h2>
+            <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.9rem;">
+                Employee contracts, BIR Form 2316 filings, certificates, clearance records, and HR memos
+            </p>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button onclick="document.getElementById('uploadModal').style.display='flex'" style="padding: 10px 18px; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                <span>📤</span> Upload Document / Form
+            </button>
+        </div>
+    </div>
+
+    <!-- HR Navigation Bar with Indigo Identity -->
+    <div style="display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 2px solid #e0e7ff; padding-bottom: 12px; overflow-x: auto;">
+        <a href="/hr" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #475569;">Dashboard</a>
+        <a href="/hr/employees" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #475569;">Employees (<%= employees ? employees.length : 0 %>)</a>
+        <a href="/hr/payroll" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #475569;">Payroll Register</a>
+        <a href="/hr/leaves" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #475569;">Leaves</a>
+        <a href="/hr/documents" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #4f46e5; color: white;">Documents & Tax Forms (<%= documents ? documents.length : 0 %>)</a>
+        <a href="/hr/my" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #4f46e5; margin-left: auto;">👤 View My Portal</a>
+    </div>
+
+    <!-- Search & Filter Controls -->
+    <div style="background: white; border-radius: 12px; padding: 16px 20px; border: 1px solid #e2e8f0; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+            <button onclick="filterDocs('all')" class="doc-filter active" id="filter-all" style="padding: 6px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 600; cursor: pointer; border: 1px solid #4f46e5; background: #e0e7ff; color: #4338ca;">
+                All Documents (<%= documents ? documents.length : 0 %>)
+            </button>
+            <button onclick="filterDocs('Tax Form 2316')" class="doc-filter" id="filter-tax" style="padding: 6px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 600; cursor: pointer; border: 1px solid #cbd5e1; background: white; color: #475569;">
+                BIR 2316 Tax Forms
+            </button>
+            <button onclick="filterDocs('Contract')" class="doc-filter" id="filter-contract" style="padding: 6px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 600; cursor: pointer; border: 1px solid #cbd5e1; background: white; color: #475569;">
+                Contracts
+            </button>
+            <button onclick="filterDocs('COE')" class="doc-filter" id="filter-coe" style="padding: 6px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 600; cursor: pointer; border: 1px solid #cbd5e1; background: white; color: #475569;">
+                COE
+            </button>
+            <button onclick="filterDocs('Clearance')" class="doc-filter" id="filter-clearance" style="padding: 6px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 600; cursor: pointer; border: 1px solid #cbd5e1; background: white; color: #475569;">
+                Clearance
+            </button>
+        </div>
+        <div style="position: relative; min-width: 260px;">
+            <input type="text" id="docSearch" placeholder="Search by title, employee..." onkeyup="searchDocs()" style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.88rem;">
+        </div>
+    </div>
+
+    <!-- Documents Table -->
+    <div style="background: white; border-radius: 14px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+        <% if (!documents || documents.length === 0) { %>
+            <div style="padding: 60px 20px; text-align: center; color: #94a3b8;">
+                <div style="font-size: 3rem; margin-bottom: 12px;">📁</div>
+                <div style="font-size: 1.1rem; font-weight: 600; color: #475569;">No Documents Uploaded Yet</div>
+                <p style="font-size: 0.85rem; margin-top: 4px;">Upload signed employment contracts, scanned BIR 2316 forms, or certificates to archive them safely.</p>
+                <button onclick="document.getElementById('uploadModal').style.display='flex'" style="margin-top: 14px; padding: 8px 18px; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                    Upload First Document
+                </button>
+            </div>
+        <% } else { %>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.88rem;" id="docsTable">
+                    <thead style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                        <tr>
+                            <th style="padding: 12px 18px; color: #64748b; font-weight: 600;">Document Title</th>
+                            <th style="padding: 12px 18px; color: #64748b; font-weight: 600;">Type</th>
+                            <th style="padding: 12px 18px; color: #64748b; font-weight: 600;">Employee</th>
+                            <th style="padding: 12px 18px; color: #64748b; font-weight: 600;">Period / Year</th>
+                            <th style="padding: 12px 18px; color: #64748b; font-weight: 600;">Uploaded On</th>
+                            <th style="padding: 12px 18px; color: #64748b; font-weight: 600; text-align: center;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% 
+                            // Create lookup map of employees by id
+                            const empMap = {};
+                            if (employees) {
+                                employees.forEach(e => { empMap[e.id] = e; });
+                            }
+                        %>
+                        <% documents.forEach(function(doc) { 
+                            const emp = empMap[doc.employeeId] || { name: 'Unknown Employee', employeeCode: '—' };
+                        %>
+                            <tr class="doc-row" data-type="<%= doc.documentType %>" data-text="<%= (doc.title + ' ' + emp.name + ' ' + emp.employeeCode).toLowerCase() %>" style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" onmouseover="this.style.background='#faf5ff'" onmouseout="this.style.background='white'">
+                                <td style="padding: 14px 18px; font-weight: 600; color: #1e293b;">
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <span style="font-size: 1.25rem;">
+                                            <% if (doc.documentType === 'Tax Form 2316') { %>📑<% } else if (doc.documentType === 'Contract') { %>📜<% } else if (doc.documentType === 'COE') { %>📄<% } else if (doc.documentType === 'Clearance') { %>📋<% } else { %>📁<% } %>
+                                        </span>
+                                        <div>
+                                            <div><%= doc.title %></div>
+                                            <% if (doc.description) { %>
+                                                <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 400;"><%= doc.description %></div>
+                                            <% } %>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="padding: 14px 18px;">
+                                    <span style="background: #e0e7ff; color: #4338ca; padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600;">
+                                        <%= doc.documentType %>
+                                    </span>
+                                </td>
+                                <td style="padding: 14px 18px; color: #334155;">
+                                    <a href="/hr/employees/<%= doc.employeeId %>" style="color: #4f46e5; text-decoration: none; font-weight: 600;">
+                                        <%= emp.name %>
+                                    </a>
+                                    <span style="color: #94a3b8; font-size: 0.78rem;">(<%= emp.employeeCode %>)</span>
+                                </td>
+                                <td style="padding: 14px 18px; color: #64748b;">
+                                    <%= doc.forPeriod || '—' %>
+                                </td>
+                                <td style="padding: 14px 18px; color: #64748b; font-size: 0.82rem;">
+                                    <%= doc.createdAt ? doc.createdAt.split('T')[0] : '—' %>
+                                    <% if (doc.fileSize) { %>
+                                        <div style="color: #94a3b8; font-size: 0.72rem;">
+                                            <%= (doc.fileSize / 1024).toFixed(1) %> KB
+                                        </div>
+                                    <% } %>
+                                </td>
+                                <td style="padding: 14px 18px; text-align: center;">
+                                    <a href="<%= doc.filePath %>" target="_blank" download style="display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; background: #4f46e5; color: white; border-radius: 6px; text-decoration: none; font-size: 0.8rem; font-weight: 600;">
+                                        <span>⬇️</span> Download
+                                    </a>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+            </div>
+        <% } %>
+    </div>
+
+    <!-- Upload Modal -->
+    <div id="uploadModal" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(3px);">
+        <div style="background: white; border-radius: 16px; padding: 28px; width: 100%; max-width: 540px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); margin: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
+                <h3 style="margin: 0; font-size: 1.25rem; color: #1e1b4b; font-weight: 700;">📤 Upload HR Document / Tax Form</h3>
+                <button type="button" onclick="document.getElementById('uploadModal').style.display='none'" style="background: transparent; border: none; font-size: 1.3rem; color: #94a3b8; cursor: pointer;">✕</button>
+            </div>
+            <form action="/hr/documents/upload" method="POST" enctype="multipart/form-data">
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 6px;">Select Employee *</label>
+                    <select name="employeeId" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; background: white;">
+                        <option value="">-- Choose Employee --</option>
+                        <% if (employees) { %>
+                            <% employees.forEach(function(e) { %>
+                                <option value="<%= e.id %>"><%= e.name %> (<%= e.employeeCode %>) - <%= e.position %></option>
+                            <% }); %>
+                        <% } %>
+                    </select>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+                    <div>
+                        <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 6px;">Document Type *</label>
+                        <select name="documentType" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; background: white;">
+                            <option value="Tax Form 2316">BIR Form 2316 (Tax)</option>
+                            <option value="Contract">Employment Contract</option>
+                            <option value="COE">Certificate of Employment</option>
+                            <option value="Clearance">Clearance Form</option>
+                            <option value="Memo">HR Memo / Policy</option>
+                            <option value="Medical Certificate">Medical Certificate</option>
+                            <option value="Other">Other Document</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 6px;">Applicable Year / Period</label>
+                        <input type="text" name="forPeriod" placeholder="e.g. 2024 or 2024-Q1" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem;">
+                    </div>
+                </div>
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 6px;">Document Title *</label>
+                    <input type="text" name="title" placeholder="e.g. BIR 2316 Certificate of Compensation 2024" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem;">
+                </div>
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 6px;">Select File (PDF, Image, Doc) *</label>
+                    <input type="file" name="documentFile" required accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style="width: 100%; padding: 8px; border: 1px dashed #cbd5e1; border-radius: 8px; font-size: 0.88rem; background: #f8fafc;">
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 6px;">Description / Notes</label>
+                    <textarea name="description" rows="2" placeholder="Optional notes about this document..." style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; font-family: inherit; resize: vertical;"></textarea>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" onclick="document.getElementById('uploadModal').style.display='none'" style="padding: 10px 18px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        Cancel
+                    </button>
+                    <button type="submit" style="padding: 10px 20px; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;">
+                        Upload & Archive
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function filterDocs(type) {
+    document.querySelectorAll('.doc-filter').forEach(btn => {
+        btn.style.background = 'white';
+        btn.style.color = '#475569';
+        btn.style.borderColor = '#cbd5e1';
+    });
+    const activeBtn = event.target;
+    activeBtn.style.background = '#e0e7ff';
+    activeBtn.style.color = '#4338ca';
+    activeBtn.style.borderColor = '#4f46e5';
+
+    const rows = document.querySelectorAll('.doc-row');
+    rows.forEach(row => {
+        if (type === 'all' || row.getAttribute('data-type') === type) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+function searchDocs() {
+    const q = document.getElementById('docSearch').value.toLowerCase();
+    const rows = document.querySelectorAll('.doc-row');
+    rows.forEach(row => {
+        const text = row.getAttribute('data-text') || '';
+        if (text.includes(q)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+</script>

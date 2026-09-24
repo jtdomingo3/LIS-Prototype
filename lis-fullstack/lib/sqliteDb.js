@@ -367,6 +367,223 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     CREATE INDEX IF NOT EXISTS idx_consult_doctor ON consultations(doctorName);
     CREATE INDEX IF NOT EXISTS idx_consult_date ON consultations(consultationDate);
     CREATE INDEX IF NOT EXISTS idx_consult_status ON consultations(status);
+
+    -- Financial Costing & HR Tables
+    CREATE TABLE IF NOT EXISTS expenses (
+      id TEXT PRIMARY KEY,
+      category TEXT NOT NULL,
+      subcategory TEXT,
+      description TEXT,
+      amount REAL NOT NULL DEFAULT 0,
+      currency TEXT DEFAULT 'PHP',
+      vendorSupplier TEXT,
+      referenceId TEXT,
+      referenceType TEXT,
+      expenseDate TEXT NOT NULL,
+      month TEXT,
+      receiptUrl TEXT,
+      notes TEXT,
+      recordedBy TEXT,
+      createdAt TEXT,
+      updatedAt TEXT,
+      json TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_expenses_category ON expenses(category);
+    CREATE INDEX IF NOT EXISTS idx_expenses_month ON expenses(month);
+    CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(expenseDate);
+    CREATE INDEX IF NOT EXISTS idx_expenses_ref ON expenses(referenceId);
+
+    CREATE TABLE IF NOT EXISTS revenue_entries (
+      id TEXT PRIMARY KEY,
+      patientId TEXT,
+      testId TEXT,
+      paymentMethod TEXT,
+      clinicalAmount REAL DEFAULT 0,
+      xrayAmount REAL DEFAULT 0,
+      totalAmount REAL DEFAULT 0,
+      discountAmount REAL DEFAULT 0,
+      discountType TEXT,
+      revenueDate TEXT NOT NULL,
+      month TEXT,
+      notes TEXT,
+      recordedBy TEXT,
+      createdAt TEXT,
+      json TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_revenue_month ON revenue_entries(month);
+    CREATE INDEX IF NOT EXISTS idx_revenue_date ON revenue_entries(revenueDate);
+    CREATE INDEX IF NOT EXISTS idx_revenue_patient ON revenue_entries(patientId);
+    CREATE INDEX IF NOT EXISTS idx_revenue_method ON revenue_entries(paymentMethod);
+
+    CREATE TABLE IF NOT EXISTS cost_per_test (
+      id TEXT PRIMARY KEY,
+      testType TEXT NOT NULL,
+      inventoryItems TEXT,
+      estimatedCost REAL DEFAULT 0,
+      notes TEXT,
+      updatedBy TEXT,
+      createdAt TEXT,
+      updatedAt TEXT,
+      json TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_cpt_testtype ON cost_per_test(testType);
+
+    CREATE TABLE IF NOT EXISTS employees (
+      id TEXT PRIMARY KEY,
+      userId TEXT NOT NULL UNIQUE,
+      employeeCode TEXT UNIQUE,
+      department TEXT,
+      position TEXT,
+      employmentType TEXT DEFAULT 'Regular',
+      dateHired TEXT,
+      dateRegularized TEXT,
+      dateResigned TEXT,
+      resignationReason TEXT,
+      employmentStatus TEXT DEFAULT 'Active',
+      basicSalary REAL DEFAULT 0,
+      salaryFrequency TEXT DEFAULT 'Monthly',
+      dailyRate REAL DEFAULT 0,
+      hourlyRate REAL DEFAULT 0,
+      riceAllowance REAL DEFAULT 0,
+      transportAllowance REAL DEFAULT 0,
+      mealAllowance REAL DEFAULT 0,
+      otherAllowances REAL DEFAULT 0,
+      allowancesNotes TEXT,
+      sssNumber TEXT,
+      philhealthNumber TEXT,
+      pagibigNumber TEXT,
+      tinNumber TEXT,
+      bankName TEXT,
+      bankAccountNumber TEXT,
+      bankAccountName TEXT,
+      emergencyContactName TEXT,
+      emergencyContactPhone TEXT,
+      emergencyContactRelation TEXT,
+      birthDate TEXT,
+      civilStatus TEXT,
+      numberOfDependents INTEGER DEFAULT 0,
+      permanentAddress TEXT,
+      presentAddress TEXT,
+      contactPhone TEXT,
+      vacationLeaveBalance REAL DEFAULT 5,
+      sickLeaveBalance REAL DEFAULT 5,
+      notes TEXT,
+      createdAt TEXT,
+      updatedAt TEXT,
+      json TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_emp_userId ON employees(userId);
+    CREATE INDEX IF NOT EXISTS idx_emp_code ON employees(employeeCode);
+    CREATE INDEX IF NOT EXISTS idx_emp_dept ON employees(department);
+    CREATE INDEX IF NOT EXISTS idx_emp_status ON employees(employmentStatus);
+
+    CREATE TABLE IF NOT EXISTS payroll_records (
+      id TEXT PRIMARY KEY,
+      employeeId TEXT NOT NULL,
+      payPeriodStart TEXT NOT NULL,
+      payPeriodEnd TEXT NOT NULL,
+      payDate TEXT,
+      month TEXT,
+      basicPay REAL DEFAULT 0,
+      overtimePay REAL DEFAULT 0,
+      overtimeHours REAL DEFAULT 0,
+      holidayPay REAL DEFAULT 0,
+      nightDifferential REAL DEFAULT 0,
+      riceAllowance REAL DEFAULT 0,
+      transportAllowance REAL DEFAULT 0,
+      mealAllowance REAL DEFAULT 0,
+      otherAllowances REAL DEFAULT 0,
+      adjustments REAL DEFAULT 0,
+      adjustmentNotes TEXT,
+      grossPay REAL DEFAULT 0,
+      sssContribution REAL DEFAULT 0,
+      sssEmployerShare REAL DEFAULT 0,
+      philhealthContribution REAL DEFAULT 0,
+      philhealthEmployerShare REAL DEFAULT 0,
+      pagibigContribution REAL DEFAULT 0,
+      pagibigEmployerShare REAL DEFAULT 0,
+      withholdingTax REAL DEFAULT 0,
+      sssLoan REAL DEFAULT 0,
+      pagibigLoan REAL DEFAULT 0,
+      otherDeductions REAL DEFAULT 0,
+      otherDeductionNotes TEXT,
+      totalDeductions REAL DEFAULT 0,
+      netPay REAL DEFAULT 0,
+      status TEXT DEFAULT 'Draft',
+      approvedBy TEXT,
+      approvedAt TEXT,
+      paidVia TEXT,
+      notes TEXT,
+      computedBy TEXT,
+      createdAt TEXT,
+      updatedAt TEXT,
+      json TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_payroll_emp ON payroll_records(employeeId);
+    CREATE INDEX IF NOT EXISTS idx_payroll_month ON payroll_records(month);
+    CREATE INDEX IF NOT EXISTS idx_payroll_status ON payroll_records(status);
+    CREATE INDEX IF NOT EXISTS idx_payroll_period ON payroll_records(payPeriodStart, payPeriodEnd);
+
+    CREATE TABLE IF NOT EXISTS hr_documents (
+      id TEXT PRIMARY KEY,
+      employeeId TEXT NOT NULL,
+      documentType TEXT NOT NULL,
+      title TEXT,
+      description TEXT,
+      filePath TEXT,
+      fileSize INTEGER,
+      mimeType TEXT,
+      forPeriod TEXT,
+      generatedBy TEXT,
+      isGenerated INTEGER DEFAULT 0,
+      createdAt TEXT,
+      json TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_hrdoc_emp ON hr_documents(employeeId);
+    CREATE INDEX IF NOT EXISTS idx_hrdoc_type ON hr_documents(documentType);
+    CREATE INDEX IF NOT EXISTS idx_hrdoc_period ON hr_documents(forPeriod);
+
+    CREATE TABLE IF NOT EXISTS leave_records (
+      id TEXT PRIMARY KEY,
+      employeeId TEXT NOT NULL,
+      leaveType TEXT NOT NULL,
+      startDate TEXT NOT NULL,
+      endDate TEXT NOT NULL,
+      totalDays REAL DEFAULT 1,
+      reason TEXT,
+      status TEXT DEFAULT 'Pending',
+      approvedBy TEXT,
+      approvedAt TEXT,
+      notes TEXT,
+      createdAt TEXT,
+      json TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_leave_emp ON leave_records(employeeId);
+    CREATE INDEX IF NOT EXISTS idx_leave_status ON leave_records(status);
+    CREATE INDEX IF NOT EXISTS idx_leave_dates ON leave_records(startDate, endDate);
+
+    CREATE TABLE IF NOT EXISTS dtr_records (
+      id TEXT PRIMARY KEY,
+      employeeId TEXT NOT NULL,
+      date TEXT NOT NULL,
+      amIn TEXT,
+      amOut TEXT,
+      pmIn TEXT,
+      pmOut TEXT,
+      totalHours REAL DEFAULT 0,
+      dutyCredit REAL DEFAULT 0,
+      isFullDuty INTEGER DEFAULT 0,
+      undertimeMinutes INTEGER DEFAULT 0,
+      overtimeHours REAL DEFAULT 0,
+      status TEXT DEFAULT 'Completed',
+      notes TEXT,
+      correctedBy TEXT,
+      createdAt TEXT,
+      updatedAt TEXT,
+      json TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_dtr_emp_date ON dtr_records(employeeId, date);
+    CREATE INDEX IF NOT EXISTS idx_dtr_date ON dtr_records(date);
   `);
 
   const stmts = {
@@ -483,7 +700,68 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     getConsultationsByPatientId: sqlite.prepare('SELECT json FROM consultations WHERE patientId = ? ORDER BY consultationDate DESC, createdAt DESC'),
     upsertConsultation: sqlite.prepare('INSERT OR REPLACE INTO consultations (id, patientId, testId, doctorId, doctorName, doctorLicenseNumber, visitType, consultationDate, status, chiefComplaint, primaryDiagnosis, createdAt, updatedAt, completedAt, json) VALUES (@id, @patientId, @testId, @doctorId, @doctorName, @doctorLicenseNumber, @visitType, @consultationDate, @status, @chiefComplaint, @primaryDiagnosis, @createdAt, @updatedAt, @completedAt, @json)'),
     deleteConsultationById: sqlite.prepare('DELETE FROM consultations WHERE id = ?'),
-    deleteConsultationsByPatientId: sqlite.prepare('DELETE FROM consultations WHERE patientId = ?')
+    deleteConsultationsByPatientId: sqlite.prepare('DELETE FROM consultations WHERE patientId = ?'),
+
+    // Expenses
+    getAllExpenses: sqlite.prepare('SELECT json FROM expenses ORDER BY expenseDate DESC, createdAt DESC'),
+    getExpenseById: sqlite.prepare('SELECT json FROM expenses WHERE id = ?'),
+    getExpensesByMonth: sqlite.prepare('SELECT json FROM expenses WHERE month = ? ORDER BY expenseDate DESC'),
+    getExpensesByCategory: sqlite.prepare('SELECT json FROM expenses WHERE category = ? ORDER BY expenseDate DESC'),
+    upsertExpense: sqlite.prepare('INSERT OR REPLACE INTO expenses (id, category, subcategory, description, amount, currency, vendorSupplier, referenceId, referenceType, expenseDate, month, receiptUrl, notes, recordedBy, createdAt, updatedAt, json) VALUES (@id, @category, @subcategory, @description, @amount, @currency, @vendorSupplier, @referenceId, @referenceType, @expenseDate, @month, @receiptUrl, @notes, @recordedBy, @createdAt, @updatedAt, @json)'),
+    deleteExpenseById: sqlite.prepare('DELETE FROM expenses WHERE id = ?'),
+
+    // Revenue Entries
+    getAllRevenueEntries: sqlite.prepare('SELECT json FROM revenue_entries ORDER BY revenueDate DESC, createdAt DESC'),
+    getRevenueEntryById: sqlite.prepare('SELECT json FROM revenue_entries WHERE id = ?'),
+    getRevenueEntriesByMonth: sqlite.prepare('SELECT json FROM revenue_entries WHERE month = ? ORDER BY revenueDate DESC'),
+    upsertRevenueEntry: sqlite.prepare('INSERT OR REPLACE INTO revenue_entries (id, patientId, testId, paymentMethod, clinicalAmount, xrayAmount, totalAmount, discountAmount, discountType, revenueDate, month, notes, recordedBy, createdAt, json) VALUES (@id, @patientId, @testId, @paymentMethod, @clinicalAmount, @xrayAmount, @totalAmount, @discountAmount, @discountType, @revenueDate, @month, @notes, @recordedBy, @createdAt, @json)'),
+    deleteRevenueEntryById: sqlite.prepare('DELETE FROM revenue_entries WHERE id = ?'),
+
+    // Cost Per Test
+    getAllCostPerTest: sqlite.prepare('SELECT json FROM cost_per_test ORDER BY testType ASC'),
+    getCostPerTestById: sqlite.prepare('SELECT json FROM cost_per_test WHERE id = ?'),
+    getCostPerTestByType: sqlite.prepare('SELECT json FROM cost_per_test WHERE testType = ?'),
+    upsertCostPerTest: sqlite.prepare('INSERT OR REPLACE INTO cost_per_test (id, testType, inventoryItems, estimatedCost, notes, updatedBy, createdAt, updatedAt, json) VALUES (@id, @testType, @inventoryItems, @estimatedCost, @notes, @updatedBy, @createdAt, @updatedAt, @json)'),
+    deleteCostPerTestById: sqlite.prepare('DELETE FROM cost_per_test WHERE id = ?'),
+
+    // Employees
+    getAllEmployees: sqlite.prepare('SELECT json FROM employees ORDER BY createdAt DESC'),
+    getEmployeeById: sqlite.prepare('SELECT json FROM employees WHERE id = ?'),
+    getEmployeeByUserId: sqlite.prepare('SELECT json FROM employees WHERE userId = ?'),
+    getEmployeeByCode: sqlite.prepare('SELECT json FROM employees WHERE employeeCode = ?'),
+    upsertEmployee: sqlite.prepare('INSERT OR REPLACE INTO employees (id, userId, employeeCode, department, position, employmentType, dateHired, dateRegularized, dateResigned, resignationReason, employmentStatus, basicSalary, salaryFrequency, dailyRate, hourlyRate, riceAllowance, transportAllowance, mealAllowance, otherAllowances, allowancesNotes, sssNumber, philhealthNumber, pagibigNumber, tinNumber, bankName, bankAccountNumber, bankAccountName, emergencyContactName, emergencyContactPhone, emergencyContactRelation, birthDate, civilStatus, numberOfDependents, permanentAddress, presentAddress, contactPhone, vacationLeaveBalance, sickLeaveBalance, notes, createdAt, updatedAt, json) VALUES (@id, @userId, @employeeCode, @department, @position, @employmentType, @dateHired, @dateRegularized, @dateResigned, @resignationReason, @employmentStatus, @basicSalary, @salaryFrequency, @dailyRate, @hourlyRate, @riceAllowance, @transportAllowance, @mealAllowance, @otherAllowances, @allowancesNotes, @sssNumber, @philhealthNumber, @pagibigNumber, @tinNumber, @bankName, @bankAccountNumber, @bankAccountName, @emergencyContactName, @emergencyContactPhone, @emergencyContactRelation, @birthDate, @civilStatus, @numberOfDependents, @permanentAddress, @presentAddress, @contactPhone, @vacationLeaveBalance, @sickLeaveBalance, @notes, @createdAt, @updatedAt, @json)'),
+    deleteEmployeeById: sqlite.prepare('DELETE FROM employees WHERE id = ?'),
+
+    // Payroll Records
+    getAllPayrollRecords: sqlite.prepare('SELECT json FROM payroll_records ORDER BY payPeriodEnd DESC, createdAt DESC'),
+    getPayrollRecordById: sqlite.prepare('SELECT json FROM payroll_records WHERE id = ?'),
+    getPayrollRecordsByEmployee: sqlite.prepare('SELECT json FROM payroll_records WHERE employeeId = ? ORDER BY payPeriodEnd DESC'),
+    getPayrollRecordsByMonth: sqlite.prepare('SELECT json FROM payroll_records WHERE month = ? ORDER BY payPeriodEnd DESC'),
+    upsertPayrollRecord: sqlite.prepare('INSERT OR REPLACE INTO payroll_records (id, employeeId, payPeriodStart, payPeriodEnd, payDate, month, basicPay, overtimePay, overtimeHours, holidayPay, nightDifferential, riceAllowance, transportAllowance, mealAllowance, otherAllowances, adjustments, adjustmentNotes, grossPay, sssContribution, sssEmployerShare, philhealthContribution, philhealthEmployerShare, pagibigContribution, pagibigEmployerShare, withholdingTax, sssLoan, pagibigLoan, otherDeductions, otherDeductionNotes, totalDeductions, netPay, status, approvedBy, approvedAt, paidVia, notes, computedBy, createdAt, updatedAt, json) VALUES (@id, @employeeId, @payPeriodStart, @payPeriodEnd, @payDate, @month, @basicPay, @overtimePay, @overtimeHours, @holidayPay, @nightDifferential, @riceAllowance, @transportAllowance, @mealAllowance, @otherAllowances, @adjustments, @adjustmentNotes, @grossPay, @sssContribution, @sssEmployerShare, @philhealthContribution, @philhealthEmployerShare, @pagibigContribution, @pagibigEmployerShare, @withholdingTax, @sssLoan, @pagibigLoan, @otherDeductions, @otherDeductionNotes, @totalDeductions, @netPay, @status, @approvedBy, @approvedAt, @paidVia, @notes, @computedBy, @createdAt, @updatedAt, @json)'),
+    deletePayrollRecordById: sqlite.prepare('DELETE FROM payroll_records WHERE id = ?'),
+
+    // HR Documents
+    getAllHrDocuments: sqlite.prepare('SELECT json FROM hr_documents ORDER BY createdAt DESC'),
+    getHrDocumentById: sqlite.prepare('SELECT json FROM hr_documents WHERE id = ?'),
+    getHrDocumentsByEmployee: sqlite.prepare('SELECT json FROM hr_documents WHERE employeeId = ? ORDER BY createdAt DESC'),
+    upsertHrDocument: sqlite.prepare('INSERT OR REPLACE INTO hr_documents (id, employeeId, documentType, title, description, filePath, fileSize, mimeType, forPeriod, generatedBy, isGenerated, createdAt, json) VALUES (@id, @employeeId, @documentType, @title, @description, @filePath, @fileSize, @mimeType, @forPeriod, @generatedBy, @isGenerated, @createdAt, @json)'),
+    deleteHrDocumentById: sqlite.prepare('DELETE FROM hr_documents WHERE id = ?'),
+
+    // Leave Records
+    getAllLeaveRecords: sqlite.prepare('SELECT json FROM leave_records ORDER BY startDate DESC, createdAt DESC'),
+    getLeaveRecordById: sqlite.prepare('SELECT json FROM leave_records WHERE id = ?'),
+    getLeaveRecordsByEmployee: sqlite.prepare('SELECT json FROM leave_records WHERE employeeId = ? ORDER BY startDate DESC'),
+    upsertLeaveRecord: sqlite.prepare('INSERT OR REPLACE INTO leave_records (id, employeeId, leaveType, startDate, endDate, totalDays, reason, status, approvedBy, approvedAt, notes, createdAt, json) VALUES (@id, @employeeId, @leaveType, @startDate, @endDate, @totalDays, @reason, @status, @approvedBy, @approvedAt, @notes, @createdAt, @json)'),
+    deleteLeaveRecordById: sqlite.prepare('DELETE FROM leave_records WHERE id = ?'),
+
+    // DTR Records
+    getAllDtrRecords: sqlite.prepare('SELECT json FROM dtr_records ORDER BY date DESC, createdAt DESC'),
+    getDtrRecordById: sqlite.prepare('SELECT json FROM dtr_records WHERE id = ?'),
+    getDtrRecordsByEmployee: sqlite.prepare('SELECT json FROM dtr_records WHERE employeeId = ? ORDER BY date ASC'),
+    getDtrRecordsByEmployeeAndMonth: sqlite.prepare("SELECT json FROM dtr_records WHERE employeeId = ? AND date LIKE ? ORDER BY date ASC"),
+    getDtrRecordByDate: sqlite.prepare('SELECT json FROM dtr_records WHERE employeeId = ? AND date = ? LIMIT 1'),
+    upsertDtrRecord: sqlite.prepare('INSERT OR REPLACE INTO dtr_records (id, employeeId, date, amIn, amOut, pmIn, pmOut, totalHours, dutyCredit, isFullDuty, undertimeMinutes, overtimeHours, status, notes, correctedBy, createdAt, updatedAt, json) VALUES (@id, @employeeId, @date, @amIn, @amOut, @pmIn, @pmOut, @totalHours, @dutyCredit, @isFullDuty, @undertimeMinutes, @overtimeHours, @status, @notes, @correctedBy, @createdAt, @updatedAt, @json)'),
+    deleteDtrRecordById: sqlite.prepare('DELETE FROM dtr_records WHERE id = ?')
   };
 
   const patientCache = createEntityCache(1000);
@@ -1590,6 +1868,487 @@ function createBetterSqliteDb(dbPath, opts = {}) {
       }
     },
 
+    // Expenses Methods
+    getExpenses(month, category) {
+      try {
+        let rows;
+        if (month) rows = stmts.getExpensesByMonth.all(month);
+        else if (category) rows = stmts.getExpensesByCategory.all(category);
+        else rows = stmts.getAllExpenses.all();
+        return parseRows(rows);
+      } catch (e) { return []; }
+    },
+    getExpenseById(id) {
+      if (!id) return null;
+      try {
+        const row = stmts.getExpenseById.get(id);
+        return row && row.json ? JSON.parse(row.json) : null;
+      } catch (e) { return null; }
+    },
+    saveExpense(exp) {
+      if (!exp || !exp.id) return null;
+      try {
+        const now = new Date().toISOString();
+        const data = {
+          id: String(exp.id),
+          category: safeStr(exp.category || 'misc'),
+          subcategory: safeStr(exp.subcategory || ''),
+          description: safeStr(exp.description || ''),
+          amount: Number(exp.amount) || 0,
+          currency: safeStr(exp.currency || 'PHP'),
+          vendorSupplier: safeStr(exp.vendorSupplier || ''),
+          referenceId: safeStr(exp.referenceId || null),
+          referenceType: safeStr(exp.referenceType || 'manual'),
+          expenseDate: safeStr(exp.expenseDate || now),
+          month: safeStr(exp.month || (exp.expenseDate ? exp.expenseDate.slice(0, 7) : now.slice(0, 7))),
+          receiptUrl: safeStr(exp.receiptUrl || null),
+          notes: safeStr(exp.notes || ''),
+          recordedBy: safeStr(exp.recordedBy || 'System'),
+          createdAt: safeStr(exp.createdAt || now),
+          updatedAt: safeStr(exp.updatedAt || now),
+          json: JSON.stringify(exp)
+        };
+        stmts.upsertExpense.run(data);
+        return exp;
+      } catch (e) {
+        console.error('[sqliteDb] saveExpense error:', e.message);
+        return null;
+      }
+    },
+    deleteExpense(id) {
+      try {
+        stmts.deleteExpenseById.run(id);
+        return true;
+      } catch (e) { return false; }
+    },
+
+    // Revenue Entries Methods
+    getRevenueEntries(month) {
+      try {
+        const rows = month ? stmts.getRevenueEntriesByMonth.all(month) : stmts.getAllRevenueEntries.all();
+        return parseRows(rows);
+      } catch (e) { return []; }
+    },
+    getRevenueEntryById(id) {
+      if (!id) return null;
+      try {
+        const row = stmts.getRevenueEntryById.get(id);
+        return row && row.json ? JSON.parse(row.json) : null;
+      } catch (e) { return null; }
+    },
+    saveRevenueEntry(rev) {
+      if (!rev || !rev.id) return null;
+      try {
+        const now = new Date().toISOString();
+        const data = {
+          id: String(rev.id),
+          patientId: safeStr(rev.patientId || ''),
+          testId: safeStr(rev.testId || ''),
+          paymentMethod: safeStr(rev.paymentMethod || 'Cash'),
+          clinicalAmount: Number(rev.clinicalAmount) || 0,
+          xrayAmount: Number(rev.xrayAmount) || 0,
+          totalAmount: Number(rev.totalAmount) || 0,
+          discountAmount: Number(rev.discountAmount) || 0,
+          discountType: safeStr(rev.discountType || 'None'),
+          revenueDate: safeStr(rev.revenueDate || now),
+          month: safeStr(rev.month || (rev.revenueDate ? rev.revenueDate.slice(0, 7) : now.slice(0, 7))),
+          notes: safeStr(rev.notes || ''),
+          recordedBy: safeStr(rev.recordedBy || 'System'),
+          createdAt: safeStr(rev.createdAt || now),
+          json: JSON.stringify(rev)
+        };
+        stmts.upsertRevenueEntry.run(data);
+        return rev;
+      } catch (e) {
+        console.error('[sqliteDb] saveRevenueEntry error:', e.message);
+        return null;
+      }
+    },
+    deleteRevenueEntry(id) {
+      try {
+        stmts.deleteRevenueEntryById.run(id);
+        return true;
+      } catch (e) { return false; }
+    },
+
+    // Cost Per Test Methods
+    getCostPerTests() {
+      try {
+        const rows = stmts.getAllCostPerTest.all();
+        return parseRows(rows);
+      } catch (e) { return []; }
+    },
+    getCostPerTestById(id) {
+      if (!id) return null;
+      try {
+        const row = stmts.getCostPerTestById.get(id);
+        return row && row.json ? JSON.parse(row.json) : null;
+      } catch (e) { return null; }
+    },
+    getCostPerTestByType(type) {
+      if (!type) return null;
+      try {
+        const row = stmts.getCostPerTestByType.get(type);
+        return row && row.json ? JSON.parse(row.json) : null;
+      } catch (e) { return null; }
+    },
+    saveCostPerTest(cpt) {
+      if (!cpt || !cpt.id) return null;
+      try {
+        const now = new Date().toISOString();
+        const data = {
+          id: String(cpt.id),
+          testType: safeStr(cpt.testType || ''),
+          inventoryItems: typeof cpt.inventoryItems === 'string' ? cpt.inventoryItems : JSON.stringify(cpt.inventoryItems || []),
+          estimatedCost: Number(cpt.estimatedCost) || 0,
+          notes: safeStr(cpt.notes || ''),
+          updatedBy: safeStr(cpt.updatedBy || 'System'),
+          createdAt: safeStr(cpt.createdAt || now),
+          updatedAt: safeStr(cpt.updatedAt || now),
+          json: JSON.stringify(cpt)
+        };
+        stmts.upsertCostPerTest.run(data);
+        return cpt;
+      } catch (e) {
+        console.error('[sqliteDb] saveCostPerTest error:', e.message);
+        return null;
+      }
+    },
+    deleteCostPerTest(id) {
+      try {
+        stmts.deleteCostPerTestById.run(id);
+        return true;
+      } catch (e) { return false; }
+    },
+
+    // Employees Methods
+    getEmployees() {
+      try {
+        const rows = stmts.getAllEmployees.all();
+        return parseRows(rows);
+      } catch (e) { return []; }
+    },
+    getEmployeeById(id) {
+      if (!id) return null;
+      try {
+        const row = stmts.getEmployeeById.get(id);
+        return row && row.json ? JSON.parse(row.json) : null;
+      } catch (e) { return null; }
+    },
+    getEmployeeByUserId(userId) {
+      if (!userId) return null;
+      try {
+        const row = stmts.getEmployeeByUserId.get(userId);
+        return row && row.json ? JSON.parse(row.json) : null;
+      } catch (e) { return null; }
+    },
+    getEmployeeByCode(code) {
+      if (!code) return null;
+      try {
+        const row = stmts.getEmployeeByCode.get(code);
+        return row && row.json ? JSON.parse(row.json) : null;
+      } catch (e) { return null; }
+    },
+    saveEmployee(emp) {
+      if (!emp || !emp.id) return null;
+      try {
+        const now = new Date().toISOString();
+        const data = {
+          id: String(emp.id),
+          userId: safeStr(emp.userId || ''),
+          employeeCode: safeStr(emp.employeeCode || ''),
+          department: safeStr(emp.department || ''),
+          position: safeStr(emp.position || ''),
+          employmentType: safeStr(emp.employmentType || 'Regular'),
+          dateHired: safeStr(emp.dateHired || null),
+          dateRegularized: safeStr(emp.dateRegularized || null),
+          dateResigned: safeStr(emp.dateResigned || null),
+          resignationReason: safeStr(emp.resignationReason || null),
+          employmentStatus: safeStr(emp.employmentStatus || 'Active'),
+          basicSalary: Number(emp.basicSalary) || 0,
+          salaryFrequency: safeStr(emp.salaryFrequency || 'Monthly'),
+          dailyRate: Number(emp.dailyRate) || 0,
+          hourlyRate: Number(emp.hourlyRate) || 0,
+          riceAllowance: Number(emp.riceAllowance) || 0,
+          transportAllowance: Number(emp.transportAllowance) || 0,
+          mealAllowance: Number(emp.mealAllowance) || 0,
+          otherAllowances: Number(emp.otherAllowances) || 0,
+          allowancesNotes: safeStr(emp.allowancesNotes || ''),
+          sssNumber: safeStr(emp.sssNumber || ''),
+          philhealthNumber: safeStr(emp.philhealthNumber || ''),
+          pagibigNumber: safeStr(emp.pagibigNumber || ''),
+          tinNumber: safeStr(emp.tinNumber || ''),
+          bankName: safeStr(emp.bankName || ''),
+          bankAccountNumber: safeStr(emp.bankAccountNumber || ''),
+          bankAccountName: safeStr(emp.bankAccountName || ''),
+          emergencyContactName: safeStr(emp.emergencyContactName || ''),
+          emergencyContactPhone: safeStr(emp.emergencyContactPhone || ''),
+          emergencyContactRelation: safeStr(emp.emergencyContactRelation || ''),
+          birthDate: safeStr(emp.birthDate || null),
+          civilStatus: safeStr(emp.civilStatus || 'Single'),
+          numberOfDependents: parseInt(emp.numberOfDependents, 10) || 0,
+          permanentAddress: safeStr(emp.permanentAddress || ''),
+          presentAddress: safeStr(emp.presentAddress || ''),
+          contactPhone: safeStr(emp.contactPhone || ''),
+          vacationLeaveBalance: Number(emp.vacationLeaveBalance) || 5,
+          sickLeaveBalance: Number(emp.sickLeaveBalance) || 5,
+          notes: safeStr(emp.notes || ''),
+          createdAt: safeStr(emp.createdAt || now),
+          updatedAt: safeStr(emp.updatedAt || now),
+          json: JSON.stringify(emp)
+        };
+        stmts.upsertEmployee.run(data);
+        return emp;
+      } catch (e) {
+        console.error('[sqliteDb] saveEmployee error:', e.message);
+        return null;
+      }
+    },
+    deleteEmployee(id) {
+      try {
+        stmts.deleteEmployeeById.run(id);
+        return true;
+      } catch (e) { return false; }
+    },
+
+    // Payroll Records Methods
+    getPayrollRecords(month, employeeId) {
+      try {
+        let rows;
+        if (month) rows = stmts.getPayrollRecordsByMonth.all(month);
+        else if (employeeId) rows = stmts.getPayrollRecordsByEmployee.all(employeeId);
+        else rows = stmts.getAllPayrollRecords.all();
+        return parseRows(rows);
+      } catch (e) { return []; }
+    },
+    getPayrollRecordById(id) {
+      if (!id) return null;
+      try {
+        const row = stmts.getPayrollRecordById.get(id);
+        return row && row.json ? JSON.parse(row.json) : null;
+      } catch (e) { return null; }
+    },
+    getPayrollRecordsByEmployee(empId) {
+      if (!empId) return [];
+      try {
+        const rows = stmts.getPayrollRecordsByEmployee.all(empId);
+        return parseRows(rows);
+      } catch (e) { return []; }
+    },
+    savePayrollRecord(p) {
+      if (!p || !p.id) return null;
+      try {
+        const now = new Date().toISOString();
+        const data = {
+          id: String(p.id),
+          employeeId: safeStr(p.employeeId || ''),
+          payPeriodStart: safeStr(p.payPeriodStart || now),
+          payPeriodEnd: safeStr(p.payPeriodEnd || now),
+          payDate: safeStr(p.payDate || null),
+          month: safeStr(p.month || (p.payPeriodEnd ? p.payPeriodEnd.slice(0, 7) : now.slice(0, 7))),
+          basicPay: Number(p.basicPay) || 0,
+          overtimePay: Number(p.overtimePay) || 0,
+          overtimeHours: Number(p.overtimeHours) || 0,
+          holidayPay: Number(p.holidayPay) || 0,
+          nightDifferential: Number(p.nightDifferential) || 0,
+          riceAllowance: Number(p.riceAllowance) || 0,
+          transportAllowance: Number(p.transportAllowance) || 0,
+          mealAllowance: Number(p.mealAllowance) || 0,
+          otherAllowances: Number(p.otherAllowances) || 0,
+          adjustments: Number(p.adjustments) || 0,
+          adjustmentNotes: safeStr(p.adjustmentNotes || ''),
+          grossPay: Number(p.grossPay) || 0,
+          sssContribution: Number(p.sssContribution) || 0,
+          sssEmployerShare: Number(p.sssEmployerShare) || 0,
+          philhealthContribution: Number(p.philhealthContribution) || 0,
+          philhealthEmployerShare: Number(p.philhealthEmployerShare) || 0,
+          pagibigContribution: Number(p.pagibigContribution) || 0,
+          pagibigEmployerShare: Number(p.pagibigEmployerShare) || 0,
+          withholdingTax: Number(p.withholdingTax) || 0,
+          sssLoan: Number(p.sssLoan) || 0,
+          pagibigLoan: Number(p.pagibigLoan) || 0,
+          otherDeductions: Number(p.otherDeductions) || 0,
+          otherDeductionNotes: safeStr(p.otherDeductionNotes || ''),
+          totalDeductions: Number(p.totalDeductions) || 0,
+          netPay: Number(p.netPay) || 0,
+          status: safeStr(p.status || 'Draft'),
+          approvedBy: safeStr(p.approvedBy || null),
+          approvedAt: safeStr(p.approvedAt || null),
+          paidVia: safeStr(p.paidVia || 'Cash'),
+          notes: safeStr(p.notes || ''),
+          computedBy: safeStr(p.computedBy || 'System'),
+          createdAt: safeStr(p.createdAt || now),
+          updatedAt: safeStr(p.updatedAt || now),
+          json: JSON.stringify(p)
+        };
+        stmts.upsertPayrollRecord.run(data);
+        return p;
+      } catch (e) {
+        console.error('[sqliteDb] savePayrollRecord error:', e.message);
+        return null;
+      }
+    },
+    deletePayrollRecord(id) {
+      try {
+        stmts.deletePayrollRecordById.run(id);
+        return true;
+      } catch (e) { return false; }
+    },
+
+    // HR Documents Methods
+    getHrDocuments(employeeId) {
+      try {
+        const rows = employeeId ? stmts.getHrDocumentsByEmployee.all(employeeId) : stmts.getAllHrDocuments.all();
+        return parseRows(rows);
+      } catch (e) { return []; }
+    },
+    getHrDocumentById(id) {
+      if (!id) return null;
+      try {
+        const row = stmts.getHrDocumentById.get(id);
+        return row && row.json ? JSON.parse(row.json) : null;
+      } catch (e) { return null; }
+    },
+    saveHrDocument(doc) {
+      if (!doc || !doc.id) return null;
+      try {
+        const now = new Date().toISOString();
+        const data = {
+          id: String(doc.id),
+          employeeId: safeStr(doc.employeeId || ''),
+          documentType: safeStr(doc.documentType || 'Other'),
+          title: safeStr(doc.title || ''),
+          description: safeStr(doc.description || ''),
+          filePath: safeStr(doc.filePath || null),
+          fileSize: parseInt(doc.fileSize, 10) || 0,
+          mimeType: safeStr(doc.mimeType || ''),
+          forPeriod: safeStr(doc.forPeriod || null),
+          generatedBy: safeStr(doc.generatedBy || 'System'),
+          isGenerated: doc.isGenerated ? 1 : 0,
+          createdAt: safeStr(doc.createdAt || now),
+          json: JSON.stringify(doc)
+        };
+        stmts.upsertHrDocument.run(data);
+        return doc;
+      } catch (e) {
+        console.error('[sqliteDb] saveHrDocument error:', e.message);
+        return null;
+      }
+    },
+    deleteHrDocument(id) {
+      try {
+        stmts.deleteHrDocumentById.run(id);
+        return true;
+      } catch (e) { return false; }
+    },
+
+    // Leave Records Methods
+    getLeaveRecords(employeeId) {
+      try {
+        const rows = employeeId ? stmts.getLeaveRecordsByEmployee.all(employeeId) : stmts.getAllLeaveRecords.all();
+        return parseRows(rows);
+      } catch (e) { return []; }
+    },
+    getLeaveRecordById(id) {
+      if (!id) return null;
+      try {
+        const row = stmts.getLeaveRecordById.get(id);
+        return row && row.json ? JSON.parse(row.json) : null;
+      } catch (e) { return null; }
+    },
+    saveLeaveRecord(lr) {
+      if (!lr || !lr.id) return null;
+      try {
+        const now = new Date().toISOString();
+        const data = {
+          id: String(lr.id),
+          employeeId: safeStr(lr.employeeId || ''),
+          leaveType: safeStr(lr.leaveType || 'Vacation'),
+          startDate: safeStr(lr.startDate || now),
+          endDate: safeStr(lr.endDate || now),
+          totalDays: Number(lr.totalDays) || 1,
+          reason: safeStr(lr.reason || ''),
+          status: safeStr(lr.status || 'Pending'),
+          approvedBy: safeStr(lr.approvedBy || null),
+          approvedAt: safeStr(lr.approvedAt || null),
+          notes: safeStr(lr.notes || ''),
+          createdAt: safeStr(lr.createdAt || now),
+          json: JSON.stringify(lr)
+        };
+        stmts.upsertLeaveRecord.run(data);
+        return lr;
+      } catch (e) {
+        console.error('[sqliteDb] saveLeaveRecord error:', e.message);
+        return null;
+      }
+    },
+    deleteLeaveRecord(id) {
+      try {
+        stmts.deleteLeaveRecordById.run(id);
+        return true;
+      } catch (e) { return false; }
+    },
+
+    // DTR Records Methods
+    getDtrRecords(employeeId, yearMonth) {
+      try {
+        if (employeeId && yearMonth) {
+          const rows = stmts.getDtrRecordsByEmployeeAndMonth.all(employeeId, `${yearMonth}%`);
+          return parseRows(rows);
+        } else if (employeeId) {
+          const rows = stmts.getDtrRecordsByEmployee.all(employeeId);
+          return parseRows(rows);
+        } else {
+          const rows = stmts.getAllDtrRecords.all();
+          return parseRows(rows);
+        }
+      } catch (e) { return []; }
+    },
+    getDtrRecordByDate(employeeId, date) {
+      if (!employeeId || !date) return null;
+      try {
+        const row = stmts.getDtrRecordByDate.get(employeeId, date);
+        return row && row.json ? JSON.parse(row.json) : null;
+      } catch (e) { return null; }
+    },
+    saveDtrRecord(dtr) {
+      if (!dtr || !dtr.id) return null;
+      try {
+        const now = new Date().toISOString();
+        const data = {
+          id: String(dtr.id),
+          employeeId: safeStr(dtr.employeeId || ''),
+          date: safeStr(dtr.date || now.slice(0, 10)),
+          amIn: safeStr(dtr.amIn || ''),
+          amOut: safeStr(dtr.amOut || ''),
+          pmIn: safeStr(dtr.pmIn || ''),
+          pmOut: safeStr(dtr.pmOut || ''),
+          totalHours: Number(dtr.totalHours) || 0,
+          dutyCredit: Number(dtr.dutyCredit) || 0,
+          isFullDuty: Number(dtr.isFullDuty) || 0,
+          undertimeMinutes: Number(dtr.undertimeMinutes) || 0,
+          overtimeHours: Number(dtr.overtimeHours) || 0,
+          status: safeStr(dtr.status || 'Completed'),
+          notes: safeStr(dtr.notes || ''),
+          correctedBy: safeStr(dtr.correctedBy || null),
+          createdAt: safeStr(dtr.createdAt || now),
+          updatedAt: safeStr(dtr.updatedAt || now),
+          json: JSON.stringify(dtr)
+        };
+        stmts.upsertDtrRecord.run(data);
+        return dtr;
+      } catch (e) {
+        console.error('[sqliteDb] saveDtrRecord error:', e.message);
+        return null;
+      }
+    },
+    deleteDtrRecord(id) {
+      try {
+        stmts.deleteDtrRecordById.run(id);
+        return true;
+      } catch (e) { return false; }
+    },
+
     close() { try { sqlite.close(); } catch (e) {} }
   };
 }
@@ -1848,6 +2607,171 @@ function createSqlJsDb(SQL, dbPath) {
     CREATE INDEX IF NOT EXISTS idx_sqljs_consult_doctor ON consultations(doctorName);
     CREATE INDEX IF NOT EXISTS idx_sqljs_consult_date ON consultations(consultationDate);
     CREATE INDEX IF NOT EXISTS idx_sqljs_consult_status ON consultations(status);
+
+    -- Costing & HR Tables (sql.js)
+    CREATE TABLE IF NOT EXISTS expenses (
+      id TEXT PRIMARY KEY,
+      category TEXT NOT NULL,
+      subcategory TEXT,
+      description TEXT,
+      amount REAL NOT NULL DEFAULT 0,
+      currency TEXT DEFAULT 'PHP',
+      vendorSupplier TEXT,
+      referenceId TEXT,
+      referenceType TEXT,
+      expenseDate TEXT NOT NULL,
+      month TEXT,
+      receiptUrl TEXT,
+      notes TEXT,
+      recordedBy TEXT,
+      createdAt TEXT,
+      updatedAt TEXT,
+      json TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS revenue_entries (
+      id TEXT PRIMARY KEY,
+      patientId TEXT,
+      testId TEXT,
+      paymentMethod TEXT,
+      clinicalAmount REAL DEFAULT 0,
+      xrayAmount REAL DEFAULT 0,
+      totalAmount REAL DEFAULT 0,
+      discountAmount REAL DEFAULT 0,
+      discountType TEXT,
+      revenueDate TEXT NOT NULL,
+      month TEXT,
+      notes TEXT,
+      recordedBy TEXT,
+      createdAt TEXT,
+      json TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS cost_per_test (
+      id TEXT PRIMARY KEY,
+      testType TEXT NOT NULL,
+      inventoryItems TEXT,
+      estimatedCost REAL DEFAULT 0,
+      notes TEXT,
+      updatedBy TEXT,
+      createdAt TEXT,
+      updatedAt TEXT,
+      json TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS employees (
+      id TEXT PRIMARY KEY,
+      userId TEXT NOT NULL UNIQUE,
+      employeeCode TEXT UNIQUE,
+      department TEXT,
+      position TEXT,
+      employmentType TEXT DEFAULT 'Regular',
+      dateHired TEXT,
+      dateRegularized TEXT,
+      dateResigned TEXT,
+      resignationReason TEXT,
+      employmentStatus TEXT DEFAULT 'Active',
+      basicSalary REAL DEFAULT 0,
+      salaryFrequency TEXT DEFAULT 'Monthly',
+      dailyRate REAL DEFAULT 0,
+      hourlyRate REAL DEFAULT 0,
+      riceAllowance REAL DEFAULT 0,
+      transportAllowance REAL DEFAULT 0,
+      mealAllowance REAL DEFAULT 0,
+      otherAllowances REAL DEFAULT 0,
+      allowancesNotes TEXT,
+      sssNumber TEXT,
+      philhealthNumber TEXT,
+      pagibigNumber TEXT,
+      tinNumber TEXT,
+      bankName TEXT,
+      bankAccountNumber TEXT,
+      bankAccountName TEXT,
+      emergencyContactName TEXT,
+      emergencyContactPhone TEXT,
+      emergencyContactRelation TEXT,
+      birthDate TEXT,
+      civilStatus TEXT,
+      numberOfDependents INTEGER DEFAULT 0,
+      permanentAddress TEXT,
+      presentAddress TEXT,
+      contactPhone TEXT,
+      vacationLeaveBalance REAL DEFAULT 5,
+      sickLeaveBalance REAL DEFAULT 5,
+      notes TEXT,
+      createdAt TEXT,
+      updatedAt TEXT,
+      json TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS payroll_records (
+      id TEXT PRIMARY KEY,
+      employeeId TEXT NOT NULL,
+      payPeriodStart TEXT NOT NULL,
+      payPeriodEnd TEXT NOT NULL,
+      payDate TEXT,
+      month TEXT,
+      basicPay REAL DEFAULT 0,
+      overtimePay REAL DEFAULT 0,
+      overtimeHours REAL DEFAULT 0,
+      holidayPay REAL DEFAULT 0,
+      nightDifferential REAL DEFAULT 0,
+      riceAllowance REAL DEFAULT 0,
+      transportAllowance REAL DEFAULT 0,
+      mealAllowance REAL DEFAULT 0,
+      otherAllowances REAL DEFAULT 0,
+      adjustments REAL DEFAULT 0,
+      adjustmentNotes TEXT,
+      grossPay REAL DEFAULT 0,
+      sssContribution REAL DEFAULT 0,
+      sssEmployerShare REAL DEFAULT 0,
+      philhealthContribution REAL DEFAULT 0,
+      philhealthEmployerShare REAL DEFAULT 0,
+      pagibigContribution REAL DEFAULT 0,
+      pagibigEmployerShare REAL DEFAULT 0,
+      withholdingTax REAL DEFAULT 0,
+      sssLoan REAL DEFAULT 0,
+      pagibigLoan REAL DEFAULT 0,
+      otherDeductions REAL DEFAULT 0,
+      otherDeductionNotes TEXT,
+      totalDeductions REAL DEFAULT 0,
+      netPay REAL DEFAULT 0,
+      status TEXT DEFAULT 'Draft',
+      approvedBy TEXT,
+      approvedAt TEXT,
+      paidVia TEXT,
+      notes TEXT,
+      computedBy TEXT,
+      createdAt TEXT,
+      updatedAt TEXT,
+      json TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS hr_documents (
+      id TEXT PRIMARY KEY,
+      employeeId TEXT NOT NULL,
+      documentType TEXT NOT NULL,
+      title TEXT,
+      description TEXT,
+      filePath TEXT,
+      fileSize INTEGER,
+      mimeType TEXT,
+      forPeriod TEXT,
+      generatedBy TEXT,
+      isGenerated INTEGER DEFAULT 0,
+      createdAt TEXT,
+      json TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS leave_records (
+      id TEXT PRIMARY KEY,
+      employeeId TEXT NOT NULL,
+      leaveType TEXT NOT NULL,
+      startDate TEXT NOT NULL,
+      endDate TEXT NOT NULL,
+      totalDays REAL DEFAULT 1,
+      reason TEXT,
+      status TEXT DEFAULT 'Pending',
+      approvedBy TEXT,
+      approvedAt TEXT,
+      notes TEXT,
+      createdAt TEXT,
+      json TEXT NOT NULL
+    );
   `);
 
   let persistTimer = null;
@@ -3133,6 +4057,278 @@ function createSqlJsDb(SQL, dbPath) {
       } catch (e) { return false; }
     },
 
+    // Expenses (sql.js)
+    getExpenses(month, category) {
+      try {
+        let rows;
+        if (month) rows = queryAll('SELECT json FROM expenses WHERE month = ? ORDER BY expenseDate DESC', [month]);
+        else if (category) rows = queryAll('SELECT json FROM expenses WHERE category = ? ORDER BY expenseDate DESC', [category]);
+        else rows = queryAll('SELECT json FROM expenses ORDER BY expenseDate DESC, createdAt DESC');
+        return parseRows(rows);
+      } catch (e) { return []; }
+    },
+    getExpenseById(id) {
+      if (!id) return null;
+      try {
+        const rows = queryAll('SELECT json FROM expenses WHERE id = ?', [id]);
+        return rows[0] && rows[0].json ? JSON.parse(rows[0].json) : null;
+      } catch (e) { return null; }
+    },
+    saveExpense(exp) {
+      if (!exp || !exp.id) return null;
+      try {
+        const now = new Date().toISOString();
+        queryRun(
+          'INSERT OR REPLACE INTO expenses (id, category, subcategory, description, amount, currency, vendorSupplier, referenceId, referenceType, expenseDate, month, receiptUrl, notes, recordedBy, createdAt, updatedAt, json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [String(exp.id), safeStr(exp.category || 'misc'), safeStr(exp.subcategory || ''), safeStr(exp.description || ''), Number(exp.amount) || 0, safeStr(exp.currency || 'PHP'), safeStr(exp.vendorSupplier || ''), safeStr(exp.referenceId || null), safeStr(exp.referenceType || 'manual'), safeStr(exp.expenseDate || now), safeStr(exp.month || (exp.expenseDate ? exp.expenseDate.slice(0, 7) : now.slice(0, 7))), safeStr(exp.receiptUrl || null), safeStr(exp.notes || ''), safeStr(exp.recordedBy || 'System'), safeStr(exp.createdAt || now), safeStr(exp.updatedAt || now), JSON.stringify(exp)]
+        );
+        persist();
+        return exp;
+      } catch (e) { return null; }
+    },
+    deleteExpense(id) {
+      try {
+        queryRun('DELETE FROM expenses WHERE id = ?', [id]);
+        persist();
+        return true;
+      } catch (e) { return false; }
+    },
+
+    // Revenue Entries (sql.js)
+    getRevenueEntries(month) {
+      try {
+        const rows = month ? queryAll('SELECT json FROM revenue_entries WHERE month = ? ORDER BY revenueDate DESC', [month]) : queryAll('SELECT json FROM revenue_entries ORDER BY revenueDate DESC, createdAt DESC');
+        return parseRows(rows);
+      } catch (e) { return []; }
+    },
+    getRevenueEntryById(id) {
+      if (!id) return null;
+      try {
+        const rows = queryAll('SELECT json FROM revenue_entries WHERE id = ?', [id]);
+        return rows[0] && rows[0].json ? JSON.parse(rows[0].json) : null;
+      } catch (e) { return null; }
+    },
+    saveRevenueEntry(rev) {
+      if (!rev || !rev.id) return null;
+      try {
+        const now = new Date().toISOString();
+        queryRun(
+          'INSERT OR REPLACE INTO revenue_entries (id, patientId, testId, paymentMethod, clinicalAmount, xrayAmount, totalAmount, discountAmount, discountType, revenueDate, month, notes, recordedBy, createdAt, json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [String(rev.id), safeStr(rev.patientId || ''), safeStr(rev.testId || ''), safeStr(rev.paymentMethod || 'Cash'), Number(rev.clinicalAmount) || 0, Number(rev.xrayAmount) || 0, Number(rev.totalAmount) || 0, Number(rev.discountAmount) || 0, safeStr(rev.discountType || 'None'), safeStr(rev.revenueDate || now), safeStr(rev.month || (rev.revenueDate ? rev.revenueDate.slice(0, 7) : now.slice(0, 7))), safeStr(rev.notes || ''), safeStr(rev.recordedBy || 'System'), safeStr(rev.createdAt || now), JSON.stringify(rev)]
+        );
+        persist();
+        return rev;
+      } catch (e) { return null; }
+    },
+    deleteRevenueEntry(id) {
+      try {
+        queryRun('DELETE FROM revenue_entries WHERE id = ?', [id]);
+        persist();
+        return true;
+      } catch (e) { return false; }
+    },
+
+    // Cost Per Test (sql.js)
+    getCostPerTests() {
+      try {
+        const rows = queryAll('SELECT json FROM cost_per_test ORDER BY testType ASC');
+        return parseRows(rows);
+      } catch (e) { return []; }
+    },
+    getCostPerTestById(id) {
+      if (!id) return null;
+      try {
+        const rows = queryAll('SELECT json FROM cost_per_test WHERE id = ?', [id]);
+        return rows[0] && rows[0].json ? JSON.parse(rows[0].json) : null;
+      } catch (e) { return null; }
+    },
+    getCostPerTestByType(type) {
+      if (!type) return null;
+      try {
+        const rows = queryAll('SELECT json FROM cost_per_test WHERE testType = ?', [type]);
+        return rows[0] && rows[0].json ? JSON.parse(rows[0].json) : null;
+      } catch (e) { return null; }
+    },
+    saveCostPerTest(cpt) {
+      if (!cpt || !cpt.id) return null;
+      try {
+        const now = new Date().toISOString();
+        queryRun(
+          'INSERT OR REPLACE INTO cost_per_test (id, testType, inventoryItems, estimatedCost, notes, updatedBy, createdAt, updatedAt, json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [String(cpt.id), safeStr(cpt.testType || ''), typeof cpt.inventoryItems === 'string' ? cpt.inventoryItems : JSON.stringify(cpt.inventoryItems || []), Number(cpt.estimatedCost) || 0, safeStr(cpt.notes || ''), safeStr(cpt.updatedBy || 'System'), safeStr(cpt.createdAt || now), safeStr(cpt.updatedAt || now), JSON.stringify(cpt)]
+        );
+        persist();
+        return cpt;
+      } catch (e) { return null; }
+    },
+    deleteCostPerTest(id) {
+      try {
+        queryRun('DELETE FROM cost_per_test WHERE id = ?', [id]);
+        persist();
+        return true;
+      } catch (e) { return false; }
+    },
+
+    // Employees (sql.js)
+    getEmployees() {
+      try {
+        const rows = queryAll('SELECT json FROM employees ORDER BY createdAt DESC');
+        return parseRows(rows);
+      } catch (e) { return []; }
+    },
+    getEmployeeById(id) {
+      if (!id) return null;
+      try {
+        const rows = queryAll('SELECT json FROM employees WHERE id = ?', [id]);
+        return rows[0] && rows[0].json ? JSON.parse(rows[0].json) : null;
+      } catch (e) { return null; }
+    },
+    getEmployeeByUserId(userId) {
+      if (!userId) return null;
+      try {
+        const rows = queryAll('SELECT json FROM employees WHERE userId = ?', [userId]);
+        return rows[0] && rows[0].json ? JSON.parse(rows[0].json) : null;
+      } catch (e) { return null; }
+    },
+    getEmployeeByCode(code) {
+      if (!code) return null;
+      try {
+        const rows = queryAll('SELECT json FROM employees WHERE employeeCode = ?', [code]);
+        return rows[0] && rows[0].json ? JSON.parse(rows[0].json) : null;
+      } catch (e) { return null; }
+    },
+    saveEmployee(emp) {
+      if (!emp || !emp.id) return null;
+      try {
+        const now = new Date().toISOString();
+        queryRun(
+          'INSERT OR REPLACE INTO employees (id, userId, employeeCode, department, position, employmentType, dateHired, dateRegularized, dateResigned, resignationReason, employmentStatus, basicSalary, salaryFrequency, dailyRate, hourlyRate, riceAllowance, transportAllowance, mealAllowance, otherAllowances, allowancesNotes, sssNumber, philhealthNumber, pagibigNumber, tinNumber, bankName, bankAccountNumber, bankAccountName, emergencyContactName, emergencyContactPhone, emergencyContactRelation, birthDate, civilStatus, numberOfDependents, permanentAddress, presentAddress, contactPhone, vacationLeaveBalance, sickLeaveBalance, notes, createdAt, updatedAt, json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [String(emp.id), safeStr(emp.userId || ''), safeStr(emp.employeeCode || ''), safeStr(emp.department || ''), safeStr(emp.position || ''), safeStr(emp.employmentType || 'Regular'), safeStr(emp.dateHired || null), safeStr(emp.dateRegularized || null), safeStr(emp.dateResigned || null), safeStr(emp.resignationReason || null), safeStr(emp.employmentStatus || 'Active'), Number(emp.basicSalary) || 0, safeStr(emp.salaryFrequency || 'Monthly'), Number(emp.dailyRate) || 0, Number(emp.hourlyRate) || 0, Number(emp.riceAllowance) || 0, Number(emp.transportAllowance) || 0, Number(emp.mealAllowance) || 0, Number(emp.otherAllowances) || 0, safeStr(emp.allowancesNotes || ''), safeStr(emp.sssNumber || ''), safeStr(emp.philhealthNumber || ''), safeStr(emp.pagibigNumber || ''), safeStr(emp.tinNumber || ''), safeStr(emp.bankName || ''), safeStr(emp.bankAccountNumber || ''), safeStr(emp.bankAccountName || ''), safeStr(emp.emergencyContactName || ''), safeStr(emp.emergencyContactPhone || ''), safeStr(emp.emergencyContactRelation || ''), safeStr(emp.birthDate || null), safeStr(emp.civilStatus || 'Single'), parseInt(emp.numberOfDependents, 10) || 0, safeStr(emp.permanentAddress || ''), safeStr(emp.presentAddress || ''), safeStr(emp.contactPhone || ''), Number(emp.vacationLeaveBalance) || 5, Number(emp.sickLeaveBalance) || 5, safeStr(emp.notes || ''), safeStr(emp.createdAt || now), safeStr(emp.updatedAt || now), JSON.stringify(emp)]
+        );
+        persist();
+        return emp;
+      } catch (e) { return null; }
+    },
+    deleteEmployee(id) {
+      try {
+        queryRun('DELETE FROM employees WHERE id = ?', [id]);
+        persist();
+        return true;
+      } catch (e) { return false; }
+    },
+
+    // Payroll Records (sql.js)
+    getPayrollRecords(month, employeeId) {
+      try {
+        let rows;
+        if (month) rows = queryAll('SELECT json FROM payroll_records WHERE month = ? ORDER BY payPeriodEnd DESC', [month]);
+        else if (employeeId) rows = queryAll('SELECT json FROM payroll_records WHERE employeeId = ? ORDER BY payPeriodEnd DESC', [employeeId]);
+        else rows = queryAll('SELECT json FROM payroll_records ORDER BY payPeriodEnd DESC, createdAt DESC');
+        return parseRows(rows);
+      } catch (e) { return []; }
+    },
+    getPayrollRecordById(id) {
+      if (!id) return null;
+      try {
+        const rows = queryAll('SELECT json FROM payroll_records WHERE id = ?', [id]);
+        return rows[0] && rows[0].json ? JSON.parse(rows[0].json) : null;
+      } catch (e) { return null; }
+    },
+    getPayrollRecordsByEmployee(empId) {
+      if (!empId) return [];
+      try {
+        const rows = queryAll('SELECT json FROM payroll_records WHERE employeeId = ? ORDER BY payPeriodEnd DESC', [empId]);
+        return parseRows(rows);
+      } catch (e) { return []; }
+    },
+    savePayrollRecord(p) {
+      if (!p || !p.id) return null;
+      try {
+        const now = new Date().toISOString();
+        queryRun(
+          'INSERT OR REPLACE INTO payroll_records (id, employeeId, payPeriodStart, payPeriodEnd, payDate, month, basicPay, overtimePay, overtimeHours, holidayPay, nightDifferential, riceAllowance, transportAllowance, mealAllowance, otherAllowances, adjustments, adjustmentNotes, grossPay, sssContribution, sssEmployerShare, philhealthContribution, philhealthEmployerShare, pagibigContribution, pagibigEmployerShare, withholdingTax, sssLoan, pagibigLoan, otherDeductions, otherDeductionNotes, totalDeductions, netPay, status, approvedBy, approvedAt, paidVia, notes, computedBy, createdAt, updatedAt, json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [String(p.id), safeStr(p.employeeId || ''), safeStr(p.payPeriodStart || now), safeStr(p.payPeriodEnd || now), safeStr(p.payDate || null), safeStr(p.month || (p.payPeriodEnd ? p.payPeriodEnd.slice(0, 7) : now.slice(0, 7))), Number(p.basicPay) || 0, Number(p.overtimePay) || 0, Number(p.overtimeHours) || 0, Number(p.holidayPay) || 0, Number(p.nightDifferential) || 0, Number(p.riceAllowance) || 0, Number(p.transportAllowance) || 0, Number(p.mealAllowance) || 0, Number(p.otherAllowances) || 0, Number(p.adjustments) || 0, safeStr(p.adjustmentNotes || ''), Number(p.grossPay) || 0, Number(p.sssContribution) || 0, Number(p.sssEmployerShare) || 0, Number(p.philhealthContribution) || 0, Number(p.philhealthEmployerShare) || 0, Number(p.pagibigContribution) || 0, Number(p.pagibigEmployerShare) || 0, Number(p.withholdingTax) || 0, Number(p.sssLoan) || 0, Number(p.pagibigLoan) || 0, Number(p.otherDeductions) || 0, safeStr(p.otherDeductionNotes || ''), Number(p.totalDeductions) || 0, Number(p.netPay) || 0, safeStr(p.status || 'Draft'), safeStr(p.approvedBy || null), safeStr(p.approvedAt || null), safeStr(p.paidVia || 'Cash'), safeStr(p.notes || ''), safeStr(p.computedBy || 'System'), safeStr(p.createdAt || now), safeStr(p.updatedAt || now), JSON.stringify(p)]
+        );
+        persist();
+        return p;
+      } catch (e) { return null; }
+    },
+    deletePayrollRecord(id) {
+      try {
+        queryRun('DELETE FROM payroll_records WHERE id = ?', [id]);
+        persist();
+        return true;
+      } catch (e) { return false; }
+    },
+
+    // HR Documents (sql.js)
+    getHrDocuments(employeeId) {
+      try {
+        const rows = employeeId ? queryAll('SELECT json FROM hr_documents WHERE employeeId = ? ORDER BY createdAt DESC', [employeeId]) : queryAll('SELECT json FROM hr_documents ORDER BY createdAt DESC');
+        return parseRows(rows);
+      } catch (e) { return []; }
+    },
+    getHrDocumentById(id) {
+      if (!id) return null;
+      try {
+        const rows = queryAll('SELECT json FROM hr_documents WHERE id = ?', [id]);
+        return rows[0] && rows[0].json ? JSON.parse(rows[0].json) : null;
+      } catch (e) { return null; }
+    },
+    saveHrDocument(doc) {
+      if (!doc || !doc.id) return null;
+      try {
+        const now = new Date().toISOString();
+        queryRun(
+          'INSERT OR REPLACE INTO hr_documents (id, employeeId, documentType, title, description, filePath, fileSize, mimeType, forPeriod, generatedBy, isGenerated, createdAt, json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [String(doc.id), safeStr(doc.employeeId || ''), safeStr(doc.documentType || 'Other'), safeStr(doc.title || ''), safeStr(doc.description || ''), safeStr(doc.filePath || null), parseInt(doc.fileSize, 10) || 0, safeStr(doc.mimeType || ''), safeStr(doc.forPeriod || null), safeStr(doc.generatedBy || 'System'), doc.isGenerated ? 1 : 0, safeStr(doc.createdAt || now), JSON.stringify(doc)]
+        );
+        persist();
+        return doc;
+      } catch (e) { return null; }
+    },
+    deleteHrDocument(id) {
+      try {
+        queryRun('DELETE FROM hr_documents WHERE id = ?', [id]);
+        persist();
+        return true;
+      } catch (e) { return false; }
+    },
+
+    // Leave Records (sql.js)
+    getLeaveRecords(employeeId) {
+      try {
+        const rows = employeeId ? queryAll('SELECT json FROM leave_records WHERE employeeId = ? ORDER BY startDate DESC', [employeeId]) : queryAll('SELECT json FROM leave_records ORDER BY startDate DESC');
+        return parseRows(rows);
+      } catch (e) { return []; }
+    },
+    getLeaveRecordById(id) {
+      if (!id) return null;
+      try {
+        const rows = queryAll('SELECT json FROM leave_records WHERE id = ?', [id]);
+        return rows[0] && rows[0].json ? JSON.parse(rows[0].json) : null;
+      } catch (e) { return null; }
+    },
+    saveLeaveRecord(lr) {
+      if (!lr || !lr.id) return null;
+      try {
+        const now = new Date().toISOString();
+        queryRun(
+          'INSERT OR REPLACE INTO leave_records (id, employeeId, leaveType, startDate, endDate, totalDays, reason, status, approvedBy, approvedAt, notes, createdAt, json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [String(lr.id), safeStr(lr.employeeId || ''), safeStr(lr.leaveType || 'Vacation'), safeStr(lr.startDate || now), safeStr(lr.endDate || now), Number(lr.totalDays) || 1, safeStr(lr.reason || ''), safeStr(lr.status || 'Pending'), safeStr(lr.approvedBy || null), safeStr(lr.approvedAt || null), safeStr(lr.notes || ''), safeStr(lr.createdAt || now), JSON.stringify(lr)]
+        );
+        persist();
+        return lr;
+      } catch (e) { return null; }
+    },
+    deleteLeaveRecord(id) {
+      try {
+        queryRun('DELETE FROM leave_records WHERE id = ?', [id]);
+        persist();
+        return true;
+      } catch (e) { return false; }
+    },
+
     close() {
       if (isClosed) return;
       persist(true);
@@ -3281,6 +4477,51 @@ function createDb(dbPath, opts = {}) {
     getConsultationsByPatientId(patientId) { return underlyingDb ? underlyingDb.getConsultationsByPatientId(patientId) : []; },
     saveConsultation(c) { if (underlyingDb) return underlyingDb.saveConsultation(c); else readyPromise.then(d => d.saveConsultation(c)); return c; },
     deleteConsultation(id) { if (underlyingDb) return underlyingDb.deleteConsultation(id); else readyPromise.then(d => d.deleteConsultation(id)); return true; },
+
+    // Proxy methods for Costing & HR
+    getExpenses(m, c) { return underlyingDb ? underlyingDb.getExpenses(m, c) : []; },
+    getExpenseById(id) { return underlyingDb ? underlyingDb.getExpenseById(id) : null; },
+    saveExpense(e) { if (underlyingDb) return underlyingDb.saveExpense(e); else readyPromise.then(d => d.saveExpense(e)); return e; },
+    deleteExpense(id) { if (underlyingDb) return underlyingDb.deleteExpense(id); else readyPromise.then(d => d.deleteExpense(id)); return true; },
+
+    getRevenueEntries(m) { return underlyingDb ? underlyingDb.getRevenueEntries(m) : []; },
+    getRevenueEntryById(id) { return underlyingDb ? underlyingDb.getRevenueEntryById(id) : null; },
+    saveRevenueEntry(r) { if (underlyingDb) return underlyingDb.saveRevenueEntry(r); else readyPromise.then(d => d.saveRevenueEntry(r)); return r; },
+    deleteRevenueEntry(id) { if (underlyingDb) return underlyingDb.deleteRevenueEntry(id); else readyPromise.then(d => d.deleteRevenueEntry(id)); return true; },
+
+    getCostPerTests() { return underlyingDb ? underlyingDb.getCostPerTests() : []; },
+    getCostPerTestById(id) { return underlyingDb ? underlyingDb.getCostPerTestById(id) : null; },
+    getCostPerTestByType(t) { return underlyingDb ? underlyingDb.getCostPerTestByType(t) : null; },
+    saveCostPerTest(c) { if (underlyingDb) return underlyingDb.saveCostPerTest(c); else readyPromise.then(d => d.saveCostPerTest(c)); return c; },
+    deleteCostPerTest(id) { if (underlyingDb) return underlyingDb.deleteCostPerTest(id); else readyPromise.then(d => d.deleteCostPerTest(id)); return true; },
+
+    getEmployees() { return underlyingDb ? underlyingDb.getEmployees() : []; },
+    getEmployeeById(id) { return underlyingDb ? underlyingDb.getEmployeeById(id) : null; },
+    getEmployeeByUserId(uid) { return underlyingDb ? underlyingDb.getEmployeeByUserId(uid) : null; },
+    getEmployeeByCode(code) { return underlyingDb ? underlyingDb.getEmployeeByCode(code) : null; },
+    saveEmployee(emp) { if (underlyingDb) return underlyingDb.saveEmployee(emp); else readyPromise.then(d => d.saveEmployee(emp)); return emp; },
+    deleteEmployee(id) { if (underlyingDb) return underlyingDb.deleteEmployee(id); else readyPromise.then(d => d.deleteEmployee(id)); return true; },
+
+    getPayrollRecords(m, e) { return underlyingDb ? underlyingDb.getPayrollRecords(m, e) : []; },
+    getPayrollRecordById(id) { return underlyingDb ? underlyingDb.getPayrollRecordById(id) : null; },
+    getPayrollRecordsByEmployee(e) { return underlyingDb ? underlyingDb.getPayrollRecordsByEmployee(e) : []; },
+    savePayrollRecord(p) { if (underlyingDb) return underlyingDb.savePayrollRecord(p); else readyPromise.then(d => d.savePayrollRecord(p)); return p; },
+    deletePayrollRecord(id) { if (underlyingDb) return underlyingDb.deletePayrollRecord(id); else readyPromise.then(d => d.deletePayrollRecord(id)); return true; },
+
+    getHrDocuments(e) { return underlyingDb ? underlyingDb.getHrDocuments(e) : []; },
+    getHrDocumentById(id) { return underlyingDb ? underlyingDb.getHrDocumentById(id) : null; },
+    saveHrDocument(d) { if (underlyingDb) return underlyingDb.saveHrDocument(d); else readyPromise.then(db => db.saveHrDocument(d)); return d; },
+    deleteHrDocument(id) { if (underlyingDb) return underlyingDb.deleteHrDocument(id); else readyPromise.then(db => db.deleteHrDocument(id)); return true; },
+
+    getLeaveRecords(e) { return underlyingDb ? underlyingDb.getLeaveRecords(e) : []; },
+    getLeaveRecordById(id) { return underlyingDb ? underlyingDb.getLeaveRecordById(id) : null; },
+    saveLeaveRecord(l) { if (underlyingDb) return underlyingDb.saveLeaveRecord(l); else readyPromise.then(d => d.saveLeaveRecord(l)); return l; },
+    deleteLeaveRecord(id) { if (underlyingDb) return underlyingDb.deleteLeaveRecord(id); else readyPromise.then(d => d.deleteLeaveRecord(id)); return true; },
+
+    getDtrRecords(e, ym) { return underlyingDb ? underlyingDb.getDtrRecords(e, ym) : []; },
+    getDtrRecordByDate(e, d) { return underlyingDb ? underlyingDb.getDtrRecordByDate(e, d) : null; },
+    saveDtrRecord(d) { if (underlyingDb) return underlyingDb.saveDtrRecord(d); else readyPromise.then(db => db.saveDtrRecord(d)); return d; },
+    deleteDtrRecord(id) { if (underlyingDb) return underlyingDb.deleteDtrRecord(id); else readyPromise.then(db => db.deleteDtrRecord(id)); return true; },
 
     close() { if (underlyingDb) underlyingDb.close(); }
   };
