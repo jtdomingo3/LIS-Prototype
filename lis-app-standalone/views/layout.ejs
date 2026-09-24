@@ -249,6 +249,7 @@
         /* Main Content */
         .main-content {
             flex: 1;
+            min-width: 0;
             height: 100%;
             max-height: 100vh;
             overflow-y: auto;
@@ -772,6 +773,12 @@
             gap: 12px;
             margin-top: 16px;
             flex-wrap: wrap;
+        }
+
+        /* Medium Screens (Laptops & 1366x768 / 1080p scaled) */
+        @media (max-width: 1440px) {
+            .main-content { padding: 20px 24px 60px 24px; }
+            .sidebar { width: 250px; padding: 20px 16px; }
         }
 
         /* Responsive (Mobile & Small/Medium Screens <= 1100px) */

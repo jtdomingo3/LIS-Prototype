@@ -7,27 +7,41 @@
   }
   .test-order-grid {
     display: grid;
-    grid-template-columns: 360px 1fr;
-    gap: 20px;
+    grid-template-columns: 320px minmax(0, 1fr);
+    gap: 18px;
     align-items: stretch;
   }
   .test-catalog-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 10px;
     align-content: start;
   }
-  @media (max-width: 1280px) {
+  @media (max-width: 1680px) {
     .test-catalog-grid {
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
   }
-  @media (max-width: 1024px) {
+  @media (max-width: 1366px) {
+    .test-order-grid {
+      grid-template-columns: 300px minmax(0, 1fr);
+      gap: 14px;
+    }
+    .test-catalog-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 1080px) {
     .test-order-grid {
       grid-template-columns: 1fr;
     }
     .test-catalog-grid {
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 640px) {
+    .test-catalog-grid {
+      grid-template-columns: 1fr;
     }
   }
 </style>
@@ -150,15 +164,25 @@
                const rawKey = String(t.testType || t.name || '').trim();
                const slug = rawKey.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
           %>
-            <label style="display: flex; flex-direction: column; padding: 10px 12px; border-radius: 8px; background: #f8fafc; border: 1px solid #e2e8f0; cursor: pointer; transition: all 0.15s ease; user-select: none;">
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <input type="checkbox" class="test-checkbox" data-key="<%= slug %>" name="selectedTests" value="<%= rawKey %>" style="accent-color: #10b981; width: 17px; height: 17px; cursor: pointer; flex-shrink: 0;" />
-                <span style="font-size: 0.9em; font-weight: 600; color: #0f172a; flex: 1; word-break: break-word; line-height: 1.25;"><%= t.name || t.testType %></span>
-                <input type="number" min="1" max="10" name="qty_<%= slug %>" class="test-qty" value="1" title="Quantity / Number of tests" placeholder="Qty" style="width: 52px; height: 30px; padding: 2px 6px; font-size: 0.82em; border-radius: 5px; border: 1px solid #cbd5e1; display: none; box-sizing: border-box; text-align: center; font-weight: 600;" />
-                <input type="number" step="0.01" min="0" name="amount_<%= slug %>" class="test-amount" placeholder="₱ Amount" style="width: 88px; height: 30px; padding: 2px 6px; font-size: 0.82em; border-radius: 5px; border: 1px solid #cbd5e1; display: none; box-sizing: border-box;" />
+            <label class="test-item-card" style="display: flex; flex-direction: column; padding: 10px 12px; border-radius: 8px; background: #f8fafc; border: 1px solid #e2e8f0; cursor: pointer; transition: all 0.15s ease; user-select: none;">
+              <div style="display: flex; align-items: flex-start; gap: 8px;">
+                <input type="checkbox" class="test-checkbox" data-key="<%= slug %>" name="selectedTests" value="<%= rawKey %>" style="accent-color: #10b981; width: 17px; height: 17px; cursor: pointer; flex-shrink: 0; margin-top: 2px;" />
+                <span style="font-size: 0.9em; font-weight: 600; color: #0f172a; flex: 1; word-break: normal; overflow-wrap: break-word; line-height: 1.3;"><%= t.name || t.testType %></span>
               </div>
-              <div class="test-remark-container" style="display: none; margin-top: 6px;">
-                <textarea name="remark_<%= slug %>" class="test-remark" placeholder="Special instructions..." rows="2" style="width: 100%; height: 36px; min-height: 36px; max-height: 44px; font-size: 0.82em; line-height: 1.25; padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 5px; box-sizing: border-box; resize: none; background: #ffffff;"></textarea>
+              <div class="test-fields-wrapper" style="display: none; flex-direction: column; gap: 6px; margin-top: 8px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <div style="display: flex; align-items: center; gap: 4px; flex: 1;">
+                    <span style="font-size: 0.75em; font-weight: 600; color: #64748b;">Qty:</span>
+                    <input type="number" min="1" max="10" name="qty_<%= slug %>" class="test-qty" value="1" title="Quantity / Number of tests" placeholder="Qty" style="width: 100%; height: 30px; padding: 2px 4px; font-size: 0.84em; border-radius: 5px; border: 1px solid #cbd5e1; box-sizing: border-box; text-align: center; font-weight: 600; background: #ffffff;" />
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 4px; flex: 1.4;">
+                    <span style="font-size: 0.75em; font-weight: 600; color: #64748b;">₱:</span>
+                    <input type="number" step="0.01" min="0" name="amount_<%= slug %>" class="test-amount" placeholder="Amount" style="width: 100%; height: 30px; padding: 2px 6px; font-size: 0.84em; border-radius: 5px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #ffffff;" />
+                  </div>
+                </div>
+                <div class="test-remark-container">
+                  <textarea name="remark_<%= slug %>" class="test-remark" placeholder="Special instructions..." rows="2" style="width: 100%; height: 36px; min-height: 36px; max-height: 48px; font-size: 0.82em; line-height: 1.25; padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 5px; box-sizing: border-box; resize: none; background: #ffffff;"></textarea>
+                </div>
               </div>
             </label>
           <% }) %>
@@ -237,35 +261,40 @@
       const amt = document.querySelector(`input[name="amount_${key}"]`);
       const qty = document.querySelector(`input[name="qty_${key}"]`);
       const remark = document.querySelector(`textarea[name="remark_${key}"]`);
-      const container = remark ? (remark.closest('.test-remark-container') || remark) : null;
+      const card = cb.closest('label');
+      const wrapper = card ? card.querySelector('.test-fields-wrapper') : null;
 
       function update() {
         if (!amt || !remark) return;
-        const card = cb.closest('label');
         if (cb.checked) {
-          amt.style.display = '';
+          if (wrapper) wrapper.style.display = 'flex';
           amt.disabled = false;
-          if (qty) { qty.style.display = ''; qty.disabled = false; }
+          if (qty) qty.disabled = false;
           remark.disabled = false;
-          if (container) container.style.display = 'block';
           if (card) {
             card.style.borderColor = '#10b981';
             card.style.background = '#f0fdf4';
+            card.style.boxShadow = '0 2px 6px rgba(16, 185, 129, 0.12)';
           }
         } else {
-          amt.style.display = 'none';
+          if (wrapper) wrapper.style.display = 'none';
           amt.disabled = true;
-          if (qty) { qty.style.display = 'none'; qty.disabled = true; }
+          if (qty) qty.disabled = true;
           remark.disabled = true;
-          if (container) container.style.display = 'none';
           if (card) {
             card.style.borderColor = '#e2e8f0';
             card.style.background = '#f8fafc';
+            card.style.boxShadow = 'none';
           }
         }
       }
       cb.addEventListener('change', update);
       update();
+    });
+
+    // Prevent clicking inside input/textarea from accidentally toggling the checkbox
+    document.querySelectorAll('.test-fields-wrapper input, .test-fields-wrapper textarea, .sendout-remark-container textarea').forEach(el => {
+      el.addEventListener('click', e => e.stopPropagation());
     });
 
     document.querySelectorAll('.sendout-checkbox').forEach(cb => {
