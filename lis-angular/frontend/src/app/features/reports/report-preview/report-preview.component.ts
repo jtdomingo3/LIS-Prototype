@@ -21,6 +21,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
         <h1>Report Preview</h1>
         <div class="header-actions">
           <button class="btn btn-primary" (click)="print()">🖨 Print</button>
+          <a [href]="pdfUrl()" target="_blank" class="btn btn-secondary">📄 Download PDF</a>
           <a routerLink="/reports" class="btn btn-outline">← Back</a>
         </div>
       </div>
@@ -78,11 +79,13 @@ export class ReportPreviewComponent implements OnInit, OnDestroy {
   loading = signal(true);
   errorMsg = signal('');
   iframeSrc = signal<SafeResourceUrl>('about:blank');
+  pdfUrl = signal<string>('');
 
   private blobUrl: string | null = null;
 
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id')!;
+    this.pdfUrl.set(this.reportService.getPdfUrl(id));
     this.reportService.getReportHtml(id).subscribe({
       next: (html) => {
         const blob = new Blob([html], { type: 'text/html; charset=UTF-8' });

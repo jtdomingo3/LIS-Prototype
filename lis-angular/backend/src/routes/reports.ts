@@ -4,6 +4,9 @@ import { PatientModel } from '../models/Patient';
 import { requireAuth, requirePermission } from '../middleware/auth';
 import { getDb } from '../db/connection';
 import { renderReportHtml, SHARED_CSS } from '../lib/reportHtmlRenderer';
+import { generatePdfForTest, getReportPath, reportExists } from '../services/reportPdfService';
+import fs from 'fs';
+import path from 'path';
 
 const router = Router();
 
@@ -288,6 +291,72 @@ router.get('/:id/html', requirePermission('reports'), (req: Request, res: Respon
   } catch (err: any) {
     console.error('[reports] html render error:', err);
     return res.status(500).send('<h1>Failed to render report</h1>');
+  }
+});
+
+/**
+ * GET /api/reports/:id/pdf - Stream or generate PDF report
+ */
+router.get('/:id/pdf', requirePermission('reports'), async (req: Request, res: Response) => {
+  try {
+    const test = TestModel.findById(req.params.id);
+    if (!test) return res.status(404).json({ error: 'Test not found' });
+
+    const protocol = req.protocol;
+    const host = req.get('host') || 'localhost:3020';
+    const baseUrl = `${protocol}://${host}`;
+    const asAttachment = req.query.download === '1' || req.query.download === 'true';
+
+    let pdfPath = getReportPath(test.test_id || test.id);
+    if (!reportExists(test.test_id || test.id)) {
+      const generated = await generatePdfForTest(test, baseUrl);
+      if (generated) pdfPath = generated;
+    }
+
+    if (fs.existsSync(pdfPath)) {
+      res.setHeader('Content-Type', 'application/pdf');
+      const disposition = asAttachment ? 'attachment' : 'inline';
+      res.setHeader('Content-Disposition', `${disposition}; filename="${path.basename(pdfPath)}"`);
+      return fs.createReadStream(pdfPath).pipe(res);
+    }
+
+    return res.status(500).json({ error: 'Failed to generate PDF report' });
+  } catch (err: any) {
+    console.error('[reports] pdf error:', err);
+    return res.status(500).json({ error: 'Error generating PDF' });
+  }
+});
+
+/**
+ * GET /api/reports/pdf/:id - Alias for compatibility with fullstack /reports/pdf/:id
+ */
+router.get('/pdf/:id', requirePermission('reports'), async (req: Request, res: Response) => {
+  try {
+    const test = TestModel.findById(req.params.id);
+    if (!test) return res.status(404).json({ error: 'Test not found' });
+
+    const protocol = req.protocol;
+    const host = req.get('host') || 'localhost:3020';
+    const baseUrl = `${protocol}://${host}`;
+    const asAttachment = req.query.download === '1' || req.query.download === 'true';
+
+    let pdfPath = getReportPath(test.test_id || test.id);
+    if (!reportExists(test.test_id || test.id)) {
+      const generated = await generatePdfForTest(test, baseUrl);
+      if (generated) pdfPath = generated;
+    }
+
+    if (fs.existsSync(pdfPath)) {
+      res.setHeader('Content-Type', 'application/pdf');
+      const disposition = asAttachment ? 'attachment' : 'inline';
+      res.setHeader('Content-Disposition', `${disposition}; filename="${path.basename(pdfPath)}"`);
+      return fs.createReadStream(pdfPath).pipe(res);
+    }
+
+    return res.status(500).json({ error: 'Failed to generate PDF report' });
+  } catch (err: any) {
+    console.error('[reports] pdf error:', err);
+    return res.status(500).json({ error: 'Error generating PDF' });
   }
 });
 

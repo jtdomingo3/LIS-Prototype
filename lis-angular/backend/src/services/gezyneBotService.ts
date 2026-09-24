@@ -63,11 +63,70 @@ You are professional, medically accurate, and deeply knowledgeable about:
 Always format responses using clean GitHub Markdown with clear headers, bullet points, and clinical highlights.
 `;
 
-function resolveApiKey(): string | null {
+export function resolveApiKey(): string | null {
   if (process.env.OPENROUTER_API_KEY && process.env.OPENROUTER_API_KEY.startsWith('sk-or-')) {
     return process.env.OPENROUTER_API_KEY;
   }
   return null;
+}
+
+export async function testOpenRouterConnection(apiKey?: string, model: string = DEFAULT_MODEL): Promise<{ success: boolean; message?: string; error?: string }> {
+  const keyToUse = (apiKey && apiKey.trim()) ? apiKey.trim() : resolveApiKey();
+  if (!keyToUse) {
+    return { success: false, error: 'No OpenRouter API key provided or configured.' };
+  }
+
+  return new Promise((resolve) => {
+    const payload = JSON.stringify({
+      model: model || DEFAULT_MODEL,
+      messages: [{ role: 'user', content: 'Ping' }],
+      max_tokens: 5,
+    });
+
+    const url = new URL(OPENROUTER_API_URL);
+    const req = https.request({
+      hostname: url.hostname,
+      port: 443,
+      path: url.pathname,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${keyToUse}`,
+        'HTTP-Referer': 'https://gezynelab.com',
+        'X-Title': 'Gezyne LIS Clinical Assistant',
+        'Content-Length': Buffer.byteLength(payload)
+      }
+    }, res => {
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(body);
+          if (parsed.choices && parsed.choices.length > 0) {
+            resolve({ success: true, message: `Successfully connected to OpenRouter using ${model || DEFAULT_MODEL}!` });
+          } else if (parsed.error) {
+            resolve({ success: false, error: parsed.error.message || 'OpenRouter returned an error' });
+          } else {
+            resolve({ success: true, message: 'Connected successfully to OpenRouter' });
+          }
+        } catch (e: any) {
+          resolve({ success: false, error: 'Invalid response from OpenRouter API' });
+        }
+      });
+    });
+
+    req.on('error', (e) => {
+      resolve({ success: false, error: e.message || 'Network connection failed' });
+    });
+
+    req.setTimeout(10000, () => {
+      req.destroy();
+      resolve({ success: false, error: 'Connection to OpenRouter timed out after 10s' });
+    });
+
+    req.write(payload);
+    req.end();
+  });
 }
 
 export async function askGezyneBot(messages: { role: string; content: string }[], model: string = DEFAULT_MODEL): Promise<{ answer: string; model: string; offlineFallback?: boolean }> {

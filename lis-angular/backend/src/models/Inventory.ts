@@ -48,6 +48,10 @@ export interface InventoryBatch {
   expiration_date: string | null;
   opened_date: string | null;
   opened_by: string | null;
+  open_vial_expiry_date?: string | null;
+  qc_status?: string;
+  qc_verified_by?: string | null;
+  qc_verified_date?: string | null;
   is_active: number;
   notes: string | null;
   created_at: string;
@@ -338,6 +342,10 @@ export const InventoryModel = {
     if (data.expiration_date !== undefined) { fields.push('expiration_date = ?'); values.push(data.expiration_date); }
     if (data.opened_date !== undefined) { fields.push('opened_date = ?'); values.push(data.opened_date); }
     if (data.opened_by !== undefined) { fields.push('opened_by = ?'); values.push(data.opened_by); }
+    if (data.open_vial_expiry_date !== undefined) { fields.push('open_vial_expiry_date = ?'); values.push(data.open_vial_expiry_date); }
+    if (data.qc_status !== undefined) { fields.push('qc_status = ?'); values.push(data.qc_status); }
+    if (data.qc_verified_by !== undefined) { fields.push('qc_verified_by = ?'); values.push(data.qc_verified_by); }
+    if (data.qc_verified_date !== undefined) { fields.push('qc_verified_date = ?'); values.push(data.qc_verified_date); }
     if (data.is_active !== undefined) { fields.push('is_active = ?'); values.push(data.is_active ? 1 : 0); }
     if (data.notes !== undefined) { fields.push('notes = ?'); values.push(data.notes); }
 
@@ -348,6 +356,23 @@ export const InventoryModel = {
     db.prepare(`UPDATE inventory_batches SET ${fields.join(', ')} WHERE id = ?`).run(...values);
 
     return db.prepare('SELECT * FROM inventory_batches WHERE id = ?').get(batchId) as InventoryBatch;
+  },
+
+  deleteBatch(batchId: string): boolean {
+    const db = getDb();
+    const result = db.prepare('DELETE FROM inventory_batches WHERE id = ?').run(batchId);
+    return result.changes > 0;
+  },
+
+  findBatchById(batchId: string): InventoryBatch | null {
+    const db = getDb();
+    const row = db.prepare('SELECT * FROM inventory_batches WHERE id = ?').get(batchId);
+    return (row as InventoryBatch) || null;
+  },
+
+  findBatchesByInventoryId(inventoryId: string): InventoryBatch[] {
+    const db = getDb();
+    return db.prepare('SELECT * FROM inventory_batches WHERE inventory_id = ? ORDER BY expiration_date ASC, created_at ASC').all(inventoryId) as InventoryBatch[];
   },
 
   // Record audit transaction
@@ -417,5 +442,153 @@ export const InventoryModel = {
         criticalThreshold: Number(r.critical_threshold),
       })),
     };
+  },
+
+  // Comprehensive regulatory and expiration alerts
+  getAlerts(): {
+    lowStock: any[];
+    expiringBatches: any[];
+    expiredBatches: any[];
+    openVials: any[];
+    quarantined: any[];
+  } {
+    const items = this.findAll({ is_active: 1 });
+    const now = new Date();
+    const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    const alerts = {
+      lowStock: [] as any[],
+      expiringBatches: [] as any[],
+      expiredBatches: [] as any[],
+      openVials: [] as any[],
+      quarantined: [] as any[],
+    };
+
+    for (const item of items) {
+      const batches = this.findBatchesByInventoryId(item.id);
+      const totalStock = batches.reduce((sum, b) => sum + (b.is_active ? Number(b.current_quantity) : 0), 0);
+
+      if (totalStock <= item.min_threshold) {
+        alerts.lowStock.push({
+          itemId: item.id,
+          sku: item.sku,
+          itemName: item.name,
+          category: item.category,
+          area: item.area,
+          currentStock: totalStock,
+          minThreshold: item.min_threshold,
+          unit: item.unit,
+          isDepleted: totalStock <= 0,
+        });
+      }
+
+      for (const batch of batches) {
+        if (!batch.is_active || batch.current_quantity <= 0) continue;
+
+        if (batch.qc_status === 'QUARANTINED') {
+          alerts.quarantined.push({
+            itemId: item.id,
+            itemName: item.name,
+            batchId: batch.id,
+            lotNumber: batch.lot_number,
+            quantity: batch.current_quantity,
+            unit: item.unit,
+          });
+        }
+
+        if (batch.opened_date) {
+          const openExpiry = batch.open_vial_expiry_date ? new Date(batch.open_vial_expiry_date) : null;
+          alerts.openVials.push({
+            itemId: item.id,
+            itemName: item.name,
+            batchId: batch.id,
+            lotNumber: batch.lot_number,
+            openedDate: batch.opened_date,
+            openVialExpiry: batch.open_vial_expiry_date,
+            isExpired: openExpiry ? openExpiry < now : false,
+          });
+        }
+
+        if (batch.expiration_date) {
+          const exp = new Date(batch.expiration_date);
+          if (exp < now) {
+            alerts.expiredBatches.push({
+              itemId: item.id,
+              itemName: item.name,
+              batchId: batch.id,
+              lotNumber: batch.lot_number,
+              expirationDate: batch.expiration_date,
+              quantity: batch.current_quantity,
+              unit: item.unit,
+            });
+          } else if (exp <= thirtyDaysFromNow) {
+            const daysLeft = Math.ceil((exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+            alerts.expiringBatches.push({
+              itemId: item.id,
+              itemName: item.name,
+              batchId: batch.id,
+              lotNumber: batch.lot_number,
+              expirationDate: batch.expiration_date,
+              daysLeft,
+              quantity: batch.current_quantity,
+              unit: item.unit,
+            });
+          }
+        }
+      }
+    }
+
+    return alerts;
+  },
+
+  // Export inventory CSV
+  exportCsv(): string {
+    const items = this.findAll({});
+    const csvRows: string[] = [];
+
+    csvRows.push([
+      'SKU/REF',
+      'Item Name',
+      'Category',
+      'Department/Area',
+      'Total Stock',
+      'Unit',
+      'Min Reorder Level',
+      'Unit Cost',
+      'Storage Temp',
+      'Storage Location',
+      'Manufacturer',
+      'Supplier',
+      'Active Lots Count',
+      'Open-Vial Stability (Days)',
+      'Status'
+    ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
+
+    for (const item of items) {
+      const batches = this.findBatchesByInventoryId(item.id);
+      const totalStock = batches.reduce((sum, b) => sum + (b.is_active ? Number(b.current_quantity) : 0), 0);
+      const status = totalStock <= 0 ? 'OUT OF STOCK' : (totalStock <= item.min_threshold ? 'LOW STOCK' : 'OK');
+      const activeBatches = batches.filter(b => b.is_active && b.current_quantity > 0);
+
+      csvRows.push([
+        item.sku,
+        item.name,
+        item.category,
+        item.area,
+        totalStock,
+        item.unit,
+        item.min_threshold,
+        item.cost.toFixed(2),
+        item.storage_temp || '',
+        item.location || '',
+        item.manufacturer || '',
+        item.supplier || '',
+        activeBatches.length,
+        item.open_vial_stability_days || 'N/A',
+        status
+      ].map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','));
+    }
+
+    return csvRows.join('\r\n');
   }
 };

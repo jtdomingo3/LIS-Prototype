@@ -65,6 +65,26 @@ export class ReceptionService {
     return this.http.post(`${this.apiUrl}/delete`, data);
   }
 
+  getStashed(): Observable<{ stashedList: any[] }> {
+    return this.http.get<{ stashedList: any[] }>(`${this.apiUrl}/stashed`);
+  }
+
+  stashResults(data: { patientId?: string; testIds?: string[] }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/stash`, data);
+  }
+
+  releaseStashed(data: { patientId?: string; testIds?: string[] }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/release-stashed`, data);
+  }
+
+  clearQueues(): Observable<any> {
+    return this.http.post(`${this.apiUrl}/clear-queues`, {});
+  }
+
+  getTTSUrl(text: string, lang = 'en'): string {
+    return `${this.apiUrl}/tts?text=${encodeURIComponent(text)}&lang=${encodeURIComponent(lang)}`;
+  }
+
   /**
    * SSE connection for live updates.
    * Returns an EventSource — caller is responsible for closing it.

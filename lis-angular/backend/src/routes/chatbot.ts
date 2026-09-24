@@ -126,4 +126,62 @@ router.post('/message', requireAuth, async (req: Request, res: Response) => {
   }
 });
 
+// Main query endpoint (alias matching fullstack /api/chatbot/query)
+router.post('/query', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { question, content, conversationId, conversation_id, model } = req.body;
+    const queryText = (question || content || '').trim();
+    if (!queryText) {
+      res.status(400).json({ success: false, error: 'Question is required' });
+      return;
+    }
+
+    const userId = req.user ? req.user.userId : null;
+    let convId = conversationId || conversation_id;
+
+    if (!convId) {
+      const title = queryText.slice(0, 35) + (queryText.length > 35 ? '...' : '');
+      const conv = ChatbotModel.createConversation({
+        user_id: userId,
+        title,
+        last_model: model,
+      });
+      convId = conv.id;
+    }
+
+    ChatbotModel.addMessage({
+      conversation_id: convId,
+      user_id: userId,
+      role: 'user',
+      content: queryText,
+    });
+
+    const fullConv = ChatbotModel.findConversationById(convId);
+    const messagesHistory = (fullConv?.messages || []).map(m => ({
+      role: m.role,
+      content: m.content,
+    }));
+
+    const aiResult = await askGezyneBot(messagesHistory, model);
+
+    ChatbotModel.addMessage({
+      conversation_id: convId,
+      user_id: null,
+      role: 'assistant',
+      content: aiResult.answer,
+      sources: aiResult.model,
+    });
+
+    res.json({
+      success: true,
+      conversationId: convId,
+      answer: aiResult.answer,
+      model: aiResult.model,
+      offlineFallback: aiResult.offlineFallback,
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 export default router;

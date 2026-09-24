@@ -69,6 +69,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/reception/overview/reception-overview.component').then(m => m.ReceptionOverviewComponent),
       },
       {
+        path: 'stashed',
+        loadComponent: () => import('./features/reception/stashed/stashed.component').then(m => m.StashedComponent),
+      },
+      {
         path: 'area/:name',
         loadComponent: () => import('./features/reception/area-queue/area-queue.component').then(m => m.AreaQueueComponent),
       },

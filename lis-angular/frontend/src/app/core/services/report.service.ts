@@ -58,6 +58,11 @@ export class ReportService {
     return `${this.config.apiUrl}/reports/${id}/html?print=1&token=${encodeURIComponent(token)}`;
   }
 
+  getPdfUrl(id: string, download = true): string {
+    const token = this.auth.token || '';
+    return `${this.config.apiUrl}/reports/${id}/pdf?download=${download ? '1' : '0'}&token=${encodeURIComponent(token)}`;
+  }
+
   getPrintMultipleUrl(ids: string[]): string {
     const token = this.auth.token || '';
     const qs = ids.map(id => `ids[]=${encodeURIComponent(id)}`).join('&');

@@ -73,11 +73,17 @@ interface PatientEntry {
                 </a>
               }
               <button class="btn btn-primary" (click)="completePatient(entry)"
-                [disabled]="completing() === entry.patient.id">
+                [disabled]="completing() === entry.patient.id || stashing() === entry.patient.id">
                 {{ completing() === entry.patient.id ? 'Processing...' : 'Mark Complete' }}
               </button>
+              @if (isReleasingArea()) {
+                <button class="btn btn-warning" (click)="stashPatient(entry)"
+                  [disabled]="stashing() === entry.patient.id || completing() === entry.patient.id">
+                  {{ stashing() === entry.patient.id ? 'Stashing...' : '&#128229; Stash Result' }}
+                </button>
+              }
               <button class="btn btn-danger" (click)="deletePatient(entry)"
-                [disabled]="completing() === entry.patient.id">
+                [disabled]="completing() === entry.patient.id || stashing() === entry.patient.id">
                 Delete
               </button>
             </div>
@@ -103,6 +109,8 @@ interface PatientEntry {
     .loading { text-align: center; padding: 3rem; color: #6b7280; }
     .btn-danger { background: #ef4444; color: white; border-color: #ef4444; }
     .btn-danger:hover { background: #dc2626; }
+    .btn-warning { background: #f59e0b; color: white; border: none; font-weight: 600; border-radius: 6px; padding: 0.5rem 1rem; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem; }
+    .btn-warning:hover { background: #d97706; }
   `]
 })
 export class AreaQueueComponent implements OnInit, OnDestroy {
@@ -113,9 +121,11 @@ export class AreaQueueComponent implements OnInit, OnDestroy {
   entries = signal<PatientEntry[]>([]);
   loading = signal(true);
   completing = signal('');
+  stashing = signal('');
   private eventSource: EventSource | null = null;
 
   isPaymentArea() { return this.areaName() === 'Payment Area'; }
+  isReleasingArea() { return (this.areaName() || '').toLowerCase().includes('releasing'); }
 
   ngOnInit() {
     const name = decodeURIComponent(this.route.snapshot.paramMap.get('name')!);
@@ -188,6 +198,28 @@ export class AreaQueueComponent implements OnInit, OnDestroy {
         this.completing.set('');
       },
       error: () => this.completing.set('')
+    });
+  }
+
+  stashPatient(entry: PatientEntry) {
+    const name = `${entry.patient.first_name} ${entry.patient.last_name}`;
+    const confirmed = confirm(
+      `Stash results for ${name}?\n\n• The patient will be moved to the Stashed Results section on Reception.\n• This queue count will decrease immediately.`
+    );
+    if (!confirmed) return;
+
+    this.stashing.set(entry.patient.id);
+    const testIds = entry.tests.map((t: any) => t.id);
+
+    this.receptionService.stashResults({ patientId: entry.patient.id, testIds }).subscribe({
+      next: () => {
+        this.entries.update(list => list.filter(e => e.patient.id !== entry.patient.id));
+        this.stashing.set('');
+      },
+      error: () => {
+        this.stashing.set('');
+        alert('Failed to stash patient results.');
+      }
     });
   }
 

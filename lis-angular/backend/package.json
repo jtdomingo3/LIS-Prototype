@@ -18,9 +18,12 @@
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.0",
     "express-validator": "^7.2.1",
+    "google-tts-api": "^2.0.2",
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
+    "mdb-reader": "^3.2.0",
     "multer": "^1.4.5-lts.1",
+    "puppeteer-core": "^25.12.0",
     "uuid": "^11.1.0"
   },
   "devDependencies": {

@@ -164,6 +164,37 @@ router.put('/:id', requireAuth, (req: Request, res: Response) => {
   }
 });
 
+// Complete consultation and mark test as 'Checked'
+router.post('/:id/complete', requireAuth, (req: Request, res: Response) => {
+  try {
+    let updated = ConsultationModel.findById(req.params.id);
+    if (!updated) {
+      // Check if param is test_id
+      const byTest = ConsultationModel.findByTestId(req.params.id);
+      if (byTest) {
+        updated = ConsultationModel.update(byTest.id, { status: 'Completed' });
+      }
+    } else {
+      updated = ConsultationModel.update(updated.id, { status: 'Completed' });
+    }
+
+    if (!updated) {
+      return res.status(404).json({ error: 'Consultation not found' });
+    }
+
+    if (updated.test_id) {
+      TestModel.update(updated.test_id, {
+        status: 'Checked',
+        completed_at: new Date().toISOString(),
+      });
+    }
+
+    return res.json({ success: true, consultation: updated });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // Delete consultation
 router.delete('/:id', requireAuth, (req: Request, res: Response) => {
   try {

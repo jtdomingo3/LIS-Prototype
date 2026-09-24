@@ -87,6 +87,42 @@ export function initializeDb(): void {
       console.log('[DB] adding missing designation column to users');
       database.prepare("ALTER TABLE users ADD COLUMN designation TEXT").run();
     }
+
+    const batchCols = database.prepare("PRAGMA table_info(inventory_batches)").all() as { name: string }[];
+    if (!batchCols.find(c => c.name === 'qc_status')) {
+      console.log('[DB] adding missing qc_status column to inventory_batches');
+      database.prepare("ALTER TABLE inventory_batches ADD COLUMN qc_status TEXT NOT NULL DEFAULT 'PASSED'").run();
+    }
+    if (!batchCols.find(c => c.name === 'open_vial_expiry_date')) {
+      database.prepare("ALTER TABLE inventory_batches ADD COLUMN open_vial_expiry_date TEXT").run();
+    }
+    if (!batchCols.find(c => c.name === 'qc_verified_by')) {
+      database.prepare("ALTER TABLE inventory_batches ADD COLUMN qc_verified_by TEXT").run();
+    }
+    if (!batchCols.find(c => c.name === 'qc_verified_date')) {
+      database.prepare("ALTER TABLE inventory_batches ADD COLUMN qc_verified_date TEXT").run();
+    }
+
+    const qcControlCols = database.prepare("PRAGMA table_info(qc_controls)").all() as { name: string }[];
+    if (!qcControlCols.find(c => c.name === 'analytes')) {
+      console.log('[DB] adding missing analytes column to qc_controls');
+      database.prepare("ALTER TABLE qc_controls ADD COLUMN analytes TEXT NOT NULL DEFAULT '[]'").run();
+    }
+
+    const qcEntryCols = database.prepare("PRAGMA table_info(qc_entries)").all() as { name: string }[];
+    if (!qcEntryCols.find(c => c.name === 'corrective_action')) {
+      console.log('[DB] adding missing corrective_action column to qc_entries');
+      database.prepare("ALTER TABLE qc_entries ADD COLUMN corrective_action TEXT").run();
+    }
+    if (!qcEntryCols.find(c => c.name === 'reagent_lot_number')) {
+      database.prepare("ALTER TABLE qc_entries ADD COLUMN reagent_lot_number TEXT").run();
+    }
+    if (!qcEntryCols.find(c => c.name === 'run_number')) {
+      database.prepare("ALTER TABLE qc_entries ADD COLUMN run_number INTEGER DEFAULT 1").run();
+    }
+    if (!qcEntryCols.find(c => c.name === 'violation_type')) {
+      database.prepare("ALTER TABLE qc_entries ADD COLUMN violation_type TEXT").run();
+    }
   } catch (err: any) {
     console.warn('[DB] migration check failed:', err.message);
   }

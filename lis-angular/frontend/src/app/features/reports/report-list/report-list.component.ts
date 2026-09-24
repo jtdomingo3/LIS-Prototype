@@ -78,7 +78,8 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
     } @else {
       <!-- Action Buttons -->
       <div class="report-actions">
-        <button class="btn btn-success" (click)="printReport()">🖨 Print / Save PDF</button>
+        <button class="btn btn-success" (click)="printReport()">🖨 Print Report</button>
+        <button class="btn btn-secondary" (click)="downloadPdfDirect()">📄 Download Official PDF</button>
       </div>
 
       <!-- Patient & Test Info -->
@@ -485,9 +486,17 @@ export class ReportListComponent implements OnInit, OnDestroy {
     if (!win) window.location.href = url;
   }
 
+  downloadPdfDirect() {
+    const id = this.currentId();
+    if (!id) return;
+    const url = this.reportService.getPdfUrl(id, true);
+    const win = window.open(url, '_blank');
+    if (!win) window.location.href = url;
+  }
+
   // Legacy aliases kept for any lingering template references
   openPrintView() { this.printReport(); }
-  downloadPdf()   { this.printReport(); }
+  downloadPdf()   { this.downloadPdfDirect(); }
   printCurrent()  { this.printReport(); }
 
 }

@@ -3,6 +3,9 @@ import { TestModel } from '../models/Test';
 import { PatientModel } from '../models/Patient';
 import { requireAuth, requirePermission } from '../middleware/auth';
 import { EventEmitter } from 'events';
+import https from 'https';
+import { URL } from 'url';
+const googleTTS = require('google-tts-api');
 
 const router = Router();
 const sseEmitter = new EventEmitter();
@@ -372,7 +375,12 @@ router.get('/assigned-data', requireAuth, (req: Request, res: Response) => {
  */
 router.post('/advert', requireAuth, requirePermission('reception'), (req: Request, res: Response) => {
   try {
-    kioskAdText = req.body.text || '';
+    kioskAdText = req.body.text || req.body.ad || req.body.adText || req.body.advert || '';
+    try {
+      sseEmitter.emit('update', { action: 'advert', ad: kioskAdText, time: new Date().toISOString() });
+    } catch (e) {
+      console.warn('Failed to emit SSE advert update', e);
+    }
     return res.json({ message: 'Advertisement saved', ad: kioskAdText });
   } catch (err: any) {
     return res.status(500).json({ error: 'Failed to save advertisement' });
@@ -384,6 +392,250 @@ router.post('/advert', requireAuth, requirePermission('reception'), (req: Reques
  */
 router.get('/advert', (req: Request, res: Response) => {
   return res.json({ ad: kioskAdText });
+});
+
+/**
+ * GET /api/reception/emit-test - Emit a test SSE update for debugging
+ */
+router.get('/emit-test', (req: Request, res: Response) => {
+  try {
+    const payload = { action: 'debug', message: 'test emit', time: new Date().toISOString() };
+    sseEmitter.emit('update', payload);
+    return res.json({ ok: true, emitted: payload });
+  } catch (err: any) {
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+/**
+ * POST /api/reception/clear-queues - Clear all active reception queues (Admin only)
+ */
+router.post('/clear-queues', requireAuth, (req: Request, res: Response) => {
+  try {
+    if (req.user?.role !== 'Admin') {
+      return res.status(403).json({ error: 'Admin access required to clear reception queues' });
+    }
+
+    const { tests } = TestModel.findAll({ limit: 10000 });
+    const nowIso = new Date().toISOString();
+    const userName = req.user?.email || 'Admin';
+    let count = 0;
+
+    for (const t of tests) {
+      if (t.status !== 'Released') {
+        const prevStatus = t.status || null;
+        TestModel.update(t.id, {
+          status: 'Released',
+          completed_at: t.completed_at || nowIso,
+          status_history: [
+            ...(t.status_history || []),
+            { from: prevStatus, to: 'Released', user: userName, area: 'Released', timestamp: nowIso }
+          ]
+        });
+        count++;
+      }
+    }
+
+    try {
+      sseEmitter.emit('update', { action: 'clear_queues', time: nowIso });
+    } catch (e) {
+      console.warn('SSE emit for clear_queues failed', e);
+    }
+
+    return res.json({
+      message: `Successfully cleared all reception queues (${count} test(s) set to Released).`,
+      count
+    });
+  } catch (err: any) {
+    console.error('[reception] clear-queues error:', err);
+    return res.status(500).json({ error: 'Failed to clear reception queues' });
+  }
+});
+
+/**
+ * POST /api/reception/stash - Stash results when patient is unavailable
+ */
+router.post('/stash', requireAuth, requirePermission('reception'), (req: Request, res: Response) => {
+  try {
+    const { patientId, testIds } = req.body;
+    const userName = req.user?.email || 'System';
+    const nowIso = new Date().toISOString();
+
+    const idsToStash: string[] = Array.isArray(testIds)
+      ? testIds.map(String)
+      : (testIds ? String(testIds).split(',').map((s: string) => s.trim()).filter(Boolean) : []);
+
+    const { tests } = TestModel.findAll({ limit: 10000 });
+    let count = 0;
+    let patientName = '';
+
+    for (const t of tests) {
+      const matchPatient = patientId && String(t.patient_id) === String(patientId);
+      const matchId = idsToStash.includes(String(t.id)) || (t.test_id && idsToStash.includes(String(t.test_id)));
+
+      if (matchPatient || matchId) {
+        if (t.status === 'Releasing of Result' || t.status === 'Completed') {
+          TestModel.update(t.id, {
+            status: 'Stashed',
+            status_history: [
+              ...(t.status_history || []),
+              { from: t.status, to: 'Stashed', user: userName, area: 'Stashed', timestamp: nowIso }
+            ]
+          });
+          count++;
+
+          if (t.patient_id && !patientName) {
+            const p = PatientModel.findById(t.patient_id);
+            if (p) patientName = `${p.first_name} ${p.last_name}`.trim();
+          }
+        }
+      }
+    }
+
+    try {
+      sseEmitter.emit('update', { action: 'stash', count, patientName, time: nowIso });
+    } catch (e) {}
+
+    return res.json({
+      message: `Stashed ${count} result(s) for ${patientName || 'patient'}. Held in Reception Stashed section.`,
+      count,
+      patientName
+    });
+  } catch (err: any) {
+    console.error('[reception] stash error:', err);
+    return res.status(500).json({ error: 'Failed to stash results' });
+  }
+});
+
+/**
+ * GET /api/reception/stashed - List all stashed results grouped by patient
+ */
+router.get('/stashed', requireAuth, requirePermission('reception'), (req: Request, res: Response) => {
+  try {
+    const { tests } = TestModel.findAll({ limit: 10000 });
+    const stashedTests = tests.filter(t => t.status === 'Stashed');
+
+    const stashedByPatient: Record<string, {
+      patient: any;
+      testIds: string[];
+      testNames: string[];
+      stashedAt: string;
+    }> = {};
+
+    for (const t of stashedTests) {
+      const pid = t.patient_id;
+      if (!pid) continue;
+
+      if (!stashedByPatient[pid]) {
+        const p = PatientModel.findById(pid);
+        stashedByPatient[pid] = {
+          patient: p || { id: pid, first_name: 'Unknown', last_name: '' },
+          testIds: [],
+          testNames: [],
+          stashedAt: t.updated_at || t.test_date || new Date().toISOString()
+        };
+      }
+
+      stashedByPatient[pid].testIds.push(t.id);
+      const tName = (t.test_type || 'Test').replace(/-/g, ' ').replace(/\b\w/g, (ch: string) => ch.toUpperCase());
+      if (!stashedByPatient[pid].testNames.includes(tName)) {
+        stashedByPatient[pid].testNames.push(tName);
+      }
+    }
+
+    return res.json({ stashedList: Object.values(stashedByPatient) });
+  } catch (err: any) {
+    console.error('[reception] stashed error:', err);
+    return res.status(500).json({ error: 'Failed to load stashed results' });
+  }
+});
+
+/**
+ * POST /api/reception/release-stashed - Release stashed results quietly without kiosk audio call
+ */
+router.post('/release-stashed', requireAuth, requirePermission('reception'), (req: Request, res: Response) => {
+  try {
+    const { patientId, testIds } = req.body;
+    const userName = req.user?.email || 'System';
+    const nowIso = new Date().toISOString();
+
+    const idsToRelease: string[] = Array.isArray(testIds)
+      ? testIds.map(String)
+      : (testIds ? String(testIds).split(',').map((s: string) => s.trim()).filter(Boolean) : []);
+
+    const { tests } = TestModel.findAll({ limit: 10000 });
+    let count = 0;
+    let patientName = '';
+
+    for (const t of tests) {
+      const matchPatient = patientId && String(t.patient_id) === String(patientId);
+      const matchId = idsToRelease.includes(String(t.id)) || (t.test_id && idsToRelease.includes(String(t.test_id)));
+
+      if ((matchPatient || matchId) && t.status === 'Stashed') {
+        TestModel.update(t.id, {
+          status: 'Released',
+          completed_at: t.completed_at || nowIso,
+          status_history: [
+            ...(t.status_history || []),
+            { from: 'Stashed', to: 'Released', user: userName, area: 'Released', timestamp: nowIso }
+          ]
+        });
+        count++;
+
+        if (t.patient_id && !patientName) {
+          const p = PatientModel.findById(t.patient_id);
+          if (p) patientName = `${p.first_name} ${p.last_name}`.trim();
+        }
+      }
+    }
+
+    try {
+      sseEmitter.emit('update', { action: 'release_stashed', quiet: true, count, patientName, time: nowIso });
+    } catch (e) {}
+
+    return res.json({
+      message: `Successfully released ${count} stashed result(s) for ${patientName || 'patient'}.`,
+      count,
+      patientName
+    });
+  } catch (err: any) {
+    console.error('[reception] release-stashed error:', err);
+    return res.status(500).json({ error: 'Failed to release stashed results' });
+  }
+});
+
+/**
+ * GET /api/reception/tts?text=...&lang=en
+ * Server-side TTS proxy endpoint returning MP3 audio stream
+ */
+router.get('/tts', async (req: Request, res: Response) => {
+  try {
+    const text = req.query && req.query.text ? String(req.query.text).trim() : '';
+    const lang = req.query && req.query.lang ? String(req.query.lang).trim() : 'en';
+    if (!text) {
+      return res.status(400).send('Missing text');
+    }
+
+    const url = await googleTTS.getAudioUrl(text, { lang, slow: false, host: 'https://translate.google.com' });
+    const parsed = new URL(url);
+    const options = {
+      hostname: parsed.hostname,
+      path: parsed.pathname + parsed.search,
+      headers: { 'User-Agent': 'Mozilla/5.0 (Node.js)' }
+    };
+
+    https.get(options, (remoteRes) => {
+      res.setHeader('Content-Type', 'audio/mpeg');
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      remoteRes.pipe(res);
+    }).on('error', (err) => {
+      console.error('[reception] TTS proxy request failed:', err);
+      res.status(500).send('TTS proxy failed');
+    });
+  } catch (err: any) {
+    console.error('[reception] TTS route error:', err);
+    res.status(500).send('TTS error');
+  }
 });
 
 /**

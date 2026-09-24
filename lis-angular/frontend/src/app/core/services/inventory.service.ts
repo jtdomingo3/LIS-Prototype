@@ -65,6 +65,44 @@ export class InventoryService {
     return this.http.put<InventoryBatch>(`${this.apiUrl}/batches/${batchId}`, data);
   }
 
+  deleteBatch(inventoryId: string, batchId: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/${inventoryId}/batch/${batchId}`);
+  }
+
+  openBatch(inventoryId: string, batchId: string, data: { dateOpened?: string; reason?: string }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/${inventoryId}/batch/${batchId}/open`, data);
+  }
+
+  updateBatchQc(inventoryId: string, batchId: string, data: { qcStatus: string; notes?: string }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/${inventoryId}/batch/${batchId}/qc`, data);
+  }
+
+  adjustBatch(inventoryId: string, batchId: string, data: { newQuantity: number; reason: string; notes?: string }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/${inventoryId}/batch/${batchId}/adjust`, data);
+  }
+
+  discardBatch(inventoryId: string, batchId: string, data: { discardQuantity: number; reason?: string; notes?: string }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/${inventoryId}/batch/${batchId}/discard`, data);
+  }
+
+  getTransactions(inventoryId: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/${inventoryId}/transactions`);
+  }
+
+  getAlerts(): Observable<{
+    lowStock: any[];
+    expiringBatches: any[];
+    expiredBatches: any[];
+    openVials: any[];
+    quarantined: any[];
+  }> {
+    return this.http.get<any>(`${this.apiUrl}/alerts`);
+  }
+
+  downloadExportCsv(): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/export`, { responseType: 'blob' });
+  }
+
   consume(inventoryId: string, data: { quantity: number; batch_id?: string; test_id?: string; notes?: string }): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/${inventoryId}/consume`, data);
   }
