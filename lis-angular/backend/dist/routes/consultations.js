@@ -10,7 +10,7 @@ const router = (0, express_1.Router)();
 // List all consultations
 router.get('/', auth_1.requireAuth, (req, res) => {
     try {
-        const { patient_id, test_id, status, limit, offset } = req.query;
+        const { patient_id, test_id, status, limit, offset, q } = req.query;
         const result = Consultation_1.ConsultationModel.findAll({
             patient_id: patient_id,
             test_id: test_id,
@@ -18,7 +18,25 @@ router.get('/', auth_1.requireAuth, (req, res) => {
             limit: limit ? parseInt(limit, 10) : undefined,
             offset: offset ? parseInt(offset, 10) : undefined,
         });
-        res.json(result);
+        // Enrich each consultation with patient info
+        const enriched = result.consultations.map(c => {
+            const patient = Patient_1.PatientModel.findById(c.patient_id);
+            return { ...c, patient };
+        });
+        // Optional text filter on patient name or diagnosis or chief complaint
+        let filtered = enriched;
+        if (q && typeof q === 'string' && q.trim()) {
+            const query = q.trim().toLowerCase();
+            filtered = enriched.filter(c => {
+                const pName = c.patient ? `${c.patient.first_name} ${c.patient.last_name}`.toLowerCase() : '';
+                const pCode = c.patient?.patient_code?.toLowerCase() || '';
+                const diag = (c.primary_diagnosis || '').toLowerCase();
+                const cc = (c.chief_complaint || '').toLowerCase();
+                const doc = (c.doctor_name || '').toLowerCase();
+                return pName.includes(query) || pCode.includes(query) || diag.includes(query) || cc.includes(query) || doc.includes(query);
+            });
+        }
+        res.json({ consultations: filtered, total: result.total });
     }
     catch (err) {
         res.status(500).json({ error: err.message });

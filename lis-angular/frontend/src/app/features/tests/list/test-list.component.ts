@@ -61,10 +61,20 @@ import { Test } from '../../../core/models';
               <td><span class="badge" [class]="'badge-' + t.status">{{ t.status }}</span></td>
               <td>{{ t.created_at | date:'shortDate' }}</td>
               <td class="table-actions">
-                <!-- view link removed as requested -->
-                <a [routerLink]="['/tests', t.id, 'results']" class="btn btn-sm btn-outline">Enter Result</a>
-                @if (t.status === 'Completed' || t.status === 'Released') {
-                  <a [routerLink]="['/reports', t.id]" class="btn btn-sm btn-primary">Report</a>
+                @if (isDoctorCheckup(t)) {
+                  <a [routerLink]="['/consultations', t.id]" [queryParams]="{test: t.id}" class="btn btn-sm btn-teal" title="Open Clinical Consultation">
+                    <i class="fa fa-stethoscope"></i> Consultation
+                  </a>
+                  @if (t.status === 'Completed' || t.status === 'Released' || t.status === 'Checked') {
+                    <a [routerLink]="['/consultations', t.id, 'print', 'chart']" target="_blank" class="btn btn-sm btn-orange" title="View Chart">
+                      <i class="fa fa-file-medical"></i> Chart
+                    </a>
+                  }
+                } @else {
+                  <a [routerLink]="['/tests', t.id, 'results']" class="btn btn-sm btn-outline">Enter Result</a>
+                  @if (t.status === 'Completed' || t.status === 'Released' || t.status === 'Checked') {
+                    <a [routerLink]="['/reports', t.id]" class="btn btn-sm btn-primary">Report</a>
+                  }
                 }
                 <button class="btn btn-sm btn-outline-danger" (click)="deleteTest(t)">Delete</button>
               </td>
@@ -143,6 +153,11 @@ export class TestListComponent implements OnInit {
       next: () => this.loadTests(),
       error: (err) => alert(err.error?.error || 'Failed to delete test')
     });
+  }
+
+  isDoctorCheckup(t: any): boolean {
+    const type = (t.test_type || '').toLowerCase();
+    return type.includes('doctor') || type.includes('consult');
   }
 
   clearFilters() {

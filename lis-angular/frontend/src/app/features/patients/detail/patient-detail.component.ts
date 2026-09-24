@@ -40,14 +40,19 @@ import { Patient, Test } from '../../../core/models';
 
         <div class="card">
           <div class="card-header-row">
-            <h3>Tests ({{ tests().length }})</h3>
-            <a [routerLink]="['/tests/new']" [queryParams]="{ patientId: patient()!.id }" class="btn btn-sm btn-primary">+ New Test</a>
+            <h3>Tests &amp; Consultations ({{ tests().length }})</h3>
+            <div class="header-actions">
+              <a [routerLink]="['/consultations/new']" [queryParams]="{ patient: patient()!.id }" class="btn btn-sm btn-teal">
+                <i class="fa fa-stethoscope"></i> + Consultation
+              </a>
+              <a [routerLink]="['/tests/new']" [queryParams]="{ patientId: patient()!.id }" class="btn btn-sm btn-primary">+ New Test</a>
+            </div>
           </div>
 
           @if (tests().length) {
             <table class="table">
               <thead>
-                <tr><th>Test ID</th><th>Type</th><th>Status</th><th>Date</th><th></th></tr>
+                <tr><th>Test ID</th><th>Type</th><th>Status</th><th>Date</th><th>Actions</th></tr>
               </thead>
               <tbody>
                 @for (t of tests(); track t.id) {
@@ -57,9 +62,20 @@ import { Patient, Test } from '../../../core/models';
                     <td><span class="badge" [class]="'badge-' + t.status">{{ t.status }}</span></td>
                     <td>{{ t.created_at | date:'shortDate' }}</td>
                     <td class="action-cell">
-                      <a [routerLink]="['/tests', t.id]" class="btn btn-sm btn-primary">View</a>
-                      @if (t.status === 'Completed' || t.status === 'Released') {
-                        <a [routerLink]="['/reports', t.id]" class="btn btn-sm btn-primary">Report</a>
+                      @if (isDoctorCheckup(t)) {
+                        <a [routerLink]="['/consultations', t.id]" [queryParams]="{test: t.id}" class="btn btn-sm btn-teal">
+                          <i class="fa fa-stethoscope"></i> Consultation
+                        </a>
+                        @if (t.status === 'Completed' || t.status === 'Released' || t.status === 'Checked') {
+                          <a [routerLink]="['/consultations', t.id, 'print', 'chart']" target="_blank" class="btn btn-sm btn-orange">
+                            <i class="fa fa-file-medical"></i> Chart
+                          </a>
+                        }
+                      } @else {
+                        <a [routerLink]="['/tests', t.id]" class="btn btn-sm btn-primary">View</a>
+                        @if (t.status === 'Completed' || t.status === 'Released' || t.status === 'Checked') {
+                          <a [routerLink]="['/reports', t.id]" class="btn btn-sm btn-primary">Report</a>
+                        }
                       }
                     </td>
                   </tr>
@@ -105,5 +121,10 @@ export class PatientDetailComponent implements OnInit {
       },
       error: () => this.loading.set(false)
     });
+  }
+
+  isDoctorCheckup(t: any): boolean {
+    const type = (t.test_type || '').toLowerCase();
+    return type.includes('doctor') || type.includes('consult');
   }
 }

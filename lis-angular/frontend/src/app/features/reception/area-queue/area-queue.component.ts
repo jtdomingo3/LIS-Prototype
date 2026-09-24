@@ -67,6 +67,11 @@ interface PatientEntry {
             }
 
             <div class="patient-actions">
+              @if (isDoctorArea()) {
+                <a [routerLink]="['/consultations', getDoctorTestId(entry)]" [queryParams]="{ area: areaName(), patient: entry.patient.id, test: getDoctorTestId(entry) }" class="btn btn-teal">
+                  <i class="fa fa-stethoscope"></i> Open Clinical Consultation
+                </a>
+              }
               <button class="btn btn-primary" (click)="completePatient(entry)"
                 [disabled]="completing() === entry.patient.id">
                 {{ completing() === entry.patient.id ? 'Processing...' : 'Mark Complete' }}
@@ -191,5 +196,18 @@ export class AreaQueueComponent implements OnInit, OnDestroy {
     if (this.eventSource) {
       this.eventSource.onmessage = () => this.loadQueue();
     }
+  }
+
+  isDoctorArea(): boolean {
+    const a = (this.areaName() || '').toLowerCase();
+    return a.includes('doctor') || a.includes('consult');
+  }
+
+  getDoctorTestId(entry: PatientEntry): string {
+    const docTest = entry.tests?.find((t: any) => {
+      const type = (t.test_type || '').toLowerCase();
+      return type.includes('doctor') || type.includes('consult');
+    });
+    return docTest?.id || entry.tests?.[0]?.id || 'new';
   }
 }

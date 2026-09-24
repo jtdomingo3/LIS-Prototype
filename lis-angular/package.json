@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "start": "concurrently -n backend,frontend -c blue,green \"npm run start:backend\" \"npm run start:frontend\"",
+    "dev": "npm start",
     "start:backend": "cd backend && npm run dev",
     "start:frontend": "cd frontend && npx ng serve --open",
     "install:all": "cd backend && npm install && cd ../frontend && npm install && cd ../tools && npm install",

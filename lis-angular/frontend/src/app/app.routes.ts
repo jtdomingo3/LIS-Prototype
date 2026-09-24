@@ -134,8 +134,12 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       {
+        path: '',
+        loadComponent: () => import('./features/consultations/list/consultation-list.component').then(m => m.ConsultationListComponent),
+      },
+      {
         path: 'panel',
-        loadComponent: () => import('./features/consultations/panel/consultation-panel.component').then(m => m.ConsultationPanelComponent),
+        loadComponent: () => import('./features/consultations/list/consultation-list.component').then(m => m.ConsultationListComponent),
       },
       {
         path: ':id',

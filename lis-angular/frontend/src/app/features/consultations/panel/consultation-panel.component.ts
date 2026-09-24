@@ -73,21 +73,33 @@ import { Consultation, Patient, Test, PrescriptionItem } from '../../../core/mod
 
       <!-- Patient Banner -->
       <section class="patient-banner">
-        <div class="patient-summary">
-          <div class="avatar">{{ patientInitials() }}</div>
-          <div class="patient-info">
-            <div class="patient-name">
-              {{ patient()?.first_name }} {{ patient()?.middle_name || '' }} {{ patient()?.last_name }}
-              <span class="patient-code">({{ patient()?.patient_code || 'No Code' }})</span>
-            </div>
-            <div class="patient-details">
-              <span><strong>Age/Sex:</strong> {{ patient()?.age || patient()?.age_manual || 'N/A' }} / {{ patient()?.gender || 'N/A' }}</span>
-              <span><strong>Birthdate:</strong> {{ patient()?.date_of_birth || 'N/A' }}</span>
-              <span><strong>Contact:</strong> {{ patient()?.phone || 'N/A' }}</span>
-              <span><strong>Address:</strong> {{ patient()?.address || 'N/A' }}</span>
+        @if (patient(); as p) {
+          <div class="patient-summary">
+            <div class="avatar">{{ patientInitials() }}</div>
+            <div class="patient-info">
+              <div class="patient-name">
+                {{ p.first_name }} {{ p.middle_name || '' }} {{ p.last_name }}
+                <span class="patient-code">({{ p.patient_code || 'No Code' }})</span>
+              </div>
+              <div class="patient-details">
+                <span><strong>Age/Sex:</strong> {{ p.age || p.age_manual || 'N/A' }} / {{ p.gender || 'N/A' }}</span>
+                <span><strong>Birthdate:</strong> {{ p.date_of_birth || 'N/A' }}</span>
+                <span><strong>Contact:</strong> {{ p.phone || 'N/A' }}</span>
+                <span><strong>Address:</strong> {{ p.address || 'N/A' }}</span>
+              </div>
             </div>
           </div>
-        </div>
+        } @else {
+          <div class="patient-summary" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+            <div>
+              <div class="patient-name" style="color: #64748b;">No Patient Attached</div>
+              <div class="patient-details">Please select an existing patient or pick from the consultation roster.</div>
+            </div>
+            <a routerLink="/consultations" class="btn btn-sm btn-teal">
+              <i class="fa fa-users"></i> Select Patient
+            </a>
+          </div>
+        }
 
         <!-- Attending Physician & Credentials -->
         <div class="physician-box">
@@ -1464,13 +1476,6 @@ export class ConsultationPanelComponent implements OnInit {
   }
 
   goBack(): void {
-    const c = this.consultation();
-    if (c.test_id) {
-      this.router.navigate(['/tests', c.test_id]);
-    } else if (c.patient_id) {
-      this.router.navigate(['/patients', c.patient_id]);
-    } else {
-      this.router.navigate(['/patients']);
-    }
+    this.router.navigate(['/consultations']);
   }
 }
