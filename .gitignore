@@ -41,6 +41,15 @@ tmp-e2e-offline/
 lis-fullstack/lis-data.db-shm
 lis-fullstack/lis-data.db-wal
 lis-fullstack/lis-data.db
+lis-angular/backend/data/*.db
+lis-angular/backend/data/*.db-shm
+lis-angular/backend/data/*.db-wal
+lis-angular/backend/data/lis.db
+lis-angular/backend/data/lis.db-shm
+lis-angular/backend/data/lis.db-wal
+lis-angular/backend/data/lib.db
+lis-angular/backend/data/lib.db-shm
+lis-angular/backend/data/lib.db-wal
 lis-fullstack/logs/print.log
 tools/security-audit/audit-report-latest.json
 # Environment variable files and secrets
