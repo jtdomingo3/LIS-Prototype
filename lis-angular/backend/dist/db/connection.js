@@ -65,10 +65,24 @@ function initializeDb() {
     transaction();
     // ensure new columns are added on existing databases
     try {
-        const cols = database.prepare("PRAGMA table_info(tests)").all();
-        if (!cols.find(c => c.name === 'payment_history')) {
+        const testCols = database.prepare("PRAGMA table_info(tests)").all();
+        if (!testCols.find(c => c.name === 'payment_history')) {
             console.log('[DB] adding missing payment_history column to tests');
             database.prepare("ALTER TABLE tests ADD COLUMN payment_history TEXT NOT NULL DEFAULT '{}'").run();
+        }
+        if (!testCols.find(c => c.name === 'assigned_doctor_id')) {
+            database.prepare("ALTER TABLE tests ADD COLUMN assigned_doctor_id TEXT").run();
+        }
+        if (!testCols.find(c => c.name === 'assigned_doctor_name')) {
+            database.prepare("ALTER TABLE tests ADD COLUMN assigned_doctor_name TEXT").run();
+        }
+        if (!testCols.find(c => c.name === 'awaiting_only')) {
+            database.prepare("ALTER TABLE tests ADD COLUMN awaiting_only INTEGER NOT NULL DEFAULT 0").run();
+        }
+        const userCols = database.prepare("PRAGMA table_info(users)").all();
+        if (!userCols.find(c => c.name === 'designation')) {
+            console.log('[DB] adding missing designation column to users');
+            database.prepare("ALTER TABLE users ADD COLUMN designation TEXT").run();
         }
     }
     catch (err) {

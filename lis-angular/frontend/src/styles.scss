@@ -411,3 +411,29 @@ input[type="checkbox"] { width: auto; margin-right: 8px; cursor: pointer; }
   .form-row { grid-template-columns: 1fr; }
   .stats-container { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
 }
+
+/* -- Global Print Styles ------------------------------------ */
+@media print {
+  .sidebar,
+  app-sidebar,
+  .header,
+  app-header,
+  .gezynebot-widget-container,
+  app-gezynebot-widget,
+  .critical-modal-backdrop,
+  app-critical-stock-modal,
+  .toast-container,
+  app-toast,
+  .no-print {
+    display: none !important;
+  }
+
+  body, html, .app-shell, .main-content, .page-content {
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+}

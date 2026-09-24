@@ -51,7 +51,7 @@ router.get('/', (0, auth_1.requirePermission)('dashboard'), (req, res) => {
         const statusCounts = Test_1.TestModel.countByStatus();
         const pending = statusCounts['Pending'] || 0;
         const inProgress = (statusCounts['In Progress'] || 0) + (statusCounts['Extraction Area'] || 0);
-        const completed = statusCounts['Completed'] || 0;
+        const completed = (statusCounts['Completed'] || 0) + (statusCounts['Checked'] || 0);
         const released = statusCounts['Released'] || 0;
         const totalTests = Object.values(statusCounts).reduce((a, b) => a + b, 0);
         // Date-filtered status counts
@@ -68,7 +68,7 @@ router.get('/', (0, auth_1.requirePermission)('dashboard'), (req, res) => {
                     datePending++;
                 else if (st === 'In Progress' || st === 'Extraction Area')
                     dateInProgress++;
-                else if (st === 'Completed')
+                else if (st === 'Completed' || st === 'Checked')
                     dateCompleted++;
                 else if (st === 'Released')
                     dateReleased++;

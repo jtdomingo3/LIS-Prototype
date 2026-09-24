@@ -50,7 +50,7 @@ router.get('/', requirePermission('dashboard'), (req: Request, res: Response) =>
     const statusCounts = TestModel.countByStatus();
     const pending = statusCounts['Pending'] || 0;
     const inProgress = (statusCounts['In Progress'] || 0) + (statusCounts['Extraction Area'] || 0);
-    const completed = statusCounts['Completed'] || 0;
+    const completed = (statusCounts['Completed'] || 0) + (statusCounts['Checked'] || 0);
     const released = statusCounts['Released'] || 0;
     const totalTests = Object.values(statusCounts).reduce((a, b) => a + b, 0);
 
@@ -66,7 +66,7 @@ router.get('/', requirePermission('dashboard'), (req: Request, res: Response) =>
         const st = r.status || 'Pending';
         if (st === 'Pending') datePending++;
         else if (st === 'In Progress' || st === 'Extraction Area') dateInProgress++;
-        else if (st === 'Completed') dateCompleted++;
+        else if (st === 'Completed' || st === 'Checked') dateCompleted++;
         else if (st === 'Released') dateReleased++;
       }
       const dpRow = db.prepare(`

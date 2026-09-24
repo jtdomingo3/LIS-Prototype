@@ -130,6 +130,39 @@ export const routes: Routes = [
     ],
   },
   {
+    path: 'consultations',
+    canActivate: [authGuard],
+    children: [
+      {
+        path: 'panel',
+        loadComponent: () => import('./features/consultations/panel/consultation-panel.component').then(m => m.ConsultationPanelComponent),
+      },
+      {
+        path: ':id',
+        loadComponent: () => import('./features/consultations/panel/consultation-panel.component').then(m => m.ConsultationPanelComponent),
+      },
+      {
+        path: ':id/print/:type',
+        loadComponent: () => import('./features/consultations/print/consultation-print.component').then(m => m.ConsultationPrintComponent),
+      },
+    ],
+  },
+  {
+    path: 'inventory',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/inventory/inventory-list.component').then(m => m.InventoryListComponent),
+  },
+  {
+    path: 'equipment',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/equipment/equipment-list.component').then(m => m.EquipmentListComponent),
+  },
+  {
+    path: 'chatbot',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/chatbot/chatbot.component').then(m => m.ChatbotComponent),
+  },
+  {
     path: 'profile',
     canActivate: [authGuard],
     loadComponent: () => import('./features/users/profile/profile.component').then(m => m.ProfileComponent),

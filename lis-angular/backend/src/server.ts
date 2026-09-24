@@ -31,7 +31,9 @@ initializeDb();
         permissions: {
           dashboard: true, patients: true, reception: true,
           tests: true, reports: true, worksheet: true,
-          templates: true, users: true, delete: true,
+          templates: true, users: true, consultations: true,
+          inventory: true, equipment: true, chatbot: true,
+          admin: true, delete: true,
         },
       });
       if (process.env.DEFAULT_ADMIN_PASSWORD) {
@@ -183,6 +185,10 @@ import receptionRoutes from './routes/reception';
 import settingsRoutes from './routes/settings';
 import reportRoutes from './routes/reports';
 import signatureRoutes from './routes/signatures';
+import consultationRoutes from './routes/consultations';
+import inventoryRoutes from './routes/inventory';
+import equipmentRoutes from './routes/equipment';
+import chatbotRoutes from './routes/chatbot';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
@@ -243,6 +249,10 @@ app.use('/api/reception', receptionRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/signatures', signatureRoutes);
+app.use('/api/consultations', consultationRoutes);
+app.use('/api/inventory', inventoryRoutes);
+app.use('/api/equipment', equipmentRoutes);
+app.use('/api/chatbot', chatbotRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

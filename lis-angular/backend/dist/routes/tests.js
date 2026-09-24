@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const Test_1 = require("../models/Test");
 const Patient_1 = require("../models/Patient");
+const Consultation_1 = require("../models/Consultation");
 const auth_1 = require("../middleware/auth");
 const router = (0, express_1.Router)();
 router.use(auth_1.requireAuth);
@@ -10,6 +11,9 @@ router.use(auth_1.requireAuth);
  * Test type → prefix mapping (matches the original LIS logic)
  */
 const TEST_TYPE_PREFIXES = {
+    'consultation': 'CN',
+    'doctor consultation': 'CN',
+    'checkup': 'CN',
     'blood chemistry': 'BC',
     'hematology': 'HM',
     'urinalysis': 'UA',
@@ -81,9 +85,10 @@ router.get('/:id', (0, auth_1.requirePermission)('tests'), (req, res) => {
         if (!test) {
             return res.status(404).json({ error: 'Test not found' });
         }
-        // Also get patient info
+        // Also get patient info and linked consultation
         const patient = Patient_1.PatientModel.findById(test.patient_id);
-        return res.json({ test, patient });
+        const consultation = Consultation_1.ConsultationModel.findByTestId(test.id);
+        return res.json({ test, patient, consultation });
     }
     catch (err) {
         console.error('[tests] get error:', err);

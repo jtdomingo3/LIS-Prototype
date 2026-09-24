@@ -11,6 +11,11 @@ export interface UserPermissions {
   worksheet?: boolean;
   templates?: boolean;
   users?: boolean;
+  consultations?: boolean;
+  inventory?: boolean;
+  equipment?: boolean;
+  chatbot?: boolean;
+  admin?: boolean;
   delete?: boolean;
 }
 
@@ -21,6 +26,7 @@ export interface User {
   password: string;
   role: string;
   status: string;
+  designation?: string | null;
   license_number: string | null;
   signature: string | null;
   auto_signature_enabled: number;
@@ -37,6 +43,7 @@ export interface UserRow {
   password: string;
   role: string;
   status: string;
+  designation?: string | null;
   license_number: string | null;
   signature: string | null;
   auto_signature_enabled: number;

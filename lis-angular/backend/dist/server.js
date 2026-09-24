@@ -32,7 +32,9 @@ const Template_1 = require("./models/Template");
                 permissions: {
                     dashboard: true, patients: true, reception: true,
                     tests: true, reports: true, worksheet: true,
-                    templates: true, users: true, delete: true,
+                    templates: true, users: true, consultations: true,
+                    inventory: true, equipment: true, chatbot: true,
+                    admin: true, delete: true,
                 },
             });
             if (process.env.DEFAULT_ADMIN_PASSWORD) {
@@ -185,6 +187,10 @@ const reception_1 = __importDefault(require("./routes/reception"));
 const settings_1 = __importDefault(require("./routes/settings"));
 const reports_1 = __importDefault(require("./routes/reports"));
 const signatures_1 = __importDefault(require("./routes/signatures"));
+const consultations_1 = __importDefault(require("./routes/consultations"));
+const inventory_1 = __importDefault(require("./routes/inventory"));
+const equipment_1 = __importDefault(require("./routes/equipment"));
+const chatbot_1 = __importDefault(require("./routes/chatbot"));
 const app = (0, express_1.default)();
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -235,6 +241,10 @@ app.use('/api/reception', reception_1.default);
 app.use('/api/settings', settings_1.default);
 app.use('/api/reports', reports_1.default);
 app.use('/api/signatures', signatures_1.default);
+app.use('/api/consultations', consultations_1.default);
+app.use('/api/inventory', inventory_1.default);
+app.use('/api/equipment', equipment_1.default);
+app.use('/api/chatbot', chatbot_1.default);
 // Health check
 app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });

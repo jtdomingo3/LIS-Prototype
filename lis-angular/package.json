@@ -9,7 +9,8 @@
     "start:frontend": "cd frontend && npx ng serve --open",
     "install:all": "cd backend && npm install && cd ../frontend && npm install && cd ../tools && npm install",
     "build": "cd backend && npm run build && cd ../frontend && npx ng build",
-    "migrate": "cd tools && npx ts-node migrate-json-to-sqlite.ts"
+    "migrate": "cd tools && npx ts-node migrate-json-to-sqlite.ts",
+    "migrate:fullstack": "node tools/migrate-fullstack-db.js"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"
