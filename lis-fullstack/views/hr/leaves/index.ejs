@@ -19,8 +19,13 @@
                 Leave Requests Management
             </h2>
             <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.9rem;">
-                Review and approve staff leaves (Vacation, Sick, Emergency, Maternity/Paternity)
+                Review and approve staff leaves (Vacation is unpaid; Sick, Emergency, Maternity/Paternity)
             </p>
+        </div>
+        <div>
+            <a href="/hr/print/leave-form" target="_blank" style="padding: 8px 16px; background: white; border: 1.5px solid #6366f1; color: #4338ca; border-radius: 8px; font-weight: 700; font-size: 0.88rem; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                <span>🖨️</span> Printable Leave Form
+            </a>
         </div>
     </div>
 
@@ -83,9 +88,16 @@
                                     </div>
                                 </td>
                                 <td style="padding: 14px 18px;">
-                                    <span style="background: #ede9fe; color: #6d28d9; padding: 3px 8px; border-radius: 6px; font-size: 0.78rem; font-weight: 700;">
-                                        <%= l.leaveType %>
-                                    </span>
+                                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                        <span style="background: #ede9fe; color: #6d28d9; padding: 3px 8px; border-radius: 6px; font-size: 0.78rem; font-weight: 700;">
+                                            <%= l.leaveType %>
+                                        </span>
+                                        <% if (l.leaveType === 'Vacation') { %>
+                                            <span style="background: #fee2e2; color: #991b1b; padding: 2px 6px; border-radius: 4px; font-size: 0.72rem; font-weight: 700;">
+                                                Unpaid
+                                            </span>
+                                        <% } %>
+                                    </div>
                                     <div style="font-size: 0.8rem; color: #475569; margin-top: 4px; font-weight: 600;">
                                         <%= l.totalDays %> Day<%= l.totalDays > 1 ? 's' : '' %>
                                     </div>
@@ -120,8 +132,11 @@
                                     <% } %>
                                 </td>
                                 <td style="padding: 14px 18px; text-align: right;">
-                                    <% if (l.status === 'Pending') { %>
-                                        <div style="display: inline-flex; gap: 6px;">
+                                    <div style="display: inline-flex; align-items: center; gap: 6px;">
+                                        <a href="/hr/print/leave/<%= l.id %>" target="_blank" style="padding: 5px 10px; background: #f8fafc; color: #4338ca; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.78rem; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                                            <span>🖨️</span> Form
+                                        </a>
+                                        <% if (l.status === 'Pending') { %>
                                             <form action="/hr/leaves/<%= l.id %>/approve" method="POST" style="margin: 0;" onsubmit="return confirm('Approve leave request for <%= emp.name %>?');">
                                                 <button type="submit" style="padding: 6px 12px; background: #16a34a; color: white; border: none; border-radius: 6px; font-size: 0.78rem; font-weight: 700; cursor: pointer;">
                                                     Approve
@@ -130,10 +145,8 @@
                                             <button onclick="openRejectModal('<%= l.id %>', '<%= emp.name %>')" style="padding: 6px 12px; background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; border-radius: 6px; font-size: 0.78rem; font-weight: 700; cursor: pointer;">
                                                 Reject
                                             </button>
-                                        </div>
-                                    <% } else { %>
-                                        <span style="color: #94a3b8; font-size: 0.8rem;">Completed</span>
-                                    <% } %>
+                                        <% } %>
+                                    </div>
                                 </td>
                             </tr>
                         <% }); %>

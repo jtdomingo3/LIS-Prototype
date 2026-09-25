@@ -2072,7 +2072,20 @@
       })();
     </script>
 
-    <!-- GezyneBot Floating AI Assistant Widget (lower-right) -->
-    <%- include('partials/gezynebot-widget') %>
+    <!-- GezyneBot Floating AI Assistant Widget (hidden on certificates, forms, and print documents) -->
+    <% 
+      const _t = (typeof title !== 'undefined' && title) ? title : '';
+      const isDocumentOrPrintPage = _t.includes('Certificate') || 
+                                   _t.includes('Application for Leave') || 
+                                   _t.includes('Clearance') || 
+                                   _t.includes('Payslip') || 
+                                   _t.includes('BIR Form') || 
+                                   _t.includes('Tax Summary') ||
+                                   _t.includes('Daily Time Record') ||
+                                   _t.includes('Print');
+    %>
+    <% if (!isDocumentOrPrintPage) { %>
+      <%- include('partials/gezynebot-widget') %>
+    <% } %>
 </body>
 </html>

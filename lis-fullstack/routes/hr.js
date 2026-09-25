@@ -15,6 +15,7 @@ const Expense = require('../models/Expense');
 const { requireAuth, canAccessHR, canAccessOwnHR } = require('../middleware/auth');
 const { computePayrollForEmployee } = require('../lib/payrollComputer');
 const { computeAllContributions } = require('../lib/philippineContributions');
+const { getLaboratoryOwner } = require('../lib/ownerHelper');
 const DATA_DIR = require('../lib/dataPath').getDataDir();
 
 // Setup Multer for HR Document Uploads
@@ -136,6 +137,9 @@ router.post('/my/leaves', canAccessOwnHR, async (req, res) => {
       return res.redirect('/hr/my');
     }
 
+    // Vacation Leave is unpaid per laboratory policy (Leave Without Pay)
+    const isPaid = (leaveType !== 'Vacation');
+
     const leave = new LeaveRecord({
       employeeId: employee.id,
       leaveType: leaveType || 'Vacation',
@@ -143,11 +147,12 @@ router.post('/my/leaves', canAccessOwnHR, async (req, res) => {
       endDate,
       totalDays: parseFloat(totalDays) || 1,
       reason: reason || '',
+      isPaid,
       status: 'Pending'
     });
 
     await leave.save();
-    req.flash('success_msg', 'Leave request submitted successfully. Awaiting manager approval.');
+    req.flash('success_msg', 'Leave request submitted successfully. You can print the official Leave Application Form for Laboratory Owner approval.');
     res.redirect('/hr/my');
   } catch (err) {
     console.error('[hr] submit leave error:', err);
@@ -223,6 +228,34 @@ router.get('/my/dtr', canAccessOwnHR, async (req, res) => {
         weekNum = Math.min(6, Math.ceil((d + firstDayOfMonth) / 7));
 
         rec = recordMap.get(dateStr) || null;
+
+        // Default pre-filled DTR schedule: Mon to Fri 8:00 AM - 12:00 PM, 1:00 PM - 5:00 PM (8.0 hrs duty)
+        if (!rec && !isWeekend) {
+          rec = {
+            id: `default-${dateStr}`,
+            employeeId: employee.id,
+            date: dateStr,
+            amIn: '08:00',
+            amOut: '12:00',
+            pmIn: '13:00',
+            pmOut: '17:00',
+            rawTotalHours: 8.0,
+            totalHours: 8.0,
+            amHours: 4.0,
+            pmHours: 4.0,
+            isFullDuty: 1,
+            dutyCredit: 1.0,
+            undertimeMinutes: 0,
+            overtimeHours: 0,
+            pendingOtHours: 0,
+            isOtApproved: 0,
+            approvedOtHours: 0,
+            status: '8-Hour Duty Completed',
+            notes: '',
+            isPreFilled: true
+          };
+        }
+
         if (rec && rec.dutyCredit > 0) {
           completedDuties += rec.dutyCredit;
           if (rec.isFullDuty) full8HourDuties++;
@@ -231,7 +264,7 @@ router.get('/my/dtr', canAccessOwnHR, async (req, res) => {
           if (rec.isOtApproved && Number(rec.overtimeHours) > 0) {
             totalOvertimeHours += Number(rec.overtimeHours);
           }
-          totalUndertimeMins += rec.undertimeMinutes;
+          totalUndertimeMins += rec.undertimeMinutes || 0;
           weekDutyCounts[weekNum] = (weekDutyCounts[weekNum] || 0) + 1;
         }
 
@@ -470,15 +503,88 @@ router.get('/print/coe/:employeeId', canAccessOwnHR, async (req, res) => {
 
     const includeSalary = req.query.salary === '1' && isManagement(req.session.user);
 
+    // Resolve owner dynamically (Clinical vs X-Ray)
+    const owner = getLaboratoryOwner(employee.department);
+
     res.render('hr/print/coe', {
       title: `Certificate of Employment — ${employee.name}`,
       employee,
       includeSalary,
+      owner,
       currentDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
       sessionUser: req.session.user
     });
   } catch (err) {
     console.error('[hr] print coe error:', err);
+    res.redirect('/hr/my');
+  }
+});
+
+/**
+ * GET /hr/print/leave-form
+ * Blank or employee-prefilled Leave Application Form
+ */
+router.get('/print/leave-form', canAccessOwnHR, async (req, res) => {
+  try {
+    let employee = null;
+    if (req.query.employeeId && isManagement(req.session.user)) {
+      employee = await Employee.findById(req.query.employeeId);
+    }
+    if (!employee) {
+      employee = await Employee.findByUserId(req.session.user.id);
+    }
+
+    const owner = getLaboratoryOwner(employee ? employee.department : '');
+
+    res.render('hr/print/leave', {
+      title: `Application for Leave — ${employee ? employee.name : 'Form'}`,
+      employee,
+      leave: null,
+      owner,
+      currentDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+      sessionUser: req.session.user
+    });
+  } catch (err) {
+    console.error('[hr] print leave-form error:', err);
+    res.redirect('/hr/my');
+  }
+});
+
+/**
+ * GET /hr/print/leave/:id
+ * Completed Leave Application Form for a specific submitted leave request
+ */
+router.get('/print/leave/:id', canAccessOwnHR, async (req, res) => {
+  try {
+    const leave = await LeaveRecord.findById(req.params.id);
+    if (!leave) {
+      req.flash('error_msg', 'Leave application record not found');
+      return res.redirect('/hr/my');
+    }
+
+    const employee = await Employee.findById(leave.employeeId);
+    if (!employee) {
+      req.flash('error_msg', 'Employee record not found');
+      return res.redirect('/hr/my');
+    }
+
+    if (!isManagement(req.session.user) && employee.userId !== req.session.user.id) {
+      req.flash('error_msg', 'Access denied');
+      return res.redirect('/hr/my');
+    }
+
+    const owner = getLaboratoryOwner(employee.department);
+
+    res.render('hr/print/leave', {
+      title: `Application for Leave — ${employee.name} (${leave.leaveType})`,
+      employee,
+      leave,
+      owner,
+      currentDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+      sessionUser: req.session.user
+    });
+  } catch (err) {
+    console.error('[hr] print leave record error:', err);
     res.redirect('/hr/my');
   }
 });

@@ -13,6 +13,8 @@ class LeaveRecord {
     this.approvedBy = data.approvedBy || null;
     this.approvedAt = data.approvedAt || null;
     this.notes = data.notes || '';
+    // Vacation Leave is unpaid per laboratory policy (Leave Without Pay / LWOP)
+    this.isPaid = (data.isPaid !== undefined) ? Boolean(data.isPaid) : (this.leaveType !== 'Vacation');
     this.createdAt = data.createdAt || new Date().toISOString();
 
     this._employee = data._employee || null;
