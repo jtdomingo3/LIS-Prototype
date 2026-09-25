@@ -17,19 +17,31 @@ class LeaveRecord {
     this.isPaid = (data.isPaid !== undefined) ? Boolean(data.isPaid) : false;
     this.createdAt = data.createdAt || new Date().toISOString();
 
-    this._employee = data._employee || null;
+    const Employee = require('./Employee');
+    if (data._employee instanceof Employee) {
+      this._employee = data._employee;
+    } else if (data._employee && typeof data._employee === 'object') {
+      this._employee = new Employee(data._employee);
+    } else {
+      this._employee = null;
+    }
   }
 
   getEmployee() {
-    if (this._employee) return this._employee;
-    if (global.db && typeof global.db.getEmployeeById === 'function') {
+    const Employee = require('./Employee');
+    if (this.employeeId && global.db && typeof global.db.getEmployeeById === 'function') {
       const emp = global.db.getEmployeeById(this.employeeId);
       if (emp) {
-        const Employee = require('./Employee');
         this._employee = new Employee(emp);
+        return this._employee;
       }
     }
-    return this._employee;
+    if (this._employee instanceof Employee) return this._employee;
+    if (this._employee && typeof this._employee === 'object') {
+      this._employee = new Employee(this._employee);
+      return this._employee;
+    }
+    return null;
   }
 
   async approve(approvedByUserId) {
@@ -41,11 +53,15 @@ class LeaveRecord {
     const emp = this.getEmployee();
     if (emp) {
       if (this.leaveType === 'Vacation') {
-        emp.vacationLeaveBalance = Math.max(0, emp.vacationLeaveBalance - this.totalDays);
-        await emp.save();
+        emp.vacationLeaveBalance = Math.max(0, (Number(emp.vacationLeaveBalance) || 0) - this.totalDays);
+        if (typeof emp.save === 'function') {
+          await emp.save();
+        }
       } else if (this.leaveType === 'Sick') {
-        emp.sickLeaveBalance = Math.max(0, emp.sickLeaveBalance - this.totalDays);
-        await emp.save();
+        emp.sickLeaveBalance = Math.max(0, (Number(emp.sickLeaveBalance) || 0) - this.totalDays);
+        if (typeof emp.save === 'function') {
+          await emp.save();
+        }
       }
     }
 
@@ -62,7 +78,9 @@ class LeaveRecord {
 
   async save() {
     if (global.db && typeof global.db.saveLeaveRecord === 'function') {
-      global.db.saveLeaveRecord(this);
+      const toSave = { ...this };
+      delete toSave._employee;
+      global.db.saveLeaveRecord(toSave);
     }
     return this;
   }

@@ -165,6 +165,46 @@ router.post('/my/leaves', canAccessOwnHR, async (req, res) => {
 });
 
 /**
+ * POST /hr/my/leaves/:id/delete
+ * Staff cancels / deletes their own pending leave request
+ */
+router.post('/my/leaves/:id/delete', canAccessOwnHR, async (req, res) => {
+  try {
+    const employee = await Employee.findByUserId(req.session.user.id);
+    if (!employee) {
+      req.flash('error_msg', 'Employee profile not found');
+      return res.redirect('/hr/my');
+    }
+
+    const leave = await LeaveRecord.findById(req.params.id);
+    if (!leave) {
+      req.flash('error_msg', 'Leave request not found');
+      return res.redirect('/hr/my');
+    }
+
+    // Only allow creator (or management) to delete
+    if (leave.employeeId !== employee.id && !isManagement(req.session.user)) {
+      req.flash('error_msg', 'You are not authorized to delete this leave request');
+      return res.redirect('/hr/my');
+    }
+
+    // Only pending leave requests can be deleted
+    if (leave.status !== 'Pending') {
+      req.flash('error_msg', `Cannot delete a leave request that is already ${leave.status.toLowerCase()}`);
+      return res.redirect('/hr/my');
+    }
+
+    await LeaveRecord.deleteById(leave.id);
+    req.flash('success_msg', 'Leave request deleted successfully');
+    res.redirect('/hr/my');
+  } catch (err) {
+    console.error('[hr] Failed to delete self-service leave:', err);
+    req.flash('error_msg', 'Failed to delete leave request');
+    res.redirect('/hr/my');
+  }
+});
+
+/**
  * GET /hr/my/dtr
  * Daily Time Record (DTR) for individual staff member
  */
@@ -1594,13 +1634,16 @@ router.get('/leaves', async (req, res) => {
 router.post('/leaves/:id/approve', async (req, res) => {
   try {
     const leave = await LeaveRecord.findById(req.params.id);
-    if (leave) {
-      await leave.approve(req.session?.user?.name || 'Manager');
-      req.flash('success_msg', 'Leave request approved');
+    if (!leave) {
+      req.flash('error_msg', 'Leave record not found');
+      return res.redirect('/hr/leaves');
     }
+    await leave.approve(req.session?.user?.name || 'Manager');
+    req.flash('success_msg', 'Leave request approved successfully');
     res.redirect('/hr/leaves');
   } catch (err) {
-    req.flash('error_msg', 'Failed to approve leave');
+    console.error('[hr] Failed to approve leave:', err);
+    req.flash('error_msg', 'Failed to approve leave: ' + (err.message || ''));
     res.redirect('/hr/leaves');
   }
 });
@@ -1611,13 +1654,41 @@ router.post('/leaves/:id/approve', async (req, res) => {
 router.post('/leaves/:id/reject', async (req, res) => {
   try {
     const leave = await LeaveRecord.findById(req.params.id);
-    if (leave) {
-      await leave.reject(req.session?.user?.name || 'Manager', req.body.reason || '');
-      req.flash('success_msg', 'Leave request rejected');
+    if (!leave) {
+      req.flash('error_msg', 'Leave record not found');
+      return res.redirect('/hr/leaves');
     }
+    await leave.reject(req.session?.user?.name || 'Manager', req.body.reason || '');
+    req.flash('success_msg', 'Leave request rejected');
     res.redirect('/hr/leaves');
   } catch (err) {
-    req.flash('error_msg', 'Failed to reject leave');
+    console.error('[hr] Failed to reject leave:', err);
+    req.flash('error_msg', 'Failed to reject leave: ' + (err.message || ''));
+    res.redirect('/hr/leaves');
+  }
+});
+
+/**
+ * POST /hr/leaves/:id/delete
+ * Delete a pending leave request from management view
+ */
+router.post('/leaves/:id/delete', async (req, res) => {
+  try {
+    const leave = await LeaveRecord.findById(req.params.id);
+    if (!leave) {
+      req.flash('error_msg', 'Leave record not found');
+      return res.redirect('/hr/leaves');
+    }
+    if (leave.status !== 'Pending') {
+      req.flash('error_msg', `Cannot delete a leave request that is already ${leave.status.toLowerCase()}`);
+      return res.redirect('/hr/leaves');
+    }
+    await LeaveRecord.deleteById(leave.id);
+    req.flash('success_msg', 'Leave request deleted successfully');
+    res.redirect('/hr/leaves');
+  } catch (err) {
+    console.error('[hr] Failed to delete leave:', err);
+    req.flash('error_msg', 'Failed to delete leave: ' + (err.message || ''));
     res.redirect('/hr/leaves');
   }
 });

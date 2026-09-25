@@ -138,6 +138,11 @@
                                             <button onclick="openRejectModal('<%= l.id %>', '<%= emp.name %>')" style="padding: 6px 12px; background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; border-radius: 6px; font-size: 0.78rem; font-weight: 700; cursor: pointer;">
                                                 Reject
                                             </button>
+                                            <form action="/hr/leaves/<%= l.id %>/delete" method="POST" style="margin: 0;" onsubmit="return confirm('Delete this pending leave request for <%= emp.name %>?');">
+                                                <button type="submit" style="padding: 6px 10px; background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; border-radius: 6px; font-size: 0.78rem; font-weight: 700; cursor: pointer;" title="Delete pending leave request">
+                                                    Delete
+                                                </button>
+                                            </form>
                                         <% } %>
                                     </div>
                                 </td>

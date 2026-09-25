@@ -260,9 +260,18 @@
                                     <% } else { %>
                                         <span style="background: #fef3c7; color: #92400e; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700;">⏳ Pending</span>
                                     <% } %>
-                                    <a href="/hr/print/leave/<%= l.id %>" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: #f1f5f9; color: #4338ca; border-radius: 4px; text-decoration: none; font-size: 0.72rem; font-weight: 700; border: 1px solid #e0e7ff;">
-                                        <span>🖨️</span> Form
-                                    </a>
+                                    <div style="display: inline-flex; align-items: center; gap: 6px;">
+                                        <a href="/hr/print/leave/<%= l.id %>" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: #f1f5f9; color: #4338ca; border-radius: 4px; text-decoration: none; font-size: 0.72rem; font-weight: 700; border: 1px solid #e0e7ff;">
+                                            <span>🖨️</span> Form
+                                        </a>
+                                        <% if (l.status === 'Pending') { %>
+                                            <form action="/hr/my/leaves/<%= l.id %>/delete" method="POST" style="margin: 0;" onsubmit="return confirm('Cancel and delete this pending leave request?');">
+                                                <button type="submit" style="display: inline-flex; align-items: center; gap: 2px; padding: 2px 7px; background: #fef2f2; color: #dc2626; border-radius: 4px; font-size: 0.72rem; font-weight: 700; border: 1px solid #fecaca; cursor: pointer;" title="Delete pending leave request">
+                                                    <span>🗑️</span> Delete
+                                                </button>
+                                            </form>
+                                        <% } %>
+                                    </div>
                                 </div>
                             </div>
                         <% }); %>
