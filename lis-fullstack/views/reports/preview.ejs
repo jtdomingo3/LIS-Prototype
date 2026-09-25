@@ -137,7 +137,24 @@
   </div>
 
   <div style="border-radius:12px; border:1px solid #e2e8f0; overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,0.02); margin-bottom:12px;">
-    <h4>Results</h4>
+    <% const isEcho = /(echo|echocardiograph|echocardiography|2d\s*echo|2decho)/i.test(test.testType); %>
+    <% if (isEcho) { %>
+      <div style="display:flex; justify-content:space-between; align-items:center; background:#f0fdf4; border-bottom:1.5px solid #bbf7d0; padding:10px 18px; flex-wrap:wrap; gap:10px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-weight:700; font-size:13px; color:#166534;"><i class="fa fa-heartbeat"></i> 2D Echo Result Sheets:</span>
+          <div style="display:inline-flex; background:#e2e8f0; border-radius:6px; padding:2px; gap:2px;">
+            <button type="button" class="echo-preview-tab-btn active" id="btnEchoPreviewAll" onclick="setPreviewEchoSheet('all')" style="padding:4px 12px; font-size:12px; font-weight:600; border:none; border-radius:4px; cursor:pointer; background:#0284c7; color:#fff;">📑 Both Sheets (2 Pages)</button>
+            <button type="button" class="echo-preview-tab-btn" id="btnEchoPreviewInfo" onclick="setPreviewEchoSheet('info')" style="padding:4px 12px; font-size:12px; font-weight:600; border:none; border-radius:4px; cursor:pointer; background:transparent; color:#334155;">📊 1. Info Sheet</button>
+            <button type="button" class="echo-preview-tab-btn" id="btnEchoPreviewReading" onclick="setPreviewEchoSheet('reading')" style="padding:4px 12px; font-size:12px; font-weight:600; border:none; border-radius:4px; cursor:pointer; background:transparent; color:#334155;">📝 2. Reading Sheet</button>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button type="button" onclick="printSelectedEchoSheet()" class="button btn-orange" style="height:32px; padding:0 12px; font-size:12px; font-weight:600; display:inline-flex; align-items:center; gap:4px; border-radius:6px;">
+            🖨️ Print Selected Sheet
+          </button>
+        </div>
+      </div>
+    <% } %>
     <% if (true) { %>
       <div style="width:100%;height:820px;border:1px solid #e6e6e6; margin-bottom: 8px;">
             <!-- Load result template via iframe src so it uses the same routing/layout logic and asset paths
@@ -163,6 +180,29 @@
   window.testsForNav = <%- JSON.stringify(testsForNav || []) %>;
   // embed current test id
   window.currentTestId = '<%= test.id %>';
+  window.currentEchoSheet = 'all';
+
+  function setPreviewEchoSheet(sheet) {
+    window.currentEchoSheet = sheet;
+    const frame = document.getElementById('resultFrame');
+    if (frame) {
+      frame.src = '/reports/result/' + window.currentTestId + '?embedded=1&sheet=' + encodeURIComponent(sheet);
+    }
+    const btnAll = document.getElementById('btnEchoPreviewAll');
+    const btnInfo = document.getElementById('btnEchoPreviewInfo');
+    const btnReading = document.getElementById('btnEchoPreviewReading');
+    if (btnAll && btnInfo && btnReading) {
+      [btnAll, btnInfo, btnReading].forEach(b => { b.style.background = 'transparent'; b.style.color = '#334155'; });
+      if (sheet === 'info') { btnInfo.style.background = '#0284c7'; btnInfo.style.color = '#fff'; }
+      else if (sheet === 'reading') { btnReading.style.background = '#0284c7'; btnReading.style.color = '#fff'; }
+      else { btnAll.style.background = '#0284c7'; btnAll.style.color = '#fff'; }
+    }
+  }
+
+  function printSelectedEchoSheet() {
+    const s = window.currentEchoSheet || 'all';
+    window.open('/reports/result/' + window.currentTestId + '?embedded=1&print=1&sheet=' + encodeURIComponent(s), '_blank');
+  }
 
   (function(){
     // Patient search -> filter patient select options & auto-expand dropdown menu

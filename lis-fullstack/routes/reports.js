@@ -308,7 +308,8 @@ router.get('/result/:testId', requireAuth, canAccessPatient, async (req, res) =>
       dbTemplate: dbTemplate,
       layout: useLayout,
       print: autoPrint,
-      inlineLogo
+      inlineLogo,
+      sheet: req.query.sheet || 'all'
     });
 
   } catch (error) {
@@ -414,7 +415,7 @@ router.get('/print/:testId', requireAuth, canAccessPatient, async (req, res) => 
 
     // Render the result template without layout to get its HTML
     const inlineLogo = getInlineLogo();
-    res.render(viewPath, { title: 'Result Print', test: populatedTest, dbTemplate, layout: false, inlineLogo }, (err, renderedHtml) => {
+    res.render(viewPath, { title: 'Result Print', test: populatedTest, dbTemplate, layout: false, inlineLogo, sheet: req.query.sheet || 'all' }, (err, renderedHtml) => {
         if (err) {
           console.error('Error rendering result template for print:', err);
           return res.status(500).send('Error preparing print preview');

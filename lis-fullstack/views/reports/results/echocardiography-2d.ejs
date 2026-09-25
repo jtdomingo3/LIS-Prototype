@@ -1,157 +1,910 @@
 <style>
-  @page { size: Letter; margin: 0.25in; }
-  body { margin:0; padding:0; box-sizing:border-box; }
-  *, *:before, *:after { box-sizing:inherit; }
-  .report-page{ position:relative; width:100%; max-width:calc(8.5in - 0.5in); margin:0 auto; padding:8px; font-family: 'Times New Roman', Times, serif; color:#000 }
-  .header{ display:flex; align-items:flex-start; gap:12px }
-  .logo{ width:72px; height:auto; margin-right:8px }
-  .lab-title{ text-align:center; flex:1; min-width:0 }
-  .lab-title h1{ margin:0; font-size:22px; color:#009957; letter-spacing:1px }
-  .lab-sub{ font-size:10px; margin-top:4px; color:#009957 }
-  .patient-box{ margin-top:8px; width:100%; border-collapse:collapse; font-size:12px }
-  .patient-box td{ padding:4px 6px; border:1px solid #000; box-sizing:border-box }
-  .section-title{ text-align:center; margin:12px 0; font-size:20px; font-weight:bold }
-  .results-frame{ width:100%; border:2px solid #000; border-collapse:collapse; margin-top:6px; box-sizing:border-box }
-  .results-frame td, .results-frame th { padding:12px; vertical-align:middle; border:1px solid #000 }
-  .results-frame th{ text-align:left; font-weight:700 }
-  .signatures{ display:flex; justify-content:center; margin-top:10px }
-  .sig{ text-align:center; width:32%; position:relative; min-height:80px; padding-right:0.25in }
-  .signature-overlay{ position:absolute; left:50%; transform-origin:center; pointer-events:none; max-width:60%; z-index:2 }
-  .watermark{ position:absolute; left:50%; top:44%; transform:translate(-50%,-50%); width:52%; opacity:0.06; pointer-events:none; z-index:0 }
-  .report-container{ position:relative; z-index:1 }
+  @page {
+    size: Letter portrait;
+    margin: 0.22in 0.35in 0.2in 0.35in;
+  }
+  body {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+    color: #000;
+    background: #fff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  *, *:before, *:after { box-sizing: inherit; }
+
+  /* On-screen toolbar for switching sheets (hidden in print) */
+  .echo-nav-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 16px;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    margin: 0 auto 16px auto;
+    max-width: 8.0in;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .echo-nav-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #334155;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .echo-nav-btn:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+  }
+  .echo-nav-btn.active {
+    background: #0284c7;
+    color: #ffffff;
+    border-color: #0369a1;
+  }
+
+  /* Echo Page layout - strictly fits Letter page */
+  .echo-page {
+    position: relative;
+    width: 100%;
+    max-width: 7.95in;
+    margin: 0 auto;
+    padding: 4px 6px;
+    font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+    color: #000;
+    background: #fff;
+    box-sizing: border-box;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Header */
+  .echo-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 6px;
+    position: relative;
+  }
+  .echo-logo {
+    width: 78px;
+    height: 78px;
+    object-fit: contain;
+    flex-shrink: 0;
+  }
+  .echo-lab-title {
+    text-align: center;
+  }
+  .echo-lab-title h1 {
+    margin: 0;
+    font-size: 23px;
+    font-weight: 900;
+    color: #009957;
+    letter-spacing: 0.5px;
+    line-height: 1.15;
+  }
+  .echo-lab-title .echo-sub {
+    font-size: 11px;
+    font-weight: 700;
+    color: #009957;
+    line-height: 1.25;
+  }
+
+  /* 4-Row Patient Table matching images */
+  .echo-patient-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1.5px solid #000;
+    font-size: 11px;
+    margin-bottom: 6px;
+    table-layout: fixed;
+  }
+  .echo-patient-table td {
+    border: 1px solid #000;
+    padding: 2.5px 6px;
+    vertical-align: middle;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Sheet Titles */
+  .echo-sheet-title {
+    text-align: center;
+    font-weight: bold;
+    font-size: 12.5px;
+    letter-spacing: 0.8px;
+    margin: 4px 0 5px 0;
+  }
+
+  /* 3-Column M-Mode Measurements Container */
+  .echo-three-col-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 5px;
+    width: 100%;
+    margin-bottom: 5px;
+  }
+  .echo-col-table {
+    width: 32.8%;
+    border-collapse: collapse;
+    border: 1.5px solid #000;
+    font-size: 9px;
+    line-height: 1.15;
+    table-layout: fixed;
+  }
+  .echo-col-table th, .echo-col-table td {
+    border: 1px solid #000;
+    padding: 1.5px 3px;
+    vertical-align: middle;
+  }
+  .echo-col-table th.table-header {
+    text-align: center;
+    font-size: 9.5px;
+    font-weight: bold;
+    background: #ffffff;
+    padding: 2.5px 2px;
+  }
+  .echo-col-table td.col-param {
+    font-weight: 600;
+    color: #000;
+    width: 44%;
+    white-space: nowrap;
+  }
+  .echo-col-table td.col-val {
+    text-align: center;
+    font-weight: bold;
+    width: 18%;
+    color: #000;
+  }
+  .echo-col-table td.col-norm {
+    font-size: 8.5px;
+    color: #111;
+    width: 38%;
+    line-height: 1.1;
+  }
+
+  /* Doppler Study Section */
+  .echo-doppler-subtitle {
+    text-align: left;
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 0.8px;
+    margin: 4px 0 3px 0;
+    color: #111;
+  }
+  .echo-doppler-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1.5px solid #000;
+    font-size: 8.5px;
+    line-height: 1.15;
+    table-layout: fixed;
+  }
+  .echo-doppler-table th, .echo-doppler-table td {
+    border: 1px solid #000;
+    padding: 1.5px 3px;
+    vertical-align: middle;
+  }
+  .echo-doppler-table th {
+    text-align: center;
+    font-weight: bold;
+    font-size: 9px;
+    background: #ffffff;
+  }
+  .echo-doppler-table td.dop-label {
+    font-weight: 600;
+    width: 20%;
+  }
+
+  /* Footer Note */
+  .echo-footer-note {
+    text-align: center;
+    font-style: italic;
+    font-size: 8.5px;
+    font-weight: bold;
+    margin-top: 5px;
+    color: #000;
+  }
+
+  /* Sheet 2: Reading / Interpretation Styling */
+  .echo-reading-block {
+    margin-top: 14px;
+    font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  }
+  .echo-reading-heading {
+    font-weight: bold;
+    font-size: 12.5px;
+    color: #000;
+    margin-bottom: 4px;
+  }
+  .echo-reading-content {
+    font-size: 11px;
+    line-height: 1.48;
+    color: #000;
+    margin-bottom: 12px;
+    white-space: pre-wrap;
+    text-align: justify;
+  }
+
+  /* Signatory Block */
+  .echo-signatory-wrap {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 40px;
+    padding-right: 25px;
+  }
+  .echo-signatory-box {
+    text-align: center;
+    min-width: 240px;
+    position: relative;
+  }
+  .echo-signature-overlay {
+    position: absolute;
+    left: 50%;
+    top: -46px;
+    transform: translateX(-50%);
+    pointer-events: none;
+    max-height: 76px;
+    z-index: 2;
+  }
+
+  /* Print Media Rules */
+  @media print {
+    .no-print {
+      display: none !important;
+    }
+    .page-break {
+      page-break-after: always !important;
+      break-after: page !important;
+      height: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+      display: block !important;
+    }
+    .echo-page {
+      padding: 0 !important;
+      max-width: 100% !important;
+      height: 10.5in !important;
+      max-height: 10.5in !important;
+      overflow: hidden !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+  }
 </style>
 
 <%- include('./_highlight') %>
 
-<div class="report-page">
-  <div class="report-container">
-    <div class="header">
-      <div>
-        <img src="<%= inlineLogo || '/assets/gezyne-logo.png' %>" class="logo" alt="logo">
-      </div>
-      <div class="lab-title">
-        <h1>GEZYNE CLINICAL LABORATORY</h1>
-        <div class="lab-sub">0330 VERGEL DE DIOS ST POBLACION PLARIDEL</div>
-        <div class="lab-sub">NEAR MUNICIPAL BASKETBALL COURT</div>
-        <div class="lab-sub">0917-649-0807 / 0960-390-0921 / 795-5007</div>
-        <div class="lab-sub">Lic. No. 03-435-15CL-20</div>
-      </div>
-      <div style="min-width:180px; font-size:12px; text-align:right">
-        <table style="border-collapse:collapse; width:100%; font-size:12px">
-          <tr><td style="border:1px solid #000; padding:4px">Date:</td><td style="border:1px solid #000; padding:4px"><%= test && test.testDate ? (new Date(test.testDate)).toLocaleDateString() : new Date().toLocaleDateString() %></td></tr>
-          <tr><td style="border:1px solid #000; padding:4px">Time Requested:</td><td style="border:1px solid #000; padding:4px"><%= test && test.testDate ? (new Date(test.testDate)).toLocaleTimeString() : '' %></td></tr>
-          <tr><td style="border:1px solid #000; padding:4px">Time Released:</td><td style="border:1px solid #000; padding:4px"><%= test && test.completedAt ? (new Date(test.completedAt)).toLocaleTimeString() : '' %></td></tr>
-        </table>
-      </div>
-    </div>
+<%
+  // Extract parameters and helpers
+  const querySheet = (typeof sheet !== 'undefined' && sheet) ? String(sheet).toLowerCase() : (typeof req !== 'undefined' && req && req.query && req.query.sheet ? String(req.query.sheet).toLowerCase() : 'all');
+  const showInfo = querySheet === 'all' || querySheet === 'info' || querySheet === 'information' || querySheet === '1';
+  const showReading = querySheet === 'all' || querySheet === 'reading' || querySheet === 'interpretation' || querySheet === '2';
 
-    <table class="patient-box">
-      <tr>
-        <td style="width:20%">Patient's Reference No. :</td>
-        <td style="width:30%"><strong><%= test && test.testId ? test.testId : '' %></strong></td>
-        <td style="width:15%">DOB:</td>
-        <td style="width:15%"><strong><%= test && test.patient && test.patient.dateOfBirth ? (new Date(test.patient.dateOfBirth)).toLocaleDateString() : '' %></strong></td>
-        <td style="width:10%">Sex:</td>
-        <td style="width:10%"><strong><%= test && test.patient && test.patient.sex ? test.patient.sex : '' %></strong></td>
-      </tr>
-      <tr>
-        <td>Name:</td>
-        <td colspan="3"><strong><%= test && test.patient ? (test.patient.lastName + ', ' + test.patient.firstName) : '' %></strong></td>
-        <td>Age:</td>
-        <td><strong><%= test && test.patient ? (test.patient.age !== null && test.patient.age !== undefined && test.patient.age !== '' ? test.patient.age : (test.patient.ageManual || '')) : '' %></strong></td>
-      </tr>
-      <tr>
-        <td>Address:</td>
-        <td colspan="5"><strong><%= test && test.patient && (test.patient.address || test.patient.homeAddress || test.patient.addressLine) ? (test.patient.address || test.patient.homeAddress || test.patient.addressLine) : '' %></strong></td>
-      </tr>
-      <tr>
-        <td>Weight:</td>
-        <td><strong><%= test && test.results && test.results.weight ? test.results.weight : (test && test.patient && test.patient.weight ? test.patient.weight : '') %></strong></td>
-        <td>Height:</td>
-        <td><strong><%= test && test.results && test.results.height ? test.results.height : (test && test.patient && test.patient.height ? test.patient.height : '') %></strong></td>
-        <td>BSA:</td>
-        <td><strong><%= test && test.results && test.results.bsa ? test.results.bsa : '' %></strong></td>
-      </tr>
-      <tr>
-        <td>Physician:</td>
-        <td colspan="5"><strong><%= (test && test.patient && (test.patient.physician || test.patient.physicianName)) ? (test.patient.physician || test.patient.physicianName) : '' %></strong></td>
-      </tr>
-    </table>
+  const r = (test && test.results) ? test.results : {};
+  const p = (test && test.patient) ? test.patient : {};
 
-    <div class="section-title"><%= test && test.results && test.results.section_title ? test.results.section_title : 'ECHOCARDIOGRAPHY REPORT' %></div>
+  // Patient Header Data
+  let patientName = '';
+  if (p.lastName) {
+    patientName = (p.lastName + ', ' + (p.firstName || '') + (p.middleName ? ' ' + p.middleName[0] + '.' : '')).toUpperCase();
+  } else if (p.name) {
+    patientName = String(p.name).toUpperCase();
+  } else if (test && test.patientName) {
+    patientName = String(test.patientName).toUpperCase();
+  }
 
-    <div class="results-frame" style="border:none; padding:12px; line-height:1.4; padding-left:5.5em; padding-right:3.5em;font-size:<%= (test && test.results && test.results.paragraphs_font_size) ? test.results.paragraphs_font_size : '14px' %>; font-family:<%= (test && test.results && test.results.paragraphs_font_family) ? ('"' + test.results.paragraphs_font_family + '"') : '"Courier New"' %>">
-      <% 
-        var raw = (test && test.results && (test.results.paragraphs || test.results.findings || test.results.result)) ? (test.results.paragraphs || test.results.findings || test.results.result) : '';
-        var htmlOut = raw;
-        if (raw && !/<\/?[a-z][\s\S]*>/i.test(raw)) {
-          var parts = raw.split(/\r?\n\r?\n/).map(function(p){ return p.trim(); }).filter(Boolean);
-          if (parts.length) {
-            htmlOut = parts.map(function(p){ return '<p>' + p.replace(/\r?\n/g, '<br>') + '</p>'; }).join('\n');
-          } else {
-            htmlOut = raw.replace(/\r?\n/g, '<br>');
-          }
-        }
-      %>
-      <%- htmlOut %>
-    </div>
+  let patientAddress = p.address || p.homeAddress || p.addressLine || '';
+  let patientAge = (p.age !== null && p.age !== undefined && p.age !== '') ? (p.age + ' y/o') : (p.ageManual ? (p.ageManual + ' y/o') : '');
+  let patientSex = p.sex || '';
+  let physician = p.physician || p.physicianName || r.requestingPhysician || '';
+  let indication = r.indication || r.indication_for_study || '';
+  let contact = p.contactNumber || p.phone || p.contact || r.contact || '';
+  let testDateStr = test && test.testDate ? (new Date(test.testDate)).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : (new Date()).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
 
-    <div style="margin-top:10px; font-weight:700; padding-left:5.5em">Color Flow Doppler Study</div>
-    <div class="results-frame" style="border:none; padding:12px; line-height:1.4; padding-left:5.5em; padding-right:3.5em;font-size:<%= (test && test.results && test.results.paragraphs_font_size) ? test.results.paragraphs_font_size : '14px' %>; font-family:<%= (test && test.results && test.results.paragraphs_font_family) ? ('"' + test.results.paragraphs_font_family + '"') : '"Courier New"' %>">
-      <% 
-        var rawCF = (test && test.results && (test.results.color_flow || test.results.color_flow_study)) ? (test.results.color_flow || test.results.color_flow_study) : '';
-        var htmlCF = rawCF;
-        if (rawCF && !/<\/?[a-z][\s\S]*>/i.test(rawCF)) {
-          htmlCF = rawCF.replace(/\r?\n/g, '<br>');
-        }
-      %>
-      <%- htmlCF %>
-    </div>
+  // Biometrics
+  let weightStr = r.weight ? (r.weight + (String(r.weight).toLowerCase().includes('kg') ? '' : ' kg')) : '';
+  let heightStr = r.height ? (r.height + (String(r.height).toLowerCase().includes('cm') ? '' : ' cm')) : '';
+  let bsaStr = r.bsa ? (r.bsa + (String(r.bsa).includes('m') ? '' : 'm²')) : '';
+  let hrStr = r.hr ? (String(r.hr).toLowerCase().includes('bpm') ? r.hr : (r.hr + ' bpm')) : '';
 
-    <div style="margin-top:10px; font-weight:700; padding-left:5.5em">Conclusion</div>
-    <div class="results-frame" style="border:none; padding:12px; line-height:1.4; padding-left:5.5em; padding-right:3.5em;font-size:<%= (test && test.results && test.results.paragraphs_font_size) ? test.results.paragraphs_font_size : '14px' %>; font-family:<%= (test && test.results && test.results.paragraphs_font_family) ? ('"' + test.results.paragraphs_font_family + '"') : '"Courier New"' %>">
-      <% 
-        var rawC = (test && test.results && (test.results.conclusion || test.results.impression || test.results.conclusion_text)) ? (test.results.conclusion || test.results.impression || test.results.conclusion_text) : '';
-        var htmlC = rawC;
-        if (rawC && !/<\/?[a-z][\s\S]*>/i.test(rawC)) {
-          var partsC = rawC.split(/\r?\n\r?\n/).map(function(p){ return p.trim(); }).filter(Boolean);
-          if (partsC.length) {
-            htmlC = partsC.map(function(p){ return '<p>' + p.replace(/\r?\n/g, '<br>') + '</p>'; }).join('\n');
-          } else {
-            htmlC = rawC.replace(/\r?\n/g, '<br>');
-          }
-        }
-      %>
-      <%- htmlC %>
-    </div>
+  // Signature matching helper
+  function findSigFor(displayName){
+    if (!displayName) return null;
+    var sigs = (test && test.results && test.results.signatures) ? test.results.signatures : {};
+    for (var k in sigs) {
+      if (sigs[k] && sigs[k].name === displayName) return sigs[k];
+    }
+    return null;
+  }
+  const doctorName = r.doctorName || r.pathName || r.performedByName || (test && test.performedBy && test.performedBy.name) || 'Melissa R. Cundangan, MD';
+  const doctorLicense = r.doctorLicense || r.pathLicense || '';
+  const doctorDesignation = r.doctorDesignation || 'Cardiologist';
+  const sig = findSigFor(doctorName);
+%>
 
-    <%
-      function findSigFor(displayName){
-        if (!displayName) return null;
-        var sigs = (test && test.results && test.results.signatures) ? test.results.signatures : {};
-        for(var k in sigs){ if(sigs[k] && sigs[k].name === displayName) return sigs[k]; }
-        return null;
-      }
-    %>
+<!-- Interactive On-Screen Switcher & Print Toolbar (Class no-print) -->
+<div class="echo-nav-bar no-print">
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="font-weight:700; font-size:13px; color:#0f172a;">🫀 2D Echo Forms:</span>
+    <button type="button" class="echo-nav-btn <%= querySheet === 'all' ? 'active' : '' %>" onclick="switchEchoSheet('all')">📑 All Forms (2 Pages)</button>
+    <button type="button" class="echo-nav-btn <%= querySheet === 'info' ? 'active' : '' %>" onclick="switchEchoSheet('info')">📊 1. Echo Information Sheet</button>
+    <button type="button" class="echo-nav-btn <%= querySheet === 'reading' ? 'active' : '' %>" onclick="switchEchoSheet('reading')">📝 2. Interpretation & Reading</button>
+  </div>
+  <div style="display:flex; gap:8px;">
+    <button type="button" class="echo-nav-btn" style="background:#ea580c; color:#fff; border-color:#c2410c;" onclick="window.print()">🖨️ Print Form</button>
+  </div>
+</div>
 
-    <div class="signatures">
-      <div class="sig">
-        <div style="border-top:1px solid #000; height:0; margin-bottom:8px"></div>
-        <% var displayName = (test && test.results && (test.results.doctorName || test.results.pathName || test.results.performedByName)) || (test && test.performedBy && test.performedBy.name) || '' %>
-        <% var sig = findSigFor(displayName); var p = (sig && sig.placement) ? sig.placement : {x:0,y:-72,scale:1.25}; if(p && (typeof p.scale === 'undefined' || p.scale === 1)) p.scale = 1.25; %>
-        <% if (sig && sig.filename) { %>
-          <img src="/assets/signature/<%= sig.filename %>" class="signature-overlay" style="top:<%= p.y %>px; transform:translateX(-50%) scale(<%= p.scale %>); max-height:96px;" />
-        <% } %>
-        <div style="font-weight:700"><strong><span style="white-space:nowrap; display:inline-block"><%= displayName %></span></strong></div>
-        <div style="font-size:11px"><% if (test && test.results && (test.results.doctorLicense || test.results.pathLicense || test.results.performedByLicense)) { %><strong>Lic. No. <%= (test.results.doctorLicense || test.results.pathLicense || test.results.performedByLicense) %></strong><% } %></div>
-        <div style="font-weight:500"><%= (test && test.results && (test.results.doctorDesignation)) ? test.results.doctorDesignation : 'Radiologist' %></div>
-      </div>
+<script class="no-print">
+  function switchEchoSheet(sheetName) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('sheet', sheetName);
+    window.location.href = url.toString();
+  }
+</script>
+
+<!-- ==================================================================== -->
+<!-- FORM 1: ECHOCARDIOGRAPHY INFORMATION SHEET (Image 1)                 -->
+<!-- Fits strictly on 1 Letter Page                                       -->
+<!-- ==================================================================== -->
+<% if (showInfo) { %>
+<div class="echo-page echo-info-sheet">
+  
+  <!-- Header -->
+  <div class="echo-header">
+    <img src="<%= inlineLogo || '/assets/gezyne-logo.png' %>" class="echo-logo" alt="Gezyne Logo">
+    <div class="echo-lab-title">
+      <h1>GEZYNE CLINICAL LABORATORY</h1>
+      <div class="echo-sub">0330 VERGEL DE DIOS ST. POBLACION PLARIDEL BULACAN</div>
+      <div class="echo-sub">NEAR MUNICIPAL BASKETBALL COURT</div>
+      <div class="echo-sub">0917-649-0807 Lic. No. 03-435-15CL-20</div>
     </div>
   </div>
 
-  <img class="watermark" src="<%= inlineLogo || '/assets/gezyne-logo.png' %>" alt="" />
+  <!-- 4-Row Patient Table -->
+  <table class="echo-patient-table">
+    <tr>
+      <td style="width: 50%;"><strong>Name:</strong> <%= patientName %></td>
+      <td style="width: 25%;"><strong>Date:</strong> <%= testDateStr %></td>
+      <td style="width: 25%;"><strong>Weight:</strong> <%= weightStr %></td>
+    </tr>
+    <tr>
+      <td><strong>Address:</strong> <%= patientAddress %></td>
+      <td><strong>Age:</strong> <%= patientAge %></td>
+      <td><strong>Height:</strong> <%= heightStr %></td>
+    </tr>
+    <tr>
+      <td><strong>Requesting Physician:</strong> <%= physician %></td>
+      <td><strong>Sex:</strong> <%= patientSex %></td>
+      <td><strong>BSA:</strong> <%= bsaStr %></td>
+    </tr>
+    <tr>
+      <td><strong>Indication for study:</strong> <%= indication %></td>
+      <td><strong>Contact:</strong> <%= contact %></td>
+      <td><strong>HR =</strong> <%= hrStr %></td>
+    </tr>
+  </table>
+
+  <!-- Title -->
+  <div class="echo-sheet-title">ECHOCARDIOGRAPHY INFORMATION</div>
+
+  <!-- 3-Column M-Mode Measurements Tables -->
+  <div class="echo-three-col-container">
+    
+    <!-- Column 1 -->
+    <table class="echo-col-table">
+      <thead>
+        <tr>
+          <th colspan="3" class="table-header">M-mode / 2-D measurements</th>
+        </tr>
+        <tr>
+          <th style="width:44%;"></th>
+          <th style="width:18%;"></th>
+          <th style="width:38%; text-align:center; font-weight:bold; font-size:8.5px;">Normal value</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-param">LVEDD</td>
+          <td class="col-val"><%= r.lvedd || '' %></td>
+          <td class="col-norm">M (4.2-5.9 cm)<br>F (3.9-5.3 cm)</td>
+        </tr>
+        <tr>
+          <td class="col-param">LVEDD by BSA<br>(cm / m²)</td>
+          <td class="col-val"><%= r.lvedd_bsa || '' %></td>
+          <td class="col-norm">M (2.2-3.1)<br>F (2.4-3.2)</td>
+        </tr>
+        <tr>
+          <td class="col-param">LVESD</td>
+          <td class="col-val"><%= r.lvesd || '' %></td>
+          <td class="col-norm">cm</td>
+        </tr>
+        <tr>
+          <td class="col-param">LVEDV</td>
+          <td class="col-val"><%= r.lvedv || '' %></td>
+          <td class="col-norm">ml</td>
+        </tr>
+        <tr>
+          <td class="col-param">LVESV</td>
+          <td class="col-val"><%= r.lvesv || '' %></td>
+          <td class="col-norm">ml</td>
+        </tr>
+        <tr>
+          <td class="col-param">IVS (D)</td>
+          <td class="col-val"><%= r.ivs_d || '' %></td>
+          <td class="col-norm">M (0.6-1.0 cm)<br>F (0.6-0.9 cm)</td>
+        </tr>
+        <tr>
+          <td class="col-param">IVS (S)</td>
+          <td class="col-val"><%= r.ivs_s || '' %></td>
+          <td class="col-norm">&nbsp;</td>
+        </tr>
+        <tr>
+          <td class="col-param">LVPW (D)</td>
+          <td class="col-val"><%= r.lvpw_d || '' %></td>
+          <td class="col-norm">M (0.6-1.0 cm)<br>F (0.6-0.9 cm)</td>
+        </tr>
+        <tr>
+          <td class="col-param">LVPW (S)</td>
+          <td class="col-val"><%= r.lvpw_s || '' %></td>
+          <td class="col-norm">&nbsp;</td>
+        </tr>
+        <tr>
+          <td class="col-param">Mitral Annulus</td>
+          <td class="col-val"><%= r.mitral_annulus || '' %></td>
+          <td class="col-norm">2.0-3.4 cm</td>
+        </tr>
+        <tr>
+          <td class="col-param">Tricuspid<br>Annulus</td>
+          <td class="col-val"><%= r.tricuspid_annulus || '' %></td>
+          <td class="col-norm">1.3-2.8 cm</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Column 2 -->
+    <table class="echo-col-table">
+      <thead>
+        <tr>
+          <th colspan="3" class="table-header">M-mode / 2-D Measurements</th>
+        </tr>
+        <tr>
+          <th style="width:44%;"></th>
+          <th style="width:18%;"></th>
+          <th style="width:38%; text-align:center; font-weight:bold; font-size:8.5px;">Normal value</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-param">LVMI</td>
+          <td class="col-val"><%= r.lvmi || '' %></td>
+          <td class="col-norm">M (&le; 115 gm/ m²)<br>F (&le;95 gm/ m²)</td>
+        </tr>
+        <tr>
+          <td class="col-param">RWT</td>
+          <td class="col-val"><%= r.rwt || '' %></td>
+          <td class="col-norm">&le; 0.42</td>
+        </tr>
+        <tr>
+          <td class="col-param">SV</td>
+          <td class="col-val"><%= r.sv || '' %></td>
+          <td class="col-norm">Ml / beat</td>
+        </tr>
+        <tr>
+          <td class="col-param">CO</td>
+          <td class="col-val"><%= r.co || '' %></td>
+          <td class="col-norm">L / min</td>
+        </tr>
+        <tr>
+          <td class="col-param">EF (T)</td>
+          <td class="col-val"><%= r.ef_t || '' %></td>
+          <td class="col-norm">&ge; 55 %</td>
+        </tr>
+        <tr>
+          <td class="col-param">S</td>
+          <td class="col-val"><%= r.s_wave || '' %></td>
+          <td class="col-norm">&nbsp;</td>
+        </tr>
+        <tr>
+          <td class="col-param">FS</td>
+          <td class="col-val"><%= r.fs || '' %></td>
+          <td class="col-norm">28 &ndash; 41 %</td>
+        </tr>
+        <tr>
+          <td class="col-param">EPSS</td>
+          <td class="col-val"><%= r.epss || '' %></td>
+          <td class="col-norm">&lt; 1cm</td>
+        </tr>
+        <tr>
+          <td class="col-param">LVOT</td>
+          <td class="col-val"><%= r.lvot || '' %></td>
+          <td class="col-norm">cm</td>
+        </tr>
+        <tr>
+          <td class="col-param">AV Op</td>
+          <td class="col-val"><%= r.av_op || '' %></td>
+          <td class="col-norm">1.5 &ndash; 2 cm</td>
+        </tr>
+        <tr>
+          <td class="col-param">PA</td>
+          <td class="col-val"><%= r.pa || '' %></td>
+          <td class="col-norm">1.5 &ndash; 2.1 cm</td>
+        </tr>
+        <tr>
+          <td class="col-param">RVOT</td>
+          <td class="col-val"><%= r.rvot || '' %></td>
+          <td class="col-norm">&le; 2.1 cm</td>
+        </tr>
+        <tr>
+          <td class="col-param">IVC diameter</td>
+          <td class="col-val"><%= r.ivc_diameter || '' %></td>
+          <td class="col-norm">1.5-2.5 cm</td>
+        </tr>
+        <tr>
+          <td class="col-param">% IVC collapse</td>
+          <td class="col-val"><%= r.ivc_collapse || '' %></td>
+          <td class="col-norm">&gt; 50 %</td>
+        </tr>
+        <tr>
+          <td class="col-param">LVET</td>
+          <td class="col-val"><%= r.lvet || '' %></td>
+          <td class="col-norm">265 &ndash; 325 m/sec</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Column 3 -->
+    <table class="echo-col-table">
+      <thead>
+        <tr>
+          <th colspan="3" class="table-header">M-mode / 2-D Measurements</th>
+        </tr>
+        <tr>
+          <th style="width:44%;"></th>
+          <th style="width:18%;"></th>
+          <th style="width:38%; text-align:center; font-weight:bold; font-size:8.5px;">Normal Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="col-param">RV (base)</td>
+          <td class="col-val"><%= r.rv_base || '' %></td>
+          <td class="col-norm">2.7 &ndash; 3.3 cm</td>
+        </tr>
+        <tr>
+          <td class="col-param">RV (mid)</td>
+          <td class="col-val"><%= r.rv_mid || '' %></td>
+          <td class="col-norm">1.9-3.5 cm</td>
+        </tr>
+        <tr>
+          <td class="col-param">RV (length)</td>
+          <td class="col-val"><%= r.rv_length || '' %></td>
+          <td class="col-norm">5.5- 8.7 cm</td>
+        </tr>
+        <tr>
+          <td class="col-param">Tapse</td>
+          <td class="col-val"><%= r.tapse || '' %></td>
+          <td class="col-norm">&gt;1.7 cm</td>
+        </tr>
+        <tr>
+          <td class="col-param">LA (A-P)</td>
+          <td class="col-val"><%= r.la_ap || '' %></td>
+          <td class="col-norm">M (3 &ndash; 4 cm)<br>F (2.7 &ndash; 3.8 cm)</td>
+        </tr>
+        <tr>
+          <td class="col-param">LAVI</td>
+          <td class="col-val"><%= r.lavi || '' %></td>
+          <td class="col-norm">22 &plusmn; 6 ml/ m²</td>
+        </tr>
+        <tr>
+          <td class="col-param">RA (R-L)</td>
+          <td class="col-val"><%= r.ra_rl || '' %></td>
+          <td class="col-norm">&le; 4.4 cm</td>
+        </tr>
+        <tr>
+          <td class="col-param">Aortic root</td>
+          <td class="col-val"><%= r.aortic_root || '' %></td>
+          <td class="col-norm">&nbsp;</td>
+        </tr>
+        <tr>
+          <td class="col-param">Aorta</td>
+          <td class="col-val"><%= r.aorta || '' %></td>
+          <td class="col-norm">1.7-3.4</td>
+        </tr>
+        <tr>
+          <td class="col-param">Annulus</td>
+          <td class="col-val"><%= r.annulus || '' %></td>
+          <td class="col-norm">1.4-2.6</td>
+        </tr>
+        <tr>
+          <td class="col-param">Sinus</td>
+          <td class="col-val"><%= r.sinus || '' %></td>
+          <td class="col-norm">2.1-3.5</td>
+        </tr>
+        <tr>
+          <td class="col-param">ST Junction</td>
+          <td class="col-val"><%= r.st_junction || '' %></td>
+          <td class="col-norm">1.7-3.4</td>
+        </tr>
+        <tr>
+          <td class="col-param">Ascending</td>
+          <td class="col-val"><%= r.ascending || '' %></td>
+          <td class="col-norm">2.1-3.4</td>
+        </tr>
+      </tbody>
+    </table>
+
+  </div>
+
+  <!-- Doppler Measurements Section -->
+  <div class="echo-doppler-subtitle">DOPPLER MEASUREMENT</div>
+
+  <table class="echo-doppler-table">
+    <thead>
+      <tr>
+        <th style="width: 20%; text-align: left;">DOPPLER STUDY</th>
+        <th colspan="2" style="width: 20%;">MITRAL</th>
+        <th colspan="2" style="width: 20%;">AORTIC</th>
+        <th colspan="2" style="width: 20%;">TRICUSPID</th>
+        <th colspan="2" style="width: 20%;">PULMONIC</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Row 1: Maximum Velocity -->
+      <tr>
+        <td class="dop-label">Maximum Velocity (m/sec)</td>
+        <td style="width:10%; text-align:center; font-weight:bold;">
+          <%= r.dop_max_vel_mitral_e || '' %><% if (r.dop_max_vel_mitral_a) { %><br><%= r.dop_max_vel_mitral_a %><% } %>
+        </td>
+        <td style="width:10%; text-align:left; font-size:8px;">
+          <%= r.dop_max_vel_mitral_norm_e || 'E:' %><br><%= r.dop_max_vel_mitral_norm_a || 'A:' %>
+        </td>
+        <td style="width:10%; text-align:center; font-weight:bold;">
+          <%= r.dop_max_vel_aortic_1 || '' %><% if (r.dop_max_vel_aortic_2) { %><br><%= r.dop_max_vel_aortic_2 %><% } %>
+        </td>
+        <td style="width:10%; text-align:left; font-size:8px;">
+          <%= r.dop_max_vel_aortic_sub_1 || 'V1 (LVOT)' %><br><%= r.dop_max_vel_aortic_sub_2 || 'V2 (AV) 1 – 1.7' %>
+        </td>
+        <td style="width:10%; text-align:center; font-weight:bold;">
+          <%= r.dop_max_vel_tricuspid_1 || '' %><% if (r.dop_max_vel_tricuspid_2) { %><br><%= r.dop_max_vel_tricuspid_2 %><% } %>
+        </td>
+        <td style="width:10%; text-align:center; font-size:8px;">
+          <%= r.dop_max_vel_tricuspid_norm || '0.3 – 0.7' %>
+        </td>
+        <td style="width:10%; text-align:center; font-weight:bold;">
+          <%= r.dop_max_vel_pulmonic_1 || '' %><% if (r.dop_max_vel_pulmonic_2) { %><br><%= r.dop_max_vel_pulmonic_2 %><% } %>
+        </td>
+        <td style="width:10%; text-align:left; font-size:8px;">
+          <%= r.dop_max_vel_pulmonic_sub_1 || 'V1 (RVOT)' %><br><%= r.dop_max_vel_pulmonic_sub_2 || 'V2 (PV) 0.6 – 0.9' %>
+        </td>
+      </tr>
+
+      <!-- Row 2: E/A Ratio -->
+      <tr>
+        <td class="dop-label">E/ A Ratio</td>
+        <td style="text-align:center; font-weight:bold;"><%= r.dop_ea_ratio_mitral || '' %></td>
+        <td style="text-align:center; font-size:8px;"><%= r.dop_ea_ratio_mitral_norm || '0.9 – 1.5' %></td>
+        <td></td><td></td><td></td><td></td><td></td><td></td>
+      </tr>
+
+      <!-- Row 3: Peak Gradient -->
+      <tr>
+        <td class="dop-label">Peak Gradient (mm / Hg)</td>
+        <td colspan="2" style="text-align:center; font-weight:bold;"><%= r.dop_peak_grad_mitral || '' %></td>
+        <td colspan="2" style="text-align:center; font-weight:bold;"><%= r.dop_peak_grad_aortic || '' %></td>
+        <td colspan="2" style="text-align:center; font-weight:bold;"><%= r.dop_peak_grad_tricuspid || '' %></td>
+        <td colspan="2" style="text-align:center; font-weight:bold;"><%= r.dop_peak_grad_pulmonic || '' %></td>
+      </tr>
+
+      <!-- Row 4: Max Peak Gradient -->
+      <tr>
+        <td class="dop-label">Max Peak Gradient(mm/Hg)</td>
+        <td colspan="2" style="text-align:center; font-weight:bold;"><%= r.dop_max_peak_grad_mitral || '' %></td>
+        <td colspan="2" style="text-align:center; font-weight:bold;"><%= r.dop_max_peak_grad_aortic || '' %></td>
+        <td colspan="2" style="text-align:center; font-weight:bold;"><%= r.dop_max_peak_grad_tricuspid || '' %></td>
+        <td colspan="2" style="text-align:center; font-weight:bold;"><%= r.dop_max_peak_grad_pulmonic || '' %></td>
+      </tr>
+
+      <!-- Row 5: MV Annular TDI -->
+      <tr>
+        <td class="dop-label">
+          MV Annular TDI &nbsp; <span style="font-weight:normal; font-size:8px;">Lateral</span><br>
+          <span style="visibility:hidden;">MV Annular TDI</span> &nbsp; <span style="font-weight:normal; font-size:8px;">Media</span>
+        </td>
+        <td colspan="2" style="font-size:8px; line-height:1.2; text-align:left; padding-left:6px; font-weight:bold;">
+          <%= r.dop_tdi_lat_e ? ("E': " + r.dop_tdi_lat_e) : (r.dop_tdi_lat ? r.dop_tdi_lat : '') %><% if (r.dop_tdi_lat_a) { %>&nbsp; A': <%= r.dop_tdi_lat_a %><% } %><br>
+          <%= r.dop_tdi_med_e ? ("E': " + r.dop_tdi_med_e) : (r.dop_tdi_med ? r.dop_tdi_med : '') %><% if (r.dop_tdi_med_a) { %>&nbsp; A': <%= r.dop_tdi_med_a %><% } %>
+        </td>
+        <td colspan="2"></td>
+        <td colspan="2"></td>
+        <td colspan="2"></td>
+      </tr>
+
+      <!-- Row 6: Deceleration Time -->
+      <tr>
+        <td class="dop-label">Deceleration Time (m/sec)</td>
+        <td style="text-align:center; font-weight:bold;"><%= r.dop_decel_time || '' %></td>
+        <td style="text-align:center; font-size:8px;"><%= r.dop_decel_time_norm || '160 – 240' %></td>
+        <td colspan="2"></td>
+        <td colspan="2"></td>
+        <td colspan="2"></td>
+      </tr>
+
+      <!-- Row 7: IVRT -->
+      <tr>
+        <td class="dop-label">IVRT (m/sec)</td>
+        <td style="text-align:center; font-weight:bold;"><%= r.dop_ivrt || '' %></td>
+        <td style="text-align:center; font-size:8px;"><%= r.dop_ivrt_norm || '60 - 90' %></td>
+        <td colspan="2"></td>
+        <td colspan="2"></td>
+        <td colspan="2"></td>
+      </tr>
+
+      <!-- Row 8: Ar Duration -->
+      <tr>
+        <td class="dop-label">Ar Duration(ms)</td>
+        <td colspan="2" style="text-align:center; font-weight:bold;"><%= r.dop_ar_duration || '' %></td>
+        <td colspan="2"></td>
+        <td colspan="2"></td>
+        <td colspan="2"></td>
+      </tr>
+
+      <!-- Row 9: Pulmonic Vein -->
+      <tr>
+        <td class="dop-label" style="font-size:8px; line-height:1.2;">
+          Pulmonic Vein &nbsp; Diastoles<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Systole<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Sys / Dias
+        </td>
+        <td colspan="2" style="font-size:8px; line-height:1.2; text-align:center; font-weight:bold;">
+          <%= r.dop_pv_diastoles || '' %><br>
+          <%= r.dop_pv_systole || '' %><br>
+          <%= r.dop_pv_sys_dias || '' %>
+        </td>
+        <td style="font-size:8px; text-align:left;">PASP by TRJ<br>Total PASP</td>
+        <td style="text-align:center; font-weight:bold; font-size:8px;"><%= r.dop_pasp_trj || '' %><br><%= r.dop_total_pasp || '' %></td>
+        <td style="font-size:8px; text-align:center;">PAT</td>
+        <td style="text-align:center; font-weight:bold; font-size:8px;"><%= r.dop_pat || '' %></td>
+        <td style="font-size:8px; text-align:center;">&ge;</td>
+        <td style="text-align:center; font-weight:bold; font-size:8px;"><%= r.dop_pat_norm || '' %></td>
+      </tr>
+
+      <!-- Row 10: Severity of Regurgitation -->
+      <tr>
+        <td class="dop-label">Severity of Regurgitation</td>
+        <td colspan="2" style="text-align:center; font-weight:bold;"><%= r.dop_regurg_mitral || '' %></td>
+        <td colspan="2" style="text-align:center; font-weight:bold;"><%= r.dop_regurg_aortic || '' %></td>
+        <td colspan="2" style="text-align:center; font-weight:bold;"><%= r.dop_regurg_tricuspid || '' %></td>
+        <td colspan="2" style="text-align:center; font-weight:bold;"><%= r.dop_regurg_pulmonic || '' %></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Footer Note -->
+  <div class="echo-footer-note">
+    *results are based on echocardiographic findings only and should be correlated clinically and with other diagnostic tests and
+  </div>
+
 </div>
+<% } %>
+
+<!-- Page Break if both forms are printed or viewed -->
+<% if (showInfo && showReading) { %>
+  <div class="page-break"></div>
+<% } %>
+
+<!-- ==================================================================== -->
+<!-- FORM 2: ECHOCARDIOGRAPHY READING / INTERPRETATION SHEET (Image 2)    -->
+<!-- Fits strictly on 1 Letter Page                                       -->
+<!-- ==================================================================== -->
+<% if (showReading) { %>
+<div class="echo-page echo-reading-sheet">
+
+  <!-- Header -->
+  <div class="echo-header">
+    <img src="<%= inlineLogo || '/assets/gezyne-logo.png' %>" class="echo-logo" alt="Gezyne Logo">
+    <div class="echo-lab-title">
+      <h1>GEZYNE CLINICAL LABORATORY</h1>
+      <div class="echo-sub">0330 VERGEL DE DIOS ST. POBLACION PLARIDEL BULACAN</div>
+      <div class="echo-sub">NEAR MUNICIPAL BASKETBALL COURT</div>
+      <div class="echo-sub">0917-649-0807 Lic. No. 03-435-15CL-20</div>
+    </div>
+  </div>
+
+  <!-- 4-Row Patient Table -->
+  <table class="echo-patient-table">
+    <tr>
+      <td style="width: 50%;"><strong>Name:</strong> <%= patientName %></td>
+      <td style="width: 25%;"><strong>Date:</strong> <%= testDateStr %></td>
+      <td style="width: 25%;"><strong>Weight:</strong> <%= weightStr %></td>
+    </tr>
+    <tr>
+      <td><strong>Address:</strong> <%= patientAddress %></td>
+      <td><strong>Age:</strong> <%= patientAge %></td>
+      <td><strong>Height:</strong> <%= heightStr %></td>
+    </tr>
+    <tr>
+      <td><strong>Requesting Physician:</strong> <%= physician %></td>
+      <td><strong>Sex:</strong> <%= patientSex %></td>
+      <td><strong>BSA:</strong> <%= bsaStr %></td>
+    </tr>
+    <tr>
+      <td><strong>Indication for study:</strong> <%= indication %></td>
+      <td><strong>Contact:</strong> <%= contact %></td>
+      <td><strong>HR =</strong> <%= hrStr %></td>
+    </tr>
+  </table>
+
+  <!-- Clinical Reading & Interpretation Section -->
+  <div class="echo-reading-block">
+    
+    <!-- 1. Interpretation -->
+    <div class="echo-reading-heading">Interpretation</div>
+    <div class="echo-reading-content">
+      <%
+        var rawInterp = (r.paragraphs || r.findings || r.result || '').toString().trim();
+        if (!rawInterp) {
+          rawInterp = 'Normal left ventricular cavity size with increased left ventricular mass index and relative wall thickness. There is normal wall motion, contractility and global systolic function\nNormal left atrium size\nNormal right ventricular dimension, with adequate contractility\nNormal right atrium, main pulmonary artery\nand aortic root dimension\nThickened mitral valve leaflets without restriction of motion\nStructurally normal aortic, tricuspid and pulmonic valve\nNo intracavitary thrombus and no pericardial effusion seen';
+        }
+      %><%- rawInterp %>
+    </div>
+
+    <!-- 2. Color flow and Spectral Doppler -->
+    <div class="echo-reading-heading">Color flow and Spectral Doppler</div>
+    <div class="echo-reading-content">
+      <%
+        var rawCF = (r.color_flow || r.color_flow_study || '').toString().trim();
+        if (!rawCF) {
+          rawCF = "Mosaic color flow display is seen across the mitral and tricuspid valve during systole and across the pulmonic valve during diastole Normal mitral inflow E/A velocity pattern Normal mitral annular e' velocities Normal estimated pulmonary artery pressure by peak TR jet velocity ( 1.5 m/s)";
+        }
+      %><%- rawCF %>
+    </div>
+
+    <!-- 3. CONCLUSION -->
+    <div class="echo-reading-heading">CONLUSION:</div>
+    <div class="echo-reading-content">
+      <%
+        var rawConc = (r.conclusion || r.impression || r.conclusion_text || '').toString().trim();
+        if (!rawConc) {
+          rawConc = 'Concentric left ventricular hypertrophy with normal wall motion, contractility and global systolic function\nTrivial mitral, tricuspid and pulmonic regurgitation\nLow probability of pulmonary hypertension';
+        }
+      %><%- rawConc %>
+    </div>
+
+  </div>
+
+  <!-- Signatory Block (Right-aligned, matching Image 2) -->
+  <div class="echo-signatory-wrap">
+    <div class="echo-signatory-box">
+      <% if (sig && sig.filename) { %>
+        <img src="/assets/signature/<%= sig.filename %>" class="echo-signature-overlay" alt="Signature" />
+      <% } %>
+      <div style="font-weight: bold; font-size: 13px; color: #000; margin-bottom: 2px;"><%= doctorName %></div>
+      <div style="font-size: 11.5px; color: #111;"><%= doctorDesignation %></div>
+      <% if (doctorLicense) { %>
+        <div style="font-size: 10px; color: #333; margin-top: 1px;">Lic. No. <%= doctorLicense %></div>
+      <% } %>
+    </div>
+  </div>
+
+</div>
+<% } %>
 
 <% if (typeof print !== 'undefined' && print) { %>
-  <script>setTimeout(function(){ window.print(); }, 300);</script>
+  <script>setTimeout(function(){ window.print(); }, 350);</script>
 <% } %>

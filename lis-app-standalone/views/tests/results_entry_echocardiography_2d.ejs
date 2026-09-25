@@ -1,7 +1,12 @@
 <%- include('../partials/test_patient_banner', { test, patient: typeof patient !== 'undefined' ? patient : (test ? test.patient : null) }) %>
 
+<%
+  const r = (test && test.results) ? test.results : {};
+  const p = (test && test.patient) ? test.patient : {};
+%>
+
 <div class="card" style="padding: 24px 28px; border-radius: 16px; box-shadow: 0 4px 18px rgba(0,0,0,0.03); background: #ffffff; border: 1px solid #e2e8f0;">
-  <form action="/tests/<%= test.id %>/results" method="POST">
+  <form action="/tests/<%= test.id %>/results" method="POST" id="echoForm">
     <input type="hidden" name="_method" value="POST">
 
     <!-- Timing & Meta Bar -->
@@ -20,142 +25,680 @@
       </div>
     </div>
 
-    <!-- Biometrics & Report Title Bar -->
-    <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; padding: 14px 18px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px;">
-      <div style="display: flex; align-items: center; gap: 8px;">
+    <!-- Biometrics & Clinical Indicators Bar -->
+    <div style="display: flex; gap: 14px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; padding: 14px 18px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px;">
+      <div style="display: flex; align-items: center; gap: 6px;">
         <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Weight (kg):</label>
-        <input type="text" name="weight" placeholder="e.g. 64.2" value="<%= test && test.results && test.results.weight ? test.results.weight : '' %>" style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.88em; width: 90px; font-weight: 600;">
+        <input type="text" name="weight" id="weight_field" placeholder="e.g. 70" value="<%= r.weight || (p && p.weight ? p.weight : '') %>" style="height: 34px; padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.88em; width: 85px; font-weight: 600;">
       </div>
-      <div style="display: flex; align-items: center; gap: 8px;">
+      <div style="display: flex; align-items: center; gap: 6px;">
         <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Height (cm):</label>
-        <input type="text" name="height" placeholder="e.g. 167.6" value="<%= test && test.results && test.results.height ? test.results.height : '' %>" style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.88em; width: 90px; font-weight: 600;">
+        <input type="text" name="height" id="height_field" placeholder="e.g. 167.3" value="<%= r.height || (p && p.height ? p.height : '') %>" style="height: 34px; padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.88em; width: 85px; font-weight: 600;">
       </div>
-      <div style="display: flex; align-items: center; gap: 8px;">
+      <div style="display: flex; align-items: center; gap: 6px;">
         <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">BSA (m²):</label>
-        <input type="text" name="bsa" id="bsa_field" placeholder="Auto" value="<%= test && test.results && test.results.bsa ? test.results.bsa : '' %>" style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.88em; width: 80px; font-weight: 700; background: #f8fafc;" readonly>
+        <input type="text" name="bsa" id="bsa_field" placeholder="Auto" value="<%= r.bsa || '' %>" style="height: 34px; padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.88em; width: 75px; font-weight: 700; background: #f8fafc;" readonly>
       </div>
-      <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 240px;">
-        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Report Header:</label>
-        <input type="text" name="section_title" placeholder="Section title" value="<%= test && test.results && test.results.section_title ? test.results.section_title : 'ECHOCARDIOGRAPHY REPORT' %>" style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.88em; width: 100%; font-weight: 600;">
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Heart Rate (HR):</label>
+        <input type="text" name="hr" id="hr_field" placeholder="e.g. 63 bpm" value="<%= r.hr || '' %>" style="height: 34px; padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.88em; width: 95px; font-weight: 600;">
+      </div>
+      <div style="display: flex; align-items: center; gap: 6px; flex: 1; min-width: 220px;">
+        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Indication for study:</label>
+        <input type="text" name="indication" id="indication_field" placeholder="e.g. Chest pain, Hypertension, Palpitations" value="<%= r.indication || r.indication_for_study || '' %>" style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.88em; width: 100%; font-weight: 500;">
       </div>
     </div>
 
-    <!-- Parameter Card: Findings / Examination -->
-    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
-      <div style="font-weight: 700; font-size: 1em; color: #0f172a; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
-        <span style="display: flex; align-items: center; gap: 8px;">
-          <i class="fa fa-heart" style="color: #0284c7;"></i> 2D Echocardiography Examination & Measurements
-        </span>
-        <span style="font-size: 0.75em; color: #64748b; font-weight: 500;">Chamber Dimensions & Wall Motion</span>
-      </div>
+    <!-- Main Navigation Tabs for the 2 Result Forms -->
+    <div style="display: flex; gap: 8px; border-bottom: 2px solid #e2e8f0; margin-bottom: 24px;">
+      <button type="button" id="tabBtnInfo" onclick="showFormTab('info')" style="padding: 10px 22px; font-weight: 700; font-size: 0.95em; border: none; background: #0284c7; color: #ffffff; border-radius: 8px 8px 0 0; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.15s;">
+        <i class="fa fa-table"></i> Form 1: Echocardiography Information (Measurements Sheet)
+      </button>
+      <button type="button" id="tabBtnReading" onclick="showFormTab('reading')" style="padding: 10px 22px; font-weight: 700; font-size: 0.95em; border: none; background: #e2e8f0; color: #475569; border-radius: 8px 8px 0 0; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.15s;">
+        <i class="fa fa-file-medical-alt"></i> Form 2: Interpretation & Reading (Clinical Report)
+      </button>
+    </div>
 
-      <!-- Formatting Toolbar -->
-      <div style="margin-bottom: 10px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: #f8fafc; padding: 8px 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
-        <div style="display: flex; gap: 4px;">
-          <button type="button" class="button btn-secondary" style="height: 30px; width: 30px; padding: 0; font-weight: 700; font-size: 0.85em;" onclick="wrapSelection('<b>','</b>')" title="Bold">B</button>
-          <button type="button" class="button btn-secondary" style="height: 30px; width: 30px; padding: 0; font-style: italic; font-size: 0.85em;" onclick="wrapSelection('<i>','</i>')" title="Italic"><em>I</em></button>
-          <button type="button" class="button btn-secondary" style="height: 30px; width: 30px; padding: 0; text-decoration: underline; font-size: 0.85em;" onclick="wrapSelection('<u>','</u>')" title="Underline">U</button>
+    <!-- ================================================================ -->
+    <!-- TAB 1: ECHOCARDIOGRAPHY INFORMATION SHEET (Image 1)             -->
+    <!-- ================================================================ -->
+    <div id="formTabInfo" style="display: block;">
+      
+      <!-- Quick Fill Sample Action Bar -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 10px 16px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px;">
+        <div style="font-size: 0.88em; color: #0369a1; font-weight: 600;">
+          <i class="fa fa-info-circle"></i> Input M-mode/2-D and Doppler study parameters. All values will fit cleanly into 1 Letter page.
         </div>
-        <button type="button" class="button btn-secondary" style="height: 30px; padding: 0 10px; font-size: 0.82em; display: inline-flex; align-items: center; gap: 4px;" onclick="insertParagraph()">
-          <i class="fa fa-paragraph"></i> Paragraph
+        <button type="button" onclick="loadSampleInformationData()" class="button" style="height: 32px; padding: 0 14px; font-size: 0.82em; font-weight: 700; background: #0284c7; color: #fff; border-radius: 6px; border: none; cursor: pointer;">
+          ⚡ Load Sample Information Sheet Values (from Image 1)
         </button>
-        <div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
-          <label style="margin: 0; font-size: 0.82em; font-weight: 600; color: #64748b;">Font:</label>
-          <select name="paragraphsFontFamily" style="height: 30px; padding: 2px 6px; font-size: 0.82em; border-radius: 6px; border: 1px solid #cbd5e1;">
-            <option value="Times New Roman" <%= test.results && test.results.paragraphs_font_family==='Times New Roman' ? 'selected' : '' %>>Times New Roman</option>
-            <option value="Courier New" <%= (test.results && test.results.paragraphs_font_family==='Courier New') || (!test.results || !test.results.paragraphs_font_family) ? 'selected' : '' %>>Courier New</option>
-            <option value="Arial" <%= test.results && test.results.paragraphs_font_family==='Arial' ? 'selected' : '' %>>Arial</option>
-          </select>
-          <label style="margin: 0 0 0 6px; font-size: 0.82em; font-weight: 600; color: #64748b;">Size:</label>
-          <select name="paragraphsFontSize" style="height: 30px; padding: 2px 6px; font-size: 0.82em; border-radius: 6px; border: 1px solid #cbd5e1;">
-            <option value="10px" <%= test.results && test.results.paragraphs_font_size==='10px' ? 'selected' : '' %>>10px</option>
-            <option value="12px" <%= test.results && test.results.paragraphs_font_size==='12px' ? 'selected' : '' %>>12px</option>
-            <option value="14px" <%= (!test.results || !test.results.paragraphs_font_size || test.results.paragraphs_font_size==='14px') ? 'selected' : '' %>>14px</option>
-            <option value="16px" <%= test.results && test.results.paragraphs_font_size==='16px' ? 'selected' : '' %>>16px</option>
-            <option value="18px" <%= test.results && test.results.paragraphs_font_size==='18px' ? 'selected' : '' %>>18px</option>
-          </select>
+      </div>
+
+      <!-- 3-Column M-Mode Measurements Form Grid -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 16px; margin-bottom: 24px;">
+        
+        <!-- Column 1 Card -->
+        <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px 16px;">
+          <div style="font-weight: 700; font-size: 0.92em; color: #0f172a; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1.5px solid #e2e8f0;">
+            M-mode / 2-D measurements (Col 1)
+          </div>
+
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.85em;">
+            <thead>
+              <tr style="color: #64748b; border-bottom: 1px solid #e2e8f0;">
+                <th style="text-align: left; padding: 4px;">Parameter</th>
+                <th style="text-align: center; padding: 4px; width: 75px;">Value</th>
+                <th style="text-align: right; padding: 4px;">Normal Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 4px;">LVEDD</td>
+                <td><input type="text" name="lvedd" value="<%= r.lvedd || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">M(4.2-5.9cm) / F(3.9-5.3cm)</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">LVEDD by BSA</td>
+                <td><input type="text" name="lvedd_bsa" value="<%= r.lvedd_bsa || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">M(2.2-3.1) / F(2.4-3.2)</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">LVESD</td>
+                <td><input type="text" name="lvesd" value="<%= r.lvesd || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">cm</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">LVEDV</td>
+                <td><input type="text" name="lvedv" value="<%= r.lvedv || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">ml</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">LVESV</td>
+                <td><input type="text" name="lvesv" value="<%= r.lvesv || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">ml</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">IVS (D)</td>
+                <td><input type="text" name="ivs_d" value="<%= r.ivs_d || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">M(0.6-1.0cm) / F(0.6-0.9cm)</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">IVS (S)</td>
+                <td><input type="text" name="ivs_s" value="<%= r.ivs_s || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">-</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">LVPW (D)</td>
+                <td><input type="text" name="lvpw_d" value="<%= r.lvpw_d || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">M(0.6-1.0cm) / F(0.6-0.9cm)</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">LVPW (S)</td>
+                <td><input type="text" name="lvpw_s" value="<%= r.lvpw_s || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">-</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">Mitral Annulus</td>
+                <td><input type="text" name="mitral_annulus" value="<%= r.mitral_annulus || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">2.0 - 3.4 cm</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">Tricuspid Annulus</td>
+                <td><input type="text" name="tricuspid_annulus" value="<%= r.tricuspid_annulus || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">1.3 - 2.8 cm</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
+
+        <!-- Column 2 Card -->
+        <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px 16px;">
+          <div style="font-weight: 700; font-size: 0.92em; color: #0f172a; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1.5px solid #e2e8f0;">
+            M-mode / 2-D Measurements (Col 2)
+          </div>
+
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.85em;">
+            <thead>
+              <tr style="color: #64748b; border-bottom: 1px solid #e2e8f0;">
+                <th style="text-align: left; padding: 4px;">Parameter</th>
+                <th style="text-align: center; padding: 4px; width: 75px;">Value</th>
+                <th style="text-align: right; padding: 4px;">Normal Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 4px;">LVMI</td>
+                <td><input type="text" name="lvmi" value="<%= r.lvmi || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">M(&le;115) / F(&le;95) gm/m²</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">RWT</td>
+                <td><input type="text" name="rwt" value="<%= r.rwt || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">&le; 0.42</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">SV</td>
+                <td><input type="text" name="sv" value="<%= r.sv || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">ml / beat</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">CO</td>
+                <td><input type="text" name="co" value="<%= r.co || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">L / min</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">EF (T)</td>
+                <td><input type="text" name="ef_t" value="<%= r.ef_t || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">&ge; 55 %</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">S</td>
+                <td><input type="text" name="s_wave" value="<%= r.s_wave || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">-</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">FS</td>
+                <td><input type="text" name="fs" value="<%= r.fs || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">28 &ndash; 41 %</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">EPSS</td>
+                <td><input type="text" name="epss" value="<%= r.epss || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">&lt; 1 cm</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">LVOT</td>
+                <td><input type="text" name="lvot" value="<%= r.lvot || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">cm</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">AV Op</td>
+                <td><input type="text" name="av_op" value="<%= r.av_op || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">1.5 &ndash; 2 cm</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">PA</td>
+                <td><input type="text" name="pa" value="<%= r.pa || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">1.5 &ndash; 2.1 cm</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">RVOT</td>
+                <td><input type="text" name="rvot" value="<%= r.rvot || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">&le; 2.1 cm</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">IVC diameter</td>
+                <td><input type="text" name="ivc_diameter" value="<%= r.ivc_diameter || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">1.5 &ndash; 2.5 cm</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">% IVC collapse</td>
+                <td><input type="text" name="ivc_collapse" value="<%= r.ivc_collapse || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">&gt; 50 %</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">LVET</td>
+                <td><input type="text" name="lvet" value="<%= r.lvet || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">265 &ndash; 325 m/sec</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Column 3 Card -->
+        <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px 16px;">
+          <div style="font-weight: 700; font-size: 0.92em; color: #0f172a; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1.5px solid #e2e8f0;">
+            M-mode / 2-D Measurements (Col 3)
+          </div>
+
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.85em;">
+            <thead>
+              <tr style="color: #64748b; border-bottom: 1px solid #e2e8f0;">
+                <th style="text-align: left; padding: 4px;">Parameter</th>
+                <th style="text-align: center; padding: 4px; width: 75px;">Value</th>
+                <th style="text-align: right; padding: 4px;">Normal Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 4px;">RV (base)</td>
+                <td><input type="text" name="rv_base" value="<%= r.rv_base || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">2.7 &ndash; 3.3 cm</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">RV (mid)</td>
+                <td><input type="text" name="rv_mid" value="<%= r.rv_mid || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">1.9 &ndash; 3.5 cm</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">RV (length)</td>
+                <td><input type="text" name="rv_length" value="<%= r.rv_length || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">5.5 &ndash; 8.7 cm</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">Tapse</td>
+                <td><input type="text" name="tapse" value="<%= r.tapse || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">&gt; 1.7 cm</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">LA (A-P)</td>
+                <td><input type="text" name="la_ap" value="<%= r.la_ap || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">M(3-4cm) / F(2.7-3.8cm)</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">LAVI</td>
+                <td><input type="text" name="lavi" value="<%= r.lavi || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">22 &plusmn; 6 ml/ m²</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">RA (R-L)</td>
+                <td><input type="text" name="ra_rl" value="<%= r.ra_rl || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">&le; 4.4 cm</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">Aortic root</td>
+                <td><input type="text" name="aortic_root" value="<%= r.aortic_root || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">-</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">Aorta</td>
+                <td><input type="text" name="aorta" value="<%= r.aorta || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">1.7 &ndash; 3.4</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">Annulus</td>
+                <td><input type="text" name="annulus" value="<%= r.annulus || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">1.4 &ndash; 2.6</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">Sinus</td>
+                <td><input type="text" name="sinus" value="<%= r.sinus || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">2.1 &ndash; 3.5</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">ST Junction</td>
+                <td><input type="text" name="st_junction" value="<%= r.st_junction || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">1.7 &ndash; 3.4</td>
+              </tr>
+              <tr>
+                <td style="padding: 4px;">Ascending</td>
+                <td><input type="text" name="ascending" value="<%= r.ascending || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
+                <td style="text-align: right; font-size: 0.8em; color: #64748b;">2.1 &ndash; 3.4</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
       </div>
 
-      <textarea id="paragraphs" name="paragraphs" rows="8" spellcheck="true" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; font-size: 0.95em; line-height: 1.5; box-sizing: border-box; resize: vertical;"><%= test && test.results && (test.results.paragraphs || test.results.findings || test.results.result) ? (test.results.paragraphs || test.results.findings || test.results.result) : 'Enter echocardiography findings here.\n\nDescribe chamber sizes, wall motion, valves, measurements and other observations.' %></textarea>
+      <!-- Doppler Measurement Card -->
+      <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 16px 20px; margin-bottom: 20px;">
+        <div style="font-weight: 700; font-size: 0.95em; color: #0f172a; margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1.5px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+          <span><i class="fa fa-wave-square" style="color: #0284c7;"></i> Doppler Measurements</span>
+          <span style="font-size: 0.8em; color: #64748b; font-weight: normal;">Mitral, Aortic, Tricuspid & Pulmonic studies</span>
+        </div>
 
-      <!-- Color Flow Doppler Study -->
-      <div style="margin-top: 16px;">
-        <label style="margin: 0 0 6px 0; font-weight: 700; font-size: 0.92em; color: #0f172a; display: flex; align-items: center; gap: 6px;">
-          <i class="fa fa-wave-square" style="color: #3b82f6;"></i> Color Flow Doppler Study
-        </label>
-        <textarea name="color_flow" rows="3" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 12px; font-size: 0.9em; box-sizing: border-box;"><%= test && test.results && (test.results.color_flow || test.results.color_flow_study) ? (test.results.color_flow || test.results.color_flow_study) : 'Describe color flow Doppler findings here.' %></textarea>
-      </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px;">
+          
+          <!-- Mitral Group -->
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
+            <div style="font-weight: 700; font-size: 0.85em; color: #0369a1; margin-bottom: 8px;">MITRAL VALVE</div>
+            <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.82em;">
+              <div>
+                <label style="display: block; font-weight: 600;">Max Vel (E):</label>
+                <input type="text" name="dop_max_vel_mitral_e" placeholder="e.g. E: 0.8/3.0" value="<%= r.dop_max_vel_mitral_e || '' %>" style="width: 100%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 6px;">
+              </div>
+              <div>
+                <label style="display: block; font-weight: 600;">Max Vel (A):</label>
+                <input type="text" name="dop_max_vel_mitral_a" placeholder="e.g. A: 0.6/1.7" value="<%= r.dop_max_vel_mitral_a || '' %>" style="width: 100%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 6px;">
+              </div>
+              <div>
+                <label style="display: block; font-weight: 600;">E/A Ratio (0.9-1.5):</label>
+                <input type="text" name="dop_ea_ratio_mitral" placeholder="Ratio" value="<%= r.dop_ea_ratio_mitral || '' %>" style="width: 100%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 6px;">
+              </div>
+              <div>
+                <label style="display: block; font-weight: 600;">Peak Grad / Max Peak Grad:</label>
+                <div style="display: flex; gap: 4px;">
+                  <input type="text" name="dop_peak_grad_mitral" placeholder="Peak" value="<%= r.dop_peak_grad_mitral || '' %>" style="width: 50%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 6px;">
+                  <input type="text" name="dop_max_peak_grad_mitral" placeholder="Max Peak" value="<%= r.dop_max_peak_grad_mitral || '' %>" style="width: 50%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 6px;">
+                </div>
+              </div>
+              <div>
+                <label style="display: block; font-weight: 600;">Decel Time (160-240 ms):</label>
+                <input type="text" name="dop_decel_time" placeholder="e.g. 340" value="<%= r.dop_decel_time || '' %>" style="width: 100%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 6px;">
+              </div>
+              <div>
+                <label style="display: block; font-weight: 600;">IVRT (60-90 ms):</label>
+                <input type="text" name="dop_ivrt" placeholder="e.g. 116" value="<%= r.dop_ivrt || '' %>" style="width: 100%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 6px;">
+              </div>
+              <div>
+                <label style="display: block; font-weight: 600;">Regurgitation Severity:</label>
+                <input type="text" name="dop_regurg_mitral" placeholder="e.g. trivial / mild / none" value="<%= r.dop_regurg_mitral || '' %>" style="width: 100%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 6px;">
+              </div>
+            </div>
+          </div>
 
-      <!-- Conclusion -->
-      <div style="margin-top: 16px;">
-        <label style="margin: 0 0 6px 0; font-weight: 700; font-size: 0.92em; color: #0f172a; display: flex; align-items: center; gap: 6px;">
-          <i class="fa fa-clipboard-check" style="color: #10b981;"></i> Conclusion & Impression
-        </label>
-        <textarea name="conclusion" rows="3" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 12px; font-size: 0.9em; box-sizing: border-box;"><%= test && test.results && (test.results.conclusion || test.results.impression || test.results.conclusion_text) ? (test.results.conclusion || test.results.impression || test.results.conclusion_text) : 'Enter conclusion here.' %></textarea>
+          <!-- Aortic Group -->
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
+            <div style="font-weight: 700; font-size: 0.85em; color: #0369a1; margin-bottom: 8px;">AORTIC VALVE</div>
+            <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.82em;">
+              <div>
+                <label style="display: block; font-weight: 600;">Max Vel V1 (LVOT):</label>
+                <input type="text" name="dop_max_vel_aortic_1" placeholder="e.g. 0.78/2.4" value="<%= r.dop_max_vel_aortic_1 || '' %>" style="width: 100%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 6px;">
+              </div>
+              <div>
+                <label style="display: block; font-weight: 600;">Max Vel V2 (AV 1-1.7):</label>
+                <input type="text" name="dop_max_vel_aortic_2" placeholder="e.g. 1.1/5.2" value="<%= r.dop_max_vel_aortic_2 || '' %>" style="width: 100%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 6px;">
+              </div>
+              <div>
+                <label style="display: block; font-weight: 600;">Peak Grad / Max Peak Grad:</label>
+                <div style="display: flex; gap: 4px;">
+                  <input type="text" name="dop_peak_grad_aortic" placeholder="Peak" value="<%= r.dop_peak_grad_aortic || '' %>" style="width: 50%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 6px;">
+                  <input type="text" name="dop_max_peak_grad_aortic" placeholder="Max Peak" value="<%= r.dop_max_peak_grad_aortic || '' %>" style="width: 50%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 6px;">
+                </div>
+              </div>
+              <div>
+                <label style="display: block; font-weight: 600;">PASP by TRJ / Total PASP:</label>
+                <div style="display: flex; gap: 4px;">
+                  <input type="text" name="dop_pasp_trj" placeholder="PASP TRJ" value="<%= r.dop_pasp_trj || '' %>" style="width: 50%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 6px;">
+                  <input type="text" name="dop_total_pasp" placeholder="Total PASP" value="<%= r.dop_total_pasp || '' %>" style="width: 50%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 6px;">
+                </div>
+              </div>
+              <div>
+                <label style="display: block; font-weight: 600;">Regurgitation Severity:</label>
+                <input type="text" name="dop_regurg_aortic" placeholder="e.g. none / trivial" value="<%= r.dop_regurg_aortic || '' %>" style="width: 100%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 6px;">
+              </div>
+            </div>
+          </div>
+
+          <!-- Tricuspid Group -->
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
+            <div style="font-weight: 700; font-size: 0.85em; color: #0369a1; margin-bottom: 8px;">TRICUSPID VALVE</div>
+            <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.82em;">
+              <div>
+                <label style="display: block; font-weight: 600;">Max Vel (0.3-0.7 m/s):</label>
+                <div style="display: flex; gap: 4px;">
+                  <input type="text" name="dop_max_vel_tricuspid_1" placeholder="e.g. 0.67/1.5" value="<%= r.dop_max_vel_tricuspid_1 || '' %>" style="width: 50%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 6px;">
+                  <input type="text" name="dop_max_vel_tricuspid_2" placeholder="e.g. 0.4/0.7" value="<%= r.dop_max_vel_tricuspid_2 || '' %>" style="width: 50%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 6px;">
+                </div>
+              </div>
+              <div>
+                <label style="display: block; font-weight: 600;">Peak Grad / Max Peak Grad:</label>
+                <div style="display: flex; gap: 4px;">
+                  <input type="text" name="dop_peak_grad_tricuspid" placeholder="Peak" value="<%= r.dop_peak_grad_tricuspid || '' %>" style="width: 50%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 6px;">
+                  <input type="text" name="dop_max_peak_grad_tricuspid" placeholder="Max Peak" value="<%= r.dop_max_peak_grad_tricuspid || '' %>" style="width: 50%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 6px;">
+                </div>
+              </div>
+              <div>
+                <label style="display: block; font-weight: 600;">PAT Value:</label>
+                <input type="text" name="dop_pat" placeholder="e.g. 98" value="<%= r.dop_pat || '' %>" style="width: 100%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 6px;">
+              </div>
+              <div>
+                <label style="display: block; font-weight: 600;">Regurgitation Severity:</label>
+                <input type="text" name="dop_regurg_tricuspid" placeholder="e.g. none / trivial" value="<%= r.dop_regurg_tricuspid || '' %>" style="width: 100%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 6px;">
+              </div>
+            </div>
+          </div>
+
+          <!-- Pulmonic Group & TDI -->
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
+            <div style="font-weight: 700; font-size: 0.85em; color: #0369a1; margin-bottom: 8px;">PULMONIC VALVE & TDI</div>
+            <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.82em;">
+              <div>
+                <label style="display: block; font-weight: 600;">Max Vel (V1/V2 0.6-0.9):</label>
+                <div style="display: flex; gap: 4px;">
+                  <input type="text" name="dop_max_vel_pulmonic_1" placeholder="e.g. 0.72/2.0" value="<%= r.dop_max_vel_pulmonic_1 || '' %>" style="width: 50%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 6px;">
+                  <input type="text" name="dop_max_vel_pulmonic_2" placeholder="e.g. 0.92/3.4" value="<%= r.dop_max_vel_pulmonic_2 || '' %>" style="width: 50%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 6px;">
+                </div>
+              </div>
+              <div>
+                <label style="display: block; font-weight: 600;">MV Annular TDI (Lateral E'/A'):</label>
+                <div style="display: flex; gap: 4px;">
+                  <input type="text" name="dop_tdi_lat_e" placeholder="E': 13" value="<%= r.dop_tdi_lat_e || '' %>" style="width: 50%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 6px;">
+                  <input type="text" name="dop_tdi_lat_a" placeholder="A': 11" value="<%= r.dop_tdi_lat_a || '' %>" style="width: 50%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 6px;">
+                </div>
+              </div>
+              <div>
+                <label style="display: block; font-weight: 600;">MV Annular TDI (Media E'/A'):</label>
+                <div style="display: flex; gap: 4px;">
+                  <input type="text" name="dop_tdi_med_e" placeholder="E': 13" value="<%= r.dop_tdi_med_e || '' %>" style="width: 50%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 6px;">
+                  <input type="text" name="dop_tdi_med_a" placeholder="A': 10" value="<%= r.dop_tdi_med_a || '' %>" style="width: 50%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 6px;">
+                </div>
+              </div>
+              <div>
+                <label style="display: block; font-weight: 600;">Pulmonic Vein (Dias / Sys / Ratio):</label>
+                <div style="display: flex; gap: 4px;">
+                  <input type="text" name="dop_pv_diastoles" placeholder="0.30" value="<%= r.dop_pv_diastoles || '' %>" style="width: 33%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 4px;">
+                  <input type="text" name="dop_pv_systole" placeholder="0.42" value="<%= r.dop_pv_systole || '' %>" style="width: 33%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 4px;">
+                  <input type="text" name="dop_pv_sys_dias" placeholder="1.3" value="<%= r.dop_pv_sys_dias || '' %>" style="width: 33%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 4px;">
+                </div>
+              </div>
+              <div>
+                <label style="display: block; font-weight: 600;">Regurgitation Severity:</label>
+                <input type="text" name="dop_regurg_pulmonic" placeholder="e.g. none / trivial" value="<%= r.dop_regurg_pulmonic || '' %>" style="width: 100%; height: 26px; border-radius: 4px; border: 1px solid #cbd5e1; padding: 2px 6px;">
+              </div>
+            </div>
+          </div>
+
+        </div>
       </div>
 
     </div>
 
-    <!-- Signatures & Verification Section -->
-    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; margin-top: 24px;">
-      <div style="font-weight: 700; font-size: 0.88em; text-transform: uppercase; color: #475569; letter-spacing: 0.5px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
-        <i class="fa fa-signature" style="color: #10b981;"></i> Reading Physician Signature & Verification
+    <!-- ================================================================ -->
+    <!-- TAB 2: INTERPRETATION & READING (Image 2)                       -->
+    <!-- ================================================================ -->
+    <div id="formTabReading" style="display: none;">
+      
+      <!-- Quick Fill Sample Reading Action Bar -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 10px 16px; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px;">
+        <div style="font-size: 0.88em; color: #047857; font-weight: 600;">
+          <i class="fa fa-stethoscope"></i> Clinical interpretation, color flow & spectral doppler study, and final cardiologist conclusion.
+        </div>
+        <button type="button" onclick="loadSampleReadingData()" class="button" style="height: 32px; padding: 0 14px; font-size: 0.82em; font-weight: 700; background: #10b981; color: #fff; border-radius: 6px; border: none; cursor: pointer;">
+          ⚡ Load Sample Reading & Conclusion (from Image 2)
+        </button>
       </div>
 
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
-        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
-          <%- include('../partials/signatory_select', { prefix: 'path', label: 'Physician', role: ['Cardiologist','Internist','Physician','Radiologist','Pathologist','Doctor'], nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (test.results && test.results.pathName) ? test.results.pathName : (test.results && test.results.doctorName ? test.results.doctorName : ''), existingLicense: (test.results && test.results.pathLicense) ? test.results.pathLicense : (test.results && test.results.doctorLicense ? test.results.doctorLicense : '') }) %>
+      <!-- Parameter Card: Interpretation -->
+      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
+        
+        <!-- Interpretation -->
+        <div style="margin-bottom: 20px;">
+          <div style="font-weight: 700; font-size: 0.95em; color: #0f172a; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+            <span style="display: flex; align-items: center; gap: 8px;">
+              <i class="fa fa-heart" style="color: #0284c7;"></i> Interpretation (Chamber dimensions, wall motion, valves)
+            </span>
+            <span style="font-size: 0.78em; color: #64748b; font-weight: normal;">Matches Section 1 of Image 2</span>
+          </div>
+          <textarea id="paragraphs" name="paragraphs" rows="7" spellcheck="true" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; font-size: 0.95em; line-height: 1.5; box-sizing: border-box; resize: vertical;"><%= r.paragraphs || r.findings || r.result || '' %></textarea>
         </div>
-        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
-          <label style="display: block; font-weight: 600; font-size: 0.88em; color: #475569; margin-bottom: 6px;">Professional Designation</label>
-          <input type="text" name="doctorDesignation" placeholder="e.g. MD - Cardiologist" value="<%= test.results && test.results.doctorDesignation ? test.results.doctorDesignation : 'Cardiologist' %>" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 4px 10px; font-size: 0.9em; font-weight: 600;">
+
+        <!-- Color Flow and Spectral Doppler -->
+        <div style="margin-bottom: 20px;">
+          <div style="font-weight: 700; font-size: 0.95em; color: #0f172a; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+            <i class="fa fa-wave-square" style="color: #3b82f6;"></i> Color flow and Spectral Doppler
+          </div>
+          <textarea id="color_flow" name="color_flow" rows="4" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 12px; font-size: 0.9em; line-height: 1.45; box-sizing: border-box;"><%= r.color_flow || r.color_flow_study || '' %></textarea>
+        </div>
+
+        <!-- Conclusion -->
+        <div style="margin-bottom: 12px;">
+          <div style="font-weight: 700; font-size: 0.95em; color: #0f172a; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+            <i class="fa fa-clipboard-check" style="color: #10b981;"></i> CONLUSION: (Final Impression)
+          </div>
+          <textarea id="conclusion" name="conclusion" rows="4" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 12px; font-size: 0.9em; line-height: 1.45; box-sizing: border-box;"><%= r.conclusion || r.impression || r.conclusion_text || '' %></textarea>
+        </div>
+
+      </div>
+
+      <!-- Signatures & Verification Section -->
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; margin-top: 20px;">
+        <div style="font-weight: 700; font-size: 0.88em; text-transform: uppercase; color: #475569; letter-spacing: 0.5px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+          <i class="fa fa-signature" style="color: #10b981;"></i> Attending Cardiologist Verification & Signature
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+          <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+            <%- include('../partials/signatory_select', { prefix: 'path', label: 'Cardiologist', role: ['Cardiologist','Doctor','Internist','Physician','Radiologist'], nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (r.pathName || r.doctorName || 'Melissa R. Cundangan, MD'), existingLicense: (r.pathLicense || r.doctorLicense || '') }) %>
+          </div>
+          <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+            <label style="display: block; font-weight: 600; font-size: 0.88em; color: #475569; margin-bottom: 6px;">Professional Designation</label>
+            <input type="text" name="doctorDesignation" placeholder="e.g. Cardiologist" value="<%= r.doctorDesignation || 'Cardiologist' %>" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 4px 10px; font-size: 0.9em; font-weight: 600;">
+          </div>
         </div>
       </div>
+
     </div>
 
     <!-- Bottom Action Buttons -->
-    <div style="display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
-      <button type="button" onclick="if (window.history.length > 1) { window.history.back(); } else { window.location.href = '/tests'; }" class="button btn-secondary" style="height: 42px; padding: 0 20px; border-radius: 8px; font-weight: 600;">Cancel</button>
-      <button type="submit" class="button btn-primary" style="height: 42px; padding: 0 28px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
-        <i class="fa fa-check"></i> Save Results
-      </button>
+    <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 24px; padding-top: 16px; border-top: 1px solid #e2e8f0;">
+      <div style="font-size: 0.85em; color: #64748b;">
+        Saving updates both the <strong>Information Sheet</strong> and <strong>Reading Report</strong>.
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <button type="button" onclick="if (window.history.length > 1) { window.history.back(); } else { window.location.href = '/tests'; }" class="button btn-secondary" style="height: 42px; padding: 0 20px; border-radius: 8px; font-weight: 600;">Cancel</button>
+        <button type="submit" class="button btn-primary" style="height: 42px; padding: 0 28px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; background: #0284c7; border-color: #0369a1;">
+          <i class="fa fa-check"></i> Save 2D Echo Results
+        </button>
+      </div>
     </div>
 
   </form>
 </div>
 
 <script>
+  // Tab switcher
+  function showFormTab(tab) {
+    var tabInfo = document.getElementById('formTabInfo');
+    var tabReading = document.getElementById('formTabReading');
+    var btnInfo = document.getElementById('tabBtnInfo');
+    var btnReading = document.getElementById('tabBtnReading');
+
+    if (tab === 'info') {
+      tabInfo.style.display = 'block';
+      tabReading.style.display = 'none';
+      btnInfo.style.background = '#0284c7';
+      btnInfo.style.color = '#ffffff';
+      btnReading.style.background = '#e2e8f0';
+      btnReading.style.color = '#475569';
+    } else {
+      tabInfo.style.display = 'none';
+      tabReading.style.display = 'block';
+      btnReading.style.background = '#0284c7';
+      btnReading.style.color = '#ffffff';
+      btnInfo.style.background = '#e2e8f0';
+      btnInfo.style.color = '#475569';
+    }
+  }
+
+  // BSA Mosteller computation: sqrt((H * W) / 3600)
   function computeBsa() {
-    var w = parseFloat(document.querySelector('[name="weight"]').value);
-    var h = parseFloat(document.querySelector('[name="height"]').value);
+    var w = parseFloat(document.getElementById('weight_field').value);
+    var h = parseFloat(document.getElementById('height_field').value);
     var bsaEl = document.getElementById('bsa_field');
     if (!isNaN(w) && !isNaN(h) && w > 0 && h > 0) {
       var bsa = Math.sqrt((h * w) / 3600);
       bsaEl.value = (Math.round(bsa * 100) / 100).toFixed(2);
     }
   }
-  document.addEventListener('input', function(e){
-    if (e.target && (e.target.name === 'weight' || e.target.name === 'height')) computeBsa();
-  });
+  document.getElementById('weight_field').addEventListener('input', computeBsa);
+  document.getElementById('height_field').addEventListener('input', computeBsa);
   computeBsa();
 
-  function wrapSelection(openTag, closeTag) {
-    var ta = document.getElementById('paragraphs');
-    var start = ta.selectionStart;
-    var end = ta.selectionEnd;
-    var selected = ta.value.substring(start, end);
-    var newText = openTag + selected + closeTag;
-    ta.value = ta.value.substring(0, start) + newText + ta.value.substring(end);
-    ta.focus();
-    ta.selectionStart = start + openTag.length;
-    ta.selectionEnd = start + openTag.length + selected.length;
+  // Load sample values from Image 1
+  function loadSampleInformationData() {
+    var s = {
+      weight: '70',
+      height: '167.3',
+      hr: '63 bpm',
+      indication: 'Routine Evaluation',
+      // Column 1
+      lvedd: '5.3',
+      lvedd_bsa: '3.0',
+      lvesd: '3.7',
+      lvedv: '148',
+      lvesv: '50',
+      ivs_d: '1.1',
+      ivs_s: '1.4',
+      lvpw_d: '1.1',
+      lvpw_s: '1.4',
+      mitral_annulus: '20',
+      tricuspid_annulus: '2.0',
+      // Column 2
+      lvmi: '126',
+      rwt: '0.41',
+      sv: '102',
+      co: '3.5',
+      ef_t: '56',
+      s_wave: '60',
+      fs: '29',
+      epss: '1.1',
+      lvot: '2.1',
+      av_op: '2.3',
+      pa: '2.1',
+      rvot: '2.4',
+      ivc_diameter: '2.1/1.0',
+      ivc_collapse: '58%',
+      lvet: '236',
+      // Column 3
+      rv_base: '3.1',
+      rv_mid: '2.9',
+      rv_length: '5.5',
+      tapse: '2.0',
+      la_ap: '3.6',
+      lavi: '33',
+      ra_rl: '3.0',
+      aortic_root: '2.3',
+      aorta: '2.8',
+      annulus: '2.3',
+      sinus: '2.3',
+      st_junction: '2.5',
+      ascending: '2.4',
+      // Doppler
+      dop_max_vel_mitral_e: 'E: 0.8/3.0',
+      dop_max_vel_mitral_a: 'A:0.6/1.7',
+      dop_max_vel_aortic_1: '0.78/2.4',
+      dop_max_vel_aortic_2: '1.1/5.2',
+      dop_max_vel_tricuspid_1: '0.67/1.5',
+      dop_max_vel_tricuspid_2: '0.4/0.7',
+      dop_max_vel_pulmonic_1: '0.72/2.0',
+      dop_max_vel_pulmonic_2: '0.92/3.4',
+      dop_tdi_lat_e: '13',
+      dop_tdi_lat_a: '11',
+      dop_tdi_med_e: '13',
+      dop_tdi_med_a: '10',
+      dop_decel_time: '340',
+      dop_ivrt: '116',
+      dop_pv_diastoles: '0.30',
+      dop_pv_systole: '0.42',
+      dop_pv_sys_dias: '1.3',
+      dop_pat: '98',
+      dop_regurg_mitral: 'trivial'
+    };
+
+    for (var k in s) {
+      var el = document.querySelector('[name="' + k + '"]');
+      if (el) el.value = s[k];
+    }
+    computeBsa();
+    alert('Sample Information Sheet values loaded successfully!');
   }
-  function insertParagraph(){
-    var ta = document.getElementById('paragraphs');
-    var pos = ta.selectionStart || ta.value.length;
-    var p = '\n\n';
-    ta.value = ta.value.substring(0,pos) + p + ta.value.substring(pos);
-    ta.focus();
+
+  // Load sample reading from Image 2
+  function loadSampleReadingData() {
+    document.getElementById('paragraphs').value = 'Normal left ventricular cavity size with increased left ventricular mass index and relative wall thickness. There is normal wall motion, contractility and global systolic function\nNormal left atrium size\nNormal right ventricular dimension, with adequate contractility\nNormal right atrium, main pulmonary artery\nand aortic root dimension\nThickened mitral valve leaflets without restriction of motion\nStructurally normal aortic, tricuspid and pulmonic valve\nNo intracavitary thrombus and no pericardial effusion seen';
+
+    document.getElementById('color_flow').value = "Mosaic color flow display is seen across the mitral and tricuspid valve during systole and across the pulmonic valve during diastole Normal mitral inflow E/A velocity pattern Normal mitral annular e' velocities Normal estimated pulmonary artery pressure by peak TR jet velocity ( 1.5 m/s)";
+
+    document.getElementById('conclusion').value = 'Concentric left ventricular hypertrophy with normal wall motion, contractility and global systolic function\nTrivial mitral, tricuspid and pulmonic regurgitation\nLow probability of pulmonary hypertension';
+
+    var pathInput = document.querySelector('[name="pathName"]') || document.querySelector('[name="doctorName"]');
+    if (pathInput) pathInput.value = 'Melissa R. Cundangan, MD';
+
+    var desigInput = document.querySelector('[name="doctorDesignation"]');
+    if (desigInput) desigInput.value = 'Cardiologist';
+
+    alert('Sample Interpretation & Reading loaded successfully!');
   }
 </script>

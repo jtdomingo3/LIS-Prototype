@@ -2447,6 +2447,9 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
       const weightRaw = (req.body.weight || '').toString().trim();
       const heightRaw = (req.body.height || '').toString().trim();
       const bsaRaw = (req.body.bsa || '').toString().trim();
+      const hrRaw = (req.body.hr || req.body.heartRate || '').toString().trim();
+      const indicationRaw = (req.body.indication || req.body.indication_for_study || '').toString().trim();
+      const contactRaw = (req.body.contact || '').toString().trim();
 
       // parse numeric values when possible
       function toNum(v){ if (v===undefined||v===null) return null; const s=String(v).trim(); if(s==='') return null; const n=parseFloat(s.replace(/[^0-9.+-eE]/g,'')); return isNaN(n)?null:n }
@@ -2460,6 +2463,117 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
         if (!isNaN(bsaCalc)) bsaVal = (Math.round(bsaCalc * 100) / 100).toFixed(2);
       }
 
+      // Helper to cleanly extract body strings
+      const strVal = k => (req.body[k] !== undefined && req.body[k] !== null) ? String(req.body[k]).trim() : '';
+
+      // Echocardiography Information Sheet: M-mode / 2-D Measurements (Columns 1, 2, 3)
+      const echoMeasurements = {
+        // Column 1
+        lvedd: strVal('lvedd'),
+        lvedd_bsa: strVal('lvedd_bsa'),
+        lvesd: strVal('lvesd'),
+        lvedv: strVal('lvedv'),
+        lvesv: strVal('lvesv'),
+        ivs_d: strVal('ivs_d'),
+        ivs_s: strVal('ivs_s'),
+        lvpw_d: strVal('lvpw_d'),
+        lvpw_s: strVal('lvpw_s'),
+        mitral_annulus: strVal('mitral_annulus'),
+        tricuspid_annulus: strVal('tricuspid_annulus'),
+
+        // Column 2
+        lvmi: strVal('lvmi'),
+        rwt: strVal('rwt'),
+        sv: strVal('sv'),
+        co: strVal('co'),
+        ef_t: strVal('ef_t'),
+        s_wave: strVal('s_wave'),
+        fs: strVal('fs'),
+        epss: strVal('epss'),
+        lvot: strVal('lvot'),
+        av_op: strVal('av_op'),
+        pa: strVal('pa'),
+        rvot: strVal('rvot'),
+        ivc_diameter: strVal('ivc_diameter'),
+        ivc_collapse: strVal('ivc_collapse'),
+        lvet: strVal('lvet'),
+
+        // Column 3
+        rv_base: strVal('rv_base'),
+        rv_mid: strVal('rv_mid'),
+        rv_length: strVal('rv_length'),
+        tapse: strVal('tapse'),
+        la_ap: strVal('la_ap'),
+        lavi: strVal('lavi'),
+        ra_rl: strVal('ra_rl'),
+        aortic_root: strVal('aortic_root'),
+        aorta: strVal('aorta'),
+        annulus: strVal('annulus'),
+        sinus: strVal('sinus'),
+        st_junction: strVal('st_junction'),
+        ascending: strVal('ascending'),
+
+        // Doppler Study
+        dop_max_vel_mitral_e: strVal('dop_max_vel_mitral_e'),
+        dop_max_vel_mitral_a: strVal('dop_max_vel_mitral_a'),
+        dop_max_vel_mitral_norm_e: strVal('dop_max_vel_mitral_norm_e'),
+        dop_max_vel_mitral_norm_a: strVal('dop_max_vel_mitral_norm_a'),
+
+        dop_max_vel_aortic_1: strVal('dop_max_vel_aortic_1'),
+        dop_max_vel_aortic_2: strVal('dop_max_vel_aortic_2'),
+        dop_max_vel_aortic_sub_1: strVal('dop_max_vel_aortic_sub_1'),
+        dop_max_vel_aortic_sub_2: strVal('dop_max_vel_aortic_sub_2'),
+
+        dop_max_vel_tricuspid_1: strVal('dop_max_vel_tricuspid_1'),
+        dop_max_vel_tricuspid_2: strVal('dop_max_vel_tricuspid_2'),
+        dop_max_vel_tricuspid_norm: strVal('dop_max_vel_tricuspid_norm'),
+
+        dop_max_vel_pulmonic_1: strVal('dop_max_vel_pulmonic_1'),
+        dop_max_vel_pulmonic_2: strVal('dop_max_vel_pulmonic_2'),
+        dop_max_vel_pulmonic_sub_1: strVal('dop_max_vel_pulmonic_sub_1'),
+        dop_max_vel_pulmonic_sub_2: strVal('dop_max_vel_pulmonic_sub_2'),
+
+        dop_ea_ratio_mitral: strVal('dop_ea_ratio_mitral'),
+        dop_ea_ratio_mitral_norm: strVal('dop_ea_ratio_mitral_norm'),
+        dop_ea_ratio_aortic: strVal('dop_ea_ratio_aortic'),
+        dop_ea_ratio_tricuspid: strVal('dop_ea_ratio_tricuspid'),
+        dop_ea_ratio_pulmonic: strVal('dop_ea_ratio_pulmonic'),
+
+        dop_peak_grad_mitral: strVal('dop_peak_grad_mitral'),
+        dop_peak_grad_aortic: strVal('dop_peak_grad_aortic'),
+        dop_peak_grad_tricuspid: strVal('dop_peak_grad_tricuspid'),
+        dop_peak_grad_pulmonic: strVal('dop_peak_grad_pulmonic'),
+
+        dop_max_peak_grad_mitral: strVal('dop_max_peak_grad_mitral'),
+        dop_max_peak_grad_aortic: strVal('dop_max_peak_grad_aortic'),
+        dop_max_peak_grad_tricuspid: strVal('dop_max_peak_grad_tricuspid'),
+        dop_max_peak_grad_pulmonic: strVal('dop_max_peak_grad_pulmonic'),
+
+        dop_tdi_lat_e: strVal('dop_tdi_lat_e'),
+        dop_tdi_lat_a: strVal('dop_tdi_lat_a'),
+        dop_tdi_med_e: strVal('dop_tdi_med_e'),
+        dop_tdi_med_a: strVal('dop_tdi_med_a'),
+
+        dop_decel_time: strVal('dop_decel_time'),
+        dop_decel_time_norm: strVal('dop_decel_time_norm'),
+        dop_ivrt: strVal('dop_ivrt'),
+        dop_ivrt_norm: strVal('dop_ivrt_norm'),
+        dop_ar_duration: strVal('dop_ar_duration'),
+
+        dop_pv_diastoles: strVal('dop_pv_diastoles'),
+        dop_pv_systole: strVal('dop_pv_systole'),
+        dop_pv_sys_dias: strVal('dop_pv_sys_dias'),
+        dop_pasp_trj: strVal('dop_pasp_trj'),
+        dop_total_pasp: strVal('dop_total_pasp'),
+        dop_pat: strVal('dop_pat'),
+        dop_pat_norm: strVal('dop_pat_norm'),
+
+        dop_regurg_mitral: strVal('dop_regurg_mitral'),
+        dop_regurg_aortic: strVal('dop_regurg_aortic'),
+        dop_regurg_tricuspid: strVal('dop_regurg_tricuspid'),
+        dop_regurg_pulmonic: strVal('dop_regurg_pulmonic')
+      };
+
       resultsObj = {
         paragraphs: paragraphs,
         color_flow: color_flow,
@@ -2472,12 +2586,19 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
         height: heightRaw || (heightNum!==null?String(heightNum):''),
         height_numeric: heightNum,
         bsa: bsaVal,
+        hr: hrRaw,
+        indication: indicationRaw,
+        indication_for_study: indicationRaw,
+        contact: contactRaw,
         section_title: (req.body.section_title || req.body.sectionTitle || (test && test.results && test.results.section_title) || 'ECHOCARDIOGRAPHY REPORT').toString().trim(),
         paragraphs_font_family: req.body.paragraphsFontFamily || req.body.paragraphs_font_family,
-        paragraphs_font_size: req.body.paragraphsFontSize || req.body.paragraphs_font_size
+        paragraphs_font_size: req.body.paragraphsFontSize || req.body.paragraphs_font_size,
+        // Embed both top-level and inside echo_info for maximum compatibility
+        ...echoMeasurements,
+        echo_info: echoMeasurements
       };
       // Diagnostic log for echocardiography saving
-      console.log(`ECHOCARDIO POST for test ${req.params.id} - weight,height,bsa:`, { weightRaw, heightRaw, bsaVal });
+      console.log(`ECHOCARDIO POST for test ${req.params.id} - weight,height,bsa,hr:`, { weightRaw, heightRaw, bsaVal, hrRaw });
     }
 
     // allow storing performer name/license directly on results for printing
