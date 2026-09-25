@@ -61,7 +61,11 @@ tools/security-audit/audit-report-latest.json
 
 # IDE and editor directories
 .idea/
+**/.idea/
 *.iml
+**/*.iml
+.vscode/
+**/.vscode/
 
 # Walkthrough and temporary dev documentation
 lis-fullstack/walkthrough.md
