@@ -1,267 +1,146 @@
-<div class="content-wrapper" style="position: relative; overflow: hidden; padding: 40px 50px; max-width: 820px; margin: 0 auto; background: white; font-family: 'Times New Roman', Times, serif; color: #1e293b; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border-radius: 8px;">
-    <!-- Laboratory Watermark Seal (matches diagnostic reports) -->
-    <img class="watermark" src="/assets/gezyne-logo.png" alt="" />
-
-    <!-- Content Layer Above Watermark -->
-    <div class="leave-body" style="position: relative; z-index: 1;">
-        <!-- Controls (hidden on print) -->
-        <div class="no-print" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid #e2e8f0; font-family: 'Segoe UI', sans-serif;">
-            <button type="button" onclick="handleDocBack()" style="padding: 6px 14px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600; cursor: pointer;">
-                ← Back
+<div class="content-wrapper">
+    <!-- Screen Controls Bar (visible on screen, hidden on print) -->
+    <div class="screen-controls" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid #e2e8f0; font-family: 'Segoe UI', sans-serif;">
+        <button type="button" onclick="handleDocBack()" style="padding: 7px 16px; background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.88rem; display: inline-flex; align-items: center; gap: 6px;">
+            ← Back to Portal
+        </button>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <% if (leave) { %>
+                <span style="font-size: 0.78rem; color: #166534; background: #dcfce7; padding: 6px 12px; border-radius: 6px; font-weight: 600;">
+                    ✓ Leave Slip Generated • Ready to Print
+                </span>
+            <% } %>
+            <button onclick="window.print()" style="padding: 8px 20px; background: #009957; color: white; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-size: 0.9rem; box-shadow: 0 2px 5px rgba(0, 153, 87, 0.3);">
+                <span>🖨️</span> Print Leave Slip
             </button>
-            <div style="display: flex; gap: 10px; align-items: center;">
-                <% if (leave) { %>
-                    <span style="font-size: 0.8rem; color: #166534; background: #dcfce7; padding: 6px 12px; border-radius: 6px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-                        ✓ Official Form Generated • Ready to Print &amp; Sign
-                    </span>
-                <% } %>
-                <button onclick="window.print()" style="padding: 8px 18px; background: #4f46e5; color: white; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                    <span>🖨️</span> Print Leave Application Form
-                </button>
-            </div>
         </div>
+    </div>
 
-        <!-- Official Letterhead with Laboratory Logo -->
-        <div style="display: flex; align-items: center; justify-content: center; gap: 18px; border-bottom: 3px double #1e293b; padding-bottom: 16px; margin-bottom: 20px;">
-            <img src="/assets/gezyne-logo.png" alt="Gezyne Clinical Laboratory Logo" style="height: 68px; width: auto; object-fit: contain;">
-            <div style="text-align: center;">
-                <div style="font-size: 1.55rem; font-weight: bold; letter-spacing: 1.2px; color: #0f172a; text-transform: uppercase;">
-                    GEZYNE CLINICAL LABORATORY
+    <!-- Report Style Slip Page (Exact styling of Gezyne Diagnostic Reports) -->
+    <div class="report-page">
+        <div class="report-container">
+            <!-- Header (Exact same branding, fonts and layout as Urinalysis / Hematology reports) -->
+            <div class="doc-letterhead">
+                <div>
+                    <img src="/assets/gezyne-logo.png" class="logo" alt="logo">
                 </div>
-                <div style="font-size: 0.9rem; font-style: italic; color: #475569; margin-top: 2px;">
-                    Comprehensive Diagnostic, Imaging &amp; Laboratory Services
+                <div class="lab-title">
+                    <h1>GEZYNE CLINICAL LABORATORY</h1>
+                    <div class="lab-sub">0330 VERGEL DE DIOS ST POBLACION PLARIDEL</div>
+                    <div class="lab-sub">NEAR MUNICIPAL BASKETBALL COURT</div>
+                    <div class="lab-sub">0917-649-0807 / 0960-390-0921 / 795-5007 • Lic. No. 03-435-15CL-20</div>
+                </div>	
+                <div style="min-width: 170px; font-size: 11px; text-align: right;">
+                    <table style="border-collapse: collapse; width: 100%; font-size: 11px;">
+                        <tr>
+                            <td style="border: 1px solid #000; padding: 3px 5px; text-align: left;">Form Ref:</td>
+                            <td style="border: 1px solid #000; padding: 3px 5px; font-weight: bold; text-align: left;">GCL-HR-LV</td>
+                        </tr>
+                        <tr>
+                            <td style="border: 1px solid #000; padding: 3px 5px; text-align: left;">Date:</td>
+                            <td style="border: 1px solid #000; padding: 3px 5px; font-weight: bold; text-align: left;"><%= currentDate %></td>
+                        </tr>
+                    </table>
                 </div>
-                <div style="font-size: 0.8rem; color: #64748b; margin-top: 2px;">
-                    DOH Licensed Clinical Laboratory • Republic of the Philippines
+            </div>
+
+            <!-- Form Title -->
+            <div class="section-title">
+                APPLICATION FOR LEAVE OF ABSENCE
+            </div>
+
+            <!-- Employee Box (Report Patient Box styling) -->
+            <table class="patient-box">
+                <tr>
+                    <td style="width: 18%;">Employee Name:</td>
+                    <td style="width: 42%;"><strong><%= employee ? employee.name.toUpperCase() : '' %></strong></td>
+                    <td style="width: 18%;">Employee ID:</td>
+                    <td style="width: 22%;"><strong><%= employee ? (employee.employeeCode || '—') : '—' %></strong></td>
+                </tr>
+                <tr>
+                    <td>Position / Designation:</td>
+                    <td><strong><%= employee ? (employee.position || 'Laboratory Staff') : 'Laboratory Staff' %></strong></td>
+                    <td>Department:</td>
+                    <td><strong><%= employee ? (employee.department || 'Clinical Laboratory') : 'Clinical Laboratory' %></strong></td>
+                </tr>
+            </table>
+
+            <!-- Leave Details Box -->
+            <table class="details-box">
+                <tr>
+                    <td style="border: 1px solid #000; padding: 5px 8px; width: 55%; vertical-align: top;">
+                        <div style="font-weight: bold; font-size: 11px; margin-bottom: 3px; text-transform: uppercase;">Type of Leave Requested:</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px 6px; font-size: 11px;">
+                            <div><span class="chk-box"><%= (leave && leave.leaveType === 'Vacation') ? '✓' : '' %></span> <strong>Vacation Leave (VL)</strong></div>
+                            <div><span class="chk-box"><%= (leave && leave.leaveType === 'Sick') ? '✓' : '' %></span> <strong>Sick Leave (SL)</strong></div>
+                            <div><span class="chk-box"><%= (leave && leave.leaveType === 'Emergency') ? '✓' : '' %></span> <strong>Emergency Leave</strong></div>
+                            <div><span class="chk-box"><%= (leave && leave.leaveType === 'Maternity') ? '✓' : '' %></span> <strong>Maternity Leave</strong></div>
+                            <div><span class="chk-box"><%= (leave && leave.leaveType === 'Paternity') ? '✓' : '' %></span> <strong>Paternity Leave</strong></div>
+                            <div><span class="chk-box"><%= (leave && (leave.leaveType === 'Bereavement' || leave.leaveType === 'Other')) ? '✓' : '' %></span> <strong>Bereavement / Other</strong></div>
+                        </div>
+                    </td>
+                    <td style="border: 1px solid #000; padding: 5px 8px; width: 45%; vertical-align: top; background: #fafafa;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                            <span>Applied Working Days:</span>
+                            <strong style="font-size: 12px;"><%= leave ? `${leave.totalDays} Day${leave.totalDays > 1 ? 's' : ''}` : '____ Day(s)' %></strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                            <span>Filing Date:</span>
+                            <span><%= (leave && leave.createdAt) ? leave.createdAt.split('T')[0] : currentDate %></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Inclusive Dates:</span>
+                            <strong style="color: #000;"><%= leave ? `${leave.startDate} to ${leave.endDate}` : '___________ to ___________' %></strong>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="2" style="border: 1px solid #000; padding: 4px 8px;">
+                        <span style="font-weight: bold; font-size: 11px;">Reason / Purpose:</span>
+                        <span style="font-style: italic; margin-left: 6px;"><%= (leave && leave.reason) ? leave.reason : '(No specific reason indicated)' %></span>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- Policy Notice Note -->
+            <div class="policy-note">
+                <strong>Laboratory Policy:</strong> All leaves of absence are non-paid (Leave Without Pay / LWOP). Approved leave days are logged in the employee DTR for official attendance reconciliation.
+            </div>
+
+            <!-- Signatures (Exact same layout and spacing as diagnostic reports) -->
+            <div class="signatures">
+                <!-- Staff Signature -->
+                <div class="sig">
+                    <div style="font-size: 10px; color: #555; font-style: italic; margin-bottom: 24px;">
+                        I hereby file for leave of absence as indicated above.
+                    </div>
+                    <div class="name">
+                        <strong><%= employee ? employee.name.toUpperCase() : 'APPLICANT SIGNATURE' %></strong>
+                    </div>
+                    <div style="font-size: 10px; color: #444;">Staff Signature over Printed Name</div>
                 </div>
-            </div>
-        </div>
 
-        <!-- Form Title & Identification -->
-        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 16px;">
-            <div style="font-size: 0.75rem; font-style: italic; color: #64748b; font-family: 'Segoe UI', sans-serif;">
-                GCL Human Resources Form No. LV-01<br>
-                (Adapted from CSC Form No. 6 Standard)
-            </div>
-            <div style="text-align: center; flex: 1;">
-                <h1 style="font-size: 1.45rem; font-weight: bold; letter-spacing: 1.5px; text-decoration: underline; margin: 0; color: #0f172a;">
-                    APPLICATION FOR LEAVE
-                </h1>
-            </div>
-            <div style="font-size: 0.75rem; text-align: right; color: #64748b; font-family: 'Segoe UI', sans-serif;">
-                Date: <strong><%= currentDate %></strong>
-            </div>
-        </div>
-
-        <!-- Table 1: Employee Information -->
-        <table style="width: 100%; border-collapse: collapse; border: 1.5px solid #1e293b; margin-bottom: 16px; font-size: 0.92rem;">
-            <tr>
-                <td style="border: 1px solid #1e293b; padding: 6px 10px; width: 50%;">
-                    <span style="font-size: 0.75rem; font-weight: bold; color: #475569; text-transform: uppercase; display: block;">1. Office / Department</span>
-                    <strong><%= employee ? (employee.department || 'CLINICAL LABORATORY') : 'CLINICAL LABORATORY' %></strong>
-                </td>
-                <td style="border: 1px solid #1e293b; padding: 6px 10px; width: 50%;">
-                    <span style="font-size: 0.75rem; font-weight: bold; color: #475569; text-transform: uppercase; display: block;">2. Employee ID / Code</span>
-                    <strong><%= employee ? (employee.employeeCode || '—') : '—' %></strong>
-                </td>
-            </tr>
-            <tr>
-                <td style="border: 1px solid #1e293b; padding: 6px 10px;">
-                    <span style="font-size: 0.75rem; font-weight: bold; color: #475569; text-transform: uppercase; display: block;">3. Name (Last, First, Middle)</span>
-                    <strong style="font-size: 1.05rem;"><%= employee ? employee.name.toUpperCase() : '________________________________________' %></strong>
-                </td>
-                <td style="border: 1px solid #1e293b; padding: 6px 10px;">
-                    <span style="font-size: 0.75rem; font-weight: bold; color: #475569; text-transform: uppercase; display: block;">4. Position / Designation</span>
-                    <strong><%= employee ? (employee.position || 'Laboratory Staff') : '________________________________________' %></strong>
-                </td>
-            </tr>
-            <tr>
-                <td style="border: 1px solid #1e293b; padding: 6px 10px;">
-                    <span style="font-size: 0.75rem; font-weight: bold; color: #475569; text-transform: uppercase; display: block;">5. Date of Filing</span>
-                    <strong><%= (leave && leave.createdAt) ? leave.createdAt.split('T')[0] : currentDate %></strong>
-                </td>
-                <td style="border: 1px solid #1e293b; padding: 6px 10px;">
-                    <span style="font-size: 0.75rem; font-weight: bold; color: #475569; text-transform: uppercase; display: block;">6. Compensation Rate</span>
-                    <strong>
-                        <% if (employee && employee.dailyRate > 0) { %>
-                            ₱<%= Number(employee.dailyRate).toLocaleString('en-US', { minimumFractionDigits: 2 }) %> / day (Duty)
-                        <% } else if (employee && employee.basicSalary > 0) { %>
-                            ₱<%= Number(employee.basicSalary).toLocaleString('en-US', { minimumFractionDigits: 2 }) %> / month
-                        <% } else { %>
-                            Standard Rate
-                        <% } %>
-                    </strong>
-                </td>
-            </tr>
-        </table>
-
-        <!-- Table 2: Details of Application -->
-        <table style="width: 100%; border-collapse: collapse; border: 1.5px solid #1e293b; margin-bottom: 16px; font-size: 0.92rem;">
-            <tr style="background: #f8fafc;">
-                <th colspan="2" style="border: 1px solid #1e293b; padding: 6px 10px; text-align: left; font-size: 0.85rem; letter-spacing: 0.5px; text-transform: uppercase;">
-                    7. DETAILS OF APPLICATION
-                </th>
-            </tr>
-            <tr>
-                <td style="border: 1px solid #1e293b; padding: 12px 14px; width: 50%; vertical-align: top;">
-                    <div style="font-weight: bold; margin-bottom: 8px; font-size: 0.88rem;">7.A TYPE OF LEAVE:</div>
-                    <div style="margin-bottom: 8px; font-size: 0.76rem; color: #b91c1c; font-weight: 600; background: #fef2f2; padding: 4px 8px; border-radius: 4px; border: 1px solid #fecaca;">
-                        ⚠️ Laboratory Policy: Non-Paid Leave / Leave Without Pay (LWOP)
+                <!-- Laboratory Owner Signature -->
+                <div class="sig">
+                    <div style="display: flex; justify-content: center; gap: 14px; margin-bottom: 4px; font-size: 11px; font-weight: bold;">
+                        <span><span class="chk-box"><%= (leave && leave.status === 'Approved') ? '✓' : '' %></span> APPROVED</span>
+                        <span><span class="chk-box"><%= (leave && leave.status === 'Rejected') ? '✓' : '' %></span> DISAPPROVED</span>
                     </div>
-                    <div style="line-height: 1.8; font-size: 0.88rem;">
-                        <div>
-                            <span class="chk-box"><%= (leave && leave.leaveType === 'Vacation') ? '✓' : '' %></span>
-                            <strong>Vacation Leave (VL)</strong>
-                        </div>
-                        <div style="margin-top: 4px;">
-                            <span class="chk-box"><%= (leave && leave.leaveType === 'Sick') ? '✓' : '' %></span>
-                            <strong>Sick Leave (SL)</strong>
-                        </div>
-                        <div style="margin-top: 2px;">
-                            <span class="chk-box"><%= (leave && leave.leaveType === 'Emergency') ? '✓' : '' %></span>
-                            <strong>Emergency Leave</strong>
-                        </div>
-                        <div style="margin-top: 2px;">
-                            <span class="chk-box"><%= (leave && leave.leaveType === 'Maternity') ? '✓' : '' %></span>
-                            <strong>Maternity Leave</strong>
-                        </div>
-                        <div style="margin-top: 2px;">
-                            <span class="chk-box"><%= (leave && leave.leaveType === 'Paternity') ? '✓' : '' %></span>
-                            <strong>Paternity Leave</strong>
-                        </div>
-                        <div style="margin-top: 2px;">
-                            <span class="chk-box"><%= (leave && (leave.leaveType === 'Bereavement' || leave.leaveType === 'Other')) ? '✓' : '' %></span>
-                            <strong>Other Leave:</strong> <%= (leave && (leave.leaveType === 'Bereavement' || leave.leaveType === 'Other')) ? (leave.leaveType + (leave.reason ? ' (' + leave.reason + ')' : '')) : '________________________' %>
-                        </div>
-                    </div>
-                </td>
-                <td style="border: 1px solid #1e293b; padding: 12px 14px; width: 50%; vertical-align: top;">
-                    <div style="font-weight: bold; margin-bottom: 8px; font-size: 0.88rem;">7.B INCLUSIVE DATES &amp; REASON:</div>
-                    <div style="margin-bottom: 10px;">
-                        <span style="font-size: 0.8rem; color: #475569; display: block;">Number of Working Days Applied For:</span>
-                        <div style="font-size: 1.1rem; font-weight: bold; color: #0f172a; margin-top: 2px;">
-                            <%= leave ? `${leave.totalDays} Day${leave.totalDays > 1 ? 's' : ''}` : '_______ Day(s)' %>
-                        </div>
-                    </div>
-                    <div style="margin-bottom: 10px;">
-                        <span style="font-size: 0.8rem; color: #475569; display: block;">Inclusive Dates:</span>
-                        <div style="font-size: 1rem; font-weight: 700; color: #0f172a; margin-top: 2px;">
-                            <%= leave ? `${leave.startDate} to ${leave.endDate}` : 'From: _________________ To: _________________' %>
-                        </div>
-                    </div>
-                    <div>
-                        <span style="font-size: 0.8rem; color: #475569; display: block;">Specific Purpose / Reason:</span>
-                        <div style="font-size: 0.9rem; font-style: italic; color: #1e293b; margin-top: 3px; min-height: 40px; border-bottom: 1px dashed #94a3b8; padding-bottom: 4px;">
-                            <%= (leave && leave.reason) ? leave.reason : '(Please state reason here)' %>
-                        </div>
-                    </div>
-                </td>
-            </tr>
-            <tr>
-                <td colspan="2" style="border: 1px solid #1e293b; padding: 10px 14px;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-                        <div style="font-size: 0.8rem; color: #64748b; font-style: italic; max-width: 480px;">
-                            I hereby apply for leave of absence as indicated above and certify that the statements above are true and correct.
-                        </div>
-                        <div style="text-align: center; width: 250px;">
-                            <div style="height: 35px;"></div>
-                            <div style="border-top: 1px solid #000; font-weight: bold; font-size: 0.88rem; padding-top: 3px;">
-                                <%= employee ? employee.name.toUpperCase() : 'SIGNATURE OVER PRINTED NAME' %>
-                            </div>
-                            <div style="font-size: 0.74rem; color: #475569;">Signature of Applicant</div>
-                        </div>
-                    </div>
-                </td>
-            </tr>
-        </table>
-
-        <!-- Table 3: Action on Application & Approval (Signatory: Laboratory Owner) -->
-        <table style="width: 100%; border-collapse: collapse; border: 1.5px solid #1e293b; margin-bottom: 16px; font-size: 0.92rem;">
-            <tr style="background: #f8fafc;">
-                <th colspan="2" style="border: 1px solid #1e293b; padding: 6px 10px; text-align: left; font-size: 0.85rem; letter-spacing: 0.5px; text-transform: uppercase;">
-                    8. DETAILS OF ACTION ON APPLICATION &amp; APPROVAL
-                </th>
-            </tr>
-            <tr>
-                <!-- Left: Certification & Recommendation -->
-                <td style="border: 1px solid #1e293b; padding: 12px 14px; width: 50%; vertical-align: top;">
-                    <div style="font-weight: bold; margin-bottom: 6px; font-size: 0.85rem;">8.A CERTIFICATION OF LEAVE POLICY:</div>
-                    <div style="font-size: 0.82rem; color: #475569; line-height: 1.5; margin-bottom: 12px; background: #f8fafc; padding: 8px 10px; border-radius: 6px; border-left: 3px solid #6366f1;">
-                        • <strong>Laboratory Leave Policy:</strong> Gezyne Clinical Laboratory does not provide paid leaves. All approved leaves are non-paid (Leave Without Pay / LWOP). All used leave days are logged in the employee DTR for attendance reconciliation.
-                    </div>
-
-                    <div style="font-weight: bold; margin-bottom: 6px; font-size: 0.85rem;">8.B RECOMMENDATION:</div>
-                    <div style="font-size: 0.88rem; line-height: 1.7; margin-bottom: 14px;">
-                        <div>
-                            <span class="chk-box"><%= (leave && leave.status === 'Approved') ? '✓' : '' %></span>
-                            <strong>For Approval</strong>
-                        </div>
-                        <div style="margin-top: 3px;">
-                            <span class="chk-box"><%= (leave && leave.status === 'Rejected') ? '✓' : '' %></span>
-                            <strong>For Disapproval</strong>
-                        </div>
-                        <% if (leave && leave.notes) { %>
-                            <div style="font-size: 0.78rem; color: #dc2626; margin-top: 2px;">Note: <%= leave.notes %></div>
+                    <div style="height: 32px; position: relative;">
+                        <% if (owner && owner.signature) { %>
+                            <img src="<%= owner.signature %>" alt="Owner Signature" style="max-height: 32px; max-width: 120px; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); pointer-events: none;">
                         <% } %>
                     </div>
-
-                    <div style="text-align: center; margin-top: 14px;">
-                        <div style="height: 30px;"></div>
-                        <div style="border-top: 1px solid #000; font-weight: bold; font-size: 0.85rem; padding-top: 3px;">
-                            LABORATORY SUPERVISOR / SECTION HEAD
-                        </div>
-                        <div style="font-size: 0.74rem; color: #64748b;">Recommending Officer</div>
+                    <div class="name" style="font-size: 12.5px;">
+                        <strong><%= (owner && owner.name) ? owner.name.toUpperCase() : 'GENALYN LOPEZ' %></strong>
                     </div>
-                </td>
-
-                <!-- Right: Final Approval by Laboratory Owner -->
-                <td style="border: 1px solid #1e293b; padding: 12px 14px; width: 50%; vertical-align: top; background: #ffffff;">
-                    <div style="font-weight: bold; margin-bottom: 8px; font-size: 0.88rem; color: #0f172a;">
-                        8.C FINAL APPROVAL (LABORATORY OWNER):
+                    <div style="font-size: 10.5px; font-weight: bold;">
+                        <%= (owner && owner.title) ? owner.title : 'Laboratory Owner' %>
                     </div>
-
-                    <div style="margin-bottom: 12px; font-size: 0.95rem; font-weight: 700; line-height: 1.8;">
-                        <div>
-                            <span class="chk-box"><%= (leave && leave.status === 'Approved') ? '✓' : '' %></span>
-                            <strong>APPROVED</strong>
-                        </div>
-                        <div style="margin-top: 3px;">
-                            <span class="chk-box"><%= (leave && leave.status === 'Rejected') ? '✓' : '' %></span>
-                            <strong>DISAPPROVED</strong>
-                        </div>
+                    <div style="font-size: 9.5px; color: #555;">
+                        Gezyne Clinical Laboratory • Date: <strong><%= (leave && leave.approvedAt) ? leave.approvedAt.split('T')[0] : (leave && leave.status === 'Approved' ? currentDate : '__________') %></strong>
                     </div>
-
-                    <!-- Signatory: Laboratory Owner -->
-                    <div style="text-align: center; margin-top: 20px;">
-                        <div style="height: 50px; position: relative;">
-                            <% if (owner && owner.signature) { %>
-                                <img src="<%= owner.signature %>" alt="Owner Signature" style="max-height: 48px; max-width: 170px; position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%); pointer-events: none;">
-                            <% } %>
-                        </div>
-                        <div style="border-top: 1.5px solid #1e293b; font-weight: bold; font-size: 1.02rem; padding-top: 4px; color: #0f172a; text-transform: uppercase;">
-                            <%= (owner && owner.name) ? owner.name.toUpperCase() : 'GENALYN LOPEZ' %>
-                        </div>
-                        <div style="font-size: 0.88rem; color: #334155; font-weight: 600;">
-                            <%= (owner && owner.title) ? owner.title : 'Laboratory Owner' %>
-                        </div>
-                        <div style="font-size: 0.8rem; color: #64748b; font-style: italic;">
-                            Gezyne Clinical Laboratory
-                        </div>
-                        <div style="font-size: 0.76rem; color: #64748b; margin-top: 4px;">
-                            Date: <strong><%= (leave && leave.approvedAt) ? leave.approvedAt.split('T')[0] : (leave && leave.status === 'Approved' ? currentDate : '________________________') %></strong>
-                        </div>
-                    </div>
-                </td>
-            </tr>
-        </table>
-
-        <!-- Security & Legal Notice -->
-        <div style="margin-top: 12px; padding-top: 8px; border-top: 1px dashed #cbd5e1; font-size: 0.74rem; color: #64748b; font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.5;">
-            <div>
-                • <strong>Official Policy Notice:</strong> All leaves of absence are non-monetized and unpaid (LWOP) per laboratory policy. Approved leave dates will be reflected in the official Daily Time Record (DTR) for attendance reconciliation.
-            </div>
-            <div>
-                • This application is <strong>strictly NOT valid without the final signature of the Laboratory Owner</strong>. Any erasure or alteration invalidates this form.
+                </div>
             </div>
         </div>
     </div>
@@ -282,58 +161,147 @@ function handleDocBack() {
 </script>
 
 <style>
-.chk-box {
+  @page { size: Letter; margin: 0.25in; }
+  body { margin:0; padding:0; box-sizing:border-box; }
+  *, *:before, *:after { box-sizing:inherit; }
+
+  /* Match diagnostic report layout: max-width calc(8.5in - 0.5in) */
+  .report-page {
+    position: relative;
+    width: 100%;
+    max-width: calc(8.5in - 0.5in);
+    margin: 0 auto;
+    padding: 6px;
+    font-family: 'Times New Roman', Times, serif;
+    color: #000;
+    font-size: 12px;
+  }
+  .report-container { position: relative; z-index: 1; }
+  .doc-letterhead { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 4px; }
+  .logo { width: 58px; height: auto; margin-right: 6px; }
+  .lab-title { text-align: center; flex: 1; min-width: 0; }
+  .lab-title h1 { margin: 0; font-size: 19px; color: #009957; letter-spacing: 1px; font-family: 'Times New Roman', Times, serif; }
+  .lab-sub { font-size: 9px; margin-top: 2px; color: #009957; }
+  .section-title { text-align: center; margin: 8px 0 6px 0; font-size: 14px; font-weight: bold; text-decoration: underline; letter-spacing: 0.8px; }
+  .patient-box { margin-top: 4px; width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  .patient-box td { padding: 3px 6px; border: 1px solid #000; box-sizing: border-box; }
+  .details-box { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 11.5px; }
+  .policy-note { font-size: 10px; color: #444; border: 1px solid #000; padding: 3px 6px; margin-top: 5px; line-height: 1.3; }
+  .signatures { display: flex; justify-content: space-between; margin-top: 14px; }
+  .sig { text-align: center; width: 45%; position: relative; min-height: 70px; }
+  .sig .name { border-top: 1px solid #000; padding-top: 2px; margin-bottom: 2px; }
+  .chk-box {
     display: inline-block;
-    width: 14px;
-    height: 14px;
-    border: 1.5px solid #0f172a;
+    width: 12px;
+    height: 12px;
+    border: 1px solid #000;
     text-align: center;
-    line-height: 13px;
-    font-size: 0.85rem;
+    line-height: 10px;
+    font-size: 9px;
     font-weight: 900;
     vertical-align: middle;
-    margin-right: 6px;
-    background: #ffffff;
+    margin-right: 3px;
+    background: #fff;
     box-sizing: border-box;
-}
+  }
 
-.watermark {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    width: 60%;
-    opacity: 0.06;
-    pointer-events: none;
-    z-index: 0;
-}
-
-#gezynebot-container, .gezynebot-container, #gezynebot-launcher, #gezynebot-panel {
+  /* Always suppress alert boxes and web elements in print */
+  .alert, .alert-success, .alert-error, .alert-info, #gezynebot-container {
     display: none !important;
-}
+  }
 
-@media print {
-    body {
-        margin: 0;
-        padding: 0;
-        background: white;
+  @media screen {
+    .content-wrapper {
+      padding: 16px 20px;
+      max-width: 820px;
+      margin: 10px auto;
+      background: white;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
     }
-    .no-print, .sidebar, .header, #fullscreenBtn, .hamburger, #gezynebot-container {
-        display: none !important;
+  }
+
+  @media print {
+    *, *:before, *:after {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
+    }
+    html, body, .container {
+      margin: 0 !important;
+      padding: 0 !important;
+      background: white !important;
+      height: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
+      width: 100% !important;
+    }
+    /* Hide layout chrome / navigation / top bars */
+    .screen-controls,
+    .no-print,
+    .alert,
+    .sidebar,
+    .sidebar-backdrop,
+    .header-container,
+    .main-content > .header,
+    .main-content > header,
+    #fullscreenBtn,
+    #gezynebot-container,
+    .hamburger,
+    #notificationWidget {
+      display: none !important;
     }
     .main-content {
-        margin: 0 !important;
-        padding: 0 !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      background: white !important;
+      height: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
     }
     .content-wrapper {
-        border: none !important;
-        box-shadow: none !important;
-        padding: 16px 24px !important;
-        max-width: 100% !important;
+      border: none !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      max-width: 100% !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
     }
-    .watermark {
-        opacity: 0.08 !important;
-        width: 62% !important;
+    .report-page {
+      max-width: 100% !important;
+      padding: 0 !important;
+      margin: 0 auto !important;
     }
-}
+    .report-container {
+      visibility: visible !important;
+      display: block !important;
+    }
+    .doc-letterhead,
+    .report-container .doc-letterhead {
+      display: flex !important;
+      align-items: flex-start !important;
+      gap: 8px !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+    .doc-letterhead *,
+    .report-container .doc-letterhead * {
+      visibility: visible !important;
+    }
+    .logo {
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+    .lab-title h1 {
+      color: #009957 !important;
+      visibility: visible !important;
+    }
+    .lab-sub {
+      color: #009957 !important;
+      visibility: visible !important;
+    }
+  }
 </style>

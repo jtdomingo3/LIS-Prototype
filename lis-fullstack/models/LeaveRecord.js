@@ -88,9 +88,14 @@ class LeaveRecord {
 
   static async findByEmployeeId(employeeId) {
     if (!employeeId) return [];
-    if (global.db && typeof global.db.getLeaveRecordsByEmployee === 'function') {
-      const list = global.db.getLeaveRecordsByEmployee(employeeId) || [];
-      return list.map(l => new LeaveRecord(l));
+    if (global.db) {
+      if (typeof global.db.getLeaveRecords === 'function') {
+        const list = global.db.getLeaveRecords(employeeId) || [];
+        return list.map(l => new LeaveRecord(l));
+      } else if (typeof global.db.getLeaveRecordsByEmployee === 'function') {
+        const list = global.db.getLeaveRecordsByEmployee(employeeId) || [];
+        return list.map(l => new LeaveRecord(l));
+      }
     }
     return [];
   }

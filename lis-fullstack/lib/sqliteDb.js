@@ -2249,6 +2249,9 @@ function createBetterSqliteDb(dbPath, opts = {}) {
         return parseRows(rows);
       } catch (e) { return []; }
     },
+    getLeaveRecordsByEmployee(employeeId) {
+      return this.getLeaveRecords(employeeId);
+    },
     getLeaveRecordById(id) {
       if (!id) return null;
       try {
@@ -4514,6 +4517,7 @@ function createDb(dbPath, opts = {}) {
     deleteHrDocument(id) { if (underlyingDb) return underlyingDb.deleteHrDocument(id); else readyPromise.then(db => db.deleteHrDocument(id)); return true; },
 
     getLeaveRecords(e) { return underlyingDb ? underlyingDb.getLeaveRecords(e) : []; },
+    getLeaveRecordsByEmployee(e) { return underlyingDb ? underlyingDb.getLeaveRecords(e) : []; },
     getLeaveRecordById(id) { return underlyingDb ? underlyingDb.getLeaveRecordById(id) : null; },
     saveLeaveRecord(l) { if (underlyingDb) return underlyingDb.saveLeaveRecord(l); else readyPromise.then(d => d.saveLeaveRecord(l)); return l; },
     deleteLeaveRecord(id) { if (underlyingDb) return underlyingDb.deleteLeaveRecord(id); else readyPromise.then(d => d.deleteLeaveRecord(id)); return true; },

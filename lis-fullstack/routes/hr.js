@@ -156,7 +156,6 @@ router.post('/my/leaves', canAccessOwnHR, async (req, res) => {
     });
 
     await leave.save();
-    req.flash('success_msg', 'Leave request submitted successfully. Official Leave Application Form generated.');
     res.redirect(`/hr/print/leave/${leave.id}`);
   } catch (err) {
     console.error('[hr] submit leave error:', err);

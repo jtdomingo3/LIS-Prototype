@@ -893,7 +893,7 @@ app.use((req, res, next) => {
 // Set view engine
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-if (process.pkg || process.env.NODE_ENV === 'production') {
+if (process.pkg) {
   app.set('view cache', true);
 }
 
