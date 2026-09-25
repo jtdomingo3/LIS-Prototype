@@ -156,8 +156,8 @@ router.post('/my/leaves', canAccessOwnHR, async (req, res) => {
     });
 
     await leave.save();
-    req.flash('success_msg', 'Leave request submitted successfully (Non-paid / Leave Without Pay). You can print the official Leave Application Form for Laboratory Owner approval.');
-    res.redirect('/hr/my');
+    req.flash('success_msg', 'Leave request submitted successfully. Official Leave Application Form generated.');
+    res.redirect(`/hr/print/leave/${leave.id}`);
   } catch (err) {
     console.error('[hr] submit leave error:', err);
     req.flash('error_msg', 'Failed to submit leave request');

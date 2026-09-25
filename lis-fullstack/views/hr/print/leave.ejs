@@ -10,6 +10,11 @@
                 ← Back
             </button>
             <div style="display: flex; gap: 10px; align-items: center;">
+                <% if (leave) { %>
+                    <span style="font-size: 0.8rem; color: #166534; background: #dcfce7; padding: 6px 12px; border-radius: 6px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                        ✓ Official Form Generated • Ready to Print &amp; Sign
+                    </span>
+                <% } %>
                 <button onclick="window.print()" style="padding: 8px 18px; background: #4f46e5; color: white; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
                     <span>🖨️</span> Print Leave Application Form
                 </button>
@@ -253,7 +258,7 @@
         <!-- Security & Legal Notice -->
         <div style="margin-top: 12px; padding-top: 8px; border-top: 1px dashed #cbd5e1; font-size: 0.74rem; color: #64748b; font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.5;">
             <div>
-                • <strong>Official Policy Notice:</strong> Vacation Leave (VL) is non-monetized and unpaid (LWOP). Approved leave dates will be reflected in the official Daily Time Record (DTR) for attendance reconciliation.
+                • <strong>Official Policy Notice:</strong> All leaves of absence are non-monetized and unpaid (LWOP) per laboratory policy. Approved leave dates will be reflected in the official Daily Time Record (DTR) for attendance reconciliation.
             </div>
             <div>
                 • This application is <strong>strictly NOT valid without the final signature of the Laboratory Owner</strong>. Any erasure or alteration invalidates this form.
