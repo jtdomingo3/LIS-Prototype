@@ -318,6 +318,11 @@ router.post('/', requireAuth, (req, res) => {
     cur.doctor2Name = doc2;
     cur.gezynePath = gezyne;
     cur.requirePaymentAmount = reqPay;
+    if (flags.labTin !== undefined) cur.labTin = String(flags.labTin).trim();
+    if (flags.labName !== undefined) cur.labName = String(flags.labName).trim();
+    if (flags.labAddress !== undefined) cur.labAddress = String(flags.labAddress).trim();
+    if (flags.labZipCode !== undefined) cur.labZipCode = String(flags.labZipCode).trim();
+    if (flags.labRdoCode !== undefined) cur.labRdoCode = String(flags.labRdoCode).trim();
 
     process.env.DOCTOR_1_NAME = doc1;
     process.env.DOCTOR_2_NAME = doc2;

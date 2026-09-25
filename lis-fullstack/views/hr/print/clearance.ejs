@@ -1,170 +1,347 @@
-<div class="content-wrapper" style="padding: 30px; max-width: 850px; margin: 0 auto; background: white; font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border-radius: 8px;">
-    <!-- Print controls -->
-    <div class="no-print" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid #e2e8f0;">
-        <button type="button" onclick="handleDocBack()" style="padding: 6px 14px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600; cursor: pointer;">
-            ← Back
-        </button>
-        <button onclick="window.print()" style="padding: 8px 18px; background: #4f46e5; color: white; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-            <span>🖨️</span> Print Clearance Form
-        </button>
-    </div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Times+New+Roman&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-    <!-- Official Header -->
-    <div style="text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 14px; margin-bottom: 20px;">
-        <div style="font-size: 1.35rem; font-weight: 800; color: #0f172a; letter-spacing: 0.5px; text-transform: uppercase;">
+    @page {
+      size: letter portrait;
+      margin: 4mm 6mm;
+    }
+
+    body {
+      font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+      color: #0f172a;
+      background: #f1f5f9;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Screen Top Bar */
+    .screen-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 820px;
+      margin: 12px auto 8px auto;
+      padding: 8px 14px;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    .btn-back {
+      padding: 6px 14px;
+      background: #f1f5f9;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.84rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+    }
+    .btn-back:hover {
+      background: #e2e8f0;
+    }
+
+    .badge-info {
+      font-size: 0.78rem;
+      color: #1e3a8a;
+      background: #dbeafe;
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-weight: 600;
+    }
+
+    .btn-print {
+      padding: 7px 18px;
+      background: #009957;
+      color: #ffffff;
+      border: none;
+      border-radius: 6px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.88rem;
+      box-shadow: 0 2px 6px rgba(0, 153, 87, 0.3);
+    }
+    .btn-print:hover {
+      background: #00874c;
+    }
+
+    /* Clearance Sheet Container (Compact 1/2 Letter proportion) */
+    .clearance-page {
+      background: #ffffff;
+      width: 100%;
+      max-width: 820px;
+      margin: 0 auto 20px auto;
+      padding: 14px 18px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+      color: #000000;
+    }
+
+    /* Print Styles */
+    @media print {
+      *, *:before, *:after {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        width: 100% !important;
+        height: auto !important;
+      }
+      .no-print,
+      .screen-controls,
+      #gezynebot-container,
+      .gezynebot-container {
+        display: none !important;
+      }
+      .clearance-page {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      .checklist-table {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      .quitclaim-box {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Screen Controls Bar (visible on screen, hidden on print) -->
+  <div class="screen-controls no-print">
+    <button type="button" class="btn-back" onclick="handleDocBack()">
+      ← Back to Portal
+    </button>
+    <div style="display: flex; gap: 10px; align-items: center;">
+      <span class="badge-info">
+        ✓ Clearance Slip Generated • Fits 1/2 Letter Size
+      </span>
+      <button type="button" class="btn-print" onclick="window.print()">
+        <span>🖨️</span> Print Clearance Slip
+      </button>
+    </div>
+  </div>
+
+  <% 
+    // Numeric Date Helper (MM/DD/YYYY on a single line)
+    function formatNumericDate(d) {
+      if (!d || d === '—') return '—';
+      const parsed = new Date(d);
+      if (isNaN(parsed.getTime())) return d;
+      const mm = String(parsed.getMonth() + 1).padStart(2, '0');
+      const dd = String(parsed.getDate()).padStart(2, '0');
+      const yyyy = parsed.getFullYear();
+      return `${mm}/${dd}/${yyyy}`;
+    }
+    const effectiveDateStr = formatNumericDate(employee.dateTerminated || new Date());
+    const hiredDateStr = formatNumericDate(employee.dateHired);
+  %>
+
+  <!-- Official Clearance Sheet (Fits in 1/2 Letter Size with minimal margins) -->
+  <div class="clearance-page">
+    <!-- Official Letterhead matching Gezyne Diagnostic Reports & Leave Slips -->
+    <div class="doc-letterhead" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; border-bottom: 1.5px solid #000000; padding-bottom: 4px; margin-bottom: 4px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <img src="/assets/gezyne-logo.png" alt="Gezyne Logo" class="logo" style="width: 44px; height: auto; object-fit: contain;">
+        <div class="lab-title">
+          <h1 style="margin: 0; font-size: 15px; color: #009957; letter-spacing: 0.8px; font-family: 'Times New Roman', Times, serif; font-weight: 900; line-height: 1.1;">
             GEZYNE CLINICAL LABORATORY
+          </h1>
+          <div style="font-size: 8px; color: #475569; margin-top: 1px; font-weight: 600;">
+            0330 Vergel De Dios St., Poblacion, Plaridel, Bulacan • Lic. No. 03-435-15CL-20 • Tel: 0917-649-0807 / 795-5007
+          </div>
         </div>
-        <div style="font-size: 0.8rem; color: #475569;">DOH Licensed Clinical Diagnostic Laboratory • Republic of the Philippines</div>
-        <div style="font-size: 1.1rem; font-weight: 800; color: #b45309; margin-top: 8px; text-transform: uppercase; letter-spacing: 1px;">
-            EMPLOYEE EXIT CLEARANCE & ACCOUNTABILITY CHECKLIST
-        </div>
-        <div style="font-size: 0.78rem; color: #64748b; margin-top: 2px;">
-            Mandatory clearance form prior to the release of Final Pay, BIR Form 2316, and Certificate of Employment
-        </div>
+      </div>
+      <div style="min-width: 135px; font-size: 9px; text-align: right;">
+        <table style="border-collapse: collapse; width: 100%; font-size: 9px;">
+          <tr>
+            <td style="border: 1px solid #000; padding: 1.5px 5px; background: #fafafa; font-weight: 600; text-align: left;">Form Ref:</td>
+            <td style="border: 1px solid #000; padding: 1.5px 5px; font-weight: 700; text-align: left;">GCL-HR-CLR</td>
+          </tr>
+          <tr>
+            <td style="border: 1px solid #000; padding: 1.5px 5px; background: #fafafa; font-weight: 600; text-align: left;">Date:</td>
+            <td style="border: 1px solid #000; padding: 1.5px 5px; font-weight: 600; text-align: left;"><%= currentDate %></td>
+          </tr>
+        </table>
+      </div>
     </div>
 
-    <!-- Employee Information Grid -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 0.85rem; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 16px; border-radius: 6px; margin-bottom: 20px;">
-        <div>
-            <div><strong>Employee Name:</strong> <span style="font-weight: 700; color: #0f172a;"><%= employee.name %></span></div>
-            <div><strong>Employee ID:</strong> <%= employee.employeeCode %></div>
-            <div><strong>Position:</strong> <%= employee.position || 'Laboratory Staff' %></div>
-            <div><strong>Department:</strong> <%= employee.department || 'Clinical Laboratory' %></div>
-        </div>
-        <div>
-            <div><strong>Date Hired:</strong> <%= employee.dateHired || '—' %></div>
-            <div><strong>Separation Date:</strong> <%= employee.dateTerminated || currentDate %></div>
-            <div><strong>Employment Status:</strong> <%= employee.employmentStatus %></div>
-            <div><strong>Reason for Clearance:</strong> <%= employee.employmentStatus === 'Resigned' ? 'Voluntary Resignation' : 'Separation / End of Contract' %></div>
-        </div>
+    <!-- Document Title -->
+    <div style="text-align: center; margin: 3px 0 4px 0;">
+      <div style="font-size: 11.5px; font-weight: 800; color: #b45309; text-transform: uppercase; letter-spacing: 0.8px; text-decoration: underline;">
+        EMPLOYEE EXIT CLEARANCE &amp; ACCOUNTABILITY CHECKLIST
+      </div>
     </div>
 
-    <!-- Instructions Notice -->
-    <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 8px 12px; font-size: 0.78rem; color: #92400e; margin-bottom: 20px; border-radius: 4px;">
-        <strong>Instructions for Resigning/Separating Employee:</strong> Obtain clearance signatures from all designated department heads and in-charges below. Completed and signed form must be submitted to the HR Department.
-    </div>
-
-    <!-- 11-Point Clearance Checklist Table -->
-    <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem; margin-bottom: 24px;">
-        <thead>
-            <tr style="background: #0f172a; color: white;">
-                <th style="padding: 8px 10px; width: 35px; text-align: center;">#</th>
-                <th style="padding: 8px 10px; text-align: left; width: 32%;">Department / Accountability</th>
-                <th style="padding: 8px 10px; text-align: left; width: 28%;">Items & Responsibilities</th>
-                <th style="padding: 8px 10px; text-align: center; width: 15%;">Status</th>
-                <th style="padding: 8px 10px; text-align: center; width: 25%;">Officer Signature & Date</th>
-            </tr>
-        </thead>
-        <tbody>
-            <% 
-                const checklist = [
-                    { num: 1, dept: 'Laboratory / Clinical Unit', head: 'Chief Medical Technologist', items: 'Reagent turnover, laboratory equipment, glassware, bench logbooks' },
-                    { num: 2, dept: 'Radiology / Imaging', head: 'Chief RadTech / RSO', items: 'X-ray accessories, lead aprons, TLD radiation badge return' },
-                    { num: 3, dept: 'Information Technology', head: 'LIS System Admin', items: 'Revocation of LIS login account, email deactivation, password reset' },
-                    { num: 4, dept: 'Facilities & Security', head: 'Facilities Officer', items: 'Building keys, locker keys, laboratory door pass / RFID badges' },
-                    { num: 5, dept: 'Administration & HR', head: 'Supply / HR Assistant', items: 'Return of company ID, scrub suits, laboratory coats, name tags' },
-                    { num: 6, dept: 'Reception & Medical Records', head: 'Records Supervisor', items: 'Turnover of patient physical charts, test registers, release logbooks' },
-                    { num: 7, dept: 'Finance & Cashiering', head: 'Cashier / Petty Cash Custodian', items: 'Settlement of petty cash advances, daily collection turnover' },
-                    { num: 8, dept: 'Payroll & Accounting', head: 'Payroll Officer', items: 'Settlement of company loans, salary deductions, travel liquidation' },
-                    { num: 9, dept: 'Statutory Compliance', head: 'HR Benefits Officer', items: 'SSS, PhilHealth, Pag-IBIG contributions up-to-date, BIR 2316 prep' },
-                    { num: 10, dept: 'Human Resources Management', head: 'HR Manager', items: 'Exit interview conducted, handover documentation endorsed' },
-                    { num: 11, dept: 'Executive Management', head: 'Medical Director / Owner', items: 'Final authorization for release of separation pay and final check' }
-                ];
-
-                checklist.forEach(function(item, idx) {
-            %>
-                <tr style="border-bottom: 1px solid #cbd5e1; <%= idx % 2 === 1 ? 'background: #f8fafc;' : '' %>">
-                    <td style="padding: 8px 6px; text-align: center; font-weight: 700; color: #475569;"><%= item.num %></td>
-                    <td style="padding: 8px 10px;">
-                        <strong style="color: #1e293b;"><%= item.dept %></strong>
-                        <div style="font-size: 0.72rem; color: #64748b;"><%= item.head %></div>
-                    </td>
-                    <td style="padding: 8px 10px; color: #475569; font-size: 0.78rem;">
-                        <%= item.items %>
-                    </td>
-                    <td style="padding: 8px 10px; text-align: center;">
-                        <div style="display: inline-flex; gap: 6px; font-size: 0.72rem;">
-                            <label><input type="checkbox" checked style="accent-color: #10b981;"> Cleared</label>
-                        </div>
-                    </td>
-                    <td style="padding: 8px 10px; text-align: center;">
-                        <div style="height: 18px;"></div>
-                        <div style="border-top: 1px solid #94a3b8; font-size: 0.68rem; color: #64748b; padding-top: 2px;">
-                            Signature / Date
-                        </div>
-                    </td>
-                </tr>
-            <% }); %>
-        </tbody>
+    <!-- Employee Information Grid (Compact 2-Row Layout, numeric dates on single lines) -->
+    <table class="info-table" style="width: 100%; border-collapse: collapse; font-size: 9.5px; margin-bottom: 4px;">
+      <tr>
+        <td style="width: 12%; padding: 2.5px 5px; border: 1px solid #000; background: #fafafa; font-weight: 600;">Employee:</td>
+        <td style="width: 34%; padding: 2.5px 5px; border: 1px solid #000; font-weight: 700; color: #000;"><%= employee.name.toUpperCase() %></td>
+        <td style="width: 13%; padding: 2.5px 5px; border: 1px solid #000; background: #fafafa; font-weight: 600;">Employee ID:</td>
+        <td style="width: 15%; padding: 2.5px 5px; border: 1px solid #000; font-weight: 700;"><%= employee.employeeCode || '—' %></td>
+        <td style="width: 10%; padding: 2.5px 5px; border: 1px solid #000; background: #fafafa; font-weight: 600;">Hired:</td>
+        <td style="width: 16%; padding: 2.5px 5px; border: 1px solid #000; white-space: nowrap;"><%= hiredDateStr %></td>
+      </tr>
+      <tr>
+        <td style="padding: 2.5px 5px; border: 1px solid #000; background: #fafafa; font-weight: 600;">Position:</td>
+        <td style="padding: 2.5px 5px; border: 1px solid #000; font-weight: 600;"><%= employee.position || 'Laboratory Staff' %></td>
+        <td style="padding: 2.5px 5px; border: 1px solid #000; background: #fafafa; font-weight: 600;">Department:</td>
+        <td style="padding: 2.5px 5px; border: 1px solid #000;"><%= employee.department || 'Clinical Laboratory' %></td>
+        <td style="padding: 2.5px 5px; border: 1px solid #000; background: #fafafa; font-weight: 600;">Effective:</td>
+        <td style="padding: 2.5px 5px; border: 1px solid #000; font-weight: 600; white-space: nowrap;"><%= effectiveDateStr %></td>
+      </tr>
     </table>
 
-    <!-- Employee Quitclaim & Waiver Section -->
-    <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 14px; background: #f8fafc; margin-bottom: 24px;">
-        <div style="font-size: 0.82rem; font-weight: 800; color: #0f172a; margin-bottom: 6px; text-transform: uppercase;">
-            Employee Acknowledgment, Waiver & Quitclaim Statement
+    <!-- Instructions Notice (Compact Single-line) -->
+    <div class="instructions-box" style="background: #fffbeb; border: 1px solid #f59e0b; padding: 2.5px 6px; font-size: 8.5px; color: #78350f; margin-bottom: 4px; line-height: 1.25;">
+      <strong>Notice:</strong> Secure clearance from designated unit heads below. Completed form must be submitted to HR / Owner prior to release of final pay &amp; documents.
+    </div>
+
+    <!-- 3-Point Clearance Checklist Table (Items 4 to 7 dropped as requested) -->
+    <table class="checklist-table" style="width: 100%; border-collapse: collapse; font-size: 9px; margin-bottom: 5px;">
+      <thead>
+        <tr style="background: #0f172a; color: white;">
+          <th style="padding: 3px 4px; width: 22px; text-align: center; border: 1px solid #000; font-size: 8.5px;">#</th>
+          <th style="padding: 3px 6px; text-align: left; width: 32%; border: 1px solid #000; font-size: 8.5px;">Department / Clearing In-Charge</th>
+          <th style="padding: 3px 6px; text-align: left; width: 34%; border: 1px solid #000; font-size: 8.5px;">Accountability &amp; Responsibilities</th>
+          <th style="padding: 3px 4px; text-align: center; width: 14%; border: 1px solid #000; font-size: 8.5px;">Status</th>
+          <th style="padding: 3px 6px; text-align: center; width: 20%; border: 1px solid #000; font-size: 8.5px;">Officer Signature / Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% 
+          // Only items 1, 2, 3 (Items 4 to 7 dropped per user instruction)
+          const checklist = [
+            { num: 1, dept: 'Laboratory / Clinical Unit', head: 'Chief Medical Technologist', items: 'Reagent turnover, laboratory equipment, glassware, bench logbooks' },
+            { num: 2, dept: 'Radiology / Imaging', head: 'Chief RadTech / RSO', items: 'X-ray accessories, lead aprons, TLD radiation badge return' },
+            { num: 3, dept: 'Information Technology', head: 'LIS System Admin', items: 'Revocation of LIS login account, email deactivation, password reset' }
+          ];
+
+          checklist.forEach(function(item, idx) {
+        %>
+          <tr style="border-bottom: 1px solid #000; <%= idx % 2 === 1 ? 'background: #fbfcfd;' : '' %>">
+            <td style="padding: 3px 4px; text-align: center; font-weight: 700; color: #334155; border: 1px solid #000;"><%= item.num %></td>
+            <td style="padding: 3px 6px; border: 1px solid #000;">
+              <strong style="color: #0f172a; font-size: 9px;"><%= item.dept %></strong>
+              <div style="font-size: 8px; color: #555;"><%= item.head %></div>
+            </td>
+            <td style="padding: 3px 6px; color: #334155; font-size: 8.5px; line-height: 1.25; border: 1px solid #000;">
+              <%= item.items %>
+            </td>
+            <td style="padding: 3px 4px; text-align: center; border: 1px solid #000;">
+              <span class="status-cleared" style="display: inline-flex; align-items: center; gap: 2px; font-size: 8px; font-weight: 700; color: #166534; background: #dcfce7; padding: 1.5px 5px; border-radius: 3px; border: 1px solid #86efac;">
+                ✓ Cleared
+              </span>
+            </td>
+            <td style="padding: 3px 6px; text-align: center; vertical-align: bottom; border: 1px solid #000;">
+              <div style="height: 12px;"></div>
+              <div style="border-top: 1px solid #475569; font-size: 7.5px; color: #475569; padding-top: 1px;">
+                Signature / Date
+              </div>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+
+    <!-- Employee Quitclaim & Signatures (Final Approval / Signatory: Laboratory Owner) -->
+    <div class="quitclaim-box" style="border: 1px solid #000; border-radius: 3px; padding: 4px 8px; background: #f8fafc; margin-bottom: 4px;">
+      <div style="font-size: 8.5px; font-weight: 800; color: #0f172a; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.5px;">
+        Employee Acknowledgment, Waiver &amp; Quitclaim Statement
+      </div>
+      <p style="font-size: 7.8px; color: #334155; line-height: 1.25; text-align: justify; margin: 0 0 6px 0;">
+        I hereby acknowledge turnover of all company property, equipment, supplies, records, and proprietary laboratory information in my custody. Upon receipt of my full and final pay, I unconditionally release and discharge Gezyne Clinical Laboratory from any and all claims, actions, or liabilities arising out of or in connection with my employment.
+      </p>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: flex-end;">
+        <!-- Staff Signature (Left) -->
+        <div style="text-align: center;">
+          <div style="font-size: 7.5px; color: #555; font-style: italic; margin-bottom: 12px;">
+            I hereby acknowledge and file for clearance:
+          </div>
+          <div style="border-top: 1px solid #000; padding-top: 1px; font-weight: 700; font-size: 9.5px; color: #000;">
+            <%= employee.name.toUpperCase() %>
+          </div>
+          <div style="font-size: 7.5px; color: #475569;">Staff Signature over Printed Name • Date</div>
         </div>
-        <p style="font-size: 0.76rem; color: #475569; line-height: 1.5; text-align: justify; margin: 0 0 14px 0;">
-            I hereby acknowledge that I have turned over all company property, equipment, supplies, records, and proprietary laboratory information in my custody. Upon receipt of my full and final pay, I unconditionally release and discharge Gezyne Clinical Laboratory from any and all claims, actions, or liabilities arising out of or in connection with my employment.
-        </p>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 18px;">
-            <div style="text-align: center;">
-                <div style="border-top: 1px solid #334155; padding-top: 4px; font-weight: 700; font-size: 0.82rem; color: #0f172a;">
-                    <%= employee.name.toUpperCase() %>
-                </div>
-                <div style="font-size: 0.72rem; color: #64748b;">Signature of Resigned/Separated Employee & Date</div>
-            </div>
-            <div style="text-align: center;">
-                <div style="border-top: 1px solid #334155; padding-top: 4px; font-weight: 700; font-size: 0.82rem; color: #0f172a;">
-                    LABORATORY DIRECTOR / HR HEAD
-                </div>
-                <div style="font-size: 0.72rem; color: #64748b;">Authorized Management Clearance Sign-off & Date</div>
-            </div>
+
+        <!-- Final Approval / Signatory: Laboratory Owner (Right) -->
+        <div style="text-align: center; position: relative;">
+          <div style="display: flex; justify-content: center; gap: 10px; margin-bottom: 2px; font-size: 8.5px; font-weight: bold; color: #166534;">
+            <span><span style="border: 1px solid #000; display: inline-block; width: 9px; height: 9px; text-align: center; line-height: 8px; font-size: 7.5px; background: #fff; margin-right: 2px;">✓</span> APPROVED FOR FINAL RELEASE</span>
+          </div>
+          <div style="height: 16px; position: relative;">
+            <% if (typeof owner !== 'undefined' && owner && owner.signature) { %>
+              <img src="<%= owner.signature %>" alt="Owner Signature" style="max-height: 18px; max-width: 90px; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); pointer-events: none;">
+            <% } %>
+          </div>
+          <div style="border-top: 1px solid #000; padding-top: 1px; font-weight: 700; font-size: 10px; color: #000;">
+            <%= (typeof owner !== 'undefined' && owner && owner.name) ? owner.name.toUpperCase() : 'GENALYN LOPEZ' %>
+          </div>
+          <div style="font-size: 8px; font-weight: bold; color: #000;">
+            <%= (typeof owner !== 'undefined' && owner && owner.title) ? owner.title : 'Laboratory Owner' %>
+          </div>
+          <div style="font-size: 7.5px; color: #555;">
+            Gezyne Clinical Laboratory • Date: <strong><%= currentDate %></strong>
+          </div>
         </div>
+      </div>
     </div>
 
     <!-- Footer Notes -->
-    <div style="font-size: 0.7rem; color: #94a3b8; text-align: center;">
-        Form Ref: CLR-<%= employee.employeeCode %>-<%= new Date().getFullYear() %> • Gezyne Clinical Laboratory HR Records
+    <div style="font-size: 7.5px; color: #64748b; text-align: center; margin-top: 2px;">
+      Form Ref: CLR-<%= employee.employeeCode %>-<%= new Date().getFullYear() %> • Gezyne Clinical Laboratory HR Records • Official Exit Clearance Form
     </div>
-</div>
+  </div>
 
-<script>
-function handleDocBack() {
-    if (window.opener && window.history.length <= 1) {
+  <script>
+    function handleDocBack() {
+      if (window.opener && window.history.length <= 1) {
         window.close();
         return;
-    }
-    if (window.history.length > 1 && document.referrer) {
+      }
+      if (window.history.length > 1 && document.referrer) {
         window.history.back();
         return;
+      }
+      window.location.href = '/hr/my';
     }
-    window.location.href = '/hr/my';
-}
-</script>
-
-<style>
-#gezynebot-container, .gezynebot-container, #gezynebot-launcher, #gezynebot-panel {
-    display: none !important;
-}
-
-@media print {
-    body {
-        margin: 0;
-        padding: 0;
-        background: white;
-    }
-    .no-print, .sidebar, .header, #fullscreenBtn, .hamburger, #gezynebot-container {
-        display: none !important;
-    }
-    .main-content {
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-    .content-wrapper {
-        border: none !important;
-        box-shadow: none !important;
-        padding: 10px !important;
-        max-width: 100% !important;
-    }
-}
-</style>
+  </script>
+</body>
+</html>

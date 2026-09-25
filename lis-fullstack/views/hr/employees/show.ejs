@@ -227,9 +227,16 @@
                         <span style="font-size: 0.75rem; color: #64748b; font-weight: 700;">PAG-IBIG (HDMF) #</span>
                         <div style="font-weight: 700; color: #0f172a; margin-top: 2px;"><%= employee.pagibigNumber || 'Not configured' %></div>
                     </div>
-                    <div style="background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0;">
-                        <span style="font-size: 0.75rem; color: #64748b; font-weight: 700;">BIR TIN #</span>
-                        <div style="font-weight: 700; color: #0f172a; margin-top: 2px;"><%= employee.tinNumber || 'Not configured' %></div>
+                    <div style="background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; position: relative;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.75rem; color: #64748b; font-weight: 700;">BIR TIN #</span>
+                            <% if (typeof isMgmt !== 'undefined' && isMgmt) { %>
+                                <button type="button" onclick="openQuickTinPrompt()" style="background: none; border: none; color: #4f46e5; font-size: 0.74rem; font-weight: 700; cursor: pointer; padding: 0; display: inline-flex; align-items: center; gap: 2px;">
+                                    ✏️ Edit
+                                </button>
+                            <% } %>
+                        </div>
+                        <div id="displayEmpTin" style="font-weight: 700; color: #0f172a; margin-top: 2px; font-family: monospace;"><%= employee.tinNumber || 'Not configured' %></div>
                     </div>
                 </div>
 
@@ -466,4 +473,31 @@
             activeBtn.style.fontWeight = '700';
         }
     }
+
+    <% if (typeof isMgmt !== 'undefined' && isMgmt) { %>
+    async function openQuickTinPrompt() {
+        const current = '<%= employee.tinNumber || '' %>';
+        const newTin = prompt('Enter new BIR TIN for <%= employee.name %> (e.g. 123-456-789-000):', current);
+        if (newTin === null) return;
+        try {
+            const res = await fetch('/hr/employees/<%= employee.id %>/quick-tin', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ tinNumber: newTin })
+            });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('displayEmpTin').textContent = data.tinNumber || 'Not configured';
+                alert('✓ BIR TIN updated successfully!');
+            } else {
+                alert(data.error || 'Failed to update TIN');
+            }
+        } catch (e) {
+            alert('Network error updating TIN');
+        }
+    }
+    <% } %>
 </script>

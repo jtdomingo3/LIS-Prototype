@@ -1,4 +1,23 @@
-<div class="content-wrapper" style="position: relative; overflow: hidden; padding: 48px 54px; max-width: 820px; margin: 0 auto; background: white; font-family: 'Times New Roman', Times, serif; color: #1e293b; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border-radius: 8px;">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <style>
+    * { box-sizing: border-box; }
+    @page { size: Letter portrait; margin: 8mm 10mm; }
+    body {
+      margin: 0;
+      padding: 0;
+      background: #f1f5f9;
+      font-family: 'Times New Roman', Times, serif;
+      -webkit-font-smoothing: antialiased;
+    }
+  </style>
+</head>
+<body>
+<div class="content-wrapper" style="position: relative; overflow: hidden; padding: 48px 54px; max-width: 820px; margin: 15px auto; background: white; font-family: 'Times New Roman', Times, serif; color: #1e293b; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border-radius: 8px;">
     <!-- Watermark Logo (embedded laboratory security seal matching diagnostic reports) -->
     <img class="watermark" src="/assets/gezyne-logo.png" alt="" />
 
@@ -159,22 +178,19 @@ function toggleSalary(cb) {
 
 @media print {
     body {
-        margin: 0;
-        padding: 0;
-        background: white;
-    }
-    .no-print, .sidebar, .header, #fullscreenBtn, .hamburger {
-        display: none !important;
-    }
-    .main-content {
         margin: 0 !important;
         padding: 0 !important;
+        background: white !important;
+    }
+    .no-print {
+        display: none !important;
     }
     .content-wrapper {
         border: none !important;
         box-shadow: none !important;
-        padding: 24px 30px !important;
+        padding: 10px 15px !important;
         max-width: 100% !important;
+        margin: 0 !important;
     }
     .watermark {
         opacity: 0.08 !important;
@@ -182,3 +198,5 @@ function toggleSalary(cb) {
     }
 }
 </style>
+</body>
+</html>

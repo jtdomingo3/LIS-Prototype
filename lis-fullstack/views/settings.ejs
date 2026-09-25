@@ -102,6 +102,20 @@
             <input type="text" name="gezynePath" placeholder="e.g. C:\\path\\to\\new-gezyne or \\\\10.0.0.5\\shared\\new-gezyne" value="<%= (settings && settings.gezynePath) ? settings.gezynePath : (process.env.GEZYNE_PATH || '') %>" style="width:100%;" />
             <p class="note">Local path or UNC network folder containing DataBase\Analyser.MDB for direct result extraction.</p>
           </div>
+
+          <h5 style="margin:20px 0 10px 0; font-size:0.95em; text-transform:uppercase; color:#475569; letter-spacing:0.5px;">Laboratory Tax Registration (BIR Form 2316)</h5>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px;">
+            <div class="field" style="margin:0;">
+              <label>Laboratory BIR TIN</label>
+              <input type="text" name="labTin" placeholder="e.g. 009-876-543-000" value="<%= (settings && settings.labTin) || '009-876-543-000' %>" style="width:100%; font-family:monospace; font-weight:600;" />
+              <p class="note">Employer TIN printed on Part II (Item 12) of BIR Form 2316 across all staff tax summaries.</p>
+            </div>
+            <div class="field" style="margin:0;">
+              <label>RDO Code</label>
+              <input type="text" name="labRdoCode" placeholder="e.g. 025" value="<%= (settings && settings.labRdoCode) || '025' %>" style="width:100%; font-family:monospace;" />
+              <p class="note">Bureau of Internal Revenue Revenue District Office code.</p>
+            </div>
+          </div>
         </div>
       </div>
 

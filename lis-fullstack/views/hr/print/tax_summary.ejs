@@ -1,131 +1,983 @@
-<div class="content-wrapper" style="padding: 24px; max-width: 900px; margin: 0 auto; background: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border-radius: 8px;">
-    <!-- Controls (hidden on print) -->
-    <div class="no-print" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid #e2e8f0;">
-        <button type="button" onclick="handleDocBack()" style="padding: 6px 14px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600; cursor: pointer;">
-            ← Back
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    @page {
+      size: letter portrait;
+      margin: 2mm 3.5mm;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: #000000;
+      background: #f1f5f9;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Screen Controls Bar */
+    .screen-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 840px;
+      margin: 10px auto 8px auto;
+      padding: 8px 14px;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    /* Authentic Compact BIR Sheet Styling (Calibrated for strict 1-Page Letter output) */
+    .bir-sheet {
+      background: #ffffff;
+      width: 100%;
+      max-width: 840px;
+      margin: 0 auto 16px auto;
+      color: #000000;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 7px;
+      line-height: 1.1;
+      border: 2px solid #000000;
+    }
+
+    .sec-hdr {
+      background: #d1d5db;
+      color: #000000;
+      font-weight: 900;
+      font-size: 7px;
+      text-transform: uppercase;
+      padding: 1.2px 3px;
+      border-bottom: 1px solid #000000;
+      letter-spacing: 0.2px;
+    }
+
+    .sub-sec-hdr td {
+      background: #e5e7eb;
+      color: #000000;
+      padding: 1px 3px;
+      border-top: 1px solid #000000;
+      border-bottom: 1px solid #000000;
+      font-size: 6.5px;
+      font-weight: bold;
+    }
+
+    .item-desc {
+      padding: 0.6px 3px;
+      font-size: 6.5px;
+      line-height: 1.1;
+      border-bottom: 1px solid #000000;
+      vertical-align: middle;
+    }
+
+    .item-amt {
+      padding: 0.6px 3px;
+      font-size: 7px;
+      text-align: right;
+      font-family: 'Courier New', Courier, monospace;
+      font-weight: 600;
+      border-left: 1px solid #000000;
+      border-bottom: 1px solid #000000;
+      width: 30%;
+      background: #ffffff;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+
+    /* Single Digit Box styling for TIN, Year, Dates */
+    .box-digit-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 1px;
+    }
+
+    .digit-box {
+      display: inline-block;
+      width: 9.5px;
+      height: 11px;
+      border: 1px solid #000000;
+      text-align: center;
+      line-height: 10px;
+      font-size: 7px;
+      font-weight: bold;
+      background: #ffffff;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .bir-box {
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border: 1px solid #000000;
+      text-align: center;
+      line-height: 8px;
+      font-size: 7px;
+      font-weight: 900;
+      vertical-align: middle;
+      background: #ffffff;
+    }
+
+    .amt-field-short {
+      border: 1px solid #000000;
+      display: inline-block;
+      width: 60px;
+      height: 10px;
+      padding: 0 2px;
+      text-align: right;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 6.5px;
+      background: #ffffff;
+    }
+
+    @media screen {
+      .content-wrapper {
+        padding: 10px 14px;
+        max-width: 860px;
+        margin: 5px auto;
+      }
+    }
+
+    @media print {
+      *, *:before, *:after {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        width: 100% !important;
+        height: 100% !important;
+        overflow: hidden !important;
+      }
+      .screen-controls,
+      .no-print,
+      .alert,
+      #gezynebot-container,
+      .gezynebot-container {
+        display: none !important;
+      }
+      .content-wrapper {
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: 100% !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      .bir-sheet {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 auto !important;
+        padding: 0 !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        border: 1.5px solid #000000 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="content-wrapper">
+    <!-- Screen Controls Bar (visible on screen, hidden on print) -->
+    <div class="no-print screen-controls" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0; font-family: 'Segoe UI', sans-serif;">
+        <button type="button" onclick="handleDocBack()" style="padding: 6px 14px; background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px;">
+            ← Back to Portal
         </button>
         <div style="display: flex; gap: 10px; align-items: center;">
-            <select id="yearSelect" onchange="changeYear(this.value)" style="padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600; font-size: 0.88rem;">
-                <% for (let y = new Date().getFullYear(); y >= 2023; y--) { %>
-                    <option value="<%= y %>" <%= year == y ? 'selected' : '' %>><%= y %></option>
-                <% } %>
-            </select>
-            <button onclick="window.print()" style="padding: 8px 18px; background: #4f46e5; color: white; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                <span>🖨️</span> Print BIR 2316 Summary
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 600; color: #334155;">
+                <span>Tax Year:</span>
+                <select id="yearSelect" onchange="changeYear(this.value)" style="padding: 4px 10px; border: 1.5px solid #0f172a; border-radius: 6px; font-weight: 700; font-size: 0.85rem; background: #fff; cursor: pointer;">
+                    <% for (let y = new Date().getFullYear(); y >= 2023; y--) { %>
+                        <option value="<%= y %>" <%= year == y ? 'selected' : '' %>><%= y %></option>
+                    <% } %>
+                </select>
+            </div>
+            <span style="font-size: 0.76rem; color: #166534; background: #dcfce7; padding: 5px 10px; border-radius: 6px; font-weight: 600;">
+                ✓ Official BIR 2316 • Fits 1 Page Only
+            </span>
+            <button onclick="window.print()" style="padding: 7px 18px; background: #009957; color: white; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-size: 0.88rem; box-shadow: 0 2px 5px rgba(0, 153, 87, 0.3);">
+                <span>🖨️</span> Print Official BIR 2316
             </button>
         </div>
     </div>
 
-    <!-- Official BIR 2316 Reference Header -->
-    <div style="border: 2px solid #0f172a; padding: 14px 18px; margin-bottom: 16px; background: #f8fafc;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
-            <div>
-                <div style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Republic of the Philippines • Bureau of Internal Revenue</div>
-                <div style="font-size: 1.35rem; font-weight: 900; color: #0f172a; letter-spacing: 0.5px;">
-                    BIR FORM NO. 2316 REFERENCE SUMMARY
-                </div>
-                <div style="font-size: 0.82rem; font-weight: 600; color: #475569;">
-                    Certificate of Compensation Payment / Tax Withheld (TRAIN Law)
-                </div>
-            </div>
-            <div style="text-align: right; background: white; border: 1.5px solid #0f172a; padding: 8px 16px; border-radius: 4px;">
-                <div style="font-size: 0.72rem; color: #64748b; font-weight: 700;">FOR TAX YEAR</div>
-                <div style="font-size: 1.6rem; font-weight: 900; color: #4338ca;"><%= year %></div>
-            </div>
-        </div>
-    </div>
+    <%
+        // Formatting helper for currency
+        function fmt(val) {
+            const n = Number(val) || 0;
+            return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
 
-    <!-- Part I & II: Employee and Employer Identification -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px;">
-        <!-- Employee Info -->
-        <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px; font-size: 0.82rem;">
-            <div style="font-weight: 800; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 8px; text-transform: uppercase; font-size: 0.78rem;">
-                Part I: Employee Information
-            </div>
-            <div><strong>Taxpayer Identification No. (TIN):</strong> <%= employee.tin || 'Not Provided' %></div>
-            <div><strong>Employee Name:</strong> <span style="font-weight: 700; color: #1e293b;"><%= employee.name %></span></div>
-            <div><strong>Employee ID:</strong> <%= employee.employeeCode %></div>
-            <div><strong>Position:</strong> <%= employee.position %> (<%= employee.department %>)</div>
-            <div><strong>SSS No.:</strong> <%= employee.sssNumber || '—' %> | <strong>PHIC:</strong> <%= employee.philhealthNumber || '—' %></div>
-            <div><strong>HDMF No.:</strong> <%= employee.pagibigNumber || '—' %></div>
-        </div>
+        // Helper to extract digits for TIN box rendering
+        function getTinBoxes(tinStr, count) {
+            const raw = (tinStr || '').replace(/\D/g, '');
+            const arr = [];
+            for (let i = 0; i < count; i++) {
+                arr.push(raw[i] || '');
+            }
+            return arr;
+        }
 
-        <!-- Employer Info -->
-        <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px; font-size: 0.82rem;">
-            <div style="font-weight: 800; color: #0f172a; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; margin-bottom: 8px; text-transform: uppercase; font-size: 0.78rem;">
-                Part II: Present Employer Information
-            </div>
-            <div><strong>Employer TIN:</strong> 009-876-543-000</div>
-            <div><strong>Employer Name:</strong> <span style="font-weight: 700; color: #1e293b;">GEZYNE CLINICAL LABORATORY</span></div>
-            <div><strong>Registered Address:</strong> Metro Manila, Philippines</div>
-            <div><strong>Type of Employer:</strong> Private Clinical Diagnostic Laboratory</div>
-            <div><strong>Contact No.:</strong> (02) 8123-4567</div>
-        </div>
-    </div>
+        function getDobDigits(dob) {
+            if (!dob) return ['', '', '', '', '', '', '', ''];
+            const d = new Date(dob);
+            if (isNaN(d.getTime())) {
+                const raw = String(dob).replace(/\D/g, '');
+                const res = [];
+                for (let i = 0; i < 8; i++) res.push(raw[i] || '');
+                return res;
+            }
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            const yyyy = String(d.getFullYear());
+            return (mm + dd + yyyy).split('');
+        }
 
-    <!-- Part III: Summary of Compensation & Taxes -->
-    <div style="border: 2px solid #334155; border-radius: 6px; overflow: hidden; margin-bottom: 20px;">
-        <div style="background: #0f172a; color: white; padding: 8px 14px; font-size: 0.82rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">
-            Part III: Annual Compensation & Tax Withheld Computation
-        </div>
-        <table style="width: 100%; border-collapse: collapse; font-size: 0.88rem;">
-            <tbody>
-                <tr style="border-bottom: 1px solid #e2e8f0;">
-                    <td style="padding: 10px 14px; color: #334155;">1. Total Gross Compensation Income from Present Employer</td>
-                    <td style="padding: 10px 14px; text-align: right; font-weight: 700; color: #0f172a;">
-                        ₱<%= totalGross.toLocaleString('en-US', { minimumFractionDigits: 2 }) %>
-                    </td>
-                </tr>
-                <tr style="border-bottom: 1px solid #f1f5f9; background: #fafafa;">
-                    <td style="padding: 8px 14px 8px 28px; color: #64748b; font-size: 0.82rem;">Less: Mandatory SSS Employee Contributions</td>
-                    <td style="padding: 8px 14px; text-align: right; color: #dc2626; font-size: 0.82rem;">
-                        (₱<%= totalSss.toLocaleString('en-US', { minimumFractionDigits: 2 }) %>)
-                    </td>
-                </tr>
-                <tr style="border-bottom: 1px solid #f1f5f9; background: #fafafa;">
-                    <td style="padding: 8px 14px 8px 28px; color: #64748b; font-size: 0.82rem;">Less: Mandatory PhilHealth Employee Premiums</td>
-                    <td style="padding: 8px 14px; text-align: right; color: #dc2626; font-size: 0.82rem;">
-                        (₱<%= totalPh.toLocaleString('en-US', { minimumFractionDigits: 2 }) %>)
-                    </td>
-                </tr>
-                <tr style="border-bottom: 1px solid #f1f5f9; background: #fafafa;">
-                    <td style="padding: 8px 14px 8px 28px; color: #64748b; font-size: 0.82rem;">Less: Mandatory Pag-IBIG / HDMF Contributions</td>
-                    <td style="padding: 8px 14px; text-align: right; color: #dc2626; font-size: 0.82rem;">
-                        (₱<%= totalPagibig.toLocaleString('en-US', { minimumFractionDigits: 2 }) %>)
-                    </td>
-                </tr>
-                <tr style="border-bottom: 1px solid #e2e8f0; background: #f8fafc; font-weight: 600;">
-                    <td style="padding: 8px 14px; color: #475569;">2. Total Non-Taxable / Exempt Statutory Deductions</td>
-                    <td style="padding: 8px 14px; text-align: right; color: #dc2626;">
-                        (₱<%= totalNonTaxable.toLocaleString('en-US', { minimumFractionDigits: 2 }) %>)
-                    </td>
-                </tr>
-                <tr style="border-bottom: 2px solid #0f172a; font-weight: 800; background: #f0fdf4;">
-                    <td style="padding: 10px 14px; color: #166534;">3. TAXABLE COMPENSATION INCOME (Item 1 minus Item 2)</td>
-                    <td style="padding: 10px 14px; text-align: right; color: #166534; font-size: 1rem;">
-                        ₱<%= taxableIncome.toLocaleString('en-US', { minimumFractionDigits: 2 }) %>
-                    </td>
-                </tr>
-                <tr style="border-bottom: 1px solid #e2e8f0;">
-                    <td style="padding: 10px 14px; color: #334155;">4. Tax Due (Calculated under TRAIN Law Annual Tax Table)</td>
-                    <td style="padding: 10px 14px; text-align: right; font-weight: 700; color: #4338ca;">
-                        ₱<%= totalTaxWithheld.toLocaleString('en-US', { minimumFractionDigits: 2 }) %>
-                    </td>
-                </tr>
-                <tr style="border-bottom: 2px solid #0f172a; font-weight: 900; background: #eff6ff;">
-                    <td style="padding: 12px 14px; color: #1e3a8a;">5. TOTAL TAX WITHHELD AND REMITTED TO BIR (Item 4)</td>
-                    <td style="padding: 12px 14px; text-align: right; color: #1e3a8a; font-size: 1.15rem;">
-                        ₱<%= totalTaxWithheld.toLocaleString('en-US', { minimumFractionDigits: 2 }) %>
-                    </td>
-                </tr>
-            </tbody>
+        const currentEmpTin = employee.tinNumber || employee.tin || '';
+        const empTin = getTinBoxes(currentEmpTin, 12);
+        const currentLabTin = (typeof labTin !== 'undefined' && labTin) ? labTin : '009-876-543-000';
+        const employerTin = getTinBoxes(currentLabTin, 12);
+        const currentLabName = (typeof labName !== 'undefined' && labName) ? labName : 'GEZYNE CLINICAL LABORATORY';
+        const currentLabAddress = (typeof labAddress !== 'undefined' && labAddress) ? labAddress : '0330 Vergel De Dios St., Poblacion, Plaridel, Bulacan';
+        const currentLabZip = (typeof labZipCode !== 'undefined' && labZipCode) ? labZipCode : '3004';
+        const labZipDigits = currentLabZip.split('');
+        const yearDigits = String(year || '2026').split('');
+        const dobDigits = getDobDigits(employee.birthDate || employee.dateOfBirth);
+    %>
+
+    <!-- OFFICIAL BIR FORM NO. 2316 (SEPTEMBER 2021 ENCS) -->
+    <div class="bir-sheet">
+        <!-- TOP HEADER -->
+        <table class="bir-table" style="width: 100%; border-collapse: collapse; border-bottom: 1.5px solid #000;">
+            <tr>
+                <!-- Box Left: For BIR Use / Form No. -->
+                <td style="width: 25%; vertical-align: top; border-right: 1.5px solid #000; padding: 1.5px 3px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 6.5px; border-bottom: 1px solid #000; padding-bottom: 1px;">
+                        <span>For BIR<br>Use Only</span>
+                        <span>BCS/<br>Item:</span>
+                    </div>
+                    <div style="text-align: center; padding-top: 1px;">
+                        <div style="font-size: 7px; font-weight: bold; text-transform: uppercase;">BIR Form No.</div>
+                        <div style="font-size: 19px; font-weight: 900; line-height: 1; letter-spacing: 0.5px;">2316</div>
+                        <div style="font-size: 6.5px; font-weight: bold;">September 2021(ENCS)</div>
+                    </div>
+                </td>
+
+                <!-- Center: Republic Seal & Main Title -->
+                <td style="width: 52%; vertical-align: middle; text-align: center; padding: 1px 4px;">
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                        <!-- Official Republic / BIR Seal SVG -->
+                        <svg width="22" height="22" viewBox="0 0 100 100" style="margin-bottom: 1px;">
+                            <circle cx="50" cy="50" r="48" fill="#fff" stroke="#000" stroke-width="3" />
+                            <circle cx="50" cy="50" r="40" fill="none" stroke="#000" stroke-width="1.5" />
+                            <polygon points="50,15 54,30 68,30 57,39 61,54 50,45 39,54 43,39 32,30 46,30" fill="#000" />
+                            <text x="50" y="70" font-size="7" font-weight="bold" text-anchor="middle" font-family="Arial">BIR</text>
+                            <text x="50" y="80" font-size="5" text-anchor="middle" font-family="Arial">PHILIPPINES</text>
+                        </svg>
+                        <div style="font-size: 7px; font-weight: bold; text-transform: uppercase; line-height: 1.1;">Republic of the Philippines</div>
+                        <div style="font-size: 6.5px; font-weight: bold; line-height: 1.1;">Department of Finance</div>
+                        <div style="font-size: 7px; font-weight: bold; line-height: 1.1;">Bureau of Internal Revenue</div>
+                        <div style="font-size: 10.5px; font-weight: 900; line-height: 1.1; margin-top: 1px;">
+                            Certificate of Compensation<br>Payment/Tax Withheld
+                        </div>
+                        <div style="font-size: 6.5px; font-style: italic;">
+                            For Compensation Payment With or Without Tax Withheld
+                        </div>
+                    </div>
+                </td>
+
+                <!-- Right: Barcode Graphic -->
+                <td style="width: 23%; vertical-align: middle; text-align: center; border-left: 1.5px solid #000; padding: 1.5px 3px;">
+                    <div style="display: inline-block;">
+                        <svg width="110" height="24" viewBox="0 0 130 36">
+                            <rect width="130" height="36" fill="#fff" />
+                            <rect x="2" y="2" width="2" height="32" fill="#000" />
+                            <rect x="6" y="2" width="4" height="32" fill="#000" />
+                            <rect x="12" y="2" width="1" height="32" fill="#000" />
+                            <rect x="15" y="2" width="3" height="32" fill="#000" />
+                            <rect x="20" y="2" width="2" height="32" fill="#000" />
+                            <rect x="24" y="2" width="5" height="32" fill="#000" />
+                            <rect x="31" y="2" width="1" height="32" fill="#000" />
+                            <rect x="34" y="2" width="4" height="32" fill="#000" />
+                            <rect x="40" y="2" width="2" height="32" fill="#000" />
+                            <rect x="44" y="2" width="3" height="32" fill="#000" />
+                            <rect x="49" y="2" width="1" height="32" fill="#000" />
+                            <rect x="52" y="2" width="5" height="32" fill="#000" />
+                            <rect x="59" y="2" width="2" height="32" fill="#000" />
+                            <rect x="63" y="2" width="4" height="32" fill="#000" />
+                            <rect x="69" y="2" width="1" height="32" fill="#000" />
+                            <rect x="72" y="2" width="3" height="32" fill="#000" />
+                            <rect x="77" y="2" width="2" height="32" fill="#000" />
+                            <rect x="81" y="2" width="6" height="32" fill="#000" />
+                            <rect x="89" y="2" width="1" height="32" fill="#000" />
+                            <rect x="92" y="2" width="4" height="32" fill="#000" />
+                            <rect x="98" y="2" width="2" height="32" fill="#000" />
+                            <rect x="102" y="2" width="3" height="32" fill="#000" />
+                            <rect x="107" y="2" width="1" height="32" fill="#000" />
+                            <rect x="110" y="2" width="4" height="32" fill="#000" />
+                            <rect x="116" y="2" width="2" height="32" fill="#000" />
+                            <rect x="120" y="2" width="4" height="32" fill="#000" />
+                            <rect x="126" y="2" width="2" height="32" fill="#000" />
+                        </svg>
+                        <div style="font-size: 6.5px; font-weight: bold; letter-spacing: 0.5px;">2316 9/21ENCS</div>
+                    </div>
+                </td>
+            </tr>
         </table>
+
+        <!-- Fill-in instruction line -->
+        <div style="border-bottom: 1px solid #000; padding: 1px 4px; font-size: 6.8px; font-style: italic;">
+            Fill in all applicable spaces. Mark all appropriate boxes with an "X".
+        </div>
+
+        <!-- Year and Period Header Bar -->
+        <table class="bir-table" style="width: 100%; border-collapse: collapse; border-bottom: 1.5px solid #000;">
+            <tr>
+                <td style="width: 50%; border-right: 1.5px solid #000; padding: 1px 4px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <span style="font-size: 7.2px;"><strong>1</strong> For the Year (YYYY)</span>
+                        <div class="box-digit-group">
+                            <span class="digit-box"><%= yearDigits[0] || '2' %></span>
+                            <span class="digit-box"><%= yearDigits[1] || '0' %></span>
+                            <span class="digit-box"><%= yearDigits[2] || '2' %></span>
+                            <span class="digit-box"><%= yearDigits[3] || '6' %></span>
+                        </div>
+                    </div>
+                </td>
+                <td style="width: 50%; padding: 1px 4px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 7.2px;">
+                        <span><strong>2</strong> For the Period</span>
+                        <div style="display: flex; align-items: center; gap: 4px;">
+                            <span>From (MM/DD)</span>
+                            <div class="box-digit-group">
+                                <span class="digit-box">0</span><span class="digit-box">1</span>
+                                <span style="font-size: 8px;">/</span>
+                                <span class="digit-box">0</span><span class="digit-box">1</span>
+                            </div>
+                            <span>To (MM/DD)</span>
+                            <div class="box-digit-group">
+                                <span class="digit-box">1</span><span class="digit-box">2</span>
+                                <span style="font-size: 8px;">/</span>
+                                <span class="digit-box">3</span><span class="digit-box">1</span>
+                            </div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <!-- MAIN 2-COLUMN BODY -->
+        <table class="bir-table" style="width: 100%; border-collapse: collapse; border-bottom: 1.5px solid #000;">
+            <tr>
+                <!-- LEFT COLUMN: PARTS I, II, III, IVA -->
+                <td style="width: 50%; vertical-align: top; border-right: 1.5px solid #000; padding: 0;">
+                    
+                    <!-- PART I: EMPLOYEE INFORMATION -->
+                    <div class="sec-hdr">Part I - Employee Information</div>
+                    
+                    <!-- 3 TIN -->
+                    <div class="field-row" style="display: flex; align-items: center; justify-content: space-between; padding: 1px 3px; border-bottom: 1px solid #000;">
+                        <span style="font-size: 7px;"><strong>3</strong> TIN</span>
+                        <div style="display: flex; align-items: center; gap: 2px;">
+                            <div class="box-digit-group">
+                                <span class="digit-box"><%= empTin[0] %></span>
+                                <span class="digit-box"><%= empTin[1] %></span>
+                                <span class="digit-box"><%= empTin[2] %></span>
+                            </div>
+                            <span>-</span>
+                            <div class="box-digit-group">
+                                <span class="digit-box"><%= empTin[3] %></span>
+                                <span class="digit-box"><%= empTin[4] %></span>
+                                <span class="digit-box"><%= empTin[5] %></span>
+                            </div>
+                            <span>-</span>
+                            <div class="box-digit-group">
+                                <span class="digit-box"><%= empTin[6] %></span>
+                                <span class="digit-box"><%= empTin[7] %></span>
+                                <span class="digit-box"><%= empTin[8] %></span>
+                            </div>
+                            <span>-</span>
+                            <div class="box-digit-group">
+                                <span class="digit-box"><%= empTin[9] %></span>
+                                <span class="digit-box"><%= empTin[10] %></span>
+                                <span class="digit-box"><%= empTin[11] %></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4 Employee's Name & 5 RDO Code -->
+                    <table style="width: 100%; border-collapse: collapse; border-bottom: 1px solid #000;">
+                        <tr>
+                            <td style="width: 78%; border-right: 1px solid #000; padding: 1px 3px; vertical-align: top;">
+                                <div style="font-size: 6.8px;"><strong>4</strong> Employee's Name (Last Name, First Name, Middle Name)</div>
+                                <div style="font-size: 8px; font-weight: bold; color: #000;">
+                                    <%= employee.name.toUpperCase() %>
+                                </div>
+                            </td>
+                            <td style="width: 22%; padding: 1px 3px; vertical-align: top;">
+                                <div style="font-size: 6.8px;"><strong>5</strong> RDO Code</div>
+                                <div class="box-digit-group" style="padding-top: 1px;">
+                                    <span class="digit-box">0</span><span class="digit-box">2</span><span class="digit-box">5</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- 6 Registered Address & 6A ZIP -->
+                    <table style="width: 100%; border-collapse: collapse; border-bottom: 1px solid #000;">
+                        <tr>
+                            <td style="width: 78%; border-right: 1px solid #000; padding: 1px 3px; vertical-align: top;">
+                                <div style="font-size: 6.8px;"><strong>6</strong> Registered Address</div>
+                                <div style="font-size: 7.5px;"><%= employee.presentAddress || employee.permanentAddress || employee.address || 'Plaridel, Bulacan, Philippines' %></div>
+                            </td>
+                            <td style="width: 22%; padding: 1px 3px; vertical-align: top;">
+                                <div style="font-size: 6.8px;"><strong>6A</strong> ZIP Code</div>
+                                <div class="box-digit-group" style="padding-top: 1px;">
+                                    <span class="digit-box">3</span><span class="digit-box">0</span><span class="digit-box">0</span><span class="digit-box">4</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- 6B Local Home Address & 6C ZIP -->
+                    <table style="width: 100%; border-collapse: collapse; border-bottom: 1px solid #000;">
+                        <tr>
+                            <td style="width: 78%; border-right: 1px solid #000; padding: 1px 3px; vertical-align: top;">
+                                <div style="font-size: 6.8px;"><strong>6B</strong> Local Home Address</div>
+                                <div style="font-size: 7.5px;"><%= employee.presentAddress || employee.permanentAddress || employee.address || 'Plaridel, Bulacan, Philippines' %></div>
+                            </td>
+                            <td style="width: 22%; padding: 1px 3px; vertical-align: top;">
+                                <div style="font-size: 6.8px;"><strong>6C</strong> ZIP Code</div>
+                                <div class="box-digit-group" style="padding-top: 1px;">
+                                    <span class="digit-box">3</span><span class="digit-box">0</span><span class="digit-box">0</span><span class="digit-box">4</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- 6D Foreign Address -->
+                    <div style="padding: 1px 3px; border-bottom: 1px solid #000; font-size: 6.8px;">
+                        <span><strong>6D</strong> Foreign Address: </span>
+                        <span>—</span>
+                    </div>
+
+                    <!-- 7 Date of Birth & 8 Contact Number -->
+                    <table style="width: 100%; border-collapse: collapse; border-bottom: 1px solid #000;">
+                        <tr>
+                            <td style="width: 58%; border-right: 1px solid #000; padding: 1px 3px; vertical-align: top;">
+                                <div style="font-size: 6.8px;"><strong>7</strong> Date of Birth (MM/DD/YYYY)</div>
+                                <div class="box-digit-group" style="padding-top: 1px;">
+                                    <span class="digit-box"><%= dobDigits[0] %></span><span class="digit-box"><%= dobDigits[1] %></span>
+                                    <span style="font-size: 7px;">/</span>
+                                    <span class="digit-box"><%= dobDigits[2] %></span><span class="digit-box"><%= dobDigits[3] %></span>
+                                    <span style="font-size: 7px;">/</span>
+                                    <span class="digit-box"><%= dobDigits[4] %></span><span class="digit-box"><%= dobDigits[5] %></span><span class="digit-box"><%= dobDigits[6] %></span><span class="digit-box"><%= dobDigits[7] %></span>
+                                </div>
+                            </td>
+                            <td style="width: 42%; padding: 1px 3px; vertical-align: top;">
+                                <div style="font-size: 6.8px;"><strong>8</strong> Contact Number</div>
+                                <div style="font-size: 7.5px; padding-top: 1px;"><%= employee.phone || employee.contactNumber || '—' %></div>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- 9 & 10 Statutory Minimum Wage -->
+                    <table style="width: 100%; border-collapse: collapse; border-bottom: 1px solid #000;">
+                        <tr>
+                            <td style="width: 78%; border-right: 1px solid #000; padding: 1px 3px; font-size: 6.8px;">
+                                <strong>9</strong> Statutory Minimum Wage rate per day
+                            </td>
+                            <td style="width: 22%; padding: 1px 3px; text-align: right;">
+                                <span class="amt-field-short">—</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="border-right: 1px solid #000; padding: 1px 3px; font-size: 6.8px;">
+                                <strong>10</strong> Statutory Minimum Wage rate per month
+                            </td>
+                            <td style="padding: 1px 3px; text-align: right;">
+                                <span class="amt-field-short">—</span>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- 11 Minimum Wage Earner checkbox -->
+                    <div style="padding: 1px 3px; border-bottom: 1.2px solid #000; font-size: 6.6px; line-height: 1.15;">
+                        <span class="bir-box" style="margin-right: 2px;"></span>
+                        <strong>11</strong> Minimum Wage Earner (MWE) whose compensation is exempt from withholding tax and not subject to income tax
+                    </div>
+
+                    <!-- PART II: EMPLOYER INFORMATION (PRESENT) -->
+                    <div class="sec-hdr">Part II - Employer Information (Present)</div>
+                    
+                    <!-- 12 TIN -->
+                    <div class="field-row" style="display: flex; align-items: center; justify-content: space-between; padding: 1px 3px; border-bottom: 1px solid #000;">
+                        <span style="font-size: 7px;"><strong>12</strong> TIN</span>
+                        <div style="display: flex; align-items: center; gap: 2px;">
+                            <div class="box-digit-group">
+                                <span class="digit-box"><%= employerTin[0] %></span>
+                                <span class="digit-box"><%= employerTin[1] %></span>
+                                <span class="digit-box"><%= employerTin[2] %></span>
+                            </div>
+                            <span>-</span>
+                            <div class="box-digit-group">
+                                <span class="digit-box"><%= employerTin[3] %></span>
+                                <span class="digit-box"><%= employerTin[4] %></span>
+                                <span class="digit-box"><%= employerTin[5] %></span>
+                            </div>
+                            <span>-</span>
+                            <div class="box-digit-group">
+                                <span class="digit-box"><%= employerTin[6] %></span>
+                                <span class="digit-box"><%= employerTin[7] %></span>
+                                <span class="digit-box"><%= employerTin[8] %></span>
+                            </div>
+                            <span>-</span>
+                            <div class="box-digit-group">
+                                <span class="digit-box"><%= employerTin[9] %></span>
+                                <span class="digit-box"><%= employerTin[10] %></span>
+                                <span class="digit-box"><%= employerTin[11] %></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 13 Employer Name -->
+                    <div style="padding: 1px 3px; border-bottom: 1px solid #000;">
+                        <div style="font-size: 6.8px;"><strong>13</strong> Employer's Name</div>
+                        <div style="font-size: 8.5px; font-weight: 900; color: #000;"><%= currentLabName.toUpperCase() %></div>
+                    </div>
+
+                    <!-- 14 Registered Address & 14A ZIP -->
+                    <table style="width: 100%; border-collapse: collapse; border-bottom: 1px solid #000;">
+                        <tr>
+                            <td style="width: 78%; border-right: 1px solid #000; padding: 1px 3px; vertical-align: top;">
+                                <div style="font-size: 6.8px;"><strong>14</strong> Registered Address</div>
+                                <div style="font-size: 7.2px;"><%= currentLabAddress %></div>
+                            </td>
+                            <td style="width: 22%; padding: 1px 3px; vertical-align: top;">
+                                <div style="font-size: 6.8px;"><strong>14A</strong> ZIP Code</div>
+                                <div class="box-digit-group" style="padding-top: 1px;">
+                                    <span class="digit-box"><%= labZipDigits[0] || '3' %></span>
+                                    <span class="digit-box"><%= labZipDigits[1] || '0' %></span>
+                                    <span class="digit-box"><%= labZipDigits[2] || '0' %></span>
+                                    <span class="digit-box"><%= labZipDigits[3] || '4' %></span>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- 15 Type of Employer -->
+                    <div style="padding: 1px 3px; border-bottom: 1.2px solid #000; font-size: 6.8px; display: flex; align-items: center; gap: 10px;">
+                        <span><strong>15</strong> Type of Employer</span>
+                        <span><span class="bir-box" style="margin-right: 2px;">X</span> Main Employer</span>
+                        <span><span class="bir-box" style="margin-right: 2px;"></span> Secondary Employer</span>
+                    </div>
+
+                    <!-- PART III: EMPLOYER INFORMATION (PREVIOUS) -->
+                    <div class="sec-hdr">Part III - Employer Information (Previous)</div>
+                    <div class="field-row" style="display: flex; align-items: center; justify-content: space-between; padding: 1px 3px; border-bottom: 1px solid #000;">
+                        <span style="font-size: 7px;"><strong>16</strong> TIN</span>
+                        <div style="display: flex; align-items: center; gap: 2px;">
+                            <div class="box-digit-group">
+                                <span class="digit-box">&nbsp;</span><span class="digit-box">&nbsp;</span><span class="digit-box">&nbsp;</span>
+                            </div>
+                            <span>-</span>
+                            <div class="box-digit-group">
+                                <span class="digit-box">&nbsp;</span><span class="digit-box">&nbsp;</span><span class="digit-box">&nbsp;</span>
+                            </div>
+                            <span>-</span>
+                            <div class="box-digit-group">
+                                <span class="digit-box">&nbsp;</span><span class="digit-box">&nbsp;</span><span class="digit-box">&nbsp;</span>
+                            </div>
+                            <span>-</span>
+                            <div class="box-digit-group">
+                                <span class="digit-box">&nbsp;</span><span class="digit-box">&nbsp;</span><span class="digit-box">&nbsp;</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="padding: 1px 3px; border-bottom: 1px solid #000; min-height: 14px;">
+                        <div style="font-size: 6.8px;"><strong>17</strong> Employer's Name</div>
+                    </div>
+                    <table style="width: 100%; border-collapse: collapse; border-bottom: 1.2px solid #000;">
+                        <tr>
+                            <td style="width: 78%; border-right: 1px solid #000; padding: 1px 3px; vertical-align: top; min-height: 14px;">
+                                <div style="font-size: 6.8px;"><strong>18</strong> Registered Address</div>
+                            </td>
+                            <td style="width: 22%; padding: 1px 3px; vertical-align: top;">
+                                <div style="font-size: 6.8px;"><strong>18A</strong> ZIP Code</div>
+                                <div class="box-digit-group" style="padding-top: 1px;">
+                                    <span class="digit-box">&nbsp;</span><span class="digit-box">&nbsp;</span><span class="digit-box">&nbsp;</span><span class="digit-box">&nbsp;</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <!-- PART IVA: SUMMARY -->
+                    <div class="sec-hdr">Part IVA - Summary</div>
+                    <table class="bir-item-table" style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td class="item-desc"><strong>19</strong> Gross Compensation Income from Present Employer (Sum of Items 38 and 52)</td>
+                            <td class="item-amt"><%= fmt(totalGross) %></td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc"><strong>20</strong> Less: Total Non-Taxable/Exempt Compensation Income from Present Employer (From Item 38)</td>
+                            <td class="item-amt"><%= fmt(totalNonTaxable) %></td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc"><strong>21</strong> Taxable Compensation Income from Present Employer (Item 19 Less Item 20) (From Item 52)</td>
+                            <td class="item-amt"><%= fmt(taxableIncome) %></td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc"><strong>22</strong> Add: Taxable Compensation Income from Previous Employer</td>
+                            <td class="item-amt">0.00</td>
+                        </tr>
+                        <tr style="font-weight: bold; background: #fafafa;">
+                            <td class="item-desc"><strong>23</strong> Gross Taxable Compensation Income (Sum of Items 21 and 22)</td>
+                            <td class="item-amt"><%= fmt(taxableIncome) %></td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc"><strong>24</strong> Tax Due</td>
+                            <td class="item-amt"><%= fmt(totalTaxWithheld) %></td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc" style="padding-left: 2px;"><strong>25</strong> Amount of Taxes Withheld</td>
+                            <td class="item-amt" style="background: #eee;"></td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc" style="padding-left: 10px;"><strong>25A</strong> Present Employer</td>
+                            <td class="item-amt"><%= fmt(totalTaxWithheld) %></td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc" style="padding-left: 10px;"><strong>25B</strong> Previous Employer, if applicable</td>
+                            <td class="item-amt">0.00</td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc"><strong>26</strong> Total Amount of Taxes Withheld as adjusted (Sum of Items 25A and 25B)</td>
+                            <td class="item-amt"><%= fmt(totalTaxWithheld) %></td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc"><strong>27</strong> 5% Tax Credit (PERA Act of 2008)</td>
+                            <td class="item-amt">0.00</td>
+                        </tr>
+                        <tr style="font-weight: bold; background: #fafafa; border-bottom: none;">
+                            <td class="item-desc"><strong>28</strong> Total Taxes Withheld (Sum of Items 26 and 27)</td>
+                            <td class="item-amt"><%= fmt(totalTaxWithheld) %></td>
+                        </tr>
+                    </table>
+
+                </td>
+
+                <!-- RIGHT COLUMN: PART IV-B DETAILS OF COMPENSATION -->
+                <td style="width: 50%; vertical-align: top; padding: 0;">
+                    <div class="sec-hdr" style="font-size: 7px;">
+                        Part IV-B Details of Compensation Income &amp; Tax Withheld from Present Employer
+                    </div>
+
+                    <table class="bir-item-table" style="width: 100%; border-collapse: collapse;">
+                        <tr class="sub-sec-hdr">
+                            <td style="font-weight: bold; font-size: 6.5px;">A. NON-TAXABLE/EXEMPT COMPENSATION INCOME</td>
+                            <td style="width: 30%; text-align: right; font-weight: bold; font-size: 6.5px;">Amount</td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc"><strong>29</strong> Basic Salary (including the exempt P250,000 &amp; below) or Statutory Minimum Wage of MWE</td>
+                            <td class="item-amt">0.00</td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc"><strong>30</strong> Holiday Pay (MWE)</td>
+                            <td class="item-amt">0.00</td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc"><strong>31</strong> Overtime Pay (MWE)</td>
+                            <td class="item-amt">0.00</td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc"><strong>32</strong> Night Shift Differential (MWE)</td>
+                            <td class="item-amt">0.00</td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc"><strong>33</strong> Hazard Pay (MWE)</td>
+                            <td class="item-amt">0.00</td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc"><strong>34</strong> 13th Month Pay and Other Benefits (maximum of P90,000)</td>
+                            <td class="item-amt">0.00</td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc"><strong>35</strong> De Minimis Benefits</td>
+                            <td class="item-amt">0.00</td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc"><strong>36</strong> SSS, GSIS, PHIC &amp; PAG-IBIG Contributions and Union Dues (Employee share only)</td>
+                            <td class="item-amt"><%= fmt(totalNonTaxable) %></td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc"><strong>37</strong> Salaries and Other Forms of Compensation</td>
+                            <td class="item-amt">0.00</td>
+                        </tr>
+                        <tr style="font-weight: bold; background: #fafafa;">
+                            <td class="item-desc"><strong>38</strong> Total Non-Taxable/Exempt Compensation Income (Sum of Items 29 to 37)</td>
+                            <td class="item-amt"><%= fmt(totalNonTaxable) %></td>
+                        </tr>
+
+                        <tr class="sub-sec-hdr">
+                            <td style="font-weight: bold; font-size: 6.5px;">B. TAXABLE COMPENSATION INCOME REGULAR</td>
+                            <td style="text-align: right; font-weight: bold; font-size: 6.5px;">Amount</td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc"><strong>39</strong> Basic Salary</td>
+                            <td class="item-amt"><%= fmt(taxableIncome) %></td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc"><strong>40</strong> Representation</td>
+                            <td class="item-amt">0.00</td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc"><strong>41</strong> Transportation</td>
+                            <td class="item-amt">0.00</td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc"><strong>42</strong> Cost of Living Allowance (COLA)</td>
+                            <td class="item-amt">0.00</td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc"><strong>43</strong> Fixed Housing Allowance</td>
+                            <td class="item-amt">0.00</td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc" style="padding-left: 2px;"><strong>44</strong> Others (specify)</td>
+                            <td class="item-amt" style="background: #eee;"></td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc" style="padding-left: 8px;">
+                                <div style="display: inline-flex; align-items: center; gap: 3px;">
+                                    <strong>44A</strong>
+                                    <span style="display: inline-block; width: 100px; height: 10px; border: 1px solid #777; background: #fff;"></span>
+                                </div>
+                            </td>
+                            <td class="item-amt">0.00</td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc" style="padding-left: 8px;">
+                                <div style="display: inline-flex; align-items: center; gap: 3px;">
+                                    <strong>44B</strong>
+                                    <span style="display: inline-block; width: 100px; height: 10px; border: 1px solid #777; background: #fff;"></span>
+                                </div>
+                            </td>
+                            <td class="item-amt">0.00</td>
+                        </tr>
+
+                        <tr class="sub-sec-hdr">
+                            <td colspan="2" style="font-weight: bold; font-size: 6.5px;">SUPPLEMENTARY</td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc"><strong>45</strong> Commission</td>
+                            <td class="item-amt">0.00</td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc"><strong>46</strong> Profit Sharing</td>
+                            <td class="item-amt">0.00</td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc"><strong>47</strong> Fees Including Director's Fees</td>
+                            <td class="item-amt">0.00</td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc"><strong>48</strong> Taxable 13th Month Benefits</td>
+                            <td class="item-amt">0.00</td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc"><strong>49</strong> Hazard Pay</td>
+                            <td class="item-amt">0.00</td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc"><strong>50</strong> Overtime Pay</td>
+                            <td class="item-amt">0.00</td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc" style="padding-left: 2px;"><strong>51</strong> Others (specify)</td>
+                            <td class="item-amt" style="background: #eee;"></td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc" style="padding-left: 8px;">
+                                <div style="display: inline-flex; align-items: center; gap: 3px;">
+                                    <strong>51A</strong>
+                                    <span style="display: inline-block; width: 100px; height: 10px; border: 1px solid #777; background: #fff;"></span>
+                                </div>
+                            </td>
+                            <td class="item-amt">0.00</td>
+                        </tr>
+                        <tr>
+                            <td class="item-desc" style="padding-left: 8px;">
+                                <div style="display: inline-flex; align-items: center; gap: 3px;">
+                                    <strong>51B</strong>
+                                    <span style="display: inline-block; width: 100px; height: 10px; border: 1px solid #777; background: #fff;"></span>
+                                </div>
+                            </td>
+                            <td class="item-amt">0.00</td>
+                        </tr>
+                        <tr style="font-weight: bold; background: #fafafa; border-bottom: none;">
+                            <td class="item-desc"><strong>52</strong> Total Taxable Compensation Income (Sum of Items 39 to 51B)</td>
+                            <td class="item-amt"><%= fmt(taxableIncome) %></td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+
+        <!-- BOTTOM LEGAL DECLARATION & SIGNATURES -->
+        <table class="bir-table" style="width: 100%; border-collapse: collapse; border-bottom: 1px solid #000;">
+            <tr>
+                <td colspan="2" style="padding: 2px 4px; font-size: 6.2px; line-height: 1.15; text-align: justify; border-bottom: 1px solid #000;">
+                    I/We declare, under the penalties of perjury that this certificate has been made in good faith, verified by me/us, and to the best of my/our knowledge and belief, is true and correct, pursuant to the provisions of the National Internal Revenue Code, as amended, and the regulations issued under authority thereof. Further, I/we give my/our consent to the processing of my/our information as contemplated under the "Data Privacy Act of 2012" (R.A. No. 10173) for legitimate and lawful purposes.
+                </td>
+            </tr>
+            <!-- 53 Employer Signature & Date -->
+            <tr style="border-bottom: 1px solid #000;">
+                <td style="width: 60%; padding: 2px 4px; border-right: 1px solid #000; vertical-align: bottom;">
+                    <div style="font-size: 6.8px;"><strong>53</strong></div>
+                    <div style="height: 12px;"></div>
+                    <div style="border-top: 1px solid #000; text-align: center; font-size: 6.8px; padding-top: 1px;">
+                        Present Employer/Authorized Agent Signature over Printed Name
+                    </div>
+                </td>
+                <td style="width: 40%; padding: 2px 4px; vertical-align: bottom;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 6.8px;">
+                        <span>Date Signed</span>
+                        <div class="box-digit-group">
+                            <span class="digit-box">&nbsp;</span><span class="digit-box">&nbsp;</span>
+                            <span style="font-size: 7px; margin: 0 1px;">|</span>
+                            <span class="digit-box">&nbsp;</span><span class="digit-box">&nbsp;</span>
+                            <span style="font-size: 7px; margin: 0 1px;">|</span>
+                            <span class="digit-box">&nbsp;</span><span class="digit-box">&nbsp;</span><span class="digit-box">&nbsp;</span><span class="digit-box">&nbsp;</span>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            <!-- 54 CONFORME Employee Signature & Details -->
+            <tr>
+                <td colspan="2" style="padding: 1px 4px; font-size: 6.8px; font-weight: bold; background: #fafafa;">CONFORME:</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #000;">
+                <td style="width: 60%; padding: 2px 4px; border-right: 1px solid #000; vertical-align: bottom;">
+                    <div style="font-size: 6.8px;"><strong>54</strong></div>
+                    <div style="height: 12px;"></div>
+                    <div style="border-top: 1px solid #000; text-align: center; font-size: 6.8px; padding-top: 1px;">
+                        Employee Signature over Printed Name
+                    </div>
+                </td>
+                <td style="width: 40%; padding: 2px 4px; vertical-align: bottom;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; font-size: 6.8px; margin-bottom: 2px;">
+                        <span>Date Signed</span>
+                        <div class="box-digit-group">
+                            <span class="digit-box">&nbsp;</span><span class="digit-box">&nbsp;</span>
+                            <span style="font-size: 7px; margin: 0 1px;">|</span>
+                            <span class="digit-box">&nbsp;</span><span class="digit-box">&nbsp;</span>
+                            <span style="font-size: 7px; margin: 0 1px;">|</span>
+                            <span class="digit-box">&nbsp;</span><span class="digit-box">&nbsp;</span><span class="digit-box">&nbsp;</span><span class="digit-box">&nbsp;</span>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            <tr style="border-bottom: 1px solid #000; font-size: 6.8px;">
+                <td colspan="2" style="padding: 1px 4px;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td style="width: 36%; vertical-align: top; padding-right: 3px;">
+                                <div style="display: flex; align-items: flex-end; gap: 3px;">
+                                    <div style="line-height: 1.1; font-size: 6.5px;">
+                                        CTC/Valid ID No.<br>of Employee
+                                    </div>
+                                    <div style="flex: 1; border: 1px solid #777; height: 11px; background: #fff;"></div>
+                                </div>
+                            </td>
+                            <td style="width: 42%; vertical-align: top; padding: 0 3px;">
+                                <div style="display: flex; align-items: center; gap: 3px; margin-bottom: 1px;">
+                                    <span style="font-size: 6.5px; white-space: nowrap;">Place of Issue</span>
+                                    <div style="flex: 1; border: 1px solid #777; height: 10px; background: #fff;"></div>
+                                </div>
+                                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 6.5px;">
+                                    <span>Date Issued</span>
+                                    <div class="box-digit-group">
+                                        <span class="digit-box" style="height: 10px; width: 9px; line-height: 9px;">&nbsp;</span><span class="digit-box" style="height: 10px; width: 9px; line-height: 9px;">&nbsp;</span>
+                                        <span style="font-size: 7px; margin: 0 1px;">|</span>
+                                        <span class="digit-box" style="height: 10px; width: 9px; line-height: 9px;">&nbsp;</span><span class="digit-box" style="height: 10px; width: 9px; line-height: 9px;">&nbsp;</span>
+                                        <span style="font-size: 7px; margin: 0 1px;">|</span>
+                                        <span class="digit-box" style="height: 10px; width: 9px; line-height: 9px;">&nbsp;</span><span class="digit-box" style="height: 10px; width: 9px; line-height: 9px;">&nbsp;</span><span class="digit-box" style="height: 10px; width: 9px; line-height: 9px;">&nbsp;</span><span class="digit-box" style="height: 10px; width: 9px; line-height: 9px;">&nbsp;</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td style="width: 22%; vertical-align: top; padding-left: 3px;">
+                                <div style="font-size: 6.5px; margin-bottom: 1px;">Amount paid, if CTC</div>
+                                <div style="border: 1px solid #777; height: 10px; background: #fff;"></div>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+
+        <!-- SUBSTITUTED FILING SECTION -->
+        <table class="bir-table" style="width: 100%; border-collapse: collapse; border-bottom: 1px solid #000;">
+            <tr>
+                <td colspan="2" style="background: #e5e7eb; text-align: center; font-weight: bold; font-size: 6.8px; padding: 1px; border-bottom: 1px solid #000; text-transform: uppercase;">
+                    To be accomplished under substituted filing
+                </td>
+            </tr>
+            <tr>
+                <!-- 55 Employer Certification -->
+                <td style="width: 50%; vertical-align: top; border-right: 1px solid #000; padding: 2px 4px;">
+                    <div style="font-size: 6px; line-height: 1.15; text-align: justify; margin-bottom: 2px;">
+                        I declare, under the penalties of perjury that the information herein stated are reported under BIR Form No. 1604-C which has been filed with the Bureau of Internal Revenue.
+                    </div>
+                    <div style="font-size: 6.8px;"><strong>55</strong></div>
+                    <div style="height: 12px;"></div>
+                    <div style="border-top: 1px solid #000; text-align: center; padding-top: 1px;">
+                        <div style="font-size: 6.5px; line-height: 1.15;">
+                            Present Employer/Authorized Agent Signature over Printed Name<br>
+                            (Head of Accounting/Human Resource or Authorized Representative)
+                        </div>
+                    </div>
+                </td>
+
+                <!-- 56 Employee Certification -->
+                <td style="width: 50%; vertical-align: top; padding: 2px 4px;">
+                    <div style="font-size: 6px; line-height: 1.15; text-align: justify; margin-bottom: 2px;">
+                        I declare, under the penalties of perjury that I am qualified under substituted filing of Income Tax Return (BIR Form No. 1700), since I received purely compensation income from only one employer in the Philippines for the calendar year; that taxes have been correctly withheld by my employer (tax due equals tax withheld); that the BIR Form No. 1604-C filed by my employer to the BIR shall constitute as my income tax return; and that BIR Form No. 2316 shall serve the same purpose as if BIR Form No. 1700 has been filed pursuant to the provisions of Revenue Regulations (RR) No. 3-2002, as amended.
+                    </div>
+                    <div style="font-size: 6.8px;"><strong>56</strong></div>
+                    <div style="height: 12px;"></div>
+                    <div style="border-top: 1px solid #000; text-align: center; padding-top: 1px;">
+                        <div style="font-size: 6.5px;">Employee Signature over Printed Name</div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <!-- Form Footer note -->
+        <div style="padding: 1px 3px; font-size: 6px; color: #444;">
+            *NOTE: The BIR Data Privacy is in the BIR website (www.bir.gov.ph)
+        </div>
     </div>
 
-    <!-- Monthly Breakdown Table -->
-    <div style="border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; margin-bottom: 24px;">
-        <div style="background: #f1f5f9; padding: 8px 14px; font-weight: 700; font-size: 0.8rem; color: #334155; text-transform: uppercase;">
-            Monthly Payroll Breakdown (<%= yearPayrolls.length %> Cycles in <%= year %>)
+    <!-- Monthly Breakdown Table (Screen-Only reference for HR) -->
+    <div class="no-print" style="margin-top: 20px; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: white;">
+        <div style="background: #f8fafc; padding: 10px 16px; font-weight: 700; font-size: 0.85rem; color: #334155; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+            <span>📊 Supporting Monthly Payroll Breakdown (<%= yearPayrolls.length %> Cycles in <%= year %>)</span>
+            <small style="color: #64748b; font-weight: normal;">(Reference Only — Not Printed on Official BIR 2316)</small>
         </div>
         <% if (yearPayrolls.length === 0) { %>
             <div style="padding: 20px; text-align: center; color: #94a3b8; font-size: 0.85rem;">
@@ -134,51 +986,33 @@
         <% } else { %>
             <div style="overflow-x: auto;">
                 <table style="width: 100%; border-collapse: collapse; font-size: 0.78rem; text-align: left;">
-                    <thead style="background: #f8fafc; border-bottom: 1px solid #cbd5e1;">
+                    <thead style="background: #f1f5f9; border-bottom: 1px solid #cbd5e1;">
                         <tr>
-                            <th style="padding: 6px 10px;">Month</th>
-                            <th style="padding: 6px 10px; text-align: right;">Gross Pay</th>
-                            <th style="padding: 6px 10px; text-align: right;">SSS EE</th>
-                            <th style="padding: 6px 10px; text-align: right;">PHIC EE</th>
-                            <th style="padding: 6px 10px; text-align: right;">HDMF EE</th>
-                            <th style="padding: 6px 10px; text-align: right;">Tax Withheld</th>
-                            <th style="padding: 6px 10px; text-align: right;">Net Pay</th>
+                            <th style="padding: 8px 12px;">Month</th>
+                            <th style="padding: 8px 12px; text-align: right;">Gross Pay</th>
+                            <th style="padding: 8px 12px; text-align: right;">SSS EE</th>
+                            <th style="padding: 8px 12px; text-align: right;">PHIC EE</th>
+                            <th style="padding: 8px 12px; text-align: right;">HDMF EE</th>
+                            <th style="padding: 8px 12px; text-align: right;">Tax Withheld</th>
+                            <th style="padding: 8px 12px; text-align: right;">Net Pay</th>
                         </tr>
                     </thead>
                     <tbody>
                         <% yearPayrolls.forEach(function(p) { %>
                             <tr style="border-bottom: 1px solid #f1f5f9;">
-                                <td style="padding: 6px 10px; font-weight: 600;"><%= p.month %></td>
-                                <td style="padding: 6px 10px; text-align: right;">₱<%= (Number(p.grossPay) || 0).toFixed(2) %></td>
-                                <td style="padding: 6px 10px; text-align: right; color: #64748b;">₱<%= (Number(p.sssContribution) || 0).toFixed(2) %></td>
-                                <td style="padding: 6px 10px; text-align: right; color: #64748b;">₱<%= (Number(p.philhealthContribution) || 0).toFixed(2) %></td>
-                                <td style="padding: 6px 10px; text-align: right; color: #64748b;">₱<%= (Number(p.pagibigContribution) || 0).toFixed(2) %></td>
-                                <td style="padding: 6px 10px; text-align: right; font-weight: 700; color: #4338ca;">₱<%= (Number(p.withholdingTax) || 0).toFixed(2) %></td>
-                                <td style="padding: 6px 10px; text-align: right; font-weight: 700; color: #059669;">₱<%= (Number(p.netPay) || 0).toFixed(2) %></td>
+                                <td style="padding: 8px 12px; font-weight: 600;"><%= p.month %></td>
+                                <td style="padding: 8px 12px; text-align: right;">₱<%= (Number(p.grossPay) || 0).toFixed(2) %></td>
+                                <td style="padding: 8px 12px; text-align: right; color: #64748b;">₱<%= (Number(p.sssContribution) || 0).toFixed(2) %></td>
+                                <td style="padding: 8px 12px; text-align: right; color: #64748b;">₱<%= (Number(p.philhealthContribution) || 0).toFixed(2) %></td>
+                                <td style="padding: 8px 12px; text-align: right; color: #64748b;">₱<%= (Number(p.pagibigContribution) || 0).toFixed(2) %></td>
+                                <td style="padding: 8px 12px; text-align: right; font-weight: 700; color: #4338ca;">₱<%= (Number(p.withholdingTax) || 0).toFixed(2) %></td>
+                                <td style="padding: 8px 12px; text-align: right; font-weight: 700; color: #059669;">₱<%= (Number(p.netPay) || 0).toFixed(2) %></td>
                             </tr>
                         <% }); %>
                     </tbody>
                 </table>
             </div>
         <% } %>
-    </div>
-
-    <!-- Signatures Section -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 30px; font-size: 0.78rem;">
-        <div style="text-align: center;">
-            <div style="margin-bottom: 30px; color: #64748b;">I declare under penalties of perjury that this certificate has been made in good faith, verified by me, and to the best of my knowledge and belief, is true and correct:</div>
-            <div style="border-top: 1px solid #0f172a; padding-top: 4px; font-weight: 800; color: #0f172a;">
-                <%= employee.name.toUpperCase() %>
-            </div>
-            <div style="color: #64748b;">Signature of Employee / Taxpayer</div>
-        </div>
-        <div style="text-align: center;">
-            <div style="margin-bottom: 30px; color: #64748b;">I declare under penalties of perjury that I have examined this certificate and to the best of my knowledge and belief, is true, correct, and compliant with BIR regulations:</div>
-            <div style="border-top: 1px solid #0f172a; padding-top: 4px; font-weight: 800; color: #0f172a;">
-                GEZYNE CLINICAL LABORATORY / HR HEAD
-            </div>
-            <div style="color: #64748b;">Signature of Employer / Authorized Representative</div>
-        </div>
     </div>
 </div>
 
@@ -197,35 +1031,9 @@ function handleDocBack() {
 
 function changeYear(y) {
     const parts = window.location.pathname.split('/');
-    // /hr/print/tax-summary/:employeeId/:year
     parts[4] = y;
     window.location.href = parts.join('/');
 }
 </script>
-
-<style>
-#gezynebot-container, .gezynebot-container, #gezynebot-launcher, #gezynebot-panel {
-    display: none !important;
-}
-
-@media print {
-    body {
-        margin: 0;
-        padding: 0;
-        background: white;
-    }
-    .no-print, .sidebar, .header, #fullscreenBtn, .hamburger, #gezynebot-container {
-        display: none !important;
-    }
-    .main-content {
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-    .content-wrapper {
-        border: none !important;
-        box-shadow: none !important;
-        padding: 10px !important;
-        max-width: 100% !important;
-    }
-}
-</style>
+</body>
+</html>

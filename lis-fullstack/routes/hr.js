@@ -476,6 +476,7 @@ router.get('/print/payslip/:payrollId', canAccessOwnHR, async (req, res) => {
     }
 
     res.render('hr/print/payslip', {
+      layout: false,
       title: `Payslip — ${employee ? employee.name : 'Staff'} (${payroll.month})`,
       payroll,
       employee,
@@ -510,6 +511,7 @@ router.get('/print/coe/:employeeId', canAccessOwnHR, async (req, res) => {
     const owner = getLaboratoryOwner(employee.department);
 
     res.render('hr/print/coe', {
+      layout: false,
       title: `Certificate of Employment — ${employee.name}`,
       employee,
       includeSalary,
@@ -540,6 +542,7 @@ router.get('/print/leave-form', canAccessOwnHR, async (req, res) => {
     const owner = getLaboratoryOwner(employee ? employee.department : '');
 
     res.render('hr/print/leave', {
+      layout: false,
       title: `Application for Leave — ${employee ? employee.name : 'Form'}`,
       employee,
       leave: null,
@@ -579,6 +582,7 @@ router.get('/print/leave/:id', canAccessOwnHR, async (req, res) => {
     const owner = getLaboratoryOwner(employee.department);
 
     res.render('hr/print/leave', {
+      layout: false,
       title: `Application for Leave — ${employee.name} (${leave.leaveType})`,
       employee,
       leave,
@@ -608,9 +612,13 @@ router.get('/print/clearance/:employeeId', canAccessOwnHR, async (req, res) => {
       return res.redirect('/hr/my');
     }
 
+    const owner = getLaboratoryOwner(employee ? employee.department : '');
+
     res.render('hr/print/clearance', {
+      layout: false,
       title: `Employee Clearance — ${employee.name}`,
       employee,
+      owner,
       currentDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
       sessionUser: req.session.user
     });
@@ -654,9 +662,22 @@ router.get('/print/tax-summary/:employeeId/:year', canAccessOwnHR, async (req, r
       totalPagibig += (Number(p.pagibigContribution) || 0);
     }
 
+    const settings = (global.db && typeof global.db.getSettings === 'function')
+      ? (global.db.getSettings() || {})
+      : ((global.db && global.db.read && global.db.read().settings) || {});
+    const labTin = settings.labTin || '009-876-543-000';
+    const labName = settings.labName || 'GEZYNE CLINICAL LABORATORY';
+    const labAddress = settings.labAddress || '0330 Vergel De Dios St., Poblacion, Plaridel, Bulacan';
+    const labZipCode = settings.labZipCode || '3004';
+    const labRdoCode = settings.labRdoCode || '025';
+
+    const owner = getLaboratoryOwner(employee ? employee.department : '');
+
     res.render('hr/print/tax_summary', {
-      title: `BIR Form 2316 Reference — ${employee.name} (${year})`,
+      layout: false,
+      title: `BIR Form No. 2316 — ${employee.name} (${year})`,
       employee,
+      owner,
       year,
       yearPayrolls,
       totalGross,
@@ -666,11 +687,182 @@ router.get('/print/tax-summary/:employeeId/:year', canAccessOwnHR, async (req, r
       totalPagibig,
       totalNonTaxable: totalSss + totalPh + totalPagibig,
       taxableIncome: Math.max(0, totalGross - (totalSss + totalPh + totalPagibig)),
+      settings,
+      labTin,
+      labName,
+      labAddress,
+      labZipCode,
+      labRdoCode,
+      isMgmt: isManagement(req.session.user),
       sessionUser: req.session.user
     });
   } catch (err) {
     console.error('[hr] print tax summary error:', err);
     res.redirect('/hr/my');
+  }
+});
+
+/**
+ * POST /hr/quick-update-tins
+ * Combined quick update for both Laboratory TIN and Employee TIN directly from the 2316 print preview or HR modal
+ */
+router.post('/quick-update-tins', async (req, res) => {
+  try {
+    if (!isManagement(req.session.user)) {
+      if (req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'))) {
+        return res.status(403).json({ success: false, error: 'Access denied: Only Manager, Owner, or Admin can edit TIN information' });
+      }
+      req.flash('error_msg', 'Access denied: Only Manager, Owner, or Admin can edit TIN information');
+      return res.redirect('/hr');
+    }
+
+    const { employeeId, employeeTin, labTin } = req.body;
+    let labUpdated = false;
+    let empUpdated = false;
+
+    // Update Laboratory TIN if provided
+    if (labTin !== undefined && labTin !== null) {
+      let settings = {};
+      if (global.db && typeof global.db.getSettings === 'function') {
+        settings = global.db.getSettings() || {};
+      } else if (global.db && typeof global.db.read === 'function') {
+        const d = global.db.read();
+        settings = (d && d.settings) || {};
+      }
+      settings.labTin = String(labTin).trim();
+      if (req.body.labName) settings.labName = String(req.body.labName).trim();
+      if (req.body.labAddress) settings.labAddress = String(req.body.labAddress).trim();
+      if (req.body.labZipCode) settings.labZipCode = String(req.body.labZipCode).trim();
+      if (req.body.labRdoCode) settings.labRdoCode = String(req.body.labRdoCode).trim();
+
+      if (global.db && typeof global.db.setSettings === 'function') {
+        global.db.setSettings(settings);
+      } else if (global.db && typeof global.db.read === 'function') {
+        const d = global.db.read();
+        d.settings = settings;
+        global.db.write(d);
+      }
+      labUpdated = true;
+    }
+
+    // Update Employee TIN if provided
+    if (employeeId && employeeTin !== undefined) {
+      const employee = await Employee.findById(employeeId);
+      if (employee) {
+        employee.tinNumber = String(employeeTin).trim();
+        await employee.save();
+        empUpdated = true;
+      }
+    }
+
+    if (req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'))) {
+      return res.json({ success: true, labUpdated, empUpdated, message: 'TINs updated successfully' });
+    }
+
+    req.flash('success_msg', 'TIN information updated successfully');
+    res.redirect(req.get('Referrer') || '/hr');
+  } catch (err) {
+    console.error('[hr] quick-update-tins error:', err);
+    if (req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'))) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+    req.flash('error_msg', 'Failed to update TIN information');
+    res.redirect(req.get('Referrer') || '/hr');
+  }
+});
+
+/**
+ * POST /hr/employees/:id/quick-tin
+ * Quick update of an individual employee's TIN (Restricted to Manager, Owner, Admin)
+ */
+router.post('/employees/:id/quick-tin', async (req, res) => {
+  try {
+    if (!isManagement(req.session.user)) {
+      if (req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'))) {
+        return res.status(403).json({ success: false, error: 'Access denied: Only Manager, Owner, or Admin can edit TIN numbers' });
+      }
+      req.flash('error_msg', 'Access denied: Only Manager, Owner, or Admin can edit TIN numbers');
+      return res.redirect('/hr/employees');
+    }
+
+    const employee = await Employee.findById(req.params.id);
+    if (!employee) {
+      if (req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'))) {
+        return res.status(404).json({ success: false, error: 'Employee not found' });
+      }
+      req.flash('error_msg', 'Employee not found');
+      return res.redirect('/hr/employees');
+    }
+
+    const tin = (req.body.tinNumber || req.body.tin || '').trim();
+    employee.tinNumber = tin;
+    await employee.save();
+
+    if (req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'))) {
+      return res.json({ success: true, employeeId: employee.id, tinNumber: employee.tinNumber });
+    }
+
+    req.flash('success_msg', `Updated BIR TIN for ${employee.name}`);
+    res.redirect(req.get('Referrer') || `/hr/employees/${employee.id}`);
+  } catch (err) {
+    console.error('[hr] quick-tin error:', err);
+    if (req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'))) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+    req.flash('error_msg', 'Failed to update employee TIN');
+    res.redirect(req.get('Referrer') || '/hr/employees');
+  }
+});
+
+/**
+ * POST /hr/settings/lab-tax-info
+ * Full update for Laboratory Tax Registration info from HR Management
+ */
+router.post('/settings/lab-tax-info', async (req, res) => {
+  try {
+    if (!isManagement(req.session.user)) {
+      if (req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'))) {
+        return res.status(403).json({ success: false, error: 'Unauthorized' });
+      }
+      req.flash('error_msg', 'Admin or Manager access required to edit Laboratory Tax Settings');
+      return res.redirect('/hr');
+    }
+
+    let settings = {};
+    if (global.db && typeof global.db.getSettings === 'function') {
+      settings = global.db.getSettings() || {};
+    } else if (global.db && typeof global.db.read === 'function') {
+      const d = global.db.read();
+      settings = (d && d.settings) || {};
+    }
+
+    if (req.body.labTin !== undefined) settings.labTin = String(req.body.labTin).trim();
+    if (req.body.labName !== undefined) settings.labName = String(req.body.labName).trim();
+    if (req.body.labAddress !== undefined) settings.labAddress = String(req.body.labAddress).trim();
+    if (req.body.labZipCode !== undefined) settings.labZipCode = String(req.body.labZipCode).trim();
+    if (req.body.labRdoCode !== undefined) settings.labRdoCode = String(req.body.labRdoCode).trim();
+
+    if (global.db && typeof global.db.setSettings === 'function') {
+      global.db.setSettings(settings);
+    } else if (global.db && typeof global.db.read === 'function') {
+      const d = global.db.read();
+      d.settings = settings;
+      global.db.write(d);
+    }
+
+    if (req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'))) {
+      return res.json({ success: true, settings });
+    }
+
+    req.flash('success_msg', 'Laboratory BIR & Tax Information updated successfully');
+    res.redirect(req.get('Referrer') || '/hr');
+  } catch (err) {
+    console.error('[hr] lab-tax-info error:', err);
+    if (req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'))) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+    req.flash('error_msg', 'Failed to update Laboratory Tax Information');
+    res.redirect(req.get('Referrer') || '/hr');
   }
 });
 
@@ -709,9 +901,19 @@ router.get('/', async (req, res) => {
     // Pending leave requests
     const allLeaves = await LeaveRecord.find({ status: 'Pending' });
 
+    const settings = (global.db && typeof global.db.getSettings === 'function')
+      ? (global.db.getSettings() || {})
+      : ((global.db && global.db.read && global.db.read().settings) || {});
+    const labTin = settings.labTin || '009-876-543-000';
+    const labName = settings.labName || 'GEZYNE CLINICAL LABORATORY';
+    const labAddress = settings.labAddress || '0330 Vergel De Dios St., Poblacion, Plaridel, Bulacan';
+    const labZipCode = settings.labZipCode || '3004';
+    const labRdoCode = settings.labRdoCode || '025';
+
     res.render('hr/index', {
       title: 'HR & Payroll Management',
       currentMonth,
+      employees,
       totalEmployees: employees.length,
       activeEmployeesCount: activeEmployees.length,
       projectedMonthlyPayroll,
@@ -721,6 +923,13 @@ router.get('/', async (req, res) => {
       recentPayrolls,
       pendingLeavesCount: allLeaves.length,
       pendingLeaves: allLeaves.slice(0, 5),
+      settings,
+      labTin,
+      labName,
+      labAddress,
+      labZipCode,
+      labRdoCode,
+      isMgmt: isManagement(req.session.user),
       sessionUser: req.session.user
     });
   } catch (err) {
@@ -866,6 +1075,7 @@ router.get('/employees/:id', async (req, res) => {
       documents,
       leaves,
       statutory,
+      isMgmt: isManagement(req.session.user),
       sessionUser: req.session.user
     });
   } catch (err) {
@@ -1291,10 +1501,27 @@ router.get('/documents', async (req, res) => {
   try {
     const documents = await HrDocument.find();
     const employees = await Employee.find();
+
+    const settings = (global.db && typeof global.db.getSettings === 'function')
+      ? (global.db.getSettings() || {})
+      : ((global.db && global.db.read && global.db.read().settings) || {});
+    const labTin = settings.labTin || '009-876-543-000';
+    const labName = settings.labName || 'GEZYNE CLINICAL LABORATORY';
+    const labAddress = settings.labAddress || '0330 Vergel De Dios St., Poblacion, Plaridel, Bulacan';
+    const labZipCode = settings.labZipCode || '3004';
+    const labRdoCode = settings.labRdoCode || '025';
+
     res.render('hr/documents/index', {
       title: 'HR Documents & Tax Forms',
       documents,
       employees,
+      settings,
+      labTin,
+      labName,
+      labAddress,
+      labZipCode,
+      labRdoCode,
+      isMgmt: isManagement(req.session.user),
       sessionUser: req.session.user
     });
   } catch (err) {
