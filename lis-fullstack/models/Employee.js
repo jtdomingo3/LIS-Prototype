@@ -5,6 +5,9 @@ class Employee {
   constructor(data = {}) {
     this.id = data.id || data.userId || uuidv4();
     this.userId = data.userId || this.id;
+    this._name = data.rawName || data.name || '';
+    this._email = data.email || '';
+    this._role = data.role || '';
     this.employeeCode = data.employeeCode || '';
     this.department = data.department || 'Clinical Laboratory';
     this.position = data.position || '';
@@ -130,7 +133,7 @@ class Employee {
 
   get rawName() {
     const u = this.getUser();
-    return u ? u.name : (this.bankAccountName || this.employeeCode || 'Employee');
+    return u ? u.name : (this._name || this.bankAccountName || this.employeeCode || 'Employee');
   }
 
   get name() {
@@ -139,12 +142,12 @@ class Employee {
 
   get email() {
     const u = this.getUser();
-    return u ? u.email : '';
+    return u ? u.email : (this._email || '');
   }
 
   get role() {
     const u = this.getUser();
-    return u ? u.role : 'Staff';
+    return u ? u.role : (this._role || 'Staff');
   }
 
   isDoctorOrPathologist() {

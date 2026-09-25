@@ -1,4 +1,14 @@
 <div style="width: 100%; box-sizing: border-box;">
+    <%
+      const stat = (typeof statutory !== 'undefined' && statutory) ? statutory : {
+        sss: { fullMonthlyEE: 0, fullMonthlyER: 0 },
+        philhealth: { fullMonthlyEE: 0, fullMonthlyER: 0 },
+        pagibig: { fullMonthlyEE: 0, fullMonthlyER: 0 }
+      };
+      const empPayrolls = (typeof payrolls !== 'undefined' && Array.isArray(payrolls)) ? payrolls : [];
+      const empLeaves = (typeof leaves !== 'undefined' && Array.isArray(leaves)) ? leaves : [];
+      const empDocs = (typeof documents !== 'undefined' && Array.isArray(documents)) ? documents : [];
+    %>
     <!-- Top Bar -->
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 24px;">
         <div style="display: flex; align-items: center; gap: 14px;">
@@ -315,21 +325,21 @@
                     <tbody>
                         <tr style="border-bottom: 1px solid #f1f5f9;">
                             <td style="padding: 6px 0;">SSS + EC</td>
-                            <td style="padding: 6px 0; text-align: right; color: #dc2626;">₱<%= statutory.sss.fullMonthlyEE %></td>
-                            <td style="padding: 6px 0; text-align: right; color: #4338ca;">₱<%= statutory.sss.fullMonthlyER %></td>
-                            <td style="padding: 6px 0; text-align: right; font-weight: 700;">₱<%= (statutory.sss.fullMonthlyEE + statutory.sss.fullMonthlyER).toFixed(2) %></td>
+                            <td style="padding: 6px 0; text-align: right; color: #dc2626;">₱<%= stat.sss ? stat.sss.fullMonthlyEE : 0 %></td>
+                            <td style="padding: 6px 0; text-align: right; color: #4338ca;">₱<%= stat.sss ? stat.sss.fullMonthlyER : 0 %></td>
+                            <td style="padding: 6px 0; text-align: right; font-weight: 700;">₱<%= stat.sss ? (stat.sss.fullMonthlyEE + stat.sss.fullMonthlyER).toFixed(2) : '0.00' %></td>
                         </tr>
                         <tr style="border-bottom: 1px solid #f1f5f9;">
                             <td style="padding: 6px 0;">PhilHealth</td>
-                            <td style="padding: 6px 0; text-align: right; color: #dc2626;">₱<%= statutory.philhealth.fullMonthlyEE %></td>
-                            <td style="padding: 6px 0; text-align: right; color: #4338ca;">₱<%= statutory.philhealth.fullMonthlyER %></td>
-                            <td style="padding: 6px 0; text-align: right; font-weight: 700;">₱<%= (statutory.philhealth.fullMonthlyEE + statutory.philhealth.fullMonthlyER).toFixed(2) %></td>
+                            <td style="padding: 6px 0; text-align: right; color: #dc2626;">₱<%= stat.philhealth ? stat.philhealth.fullMonthlyEE : 0 %></td>
+                            <td style="padding: 6px 0; text-align: right; color: #4338ca;">₱<%= stat.philhealth ? stat.philhealth.fullMonthlyER : 0 %></td>
+                            <td style="padding: 6px 0; text-align: right; font-weight: 700;">₱<%= stat.philhealth ? (stat.philhealth.fullMonthlyEE + stat.philhealth.fullMonthlyER).toFixed(2) : '0.00' %></td>
                         </tr>
                         <tr style="border-bottom: 1px solid #f1f5f9;">
                             <td style="padding: 6px 0;">Pag-IBIG</td>
-                            <td style="padding: 6px 0; text-align: right; color: #dc2626;">₱<%= statutory.pagibig.fullMonthlyEE %></td>
-                            <td style="padding: 6px 0; text-align: right; color: #4338ca;">₱<%= statutory.pagibig.fullMonthlyER %></td>
-                            <td style="padding: 6px 0; text-align: right; font-weight: 700;">₱<%= (statutory.pagibig.fullMonthlyEE + statutory.pagibig.fullMonthlyER).toFixed(2) %></td>
+                            <td style="padding: 6px 0; text-align: right; color: #dc2626;">₱<%= stat.pagibig ? stat.pagibig.fullMonthlyEE : 0 %></td>
+                            <td style="padding: 6px 0; text-align: right; color: #4338ca;">₱<%= stat.pagibig ? stat.pagibig.fullMonthlyER : 0 %></td>
+                            <td style="padding: 6px 0; text-align: right; font-weight: 700;">₱<%= stat.pagibig ? (stat.pagibig.fullMonthlyEE + stat.pagibig.fullMonthlyER).toFixed(2) : '0.00' %></td>
                         </tr>
                     </tbody>
                 </table>

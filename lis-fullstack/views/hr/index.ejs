@@ -1,4 +1,9 @@
 <div style="width: 100%; box-sizing: border-box;">
+    <%
+      const empTotal = (typeof totalEmployees !== 'undefined') ? totalEmployees : (typeof employees !== 'undefined' && Array.isArray(employees) ? employees.length : 0);
+      const pendingLeavesCnt = (typeof pendingLeavesCount !== 'undefined') ? pendingLeavesCount : (typeof pendingLeaves !== 'undefined' && Array.isArray(pendingLeaves) ? pendingLeaves.length : 0);
+      const activeEmpCnt = (typeof activeEmployeesCount !== 'undefined') ? activeEmployeesCount : empTotal;
+    %>
     <!-- Top Header -->
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 24px;">
         <div>
@@ -31,10 +36,10 @@
     <!-- HR Navigation Bar with Indigo Identity -->
     <div style="display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 2px solid #e0e7ff; padding-bottom: 12px; overflow-x: auto;">
         <a href="/hr" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #4f46e5; color: white;">Dashboard</a>
-        <a href="/hr/employees" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #475569;">Employees (<%= totalEmployees %>)</a>
+        <a href="/hr/employees" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #475569;">Employees (<%= empTotal %>)</a>
         <a href="/hr/payroll" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #475569;">Payroll Register</a>
         <a href="/hr/leaves" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #475569;">
-            Leaves <% if (pendingLeavesCount > 0) { %><span style="background: #ef4444; color: white; border-radius: 10px; padding: 1px 6px; font-size: 0.72rem;"><%= pendingLeavesCount %></span><% } %>
+            Leaves <% if (pendingLeavesCnt > 0) { %><span style="background: #ef4444; color: white; border-radius: 10px; padding: 1px 6px; font-size: 0.72rem;"><%= pendingLeavesCnt %></span><% } %>
         </a>
         <a href="/hr/documents" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #475569;">Documents & Tax Forms</a>
         <a href="/hr/my/dtr" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #475569;">⏱️ Time Records (DTR)</a>

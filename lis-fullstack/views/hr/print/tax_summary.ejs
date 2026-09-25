@@ -299,6 +299,17 @@
         const yearDigits = String(year || '2026').split('');
         const dobDigits = getDobDigits(employee.birthDate || employee.dateOfBirth);
         const empZip = getZipDigits(employee.zipCode || '3004');
+
+        // Safe totals fallbacks
+        const totalGrossVal = (typeof totalGross !== 'undefined') ? totalGross : (typeof totals !== 'undefined' && totals && (totals.grossPay || totals.totalGross)) ? (totals.grossPay || totals.totalGross) : 0;
+        const totalNonTaxableVal = (typeof totalNonTaxable !== 'undefined') ? totalNonTaxable : (typeof totals !== 'undefined' && totals && (totals.nonTaxable || totals.totalNonTaxable)) ? (totals.nonTaxable || totals.totalNonTaxable) : 0;
+        const taxableIncomeVal = (typeof taxableIncome !== 'undefined') ? taxableIncome : (typeof totals !== 'undefined' && totals && (totals.taxableIncome || totals.taxable)) ? (totals.taxableIncome || totals.taxable) : 0;
+        const totalTaxWithheldVal = (typeof totalTaxWithheld !== 'undefined') ? totalTaxWithheld : (typeof totals !== 'undefined' && totals && (totals.taxWithheld || totals.totalTaxWithheld)) ? (totals.taxWithheld || totals.totalTaxWithheld) : 0;
+        var totalGross = totalGrossVal;
+        var totalNonTaxable = totalNonTaxableVal;
+        var taxableIncome = taxableIncomeVal;
+        var totalTaxWithheld = totalTaxWithheldVal;
+        var yearPayrolls = (typeof yearPayrolls !== 'undefined' && Array.isArray(yearPayrolls)) ? yearPayrolls : (typeof records !== 'undefined' && Array.isArray(records)) ? records : [];
     %>
 
     <!-- ═══════════ OFFICIAL BIR FORM NO. 2316 (SEPTEMBER 2021 ENCS) ═══════════ -->

@@ -56,6 +56,9 @@ class PayrollRecord {
     this.createdAt = data.createdAt || new Date().toISOString();
     this.updatedAt = data.updatedAt || new Date().toISOString();
 
+    this._employeeName = data.employeeName || '';
+    this._department = data.department || '';
+
     // Cache employee info
     const Employee = require('./Employee');
     if (data._employee instanceof Employee) {
@@ -95,7 +98,7 @@ class PayrollRecord {
 
   get employeeName() {
     const emp = this.getEmployee();
-    return emp ? emp.name : 'Staff';
+    return emp ? emp.name : (this._employeeName || 'Staff');
   }
 
   get employeeCode() {
@@ -105,7 +108,7 @@ class PayrollRecord {
 
   get department() {
     const emp = this.getEmployee();
-    return emp ? emp.department : '';
+    return emp ? emp.department : (this._department || '');
   }
 
   async save() {

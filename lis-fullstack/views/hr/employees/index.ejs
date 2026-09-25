@@ -1,4 +1,9 @@
 <div style="width: 100%; box-sizing: border-box;">
+    <%
+      const activeView = (typeof viewFilter !== 'undefined') ? viewFilter : 'staff';
+      const staffCnt = (typeof totalStaffCount !== 'undefined') ? totalStaffCount : (typeof employees !== 'undefined' && Array.isArray(employees) ? employees.filter(e => !e.isSystemAccount).length : 0);
+      const sysCnt = (typeof totalSystemCount !== 'undefined') ? totalSystemCount : (typeof employees !== 'undefined' && Array.isArray(employees) ? employees.filter(e => e.isSystemAccount === 1).length : 0);
+    %>
     <!-- Page Header -->
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 20px;">
         <div>
@@ -22,16 +27,16 @@
 
     <!-- Directory Tabs (Staff Directory vs System Accounts) -->
     <div style="display: flex; gap: 8px; margin-bottom: 14px; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">
-        <a href="/hr/employees?view=staff" style="text-decoration: none; padding: 6px 14px; border-radius: 8px; font-weight: 700; font-size: 0.88rem; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s ease; <%= (!viewFilter || viewFilter === 'staff') ? 'background: #4f46e5; color: white;' : 'background: #f1f5f9; color: #475569;' %>">
+        <a href="/hr/employees?view=staff" style="text-decoration: none; padding: 6px 14px; border-radius: 8px; font-weight: 700; font-size: 0.88rem; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s ease; <%= (!activeView || activeView === 'staff') ? 'background: #4f46e5; color: white;' : 'background: #f1f5f9; color: #475569;' %>">
             <span>👥 Staff Directory</span>
-            <span style="padding: 1px 6px; border-radius: 10px; font-size: 0.75rem; <%= (!viewFilter || viewFilter === 'staff') ? 'background: rgba(255,255,255,0.25); color: white;' : 'background: #e2e8f0; color: #334155;' %>"><%= typeof totalStaffCount !== 'undefined' ? totalStaffCount : employees.length %></span>
+            <span style="padding: 1px 6px; border-radius: 10px; font-size: 0.75rem; <%= (!activeView || activeView === 'staff') ? 'background: rgba(255,255,255,0.25); color: white;' : 'background: #e2e8f0; color: #334155;' %>"><%= staffCnt %></span>
         </a>
-        <a href="/hr/employees?view=system" style="text-decoration: none; padding: 6px 14px; border-radius: 8px; font-weight: 700; font-size: 0.88rem; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s ease; <%= viewFilter === 'system' ? 'background: #475569; color: white;' : 'background: #f1f5f9; color: #475569;' %>">
+        <a href="/hr/employees?view=system" style="text-decoration: none; padding: 6px 14px; border-radius: 8px; font-weight: 700; font-size: 0.88rem; display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s ease; <%= activeView === 'system' ? 'background: #475569; color: white;' : 'background: #f1f5f9; color: #475569;' %>">
             <span>⚙️ System Accounts</span>
-            <span style="padding: 1px 6px; border-radius: 10px; font-size: 0.75rem; <%= viewFilter === 'system' ? 'background: rgba(255,255,255,0.25); color: white;' : 'background: #e2e8f0; color: #334155;' %>"><%= typeof totalSystemCount !== 'undefined' ? totalSystemCount : 0 %></span>
+            <span style="padding: 1px 6px; border-radius: 10px; font-size: 0.75rem; <%= activeView === 'system' ? 'background: rgba(255,255,255,0.25); color: white;' : 'background: #e2e8f0; color: #334155;' %>"><%= sysCnt %></span>
         </a>
         <a href="/hr/employees?view=all" style="text-decoration: none; padding: 6px 12px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; color: #64748b; margin-left: auto;">
-            All Accounts (<%= (typeof totalStaffCount !== 'undefined' && typeof totalSystemCount !== 'undefined') ? (totalStaffCount + totalSystemCount) : employees.length %>)
+            All Accounts (<%= staffCnt + sysCnt %>)
         </a>
     </div>
 

@@ -1,9 +1,13 @@
 <div style="width: 100%; box-sizing: border-box;">
+    <%
+      const isEditing = (typeof locals !== 'undefined' && typeof locals.isEdit !== 'undefined') ? locals.isEdit : (typeof isEditMode !== 'undefined' ? isEditMode : (typeof employee !== 'undefined' && employee && !!employee.id));
+      const userList = (typeof availableUsers !== 'undefined' && availableUsers) ? availableUsers : (typeof users !== 'undefined' && users ? users : []);
+    %>
     <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
-        <a href="<%= isEdit ? '/hr/employees/' + employee.id : '/hr/employees' %>" style="color: #64748b; text-decoration: none; font-size: 1.3rem;">←</a>
+        <a href="<%= isEditing ? '/hr/employees/' + employee.id : '/hr/employees' %>" style="color: #64748b; text-decoration: none; font-size: 1.3rem;">←</a>
         <div>
             <h2 style="margin: 0; font-size: 1.5rem; color: #1e1b4b; font-weight: 700;">
-                <%= isEdit ? 'Edit Employee Profile' : 'New Employee HR Record' %>
+                <%= isEditing ? 'Edit Employee Profile' : 'New Employee HR Record' %>
             </h2>
             <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.88rem;">
                 Configure staff compensation, benefits, statutory identifiers, and emergency details
@@ -11,7 +15,7 @@
         </div>
     </div>
 
-    <form action="<%= isEdit ? '/hr/employees/' + employee.id : '/hr/employees' %>" method="POST" style="display: flex; flex-direction: column; gap: 20px;">
+    <form action="<%= isEditing ? '/hr/employees/' + employee.id : '/hr/employees' %>" method="POST" style="display: flex; flex-direction: column; gap: 20px;">
         <!-- Card 1: Account Linking & Basic Details -->
         <div style="background: white; border-radius: 14px; padding: 22px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);">
             <h3 style="margin: 0 0 16px 0; font-size: 1.05rem; color: #1e1b4b; font-weight: 700; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
@@ -20,13 +24,13 @@
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                 <div>
                     <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Linked User Account *</label>
-                    <% if (isEdit) { %>
+                    <% if (isEditing) { %>
                         <input type="text" value="<%= employee.name %> (<%= employee.email %>)" disabled style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; background: #f8fafc; color: #64748b; box-sizing: border-box;">
                         <input type="hidden" name="userId" value="<%= employee.userId %>">
                     <% } else { %>
                         <select name="userId" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; background: #fff;">
                             <option value="">-- Select Existing User --</option>
-                            <% (availableUsers || []).forEach(u => { %>
+                            <% userList.forEach(u => { %>
                                 <option value="<%= u.id %>"><%= u.name %> (<%= u.email %>) — <%= u.role %></option>
                             <% }) %>
                         </select>
@@ -268,9 +272,9 @@
 
         <!-- Submit Button -->
         <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 10px;">
-            <a href="<%= isEdit ? '/hr/employees/' + employee.id : '/hr/employees' %>" style="padding: 12px 24px; border: 1px solid #cbd5e1; background: white; color: #475569; border-radius: 8px; font-weight: 600; text-decoration: none;">Cancel</a>
+            <a href="<%= isEditing ? '/hr/employees/' + employee.id : '/hr/employees' %>" style="padding: 12px 24px; border: 1px solid #cbd5e1; background: white; color: #475569; border-radius: 8px; font-weight: 600; text-decoration: none;">Cancel</a>
             <button type="submit" style="padding: 12px 32px; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;">
-                <%= isEdit ? 'Save Changes' : 'Create Employee Record' %>
+                <%= isEditing ? 'Save Changes' : 'Create Employee Record' %>
             </button>
         </div>
     </form>
