@@ -6,7 +6,7 @@
     <div class="coe-body" style="position: relative; z-index: 1;">
         <!-- Controls (hidden on print) -->
         <div class="no-print" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 14px; border-bottom: 1px solid #e2e8f0; font-family: 'Segoe UI', sans-serif;">
-            <button onclick="window.history.back()" style="padding: 6px 14px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600; cursor: pointer;">
+            <button type="button" onclick="handleDocBack()" style="padding: 6px 14px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600; cursor: pointer;">
                 ← Back
             </button>
             <div style="display: flex; gap: 10px; align-items: center;">
@@ -118,6 +118,18 @@
 </div>
 
 <script>
+function handleDocBack() {
+    if (window.opener && window.history.length <= 1) {
+        window.close();
+        return;
+    }
+    if (window.history.length > 1 && document.referrer) {
+        window.history.back();
+        return;
+    }
+    window.location.href = '/hr/my';
+}
+
 function toggleSalary(cb) {
     const url = new URL(window.location.href);
     if (cb.checked) {
@@ -130,6 +142,10 @@ function toggleSalary(cb) {
 </script>
 
 <style>
+#gezynebot-container, .gezynebot-container, #gezynebot-launcher, #gezynebot-panel {
+    display: none !important;
+}
+
 .watermark {
     position: absolute;
     left: 50%;

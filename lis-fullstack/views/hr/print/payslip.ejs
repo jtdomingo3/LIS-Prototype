@@ -1,7 +1,7 @@
 <div class="content-wrapper" style="padding: 20px; max-width: 900px; margin: 0 auto; background: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
     <!-- Controls (hidden on print) -->
     <div class="no-print" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid #e2e8f0;">
-        <button onclick="window.history.back()" style="padding: 6px 14px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600; cursor: pointer;">
+        <button type="button" onclick="handleDocBack()" style="padding: 6px 14px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600; cursor: pointer;">
             ← Back
         </button>
         <div style="display: flex; gap: 8px;">
@@ -184,14 +184,32 @@
     <% }); %>
 </div>
 
+<script>
+function handleDocBack() {
+    if (window.opener && window.history.length <= 1) {
+        window.close();
+        return;
+    }
+    if (window.history.length > 1 && document.referrer) {
+        window.history.back();
+        return;
+    }
+    window.location.href = '/hr/my';
+}
+</script>
+
 <style>
+#gezynebot-container, .gezynebot-container, #gezynebot-launcher, #gezynebot-panel {
+    display: none !important;
+}
+
 @media print {
     body {
         margin: 0;
         padding: 0;
         background: white;
     }
-    .no-print, .sidebar, .header, #fullscreenBtn, .hamburger {
+    .no-print, .sidebar, .header, #fullscreenBtn, .hamburger, #gezynebot-container {
         display: none !important;
     }
     .main-content {

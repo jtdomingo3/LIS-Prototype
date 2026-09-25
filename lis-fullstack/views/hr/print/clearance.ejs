@@ -1,7 +1,7 @@
 <div class="content-wrapper" style="padding: 30px; max-width: 850px; margin: 0 auto; background: white; font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border-radius: 8px;">
     <!-- Print controls -->
     <div class="no-print" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid #e2e8f0;">
-        <button onclick="window.history.back()" style="padding: 6px 14px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600; cursor: pointer;">
+        <button type="button" onclick="handleDocBack()" style="padding: 6px 14px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600; cursor: pointer;">
             ← Back
         </button>
         <button onclick="window.print()" style="padding: 8px 18px; background: #4f46e5; color: white; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
@@ -128,14 +128,32 @@
     </div>
 </div>
 
+<script>
+function handleDocBack() {
+    if (window.opener && window.history.length <= 1) {
+        window.close();
+        return;
+    }
+    if (window.history.length > 1 && document.referrer) {
+        window.history.back();
+        return;
+    }
+    window.location.href = '/hr/my';
+}
+</script>
+
 <style>
+#gezynebot-container, .gezynebot-container, #gezynebot-launcher, #gezynebot-panel {
+    display: none !important;
+}
+
 @media print {
     body {
         margin: 0;
         padding: 0;
         background: white;
     }
-    .no-print, .sidebar, .header, #fullscreenBtn, .hamburger {
+    .no-print, .sidebar, .header, #fullscreenBtn, .hamburger, #gezynebot-container {
         display: none !important;
     }
     .main-content {

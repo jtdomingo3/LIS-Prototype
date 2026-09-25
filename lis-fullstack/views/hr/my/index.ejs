@@ -87,19 +87,17 @@
             </div>
         </div>
 
-        <!-- Leave Balance & Policy -->
+        <!-- Leaves Used -->
         <div style="background: white; border-radius: 14px; padding: 20px; border: 1px solid #e0e7ff; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.04);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                <span style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Available Leaves</span>
-                <span style="background: #ede9fe; color: #7c3aed; padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">Policy</span>
+                <span style="font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Leaves Used</span>
+                <span style="background: #ede9fe; color: #7c3aed; padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">Logged</span>
             </div>
-            <div style="font-size: 1.35rem; font-weight: 800; color: #7c3aed; display: flex; align-items: baseline; gap: 8px;">
-                <span style="color: #64748b; font-size: 1.15rem;">Unpaid VL</span>
-                <span style="font-size: 0.95rem; color: #cbd5e1;">/</span>
-                <span style="color: #059669; font-size: 1.55rem;"><%= (employee.sickLeaveBalance != null ? employee.sickLeaveBalance : 5) %> SL</span>
+            <div style="font-size: 1.6rem; font-weight: 800; color: #7c3aed;">
+                <%= (typeof leavesUsed !== 'undefined') ? leavesUsed : 0 %> <span style="font-size: 1rem; color: #64748b; font-weight: 600;">Day<%= (typeof leavesUsed !== 'undefined' && leavesUsed === 1) ? '' : 's' %></span>
             </div>
             <div style="font-size: 0.78rem; color: #64748b; margin-top: 4px;">
-                VL is non-paid (usage logged in DTR) • <%= (employee.sickLeaveBalance != null ? employee.sickLeaveBalance : 5) %> Sick Leave available
+                Total approved leave days logged
             </div>
         </div>
 
@@ -121,7 +119,7 @@
                     Period: <%= payslips[0].month %> (<%= payslips[0].cutoffPeriod || 'Full Month' %>)
                 <% } else { %>
                     First payroll cycle pending
-                <% } %>
+            <% } %>
             </div>
         </div>
 
@@ -132,16 +130,16 @@
                 <span style="background: #fef3c7; color: #b45309; padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">Self-Service</span>
             </div>
             <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;">
-                <a href="/hr/print/coe/<%= employee.id %>" target="_blank" style="padding: 4px 10px; background: #e0e7ff; color: #4338ca; border-radius: 6px; text-decoration: none; font-size: 0.8rem; font-weight: 600;">
+                <a href="/hr/print/coe/<%= employee.id %>" style="padding: 4px 10px; background: #e0e7ff; color: #4338ca; border-radius: 6px; text-decoration: none; font-size: 0.8rem; font-weight: 600;">
                     📄 COE
                 </a>
-                <a href="/hr/print/leave-form" target="_blank" style="padding: 4px 10px; background: #ede9fe; color: #6d28d9; border-radius: 6px; text-decoration: none; font-size: 0.8rem; font-weight: 600;">
+                <a href="/hr/print/leave-form" style="padding: 4px 10px; background: #ede9fe; color: #6d28d9; border-radius: 6px; text-decoration: none; font-size: 0.8rem; font-weight: 600;">
                     📝 Leave Form
                 </a>
-                <a href="/hr/print/clearance/<%= employee.id %>" target="_blank" style="padding: 4px 10px; background: #fef3c7; color: #92400e; border-radius: 6px; text-decoration: none; font-size: 0.8rem; font-weight: 600;">
+                <a href="/hr/print/clearance/<%= employee.id %>" style="padding: 4px 10px; background: #fef3c7; color: #92400e; border-radius: 6px; text-decoration: none; font-size: 0.8rem; font-weight: 600;">
                     📋 Clearance
                 </a>
-                <a href="/hr/print/tax-summary/<%= employee.id %>/<%= new Date().getFullYear() %>" target="_blank" style="padding: 4px 10px; background: #f1f5f9; color: #475569; border-radius: 6px; text-decoration: none; font-size: 0.8rem; font-weight: 600;">
+                <a href="/hr/print/tax-summary/<%= employee.id %>/<%= new Date().getFullYear() %>" style="padding: 4px 10px; background: #f1f5f9; color: #475569; border-radius: 6px; text-decoration: none; font-size: 0.8rem; font-weight: 600;">
                     📑 BIR 2316
                 </a>
             </div>
@@ -246,9 +244,7 @@
                                 <div>
                                     <div style="font-weight: 600; color: #1e293b; font-size: 0.9rem; display: flex; align-items: center; gap: 6px;">
                                         <%= l.leaveType %> Leave (<%= l.totalDays %> day<%= l.totalDays > 1 ? 's' : '' %>)
-                                        <% if (l.leaveType === 'Vacation') { %>
-                                            <span style="font-size: 0.72rem; color: #dc2626; background: #fee2e2; padding: 1px 6px; border-radius: 4px; font-weight: 700;">Unpaid</span>
-                                        <% } %>
+                                        <span style="font-size: 0.72rem; color: #dc2626; background: #fee2e2; padding: 1px 6px; border-radius: 4px; font-weight: 700;">Unpaid (LWOP)</span>
                                     </div>
                                     <div style="font-size: 0.8rem; color: #64748b; margin-top: 2px;">
                                         <%= l.startDate %> to <%= l.endDate %>
@@ -267,7 +263,7 @@
                                     <% } else { %>
                                         <span style="background: #fef3c7; color: #92400e; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700;">⏳ Pending</span>
                                     <% } %>
-                                    <a href="/hr/print/leave/<%= l.id %>" target="_blank" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: #f1f5f9; color: #4338ca; border-radius: 4px; text-decoration: none; font-size: 0.72rem; font-weight: 700; border: 1px solid #e0e7ff;">
+                                    <a href="/hr/print/leave/<%= l.id %>" style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: #f1f5f9; color: #4338ca; border-radius: 4px; text-decoration: none; font-size: 0.72rem; font-weight: 700; border: 1px solid #e0e7ff;">
                                         <span>🖨️</span> Form
                                     </a>
                                 </div>
@@ -324,20 +320,20 @@
             <form action="/hr/my/leaves" method="POST">
                 <!-- Policy Notice -->
                 <div style="font-size: 0.78rem; background: #fef2f2; color: #991b1b; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; border: 1px solid #fecaca; line-height: 1.45;">
-                    <strong>⚠️ Laboratory Policy Notice:</strong> Vacation Leaves (VL) are non-paid per policy. Leave days will be logged in your DTR. Once submitted, print the official Leave Form for <strong>Laboratory Owner</strong> authorization.
+                    <strong>⚠️ Laboratory Policy Notice:</strong> Gezyne Clinical Laboratory does not provide paid leaves. All leaves of absence (Vacation, Sick, Emergency, etc.) are non-paid (Leave Without Pay / LWOP). Leave days will be logged in your DTR for attendance reconciliation. Once submitted, print the official Leave Form for <strong>Laboratory Owner</strong> authorization.
                 </div>
 
                 <div style="margin-bottom: 14px;">
                     <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 6px;">Leave Type *</label>
                     <select name="leaveType" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; background: white;">
                         <option value="Vacation">Vacation Leave (VL) — Unpaid / Without Pay</option>
-                        <option value="Sick">Sick Leave (SL) — Paid</option>
-                        <option value="Emergency">Emergency Leave</option>
-                        <option value="Maternity">Maternity Leave</option>
-                        <option value="Paternity">Paternity Leave</option>
-                        <option value="Bereavement">Bereavement Leave</option>
-                        <option value="Solo Parent">Solo Parent Leave</option>
-                        <option value="Other">Other Leave</option>
+                        <option value="Sick">Sick Leave (SL) — Unpaid / Without Pay</option>
+                        <option value="Emergency">Emergency Leave — Unpaid / Without Pay</option>
+                        <option value="Maternity">Maternity Leave (Statutory / SSS)</option>
+                        <option value="Paternity">Paternity Leave — Unpaid / Without Pay</option>
+                        <option value="Bereavement">Bereavement Leave — Unpaid / Without Pay</option>
+                        <option value="Solo Parent">Solo Parent Leave — Unpaid / Without Pay</option>
+                        <option value="Other">Other Leave — Unpaid / Without Pay</option>
                     </select>
                 </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">

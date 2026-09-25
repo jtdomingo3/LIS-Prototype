@@ -6,7 +6,7 @@
     <div class="leave-body" style="position: relative; z-index: 1;">
         <!-- Controls (hidden on print) -->
         <div class="no-print" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid #e2e8f0; font-family: 'Segoe UI', sans-serif;">
-            <button onclick="window.history.back()" style="padding: 6px 14px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600; cursor: pointer;">
+            <button type="button" onclick="handleDocBack()" style="padding: 6px 14px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600; cursor: pointer;">
                 ← Back
             </button>
             <div style="display: flex; gap: 10px; align-items: center;">
@@ -100,32 +100,32 @@
             <tr>
                 <td style="border: 1px solid #1e293b; padding: 12px 14px; width: 50%; vertical-align: top;">
                     <div style="font-weight: bold; margin-bottom: 8px; font-size: 0.88rem;">7.A TYPE OF LEAVE:</div>
-                    <div style="line-height: 1.7; font-size: 0.88rem;">
+                    <div style="margin-bottom: 8px; font-size: 0.76rem; color: #b91c1c; font-weight: 600; background: #fef2f2; padding: 4px 8px; border-radius: 4px; border: 1px solid #fecaca;">
+                        ⚠️ Laboratory Policy: Non-Paid Leave / Leave Without Pay (LWOP)
+                    </div>
+                    <div style="line-height: 1.8; font-size: 0.88rem;">
                         <div>
-                            [ <strong><%= (leave && leave.leaveType === 'Vacation') ? '✓' : '&nbsp;&nbsp;' %></strong> ] 
-                            <strong>Vacation Leave (VL)</strong>
-                            <div style="margin-left: 26px; font-size: 0.78rem; color: #b91c1c; font-weight: 600;">
-                                • Unpaid / Leave Without Pay (LWOP) per Laboratory Policy
-                            </div>
+                            <span class="chk-box"><%= (leave && leave.leaveType === 'Vacation') ? '✓' : '' %></span>
+                            <strong>Vacation Leave (VL)</strong> <span style="font-size: 0.78rem; color: #64748b;">— Non-paid / Without Pay</span>
                         </div>
                         <div style="margin-top: 4px;">
-                            [ <strong><%= (leave && leave.leaveType === 'Sick') ? '✓' : '&nbsp;&nbsp;' %></strong> ] 
-                            <strong>Sick Leave (SL)</strong>
+                            <span class="chk-box"><%= (leave && leave.leaveType === 'Sick') ? '✓' : '' %></span>
+                            <strong>Sick Leave (SL)</strong> <span style="font-size: 0.78rem; color: #64748b;">— Non-paid / Without Pay</span>
                         </div>
-                        <div>
-                            [ <strong><%= (leave && leave.leaveType === 'Emergency') ? '✓' : '&nbsp;&nbsp;' %></strong> ] 
-                            <strong>Emergency Leave</strong>
+                        <div style="margin-top: 2px;">
+                            <span class="chk-box"><%= (leave && leave.leaveType === 'Emergency') ? '✓' : '' %></span>
+                            <strong>Emergency Leave</strong> <span style="font-size: 0.78rem; color: #64748b;">— Non-paid / Without Pay</span>
                         </div>
-                        <div>
-                            [ <strong><%= (leave && leave.leaveType === 'Maternity') ? '✓' : '&nbsp;&nbsp;' %></strong> ] 
-                            <strong>Maternity Leave</strong>
+                        <div style="margin-top: 2px;">
+                            <span class="chk-box"><%= (leave && leave.leaveType === 'Maternity') ? '✓' : '' %></span>
+                            <strong>Maternity Leave</strong> <span style="font-size: 0.78rem; color: #64748b;">(Statutory / SSS)</span>
                         </div>
-                        <div>
-                            [ <strong><%= (leave && leave.leaveType === 'Paternity') ? '✓' : '&nbsp;&nbsp;' %></strong> ] 
-                            <strong>Paternity Leave</strong>
+                        <div style="margin-top: 2px;">
+                            <span class="chk-box"><%= (leave && leave.leaveType === 'Paternity') ? '✓' : '' %></span>
+                            <strong>Paternity Leave</strong> <span style="font-size: 0.78rem; color: #64748b;">— Non-paid / Without Pay</span>
                         </div>
-                        <div>
-                            [ <strong><%= (leave && (leave.leaveType === 'Bereavement' || leave.leaveType === 'Other')) ? '✓' : '&nbsp;&nbsp;' %></strong> ] 
+                        <div style="margin-top: 2px;">
+                            <span class="chk-box"><%= (leave && (leave.leaveType === 'Bereavement' || leave.leaveType === 'Other')) ? '✓' : '' %></span>
                             <strong>Other Leave:</strong> <%= (leave && (leave.leaveType === 'Bereavement' || leave.leaveType === 'Other')) ? (leave.leaveType + (leave.reason ? ' (' + leave.reason + ')' : '')) : '________________________' %>
                         </div>
                     </div>
@@ -181,15 +181,20 @@
                 <!-- Left: Certification & Recommendation -->
                 <td style="border: 1px solid #1e293b; padding: 12px 14px; width: 50%; vertical-align: top;">
                     <div style="font-weight: bold; margin-bottom: 6px; font-size: 0.85rem;">8.A CERTIFICATION OF LEAVE POLICY:</div>
-                    <div style="font-size: 0.82rem; color: #475569; line-height: 1.5; margin-bottom: 10px; background: #f8fafc; padding: 8px 10px; border-radius: 6px; border-left: 3px solid #6366f1;">
-                        • <strong>Vacation Leave (VL):</strong> Non-paid / Unpaid. Usage is officially logged in employee DTR.<br>
-                        • <strong>Sick Leave (SL) Balance:</strong> <%= (employee && employee.sickLeaveBalance != null) ? employee.sickLeaveBalance : 5 %> Day(s) Available
+                    <div style="font-size: 0.82rem; color: #475569; line-height: 1.5; margin-bottom: 12px; background: #f8fafc; padding: 8px 10px; border-radius: 6px; border-left: 3px solid #6366f1;">
+                        • <strong>Laboratory Leave Policy:</strong> Gezyne Clinical Laboratory does not provide paid leaves. All approved leaves are non-paid (Leave Without Pay / LWOP). All used leave days are logged in the employee DTR for attendance reconciliation.
                     </div>
 
                     <div style="font-weight: bold; margin-bottom: 6px; font-size: 0.85rem;">8.B RECOMMENDATION:</div>
-                    <div style="font-size: 0.88rem; line-height: 1.6; margin-bottom: 14px;">
-                        [ <%= (leave && leave.status === 'Approved') ? '✓' : '&nbsp;&nbsp;' %> ] For Approval<br>
-                        [ <%= (leave && leave.status === 'Rejected') ? '✓' : '&nbsp;&nbsp;' %> ] For Disapproval
+                    <div style="font-size: 0.88rem; line-height: 1.7; margin-bottom: 14px;">
+                        <div>
+                            <span class="chk-box"><%= (leave && leave.status === 'Approved') ? '✓' : '' %></span>
+                            <strong>For Approval</strong>
+                        </div>
+                        <div style="margin-top: 3px;">
+                            <span class="chk-box"><%= (leave && leave.status === 'Rejected') ? '✓' : '' %></span>
+                            <strong>For Disapproval</strong>
+                        </div>
                         <% if (leave && leave.notes) { %>
                             <div style="font-size: 0.78rem; color: #dc2626; margin-top: 2px;">Note: <%= leave.notes %></div>
                         <% } %>
@@ -210,9 +215,15 @@
                         8.C FINAL APPROVAL (LABORATORY OWNER):
                     </div>
 
-                    <div style="margin-bottom: 12px; font-size: 0.95rem; font-weight: 700;">
-                        [ <%= (leave && leave.status === 'Approved') ? '✓' : '&nbsp;&nbsp;' %> ] APPROVED<br>
-                        [ <%= (leave && leave.status === 'Rejected') ? '✓' : '&nbsp;&nbsp;' %> ] DISAPPROVED
+                    <div style="margin-bottom: 12px; font-size: 0.95rem; font-weight: 700; line-height: 1.8;">
+                        <div>
+                            <span class="chk-box"><%= (leave && leave.status === 'Approved') ? '✓' : '' %></span>
+                            <strong>APPROVED</strong>
+                        </div>
+                        <div style="margin-top: 3px;">
+                            <span class="chk-box"><%= (leave && leave.status === 'Rejected') ? '✓' : '' %></span>
+                            <strong>DISAPPROVED</strong>
+                        </div>
                     </div>
 
                     <!-- Signatory: Laboratory Owner -->
@@ -251,7 +262,36 @@
     </div>
 </div>
 
+<script>
+function handleDocBack() {
+    if (window.opener && window.history.length <= 1) {
+        window.close();
+        return;
+    }
+    if (window.history.length > 1 && document.referrer) {
+        window.history.back();
+        return;
+    }
+    window.location.href = '/hr/my';
+}
+</script>
+
 <style>
+.chk-box {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid #0f172a;
+    text-align: center;
+    line-height: 13px;
+    font-size: 0.85rem;
+    font-weight: 900;
+    vertical-align: middle;
+    margin-right: 6px;
+    background: #ffffff;
+    box-sizing: border-box;
+}
+
 .watermark {
     position: absolute;
     left: 50%;
@@ -263,13 +303,17 @@
     z-index: 0;
 }
 
+#gezynebot-container, .gezynebot-container, #gezynebot-launcher, #gezynebot-panel {
+    display: none !important;
+}
+
 @media print {
     body {
         margin: 0;
         padding: 0;
         background: white;
     }
-    .no-print, .sidebar, .header, #fullscreenBtn, .hamburger {
+    .no-print, .sidebar, .header, #fullscreenBtn, .hamburger, #gezynebot-container {
         display: none !important;
     }
     .main-content {

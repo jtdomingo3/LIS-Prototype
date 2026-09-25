@@ -79,6 +79,9 @@ router.get('/my', canAccessOwnHR, async (req, res) => {
     const payslips = await PayrollRecord.findByEmployeeId(employee.id);
     const documents = await HrDocument.findByEmployeeId(employee.id);
     const leaves = await LeaveRecord.findByEmployeeId(employee.id);
+    const leavesUsed = leaves
+      .filter(l => l.status === 'Approved')
+      .reduce((sum, l) => sum + (Number(l.totalDays) || 0), 0);
 
     res.render('hr/my/index', {
       title: 'My HR Portal',
@@ -86,6 +89,7 @@ router.get('/my', canAccessOwnHR, async (req, res) => {
       payslips: payslips.slice(0, 6),
       documents,
       leaves: leaves.slice(0, 6),
+      leavesUsed,
       isManagement: isManagement(req.session.user),
       sessionUser: req.session.user
     });
@@ -137,8 +141,8 @@ router.post('/my/leaves', canAccessOwnHR, async (req, res) => {
       return res.redirect('/hr/my');
     }
 
-    // Vacation Leave is unpaid per laboratory policy (Leave Without Pay)
-    const isPaid = (leaveType !== 'Vacation');
+    // All leaves are non-paid per laboratory policy (Leave Without Pay / LWOP)
+    const isPaid = false;
 
     const leave = new LeaveRecord({
       employeeId: employee.id,
@@ -152,7 +156,7 @@ router.post('/my/leaves', canAccessOwnHR, async (req, res) => {
     });
 
     await leave.save();
-    req.flash('success_msg', 'Leave request submitted successfully. You can print the official Leave Application Form for Laboratory Owner approval.');
+    req.flash('success_msg', 'Leave request submitted successfully (Non-paid / Leave Without Pay). You can print the official Leave Application Form for Laboratory Owner approval.');
     res.redirect('/hr/my');
   } catch (err) {
     console.error('[hr] submit leave error:', err);
