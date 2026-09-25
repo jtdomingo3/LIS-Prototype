@@ -57,7 +57,14 @@ class PayrollRecord {
     this.updatedAt = data.updatedAt || new Date().toISOString();
 
     // Cache employee info
-    this._employee = data._employee || null;
+    const Employee = require('./Employee');
+    if (data._employee instanceof Employee) {
+      this._employee = data._employee;
+    } else if (data._employee && typeof data._employee === 'object') {
+      this._employee = new Employee(data._employee);
+    } else {
+      this._employee = null;
+    }
   }
 
   get totalEmployerCost() {
@@ -70,15 +77,35 @@ class PayrollRecord {
   }
 
   getEmployee() {
-    if (this._employee) return this._employee;
-    if (global.db && typeof global.db.getEmployeeById === 'function') {
+    const Employee = require('./Employee');
+    if (this.employeeId && global.db && typeof global.db.getEmployeeById === 'function') {
       const emp = global.db.getEmployeeById(this.employeeId);
       if (emp) {
-        const Employee = require('./Employee');
         this._employee = new Employee(emp);
+        return this._employee;
       }
     }
-    return this._employee;
+    if (this._employee instanceof Employee) return this._employee;
+    if (this._employee && typeof this._employee === 'object') {
+      this._employee = new Employee(this._employee);
+      return this._employee;
+    }
+    return null;
+  }
+
+  get employeeName() {
+    const emp = this.getEmployee();
+    return emp ? emp.name : 'Staff';
+  }
+
+  get employeeCode() {
+    const emp = this.getEmployee();
+    return emp ? emp.employeeCode : '';
+  }
+
+  get department() {
+    const emp = this.getEmployee();
+    return emp ? emp.department : '';
   }
 
   async save() {
@@ -87,7 +114,9 @@ class PayrollRecord {
       this.month = this.payPeriodEnd.slice(0, 7);
     }
     if (global.db && typeof global.db.savePayrollRecord === 'function') {
-      global.db.savePayrollRecord(this);
+      const toSave = { ...this };
+      delete toSave._employee;
+      global.db.savePayrollRecord(toSave);
     }
     return this;
   }

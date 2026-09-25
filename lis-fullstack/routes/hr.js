@@ -937,6 +937,8 @@ router.get('/', async (req, res) => {
     // Recent payroll runs
     const recentPayrolls = (await PayrollRecord.find({ month: currentMonth })).slice(0, 10);
     const actualMonthlyCost = recentPayrolls.reduce((sum, p) => sum + (p.totalEmployerCost || 0), 0);
+    const actualGrossPay = recentPayrolls.reduce((sum, p) => sum + (Number(p.grossPay) || 0), 0);
+    const actualEmployerContributions = recentPayrolls.reduce((sum, p) => sum + (Number(p.sssEmployerShare) || 0) + (Number(p.philhealthEmployerShare) || 0) + (Number(p.pagibigEmployerShare) || 0), 0);
 
     // Pending leave requests
     const allLeaves = await LeaveRecord.find({ status: 'Pending' });
@@ -959,6 +961,8 @@ router.get('/', async (req, res) => {
       projectedMonthlyPayroll,
       totalEmployerContributions,
       actualMonthlyCost,
+      actualGrossPay,
+      actualEmployerContributions,
       departmentCounts,
       recentPayrolls,
       pendingLeavesCount: allLeaves.length,

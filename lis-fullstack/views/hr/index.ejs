@@ -57,17 +57,21 @@
             </div>
         </div>
 
-        <!-- Monthly Payroll Projection -->
+        <!-- Monthly Payroll Projection / Actual -->
         <div style="background: white; border-radius: 14px; padding: 20px; border: 1px solid #e0e7ff; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.05);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <span style="font-size: 0.82rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Monthly Base Payroll</span>
-                <span style="background: rgba(16, 185, 129, 0.12); color: #059669; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">Salaries</span>
+                <span style="font-size: 0.82rem; font-weight: 700; color: #64748b; text-transform: uppercase;">
+                    <%= (recentPayrolls && recentPayrolls.length > 0) ? 'Processed Payroll' : 'Monthly Base Payroll' %>
+                </span>
+                <span style="background: rgba(16, 185, 129, 0.12); color: #059669; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">
+                    <%= (recentPayrolls && recentPayrolls.length > 0) ? (recentPayrolls.length + ' Staff Processed') : 'Base Projection' %>
+                </span>
             </div>
             <div style="font-size: 1.85rem; font-weight: 800; color: #059669;">
-                ₱<%= projectedMonthlyPayroll.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %>
+                ₱<%= ((recentPayrolls && recentPayrolls.length > 0) ? actualGrossPay : projectedMonthlyPayroll).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %>
             </div>
             <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 6px;">
-                Monthly basic pay + recurring allowances
+                <%= (recentPayrolls && recentPayrolls.length > 0) ? ('Actual gross salaries for ' + currentMonth) : 'Monthly basic pay + recurring allowances' %>
             </div>
         </div>
 
@@ -78,7 +82,7 @@
                 <span style="background: rgba(245, 158, 11, 0.12); color: #d97706; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">Statutory</span>
             </div>
             <div style="font-size: 1.85rem; font-weight: 800; color: #d97706;">
-                ₱<%= totalEmployerContributions.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %>
+                ₱<%= ((recentPayrolls && recentPayrolls.length > 0) ? actualEmployerContributions : totalEmployerContributions).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %>
             </div>
             <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 6px;">
                 SSS + PhilHealth + Pag-IBIG ER shares
@@ -92,7 +96,7 @@
                 <span style="background: rgba(79, 70, 229, 0.12); color: #4f46e5; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">Total P&L</span>
             </div>
             <div style="font-size: 1.85rem; font-weight: 800; color: #4f46e5;">
-                ₱<%= (projectedMonthlyPayroll + totalEmployerContributions).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %>
+                ₱<%= ((recentPayrolls && recentPayrolls.length > 0) ? actualMonthlyCost : (projectedMonthlyPayroll + totalEmployerContributions)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %>
             </div>
             <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 6px;">
                 Automatically reflected in Costing module
@@ -192,7 +196,7 @@
                     <tbody>
                         <% recentPayrolls.forEach(p => { %>
                             <tr style="border-bottom: 1px solid #f1f5f9;">
-                                <td style="padding: 10px 14px; font-weight: 600; color: #0f172a;"><%= p.employeeName %></td>
+                                <td style="padding: 10px 14px; font-weight: 600; color: #0f172a;"><%= p.employeeName || (p.getEmployee && p.getEmployee()?.name) || 'Staff' %></td>
                                 <td style="padding: 10px 14px; color: #64748b;"><%= p.payPeriodStart.slice(0, 10) %> to <%= p.payPeriodEnd.slice(0, 10) %></td>
                                 <td style="padding: 10px 14px; text-align: right; color: #0f172a;">₱<%= (Number(p.grossPay) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
                                 <td style="padding: 10px 14px; text-align: right; color: #dc2626;">-₱<%= (Number(p.totalDeductions) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
