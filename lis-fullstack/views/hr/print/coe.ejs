@@ -73,8 +73,8 @@
         <div style="font-size: 1.1rem; line-height: 1.8; text-align: justify; margin-bottom: 24px;">
             <p style="text-indent: 40px; margin-bottom: 18px;">
                 This is to certify that <strong><%= employee.name.toUpperCase() %></strong> has been a bonafide employee of <strong>GEZYNE CLINICAL LABORATORY</strong> holding the position of <strong><%= employee.position ? employee.position.toUpperCase() : 'LABORATORY STAFF' %></strong> under the <strong><%= employee.department ? employee.department.toUpperCase() : 'CLINICAL LABORATORY' %></strong> department from <strong><%= employee.dateHired || 'the start of operations' %></strong> up to 
-                <% if (employee.employmentStatus === 'Terminated' || employee.employmentStatus === 'Resigned') { %>
-                    <strong><%= employee.dateTerminated || 'the date of separation' %></strong>.
+                <% if (employee.employmentStatus === 'Terminated' || employee.employmentStatus === 'Resigned' || employee.employmentStatus === 'AWOL') { %>
+                    <strong><%= employee.dateResigned || employee.dateTerminated || employee.endDate || 'the date of separation' %></strong>.
                 <% } else { %>
                     <strong>the present</strong>.
                 <% } %>

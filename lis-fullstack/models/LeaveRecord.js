@@ -85,6 +85,21 @@ class LeaveRecord {
     return this;
   }
 
+  get employeeName() {
+    const emp = this.getEmployee();
+    return emp ? emp.name : 'Employee';
+  }
+
+  get employeeCode() {
+    const emp = this.getEmployee();
+    return emp ? emp.employeeCode : '';
+  }
+
+  get department() {
+    const emp = this.getEmployee();
+    return emp ? emp.department : '';
+  }
+
   toJSON() {
     const emp = this.getEmployee();
     return {

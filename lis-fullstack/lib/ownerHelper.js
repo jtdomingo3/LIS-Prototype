@@ -6,6 +6,8 @@
  * - If a separate owner is configured for X-Ray / Radiology, that owner is used for X-Ray staff and reports.
  */
 
+const Employee = require('../models/Employee');
+
 function getLaboratoryOwner(department = '') {
   const users = (global.db && typeof global.db.getUsers === 'function')
     ? global.db.getUsers()
@@ -35,7 +37,7 @@ function getLaboratoryOwner(department = '') {
     if (xrayOwner) {
       return {
         id: xrayOwner.id,
-        name: xrayOwner.name,
+        name: Employee.cleanName(xrayOwner.name),
         role: 'Owner',
         title: 'Laboratory Owner — X-Ray & Imaging Section',
         signature: xrayOwner.signature || null,
@@ -49,7 +51,7 @@ function getLaboratoryOwner(department = '') {
     const primary = owners[0];
     return {
       id: primary.id,
-      name: primary.name,
+      name: Employee.cleanName(primary.name),
       role: 'Owner',
       title: 'Laboratory Owner',
       signature: primary.signature || null,

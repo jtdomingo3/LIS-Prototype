@@ -6,9 +6,35 @@
             <div>
                 <h2 style="margin: 0; font-size: 1.6rem; color: #1e1b4b; font-weight: 700; display: flex; align-items: center; gap: 10px;">
                     <%= employee.name %>
-                    <span style="font-size: 0.78rem; font-weight: 700; padding: 3px 8px; border-radius: 6px; <%= employee.employmentStatus === 'Active' ? 'background: #dcfce7; color: #166534;' : 'background: #fee2e2; color: #991b1b;' %>">
-                        <%= employee.employmentStatus %>
-                    </span>
+                    <% if (employee.isSystemAccount) { %>
+                        <span style="font-size: 0.78rem; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;">
+                            ⚙️ SYSTEM ACCOUNT
+                        </span>
+                    <% } %>
+                    <% 
+                        let profileStatusBg = '#dcfce7', profileStatusColor = '#166534';
+                        if (employee.employmentStatus === 'Resigned') {
+                            profileStatusBg = '#fef3c7'; profileStatusColor = '#92400e';
+                        } else if (employee.employmentStatus === 'AWOL') {
+                            profileStatusBg = '#fee2e2'; profileStatusColor = '#b91c1c';
+                        } else if (employee.employmentStatus === 'Terminated') {
+                            profileStatusBg = '#fee2e2'; profileStatusColor = '#991b1b';
+                        } else if (employee.employmentStatus === 'On Leave') {
+                            profileStatusBg = '#ede9fe'; profileStatusColor = '#6d28d9';
+                        }
+                        const safeEmpName = (employee.name || '').replace(/'/g, "\\'");
+                        const safeEmpReason = (employee.resignationReason || '').replace(/'/g, "\\'");
+                        const empSepDate = employee.dateResigned || employee.dateTerminated || employee.endDate || '';
+                    %>
+                    <button type="button" 
+                        onclick="openStatusModal('<%= employee.id %>', '<%= safeEmpName %>', '<%= employee.employeeCode %>', '<%= employee.employmentStatus %>', '<%= empSepDate %>', '<%= safeEmpReason %>')"
+                        style="border: none; background: transparent; cursor: pointer; padding: 0;"
+                        title="Click to update employment status or set end date">
+                        <span style="font-size: 0.78rem; font-weight: 700; padding: 3px 9px; border-radius: 6px; background: <%= profileStatusBg %>; color: <%= profileStatusColor %>; display: inline-flex; align-items: center; gap: 4px;">
+                            <span><%= employee.employmentStatus === 'AWOL' ? '⚠️' : (employee.employmentStatus === 'Resigned' ? '⏹' : '●') %></span>
+                            <%= employee.employmentStatus %>
+                        </span>
+                    </button>
                 </h2>
                 <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.88rem;">
                     <%= employee.employeeCode %> • <%= employee.position || employee.role %> • <%= employee.department %>
@@ -17,20 +43,56 @@
         </div>
         <!-- Quick Action Buttons -->
         <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <button type="button" 
+                onclick="openStatusModal('<%= employee.id %>', '<%= safeEmpName %>', '<%= employee.employeeCode %>', '<%= employee.employmentStatus %>', '<%= empSepDate %>', '<%= safeEmpReason %>')"
+                class="btn btn-small" 
+                style="padding: 8px 14px; background: #f8fafc; color: #1e293b; border: 1.5px solid #cbd5e1; border-radius: 8px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                🔄 Change Status
+            </button>
+            <form action="/hr/employees/<%= employee.id %>/toggle-system-account" method="POST" style="display: inline;" onsubmit="return confirm('<%= employee.isSystemAccount ? 'Restore this account to the regular staff directory?' : 'Tag as System Account? This account will be removed from the active employee directory and payroll.' %>');">
+                <button type="submit" class="btn btn-small" style="padding: 8px 14px; background: <%= employee.isSystemAccount ? '#eff6ff' : '#f8fafc' %>; color: <%= employee.isSystemAccount ? '#1d4ed8' : '#64748b' %>; border: 1px solid <%= employee.isSystemAccount ? '#bfdbfe' : '#cbd5e1' %>; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                    <%= employee.isSystemAccount ? '↩️ Restore Staff Account' : '⚙️ Tag as System Account' %>
+                </button>
+            </form>
             <a href="/hr/employees/<%= employee.id %>/edit" class="btn btn-secondary btn-small" style="padding: 8px 14px; background: #f1f5f9; color: #1e293b; border: 1px solid #cbd5e1; border-radius: 8px; text-decoration: none; font-weight: 600;">
                 ✏️ Edit Profile
             </a>
-            <a href="/hr/print/coe/<%= employee.id %>" target="_blank" class="btn btn-small" style="padding: 8px 14px; background: #e0e7ff; color: #4338ca; border-radius: 8px; text-decoration: none; font-weight: 600;">
-                📄 Print COE
-            </a>
-            <a href="/hr/print/clearance/<%= employee.id %>" target="_blank" class="btn btn-small" style="padding: 8px 14px; background: #fef3c7; color: #92400e; border-radius: 8px; text-decoration: none; font-weight: 600;">
-                📋 Clearance Form
-            </a>
+            <% if (!employee.isSystemAccount) { %>
+                <a href="/hr/print/coe/<%= employee.id %>" target="_blank" class="btn btn-small" style="padding: 8px 14px; background: #e0e7ff; color: #4338ca; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                    📄 Print COE
+                </a>
+                <a href="/hr/print/clearance/<%= employee.id %>" target="_blank" class="btn btn-small" style="padding: 8px 14px; background: #fef3c7; color: #92400e; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                    📋 Clearance Form
+                </a>
+            <% } %>
             <a href="/hr/print/tax-summary/<%= employee.id %>/<%= new Date().getFullYear() %>" target="_blank" class="btn btn-small" style="padding: 8px 14px; background: #f1f5f9; color: #475569; border-radius: 8px; text-decoration: none; font-weight: 600;">
                 📑 BIR 2316 Reference
             </a>
         </div>
     </div>
+
+    <!-- Separation Status Alert Banner (Shown if Resigned, AWOL, or Terminated) -->
+    <% if (employee.employmentStatus === 'Resigned' || employee.employmentStatus === 'AWOL' || employee.employmentStatus === 'Terminated') { %>
+        <div style="background: <%= employee.employmentStatus === 'AWOL' ? '#fff1f2' : '#fffbeb' %>; border: 1.5px solid <%= employee.employmentStatus === 'AWOL' ? '#fecdd3' : '#fde68a' %>; border-left: 5px solid <%= employee.employmentStatus === 'AWOL' ? '#e11d48' : '#d97706' %>; border-radius: 10px; padding: 14px 18px; margin-bottom: 22px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+            <div>
+                <div style="font-weight: 800; font-size: 0.95rem; color: <%= employee.employmentStatus === 'AWOL' ? '#9f1239' : '#92400e' %>; display: flex; align-items: center; gap: 6px;">
+                    <span><%= employee.employmentStatus === 'AWOL' ? '⚠️' : '⏹' %></span> 
+                    Employment Separation Status: <%= employee.employmentStatus.toUpperCase() %>
+                </div>
+                <div style="font-size: 0.85rem; color: #475569; margin-top: 4px;">
+                    <strong>Effective End Date:</strong> <%= empSepDate || 'Not specified' %>
+                    <% if (employee.resignationReason) { %>
+                        • <strong>Reason:</strong> <%= employee.resignationReason %>
+                    <% } %>
+                </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <a href="/hr/print/clearance/<%= employee.id %>" target="_blank" style="padding: 6px 14px; background: white; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600; font-size: 0.82rem; color: #0f172a; text-decoration: none;">
+                    Exit Clearance Slip
+                </a>
+            </div>
+        </div>
+    <% } %>
 
     <!-- KPI Summary Row -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px;">
@@ -500,4 +562,96 @@
         }
     }
     <% } %>
+
+    function openStatusModal(empId, empName, empCode, currentStatus, sepDate, reason) {
+        document.getElementById('statusModalForm').action = '/hr/employees/' + empId + '/status';
+        document.getElementById('statusModalEmpName').textContent = empName;
+        document.getElementById('statusModalEmpCode').textContent = empCode || 'Staff Member';
+        document.getElementById('statusModalSelect').value = currentStatus || 'Active';
+        document.getElementById('statusModalDate').value = sepDate || (currentStatus !== 'Active' ? new Date().toISOString().slice(0, 10) : '');
+        document.getElementById('statusModalReason').value = reason || '';
+        handleStatusModalChange(currentStatus || 'Active');
+        document.getElementById('statusModal').style.display = 'flex';
+    }
+
+    function handleStatusModalChange(val) {
+        const isSeparated = (val === 'Resigned' || val === 'AWOL' || val === 'Terminated');
+        const dateRow = document.getElementById('statusModalDateRow');
+        const reasonRow = document.getElementById('statusModalReasonRow');
+        if (dateRow) dateRow.style.display = isSeparated ? 'block' : 'none';
+        if (reasonRow) reasonRow.style.display = isSeparated ? 'block' : 'none';
+        if (isSeparated) {
+            const dateInput = document.getElementById('statusModalDate');
+            if (dateInput && !dateInput.value) {
+                dateInput.value = new Date().toISOString().slice(0, 10);
+            }
+        }
+    }
+
+    function closeStatusModal() {
+        const modal = document.getElementById('statusModal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    // Close status modal on backdrop click
+    document.getElementById('statusModal').addEventListener('click', function(e) {
+        if (e.target === this) closeStatusModal();
+    });
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeStatusModal();
+    });
 </script>
+
+<!-- Quick Employment Status Modal Dialog -->
+<div id="statusModal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(2px); z-index: 9999; align-items: center; justify-content: center; padding: 16px;">
+    <div style="background: white; border-radius: 16px; width: 100%; max-width: 480px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); overflow: hidden;">
+        <!-- Header -->
+        <div style="padding: 16px 20px; background: #0f172a; color: white; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <h3 id="statusModalEmpName" style="margin: 0; font-size: 1.1rem; font-weight: 700;">Update Employment Status</h3>
+                <div id="statusModalEmpCode" style="font-size: 0.8rem; color: #94a3b8; margin-top: 2px;">EMP-CODE</div>
+            </div>
+            <button type="button" onclick="closeStatusModal()" style="background: transparent; border: none; color: #94a3b8; font-size: 1.4rem; cursor: pointer; line-height: 1;">✕</button>
+        </div>
+
+        <!-- Form -->
+        <form id="statusModalForm" method="POST" action="">
+            <div style="padding: 20px; display: flex; flex-direction: column; gap: 16px;">
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Employment Status *</label>
+                    <select name="employmentStatus" id="statusModalSelect" onchange="handleStatusModalChange(this.value)" style="width: 100%; height: 42px; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 6px 12px; font-size: 0.95rem; font-weight: 700; cursor: pointer;">
+                        <option value="Active">● Active (Regular Duty / Active Roster)</option>
+                        <option value="Resigned">⏹ Resigned</option>
+                        <option value="AWOL">⚠️ AWOL (Absence Without Official Leave)</option>
+                        <option value="Terminated">✖ Terminated</option>
+                        <option value="On Leave">🏖️ On Leave</option>
+                    </select>
+                </div>
+
+                <div id="statusModalDateRow">
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #b91c1c; margin-bottom: 6px; text-transform: uppercase;">
+                        📅 End Date / Separation Date
+                    </label>
+                    <input type="date" name="dateResigned" id="statusModalDate" style="width: 100%; height: 40px; border: 1.5px solid #f87171; border-radius: 8px; padding: 6px 12px; font-size: 0.9rem; box-sizing: border-box; background: #fff5f5;">
+                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 3px;">
+                        Effective date when duties ceased (printed on Certificate of Employment and Clearance)
+                    </div>
+                </div>
+
+                <div id="statusModalReasonRow">
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">
+                        📝 Separation Remarks / Reason
+                    </label>
+                    <input type="text" name="resignationReason" id="statusModalReason" placeholder="e.g. Voluntary resignation, Failure to report to duty, Personal reasons" style="width: 100%; height: 40px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px 12px; font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div style="padding: 14px 20px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" onclick="closeStatusModal()" style="padding: 8px 16px; border: 1px solid #cbd5e1; background: white; border-radius: 8px; font-weight: 600; color: #475569; cursor: pointer;">Cancel</button>
+                <button type="submit" style="padding: 8px 22px; background: #0f172a; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;">Save Status</button>
+            </div>
+        </form>
+    </div>
+</div>

@@ -229,7 +229,7 @@ router.get('/my/dtr', canAccessOwnHR, async (req, res) => {
       await employee.save();
     }
 
-    const allEmployees = isMgmt ? await Employee.findAll() : [];
+    const allEmployees = isMgmt ? await Employee.find() : [];
 
     const selectedMonth = req.query.month || new Date().toISOString().slice(0, 7);
     const [yearStr, monthStr] = selectedMonth.split('-');
@@ -920,7 +920,8 @@ router.get('/', async (req, res) => {
   try {
     const currentMonth = req.query.month || new Date().toISOString().slice(0, 7);
     const employees = await Employee.find();
-    const activeEmployees = employees.filter(e => e.employmentStatus === 'Active');
+    const realEmployees = employees.filter(e => !e.isSystemAccount);
+    const activeEmployees = realEmployees.filter(e => e.employmentStatus === 'Active');
 
     // Total monthly payroll projection & actual approved
     let projectedMonthlyPayroll = 0;
@@ -955,8 +956,8 @@ router.get('/', async (req, res) => {
     res.render('hr/index', {
       title: 'HR & Payroll Management',
       currentMonth,
-      employees,
-      totalEmployees: employees.length,
+      employees: realEmployees,
+      totalEmployees: realEmployees.length,
       activeEmployeesCount: activeEmployees.length,
       projectedMonthlyPayroll,
       totalEmployerContributions,
@@ -991,6 +992,7 @@ router.get('/employees', async (req, res) => {
   try {
     const deptFilter = req.query.department || '';
     const statusFilter = req.query.status || '';
+    const viewFilter = req.query.view || 'staff'; // 'staff' (default), 'system', 'all'
     const search = (req.query.search || '').toLowerCase().trim();
 
     let employees = await Employee.find();
@@ -1001,16 +1003,32 @@ router.get('/employees', async (req, res) => {
 
     for (const u of allUsers) {
       if (u && u.id && !existingUserIds.has(u.id)) {
+        const isSys = ['it@lab.com', 'reception@lab.com', 'gezyneclinical@lab.com', 'admin@lab.com'].includes(u.email) ||
+                      (u.name && (u.name.toLowerCase().includes('system') || u.name.toLowerCase().includes('clinical lab')));
         const newEmp = new Employee({
           userId: u.id,
           employeeCode: `EMP-${(u.name || 'STF').slice(0, 3).toUpperCase()}-${Date.now().toString().slice(-4)}`,
           department: u.role === 'Receptionist' ? 'Reception' : (u.role.includes('X-Ray') || u.role.includes('Radiol') ? 'Radiology' : 'Clinical Laboratory'),
-          position: u.role || 'Staff'
+          position: u.role || 'Staff',
+          isSystemAccount: isSys ? 1 : 0
         });
         await newEmp.save();
         employees.push(newEmp);
         existingUserIds.add(u.id);
       }
+    }
+
+    const totalStaffCount = employees.filter(e => !e.isSystemAccount).length;
+    const totalSystemCount = employees.filter(e => e.isSystemAccount === 1).length;
+
+    // View filter: default shows ONLY regular staff (system accounts removed from directory)
+    if (viewFilter === 'system') {
+      employees = employees.filter(e => e.isSystemAccount === 1);
+    } else if (viewFilter === 'all') {
+      // show all
+    } else {
+      // 'staff' (default)
+      employees = employees.filter(e => !e.isSystemAccount);
     }
 
     if (deptFilter) {
@@ -1022,16 +1040,20 @@ router.get('/employees', async (req, res) => {
     if (search) {
       employees = employees.filter(e => {
         return (e.name && e.name.toLowerCase().includes(search)) ||
+               (e.rawName && e.rawName.toLowerCase().includes(search)) ||
                (e.employeeCode && e.employeeCode.toLowerCase().includes(search)) ||
                (e.position && e.position.toLowerCase().includes(search));
       });
     }
 
     res.render('hr/employees/index', {
-      title: 'Employee Directory',
+      title: viewFilter === 'system' ? 'System Accounts' : 'Employee Directory',
       employees,
       deptFilter,
       statusFilter,
+      viewFilter,
+      totalStaffCount,
+      totalSystemCount,
       search,
       sessionUser: req.session.user
     });
@@ -1078,6 +1100,7 @@ router.post('/employees', async (req, res) => {
 
     const employee = new Employee({
       ...body,
+      isSystemAccount: (body.isSystemAccount === '1' || body.isSystemAccount === 1 || body.isSystemAccount === 'true' || body.isSystemAccount === 'on') ? 1 : 0,
       basicSalary: parseFloat(body.basicSalary) || 0,
       riceAllowance: parseFloat(body.riceAllowance) || 0,
       transportAllowance: parseFloat(body.transportAllowance) || 0,
@@ -1224,6 +1247,22 @@ router.post('/employees/:id', async (req, res) => {
     employee.notes = b.notes || employee.notes;
 
     employee.isTaxExempt = (b.isTaxExempt === '1' || b.isTaxExempt === 1 || b.isTaxExempt === 'true' || b.isTaxExempt === 'on') ? 1 : 0;
+    if (b.isSystemAccount !== undefined) {
+      employee.isSystemAccount = (b.isSystemAccount === '1' || b.isSystemAccount === 1 || b.isSystemAccount === 'true' || b.isSystemAccount === 'on') ? 1 : 0;
+    }
+
+    // Separation & End Date handling
+    if (b.employmentStatus) {
+      employee.employmentStatus = b.employmentStatus;
+      if (b.employmentStatus === 'Active') {
+        employee.dateResigned = null;
+        employee.dateTerminated = null;
+      } else if (b.employmentStatus === 'Resigned' || b.employmentStatus === 'AWOL' || b.employmentStatus === 'Terminated') {
+        employee.dateResigned = b.dateResigned || b.endDate || employee.dateResigned || new Date().toISOString().slice(0, 10);
+        employee.dateTerminated = employee.dateResigned;
+        if (b.resignationReason !== undefined) employee.resignationReason = b.resignationReason;
+      }
+    }
 
     await employee.save();
     req.flash('success_msg', 'Employee record updated successfully');
@@ -1232,6 +1271,77 @@ router.post('/employees/:id', async (req, res) => {
     console.error('[hr] Update employee error:', err);
     req.flash('error_msg', 'Failed to update employee record');
     res.redirect(`/hr/employees/${req.params.id}`);
+  }
+});
+
+/**
+ * POST /hr/employees/:id/status
+ * Quick-update employment status (Active, Resigned, AWOL, Terminated, On Leave) and End Date
+ */
+router.post('/employees/:id/status', async (req, res) => {
+  try {
+    const employee = await Employee.findById(req.params.id);
+    if (!employee) {
+      req.flash('error_msg', 'Employee not found');
+      return res.redirect('/hr/employees');
+    }
+
+    const { employmentStatus, dateResigned, resignationReason } = req.body;
+    if (!employmentStatus) {
+      req.flash('error_msg', 'Employment status is required');
+      return res.redirect(`/hr/employees/${employee.id}`);
+    }
+
+    employee.employmentStatus = employmentStatus;
+    if (employmentStatus === 'Active') {
+      employee.dateResigned = null;
+      employee.dateTerminated = null;
+    } else if (employmentStatus === 'Resigned' || employmentStatus === 'AWOL' || employmentStatus === 'Terminated') {
+      employee.dateResigned = dateResigned || employee.dateResigned || new Date().toISOString().slice(0, 10);
+      employee.dateTerminated = employee.dateResigned;
+      employee.resignationReason = resignationReason !== undefined ? resignationReason : (employee.resignationReason || '');
+    }
+
+    await employee.save();
+    const dateNote = employee.dateResigned ? ` (Effective: ${employee.dateResigned})` : '';
+    req.flash('success_msg', `Status for "${employee.name}" updated to "${employee.employmentStatus}"${dateNote}`);
+
+    const returnUrl = req.headers.referer || `/hr/employees/${employee.id}`;
+    res.redirect(returnUrl);
+  } catch (err) {
+    console.error('[hr] Quick status update error:', err);
+    req.flash('error_msg', 'Failed to update employment status');
+    res.redirect('/hr/employees');
+  }
+});
+
+/**
+ * POST /hr/employees/:id/toggle-system-account
+ * Fast 1-click toggle to tag or untag an employee as a System Account
+ */
+router.post('/employees/:id/toggle-system-account', async (req, res) => {
+  try {
+    const employee = await Employee.findById(req.params.id);
+    if (!employee) {
+      req.flash('error_msg', 'Employee not found');
+      return res.redirect('/hr/employees');
+    }
+
+    employee.isSystemAccount = employee.isSystemAccount ? 0 : 1;
+    await employee.save();
+
+    if (employee.isSystemAccount) {
+      req.flash('success_msg', `Account "${employee.name}" has been tagged as a System Account and removed from the active employee directory.`);
+    } else {
+      req.flash('success_msg', `Account "${employee.name}" has been restored to the active employee directory.`);
+    }
+
+    const returnUrl = req.headers.referer || '/hr/employees';
+    res.redirect(returnUrl);
+  } catch (err) {
+    console.error('[hr] Toggle system account error:', err);
+    req.flash('error_msg', 'Failed to update system account tag');
+    res.redirect('/hr/employees');
   }
 });
 
@@ -1383,7 +1493,7 @@ router.get('/payroll', async (req, res) => {
  */
 router.get('/payroll/compute', async (req, res) => {
   try {
-    const activeEmployees = await Employee.find({ employmentStatus: 'Active' });
+    const activeEmployees = (await Employee.find({ employmentStatus: 'Active' })).filter(e => !e.isSystemAccount);
     res.render('hr/payroll/compute', {
       title: 'Run Payroll Computation',
       activeEmployees,
@@ -1419,8 +1529,8 @@ router.post('/payroll/compute', async (req, res) => {
       employeesToCompute = await Employee.find({ employmentStatus: 'Active' });
     }
 
-    // Exclude doctors who only take patient commission (payroll-exempt)
-    employeesToCompute = employeesToCompute.filter(e => !e.isPayrollExempt && e.payType !== 'Commission Only');
+    // Exclude doctors who only take patient commission (payroll-exempt) and generic system accounts
+    employeesToCompute = employeesToCompute.filter(e => !e.isPayrollExempt && e.payType !== 'Commission Only' && !e.isSystemAccount);
 
     let computedCount = 0;
     const currentMonth = payPeriodEnd.slice(0, 7);
@@ -1723,7 +1833,7 @@ router.get('/export/:type', async (req, res) => {
         { header: 'TIN #', key: 'tin', width: 16 }
       ];
 
-      const employees = await Employee.find();
+      const employees = (await Employee.find()).filter(e => !e.isSystemAccount);
       for (const e of employees) {
         sheet.addRow({
           code: e.employeeCode,

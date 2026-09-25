@@ -33,6 +33,22 @@
                     <% } %>
                 </div>
 
+                <!-- System Account Checkbox -->
+                <div style="grid-column: 1 / -1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px;">
+                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; margin: 0;">
+                        <input type="checkbox" name="isSystemAccount" value="1" <%= (employee && employee.isSystemAccount) ? 'checked' : '' %> style="width: 18px; height: 18px; margin-top: 2px; cursor: pointer;">
+                        <div>
+                            <div style="font-weight: 700; color: #1e293b; font-size: 0.9rem;">
+                                ⚙️ Tag as System / Service Account
+                            </div>
+                            <div style="font-size: 0.8rem; color: #64748b; margin-top: 2px;">
+                                Designates this as an operational or generic system account (e.g., IT User, Reception, Gezyne Clinical Lab). 
+                                When checked, this account will be <strong>removed from the regular staff directory</strong> and excluded from payroll calculations.
+                            </div>
+                        </div>
+                    </label>
+                </div>
+
                 <div>
                     <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Employee Code *</label>
                     <input type="text" name="employeeCode" value="<%= employee.employeeCode %>" required placeholder="e.g. EMP-2024-001" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
@@ -66,9 +82,10 @@
 
                 <div>
                     <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Employment Status</label>
-                    <select name="employmentStatus" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; background: #fff;">
+                    <select name="employmentStatus" id="formEmploymentStatus" onchange="toggleSeparationFields(this.value)" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; background: #fff; font-weight: 600;">
                         <option value="Active" <%= employee.employmentStatus === 'Active' ? 'selected' : '' %>>Active</option>
                         <option value="Resigned" <%= employee.employmentStatus === 'Resigned' ? 'selected' : '' %>>Resigned</option>
+                        <option value="AWOL" <%= employee.employmentStatus === 'AWOL' ? 'selected' : '' %>>AWOL (Absence Without Official Leave)</option>
                         <option value="Terminated" <%= employee.employmentStatus === 'Terminated' ? 'selected' : '' %>>Terminated</option>
                         <option value="On Leave" <%= employee.employmentStatus === 'On Leave' ? 'selected' : '' %>>On Leave</option>
                     </select>
@@ -82,6 +99,21 @@
                 <div>
                     <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Date Regularized</label>
                     <input type="date" name="dateRegularized" value="<%= employee.dateRegularized || '' %>" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+
+                <!-- Separation / End Date & Remarks (Visible when Resigned, AWOL, or Terminated) -->
+                <div id="separationDateContainer" style="display: <%= (employee.employmentStatus === 'Resigned' || employee.employmentStatus === 'AWOL' || employee.employmentStatus === 'Terminated') ? 'block' : 'none' %>;">
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #b91c1c; margin-bottom: 6px; text-transform: uppercase;">
+                        📅 End Date / Separation Date
+                    </label>
+                    <input type="date" name="dateResigned" id="dateResignedInput" value="<%= employee.dateResigned || employee.dateTerminated || employee.endDate || '' %>" style="width: 100%; padding: 10px; border: 1.5px solid #f87171; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box; background: #fff5f5;">
+                </div>
+
+                <div id="separationReasonContainer" style="grid-column: 1 / -1; display: <%= (employee.employmentStatus === 'Resigned' || employee.employmentStatus === 'AWOL' || employee.employmentStatus === 'Terminated') ? 'block' : 'none' %>;">
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #b91c1c; margin-bottom: 6px; text-transform: uppercase;">
+                        📝 Separation Remarks / Reason
+                    </label>
+                    <input type="text" name="resignationReason" id="resignationReasonInput" value="<%= employee.resignationReason || '' %>" placeholder="e.g. Voluntary resignation, AWOL effective mm/dd, Career transition" style="width: 100%; padding: 10px; border: 1.5px solid #f87171; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box; background: #fff5f5;">
                 </div>
             </div>
         </div>
@@ -243,3 +275,19 @@
         </div>
     </form>
 </div>
+
+<script>
+function toggleSeparationFields(status) {
+    const isSeparated = (status === 'Resigned' || status === 'AWOL' || status === 'Terminated');
+    const dateC = document.getElementById('separationDateContainer');
+    const reasonC = document.getElementById('separationReasonContainer');
+    if (dateC) dateC.style.display = isSeparated ? 'block' : 'none';
+    if (reasonC) reasonC.style.display = isSeparated ? 'block' : 'none';
+    if (isSeparated) {
+        const dateInput = document.getElementById('dateResignedInput');
+        if (dateInput && !dateInput.value) {
+            dateInput.value = new Date().toISOString().slice(0, 10);
+        }
+    }
+}
+</script>

@@ -121,10 +121,34 @@ class DtrRecord {
     };
   }
 
+  recompute() {
+    const computed = DtrRecord.computeHours(
+      this.amIn, 
+      this.amOut, 
+      this.pmIn, 
+      this.pmOut, 
+      this.isOtApproved, 
+      this.approvedOtHours
+    );
+    this.rawTotalHours = computed.rawTotalHours;
+    this.amHours = computed.amHours;
+    this.pmHours = computed.pmHours;
+    this.totalHours = computed.totalHours;
+    this.isFullDuty = computed.isFullDuty;
+    this.dutyCredit = computed.dutyCredit;
+    this.undertimeMinutes = computed.undertimeMinutes;
+    this.overtimeHours = computed.overtimeHours;
+    this.pendingOtHours = computed.pendingOtHours;
+    this.status = this.isFullDuty ? '8-Hour Duty Completed' : (this.totalHours > 0 ? 'Undertime' : 'No Duty');
+    return this;
+  }
+
   async save() {
     this.updatedAt = new Date().toISOString();
     if (global.db && typeof global.db.saveDtrRecord === 'function') {
-      global.db.saveDtrRecord(this);
+      const toSave = { ...this };
+      delete toSave._employee;
+      global.db.saveDtrRecord(toSave);
     }
     return this;
   }
@@ -145,6 +169,14 @@ class DtrRecord {
       return row ? new DtrRecord(row) : null;
     }
     return null;
+  }
+
+  static async deleteById(id) {
+    if (!id) return false;
+    if (global.db && typeof global.db.deleteDtrRecord === 'function') {
+      return global.db.deleteDtrRecord(id);
+    }
+    return false;
   }
 }
 

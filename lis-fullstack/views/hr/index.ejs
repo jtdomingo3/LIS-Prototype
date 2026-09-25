@@ -52,8 +52,11 @@
             <div style="font-size: 2rem; font-weight: 800; color: #1e1b4b;">
                 <%= activeEmployeesCount %> <span style="font-size: 0.95rem; font-weight: 500; color: #64748b;">/ <%= totalEmployees %> staff</span>
             </div>
+            <% 
+                const separatedCount = (employees || []).filter(e => e.employmentStatus === 'Resigned' || e.employmentStatus === 'AWOL' || e.employmentStatus === 'Terminated').length;
+            %>
             <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 6px;">
-                Clinical, Radiology & Support
+                <%= activeEmployeesCount %> Active <%= separatedCount > 0 ? ('• ' + separatedCount + ' Resigned / AWOL') : '• 0 Separated' %>
             </div>
         </div>
 
@@ -146,7 +149,7 @@
                     <% pendingLeaves.forEach(l => { %>
                         <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
                             <div>
-                                <div style="font-weight: 700; color: #0f172a; font-size: 0.88rem;"><%= l.employeeName %></div>
+                                <div style="font-weight: 700; color: #0f172a; font-size: 0.88rem;"><%= l.employeeName || (l.getEmployee && l.getEmployee()?.name) || 'Employee' %></div>
                                 <div style="font-size: 0.78rem; color: #64748b;">
                                     <%= l.leaveType %> Leave • <%= l.totalDays %> day(s) (<%= l.startDate %>)
                                 </div>
