@@ -84,17 +84,28 @@
 
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
         <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
-          <%- include('../partials/signatory_select', { prefix: 'doctor', label: 'Reading Physician', role: ['Radiologist','Internist','Physician','Pathologist','Cardiologist'], nameInput: 'doctorName', licenseInput: 'doctorLicense', existingName: (test.results && test.results.doctorName) ? test.results.doctorName : (test && test.requestedBy && test.requestedBy.name ? test.requestedBy.name : ''), existingLicense: (test.results && test.results.doctorLicense) ? test.results.doctorLicense : '' }) %>
+          <%- include('../partials/signatory_select', { prefix: 'doctor', label: 'Reading Physician', role: ['Cardiologist', 'Internist', 'Physician', 'Doctor', 'Radiologist', 'Pathologist', 'Sonologist', 'Pulmonologist', 'OB-Gynecologist', 'Pediatrician', 'Neurologist', 'Surgeon'], nameInput: 'doctorName', licenseInput: 'doctorLicense', existingName: (test.results && test.results.doctorName) ? test.results.doctorName : (test && test.requestedBy && test.requestedBy.name ? test.requestedBy.name : ''), existingLicense: (test.results && test.results.doctorLicense) ? test.results.doctorLicense : '' }) %>
         </div>
         <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
           <label style="display: block; font-weight: 600; font-size: 0.88em; color: #475569; margin-bottom: 6px;">Professional Designation</label>
+          <% 
+            const currentDesig = (test.results && test.results.doctorDesignation) ? test.results.doctorDesignation : ''; 
+            const knownDesigs = ['Cardiologist', 'Internist', 'Physician', 'Doctor', 'Radiologist', 'Sonologist', 'Pulmonologist', 'Pathologist'];
+            const isOtherDesig = currentDesig && knownDesigs.indexOf(currentDesig) === -1;
+          %>
           <select name="doctorDesignation" id="doctorDesignationSelect" onchange="onDesignationChange()" style="width: 100%; height: 38px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 4px 10px; font-size: 0.9em; font-weight: 600;">
-            <option value="Internist" <%= test.results && test.results.doctorDesignation==='Internist' ? 'selected' : '' %>>Internist</option>
-            <option value="Physician" <%= test.results && test.results.doctorDesignation==='Physician' ? 'selected' : '' %>>Physician</option>
-            <option value="Cardiologist" <%= test.results && test.results.doctorDesignation==='Cardiologist' ? 'selected' : '' %>>Cardiologist</option>
-            <option value="Other" <%= test.results && test.results.doctorDesignation && ['Internist','Physician','Cardiologist'].indexOf(test.results.doctorDesignation)===-1 && test.results.doctorDesignation ? 'selected' : '' %>>Other</option>
+            <option value="" <%= !currentDesig ? 'selected' : '' %>>-- Matches doctor account role --</option>
+            <option value="Cardiologist" <%= currentDesig === 'Cardiologist' ? 'selected' : '' %>>Cardiologist</option>
+            <option value="Internist" <%= currentDesig === 'Internist' ? 'selected' : '' %>>Internist</option>
+            <option value="Physician" <%= currentDesig === 'Physician' ? 'selected' : '' %>>Physician</option>
+            <option value="Doctor" <%= currentDesig === 'Doctor' ? 'selected' : '' %>>Doctor</option>
+            <option value="Radiologist" <%= currentDesig === 'Radiologist' ? 'selected' : '' %>>Radiologist</option>
+            <option value="Sonologist" <%= currentDesig === 'Sonologist' ? 'selected' : '' %>>Sonologist</option>
+            <option value="Pulmonologist" <%= currentDesig === 'Pulmonologist' ? 'selected' : '' %>>Pulmonologist</option>
+            <option value="Pathologist" <%= currentDesig === 'Pathologist' ? 'selected' : '' %>>Pathologist</option>
+            <option value="Other" <%= isOtherDesig ? 'selected' : '' %>>Other</option>
           </select>
-          <input type="text" name="doctorDesignationOther" id="doctorDesignationOther" placeholder="Enter designation title" style="margin-top: 8px; display: none; width: 100%; height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.88em;" value="<%= test.results && test.results.doctorDesignation && ['Internist','Physician','Cardiologist'].indexOf(test.results.doctorDesignation)===-1 ? test.results.doctorDesignation : '' %>">
+          <input type="text" name="doctorDesignationOther" id="doctorDesignationOther" placeholder="Enter designation title" style="margin-top: 8px; display: <%= isOtherDesig ? 'block' : 'none' %>; width: 100%; height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.88em;" value="<%= isOtherDesig ? currentDesig : '' %>">
         </div>
       </div>
     </div>

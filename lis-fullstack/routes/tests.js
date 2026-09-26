@@ -2063,7 +2063,15 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
       resultsObj.doctorLicense = (req.body.doctorLicense || '').trim();
       // Prefer custom designation if provided (doctorDesignationOther)
       const doctorDesignationOther = (req.body.doctorDesignationOther || '').toString().trim();
-      resultsObj.doctorDesignation = doctorDesignationOther ? doctorDesignationOther : (req.body.doctorDesignation || '').trim();
+      let doctorDesignation = doctorDesignationOther ? doctorDesignationOther : (req.body.doctorDesignation || '').trim();
+      if (!doctorDesignation && req.body.doctorSelect) {
+        try {
+          const allUsers = typeof global.db.getUsers === 'function' ? global.db.getUsers() : [];
+          const docUser = allUsers.find(u => u.id === req.body.doctorSelect);
+          if (docUser && docUser.role) doctorDesignation = docUser.role;
+        } catch (e) {}
+      }
+      resultsObj.doctorDesignation = doctorDesignation;
 
       // ECG results stored above (paragraphs + doctor info)
     } else if (/\b(?:pt|prothrombin|pt-aptt|ptaptt)\b/i.test(test.testType)) {

@@ -83,17 +83,17 @@
 
   /* Uniform System Patient Box */
   .patient-box {
-    margin-top: 4px;
+    margin-top: 5px;
     width: 100%;
     border-collapse: collapse;
-    font-size: 10.5px;
+    font-size: 11px;
     table-layout: fixed;
-    border: 1px solid #000;
-    margin-bottom: 5px;
+    border: 1.5px solid #000;
+    margin-bottom: 7px;
   }
   .patient-box td {
     border: 1px solid #000;
-    padding: 2.2px 5px;
+    padding: 3.5px 6px;
     vertical-align: middle;
     white-space: nowrap;
     overflow: hidden;
@@ -104,39 +104,40 @@
   /* Sheet Titles */
   .echo-sheet-title {
     text-align: center;
-    font-weight: bold;
-    font-size: 12.5px;
+    font-weight: 800;
+    font-size: 13.5px;
     letter-spacing: 0.8px;
-    margin: 4px 0 5px 0;
+    margin: 7px 0 7px 0;
   }
 
   /* 3-Column M-Mode Measurements Container */
   .echo-three-col-container {
     display: flex;
     justify-content: space-between;
-    gap: 5px;
+    gap: 6px;
     width: 100%;
-    margin-bottom: 5px;
+    margin-bottom: 8px;
   }
   .echo-col-table {
     width: 32.8%;
     border-collapse: collapse;
     border: 1.5px solid #000;
-    font-size: 9px;
-    line-height: 1.15;
+    font-size: 9.8px;
+    line-height: 1.25;
     table-layout: fixed;
   }
   .echo-col-table th, .echo-col-table td {
     border: 1px solid #000;
-    padding: 1.5px 3px;
+    padding: 3.2px 4px;
     vertical-align: middle;
+    box-sizing: border-box;
   }
   .echo-col-table th.table-header {
     text-align: center;
-    font-size: 9.5px;
+    font-size: 10.5px;
     font-weight: bold;
     background: #ffffff;
-    padding: 2.5px 2px;
+    padding: 4.5px 3px;
   }
   .echo-col-table td.col-param {
     font-weight: 600;
@@ -151,39 +152,41 @@
     color: #000;
   }
   .echo-col-table td.col-norm {
-    font-size: 8.5px;
+    font-size: 8.8px;
     color: #111;
     width: 38%;
-    line-height: 1.1;
+    line-height: 1.15;
   }
 
   /* Doppler Study Section */
   .echo-doppler-subtitle {
     text-align: left;
-    font-size: 10px;
-    font-weight: bold;
+    font-size: 11px;
+    font-weight: 800;
     letter-spacing: 0.8px;
-    margin: 4px 0 3px 0;
+    margin: 8px 0 5px 0;
     color: #111;
   }
   .echo-doppler-table {
     width: 100%;
     border-collapse: collapse;
     border: 1.5px solid #000;
-    font-size: 8.5px;
-    line-height: 1.15;
+    font-size: 9.2px;
+    line-height: 1.25;
     table-layout: fixed;
   }
   .echo-doppler-table th, .echo-doppler-table td {
     border: 1px solid #000;
-    padding: 1.5px 3px;
+    padding: 3.2px 4px;
     vertical-align: middle;
+    box-sizing: border-box;
   }
   .echo-doppler-table th {
     text-align: center;
     font-weight: bold;
-    font-size: 9px;
+    font-size: 10px;
     background: #ffffff;
+    padding: 4.5px 3px;
   }
   .echo-doppler-table td.dop-label {
     font-weight: 600;
@@ -194,9 +197,9 @@
   .echo-footer-note {
     text-align: center;
     font-style: italic;
-    font-size: 8.5px;
+    font-size: 9px;
     font-weight: bold;
-    margin-top: 5px;
+    margin-top: 9px;
     color: #000;
   }
 
@@ -350,12 +353,12 @@
   <!-- Uniform System Patient Box -->
   <table class="patient-box">
     <tr>
-      <td style="width: 20%;">Patient's Reference No. :</td>
-      <td style="width: 30%;"><strong><%= test && test.testId ? test.testId : '' %></strong></td>
-      <td style="width: 15%;">DOB:</td>
-      <td style="width: 15%;"><strong><%= test && test.patient && test.patient.dateOfBirth ? (new Date(test.patient.dateOfBirth)).toLocaleDateString() : '' %></strong></td>
-      <td style="width: 10%;">Sex:</td>
-      <td style="width: 10%;"><strong><%= patientSex %></strong></td>
+      <td style="width: 18%;">Patient's Reference No. :</td>
+      <td style="width: 32%;"><strong><%= test && test.testId ? test.testId : '' %></strong></td>
+      <td style="width: 12%;">DOB:</td>
+      <td style="width: 18%;"><strong><%= test && test.patient && test.patient.dateOfBirth ? (new Date(test.patient.dateOfBirth)).toLocaleDateString() : '' %></strong></td>
+      <td style="width: 8%;">Sex:</td>
+      <td style="width: 12%;"><strong><%= patientSex %></strong></td>
     </tr>
     <tr>
       <td>Name:</td>
@@ -372,12 +375,14 @@
     <tr>
       <td>Indication for study:</td>
       <td colspan="3"><strong><%= indication %></strong></td>
-      <td>HR:</td>
-      <td><strong><%= hrStr %></strong></td>
+      <td>Weight:</td>
+      <td><strong><%= weightStr %></strong></td>
     </tr>
     <tr>
-      <td>Height / Weight:</td>
-      <td colspan="3"><strong><%= heightStr %><% if (heightStr && weightStr) { %> / <% } %><%= weightStr %></strong></td>
+      <td>Height:</td>
+      <td><strong><%= heightStr %></strong></td>
+      <td>HR:</td>
+      <td><strong><%= hrStr %></strong></td>
       <td>BSA:</td>
       <td><strong><%= bsaStr %></strong></td>
     </tr>
@@ -822,12 +827,12 @@
   <!-- Uniform System Patient Box -->
   <table class="patient-box">
     <tr>
-      <td style="width: 20%;">Patient's Reference No. :</td>
-      <td style="width: 30%;"><strong><%= test && test.testId ? test.testId : '' %></strong></td>
-      <td style="width: 15%;">DOB:</td>
-      <td style="width: 15%;"><strong><%= test && test.patient && test.patient.dateOfBirth ? (new Date(test.patient.dateOfBirth)).toLocaleDateString() : '' %></strong></td>
-      <td style="width: 10%;">Sex:</td>
-      <td style="width: 10%;"><strong><%= patientSex %></strong></td>
+      <td style="width: 18%;">Patient's Reference No. :</td>
+      <td style="width: 32%;"><strong><%= test && test.testId ? test.testId : '' %></strong></td>
+      <td style="width: 12%;">DOB:</td>
+      <td style="width: 18%;"><strong><%= test && test.patient && test.patient.dateOfBirth ? (new Date(test.patient.dateOfBirth)).toLocaleDateString() : '' %></strong></td>
+      <td style="width: 8%;">Sex:</td>
+      <td style="width: 12%;"><strong><%= patientSex %></strong></td>
     </tr>
     <tr>
       <td>Name:</td>
@@ -844,12 +849,14 @@
     <tr>
       <td>Indication for study:</td>
       <td colspan="3"><strong><%= indication %></strong></td>
-      <td>HR:</td>
-      <td><strong><%= hrStr %></strong></td>
+      <td>Weight:</td>
+      <td><strong><%= weightStr %></strong></td>
     </tr>
     <tr>
-      <td>Height / Weight:</td>
-      <td colspan="3"><strong><%= heightStr %><% if (heightStr && weightStr) { %> / <% } %><%= weightStr %></strong></td>
+      <td>Height:</td>
+      <td><strong><%= heightStr %></strong></td>
+      <td>HR:</td>
+      <td><strong><%= hrStr %></strong></td>
       <td>BSA:</td>
       <td><strong><%= bsaStr %></strong></td>
     </tr>
