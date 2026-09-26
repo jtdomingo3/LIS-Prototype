@@ -15,44 +15,6 @@
   }
   *, *:before, *:after { box-sizing: inherit; }
 
-  /* On-screen toolbar for switching sheets (hidden in print) */
-  .echo-nav-bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 10px 16px;
-    background: #f8fafc;
-    border: 1px solid #cbd5e1;
-    border-radius: 8px;
-    margin: 0 auto 16px auto;
-    max-width: 8.0in;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-  }
-  .echo-nav-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 14px;
-    font-size: 13px;
-    font-weight: 600;
-    border-radius: 6px;
-    border: 1px solid #cbd5e1;
-    background: #ffffff;
-    color: #334155;
-    text-decoration: none;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .echo-nav-btn:hover {
-    background: #f1f5f9;
-    border-color: #94a3b8;
-  }
-  .echo-nav-btn.active {
-    background: #0284c7;
-    color: #ffffff;
-    border-color: #0369a1;
-  }
 
   /* Echo Page layout - strictly fits Letter page */
   .echo-page {
@@ -69,55 +31,74 @@
     break-inside: avoid;
   }
 
-  /* Header */
-  .echo-header {
+  /* Uniform System Header */
+  .header {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    margin-bottom: 6px;
-    position: relative;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 5px;
   }
-  .echo-logo {
-    width: 78px;
-    height: 78px;
-    object-fit: contain;
+  .logo {
+    width: 68px;
+    height: auto;
+    margin-right: 4px;
     flex-shrink: 0;
   }
-  .echo-lab-title {
+  .lab-title {
     text-align: center;
+    flex: 1;
+    min-width: 0;
   }
-  .echo-lab-title h1 {
+  .lab-title h1 {
     margin: 0;
-    font-size: 23px;
-    font-weight: 900;
+    font-size: 21px;
     color: #009957;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.8px;
+    font-weight: 900;
     line-height: 1.15;
   }
-  .echo-lab-title .echo-sub {
-    font-size: 11px;
-    font-weight: 700;
+  .lab-sub {
+    font-size: 9.5px;
+    margin-top: 2px;
     color: #009957;
     line-height: 1.25;
+    font-weight: 600;
+  }
+  .header-datetime {
+    min-width: 175px;
+    font-size: 10.5px;
+    text-align: right;
+  }
+  .header-datetime table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 10.5px;
+  }
+  .header-datetime td {
+    border: 1px solid #000;
+    padding: 2px 4px;
+    text-align: left;
+    box-sizing: border-box;
   }
 
-  /* 4-Row Patient Table matching images */
-  .echo-patient-table {
+  /* Uniform System Patient Box */
+  .patient-box {
+    margin-top: 4px;
     width: 100%;
     border-collapse: collapse;
-    border: 1.5px solid #000;
-    font-size: 11px;
-    margin-bottom: 6px;
+    font-size: 10.5px;
     table-layout: fixed;
-  }
-  .echo-patient-table td {
     border: 1px solid #000;
-    padding: 2.5px 6px;
+    margin-bottom: 5px;
+  }
+  .patient-box td {
+    border: 1px solid #000;
+    padding: 2.2px 5px;
     vertical-align: middle;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    box-sizing: border-box;
   }
 
   /* Sheet Titles */
@@ -331,32 +312,12 @@
     }
     return null;
   }
-  const doctorName = r.doctorName || r.pathName || r.performedByName || (test && test.performedBy && test.performedBy.name) || 'Melissa R. Cundangan, MD';
+  const doctorName = r.doctorName || r.pathName || r.performedByName || (test && test.performedBy && test.performedBy.name) || '';
   const doctorLicense = r.doctorLicense || r.pathLicense || '';
   const doctorDesignation = r.doctorDesignation || 'Cardiologist';
   const sig = findSigFor(doctorName);
 %>
 
-<!-- Interactive On-Screen Switcher & Print Toolbar (Class no-print) -->
-<div class="echo-nav-bar no-print">
-  <div style="display:flex; align-items:center; gap:8px;">
-    <span style="font-weight:700; font-size:13px; color:#0f172a;">🫀 2D Echo Forms:</span>
-    <button type="button" class="echo-nav-btn <%= querySheet === 'all' ? 'active' : '' %>" onclick="switchEchoSheet('all')">📑 All Forms (2 Pages)</button>
-    <button type="button" class="echo-nav-btn <%= querySheet === 'info' ? 'active' : '' %>" onclick="switchEchoSheet('info')">📊 1. Echo Information Sheet</button>
-    <button type="button" class="echo-nav-btn <%= querySheet === 'reading' ? 'active' : '' %>" onclick="switchEchoSheet('reading')">📝 2. Interpretation & Reading</button>
-  </div>
-  <div style="display:flex; gap:8px;">
-    <button type="button" class="echo-nav-btn" style="background:#ea580c; color:#fff; border-color:#c2410c;" onclick="window.print()">🖨️ Print Form</button>
-  </div>
-</div>
-
-<script class="no-print">
-  function switchEchoSheet(sheetName) {
-    const url = new URL(window.location.href);
-    url.searchParams.set('sheet', sheetName);
-    window.location.href = url.toString();
-  }
-</script>
 
 <!-- ==================================================================== -->
 <!-- FORM 1: ECHOCARDIOGRAPHY INFORMATION SHEET (Image 1)                 -->
@@ -365,38 +326,60 @@
 <% if (showInfo) { %>
 <div class="echo-page echo-info-sheet">
   
-  <!-- Header -->
-  <div class="echo-header">
-    <img src="<%= inlineLogo || '/assets/gezyne-logo.png' %>" class="echo-logo" alt="Gezyne Logo">
-    <div class="echo-lab-title">
+  <!-- Uniform System Header -->
+  <div class="header">
+    <div>
+      <img src="<%= inlineLogo || '/assets/gezyne-logo.png' %>" class="logo" alt="logo">
+    </div>
+    <div class="lab-title">
       <h1>GEZYNE CLINICAL LABORATORY</h1>
-      <div class="echo-sub">0330 VERGEL DE DIOS ST. POBLACION PLARIDEL BULACAN</div>
-      <div class="echo-sub">NEAR MUNICIPAL BASKETBALL COURT</div>
-      <div class="echo-sub">0917-649-0807 Lic. No. 03-435-15CL-20</div>
+      <div class="lab-sub">0330 VERGEL DE DIOS ST POBLACION PLARIDEL</div>
+      <div class="lab-sub">NEAR MUNICIPAL BASKETBALL COURT</div>
+      <div class="lab-sub">0917-649-0807 / 0960-390-0921 / 795-5007</div>
+      <div class="lab-sub">Lic. No. 03-435-15CL-20</div>
+    </div>	
+    <div class="header-datetime">
+      <table>
+        <tr><td>Date:</td><td><strong><%= test && test.testDate ? (new Date(test.testDate)).toLocaleDateString() : new Date().toLocaleDateString() %></strong></td></tr>
+        <tr><td>Time Requested:</td><td><strong><%= test && test.testDate ? (new Date(test.testDate)).toLocaleTimeString() : '' %></strong></td></tr>
+        <tr><td>Time Released:</td><td><strong><%= test && test.completedAt ? (new Date(test.completedAt)).toLocaleTimeString() : '' %></strong></td></tr>
+      </table>
     </div>
   </div>
 
-  <!-- 4-Row Patient Table -->
-  <table class="echo-patient-table">
+  <!-- Uniform System Patient Box -->
+  <table class="patient-box">
     <tr>
-      <td style="width: 50%;"><strong>Name:</strong> <%= patientName %></td>
-      <td style="width: 25%;"><strong>Date:</strong> <%= testDateStr %></td>
-      <td style="width: 25%;"><strong>Weight:</strong> <%= weightStr %></td>
+      <td style="width: 20%;">Patient's Reference No. :</td>
+      <td style="width: 30%;"><strong><%= test && test.testId ? test.testId : '' %></strong></td>
+      <td style="width: 15%;">DOB:</td>
+      <td style="width: 15%;"><strong><%= test && test.patient && test.patient.dateOfBirth ? (new Date(test.patient.dateOfBirth)).toLocaleDateString() : '' %></strong></td>
+      <td style="width: 10%;">Sex:</td>
+      <td style="width: 10%;"><strong><%= patientSex %></strong></td>
     </tr>
     <tr>
-      <td><strong>Address:</strong> <%= patientAddress %></td>
-      <td><strong>Age:</strong> <%= patientAge %></td>
-      <td><strong>Height:</strong> <%= heightStr %></td>
+      <td>Name:</td>
+      <td colspan="3"><strong><%= patientName %></strong></td>
+      <td>Age:</td>
+      <td><strong><%= patientAge %></strong></td>
     </tr>
     <tr>
-      <td><strong>Requesting Physician:</strong> <%= physician %></td>
-      <td><strong>Sex:</strong> <%= patientSex %></td>
-      <td><strong>BSA:</strong> <%= bsaStr %></td>
+      <td>Physician:</td>
+      <td colspan="3"><strong><%= physician %></strong></td>
+      <td>Contact:</td>
+      <td><strong><%= contact %></strong></td>
     </tr>
     <tr>
-      <td><strong>Indication for study:</strong> <%= indication %></td>
-      <td><strong>Contact:</strong> <%= contact %></td>
-      <td><strong>HR =</strong> <%= hrStr %></td>
+      <td>Indication for study:</td>
+      <td colspan="3"><strong><%= indication %></strong></td>
+      <td>HR:</td>
+      <td><strong><%= hrStr %></strong></td>
+    </tr>
+    <tr>
+      <td>Height / Weight:</td>
+      <td colspan="3"><strong><%= heightStr %><% if (heightStr && weightStr) { %> / <% } %><%= weightStr %></strong></td>
+      <td>BSA:</td>
+      <td><strong><%= bsaStr %></strong></td>
     </tr>
   </table>
 
@@ -815,38 +798,60 @@
 <% if (showReading) { %>
 <div class="echo-page echo-reading-sheet">
 
-  <!-- Header -->
-  <div class="echo-header">
-    <img src="<%= inlineLogo || '/assets/gezyne-logo.png' %>" class="echo-logo" alt="Gezyne Logo">
-    <div class="echo-lab-title">
+  <!-- Uniform System Header -->
+  <div class="header">
+    <div>
+      <img src="<%= inlineLogo || '/assets/gezyne-logo.png' %>" class="logo" alt="logo">
+    </div>
+    <div class="lab-title">
       <h1>GEZYNE CLINICAL LABORATORY</h1>
-      <div class="echo-sub">0330 VERGEL DE DIOS ST. POBLACION PLARIDEL BULACAN</div>
-      <div class="echo-sub">NEAR MUNICIPAL BASKETBALL COURT</div>
-      <div class="echo-sub">0917-649-0807 Lic. No. 03-435-15CL-20</div>
+      <div class="lab-sub">0330 VERGEL DE DIOS ST POBLACION PLARIDEL</div>
+      <div class="lab-sub">NEAR MUNICIPAL BASKETBALL COURT</div>
+      <div class="lab-sub">0917-649-0807 / 0960-390-0921 / 795-5007</div>
+      <div class="lab-sub">Lic. No. 03-435-15CL-20</div>
+    </div>	
+    <div class="header-datetime">
+      <table>
+        <tr><td>Date:</td><td><strong><%= test && test.testDate ? (new Date(test.testDate)).toLocaleDateString() : new Date().toLocaleDateString() %></strong></td></tr>
+        <tr><td>Time Requested:</td><td><strong><%= test && test.testDate ? (new Date(test.testDate)).toLocaleTimeString() : '' %></strong></td></tr>
+        <tr><td>Time Released:</td><td><strong><%= test && test.completedAt ? (new Date(test.completedAt)).toLocaleTimeString() : '' %></strong></td></tr>
+      </table>
     </div>
   </div>
 
-  <!-- 4-Row Patient Table -->
-  <table class="echo-patient-table">
+  <!-- Uniform System Patient Box -->
+  <table class="patient-box">
     <tr>
-      <td style="width: 50%;"><strong>Name:</strong> <%= patientName %></td>
-      <td style="width: 25%;"><strong>Date:</strong> <%= testDateStr %></td>
-      <td style="width: 25%;"><strong>Weight:</strong> <%= weightStr %></td>
+      <td style="width: 20%;">Patient's Reference No. :</td>
+      <td style="width: 30%;"><strong><%= test && test.testId ? test.testId : '' %></strong></td>
+      <td style="width: 15%;">DOB:</td>
+      <td style="width: 15%;"><strong><%= test && test.patient && test.patient.dateOfBirth ? (new Date(test.patient.dateOfBirth)).toLocaleDateString() : '' %></strong></td>
+      <td style="width: 10%;">Sex:</td>
+      <td style="width: 10%;"><strong><%= patientSex %></strong></td>
     </tr>
     <tr>
-      <td><strong>Address:</strong> <%= patientAddress %></td>
-      <td><strong>Age:</strong> <%= patientAge %></td>
-      <td><strong>Height:</strong> <%= heightStr %></td>
+      <td>Name:</td>
+      <td colspan="3"><strong><%= patientName %></strong></td>
+      <td>Age:</td>
+      <td><strong><%= patientAge %></strong></td>
     </tr>
     <tr>
-      <td><strong>Requesting Physician:</strong> <%= physician %></td>
-      <td><strong>Sex:</strong> <%= patientSex %></td>
-      <td><strong>BSA:</strong> <%= bsaStr %></td>
+      <td>Physician:</td>
+      <td colspan="3"><strong><%= physician %></strong></td>
+      <td>Contact:</td>
+      <td><strong><%= contact %></strong></td>
     </tr>
     <tr>
-      <td><strong>Indication for study:</strong> <%= indication %></td>
-      <td><strong>Contact:</strong> <%= contact %></td>
-      <td><strong>HR =</strong> <%= hrStr %></td>
+      <td>Indication for study:</td>
+      <td colspan="3"><strong><%= indication %></strong></td>
+      <td>HR:</td>
+      <td><strong><%= hrStr %></strong></td>
+    </tr>
+    <tr>
+      <td>Height / Weight:</td>
+      <td colspan="3"><strong><%= heightStr %><% if (heightStr && weightStr) { %> / <% } %><%= weightStr %></strong></td>
+      <td>BSA:</td>
+      <td><strong><%= bsaStr %></strong></td>
     </tr>
   </table>
 
@@ -855,35 +860,26 @@
     
     <!-- 1. Interpretation -->
     <div class="echo-reading-heading">Interpretation</div>
-    <div class="echo-reading-content">
+    <div class="echo-reading-content" style="min-height: 85px;">
       <%
         var rawInterp = (r.paragraphs || r.findings || r.result || '').toString().trim();
-        if (!rawInterp) {
-          rawInterp = 'Normal left ventricular cavity size with increased left ventricular mass index and relative wall thickness. There is normal wall motion, contractility and global systolic function\nNormal left atrium size\nNormal right ventricular dimension, with adequate contractility\nNormal right atrium, main pulmonary artery\nand aortic root dimension\nThickened mitral valve leaflets without restriction of motion\nStructurally normal aortic, tricuspid and pulmonic valve\nNo intracavitary thrombus and no pericardial effusion seen';
-        }
-      %><%- rawInterp %>
+      %><%- rawInterp ? rawInterp.replace(/\r?\n/g, '<br>') : '' %>
     </div>
 
     <!-- 2. Color flow and Spectral Doppler -->
     <div class="echo-reading-heading">Color flow and Spectral Doppler</div>
-    <div class="echo-reading-content">
+    <div class="echo-reading-content" style="min-height: 60px;">
       <%
         var rawCF = (r.color_flow || r.color_flow_study || '').toString().trim();
-        if (!rawCF) {
-          rawCF = "Mosaic color flow display is seen across the mitral and tricuspid valve during systole and across the pulmonic valve during diastole Normal mitral inflow E/A velocity pattern Normal mitral annular e' velocities Normal estimated pulmonary artery pressure by peak TR jet velocity ( 1.5 m/s)";
-        }
-      %><%- rawCF %>
+      %><%- rawCF ? rawCF.replace(/\r?\n/g, '<br>') : '' %>
     </div>
 
     <!-- 3. CONCLUSION -->
     <div class="echo-reading-heading">CONLUSION:</div>
-    <div class="echo-reading-content">
+    <div class="echo-reading-content" style="min-height: 60px;">
       <%
         var rawConc = (r.conclusion || r.impression || r.conclusion_text || '').toString().trim();
-        if (!rawConc) {
-          rawConc = 'Concentric left ventricular hypertrophy with normal wall motion, contractility and global systolic function\nTrivial mitral, tricuspid and pulmonic regurgitation\nLow probability of pulmonary hypertension';
-        }
-      %><%- rawConc %>
+      %><%- rawConc ? rawConc.replace(/\r?\n/g, '<br>') : '' %>
     </div>
 
   </div>
@@ -894,8 +890,14 @@
       <% if (sig && sig.filename) { %>
         <img src="/assets/signature/<%= sig.filename %>" class="echo-signature-overlay" alt="Signature" />
       <% } %>
-      <div style="font-weight: bold; font-size: 13px; color: #000; margin-bottom: 2px;"><%= doctorName %></div>
-      <div style="font-size: 11.5px; color: #111;"><%= doctorDesignation %></div>
+      <div style="font-weight: bold; font-size: 13px; color: #000; margin-bottom: 2px;">
+        <% if (doctorName) { %>
+          <%= doctorName %>
+        <% } else { %>
+          <span style="display:inline-block; width:220px; border-bottom:1px solid #000; height:18px;"></span>
+        <% } %>
+      </div>
+      <div style="font-size: 11.5px; color: #111;"><%= doctorDesignation || 'Cardiologist' %></div>
       <% if (doctorLicense) { %>
         <div style="font-size: 10px; color: #333; margin-top: 1px;">Lic. No. <%= doctorLicense %></div>
       <% } %>

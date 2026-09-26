@@ -157,8 +157,12 @@ class Employee {
     const rawN = (this.rawName || '').toLowerCase();
     const n = (this.name || '').toLowerCase();
     return pos.includes('doctor') || pos.includes('patholog') || pos.includes('internist') || pos.includes('physician') ||
-           r.includes('doctor') || r.includes('patholog') || code.includes('dr.') ||
-           rawN.startsWith('dr.') || rawN.startsWith('dr ') || n.startsWith('dr.') || n.startsWith('dr ');
+           pos.includes('cardio') || pos.includes('radio') || pos.includes('sonolog') || pos.includes('pulmonolog') ||
+           pos.includes('gynecolog') || pos.includes('pediatric') || pos.includes('neurolog') || pos.includes('surgeon') ||
+           r.includes('doctor') || r.includes('patholog') || r.includes('cardio') || r.includes('radio') ||
+           r.includes('sonolog') || r.includes('internist') || r.includes('pulmonolog') || r.includes('gynecolog') ||
+           r.includes('pediatric') || r.includes('neurolog') || r.includes('surgeon') || r.includes('physician') ||
+           code.includes('dr.') || rawN.startsWith('dr.') || rawN.startsWith('dr ') || n.startsWith('dr.') || n.startsWith('dr ');
   }
 
   async save() {

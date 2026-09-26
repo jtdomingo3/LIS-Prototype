@@ -1382,11 +1382,10 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
       ultrasound_1st_trimester: /(1st\s*trimester|first\s*trimester|1st[-\s]?trimester|trimester\s*obstetrics|ultrasound[-\s]?.*1st)/i.test(tt) || (req.body && req.body.ultrasoundType === 'ultrasound-1st-trimester-obstetrics'),
       esr: /(esr|erythrocyte|erythrocyte\s*sedimentation|erythrocyte\s*sedimentation\s*rate)/i.test(tt),
       drugtest: /(drug\s*test|drugtest)/i.test(tt),
-      ct_bt: /(bleeding|clotting|ct[-_\s]*&?\s*bt|ct[-_\s]*and[-_\s]*bt|ct[-_\s]*bt)/i.test(tt)
-      ,
-      xray: /(x-?ray|xray|radiograph)/i.test(tt)
-      ,
-      ecg: /(ecg|electrocardio|electrocardiogram)/i.test(tt)
+      ct_bt: /(bleeding|clotting|ct[-_\s]*&?\s*bt|ct[-_\s]*and[-_\s]*bt|ct[-_\s]*bt)/i.test(tt),
+      xray: /(x-?ray|xray|radiograph)/i.test(tt),
+      ecg: /(ecg|electrocardio|electrocardiogram)/i.test(tt),
+      echocardiography: /(echo|echocardiograph|echocardiography|2d\s*echo|2decho)/i.test(tt)
     };
     console.log(`DEBUG POST /tests/${req.params.id}/results - testType='${tt}', checks=`, checks);
 
@@ -1408,6 +1407,14 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
       req.body.bpd_size || req.body.hc_size || req.body.ac_size || req.body.fl_size || req.body['biometry_size[]'] || req.body.biometry_size
     )) {
       checks.ultrasound_biophysical = true;
+    }
+
+    // Ensure echocardiography forms are accepted when echo fields are submitted
+    checks.echocardiography = checks.echocardiography || /(echo|echocardiograph|echocardiography|2d\s*echo|2decho)/i.test(tt);
+    if (!checks.echocardiography && req && req.body && (
+      req.body.lvedd || req.body.color_flow || req.body.conclusion || req.body.dop_max_vel_mitral_e || req.body.ivs_d || req.body.lvpw_d
+    )) {
+      checks.echocardiography = true;
     }
 
     if (!tt || !Object.values(checks).some(Boolean)) {

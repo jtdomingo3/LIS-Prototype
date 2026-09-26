@@ -540,7 +540,7 @@
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
           <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
-            <%- include('../partials/signatory_select', { prefix: 'path', label: 'Cardiologist', role: ['Cardiologist','Doctor','Internist','Physician','Radiologist'], nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (r.pathName || r.doctorName || 'Melissa R. Cundangan, MD'), existingLicense: (r.pathLicense || r.doctorLicense || '') }) %>
+            <%- include('../partials/signatory_select', { prefix: 'path', label: 'Cardiologist', role: ['Cardiologist','Doctor','Internist','Physician','Radiologist','Pathologist'], nameInput: 'pathName', licenseInput: 'pathLicense', existingName: (r.pathName || r.doctorName || ''), existingLicense: (r.pathLicense || r.doctorLicense || '') }) %>
           </div>
           <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
             <label style="display: block; font-weight: 600; font-size: 0.88em; color: #475569; margin-bottom: 6px;">Professional Designation</label>

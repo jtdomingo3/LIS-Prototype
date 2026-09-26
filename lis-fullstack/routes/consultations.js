@@ -12,8 +12,9 @@ function isDoctorUser(u) {
   if (!u) return false;
   const r = (u.role || '').toLowerCase();
   const n = (u.name || '').toLowerCase();
-  const doctorRoles = ['doctor', 'internist', 'physician', 'pediatrician', 'cardiologist', 'radiologist', 'pathologist', 'general practitioner', 'consultant', 'specialist'];
+  const doctorRoles = ['doctor', 'internist', 'physician', 'pediatrician', 'cardiologist', 'radiologist', 'sonologist', 'pathologist', 'pulmonologist', 'ob-gynecologist', 'neurologist', 'surgeon', 'general practitioner', 'consultant', 'specialist'];
   if (doctorRoles.includes(r)) return true;
+  if (r.includes('doctor') || r.includes('cardio') || r.includes('radio') || r.includes('sonolog') || r.includes('patholog') || r.includes('internist') || r.includes('pulmonolog') || r.includes('gynecolog') || r.includes('pediatric') || r.includes('neurolog') || r.includes('surgeon')) return true;
   if (n.startsWith('dr.') || n.startsWith('dr ') || n.includes(', md') || n.includes(' md') || n.includes(', m.d.')) return true;
   return false;
 }

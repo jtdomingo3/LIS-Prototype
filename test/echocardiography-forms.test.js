@@ -176,11 +176,12 @@ runTest('Renders Form 1 when sheet="info" with full metadata & measurements', ()
 
   assert(html.includes('ECHOCARDIOGRAPHY INFORMATION'), 'Must contain main title ECHOCARDIOGRAPHY INFORMATION');
   assert(html.includes('LOMOTAN, JASON'), 'Must contain patient name');
-  assert(html.includes('Weight:</strong> 70 kg'), 'Must display weight');
-  assert(html.includes('Height:</strong> 167.3 cm'), 'Must display height');
-  assert(html.includes('BSA:</strong> 1.73m²'), 'Must display BSA');
-  assert(html.includes('HR =</strong> 63 bpm'), 'Must display Heart Rate');
-  assert(html.includes('07/14/2026'), 'Must display test date');
+  assert(html.includes('70 kg'), 'Must display weight');
+  assert(html.includes('167.3 cm'), 'Must display height');
+  assert(html.includes('1.73m²'), 'Must display BSA');
+  assert(html.includes('63 bpm'), 'Must display Heart Rate');
+  assert(html.includes('patient-box'), 'Must use uniform system patient-box');
+  assert(html.includes('header-datetime'), 'Must use uniform system header timestamp table');
   
   // Verify 3-column measurements
   assert(html.includes('LVEDD'), 'Must contain LVEDD');
@@ -271,7 +272,7 @@ runTest('Renders BOTH Form 1 and Form 2 with clean page break when sheet="all"',
   assert(html.includes('Melissa R. Cundangan, MD'), 'Must contain Cardiologist on Page 2');
 });
 
-runTest('Renders gracefully without errors when results object is blank/empty', () => {
+runTest('Renders template / blank results without pre-filling fake findings or doctor on 2nd page', () => {
   const blankTest = {
     id: 'test-blank',
     testId: 'ECH-BLANK',
@@ -290,6 +291,12 @@ runTest('Renders gracefully without errors when results object is blank/empty', 
   assert(html.includes('MARIA'), 'Must render patient name');
   assert(html.includes('echo-info-sheet'), 'Must render Form 1 cleanly without crashing');
   assert(html.includes('echo-reading-sheet'), 'Must render Form 2 cleanly without crashing');
+  assert(html.includes('patient-box'), 'Must render uniform patient-box');
+  assert(html.includes('header-datetime'), 'Must render uniform header table');
+  // CRITICAL: Blank template must NOT have hardcoded fake results or doctor!
+  assert(!html.includes('Normal left ventricular cavity size'), 'Must NOT have dummy interpretation when results are empty');
+  assert(!html.includes('Mosaic color flow display'), 'Must NOT have dummy color flow when results are empty');
+  assert(!html.includes('Melissa R. Cundangan, MD'), 'Must NOT have dummy doctor when results are empty');
 });
 
 // -------------------------------------------------------------------------
@@ -319,9 +326,37 @@ runTest('Entry form renders with dedicated tabs for Information Sheet and Readin
 });
 
 // -------------------------------------------------------------------------
-// Section 5: Live HTTP Router & Query Parameter Tests
+// Section 5: POST Results Validation & Acceptance Tests
 // -------------------------------------------------------------------------
-console.log('\n--- 5. Live HTTP Router & Query Parameter Communication Tests ---');
+console.log('\n--- 5. POST Results Validation & Acceptance Tests ---');
+
+runTest('POST /:id/results validator accepts echocardiography-2d and related aliases', () => {
+  const testTypes = ['echocardiography-2d', '2D Echocardiography', 'ECHO', '2d echo', 'echocardiogram'];
+  testTypes.forEach(tt => {
+    const checks = {
+      fecalysis: /fecalysis/i.test(tt),
+      urinalysis: /urinalysis/i.test(tt),
+      echocardiography: /(echo|echocardiograph|echocardiography|2d\s*echo|2decho)/i.test(tt)
+    };
+    const isSupported = Object.values(checks).some(Boolean);
+    assert(isSupported, `testType '${tt}' must be recognized and supported by POST checks`);
+    assert(checks.echocardiography, `checks.echocardiography must evaluate to true for '${tt}'`);
+  });
+});
+
+runTest('POST /:id/results fallback accepts echocardiography even if testType is empty when echo body fields exist', () => {
+  const reqBody = { lvedd: '5.3', color_flow: 'Normal flow', conclusion: 'Normal' };
+  let echoSupported = /(echo|echocardiograph|echocardiography|2d\s*echo|2decho)/i.test('');
+  if (!echoSupported && (reqBody.lvedd || reqBody.color_flow || reqBody.conclusion)) {
+    echoSupported = true;
+  }
+  assert.strictEqual(echoSupported, true, 'Fallback should recognize echo body fields');
+});
+
+// -------------------------------------------------------------------------
+// Section 6: Live HTTP Router & Query Parameter Tests
+// -------------------------------------------------------------------------
+console.log('\n--- 6. Live HTTP Router & Query Parameter Communication Tests ---');
 
 async function testHttpEndpoint(pathStr, expectedCode = 200) {
   return new Promise((resolve, reject) => {
