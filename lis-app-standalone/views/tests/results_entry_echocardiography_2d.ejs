@@ -75,7 +75,7 @@
       </div>
 
       <!-- 3-Column M-Mode Measurements Form Grid -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 16px; margin-bottom: 24px;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-bottom: 24px;">
         
         <!-- Column 1 Card -->
         <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px 16px;">
@@ -83,69 +83,96 @@
             M-mode / 2-D measurements (Col 1)
           </div>
 
-          <table style="width: 100%; border-collapse: collapse; font-size: 0.85em;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.85em; table-layout: fixed;">
+            <colgroup>
+              <col style="width: 40%;">
+              <col style="width: 82px;">
+              <col style="width: auto;">
+            </colgroup>
             <thead>
               <tr style="color: #64748b; border-bottom: 1px solid #e2e8f0;">
-                <th style="text-align: left; padding: 4px;">Parameter</th>
-                <th style="text-align: center; padding: 4px; width: 75px;">Value</th>
-                <th style="text-align: right; padding: 4px;">Normal Value</th>
+                <th style="text-align: left; padding: 5px 2px;">Parameter</th>
+                <th style="text-align: center; padding: 5px 2px; width: 82px;">Value</th>
+                <th style="text-align: right; padding: 5px 2px;">Normal Value</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td style="padding: 4px;">LVEDD</td>
-                <td><input type="text" name="lvedd" value="<%= r.lvedd || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">M(4.2-5.9cm) / F(3.9-5.3cm)</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">LVEDD</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="lvedd" value="<%= r.lvedd || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; line-height: 1.2; word-break: break-word; white-space: normal; padding: 4px 2px;">M(4.2-5.9cm) / F(3.9-5.3cm)</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">LVEDD by BSA</td>
-                <td><input type="text" name="lvedd_bsa" value="<%= r.lvedd_bsa || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">M(2.2-3.1) / F(2.4-3.2)</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">LVEDD by BSA</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="lvedd_bsa" value="<%= r.lvedd_bsa || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; line-height: 1.2; word-break: break-word; white-space: normal; padding: 4px 2px;">M(2.2-3.1) / F(2.4-3.2)</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">LVESD</td>
-                <td><input type="text" name="lvesd" value="<%= r.lvesd || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">cm</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">LVESD</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="lvesd" value="<%= r.lvesd || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">cm</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">LVEDV</td>
-                <td><input type="text" name="lvedv" value="<%= r.lvedv || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">ml</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">LVEDV</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="lvedv" value="<%= r.lvedv || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">ml</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">LVESV</td>
-                <td><input type="text" name="lvesv" value="<%= r.lvesv || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">ml</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">LVESV</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="lvesv" value="<%= r.lvesv || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">ml</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">IVS (D)</td>
-                <td><input type="text" name="ivs_d" value="<%= r.ivs_d || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">M(0.6-1.0cm) / F(0.6-0.9cm)</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">IVS (D)</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="ivs_d" value="<%= r.ivs_d || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; line-height: 1.2; word-break: break-word; white-space: normal; padding: 4px 2px;">M(0.6-1.0cm) / F(0.6-0.9cm)</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">IVS (S)</td>
-                <td><input type="text" name="ivs_s" value="<%= r.ivs_s || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">-</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">IVS (S)</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="ivs_s" value="<%= r.ivs_s || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">-</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">LVPW (D)</td>
-                <td><input type="text" name="lvpw_d" value="<%= r.lvpw_d || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">M(0.6-1.0cm) / F(0.6-0.9cm)</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">LVPW (D)</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="lvpw_d" value="<%= r.lvpw_d || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; line-height: 1.2; word-break: break-word; white-space: normal; padding: 4px 2px;">M(0.6-1.0cm) / F(0.6-0.9cm)</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">LVPW (S)</td>
-                <td><input type="text" name="lvpw_s" value="<%= r.lvpw_s || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">-</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">LVPW (S)</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="lvpw_s" value="<%= r.lvpw_s || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">-</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">Mitral Annulus</td>
-                <td><input type="text" name="mitral_annulus" value="<%= r.mitral_annulus || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">2.0 - 3.4 cm</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">Mitral Annulus</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="mitral_annulus" value="<%= r.mitral_annulus || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">2.0 - 3.4 cm</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">Tricuspid Annulus</td>
-                <td><input type="text" name="tricuspid_annulus" value="<%= r.tricuspid_annulus || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">1.3 - 2.8 cm</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">Tricuspid Annulus</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="tricuspid_annulus" value="<%= r.tricuspid_annulus || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">1.3 - 2.8 cm</td>
               </tr>
             </tbody>
           </table>
@@ -157,89 +184,124 @@
             M-mode / 2-D Measurements (Col 2)
           </div>
 
-          <table style="width: 100%; border-collapse: collapse; font-size: 0.85em;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.85em; table-layout: fixed;">
+            <colgroup>
+              <col style="width: 38%;">
+              <col style="width: 82px;">
+              <col style="width: auto;">
+            </colgroup>
             <thead>
               <tr style="color: #64748b; border-bottom: 1px solid #e2e8f0;">
-                <th style="text-align: left; padding: 4px;">Parameter</th>
-                <th style="text-align: center; padding: 4px; width: 75px;">Value</th>
-                <th style="text-align: right; padding: 4px;">Normal Value</th>
+                <th style="text-align: left; padding: 5px 2px;">Parameter</th>
+                <th style="text-align: center; padding: 5px 2px; width: 82px;">Value</th>
+                <th style="text-align: right; padding: 5px 2px;">Normal Value</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td style="padding: 4px;">LVMI</td>
-                <td><input type="text" name="lvmi" value="<%= r.lvmi || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">M(&le;115) / F(&le;95) gm/m²</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">LVMI</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="lvmi" value="<%= r.lvmi || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; line-height: 1.2; word-break: break-word; white-space: normal; padding: 4px 2px;">M(&le;115) / F(&le;95) gm/m²</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">RWT</td>
-                <td><input type="text" name="rwt" value="<%= r.rwt || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">&le; 0.42</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">RWT</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="rwt" value="<%= r.rwt || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">&le; 0.42</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">SV</td>
-                <td><input type="text" name="sv" value="<%= r.sv || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">ml / beat</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">SV</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="sv" value="<%= r.sv || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">ml / beat</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">CO</td>
-                <td><input type="text" name="co" value="<%= r.co || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">L / min</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">CO</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="co" value="<%= r.co || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">L / min</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">EF (T)</td>
-                <td><input type="text" name="ef_t" value="<%= r.ef_t || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">&ge; 55 %</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">EF (T)</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="ef_t" value="<%= r.ef_t || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">&ge; 55 %</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">S</td>
-                <td><input type="text" name="s_wave" value="<%= r.s_wave || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">-</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">S</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="s_wave" value="<%= r.s_wave || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">-</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">FS</td>
-                <td><input type="text" name="fs" value="<%= r.fs || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">28 &ndash; 41 %</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">FS</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="fs" value="<%= r.fs || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">28 &ndash; 41 %</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">EPSS</td>
-                <td><input type="text" name="epss" value="<%= r.epss || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">&lt; 1 cm</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">EPSS</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="epss" value="<%= r.epss || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">&lt; 1 cm</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">LVOT</td>
-                <td><input type="text" name="lvot" value="<%= r.lvot || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">cm</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">LVOT</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="lvot" value="<%= r.lvot || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">cm</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">AV Op</td>
-                <td><input type="text" name="av_op" value="<%= r.av_op || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">1.5 &ndash; 2 cm</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">AV Op</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="av_op" value="<%= r.av_op || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">1.5 &ndash; 2 cm</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">PA</td>
-                <td><input type="text" name="pa" value="<%= r.pa || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">1.5 &ndash; 2.1 cm</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">PA</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="pa" value="<%= r.pa || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">1.5 &ndash; 2.1 cm</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">RVOT</td>
-                <td><input type="text" name="rvot" value="<%= r.rvot || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">&le; 2.1 cm</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">RVOT</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="rvot" value="<%= r.rvot || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">&le; 2.1 cm</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">IVC diameter</td>
-                <td><input type="text" name="ivc_diameter" value="<%= r.ivc_diameter || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">1.5 &ndash; 2.5 cm</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">IVC diameter</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="ivc_diameter" value="<%= r.ivc_diameter || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">1.5 &ndash; 2.5 cm</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">% IVC collapse</td>
-                <td><input type="text" name="ivc_collapse" value="<%= r.ivc_collapse || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">&gt; 50 %</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">% IVC collapse</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="ivc_collapse" value="<%= r.ivc_collapse || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">&gt; 50 %</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">LVET</td>
-                <td><input type="text" name="lvet" value="<%= r.lvet || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">265 &ndash; 325 m/sec</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">LVET</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="lvet" value="<%= r.lvet || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">265 &ndash; 325 m/sec</td>
               </tr>
             </tbody>
           </table>
@@ -251,79 +313,110 @@
             M-mode / 2-D Measurements (Col 3)
           </div>
 
-          <table style="width: 100%; border-collapse: collapse; font-size: 0.85em;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.85em; table-layout: fixed;">
+            <colgroup>
+              <col style="width: 38%;">
+              <col style="width: 82px;">
+              <col style="width: auto;">
+            </colgroup>
             <thead>
               <tr style="color: #64748b; border-bottom: 1px solid #e2e8f0;">
-                <th style="text-align: left; padding: 4px;">Parameter</th>
-                <th style="text-align: center; padding: 4px; width: 75px;">Value</th>
-                <th style="text-align: right; padding: 4px;">Normal Value</th>
+                <th style="text-align: left; padding: 5px 2px;">Parameter</th>
+                <th style="text-align: center; padding: 5px 2px; width: 82px;">Value</th>
+                <th style="text-align: right; padding: 5px 2px;">Normal Value</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td style="padding: 4px;">RV (base)</td>
-                <td><input type="text" name="rv_base" value="<%= r.rv_base || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">2.7 &ndash; 3.3 cm</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">RV (base)</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="rv_base" value="<%= r.rv_base || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">2.7 &ndash; 3.3 cm</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">RV (mid)</td>
-                <td><input type="text" name="rv_mid" value="<%= r.rv_mid || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">1.9 &ndash; 3.5 cm</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">RV (mid)</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="rv_mid" value="<%= r.rv_mid || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">1.9 &ndash; 3.5 cm</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">RV (length)</td>
-                <td><input type="text" name="rv_length" value="<%= r.rv_length || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">5.5 &ndash; 8.7 cm</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">RV (length)</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="rv_length" value="<%= r.rv_length || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">5.5 &ndash; 8.7 cm</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">Tapse</td>
-                <td><input type="text" name="tapse" value="<%= r.tapse || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">&gt; 1.7 cm</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">Tapse</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="tapse" value="<%= r.tapse || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">&gt; 1.7 cm</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">LA (A-P)</td>
-                <td><input type="text" name="la_ap" value="<%= r.la_ap || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">M(3-4cm) / F(2.7-3.8cm)</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">LA (A-P)</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="la_ap" value="<%= r.la_ap || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; line-height: 1.2; word-break: break-word; white-space: normal; padding: 4px 2px;">M(3-4cm) / F(2.7-3.8cm)</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">LAVI</td>
-                <td><input type="text" name="lavi" value="<%= r.lavi || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">22 &plusmn; 6 ml/ m²</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">LAVI</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="lavi" value="<%= r.lavi || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">22 &plusmn; 6 ml/ m²</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">RA (R-L)</td>
-                <td><input type="text" name="ra_rl" value="<%= r.ra_rl || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">&le; 4.4 cm</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">RA (R-L)</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="ra_rl" value="<%= r.ra_rl || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">&le; 4.4 cm</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">Aortic root</td>
-                <td><input type="text" name="aortic_root" value="<%= r.aortic_root || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">-</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">Aortic root</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="aortic_root" value="<%= r.aortic_root || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">-</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">Aorta</td>
-                <td><input type="text" name="aorta" value="<%= r.aorta || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">1.7 &ndash; 3.4</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">Aorta</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="aorta" value="<%= r.aorta || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">1.7 &ndash; 3.4</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">Annulus</td>
-                <td><input type="text" name="annulus" value="<%= r.annulus || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">1.4 &ndash; 2.6</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">Annulus</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="annulus" value="<%= r.annulus || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">1.4 &ndash; 2.6</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">Sinus</td>
-                <td><input type="text" name="sinus" value="<%= r.sinus || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">2.1 &ndash; 3.5</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">Sinus</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="sinus" value="<%= r.sinus || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">2.1 &ndash; 3.5</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">ST Junction</td>
-                <td><input type="text" name="st_junction" value="<%= r.st_junction || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">1.7 &ndash; 3.4</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">ST Junction</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="st_junction" value="<%= r.st_junction || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">1.7 &ndash; 3.4</td>
               </tr>
               <tr>
-                <td style="padding: 4px;">Ascending</td>
-                <td><input type="text" name="ascending" value="<%= r.ascending || '' %>" style="width: 100%; height: 26px; padding: 2px 6px; font-size: 0.9em; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1;"></td>
-                <td style="text-align: right; font-size: 0.8em; color: #64748b;">2.1 &ndash; 3.4</td>
+                <td style="padding: 5px 2px; font-weight: 500; font-size: 0.95em;">Ascending</td>
+                <td style="text-align: center; padding: 3px 2px;">
+                  <input type="text" name="ascending" value="<%= r.ascending || '' %>" style="width: 76px; min-width: 76px; height: 28px; padding: 2px 4px; font-size: 0.92em; font-weight: 600; text-align: center; border-radius: 4px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #fff;">
+                </td>
+                <td style="text-align: right; font-size: 0.76em; color: #64748b; padding: 4px 2px;">2.1 &ndash; 3.4</td>
               </tr>
             </tbody>
           </table>

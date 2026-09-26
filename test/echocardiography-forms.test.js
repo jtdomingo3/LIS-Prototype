@@ -323,6 +323,8 @@ runTest('Entry form renders with dedicated tabs for Information Sheet and Readin
   assert(html.includes('name="conclusion"'), 'Must have textarea for conclusion');
   assert(html.includes('loadSampleInformationData'), 'Must contain sample data loader for Information Sheet');
   assert(html.includes('loadSampleReadingData'), 'Must contain sample data loader for Reading Report');
+  assert(html.includes('width: 76px') && html.includes('min-width: 76px'), 'Must have widened 76px value inputs to display 3-4+ digits');
+  assert(html.includes('table-layout: fixed'), 'Must enforce fixed table-layout so inputs never shrink to 1 digit');
 });
 
 // -------------------------------------------------------------------------
