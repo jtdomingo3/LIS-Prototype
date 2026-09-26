@@ -208,6 +208,12 @@ runTest('Renders Form 1 when sheet="info" with full metadata & measurements', ()
   assert(html.includes('IVRT (m/sec)'), 'Must contain IVRT');
   assert(html.includes('116'), 'Must contain IVRT value 116');
   assert(html.includes('Pulmonic Vein'), 'Must contain Pulmonic Vein');
+  assert(html.includes('0.30') && html.includes('0.42') && html.includes('1.3'), 'Must display Pulmonic Vein values (0.30, 0.42, 1.3)');
+  assert(html.includes('98'), 'Must display PAT value 98');
+  assert(html.includes('0917-649-0807'), 'Must display full contact number');
+  assert(html.includes('width: 20%'), 'Contact column must have balanced 20% width');
+  assert(html.includes('E: 0.8/3.0'), 'Must format Mitral Max Vel E ratio with prefix');
+  assert(html.includes('A: 0.6/1.7') || html.includes('A:0.6/1.7'), 'Must format Mitral Max Vel A ratio with prefix');
   assert(html.includes('Severity of Regurgitation'), 'Must contain Severity of Regurgitation');
   assert(html.includes('trivial'), 'Must contain trivial regurgitation');
 });
@@ -325,6 +331,67 @@ runTest('Entry form renders with dedicated tabs for Information Sheet and Readin
   assert(html.includes('loadSampleReadingData'), 'Must contain sample data loader for Reading Report');
   assert(html.includes('width: 76px') && html.includes('min-width: 76px'), 'Must have widened 76px value inputs to display 3-4+ digits');
   assert(html.includes('table-layout: fixed'), 'Must enforce fixed table-layout so inputs never shrink to 1 digit');
+});
+
+runTest('Entry form renders Doppler Measurements as unified table matching Image 3 layout', () => {
+  const html = ejs.render(require('fs').readFileSync(entryViewPath, 'utf8'), {
+    test: sampleTest,
+    patient: samplePatient
+  }, { filename: entryViewPath });
+
+  // Header & structure
+  assert(html.includes('DOPPLER STUDY'), 'Must contain DOPPLER STUDY header');
+  assert(html.includes('MITRAL'), 'Must contain MITRAL column header');
+  assert(html.includes('AORTIC'), 'Must contain AORTIC column header');
+  assert(html.includes('TRICUSPID'), 'Must contain TRICUSPID column header');
+  assert(html.includes('PULMONIC'), 'Must contain PULMONIC column header');
+
+  // Rows & cells
+  assert(html.includes('name="dop_max_vel_mitral_e"'), 'Must have Mitral Max Vel E input');
+  assert(html.includes('name="dop_max_vel_mitral_a"'), 'Must have Mitral Max Vel A input');
+  assert(html.includes('name="dop_max_vel_aortic_1"'), 'Must have Aortic V1 input');
+  assert(html.includes('name="dop_max_vel_aortic_2"'), 'Must have Aortic V2 input');
+  assert(html.includes('name="dop_max_vel_tricuspid_1"'), 'Must have Tricuspid Vel 1 input');
+  assert(html.includes('name="dop_max_vel_tricuspid_2"'), 'Must have Tricuspid Vel 2 input');
+  assert(html.includes('name="dop_max_vel_pulmonic_1"'), 'Must have Pulmonic V1 input');
+  assert(html.includes('name="dop_max_vel_pulmonic_2"'), 'Must have Pulmonic V2 input');
+
+  // TDI discrete inputs
+  assert(html.includes('name="dop_tdi_lat_e"'), 'Must have TDI Lateral E input');
+  assert(html.includes('name="dop_tdi_lat_a"'), 'Must have TDI Lateral A input');
+  assert(html.includes('name="dop_tdi_med_e"'), 'Must have TDI Media E input');
+  assert(html.includes('name="dop_tdi_med_a"'), 'Must have TDI Media A input');
+
+  // Pulmonic vein, PASP & PAT
+  assert(html.includes('name="dop_pv_diastoles"'), 'Must have Pulmonic Vein Diastoles input');
+  assert(html.includes('name="dop_pv_systole"'), 'Must have Pulmonic Vein Systole input');
+  assert(html.includes('name="dop_pv_sys_dias"'), 'Must have Pulmonic Vein Sys/Dias input');
+  assert(html.includes('name="dop_pasp_trj"'), 'Must have PASP TRJ input');
+  assert(html.includes('name="dop_total_pasp"'), 'Must have Total PASP input');
+  assert(html.includes('name="dop_pat"'), 'Must have PAT input');
+
+  // Verify correct column positions: Left = Value, Right = Reference/Label
+  // In Row 9: Mitral(Value), Mitral(Blank), Aortic(Blank), Aortic(PASP label), Tricuspid(PASP value), Tricuspid(PAT label), Pulmonic(PAT value), Pulmonic(>= label)
+  const dopPvIdx = html.indexOf('name="dop_pv_diastoles"');
+  const paspLabelIdx = html.indexOf('PASP by TRJ<br>Total PASP');
+  const paspInputIdx = html.indexOf('name="dop_pasp_trj"');
+  const patLabelIdx = html.indexOf('\n                PAT\n');
+  const patInputIdx = html.indexOf('name="dop_pat"');
+  const geLabelIdx = html.lastIndexOf('&ge;');
+  assert(dopPvIdx < paspLabelIdx, 'Pulmonic vein value must be before PASP label');
+  assert(paspLabelIdx < paspInputIdx, 'PASP label (Aortic right) must be before PASP inputs (Tricuspid left)');
+  assert(paspInputIdx < patLabelIdx, 'PASP inputs (Tricuspid left) must be before PAT label (Tricuspid right)');
+  assert(patLabelIdx < patInputIdx, 'PAT label (Tricuspid right) must be before PAT input (Pulmonic left)');
+  assert(patInputIdx < geLabelIdx, 'PAT input (Pulmonic left) must be before >= label (Pulmonic right)');
+
+  // Severity of regurgitation across all 4 valves
+  assert(html.includes('name="dop_regurg_mitral"'), 'Must have Mitral regurgitation input');
+  assert(html.includes('name="dop_regurg_aortic"'), 'Must have Aortic regurgitation input');
+  assert(html.includes('name="dop_regurg_tricuspid"'), 'Must have Tricuspid regurgitation input');
+  assert(html.includes('name="dop_regurg_pulmonic"'), 'Must have Pulmonic regurgitation input');
+
+  // Notice
+  assert(html.includes('results are based on echocardiographic findings only'), 'Must include footer notice');
 });
 
 // -------------------------------------------------------------------------

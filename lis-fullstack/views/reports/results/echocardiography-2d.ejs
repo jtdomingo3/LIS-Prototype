@@ -279,7 +279,7 @@
   const showInfo = querySheet === 'all' || querySheet === 'info' || querySheet === 'information' || querySheet === '1';
   const showReading = querySheet === 'all' || querySheet === 'reading' || querySheet === 'interpretation' || querySheet === '2';
 
-  const r = (test && test.results) ? test.results : {};
+  const r = (test && test.results) ? Object.assign({}, test.results.echo_info || {}, test.results) : {};
   const p = (test && test.patient) ? test.patient : {};
 
   // Patient Header Data
@@ -354,11 +354,11 @@
   <table class="patient-box">
     <tr>
       <td style="width: 18%;">Patient's Reference No. :</td>
-      <td style="width: 32%;"><strong><%= test && test.testId ? test.testId : '' %></strong></td>
-      <td style="width: 12%;">DOB:</td>
-      <td style="width: 18%;"><strong><%= test && test.patient && test.patient.dateOfBirth ? (new Date(test.patient.dateOfBirth)).toLocaleDateString() : '' %></strong></td>
-      <td style="width: 8%;">Sex:</td>
-      <td style="width: 12%;"><strong><%= patientSex %></strong></td>
+      <td style="width: 27%;"><strong><%= test && test.testId ? test.testId : '' %></strong></td>
+      <td style="width: 9%;">DOB:</td>
+      <td style="width: 16%;"><strong><%= test && test.patient && test.patient.dateOfBirth ? (new Date(test.patient.dateOfBirth)).toLocaleDateString() : '' %></strong></td>
+      <td style="width: 10%;">Sex:</td>
+      <td style="width: 20%;"><strong><%= patientSex %></strong></td>
     </tr>
     <tr>
       <td>Name:</td>
@@ -370,7 +370,7 @@
       <td>Physician:</td>
       <td colspan="3"><strong><%= physician %></strong></td>
       <td>Contact:</td>
-      <td><strong><%= contact %></strong></td>
+      <td style="white-space: nowrap; overflow: visible; font-size: 10.5px;"><strong><%= contact %></strong></td>
     </tr>
     <tr>
       <td>Indication for study:</td>
@@ -657,7 +657,13 @@
       <tr>
         <td class="dop-label">Maximum Velocity (m/sec)</td>
         <td style="width:10%; text-align:center; font-weight:bold;">
-          <%= r.dop_max_vel_mitral_e || '' %><% if (r.dop_max_vel_mitral_a) { %><br><%= r.dop_max_vel_mitral_a %><% } %>
+          <%
+            let mitE = (r.dop_max_vel_mitral_e || '').trim();
+            let mitA = (r.dop_max_vel_mitral_a || '').trim();
+            if (mitE && !mitE.toLowerCase().startsWith('e:')) mitE = 'E: ' + mitE;
+            if (mitA && !mitA.toLowerCase().startsWith('a:')) mitA = 'A: ' + mitA;
+          %>
+          <%= mitE %><% if (mitA) { %><br><%= mitA %><% } %>
         </td>
         <td style="width:10%; text-align:left; font-size:8px;">
           <%= r.dop_max_vel_mitral_norm_e || 'E:' %><br><%= r.dop_max_vel_mitral_norm_a || 'A:' %>
@@ -711,12 +717,25 @@
       <!-- Row 5: MV Annular TDI -->
       <tr>
         <td class="dop-label">
-          MV Annular TDI &nbsp; <span style="font-weight:normal; font-size:8px;">Lateral</span><br>
-          <span style="visibility:hidden;">MV Annular TDI</span> &nbsp; <span style="font-weight:normal; font-size:8px;">Media</span>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span>MV Annular TDI</span>
+            <span style="font-weight:normal; font-size:8px; text-align:right; line-height:1.35;">Lateral<br>Media</span>
+          </div>
         </td>
-        <td colspan="2" style="font-size:8px; line-height:1.2; text-align:left; padding-left:6px; font-weight:bold;">
-          <%= r.dop_tdi_lat_e ? ("E': " + r.dop_tdi_lat_e) : (r.dop_tdi_lat ? r.dop_tdi_lat : '') %><% if (r.dop_tdi_lat_a) { %>&nbsp; A': <%= r.dop_tdi_lat_a %><% } %><br>
-          <%= r.dop_tdi_med_e ? ("E': " + r.dop_tdi_med_e) : (r.dop_tdi_med ? r.dop_tdi_med : '') %><% if (r.dop_tdi_med_a) { %>&nbsp; A': <%= r.dop_tdi_med_a %><% } %>
+        <td colspan="2" style="font-size:8px; line-height:1.35; text-align:left; padding-left:8px; font-weight:bold;">
+          <%
+            let latE = r.dop_tdi_lat_e || '';
+            let latA = r.dop_tdi_lat_a || '';
+            let medE = r.dop_tdi_med_e || '';
+            let medA = r.dop_tdi_med_a || '';
+            if (latE && !latE.toLowerCase().startsWith('e')) latE = "E': " + latE;
+            if (latA && !latA.toLowerCase().startsWith('a')) latA = "A': " + latA;
+            if (medE && !medE.toLowerCase().startsWith('e')) medE = "E': " + medE;
+            if (medA && !medA.toLowerCase().startsWith('a')) medA = "A': " + medA;
+            let latStr = [latE, latA].filter(Boolean).join('  ');
+            let medStr = [medE, medA].filter(Boolean).join('  ');
+          %>
+          <%= latStr %><% if (latStr && medStr) { %><br><% } %><%= medStr %>
         </td>
         <td colspan="2"></td>
         <td colspan="2"></td>
@@ -755,21 +774,32 @@
       <!-- Row 9: Pulmonic Vein -->
       <tr>
         <td class="dop-label" style="font-size:8px; line-height:1.2;">
-          Pulmonic Vein &nbsp; Diastoles<br>
-          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Systole<br>
-          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Sys / Dias
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <span>Pulmonic Vein</span>
+            <span style="font-weight:normal; font-size:8px; text-align:right; line-height:1.35;">
+              Diastoles<br>Systole<br>Sys / Dias
+            </span>
+          </div>
         </td>
-        <td colspan="2" style="font-size:8px; line-height:1.2; text-align:center; font-weight:bold;">
+        <!-- MITRAL (Left: Value, Right: Blank Reference) -->
+        <td style="font-size:8px; line-height:1.35; text-align:center; font-weight:bold;">
           <%= r.dop_pv_diastoles || '' %><br>
           <%= r.dop_pv_systole || '' %><br>
           <%= r.dop_pv_sys_dias || '' %>
         </td>
-        <td style="font-size:8px; text-align:left;">PASP by TRJ<br>Total PASP</td>
-        <td style="text-align:center; font-weight:bold; font-size:8px;"><%= r.dop_pasp_trj || '' %><br><%= r.dop_total_pasp || '' %></td>
+        <td></td>
+
+        <!-- AORTIC (Left: Blank Value, Right: Reference/Label PASP) -->
+        <td></td>
+        <td style="font-size:8px; text-align:left; line-height:1.35; white-space:nowrap;">PASP by TRJ<br>Total PASP</td>
+
+        <!-- TRICUSPID (Left: Value for PASP, Right: Reference/Label PAT) -->
+        <td style="text-align:center; font-weight:bold; font-size:8px; line-height:1.35;"><%= r.dop_pasp_trj || '' %><br><%= r.dop_total_pasp || '' %></td>
         <td style="font-size:8px; text-align:center;">PAT</td>
+
+        <!-- PULMONIC (Left: Value for PAT, Right: Reference/Label >=) -->
         <td style="text-align:center; font-weight:bold; font-size:8px;"><%= r.dop_pat || '' %></td>
-        <td style="font-size:8px; text-align:center;">&ge;</td>
-        <td style="text-align:center; font-weight:bold; font-size:8px;"><%= r.dop_pat_norm || '' %></td>
+        <td style="font-size:8px; text-align:center; font-weight:bold;">&ge;<% if (r.dop_pat_norm) { %> <%= r.dop_pat_norm %><% } %></td>
       </tr>
 
       <!-- Row 10: Severity of Regurgitation -->
@@ -828,11 +858,11 @@
   <table class="patient-box">
     <tr>
       <td style="width: 18%;">Patient's Reference No. :</td>
-      <td style="width: 32%;"><strong><%= test && test.testId ? test.testId : '' %></strong></td>
-      <td style="width: 12%;">DOB:</td>
-      <td style="width: 18%;"><strong><%= test && test.patient && test.patient.dateOfBirth ? (new Date(test.patient.dateOfBirth)).toLocaleDateString() : '' %></strong></td>
-      <td style="width: 8%;">Sex:</td>
-      <td style="width: 12%;"><strong><%= patientSex %></strong></td>
+      <td style="width: 27%;"><strong><%= test && test.testId ? test.testId : '' %></strong></td>
+      <td style="width: 9%;">DOB:</td>
+      <td style="width: 16%;"><strong><%= test && test.patient && test.patient.dateOfBirth ? (new Date(test.patient.dateOfBirth)).toLocaleDateString() : '' %></strong></td>
+      <td style="width: 10%;">Sex:</td>
+      <td style="width: 20%;"><strong><%= patientSex %></strong></td>
     </tr>
     <tr>
       <td>Name:</td>
@@ -844,7 +874,7 @@
       <td>Physician:</td>
       <td colspan="3"><strong><%= physician %></strong></td>
       <td>Contact:</td>
-      <td><strong><%= contact %></strong></td>
+      <td style="white-space: nowrap; overflow: visible; font-size: 10.5px;"><strong><%= contact %></strong></td>
     </tr>
     <tr>
       <td>Indication for study:</td>
