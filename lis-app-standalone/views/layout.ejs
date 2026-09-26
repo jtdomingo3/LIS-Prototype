@@ -939,6 +939,18 @@
             </form>
             <a href="/settings" class="nav-item" style="margin-top:8px;"><span class="nav-emoji">⚙️</span><span class="nav-text">Settings</span></a>
             <a href="/chatbot" class="nav-item <%= title && title.includes('GezyneBot') ? 'active' : '' %>" style="margin-top:4px;"><span class="nav-emoji">🤖</span><span class="nav-text">GezyneBot AI</span></a>
+            <% if (!featureFlags || featureFlags.costing !== false) { %>
+            <% if (sessionUser.role === 'Admin' || sessionUser.role === 'Manager' || sessionUser.role === 'Owner' || perms.costing) { %>
+            <a href="/costing" class="nav-item <%= (title && (title.includes('Costing') || title.includes('Profit & Loss') || title.includes('Expenses') || title.includes('Cost Per Test'))) ? 'active' : '' %>" style="margin-top:4px;"><span class="nav-emoji">💰</span><span class="nav-text">Costing & P&L</span></a>
+            <% } %>
+            <% } %>
+            <% if (!featureFlags || featureFlags.hr !== false) { %>
+            <% if (sessionUser.role === 'Admin' || sessionUser.role === 'Manager' || sessionUser.role === 'Owner' || perms.hr) { %>
+            <a href="/hr" class="nav-item <%= (title && (title.includes('HR') || title.includes('Employee') || title.includes('Payroll') || title.includes('Leaves')) && !title.includes('My HR') && !title.includes('My Payslip')) ? 'active' : '' %>" style="margin-top:4px;"><span class="nav-emoji">👥</span><span class="nav-text">HR & Payroll</span></a>
+            <% } else { %>
+            <a href="/hr/my" class="nav-item <%= (title && (title.includes('My HR') || title.includes('My Payslip') || title.includes('Daily Time Record'))) ? 'active' : '' %>" style="margin-top:4px;"><span class="nav-emoji">👤</span><span class="nav-text">My HR Portal</span></a>
+            <% } %>
+            <% } %>
             <button type="button" class="nav-item" id="fullscreenBtn" onclick="toggleFullscreen()" style="margin-top:4px;border:none;width:100%;text-align:left;background:transparent;cursor:pointer;"><span class="nav-emoji">⛶</span><span class="nav-text">Fullscreen</span></button>
         </div>
         <% } %>

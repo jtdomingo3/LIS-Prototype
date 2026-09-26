@@ -1,12 +1,12 @@
-# Gezyne LIS Standalone Desktop Client v2.6.0
+# Gezyne LIS Standalone Desktop Client v2.6.2
 
-[![Version](https://img.shields.io/badge/version-2.6.0-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
+[![Version](https://img.shields.io/badge/version-2.6.2-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
 [![Electron](https://img.shields.io/badge/Electron-v28-47848F.svg?style=flat-square&logo=electron)](https://www.electronjs.org/)
 [![Database](https://img.shields.io/badge/database-SQLite%20(Local--First)-blue.svg?style=flat-square&logo=sqlite)](https://www.sqlite.org/)
 [![Offline](https://img.shields.io/badge/offline-100%25%20capable-success.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](LICENSE)
 
-An enterprise-grade, **local-first standalone desktop workstation client** for Gezyne Clinical Laboratory LIS. Features an embedded Express engine, local SQLite database (`lis-data.db`), multi-station reception workflow, outpatient clinical consultation module, and automated background two-way synchronization with the central LIS server.
+An enterprise-grade, **local-first standalone desktop workstation client** for Gezyne Clinical Laboratory LIS. Features an embedded Express engine, local SQLite database (`lis-data.db`), multi-station reception workflow, outpatient clinical consultation module, human resources & Philippine payroll, costing & P&L economics, and automated background two-way synchronization with the central LIS server.
 
 The standalone desktop application operates **100% autonomously without network connection**. When online connectivity is detected, queued offline operations are automatically replayed and reconciled with the central server using deterministic ID mapping.
 
@@ -14,7 +14,28 @@ The standalone desktop application operates **100% autonomously without network 
 
 ## 📜 Version History & Release Notes
 
-### **v2.6.0 (Clinical Consultation Module, DOH PhilPEN Risk Assessment, Clinical Document Printing & Worksheet Isolation) — Current Release**
+### **v2.6.2 (Human Resources & Payroll, Financial Costing & Profitability, 2D Echo Dual-Sheet Printing, GezyneBot v2.6.2) — Current Release**
+- 👥 **Human Resources (HR) & Philippine Payroll Management Module (`/hr`)**:
+  - Full local-first offline support for Employee Master Directory (`/hr/employees`), Employee Self-Service / Personal Portal (`/hr/my`), Daily Time Record (DTR) attendance logging (`/hr/my/dtr`), and Leave Application workflows (`/hr/leaves`).
+  - Integrated Philippine statutory deductions engine (`lib/philippineContributions.js`) and payroll calculation engine (`lib/payrollComputer.js`) supporting 2025/2026 SSS with WISP/MPF, PhilHealth 5%, Pag-IBIG HDMF, and BIR TRAIN graduated withholding tax.
+  - Complete printable HR forms: Confidential Employee Payslip (`/hr/print/payslip/:id`), Certificate of Employment (COE) (`/hr/print/coe/:id`), Certificate of Exit Clearance (`/hr/print/clearance/:id`), and BIR 2316 Tax Summary report (`/hr/print/tax-summary/:id/:year`).
+- 💰 **Costing & Financial Profitability (P&L) Module (`/costing`)**:
+  - Local-first offline Cost-Per-Test analysis engine (`/costing/cost-per-test`), Clinic Operating Expenses tracker (`/costing/expenses`), and Monthly Income Statement financial analytics (`/costing/monthly`).
+  - Itemized reagent, consumable supply, labor, and depreciation unit cost tracking with automated gross margin % and SRP computations.
+- 🫀 **2D Echocardiography Dual-Form & Letter Print Engine**:
+  - Dual-sheet architecture supporting separate or combined Info Sheet (`?sheet=info`) and Reading Sheet (`?sheet=reading`) Letter printing with zero page overflow.
+  - Standardized 9-subcolumn Doppler valve matrix (Mitral, Aortic, Tricuspid, Pulmonic) with Left = Value and Right = Reference alignment.
+  - Pulmonic Vein ratio measurements and automatic Mitral Max Velocity `E:` / `A:` label defaults.
+  - Rebalanced 6-column patient demographic header preventing phone number wrapping.
+- 🤖 **GezyneBot AI Clinical Assistant v2.6.2**:
+  - Updated offline GezyneBot knowledge base to v2.6.2 with Sections 13 (HR & Payroll), 14 (Costing & P&L), and 15 (2D Echocardiography).
+  - Modernized chatbot welcome interface with HR and Costing interactive query explorer cards.
+- 🔄 **Embedded Desktop Express Engine Parity**:
+  - Synchronized `localServer.js`, `middleware/auth.js`, and desktop `layout.ejs` navigation bars to provide seamless offline access to `/hr` and `/costing` routes.
+
+---
+
+### **v2.6.0 (Clinical Consultation Module, DOH PhilPEN Risk Assessment, Clinical Document Printing & Worksheet Isolation)**
 - 🩺 **Clinical Consultation & Outpatient Doctor Check-up Module (`/consultations/:testId`)**:
   - Full outpatient clinical encounter documentation adhering to international SOAP (Subjective, Objective, Assessment, Plan) guidelines and DOH Philippine Package of Essential NCD Interventions (PhilPEN) Clinical Practice Guidelines (CPG).
   - **Subjective & DOH PhilPEN Profiling**: Chief complaint, HPI, PMH, current medications, review of systems (ROS), allergy warnings (with NKDA flag), interactive Familial NCD checklist with clickable pills (Hypertension, T2DM, CAD, Stroke, Cancer, Asthma/Allergies, CKD) auto-populating structured kinship notes, tobacco pack-years calculator, and alcohol screening.

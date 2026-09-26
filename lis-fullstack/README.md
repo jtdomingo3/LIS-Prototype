@@ -1,6 +1,6 @@
-# Gezyne LIS Server (Full-Stack) v2.6.1
+# Gezyne LIS Server (Full-Stack) v2.6.2
 
-[![Version](https://img.shields.io/badge/version-2.6.1-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
+[![Version](https://img.shields.io/badge/version-2.6.2-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-green.svg?style=flat-square&logo=node.js)](https://nodejs.org/)
 [![Database](https://img.shields.io/badge/database-SQLite%20(WAL%20Enabled)-blue.svg?style=flat-square&logo=sqlite)](https://www.sqlite.org/)
 [![Security](https://img.shields.io/badge/security-HMAC--SHA256%20%7C%20bcrypt-purple.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
@@ -12,7 +12,71 @@ An enterprise-grade, full-stack Laboratory Information System (LIS) server built
 
 ## 📜 Version History & Release Notes
 
-### **v2.6.1 (Production Database Persistence, Documents Storage Relocation, Recovery & Maintenance Tools, Security Hardening) — Current Release**
+### **v2.6.2 (Human Resources & Payroll, Financial Costing & Profitability, 2D Echo Dual-Sheet Printing, GezyneBot v2.6.2) — Current Release**
+- 👥 **Human Resources (HR) & Philippine Payroll Management Module (`/hr`)**:
+  - **Employee Master Directory (`/hr/employees`)**:
+    - Centralized management of clinic staff profiles: Employee Code, full legal name (with automatic stripping of medical credentials like "MD, FPSP" for clean legal records while preserving clinical credentials in profiles), department, position/role, employment status (Active, Resigned, AWOL, Terminated with separation dates and reasons).
+    - Separation tracking with separation date, reason, and automated archival.
+    - System Account segregation (`isSystemAccount`) preventing non-human IT/reception logins from cluttering employee lists and payroll computations.
+    - Flexible pay structures: Daily Duty (for clinic/lab staff with daily rates and 5-day week caps) vs Fixed Monthly (for pathologists/doctors) vs Commission Only (exempt consulting physicians).
+    - Statutory ID management: TIN, SSS, PhilHealth PIN, and Pag-IBIG (HDMF) Mid number.
+    - Recurring allowances: Rice subsidy, transport, meal, and custom allowances with audit notes.
+  - **Employee Self-Service / Personal Portal (`/hr/my`)**:
+    - Dedicated portal for authenticated employees to log and review DTR attendance, submit leave applications, track approval statuses, and view/print confidential payslips and annual BIR 2316 tax summaries.
+  - **Daily Time Record (DTR) & Attendance Engine (`/hr/my/dtr`, `/hr/employees/:id/dtr`)**:
+    - Daily biometric and manual attendance logging (Morning In/Out, Afternoon In/Out).
+    - Real-time computation of regular hours, undertime/tardiness, overtime hours, night differential, and holiday premiums (Regular vs Special Non-Working).
+  - **Leave Management & Approval Workflow (`/hr/leaves`)**:
+    - Leave applications supporting Vacation Leave (VL), Sick Leave (SL), Maternity, Paternity, Solo Parent, Bereavement, Emergency, and Leave Without Pay (LWOP).
+    - Automatic leave balance credit checking and validation.
+    - Multi-stage approval workflow (Pending -> Approved / Rejected) with administrator remarks.
+    - Official Printable Leave Application Slip (`/hr/print/leave/:id`) with employee signature and approving supervisor sign-offs.
+  - **Philippine Statutory Contributions & Tax Engine (`lib/philippineContributions.js`)**:
+    - 2025/2026 SSS contribution schedule calculating Employee Share (EE), Employer Share (ER), and mandatory provident fund (WISP/MPF) contributions across monthly salary credit brackets.
+    - PhilHealth 5.0% contribution rate with equal 50-50 split between employee and employer subject to statutory salary floor and ceiling.
+    - Pag-IBIG (HDMF) contribution calculation with statutory salary ceilings.
+    - BIR TRAIN Law graduated withholding tax calculation (semi-monthly and monthly brackets) with non-taxable minimum wage exemptions and de minimis benefit exclusions.
+  - **Semi-Monthly & Monthly Payroll Processing (`/hr/payroll`, `/hr/payroll/compute`, `lib/payrollComputer.js`)**:
+    - Batch computation for active staff: Gross pay, overtime/holiday adjustments, itemized statutory deductions (SSS, PhilHealth, Pag-IBIG, Withholding Tax), salary loans, cash advances, and net take-home pay.
+    - Payroll status workflow: Draft -> Approved -> Paid.
+    - Excel Payroll Register export (`/hr/export/payroll?month=YYYY-MM`) for banking and accounting.
+  - **Official HR Printable Documents Suite**:
+    - Confidential Employee Payslip (`/hr/print/payslip/:id`) with earnings, contributions, and net pay breakdown.
+    - Certificate of Employment (COE) (`/hr/print/coe/:id`) in formal legal Philippine format, signed by Laboratory Owner / Medical Director.
+    - Certificate of Exit Clearance (`/hr/print/clearance/:id`) with multi-department sign-offs.
+    - BIR Form 2316 Tax Summary report (`/hr/print/tax-summary/:id/:year`).
+- 💰 **Costing & Financial Profitability (P&L) Module (`/costing`)**:
+  - **Cost-Per-Test Analysis Engine (`/costing/cost-per-test`, `models/CostPerTest.js`)**:
+    - Direct itemized unit cost breakdown: Reagent cost, calibrators/controls, consumable supplies (tubes, needles, tips, slides), direct MedTech labor, and equipment depreciation/overhead.
+    - Real-time gross margin %, markup %, and suggested retail price (SRP) calculations.
+    - Direct reagent inventory mapping for automated price adjustment tracking.
+  - **Operating Expenses Tracker (`/costing/expenses`, `models/Expense.js`)**:
+    - Clinic expenditure tracking across standardized categories: Reagents, Staff Salaries, Rent, Utilities, Equipment Maintenance, Regulatory & Licensing (DOH, FDA, BIR, NEQAS), Biohazard Waste Disposal, and Miscellaneous.
+    - Support for recurring expenses, invoice attachments, and payment methods.
+  - **Revenue & Profitability Analytics (`/costing`, `/costing/revenue`, `/costing/monthly`)**:
+    - Patient diagnostic revenue tracking by payment channel (Cash, GCash, Bank Transfer, HMO/Corporate).
+    - Executive dashboard: Total Revenue, COGS, OPEX, Gross Profit, Operating Income, and Net Profit Margin %.
+    - Accounting-style Monthly Income Statement (`/costing/monthly/:month`) with division-by-zero protection.
+  - **Supplier Model Configuration**:
+    - Reagent vendor quotes, packaging sizes, volume discounts, and unit conversion management.
+- 🫀 **2D Echocardiography Dual-Form & Letter Print Engine**:
+  - **Dual-Sheet Architecture (`/reports/results/echocardiography-2d`, `?sheet=all|info|reading`)**:
+    - Sheet 1 (Info Sheet): M-mode / 2-D measurements, 3-column chamber/aorta matrix, and 9-column Doppler matrix.
+    - Sheet 2 (Reading Sheet): Clinical interpretation, Color flow and Spectral Doppler findings, conclusion, and cardiologist signature.
+    - Independent or combined 1-page Letter portrait printing with `page-break-inside: avoid`.
+  - **Doppler Measurement 9-Subcolumn Grid Alignment**:
+    - Standardized valve columns (Mitral, Aortic, Tricuspid, Pulmonic) with Left = Value, Right = Reference.
+    - Pulmonic Vein diastolic, systolic, and sys/dias ratios cleanly positioned alongside PASP by TRJ, Total PASP, and PAT (`≥`).
+    - Mitral Max Velocity: Streamlined data entry with default `E:` and `A:` prefix labels; automatic output formatting as `E: 0.8/3.0` & `A: 0.6/1.7`.
+  - **Balanced Patient Header Layout**:
+    - Rebalanced 6-column proportions (18%, 27%, 9%, 16%, 10%, 20%), preventing contact number wrapping or clipping without excessive dead space.
+- 🤖 **GezyneBot Clinical AI Knowledge Base v2.6.2**:
+  - Expanded knowledge base across `lis-fullstack`, `lis-app-standalone`, and `lis-fullstack/tray` with comprehensive HR, payroll, statutory contributions, cost-per-test unit economics, and 2D Echocardiography guidance.
+  - Added HR and Costing interactive feature cards and quick query exploration in the chatbot UI.
+
+---
+
+### **v2.6.1 (Production Database Persistence, Documents Storage Relocation, Recovery & Maintenance Tools, Security Hardening)**
 - 💾 **Non-Admin Documents Storage Directory (`~/Documents/LIS/data`)**:
   - Relocated default database location from `C:\ProgramData\GezyneLIS` to `~/Documents/LIS/data` (`C:\Users\<User>\Documents\LIS\data`), eliminating database reset and temp file wiping on production PCs lacking administrative permissions.
   - Automatic non-destructive migration (`migrateLegacyFiles`) of existing `lis-data.db`, `.env`, `data.json`, and `data-users.json` from `ProgramData` and user profile directories.

@@ -1,0 +1,297 @@
+<div style="width: 100%; box-sizing: border-box;">
+    <%
+      const isEditing = (typeof locals !== 'undefined' && typeof locals.isEdit !== 'undefined') ? locals.isEdit : (typeof isEditMode !== 'undefined' ? isEditMode : (typeof employee !== 'undefined' && employee && !!employee.id));
+      const userList = (typeof availableUsers !== 'undefined' && availableUsers) ? availableUsers : (typeof users !== 'undefined' && users ? users : []);
+    %>
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
+        <a href="<%= isEditing ? '/hr/employees/' + employee.id : '/hr/employees' %>" style="color: #64748b; text-decoration: none; font-size: 1.3rem;">←</a>
+        <div>
+            <h2 style="margin: 0; font-size: 1.5rem; color: #1e1b4b; font-weight: 700;">
+                <%= isEditing ? 'Edit Employee Profile' : 'New Employee HR Record' %>
+            </h2>
+            <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.88rem;">
+                Configure staff compensation, benefits, statutory identifiers, and emergency details
+            </p>
+        </div>
+    </div>
+
+    <form action="<%= isEditing ? '/hr/employees/' + employee.id : '/hr/employees' %>" method="POST" style="display: flex; flex-direction: column; gap: 20px;">
+        <!-- Card 1: Account Linking & Basic Details -->
+        <div style="background: white; border-radius: 14px; padding: 22px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);">
+            <h3 style="margin: 0 0 16px 0; font-size: 1.05rem; color: #1e1b4b; font-weight: 700; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+                1. System Account & Identification
+            </h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Linked User Account *</label>
+                    <% if (isEditing) { %>
+                        <input type="text" value="<%= employee.name %> (<%= employee.email %>)" disabled style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; background: #f8fafc; color: #64748b; box-sizing: border-box;">
+                        <input type="hidden" name="userId" value="<%= employee.userId %>">
+                    <% } else { %>
+                        <select name="userId" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; background: #fff;">
+                            <option value="">-- Select Existing User --</option>
+                            <% userList.forEach(u => { %>
+                                <option value="<%= u.id %>"><%= u.name %> (<%= u.email %>) — <%= u.role %></option>
+                            <% }) %>
+                        </select>
+                    <% } %>
+                </div>
+
+                <!-- System Account Checkbox -->
+                <div style="grid-column: 1 / -1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px;">
+                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; margin: 0;">
+                        <input type="checkbox" name="isSystemAccount" value="1" <%= (employee && employee.isSystemAccount) ? 'checked' : '' %> style="width: 18px; height: 18px; margin-top: 2px; cursor: pointer;">
+                        <div>
+                            <div style="font-weight: 700; color: #1e293b; font-size: 0.9rem;">
+                                ⚙️ Tag as System / Service Account
+                            </div>
+                            <div style="font-size: 0.8rem; color: #64748b; margin-top: 2px;">
+                                Designates this as an operational or generic system account (e.g., IT User, Reception, Gezyne Clinical Lab). 
+                                When checked, this account will be <strong>removed from the regular staff directory</strong> and excluded from payroll calculations.
+                            </div>
+                        </div>
+                    </label>
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Employee Code *</label>
+                    <input type="text" name="employeeCode" value="<%= employee.employeeCode %>" required placeholder="e.g. EMP-2024-001" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Department *</label>
+                    <select name="department" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; background: #fff;">
+                        <option value="Clinical Laboratory" <%= employee.department === 'Clinical Laboratory' ? 'selected' : '' %>>Clinical Laboratory</option>
+                        <option value="Radiology" <%= employee.department === 'Radiology' ? 'selected' : '' %>>Radiology</option>
+                        <option value="Reception" <%= employee.department === 'Reception' ? 'selected' : '' %>>Reception</option>
+                        <option value="Administration" <%= employee.department === 'Administration' ? 'selected' : '' %>>Administration</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Position / Title</label>
+                    <input type="text" name="position" value="<%= employee.position %>" placeholder="e.g. Senior Medical Technologist" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Employment Type</label>
+                    <select name="employmentType" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; background: #fff;">
+                        <option value="Regular" <%= employee.employmentType === 'Regular' ? 'selected' : '' %>>Regular</option>
+                        <option value="Probationary" <%= employee.employmentType === 'Probationary' ? 'selected' : '' %>>Probationary</option>
+                        <option value="Contractual" <%= employee.employmentType === 'Contractual' ? 'selected' : '' %>>Contractual</option>
+                        <option value="Part-Time" <%= employee.employmentType === 'Part-Time' ? 'selected' : '' %>>Part-Time</option>
+                        <option value="Consultant" <%= employee.employmentType === 'Consultant' ? 'selected' : '' %>>Consultant</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Employment Status</label>
+                    <select name="employmentStatus" id="formEmploymentStatus" onchange="toggleSeparationFields(this.value)" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; background: #fff; font-weight: 600;">
+                        <option value="Active" <%= employee.employmentStatus === 'Active' ? 'selected' : '' %>>Active</option>
+                        <option value="Resigned" <%= employee.employmentStatus === 'Resigned' ? 'selected' : '' %>>Resigned</option>
+                        <option value="AWOL" <%= employee.employmentStatus === 'AWOL' ? 'selected' : '' %>>AWOL (Absence Without Official Leave)</option>
+                        <option value="Terminated" <%= employee.employmentStatus === 'Terminated' ? 'selected' : '' %>>Terminated</option>
+                        <option value="On Leave" <%= employee.employmentStatus === 'On Leave' ? 'selected' : '' %>>On Leave</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Date Hired</label>
+                    <input type="date" name="dateHired" value="<%= employee.dateHired || '' %>" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Date Regularized</label>
+                    <input type="date" name="dateRegularized" value="<%= employee.dateRegularized || '' %>" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+
+                <!-- Separation / End Date & Remarks (Visible when Resigned, AWOL, or Terminated) -->
+                <div id="separationDateContainer" style="display: <%= (employee.employmentStatus === 'Resigned' || employee.employmentStatus === 'AWOL' || employee.employmentStatus === 'Terminated') ? 'block' : 'none' %>;">
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #b91c1c; margin-bottom: 6px; text-transform: uppercase;">
+                        📅 End Date / Separation Date
+                    </label>
+                    <input type="date" name="dateResigned" id="dateResignedInput" value="<%= employee.dateResigned || employee.dateTerminated || employee.endDate || '' %>" style="width: 100%; padding: 10px; border: 1.5px solid #f87171; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box; background: #fff5f5;">
+                </div>
+
+                <div id="separationReasonContainer" style="grid-column: 1 / -1; display: <%= (employee.employmentStatus === 'Resigned' || employee.employmentStatus === 'AWOL' || employee.employmentStatus === 'Terminated') ? 'block' : 'none' %>;">
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #b91c1c; margin-bottom: 6px; text-transform: uppercase;">
+                        📝 Separation Remarks / Reason
+                    </label>
+                    <input type="text" name="resignationReason" id="resignationReasonInput" value="<%= employee.resignationReason || '' %>" placeholder="e.g. Voluntary resignation, AWOL effective mm/dd, Career transition" style="width: 100%; padding: 10px; border: 1.5px solid #f87171; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box; background: #fff5f5;">
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 2: Compensation & Allowances -->
+        <div style="background: white; border-radius: 14px; padding: 22px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);">
+            <h3 style="margin: 0 0 16px 0; font-size: 1.05rem; color: #1e1b4b; font-weight: 700; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+                2. Salary & Allowances (PHP)
+            </h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Compensation Model *</label>
+                    <select name="payType" id="formPayType" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; background: #fff; font-weight: 600;">
+                        <option value="Daily Duty" <%= (!employee.payType || employee.payType === 'Daily Duty') ? 'selected' : '' %>>Daily Duty (Laboratory Staff - Paid Per Day)</option>
+                        <option value="Fixed Monthly" <%= employee.payType === 'Fixed Monthly' ? 'selected' : '' %>>Fixed Monthly (Pathologist / In-House Doctor Retainer)</option>
+                        <option value="Commission Only" <%= (employee.payType === 'Commission Only' || employee.isPayrollExempt) ? 'selected' : '' %>>Commission Only (Visiting Doctor - Payroll Exempt)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Daily Rate (PHP per Day of Duty)</label>
+                    <input type="number" step="0.01" min="0" name="dailyRate" value="<%= employee.dailyRate || '' %>" placeholder="800.00" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; font-weight: 700; color: #0f172a; box-sizing: border-box;">
+                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 3px;">For staff paid per day of duty (auto-computes monthly basic = rate × 22).</div>
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Monthly Basic / Retainer (PHP)</label>
+                    <input type="number" step="0.01" min="0" name="basicSalary" value="<%= employee.basicSalary || '' %>" placeholder="0.00" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; font-weight: 700; color: #0f172a; box-sizing: border-box;">
+                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 3px;">Used for Pathologist fixed monthly retainer or monthly staff equivalent.</div>
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Max Duties / Week (Default 5 for Staff)</label>
+                    <input type="number" min="0" max="7" name="maxDaysPerWeek" value="<%= employee.maxDaysPerWeek !== undefined ? employee.maxDaysPerWeek : 5 %>" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
+                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 3px;">Set to 5 for standard lab staff. Set to 0 for doctors (exempt from cap).</div>
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Rice Allowance (Monthly)</label>
+                    <input type="number" step="0.01" min="0" name="riceAllowance" value="<%= employee.riceAllowance || '' %>" placeholder="0.00" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Transportation Allowance</label>
+                    <input type="number" step="0.01" min="0" name="transportAllowance" value="<%= employee.transportAllowance || '' %>" placeholder="0.00" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Meal Allowance</label>
+                    <input type="number" step="0.01" min="0" name="mealAllowance" value="<%= employee.mealAllowance || '' %>" placeholder="0.00" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Other Allowance</label>
+                    <input type="number" step="0.01" min="0" name="otherAllowances" value="<%= employee.otherAllowances || '' %>" placeholder="0.00" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+
+                <div style="grid-column: 1 / -1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin-top: 4px;">
+                    <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; margin: 0;">
+                        <input type="checkbox" name="isTaxExempt" value="1" <%= (employee.isTaxExempt === 1 || employee.isTaxExempt === true || employee.isTaxExempt === '1') ? 'checked' : '' %> style="width: 18px; height: 18px; margin-top: 2px; accent-color: #059669; flex-shrink: 0;">
+                        <div>
+                            <div style="font-weight: 700; color: #0f172a; font-size: 0.88rem;">Tax Exempt (0% BIR Withholding Tax)</div>
+                            <div style="font-size: 0.8rem; color: #64748b; margin-top: 2px;">
+                                Check this if employee is a statutory Minimum Wage Earner (MWE) or tax-exempt under RA 9504 / TRAIN Law (gross compensation below ₱250,000/year).
+                            </div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 3: Government Identifiers & Bank Details -->
+        <div style="background: white; border-radius: 14px; padding: 22px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);">
+            <h3 style="margin: 0 0 16px 0; font-size: 1.05rem; color: #1e1b4b; font-weight: 700; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+                3. Government Contributions & Bank Details
+            </h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">SSS Number</label>
+                    <input type="text" name="sssNumber" value="<%= employee.sssNumber %>" placeholder="e.g. 04-1234567-8" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">PhilHealth Number</label>
+                    <input type="text" name="philhealthNumber" value="<%= employee.philhealthNumber %>" placeholder="e.g. 12-123456789-0" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Pag-IBIG (HDMF) Number</label>
+                    <input type="text" name="pagibigNumber" value="<%= employee.pagibigNumber %>" placeholder="e.g. 1212-3456-7890" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">BIR Tax Identification Number (TIN)</label>
+                    <input type="text" name="tinNumber" value="<%= employee.tinNumber %>" placeholder="e.g. 123-456-789-000" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Bank Name</label>
+                    <input type="text" name="bankName" value="<%= employee.bankName %>" placeholder="e.g. BDO / BPI / Landbank / Metrobank" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Bank Account Number</label>
+                    <input type="text" name="bankAccountNumber" value="<%= employee.bankAccountNumber %>" placeholder="e.g. 1234 5678 9012" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 4: Personal Info & Emergency Contact -->
+        <div style="background: white; border-radius: 14px; padding: 22px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);">
+            <h3 style="margin: 0 0 16px 0; font-size: 1.05rem; color: #1e1b4b; font-weight: 700; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+                4. Personal & Emergency Contact
+            </h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Date of Birth</label>
+                    <input type="date" name="birthDate" value="<%= employee.birthDate || '' %>" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Civil Status</label>
+                    <select name="civilStatus" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; background: #fff;">
+                        <option value="Single" <%= employee.civilStatus === 'Single' ? 'selected' : '' %>>Single</option>
+                        <option value="Married" <%= employee.civilStatus === 'Married' ? 'selected' : '' %>>Married</option>
+                        <option value="Widowed" <%= employee.civilStatus === 'Widowed' ? 'selected' : '' %>>Widowed</option>
+                        <option value="Separated" <%= employee.civilStatus === 'Separated' ? 'selected' : '' %>>Separated</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Contact Phone</label>
+                    <input type="text" name="contactPhone" value="<%= employee.contactPhone %>" placeholder="e.g. 0917-123-4567" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Present Address</label>
+                    <input type="text" name="presentAddress" value="<%= employee.presentAddress %>" placeholder="Street, Barangay, City, Province" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Emergency Contact Name</label>
+                    <input type="text" name="emergencyContactName" value="<%= employee.emergencyContactName %>" placeholder="e.g. Maria Santos" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+
+                <div>
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Emergency Contact Phone</label>
+                    <input type="text" name="emergencyContactPhone" value="<%= employee.emergencyContactPhone %>" placeholder="e.g. 0918-987-6543" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 10px;">
+            <a href="<%= isEditing ? '/hr/employees/' + employee.id : '/hr/employees' %>" style="padding: 12px 24px; border: 1px solid #cbd5e1; background: white; color: #475569; border-radius: 8px; font-weight: 600; text-decoration: none;">Cancel</a>
+            <button type="submit" style="padding: 12px 32px; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;">
+                <%= isEditing ? 'Save Changes' : 'Create Employee Record' %>
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+function toggleSeparationFields(status) {
+    const isSeparated = (status === 'Resigned' || status === 'AWOL' || status === 'Terminated');
+    const dateC = document.getElementById('separationDateContainer');
+    const reasonC = document.getElementById('separationReasonContainer');
+    if (dateC) dateC.style.display = isSeparated ? 'block' : 'none';
+    if (reasonC) reasonC.style.display = isSeparated ? 'block' : 'none';
+    if (isSeparated) {
+        const dateInput = document.getElementById('dateResignedInput');
+        if (dateInput && !dateInput.value) {
+            dateInput.value = new Date().toISOString().slice(0, 10);
+        }
+    }
+}
+</script>

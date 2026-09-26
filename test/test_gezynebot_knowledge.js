@@ -1,14 +1,14 @@
 const assert = require('assert');
 const path = require('path');
 
-console.log('=== TESTING GEZYNEBOT KNOWLEDGE BASE COVERAGE (v2.6.0) ===\n');
+console.log('=== TESTING GEZYNEBOT KNOWLEDGE BASE COVERAGE (v2.6.2) ===\n');
 
 const fullstackService = require('../lis-fullstack/lib/gezyneBotService');
 const standaloneService = require('../lis-app-standalone/lib/gezyneBotService');
 const trayService = require('../lis-fullstack/tray/lib/gezyneBotService');
 
 const requiredKeywords = [
-  'LIS Version 2.6.0',
+  'LIS Version 2.6.2',
   'Equipment & Levey-Jennings QC',
   'EQUIPMENT MANAGEMENT & LEVEY-JENNINGS QUALITY CONTROL',
   'Mindray BS-240',
@@ -36,7 +36,21 @@ const requiredKeywords = [
   'CLINICAL CONSULTATION & OUTPATIENT DOCTOR ENCOUNTERS',
   'DOH Philippine Package of Essential NCD Interventions (PhilPEN)',
   'Patient Medical Chart (/consultations/:testId/print/chart)',
-  'Gezyne Clinical Laboratory & Medical Clinic'
+  'Gezyne Clinical Laboratory & Medical Clinic',
+  'HUMAN RESOURCES (HR) & PHILIPPINE PAYROLL MANAGEMENT (/hr)',
+  'Employee Master Directory (/hr/employees)',
+  'Philippine Statutory Contributions & Tax Engine',
+  'lib/philippineContributions.js',
+  'Payroll Computation Engine (/hr/payroll',
+  'Certificate of Employment (COE)',
+  'BIR Form 2316 Annual Tax Summary',
+  'FINANCIAL COSTING, EXPENSE TRACKING & PROFITABILITY (P&L) ANALYTICS (/costing)',
+  'Cost-Per-Test Analysis Engine',
+  'Laboratory Operating Expenses Tracker',
+  '2D ECHOCARDIOGRAPHY DUAL-SHEET PRINTING & DOPPLER MEASUREMENTS',
+  'echo-info-sheet',
+  'echo-reading-sheet',
+  'Doppler Measurement 9-Subcolumn Grid Alignment'
 ];
 
 const services = [

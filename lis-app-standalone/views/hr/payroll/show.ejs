@@ -1,0 +1,195 @@
+<div style="width: 100%; box-sizing: border-box;">
+    <!-- Top Bar -->
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 24px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <a href="/hr/payroll?month=<%= payroll.month %>" style="color: #64748b; text-decoration: none; font-size: 1.3rem;">←</a>
+            <div>
+                <h2 style="margin: 0; font-size: 1.5rem; color: #1e1b4b; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+                    Payroll Details — <%= employee ? employee.name : 'Staff' %>
+                    <span style="font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; <%= payroll.status === 'Approved' ? 'background: #dcfce7; color: #166534;' : (payroll.status === 'Paid' ? 'background: #e0e7ff; color: #3730a3;' : 'background: #fef3c7; color: #92400e;') %>">
+                        <%= payroll.status %>
+                    </span>
+                </h2>
+                <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.88rem;">
+                    Period: <%= payroll.payPeriodStart.slice(0, 10) %> to <%= payroll.payPeriodEnd.slice(0, 10) %>
+                </p>
+            </div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <% if (payroll.status === 'Draft') { %>
+                <form action="/hr/payroll/<%= payroll.id %>/approve" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-primary" style="padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;">
+                        ✓ Approve Payroll
+                    </button>
+                </form>
+            <% } else if (payroll.status === 'Approved') { %>
+                <form action="/hr/payroll/<%= payroll.id %>/mark-paid" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-primary" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;">
+                        💵 Mark as Disbursed / Paid
+                    </button>
+                </form>
+            <% } %>
+            <a href="/hr/print/payslip/<%= payroll.id %>" target="_blank" class="btn btn-secondary" style="padding: 8px 16px; background: #f1f5f9; color: #1e293b; border: 1px solid #cbd5e1; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                <span>🖨️</span> Print Payslip
+            </a>
+        </div>
+    </div>
+
+    <!-- Payout Highlight Card -->
+    <div style="background: white; border-radius: 14px; padding: 22px; border: 1px solid #e0e7ff; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.05); margin-bottom: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; text-align: center;">
+        <div>
+            <div style="font-size: 0.78rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Gross Earnings</div>
+            <div style="font-size: 1.6rem; font-weight: 800; color: #0f172a; margin-top: 4px;">
+                ₱<%= (Number(payroll.grossPay) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %>
+            </div>
+        </div>
+        <div>
+            <div style="font-size: 0.78rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Total Deductions</div>
+            <div style="font-size: 1.6rem; font-weight: 800; color: #dc2626; margin-top: 4px;">
+                -₱<%= (Number(payroll.totalDeductions) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %>
+            </div>
+        </div>
+        <div>
+            <div style="font-size: 0.78rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Net Take-Home Pay</div>
+            <div style="font-size: 1.6rem; font-weight: 800; color: #059669; margin-top: 4px;">
+                ₱<%= (Number(payroll.netPay) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %>
+            </div>
+        </div>
+        <div>
+            <div style="font-size: 0.78rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Total Company Cost</div>
+            <div style="font-size: 1.6rem; font-weight: 800; color: #4f46e5; margin-top: 4px;">
+                ₱<%= payroll.totalEmployerCost.toLocaleString('en-US', { minimumFractionDigits: 2 }) %>
+            </div>
+        </div>
+    </div>
+
+    <!-- Earnings & Deductions Breakdown Columns -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;">
+        <!-- Earnings Breakdown -->
+        <div style="background: white; border-radius: 14px; padding: 22px; border: 1px solid #e2e8f0;">
+            <h3 style="margin: 0 0 14px 0; font-size: 1.05rem; color: #059669; font-weight: 700; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+                Earnings Breakdown
+            </h3>
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                <tbody>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 8px 0; color: #475569;">Basic Pay</td>
+                        <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #0f172a;">₱<%= (Number(payroll.basicPay) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 8px 0; color: #475569;">Overtime Pay (<%= payroll.overtimeHours || 0 %> hrs)</td>
+                        <td style="padding: 8px 0; text-align: right; color: #334155;">₱<%= (Number(payroll.overtimePay) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 8px 0; color: #475569;">Holiday Pay</td>
+                        <td style="padding: 8px 0; text-align: right; color: #334155;">₱<%= (Number(payroll.holidayPay) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 8px 0; color: #475569;">Night Differential</td>
+                        <td style="padding: 8px 0; text-align: right; color: #334155;">₱<%= (Number(payroll.nightDifferential) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 8px 0; color: #475569;">Rice Allowance</td>
+                        <td style="padding: 8px 0; text-align: right; color: #334155;">₱<%= (Number(payroll.riceAllowance) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 8px 0; color: #475569;">Transportation Allowance</td>
+                        <td style="padding: 8px 0; text-align: right; color: #334155;">₱<%= (Number(payroll.transportAllowance) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 8px 0; color: #475569;">Meal Allowance</td>
+                        <td style="padding: 8px 0; text-align: right; color: #334155;">₱<%= (Number(payroll.mealAllowance) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 8px 0; color: #475569;">Other Allowances / Incentives</td>
+                        <td style="padding: 8px 0; text-align: right; color: #334155;">₱<%= (Number(payroll.otherAllowances) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+                    </tr>
+                    <% if (payroll.adjustments !== 0) { %>
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 8px 0; color: #475569;">Adjustments (<%= payroll.adjustmentNotes || 'Adjustment' %>)</td>
+                            <td style="padding: 8px 0; text-align: right; color: #334155;">₱<%= (Number(payroll.adjustments) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+                        </tr>
+                    <% } %>
+                    <tr style="border-top: 2px solid #059669; font-weight: 800; background: #f8fafc;">
+                        <td style="padding: 10px 4px; color: #059669;">GROSS PAY</td>
+                        <td style="padding: 10px 4px; text-align: right; color: #059669;">₱<%= (Number(payroll.grossPay) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Deductions Breakdown -->
+        <div style="background: white; border-radius: 14px; padding: 22px; border: 1px solid #e2e8f0;">
+            <h3 style="margin: 0 0 14px 0; font-size: 1.05rem; color: #dc2626; font-weight: 700; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+                Deductions Breakdown
+            </h3>
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                <tbody>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 8px 0; color: #475569;">SSS Contribution (Employee Share)</td>
+                        <td style="padding: 8px 0; text-align: right; color: #dc2626;">₱<%= (Number(payroll.sssContribution) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 8px 0; color: #475569;">PhilHealth Contribution (Employee Share)</td>
+                        <td style="padding: 8px 0; text-align: right; color: #dc2626;">₱<%= (Number(payroll.philhealthContribution) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 8px 0; color: #475569;">Pag-IBIG Contribution (Employee Share)</td>
+                        <td style="padding: 8px 0; text-align: right; color: #dc2626;">₱<%= (Number(payroll.pagibigContribution) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 8px 0; color: #475569;">BIR Withholding Tax (TRAIN Law)</td>
+                        <td style="padding: 8px 0; text-align: right; color: #dc2626;">₱<%= (Number(payroll.withholdingTax) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+                    </tr>
+                    <% if (payroll.sssLoan > 0) { %>
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 8px 0; color: #475569;">SSS Salary Loan</td>
+                            <td style="padding: 8px 0; text-align: right; color: #dc2626;">₱<%= Number(payroll.sssLoan).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+                        </tr>
+                    <% } %>
+                    <% if (payroll.pagibigLoan > 0) { %>
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 8px 0; color: #475569;">Pag-IBIG Loan</td>
+                            <td style="padding: 8px 0; text-align: right; color: #dc2626;">₱<%= Number(payroll.pagibigLoan).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+                        </tr>
+                    <% } %>
+                    <% if (payroll.otherDeductions > 0) { %>
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 8px 0; color: #475569;">Other Deductions (<%= payroll.otherDeductionNotes || 'Other' %>)</td>
+                            <td style="padding: 8px 0; text-align: right; color: #dc2626;">₱<%= Number(payroll.otherDeductions).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+                        </tr>
+                    <% } %>
+                    <tr style="border-top: 2px solid #dc2626; font-weight: 800; background: #f8fafc;">
+                        <td style="padding: 10px 4px; color: #dc2626;">TOTAL DEDUCTIONS</td>
+                        <td style="padding: 10px 4px; text-align: right; color: #dc2626;">-₱<%= (Number(payroll.totalDeductions) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Statutory Employer Contributions (Company Burden) -->
+    <div style="background: white; border-radius: 14px; padding: 22px; border: 1px solid #e2e8f0; margin-bottom: 24px;">
+        <h3 style="margin: 0 0 14px 0; font-size: 1.05rem; color: #4f46e5; font-weight: 700; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">
+            Employer Statutory Contributions (Laboratory Operating Cost)
+        </h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; font-size: 0.88rem;">
+            <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <span style="color: #64748b; font-size: 0.75rem; font-weight: 700;">SSS EMPLOYER SHARE</span>
+                <div style="font-weight: 800; font-size: 1.15rem; color: #0f172a; margin-top: 4px;">₱<%= (Number(payroll.sssEmployerShare) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></div>
+            </div>
+            <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <span style="color: #64748b; font-size: 0.75rem; font-weight: 700;">PHILHEALTH EMPLOYER</span>
+                <div style="font-weight: 800; font-size: 1.15rem; color: #0f172a; margin-top: 4px;">₱<%= (Number(payroll.philhealthEmployerShare) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></div>
+            </div>
+            <div style="background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <span style="color: #64748b; font-size: 0.75rem; font-weight: 700;">PAG-IBIG EMPLOYER</span>
+                <div style="font-weight: 800; font-size: 1.15rem; color: #0f172a; margin-top: 4px;">₱<%= (Number(payroll.pagibigEmployerShare) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></div>
+            </div>
+            <div style="background: #e0e7ff; padding: 12px; border-radius: 8px; border: 1px solid #c7d2fe;">
+                <span style="color: #3730a3; font-size: 0.75rem; font-weight: 700;">FULL EMPLOYER COST</span>
+                <div style="font-weight: 800; font-size: 1.15rem; color: #4338ca; margin-top: 4px;">₱<%= payroll.totalEmployerCost.toLocaleString('en-US', { minimumFractionDigits: 2 }) %></div>
+            </div>
+        </div>
+    </div>
+</div>

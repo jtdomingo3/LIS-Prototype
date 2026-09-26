@@ -1,13 +1,13 @@
-# Gezyne Laboratory Information System (LIS) v2.6.0
+# Gezyne Laboratory Information System (LIS) v2.6.2
 
-[![Version](https://img.shields.io/badge/version-2.6.0-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
+[![Version](https://img.shields.io/badge/version-2.6.2-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-green.svg?style=flat-square&logo=node.js)](https://nodejs.org/)
 [![Database](https://img.shields.io/badge/database-SQLite%20(WAL%20Enabled)-blue.svg?style=flat-square&logo=sqlite)](https://www.sqlite.org/)
 [![Electron](https://img.shields.io/badge/desktop-Electron%20v28-47848F.svg?style=flat-square&logo=electron)](https://www.electronjs.org/)
 [![Offline](https://img.shields.io/badge/offline-100%25%20Capable-success.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
 [![License](https://img.shields.io/badge/license-MIT-amber.svg?style=flat-square)](LICENSE)
 
-> **Gezyne Clinical Laboratory - Laboratory Information System (LIS) v2.6.0** is an enterprise-grade clinical diagnostic and laboratory management platform. It pairs a centralized full-stack Node.js/Express server with 100% offline-capable standalone desktop workstations, multi-station patient processing pipelines, real-time telemetry, AI clinical assistant, outpatient clinical consultation management, reagent inventory tracking, Levey-Jennings QC & NEQAS proficiency testing, and robust SQLite WAL backups.
+> **Gezyne Clinical Laboratory - Laboratory Information System (LIS) v2.6.2** is an enterprise-grade clinical diagnostic and laboratory management platform. It pairs a centralized full-stack Node.js/Express server with 100% offline-capable standalone desktop workstations, multi-station patient processing pipelines, real-time telemetry, AI clinical assistant, outpatient clinical consultation management, human resources & payroll, cost-per-test economics, Levey-Jennings QC & NEQAS proficiency testing, and robust SQLite WAL backups.
 
 ---
 
@@ -15,22 +15,22 @@
 
 ```
 .
-├── README.md                  # Central system documentation (v2.6.0)
+├── README.md                  # Central system documentation (v2.6.2)
 ├── ads.json                   # Kiosk announcement configuration
 │
-├── lis-fullstack/             # Central LIS Server & Electron Tray Launcher (v2.6.0)
+├── lis-fullstack/             # Central LIS Server & Electron Tray Launcher (v2.6.2)
 │   ├── build/                 # Bundled installer resources & seed data
 │   ├── dist/                  # Packaged standalone executable (via pkg)
-│   ├── lib/                   # SQLite database adapter (better-sqlite3), tokens, PDF engine
-│   ├── middleware/            # Bearer token auth, role gates & rate limiting
-│   ├── models/                # Domain models (Patient, Test, User, Template, Inventory, Consultation)
-│   ├── routes/                # Express MVC routes & RESTful endpoints
+│   ├── lib/                   # SQLite database adapter (better-sqlite3), tokens, PDF engine, payroll/tax calculators
+│   ├── middleware/            # Bearer token auth, role gates, HR/Costing permissions & rate limiting
+│   ├── models/                # Domain models (Patient, Test, User, Employee, Payroll, Expense, CostPerTest, DTR, Leaves)
+│   ├── routes/                # Express MVC routes & RESTful endpoints (including /hr and /costing)
 │   ├── scripts/               # Build, encryption & Windows service scripts
 │   ├── tray/                  # Electron System Tray launcher & NSIS Windows installer
 │   ├── views/                 # Responsive EJS views, layouts & print templates
 │   └── server.js              # Central LIS Server entrypoint
 │
-├── lis-app-standalone/        # Local-First Standalone Desktop Client (Electron) (v2.6.0)
+├── lis-app-standalone/        # Local-First Standalone Desktop Client (Electron) (v2.6.2)
 │   ├── lib/                   # Local Express engine, sync engine, network monitor & queue
 │   ├── models/                # Local SQLite models with offline support
 │   ├── renderer/              # Desktop modals, status banners & print preview
@@ -46,7 +46,73 @@
 
 ## 📜 Version History & Release Notes
 
-### **v2.6.0 (Clinical Consultation Module, DOH PhilPEN Risk Assessment, Clinical Document Printing & Worksheet Isolation) — Current Release**
+### **v2.6.2 (Human Resources & Payroll, Financial Costing & Profitability, 2D Echo Dual-Sheet Printing, GezyneBot v2.6.2) — Current Release**
+- 👥 **Human Resources (HR) & Philippine Payroll Management Module (`/hr`)**:
+  - **Employee Master Directory (`/hr/employees`)**:
+    - Centralized management of clinic staff profiles: Employee Code, full legal name (with automatic stripping of medical credentials like "MD, FPSP" for clean legal records while preserving clinical credentials in profiles), department, position/role, employment status (Active, Resigned, AWOL, Terminated with separation dates and reasons).
+    - Separation tracking with separation date, reason, and automated archival.
+    - System Account segregation (`isSystemAccount`) preventing non-human IT/reception logins from cluttering employee lists and payroll computations.
+    - Flexible pay structures: Daily Duty (for clinic/lab staff with daily rates and 5-day week caps) vs Fixed Monthly (for pathologists/doctors) vs Commission Only (exempt consulting physicians).
+    - Statutory ID management: TIN, SSS, PhilHealth PIN, and Pag-IBIG (HDMF) Mid number.
+    - Recurring allowances: Rice subsidy, transport, meal, and custom allowances with audit notes.
+  - **Employee Self-Service / Personal Portal (`/hr/my`)**:
+    - Dedicated portal for authenticated employees to log and review DTR attendance, submit leave applications, track approval statuses, and view/print confidential payslips and annual BIR 2316 tax summaries.
+  - **Daily Time Record (DTR) & Attendance Engine (`/hr/my/dtr`, `/hr/employees/:id/dtr`)**:
+    - Daily biometric and manual attendance logging (Morning In/Out, Afternoon In/Out).
+    - Real-time computation of regular hours, undertime/tardiness, overtime hours, night differential, and holiday premiums (Regular vs Special Non-Working).
+  - **Leave Management & Approval Workflow (`/hr/leaves`)**:
+    - Leave applications supporting Vacation Leave (VL), Sick Leave (SL), Maternity, Paternity, Solo Parent, Bereavement, Emergency, and Leave Without Pay (LWOP).
+    - Automatic leave balance credit checking and validation.
+    - Multi-stage approval workflow (Pending -> Approved / Rejected) with administrator remarks.
+    - Official Printable Leave Application Slip (`/hr/print/leave/:id`) with employee signature and approving supervisor sign-offs.
+  - **Philippine Statutory Contributions & Tax Engine (`lib/philippineContributions.js`)**:
+    - 2025/2026 SSS contribution schedule calculating Employee Share (EE), Employer Share (ER), and mandatory provident fund (WISP/MPF) contributions across monthly salary credit brackets.
+    - PhilHealth 5.0% contribution rate with equal 50-50 split between employee and employer subject to statutory salary floor and ceiling.
+    - Pag-IBIG (HDMF) contribution calculation with statutory salary ceilings.
+    - BIR TRAIN Law graduated withholding tax calculation (semi-monthly and monthly brackets) with non-taxable minimum wage exemptions and de minimis benefit exclusions.
+  - **Semi-Monthly & Monthly Payroll Processing (`/hr/payroll`, `/hr/payroll/compute`, `lib/payrollComputer.js`)**:
+    - Batch computation for active staff: Gross pay, overtime/holiday adjustments, itemized statutory deductions (SSS, PhilHealth, Pag-IBIG, Withholding Tax), salary loans, cash advances, and net take-home pay.
+    - Payroll status workflow: Draft -> Approved -> Paid.
+    - Excel Payroll Register export (`/hr/export/payroll?month=YYYY-MM`) for banking and accounting.
+  - **Official HR Printable Documents Suite**:
+    - Confidential Employee Payslip (`/hr/print/payslip/:id`) with earnings, contributions, and net pay breakdown.
+    - Certificate of Employment (COE) (`/hr/print/coe/:id`) in formal legal Philippine format, signed by Laboratory Owner / Medical Director.
+    - Certificate of Exit Clearance (`/hr/print/clearance/:id`) with multi-department sign-offs.
+    - BIR Form 2316 Tax Summary report (`/hr/print/tax-summary/:id/:year`).
+- 💰 **Costing & Financial Profitability (P&L) Module (`/costing`)**:
+  - **Cost-Per-Test Analysis Engine (`/costing/cost-per-test`, `models/CostPerTest.js`)**:
+    - Direct itemized unit cost breakdown: Reagent cost, calibrators/controls, consumable supplies (tubes, needles, tips, slides), direct MedTech labor, and equipment depreciation/overhead.
+    - Real-time gross margin %, markup %, and suggested retail price (SRP) calculations.
+    - Direct reagent inventory mapping for automated price adjustment tracking.
+  - **Operating Expenses Tracker (`/costing/expenses`, `models/Expense.js`)**:
+    - Clinic expenditure tracking across standardized categories: Reagents, Staff Salaries, Rent, Utilities, Equipment Maintenance, Regulatory & Licensing (DOH, FDA, BIR, NEQAS), Biohazard Waste Disposal, and Miscellaneous.
+    - Support for recurring expenses, invoice attachments, and payment methods.
+  - **Revenue & Profitability Analytics (`/costing`, `/costing/revenue`, `/costing/monthly`)**:
+    - Patient diagnostic revenue tracking by payment channel (Cash, GCash, Bank Transfer, HMO/Corporate).
+    - Executive dashboard: Total Revenue, COGS, OPEX, Gross Profit, Operating Income, and Net Profit Margin %.
+    - Accounting-style Monthly Income Statement (`/costing/monthly/:month`) with division-by-zero protection.
+  - **Supplier Model Configuration**:
+    - Reagent vendor quotes, packaging sizes, volume discounts, and unit conversion management.
+- 🫀 **2D Echocardiography Dual-Form & Letter Print Engine**:
+  - **Dual-Sheet Architecture (`/reports/results/echocardiography-2d`, `?sheet=all|info|reading`)**:
+    - Sheet 1 (Info Sheet): M-mode / 2-D measurements, 3-column chamber/aorta matrix, and 9-column Doppler matrix.
+    - Sheet 2 (Reading Sheet): Clinical interpretation, Color flow and Spectral Doppler findings, conclusion, and cardiologist signature.
+    - Independent or combined 1-page Letter portrait printing with `page-break-inside: avoid`.
+  - **Doppler Measurement 9-Subcolumn Grid Alignment**:
+    - Standardized valve columns (Mitral, Aortic, Tricuspid, Pulmonic) with Left = Value, Right = Reference.
+    - Pulmonic Vein diastolic, systolic, and sys/dias ratios cleanly positioned alongside PASP by TRJ, Total PASP, and PAT (`≥`).
+    - Mitral Max Velocity: Streamlined data entry with default `E:` and `A:` prefix labels; automatic output formatting as `E: 0.8/3.0` & `A: 0.6/1.7`.
+  - **Balanced Patient Header Layout**:
+    - Rebalanced 6-column proportions (18%, 27%, 9%, 16%, 10%, 20%), preventing contact number wrapping or clipping without excessive dead space.
+- 🤖 **GezyneBot Clinical AI Knowledge Base v2.6.2**:
+  - Expanded knowledge base across `lis-fullstack`, `lis-app-standalone`, and `lis-fullstack/tray` with comprehensive HR, payroll, statutory contributions, cost-per-test unit economics, and 2D Echocardiography guidance.
+  - Added HR and Costing interactive feature cards and quick query exploration in the chatbot UI.
+- 🔄 **100% Standalone Workstation Parity**:
+  - Ported HR and Costing models, routes, lib utilities, views, and navigation into `lis-app-standalone` for complete parity with `lis-fullstack`.
+
+---
+
+### **v2.6.0 (Clinical Consultation Module, DOH PhilPEN Risk Assessment, Clinical Document Printing & Worksheet Isolation)**
 - 🩺 **Clinical Consultation & Outpatient Doctor Check-up Module (`/consultations/:testId`)**:
   - Full outpatient encounter management adhering to SOAP (Subjective, Objective, Assessment, Plan) guidelines and Philippine DOH PhilPEN CPG.
   - **Subjective**: Chief Complaint (CC), History of Present Illness (HPI), Past Medical History (PMH), Current Medications, Review of Systems (ROS), and prominent allergy warning alerts (with NKDA flag).

@@ -421,7 +421,9 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     { prefix: '/inventory', perm: 'inventory' },
     { prefix: '/equipment', perm: 'equipment' },
     { prefix: '/users', perm: 'users' },
-    { prefix: '/worksheet', perm: 'worksheet' }
+    { prefix: '/worksheet', perm: 'worksheet' },
+    { prefix: '/costing', perm: 'costing' },
+    { prefix: '/hr', perm: 'hr' }
   ];
 
   app.use((req, res, next) => {
@@ -556,6 +558,16 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     const chatbotRoutes = require('../routes/chatbot');
     app.use('/chatbot', chatbotRoutes);
   } catch (e) { console.error('[LocalServer] failed to load chatbot routes:', e && e.message); }
+
+  try {
+    const costingRoutes = require('../routes/costing');
+    app.use('/costing', costingRoutes);
+  } catch (e) { console.error('[LocalServer] failed to load costing routes:', e && e.message); }
+
+  try {
+    const hrRoutes = require('../routes/hr');
+    app.use('/hr', hrRoutes);
+  } catch (e) { console.error('[LocalServer] failed to load hr routes:', e && e.message); }
 
   /* ── 404 handler ──────────────────────────────────────────────── */
   app.use((req, res) => {
