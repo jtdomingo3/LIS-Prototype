@@ -68,3 +68,4 @@ npm install
 pm2 reload lis-server --update-env
 ```
 `pm2 reload` restarts workers sequentially one-by-one, ensuring active HTTP requests finish while new traffic routes to updated workers with **zero downtime**.
+

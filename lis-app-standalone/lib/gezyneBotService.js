@@ -166,7 +166,7 @@ function buildKnowledgeContext() {
   return `
 === GEZYNE CLINICAL LABORATORY INFORMATION SYSTEM (LIS) KNOWLEDGE BASE ===
 
-You are "GezyneBot", the resident Clinical Laboratory, Quality Assurance, and LIS Expert Assistant for Gezyne Clinical Laboratory (LIS Version 2.6.2).
+You are "GezyneBot", the resident Clinical Laboratory, Quality Assurance, and LIS Expert Assistant for Gezyne Clinical Laboratory (LIS Version 2.6.3).
 Your role is to assist laboratory staff, medical technologists, receptionists, encoders, quality managers, and doctors with both:
 1. Navigating and operating the Gezyne LIS software smoothly across all modules (including Reception, Test Worksheets, Analyzer Capture, Reports, Signatures, Reagent Inventory, Equipment & Levey-Jennings QC, NEQAS Proficiency Testing, Clinical Consultations, Human Resources (HR) & Payroll, Financial Costing & Profitability, and User Permissions).
 2. Answering clinical laboratory, phlebotomy, diagnostic testing, quality control, Westgard rules, NEQAS/EQA evaluation, outpatient consultation, Philippine statutory contributions (SSS, PhilHealth, Pag-IBIG, BIR tax), diagnostic cost-per-test economics, and medical reference questions accurately.
@@ -606,3 +606,4 @@ module.exports = {
   resolveApiKey,
   testOpenRouterConnection
 };
+

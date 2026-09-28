@@ -1,13 +1,13 @@
-# Gezyne Laboratory Information System (LIS) v2.6.2
+# Gezyne Laboratory Information System (LIS) v2.6.3
 
-[![Version](https://img.shields.io/badge/version-2.6.2-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
+[![Version](https://img.shields.io/badge/version-2.6.3-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-green.svg?style=flat-square&logo=node.js)](https://nodejs.org/)
 [![Database](https://img.shields.io/badge/database-SQLite%20(WAL%20Enabled)-blue.svg?style=flat-square&logo=sqlite)](https://www.sqlite.org/)
 [![Electron](https://img.shields.io/badge/desktop-Electron%20v28-47848F.svg?style=flat-square&logo=electron)](https://www.electronjs.org/)
 [![Offline](https://img.shields.io/badge/offline-100%25%20Capable-success.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
 [![License](https://img.shields.io/badge/license-MIT-amber.svg?style=flat-square)](LICENSE)
 
-> **Gezyne Clinical Laboratory - Laboratory Information System (LIS) v2.6.2** is an enterprise-grade clinical diagnostic and laboratory management platform. It pairs a centralized full-stack Node.js/Express server with 100% offline-capable standalone desktop workstations, multi-station patient processing pipelines, real-time telemetry, AI clinical assistant, outpatient clinical consultation management, human resources & payroll, cost-per-test economics, Levey-Jennings QC & NEQAS proficiency testing, and robust SQLite WAL backups.
+> **Gezyne Clinical Laboratory - Laboratory Information System (LIS) v2.6.3** is an enterprise-grade clinical diagnostic and laboratory management platform. It pairs a centralized full-stack Node.js/Express server with 100% offline-capable standalone desktop workstations, multi-station patient processing pipelines, real-time telemetry, AI clinical assistant, outpatient clinical consultation management, human resources & payroll, cost-per-test economics, Levey-Jennings QC & NEQAS proficiency testing, and robust SQLite WAL backups.
 
 ---
 
@@ -15,10 +15,10 @@
 
 ```
 .
-├── README.md                  # Central system documentation (v2.6.2)
+├── README.md                  # Central system documentation (v2.6.3)
 ├── ads.json                   # Kiosk announcement configuration
 │
-├── lis-fullstack/             # Central LIS Server & Electron Tray Launcher (v2.6.2)
+├── lis-fullstack/             # Central LIS Server & Electron Tray Launcher (v2.6.3)
 │   ├── build/                 # Bundled installer resources & seed data
 │   ├── dist/                  # Packaged standalone executable (via pkg)
 │   ├── lib/                   # SQLite database adapter (better-sqlite3), tokens, PDF engine, payroll/tax calculators
@@ -30,7 +30,7 @@
 │   ├── views/                 # Responsive EJS views, layouts & print templates
 │   └── server.js              # Central LIS Server entrypoint
 │
-├── lis-app-standalone/        # Local-First Standalone Desktop Client (Electron) (v2.6.2)
+├── lis-app-standalone/        # Local-First Standalone Desktop Client (Electron) (v2.6.3)
 │   ├── lib/                   # Local Express engine, sync engine, network monitor & queue
 │   ├── models/                # Local SQLite models with offline support
 │   ├── renderer/              # Desktop modals, status banners & print preview
@@ -46,7 +46,7 @@
 
 ## 📜 Version History & Release Notes
 
-### **v2.6.2 (Human Resources & Payroll, Financial Costing & Profitability, 2D Echo Dual-Sheet Printing, GezyneBot v2.6.2) — Current Release**
+### **v2.6.2 (Human Resources & Payroll, Financial Costing & Profitability, 2D Echo Dual-Sheet Printing, GezyneBot v2.6.3) — Current Release**
 - 👥 **Human Resources (HR) & Philippine Payroll Management Module (`/hr`)**:
   - **Employee Master Directory (`/hr/employees`)**:
     - Centralized management of clinic staff profiles: Employee Code, full legal name (with automatic stripping of medical credentials like "MD, FPSP" for clean legal records while preserving clinical credentials in profiles), department, position/role, employment status (Active, Resigned, AWOL, Terminated with separation dates and reasons).
@@ -104,7 +104,7 @@
     - Mitral Max Velocity: Streamlined data entry with default `E:` and `A:` prefix labels; automatic output formatting as `E: 0.8/3.0` & `A: 0.6/1.7`.
   - **Balanced Patient Header Layout**:
     - Rebalanced 6-column proportions (18%, 27%, 9%, 16%, 10%, 20%), preventing contact number wrapping or clipping without excessive dead space.
-- 🤖 **GezyneBot Clinical AI Knowledge Base v2.6.2**:
+- 🤖 **GezyneBot Clinical AI Knowledge Base v2.6.3**:
   - Expanded knowledge base across `lis-fullstack`, `lis-app-standalone`, and `lis-fullstack/tray` with comprehensive HR, payroll, statutory contributions, cost-per-test unit economics, and 2D Echocardiography guidance.
   - Added HR and Costing interactive feature cards and quick query exploration in the chatbot UI.
 - 🔄 **100% Standalone Workstation Parity**:
@@ -112,7 +112,7 @@
 
 ---
 
-### **v2.6.0 (Clinical Consultation Module, DOH PhilPEN Risk Assessment, Clinical Document Printing & Worksheet Isolation)**
+### **v2.6.3 (Clinical Consultation Module, DOH PhilPEN Risk Assessment, Clinical Document Printing & Worksheet Isolation)**
 - 🩺 **Clinical Consultation & Outpatient Doctor Check-up Module (`/consultations/:testId`)**:
   - Full outpatient encounter management adhering to SOAP (Subjective, Objective, Assessment, Plan) guidelines and Philippine DOH PhilPEN CPG.
   - **Subjective**: Chief Complaint (CC), History of Present Illness (HPI), Past Medical History (PMH), Current Medications, Review of Systems (ROS), and prominent allergy warning alerts (with NKDA flag).
@@ -253,7 +253,7 @@ The desktop client runs an embedded local engine on `http://127.0.0.1:30099` wit
 
 ---
 
-## 📦 Packaging Windows Installers (v2.6.0)
+## 📦 Packaging Windows Installers (v2.6.3)
 
 ### 1. Build Central Server Installer (`Gezyne LIS Server Setup 2.6.0.exe`)
 
@@ -315,3 +315,4 @@ pm2 save
 ## 📌 License
 
 Distributed under the **MIT License**. Developed for **Gezyne Clinical Laboratory**.
+

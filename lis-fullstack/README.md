@@ -1,9 +1,9 @@
-# Gezyne LIS Server (Full-Stack) v2.6.2
+# Gezyne LIS Server (Full-Stack) v2.6.3
 
-[![Version](https://img.shields.io/badge/version-2.6.2-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
+[![Version](https://img.shields.io/badge/version-2.6.3-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-green.svg?style=flat-square&logo=node.js)](https://nodejs.org/)
 [![Database](https://img.shields.io/badge/database-SQLite%20(WAL%20Enabled)-blue.svg?style=flat-square&logo=sqlite)](https://www.sqlite.org/)
-[![Security](https://img.shields.io/badge/security-HMAC--SHA256%20%7C%20bcrypt-purple.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
+[![Security](https://img.shields.io/badge/security-HMAC--SHA2.6.30%7C%20bcrypt-purple.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](LICENSE)
 
 An enterprise-grade, full-stack Laboratory Information System (LIS) server built with Node.js, Express, and high-performance SQLite engine (`lis-data.db`). Engineered for high-throughput diagnostic laboratories, outpatient clinical consultations, multi-station patient processing, real-time telemetry, and synchronized desktop workstations.
@@ -12,7 +12,7 @@ An enterprise-grade, full-stack Laboratory Information System (LIS) server built
 
 ## 📜 Version History & Release Notes
 
-### **v2.6.2 (Human Resources & Payroll, Financial Costing & Profitability, 2D Echo Dual-Sheet Printing, GezyneBot v2.6.2) — Current Release**
+### **v2.6.3 (Human Resources & Payroll, Financial Costing & Profitability, 2D Echo Dual-Sheet Printing, GezyneBot v2.6.3) — Current Release**
 - 👥 **Human Resources (HR) & Philippine Payroll Management Module (`/hr`)**:
   - **Employee Master Directory (`/hr/employees`)**:
     - Centralized management of clinic staff profiles: Employee Code, full legal name (with automatic stripping of medical credentials like "MD, FPSP" for clean legal records while preserving clinical credentials in profiles), department, position/role, employment status (Active, Resigned, AWOL, Terminated with separation dates and reasons).
@@ -70,7 +70,7 @@ An enterprise-grade, full-stack Laboratory Information System (LIS) server built
     - Mitral Max Velocity: Streamlined data entry with default `E:` and `A:` prefix labels; automatic output formatting as `E: 0.8/3.0` & `A: 0.6/1.7`.
   - **Balanced Patient Header Layout**:
     - Rebalanced 6-column proportions (18%, 27%, 9%, 16%, 10%, 20%), preventing contact number wrapping or clipping without excessive dead space.
-- 🤖 **GezyneBot Clinical AI Knowledge Base v2.6.2**:
+- 🤖 **GezyneBot Clinical AI Knowledge Base v2.6.3**:
   - Expanded knowledge base across `lis-fullstack`, `lis-app-standalone`, and `lis-fullstack/tray` with comprehensive HR, payroll, statutory contributions, cost-per-test unit economics, and 2D Echocardiography guidance.
   - Added HR and Costing interactive feature cards and quick query exploration in the chatbot UI.
 
@@ -102,7 +102,7 @@ An enterprise-grade, full-stack Laboratory Information System (LIS) server built
 
 ---
 
-### **v2.6.0 (Clinical Consultation Module, DOH PhilPEN Risk Assessment, Clinical Document Printing & Worksheet Isolation)**
+### **v2.6.3 (Clinical Consultation Module, DOH PhilPEN Risk Assessment, Clinical Document Printing & Worksheet Isolation)**
 - 🩺 **Clinical Consultation & Outpatient Doctor Check-up Module (`/consultations/:testId`)**:
   - Outpatient SOAP documentation (Subjective, Objective, Assessment, Plan) with PhilHealth / DOH PhilPEN Clinical Practice Guidelines (CPG) integration.
   - **Subjective & DOH PhilPEN Profiling**: Chief complaint, HPI, PMH, current medications, review of systems (ROS), allergy warnings (NKDA flag), interactive Familial NCD checklist with clickable pills (Hypertension, T2DM, CAD, Stroke, Cancer, Asthma/Allergies, CKD) auto-populating structured kinship notes, tobacco pack-years calculator, and alcohol screening.
@@ -294,3 +294,4 @@ Installer Artifact: `lis-fullstack/tray/dist/Gezyne LIS Server Setup 2.6.1.exe`
 ## 📌 License
 
 Distributed under the **MIT License**. Engineered for **Gezyne Clinical Laboratory**.
+

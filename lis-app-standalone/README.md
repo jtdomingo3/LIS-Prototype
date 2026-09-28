@@ -1,6 +1,6 @@
-# Gezyne LIS Standalone Desktop Client v2.6.2
+# Gezyne LIS Standalone Desktop Client v2.6.3
 
-[![Version](https://img.shields.io/badge/version-2.6.2-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
+[![Version](https://img.shields.io/badge/version-2.6.3-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
 [![Electron](https://img.shields.io/badge/Electron-v28-47848F.svg?style=flat-square&logo=electron)](https://www.electronjs.org/)
 [![Database](https://img.shields.io/badge/database-SQLite%20(Local--First)-blue.svg?style=flat-square&logo=sqlite)](https://www.sqlite.org/)
 [![Offline](https://img.shields.io/badge/offline-100%25%20capable-success.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
@@ -14,7 +14,7 @@ The standalone desktop application operates **100% autonomously without network 
 
 ## 📜 Version History & Release Notes
 
-### **v2.6.2 (Human Resources & Payroll, Financial Costing & Profitability, 2D Echo Dual-Sheet Printing, GezyneBot v2.6.2) — Current Release**
+### **v2.6.3 (Human Resources & Payroll, Financial Costing & Profitability, 2D Echo Dual-Sheet Printing, GezyneBot v2.6.3) — Current Release**
 - 👥 **Human Resources (HR) & Philippine Payroll Management Module (`/hr`)**:
   - Full local-first offline support for Employee Master Directory (`/hr/employees`), Employee Self-Service / Personal Portal (`/hr/my`), Daily Time Record (DTR) attendance logging (`/hr/my/dtr`), and Leave Application workflows (`/hr/leaves`).
   - Integrated Philippine statutory deductions engine (`lib/philippineContributions.js`) and payroll calculation engine (`lib/payrollComputer.js`) supporting 2025/2026 SSS with WISP/MPF, PhilHealth 5%, Pag-IBIG HDMF, and BIR TRAIN graduated withholding tax.
@@ -27,15 +27,15 @@ The standalone desktop application operates **100% autonomously without network 
   - Standardized 9-subcolumn Doppler valve matrix (Mitral, Aortic, Tricuspid, Pulmonic) with Left = Value and Right = Reference alignment.
   - Pulmonic Vein ratio measurements and automatic Mitral Max Velocity `E:` / `A:` label defaults.
   - Rebalanced 6-column patient demographic header preventing phone number wrapping.
-- 🤖 **GezyneBot AI Clinical Assistant v2.6.2**:
-  - Updated offline GezyneBot knowledge base to v2.6.2 with Sections 13 (HR & Payroll), 14 (Costing & P&L), and 15 (2D Echocardiography).
+- 🤖 **GezyneBot AI Clinical Assistant v2.6.3**:
+  - Updated offline GezyneBot knowledge base to v2.6.3 with Sections 13 (HR & Payroll), 14 (Costing & P&L), and 15 (2D Echocardiography).
   - Modernized chatbot welcome interface with HR and Costing interactive query explorer cards.
 - 🔄 **Embedded Desktop Express Engine Parity**:
   - Synchronized `localServer.js`, `middleware/auth.js`, and desktop `layout.ejs` navigation bars to provide seamless offline access to `/hr` and `/costing` routes.
 
 ---
 
-### **v2.6.0 (Clinical Consultation Module, DOH PhilPEN Risk Assessment, Clinical Document Printing & Worksheet Isolation)**
+### **v2.6.3 (Clinical Consultation Module, DOH PhilPEN Risk Assessment, Clinical Document Printing & Worksheet Isolation)**
 - 🩺 **Clinical Consultation & Outpatient Doctor Check-up Module (`/consultations/:testId`)**:
   - Full outpatient clinical encounter documentation adhering to international SOAP (Subjective, Objective, Assessment, Plan) guidelines and DOH Philippine Package of Essential NCD Interventions (PhilPEN) Clinical Practice Guidelines (CPG).
   - **Subjective & DOH PhilPEN Profiling**: Chief complaint, HPI, PMH, current medications, review of systems (ROS), allergy warnings (with NKDA flag), interactive Familial NCD checklist with clickable pills (Hypertension, T2DM, CAD, Stroke, Cancer, Asthma/Allergies, CKD) auto-populating structured kinship notes, tobacco pack-years calculator, and alcohol screening.
@@ -227,7 +227,7 @@ node test/settings-system.test.js
 
 ---
 
-## 📦 Building the Windows Installer (v2.6.0)
+## 📦 Building the Windows Installer (v2.6.3)
 
 To compile the production Windows desktop installer package:
 
@@ -239,7 +239,7 @@ npm run dist:win
 npm run dist:dir
 ```
 
-Installer Artifact: `lis-app-standalone/dist/Gezyne LIS Setup 2.6.0.exe`
+Installer Artifact: `lis-app-standalone/dist/Gezyne LIS Setup 2.6.3.exe`
 
 ---
 
@@ -260,3 +260,4 @@ All local databases, offline queues, and cached assets are persisted under the u
 ## 📌 License
 
 Distributed under the **MIT License**. Engineered for **Gezyne Clinical Laboratory**.
+
