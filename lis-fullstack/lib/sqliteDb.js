@@ -2775,6 +2775,29 @@ function createSqlJsDb(SQL, dbPath) {
       createdAt TEXT,
       json TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS dtr_records (
+      id TEXT PRIMARY KEY,
+      employeeId TEXT NOT NULL,
+      date TEXT NOT NULL,
+      amIn TEXT,
+      amOut TEXT,
+      pmIn TEXT,
+      pmOut TEXT,
+      totalHours REAL DEFAULT 0,
+      dutyCredit REAL DEFAULT 0,
+      isFullDuty INTEGER DEFAULT 0,
+      undertimeMinutes INTEGER DEFAULT 0,
+      overtimeHours REAL DEFAULT 0,
+      status TEXT DEFAULT 'Completed',
+      notes TEXT,
+      correctedBy TEXT,
+      createdAt TEXT,
+      updatedAt TEXT,
+      json TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_dtr_emp ON dtr_records(employeeId);
+    CREATE INDEX IF NOT EXISTS idx_dtr_date ON dtr_records(date);
+    CREATE INDEX IF NOT EXISTS idx_dtr_emp_date ON dtr_records(employeeId, date);
   `);
 
   let persistTimer = null;
@@ -3666,6 +3689,14 @@ function createSqlJsDb(SQL, dbPath) {
       }
     },
 
+    getAllInventoryTransactions() {
+      try {
+        return parseRows(queryAll('SELECT json FROM inventory_transactions ORDER BY createdAt DESC'));
+      } catch (e) {
+        return [];
+      }
+    },
+
     getInventoryTransactions(inventoryId, batchId) {
       try {
         if (batchId) {
@@ -3922,6 +3953,17 @@ function createSqlJsDb(SQL, dbPath) {
     deleteQcEntry(id) {
       try {
         queryRun('DELETE FROM qc_entries WHERE id = ?', [id]);
+        persist();
+        return true;
+      } catch (e) { return false; }
+    },
+    deleteQcEntries(equipmentId, analyteCode) {
+      try {
+        if (equipmentId && analyteCode) {
+          queryRun('DELETE FROM qc_entries WHERE equipmentId = ? AND analyteCode = ?', [equipmentId, analyteCode]);
+        } else if (equipmentId) {
+          queryRun('DELETE FROM qc_entries WHERE equipmentId = ?', [equipmentId]);
+        }
         persist();
         return true;
       } catch (e) { return false; }
@@ -4327,6 +4369,53 @@ function createSqlJsDb(SQL, dbPath) {
     deleteLeaveRecord(id) {
       try {
         queryRun('DELETE FROM leave_records WHERE id = ?', [id]);
+        persist();
+        return true;
+      } catch (e) { return false; }
+    },
+    getLeaveRecordsByEmployee(employeeId) {
+      return this.getLeaveRecords(employeeId);
+    },
+
+    // DTR Records (sql.js)
+    getDtrRecords(employeeId, yearMonth) {
+      try {
+        let rows;
+        if (employeeId && yearMonth) {
+          rows = queryAll('SELECT json FROM dtr_records WHERE employeeId = ? AND date LIKE ? ORDER BY date ASC', [employeeId, yearMonth + '%']);
+        } else if (employeeId) {
+          rows = queryAll('SELECT json FROM dtr_records WHERE employeeId = ? ORDER BY date DESC', [employeeId]);
+        } else {
+          rows = queryAll('SELECT json FROM dtr_records ORDER BY date DESC, createdAt DESC');
+        }
+        return parseRows(rows);
+      } catch (e) { return []; }
+    },
+    getDtrRecordByDate(employeeId, date) {
+      if (!employeeId || !date) return null;
+      try {
+        const rows = queryAll('SELECT json FROM dtr_records WHERE employeeId = ? AND date = ?', [employeeId, date]);
+        return rows[0] && rows[0].json ? JSON.parse(rows[0].json) : null;
+      } catch (e) { return null; }
+    },
+    saveDtrRecord(dtr) {
+      if (!dtr || !dtr.id) return null;
+      try {
+        const now = new Date().toISOString();
+        queryRun(
+          'INSERT OR REPLACE INTO dtr_records (id, employeeId, date, amIn, amOut, pmIn, pmOut, totalHours, dutyCredit, isFullDuty, undertimeMinutes, overtimeHours, status, notes, correctedBy, createdAt, updatedAt, json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [String(dtr.id), safeStr(dtr.employeeId || ''), safeStr(dtr.date || now.slice(0, 10)), safeStr(dtr.amIn || ''), safeStr(dtr.amOut || ''), safeStr(dtr.pmIn || ''), safeStr(dtr.pmOut || ''), Number(dtr.totalHours) || 0, Number(dtr.dutyCredit) || 0, Number(dtr.isFullDuty) || 0, Number(dtr.undertimeMinutes) || 0, Number(dtr.overtimeHours) || 0, safeStr(dtr.status || 'Completed'), safeStr(dtr.notes || ''), safeStr(dtr.correctedBy || null), safeStr(dtr.createdAt || now), safeStr(dtr.updatedAt || now), JSON.stringify(dtr)]
+        );
+        persist();
+        return dtr;
+      } catch (e) {
+        console.error('[sqliteDb sql.js] saveDtrRecord error:', e.message);
+        return null;
+      }
+    },
+    deleteDtrRecord(id) {
+      try {
+        queryRun('DELETE FROM dtr_records WHERE id = ?', [id]);
         persist();
         return true;
       } catch (e) { return false; }

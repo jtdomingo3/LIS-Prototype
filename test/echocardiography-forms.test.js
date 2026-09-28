@@ -428,16 +428,46 @@ runTest('POST /:id/results fallback accepts echocardiography even if testType is
 console.log('\n--- 6. Live HTTP Router & Query Parameter Communication Tests ---');
 
 async function testHttpEndpoint(pathStr, expectedCode = 200) {
-  return new Promise((resolve, reject) => {
-    const req = http.get(`http://127.0.0.1:3000${pathStr}`, res => {
-      let data = '';
-      res.on('data', chunk => { data += chunk; });
-      res.on('end', () => {
-        resolve({ statusCode: res.statusCode, headers: res.headers, body: data });
+  try {
+    return await new Promise((resolve, reject) => {
+      const req = http.get(`http://127.0.0.1:3000${pathStr}`, res => {
+        let data = '';
+        res.on('data', chunk => { data += chunk; });
+        res.on('end', () => {
+          resolve({ statusCode: res.statusCode, headers: res.headers, body: data });
+        });
       });
+      req.on('error', err => reject(err));
     });
-    req.on('error', err => reject(err));
-  });
+  } catch (connErr) {
+    // If external server is offline, spin up an ephemeral server
+    const express = require(path.join(appDir, 'node_modules', 'express'));
+    const testApp = express();
+    testApp.set('views', path.join(appDir, 'views'));
+    testApp.set('view engine', 'ejs');
+    testApp.use((req, res, next) => {
+      req.flash = () => [];
+      req.session = { user: { id: 'admin', role: 'Admin' } };
+      next();
+    });
+    const reportsRoute = require(path.join(appDir, 'routes', 'reports'));
+    testApp.use('/reports', reportsRoute);
+    const ephemeralServer = http.createServer(testApp);
+    await new Promise(resolve => ephemeralServer.listen(0, '127.0.0.1', resolve));
+    const port = ephemeralServer.address().port;
+    try {
+      return await new Promise((resolve, reject) => {
+        const req = http.get(`http://127.0.0.1:${port}${pathStr}`, res => {
+          let data = '';
+          res.on('data', chunk => { data += chunk; });
+          res.on('end', () => resolve({ statusCode: res.statusCode, headers: res.headers, body: data }));
+        });
+        req.on('error', reject);
+      });
+    } finally {
+      ephemeralServer.close();
+    }
+  }
 }
 
 (async () => {
