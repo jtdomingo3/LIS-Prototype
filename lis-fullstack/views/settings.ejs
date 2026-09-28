@@ -393,9 +393,9 @@
 
           <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:16px; margin-top:16px; padding-top:16px; border-top:1px solid #f1f5f9;">
             <div>
-              <strong style="display:block; margin-bottom:6px; font-size:0.9em; color:#334155;">Restore Clinical Database from JSON:</strong>
+              <strong style="display:block; margin-bottom:6px; font-size:0.9em; color:#334155;">Restore Clinical Database (from .db or .json):</strong>
               <div style="display:flex; gap:8px;">
-                <input type="file" id="restoreClinicalFileInput" name="backupFile" form="restoreClinicalForm" accept=".json" style="flex:1;" <%= !isMgmt ? 'disabled' : '' %> />
+                <input type="file" id="restoreClinicalFileInput" name="backupFile" form="restoreClinicalForm" accept=".json,.db" style="flex:1;" <%= !isMgmt ? 'disabled' : '' %> />
                 <button type="button" id="btnRestoreClinical" class="button btn-danger btn-small" onclick="handleRestoreClinical()" <%= !isMgmt ? 'disabled' : '' %>>Restore</button>
               </div>
               <p class="note" style="margin:4px 0 0 0;">Restores patients, tests, counters, templates, and clinical settings.</p>
