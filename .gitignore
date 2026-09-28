@@ -11,6 +11,7 @@ node_modules/
 npm-debug.log*
 lis-fullstack/data.json
 lis-fullstack/data-users.json
+*.migrated
 lis-fullstack/logs/report-errors.log
 lis-fullstack/build/
 # Ignore uploaded e-signatures stored by the app
