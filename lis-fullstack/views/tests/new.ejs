@@ -65,6 +65,7 @@
   </div>
 
   <form action="/tests" method="POST">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
     
     <div class="test-order-grid">
       

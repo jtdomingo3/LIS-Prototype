@@ -189,6 +189,7 @@
                   <% } %>
                 <% } %>
                 <form action="/tests/<%= test.id %>?_method=DELETE" method="POST" style="display:inline;" onsubmit="return confirm('⚠️ Are you sure you want to delete test <%= test.testId %>? This will permanently remove its results.');">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                   <button type="submit" class="button btn-small btn-danger" style="padding:6px 10px; font-size:0.82em; margin-left:4px;" title="Delete test">Delete</button>
                 </form>
               </td>

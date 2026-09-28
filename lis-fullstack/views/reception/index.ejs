@@ -99,6 +99,7 @@
             data-confirm-title="Clear Reception Queue"
             data-confirm-button="Yes, Clear Queues"
             data-confirm="⚠️ ADMIN CONFIRMATION REQUIRED\n\nAre you sure you want to clear all active reception queues?\n\n• All queue counts (Payment Area, Releasing of Result, Extraction, etc.) will reset to 0.\n• Patient profiles and encoded test results will NOT be lost.\n\nClick Yes to proceed.">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
         <button type="submit" class="button btn-danger no-guard" data-no-guard="1" style="background: #dc2626; color: white; border: none; padding: 10px 20px; font-weight: 700; border-radius: 10px; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25); transition: transform 0.2s;">
           <i class="fa fa-broom"></i>
           <span>Clear Reception Queue</span>
@@ -110,6 +111,7 @@
   <!-- Kiosk Advertisement Configuration Box -->
   <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 20px;">
     <form action="/reception/advert" method="POST">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
       <label for="adText" style="display: flex; align-items: center; gap: 8px; font-weight: 700; margin-bottom: 8px; color: #334155; font-size: 0.95em;">
         <i class="fa fa-bullhorn" style="color: #2563eb;"></i>
         <span>Kiosk Advertisement (marquee text shown on kiosk display)</span>

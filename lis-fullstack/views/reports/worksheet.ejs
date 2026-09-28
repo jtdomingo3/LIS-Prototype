@@ -14,6 +14,7 @@
 
   <!-- Worksheet Form -->
   <form id="wsForm" action="/reports/worksheet/download" method="POST">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-bottom:16px;">
       <div class="field" style="margin:0;">
         <label>Diagnostic Test Type</label>
@@ -185,6 +186,7 @@
 
   <!-- Consultation Form -->
   <form id="consultForm" action="/reports/consultations-export/download" method="POST">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-bottom:16px;">
       <div class="field" style="margin:0;">
         <label>Attending Doctor</label>
@@ -549,6 +551,7 @@
   </div>
 
   <form id="patientForm" action="/reports/patient-export/download" method="POST">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
     <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-bottom:20px;">
       <div class="field" style="margin:0;">
         <label>Date Registration Range</label>

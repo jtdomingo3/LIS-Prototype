@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const { requireGuest } = require('../middleware/auth');
+const { body, validationResult } = require('express-validator');
 
 // GET / - Login page
 router.get('/', requireGuest, (req, res) => {
@@ -12,32 +13,43 @@ router.get('/', requireGuest, (req, res) => {
 });
 
 // POST /login - Process login
-router.post('/login', requireGuest, async (req, res) => {
+router.post('/login', requireGuest, [
+  body('email').trim().isEmail().normalizeEmail().withMessage('Valid email required'),
+  body('password').trim().notEmpty().withMessage('Password required')
+], async (req, res) => {
   try {
-    const { email, password } = req.body;
-
-    // Validate input
-    if (!email || !password) {
-      req.flash('error_msg', 'Please enter both email and password');
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      req.flash('error_msg', errors.array()[0].msg);
       return res.redirect('/');
     }
+    const { email, password } = req.body;
 
     // If there are no users in the system yet, allow the first login
     // attempt to seed an admin account using the supplied credentials. This
     // helps recover from a wiped database or first-run after install.
     const totalUsers = await User.countDocuments();
-    if (totalUsers === 0) {
-      console.log('[auth] no users found, creating initial admin', email);
-      const admin = new User({
-        name: 'Admin User',
-        email: email.toLowerCase(),
-        password,
-        role: 'Admin',
-        status: 'Active'
-      });
-      await admin.save();
-      // continue with this newly created user
-      req.flash('success_msg', 'Initial administrator account created.');
+    if (totalUsers === 0 && !global.isCreatingAdmin) {
+      global.isCreatingAdmin = true;
+      try {
+        // Re-check inside the lock
+        const currentTotal = await User.countDocuments();
+        if (currentTotal === 0) {
+          console.log('[auth] no users found, creating initial admin', email);
+          const admin = new User({
+            name: 'Admin User',
+            email: email.toLowerCase(),
+            password,
+            role: 'Admin',
+            status: 'Active'
+          });
+          await admin.save();
+          // continue with this newly created user
+          req.flash('success_msg', 'Initial administrator account created.');
+        }
+      } finally {
+        global.isCreatingAdmin = false;
+      }
     }
 
     // Find user
@@ -107,25 +119,23 @@ if (process.env.NODE_ENV === 'development') {
     });
   });
 
-  router.post('/register', requireGuest, async (req, res) => {
+  router.post('/register', requireGuest, [
+    body('name').trim().notEmpty().withMessage('Name is required').escape(),
+    body('email').trim().isEmail().normalizeEmail().withMessage('Valid email required'),
+    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
+    body('confirmPassword').custom((value, { req }) => {
+      if (value !== req.body.password) throw new Error('Passwords do not match');
+      return true;
+    }),
+    body('role').optional().trim().escape()
+  ], async (req, res) => {
     try {
-      const { name, email, password, confirmPassword, role } = req.body;
-
-      // Validate input
-      if (!name || !email || !password) {
-        req.flash('error_msg', 'Please fill all required fields');
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        req.flash('error_msg', errors.array()[0].msg);
         return res.redirect('/register');
       }
-
-      if (password !== confirmPassword) {
-        req.flash('error_msg', 'Passwords do not match');
-        return res.redirect('/register');
-      }
-
-      if (password.length < 6) {
-        req.flash('error_msg', 'Password must be at least 6 characters long');
-        return res.redirect('/register');
-      }
+      const { name, email, password, role } = req.body;
 
       // Check if user exists
       const existingUser = await User.findOne({ email: email.toLowerCase() });
@@ -157,13 +167,16 @@ if (process.env.NODE_ENV === 'development') {
 // POST /api/auth/token - Issue a signed Bearer token for client apps
 const { generateToken, verifyToken } = require('../lib/tokenHelper');
 
-router.post('/api/auth/token', async (req, res) => {
+router.post('/api/auth/token', [
+  body('email').trim().isEmail().normalizeEmail().withMessage('Valid email required'),
+  body('password').trim().notEmpty().withMessage('Password required')
+], async (req, res) => {
   try {
-    const { email, password } = req.body || {};
-
-    if (!email || !password) {
-      return res.status(400).json({ success: false, error: 'Email and password are required' });
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ success: false, error: errors.array()[0].msg });
     }
+    const { email, password } = req.body;
 
     const user = await User.findOne({ email: String(email).toLowerCase() });
     if (!user) {

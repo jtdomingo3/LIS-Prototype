@@ -392,6 +392,10 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.json({ limit: '50mb' }));
 app.use(methodOverride('_method'));
 
+// Global XSS Sanitization Middleware
+const xssSanitizer = require('./middleware/xssSanitizer');
+app.use(xssSanitizer);
+
 // Ensure database is ready before processing requests (important when sql.js async proxy is initializing)
 app.use((req, res, next) => {
   if (db && db._readyPromise && !db._isReady) {
@@ -447,9 +451,19 @@ app.use((req, res, next) => {
   next();
 });
 
-// Security headers (configured to permit inline styles/scripts and local assets)
+// Security headers (configured per audit recommendations)
 app.use(helmet({
-  contentSecurityPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "blob:", "https:"],
+      fontSrc: ["'self'", "data:"],
+      connectSrc: ["'self'"],
+      frameSrc: ["'self'"]
+    }
+  },
   crossOriginEmbedderPolicy: false,
   crossOriginResourcePolicy: { policy: 'cross-origin' }
 }));
@@ -503,11 +517,13 @@ function getSessionSecret() {
     } catch (_) {}
     return fresh;
   } catch (_) {
-    return 'gezyne-lis-session-secret-change-in-prod';
+    throw new Error('SESSION_SECRET is required and could not be securely generated');
   }
 }
 
-// Session configuration
+const cookieParser = require('cookie-parser');
+const csrf = require('csurf');
+app.use(cookieParser());
 app.use(session({
   secret: getSessionSecret(),
   resave: false,
@@ -519,6 +535,32 @@ app.use(session({
     maxAge: 24 * 60 * 60 * 1000 // 24 hours
   }
 }));
+
+// Setup CSRF protection AFTER session/cookieParser but BEFORE routes
+const csrfProtection = csrf({ cookie: false }); 
+// Exclude API token route from CSRF if needed, or apply selectively. 
+// Standard approach for EJS forms is to use it globally.
+// However, to prevent breaking external API access, we'll conditionally apply it.
+app.use((req, res, next) => {
+  // APIs typically use Bearer tokens and are not susceptible to CSRF if they don't rely on cookies.
+  // We exclude them to allow the standalone client to sync properly.
+  if (req.path.startsWith('/api/')) {
+    return next();
+  }
+  
+  csrfProtection(req, res, (err) => {
+    if (err) {
+      if (err.code === 'EBADCSRFTOKEN') {
+        return res.status(403).send('Form tampered with or session expired (CSRF check failed).');
+      }
+      return next(err);
+    }
+    if (req.csrfToken) {
+      res.locals.csrfToken = req.csrfToken();
+    }
+    next();
+  });
+});
 
 app.use(flash());
 

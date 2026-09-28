@@ -317,6 +317,7 @@
   </div>
 
   <form id="consultationForm" action="/consultations/<%= test.id %>" method="POST">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
     <input type="hidden" name="patientId" value="<%= p.id %>">
     <input type="hidden" name="areaName" value="<%= areaName %>">
 

@@ -243,12 +243,14 @@
                                 <% if (!e.isSystemAccount) { %>
                                     <a href="/hr/print/coe/<%= e.id %>" target="_blank" style="display: inline-block; padding: 5px 8px; background: #f1f5f9; color: #475569; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 0.8rem; margin-right: 4px;" title="Print Certificate of Employment">COE</a>
                                     <form action="/hr/employees/<%= e.id %>/toggle-system-account" method="POST" style="display: inline;" onsubmit="return confirm('Tag <%= e.name %> as a System Account? It will be removed from the active employee directory and payroll.');">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                                         <button type="submit" style="display: inline-flex; align-items: center; gap: 3px; padding: 5px 8px; background: #f8fafc; color: #64748b; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600; font-size: 0.8rem; cursor: pointer;" title="Tag as System Account (Exclude from staff directory)">
                                             <span>⚙️</span> Tag System
                                         </button>
                                     </form>
                                 <% } else { %>
                                     <form action="/hr/employees/<%= e.id %>/toggle-system-account" method="POST" style="display: inline;" onsubmit="return confirm('Restore <%= e.name %> to the active staff directory?');">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                                         <button type="submit" style="display: inline-flex; align-items: center; gap: 3px; padding: 5px 8px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 6px; font-weight: 700; font-size: 0.8rem; cursor: pointer;" title="Untag and restore to Staff Directory">
                                             <span>↩️</span> Restore Staff
                                         </button>
@@ -280,6 +282,7 @@
 
         <!-- Modal Form -->
         <form id="salaryModalForm" method="POST" action="" style="padding: 20px 22px; margin: 0;">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
             <div style="display: flex; flex-direction: column; gap: 14px;">
                 
                 <!-- Compensation Model Selector (Pills) -->
@@ -531,6 +534,7 @@ document.addEventListener('keydown', function(e) {
 
         <!-- Form -->
         <form id="statusModalForm" method="POST" action="">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
             <div style="padding: 20px; display: flex; flex-direction: column; gap: 16px;">
                 <div>
                     <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Employment Status *</label>

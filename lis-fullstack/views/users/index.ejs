@@ -77,6 +77,7 @@
                 <a href="/users/<%= u.id %>" class="button btn-secondary btn-small" style="padding:6px 12px; font-size:0.82em;">View</a>
                 <a href="/users/<%= u.id %>/edit" class="button btn-primary btn-small" style="padding:6px 12px; font-size:0.82em; font-weight:600;">Edit</a>
                 <form action="/users/<%= u.id %>?_method=DELETE" method="POST" style="display:inline-block; margin:0;" onsubmit="return confirm('⚠️ Are you sure you want to permanently delete user <%= u.name %> (<%= u.email %>)? This action cannot be undone.');">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                   <button type="submit" class="button btn-danger btn-small" style="padding:6px 10px; font-size:0.82em; margin-left:4px;" title="Delete user">Delete</button>
                 </form>
               </td>

@@ -89,6 +89,7 @@
                                 </td>
                                 <td style="padding: 12px 18px; text-align: center; white-space: nowrap;">
                                     <form action="/costing/expenses/<%= e.id %>/delete" method="POST" style="display: inline;" onsubmit="return confirm('Delete this expense record?');">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                                         <button type="submit" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 4px; font-size: 0.9rem;" title="Delete">🗑️</button>
                                     </form>
                                 </td>
@@ -109,6 +110,7 @@
             <button onclick="document.getElementById('addExpenseModal').style.display='none'" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #94a3b8;">✕</button>
         </div>
         <form action="/costing/expenses" method="POST" style="padding: 24px;">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
             <div style="margin-bottom: 16px;">
                 <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Category *</label>
                 <select name="category" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; background: #fff;">

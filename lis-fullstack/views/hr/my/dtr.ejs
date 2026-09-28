@@ -641,6 +641,7 @@
 
         <!-- Modal Form -->
         <form id="dtrModalForm" method="POST" action="/hr/my/dtr/correct" style="padding: 20px 22px; margin: 0;">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
             <% if (isManagement && typeof employee !== 'undefined' && employee.id) { %>
                 <input type="hidden" name="employeeIdOverride" value="<%= employee.id %>">
             <% } %>

@@ -18,6 +18,7 @@
             <%= (typeof serverConnected !== 'undefined' && serverConnected) ? '✓ Server Synced' : '⚡ Local / Offline' %> (<%= serverUrl %>)
           </span>
           <form method="POST" action="/settings/sync-from-server" style="display:inline; margin:0;">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
             <button type="submit" class="button btn-secondary btn-small" title="Retrieve and apply the exact settings from the central server" <%= !isMgmt ? 'disabled' : '' %>>
               🔄 Retrieve Server Settings
             </button>
@@ -52,6 +53,7 @@
     </div>
 
     <form method="POST" action="/settings" id="mainSettingsForm">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
       
       <!-- ========================================================================= -->
       <!-- TAB 1: Clinical & Reception Workflow (Editable by ALL Users)              -->
@@ -475,9 +477,12 @@
     </form>
 
     <!-- Dedicated Isolated Forms for Clinical & User JSON Restore (with multipart/form-data) -->
-    <form id="restoreClinicalForm" method="POST" action="/settings/restore" enctype="multipart/form-data" style="display:none;"></form>
-    <form id="restoreUsersForm" method="POST" action="/settings/restore-users" enctype="multipart/form-data" style="display:none;"></form>
-    <form id="clearLogsForm" method="POST" action="/settings/clear-logs" style="display:none;"></form>
+    <form id="restoreClinicalForm" method="POST" action="/settings/restore" enctype="multipart/form-data" style="display:none;">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>"></form>
+    <form id="restoreUsersForm" method="POST" action="/settings/restore-users" enctype="multipart/form-data" style="display:none;">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>"></form>
+    <form id="clearLogsForm" method="POST" action="/settings/clear-logs" style="display:none;">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>"></form>
   </div>
 </div>
 

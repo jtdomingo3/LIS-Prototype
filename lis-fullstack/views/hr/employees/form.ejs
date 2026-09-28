@@ -16,6 +16,7 @@
     </div>
 
     <form action="<%= isEditing ? '/hr/employees/' + employee.id : '/hr/employees' %>" method="POST" style="display: flex; flex-direction: column; gap: 20px;">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
         <!-- Card 1: Account Linking & Basic Details -->
         <div style="background: white; border-radius: 14px; padding: 22px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);">
             <h3 style="margin: 0 0 16px 0; font-size: 1.05rem; color: #1e1b4b; font-weight: 700; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px;">

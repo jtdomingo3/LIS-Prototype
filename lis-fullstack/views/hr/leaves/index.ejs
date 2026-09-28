@@ -131,6 +131,7 @@
                                         </a>
                                         <% if (l.status === 'Pending') { %>
                                             <form action="/hr/leaves/<%= l.id %>/approve" method="POST" style="margin: 0;" onsubmit="return confirm('Approve leave request for <%= emp.name %>?');">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                                                 <button type="submit" style="padding: 6px 12px; background: #16a34a; color: white; border: none; border-radius: 6px; font-size: 0.78rem; font-weight: 700; cursor: pointer;">
                                                     Approve
                                                 </button>
@@ -139,6 +140,7 @@
                                                 Reject
                                             </button>
                                             <form action="/hr/leaves/<%= l.id %>/delete" method="POST" style="margin: 0;" onsubmit="return confirm('Delete this pending leave request for <%= emp.name %>?');">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                                                 <button type="submit" style="padding: 6px 10px; background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; border-radius: 6px; font-size: 0.78rem; font-weight: 700; cursor: pointer;" title="Delete pending leave request">
                                                     Delete
                                                 </button>
@@ -165,6 +167,7 @@
                 Please provide a reason for rejecting this leave application:
             </p>
             <form id="rejectForm" method="POST">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                 <div style="margin-bottom: 18px;">
                     <textarea name="reason" rows="3" required placeholder="e.g. Insufficient coverage during lab operating hours..." style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; font-family: inherit; resize: vertical;"></textarea>
                 </div>

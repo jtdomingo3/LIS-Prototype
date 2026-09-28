@@ -18,12 +18,14 @@
         <div style="display: flex; gap: 8px;">
             <% if (payroll.status === 'Draft') { %>
                 <form action="/hr/payroll/<%= payroll.id %>/approve" method="POST" style="display: inline;">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                     <button type="submit" class="btn btn-primary" style="padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;">
                         ✓ Approve Payroll
                     </button>
                 </form>
             <% } else if (payroll.status === 'Approved') { %>
                 <form action="/hr/payroll/<%= payroll.id %>/mark-paid" method="POST" style="display: inline;">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                     <button type="submit" class="btn btn-primary" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer;">
                         💵 Mark as Disbursed / Paid
                     </button>

@@ -17,6 +17,7 @@
   </div>
 
   <form action="/tests/<%= test.id %>?_method=PUT" method="POST">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
     
     <!-- Test Configuration Card -->
     <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px 22px; margin-bottom: 24px;">

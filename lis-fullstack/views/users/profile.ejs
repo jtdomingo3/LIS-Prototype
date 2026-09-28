@@ -22,6 +22,7 @@
   </div>
 
   <form action="/users/profile?_method=PUT" method="POST" enctype="multipart/form-data">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 28px;">
       
       <!-- Left Column: Personal & Professional Credentials -->

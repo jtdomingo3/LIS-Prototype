@@ -266,6 +266,7 @@
                                         </a>
                                         <% if (l.status === 'Pending') { %>
                                             <form action="/hr/my/leaves/<%= l.id %>/delete" method="POST" style="margin: 0;" onsubmit="return confirm('Cancel and delete this pending leave request?');">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                                                 <button type="submit" style="display: inline-flex; align-items: center; gap: 2px; padding: 2px 7px; background: #fef2f2; color: #dc2626; border-radius: 4px; font-size: 0.72rem; font-weight: 700; border: 1px solid #fecaca; cursor: pointer;" title="Delete pending leave request">
                                                     <span>🗑️</span> Delete
                                                 </button>
@@ -324,6 +325,7 @@
                 <button type="button" onclick="document.getElementById('leaveModal').style.display='none'" style="background: transparent; border: none; font-size: 1.3rem; color: #94a3b8; cursor: pointer;">✕</button>
             </div>
             <form action="/hr/my/leaves" method="POST">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                 <!-- Policy Notice -->
                 <div style="font-size: 0.78rem; background: #fef2f2; color: #991b1b; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; border: 1px solid #fecaca; line-height: 1.45;">
                     <strong>⚠️ Laboratory Policy Notice:</strong> Gezyne Clinical Laboratory does not provide paid leaves. All leaves of absence (Vacation, Sick, Emergency, etc.) are non-paid (Leave Without Pay / LWOP). Leave days will be logged in your DTR for attendance reconciliation. Once submitted, print the official Leave Form for <strong>Laboratory Owner</strong> authorization.
