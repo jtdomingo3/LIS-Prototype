@@ -28,6 +28,40 @@ function sanitizeText(s) {
   return out;
 }
 
+function resolveThermalScriptPath() {
+  const candidates = [
+    path.join(__dirname, '..', 'scripts', 'thermal_test.js'),
+    path.join(__dirname, 'scripts', 'thermal_test.js'),
+    path.join(process.cwd(), 'scripts', 'thermal_test.js'),
+    path.join(process.cwd(), 'lis-fullstack', 'scripts', 'thermal_test.js'),
+    path.join(process.cwd(), 'lis-app-standalone', 'scripts', 'thermal_test.js'),
+    path.join(__dirname, '..', '..', 'scripts', 'thermal_test.js'),
+    path.join(__dirname, '..', '..', 'lis-fullstack', 'scripts', 'thermal_test.js'),
+    path.join(__dirname, '..', '..', 'lis-app-standalone', 'scripts', 'thermal_test.js'),
+    (typeof process.resourcesPath === 'string') ? path.join(process.resourcesPath, 'scripts', 'thermal_test.js') : null,
+    (typeof process.resourcesPath === 'string') ? path.join(process.resourcesPath, 'app.asar.unpacked', 'scripts', 'thermal_test.js') : null,
+    (typeof process.resourcesPath === 'string') ? path.join(process.resourcesPath, 'app.asar.unpacked', 'lis-app-standalone', 'scripts', 'thermal_test.js') : null,
+    (typeof process.resourcesPath === 'string') ? path.join(process.resourcesPath, 'server', 'scripts', 'thermal_test.js') : null,
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    try {
+      if (fs.existsSync(candidate)) {
+        if (candidate.includes('.asar')) {
+          try {
+            const content = fs.readFileSync(candidate, 'utf8');
+            const tmpPath = path.join(os.tmpdir(), 'gezyne_thermal_test.js');
+            fs.writeFileSync(tmpPath, content, 'utf8');
+            return tmpPath;
+          } catch (unpackErr) {}
+        }
+        return candidate;
+      }
+    } catch (e) {}
+  }
+  return null;
+}
+
 async function printPatientReceipt(patient, testOrTests) {
   try {
     const patientObj = (patient && typeof patient.toJSON === 'function') ? patient.toJSON() : patient || {};
@@ -147,13 +181,20 @@ async function printPatientReceipt(patient, testOrTests) {
     const specPath = path.join(tmp, `patient_receipt_${Date.now()}.json`);
     fs.writeFileSync(specPath, JSON.stringify(spec), { encoding: 'utf8' });
 
-    const scriptPath = path.join(__dirname, '..', 'scripts', 'thermal_test.js');
-    if (!fs.existsSync(scriptPath)) {
-      console.warn('[printHelper] thermal_test.js not found at', scriptPath);
-      return { success: false, reason: 'script-not-found' };
+    const scriptPath = resolveThermalScriptPath();
+    if (!scriptPath) {
+      console.warn('[printHelper] thermal_test.js not found at any search path');
+      return { success: false, reason: 'script-not-found', error: 'Thermal printer script (thermal_test.js) not found.' };
     }
     const args = [scriptPath, '--json', specPath];
-    let ENV_PRINTER = process.env.PRINTER_NAME || process.env.PRINTER || null;
+
+    let ENV_PRINTER = null;
+    try {
+      if (global.db && typeof global.db.getSettings === 'function') {
+        const s = global.db.getSettings();
+        if (s && s.printerName) ENV_PRINTER = s.printerName;
+      }
+    } catch (e) {}
     if (!ENV_PRINTER) {
       try {
         const userDataPath = (typeof process.env.APPDATA !== 'undefined') ? path.join(process.env.APPDATA, 'lis-app-standalone') : null;
@@ -165,6 +206,9 @@ async function printPatientReceipt(patient, testOrTests) {
           }
         }
       } catch (e) {}
+    }
+    if (!ENV_PRINTER) {
+      ENV_PRINTER = process.env.PRINTER_NAME || process.env.THERMAL_PRINTER_NAME || process.env.PRINTER || null;
     }
     if (ENV_PRINTER) args.push('--printer', ENV_PRINTER);
 
@@ -412,4 +456,4 @@ async function rasterLogoAndCodeToEscPosHex(imagePath, patientObj) {
   }
 }
 
-module.exports = { printPatientReceipt };
+module.exports = { printPatientReceipt, resolveThermalScriptPath };

@@ -349,6 +349,84 @@ test('Standalone DataStore and offlineDb should store and retrieve sseConfig & p
 });
 
 // -------------------------------------------------------------
+// 7. THERMAL TEST PRINT & PATIENT RECEIPT ENDPOINT PARITY
+// -------------------------------------------------------------
+console.log('\n--- 7. Thermal Test Print & Patient Receipt Endpoint Parity ---');
+
+test('resolveThermalScriptPath should find thermal_test.js', () => {
+  const ph = require('../lis-fullstack/lib/printHelper');
+  assert.ok(typeof ph.resolveThermalScriptPath === 'function', 'resolveThermalScriptPath must be exported');
+  const resolved = ph.resolveThermalScriptPath();
+  assert.ok(resolved && fs.existsSync(resolved), `thermal_test.js must be found on disk (got: ${resolved})`);
+});
+
+test('lis-fullstack POST /settings/test-print should execute cleanly without ReferenceError', () => {
+  const router = require('../lis-fullstack/routes/settings');
+  const route = router.stack.find(r => r.route && r.route.path === '/test-print');
+  assert.ok(route, 'lis-fullstack must have /test-print route');
+  const handler = route.route.stack[route.route.stack.length - 1].handle;
+
+  let statusCode = 200;
+  let responseData = null;
+  const mockRes = {
+    status(c) { statusCode = c; return this; },
+    json(d) { responseData = d; return this; }
+  };
+  const mockReq = {
+    body: { type: 'receipt', dryRun: true },
+    session: { user: { role: 'Admin' } }
+  };
+
+  handler(mockReq, mockRes);
+  assert.strictEqual(statusCode, 200, 'Status code must be 200');
+  assert.ok(responseData && responseData.success, 'Response must be success: true');
+  assert.ok(responseData.message.includes('RECEIPT'), 'Message must reflect print type');
+});
+
+test('lis-app-standalone POST /settings/test-print should exist and execute cleanly', () => {
+  const router = require('../lis-app-standalone/routes/settings');
+  const route = router.stack.find(r => r.route && r.route.path === '/test-print');
+  assert.ok(route, 'lis-app-standalone must have /test-print route');
+  const handler = route.route.stack[route.route.stack.length - 1].handle;
+
+  let statusCode = 200;
+  let responseData = null;
+  const mockRes = {
+    status(c) { statusCode = c; return this; },
+    json(d) { responseData = d; return this; }
+  };
+  const mockReq = {
+    body: { type: 'barcode', dryRun: true },
+    session: { user: { role: 'Admin' } }
+  };
+
+  handler(mockReq, mockRes);
+  assert.strictEqual(statusCode, 200, 'Status code must be 200');
+  assert.ok(responseData && responseData.success, 'Response must be success: true');
+  assert.ok(responseData.message.includes('BARCODE'), 'Message must reflect print type');
+});
+
+test('printPatientReceipt should generate receipt and preview in dry-run mode', async () => {
+  process.env.PRINT_DRY_RUN = '1';
+  const ph = require('../lis-fullstack/lib/printHelper');
+  const mockPatient = {
+    id: 'pat-999',
+    patientCode: 'P-100999',
+    firstName: 'Elena',
+    lastName: 'Reyes',
+    ageManual: '35'
+  };
+  const mockTests = [
+    { requestedTests: [{ label: 'Urinalysis', amount: 180 }] }
+  ];
+
+  const res = await ph.printPatientReceipt(mockPatient, mockTests);
+  assert.ok(res, 'Receipt result must not be null');
+  assert.strictEqual(res.success, true, 'Receipt printing must succeed in dry-run mode');
+  assert.ok(res.output && res.output.includes('Elena Reyes'), 'Receipt preview must include patient name');
+});
+
+// -------------------------------------------------------------
 // SUMMARY
 // -------------------------------------------------------------
 console.log('\n========================================================================');

@@ -51,6 +51,9 @@
       "!dist/**",
       "!node_modules/.cache/**"
     ],
+    "asarUnpack": [
+      "scripts/**/*"
+    ],
     "win": {
       "target": [
         "nsis"

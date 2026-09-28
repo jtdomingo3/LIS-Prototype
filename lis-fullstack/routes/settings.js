@@ -242,8 +242,18 @@ router.post('/test-print', requireAuth, (req, res) => {
     const { spawnSync } = require('child_process');
     const pathMod = require('path');
     const fsMod = require('fs');
-    const scriptPath = pathMod.join(__dirname, '..', 'scripts', 'thermal_test.js');
-    if (!fsMod.existsSync(scriptPath)) {
+    let resolveThermalScriptPath;
+    try {
+      resolveThermalScriptPath = require('../lib/printHelper').resolveThermalScriptPath;
+    } catch (e) {}
+
+    let scriptPath = (typeof resolveThermalScriptPath === 'function') ? resolveThermalScriptPath() : null;
+    if (!scriptPath) {
+      const fallbackPath = pathMod.join(__dirname, '..', 'scripts', 'thermal_test.js');
+      if (fsMod.existsSync(fallbackPath)) scriptPath = fallbackPath;
+    }
+
+    if (!scriptPath) {
       return res.status(404).json({ success: false, error: 'Thermal printer script (scripts/thermal_test.js) not found.' });
     }
 
@@ -252,12 +262,17 @@ router.post('/test-print', requireAuth, (req, res) => {
     if (printType === 'barcode') args.push('--barcode');
     else args.push('--receipt');
 
+    if (process.env.PRINT_DRY_RUN === '1' || (req.body && req.body.dryRun)) {
+      args.push('--dry-run');
+    }
+
+    const settings = (global.db && typeof global.db.getSettings === 'function') ? (global.db.getSettings() || {}) : {};
     const printer = (req.body && req.body.printer) || (settings && settings.printerName) || process.env.PRINTER_NAME || process.env.THERMAL_PRINTER_NAME || '';
     if (printer) args.push('--printer', printer);
 
     const spawnEnv = Object.assign({}, process.env, { ELECTRON_RUN_AS_NODE: '1' });
     const proc = spawnSync(process.execPath, args, {
-      cwd: pathMod.join(__dirname, '..'),
+      cwd: pathMod.dirname(pathMod.dirname(scriptPath)) || pathMod.join(__dirname, '..'),
       encoding: 'utf8',
       maxBuffer: 10 * 1024 * 1024,
       env: spawnEnv
