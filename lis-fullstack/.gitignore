@@ -9,3 +9,5 @@
 *.env
 
 /walkthrough.md
+tmp/
+*.tmp

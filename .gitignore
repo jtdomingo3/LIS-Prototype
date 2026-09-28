@@ -37,7 +37,8 @@ lis-app-standalone/test-tmp/
 lis-app-standalone/tests/
 lis-app-standalone/test-offline-*.js
 test/tmp/
-tmp-e2e-offline/
+tmp-*
+tmp-*/
 lis-fullstack/lis-data.db-shm
 lis-fullstack/lis-data.db-wal
 lis-fullstack/lis-data.db
@@ -60,6 +61,8 @@ tools/security-audit/audit-report-latest.json
 !**/.env.example
 *.secret
 **/*.secret
+.auth_token_secret
+**/.auth_token_secret
 
 # IDE and editor directories
 .idea/
