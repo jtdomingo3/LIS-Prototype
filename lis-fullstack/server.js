@@ -417,7 +417,8 @@ app.use('/hr-documents', express.static(hrDocsDir, staticCacheOpts));
 function maskSensitive(obj) {
   const SENSITIVE = new Set([
     'password','pwd','pass','confirmPassword','confirm_password','passwordConfirm',
-    'token','authtoken','bearer','authorization','hash','synchash','x-lis-sync-hash','secret'
+    'token','authtoken','bearer','authorization','hash','synchash','x-lis-sync-hash','secret',
+    'lockpin','pin','birthdate','contactnumber','ssn'
   ]);
   if (obj == null) return obj;
   if (Array.isArray(obj)) return obj.map(v => maskSensitive(v));
@@ -456,13 +457,24 @@ app.use(helmet({
 // Rate limiter for authentication endpoints
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // max 100 attempts per window
+  max: 30, // max 30 attempts per 15 minutes per IP
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, error: 'Too many authentication attempts, please try again later' }
 });
 app.use('/login', authLimiter);
 app.use('/api/auth/token', authLimiter);
+
+// Rate limiter for sensitive diagnostic and export endpoints
+const sensitiveLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 15, // max 15 requests per minute
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many requests to sensitive endpoint, please try again shortly' }
+});
+app.use('/settings/test-ai', sensitiveLimiter);
+app.use('/export/', sensitiveLimiter);
 
 // EJS Layouts - enable the global layout wrapper so views get the
 // shared HTML, CSS and JS defined in `views/layout.ejs`.
@@ -472,13 +484,38 @@ app.set('layout', 'layout');
 app.set('layout extractScripts', true);
 app.set('layout extractStyles', true);
 
+// Resolve or generate a persistent session secret
+function getSessionSecret() {
+  if (process.env.SESSION_SECRET && String(process.env.SESSION_SECRET).trim()) {
+    return String(process.env.SESSION_SECRET).trim();
+  }
+  try {
+    const dataDir = (typeof DATA_DIR !== 'undefined' && DATA_DIR) ? DATA_DIR : path.join(__dirname, '..');
+    const secretPath = path.join(dataDir, '.session_secret');
+    if (fs.existsSync(secretPath)) {
+      const existing = fs.readFileSync(secretPath, 'utf8').trim();
+      if (existing && existing.length >= 32) return existing;
+    }
+    const fresh = crypto.randomBytes(32).toString('hex');
+    try {
+      fs.mkdirSync(dataDir, { recursive: true });
+      fs.writeFileSync(secretPath, fresh, { encoding: 'utf8', mode: 0o600 });
+    } catch (_) {}
+    return fresh;
+  } catch (_) {
+    return 'gezyne-lis-session-secret-change-in-prod';
+  }
+}
+
 // Session configuration
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'gezyne-lis-session-secret-change-in-prod',
+  secret: getSessionSecret(),
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false, // Set to true in production with HTTPS
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production' && (process.env.USE_HTTPS === 'true' || process.env.COOKIE_SECURE === 'true'),
+    sameSite: 'lax',
     maxAge: 24 * 60 * 60 * 1000 // 24 hours
   }
 }));

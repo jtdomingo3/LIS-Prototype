@@ -58,6 +58,8 @@ tools/security-audit/audit-report-latest.json
 **/.env.local
 **/.env.*.local
 !**/.env.example
+*.secret
+**/*.secret
 
 # IDE and editor directories
 .idea/

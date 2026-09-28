@@ -267,7 +267,12 @@ router.post('/test-print', requireAuth, (req, res) => {
     }
 
     const settings = (global.db && typeof global.db.getSettings === 'function') ? (global.db.getSettings() || {}) : {};
-    const printer = (req.body && req.body.printer) || (settings && settings.printerName) || process.env.PRINTER_NAME || process.env.THERMAL_PRINTER_NAME || '';
+    let printer = (req.body && req.body.printer) || (settings && settings.printerName) || process.env.PRINTER_NAME || process.env.THERMAL_PRINTER_NAME || '';
+    if (typeof printer === 'string') {
+      printer = printer.replace(/[^a-zA-Z0-9 _\-\.]/g, '').trim();
+    } else {
+      printer = '';
+    }
     if (printer) args.push('--printer', printer);
 
     const spawnEnv = Object.assign({}, process.env, { ELECTRON_RUN_AS_NODE: '1' });

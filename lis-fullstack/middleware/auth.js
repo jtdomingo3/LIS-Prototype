@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const { extractBearerToken, verifyToken } = require('../lib/tokenHelper');
 
 // Middleware to check if user is authenticated
@@ -36,19 +37,24 @@ const requireAuth = (req, res, next) => {
       const allUsers = typeof global.db.getUsers === 'function' ? global.db.getUsers() : [];
       const matchUser = allUsers.find(u => u && u.email && u.email.toLowerCase() === syncEmail.toLowerCase());
       // Cryptographically verify that the provided hash matches the user's stored password hash
-      if (matchUser && matchUser.password && matchUser.password === syncHash && matchUser.status !== 'Inactive') {
-        req.session = req.session || {};
-        req.session.user = {
-          id: matchUser.id || matchUser.email,
-          name: matchUser.name || matchUser.email,
-          email: matchUser.email,
-          role: matchUser.role || 'User',
-          permissions: matchUser.permissions || {},
-          signature: matchUser.signature || null,
-          licenseNumber: matchUser.licenseNumber || '',
-        };
-        req.user = req.session.user;
-        return next();
+      if (matchUser && matchUser.password && matchUser.status !== 'Inactive') {
+        const expectedBuf = Buffer.from(String(matchUser.password));
+        const receivedBuf = Buffer.from(String(syncHash));
+        const isMatch = (expectedBuf.length === receivedBuf.length && crypto.timingSafeEqual(expectedBuf, receivedBuf));
+        if (isMatch) {
+          req.session = req.session || {};
+          req.session.user = {
+            id: matchUser.id || matchUser.email,
+            name: matchUser.name || matchUser.email,
+            email: matchUser.email,
+            role: matchUser.role || 'User',
+            permissions: matchUser.permissions || {},
+            signature: matchUser.signature || null,
+            licenseNumber: matchUser.licenseNumber || '',
+          };
+          req.user = req.session.user;
+          return next();
+        }
       }
     }
   } catch (e) { /* ignore hash auth errors */ }

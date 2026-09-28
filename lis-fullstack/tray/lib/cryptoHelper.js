@@ -1,13 +1,53 @@
 const crypto = require('crypto');
+const path = require('path');
+const fs = require('fs');
 
 /**
  * AES-256-GCM symmetric encryption / decryption helper.
  * Used to protect sensitive secrets (e.g. OpenRouter API keys) at rest.
  */
 
+const LEGACY_MASTER_SECRET = 'gezyne-lis-ai-assistant-master-secret-2026';
+
+function getOrCreateSecret(envNames, secretFilename, legacyFallback) {
+  for (const name of envNames) {
+    if (process.env[name] && String(process.env[name]).trim()) {
+      return String(process.env[name]).trim();
+    }
+  }
+
+  try {
+    let dataDir = process.env.DATA_DIR;
+    if (!dataDir) {
+      try {
+        const dp = require('./dataPath');
+        dataDir = typeof dp.getDataDir === 'function' ? dp.getDataDir() : null;
+      } catch (_) {}
+    }
+    if (!dataDir) dataDir = path.join(__dirname, '..');
+    const secretPath = path.join(dataDir, secretFilename);
+    if (fs.existsSync(secretPath)) {
+      const existing = fs.readFileSync(secretPath, 'utf8').trim();
+      if (existing && existing.length >= 32) return existing;
+    }
+    const generated = crypto.randomBytes(32).toString('hex');
+    try {
+      fs.mkdirSync(dataDir, { recursive: true });
+      fs.writeFileSync(secretPath, generated, { encoding: 'utf8', mode: 0o600 });
+    } catch (_) {}
+    return generated;
+  } catch (_) {
+    return legacyFallback;
+  }
+}
+
 // Derive a 32-byte key from any secret string using SHA-256
 function deriveMasterKey(secret) {
-  const masterSecret = secret || process.env.DATA_USERS_KEY || process.env.USER_DATA_KEY || process.env.SESSION_SECRET || 'gezyne-lis-ai-assistant-master-secret-2026';
+  const masterSecret = secret || getOrCreateSecret(
+    ['DATA_USERS_KEY', 'USER_DATA_KEY', 'SESSION_SECRET'],
+    '.data_users_secret',
+    LEGACY_MASTER_SECRET
+  );
   return crypto.createHash('sha256').update(String(masterSecret)).digest();
 }
 
@@ -60,16 +100,30 @@ function decryptSecret(cipherPayload, secret) {
       return null;
     }
 
-    const key = deriveMasterKey(secret);
     const iv = Buffer.from(parsed.iv, 'base64');
     const tag = Buffer.from(parsed.tag, 'base64');
     const encrypted = Buffer.from(parsed.data, 'base64');
 
-    const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
-    decipher.setAuthTag(tag);
-    const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
-
-    return decrypted.toString('utf8');
+    // Attempt decryption with current master key
+    try {
+      const key = deriveMasterKey(secret);
+      const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+      decipher.setAuthTag(tag);
+      const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+      return decrypted.toString('utf8');
+    } catch (primaryErr) {
+      // If primary decryption fails and no specific secret was passed, try legacy fallback key
+      if (!secret) {
+        try {
+          const legacyKey = crypto.createHash('sha256').update(String(LEGACY_MASTER_SECRET)).digest();
+          const legacyDecipher = crypto.createDecipheriv('aes-256-gcm', legacyKey, iv);
+          legacyDecipher.setAuthTag(tag);
+          const decrypted = Buffer.concat([legacyDecipher.update(encrypted), legacyDecipher.final()]);
+          return decrypted.toString('utf8');
+        } catch (_) {}
+      }
+      throw primaryErr;
+    }
   } catch (err) {
     console.error('[cryptoHelper] Decryption failed:', err && err.message);
     return null;
