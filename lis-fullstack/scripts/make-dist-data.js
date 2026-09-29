@@ -9,7 +9,7 @@ fs.mkdirSync(OUT_DIR, { recursive: true });
 async function make() {
   const now = new Date().toISOString();
   // Pre-hashed default administrator credential (cost factor 12)
-  const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$NuxBy5lbSTWqHjLaJ4ncYuk59lGJ8MdQePURe41hoO.Mn.cVldf8W';
+  const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$KAbxinqnQy.V2flRS4EwIOc645LcBaMWzZNWD.IghCzovgIimC.9G';
 
   const admin = {
     id: uuidv4(),
