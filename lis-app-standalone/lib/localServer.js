@@ -52,6 +52,7 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     lastModified: true
   };
   app.use('/assets', express.static(path.join(__dirname, '..', 'server-assets'), staticCacheOpts));
+  app.use('/assets', express.static(path.join(__dirname, '..', 'assets'), staticCacheOpts));
   app.use(express.static(path.join(__dirname, '..', 'server-public'), staticCacheOpts));
 
   /* ── Session + flash ──────────────────────────────────────────── */

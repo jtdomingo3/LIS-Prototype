@@ -80,6 +80,13 @@ contextBridge.exposeInMainWorld('lisApp', {
   },
   onAppUnlocked: (callback) => {
     ipcRenderer.on('app-unlocked', (_event, data) => callback(data));
+  },
+
+  /* ── window management & fullscreen ─────────────────────────── */
+  toggleFullscreen:    ()                 => ipcRenderer.invoke('toggle-fullscreen'),
+  isFullscreen:        ()                 => ipcRenderer.invoke('is-fullscreen'),
+  onFullscreenChange:  (callback)         => {
+    ipcRenderer.on('fullscreen-change', (_event, isFs) => callback(isFs));
   }
 });
 

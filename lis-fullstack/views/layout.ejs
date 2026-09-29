@@ -1629,14 +1629,20 @@
             scheduleSSEConnect(configuredConnectDelayMs);
         })();
 
-        // Persistent Fullscreen Viewport (keeps Fullscreen active across all sidebar navigation and page loads)
+        // Persistent Fullscreen Viewport (supports native Desktop Electron and web browsers)
         function toggleFullscreen() {
             try {
+                // If running inside desktop Electron app, use native window fullscreen
+                if (window.lisApp && typeof window.lisApp.toggleFullscreen === 'function') {
+                    window.lisApp.toggleFullscreen().catch(function() {});
+                    return;
+                }
+
                 if (window.top !== window.self) {
                     // Inside the fullscreen viewport iframe -> exit fullscreen
                     try {
                         if (window.top.document.exitFullscreen) {
-                            window.top.document.exitFullscreen();
+                            window.top.document.exitFullscreen().catch(function() {});
                         } else if (window.top.document.webkitExitFullscreen) {
                             window.top.document.webkitExitFullscreen();
                         } else if (window.top.document.mozCancelFullScreen) {
@@ -1645,14 +1651,18 @@
                             window.top.document.msExitFullscreen();
                         }
                     } catch (e) {
-                        window.top.location.href = window.location.href;
+                        try { window.top.location.href = window.location.href; } catch (_) {}
                     }
+                    try {
+                        var vp = window.top.document.getElementById('lis-fullscreen-viewport');
+                        if (vp) vp.style.display = 'none';
+                    } catch (_) {}
                     return;
                 }
 
                 const isCurrentFS = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
                 if (isCurrentFS) {
-                    if (document.exitFullscreen) document.exitFullscreen();
+                    if (document.exitFullscreen) document.exitFullscreen().catch(function() {});
                     else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
                     else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
                     else if (document.msExitFullscreen) document.msExitFullscreen();
@@ -1661,7 +1671,7 @@
 
                 // Request fullscreen on parent document
                 const el = document.documentElement;
-                if (el.requestFullscreen) el.requestFullscreen();
+                if (el.requestFullscreen) el.requestFullscreen().catch(function() {});
                 else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
                 else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
                 else if (el.msRequestFullscreen) el.msRequestFullscreen();
@@ -1732,13 +1742,25 @@
         document.addEventListener('mozfullscreenchange', onFsChange);
         document.addEventListener('MSFullscreenChange', onFsChange);
         
-        function updateFsButton() {
+        function updateFsButton(isAppFs) {
             const fsBtn = document.getElementById('fullscreenBtn');
             if (!fsBtn) return;
             const inShell = (window.top !== window.self);
-            const isFullscreen = inShell || !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+            const isFullscreen = (typeof isAppFs === 'boolean') ? isAppFs : (inShell || !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement));
             const textEl = fsBtn.querySelector('.nav-text');
             if (textEl) textEl.textContent = isFullscreen ? 'Exit Fullscreen' : 'Fullscreen';
+        }
+
+        // Hook up native Desktop fullscreen listener if running inside Electron
+        if (window.lisApp && typeof window.lisApp.onFullscreenChange === 'function') {
+            window.lisApp.onFullscreenChange(function(isFS) {
+                updateFsButton(isFS);
+            });
+            if (typeof window.lisApp.isFullscreen === 'function') {
+                window.lisApp.isFullscreen().then(function(isFS) {
+                    updateFsButton(isFS);
+                }).catch(function() {});
+            }
         }
 
         // Initialize button label on load

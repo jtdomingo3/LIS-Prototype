@@ -3,8 +3,8 @@ const router = express.Router();
 const User = require('../models/User');
 const { requireGuest } = require('../middleware/auth');
 
-// GET / - Login page
-router.get('/', requireGuest, (req, res) => {
+// GET / & /login - Login page
+router.get(['/', '/login'], requireGuest, (req, res) => {
   // render using the global layout so styles are applied
   res.render('auth/login', {
     title: 'LIS - Login'
@@ -40,16 +40,87 @@ router.post('/login', requireGuest, async (req, res) => {
       req.flash('success_msg', 'Initial administrator account created.');
     }
 
-    // Find user
-    const user = await User.findOne({ email: email.toLowerCase() });
-    if (!user) {
-      req.flash('error_msg', 'Invalid email or password');
-      return res.redirect('/');
+    // Find user locally first
+    let user = await User.findOne({ email: email.toLowerCase() });
+    let isMatch = user ? await user.comparePassword(password) : false;
+
+    // If local match fails or user not found, verify credentials against live server
+    let serverToken = null;
+    if (!isMatch) {
+      const config = req.app.locals.config || {};
+      if (config.SERVER_URL) {
+        try {
+          const base = config.SERVER_URL.replace(/\/$/, '');
+          const tokenUrl = base + '/api/auth/token';
+          const parsed = new URL(tokenUrl);
+          const isHttps = parsed.protocol === 'https:';
+          const client = isHttps ? require('https') : require('http');
+          const postData = JSON.stringify({ email, password });
+
+          const tokenRes = await new Promise((resolve) => {
+            const trReq = client.request({
+              hostname: parsed.hostname,
+              port: parsed.port || (isHttps ? 443 : 80),
+              path: parsed.pathname,
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(postData),
+                'Accept': 'application/json'
+              },
+              timeout: 6000
+            }, (tRes) => {
+              let b = '';
+              tRes.on('data', chunk => { b += chunk.toString(); });
+              tRes.on('end', () => {
+                if (tRes.statusCode >= 200 && tRes.statusCode < 300) {
+                  try { resolve(JSON.parse(b)); } catch (_) { resolve(null); }
+                } else {
+                  resolve(null);
+                }
+              });
+            });
+            trReq.on('error', () => resolve(null));
+            trReq.on('timeout', () => { trReq.destroy(); resolve(null); });
+            trReq.write(postData);
+            trReq.end();
+          });
+
+          if (tokenRes && tokenRes.success && tokenRes.token) {
+            serverToken = tokenRes.token;
+            const sUser = tokenRes.user || {};
+            if (!user) {
+              user = new User({
+                id: sUser.id || sUser.email,
+                name: sUser.name || sUser.email,
+                email: sUser.email || email.toLowerCase(),
+                password: password,
+                role: sUser.role || 'User',
+                status: sUser.status || 'Active',
+                permissions: sUser.permissions || {},
+                licenseNumber: sUser.licenseNumber || null,
+                signature: sUser.signature || null,
+              });
+              await user.hashPassword();
+              await user.save();
+            } else {
+              user.password = password;
+              await user.hashPassword();
+              user.name = sUser.name || user.name;
+              user.role = sUser.role || user.role;
+              user.permissions = sUser.permissions || user.permissions;
+              await user.save();
+            }
+            isMatch = true;
+            console.log('[auth] verified and synchronized user from central server:', email);
+          }
+        } catch (authErr) {
+          console.warn('[auth] server login verification error:', authErr && authErr.message);
+        }
+      }
     }
 
-    // Check password
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
+    if (!user || !isMatch) {
       req.flash('error_msg', 'Invalid email or password');
       return res.redirect('/');
     }
@@ -82,7 +153,7 @@ router.post('/login', requireGuest, async (req, res) => {
 
     // Bridge user credentials to sync engine for live server synchronization
     if (typeof global.onUserLogin === 'function') {
-      try { global.onUserLogin(email, password, user); } catch (e) {}
+      try { global.onUserLogin(email, password, user, serverToken); } catch (e) {}
     }
 
     const { getUserHomeRoute } = require('../middleware/auth');
@@ -96,8 +167,8 @@ router.post('/login', requireGuest, async (req, res) => {
   }
 });
 
-// POST /logout - Logout
-router.post('/logout', (req, res) => {
+// GET & POST /logout - Logout
+router.all('/logout', (req, res) => {
   req.session.destroy((err) => {
     if (err) {
       console.error('Logout error:', err);

@@ -506,6 +506,26 @@ const sensitiveLimiter = rateLimit({
 app.use('/settings/test-ai', sensitiveLimiter);
 app.use('/export/', sensitiveLimiter);
 
+// Cross-Origin Resource Sharing (CORS) for standalone desktop apps & local clients
+app.use((req, res, next) => {
+  try {
+    const origin = req.get('Origin') || '';
+    if (origin) {
+      // Allow localhost, 127.0.0.1, or private LAN origins (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+      const isAllowed = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(?::\d+)?$/.test(origin);
+      if (isAllowed) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-LIS-Sync-Email,X-LIS-Sync-Hash,X-LIS-Sync-Replay,x-requested-with');
+        res.setHeader('Vary', 'Origin');
+      }
+    }
+    if (req.method === 'OPTIONS') return res.sendStatus(204);
+  } catch (_) {}
+  next();
+});
+
 // EJS Layouts - enable the global layout wrapper so views get the
 // shared HTML, CSS and JS defined in `views/layout.ejs`.
 app.use(expressLayouts);
@@ -524,6 +544,9 @@ function getSessionSecret() {
 
 const cookieParser = require('cookie-parser');
 const csrf = require('csurf');
+const { extractBearerToken, verifyToken } = require('./lib/tokenHelper');
+const { validateSyncUser } = require('./lib/syncAuth');
+
 app.use(cookieParser());
 app.use(session({
   secret: getSessionSecret(),
@@ -543,9 +566,8 @@ const csrfProtection = csrf({ cookie: false });
 // Standard approach for EJS forms is to use it globally.
 // However, to prevent breaking external API access, we'll conditionally apply it.
 app.use((req, res, next) => {
-  // APIs typically use Bearer tokens and are not susceptible to CSRF if they don't rely on cookies.
-  // We exclude them to allow the standalone client to sync properly.
-  if (req.path.startsWith('/api/')) {
+  // APIs and Bearer-token / sync-authenticated requests don't rely on ambient browser cookies and must bypass CSRF
+  if (req.path.startsWith('/api/') || extractBearerToken(req) || req.headers['x-lis-sync-replay']) {
     return next();
   }
   
@@ -566,9 +588,6 @@ app.use((req, res, next) => {
 app.use(flash());
 
 // ── Bearer Token & Hash-based session bootstrap for API and standalone sync ──
-const { extractBearerToken, verifyToken } = require('./lib/tokenHelper');
-const { validateSyncUser } = require('./lib/syncAuth');
-
 app.use((req, res, next) => {
   try {
     // Skip if session already exists

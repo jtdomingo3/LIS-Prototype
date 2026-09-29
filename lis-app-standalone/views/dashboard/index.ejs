@@ -149,6 +149,9 @@
     </form>
 </div>
 
+<!-- Load Chart.js locally for offline & standalone reliability -->
+<script src="/assets/chart.umd.min.js"></script>
+
 <!-- Test Totals Chart Card -->
 <div class="card" style="margin-bottom: 24px;">
     <% var entries = Object.entries(stats.testTotals || {}); entries.sort(function(a,b){return b[1]-a[1];}); %>
@@ -168,7 +171,6 @@
         <div style="width:100%; max-height:520px; overflow:auto;">
             <canvas id="testTotalsChart" height="520"></canvas>
         </div>
-        <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
         <script>
             (function(){
                 try {

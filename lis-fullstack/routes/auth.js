@@ -4,8 +4,8 @@ const User = require('../models/User');
 const { requireGuest } = require('../middleware/auth');
 const { body, validationResult } = require('express-validator');
 
-// GET / - Login page
-router.get('/', requireGuest, (req, res) => {
+// GET / & /login - Login page
+router.get(['/', '/login'], requireGuest, (req, res) => {
   // render using the global layout so styles are applied
   res.render('auth/login', {
     title: 'LIS - Login'
@@ -103,8 +103,8 @@ router.post('/login', requireGuest, [
   }
 });
 
-// POST /logout - Logout
-router.post('/logout', (req, res) => {
+// GET & POST /logout - Logout
+router.all('/logout', (req, res) => {
   req.session.destroy((err) => {
     if (err) {
       console.error('Logout error:', err);
