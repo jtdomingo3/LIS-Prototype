@@ -207,44 +207,21 @@ router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) =
       } catch (e) {}
     }
 
-    // Render the result partial + print wrapper HTML for the preview iframe srcdoc
-    const template = getResultTemplate(populatedTest);
-    if (!template) {
-      req.flash('error_msg', 'No diagnostic report template available for this test.');
-      return res.redirect('/reports');
-    }
-    const dbTemplate = await Template.findOne({ testType: populatedTest.testType, isActive: true }) || await Template.findOne({ testType: populatedTest.template, isActive: true });
-    const inlineLogo = getInlineLogo();
-
     const qparts = [];
     if (req.query.filterPatient) qparts.push('filterPatient=' + encodeURIComponent(req.query.filterPatient));
     if (req.query.filterTestType) qparts.push('filterTestType=' + encodeURIComponent(req.query.filterTestType));
     if (req.query.filterDate) qparts.push('filterDate=' + encodeURIComponent(req.query.filterDate));
     const filterQuery = qparts.length ? ('?' + qparts.join('&')) : '';
 
-    // Render result template → HTML string (callback, no layout)
-    res.render(`reports/results/${template}`, { title: 'Result', test: populatedTest, dbTemplate, layout: false, inlineLogo }, (err, renderedHtml) => {
-      if (err) { console.error('Error rendering result template for preview:', err); }
-
-      // Wrap with print layout
-      res.render('reports/print', {
-        title: 'Print Report', test: populatedTest,
-        currentDate: new Date().toLocaleDateString(),
-        renderedResultHtml: renderedHtml, layout: false, inlineLogo
-      }, (err2, finalHtml) => {
-        if (err2) { console.error('Error rendering print wrapper for preview:', err2); }
-
-        return res.render('reports/preview', {
-          title: 'Report Preview',
-          test: populatedTest,
-          currentDate: new Date().toLocaleDateString(),
-          renderedResultHtml: finalHtml || renderedHtml || null,
-          testsForNav,
-          prevId,
-          nextId,
-          filterQuery
-        });
-      });
+    return res.render('reports/preview', {
+      title: 'Report Preview',
+      test: populatedTest,
+      currentDate: new Date().toLocaleDateString(),
+      renderedResultHtml: null,
+      testsForNav,
+      prevId,
+      nextId,
+      filterQuery
     });
 
   } catch (error) {
@@ -301,7 +278,7 @@ router.get('/result/:testId', requireAuth, canAccessPatient, async (req, res) =>
     // allow embedding without layout when requested (used by preview iframe)
     const useLayout = req.query.embedded ? false : 'print';
     const autoPrint = req.query.print === '1' || req.query.print === 'true';
-    const inlineLogo = getInlineLogo();
+    const inlineLogo = req.query.embedded ? '/assets/gezyne-logo.png' : getInlineLogo();
     return res.render(`reports/results/${template}`, {
       title: 'Result',
       test: populatedTest,

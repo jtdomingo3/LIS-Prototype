@@ -180,11 +180,76 @@
   window.currentTestId = '<%= test.id %>';
   window.currentEchoSheet = 'all';
 
+  // In-memory HTML cache for instant 0ms report transitions (next/prev)
+  const reportHtmlCache = new Map();
+  const MAX_REPORT_CACHE_SIZE = 80;
+
+  function wrapHtml(html) {
+    if (!html) return '';
+    if (html.includes('<base ') || html.includes('<base>')) return html;
+    return '<!DOCTYPE html><html><head><base href="/"><meta charset="utf-8"></head><body style="margin:0;padding:0;">' + html + '</body></html>';
+  }
+
+  async function fetchReportHtml(id, sheet) {
+    if (!id) return null;
+    const s = sheet || window.currentEchoSheet || 'all';
+    const cacheKey = String(id) + ':' + s;
+    if (reportHtmlCache.has(cacheKey)) return reportHtmlCache.get(cacheKey);
+    try {
+      const url = '/reports/result/' + encodeURIComponent(id) + '?embedded=1' + (s && s !== 'all' ? ('&sheet=' + encodeURIComponent(s)) : '');
+      const res = await fetch(url);
+      if (res.ok) {
+        const html = await res.text();
+        if (reportHtmlCache.size >= MAX_REPORT_CACHE_SIZE) {
+          const firstKey = reportHtmlCache.keys().next().value;
+          reportHtmlCache.delete(firstKey);
+        }
+        reportHtmlCache.set(cacheKey, html);
+        return html;
+      }
+    } catch (e) {
+      console.warn('Preload report error:', e);
+    }
+    return null;
+  }
+
+  function preloadAdjacentReports(ids, currentIndex) {
+    if (!ids || !ids.length || currentIndex === -1) return;
+    const s = window.currentEchoSheet || 'all';
+    const targets = [
+      currentIndex + 1,
+      currentIndex - 1,
+      currentIndex + 2,
+      currentIndex - 2
+    ];
+    for (const idx of targets) {
+      if (idx >= 0 && idx < ids.length) {
+        const tid = String(ids[idx]);
+        const cacheKey = tid + ':' + s;
+        if (!reportHtmlCache.has(cacheKey)) {
+          fetchReportHtml(tid, s).catch(() => {});
+        }
+      }
+    }
+  }
+
   function setPreviewEchoSheet(sheet) {
     window.currentEchoSheet = sheet;
     const frame = document.getElementById('resultFrame');
     if (frame) {
-      frame.src = '/reports/result/' + window.currentTestId + '?embedded=1&sheet=' + encodeURIComponent(sheet);
+      const cacheKey = String(window.currentTestId) + ':' + sheet;
+      if (reportHtmlCache.has(cacheKey)) {
+        frame.srcdoc = wrapHtml(reportHtmlCache.get(cacheKey));
+      } else {
+        fetchReportHtml(window.currentTestId, sheet).then(html => {
+          if (frame && window.currentEchoSheet === sheet && html) {
+            frame.srcdoc = wrapHtml(html);
+          }
+        }).catch(() => {
+          frame.removeAttribute('srcdoc');
+          frame.src = '/reports/result/' + encodeURIComponent(window.currentTestId) + '?embedded=1&sheet=' + encodeURIComponent(sheet);
+        });
+      }
     }
     const btnAll = document.getElementById('btnEchoPreviewAll');
     const btnInfo = document.getElementById('btnEchoPreviewInfo');
@@ -199,7 +264,7 @@
 
   function printSelectedEchoSheet() {
     const s = window.currentEchoSheet || 'all';
-    window.open('/reports/result/' + window.currentTestId + '?embedded=1&print=1&sheet=' + encodeURIComponent(s), '_blank');
+    window.open('/reports/result/' + encodeURIComponent(window.currentTestId) + '?embedded=1&print=1&sheet=' + encodeURIComponent(s), '_blank');
   }
 
   (function(){
@@ -349,18 +414,59 @@
     const clearBtn = document.getElementById('clearFilters');
     const printBtn = document.getElementById('printFiltered');
 
+    // Pre-indexed Map and IDs for ultra-fast lookup (O(1)) and 0ms navigation
+    const testMap = new Map();
+    const allTestIds = new Array(tests.length);
+    for (let i = 0; i < tests.length; i++) {
+      const t = tests[i];
+      const tid = String(t.id);
+      testMap.set(tid, t);
+      allTestIds[i] = tid;
+      t._pNameLower = (t.patientName || '').toLowerCase();
+      t._tTypeLower = (t.testType || '').toLowerCase();
+      t._dateStr = t.testDate ? (typeof t.testDate === 'string' ? t.testDate.slice(0, 10) : new Date(t.testDate).toISOString().slice(0, 10)) : '';
+    }
+
+    let testTypeCheckboxes = null;
+    let _cachedSelectedTypes = null;
+    let _cachedFilteredIds = null;
+
+    function getTestTypeCheckboxes() {
+      if (!testTypeCheckboxes) {
+        testTypeCheckboxes = Array.from(document.querySelectorAll('.filterTestTypeCheckbox'));
+      }
+      return testTypeCheckboxes;
+    }
+
+    function invalidateFilterCache() {
+      _cachedSelectedTypes = null;
+      _cachedFilteredIds = null;
+    }
+
     function getSelectedTestTypes(){
-      const boxes = Array.from(document.querySelectorAll('.filterTestTypeCheckbox'));
-      if (!boxes || !boxes.length) return [];
-      return boxes.filter(b => b.checked).map(b => b.value).filter(Boolean);
+      if (_cachedSelectedTypes !== null) return _cachedSelectedTypes;
+      const boxes = getTestTypeCheckboxes();
+      if (!boxes || !boxes.length) {
+        _cachedSelectedTypes = [];
+        return _cachedSelectedTypes;
+      }
+      _cachedSelectedTypes = boxes.filter(b => b.checked).map(b => b.value).filter(Boolean);
+      return _cachedSelectedTypes;
+    }
+
+    function hasActiveFilters() {
+      const p = patientInput ? patientInput.value : '';
+      const fd = dateFilter ? dateFilter.value : '';
+      const selTypes = getSelectedTestTypes();
+      return !!(p || fd || selTypes.length);
     }
 
     function getQueryString() {
       const params = new URLSearchParams();
-      if (patientInput.value) params.set('filterPatient', patientInput.value);
+      if (patientInput && patientInput.value) params.set('filterPatient', patientInput.value);
       const selTypes = getSelectedTestTypes();
       if (selTypes.length) params.set('filterTestType', selTypes.join(','));
-      if (dateFilter.value) params.set('filterDate', dateFilter.value);
+      if (dateFilter && dateFilter.value) params.set('filterDate', dateFilter.value);
       const s = params.toString();
       return s ? ('?' + s) : '';
     }
@@ -378,29 +484,55 @@
         const fp = p.get('filterPatient');
         const ft = p.get('filterTestType');
         const fd = p.get('filterDate');
-        if (fp) patientInput.value = fp;
+        if (fp && patientInput) patientInput.value = fp;
         if (ft) {
           const arr = ft.split(',');
-          Array.from(document.querySelectorAll('.filterTestTypeCheckbox')).forEach(cb => {
+          getTestTypeCheckboxes().forEach(cb => {
             cb.checked = arr.indexOf(cb.value) !== -1;
           });
         }
-        if (fd) dateFilter.value = fd;
+        if (fd && dateFilter) dateFilter.value = fd;
+        invalidateFilterCache();
         try { if (typeof updateSelectAllState === 'function') updateSelectAllState(); } catch(e) {}
     }
 
     function matchesFilters(t){
-      const p = (patientInput.value || '').toLowerCase();
-      const selTypes = getSelectedTestTypes().map(s => (s || '').toLowerCase());
-      const fd = (dateFilter.value || '');
-      if (p && ((t.patientName || '').toLowerCase() !== p)) return false;
-      if (selTypes.length && selTypes.indexOf(((t.testType||'').toLowerCase()) ) === -1) return false;
-      if (fd && (t.testDate ? new Date(t.testDate).toISOString().slice(0,10) !== fd : true)) return false;
+      const p = (patientInput && patientInput.value || '').toLowerCase().trim();
+      const selTypes = getSelectedTestTypes();
+      const fd = (dateFilter && dateFilter.value || '').trim();
+      if (p && t._pNameLower !== p) return false;
+      if (selTypes.length) {
+        let matched = false;
+        for (let i = 0; i < selTypes.length; i++) {
+          if (t._tTypeLower === selTypes[i].toLowerCase()) { matched = true; break; }
+        }
+        if (!matched) return false;
+      }
+      if (fd && t._dateStr !== fd) return false;
       return true;
     }
 
     function getFilteredIds(){
-      return tests.filter(matchesFilters).map(t=>t.id);
+      if (_cachedFilteredIds !== null) return _cachedFilteredIds;
+      if (!hasActiveFilters()) {
+        _cachedFilteredIds = allTestIds;
+        return _cachedFilteredIds;
+      }
+      const p = (patientInput && patientInput.value || '').toLowerCase().trim();
+      const selTypes = getSelectedTestTypes().map(s => (s || '').toLowerCase());
+      const selSet = selTypes.length ? new Set(selTypes) : null;
+      const fd = (dateFilter && dateFilter.value || '').trim();
+
+      const result = [];
+      for (let i = 0; i < tests.length; i++) {
+        const t = tests[i];
+        if (p && t._pNameLower !== p) continue;
+        if (selSet && !selSet.has(t._tTypeLower)) continue;
+        if (fd && t._dateStr !== fd) continue;
+        result.push(allTestIds[i]);
+      }
+      _cachedFilteredIds = result;
+      return _cachedFilteredIds;
     }
 
     // initialize from URL
@@ -410,16 +542,15 @@
     let debounceTimer = null;
 
     function updatePager(){
-      const anyFilter = !!(patientInput.value || getSelectedTestTypes().length || dateFilter.value);
-      const ids = anyFilter ? getFilteredIds() : tests.map(t => t.id);
+      const ids = getFilteredIds();
       const total = ids.length || 0;
-      const cur = window.currentTestId;
+      const cur = String(window.currentTestId);
       const idx = ids.indexOf(cur);
       if (!filteredPager) return;
       if (total === 0) {
         filteredPager.textContent = '';
       } else {
-        filteredPager.textContent = (idx === -1 ? '0' : (idx + 1)) + ' / ' + total + (anyFilter ? ' (filtered)' : '');
+        filteredPager.textContent = (idx === -1 ? '0' : (idx + 1)) + ' / ' + total + (hasActiveFilters() ? ' (filtered)' : '');
       }
     }
 
@@ -431,9 +562,10 @@
       if (!filteredList) return;
       while (filteredList.firstChild) filteredList.removeChild(filteredList.firstChild);
       const filtered = tests.filter(matchesFilters);
+      const frag = document.createDocumentFragment();
       filtered.forEach(t => {
         const date = t.testDate ? new Date(t.testDate).toLocaleDateString() : '';
-        const id = t.id;
+        const id = String(t.id);
         const labelText = (t.testId || '') + ' - ' + (t.patientName || 'Unknown') + ' - ' + (t.testType || '') + (date ? (' ('+date+')') : '');
 
         const row = document.createElement('div');
@@ -463,13 +595,15 @@
 
         row.appendChild(cb);
         row.appendChild(label);
-        filteredList.appendChild(row);
+        frag.appendChild(row);
       });
+      filteredList.appendChild(frag);
       if (filteredSelectAll) filteredSelectAll.checked = false;
     }
 
     // wire filters to update
     function onFilterChange(){
+      invalidateFilterCache();
       populateFilteredList();
       setUrlParams();
       applyParamsToNavLinks();
@@ -477,7 +611,7 @@
       if (debounceTimer) clearTimeout(debounceTimer);
       const ids = getFilteredIds();
       if (!ids || !ids.length) return;
-      if (ids.indexOf(window.currentTestId) === -1) {
+      if (ids.indexOf(String(window.currentTestId)) === -1) {
         debounceTimer = setTimeout(() => {
           const qs = getQueryString();
           renderTestInPlace(ids[0], qs);
@@ -526,10 +660,11 @@
 
     clearBtn.addEventListener('click', function(){
       if (debounceTimer) { clearTimeout(debounceTimer); debounceTimer = null; }
+      invalidateFilterCache();
       patientInput.value = '';
       var psBox = document.getElementById('patientSearch'); if (psBox) { psBox.value = ''; }
       const pDrop = document.getElementById('filterPatientDropdown'); if (pDrop) { pDrop.style.display = 'none'; }
-      Array.from(document.querySelectorAll('.filterTestTypeCheckbox')).forEach(cb => cb.checked = false);
+      getTestTypeCheckboxes().forEach(cb => cb.checked = false);
       try { const sa = document.getElementById('filterTestTypeSelectAll'); if (sa) sa.checked = false; } catch(e) {}
       dateFilter.value = '';
       const fl = document.getElementById('filteredList'); if (fl) while (fl.firstChild) fl.removeChild(fl.firstChild);
@@ -616,18 +751,58 @@
     const downloadPdf = document.getElementById('downloadPdf');
     const printLink = document.getElementById('printLink');
 
+    // Cache initial iframe HTML once loaded
+    if (resultFrame) {
+      resultFrame.addEventListener('load', function() {
+        try {
+          const doc = resultFrame.contentDocument || (resultFrame.contentWindow && resultFrame.contentWindow.document);
+          if (doc && doc.documentElement) {
+            const currentHtml = doc.documentElement.outerHTML;
+            const cacheKey = String(window.currentTestId) + ':' + (window.currentEchoSheet || 'all');
+            if (currentHtml && currentHtml.length > 50 && !reportHtmlCache.has(cacheKey)) {
+              reportHtmlCache.set(cacheKey, currentHtml);
+            }
+          }
+        } catch (_) {}
+      });
+    }
+
     function renderTestInPlace(id, qs) {
+      id = String(id);
       qs = qs || '';
-      const t = tests.find(x => String(x.id) === String(id));
+      const t = testMap.get(id);
       if (!t) { window.location.href = '/reports/preview/' + id + qs; return; }
-      if (resultFrame) resultFrame.src = '/reports/result/' + id + '?embedded=1' + (qs ? ('&' + qs.replace(/^\?/, '')) : '');
+
+      window.currentTestId = id;
+      const s = window.currentEchoSheet || 'all';
+      const cacheKey = id + ':' + s;
+
+      if (resultFrame) {
+        if (reportHtmlCache.has(cacheKey)) {
+          // Instant 0ms in-memory render via srcdoc (no network delay, no white flash)
+          resultFrame.srcdoc = wrapHtml(reportHtmlCache.get(cacheKey));
+        } else {
+          // Fetch immediately and render as soon as loaded
+          fetchReportHtml(id, s).then(html => {
+            if (window.currentTestId === id && html) {
+              resultFrame.srcdoc = wrapHtml(html);
+            }
+          }).catch(() => {
+            if (window.currentTestId === id) {
+              resultFrame.removeAttribute('srcdoc');
+              resultFrame.src = '/reports/result/' + encodeURIComponent(id) + '?embedded=1' + (s && s !== 'all' ? ('&sheet=' + encodeURIComponent(s)) : '');
+            }
+          });
+        }
+      }
+
       if (elPatientName) elPatientName.textContent = t.patientName || '';
       if (elPatientPatientId) elPatientPatientId.textContent = t.patientId || '';
       if (elDisplayTestId) elDisplayTestId.textContent = t.testId || '';
       if (elDisplayTestType) elDisplayTestType.textContent = t.testType || '';
       if (elDisplayTestDate) elDisplayTestDate.textContent = t.testDate ? new Date(t.testDate).toLocaleDateString() : '';
-      if (downloadPdf) downloadPdf.href = '/reports/pdf/' + id;
-      if (printLink) printLink.href = '/reports/result/' + id + '?embedded=1&print=1';
+      if (downloadPdf) downloadPdf.href = '/reports/pdf/' + encodeURIComponent(id);
+      if (printLink) printLink.href = '/reports/result/' + encodeURIComponent(id) + '?embedded=1&print=1';
       const elFloatingPatient = document.getElementById('floatingPatientName');
       const elFloatingTestType = document.getElementById('floatingTestType');
       const elFloatingTestId = document.getElementById('floatingTestId');
@@ -643,35 +818,71 @@
       }
 
       const newPath = '/reports/preview/' + id + qs; try { history.replaceState(null, '', newPath); } catch (e) {}
-      window.currentTestId = id; applyParamsToNavLinks(); updatePager();
-      const anyFilter = !!(patientInput.value || getSelectedTestTypes().length || dateFilter.value);
-      const ids = anyFilter ? getFilteredIds() : tests.map(tt => tt.id);
+      applyParamsToNavLinks();
+      updatePager();
+
+      const ids = getFilteredIds();
       const idx = ids.indexOf(id);
-      if (prevBtn && prevBtn.tagName === 'A') { if (idx > 0) prevBtn.href = '/reports/preview/' + ids[idx-1] + getQueryString(); else prevBtn.removeAttribute('href'); }
-      if (nextBtn && nextBtn.tagName === 'A') { if (idx !== -1 && idx < ids.length - 1) nextBtn.href = '/reports/preview/' + ids[idx+1] + getQueryString(); else nextBtn.removeAttribute('href'); }
+      if (prevBtn && prevBtn.tagName === 'A') {
+        if (idx > 0) prevBtn.href = '/reports/preview/' + encodeURIComponent(ids[idx-1]) + getQueryString();
+        else prevBtn.removeAttribute('href');
+      }
+      if (nextBtn && nextBtn.tagName === 'A') {
+        if (idx !== -1 && idx < ids.length - 1) nextBtn.href = '/reports/preview/' + encodeURIComponent(ids[idx+1]) + getQueryString();
+        else nextBtn.removeAttribute('href');
+      }
+
+      // Background prefetch adjacent reports for instant navigation on subsequent clicks
+      preloadAdjacentReports(ids, idx);
     }
 
     // Prev/Next navigation
     const prevBtn = document.getElementById('prevBtn');
     const nextBtn = document.getElementById('nextBtn');
     function navigateWithinFiltered(direction){
-      const ids = getFilteredIds(); if (!ids || !ids.length) return false; const cur = window.currentTestId; let idx = ids.indexOf(cur); let targetIndex;
-      if (idx === -1) targetIndex = (direction === 'prev') ? (ids.length - 1) : 0; else targetIndex = (direction === 'prev') ? (idx - 1) : (idx + 1);
-      if (targetIndex < 0 || targetIndex >= ids.length) return false; const targetId = ids[targetIndex]; const qs = getQueryString(); renderTestInPlace(targetId, qs); return true;
+      const ids = getFilteredIds();
+      if (!ids || !ids.length) return false;
+      const cur = String(window.currentTestId);
+      let idx = ids.indexOf(cur);
+      let targetIndex;
+      if (idx === -1) {
+        targetIndex = (direction === 'prev') ? (ids.length - 1) : 0;
+      } else {
+        targetIndex = (direction === 'prev') ? (idx - 1) : (idx + 1);
+      }
+      if (targetIndex < 0 || targetIndex >= ids.length) return false;
+      const targetId = ids[targetIndex];
+      const qs = getQueryString();
+      renderTestInPlace(targetId, qs);
+      return true;
     }
 
     if (prevBtn) {
-      prevBtn.addEventListener('click', function(e){ e.preventDefault(); const handled = navigateWithinFiltered('prev'); if (!handled) { const href = prevBtn.getAttribute && prevBtn.getAttribute('href'); if (href) window.location.href = href; } });
+      prevBtn.addEventListener('click', function(e){
+        e.preventDefault();
+        const handled = navigateWithinFiltered('prev');
+        if (!handled) {
+          const href = prevBtn.getAttribute && prevBtn.getAttribute('href');
+          if (href) window.location.href = href;
+        }
+      });
     }
     if (nextBtn) {
-      nextBtn.addEventListener('click', function(e){ e.preventDefault(); const handled = navigateWithinFiltered('next'); if (!handled) { const href = nextBtn.getAttribute && nextBtn.getAttribute('href'); if (href) window.location.href = href; } });
+      nextBtn.addEventListener('click', function(e){
+        e.preventDefault();
+        const handled = navigateWithinFiltered('next');
+        if (!handled) {
+          const href = nextBtn.getAttribute && nextBtn.getAttribute('href');
+          if (href) window.location.href = href;
+        }
+      });
     }
 
     if (printLink) {
       printLink.addEventListener('click', function(e) {
         if (window.lisApp && typeof window.lisApp.printPreview === 'function') {
           e.preventDefault();
-          const targetHref = printLink.getAttribute('href') || ('/reports/result/' + (window.currentTestId || '') + '?embedded=1');
+          const targetHref = printLink.getAttribute('href') || ('/reports/result/' + encodeURIComponent(window.currentTestId || '') + '?embedded=1');
           const fullUrl = (targetHref.startsWith('http://') || targetHref.startsWith('https://')) ? targetHref : (window.location.origin + targetHref);
           window.lisApp.printPreview(fullUrl);
         }
@@ -679,8 +890,13 @@
     }
 
     // initial populate if filters present
-    if (patientInput.value || getSelectedTestTypes().length || dateFilter.value) populateFilteredList();
+    if (hasActiveFilters()) populateFilteredList();
     updatePager();
+
+    // Preload adjacent reports immediately on initial page load for 0ms transitions
+    const initialIds = getFilteredIds();
+    const initialIdx = initialIds.indexOf(String(window.currentTestId));
+    preloadAdjacentReports(initialIds, initialIdx);
 
   })();
 </script>

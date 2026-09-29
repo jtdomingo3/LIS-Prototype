@@ -828,6 +828,9 @@ function createBetterSqliteDb(dbPath, opts = {}) {
       } catch (e) { return null; }
     },
     queryPatients(filter = {}, opts = {}) {
+      if (!opts.limit && !opts.offset && (!filter || Object.keys(filter).length === 0)) {
+        return this.getPatients();
+      }
       const clauses = [];
       const params = {};
       if (filter.id) { clauses.push('id = @id'); params.id = filter.id; }
@@ -934,6 +937,9 @@ function createBetterSqliteDb(dbPath, opts = {}) {
       } catch (e) { return null; }
     },
     queryTests(filter = {}, opts = {}) {
+      if (!opts.limit && !opts.offset && (!filter || Object.keys(filter).length === 0)) {
+        return this.getTests();
+      }
       const clauses = [];
       const params = {};
       if (filter.id) { clauses.push('id = @id'); params.id = filter.id; }
@@ -2976,6 +2982,9 @@ function createSqlJsDb(SQL, dbPath) {
     },
 
     queryPatients(filter = {}, opts = {}) {
+      if (!opts.limit && !opts.offset && (!filter || Object.keys(filter).length === 0)) {
+        return this.getPatients();
+      }
       const clauses = [];
       const params = [];
       if (filter.id) { clauses.push('id = ?'); params.push(filter.id); }
@@ -3096,6 +3105,9 @@ function createSqlJsDb(SQL, dbPath) {
     },
 
     queryTests(filter = {}, opts = {}) {
+      if (!opts.limit && !opts.offset && (!filter || Object.keys(filter).length === 0)) {
+        return this.getTests();
+      }
       const clauses = [];
       const params = [];
       if (filter.id) { clauses.push('id = ?'); params.push(filter.id); }
