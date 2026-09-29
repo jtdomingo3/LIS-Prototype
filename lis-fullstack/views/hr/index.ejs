@@ -179,12 +179,12 @@
     <!-- Recent Payroll Runs -->
     <div style="background: white; border-radius: 14px; padding: 22px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-            <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: #1e1b4b;">Recent Payroll Computations (<%= currentMonth %>)</h3>
-            <a href="/hr/payroll?month=<%= currentMonth %>" style="font-size: 0.82rem; color: #4f46e5; font-weight: 600; text-decoration: none;">View Payroll Register →</a>
+            <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: #1e1b4b;">Recent Payroll Computations</h3>
+            <a href="/hr/payroll?month=all" style="font-size: 0.82rem; color: #4f46e5; font-weight: 600; text-decoration: none;">View All in Payroll Register →</a>
         </div>
         <% if (recentPayrolls.length === 0) { %>
             <div style="padding: 30px; text-align: center; color: #94a3b8; font-size: 0.9rem;">
-                No payroll calculated for <%= currentMonth %> yet.
+                No payroll calculated yet.
                 <div style="margin-top: 10px;">
                     <a href="/hr/payroll/compute" style="color: #4f46e5; font-weight: 700;">+ Run Payroll Computation</a>
                 </div>
@@ -207,7 +207,7 @@
                         <% recentPayrolls.forEach(p => { %>
                             <tr style="border-bottom: 1px solid #f1f5f9;">
                                 <td style="padding: 10px 14px; font-weight: 600; color: #0f172a;"><%= p.employeeName || (p.getEmployee && p.getEmployee()?.name) || 'Staff' %></td>
-                                <td style="padding: 10px 14px; color: #64748b;"><%= p.payPeriodStart.slice(0, 10) %> to <%= p.payPeriodEnd.slice(0, 10) %></td>
+                                <td style="padding: 10px 14px; color: #64748b;"><span style="font-weight: 700; color: #1e1b4b;"><%= p.month || (p.payPeriodEnd ? p.payPeriodEnd.slice(0, 7) : '') %></span> • <%= p.payPeriodStart.slice(0, 10) %> to <%= p.payPeriodEnd.slice(0, 10) %></td>
                                 <td style="padding: 10px 14px; text-align: right; color: #0f172a;">₱<%= (Number(p.grossPay) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
                                 <td style="padding: 10px 14px; text-align: right; color: #dc2626;">-₱<%= (Number(p.totalDeductions) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
                                 <td style="padding: 10px 14px; text-align: right; font-weight: 700; color: #059669;">₱<%= (Number(p.netPay) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>

@@ -35,28 +35,41 @@
                 const defaultEnd = `${year}-${month}-${lastDay}`;
             %>
 
+            <!-- Quick Presets for Semi-Monthly -->
+            <div style="margin-bottom: 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span style="font-size: 0.78rem; font-weight: 700; color: #64748b; text-transform: uppercase;">Quick Presets:</span>
+                <button type="button" onclick="setPreset('first')" style="padding: 4px 12px; border: 1px solid #a5b4fc; background: #eef2ff; border-radius: 6px; font-size: 0.8rem; font-weight: 600; color: #4338ca; cursor: pointer;">1st Cutoff (1–15)</button>
+                <button type="button" onclick="setPreset('second')" style="padding: 4px 12px; border: 1px solid #a5b4fc; background: #eef2ff; border-radius: 6px; font-size: 0.8rem; font-weight: 600; color: #4338ca; cursor: pointer;">2nd Cutoff (16–End)</button>
+                <button type="button" onclick="setPreset('full')" style="padding: 4px 12px; border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 6px; font-size: 0.8rem; font-weight: 600; color: #475569; cursor: pointer;">Full Month</button>
+                <span style="font-size: 0.78rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-left: 8px;">Month Switcher:</span>
+                <button type="button" onclick="shiftMonth(-1)" style="padding: 4px 10px; border: 1px solid #cbd5e1; background: #fff; border-radius: 6px; font-size: 0.8rem; font-weight: 600; color: #334155; cursor: pointer;" title="Previous Month">◀ Prev Month</button>
+                <button type="button" onclick="shiftMonth(1)" style="padding: 4px 10px; border: 1px solid #cbd5e1; background: #fff; border-radius: 6px; font-size: 0.8rem; font-weight: 600; color: #334155; cursor: pointer;" title="Next Month">Next Month ▶</button>
+            </div>
+
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                 <div>
                     <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Pay Period Start *</label>
-                    <input type="date" name="payPeriodStart" value="<%= defaultStart %>" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
+                    <input type="date" id="payPeriodStart" name="payPeriodStart" value="<%= defaultStart %>" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
                 </div>
 
                 <div>
                     <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Pay Period End *</label>
-                    <input type="date" name="payPeriodEnd" value="<%= defaultEnd %>" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
+                    <input type="date" id="payPeriodEnd" name="payPeriodEnd" value="<%= defaultEnd %>" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
                 </div>
 
                 <div>
                     <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Scheduled Pay Date</label>
-                    <input type="date" name="payDate" value="<%= defaultEnd %>" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
+                    <input type="date" id="payDate" name="payDate" value="<%= defaultEnd %>" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; box-sizing: border-box;">
+                    <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 3px;">Defaults to period end date</div>
                 </div>
 
                 <div>
                     <label style="display: block; font-size: 0.82rem; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;">Computation Cycle</label>
-                    <select name="frequency" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; background: #fff;">
+                    <select id="frequency" name="frequency" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; background: #fff;">
                         <option value="Monthly">Monthly Full Cycle</option>
                         <option value="Semi-Monthly">Semi-Monthly (15th or 30th Cut-off)</option>
                     </select>
+                    <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 3px;">Affects how basic pay is divided</div>
                 </div>
             </div>
         </div>
@@ -94,7 +107,7 @@
         <div style="display: flex; justify-content: flex-end; gap: 12px;">
             <a href="/hr/payroll" style="padding: 12px 24px; border: 1px solid #cbd5e1; background: white; color: #475569; border-radius: 8px; font-weight: 600; text-decoration: none;">Cancel</a>
             <button type="submit" style="padding: 12px 32px; background: #4f46e5; color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 0.95rem;">
-                ⚡ Calculate & Save Drafts
+                ⚡ Calculate &amp; Save Drafts
             </button>
         </div>
     </form>
@@ -107,13 +120,63 @@
         });
     }
 
-    const endInput = document.querySelector('input[name="payPeriodEnd"]');
-    const payDateInput = document.querySelector('input[name="payDate"]');
+    const startInput = document.getElementById('payPeriodStart');
+    const endInput = document.getElementById('payPeriodEnd');
+    const payDateInput = document.getElementById('payDate');
+    const freqSelect = document.getElementById('frequency');
+
+    // Keep Pay Date in sync with period end
     if (endInput && payDateInput) {
         endInput.addEventListener('change', () => {
-            if (endInput.value) {
-                payDateInput.value = endInput.value;
-            }
+            if (endInput.value) payDateInput.value = endInput.value;
         });
+    }
+
+    // Quick preset buttons — uses the month currently shown in the Start input
+    function setPreset(type) {
+        if (!startInput || !endInput) return;
+        const ref = startInput.value ? new Date(startInput.value + 'T00:00:00') : new Date();
+        const y = ref.getFullYear();
+        const m = ref.getMonth(); // 0-indexed
+        const lastDay = new Date(y, m + 1, 0).getDate();
+        const mm = String(m + 1).padStart(2, '0');
+
+        if (type === 'full') {
+            startInput.value = `${y}-${mm}-01`;
+            endInput.value = `${y}-${mm}-${String(lastDay).padStart(2, '0')}`;
+            if (freqSelect) freqSelect.value = 'Monthly';
+        } else if (type === 'first') {
+            startInput.value = `${y}-${mm}-01`;
+            endInput.value = `${y}-${mm}-15`;
+            if (freqSelect) freqSelect.value = 'Semi-Monthly';
+        } else if (type === 'second') {
+            startInput.value = `${y}-${mm}-16`;
+            endInput.value = `${y}-${mm}-${String(lastDay).padStart(2, '0')}`;
+            if (freqSelect) freqSelect.value = 'Semi-Monthly';
+        }
+        if (endInput.value && payDateInput) payDateInput.value = endInput.value;
+    }
+
+    function shiftMonth(delta) {
+        if (!startInput || !endInput) return;
+        const ref = startInput.value ? new Date(startInput.value + 'T00:00:00') : new Date();
+        ref.setMonth(ref.getMonth() + delta);
+        const y = ref.getFullYear();
+        const m = ref.getMonth();
+        const lastDay = new Date(y, m + 1, 0).getDate();
+        const mm = String(m + 1).padStart(2, '0');
+        const isSecondHalf = endInput.value && parseInt(endInput.value.slice(8, 10), 10) > 15 && parseInt(startInput.value.slice(8, 10), 10) > 1;
+        const isFirstHalf = endInput.value && parseInt(endInput.value.slice(8, 10), 10) === 15;
+        if (isFirstHalf) {
+            startInput.value = `${y}-${mm}-01`;
+            endInput.value = `${y}-${mm}-15`;
+        } else if (isSecondHalf) {
+            startInput.value = `${y}-${mm}-16`;
+            endInput.value = `${y}-${mm}-${String(lastDay).padStart(2, '0')}`;
+        } else {
+            startInput.value = `${y}-${mm}-01`;
+            endInput.value = `${y}-${mm}-${String(lastDay).padStart(2, '0')}`;
+        }
+        if (endInput.value && payDateInput) payDateInput.value = endInput.value;
     }
 </script>

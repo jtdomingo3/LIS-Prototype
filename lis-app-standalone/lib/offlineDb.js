@@ -827,7 +827,7 @@ function createOfflineDb(dataStore) {
         return sqliteAdapter.getPayrollRecords(month, employeeId);
       }
       let list = dataStore.getCollection('payroll_records') || [];
-      if (month) list = list.filter(p => p && p.month === month);
+      if (month && month !== 'all') list = list.filter(p => p && p.month === month);
       if (employeeId) list = list.filter(p => p && p.employeeId === employeeId);
       return list;
     },

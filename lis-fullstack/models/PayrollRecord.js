@@ -155,13 +155,20 @@ class PayrollRecord {
   }
 
   static async findByMonth(month) {
+    if (!month || month === 'all') {
+      return PayrollRecord.find({});
+    }
     return PayrollRecord.find({ month });
   }
 
   static async find(query = {}) {
     let list = [];
     if (global.db && typeof global.db.getPayrollRecords === 'function') {
-      list = global.db.getPayrollRecords(query.month, query.employeeId) || [];
+      const monthArg = (query.month && query.month !== 'all') ? query.month : null;
+      list = global.db.getPayrollRecords(monthArg, query.employeeId) || [];
+    }
+    if (query.month && query.month !== 'all') {
+      list = list.filter(p => p.month === query.month || (p.payPeriodEnd && p.payPeriodEnd.slice(0, 7) === query.month));
     }
     if (query.status) {
       list = list.filter(p => p.status === query.status);

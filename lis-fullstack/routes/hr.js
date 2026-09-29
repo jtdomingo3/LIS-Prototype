@@ -935,11 +935,16 @@ router.get('/', async (req, res) => {
       departmentCounts[dept] = (departmentCounts[dept] || 0) + 1;
     }
 
-    // Recent payroll runs
-    const recentPayrolls = (await PayrollRecord.find({ month: currentMonth })).slice(0, 10);
-    const actualMonthlyCost = recentPayrolls.reduce((sum, p) => sum + (p.totalEmployerCost || 0), 0);
-    const actualGrossPay = recentPayrolls.reduce((sum, p) => sum + (Number(p.grossPay) || 0), 0);
-    const actualEmployerContributions = recentPayrolls.reduce((sum, p) => sum + (Number(p.sssEmployerShare) || 0) + (Number(p.philhealthEmployerShare) || 0) + (Number(p.pagibigEmployerShare) || 0), 0);
+    // Monthly payroll records for currentMonth (for top cards)
+    const monthPayrolls = await PayrollRecord.findByMonth(currentMonth);
+    const actualMonthlyCost = monthPayrolls.reduce((sum, p) => sum + (p.totalEmployerCost || 0), 0);
+    const actualGrossPay = monthPayrolls.reduce((sum, p) => sum + (Number(p.grossPay) || 0), 0);
+    const actualEmployerContributions = monthPayrolls.reduce((sum, p) => sum + (Number(p.sssEmployerShare) || 0) + (Number(p.philhealthEmployerShare) || 0) + (Number(p.pagibigEmployerShare) || 0), 0);
+
+    // Recent payroll runs across all periods (newest first)
+    const allPayrolls = await PayrollRecord.find({});
+    allPayrolls.sort((a, b) => (b.payPeriodEnd || '').localeCompare(a.payPeriodEnd || '') || (b.createdAt || '').localeCompare(a.createdAt || ''));
+    const recentPayrolls = allPayrolls.slice(0, 10);
 
     // Pending leave requests
     const allLeaves = await LeaveRecord.find({ status: 'Pending' });
@@ -1456,10 +1461,41 @@ router.post('/employees/:id/resign', async (req, res) => {
  */
 router.get('/payroll', async (req, res) => {
   try {
-    const selectedMonth = req.query.month || new Date().toISOString().slice(0, 7);
+    const monthParam = (req.query.month || '').trim();
+    // Default to 'all' if no month parameter is provided, so all records remain visible
+    const selectedMonth = monthParam || 'all';
     const statusFilter = req.query.status || '';
 
-    let records = await PayrollRecord.findByMonth(selectedMonth);
+    // Fetch all records to build month tabs and counts
+    const allRecords = await PayrollRecord.find({});
+    allRecords.sort((a, b) => (b.payPeriodEnd || '').localeCompare(a.payPeriodEnd || '') || (b.createdAt || '').localeCompare(a.createdAt || ''));
+
+    // Extract unique months with counts for quick-switch pills
+    const monthMap = new Map();
+    for (const p of allRecords) {
+      const m = p.month || (p.payPeriodEnd ? p.payPeriodEnd.slice(0, 7) : '');
+      if (m) {
+        if (!monthMap.has(m)) {
+          let label = m;
+          try {
+            const [y, mm] = m.split('-');
+            const d = new Date(parseInt(y, 10), parseInt(mm, 10) - 1, 1);
+            label = d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+          } catch (_) {}
+          monthMap.set(m, { month: m, label, count: 0 });
+        }
+        monthMap.get(m).count++;
+      }
+    }
+    const existingMonths = Array.from(monthMap.values());
+
+    let records;
+    if (selectedMonth === 'all') {
+      records = [...allRecords];
+    } else {
+      records = allRecords.filter(p => p.month === selectedMonth || (p.payPeriodEnd && p.payPeriodEnd.slice(0, 7) === selectedMonth));
+    }
+
     if (statusFilter) {
       records = records.filter(p => p.status === statusFilter);
     }
@@ -1473,6 +1509,8 @@ router.get('/payroll', async (req, res) => {
       title: 'Payroll Management',
       records,
       selectedMonth,
+      existingMonths,
+      totalAllRecords: allRecords.length,
       statusFilter,
       totalGross,
       totalDeductions,
@@ -1519,6 +1557,14 @@ router.post('/payroll/compute', async (req, res) => {
       return res.redirect('/hr/payroll/compute');
     }
 
+    // Validate that the period makes sense
+    const startDate = new Date(payPeriodStart);
+    const endDate = new Date(payPeriodEnd);
+    if (endDate < startDate) {
+      req.flash('error_msg', 'Pay Period End must be on or after Pay Period Start');
+      return res.redirect('/hr/payroll/compute');
+    }
+
     let employeesToCompute = [];
     if (selectedEmployeeIds) {
       const ids = Array.isArray(selectedEmployeeIds) ? selectedEmployeeIds : [selectedEmployeeIds];
@@ -1534,9 +1580,26 @@ router.post('/payroll/compute', async (req, res) => {
     employeesToCompute = employeesToCompute.filter(e => !e.isPayrollExempt && e.payType !== 'Commission Only' && !e.isSystemAccount);
 
     let computedCount = 0;
+    let skippedCount = 0;
     const currentMonth = payPeriodEnd.slice(0, 7);
 
+    // Load existing payroll records for this month to detect duplicates
+    const existingRecords = await PayrollRecord.find({ month: currentMonth });
+
     for (const emp of employeesToCompute) {
+      // Duplicate check: skip if a record already exists for this employee
+      // that has the exact same payPeriodStart and payPeriodEnd
+      const isDuplicate = existingRecords.some(r =>
+        r.employeeId === emp.id &&
+        r.payPeriodStart && r.payPeriodStart.slice(0, 10) === payPeriodStart &&
+        r.payPeriodEnd && r.payPeriodEnd.slice(0, 10) === payPeriodEnd
+      );
+
+      if (isDuplicate) {
+        skippedCount++;
+        continue;
+      }
+
       const result = computePayrollForEmployee(emp, {
         payPeriodStart,
         payPeriodEnd,
@@ -1550,7 +1613,15 @@ router.post('/payroll/compute', async (req, res) => {
       computedCount++;
     }
 
-    req.flash('success_msg', `Successfully computed payroll for ${computedCount} staff members`);
+    if (computedCount > 0) {
+      const skipNote = skippedCount > 0 ? ` (${skippedCount} already existed and were skipped)` : '';
+      req.flash('success_msg', `Successfully computed payroll for ${computedCount} staff member(s) (${payPeriodStart} to ${payPeriodEnd})${skipNote}. Previous period records remain preserved in the month tabs above.`);
+    } else if (skippedCount > 0) {
+      req.flash('error_msg', `Payroll for this period (${payPeriodStart} to ${payPeriodEnd}) already exists for all selected staff. Delete the existing records first if you need to recompute.`);
+    } else {
+      req.flash('error_msg', 'No eligible staff members found to compute payroll for');
+    }
+
     res.redirect(`/hr/payroll?month=${currentMonth}`);
   } catch (err) {
     console.error('[hr] Compute payroll execute error:', err);
@@ -1682,7 +1753,12 @@ router.post('/payroll/:id/delete', async (req, res) => {
     await PayrollRecord.deleteById(payroll.id);
 
     req.flash('success_msg', `Payroll record for ${payroll.employeeName || 'staff'} has been deleted`);
-    res.redirect(`/hr/payroll?month=${redirectMonth}`);
+    const returnUrl = req.get('Referrer');
+    let redirectUrl = `/hr/payroll?month=${redirectMonth}`;
+    if (returnUrl && returnUrl.includes('/hr/payroll')) {
+      redirectUrl = returnUrl;
+    }
+    res.redirect(redirectUrl);
   } catch (err) {
     console.error('[hr] Delete payroll error:', err);
     req.flash('error_msg', 'Failed to delete payroll record');
@@ -1895,9 +1971,12 @@ router.get('/export/:type', async (req, res) => {
       }
     } else {
       // Payroll Summary
-      const month = req.query.month || new Date().toISOString().slice(0, 7);
-      const sheet = workbook.addWorksheet(`Payroll ${month}`);
+      const month = (req.query.month || '').trim() || 'all';
+      const isAll = month === 'all';
+      const sheet = workbook.addWorksheet(isAll ? 'Payroll All Periods' : `Payroll ${month}`);
       sheet.columns = [
+        { header: 'Period Month', key: 'month', width: 14 },
+        { header: 'Cutoff Period', key: 'cutoff', width: 18 },
         { header: 'Employee Code', key: 'code', width: 16 },
         { header: 'Name', key: 'name', width: 25 },
         { header: 'Department', key: 'department', width: 20 },
@@ -1913,10 +1992,12 @@ router.get('/export/:type', async (req, res) => {
         { header: 'Status', key: 'status', width: 12 }
       ];
 
-      const records = await PayrollRecord.findByMonth(month);
+      const records = isAll ? await PayrollRecord.find({}) : await PayrollRecord.findByMonth(month);
       for (const p of records) {
         const emp = p.getEmployee();
         sheet.addRow({
+          month: p.month || (p.payPeriodEnd ? p.payPeriodEnd.slice(0, 7) : ''),
+          cutoff: p.cutoffPeriod || `${p.payPeriodStart ? p.payPeriodStart.slice(5, 10) : ''} to ${p.payPeriodEnd ? p.payPeriodEnd.slice(5, 10) : ''}`,
           code: emp ? emp.employeeCode : '',
           name: emp ? emp.name : '',
           department: emp ? emp.department : '',

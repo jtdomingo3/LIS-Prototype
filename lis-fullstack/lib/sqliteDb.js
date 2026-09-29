@@ -2115,7 +2115,7 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     getPayrollRecords(month, employeeId) {
       try {
         let rows;
-        if (month) rows = stmts.getPayrollRecordsByMonth.all(month);
+        if (month && month !== 'all') rows = stmts.getPayrollRecordsByMonth.all(month);
         else if (employeeId) rows = stmts.getPayrollRecordsByEmployee.all(employeeId);
         else rows = stmts.getAllPayrollRecords.all();
         return parseRows(rows);
@@ -4276,7 +4276,7 @@ function createSqlJsDb(SQL, dbPath) {
     getPayrollRecords(month, employeeId) {
       try {
         let rows;
-        if (month) rows = queryAll('SELECT json FROM payroll_records WHERE month = ? ORDER BY payPeriodEnd DESC', [month]);
+        if (month && month !== 'all') rows = queryAll('SELECT json FROM payroll_records WHERE month = ? ORDER BY payPeriodEnd DESC', [month]);
         else if (employeeId) rows = queryAll('SELECT json FROM payroll_records WHERE employeeId = ? ORDER BY payPeriodEnd DESC', [employeeId]);
         else rows = queryAll('SELECT json FROM payroll_records ORDER BY payPeriodEnd DESC, createdAt DESC');
         return parseRows(rows);
