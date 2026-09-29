@@ -106,4 +106,14 @@
             cb.checked = master.checked;
         });
     }
+
+    const endInput = document.querySelector('input[name="payPeriodEnd"]');
+    const payDateInput = document.querySelector('input[name="payDate"]');
+    if (endInput && payDateInput) {
+        endInput.addEventListener('change', () => {
+            if (endInput.value) {
+                payDateInput.value = endInput.value;
+            }
+        });
+    }
 </script>

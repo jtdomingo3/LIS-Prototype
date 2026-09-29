@@ -32,6 +32,13 @@
             <a href="/hr/print/payslip/<%= payroll.id %>" target="_blank" class="btn btn-secondary" style="padding: 8px 16px; background: #f1f5f9; color: #1e293b; border: 1px solid #cbd5e1; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
                 <span>🖨️</span> Print Payslip
             </a>
+            <% if (typeof isMgmt !== 'undefined' && isMgmt) { %>
+                <form action="/hr/payroll/<%= payroll.id %>/delete" method="POST" style="display: inline;" onsubmit="return confirm('⚠️ Delete this payroll record for <%= employee ? employee.name : 'staff' %>?\n\nThis will also remove the linked expense entry. This action cannot be undone.');">
+                    <button type="submit" style="padding: 8px 16px; background: #fee2e2; color: #991b1b; border: 1.5px solid #fca5a5; border-radius: 8px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                        🗑️ Delete Record
+                    </button>
+                </form>
+            <% } %>
         </div>
     </div>
 

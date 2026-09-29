@@ -65,6 +65,12 @@ class Expense {
     if (query.toDate) {
       list = list.filter(e => e.expenseDate <= query.toDate);
     }
+    if (query.referenceId) {
+      list = list.filter(e => e.referenceId === query.referenceId);
+    }
+    if (query.referenceType) {
+      list = list.filter(e => e.referenceType === query.referenceType);
+    }
     return list.map(e => new Expense(e));
   }
 

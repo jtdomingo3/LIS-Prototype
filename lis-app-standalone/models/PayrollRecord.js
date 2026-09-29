@@ -6,8 +6,9 @@ class PayrollRecord {
     this.employeeId = data.employeeId || '';
     this.payPeriodStart = data.payPeriodStart || new Date().toISOString();
     this.payPeriodEnd = data.payPeriodEnd || new Date().toISOString();
-    this.payDate = data.payDate || null;
+    this.payDate = data.payDate || (this.payPeriodEnd ? this.payPeriodEnd.slice(0, 10) : null);
     this.month = data.month || (this.payPeriodEnd ? this.payPeriodEnd.slice(0, 7) : new Date().toISOString().slice(0, 7));
+    this.cutoffPeriod = data.cutoffPeriod || (data.payPeriodStart && data.payPeriodEnd ? `${data.payPeriodStart.slice(5, 10)} to ${data.payPeriodEnd.slice(5, 10)}` : 'Full Month');
 
     // Earnings
     this.basicPay = Number(data.basicPay) || 0;

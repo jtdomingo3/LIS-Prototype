@@ -1478,7 +1478,8 @@ router.get('/payroll', async (req, res) => {
       totalDeductions,
       totalNet,
       totalEmployerCost,
-      sessionUser: req.session.user
+      sessionUser: req.session.user,
+      isMgmt: isManagement(req.session.user)
     });
   } catch (err) {
     console.error('[hr] Payroll index error:', err);
@@ -1574,7 +1575,8 @@ router.get('/payroll/:id', async (req, res) => {
       title: `Payroll Details — ${employee ? employee.name : 'Staff'}`,
       payroll,
       employee,
-      sessionUser: req.session.user
+      sessionUser: req.session.user,
+      isMgmt: isManagement(req.session.user)
     });
   } catch (err) {
     console.error('[hr] Payroll show error:', err);
@@ -1643,6 +1645,47 @@ router.post('/payroll/:id/mark-paid', async (req, res) => {
     }
     res.redirect(`/hr/payroll/${req.params.id}`);
   } catch (err) {
+    res.redirect('/hr/payroll');
+  }
+});
+
+/**
+ * POST /hr/payroll/:id/delete
+ * Hard-delete a payroll record (Admin / Manager / Owner only — for testing).
+ * Also removes the auto-linked Expense entry if it exists.
+ */
+router.post('/payroll/:id/delete', async (req, res) => {
+  try {
+    if (!isManagement(req.session?.user)) {
+      req.flash('error_msg', 'You do not have permission to delete payroll records');
+      return res.redirect('/hr/payroll');
+    }
+
+    const payroll = await PayrollRecord.findById(req.params.id);
+    if (!payroll) {
+      req.flash('error_msg', 'Payroll record not found');
+      return res.redirect('/hr/payroll');
+    }
+
+    const redirectMonth = payroll.month || new Date().toISOString().slice(0, 7);
+
+    // Remove the linked Expense entry (auto-recorded on approval) if it exists
+    try {
+      const linkedExpenses = await Expense.find({ referenceId: payroll.id, referenceType: 'payroll' });
+      for (const exp of linkedExpenses) {
+        await Expense.deleteById(exp.id);
+      }
+    } catch (expErr) {
+      console.warn('[hr] Could not delete linked expense for payroll:', expErr.message);
+    }
+
+    await PayrollRecord.deleteById(payroll.id);
+
+    req.flash('success_msg', `Payroll record for ${payroll.employeeName || 'staff'} has been deleted`);
+    res.redirect(`/hr/payroll?month=${redirectMonth}`);
+  } catch (err) {
+    console.error('[hr] Delete payroll error:', err);
+    req.flash('error_msg', 'Failed to delete payroll record');
     res.redirect('/hr/payroll');
   }
 });

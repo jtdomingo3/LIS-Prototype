@@ -153,7 +153,7 @@ function computePayrollForEmployee(employee, opts = {}) {
     employeeId: employee.id,
     payPeriodStart: opts.payPeriodStart || now,
     payPeriodEnd: periodEnd,
-    payDate: opts.payDate || null,
+    payDate: opts.payDate || periodEnd.slice(0, 10),
     month,
     basicPay,
     overtimePay,

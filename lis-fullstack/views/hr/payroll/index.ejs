@@ -1,5 +1,5 @@
 <div style="width: 100%; box-sizing: border-box;">
-    <%
+    <% 
       const payrollRecords = (typeof records !== 'undefined' && Array.isArray(records)) ? records : ((typeof payrolls !== 'undefined' && Array.isArray(payrolls)) ? payrolls : []);
       const grossVal = (typeof totalGross !== 'undefined') ? totalGross : payrollRecords.reduce((s, p) => s + (p.grossPay || 0), 0);
       const dedVal = (typeof totalDeductions !== 'undefined') ? totalDeductions : payrollRecords.reduce((s, p) => s + (p.totalDeductions || 0), 0);
@@ -7,6 +7,7 @@
       const empCostVal = (typeof totalEmployerCost !== 'undefined') ? totalEmployerCost : payrollRecords.reduce((s, p) => s + (p.totalEmployerCost || 0), 0);
       const selMonth = (typeof selectedMonth !== 'undefined') ? selectedMonth : new Date().toISOString().slice(0, 7);
       const curStatusFilter = (typeof statusFilter !== 'undefined') ? statusFilter : '';
+      const canDelete = (typeof isMgmt !== 'undefined') && isMgmt;
     %>
     <!-- Top Bar -->
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 24px;">
@@ -138,7 +139,13 @@
                                 </td>
                                 <td style="padding: 12px 16px; text-align: center; white-space: nowrap;">
                                     <a href="/hr/payroll/<%= p.id %>" style="display: inline-block; padding: 4px 8px; background: #f1f5f9; color: #334155; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 0.8rem; margin-right: 4px;">View</a>
-                                    <a href="/hr/print/payslip/<%= p.id %>" target="_blank" style="display: inline-block; padding: 4px 8px; background: #e0e7ff; color: #4338ca; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 0.8rem;">Print 🖨️</a>
+                                    <a href="/hr/print/payslip/<%= p.id %>" target="_blank" style="display: inline-block; padding: 4px 8px; background: #e0e7ff; color: #4338ca; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 0.8rem; margin-right: 4px;">Print 🖨️</a>
+                                    <% if (canDelete) { %>
+                                    <form action="/hr/payroll/<%= p.id %>/delete" method="POST" style="display: inline;" onsubmit="return confirm('Delete payroll record for <%= p.employeeName %>? This cannot be undone.')">
+                                        <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+                                        <button type="submit" style="padding: 4px 8px; background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; border-radius: 6px; font-weight: 600; font-size: 0.8rem; cursor: pointer;">🗑️</button>
+                                    </form>
+                                    <% } %>
                                 </td>
                             </tr>
                         <% }) %>

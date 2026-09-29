@@ -82,6 +82,16 @@
             </div>
 
             <!-- Employee & Pay Period Details -->
+            <%
+                const periodStart = payroll.payPeriodStart ? payroll.payPeriodStart.slice(0, 10) : (payroll.month ? `${payroll.month}-01` : '—');
+                let periodEnd = payroll.payPeriodEnd ? payroll.payPeriodEnd.slice(0, 10) : '';
+                if (!periodEnd && payroll.month) {
+                    const parts = payroll.month.split('-').map(Number);
+                    const lastDay = new Date(parts[0], parts[1], 0).getDate();
+                    periodEnd = `${payroll.month}-${String(lastDay).padStart(2, '0')}`;
+                }
+                const resolvedPayDate = payroll.payDate ? payroll.payDate.slice(0, 10) : (periodEnd || '—');
+            %>
             <div style="display: grid; grid-template-columns: 1.25fr 1fr; gap: 10px; font-size: 0.73rem; line-height: 1.35; margin-bottom: 6px; background: #f8fafc; padding: 5px 8px; border-radius: 5px; border: 1px solid #e2e8f0;">
                 <div>
                     <div><strong>Employee:</strong> <span style="font-size: 0.82rem; font-weight: 700; color: #1e293b;"><%= employee ? employee.name : 'Staff Member' %></span></div>
@@ -90,8 +100,8 @@
                     <div><strong>Department:</strong> <%= employee ? employee.department : 'Clinical Laboratory' %></div>
                 </div>
                 <div>
-                    <div><strong>Payroll Month:</strong> <span style="font-weight: 700;"><%= payroll.month %></span> (<%= payroll.cutoffPeriod || 'Full Month' %>)</div>
-                    <div><strong>Pay Date:</strong> <%= payroll.paymentDate || (payroll.createdAt ? payroll.createdAt.split('T')[0] : '—') %></div>
+                    <div><strong>Pay Period:</strong> <span style="font-weight: 700;"><%= periodStart %> to <%= periodEnd %></span><% if (payroll.cutoffPeriod && payroll.cutoffPeriod !== 'Full Month') { %> (<%= payroll.cutoffPeriod %>)<% } %></div>
+                    <div><strong>Pay Date:</strong> <%= resolvedPayDate %></div>
                     <div><strong>TIN:</strong> <%= employee ? employee.tin : '—' %> | <strong>SSS:</strong> <%= employee ? employee.sssNumber : '—' %></div>
                     <div><strong>PhilHealth:</strong> <%= employee ? employee.philhealthNumber : '—' %> | <strong>HDMF:</strong> <%= employee ? employee.pagibigNumber : '—' %></div>
                 </div>
