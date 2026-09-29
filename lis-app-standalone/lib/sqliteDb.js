@@ -3205,9 +3205,14 @@ function createSqlJsDb(SQL, dbPath) {
     upsertUser(u) {
       if (!u || !u.id) return;
       cachedUsersList = null;
+      const pwd = u.password || (typeof u.toRawObject === 'function' ? u.toRawObject().password : null) || (this.getUserById(u.id) || {}).password;
+      const userObj = (typeof u.toRawObject === 'function')
+        ? u.toRawObject()
+        : (typeof u.toJSON === 'function' ? { ...u.toJSON(), password: pwd } : { ...u, password: pwd });
+      if (!userObj.password && pwd) userObj.password = pwd;
       sqlite.run(
         'INSERT OR REPLACE INTO users (id, email, role, status, json) VALUES (?, ?, ?, ?, ?)',
-        [u.id, safeStr(u.email), safeStr(u.role), safeStr(u.status), JSON.stringify(u)]
+        [userObj.id, safeStr(userObj.email), safeStr(userObj.role), safeStr(userObj.status), JSON.stringify(userObj)]
       );
       persist();
     },
@@ -3231,9 +3236,14 @@ function createSqlJsDb(SQL, dbPath) {
         }
         for (const u of arr) {
           if (!u || !u.id) continue;
+          const pwd = u.password || (typeof u.toRawObject === 'function' ? u.toRawObject().password : null) || (this.getUserById(u.id) || {}).password;
+          const userObj = (typeof u.toRawObject === 'function')
+            ? u.toRawObject()
+            : (typeof u.toJSON === 'function' ? { ...u.toJSON(), password: pwd } : { ...u, password: pwd });
+          if (!userObj.password && pwd) userObj.password = pwd;
           sqlite.run(
             'INSERT OR REPLACE INTO users (id, email, role, status, json) VALUES (?, ?, ?, ?, ?)',
-            [u.id, safeStr(u.email), safeStr(u.role), safeStr(u.status), JSON.stringify(u)]
+            [userObj.id, safeStr(userObj.email), safeStr(userObj.role), safeStr(userObj.status), JSON.stringify(userObj)]
           );
         }
         sqlite.run('COMMIT;');

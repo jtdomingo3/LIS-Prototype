@@ -63,8 +63,9 @@ function getForwardHeaders(req) {
         }
 
         if (passwordHash) {
+            const { generateSyncToken } = require('../lib/syncAuth');
             headers['x-lis-sync-email'] = userEmail;
-            headers['x-lis-sync-hash'] = passwordHash;
+            headers['x-lis-sync-hash'] = generateSyncToken(userEmail, passwordHash);
         }
     }
     return headers;

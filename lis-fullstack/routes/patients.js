@@ -9,6 +9,8 @@ const pathMod = require('path');
 const Jimp = require('jimp');
 const bwipjs = require('bwip-js');
 const sseEmitter = require('../lib/sseEmitter');
+const { body, validationResult } = require('express-validator');
+const xss = require('xss');
 
 // Print logging helper
 const PRINT_LOG_PATH = pathMod.join(__dirname, '..', 'logs', 'print.log');
@@ -255,9 +257,23 @@ router.get('/new', requireAuth, canAccessPatient, (req, res) => {
 });
 
 // POST /patients - Create new patient
-router.post('/', requireAuth, canAccessPatient, async (req, res) => {
+router.post('/', requireAuth, canAccessPatient, [
+  body('firstName').trim().isLength({ min: 1, max: 100 }).escape().withMessage('First name required (1-100 chars)'),
+  body('lastName').trim().isLength({ min: 1, max: 100 }).escape().withMessage('Last name required'),
+  body('email').optional({ checkFalsy: true }).isEmail().normalizeEmail(),
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
   try {
     const { firstName, middleName, lastName, dateOfBirth, gender, phone, email, address, physician } = req.body;
+    
+    // Sanitize with xss
+    const safeFirstName = xss(firstName);
+    const safeLastName = xss(lastName);
+    const safeMiddleName = middleName ? xss(middleName) : '';
+    const safeAddress = address ? xss(address) : '';
     let normalizedDob = dateOfBirth;
     if (typeof dateOfBirth === 'string' && dateOfBirth.trim()) {
       const trimmed = dateOfBirth.trim();
@@ -411,16 +427,16 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       id: req.body.id || req.body._id || undefined,
       patientId,
       patientCode,
-      firstName,
-      middleName: middleName || '',
-      lastName,
+      firstName: safeFirstName,
+      middleName: safeMiddleName,
+      lastName: safeLastName,
       dateOfBirth: normalizedDob,
       ageManual,
       physician,
       gender,
       phone,
       email,
-      address,
+      address: safeAddress,
       company,
       philhealthConsent,
       philhealthId,
@@ -620,10 +636,25 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
   }
 });
 
-    // PUT /patients/:id - Update patient
-router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
+// PUT /patients/:id - Update patient
+router.put('/:id', requireAuth, canAccessPatient, [
+  body('firstName').trim().isLength({ min: 1, max: 100 }).escape().withMessage('First name required (1-100 chars)'),
+  body('lastName').trim().isLength({ min: 1, max: 100 }).escape().withMessage('Last name required'),
+  body('email').optional({ checkFalsy: true }).isEmail().normalizeEmail(),
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
   try {
     const { firstName, middleName, lastName, dateOfBirth, gender, phone, email, address, physician, company, philhealthConsent, philhealthId, healthInsuranceConsent, healthInsuranceProvider, healthInsuranceId } = req.body;
+    
+    // Sanitize with xss
+    const safeFirstName = xss(firstName);
+    const safeLastName = xss(lastName);
+    const safeMiddleName = middleName ? xss(middleName) : '';
+    const safeAddress = address ? xss(address) : '';
+    
     let normalizedDob = dateOfBirth;
     if (typeof dateOfBirth === 'string' && dateOfBirth.trim()) {
       const trimmed = dateOfBirth.trim();
@@ -651,16 +682,16 @@ router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
     const patient = await Patient.findByIdAndUpdate(
       req.params.id,
       {
-        firstName,
-        middleName: middleName || '',
-        lastName,
+        firstName: safeFirstName,
+        middleName: safeMiddleName,
+        lastName: safeLastName,
         dateOfBirth: normalizedDob,
         ageManual,
         physician,
         gender,
         phone,
         email,
-        address,
+        address: safeAddress,
         requiredAreas,
         company: company || '',
         philhealthConsent: !!philhealthConsentBool,

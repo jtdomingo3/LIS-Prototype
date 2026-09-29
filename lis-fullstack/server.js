@@ -451,22 +451,38 @@ app.use((req, res, next) => {
   next();
 });
 
-// Security headers (configured per audit recommendations)
+// Security headers (configured per audit recommendations, relaxed for local LAN/intranet HTTP deployments)
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net"],
+      scriptSrcAttr: ["'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      styleSrcAttr: ["'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "blob:", "https:"],
-      fontSrc: ["'self'", "data:"],
+      fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
       connectSrc: ["'self'"],
-      frameSrc: ["'self'"]
+      frameSrc: ["'self'"],
+      formAction: ["'self'"],
+      upgradeInsecureRequests: null
     }
   },
   crossOriginEmbedderPolicy: false,
-  crossOriginResourcePolicy: { policy: 'cross-origin' }
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  crossOriginOpenerPolicy: false,
+  originAgentCluster: false,
+  hsts: false
 }));
+
+// Global Rate Limiter for all other endpoints
+const globalLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 300, // 300 requests per minute
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(globalLimiter);
 
 // Rate limiter for authentication endpoints
 const authLimiter = rateLimit({
@@ -503,22 +519,7 @@ function getSessionSecret() {
   if (process.env.SESSION_SECRET && String(process.env.SESSION_SECRET).trim()) {
     return String(process.env.SESSION_SECRET).trim();
   }
-  try {
-    const dataDir = (typeof DATA_DIR !== 'undefined' && DATA_DIR) ? DATA_DIR : path.join(__dirname, '..');
-    const secretPath = path.join(dataDir, '.session_secret');
-    if (fs.existsSync(secretPath)) {
-      const existing = fs.readFileSync(secretPath, 'utf8').trim();
-      if (existing && existing.length >= 32) return existing;
-    }
-    const fresh = crypto.randomBytes(32).toString('hex');
-    try {
-      fs.mkdirSync(dataDir, { recursive: true });
-      fs.writeFileSync(secretPath, fresh, { encoding: 'utf8', mode: 0o600 });
-    } catch (_) {}
-    return fresh;
-  } catch (_) {
-    throw new Error('SESSION_SECRET is required and could not be securely generated');
-  }
+  throw new Error('SESSION_SECRET environment variable is required');
 }
 
 const cookieParser = require('cookie-parser');
@@ -566,6 +567,7 @@ app.use(flash());
 
 // ── Bearer Token & Hash-based session bootstrap for API and standalone sync ──
 const { extractBearerToken, verifyToken } = require('./lib/tokenHelper');
+const { validateSyncUser } = require('./lib/syncAuth');
 
 app.use((req, res, next) => {
   try {
@@ -597,7 +599,7 @@ app.use((req, res, next) => {
     if (syncEmail && syncHash && global.db) {
       const allUsers = typeof global.db.getUsers === 'function' ? global.db.getUsers() : [];
       const matchUser = allUsers.find(u => u && u.email && u.email.toLowerCase() === syncEmail.toLowerCase());
-      if (matchUser && matchUser.password && matchUser.password === syncHash && matchUser.status !== 'Inactive') {
+      if (matchUser && validateSyncUser(syncHash, syncEmail, matchUser)) {
         req.session.user = {
           id: matchUser.id || matchUser.email,
           name: matchUser.name || matchUser.email,
@@ -1141,7 +1143,7 @@ app.get('/export/data.json', (req, res) => {
         try {
           const allUsers = db.getUsers();
           const matchUser = allUsers.find(u => u.email && u.email.toLowerCase() === syncEmail.toLowerCase());
-          if (matchUser && matchUser.password && matchUser.password === syncHash && matchUser.status !== 'Inactive') {
+          if (matchUser && validateSyncUser(syncHash, syncEmail, matchUser)) {
             authorized = true;
             console.log('[export] hash-based auth accepted for', syncEmail);
           }
@@ -1199,7 +1201,7 @@ app.post('/api/signatures/sync', express.json({ limit: '15mb' }), express.urlenc
         try {
           const allUsers = db.getUsers();
           const matchUser = allUsers.find(u => u.email && u.email.toLowerCase() === syncEmail.toLowerCase());
-          if (matchUser && matchUser.password && matchUser.password === syncHash && matchUser.status !== 'Inactive') {
+          if (matchUser && validateSyncUser(syncHash, syncEmail, matchUser)) {
             authorized = true;
           }
         } catch (e) { /* ignore auth check errors */ }

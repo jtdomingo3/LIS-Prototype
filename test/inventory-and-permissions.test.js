@@ -11,7 +11,9 @@ const Inventory = require('../lis-fullstack/models/Inventory');
 const InventoryBatch = require('../lis-fullstack/models/InventoryBatch');
 const InventoryTransaction = require('../lis-fullstack/models/InventoryTransaction');
 
-// Security & Auth Middleware
+// Security & Auth Middleware - set test environment before requiring modules that check secrets
+process.env.AUTH_TOKEN_SECRET = process.env.AUTH_TOKEN_SECRET || 'test-secret-for-unit-tests-only';
+process.env.SESSION_SECRET = process.env.SESSION_SECRET || 'test-session-secret-for-unit-tests-only';
 const { canAccessTemplates, getUserHomeRoute } = require('../lis-fullstack/middleware/auth');
 
 console.log('\n=============================================================');

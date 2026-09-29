@@ -9,7 +9,7 @@
     <link rel="apple-touch-icon" sizes="192x192" href="/assets/icon-192x192.png">
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#10b981">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/vendor/fontawesome/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * {
@@ -954,6 +954,44 @@
     <!-- Styles injected from individual views (via express-ejs-layouts extractStyles) -->
     <%- style %>
 
+    <!-- Global CSRF Token -->
+    <meta name="csrf-token" content="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+        const csrfToken = tokenMeta ? tokenMeta.content : '';
+        if (csrfToken) {
+          // Inject into all existing forms
+          document.querySelectorAll('form').forEach(form => {
+            if (!form.querySelector('input[name="_csrf"]')) {
+              const input = document.createElement('input');
+              input.type = 'hidden';
+              input.name = '_csrf';
+              input.value = csrfToken;
+              form.appendChild(input);
+            }
+          });
+          // Patch fetch for AJAX forms
+          const originalFetch = window.fetch;
+          window.fetch = function(resource, config) {
+            config = config || {};
+            if (['POST', 'PUT', 'DELETE', 'PATCH'].includes((config.method || 'GET').toUpperCase())) {
+              if (!config.headers) config.headers = {};
+              if (config.headers instanceof Headers) {
+                if (!config.headers.has('csrf-token')) {
+                  config.headers.append('csrf-token', csrfToken);
+                }
+              } else {
+                if (!config.headers['csrf-token']) {
+                  config.headers['csrf-token'] = csrfToken;
+                }
+              }
+            }
+            return originalFetch(resource, config);
+          };
+        }
+      });
+    </script>
     </head>
 <body>
     <div class="container">

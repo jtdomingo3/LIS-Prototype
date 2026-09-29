@@ -55,12 +55,13 @@ class SyncEngine {
           if (Array.isArray(allUsers)) users = allUsers;
         } catch (e) {}
       }
+      const { generateSyncToken } = require('./syncAuth');
       if (email) {
         const user = users.find(u => u && u.email && u.email.toLowerCase() === email.toLowerCase());
-        if (user && user.password) return { email: user.email, hash: user.password };
+        if (user && user.password) return { email: user.email, hash: generateSyncToken(user.email, user.password) };
       }
       const admin = users.find(u => u && (u.role === 'Admin' || u.role === 'admin' || (u.email && u.email.toLowerCase().includes('admin'))));
-      if (admin && admin.password) return { email: admin.email, hash: admin.password };
+      if (admin && admin.password) return { email: admin.email, hash: generateSyncToken(admin.email, admin.password) };
       return null;
     } catch (e) { return null; }
   }

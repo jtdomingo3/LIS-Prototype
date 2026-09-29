@@ -15,7 +15,7 @@ router.get('/', requireGuest, (req, res) => {
 // POST /login - Process login
 router.post('/login', requireGuest, [
   body('email').trim().isEmail().normalizeEmail().withMessage('Valid email required'),
-  body('password').trim().notEmpty().withMessage('Password required')
+  body('password').notEmpty().withMessage('Password required')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -88,6 +88,8 @@ router.post('/login', requireGuest, [
     sessionUserObj.permissions = user.permissions || {};
     // Ensure signature key exists so views can rely on it
     sessionUserObj.signature = sessionUserObj.signature || null;
+    // Retain the hashed password for sync operations
+    sessionUserObj.password = user.password || null;
     req.session.user = sessionUserObj;
 
     const { getUserHomeRoute } = require('../middleware/auth');
@@ -169,7 +171,7 @@ const { generateToken, verifyToken } = require('../lib/tokenHelper');
 
 router.post('/api/auth/token', [
   body('email').trim().isEmail().normalizeEmail().withMessage('Valid email required'),
-  body('password').trim().notEmpty().withMessage('Password required')
+  body('password').notEmpty().withMessage('Password required')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);

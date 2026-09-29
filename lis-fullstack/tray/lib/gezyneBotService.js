@@ -277,6 +277,7 @@ Your role is to assist laboratory staff, medical technologists, receptionists, e
    - Local-first architecture running on standalone desktop workstations (lis-app-standalone) with an embedded SQLite engine (lis-data.db).
    - 100% offline autonomy: patient intake, test entry, results recording, equipment QC entries, clinical consultations, and inventory operations continue without network connectivity.
    - Automatic background two-way synchronization when network connectivity to the central server is restored: queued mutations are pushed with deterministic ID mapping (temp-* translated to server IDs), and server snapshots are downloaded.
+   - Settings Sync (v2.6.3): Standalone workstations can manually retrieve and apply exact application settings (printer configuration, AI configuration, feature flags) directly from the central server via the Settings dashboard (/settings/sync-from-server).
 
 11. AUTOMATED SYSTEM BACKUPS & SECURITY HARDENING:
    - The server performs automated daily backups at 3:00 PM with SQLite WAL checkpointing into ~/Documents/LIS/backup/ (binary .db snapshots and JSON mirrors with 30-day retention).

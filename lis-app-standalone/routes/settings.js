@@ -182,8 +182,9 @@ router.get('/', requireAuth, async (req, res) => {
 
       const headers = { 'Accept': 'application/json' };
       if (req.session && req.session.user) {
+        const { generateSyncToken } = require('../lib/syncAuth');
         headers['X-LIS-Sync-Email'] = req.session.user.email;
-        headers['X-LIS-Sync-Hash'] = req.session.user.password || '';
+        headers['X-LIS-Sync-Hash'] = generateSyncToken(req.session.user.email, req.session.user.password || '');
       }
 
       const resp = await fetch(`${cleanUrl}/settings?format=json`, { headers, signal: controller.signal });
@@ -358,8 +359,9 @@ router.post('/sync-from-server', requireAuth, canManageUsers, async (req, res) =
     const cleanUrl = serverUrl.replace(/\/$/, '');
     const headers = { 'Accept': 'application/json' };
     if (req.session && req.session.user) {
+      const { generateSyncToken } = require('../lib/syncAuth');
       headers['X-LIS-Sync-Email'] = req.session.user.email;
-      headers['X-LIS-Sync-Hash'] = req.session.user.password || '';
+      headers['X-LIS-Sync-Hash'] = generateSyncToken(req.session.user.email, req.session.user.password || '');
     }
 
     const resp = await fetch(`${cleanUrl}/settings?format=json`, { headers });

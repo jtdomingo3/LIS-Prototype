@@ -38,9 +38,9 @@ const requireAuth = (req, res, next) => {
       const matchUser = allUsers.find(u => u && u.email && u.email.toLowerCase() === syncEmail.toLowerCase());
       // Cryptographically verify that the provided hash matches the user's stored password hash
       if (matchUser && matchUser.password && matchUser.status !== 'Inactive') {
-        const expectedBuf = Buffer.from(String(matchUser.password));
-        const receivedBuf = Buffer.from(String(syncHash));
-        const isMatch = (expectedBuf.length === receivedBuf.length && crypto.timingSafeEqual(expectedBuf, receivedBuf));
+        const { validateSyncToken } = require('../lib/syncAuth');
+        const isMatch = validateSyncToken(syncHash, syncEmail, matchUser.password);
+        
         if (isMatch) {
           req.session = req.session || {};
           req.session.user = {

@@ -162,6 +162,7 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
             id: user.id || user.email,
             name: user.name || user.email,
             email: user.email,
+            password: user.password || null,
             role: user.role || 'User',
             permissions: user.permissions || {},
             signature: user.signature || null,

@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { validateSyncToken } = require('../lib/syncAuth');
 let extractBearerToken, verifyToken;
 try {
   const th = require('../lib/tokenHelper');
@@ -36,36 +37,30 @@ const requireAuth = (req, res, next) => {
     }
   } catch (e) { /* ignore token verification error */ }
 
-  // 2. Verified Hash-based sync auth from standalone desktop sync requests
+  // 2. Verified HMAC sync auth from standalone desktop sync requests
   try {
     const syncEmail = req.headers['x-lis-sync-email'];
-    const syncHash  = req.headers['x-lis-sync-hash'];
+    const syncHash = req.headers['x-lis-sync-hash'];
     if (syncEmail && syncHash && global.db) {
       const allUsers = typeof global.db.getUsers === 'function' ? global.db.getUsers() : [];
       const matchUser = allUsers.find(u => u && u.email && u.email.toLowerCase() === syncEmail.toLowerCase());
-      // Cryptographically verify that the provided hash matches the user's stored password hash
-      if (matchUser && matchUser.password && matchUser.status !== 'Inactive') {
-        const expectedBuf = Buffer.from(String(matchUser.password));
-        const receivedBuf = Buffer.from(String(syncHash));
-        const isMatch = (expectedBuf.length === receivedBuf.length && crypto.timingSafeEqual(expectedBuf, receivedBuf));
-        if (isMatch) {
-          req.session = req.session || {};
-          req.session.user = {
-            id: matchUser.id || matchUser.email,
-            name: matchUser.name || matchUser.email,
-            email: matchUser.email,
-            role: matchUser.role || 'User',
-            permissions: matchUser.permissions || {},
-            signature: matchUser.signature || null,
-            licenseNumber: matchUser.licenseNumber || '',
-          };
-          req.user = req.session.user;
-          console.log(`[auth] requireAuth accepted verified sync auth for ${matchUser.email} on ${req.method} ${req.originalUrl}`);
-          return next();
-        }
+      if (matchUser && matchUser.status !== 'Inactive' && validateSyncToken(syncHash, syncEmail, matchUser.password)) {
+        req.session = req.session || {};
+        req.session.user = {
+          id: matchUser.id || matchUser.email,
+          name: matchUser.name || matchUser.email,
+          email: matchUser.email,
+          role: matchUser.role || 'User',
+          permissions: matchUser.permissions || {},
+          signature: matchUser.signature || null,
+          licenseNumber: matchUser.licenseNumber || '',
+        };
+        req.user = req.session.user;
+        console.log(`[auth] requireAuth accepted verified sync auth for ${matchUser.email} on ${req.method} ${req.originalUrl}`);
+        return next();
       }
     }
-  } catch (e) { /* ignore hash auth errors */ }
+  } catch (e) { /* ignore sync auth errors */ }
 
   const isApi = req.xhr ||
                 (req.headers && req.headers.accept && req.headers.accept.includes('application/json') && !req.headers.accept.includes('text/html')) ||
