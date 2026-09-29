@@ -7,8 +7,31 @@ process.env.SESSION_SECRET = process.env.SESSION_SECRET || 'test-session-secret-
 const { createDb } = require('../lis-fullstack/lib/sqliteDb');
 const { generateSyncToken, validateSyncToken, validateSyncUser } = require('../lis-fullstack/lib/syncAuth');
 
+const http = require('http');
+const express = require('../lis-fullstack/node_modules/express');
+const session = require('../lis-fullstack/node_modules/express-session');
+const { requireAuth } = require('../lis-fullstack/middleware/auth');
+
 function assert(condition, message) {
   if (!condition) throw new Error(message);
+}
+
+function postJson(port, headers) {
+  return new Promise((resolve, reject) => {
+    const req = http.request({
+      hostname: '127.0.0.1',
+      port,
+      path: '/protected',
+      method: 'GET',
+      headers
+    }, (res) => {
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => resolve({ statusCode: res.statusCode, body }));
+    });
+    req.on('error', reject);
+    req.end();
+  });
 }
 
 async function testSyncAuth() {
@@ -31,6 +54,11 @@ async function testSyncAuth() {
   global.db = db;
 
   const app = express();
+  app.use(session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false
+  }));
   app.get('/protected', requireAuth, (req, res) => res.json({ email: req.session.user.email }));
   const server = await new Promise(resolve => {
     const instance = app.listen(0, '127.0.0.1', () => resolve(instance));

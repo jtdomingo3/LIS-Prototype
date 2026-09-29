@@ -75,6 +75,12 @@ function loadUserSettings() {
     const p = settingsFilePath();
     if (fs.existsSync(p)) {
       userSettings = JSON.parse(fs.readFileSync(p, 'utf8') || '{}');
+      // Clean up any legacy plaintext credentials from settings file
+      if (userSettings._syncPassword || userSettings._syncEmail) {
+        delete userSettings._syncPassword;
+        delete userSettings._syncEmail;
+        try { fs.writeFileSync(p, JSON.stringify(userSettings, null, 2), 'utf8'); } catch (_) {}
+      }
       // apply server override if present
       if (userSettings.serverUrl) config.SERVER_URL = userSettings.serverUrl;
       if (userSettings.printerName || userSettings.printer) {
@@ -86,6 +92,9 @@ function loadUserSettings() {
 function saveUserSettings(newSettings = {}) {
   try {
     userSettings = Object.assign({}, userSettings, newSettings);
+    // Never persist plaintext credentials
+    delete userSettings._syncPassword;
+    delete userSettings._syncEmail;
     if (userSettings.printerName || userSettings.printer) {
       process.env.PRINTER_NAME = userSettings.printerName || userSettings.printer;
     }
@@ -1132,24 +1141,6 @@ ipcMain.handle('drop-offline-data', async () => {
   } catch (e) { console.error('[Main] drop-offline-data failed', e && e.message); return { success: false, reason: e && e.message }; }
 });
 
-// Credential capture — securely store login credentials for server re-auth
-ipcMain.handle('save-credentials', (_e, { email, password }) => {
-  try {
-    saveUserSettings({ _syncEmail: email, _syncPassword: password });
-    if (syncEngine) syncEngine.setCredentials(email, password);
-    if (syncEngine) syncEngine.setAutoLoginEmail(email);
-    // Also update the session email for auto-login
-    if (email && email !== currentSessionEmail) {
-      currentSessionEmail = email;
-      saveUserSettings({ lastUserEmail: email });
-      if (localServer && localServer.setAutoLoginEmail) localServer.setAutoLoginEmail(email);
-    }
-    console.log('[Main] stored credentials for server re-auth:', email);
-    return { success: true };
-  } catch (e) {
-    return { success: false, error: e && e.message };
-  }
-});
 
 // Perform manual backup of SQLite DB and queue
 ipcMain.handle('perform-backup', async () => {

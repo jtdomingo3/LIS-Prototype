@@ -12,12 +12,16 @@ router.get(['/', '/login'], requireGuest, (req, res) => {
   });
 });
 
-// POST /login - Process login
-router.post('/login', requireGuest, [
+// POST /login - Process login (always authenticate credentials explicitly)
+router.post('/login', [
   body('email').trim().isEmail().normalizeEmail().withMessage('Valid email required'),
   body('password').notEmpty().withMessage('Password required')
 ], async (req, res) => {
   try {
+    // Always clear existing session user when a new login is attempted
+    if (req.session) {
+      req.session.user = null;
+    }
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       req.flash('error_msg', errors.array()[0].msg);

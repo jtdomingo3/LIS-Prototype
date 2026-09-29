@@ -11,8 +11,8 @@ router.get(['/', '/login'], requireGuest, (req, res) => {
   });
 });
 
-// POST /login - Process login
-router.post('/login', requireGuest, async (req, res) => {
+// POST /login - Process login (always authenticate credentials explicitly)
+router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -22,22 +22,9 @@ router.post('/login', requireGuest, async (req, res) => {
       return res.redirect('/');
     }
 
-    // If there are no users in the system yet, allow the first login
-    // attempt to seed an admin account using the supplied credentials. This
-    // helps recover from a wiped database or first-run after install.
-    const totalUsers = await User.countDocuments();
-    if (totalUsers === 0) {
-      console.log('[auth] no users found, creating initial admin', email);
-      const admin = new User({
-        name: 'Admin User',
-        email: email.toLowerCase(),
-        password,
-        role: 'Admin',
-        status: 'Active'
-      });
-      await admin.save();
-      // continue with this newly created user
-      req.flash('success_msg', 'Initial administrator account created.');
+    // Always clear any existing session state when a new login is attempted
+    if (req.session) {
+      req.session.user = null;
     }
 
     // Find user locally first
@@ -169,6 +156,12 @@ router.post('/login', requireGuest, async (req, res) => {
 
 // GET & POST /logout - Logout
 router.all('/logout', (req, res) => {
+  if (typeof global.onUserLogout === 'function') {
+    try { global.onUserLogout(); } catch (_) {}
+  }
+  if (req.app && req.app.locals && typeof req.app.locals.clearAutoLogin === 'function') {
+    try { req.app.locals.clearAutoLogin(); } catch (_) {}
+  }
   req.session.destroy((err) => {
     if (err) {
       console.error('Logout error:', err);

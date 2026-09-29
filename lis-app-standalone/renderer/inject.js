@@ -62,24 +62,6 @@
     }
   };
 
-  /* ── Capture login credentials for server re-auth ─────────────── */
-  (function captureLoginCredentials() {
-    try {
-      var form = document.querySelector('form[action="/login"]');
-      if (!form) return;
-      form.addEventListener('submit', function () {
-        try {
-          var emailInput = form.querySelector('input[name="email"]');
-          var passwordInput = form.querySelector('input[name="password"]');
-          if (emailInput && passwordInput && emailInput.value && passwordInput.value) {
-            if (window.lisApp && typeof window.lisApp.saveCredentials === 'function') {
-              window.lisApp.saveCredentials(emailInput.value, passwordInput.value);
-            }
-          }
-        } catch (e) { }
-      });
-    } catch (e) { }
-  })();
 
   /* ── Create Status Bar DOM ────────────────────────────────────── */
   var bar = document.createElement('div');

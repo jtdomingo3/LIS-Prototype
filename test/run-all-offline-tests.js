@@ -43,7 +43,7 @@ async function runAllOfflineTests() {
 }
 
 if (require.main === module) {
-  runAllOfflineTests();
+  runAllOfflineTests().then(() => process.exit(0)).catch(() => process.exit(1));
 }
 
 module.exports = { runAllOfflineTests };

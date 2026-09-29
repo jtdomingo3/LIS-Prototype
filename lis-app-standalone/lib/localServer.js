@@ -155,6 +155,11 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   /* ── User session bridge for active logged-in user ────────────────── */
   app.use((req, res, next) => {
     try {
+      const p = req.path || '';
+      // NEVER auto-login on authentication endpoints, root login page, or logout
+      if (p === '/' || p === '/login' || p === '/logout' || p.startsWith('/api/auth')) {
+        return next();
+      }
       if (_autoLoginEmail && req.session && !req.session.user) {
         const users = global.db && global.db.getUsers ? global.db.getUsers() : [];
         const user = users.find(u => u.email && u.email.toLowerCase() === _autoLoginEmail.toLowerCase());
@@ -278,6 +283,8 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   };
   app.get('/logout', clearAutoLogin);
   app.post('/logout', clearAutoLogin);
+  app.all('/logout', clearAutoLogin);
+  app.locals.clearAutoLogin = () => { _autoLoginEmail = null; };
 
   /* ── Make flash messages & user available to all views ─────────── */
   app.use((req, res, next) => {
