@@ -1,6 +1,8 @@
 # Ignore node_modules in all locations
 node_modules/
 **/node_modules/
+package-lock.json
+**/package-lock.json
 
 # Ignore the sample results folder at repo root
 /sample results/
