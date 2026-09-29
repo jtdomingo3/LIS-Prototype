@@ -414,33 +414,63 @@
     lastUpdate.textContent = 'Updated: ' + now.toLocaleTimeString();
   }
 
+  // Global gesture unlocker to cleanly resume AudioContext without triggering browser autoplay warnings
+  let audioUnlockSetup = false;
+  function setupAudioUnlock() {
+    if (audioUnlockSetup) return;
+    audioUnlockSetup = true;
+    const events = ['click', 'touchstart', 'pointerdown', 'keydown'];
+    const unlockHandler = async function() {
+      if (audioContext && audioContext.state === 'suspended') {
+        try {
+          await audioContext.resume();
+          console.log('[Kiosk] AudioContext resumed via user gesture');
+        } catch (e) {}
+      }
+      events.forEach(ev => window.removeEventListener(ev, unlockHandler, true));
+    };
+    events.forEach(ev => window.addEventListener(ev, unlockHandler, { once: true, capture: true, passive: true }));
+  }
+
   // ===== SOUND FUNCTIONS =====
   async function initAudio() {
     try {
-      // Create AudioContext
-      const AC = window.AudioContext || window.webkitAudioContext;
-      audioContext = new AC();
+      if (!audioContext) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) audioContext = new AC();
+      }
+
+      // Cleanly listen for user gesture if suspended rather than forcing immediate resume()
+      if (audioContext && audioContext.state === 'suspended') {
+        setupAudioUnlock();
+      }
 
       // Fetch and decode audio
-      const response = await fetch(CONFIG.SOUND_SRC);
-      if (response.ok) {
-        const arrayBuffer = await response.arrayBuffer();
-        audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-        console.log('[Kiosk] Audio loaded and decoded successfully');
-        return true;
+      if (audioContext && !audioBuffer) {
+        const response = await fetch(CONFIG.SOUND_SRC);
+        if (response.ok) {
+          const arrayBuffer = await response.arrayBuffer();
+          audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+          console.log('[Kiosk] Audio loaded and decoded successfully');
+        }
       }
+      return true;
     } catch (e) {
       console.warn('[Kiosk] AudioContext init failed, using fallback:', e);
+      return false;
     }
-    return false;
   }
 
-  function playNotificationSound() {
+  async function playNotificationSound() {
     if (!soundEnabled) return;
+
+    if (audioContext && audioContext.state === 'suspended') {
+      try { await audioContext.resume(); } catch (e) {}
+    }
 
     try {
       // Try AudioContext first (better for rapid plays)
-      if (audioContext && audioBuffer) {
+      if (audioContext && audioBuffer && audioContext.state === 'running') {
         const source = audioContext.createBufferSource();
         source.buffer = audioBuffer;
         source.connect(audioContext.destination);
