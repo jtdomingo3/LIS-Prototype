@@ -82,11 +82,11 @@ class OperationQueue {
    *   method, url, body, timestamp
    */
   add(op) {
-    // NEVER queue authentication operations — these must always go to the server directly
+    // NEVER queue authentication or API operations — these are direct/live calls, not offline database mutations
     try {
       const urlPath = new URL(op.url).pathname;
-      if (urlPath === '/login' || urlPath === '/logout' || urlPath === '/') {
-        console.log(`[Queue] skipping auth route: ${op.method} ${urlPath}`);
+      if (urlPath === '/login' || urlPath === '/logout' || urlPath === '/' || urlPath.startsWith('/api/') || urlPath.startsWith('/export/') || urlPath.startsWith('/chatbot')) {
+        console.log(`[Queue] skipping non-replayable route: ${op.method} ${urlPath}`);
         return null;
       }
     } catch { /* if URL parse fails, queue it anyway */ }

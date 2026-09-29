@@ -191,6 +191,8 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
       // Skip auth routes — login/logout are local-only
       const reqPath = req.path || req.url || '';
       if (reqPath === '/' || reqPath === '/login' || reqPath === '/logout') return next();
+      // Skip API endpoints — authentication tokens, signature sync, and security probes must never be queued
+      if (reqPath.startsWith('/api/')) return next();
       // Skip export/sync endpoints
       if (reqPath.startsWith('/export/')) return next();
       // Skip chatbot routes — interactive AI queries are live-proxied to server directly
