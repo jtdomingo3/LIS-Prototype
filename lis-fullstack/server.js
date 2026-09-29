@@ -462,7 +462,7 @@ app.use(helmet({
       styleSrcAttr: ["'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "blob:", "https:"],
       fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
-      connectSrc: ["'self'"],
+      connectSrc: ["'self'", "https://cdn.jsdelivr.net"],
       frameSrc: ["'self'"],
       formAction: ["'self'"],
       upgradeInsecureRequests: null

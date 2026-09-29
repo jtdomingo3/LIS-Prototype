@@ -65,6 +65,7 @@
     const attrLabel = (el.getAttribute && (el.getAttribute('aria-label') || el.getAttribute('title') || el.getAttribute('data-label')));
     const raw = (attrLabel || el.textContent || el.innerText || el.value || '').replace(/[→←↶↷]/g, '').trim();
     if (!raw) return false;
+    const txt = raw.toLowerCase();
     const exceptions = [
       'previous', 'next', 'print', 'print filtered', 'download', 'clear filter', 'clear filters', 
       'all test types', 'patient queue display', 'kiosk', 'open kiosk', 'open kiosk queue display', 
