@@ -162,20 +162,20 @@
         .brand {
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 14px;
             justify-content: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .brand-logo {
-            width: 44px;
-            height: 44px;
+            width: 42px;
+            height: 42px;
             object-fit: contain;
             border-radius: 12px;
             background: rgba(255, 255, 255, 0.95);
-            padding: 6px;
+            padding: 5px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
             transition: transform 0.3s ease;
         }
@@ -187,16 +187,16 @@
         .brand-text {
             color: var(--text-white);
             font-weight: 700;
-            font-size: 1.15em;
+            font-size: 1.1em;
             text-align: left;
             line-height: 1.2;
             letter-spacing: -0.3px;
         }
 
         .nav-item {
-            padding: 12px 16px;
-            margin: 4px 0;
-            border-radius: 10px;
+            padding: 9.5px 14px;
+            margin: 2px 0;
+            border-radius: 8px;
             cursor: pointer;
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             font-weight: 500;
@@ -204,8 +204,9 @@
             text-decoration: none;
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 11px;
             background: transparent;
+            font-size: 0.92rem;
         }
 
         .nav-item:hover {
@@ -1089,13 +1090,13 @@
 
             <!-- Alert Messages (render for both guests and authenticated users) -->
             <% if (typeof success_msg !== 'undefined' && success_msg && success_msg.length > 0) { %>
-            <div class="alert alert-success active"><%= success_msg %></div>
+            <div class="alert alert-success active no-print"><%= success_msg %></div>
             <% } %>
             <% if (typeof error_msg !== 'undefined' && error_msg && error_msg.length > 0) { %>
-            <div class="alert alert-error active"><%= error_msg %></div>
+            <div class="alert alert-error active no-print"><%= error_msg %></div>
             <% } %>
             <% if (typeof info !== 'undefined' && info && info.length > 0) { %>
-            <div class="alert alert-info active"><%= info %></div>
+            <div class="alert alert-info active no-print"><%= info %></div>
             <% } %>
 
             <!-- Page Content -->
@@ -2169,7 +2170,20 @@
       })();
     </script>
 
-    <!-- GezyneBot Floating AI Assistant Widget (lower-right) -->
-    <%- include('partials/gezynebot-widget') %>
+    <!-- GezyneBot Floating AI Assistant Widget (hidden on certificates, forms, and print documents) -->
+    <% 
+      const _t = (typeof title !== 'undefined' && title) ? title : '';
+      const isDocumentOrPrintPage = _t.includes('Certificate') || 
+                                   _t.includes('Application for Leave') || 
+                                   _t.includes('Clearance') || 
+                                   _t.includes('Payslip') || 
+                                   _t.includes('BIR Form') || 
+                                   _t.includes('Tax Summary') ||
+                                   _t.includes('Daily Time Record') ||
+                                   _t.includes('Print');
+    %>
+    <% if (!isDocumentOrPrintPage) { %>
+      <%- include('partials/gezynebot-widget') %>
+    <% } %>
 </body>
 </html>
