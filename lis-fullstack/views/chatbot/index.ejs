@@ -52,13 +52,28 @@
             </div>
             
             <div class="header-controls">
-                <div class="model-select-wrapper">
-                    <label for="ai-model-select" style="font-size:0.82em; font-weight:600; color:#475569; margin-right:6px;">Model:</label>
-                    <select id="ai-model-select" class="form-select" style="padding:6px 12px; font-size:0.88em; border-radius:8px; border:1px solid #cbd5e1;">
-                        <% (availableModels || []).forEach(m => { %>
-                            <option value="<%= m.id %>" <%= (activeConversation && activeConversation.last_model === m.id) ? 'selected' : (m.id === defaultModel ? 'selected' : '') %>><%= m.name %></option>
-                        <% }); %>
+                <div class="model-select-wrapper" style="display:flex; align-items:center; gap:6px;">
+                    <label for="ai-model-select" style="font-size:0.82em; font-weight:600; color:#475569;">Model:</label>
+                    <select id="ai-model-select" class="form-select" style="padding:6px 10px; font-size:0.86em; border-radius:8px; border:1px solid #cbd5e1; max-width:280px;" title="Select AI Model">
+                        <optgroup label="Default Models" id="optgroup-default-models">
+                            <% (typeof defaultModels !== 'undefined' && defaultModels ? defaultModels : availableModels || []).forEach(m => { %>
+                                <option value="<%= m.id %>" <%= (activeConversation && activeConversation.last_model === m.id) ? 'selected' : (m.id === defaultModel ? 'selected' : '') %>><%= m.name %></option>
+                            <% }); %>
+                        </optgroup>
+                        <% if (typeof freeModels !== 'undefined' && Array.isArray(freeModels) && freeModels.length > 0) { %>
+                            <optgroup label="Free Models (OpenRouter)" id="optgroup-free-models">
+                                <% freeModels.forEach(m => { %>
+                                    <option value="<%= m.id %>" <%= (activeConversation && activeConversation.last_model === m.id) ? 'selected' : '' %>><%= m.name %></option>
+                                <% }); %>
+                            </optgroup>
+                        <% } else { %>
+                            <optgroup label="Free Models (OpenRouter)" id="optgroup-free-models" style="display:none;"></optgroup>
+                        <% } %>
                     </select>
+                    <button type="button" id="btn-fetch-free-models" class="button btn-secondary btn-small" title="Fetch latest free models from OpenRouter" style="display:inline-flex; align-items:center; gap:5px; font-size:0.82em; padding:6px 10px; white-space:nowrap; border-radius:8px;">
+                        <i class="fas fa-sync-alt" id="icon-fetch-free-models"></i>
+                        <span id="text-fetch-free-models">Fetch Free</span>
+                    </button>
                 </div>
                 <button type="button" id="btn-clear-chat" class="button btn-secondary btn-small" title="Clear current message view">Clear View</button>
             </div>
@@ -704,6 +719,90 @@ function initChatbot() {
     const modelSelect = document.getElementById('ai-model-select');
     const activeTitle = document.getElementById('active-topic-title');
     const quickChips = document.querySelectorAll('.main-chip');
+    const btnFetchFree = document.getElementById('btn-fetch-free-models');
+
+    // Bot Toast Notification Helper
+    function showBotToast(msg, type = 'success') {
+        let toast = document.getElementById('gezyne-bot-toast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'gezyne-bot-toast';
+            toast.style.cssText = 'position:fixed; bottom:24px; right:24px; z-index:9999; padding:12px 20px; border-radius:10px; font-weight:600; font-size:0.9em; box-shadow:0 10px 25px rgba(0,0,0,0.18); transition:all 0.3s ease; opacity:0; pointer-events:none; transform:translateY(10px); display:flex; align-items:center; gap:8px;';
+            document.body.appendChild(toast);
+        }
+        toast.style.background = type === 'success' ? '#065f46' : (type === 'info' ? '#1e293b' : '#991b1b');
+        toast.style.color = '#ffffff';
+        toast.innerHTML = (type === 'success' ? '✅ ' : (type === 'info' ? 'ℹ️ ' : '⚠️ ')) + msg;
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateY(0)';
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(10px)';
+        }, 4000);
+    }
+
+    // Dynamic Fetch of OpenRouter Free Models
+    if (btnFetchFree) {
+        btnFetchFree.addEventListener('click', async function() {
+            const icon = document.getElementById('icon-fetch-free-models');
+            const text = document.getElementById('text-fetch-free-models');
+            const originalText = text ? text.textContent : 'Fetch Free';
+
+            try {
+                btnFetchFree.disabled = true;
+                if (icon) icon.classList.add('fa-spin');
+                if (text) text.textContent = 'Fetching...';
+
+                const res = await fetch('/chatbot/api/models/refresh', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await res.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to fetch free models from OpenRouter');
+                }
+
+                const currentSelected = modelSelect ? modelSelect.value : '';
+                const defaultGroup = document.getElementById('optgroup-default-models');
+                const freeGroup = document.getElementById('optgroup-free-models');
+
+                if (defaultGroup && Array.isArray(data.defaultModels)) {
+                    defaultGroup.innerHTML = '';
+                    data.defaultModels.forEach(m => {
+                        const opt = document.createElement('option');
+                        opt.value = m.id;
+                        opt.textContent = m.name;
+                        defaultGroup.appendChild(opt);
+                    });
+                }
+
+                if (freeGroup && Array.isArray(data.freeModels)) {
+                    freeGroup.innerHTML = '';
+                    freeGroup.style.display = data.freeModels.length > 0 ? '' : 'none';
+                    data.freeModels.forEach(m => {
+                        const opt = document.createElement('option');
+                        opt.value = m.id;
+                        opt.textContent = m.name;
+                        freeGroup.appendChild(opt);
+                    });
+                }
+
+                if (modelSelect && currentSelected) {
+                    modelSelect.value = currentSelected;
+                }
+
+                showBotToast(`Loaded ${data.freeModels.length} free OpenRouter models!`, 'success');
+            } catch (err) {
+                console.error('[GezyneBot] Fetch free models failed:', err);
+                showBotToast(err.message || 'Could not fetch free models from OpenRouter.', 'error');
+            } finally {
+                btnFetchFree.disabled = false;
+                if (icon) icon.classList.remove('fa-spin');
+                if (text) text.textContent = originalText;
+            }
+        });
+    }
 
     let isSubmitting = false;
 

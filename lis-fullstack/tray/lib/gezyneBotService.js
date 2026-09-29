@@ -9,13 +9,40 @@ const { decryptSecret } = require('./cryptoHelper');
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const DEFAULT_MODEL = process.env.OPENROUTER_DEFAULT_MODEL || 'openai/gpt-4o-mini';
 
-// Supported model options for user selection
-const AVAILABLE_MODELS = [
+// Default reliable model options
+const DEFAULT_MODELS = [
   { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini (Fast & Accurate - Recommended)' },
-  { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash (Very Fast)' },
   { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Llama 3.3 70B Instruct' },
   { id: 'qwen/qwen-2.5-72b-instruct', name: 'Qwen 2.5 72B Instruct' }
 ];
+
+let cachedFreeModels = [];
+let lastFetchTimestamp = 0;
+
+function loadCachedFreeModelsFromDb() {
+  try {
+    if (global.db && typeof global.db.getSettings === 'function') {
+      const s = global.db.getSettings() || {};
+      if (Array.isArray(s.openrouterFreeModels) && s.openrouterFreeModels.length > 0) {
+        cachedFreeModels = s.openrouterFreeModels;
+        lastFetchTimestamp = s.openrouterLastModelFetch || 0;
+      }
+    }
+  } catch (_) {}
+}
+
+const AVAILABLE_MODELS = new Proxy(DEFAULT_MODELS, {
+  get(target, prop) {
+    if (cachedFreeModels.length === 0) {
+      loadCachedFreeModelsFromDb();
+    }
+    const combined = [...DEFAULT_MODELS, ...cachedFreeModels];
+    if (prop === 'length') return combined.length;
+    if (typeof prop === 'string' && !isNaN(prop)) return combined[prop];
+    if (typeof combined[prop] === 'function') return combined[prop].bind(combined);
+    return combined[prop];
+  }
+});
 
 const fs = require('fs');
 const path = require('path');
@@ -599,12 +626,124 @@ async function queryOpenRouter({ question, history = [], user = null, model = DE
   });
 }
 
+/**
+ * Fetch latest free models from OpenRouter API
+ */
+async function fetchFreeOpenRouterModels(forceRefresh = false) {
+  const THIRTY_MINUTES = 30 * 60 * 1000;
+  if (!forceRefresh && cachedFreeModels.length > 0 && (Date.now() - lastFetchTimestamp < THIRTY_MINUTES)) {
+    return cachedFreeModels;
+  }
+
+  return new Promise((resolve) => {
+    const apiKey = resolveApiKey();
+    const headers = {
+      'User-Agent': 'Gezyne-LIS-Bot/2.6.3'
+    };
+    if (apiKey) {
+      headers['Authorization'] = `Bearer ${apiKey}`;
+    }
+
+    const req = https.get('https://openrouter.ai/api/v1/models', {
+      headers,
+      timeout: 12000
+    }, (res) => {
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => {
+        try {
+          if (res.statusCode !== 200) {
+            console.warn('[GezyneBot] OpenRouter returned status ' + res.statusCode + ' while fetching models');
+            if (cachedFreeModels.length === 0) loadCachedFreeModelsFromDb();
+            return resolve(cachedFreeModels);
+          }
+          const parsed = JSON.parse(body);
+          const rawModels = parsed.data || [];
+
+          const freeList = rawModels.filter(m => {
+            if (!m || !m.id) return false;
+            const p = m.pricing;
+            const isZeroPrice = p && (parseFloat(p.prompt) === 0 && parseFloat(p.completion) === 0);
+            const hasFreeTag = m.id.endsWith(':free') || m.id === 'openrouter/free';
+            const isExcluded = m.id.includes('lyria') || m.id.includes('diffusion') || m.id.includes('flux');
+            return (isZeroPrice || hasFreeTag) && !isExcluded;
+          }).map(m => {
+            let label = m.name || m.id;
+            if (!label.toLowerCase().includes('free') && m.id !== 'openrouter/free') {
+              label = `${label} (Free)`;
+            }
+            return {
+              id: m.id,
+              name: label,
+              isFree: true,
+              context_length: m.context_length || null
+            };
+          });
+
+          // Sort: openrouter/free first, then alphabetically
+          freeList.sort((a, b) => {
+            if (a.id === 'openrouter/free') return -1;
+            if (b.id === 'openrouter/free') return 1;
+            return a.name.localeCompare(b.name);
+          });
+
+          cachedFreeModels = freeList;
+          lastFetchTimestamp = Date.now();
+
+          // Persist to database settings
+          try {
+            if (global.db && typeof global.db.getSettings === 'function' && typeof global.db.saveSettings === 'function') {
+              const currentSettings = global.db.getSettings() || {};
+              currentSettings.openrouterFreeModels = cachedFreeModels;
+              currentSettings.openrouterLastModelFetch = lastFetchTimestamp;
+              global.db.saveSettings(currentSettings);
+            }
+          } catch (_) {}
+
+          resolve(cachedFreeModels);
+        } catch (err) {
+          console.error('[GezyneBot] Failed parsing OpenRouter models:', err.message);
+          if (cachedFreeModels.length === 0) loadCachedFreeModelsFromDb();
+          resolve(cachedFreeModels);
+        }
+      });
+    });
+
+    req.on('error', (err) => {
+      console.warn('[GezyneBot] Error fetching models from OpenRouter:', err.message);
+      if (cachedFreeModels.length === 0) loadCachedFreeModelsFromDb();
+      resolve(cachedFreeModels);
+    });
+
+    req.on('timeout', () => {
+      req.destroy();
+      console.warn('[GezyneBot] Timeout fetching models from OpenRouter');
+      if (cachedFreeModels.length === 0) loadCachedFreeModelsFromDb();
+      resolve(cachedFreeModels);
+    });
+  });
+}
+
+function getAvailableModels() {
+  if (cachedFreeModels.length === 0) {
+    loadCachedFreeModelsFromDb();
+  }
+  return {
+    defaultModels: DEFAULT_MODELS,
+    freeModels: cachedFreeModels,
+    allModels: [...DEFAULT_MODELS, ...cachedFreeModels]
+  };
+}
+
 module.exports = {
   AVAILABLE_MODELS,
+  DEFAULT_MODELS,
   DEFAULT_MODEL,
   buildKnowledgeContext,
   queryOpenRouter,
   resolveApiKey,
-  testOpenRouterConnection
+  testOpenRouterConnection,
+  fetchFreeOpenRouterModels,
+  getAvailableModels
 };
 

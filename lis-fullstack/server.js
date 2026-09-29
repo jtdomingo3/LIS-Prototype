@@ -569,6 +569,7 @@ app.use((req, res, next) => {
   // APIs and Bearer-token / sync-authenticated requests don't rely on ambient browser cookies and must bypass CSRF
   if (
     req.path.startsWith('/api/') || 
+    req.path.startsWith('/chatbot/api/') || 
     req.path.startsWith('/export/') || 
     extractBearerToken(req) || 
     req.headers['x-lis-sync-replay'] || 

@@ -71,12 +71,7 @@ function getForwardHeaders(req) {
     return headers;
 }
 
-// Available models on Central Server
-const AVAILABLE_MODELS = [
-    { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini (Fast & Accurate - Recommended)' },
-    { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash (Low Latency)' },
-    { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Llama 3.3 70B (High Precision)' }
-];
+const { getAvailableModels, fetchFreeOpenRouterModels, DEFAULT_MODELS, AVAILABLE_MODELS } = require('../lib/gezyneBotService');
 const DEFAULT_MODEL = 'openai/gpt-4o-mini';
 
 // Render dedicated full-screen assistant page
@@ -110,16 +105,72 @@ router.get('/', requireAuth, async (req, res) => {
         }
     }
 
+    const modelData = getAvailableModels();
+
     res.render('chatbot/index', {
         title: 'GezyneBot AI Assistant',
         conversations,
         activeConversation,
         initialMessages,
-        availableModels: AVAILABLE_MODELS,
+        defaultModels: modelData.defaultModels,
+        freeModels: modelData.freeModels,
+        availableModels: modelData.allModels,
         defaultModel: DEFAULT_MODEL,
         serverUrl,
         isOnline
     });
+});
+
+// Fetch available models
+router.get('/api/models', requireAuth, async (req, res) => {
+    const serverUrl = getServerUrl(req);
+    const isOnline = await checkServerReachable(serverUrl);
+    if (isOnline) {
+        try {
+            const headers = getForwardHeaders(req);
+            const response = await fetch(`${serverUrl}/chatbot/api/models`, { headers });
+            const data = await response.json();
+            return res.json(data);
+        } catch (_) {}
+    }
+    const modelData = getAvailableModels();
+    res.json({
+        success: true,
+        defaultModels: modelData.defaultModels,
+        freeModels: modelData.freeModels,
+        availableModels: modelData.allModels
+    });
+});
+
+// Refresh free models from OpenRouter
+router.post('/api/models/refresh', requireAuth, async (req, res) => {
+    const serverUrl = getServerUrl(req);
+    const isOnline = await checkServerReachable(serverUrl);
+    if (isOnline) {
+        try {
+            const headers = getForwardHeaders(req);
+            headers['Content-Type'] = 'application/json';
+            const response = await fetch(`${serverUrl}/chatbot/api/models/refresh`, {
+                method: 'POST',
+                headers
+            });
+            const data = await response.json();
+            return res.json(data);
+        } catch (_) {}
+    }
+    try {
+        const freeModels = await fetchFreeOpenRouterModels(true);
+        const modelData = getAvailableModels();
+        res.json({
+            success: true,
+            count: freeModels.length,
+            defaultModels: modelData.defaultModels,
+            freeModels: modelData.freeModels,
+            availableModels: modelData.allModels
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
 });
 
 // Real-time server connectivity status endpoint
