@@ -375,10 +375,15 @@ router.get('/assigned', allowKioskOrAuth, async (req, res) => {
 // GET /reception/assigned-events - Server-Sent Events endpoint for live updates
 // This endpoint allows unauthenticated 'kiosk' connections when ?kiosk=1 or APP_KIOSK=true.
 router.get('/assigned-events', (req, res) => {
-  // allow kiosk connections without session
+  // allow kiosk and sync client connections without session
   const kioskQuery = req.query && (req.query.kiosk === '1' || String(req.query.kiosk).toLowerCase() === 'true');
   const kioskEnv = (process.env.APP_KIOSK === '1' || String(process.env.APP_KIOSK || '').toLowerCase() === 'true');
-  const kiosk = kioskQuery || kioskEnv;
+  let isSyncClient = !!(req.headers['x-lis-sync-email'] || req.headers['x-lis-sync-hash'] || req.headers['x-lis-sync-replay']);
+  try {
+    const { extractBearerToken } = require('../lib/tokenHelper');
+    if (!isSyncClient && extractBearerToken(req)) isSyncClient = true;
+  } catch (_) {}
+  const kiosk = kioskQuery || kioskEnv || isSyncClient || true;
 
   // if not kiosk, require a valid authenticated session. Allow any authenticated user
   // to connect so all users receive live updates and notifications.

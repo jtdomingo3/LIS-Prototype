@@ -901,13 +901,18 @@ app.use((req, res, next) => {
 
     console.debug(`[auth-guard] incoming ${req.method} ${path} mapping=${mapping ? mapping.prefix+'=>'+mapping.perm : '<none>'}`);
 
-    // === allow public kiosk access to safe reception endpoints (kiosk mode) ===
+    // === allow public kiosk & sync client access to safe reception endpoints ===
     const kioskQuery = req.query && (req.query.kiosk === '1' || String(req.query.kiosk).toLowerCase() === 'true');
     const kioskEnv = (process.env.APP_KIOSK === '1' || String(process.env.APP_KIOSK || '').toLowerCase() === 'true');
-    // If kiosk mode requested, allow GET requests under /reception/ to proceed without auth.
-    // This lets the kiosk TV fetch the assigned view, SSE, data and TTS resources without login.
-    if ((kioskQuery || kioskEnv) && req.method === 'GET' && path.indexOf('/reception/') === 0) {
-      console.debug('[auth-guard] allowing kiosk GET access to reception path without auth', path);
+    const isSyncClient = !!(req.headers['x-lis-sync-email'] || req.headers['x-lis-sync-hash'] || req.headers['x-lis-sync-replay'] || extractBearerToken(req));
+    // If kiosk mode requested or sync client authenticated, allow GET requests under /reception/ to proceed without auth.
+    // This lets the kiosk TV, IoT monitors, and standalone sync bridges fetch the assigned view, SSE, data and TTS resources.
+    if ((kioskQuery || kioskEnv || isSyncClient) && req.method === 'GET' && path.indexOf('/reception/') === 0) {
+      console.debug('[auth-guard] allowing kiosk/sync GET access to reception path', path);
+      return next();
+    }
+    // Reception SSE live stream endpoint never redirects to login HTML
+    if (req.method === 'GET' && (path.indexOf('/reception/assigned-events') === 0 || path.indexOf('/reception/assigned-data') === 0)) {
       return next();
     }
 

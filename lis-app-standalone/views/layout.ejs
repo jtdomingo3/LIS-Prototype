@@ -1429,14 +1429,15 @@
                                     const isExplicitlyOff = (userAutoRefresh === '0');
                                     const isUserEditing = document.activeElement && (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName) || document.activeElement.isContentEditable);
 
-                                    const reloadCooldownOk = (Date.now() - _pageLoadTs) > RELOAD_COOLDOWN_MS;
-                                    if (!isExplicitlyOff && isLivePage && !isUserEditing && !isEditingPage && !isPageUnloading && reloadCooldownOk) {
+                                    if (!isExplicitlyOff && isLivePage && !isUserEditing && !isEditingPage && !isPageUnloading) {
                                         if (window._sseRefreshTimer) clearTimeout(window._sseRefreshTimer);
+                                        const elapsed = Date.now() - _pageLoadTs;
+                                        const delay = elapsed < RELOAD_COOLDOWN_MS ? Math.max(300, RELOAD_COOLDOWN_MS - elapsed) : 300;
                                         window._sseRefreshTimer = setTimeout(() => {
                                             if (isPageUnloading) return;
                                             isPageUnloading = true;
                                             try { window.location.reload(); } catch(e){}
-                                        }, 500);
+                                        }, delay);
                                     }
                                 } catch(e){}
                                 return;
@@ -1525,6 +1526,13 @@
                                 const isRecentLocalAction = (Date.now() - lastLocalAction < 2200);
                                 // Enforce reload cooldown to prevent rapid reconnect storms
                                 const reloadCooldown = (Date.now() - _pageLoadTs) > RELOAD_COOLDOWN_MS;
+
+                                const isStandaloneClient = (typeof window.lisApp !== 'undefined') || (window.location && (window.location.port === '30099' || window.location.hostname === '127.0.0.1'));
+                                // On standalone client, local SQLite data is updated via background sync, so we defer
+                                // UI reload to live_sync_completed to guarantee fresh data without premature reloads.
+                                if (isStandaloneClient && !isRecentLocalAction) {
+                                    return;
+                                }
 
                                 if (enabled && !isUserEditing && !isEditingPage && !isPageUnloading && !isRecentLocalAction && reloadCooldown) {
                                     if (window._sseRefreshTimer) clearTimeout(window._sseRefreshTimer);

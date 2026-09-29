@@ -207,15 +207,8 @@
             </div>
 
             <!-- Signatures Section -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 4px; padding-top: 4px; border-top: 1px dashed #cbd5e1; font-size: 0.68rem;">
-                <div style="text-align: center;">
-                    <div style="margin-bottom: 12px; color: #64748b; font-size: 0.64rem;">Prepared & Approved by:</div>
-                    <div style="border-top: 1px solid #475569; padding-top: 2px; font-weight: 700; color: #1e293b;">
-                        <%= payroll.approvedBy || 'HR & Finance Officer' %>
-                    </div>
-                    <div style="color: #64748b; font-size: 0.62rem;">Gezyne Clinical Laboratory</div>
-                </div>
-                <div style="text-align: center;">
+            <div style="display: flex; justify-content: flex-end; margin-top: 4px; padding-top: 4px; border-top: 1px dashed #cbd5e1; font-size: 0.68rem;">
+                <div style="text-align: center; width: 280px;">
                     <div style="margin-bottom: 12px; color: #64748b; font-size: 0.64rem;">Received & Acknowledged by:</div>
                     <div style="border-top: 1px solid #475569; padding-top: 2px; font-weight: 700; color: #1e293b;">
                         <%= employee ? employee.name : 'Employee' %>

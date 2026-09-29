@@ -329,18 +329,22 @@ class SyncEngine {
     /**
      * Debounced fullSync to coalesce rapid successive live bridge events
      */
-    debouncedFullSync(webContents, delayMs = 1200) {
+    debouncedFullSync(webContents, delayMs = 250) {
+      if (!this._debouncedResolvers) this._debouncedResolvers = [];
       if (this._debouncedFullSyncTimer) {
         clearTimeout(this._debouncedFullSyncTimer);
       }
       return new Promise((resolve) => {
+        this._debouncedResolvers.push(resolve);
         this._debouncedFullSyncTimer = setTimeout(async () => {
           this._debouncedFullSyncTimer = null;
+          const resolvers = this._debouncedResolvers.slice();
+          this._debouncedResolvers = [];
           try {
             const res = await this.fullSync(webContents);
-            resolve(res);
+            for (const r of resolvers) { try { r(res); } catch (_) {} }
           } catch (err) {
-            resolve({ success: false, reason: err && err.message });
+            for (const r of resolvers) { try { r({ success: false, reason: err && err.message }); } catch (_) {} }
           }
         }, delayMs);
       });
@@ -978,6 +982,21 @@ class SyncEngine {
     const connectStream = async () => {
       if (!this._bridgeActive) return;
       try {
+        const authCreds = this._getAutoLoginHash();
+        const headers = {
+          'Accept': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+          'X-LIS-Sync-Replay': '1'
+        };
+        if (this._bearerToken) {
+          headers['Authorization'] = `Bearer ${this._bearerToken}`;
+        }
+        if (authCreds) {
+          headers['X-LIS-Sync-Email'] = authCreds.email;
+          headers['X-LIS-Sync-Hash'] = authCreds.hash;
+        }
+
         if (net && session) {
           const sess = session.fromPartition('persist:lis');
           const req = net.request({
@@ -985,27 +1004,25 @@ class SyncEngine {
             url: sseUrl,
             session: sess,
             useSessionCookies: true,
+            redirect: 'manual'
           });
 
-          req.setHeader('Accept', 'text/event-stream');
-          req.setHeader('Cache-Control', 'no-cache');
-          req.setHeader('Connection', 'keep-alive');
-
-          const authCreds = this._getAutoLoginHash();
-          if (authCreds) {
-            req.setHeader('X-Auto-Login-Email', authCreds.email);
-            req.setHeader('X-Auto-Login-Hash', authCreds.hash);
+          for (const [k, v] of Object.entries(headers)) {
+            try { req.setHeader(k, v); } catch (_) {}
           }
 
           req.on('response', (res) => {
             if (res.statusCode === 302 || res.statusCode === 401) {
-              this._ensureServerAuth().catch(() => {});
-              this._scheduleBridgeReconnect(connectStream, 8000);
+              this._ensureServerAuth(true).catch(() => {});
+              this._scheduleBridgeReconnect(connectStream, 4000);
               return;
             }
 
-            if (res.statusCode !== 200) {
-              this._scheduleBridgeReconnect(connectStream, 10000);
+            const ct = (res.headers && (res.headers['content-type'] || res.headers['Content-Type'])) || '';
+            const ctStr = Array.isArray(ct) ? ct[0] : String(ct);
+            if (res.statusCode !== 200 || (!ctStr.includes('text/event-stream') && !ctStr.includes('text/plain'))) {
+              console.warn('[SyncBridge] SSE response unexpected: status', res.statusCode, 'content-type', ctStr);
+              this._scheduleBridgeReconnect(connectStream, 5000);
               return;
             }
 
@@ -1015,11 +1032,11 @@ class SyncEngine {
             let buffer = '';
             res.on('data', (chunk) => {
               buffer += chunk.toString('utf8');
-              const lines = buffer.split('\n\n');
+              const lines = buffer.split(/\r?\n\r?\n/);
               buffer = lines.pop() || '';
 
               for (const block of lines) {
-                const dataLine = block.split('\n').find(l => l.startsWith('data:'));
+                const dataLine = block.split(/\r?\n/).find(l => l.startsWith('data:'));
                 if (!dataLine) continue;
                 const rawData = dataLine.slice(5).trim();
                 if (!rawData) continue;
@@ -1035,9 +1052,16 @@ class SyncEngine {
                     }
 
                     // 2. Debounced fetch of latest server snapshot in background so local DB is kept in sync
-                    this.debouncedFullSync(webContents, 1200).then(() => {
+                    this.debouncedFullSync(webContents, 250).then((syncRes) => {
                       if (typeof onEventCallback === 'function') {
-                        try { onEventCallback({ action: 'live_sync_completed', timestamp: Date.now() }); } catch (e) {}
+                        try {
+                          onEventCallback({
+                            action: 'live_sync_completed',
+                            originalAction: eventData.action || eventData.type,
+                            imported: syncRes ? syncRes.imported : 0,
+                            timestamp: Date.now()
+                          });
+                        } catch (e) {}
                       }
                     }).catch(() => {});
                   }
@@ -1047,24 +1071,24 @@ class SyncEngine {
 
             res.on('end', () => {
               this._bridgeConnected = false;
-              this._scheduleBridgeReconnect(connectStream, 5000);
+              this._scheduleBridgeReconnect(connectStream, 3000);
             });
 
             res.on('error', () => {
               this._bridgeConnected = false;
-              this._scheduleBridgeReconnect(connectStream, 6000);
+              this._scheduleBridgeReconnect(connectStream, 4000);
             });
           });
 
           req.on('error', () => {
             this._bridgeConnected = false;
-            this._scheduleBridgeReconnect(connectStream, 8000);
+            this._scheduleBridgeReconnect(connectStream, 5000);
           });
 
           this._currentBridgeReq = req;
           req.end();
         } else {
-          // Node fallback (e.g. tests)
+          // Node fallback (e.g. tests or headless)
           const parsed = new URL(sseUrl);
           const isHttps = parsed.protocol === 'https:';
           const client = isHttps ? require('https') : require('http');
@@ -1074,26 +1098,31 @@ class SyncEngine {
             port: parsed.port || (isHttps ? 443 : 80),
             path: parsed.pathname + (parsed.search || ''),
             method: 'GET',
-            headers: {
-              'Accept': 'text/event-stream',
-              'Cache-Control': 'no-cache',
-              'Connection': 'keep-alive'
-            },
+            headers,
             timeout: 0
           }, (res) => {
-            if (res.statusCode !== 200) {
+            if (res.statusCode === 302 || res.statusCode === 401) {
               res.resume();
-              this._scheduleBridgeReconnect(connectStream, 10000);
+              this._ensureServerAuth(true).catch(() => {});
+              this._scheduleBridgeReconnect(connectStream, 4000);
               return;
             }
+            const ct = (res.headers && (res.headers['content-type'] || res.headers['Content-Type'])) || '';
+            const ctStr = Array.isArray(ct) ? ct[0] : String(ct);
+            if (res.statusCode !== 200 || (!ctStr.includes('text/event-stream') && !ctStr.includes('text/plain'))) {
+              res.resume();
+              this._scheduleBridgeReconnect(connectStream, 5000);
+              return;
+            }
+
             this._bridgeConnected = true;
             let buffer = '';
             res.on('data', (chunk) => {
               buffer += chunk.toString('utf8');
-              const lines = buffer.split('\n\n');
+              const lines = buffer.split(/\r?\n\r?\n/);
               buffer = lines.pop() || '';
               for (const block of lines) {
-                const dataLine = block.split('\n').find(l => l.startsWith('data:'));
+                const dataLine = block.split(/\r?\n/).find(l => l.startsWith('data:'));
                 if (!dataLine) continue;
                 const rawData = dataLine.slice(5).trim();
                 if (!rawData) continue;
@@ -1103,24 +1132,31 @@ class SyncEngine {
                     if (typeof onEventCallback === 'function') {
                       try { onEventCallback(eventData); } catch (e) {}
                     }
-                    this.debouncedFullSync(webContents, 1200).then(() => {
+                    this.debouncedFullSync(webContents, 250).then((syncRes) => {
                       if (typeof onEventCallback === 'function') {
-                        try { onEventCallback({ action: 'live_sync_completed', timestamp: Date.now() }); } catch (e) {}
+                        try {
+                          onEventCallback({
+                            action: 'live_sync_completed',
+                            originalAction: eventData.action || eventData.type,
+                            imported: syncRes ? syncRes.imported : 0,
+                            timestamp: Date.now()
+                          });
+                        } catch (e) {}
                       }
                     }).catch(() => {});
                   }
                 } catch (e) {}
               }
             });
-            res.on('end', () => { this._bridgeConnected = false; this._scheduleBridgeReconnect(connectStream, 5000); });
-            res.on('error', () => { this._bridgeConnected = false; this._scheduleBridgeReconnect(connectStream, 6000); });
+            res.on('end', () => { this._bridgeConnected = false; this._scheduleBridgeReconnect(connectStream, 3000); });
+            res.on('error', () => { this._bridgeConnected = false; this._scheduleBridgeReconnect(connectStream, 4000); });
           });
-          req.on('error', () => { this._bridgeConnected = false; this._scheduleBridgeReconnect(connectStream, 8000); });
+          req.on('error', () => { this._bridgeConnected = false; this._scheduleBridgeReconnect(connectStream, 5000); });
           this._currentBridgeReq = req;
           req.end();
         }
       } catch (err) {
-        this._scheduleBridgeReconnect(connectStream, 8000);
+        this._scheduleBridgeReconnect(connectStream, 5000);
       }
     };
 
