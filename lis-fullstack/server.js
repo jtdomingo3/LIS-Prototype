@@ -133,7 +133,7 @@ async function processMaintenanceFlags() {
   const restoreAdminFlag = path.join(DATA_DIR, '.restore-admin');
   if (fs.existsSync(restoreAdminFlag)) {
     try {
-      const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$AfLcpEDMTdYF./tbIImw.uyYGH/g3dy6qJ5lVY7Sw8vTUrsEbMva2';
+      const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$NuxBy5lbSTWqHjLaJ4ncYuk59lGJ8MdQePURe41hoO.Mn.cVldf8W';
       let existing = [];
       try { existing = db.getUsers(); if (!Array.isArray(existing)) existing = []; } catch (e) { existing = []; }
       let admin = existing.find(u => u.email === 'admin@lab.com');
@@ -196,7 +196,7 @@ async function processMaintenanceFlags() {
       db.write(initialData);
 
       // Re-seed default admin user
-      const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$AfLcpEDMTdYF./tbIImw.uyYGH/g3dy6qJ5lVY7Sw8vTUrsEbMva2';
+      const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$NuxBy5lbSTWqHjLaJ4ncYuk59lGJ8MdQePURe41hoO.Mn.cVldf8W';
       const { v4: uuidv4 } = require('uuid');
       const defaultAdmin = {
         id: uuidv4(),
@@ -330,7 +330,7 @@ async function processMaintenanceFlags() {
         name: 'Admin User',
         email: 'admin@lab.com',
         // Pre-hashed default administrator credential (cost factor 12)
-        password: process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$AfLcpEDMTdYF./tbIImw.uyYGH/g3dy6qJ5lVY7Sw8vTUrsEbMva2',
+        password: process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$NuxBy5lbSTWqHjLaJ4ncYuk59lGJ8MdQePURe41hoO.Mn.cVldf8W',
         role: 'Admin',
         status: 'Active',
         permissions: {},
@@ -1077,7 +1077,7 @@ app.post('/api/restore/users', async (req, res) => {
 
     let admin = existing.find(u => u.email === 'admin@lab.com');
     // Pre-hashed default administrator credential (cost factor 12)
-    const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$AfLcpEDMTdYF./tbIImw.uyYGH/g3dy6qJ5lVY7Sw8vTUrsEbMva2';
+    const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$NuxBy5lbSTWqHjLaJ4ncYuk59lGJ8MdQePURe41hoO.Mn.cVldf8W';
 
     if (!admin) {
       admin = {

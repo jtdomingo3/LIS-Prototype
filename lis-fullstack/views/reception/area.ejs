@@ -238,9 +238,8 @@
                   <% if (areaName === 'Payment Area') { %>
                     <!-- Payment Area Billing Controls -->
                     <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
-                      <form action="/reception/complete" method="POST" class="complete-form" data-require-amount="<%= (typeof requirePaymentAmount === 'undefined' || requirePaymentAmount) ? '1' : '0' %>
-  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
-  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">" style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end; margin: 0; width: 100%;">
+                      <form action="/reception/complete" method="POST" class="complete-form" data-require-amount="<%= (typeof requirePaymentAmount === 'undefined' || requirePaymentAmount) ? '1' : '0' %>" style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end; margin: 0; width: 100%;">
+                        <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                         <input type="hidden" name="patientId" value="<%= row.patient ? row.patient.id : '' %>">
                         <input type="hidden" name="testIds" value="<%= (row.testIds || []).join(',') %>">
                         <input type="hidden" name="area" value="<%= areaName %>">

@@ -318,6 +318,10 @@ router.post('/test-ai', requireAuth, canManageUsers, async (req, res) => {
   }
 });
 
+router.post('/sync-from-server', (req, res) => {
+  res.json({ success: true, message: 'Settings already synchronized on central server' });
+});
+
 router.post('/', requireAuth, (req, res) => {
   try {
     const u = req.session && req.session.user;

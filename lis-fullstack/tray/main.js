@@ -911,7 +911,7 @@ ipcMain.handle('restore-users', async () => {
     // check if admin already exists
     let admin = existing.find(u => u.email === 'admin@lab.com');
     // Pre-hashed default administrator credential (cost factor 12)
-    const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$t1ORj/D94UYW057qZm1Ga.KU07BHErrr3BzmeO7fNbu5h5encZvD2';
+    const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$NuxBy5lbSTWqHjLaJ4ncYuk59lGJ8MdQePURe41hoO.Mn.cVldf8W';
 
     if (!admin) {
       admin = {

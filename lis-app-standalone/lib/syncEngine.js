@@ -459,6 +459,13 @@ class SyncEngine {
     const net = (electron && electron.net) ? electron.net : null;
 
     for (const op of pending) {
+      // Discard operations that should never be replayed to central server
+      if (op.url && op.url.includes('/settings/sync-from-server')) {
+        console.log(`[Sync] Discarding local-only operation ${op.method} ${op.url}`);
+        this.queue.remove(op.id);
+        continue;
+      }
+
       try {
         // replay and capture server response so we can map temp -> server IDs
         const replayResult = await this._replayWithRetry(net, op);

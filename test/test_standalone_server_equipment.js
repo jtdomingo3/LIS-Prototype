@@ -66,6 +66,36 @@ async function runTests() {
 
   try {
     await dataStore.ready();
+
+    // Ensure equipment fixture exists for testing
+    const existingEq = dataStore.getCollection('equipment') || [];
+    if (!existingEq.some(e => e.name && e.name.includes('Mindray'))) {
+      const sourceDbPath = path.join(__dirname, '..', 'lis-fullstack', 'lis-data.db');
+      if (fs.existsSync(sourceDbPath)) {
+        try {
+          const { createDb } = require('../lis-fullstack/lib/sqliteDb');
+          const sourceDb = createDb(sourceDbPath);
+          const eqList = sourceDb.getEquipment ? sourceDb.getEquipment() : [];
+          for (const item of eqList) {
+            if (dataStore.db.saveEquipment) dataStore.db.saveEquipment(item);
+          }
+          const ctrlList = sourceDb.getQcControls ? sourceDb.getQcControls() : [];
+          for (const c of ctrlList) {
+            if (dataStore.db.saveQcControl) dataStore.db.saveQcControl(c);
+          }
+          const entryList = sourceDb.getQcEntries ? sourceDb.getQcEntries() : [];
+          for (const entry of entryList) {
+            if (dataStore.db.saveQcEntry) dataStore.db.saveQcEntry(entry);
+          }
+          const neqasList = sourceDb.getNeqasRecords ? sourceDb.getNeqasRecords() : [];
+          for (const n of neqasList) {
+            if (dataStore.db.saveNeqasRecord) dataStore.db.saveNeqasRecord(n);
+          }
+          sourceDb.close();
+        } catch (_) {}
+      }
+    }
+
     server = createLocalServer(null, operationQueue, config, dataStore);
 
     // 1. Login or simulate session user
