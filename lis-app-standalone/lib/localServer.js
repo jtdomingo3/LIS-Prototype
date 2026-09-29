@@ -204,6 +204,8 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
       if (reqPath.startsWith('/api/')) return next();
       // Skip export/sync endpoints
       if (reqPath.startsWith('/export/')) return next();
+      // Skip local settings sync-from-server trigger (it pulls from server, not an outbound mutation)
+      if (reqPath === '/settings/sync-from-server') return next();
       // Skip chatbot routes — interactive AI queries are live-proxied to server directly
       if (reqPath.startsWith('/chatbot')) return next();
 
