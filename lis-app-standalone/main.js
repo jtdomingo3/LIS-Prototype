@@ -428,6 +428,11 @@ async function createWindow() {
   // services
   pageCache = new PageCache(cacheDir);
   operationQueue = new OperationQueue(dataDir);
+  operationQueue.onEnqueue = () => {
+    if (isOnline) {
+      setTimeout(() => { triggerAutoSync().catch(() => {}); }, 150);
+    }
+  };
   // DataStore will persist the full synced DB into Documents/LIS/app_sync/data.json
   try { dataStore = new DataStore(); } catch (e) { dataStore = null; }
   try { conflictStore = new ConflictStore(dataStore ? dataStore.baseDir : null); } catch (e) { conflictStore = null; }

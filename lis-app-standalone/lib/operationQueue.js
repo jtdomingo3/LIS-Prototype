@@ -101,6 +101,11 @@ class OperationQueue {
     this.operations.push(entry);
     this._save();
     console.log(`[Queue] added ${entry.method} ${entry.url}  (total pending: ${this.countPending()})`);
+    try {
+      if (typeof this.onEnqueue === 'function') {
+        this.onEnqueue(entry);
+      }
+    } catch (_) {}
     return entry;
   }
 

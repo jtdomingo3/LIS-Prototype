@@ -626,6 +626,7 @@ app.use((req, res, next) => {
       const allUsers = typeof global.db.getUsers === 'function' ? global.db.getUsers() : [];
       const matchUser = allUsers.find(u => u && u.email && u.email.toLowerCase() === syncEmail.toLowerCase());
       if (matchUser && validateSyncUser(syncHash, syncEmail, matchUser)) {
+        req.session = req.session || {};
         req.session.user = {
           id: matchUser.id || matchUser.email,
           name: matchUser.name || matchUser.email,
