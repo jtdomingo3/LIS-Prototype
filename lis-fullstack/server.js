@@ -1198,6 +1198,19 @@ app.get('/export/data.json', (req, res) => {
     data.inventory_batches = typeof db.getAllInventoryBatches === 'function' ? db.getAllInventoryBatches() : [];
     data.inventory_transactions = typeof db.getInventoryTransactions === 'function' ? db.getInventoryTransactions() : [];
     data.consultations = typeof db.getConsultations === 'function' ? db.getConsultations() : [];
+    data.equipment = typeof db.getEquipment === 'function' ? db.getEquipment() : [];
+    data.equipment_logs = typeof db.getEquipmentLogs === 'function' ? db.getEquipmentLogs() : [];
+    data.qc_controls = typeof db.getQcControls === 'function' ? db.getQcControls() : [];
+    data.qc_entries = typeof db.getQcEntries === 'function' ? db.getQcEntries() : [];
+    data.neqas_records = typeof db.getNeqasRecords === 'function' ? db.getNeqasRecords() : [];
+    data.expenses = typeof db.getExpenses === 'function' ? db.getExpenses() : [];
+    data.revenue_entries = typeof db.getRevenueEntries === 'function' ? db.getRevenueEntries() : [];
+    data.cost_per_test = typeof db.getCostPerTests === 'function' ? db.getCostPerTests() : [];
+    data.employees = typeof db.getEmployees === 'function' ? db.getEmployees() : [];
+    data.payroll_records = typeof db.getPayrollRecords === 'function' ? db.getPayrollRecords() : [];
+    data.hr_documents = typeof db.getHrDocuments === 'function' ? db.getHrDocuments() : [];
+    data.leave_records = typeof db.getLeaveRecords === 'function' ? db.getLeaveRecords() : [];
+    data.dtr_records = typeof db.getDtrRecords === 'function' ? db.getDtrRecords() : [];
 
     res.json(data);
   } catch (e) {
@@ -1424,6 +1437,23 @@ app.get('/data.json', (req, res) => {
   if (!allow) return res.status(404).send('Not found');
   try {
     const data = db.read();
+    data.inventory = typeof db.getInventory === 'function' ? db.getInventory() : [];
+    data.inventory_batches = typeof db.getAllInventoryBatches === 'function' ? db.getAllInventoryBatches() : [];
+    data.inventory_transactions = typeof db.getInventoryTransactions === 'function' ? db.getInventoryTransactions() : [];
+    data.consultations = typeof db.getConsultations === 'function' ? db.getConsultations() : [];
+    data.equipment = typeof db.getEquipment === 'function' ? db.getEquipment() : [];
+    data.equipment_logs = typeof db.getEquipmentLogs === 'function' ? db.getEquipmentLogs() : [];
+    data.qc_controls = typeof db.getQcControls === 'function' ? db.getQcControls() : [];
+    data.qc_entries = typeof db.getQcEntries === 'function' ? db.getQcEntries() : [];
+    data.neqas_records = typeof db.getNeqasRecords === 'function' ? db.getNeqasRecords() : [];
+    data.expenses = typeof db.getExpenses === 'function' ? db.getExpenses() : [];
+    data.revenue_entries = typeof db.getRevenueEntries === 'function' ? db.getRevenueEntries() : [];
+    data.cost_per_test = typeof db.getCostPerTests === 'function' ? db.getCostPerTests() : [];
+    data.employees = typeof db.getEmployees === 'function' ? db.getEmployees() : [];
+    data.payroll_records = typeof db.getPayrollRecords === 'function' ? db.getPayrollRecords() : [];
+    data.hr_documents = typeof db.getHrDocuments === 'function' ? db.getHrDocuments() : [];
+    data.leave_records = typeof db.getLeaveRecords === 'function' ? db.getLeaveRecords() : [];
+    data.dtr_records = typeof db.getDtrRecords === 'function' ? db.getDtrRecords() : [];
     console.log('[export] served /data.json public snapshot');
     res.json(data);
   } catch (e) {

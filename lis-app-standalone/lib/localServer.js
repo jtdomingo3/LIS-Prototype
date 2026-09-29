@@ -54,6 +54,10 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   app.use('/assets', express.static(path.join(__dirname, '..', 'server-assets'), staticCacheOpts));
   app.use('/assets', express.static(path.join(__dirname, '..', 'assets'), staticCacheOpts));
   app.use(express.static(path.join(__dirname, '..', 'server-public'), staticCacheOpts));
+  try {
+    const hrDocsDir = path.join(require('./dataPath').getDataDir(), 'hr-documents');
+    app.use('/hr-documents', express.static(hrDocsDir, staticCacheOpts));
+  } catch (e) {}
 
   /* ── Session + flash ──────────────────────────────────────────── */
   app.use(session({
@@ -222,6 +226,9 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
         }
         if (!req.body.id && reqPath.startsWith('/consultations') && req.method === 'POST') {
           try { req.body.id = require('crypto').randomUUID(); } catch (e) { req.body.id = 'con-' + Date.now(); }
+        }
+        if (!req.body.id && (reqPath.startsWith('/costing') || reqPath.startsWith('/hr')) && req.method === 'POST') {
+          try { req.body.id = require('crypto').randomUUID(); } catch (e) { req.body.id = 'rec-' + Date.now(); }
         }
         if (!req.body.client_id) {
           try { req.body.client_id = require('crypto').randomUUID(); } catch (e) { req.body.client_id = 'cli-' + Date.now(); }
@@ -411,7 +418,15 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
           qc_controls: dataStore.getCollection('qc_controls') || [],
           qc_entries: dataStore.getCollection('qc_entries') || [],
           neqas_records: dataStore.getCollection('neqas_records') || [],
-          consultations: dataStore.getCollection('consultations') || (typeof global.db.getConsultations === 'function' ? global.db.getConsultations() : []) || []
+          consultations: dataStore.getCollection('consultations') || (typeof global.db.getConsultations === 'function' ? global.db.getConsultations() : []) || [],
+          expenses: dataStore.getCollection('expenses') || [],
+          revenue_entries: dataStore.getCollection('revenue_entries') || [],
+          cost_per_test: dataStore.getCollection('cost_per_test') || [],
+          employees: dataStore.getCollection('employees') || [],
+          payroll_records: dataStore.getCollection('payroll_records') || [],
+          hr_documents: dataStore.getCollection('hr_documents') || [],
+          leave_records: dataStore.getCollection('leave_records') || [],
+          dtr_records: dataStore.getCollection('dtr_records') || []
         };
         return res.json(out);
       } catch (e) { return res.status(500).send('datastore-error'); }
