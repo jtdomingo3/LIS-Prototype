@@ -75,6 +75,31 @@
             background: var(--bg-light);
         }
 
+        /* Global Custom Scrollbars for modern browser experience */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.35);
+            border-radius: 999px;
+            transition: background 0.2s ease;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(100, 116, 139, 0.6);
+        }
+
         /* Sidebar Navigation */
         .sidebar {
             width: 280px;
@@ -82,14 +107,44 @@
             max-height: 100vh;
             background: linear-gradient(180deg, var(--primary-black-dark) 0%, var(--primary-black) 100%);
             color: var(--text-white);
-            padding: 24px 20px;
+            padding: 20px 12px 24px 16px;
             overflow-y: auto;
+            overflow-x: hidden;
             box-shadow: 4px 0 24px rgba(0, 0, 0, 0.08);
             z-index: 100;
             display: flex;
             flex-direction: column;
             flex-shrink: 0;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+            overscroll-behavior: contain;
+            scroll-behavior: smooth;
+        }
+
+        /* Sleek Modern Custom Scrollbar for Sidebar */
+        .sidebar::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: transparent;
+            margin: 8px 0;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 999px;
+            transition: background 0.2s ease;
+        }
+
+        .sidebar:hover::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: var(--secondary-green, #10b981);
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
         }
 
         .sidebar h2 {
@@ -259,6 +314,26 @@
             background-color: var(--bg-light);
             scroll-behavior: smooth;
             box-sizing: border-box;
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 transparent;
+        }
+
+        .main-content::-webkit-scrollbar {
+            width: 7px;
+        }
+
+        .main-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .main-content::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 999px;
+            transition: background 0.2s ease;
+        }
+
+        .main-content::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
         }
 
         .header {

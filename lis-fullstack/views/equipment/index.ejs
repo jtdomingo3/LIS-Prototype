@@ -244,14 +244,14 @@
 </style>
 
 <!-- Main Dedicated Navigation Tabs (Always at top of Equipment module) -->
-<div class="eq-nav-tabs" style="margin-bottom: 20px;">
-  <button type="button" class="eq-tab-btn active" id="tabBtn_equipment" onclick="switchSection('equipment')">
+<div class="eq-nav-tabs" role="tablist" style="margin-bottom: 20px;">
+  <button type="button" class="eq-tab-btn active" role="tab" data-no-guard="1" id="tabBtn_equipment" onclick="switchSection('equipment')">
     <i class="fa fa-microscope" style="color: #0284c7;"></i> 1. Equipment Registry & Maintenance
   </button>
-  <button type="button" class="eq-tab-btn" id="tabBtn_qc" onclick="switchSection('qc')">
+  <button type="button" class="eq-tab-btn" role="tab" data-no-guard="1" id="tabBtn_qc" onclick="switchSection('qc')">
     <i class="fa fa-chart-line" style="color: #0284c7;"></i> 2. Internal QC & Levey-Jennings Hub
   </button>
-  <button type="button" class="eq-tab-btn" id="tabBtn_neqas" onclick="switchSection('neqas')">
+  <button type="button" class="eq-tab-btn" role="tab" data-no-guard="1" id="tabBtn_neqas" onclick="switchSection('neqas')">
     <i class="fa fa-award" style="color: #16a34a;"></i> 3. NEQAS External Quality Assessment (EQA)
     <span class="badge badge-info" style="margin-left: 6px; font-size: 0.75em;" id="neqasTabBadge">DOH Accredited</span>
   </button>

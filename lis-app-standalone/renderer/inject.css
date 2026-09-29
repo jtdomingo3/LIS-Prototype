@@ -574,3 +574,40 @@ body::-webkit-scrollbar {
   height: 0 !important;
   background: transparent !important;
 }
+
+/* Custom modern scrollbars across Electron webContents */
+* {
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(148, 163, 184, 0.4) transparent !important;
+}
+
+::-webkit-scrollbar {
+  width: 7px !important;
+  height: 7px !important;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1 !important;
+  border-radius: 999px !important;
+  transition: background 0.2s ease !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8 !important;
+}
+
+.sidebar::-webkit-scrollbar {
+  width: 5px !important;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: var(--secondary-green, #10b981) !important;
+}

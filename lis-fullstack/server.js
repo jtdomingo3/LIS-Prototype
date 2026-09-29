@@ -133,7 +133,7 @@ async function processMaintenanceFlags() {
   const restoreAdminFlag = path.join(DATA_DIR, '.restore-admin');
   if (fs.existsSync(restoreAdminFlag)) {
     try {
-      const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$t1ORj/D94UYW057qZm1Ga.KU07BHErrr3BzmeO7fNbu5h5encZvD2';
+      const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$AfLcpEDMTdYF./tbIImw.uyYGH/g3dy6qJ5lVY7Sw8vTUrsEbMva2';
       let existing = [];
       try { existing = db.getUsers(); if (!Array.isArray(existing)) existing = []; } catch (e) { existing = []; }
       let admin = existing.find(u => u.email === 'admin@lab.com');
@@ -196,7 +196,7 @@ async function processMaintenanceFlags() {
       db.write(initialData);
 
       // Re-seed default admin user
-      const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$t1ORj/D94UYW057qZm1Ga.KU07BHErrr3BzmeO7fNbu5h5encZvD2';
+      const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$AfLcpEDMTdYF./tbIImw.uyYGH/g3dy6qJ5lVY7Sw8vTUrsEbMva2';
       const { v4: uuidv4 } = require('uuid');
       const defaultAdmin = {
         id: uuidv4(),
@@ -329,8 +329,8 @@ async function processMaintenanceFlags() {
         id: uuidv4(),
         name: 'Admin User',
         email: 'admin@lab.com',
-        // Pre-hashed default administrator credential ($2a$12$t1ORj/D94UYW057qZm1Ga.KU07BHErrr3BzmeO7fNbu5h5encZvD2)
-        password: process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$t1ORj/D94UYW057qZm1Ga.KU07BHErrr3BzmeO7fNbu5h5encZvD2',
+        // Pre-hashed default administrator credential (cost factor 12)
+        password: process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$AfLcpEDMTdYF./tbIImw.uyYGH/g3dy6qJ5lVY7Sw8vTUrsEbMva2',
         role: 'Admin',
         status: 'Active',
         permissions: {},
@@ -567,7 +567,14 @@ const csrfProtection = csrf({ cookie: false });
 // However, to prevent breaking external API access, we'll conditionally apply it.
 app.use((req, res, next) => {
   // APIs and Bearer-token / sync-authenticated requests don't rely on ambient browser cookies and must bypass CSRF
-  if (req.path.startsWith('/api/') || extractBearerToken(req) || req.headers['x-lis-sync-replay']) {
+  if (
+    req.path.startsWith('/api/') || 
+    req.path.startsWith('/export/') || 
+    extractBearerToken(req) || 
+    req.headers['x-lis-sync-replay'] || 
+    req.headers['x-lis-sync-hash'] ||
+    req.headers['x-lis-sync-email']
+  ) {
     return next();
   }
   
@@ -1070,7 +1077,7 @@ app.post('/api/restore/users', async (req, res) => {
 
     let admin = existing.find(u => u.email === 'admin@lab.com');
     // Pre-hashed default administrator credential (cost factor 12)
-    const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$t1ORj/D94UYW057qZm1Ga.KU07BHErrr3BzmeO7fNbu5h5encZvD2';
+    const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$AfLcpEDMTdYF./tbIImw.uyYGH/g3dy6qJ5lVY7Sw8vTUrsEbMva2';
 
     if (!admin) {
       admin = {

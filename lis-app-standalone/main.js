@@ -482,15 +482,12 @@ async function createWindow() {
     try { setTimeout(openSettingsWindow, 300); } catch (e) {}
   }
 
-  // On page reload / navigation, perform fast simultaneous two-way sync
+  // On page reload / navigation, flush pending mutations if any (do not trigger fullSync on navigation)
   mainWindow.webContents.on('did-start-loading', () => {
     try {
       if (isOnline) {
         if (operationQueue && operationQueue.countPending() > 0) {
           triggerAutoSync().catch(() => {});
-        }
-        if (syncEngine) {
-          syncEngine.scheduleAutoFullSync(mainWindow.webContents, 200);
         }
       }
     } catch (e) {}
