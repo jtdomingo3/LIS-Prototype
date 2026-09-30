@@ -52,7 +52,12 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     lastModified: true
   };
   app.use('/assets', express.static(path.join(__dirname, '..', 'server-assets'), staticCacheOpts));
+  app.use('/assets', express.static(path.join(__dirname, '..', 'assets'), staticCacheOpts));
   app.use(express.static(path.join(__dirname, '..', 'server-public'), staticCacheOpts));
+  try {
+    const hrDocsDir = path.join(require('./dataPath').getDataDir(), 'hr-documents');
+    app.use('/hr-documents', express.static(hrDocsDir, staticCacheOpts));
+  } catch (e) {}
 
   /* ── Session + flash ──────────────────────────────────────────── */
   app.use(session({
@@ -154,6 +159,11 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   /* ── User session bridge for active logged-in user ────────────────── */
   app.use((req, res, next) => {
     try {
+      const p = req.path || '';
+      // NEVER auto-login on authentication endpoints, root login page, or logout
+      if (p === '/' || p === '/login' || p === '/logout' || p.startsWith('/api/auth')) {
+        return next();
+      }
       if (_autoLoginEmail && req.session && !req.session.user) {
         const users = global.db && global.db.getUsers ? global.db.getUsers() : [];
         const user = users.find(u => u.email && u.email.toLowerCase() === _autoLoginEmail.toLowerCase());
@@ -162,6 +172,7 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
             id: user.id || user.email,
             name: user.name || user.email,
             email: user.email,
+            password: user.password || null,
             role: user.role || 'User',
             permissions: user.permissions || {},
             signature: user.signature || null,
@@ -189,8 +200,12 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
       // Skip auth routes — login/logout are local-only
       const reqPath = req.path || req.url || '';
       if (reqPath === '/' || reqPath === '/login' || reqPath === '/logout') return next();
+      // Skip API endpoints — authentication tokens, signature sync, and security probes must never be queued
+      if (reqPath.startsWith('/api/')) return next();
       // Skip export/sync endpoints
       if (reqPath.startsWith('/export/')) return next();
+      // Skip local settings sync-from-server trigger (it pulls from server, not an outbound mutation)
+      if (reqPath === '/settings/sync-from-server') return next();
       // Skip chatbot routes — interactive AI queries are live-proxied to server directly
       if (reqPath.startsWith('/chatbot')) return next();
 
@@ -213,6 +228,9 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
         }
         if (!req.body.id && reqPath.startsWith('/consultations') && req.method === 'POST') {
           try { req.body.id = require('crypto').randomUUID(); } catch (e) { req.body.id = 'con-' + Date.now(); }
+        }
+        if (!req.body.id && (reqPath.startsWith('/costing') || reqPath.startsWith('/hr')) && req.method === 'POST') {
+          try { req.body.id = require('crypto').randomUUID(); } catch (e) { req.body.id = 'rec-' + Date.now(); }
         }
         if (!req.body.client_id) {
           try { req.body.client_id = require('crypto').randomUUID(); } catch (e) { req.body.client_id = 'cli-' + Date.now(); }
@@ -274,6 +292,8 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   };
   app.get('/logout', clearAutoLogin);
   app.post('/logout', clearAutoLogin);
+  app.all('/logout', clearAutoLogin);
+  app.locals.clearAutoLogin = () => { _autoLoginEmail = null; };
 
   /* ── Make flash messages & user available to all views ─────────── */
   app.use((req, res, next) => {
@@ -400,7 +420,15 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
           qc_controls: dataStore.getCollection('qc_controls') || [],
           qc_entries: dataStore.getCollection('qc_entries') || [],
           neqas_records: dataStore.getCollection('neqas_records') || [],
-          consultations: dataStore.getCollection('consultations') || (typeof global.db.getConsultations === 'function' ? global.db.getConsultations() : []) || []
+          consultations: dataStore.getCollection('consultations') || (typeof global.db.getConsultations === 'function' ? global.db.getConsultations() : []) || [],
+          expenses: dataStore.getCollection('expenses') || [],
+          revenue_entries: dataStore.getCollection('revenue_entries') || [],
+          cost_per_test: dataStore.getCollection('cost_per_test') || [],
+          employees: dataStore.getCollection('employees') || [],
+          payroll_records: dataStore.getCollection('payroll_records') || [],
+          hr_documents: dataStore.getCollection('hr_documents') || [],
+          leave_records: dataStore.getCollection('leave_records') || [],
+          dtr_records: dataStore.getCollection('dtr_records') || []
         };
         return res.json(out);
       } catch (e) { return res.status(500).send('datastore-error'); }
@@ -421,7 +449,9 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     { prefix: '/inventory', perm: 'inventory' },
     { prefix: '/equipment', perm: 'equipment' },
     { prefix: '/users', perm: 'users' },
-    { prefix: '/worksheet', perm: 'worksheet' }
+    { prefix: '/worksheet', perm: 'worksheet' },
+    { prefix: '/costing', perm: 'costing' },
+    { prefix: '/hr', perm: 'hr' }
   ];
 
   app.use((req, res, next) => {
@@ -556,6 +586,16 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     const chatbotRoutes = require('../routes/chatbot');
     app.use('/chatbot', chatbotRoutes);
   } catch (e) { console.error('[LocalServer] failed to load chatbot routes:', e && e.message); }
+
+  try {
+    const costingRoutes = require('../routes/costing');
+    app.use('/costing', costingRoutes);
+  } catch (e) { console.error('[LocalServer] failed to load costing routes:', e && e.message); }
+
+  try {
+    const hrRoutes = require('../routes/hr');
+    app.use('/hr', hrRoutes);
+  } catch (e) { console.error('[LocalServer] failed to load hr routes:', e && e.message); }
 
   /* ── 404 handler ──────────────────────────────────────────────── */
   app.use((req, res) => {

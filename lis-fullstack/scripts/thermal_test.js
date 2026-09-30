@@ -6,20 +6,34 @@
 //   node thermal_test.js --receipt --dry-run
 
 // Load environment variables from node/.env when present
-try { require('dotenv').config({ path: path.join(__dirname, '.env') }); } catch (e) {}
+const path = require('path');
+const fs = require('fs');
+
+try {
+  const envParent = path.join(__dirname, '..', '.env');
+  const envLocal = path.join(__dirname, '.env');
+  if (fs.existsSync(envParent)) {
+    require('dotenv').config({ path: envParent });
+  } else if (fs.existsSync(envLocal)) {
+    require('dotenv').config({ path: envLocal });
+  } else {
+    require('dotenv').config();
+  }
+} catch (e) {}
+
 let printer = null;
 try { printer = require('printer'); } catch (e) { printer = null; }
 const iconv = require('iconv-lite');
 const argv = require('process').argv.slice(2);
 const { spawnSync, execSync } = require('child_process');
-const path = require('path');
 
 function parseArgs() {
-  const args = { printer: null, receipt: false, dryRun: false, service: false, json: null };
+  const args = { printer: null, receipt: false, barcode: false, dryRun: false, service: false, json: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--printer' || a === '-p') args.printer = argv[++i];
     else if (a === '--receipt') args.receipt = true;
+    else if (a === '--barcode') args.barcode = true;
     else if (a === '--dry-run') args.dryRun = true;
     else if (a === '--service') args.service = true;
     else if (a === '--json' || a === '-j') args.json = argv[++i];
@@ -38,17 +52,26 @@ function getPrinters() {
     }
   }
 
-  // Windows fallback: use WMIC to enumerate printer names
+  // Windows fallback 1: use WMIC to enumerate printer names
   try {
-    const out = execSync('wmic printer get name 2>nul', { encoding: 'utf8' });
+    const out = execSync('wmic printer get name 2>nul', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] });
     const lines = out.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-    if (lines.length <= 1) return [];
-    const names = lines.slice(1);
-    return names.map(n => ({ name: n }));
-  } catch (err) {
-    console.error('Printer module unavailable and WMIC fallback failed:', err.message);
-    return [];
-  }
+    if (lines.length > 1) {
+      const names = lines.slice(1).filter(n => n.toLowerCase() !== 'name');
+      if (names.length > 0) return names.map(n => ({ name: n }));
+    }
+  } catch (err) {}
+
+  // Windows fallback 2: PowerShell Get-CimInstance (works on modern Windows 11 where WMIC is uninstalled)
+  try {
+    const psOut = execSync('powershell -NoProfile -Command "Get-CimInstance Win32_Printer | Select-Object -ExpandProperty Name"', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] });
+    const lines = psOut.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length > 0) {
+      return lines.map(n => ({ name: n }));
+    }
+  } catch (err) {}
+
+  return [];
 }
 
 function getDefaultPrinterName(printers) {
@@ -82,33 +105,114 @@ function createSampleReceipt() {
   const feed = Buffer.from('\n\n\n\n');
   const cut = Buffer.concat([GS, Buffer.from('V\x00')]);
 
+  const center = Buffer.concat([ESC, Buffer.from('a'), Buffer.from([0x01])]);
+  const left = Buffer.concat([ESC, Buffer.from('a'), Buffer.from([0x00])]);
+  const boldOn = Buffer.concat([ESC, Buffer.from('E'), Buffer.from([0x01])]);
+  const boldOff = Buffer.concat([ESC, Buffer.from('E'), Buffer.from([0x00])]);
+  const doubleSize = Buffer.from([0x1d, 0x21, 0x11]);
+  const normalSize = Buffer.from([0x1d, 0x21, 0x00]);
+
+  const now = new Date();
+  const dateStr = now.toISOString().replace('T', ' ').slice(0, 19);
+
   const lines = [];
-  lines.push(Buffer.concat([ESC, Buffer.from('a'), Buffer.from([0x01]), GS, Buffer.from('!'), Buffer.from([0x11]), makeText('MY STORE\n')]));
-  lines.push(Buffer.from([0x1d,0x21,0x00]));
-  lines.push(Buffer.concat([ESC, Buffer.from('a'), Buffer.from([0x01]), makeText('123 Main St\nCity, ST 12345\n\n')]));
+  lines.push(init);
+  lines.push(center);
+  lines.push(boldOn);
+  lines.push(doubleSize);
+  lines.push(makeText('GEZYNE LIS\n'));
+  lines.push(normalSize);
+  lines.push(makeText('Clinical Laboratory\n'));
+  lines.push(boldOff);
+  lines.push(makeText('0330 Vergel De Dios St, Plaridel\n'));
+  lines.push(makeText('Tel: 0980 390 0921\n'));
+  lines.push(makeText('*** TEST PRINT RECEIPT ***\n\n'));
 
-  const items = [['Coffee',2,2.50], ['Bagel',1,1.75], ['Donut',3,0.99]];
-  let subtotal = 0;
-  lines.push(makeText('Item                QTY   Price   Total\n'));
-  lines.push(makeText('----------------------------------------\n'));
-  items.forEach(it => {
-    const name = (it[0].slice(0,16)).padEnd(16, ' ');
-    const qty = String(it[1]).padStart(3, ' ');
-    const price = formatMoney(it[2]).padStart(7, ' ');
-    const total = formatMoney(it[1]*it[2]).padStart(8, ' ');
-    subtotal += it[1]*it[2];
-    lines.push(makeText(`${name}${qty}${price}${total}\n`));
-  });
-  const tax = subtotal * 0.07;
-  const total = subtotal + tax;
+  // Big 5-digit queue / code matching patient receipt
+  lines.push(boldOn);
+  lines.push(doubleSize);
+  lines.push(makeText('10023\n'));
+  lines.push(normalSize);
+  lines.push(boldOff);
+  lines.push(makeText(dateStr + '\n\n'));
+
+  // Patient info (aligned left)
+  lines.push(left);
+  lines.push(makeText('Name: Juan Dela Cruz (Sample)\n'));
+  lines.push(makeText('Age: 32       Gender: Male\n'));
+  lines.push(makeText('Patient ID: P-100234\n\n'));
+
+  // Laboratory Request
+  lines.push(boldOn);
+  lines.push(makeText('Laboratory Request:\n'));
+  lines.push(boldOff);
+  lines.push(makeText('- Complete Blood Count (CBC)  PHP 250.00\n'));
+  lines.push(makeText('- Routine Urinalysis          PHP 150.00\n'));
+  lines.push(makeText('- Fasting Blood Sugar (FBS)   PHP 180.00\n\n'));
+
+  // Total Amount
+  lines.push(boldOn);
+  lines.push(makeText('Amount: PHP 580.00\n'));
+  lines.push(boldOff);
   lines.push(makeText('\n'));
-  lines.push(makeText(`Subtotal:${String(formatMoney(subtotal)).padStart(28,' ')}\n`));
-  lines.push(makeText(`Tax (7%):${String(formatMoney(tax)).padStart(27,' ')}\n`));
-  lines.push(makeText(`TOTAL:${String(formatMoney(total)).padStart(31,' ')}\n`));
-  lines.push(makeText(`\n${new Date().toISOString().replace('T',' ').slice(0,19)}\n`));
-  lines.push(Buffer.concat([ESC, Buffer.from('a'), Buffer.from([0x01]), makeText('Thank you!\n')]));
 
-  return Buffer.concat([init].concat(lines).concat([feed, cut]));
+  // Validation / Disclaimer Footer
+  lines.push(center);
+  lines.push(makeText('----------------------------\n'));
+  lines.push(makeText('Validated Amount Received by:\n\n'));
+  lines.push(makeText('[ ] Cash    [ ] GCash    [ ] Card\n\n'));
+  lines.push(makeText('This is not a valid OR\n'));
+  lines.push(makeText('Please keep this ticket\n'));
+  lines.push(makeText('until you are finished\n\n'));
+
+  // Code128 Barcode (fits standard 58mm & 80mm printers)
+  const testCode = 'P-100234';
+  const barcodeHeight = Buffer.from([0x1d, 0x68, 0x48]); // 72 dots
+  const barcodeWidth = Buffer.from([0x1d, 0x77, 0x02]); // width multiplier 2
+  const barcodeHRI = Buffer.from([0x1d, 0x48, 0x02]); // text below barcode
+  const code128Data = Buffer.concat([Buffer.from([0x1d, 0x6b, 0x49, testCode.length + 2, 0x7b, 0x42]), Buffer.from(testCode, 'ascii')]);
+
+  lines.push(barcodeHeight, barcodeWidth, barcodeHRI, code128Data);
+  lines.push(feed, cut);
+
+  return Buffer.concat(lines);
+}
+
+function createSampleBarcodeReceipt() {
+  const ESC = Buffer.from([0x1b]);
+  const GS = Buffer.from([0x1d]);
+  const init = Buffer.concat([ESC, Buffer.from('@')]);
+  const cut = Buffer.concat([GS, Buffer.from('V\x00')]);
+
+  const lines = [];
+  lines.push(init);
+  lines.push(Buffer.concat([ESC, Buffer.from('a'), Buffer.from([0x01])])); // center
+  lines.push(Buffer.concat([ESC, Buffer.from('!'), Buffer.from([0x11])])); // double height/width
+  lines.push(makeText('GEZYNE LIS\n'));
+  lines.push(Buffer.concat([ESC, Buffer.from('!'), Buffer.from([0x00])])); // normal
+  lines.push(makeText('Thermal Barcode Test\n'));
+  lines.push(makeText(new Date().toLocaleString() + '\n\n'));
+  lines.push(makeText('Sample Patient Barcode:\n'));
+
+  const testCode = 'P-100234';
+  lines.push(Buffer.concat([ESC, Buffer.from('!'), Buffer.from([0x01])])); // bold
+  lines.push(makeText(`${testCode}\n\n`));
+  lines.push(Buffer.concat([ESC, Buffer.from('!'), Buffer.from([0x00])])); // normal
+
+  // Barcode setup (Code128 format B: GS k 73 / 0x49)
+  const barcodeHeight = Buffer.from([0x1d, 0x68, 0x50]); // 80 dots
+  const barcodeWidth = Buffer.from([0x1d, 0x77, 0x03]); // width multiplier 3
+  const barcodeHRI = Buffer.from([0x1d, 0x48, 0x02]); // text below barcode
+  const code128Data = Buffer.concat([Buffer.from([0x1d, 0x6b, 0x49, testCode.length + 2, 0x7b, 0x42]), Buffer.from(testCode, 'ascii')]);
+
+  lines.push(barcodeHeight);
+  lines.push(barcodeWidth);
+  lines.push(barcodeHRI);
+  lines.push(code128Data);
+  lines.push(Buffer.from('\n\n\n\n'));
+  lines.push(makeText('*** TEST PRINT OK ***\n\n\n'));
+  lines.push(cut);
+  return Buffer.concat(lines);
 }
 
 function buildPayloadFromJson(spec, cashDrawerEnabled = true) {
@@ -215,7 +319,8 @@ function main() {
     let spec;
     try { spec = JSON.parse(specRaw); } catch (e) { console.error('Invalid JSON:', e.message); process.exit(1); }
     payload = buildPayloadFromJson(spec, cashDrawerEnabled);
-  } else if (args.receipt) payload = createSampleReceipt();
+  } else if (args.barcode) payload = createSampleBarcodeReceipt();
+  else if (args.receipt) payload = createSampleReceipt();
   else {
     const ESC = Buffer.from([0x1b]);
     const init = Buffer.concat([ESC, Buffer.from('@')]);

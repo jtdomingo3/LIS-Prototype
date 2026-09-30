@@ -76,6 +76,16 @@
           <a href="/consultations/<%= test.id %>/print/chart" class="button btn-orange" target="_blank" style="height: 38px; padding: 0 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em;">
             <i class="fa fa-file-medical"></i> View Chart
           </a>
+        <% } else if (/(echo|echocardiograph|echocardiography|2d\s*echo|2decho)/i.test(test.testType)) { %>
+          <a href="/reports/preview/<%= test.id %>" class="button btn-orange" target="_blank" style="height: 38px; padding: 0 14px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em;">
+            <i class="fa fa-file-pdf"></i> View All (2 Pages)
+          </a>
+          <a href="/reports/result/<%= test.id %>?sheet=info" class="button btn-secondary" target="_blank" style="height: 38px; padding: 0 12px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; font-size: 0.85em;">
+            <i class="fa fa-table"></i> Info Sheet
+          </a>
+          <a href="/reports/result/<%= test.id %>?sheet=reading" class="button btn-secondary" target="_blank" style="height: 38px; padding: 0 12px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; font-size: 0.85em;">
+            <i class="fa fa-stethoscope"></i> Reading Sheet
+          </a>
         <% } else { %>
           <a href="/reports/preview/<%= test.id %>" class="button btn-orange" target="_blank" style="height: 38px; padding: 0 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em;">
             <i class="fa fa-file-pdf"></i> View Report
@@ -86,6 +96,7 @@
         <i class="fa fa-arrow-left"></i> Back to Tests
       </a>
       <form action="/tests/<%= test.id %>?_method=DELETE" method="POST" style="display:inline-flex; align-items:center; margin:0; padding:0;" onsubmit="return confirm('Are you sure you want to delete this test?');">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
         <button type="submit" class="button btn-secondary" style="height: 38px; padding: 0 12px; border-radius: 8px; font-weight: 600; color: #ef4444; border-color: #fecaca; display: inline-flex; align-items: center; gap: 4px; font-size: 0.88em;">
           <i class="fa fa-trash"></i> Delete
         </button>

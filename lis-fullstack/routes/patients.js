@@ -9,6 +9,8 @@ const pathMod = require('path');
 const Jimp = require('jimp');
 const bwipjs = require('bwip-js');
 const sseEmitter = require('../lib/sseEmitter');
+const { body, validationResult } = require('express-validator');
+const xss = require('xss');
 
 // Print logging helper
 const PRINT_LOG_PATH = pathMod.join(__dirname, '..', 'logs', 'print.log');
@@ -255,9 +257,23 @@ router.get('/new', requireAuth, canAccessPatient, (req, res) => {
 });
 
 // POST /patients - Create new patient
-router.post('/', requireAuth, canAccessPatient, async (req, res) => {
+router.post('/', requireAuth, canAccessPatient, [
+  body('firstName').trim().isLength({ min: 1, max: 100 }).escape().withMessage('First name required (1-100 chars)'),
+  body('lastName').trim().isLength({ min: 1, max: 100 }).escape().withMessage('Last name required'),
+  body('email').optional({ checkFalsy: true }).isEmail().normalizeEmail(),
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
   try {
     const { firstName, middleName, lastName, dateOfBirth, gender, phone, email, address, physician } = req.body;
+    
+    // Sanitize with xss
+    const safeFirstName = xss(firstName);
+    const safeLastName = xss(lastName);
+    const safeMiddleName = middleName ? xss(middleName) : '';
+    const safeAddress = address ? xss(address) : '';
     let normalizedDob = dateOfBirth;
     if (typeof dateOfBirth === 'string' && dateOfBirth.trim()) {
       const trimmed = dateOfBirth.trim();
@@ -411,16 +427,16 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
       id: req.body.id || req.body._id || undefined,
       patientId,
       patientCode,
-      firstName,
-      middleName: middleName || '',
-      lastName,
+      firstName: safeFirstName,
+      middleName: safeMiddleName,
+      lastName: safeLastName,
       dateOfBirth: normalizedDob,
       ageManual,
       physician,
       gender,
       phone,
       email,
-      address,
+      address: safeAddress,
       company,
       philhealthConsent,
       philhealthId,
@@ -472,17 +488,40 @@ router.post('/thermal-print', requireAuth, canAccessPatient, (req, res) => {
     const { spawnSync } = require('child_process');
     const pathMod = require('path');
     const fsMod = require('fs');
-    const scriptPath = pathMod.join(__dirname, '..', 'scripts', 'thermal_test.js');
-    if (!fsMod.existsSync(scriptPath)) {
-      return res.status(404).json({ success: false, error: 'thermal_test.js not found' });
+    let resolveThermalScriptPath;
+    try {
+      resolveThermalScriptPath = require('../lib/printHelper').resolveThermalScriptPath;
+    } catch (e) {}
+
+    let scriptPath = (typeof resolveThermalScriptPath === 'function') ? resolveThermalScriptPath() : null;
+    if (!scriptPath) {
+      const fallbackPath = pathMod.join(__dirname, '..', 'scripts', 'thermal_test.js');
+      if (fsMod.existsSync(fallbackPath)) scriptPath = fallbackPath;
+    }
+
+    if (!scriptPath) {
+      return res.status(404).json({ success: false, error: 'Thermal printer script (scripts/thermal_test.js) not found.' });
     }
 
     // Build args: call Node with the script and --receipt
     const args = [scriptPath, '--receipt'];
-    if (req.body && req.body.printer) args.push('--printer', req.body.printer);
+
+    const settings = (global.db && typeof global.db.getSettings === 'function') ? (global.db.getSettings() || {}) : {};
+    let printer = (req.body && req.body.printer) || (settings && settings.printerName) || process.env.PRINTER_NAME || process.env.THERMAL_PRINTER_NAME || '';
+    if (typeof printer === 'string') {
+      printer = printer.replace(/[^a-zA-Z0-9 _\-\.]/g, '').trim();
+    } else {
+      printer = '';
+    }
+    if (printer) args.push('--printer', printer);
 
     const spawnEnv = Object.assign({}, process.env, { ELECTRON_RUN_AS_NODE: '1' });
-    const proc = spawnSync(process.execPath, args, { cwd: pathMod.join(__dirname, '..'), encoding: 'utf8', maxBuffer: 10 * 1024 * 1024, env: spawnEnv });
+    const proc = spawnSync(process.execPath, args, {
+      cwd: pathMod.dirname(pathMod.dirname(scriptPath)) || pathMod.join(__dirname, '..'),
+      encoding: 'utf8',
+      maxBuffer: 10 * 1024 * 1024,
+      env: spawnEnv
+    });
     // append log
     try {
       const entry = {
@@ -526,7 +565,10 @@ router.post('/:id/print', requireAuth, canAccessPatient, async (req, res) => {
     const Test = require('../models/Test');
     const tests = await Test.find({ patient: req.params.id });
     const result = await printHelper.printPatientReceipt(patient, tests);
-    if (!result || !result.success) return res.status(500).json({ success: false, error: result && result.error ? result.error : 'Print failed' });
+    if (!result || !result.success) {
+      const errDetail = (result && (result.error || result.reason)) ? (result.error || result.reason) : 'Print failed';
+      return res.status(500).json({ success: false, error: errDetail });
+    }
     return res.json({ success: true, output: result.output });
   } catch (e) {
     console.error('Patient print error:', e);
@@ -594,10 +636,25 @@ router.get('/:id/edit', requireAuth, canAccessPatient, async (req, res) => {
   }
 });
 
-    // PUT /patients/:id - Update patient
-router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
+// PUT /patients/:id - Update patient
+router.put('/:id', requireAuth, canAccessPatient, [
+  body('firstName').trim().isLength({ min: 1, max: 100 }).escape().withMessage('First name required (1-100 chars)'),
+  body('lastName').trim().isLength({ min: 1, max: 100 }).escape().withMessage('Last name required'),
+  body('email').optional({ checkFalsy: true }).isEmail().normalizeEmail(),
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
   try {
     const { firstName, middleName, lastName, dateOfBirth, gender, phone, email, address, physician, company, philhealthConsent, philhealthId, healthInsuranceConsent, healthInsuranceProvider, healthInsuranceId } = req.body;
+    
+    // Sanitize with xss
+    const safeFirstName = xss(firstName);
+    const safeLastName = xss(lastName);
+    const safeMiddleName = middleName ? xss(middleName) : '';
+    const safeAddress = address ? xss(address) : '';
+    
     let normalizedDob = dateOfBirth;
     if (typeof dateOfBirth === 'string' && dateOfBirth.trim()) {
       const trimmed = dateOfBirth.trim();
@@ -625,16 +682,16 @@ router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
     const patient = await Patient.findByIdAndUpdate(
       req.params.id,
       {
-        firstName,
-        middleName: middleName || '',
-        lastName,
+        firstName: safeFirstName,
+        middleName: safeMiddleName,
+        lastName: safeLastName,
         dateOfBirth: normalizedDob,
         ageManual,
         physician,
         gender,
         phone,
         email,
-        address,
+        address: safeAddress,
         requiredAreas,
         company: company || '',
         philhealthConsent: !!philhealthConsentBool,

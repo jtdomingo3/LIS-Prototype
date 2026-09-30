@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= typeof title !== 'undefined' ? title : `Leave Application — ${typeof employee !== 'undefined' && employee ? employee.name : ''}` %></title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    @page {
+      size: Letter portrait;
+      margin: 8mm 12mm;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Times New Roman', Times, serif;
+      background: #f1f5f9;
+      color: #000;
+      -webkit-font-smoothing: antialiased;
+    }
+    *, *:before, *:after { box-sizing: inherit; }
+
+    /* Screen Container - perfectly aligned to printable Letter width */
+    .report-page {
+      position: relative;
+      width: 100%;
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 20px 24px;
+      font-family: 'Times New Roman', Times, serif;
+      color: #000;
+      font-size: 13px;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+      box-sizing: border-box;
+    }
+    .report-container { position: relative; z-index: 1; width: 100%; box-sizing: border-box; }
+    .doc-letterhead {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
+      border-bottom: 1.5px solid #000;
+      padding-bottom: 8px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .logo { width: 68px; height: auto; margin-right: 4px; }
+    .lab-title { text-align: center; flex: 1; min-width: 0; }
+    .lab-title h1 { margin: 0; font-size: 22px; color: #009957; letter-spacing: 1px; font-family: 'Times New Roman', Times, serif; font-weight: bold; line-height: 1.15; }
+    .lab-sub { font-size: 10.5px; margin-top: 2px; color: #334155; line-height: 1.3; }
+    .section-title { text-align: center; margin: 16px 0 12px 0; font-size: 16px; font-weight: bold; text-decoration: underline; letter-spacing: 0.8px; width: 100%; }
+    
+    .patient-box, .details-box {
+      width: 100% !important;
+      max-width: 100% !important;
+      border-collapse: collapse !important;
+      table-layout: fixed !important;
+      font-size: 12.5px;
+      margin-bottom: 12px;
+      border: 1px solid #000 !important;
+      box-sizing: border-box !important;
+    }
+    .patient-box td, .details-box td {
+      padding: 6px 10px;
+      border: 1px solid #000 !important;
+      box-sizing: border-box !important;
+    }
+    .policy-note {
+      font-size: 11.5px;
+      color: #222;
+      border: 1px solid #000 !important;
+      padding: 8px 12px;
+      margin-bottom: 16px;
+      line-height: 1.4;
+      background: #fafafa;
+      width: 100% !important;
+      box-sizing: border-box !important;
+    }
+    .signatures { display: flex; justify-content: space-between; margin-top: 24px; width: 100% !important; box-sizing: border-box !important; }
+    .sig { text-align: center; width: 45%; position: relative; min-height: 90px; box-sizing: border-box; }
+    .sig .name { border-top: 1px solid #000; padding-top: 3px; margin-bottom: 2px; }
+    .chk-box {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 1px solid #000;
+      text-align: center;
+      line-height: 12px;
+      font-size: 11px;
+      font-weight: 900;
+      vertical-align: middle;
+      margin-right: 5px;
+      background: #fff;
+      box-sizing: border-box;
+    }
+
+    /* Screen Controls */
+    .screen-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 760px;
+      margin: 12px auto 10px auto;
+      padding: 8px 14px;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      font-family: 'Segoe UI', sans-serif;
+      box-sizing: border-box;
+    }
+
+    @media print {
+      *, *:before, *:after {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        width: 100% !important;
+        height: auto !important;
+      }
+      .no-print, .screen-controls, .alert, #gezynebot-container {
+        display: none !important;
+      }
+      .report-page {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      .report-container {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+      .doc-letterhead,
+      .report-container .doc-letterhead {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 12px !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        width: 100% !important;
+      }
+      .doc-letterhead *,
+      .report-container .doc-letterhead * {
+        visibility: visible !important;
+      }
+      .logo {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+      }
+      .lab-title h1 {
+        color: #009957 !important;
+        visibility: visible !important;
+      }
+      .lab-sub {
+        color: #334155 !important;
+        visibility: visible !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Screen Controls Bar (visible on screen, hidden on print) -->
+  <div class="screen-controls no-print">
+    <button type="button" onclick="handleDocBack()" style="padding: 7px 16px; background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.88rem; display: inline-flex; align-items: center; gap: 6px;">
+      ← Back to Portal
+    </button>
+    <div style="display: flex; gap: 10px; align-items: center;">
+      <% if (leave) { %>
+        <span style="font-size: 0.78rem; color: #166534; background: #dcfce7; padding: 6px 12px; border-radius: 6px; font-weight: 600;">
+          ✓ Leave Slip Generated • Ready to Print
+        </span>
+      <% } %>
+      <button onclick="window.print()" style="padding: 8px 20px; background: #009957; color: white; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-size: 0.9rem; box-shadow: 0 2px 5px rgba(0, 153, 87, 0.3);">
+        <span>🖨️</span> Print Leave Slip
+      </button>
+    </div>
+  </div>
+
+  <!-- Official Leave Slip Page (Full-Page Letter Proportion) -->
+  <div class="report-page">
+    <div class="report-container">
+      <!-- Letterhead -->
+      <div class="doc-letterhead">
+        <div>
+          <img src="/assets/gezyne-logo.png" class="logo" alt="logo">
+        </div>
+        <div class="lab-title">
+          <h1>GEZYNE CLINICAL LABORATORY</h1>
+          <div class="lab-sub" style="font-weight: 600;">0330 VERGEL DE DIOS ST POBLACION PLARIDEL • NEAR MUNICIPAL BASKETBALL COURT</div>
+          <div class="lab-sub">Tel: 0917-649-0807 / 0960-390-0921 / 795-5007 • Lic. No. 03-435-15CL-20</div>
+        </div>	
+        <div style="min-width: 155px; font-size: 12px; text-align: right;">
+          <table style="border-collapse: collapse; width: 100%; font-size: 12px; border: 1px solid #000; box-sizing: border-box;">
+            <tr>
+              <td style="border: 1px solid #000; padding: 4px 6px; text-align: left; background: #fafafa; font-weight: 600; width: 45%;">Form Ref:</td>
+              <td style="border: 1px solid #000; padding: 4px 6px; font-weight: bold; text-align: left; width: 55%;">GCL-HR-LV</td>
+            </tr>
+            <tr>
+              <td style="border: 1px solid #000; padding: 4px 6px; text-align: left; background: #fafafa; font-weight: 600;">Date:</td>
+              <td style="border: 1px solid #000; padding: 4px 6px; font-weight: bold; text-align: left;"><%= currentDate %></td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- Form Title -->
+      <div class="section-title">
+        APPLICATION FOR LEAVE OF ABSENCE
+      </div>
+
+      <!-- Employee Information Grid -->
+      <table class="patient-box">
+        <colgroup>
+          <col style="width: 18%;">
+          <col style="width: 42%;">
+          <col style="width: 18%;">
+          <col style="width: 22%;">
+        </colgroup>
+        <tr>
+          <td style="background: #fafafa; font-weight: 600;">Employee Name:</td>
+          <td style="font-size: 13.5px;"><strong><%= employee ? employee.name.toUpperCase() : '' %></strong></td>
+          <td style="background: #fafafa; font-weight: 600;">Employee ID:</td>
+          <td><strong><%= employee ? (employee.employeeCode || '—') : '—' %></strong></td>
+        </tr>
+        <tr>
+          <td style="background: #fafafa; font-weight: 600;">Position / Designation:</td>
+          <td><strong><%= employee ? (employee.position || 'Laboratory Staff') : 'Laboratory Staff' %></strong></td>
+          <td style="background: #fafafa; font-weight: 600;">Department:</td>
+          <td><strong><%= employee ? (employee.department || 'Clinical Laboratory') : 'Clinical Laboratory' %></strong></td>
+        </tr>
+      </table>
+
+      <!-- Leave Details Box -->
+      <table class="details-box">
+        <colgroup>
+          <col style="width: 55%;">
+          <col style="width: 45%;">
+        </colgroup>
+        <tr>
+          <td style="padding: 10px 14px; vertical-align: top;">
+            <div style="font-weight: bold; font-size: 12.5px; margin-bottom: 8px; text-transform: uppercase;">Type of Leave Requested:</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; font-size: 12px;">
+              <div><span class="chk-box"><%= (leave && leave.leaveType === 'Vacation') ? '✓' : '' %></span> <strong>Vacation Leave (VL)</strong></div>
+              <div><span class="chk-box"><%= (leave && leave.leaveType === 'Sick') ? '✓' : '' %></span> <strong>Sick Leave (SL)</strong></div>
+              <div><span class="chk-box"><%= (leave && leave.leaveType === 'Emergency') ? '✓' : '' %></span> <strong>Emergency Leave</strong></div>
+              <div><span class="chk-box"><%= (leave && leave.leaveType === 'Maternity') ? '✓' : '' %></span> <strong>Maternity Leave</strong></div>
+              <div><span class="chk-box"><%= (leave && leave.leaveType === 'Paternity') ? '✓' : '' %></span> <strong>Paternity Leave</strong></div>
+              <div><span class="chk-box"><%= (leave && (leave.leaveType === 'Bereavement' || leave.leaveType === 'Other')) ? '✓' : '' %></span> <strong>Bereavement / Other</strong></div>
+            </div>
+          </td>
+          <td style="padding: 10px 14px; vertical-align: top; background: #fafafa;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+              <span style="font-weight: 600;">Applied Working Days:</span>
+              <strong style="font-size: 13.5px;"><%= leave ? `${leave.totalDays} Day${leave.totalDays > 1 ? 's' : ''}` : '____ Day(s)' %></strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+              <span style="font-weight: 600;">Filing Date:</span>
+              <span><%= (leave && leave.createdAt) ? leave.createdAt.split('T')[0] : currentDate %></span>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+              <span style="font-weight: 600;">Inclusive Dates:</span>
+              <strong style="color: #000;"><%= leave ? `${leave.startDate} to ${leave.endDate}` : '___________ to ___________' %></strong>
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2" style="padding: 10px 14px; min-height: 48px; border: 1px solid #000 !important; border-right: 1px solid #000 !important;">
+            <span style="font-weight: bold; font-size: 12px;">Reason / Purpose:</span>
+            <span style="font-style: italic; margin-left: 8px;"><%= (leave && leave.reason) ? leave.reason : '(No specific reason indicated)' %></span>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Policy Notice Note -->
+      <div class="policy-note">
+        <strong>Laboratory Policy:</strong> All leaves of absence are non-paid (Leave Without Pay / LWOP). Approved leave days are logged in the employee DTR for official attendance reconciliation.
+      </div>
+
+      <!-- Signatures -->
+      <div class="signatures">
+        <!-- Staff Signature -->
+        <div class="sig">
+          <div style="font-size: 11px; color: #555; font-style: italic; margin-bottom: 38px;">
+            I hereby file for leave of absence as indicated above:
+          </div>
+          <div class="name">
+            <strong style="font-size: 13.5px;"><%= employee ? employee.name.toUpperCase() : 'APPLICANT SIGNATURE' %></strong>
+          </div>
+          <div style="font-size: 11px; color: #444;">Staff Signature over Printed Name</div>
+        </div>
+
+        <!-- Laboratory Owner Signature -->
+        <div class="sig">
+          <div style="display: flex; justify-content: center; gap: 16px; margin-bottom: 6px; font-size: 12px; font-weight: bold;">
+            <span><span class="chk-box"><%= (leave && leave.status === 'Approved') ? '✓' : '' %></span> APPROVED</span>
+            <span><span class="chk-box"><%= (leave && leave.status === 'Rejected') ? '✓' : '' %></span> DISAPPROVED</span>
+          </div>
+          <div style="height: 34px; position: relative;">
+            <% if (owner && owner.signature) { %>
+              <img src="<%= owner.signature %>" alt="Owner Signature" style="max-height: 34px; max-width: 130px; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); pointer-events: none;">
+            <% } %>
+          </div>
+          <div class="name" style="font-size: 13.5px;">
+            <strong><%= (owner && owner.name) ? owner.name.toUpperCase() : 'GENALYN LOPEZ' %></strong>
+          </div>
+          <div style="font-size: 11px; font-weight: bold;">
+            <%= (owner && owner.title) ? owner.title : 'Laboratory Owner' %>
+          </div>
+          <div style="font-size: 10px; color: #555; margin-top: 2px;">
+            Gezyne Clinical Laboratory • Date: <strong><%= (leave && leave.approvedAt) ? leave.approvedAt.split('T')[0] : (leave && leave.status === 'Approved' ? currentDate : '__________') %></strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  function handleDocBack() {
+    if (window.opener && window.history.length <= 1) {
+      window.close();
+      return;
+    }
+    if (window.history.length > 1 && document.referrer) {
+      window.history.back();
+      return;
+    }
+    window.location.href = '/hr/my';
+  }
+  </script>
+</body>
+</html>

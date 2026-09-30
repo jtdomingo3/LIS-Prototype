@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= typeof title !== 'undefined' ? title : `Certificate of Employment — ${typeof employee !== 'undefined' && employee ? employee.name : ''}` %></title>
+  <style>
+    * { box-sizing: border-box; }
+    @page { size: Letter portrait; margin: 8mm 10mm; }
+    body {
+      margin: 0;
+      padding: 0;
+      background: #f1f5f9;
+      font-family: 'Times New Roman', Times, serif;
+      -webkit-font-smoothing: antialiased;
+    }
+  </style>
+</head>
+<body>
+<div class="content-wrapper" style="position: relative; overflow: hidden; padding: 48px 54px; max-width: 820px; margin: 15px auto; background: white; font-family: 'Times New Roman', Times, serif; color: #1e293b; box-shadow: 0 4px 20px rgba(0,0,0,0.06); border-radius: 8px;">
+    <%
+      const withSalary = typeof includeSalary !== 'undefined' ? includeSalary : false;
+      const docPurpose = typeof purpose !== 'undefined' ? purpose : 'employment verification';
+    %>
+    <!-- Watermark Logo (embedded laboratory security seal matching diagnostic reports) -->
+    <img class="watermark" src="/assets/gezyne-logo.png" alt="" />
+
+    <!-- Content Layer Above Watermark -->
+    <div class="coe-body" style="position: relative; z-index: 1;">
+        <!-- Controls (hidden on print) -->
+        <div class="no-print" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 14px; border-bottom: 1px solid #e2e8f0; font-family: 'Segoe UI', sans-serif;">
+            <button type="button" onclick="handleDocBack()" style="padding: 6px 14px; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; border-radius: 6px; font-weight: 600; cursor: pointer;">
+                ← Back
+            </button>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <% if (typeof sessionUser !== 'undefined' && sessionUser && (sessionUser.role === 'Admin' || sessionUser.role === 'Manager' || sessionUser.role === 'Owner')) { %>
+                    <label style="font-size: 0.85rem; color: #475569; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                        <input type="checkbox" id="salaryToggle" <%= withSalary ? 'checked' : '' %> onchange="toggleSalary(this)">
+                        Include Monthly Salary
+                    </label>
+                <% } %>
+                <button onclick="window.print()" style="padding: 8px 18px; background: #4f46e5; color: white; border: none; border-radius: 6px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                    <span>🖨️</span> Print Official COE
+                </button>
+            </div>
+        </div>
+
+        <!-- Official Letterhead with Laboratory Logo -->
+        <div style="display: flex; align-items: center; justify-content: center; gap: 20px; border-bottom: 3px double #1e293b; padding-bottom: 18px; margin-bottom: 34px;">
+            <img src="/assets/gezyne-logo.png" alt="Gezyne Clinical Laboratory Logo" style="height: 72px; width: auto; object-fit: contain;">
+            <div style="text-align: center;">
+                <div style="font-size: 1.65rem; font-weight: bold; letter-spacing: 1.2px; color: #0f172a; text-transform: uppercase;">
+                    GEZYNE CLINICAL LABORATORY
+                </div>
+                <div style="font-size: 0.95rem; font-style: italic; color: #475569; margin-top: 3px;">
+                    Comprehensive Diagnostic, Imaging &amp; Laboratory Services
+                </div>
+                <div style="font-size: 0.85rem; color: #64748b; margin-top: 2px;">
+                    DOH Licensed Clinical Laboratory • Republic of the Philippines
+                </div>
+            </div>
+        </div>
+
+        <!-- Document Title -->
+        <div style="text-align: center; margin-bottom: 36px;">
+            <h1 style="font-size: 1.8rem; font-weight: bold; letter-spacing: 2px; text-decoration: underline; margin: 0; color: #0f172a;">
+                CERTIFICATE OF EMPLOYMENT
+            </h1>
+        </div>
+
+        <!-- Salutation -->
+        <div style="font-size: 1.1rem; font-weight: bold; margin-bottom: 24px; color: #0f172a;">
+            TO WHOM IT MAY CONCERN:
+        </div>
+
+        <!-- Certification Body Paragraphs -->
+        <div style="font-size: 1.1rem; line-height: 1.8; text-align: justify; margin-bottom: 24px;">
+            <p style="text-indent: 40px; margin-bottom: 18px;">
+                This is to certify that <strong><%= employee.name.toUpperCase() %></strong> has been a bonafide employee of <strong>GEZYNE CLINICAL LABORATORY</strong> holding the position of <strong><%= employee.position ? employee.position.toUpperCase() : 'LABORATORY STAFF' %></strong> under the <strong><%= employee.department ? employee.department.toUpperCase() : 'CLINICAL LABORATORY' %></strong> department from <strong><%= employee.dateHired || 'the start of operations' %></strong> up to 
+                <% if (employee.employmentStatus === 'Terminated' || employee.employmentStatus === 'Resigned' || employee.employmentStatus === 'AWOL') { %>
+                    <strong><%= employee.dateResigned || employee.dateTerminated || employee.endDate || 'the date of separation' %></strong>.
+                <% } else { %>
+                    <strong>the present</strong>.
+                <% } %>
+            </p>
+
+            <% if (withSalary) { %>
+                <p style="text-indent: 40px; margin-bottom: 18px;">
+                    As of this certification, <%= employee.name %> receives a basic monthly compensation of <strong>₱<%= (Number(employee.basicSalary) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></strong>
+                    <% if (Number(employee.allowancesTotal || employee.totalAllowances) > 0) { %>
+                        with additional monthly non-taxable de minimis and operational allowances of <strong>₱<%= (Number(employee.allowancesTotal || employee.totalAllowances) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %></strong>
+                    <% } %>, subject to applicable statutory deductions.
+                </p>
+            <% } %>
+
+            <p style="text-indent: 40px; margin-bottom: 24px;">
+                This certification is issued upon the formal request of <strong><%= employee.name %></strong> for visa application, banking/loan application, employment verification, or whatever legal purpose it may serve, without any liability on the part of Gezyne Clinical Laboratory or its authorized officers.
+            </p>
+
+            <p style="text-indent: 40px;">
+                Given this <strong><%= currentDate %></strong> at the City of Manila, Republic of the Philippines.
+            </p>
+        </div>
+
+        <!-- Signatory: Laboratory Owner -->
+        <div style="margin-top: 55px; display: flex; justify-content: flex-end;">
+            <div style="text-align: center; width: 320px;">
+                <div style="height: 60px; position: relative;">
+                    <% if (owner && owner.signature) { %>
+                        <img src="<%= owner.signature %>" alt="Signature" style="max-height: 55px; max-width: 180px; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); pointer-events: none;">
+                    <% } %>
+                </div>
+                <div style="border-top: 1.5px solid #1e293b; padding-top: 6px; font-weight: bold; font-size: 1.05rem; color: #0f172a; text-transform: uppercase; letter-spacing: 0.03em;">
+                    <%= (owner && owner.name) ? owner.name.toUpperCase() : 'GENALYN LOPEZ' %>
+                </div>
+                <div style="font-size: 0.9rem; color: #334155; font-weight: 600;">
+                    <%= (owner && owner.title) ? owner.title : 'Laboratory Owner' %>
+                </div>
+                <div style="font-size: 0.82rem; color: #64748b; font-style: italic;">
+                    Gezyne Clinical Laboratory
+                </div>
+            </div>
+        </div>
+
+        <!-- Official Security & Validity Remarks (Watermark acts as Official Seal; seal placeholder removed) -->
+        <div style="margin-top: 45px; padding-top: 14px; border-top: 1px dashed #cbd5e1; font-size: 0.76rem; color: #64748b; font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6;">
+            <div style="font-weight: 700; color: #b91c1c; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 3px;">
+                ⚠️ Official Authentication &amp; Validity Notice:
+            </div>
+            <div>
+                • This certificate is <strong>strictly NOT valid without the authentic signature of the Laboratory Owner</strong>.
+            </div>
+            <div>
+                • The embedded high-resolution watermark of <strong>Gezyne Clinical Laboratory</strong> serves as the official document security seal. Any erasure, alteration, or tampering invalidates this document.
+            </div>
+            <div style="margin-top: 4px; color: #94a3b8; font-size: 0.72rem;">
+                Document Tracking Ref: <strong>COE-<%= employee.employeeCode %>-<%= Date.now().toString().slice(-6) %></strong> • Issued by Gezyne Clinical Laboratory HR Administration
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function handleDocBack() {
+    if (window.opener && window.history.length <= 1) {
+        window.close();
+        return;
+    }
+    if (window.history.length > 1 && document.referrer) {
+        window.history.back();
+        return;
+    }
+    window.location.href = '/hr/my';
+}
+
+function toggleSalary(cb) {
+    const url = new URL(window.location.href);
+    if (cb.checked) {
+        url.searchParams.set('salary', '1');
+    } else {
+        url.searchParams.delete('salary');
+    }
+    window.location.href = url.toString();
+}
+</script>
+
+<style>
+#gezynebot-container, .gezynebot-container, #gezynebot-launcher, #gezynebot-panel {
+    display: none !important;
+}
+
+.watermark {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 62%;
+    opacity: 0.07;
+    pointer-events: none;
+    z-index: 0;
+}
+
+@media print {
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+    }
+    .no-print {
+        display: none !important;
+    }
+    .content-wrapper {
+        border: none !important;
+        box-shadow: none !important;
+        padding: 10px 15px !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+    }
+    .watermark {
+        opacity: 0.08 !important;
+        width: 65% !important;
+    }
+}
+</style>
+</body>
+</html>

@@ -101,6 +101,7 @@
               <td style="padding:14px; text-align:right; white-space:nowrap;">
                 <% if (!isSignedByMe) { %>
                   <form action="/signatures/<%= t.id %>/sign" method="POST" style="display:inline-block; margin:0;">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                     <button type="submit" class="button btn-primary btn-small" style="padding:6px 14px; font-size:0.82em; font-weight:600;">
                       ✍️ Sign Report
                     </button>

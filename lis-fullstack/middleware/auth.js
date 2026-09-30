@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const { extractBearerToken, verifyToken } = require('../lib/tokenHelper');
 
 // Middleware to check if user is authenticated
@@ -36,19 +37,24 @@ const requireAuth = (req, res, next) => {
       const allUsers = typeof global.db.getUsers === 'function' ? global.db.getUsers() : [];
       const matchUser = allUsers.find(u => u && u.email && u.email.toLowerCase() === syncEmail.toLowerCase());
       // Cryptographically verify that the provided hash matches the user's stored password hash
-      if (matchUser && matchUser.password && matchUser.password === syncHash && matchUser.status !== 'Inactive') {
-        req.session = req.session || {};
-        req.session.user = {
-          id: matchUser.id || matchUser.email,
-          name: matchUser.name || matchUser.email,
-          email: matchUser.email,
-          role: matchUser.role || 'User',
-          permissions: matchUser.permissions || {},
-          signature: matchUser.signature || null,
-          licenseNumber: matchUser.licenseNumber || '',
-        };
-        req.user = req.session.user;
-        return next();
+      if (matchUser && matchUser.password && matchUser.status !== 'Inactive') {
+        const { validateSyncToken } = require('../lib/syncAuth');
+        const isMatch = validateSyncToken(syncHash, syncEmail, matchUser.password);
+        
+        if (isMatch) {
+          req.session = req.session || {};
+          req.session.user = {
+            id: matchUser.id || matchUser.email,
+            name: matchUser.name || matchUser.email,
+            email: matchUser.email,
+            role: matchUser.role || 'User',
+            permissions: matchUser.permissions || {},
+            signature: matchUser.signature || null,
+            licenseNumber: matchUser.licenseNumber || '',
+          };
+          req.user = req.session.user;
+          return next();
+        }
       }
     }
   } catch (e) { /* ignore hash auth errors */ }
@@ -194,6 +200,59 @@ const canAccessTemplates = (req, res, next) => {
   return res.redirect(getUserHomeRoute(user));
 };
 
+// Middleware to check if user can access Costing & P&L module
+const canAccessCosting = (req, res, next) => {
+  if (!req.session || !req.session.user) {
+    if (req.flash) req.flash('error_msg', 'Please log in to access this page');
+    return res.redirect('/');
+  }
+
+  const user = req.session.user;
+  const managementRoles = new Set(['Admin', 'Manager', 'Owner']);
+  if (managementRoles.has(user.role)) return next();
+
+  let perms = user.permissions || {};
+  if (typeof perms === 'string') {
+    try { perms = JSON.parse(perms); } catch (_) { perms = {}; }
+  }
+
+  if (perms.costing) return next();
+
+  if (req.flash) req.flash('error_msg', 'Access restricted: Only management can access Financial Costing & Analytics.');
+  return res.redirect(getUserHomeRoute(user));
+};
+
+// Middleware to check if user can manage HR & Payroll
+const canAccessHR = (req, res, next) => {
+  if (!req.session || !req.session.user) {
+    if (req.flash) req.flash('error_msg', 'Please log in to access this page');
+    return res.redirect('/');
+  }
+
+  const user = req.session.user;
+  const managementRoles = new Set(['Admin', 'Manager', 'Owner']);
+  if (managementRoles.has(user.role)) return next();
+
+  let perms = user.permissions || {};
+  if (typeof perms === 'string') {
+    try { perms = JSON.parse(perms); } catch (_) { perms = {}; }
+  }
+
+  if (perms.hr) return next();
+
+  if (req.flash) req.flash('error_msg', 'Access restricted: Only management can manage HR and all staff salaries.');
+  return res.redirect('/hr/my');
+};
+
+// Middleware to allow authenticated staff to view their own HR portal / documents / payslips
+const canAccessOwnHR = (req, res, next) => {
+  if (!req.session || !req.session.user) {
+    if (req.flash) req.flash('error_msg', 'Please log in to access this page');
+    return res.redirect('/');
+  }
+  next();
+};
+
 module.exports = {
   requireAuth,
   requireGuest,
@@ -201,5 +260,8 @@ module.exports = {
   canAccessPatient,
   canAccessTemplates,
   canManageUsers,
+  canAccessCosting,
+  canAccessHR,
+  canAccessOwnHR,
   getUserHomeRoute
 };

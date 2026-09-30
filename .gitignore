@@ -1,6 +1,8 @@
 # Ignore node_modules in all locations
 node_modules/
 **/node_modules/
+package-lock.json
+**/package-lock.json
 
 # Ignore the sample results folder at repo root
 /sample results/
@@ -11,6 +13,7 @@ node_modules/
 npm-debug.log*
 lis-fullstack/data.json
 lis-fullstack/data-users.json
+*.migrated
 lis-fullstack/logs/report-errors.log
 lis-fullstack/build/
 # Ignore uploaded e-signatures stored by the app
@@ -37,11 +40,14 @@ lis-app-standalone/test-tmp/
 lis-app-standalone/tests/
 lis-app-standalone/test-offline-*.js
 test/tmp/
-tmp-e2e-offline/
+tmp-*
+tmp-*/
 lis-fullstack/lis-data.db-shm
 lis-fullstack/lis-data.db-wal
 lis-fullstack/lis-data.db
-lis-angular/backend/data/*.db
+lis-app-standalone/lis-data.db
+lis-fullstack/data/lis.db
+*.db
 lis-angular/backend/data/*.db-shm
 lis-angular/backend/data/*.db-wal
 lis-angular/backend/data/lis.db
@@ -58,11 +64,20 @@ tools/security-audit/audit-report-latest.json
 **/.env.local
 **/.env.*.local
 !**/.env.example
+*.secret
+**/*.secret
+.auth_token_secret
+**/.auth_token_secret
 
 # IDE and editor directories
 .idea/
+**/.idea/
 *.iml
+**/*.iml
+.vscode/
+**/.vscode/
 
 # Walkthrough and temporary dev documentation
 lis-fullstack/walkthrough.md
 walkthrough.md
+audit/

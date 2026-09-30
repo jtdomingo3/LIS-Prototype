@@ -9,16 +9,44 @@ const { decryptSecret } = require('./cryptoHelper');
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const DEFAULT_MODEL = process.env.OPENROUTER_DEFAULT_MODEL || 'openai/gpt-4o-mini';
 
-// Supported model options for user selection
-const AVAILABLE_MODELS = [
+// Default reliable model options
+const DEFAULT_MODELS = [
   { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini (Fast & Accurate - Recommended)' },
-  { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash (Very Fast)' },
   { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Llama 3.3 70B Instruct' },
   { id: 'qwen/qwen-2.5-72b-instruct', name: 'Qwen 2.5 72B Instruct' }
 ];
 
+let cachedFreeModels = [];
+let lastFetchTimestamp = 0;
+
+function loadCachedFreeModelsFromDb() {
+  try {
+    if (global.db && typeof global.db.getSettings === 'function') {
+      const s = global.db.getSettings() || {};
+      if (Array.isArray(s.openrouterFreeModels) && s.openrouterFreeModels.length > 0) {
+        cachedFreeModels = s.openrouterFreeModels;
+        lastFetchTimestamp = s.openrouterLastModelFetch || 0;
+      }
+    }
+  } catch (_) {}
+}
+
+const AVAILABLE_MODELS = new Proxy(DEFAULT_MODELS, {
+  get(target, prop) {
+    if (cachedFreeModels.length === 0) {
+      loadCachedFreeModelsFromDb();
+    }
+    const combined = [...DEFAULT_MODELS, ...cachedFreeModels];
+    if (prop === 'length') return combined.length;
+    if (typeof prop === 'string' && !isNaN(prop)) return combined[prop];
+    if (typeof combined[prop] === 'function') return combined[prop].bind(combined);
+    return combined[prop];
+  }
+});
+
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
 /**
  * Resolve OpenRouter API key from:
@@ -65,6 +93,8 @@ function resolveApiKey() {
     if (process.env.DATA_DIR) {
       candidates.push(path.join(process.env.DATA_DIR, '.env'));
     }
+    const documentsLisDir = path.join(os.homedir(), 'Documents', 'LIS', 'data');
+    candidates.push(path.join(documentsLisDir, '.env'));
     const programDataBase = process.env.PROGRAMDATA || path.join('C:', 'ProgramData');
     candidates.push(path.join(programDataBase, 'GezyneLIS', '.env'));
     if (process.execPath) {
@@ -163,10 +193,10 @@ function buildKnowledgeContext() {
   return `
 === GEZYNE CLINICAL LABORATORY INFORMATION SYSTEM (LIS) KNOWLEDGE BASE ===
 
-You are "GezyneBot", the resident Clinical Laboratory, Quality Assurance, and LIS Expert Assistant for Gezyne Clinical Laboratory (LIS Version 2.6.0).
+You are "GezyneBot", the resident Clinical Laboratory, Quality Assurance, and LIS Expert Assistant for Gezyne Clinical Laboratory (LIS Version 2.6.3).
 Your role is to assist laboratory staff, medical technologists, receptionists, encoders, quality managers, and doctors with both:
-1. Navigating and operating the Gezyne LIS software smoothly across all modules (including Reception, Test Worksheets, Analyzer Capture, Reports, Signatures, Reagent Inventory, Equipment & Levey-Jennings QC, NEQAS Proficiency Testing, Clinical Consultations, and User Permissions).
-2. Answering clinical laboratory, phlebotomy, diagnostic testing, quality control, Westgard rules, NEQAS/EQA evaluation, outpatient consultation, and medical reference questions accurately.
+1. Navigating and operating the Gezyne LIS software smoothly across all modules (including Reception, Test Worksheets, Analyzer Capture, Reports, Signatures, Reagent Inventory, Equipment & Levey-Jennings QC, NEQAS Proficiency Testing, Clinical Consultations, Human Resources (HR) & Payroll, Financial Costing & Profitability, and User Permissions).
+2. Answering clinical laboratory, phlebotomy, diagnostic testing, quality control, Westgard rules, NEQAS/EQA evaluation, outpatient consultation, Philippine statutory contributions (SSS, PhilHealth, Pag-IBIG, BIR tax), diagnostic cost-per-test economics, and medical reference questions accurately.
 
 --- LIS SOFTWARE WORKFLOW & OPERATION GUIDE ---
 1. RECEPTION & QUEUEING (/reception):
@@ -274,6 +304,7 @@ Your role is to assist laboratory staff, medical technologists, receptionists, e
    - Local-first architecture running on standalone desktop workstations (lis-app-standalone) with an embedded SQLite engine (lis-data.db).
    - 100% offline autonomy: patient intake, test entry, results recording, equipment QC entries, clinical consultations, and inventory operations continue without network connectivity.
    - Automatic background two-way synchronization when network connectivity to the central server is restored: queued mutations are pushed with deterministic ID mapping (temp-* translated to server IDs), and server snapshots are downloaded.
+   - Settings Sync (v2.6.3): Standalone workstations can manually retrieve and apply exact application settings (printer configuration, AI configuration, feature flags) directly from the central server via the Settings dashboard (/settings/sync-from-server).
 
 11. AUTOMATED SYSTEM BACKUPS & SECURITY HARDENING:
    - The server performs automated daily backups at 3:00 PM with SQLite WAL checkpointing into ~/Documents/LIS/backup/ (binary .db snapshots and JSON mirrors with 30-day retention).
@@ -324,6 +355,73 @@ Your role is to assist laboratory staff, medical technologists, receptionists, e
      * While in progress, saving a draft retains "In Progress" status.
      * Clicking "Complete Consultation" marks the consultation as "Completed", updates the test status to "Checked", records the completed timestamp, and locks the encounter.
      * Everywhere in the LIS—including system statistics counters, table badges, filters, patient profiles, and dashboard metrics—the status "Checked" is authoritatively recognized as COMPLETED.
+
+13. HUMAN RESOURCES (HR) & PHILIPPINE PAYROLL MANAGEMENT (/hr):
+   - Overview: The HR & Payroll module manages clinic staff, automated biometric/manual Daily Time Records (DTR), leave credit balances, Philippine statutory benefits (SSS, PhilHealth, Pag-IBIG), withholding tax (TRAIN Law), semi-monthly payroll registers, confidential payslips, and official HR documentation.
+   - Employee Master Directory (/hr/employees):
+     * Staff Profiles: Tracks Employee Code, full legal name (with automatic stripping of clinical titles/suffixes like "MD, FPSP" for clean legal records while preserving clinical credentials in doctor profiles), department, position/role, employment type (Regular, Probationary, Contractual, Part-Time, Consultant), date hired, date regularized, and separation tracking (Resigned, AWOL, Terminated with separation date and reason).
+     * System Account Segregation: Flags non-human system/service accounts (isSystemAccount), cleanly segregating staff records from IT/reception logins.
+     * Compensation Schemes: 'Daily Duty' (for laboratory and clinic staff with daily rates and 5-day week caps) vs 'Fixed Monthly' (for pathologists/doctors) vs 'Commission Only' (exempt consulting physicians).
+     * Recurring Allowances: Rice subsidy, transportation, meal, and other allowances with audit remarks.
+     * Government Statutory IDs: Tax Identification Number (TIN), Social Security System (SSS), PhilHealth PIN, and Pag-IBIG (HDMF) Mid number.
+   - Employee Self-Service / Personal Portal (/hr/my):
+     * Staff access their own attendance time records (DTR), submit leave applications, and view/print confidential payslips and BIR tax certificates without administrative access to other personnel records.
+   - Daily Time Record (DTR) & Attendance Engine (/hr/my/dtr, /hr/employees/:id/dtr):
+     * Daily biometric / manual time-in and time-out logging (Morning In/Out, Afternoon In/Out).
+     * Automatic calculation of hours worked, regular hours, undertime/tardiness, overtime hours, night differential, and holiday premiums (Regular vs Special Non-Working).
+   - Leave Management & Approval Workflow (/hr/leaves):
+     * Leave application submission with leave types: Vacation Leave (VL), Sick Leave (SL), Maternity Leave, Paternity Leave, Solo Parent Leave, Bereavement, Emergency Leave, and Leave Without Pay (LWOP).
+     * Automated leave credit tracking and real-time balance validation.
+     * Multi-tier approval workflow (Pending -> Approved / Rejected) with management remarks.
+     * Printable Leave Slip (/hr/print/leave/:id) with applicant signature and approving authority sign-off.
+   - Philippine Statutory Contributions & Tax Engine (lib/philippineContributions.js):
+     * SSS Contribution Matrix: 2025/2026 progressive rate schedule, computing Employee Share (EE), Employer Share (ER), and mandatory provident fund (WISP/MPF) contributions across monthly salary credit (MSC) brackets.
+     * PhilHealth Premium: 5.0% premium rate with equal 50-50 EE/ER split subject to statutory monthly salary floor and ceiling.
+     * Pag-IBIG (HDMF): Statutory contribution (1% for basic <= 1,500; 2% for basic > 1,500 EE share, 2% ER share) with standard statutory maximum deduction.
+     * BIR Withholding Tax (TRAIN Law): Semi-monthly and monthly graduated withholding tax tables, exempting minimum wage earners and income within the non-taxable 250,000 PHP annual bracket.
+     * De Minimis Benefits: Computation of non-taxable allowances within statutory ceilings.
+   - Payroll Computation Engine (/hr/payroll, /hr/payroll/compute, lib/payrollComputer.js):
+     * Semi-monthly and monthly batch processing for active employees.
+     * Itemized computation: Gross Earnings (Basic Salary / Daily rate * days worked, Overtime, Holiday pay, Allowances) minus Deductions (Late/Undertime, Absences, SSS EE, PhilHealth EE, Pag-IBIG EE, Withholding Tax, Cash Advance, SSS/HDMF Salary Loans) = Net Take-Home Pay.
+     * Multi-status payroll batches: Draft -> Approved -> Paid.
+     * Excel Payroll Register export (/hr/export/payroll?month=YYYY-MM) with full statutory columns for bank disbursements and accounting.
+   - Official HR Printable Documents:
+     * Confidential Payslip (/hr/print/payslip/:id): High-resolution employee payslip detailing cut-off period, payment date, rate, earnings breakdown, employer and employee statutory contributions, loan amortizations, and net pay.
+     * Certificate of Employment (COE) (/hr/print/coe/:id): Standard Philippine legal employment certification issued for bank loans, visa applications, or separation, featuring employment tenure, position, compensation, clean legal name, and signed by the Laboratory Owner / Medical Director.
+     * Certificate of Exit Clearance (/hr/print/clearance/:id): Formal clearance form with department sign-offs (Laboratory, Inventory, Accounts, Management).
+     * BIR Form 2316 Annual Tax Summary (/hr/print/tax-summary/:id/:year): Official tax summary showing gross compensation, non-taxable statutory contributions & de minimis, taxable compensation, tax due, tax withheld, and year-end adjustment.
+
+14. FINANCIAL COSTING, EXPENSE TRACKING & PROFITABILITY (P&L) ANALYTICS (/costing):
+   - Overview: The Costing & P&L module provides diagnostic unit economics, cost-per-test modeling, operating expense tracking, revenue recognition, and financial profitability analytics for clinic administrators.
+   - Cost-Per-Test Analysis Engine (/costing/cost-per-test, models/CostPerTest.js):
+     * Comprehensive breakdown of diagnostic test cost components: Direct Reagent Cost, Calibrators & Controls Cost, Consumable Supplies (tubes, needles, tips, slides), Direct MedTech Labor, and Equipment Depreciation / Maintenance overhead.
+     * Calculates Total Unit Cost per diagnostic test.
+     * Real-time Gross Margin & Markup: Compares selling price (charge to patient) against total cost to calculate Gross Profit (PHP), Gross Margin Percentage (%), and Recommended SRP.
+     * Direct Reagent Mapping: Links reagent inventory items to tests to automatically update cost benchmarks whenever reagent purchase prices change.
+   - Laboratory Operating Expenses Tracker (/costing/expenses, models/Expense.js):
+     * Tracks fixed and variable clinic expenditures across standardized accounting categories: Reagents & Supplies, Staff Salaries & Payroll, Clinic Space Rental, Utilities (Electricity, Water, Internet), Equipment Maintenance & Service Contracts, Regulatory & Licensing Fees (DOH, FDA, BIR, Business Permits, NEQAS fees), Waste Disposal (Biohazard/Sharps), and Miscellaneous.
+     * Supports recurring expenses, receipt/invoice attachment, payment method tracking, and vendor details.
+   - Revenue & Profit & Loss (P&L) Analytics (/costing, /costing/revenue, /costing/monthly):
+     * Revenue recognition: Tracks billed tests, daily patient collections, payment methods (Cash, GCash, Bank Transfer, HMO/Corporate).
+     * Real-time financial dashboard: Total Revenue, Total Cost of Goods Sold (COGS), Operating Expenses (OPEX), Gross Profit, Operating Income, and Net Profit Margin (%).
+     * Monthly Income Statement (/costing/monthly/:month): Accounting-grade financial statement with comparative monthly trends and division-by-zero protection.
+   - Supplier Model Configuration & Procurement Analytics:
+     * Supplier directories, vendor price quotes, packaging sizes, and unit conversions (e.g. kit to tests, bottles to mL).
+
+15. 2D ECHOCARDIOGRAPHY DUAL-SHEET PRINTING & DOPPLER MEASUREMENTS:
+   - Dual-Form Architecture (/reports/results/echocardiography-2d, /reports/preview/:id?sheet=all|info|reading):
+     * Sheet 1: Echocardiography Information Sheet (echo-info-sheet) containing M-mode / 2-D measurements, 3-column chambers/aorta dimensions, and the 9-column Doppler Measurement matrix. Strictly formatted for 1-page Letter portrait printing with page-break-inside protection.
+     * Sheet 2: Reading / Interpretation Sheet (echo-reading-sheet) containing clinical interpretation, Color flow and Spectral Doppler findings, conclusion, and attending cardiologist signature block. Strictly formatted for 1-page Letter portrait printing.
+     * Independent or Combined Printing: Staff can print Both Sheets (2 pages), Info Sheet only (1 page), or Reading Sheet only (1 page).
+   - Doppler Measurement 9-Subcolumn Grid Alignment:
+     * Mitral, Aortic, Tricuspid, and Pulmonic valves each structured with Left = Patient Measured Value and Right = Normal Reference Limits.
+     * Mitral Max Velocity: Streamlined data entry with default E: and A: prefix labels so technicians only encode numeric ratios (e.g. 0.8/3.0 and 0.6/1.7). Output automatically formats with E: 0.8/3.0 and A: 0.6/1.7.
+     * Pulmonic Vein: Tracks Diastoles, Systole, and Sys/Dias ratio.
+     * Pulmonary Artery Systolic Pressure: PASP by TRJ and Total PASP mapped under Tricuspid value column aligned with Aortic reference label.
+     * Pulmonary Artery Acceleration Time: PAT value under Pulmonic value column aligned with Tricuspid reference label and Pulmonic >= normal indicator.
+   - Balanced Patient Header Layout:
+     * Clean, standardized .patient-box header with balanced 6-column proportions: Col 1 Reference Label (18%), Col 2 Value/Name (27%), Col 3 DOB/HR (9%), Col 4 Date/HR Value (16%), Col 5 Sex/Contact Label (10%), Col 6 Contact/Vitals Value (20%).
+     * Contact numbers (e.g. +6319158168881) display completely on a single line without wrapping, clipping, or excessive dead space.
 
 --- CLINICAL LABORATORY & MEDICAL REFERENCE GUIDE ---
 1. PHLEBOTOMY ORDER OF DRAW (CLSI Guidelines):
@@ -528,11 +626,124 @@ async function queryOpenRouter({ question, history = [], user = null, model = DE
   });
 }
 
+/**
+ * Fetch latest free models from OpenRouter API
+ */
+async function fetchFreeOpenRouterModels(forceRefresh = false) {
+  const THIRTY_MINUTES = 30 * 60 * 1000;
+  if (!forceRefresh && cachedFreeModels.length > 0 && (Date.now() - lastFetchTimestamp < THIRTY_MINUTES)) {
+    return cachedFreeModels;
+  }
+
+  return new Promise((resolve) => {
+    const apiKey = resolveApiKey();
+    const headers = {
+      'User-Agent': 'Gezyne-LIS-Bot/2.6.3'
+    };
+    if (apiKey) {
+      headers['Authorization'] = `Bearer ${apiKey}`;
+    }
+
+    const req = https.get('https://openrouter.ai/api/v1/models', {
+      headers,
+      timeout: 12000
+    }, (res) => {
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => {
+        try {
+          if (res.statusCode !== 200) {
+            console.warn('[GezyneBot] OpenRouter returned status ' + res.statusCode + ' while fetching models');
+            if (cachedFreeModels.length === 0) loadCachedFreeModelsFromDb();
+            return resolve(cachedFreeModels);
+          }
+          const parsed = JSON.parse(body);
+          const rawModels = parsed.data || [];
+
+          const freeList = rawModels.filter(m => {
+            if (!m || !m.id) return false;
+            const p = m.pricing;
+            const isZeroPrice = p && (parseFloat(p.prompt) === 0 && parseFloat(p.completion) === 0);
+            const hasFreeTag = m.id.endsWith(':free') || m.id === 'openrouter/free';
+            const isExcluded = m.id.includes('lyria') || m.id.includes('diffusion') || m.id.includes('flux');
+            return (isZeroPrice || hasFreeTag) && !isExcluded;
+          }).map(m => {
+            let label = m.name || m.id;
+            if (!label.toLowerCase().includes('free') && m.id !== 'openrouter/free') {
+              label = `${label} (Free)`;
+            }
+            return {
+              id: m.id,
+              name: label,
+              isFree: true,
+              context_length: m.context_length || null
+            };
+          });
+
+          // Sort: openrouter/free first, then alphabetically
+          freeList.sort((a, b) => {
+            if (a.id === 'openrouter/free') return -1;
+            if (b.id === 'openrouter/free') return 1;
+            return a.name.localeCompare(b.name);
+          });
+
+          cachedFreeModels = freeList;
+          lastFetchTimestamp = Date.now();
+
+          // Persist to database settings
+          try {
+            if (global.db && typeof global.db.getSettings === 'function' && typeof global.db.saveSettings === 'function') {
+              const currentSettings = global.db.getSettings() || {};
+              currentSettings.openrouterFreeModels = cachedFreeModels;
+              currentSettings.openrouterLastModelFetch = lastFetchTimestamp;
+              global.db.saveSettings(currentSettings);
+            }
+          } catch (_) {}
+
+          resolve(cachedFreeModels);
+        } catch (err) {
+          console.error('[GezyneBot] Failed parsing OpenRouter models:', err.message);
+          if (cachedFreeModels.length === 0) loadCachedFreeModelsFromDb();
+          resolve(cachedFreeModels);
+        }
+      });
+    });
+
+    req.on('error', (err) => {
+      console.warn('[GezyneBot] Error fetching models from OpenRouter:', err.message);
+      if (cachedFreeModels.length === 0) loadCachedFreeModelsFromDb();
+      resolve(cachedFreeModels);
+    });
+
+    req.on('timeout', () => {
+      req.destroy();
+      console.warn('[GezyneBot] Timeout fetching models from OpenRouter');
+      if (cachedFreeModels.length === 0) loadCachedFreeModelsFromDb();
+      resolve(cachedFreeModels);
+    });
+  });
+}
+
+function getAvailableModels() {
+  if (cachedFreeModels.length === 0) {
+    loadCachedFreeModelsFromDb();
+  }
+  return {
+    defaultModels: DEFAULT_MODELS,
+    freeModels: cachedFreeModels,
+    allModels: [...DEFAULT_MODELS, ...cachedFreeModels]
+  };
+}
+
 module.exports = {
   AVAILABLE_MODELS,
+  DEFAULT_MODELS,
   DEFAULT_MODEL,
   buildKnowledgeContext,
   queryOpenRouter,
   resolveApiKey,
-  testOpenRouterConnection
+  testOpenRouterConnection,
+  fetchFreeOpenRouterModels,
+  getAvailableModels
 };
+

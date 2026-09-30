@@ -23,13 +23,6 @@
       window.location.replace(target);
       return;
     }
-    // Prevent DOM elements from forcing HTML5 fullscreen on button clicks
-    if (document && document.documentElement) {
-      document.documentElement.requestFullscreen = function () { return Promise.resolve(); };
-      document.documentElement.webkitRequestFullscreen = function () { return Promise.resolve(); };
-      document.documentElement.mozRequestFullScreen = function () { return Promise.resolve(); };
-      document.documentElement.msRequestFullscreen = function () { return Promise.resolve(); };
-    }
   } catch (e) { }
 
   if (!window.lisApp) {
@@ -47,6 +40,9 @@
       clearConflicts: function () { return Promise.resolve({ success: true }); },
       exportConflicts: function () { return Promise.resolve('{}'); },
       printPreview: function () {},
+      toggleFullscreen: function () { return Promise.resolve(false); },
+      isFullscreen: function () { return Promise.resolve(false); },
+      onFullscreenChange: function () {},
       onNetworkStatus: function () {},
       onSyncComplete: function () {},
       onFullSyncProgress: function () {},
@@ -66,24 +62,6 @@
     }
   };
 
-  /* ── Capture login credentials for server re-auth ─────────────── */
-  (function captureLoginCredentials() {
-    try {
-      var form = document.querySelector('form[action="/login"]');
-      if (!form) return;
-      form.addEventListener('submit', function () {
-        try {
-          var emailInput = form.querySelector('input[name="email"]');
-          var passwordInput = form.querySelector('input[name="password"]');
-          if (emailInput && passwordInput && emailInput.value && passwordInput.value) {
-            if (window.lisApp && typeof window.lisApp.saveCredentials === 'function') {
-              window.lisApp.saveCredentials(emailInput.value, passwordInput.value);
-            }
-          }
-        } catch (e) { }
-      });
-    } catch (e) { }
-  })();
 
   /* ── Create Status Bar DOM ────────────────────────────────────── */
   var bar = document.createElement('div');

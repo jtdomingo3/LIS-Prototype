@@ -292,6 +292,7 @@
                         data-confirm-title="Remove from Queue"
                         data-confirm-button="Yes, Remove">
                         <input type="hidden" name="testId" value="<%= (row.testIds && row.testIds.length ? row.testIds[0] : '') %>">
+                        <input type="hidden" name="testIds" value="<%= (row.testIds || []).join(',') %>">
                         <input type="hidden" name="area" value="<%= areaName %>">
                         <button type="submit" class="button btn-small" style="width: 100%; height: 30px; border-radius: 6px; background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; font-weight: 600; font-size: 0.8em; display: inline-flex; align-items: center; justify-content: center; gap: 6px;" title="Remove from queue">
                           <i class="fa fa-trash-alt"></i> Remove from Queue
@@ -342,6 +343,7 @@
                         data-confirm-title="Remove from Queue"
                         data-confirm-button="Yes, Remove">
                         <input type="hidden" name="testId" value="<%= (row.testIds && row.testIds.length ? row.testIds[0] : '') %>">
+                        <input type="hidden" name="testIds" value="<%= (row.testIds || []).join(',') %>">
                         <input type="hidden" name="area" value="<%= areaName %>">
                         <button type="submit" class="button btn-small" style="width: 100%; height: 30px; border-radius: 6px; background: #fff1f2; color: #e11d48; border: 1px solid #fecdd3; font-weight: 600; font-size: 0.8em; display: inline-flex; align-items: center; justify-content: center; gap: 6px;" title="Remove from queue">
                           <i class="fa fa-trash-alt"></i> Remove

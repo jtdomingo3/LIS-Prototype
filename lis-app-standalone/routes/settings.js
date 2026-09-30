@@ -182,8 +182,9 @@ router.get('/', requireAuth, async (req, res) => {
 
       const headers = { 'Accept': 'application/json' };
       if (req.session && req.session.user) {
+        const { generateSyncToken } = require('../lib/syncAuth');
         headers['X-LIS-Sync-Email'] = req.session.user.email;
-        headers['X-LIS-Sync-Hash'] = req.session.user.password || '';
+        headers['X-LIS-Sync-Hash'] = generateSyncToken(req.session.user.email, req.session.user.password || '');
       }
 
       const resp = await fetch(`${cleanUrl}/settings?format=json`, { headers, signal: controller.signal });
@@ -279,6 +280,72 @@ router.get('/', requireAuth, async (req, res) => {
   });
 });
 
+// POST /settings/test-print - Test printer connection and trigger test print
+router.post('/test-print', requireAuth, (req, res) => {
+  try {
+    const { spawnSync } = require('child_process');
+    const pathMod = require('path');
+    const fsMod = require('fs');
+    let resolveThermalScriptPath;
+    try {
+      resolveThermalScriptPath = require('../lib/printHelper').resolveThermalScriptPath;
+    } catch (e) {}
+
+    let scriptPath = (typeof resolveThermalScriptPath === 'function') ? resolveThermalScriptPath() : null;
+    if (!scriptPath) {
+      const fallbackPath = pathMod.join(__dirname, '..', 'scripts', 'thermal_test.js');
+      if (fsMod.existsSync(fallbackPath)) scriptPath = fallbackPath;
+    }
+
+    if (!scriptPath) {
+      return res.status(404).json({ success: false, error: 'Thermal printer script (scripts/thermal_test.js) not found.' });
+    }
+
+    const printType = (req.body && req.body.type) ? req.body.type : 'receipt';
+    const args = [scriptPath];
+    if (printType === 'barcode') args.push('--barcode');
+    else args.push('--receipt');
+
+    if (process.env.PRINT_DRY_RUN === '1' || (req.body && req.body.dryRun)) {
+      args.push('--dry-run');
+    }
+
+    const settings = (global.db && typeof global.db.getSettings === 'function') ? (global.db.getSettings() || {}) : {};
+    let printer = (req.body && req.body.printer) || (settings && settings.printerName) || process.env.PRINTER_NAME || process.env.THERMAL_PRINTER_NAME || '';
+    if (typeof printer === 'string') {
+      printer = printer.replace(/[^a-zA-Z0-9 _\-\.]/g, '').trim();
+    } else {
+      printer = '';
+    }
+    if (printer) args.push('--printer', printer);
+
+    const spawnEnv = Object.assign({}, process.env, { ELECTRON_RUN_AS_NODE: '1' });
+    const proc = spawnSync(process.execPath, args, {
+      cwd: pathMod.dirname(pathMod.dirname(scriptPath)) || pathMod.join(__dirname, '..'),
+      encoding: 'utf8',
+      maxBuffer: 10 * 1024 * 1024,
+      env: spawnEnv
+    });
+
+    if (proc.error) {
+      return res.status(500).json({ success: false, error: proc.error.message || String(proc.error) });
+    }
+
+    if (proc.status !== 0) {
+      const errMsg = proc.stderr || proc.stdout || `Printer process exited with code ${proc.status}`;
+      return res.status(500).json({ success: false, error: errMsg });
+    }
+
+    return res.json({
+      success: true,
+      message: `Test print job (${printType.toUpperCase()}) successfully sent to ${printer || 'default system thermal printer'}!`,
+      output: proc.stdout || ''
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Explicit endpoint to retrieve & sync exact settings from server
 router.post('/sync-from-server', requireAuth, canManageUsers, async (req, res) => {
   try {
@@ -292,8 +359,9 @@ router.post('/sync-from-server', requireAuth, canManageUsers, async (req, res) =
     const cleanUrl = serverUrl.replace(/\/$/, '');
     const headers = { 'Accept': 'application/json' };
     if (req.session && req.session.user) {
+      const { generateSyncToken } = require('../lib/syncAuth');
       headers['X-LIS-Sync-Email'] = req.session.user.email;
-      headers['X-LIS-Sync-Hash'] = req.session.user.password || '';
+      headers['X-LIS-Sync-Hash'] = generateSyncToken(req.session.user.email, req.session.user.password || '');
     }
 
     const resp = await fetch(`${cleanUrl}/settings?format=json`, { headers });

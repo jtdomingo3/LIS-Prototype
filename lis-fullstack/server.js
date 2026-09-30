@@ -133,7 +133,7 @@ async function processMaintenanceFlags() {
   const restoreAdminFlag = path.join(DATA_DIR, '.restore-admin');
   if (fs.existsSync(restoreAdminFlag)) {
     try {
-      const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$t1ORj/D94UYW057qZm1Ga.KU07BHErrr3BzmeO7fNbu5h5encZvD2';
+      const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$KAbxinqnQy.V2flRS4EwIOc645LcBaMWzZNWD.IghCzovgIimC.9G';
       let existing = [];
       try { existing = db.getUsers(); if (!Array.isArray(existing)) existing = []; } catch (e) { existing = []; }
       let admin = existing.find(u => u.email === 'admin@lab.com');
@@ -152,7 +152,8 @@ async function processMaintenanceFlags() {
           permissions: {
             dashboard: true, patients: true, reception: true,
             tests: true, reports: true, worksheet: true,
-            templates: true, inventory: true, equipment: true, users: true, delete: true
+            templates: true, inventory: true, equipment: true, users: true, delete: true,
+            costing: true, hr: true
           },
           createdAt: new Date().toISOString(),
           lastLogin: null
@@ -165,7 +166,8 @@ async function processMaintenanceFlags() {
         admin.permissions = {
           dashboard: true, patients: true, reception: true,
           tests: true, reports: true, worksheet: true,
-          templates: true, inventory: true, equipment: true, users: true, delete: true
+          templates: true, inventory: true, equipment: true, users: true, delete: true,
+          costing: true, hr: true
         };
       }
       db.saveUsers(existing);
@@ -194,7 +196,7 @@ async function processMaintenanceFlags() {
       db.write(initialData);
 
       // Re-seed default admin user
-      const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$t1ORj/D94UYW057qZm1Ga.KU07BHErrr3BzmeO7fNbu5h5encZvD2';
+      const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$KAbxinqnQy.V2flRS4EwIOc645LcBaMWzZNWD.IghCzovgIimC.9G';
       const { v4: uuidv4 } = require('uuid');
       const defaultAdmin = {
         id: uuidv4(),
@@ -206,7 +208,8 @@ async function processMaintenanceFlags() {
         permissions: {
           dashboard: true, patients: true, reception: true,
           tests: true, reports: true, worksheet: true,
-          templates: true, inventory: true, equipment: true, users: true, delete: true
+          templates: true, inventory: true, equipment: true, users: true, delete: true,
+          costing: true, hr: true
         },
         createdAt: new Date().toISOString(),
         lastLogin: null
@@ -326,8 +329,8 @@ async function processMaintenanceFlags() {
         id: uuidv4(),
         name: 'Admin User',
         email: 'admin@lab.com',
-        // Pre-hashed default administrator credential ($2a$12$t1ORj/D94UYW057qZm1Ga.KU07BHErrr3BzmeO7fNbu5h5encZvD2)
-        password: process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$t1ORj/D94UYW057qZm1Ga.KU07BHErrr3BzmeO7fNbu5h5encZvD2',
+        // Pre-hashed default administrator credential (cost factor 12)
+        password: process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$KAbxinqnQy.V2flRS4EwIOc645LcBaMWzZNWD.IghCzovgIimC.9G',
         role: 'Admin',
         status: 'Active',
         permissions: {},
@@ -389,6 +392,10 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(express.json({ limit: '50mb' }));
 app.use(methodOverride('_method'));
 
+// Global XSS Sanitization Middleware
+const xssSanitizer = require('./middleware/xssSanitizer');
+app.use(xssSanitizer);
+
 // Ensure database is ready before processing requests (important when sql.js async proxy is initializing)
 app.use((req, res, next) => {
   if (db && db._readyPromise && !db._isReady) {
@@ -406,12 +413,16 @@ const staticCacheOpts = {
 };
 app.use(express.static(path.join(__dirname, 'public'), staticCacheOpts));
 app.use('/assets', express.static(path.join(__dirname, 'assets'), staticCacheOpts));
+const hrDocsDir = path.join(DATA_DIR, 'hr-documents');
+try { fs.mkdirSync(hrDocsDir, { recursive: true }); } catch (e) {}
+app.use('/hr-documents', express.static(hrDocsDir, staticCacheOpts));
 
 // Simple request logger to help debug routes and payloads with sensitive field masking
 function maskSensitive(obj) {
   const SENSITIVE = new Set([
     'password','pwd','pass','confirmPassword','confirm_password','passwordConfirm',
-    'token','authtoken','bearer','authorization','hash','synchash','x-lis-sync-hash','secret'
+    'token','authtoken','bearer','authorization','hash','synchash','x-lis-sync-hash','secret',
+    'lockpin','pin','birthdate','contactnumber','ssn'
   ]);
   if (obj == null) return obj;
   if (Array.isArray(obj)) return obj.map(v => maskSensitive(v));
@@ -440,23 +451,80 @@ app.use((req, res, next) => {
   next();
 });
 
-// Security headers (configured to permit inline styles/scripts and local assets)
+// Security headers (configured per audit recommendations, relaxed for local LAN/intranet HTTP deployments)
 app.use(helmet({
-  contentSecurityPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net"],
+      scriptSrcAttr: ["'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      styleSrcAttr: ["'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "blob:", "https:"],
+      fontSrc: ["'self'", "data:", "https://fonts.gstatic.com"],
+      connectSrc: ["'self'", "https://cdn.jsdelivr.net"],
+      frameSrc: ["'self'"],
+      formAction: ["'self'"],
+      upgradeInsecureRequests: null
+    }
+  },
   crossOriginEmbedderPolicy: false,
-  crossOriginResourcePolicy: { policy: 'cross-origin' }
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  crossOriginOpenerPolicy: false,
+  originAgentCluster: false,
+  hsts: false
 }));
+
+// Global Rate Limiter for all other endpoints
+const globalLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 300, // 300 requests per minute
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(globalLimiter);
 
 // Rate limiter for authentication endpoints
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // max 100 attempts per window
+  max: 30, // max 30 attempts per 15 minutes per IP
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, error: 'Too many authentication attempts, please try again later' }
 });
 app.use('/login', authLimiter);
 app.use('/api/auth/token', authLimiter);
+
+// Rate limiter for sensitive diagnostic and export endpoints
+const sensitiveLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 15, // max 15 requests per minute
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many requests to sensitive endpoint, please try again shortly' }
+});
+app.use('/settings/test-ai', sensitiveLimiter);
+app.use('/export/', sensitiveLimiter);
+
+// Cross-Origin Resource Sharing (CORS) for standalone desktop apps & local clients
+app.use((req, res, next) => {
+  try {
+    const origin = req.get('Origin') || '';
+    if (origin) {
+      // Allow localhost, 127.0.0.1, or private LAN origins (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+      const isAllowed = /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(?::\d+)?$/.test(origin);
+      if (isAllowed) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,PATCH,OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-LIS-Sync-Email,X-LIS-Sync-Hash,X-LIS-Sync-Replay,x-requested-with');
+        res.setHeader('Vary', 'Origin');
+      }
+    }
+    if (req.method === 'OPTIONS') return res.sendStatus(204);
+  } catch (_) {}
+  next();
+});
 
 // EJS Layouts - enable the global layout wrapper so views get the
 // shared HTML, CSS and JS defined in `views/layout.ejs`.
@@ -466,22 +534,68 @@ app.set('layout', 'layout');
 app.set('layout extractScripts', true);
 app.set('layout extractStyles', true);
 
-// Session configuration
+// Resolve or generate a persistent session secret
+function getSessionSecret() {
+  if (process.env.SESSION_SECRET && String(process.env.SESSION_SECRET).trim()) {
+    return String(process.env.SESSION_SECRET).trim();
+  }
+  throw new Error('SESSION_SECRET environment variable is required');
+}
+
+const cookieParser = require('cookie-parser');
+const csrf = require('csurf');
+const { extractBearerToken, verifyToken } = require('./lib/tokenHelper');
+const { validateSyncUser } = require('./lib/syncAuth');
+
+app.use(cookieParser());
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'gezyne-lis-session-secret-change-in-prod',
+  secret: getSessionSecret(),
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false, // Set to true in production with HTTPS
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production' && (process.env.USE_HTTPS === 'true' || process.env.COOKIE_SECURE === 'true'),
+    sameSite: 'lax',
     maxAge: 24 * 60 * 60 * 1000 // 24 hours
   }
 }));
 
+// Setup CSRF protection AFTER session/cookieParser but BEFORE routes
+const csrfProtection = csrf({ cookie: false }); 
+// Exclude API token route from CSRF if needed, or apply selectively. 
+// Standard approach for EJS forms is to use it globally.
+// However, to prevent breaking external API access, we'll conditionally apply it.
+app.use((req, res, next) => {
+  // APIs and Bearer-token / sync-authenticated requests don't rely on ambient browser cookies and must bypass CSRF
+  if (
+    req.path.startsWith('/api/') || 
+    req.path.startsWith('/chatbot/api/') || 
+    req.path.startsWith('/export/') || 
+    extractBearerToken(req) || 
+    req.headers['x-lis-sync-replay'] || 
+    req.headers['x-lis-sync-hash'] ||
+    req.headers['x-lis-sync-email']
+  ) {
+    return next();
+  }
+  
+  csrfProtection(req, res, (err) => {
+    if (err) {
+      if (err.code === 'EBADCSRFTOKEN') {
+        return res.status(403).send('Form tampered with or session expired (CSRF check failed).');
+      }
+      return next(err);
+    }
+    if (req.csrfToken) {
+      res.locals.csrfToken = req.csrfToken();
+    }
+    next();
+  });
+});
+
 app.use(flash());
 
 // ── Bearer Token & Hash-based session bootstrap for API and standalone sync ──
-const { extractBearerToken, verifyToken } = require('./lib/tokenHelper');
-
 app.use((req, res, next) => {
   try {
     // Skip if session already exists
@@ -512,7 +626,8 @@ app.use((req, res, next) => {
     if (syncEmail && syncHash && global.db) {
       const allUsers = typeof global.db.getUsers === 'function' ? global.db.getUsers() : [];
       const matchUser = allUsers.find(u => u && u.email && u.email.toLowerCase() === syncEmail.toLowerCase());
-      if (matchUser && matchUser.password && matchUser.password === syncHash && matchUser.status !== 'Inactive') {
+      if (matchUser && validateSyncUser(syncHash, syncEmail, matchUser)) {
+        req.session = req.session || {};
         req.session.user = {
           id: matchUser.id || matchUser.email,
           name: matchUser.name || matchUser.email,
@@ -646,7 +761,9 @@ app.locals.featureFlags = {
   templates: true,
   users: true,
   worksheet: true,
-  inventory: true
+  inventory: true,
+  costing: true,
+  hr: true
 };
 
 // Expose current feature flags to all views via res.locals
@@ -773,7 +890,9 @@ const routePermissionMap = [
   { prefix: '/inventory', perm: 'inventory' },
   { prefix: '/equipment', perm: 'equipment' },
   { prefix: '/users', perm: 'users' },
-  { prefix: '/worksheet', perm: 'worksheet' }
+  { prefix: '/worksheet', perm: 'worksheet' },
+  { prefix: '/costing', perm: 'costing' },
+  { prefix: '/hr', perm: 'hr' }
 ];
 
 app.use((req, res, next) => {
@@ -783,13 +902,18 @@ app.use((req, res, next) => {
 
     console.debug(`[auth-guard] incoming ${req.method} ${path} mapping=${mapping ? mapping.prefix+'=>'+mapping.perm : '<none>'}`);
 
-    // === allow public kiosk access to safe reception endpoints (kiosk mode) ===
+    // === allow public kiosk & sync client access to safe reception endpoints ===
     const kioskQuery = req.query && (req.query.kiosk === '1' || String(req.query.kiosk).toLowerCase() === 'true');
     const kioskEnv = (process.env.APP_KIOSK === '1' || String(process.env.APP_KIOSK || '').toLowerCase() === 'true');
-    // If kiosk mode requested, allow GET requests under /reception/ to proceed without auth.
-    // This lets the kiosk TV fetch the assigned view, SSE, data and TTS resources without login.
-    if ((kioskQuery || kioskEnv) && req.method === 'GET' && path.indexOf('/reception/') === 0) {
-      console.debug('[auth-guard] allowing kiosk GET access to reception path without auth', path);
+    const isSyncClient = !!(req.headers['x-lis-sync-email'] || req.headers['x-lis-sync-hash'] || req.headers['x-lis-sync-replay'] || extractBearerToken(req));
+    // If kiosk mode requested or sync client authenticated, allow GET requests under /reception/ to proceed without auth.
+    // This lets the kiosk TV, IoT monitors, and standalone sync bridges fetch the assigned view, SSE, data and TTS resources.
+    if ((kioskQuery || kioskEnv || isSyncClient) && req.method === 'GET' && path.indexOf('/reception/') === 0) {
+      console.debug('[auth-guard] allowing kiosk/sync GET access to reception path', path);
+      return next();
+    }
+    // Reception SSE live stream endpoint never redirects to login HTML
+    if (req.method === 'GET' && (path.indexOf('/reception/assigned-events') === 0 || path.indexOf('/reception/assigned-data') === 0)) {
       return next();
     }
 
@@ -798,6 +922,12 @@ app.use((req, res, next) => {
     // Allow users to access their own profile regardless of broader '/users' permission
     if (path.indexOf('/users/profile') === 0) {
       console.debug('[auth-guard] allowing /users/profile for authenticated users');
+      return next();
+    }
+
+    // Allow authenticated staff to access their own HR self-service portal & printable records
+    if (path.indexOf('/hr/my') === 0 || path.indexOf('/hr/print/') === 0) {
+      console.debug('[auth-guard] allowing staff self-service HR access');
       return next();
     }
 
@@ -840,6 +970,12 @@ app.use((req, res, next) => {
       return next();
     }
 
+    // Allow management access to Costing & HR
+    if (['costing', 'hr'].includes(mapping.perm) && isManagement) {
+      console.debug(`[auth-guard] allowing management access to ${mapping.perm}`);
+      return next();
+    }
+
     if (perms[mapping.perm] || (mapping.perm === 'equipment' && perms.inventory)) {
       console.debug(`[auth-guard] allowing via permission ${mapping.perm}`);
       return next();
@@ -871,7 +1007,7 @@ app.use((req, res, next) => {
 // Set view engine
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-if (process.pkg || process.env.NODE_ENV === 'production') {
+if (process.pkg) {
   app.set('view cache', true);
 }
 
@@ -890,6 +1026,8 @@ const chatbotRoutes = require('./routes/chatbot');
 const inventoryRoutes = require('./routes/inventory');
 const equipmentRoutes = require('./routes/equipment');
 const consultationRoutes = require('./routes/consultations');
+const costingRoutes = require('./routes/costing');
+const hrRoutes = require('./routes/hr');
 
 app.use('/', authRoutes);
 app.use('/dashboard', dashboardRoutes);
@@ -906,6 +1044,8 @@ app.use('/chatbot', chatbotRoutes);
 app.use('/inventory', inventoryRoutes);
 app.use('/equipment', equipmentRoutes);
 app.use('/api/equipment', equipmentRoutes);
+app.use('/costing', costingRoutes);
+app.use('/hr', hrRoutes);
 
 // POST /api/internal/maintenance/execute – executes pending maintenance flags immediately from localhost
 app.post('/api/internal/maintenance/execute', async (req, res) => {
@@ -944,7 +1084,7 @@ app.post('/api/restore/users', async (req, res) => {
 
     let admin = existing.find(u => u.email === 'admin@lab.com');
     // Pre-hashed default administrator credential (cost factor 12)
-    const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$t1ORj/D94UYW057qZm1Ga.KU07BHErrr3BzmeO7fNbu5h5encZvD2';
+    const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$KAbxinqnQy.V2flRS4EwIOc645LcBaMWzZNWD.IghCzovgIimC.9G';
 
     if (!admin) {
       admin = {
@@ -959,7 +1099,8 @@ app.post('/api/restore/users', async (req, res) => {
         permissions: {
           dashboard: true, patients: true, reception: true,
           tests: true, reports: true, worksheet: true,
-          templates: true, inventory: true, equipment: true, users: true, delete: true
+          templates: true, inventory: true, equipment: true, users: true, delete: true,
+          costing: true, hr: true
         },
         status: 'Active',
         createdAt: new Date().toISOString(),
@@ -1035,7 +1176,7 @@ app.get('/export/data.json', (req, res) => {
         try {
           const allUsers = db.getUsers();
           const matchUser = allUsers.find(u => u.email && u.email.toLowerCase() === syncEmail.toLowerCase());
-          if (matchUser && matchUser.password && matchUser.password === syncHash && matchUser.status !== 'Inactive') {
+          if (matchUser && validateSyncUser(syncHash, syncEmail, matchUser)) {
             authorized = true;
             console.log('[export] hash-based auth accepted for', syncEmail);
           }
@@ -1064,6 +1205,19 @@ app.get('/export/data.json', (req, res) => {
     data.inventory_batches = typeof db.getAllInventoryBatches === 'function' ? db.getAllInventoryBatches() : [];
     data.inventory_transactions = typeof db.getInventoryTransactions === 'function' ? db.getInventoryTransactions() : [];
     data.consultations = typeof db.getConsultations === 'function' ? db.getConsultations() : [];
+    data.equipment = typeof db.getEquipment === 'function' ? db.getEquipment() : [];
+    data.equipment_logs = typeof db.getEquipmentLogs === 'function' ? db.getEquipmentLogs() : [];
+    data.qc_controls = typeof db.getQcControls === 'function' ? db.getQcControls() : [];
+    data.qc_entries = typeof db.getQcEntries === 'function' ? db.getQcEntries() : [];
+    data.neqas_records = typeof db.getNeqasRecords === 'function' ? db.getNeqasRecords() : [];
+    data.expenses = typeof db.getExpenses === 'function' ? db.getExpenses() : [];
+    data.revenue_entries = typeof db.getRevenueEntries === 'function' ? db.getRevenueEntries() : [];
+    data.cost_per_test = typeof db.getCostPerTests === 'function' ? db.getCostPerTests() : [];
+    data.employees = typeof db.getEmployees === 'function' ? db.getEmployees() : [];
+    data.payroll_records = typeof db.getPayrollRecords === 'function' ? db.getPayrollRecords() : [];
+    data.hr_documents = typeof db.getHrDocuments === 'function' ? db.getHrDocuments() : [];
+    data.leave_records = typeof db.getLeaveRecords === 'function' ? db.getLeaveRecords() : [];
+    data.dtr_records = typeof db.getDtrRecords === 'function' ? db.getDtrRecords() : [];
 
     res.json(data);
   } catch (e) {
@@ -1093,7 +1247,7 @@ app.post('/api/signatures/sync', express.json({ limit: '15mb' }), express.urlenc
         try {
           const allUsers = db.getUsers();
           const matchUser = allUsers.find(u => u.email && u.email.toLowerCase() === syncEmail.toLowerCase());
-          if (matchUser && matchUser.password && matchUser.password === syncHash && matchUser.status !== 'Inactive') {
+          if (matchUser && validateSyncUser(syncHash, syncEmail, matchUser)) {
             authorized = true;
           }
         } catch (e) { /* ignore auth check errors */ }
@@ -1290,6 +1444,23 @@ app.get('/data.json', (req, res) => {
   if (!allow) return res.status(404).send('Not found');
   try {
     const data = db.read();
+    data.inventory = typeof db.getInventory === 'function' ? db.getInventory() : [];
+    data.inventory_batches = typeof db.getAllInventoryBatches === 'function' ? db.getAllInventoryBatches() : [];
+    data.inventory_transactions = typeof db.getInventoryTransactions === 'function' ? db.getInventoryTransactions() : [];
+    data.consultations = typeof db.getConsultations === 'function' ? db.getConsultations() : [];
+    data.equipment = typeof db.getEquipment === 'function' ? db.getEquipment() : [];
+    data.equipment_logs = typeof db.getEquipmentLogs === 'function' ? db.getEquipmentLogs() : [];
+    data.qc_controls = typeof db.getQcControls === 'function' ? db.getQcControls() : [];
+    data.qc_entries = typeof db.getQcEntries === 'function' ? db.getQcEntries() : [];
+    data.neqas_records = typeof db.getNeqasRecords === 'function' ? db.getNeqasRecords() : [];
+    data.expenses = typeof db.getExpenses === 'function' ? db.getExpenses() : [];
+    data.revenue_entries = typeof db.getRevenueEntries === 'function' ? db.getRevenueEntries() : [];
+    data.cost_per_test = typeof db.getCostPerTests === 'function' ? db.getCostPerTests() : [];
+    data.employees = typeof db.getEmployees === 'function' ? db.getEmployees() : [];
+    data.payroll_records = typeof db.getPayrollRecords === 'function' ? db.getPayrollRecords() : [];
+    data.hr_documents = typeof db.getHrDocuments === 'function' ? db.getHrDocuments() : [];
+    data.leave_records = typeof db.getLeaveRecords === 'function' ? db.getLeaveRecords() : [];
+    data.dtr_records = typeof db.getDtrRecords === 'function' ? db.getDtrRecords() : [];
     console.log('[export] served /data.json public snapshot');
     res.json(data);
   } catch (e) {

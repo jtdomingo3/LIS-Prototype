@@ -75,6 +75,12 @@ function loadUserSettings() {
     const p = settingsFilePath();
     if (fs.existsSync(p)) {
       userSettings = JSON.parse(fs.readFileSync(p, 'utf8') || '{}');
+      // Clean up any legacy plaintext credentials from settings file
+      if (userSettings._syncPassword || userSettings._syncEmail) {
+        delete userSettings._syncPassword;
+        delete userSettings._syncEmail;
+        try { fs.writeFileSync(p, JSON.stringify(userSettings, null, 2), 'utf8'); } catch (_) {}
+      }
       // apply server override if present
       if (userSettings.serverUrl) config.SERVER_URL = userSettings.serverUrl;
       if (userSettings.printerName || userSettings.printer) {
@@ -86,6 +92,9 @@ function loadUserSettings() {
 function saveUserSettings(newSettings = {}) {
   try {
     userSettings = Object.assign({}, userSettings, newSettings);
+    // Never persist plaintext credentials
+    delete userSettings._syncPassword;
+    delete userSettings._syncEmail;
     if (userSettings.printerName || userSettings.printer) {
       process.env.PRINTER_NAME = userSettings.printerName || userSettings.printer;
     }
@@ -370,13 +379,21 @@ async function createWindow() {
     mainWindow.show();
   });
 
-  // Prevent web pages from forcing full screen on button clicks
-  mainWindow.webContents.on('enter-html-full-screen', () => {
+  // Handle window fullscreen transitions
+  mainWindow.on('enter-full-screen', () => {
     try {
       if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.setFullScreen(false);
+        mainWindow.webContents.send('fullscreen-change', true);
       }
-    } catch (e) {}
+    } catch (_) {}
+  });
+
+  mainWindow.on('leave-full-screen', () => {
+    try {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('fullscreen-change', false);
+      }
+    } catch (_) {}
   });
 
   if (process.argv.includes('--dev')) {
@@ -411,6 +428,11 @@ async function createWindow() {
   // services
   pageCache = new PageCache(cacheDir);
   operationQueue = new OperationQueue(dataDir);
+  operationQueue.onEnqueue = () => {
+    if (isOnline) {
+      setTimeout(() => { triggerAutoSync().catch(() => {}); }, 150);
+    }
+  };
   // DataStore will persist the full synced DB into Documents/LIS/app_sync/data.json
   try { dataStore = new DataStore(); } catch (e) { dataStore = null; }
   try { conflictStore = new ConflictStore(dataStore ? dataStore.baseDir : null); } catch (e) { conflictStore = null; }
@@ -425,16 +447,32 @@ async function createWindow() {
     localServer.setAutoLoginEmail(null);
   }
 
-  global.onUserLogin = (email, password, user) => {
+  global.onUserLogin = async (email, password, user, serverToken) => {
     console.log('[Main] user authenticated manually:', email);
     currentSessionEmail = email;
     if (localServer && localServer.setAutoLoginEmail) localServer.setAutoLoginEmail(email);
     if (syncEngine) {
       syncEngine.setAutoLoginEmail(email);
       syncEngine.setCredentials(email, password);
-      syncEngine._ensureServerAuth().then(() => {
+      if (serverToken) {
+        syncEngine.setBearerToken(serverToken);
+      }
+      try {
+        await syncEngine._ensureServerAuth();
         syncEngine.processQueue().catch(() => {});
-      });
+        console.log('[Main] triggering immediate fullSync post-login...');
+        syncEngine.fullSync(mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : null)
+          .then((res) => {
+            console.log('[Main] post-login fullSync completed:', res && res.success ? 'SUCCESS' : (res && res.reason ? res.reason : 'DONE'));
+            sendStatus();
+            if (res && res.success && mainWindow && !mainWindow.isDestroyed()) {
+              try { mainWindow.webContents.send('full-sync-end', res); } catch (_) {}
+            }
+          })
+          .catch(e => console.warn('[Main] post-login fullSync error:', e && e.message));
+      } catch (err) {
+        console.error('[Main] onUserLogin auth/sync error:', err);
+      }
     }
   };
 
@@ -458,15 +496,12 @@ async function createWindow() {
     try { setTimeout(openSettingsWindow, 300); } catch (e) {}
   }
 
-  // On page reload / navigation, perform fast simultaneous two-way sync
+  // On page reload / navigation, flush pending mutations if any (do not trigger fullSync on navigation)
   mainWindow.webContents.on('did-start-loading', () => {
     try {
       if (isOnline) {
         if (operationQueue && operationQueue.countPending() > 0) {
           triggerAutoSync().catch(() => {});
-        }
-        if (syncEngine) {
-          syncEngine.scheduleAutoFullSync(mainWindow.webContents, 200);
         }
       }
     } catch (e) {}
@@ -543,6 +578,18 @@ async function createWindow() {
   });
 
   mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'F11' && input.type === 'keyDown') {
+      event.preventDefault();
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.setFullScreen(!mainWindow.isFullScreen());
+      }
+      return;
+    }
+    if (input.key === 'Escape' && input.type === 'keyDown' && mainWindow && !mainWindow.isDestroyed() && mainWindow.isFullScreen()) {
+      event.preventDefault();
+      mainWindow.setFullScreen(false);
+      return;
+    }
     if (input.control && input.key.toLowerCase() === 'l' && input.type === 'keyDown') {
       event.preventDefault();
       lockApp();
@@ -729,6 +776,17 @@ function sendStatus() {
 /* ==================================================================
  *  IPC handlers
  * ================================================================== */
+ipcMain.handle('toggle-fullscreen', () => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    const next = !mainWindow.isFullScreen();
+    mainWindow.setFullScreen(next);
+    return next;
+  }
+  return false;
+});
+ipcMain.handle('is-fullscreen', () => {
+  return mainWindow && !mainWindow.isDestroyed() ? mainWindow.isFullScreen() : false;
+});
 ipcMain.handle('get-status', () => ({
   online: isOnline,
   pendingCount: operationQueue ? operationQueue.countPending() : 0,
@@ -1088,24 +1146,6 @@ ipcMain.handle('drop-offline-data', async () => {
   } catch (e) { console.error('[Main] drop-offline-data failed', e && e.message); return { success: false, reason: e && e.message }; }
 });
 
-// Credential capture — securely store login credentials for server re-auth
-ipcMain.handle('save-credentials', (_e, { email, password }) => {
-  try {
-    saveUserSettings({ _syncEmail: email, _syncPassword: password });
-    if (syncEngine) syncEngine.setCredentials(email, password);
-    if (syncEngine) syncEngine.setAutoLoginEmail(email);
-    // Also update the session email for auto-login
-    if (email && email !== currentSessionEmail) {
-      currentSessionEmail = email;
-      saveUserSettings({ lastUserEmail: email });
-      if (localServer && localServer.setAutoLoginEmail) localServer.setAutoLoginEmail(email);
-    }
-    console.log('[Main] stored credentials for server re-auth:', email);
-    return { success: true };
-  } catch (e) {
-    return { success: false, error: e && e.message };
-  }
-});
 
 // Perform manual backup of SQLite DB and queue
 ipcMain.handle('perform-backup', async () => {

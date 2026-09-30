@@ -1,6 +1,11 @@
 const crypto = require('crypto');
+const path = require('path');
+const fs = require('fs');
 
-const TOKEN_SECRET = process.env.AUTH_TOKEN_SECRET || process.env.JWT_SECRET || 'gezyne-lis-secure-token-secret-change-in-prod';
+const TOKEN_SECRET = process.env.AUTH_TOKEN_SECRET;
+if (!TOKEN_SECRET) {
+  throw new Error('AUTH_TOKEN_SECRET environment variable is required');
+}
 const DEFAULT_EXPIRY_DAYS = 30; // Long-lived token suitable for clinical workstations & offline sync
 
 /**
@@ -49,15 +54,17 @@ function verifyToken(token) {
   const [payloadBase64, signature] = parts;
 
   try {
-    const expectedSignature = crypto
+    let expectedSignature = crypto
       .createHmac('sha256', TOKEN_SECRET)
       .update(payloadBase64)
       .digest('base64url');
 
     // Constant-time comparison to prevent timing attacks
-    const sigBuf = Buffer.from(signature);
-    const expBuf = Buffer.from(expectedSignature);
-    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+    let sigBuf = Buffer.from(signature);
+    let expBuf = Buffer.from(expectedSignature);
+    let valid = (sigBuf.length === expBuf.length && crypto.timingSafeEqual(sigBuf, expBuf));
+
+    if (!valid) {
       return null;
     }
 

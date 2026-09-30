@@ -30,23 +30,23 @@
     </div>
 
     <!-- Clean Tab Navigation Buttons (Clinical Workflow is 1st and active) -->
-    <div class="settings-nav-tabs" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:24px; border-bottom:2px solid #f1f5f9; padding-bottom:12px;">
-      <button type="button" class="settings-tab-btn active" onclick="switchSettingsTab('tab-clinical')">
+    <div class="settings-nav-tabs" role="tablist" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:24px; border-bottom:2px solid #f1f5f9; padding-bottom:12px;">
+      <button type="button" class="settings-tab-btn active" role="tab" data-no-guard="1" onclick="switchSettingsTab('tab-clinical')">
         🏥 Clinical Workflow <span style="font-size:0.75em; padding:2px 7px; background:#dcfce7; color:#15803d; border-radius:4px; margin-left:4px; font-weight:700;">All Users</span>
       </button>
-      <button type="button" class="settings-tab-btn" onclick="switchSettingsTab('tab-sse')">
+      <button type="button" class="settings-tab-btn" role="tab" data-no-guard="1" onclick="switchSettingsTab('tab-sse')">
         ⚡ SSE Real-Time <% if (!isMgmt) { %><span style="font-size:0.8em; opacity:0.65;" title="Admin / Manager only">🔒</span><% } %>
       </button>
-      <button type="button" class="settings-tab-btn" onclick="switchSettingsTab('tab-printer')">
+      <button type="button" class="settings-tab-btn" role="tab" data-no-guard="1" onclick="switchSettingsTab('tab-printer')">
         🖨️ Printer & Hardware <% if (!isMgmt) { %><span style="font-size:0.8em; opacity:0.65;" title="Admin / Manager only">🔒</span><% } %>
       </button>
-      <button type="button" class="settings-tab-btn" onclick="switchSettingsTab('tab-ai')">
+      <button type="button" class="settings-tab-btn" role="tab" data-no-guard="1" onclick="switchSettingsTab('tab-ai')">
         🤖 AI Assistant <% if (!isMgmt) { %><span style="font-size:0.8em; opacity:0.65;" title="Admin / Manager only">🔒</span><% } %>
       </button>
-      <button type="button" class="settings-tab-btn" onclick="switchSettingsTab('tab-backup')">
+      <button type="button" class="settings-tab-btn" role="tab" data-no-guard="1" onclick="switchSettingsTab('tab-backup')">
         💾 Data & Backup <% if (!isMgmt) { %><span style="font-size:0.8em; opacity:0.65;" title="Admin / Manager only">🔒</span><% } %>
       </button>
-      <button type="button" class="settings-tab-btn" onclick="switchSettingsTab('tab-system')">
+      <button type="button" class="settings-tab-btn" role="tab" data-no-guard="1" onclick="switchSettingsTab('tab-system')">
         🌐 System & .env <% if (!isMgmt) { %><span style="font-size:0.8em; opacity:0.65;" title="Admin / Manager only">🔒</span><% } %>
       </button>
     </div>
@@ -311,9 +311,23 @@
           <div class="field" style="margin-bottom:0;">
             <label>Default AI Model</label>
             <select name="openrouterModel" id="openrouterModelSelect" style="width:100%;" <%= !isMgmt ? 'disabled' : '' %>>
-              <% (typeof availableModels !== 'undefined' ? availableModels : []).forEach(function(m) { %>
-                <option value="<%= m.id %>" <%= (typeof currentModel !== 'undefined' && currentModel === m.id) ? 'selected' : '' %>><%= m.name %></option>
-              <% }); %>
+              <% 
+                const list = typeof availableModels !== 'undefined' ? availableModels : [];
+                const defs = list.filter(m => !m.isFree);
+                const frees = list.filter(m => m.isFree);
+              %>
+              <optgroup label="Default Models">
+                <% defs.forEach(function(m) { %>
+                  <option value="<%= m.id %>" <%= (typeof currentModel !== 'undefined' && currentModel === m.id) ? 'selected' : '' %>><%= m.name %></option>
+                <% }); %>
+              </optgroup>
+              <% if (frees.length > 0) { %>
+                <optgroup label="Free Models (OpenRouter)">
+                  <% frees.forEach(function(m) { %>
+                    <option value="<%= m.id %>" <%= (typeof currentModel !== 'undefined' && currentModel === m.id) ? 'selected' : '' %>><%= m.name %></option>
+                  <% }); %>
+                </optgroup>
+              <% } %>
             </select>
             <p class="note">Select the default model utilized for answering clinical questions and analyzing lab results.</p>
           </div>

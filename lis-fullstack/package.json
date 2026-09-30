@@ -1,81 +1,85 @@
 {
-  "name": "laboratory-information-system",
-  "version": "2.6.1",
-  "description": "Full-stack Laboratory Information System with Node.js, Express, MongoDB",
-  "main": "server.js",
-  "bin": "server.js",
-  "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
-    "build:exe": "pkg . --out-path dist",
-    "prepare-dist-data": "node ./scripts/make-dist-data.js && node ./scripts/encrypt-installer-resources.js",
-    "encrypt-dist-data": "node ./scripts/encrypt-installer-resources.js",
-    "build:exe:icon": "node ./scripts/build-exe-with-icon.js",
-    "build:launcher": "node ./scripts/build-launcher.js",
-    "service:install": "node ./scripts/register-service.js install",
-    "service:uninstall": "node ./scripts/register-service.js uninstall",
-    "tray": "cd tray && npm install && npm start",
-    "security-audit": "node ../tools/security-audit/run-security-audit.js",
-    "test:inventory": "node ../test/run-all-inventory-tests.js",
-    "test:equipment": "node ../test/equipment-backend.test.js",
-    "test:lj-signatories": "node ../test/test_lj_signatories.js",
-    "seed:equipment": "node ../test/seed_equipment_data.js",
-    "test": "node ../test/run-all-inventory-tests.js && node ../test/equipment-backend.test.js && node ../test/run-all-offline-tests.js && node ../test/test-signature-sync-e2e.js"
-  },
-  "keywords": [
-    "laboratory",
-    "medical",
-    "information-system",
-    "nodejs",
-    "mongodb"
-  ],
-  "author": "Gezyne-Jamir Software Tech",
-  "license": "MIT",
-  "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "better-sqlite3": "^13.0.3",
-    "bwip-js": "^4.8.0",
-    "connect-flash": "^0.1.1",
-    "cors": "^2.8.5",
-    "dotenv": "^16.0.0",
-    "ejs": "^3.1.9",
-    "exceljs": "^4.3.0",
-    "express": "^4.18.2",
-    "express-ejs-layouts": "^2.5.1",
-    "express-rate-limit": "^6.10.0",
-    "express-session": "^1.17.3",
-    "express-validator": "^7.0.1",
-    "google-tts-api": "^2.0.1",
-    "helmet": "^7.0.0",
-    "mdb-reader": "^3.1.0",
-    "method-override": "^3.0.0",
-    "minimist": "^1.2.8",
-    "multer": "^2.0.2",
-    "node-windows": "*",
-    "puppeteer": "^24.35.0",
-    "sharp": "^0.34.5",
-    "sql.js": "^1.14.2",
-    "uuid": "^9.0.0"
-  },
-  "devDependencies": {
-    "jimp": "^0.16.1",
-    "nodemon": "^3.0.1",
-    "pkg": "^5.8.0",
-    "png-to-ico": "^1.0.0",
-    "rcedit": "^1.1.1"
-  },
-  "pkg": {
+    "name": "laboratory-information-system",
+    "version": "2.6.3",
+    "description": "Full-stack Laboratory Information System with Node.js, Express, MongoDB",
+    "main": "server.js",
     "bin": "server.js",
-    "assets": [
-      "views/**/*",
-      "public/**/*",
-      "assets/**/*",
-      "lib/**/*",
-      "routes/**/*",
-      "templates/**/*"
+    "scripts": {
+        "start": "node server.js",
+        "dev": "nodemon server.js",
+        "build:exe": "pkg . --out-path dist",
+        "prepare-dist-data": "node ./scripts/make-dist-data.js && node ./scripts/encrypt-installer-resources.js",
+        "encrypt-dist-data": "node ./scripts/encrypt-installer-resources.js",
+        "build:exe:icon": "node ./scripts/build-exe-with-icon.js",
+        "build:launcher": "node ./scripts/build-launcher.js",
+        "service:install": "node ./scripts/register-service.js install",
+        "service:uninstall": "node ./scripts/register-service.js uninstall",
+        "tray": "cd tray && npm install && npm start",
+        "security-audit": "node ../tools/security-audit/run-security-audit.js",
+        "test:inventory": "node ../test/run-all-inventory-tests.js",
+        "test:equipment": "node ../test/equipment-backend.test.js",
+        "test:lj-signatories": "node ../test/test_lj_signatories.js",
+        "seed:equipment": "node ../test/seed_equipment_data.js",
+        "test": "node ../test/run-all-inventory-tests.js && node ../test/equipment-backend.test.js && node ../test/run-all-offline-tests.js && node ../test/test-signature-sync-e2e.js"
+    },
+    "keywords": [
+        "laboratory",
+        "medical",
+        "information-system",
+        "nodejs",
+        "mongodb"
     ],
-    "targets": [
-      "node18-win-x64"
-    ]
-  }
+    "author": "Gezyne-Jamir Software Tech",
+    "license": "MIT",
+    "dependencies": {
+        "bcryptjs": "^2.4.3",
+        "better-sqlite3": "^13.0.3",
+        "bwip-js": "^4.8.0",
+        "connect-flash": "^0.1.1",
+        "cookie-parser": "^1.4.7",
+        "cors": "^2.8.5",
+        "csurf": "^1.11.0",
+        "dotenv": "^16.0.0",
+        "ejs": "^3.1.9",
+        "exceljs": "^4.3.0",
+        "express": "^4.18.2",
+        "express-ejs-layouts": "^2.5.1",
+        "express-rate-limit": "^6.10.0",
+        "express-session": "^1.17.3",
+        "express-validator": "^7.3.2",
+        "google-tts-api": "^2.0.1",
+        "helmet": "^7.0.0",
+        "mdb-reader": "^3.1.0",
+        "method-override": "^3.0.0",
+        "minimist": "^1.2.8",
+        "multer": "^2.0.2",
+        "node-windows": "*",
+        "puppeteer": "^24.43.1",
+        "sharp": "^0.34.5",
+        "sql.js": "^1.14.2",
+        "uuid": "^9.0.0",
+        "winston": "^3.19.0",
+        "xss": "^1.0.15"
+    },
+    "devDependencies": {
+        "jimp": "^0.16.1",
+        "nodemon": "^3.0.1",
+        "pkg": "^5.8.0",
+        "png-to-ico": "^1.0.0",
+        "rcedit": "^1.1.1"
+    },
+    "pkg": {
+        "bin": "server.js",
+        "assets": [
+            "views/**/*",
+            "public/**/*",
+            "assets/**/*",
+            "lib/**/*",
+            "routes/**/*",
+            "templates/**/*"
+        ],
+        "targets": [
+            "node18-win-x64"
+        ]
+    }
 }

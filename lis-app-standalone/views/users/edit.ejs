@@ -73,22 +73,54 @@
         <div style="display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 10px;">
           <div>
             <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">Role <span style="color: #ef4444;">*</span></label>
-            <select name="role" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 4px 8px; font-size: 0.88em; background: #fff;">
-              <option value="Receptionist" <%= user.role === 'Receptionist' ? 'selected' : '' %>>Receptionist</option>
-              <option value="Technician" <%= user.role === 'Technician' ? 'selected' : '' %>>Technician</option>
-              <option value="Medical Technologist" <%= user.role === 'Medical Technologist' ? 'selected' : '' %>>Medical Technologist</option>
-              <option value="X-Ray Technologist" <%= user.role === 'X-Ray Technologist' ? 'selected' : '' %>>X-Ray Technologist</option>
-              <option value="Doctor" <%= user.role === 'Doctor' ? 'selected' : '' %>>Doctor</option>
-              <option value="Internist" <%= user.role === 'Internist' ? 'selected' : '' %>>Internist</option>
-              <option value="Pathologist" <%= user.role === 'Pathologist' ? 'selected' : '' %>>Pathologist</option>
-              <option value="Radiologist" <%= user.role === 'Radiologist' ? 'selected' : '' %>>Radiologist</option>
-              <option value="Encoder" <%= user.role === 'Encoder' ? 'selected' : '' %>>Encoder</option>
-              <option value="Drugtest Analyst" <%= user.role === 'Drugtest Analyst' ? 'selected' : '' %>>Drugtest Analyst</option>
-              <option value="Sonographer" <%= user.role === 'Sonographer' ? 'selected' : '' %>>Sonographer</option>
-              <option value="Manager" <%= user.role === 'Manager' ? 'selected' : '' %>>Manager</option>
-              <option value="Owner" <%= user.role === 'Owner' ? 'selected' : '' %>>Owner</option>
-              <option value="Admin" <%= user.role === 'Admin' ? 'selected' : '' %>>Admin</option>
+            <%
+              const knownRoles = [
+                'Cardiologist', 'Internist', 'Radiologist', 'Sonologist', 'Pathologist', 
+                'Pulmonologist', 'OB-Gynecologist', 'Pediatrician', 'Neurologist', 'Surgeon', 'Doctor',
+                'Medical Technologist', 'X-Ray Technologist', 'Sonographer', 'Technician', 
+                'Drugtest Analyst', 'Encoder', 'Receptionist', 'Manager', 'Owner', 'Admin'
+              ];
+              const userRole = (user && user.role) ? user.role : '';
+              const isOtherRole = userRole && !knownRoles.includes(userRole);
+            %>
+            <select name="role" id="userRoleSelect" onchange="onRoleChange(this)" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 4px 8px; font-size: 0.88em; background: #fff;">
+              <optgroup label="Doctors & Medical Specialists">
+                <option value="Cardiologist" <%= userRole === 'Cardiologist' ? 'selected' : '' %>>Cardiologist</option>
+                <option value="Internist" <%= userRole === 'Internist' ? 'selected' : '' %>>Internist</option>
+                <option value="Radiologist" <%= userRole === 'Radiologist' ? 'selected' : '' %>>Radiologist</option>
+                <option value="Sonologist" <%= userRole === 'Sonologist' ? 'selected' : '' %>>Sonologist</option>
+                <option value="Pathologist" <%= userRole === 'Pathologist' ? 'selected' : '' %>>Pathologist</option>
+                <option value="Pulmonologist" <%= userRole === 'Pulmonologist' ? 'selected' : '' %>>Pulmonologist</option>
+                <option value="OB-Gynecologist" <%= userRole === 'OB-Gynecologist' ? 'selected' : '' %>>OB-Gynecologist</option>
+                <option value="Pediatrician" <%= userRole === 'Pediatrician' ? 'selected' : '' %>>Pediatrician</option>
+                <option value="Neurologist" <%= userRole === 'Neurologist' ? 'selected' : '' %>>Neurologist</option>
+                <option value="Surgeon" <%= userRole === 'Surgeon' ? 'selected' : '' %>>Surgeon</option>
+                <option value="Doctor" <%= userRole === 'Doctor' ? 'selected' : '' %>>Doctor (General / Attending)</option>
+              </optgroup>
+              <optgroup label="Laboratory & Clinic Staff">
+                <option value="Medical Technologist" <%= userRole === 'Medical Technologist' ? 'selected' : '' %>>Medical Technologist</option>
+                <option value="X-Ray Technologist" <%= userRole === 'X-Ray Technologist' ? 'selected' : '' %>>X-Ray Technologist</option>
+                <option value="Sonographer" <%= userRole === 'Sonographer' ? 'selected' : '' %>>Sonographer</option>
+                <option value="Technician" <%= userRole === 'Technician' ? 'selected' : '' %>>Technician</option>
+                <option value="Drugtest Analyst" <%= userRole === 'Drugtest Analyst' ? 'selected' : '' %>>Drugtest Analyst</option>
+                <option value="Encoder" <%= userRole === 'Encoder' ? 'selected' : '' %>>Encoder</option>
+                <option value="Receptionist" <%= userRole === 'Receptionist' ? 'selected' : '' %>>Receptionist</option>
+              </optgroup>
+              <optgroup label="Management & Administration">
+                <option value="Manager" <%= userRole === 'Manager' ? 'selected' : '' %>>Manager</option>
+                <option value="Owner" <%= userRole === 'Owner' ? 'selected' : '' %>>Owner</option>
+                <option value="Admin" <%= userRole === 'Admin' ? 'selected' : '' %>>Admin</option>
+              </optgroup>
+              <optgroup label="Other Specialties">
+                <% if (isOtherRole) { %>
+                  <option value="<%= userRole %>" selected><%= userRole %> (Custom Specialization)</option>
+                <% } %>
+                <option value="__other__">Other Specialized Doctor / Custom Role...</option>
+              </optgroup>
             </select>
+            <div id="customRoleWrapper" style="display: <%= isOtherRole ? 'block' : 'none' %>; margin-top: 6px;">
+              <input type="text" name="customRole" id="customRoleInput" value="<%= isOtherRole ? userRole : '' %>" placeholder="Enter specialization (e.g. Endocrinologist, Nephrologist)" style="width: 100%; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 4px 10px; font-size: 0.85em; box-sizing: border-box;" />
+            </div>
           </div>
           <div>
             <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">Status</label>
@@ -169,3 +201,25 @@
   </form>
 
 </div>
+
+<script>
+function onRoleChange(sel) {
+  var wrapper = document.getElementById('customRoleWrapper');
+  var input = document.getElementById('customRoleInput');
+  if (!wrapper || !input) return;
+  if (sel.value === '__other__') {
+    wrapper.style.display = 'block';
+    input.focus();
+  } else {
+    var standard = [
+      'Cardiologist', 'Internist', 'Radiologist', 'Sonologist', 'Pathologist', 
+      'Pulmonologist', 'OB-Gynecologist', 'Pediatrician', 'Neurologist', 'Surgeon', 'Doctor',
+      'Medical Technologist', 'X-Ray Technologist', 'Sonographer', 'Technician', 
+      'Drugtest Analyst', 'Encoder', 'Receptionist', 'Manager', 'Owner', 'Admin'
+    ];
+    if (standard.indexOf(sel.value) !== -1) {
+      wrapper.style.display = 'none';
+    }
+  }
+}
+</script>

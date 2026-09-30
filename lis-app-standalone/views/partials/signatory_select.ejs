@@ -8,7 +8,19 @@
         if (typeof role !== 'undefined' && role) {
           try {
             if (Array.isArray(role)) {
-              filteredUsers = filteredUsers.filter(function(u){ return role.indexOf((u.role || '')) !== -1; });
+              var isDocFilter = role.some(function(r){ return ['Doctor','Cardiologist','Internist','Physician','Radiologist','Pathologist'].indexOf(r) !== -1; });
+              filteredUsers = filteredUsers.filter(function(u){
+                var ur = (u.role || '').trim();
+                if (role.indexOf(ur) !== -1) return true;
+                if (isDocFilter) {
+                  var url = ur.toLowerCase();
+                  var unl = (u.name || '').toLowerCase();
+                  if (url.includes('doctor') || url.includes('cardio') || url.includes('physician') || url.includes('internist') || url.includes('specialist') || url.includes('patholog') || url.includes('radio') || url.includes('sonolog') || url.includes('pulmonolog') || url.includes('gynecolog') || url.includes('pediatric') || url.includes('neurolog') || url.includes('surgeon') || unl.startsWith('dr.') || unl.startsWith('dr ')) {
+                    return true;
+                  }
+                }
+                return false;
+              });
             } else if (typeof role === 'string' && role.indexOf(',') !== -1) {
               var rolesArr = role.split(',').map(function(x){ return x.trim(); });
               filteredUsers = filteredUsers.filter(function(u){ return rolesArr.indexOf((u.role || '')) !== -1; });
@@ -42,7 +54,74 @@
     const container = document.currentScript && document.currentScript.parentNode || document.body;
     const selects = container.querySelectorAll('.signatory-select');
     selects.forEach(sel => {
-      function onChange(){
+      function syncDesignation(designation, isUserAction) {
+        if (!designation) return;
+        const form = sel.closest('form') || document;
+        
+        // 1. Look for designation select dropdown (e.g. ECG results entry)
+        const desigSelect = form.querySelector('select[name="doctorDesignation"]') || form.querySelector(`select[name="${sel.name.replace('Select','') + 'Designation'}"]`) || document.getElementById('doctorDesignationSelect');
+        const desigOther = form.querySelector('input[name="doctorDesignationOther"]') || document.getElementById('doctorDesignationOther');
+        
+        if (desigSelect) {
+          // If not user action and desigSelect already has a pre-saved value from database, preserve it
+          if (!isUserAction && desigSelect.value && desigSelect.value !== '') {
+            return;
+          }
+          let matched = false;
+          for (let i = 0; i < desigSelect.options.length; i++) {
+            if (desigSelect.options[i].value && desigSelect.options[i].value.toLowerCase() === designation.toLowerCase()) {
+              desigSelect.selectedIndex = i;
+              matched = true;
+              break;
+            }
+          }
+          if (!matched) {
+            // Check for general Physician / Doctor mapping
+            const dLow = designation.toLowerCase();
+            if (dLow.includes('doctor') || dLow.includes('physician')) {
+              for (let i = 0; i < desigSelect.options.length; i++) {
+                if (desigSelect.options[i].value === 'Physician' || desigSelect.options[i].value === 'Doctor') {
+                  desigSelect.selectedIndex = i;
+                  matched = true;
+                  break;
+                }
+              }
+            }
+          }
+          if (!matched) {
+            // Select "Other" option and put designation into Other input
+            for (let i = 0; i < desigSelect.options.length; i++) {
+              if (desigSelect.options[i].value === 'Other') {
+                desigSelect.selectedIndex = i;
+                matched = true;
+                break;
+              }
+            }
+            if (desigOther) {
+              desigOther.value = designation;
+              desigOther.style.display = 'block';
+            }
+          } else {
+            if (desigOther) {
+              desigOther.style.display = 'none';
+            }
+          }
+          if (typeof window.onDesignationChange === 'function') {
+            window.onDesignationChange();
+          }
+        }
+        
+        // 2. Look for text input (e.g. 2D Echo, Ultrasound forms)
+        const desigInput = form.querySelector('input[name="doctorDesignation"]:not(#doctorDesignationOther)') || form.querySelector(`input[name="${sel.name.replace('Select','') + 'Designation'}"]`);
+        if (desigInput) {
+          if (isUserAction || !desigInput.value) {
+            desigInput.value = designation;
+          }
+        }
+      }
+
+      function onChange(evt){
+        const isUserAction = !!(evt && evt.isTrusted);
         const nameKey = sel.getAttribute('data-name-input');
         const licenseKey = sel.getAttribute('data-license-input');
         const nameInput = container.querySelector(`[name="${nameKey}"]`);
@@ -52,12 +131,26 @@
         if (opt && opt.value && opt.value !== '__manual__'){
           const n = opt.getAttribute('data-name') || '';
           const l = opt.getAttribute('data-license') || '';
+          const d = opt.getAttribute('data-designation') || '';
           nameInput.value = n;
           licenseInput.value = l;
+          if (d) {
+            syncDesignation(d, isUserAction);
+          }
         } else if (opt && opt.value === '__manual__'){
           nameInput.value = '';
           licenseInput.value = '';
           nameInput.focus();
+        } else if (opt && !opt.value) {
+          if (isUserAction) {
+            nameInput.value = '';
+            licenseInput.value = '';
+            const desigSelect = document.getElementById('doctorDesignationSelect');
+            if (desigSelect) {
+              desigSelect.value = '';
+              if (typeof window.onDesignationChange === 'function') window.onDesignationChange();
+            }
+          }
         }
       }
       sel.addEventListener('change', onChange);

@@ -26,10 +26,22 @@
       if (typeof btn.innerHTML !== 'undefined') btn.dataset.__orig = btn.innerHTML;
       try { btn.innerHTML = '<span class="btn-loading-spinner" aria-hidden="true"></span>' + label; } catch(e){}
     }
+
+    // Safety timeout: automatically restore button after 5 seconds in case the action does not navigate or reload
+    try {
+      if (btn.__guardTimer) clearTimeout(btn.__guardTimer);
+      btn.__guardTimer = setTimeout(function(){
+        restoreButton(btn);
+      }, 5000);
+    } catch(e){}
   }
 
   function restoreButton(btn){
     if (!btn || btn.dataset.__loading !== '1') return;
+    if (btn.__guardTimer) {
+      clearTimeout(btn.__guardTimer);
+      delete btn.__guardTimer;
+    }
     btn.disabled = false;
     if (btn.dataset.__orig) {
       const tag = btn.tagName && btn.tagName.toUpperCase();
@@ -53,7 +65,7 @@
     return false;
   }
 
-  // EXCLUSION: buttons we should NOT guard (text-match, case-insensitive)
+  // EXCLUSION: buttons we should NOT guard
   function isExcludedButton(el){
     if (!el) return false;
     // Exempt all buttons on Dashboard page
@@ -61,16 +73,31 @@
     if (el.closest && el.closest('.dashboard-container, #dashboardView, [data-page="dashboard"]')) return true;
     if (el.classList && el.classList.contains('no-guard')) return true;
     if (el.getAttribute && (el.getAttribute('data-no-guard') === '1' || el.getAttribute('data-no-guard') === 'true')) return true;
+
+    // 1. Exclude tabs and tab navigation elements (Settings, Equipment QC, Consultations, HR Profiles, Ultrasound, etc.)
+    if (el.matches && el.matches('[role="tab"], .settings-tab-btn, .eq-tab-btn, .consult-tab-btn, .profile-tab, .proc-tab, .echo-preview-tab-btn, [class*="tab-btn"], [class*="tab-nav"], [data-tab], [data-bs-toggle="tab"], [data-toggle="tab"]')) return true;
+    if (el.closest && el.closest('.settings-nav-tabs, .eq-tabs, [role="tablist"], .nav-tabs, .tabs, .tab-nav, .tab-buttons, .tab-bar, .profile-tabs, .echo-preview-tabs')) return true;
+
+    // 2. Exclude client-side UI actions (tabs, modal dismissals, accordions, toggles, text formatting, add/remove row)
+    const oc = (el.getAttribute && el.getAttribute('onclick')) || '';
+    if (oc && /switch|tab|toggle|modal|close|cancel|back|reset|clear|filter|wrapSelection|insertParagraph|addRow|removeRow|selectProcedure|setPreview/i.test(oc)) return true;
+
+    // 3. Exclude modal close & dialog dismiss buttons
+    if (el.matches && el.matches('.close, .modal-close, [data-dismiss], [data-bs-dismiss]')) return true;
+
     // prefer explicit attributes (aria-label/title/data-label), fallback to text/value
     const attrLabel = (el.getAttribute && (el.getAttribute('aria-label') || el.getAttribute('title') || el.getAttribute('data-label')));
     const raw = (attrLabel || el.textContent || el.innerText || el.value || '').replace(/[→←↶↷]/g, '').trim();
     if (!raw) return false;
+    const txt = raw.toLowerCase();
     const exceptions = [
-      'previous', 'next', 'print', 'print filtered', 'download', 'clear filter', 'clear filters', 
+      'previous', 'next', 'print', 'print filtered', 'download', 'clear filter', 'clear filters', 'reset', 'reset filters',
       'all test types', 'patient queue display', 'kiosk', 'open kiosk', 'open kiosk queue display', 
       'add new test field', 'add test field', 'add field', 'remove field', 'preview', 'fullscreen', 
       'create new template', 'edit', 'view', 'clear reception queue', 'clear queue', 'clear queues', 
-      'total', 'selected', 'today', 'yesterday', 'monthly', 'daily', 'hourly'
+      'total', 'selected', 'today', 'yesterday', 'monthly', 'daily', 'hourly',
+      'clinical workflow', 'sse real-time', 'printer & hardware', 'ai assistant', 'data & backup', 'system & .env',
+      'equipment registry', 'quality control', 'external quality assessment'
     ];
     for (let i=0; i<exceptions.length; i++) {
       if (txt.indexOf(exceptions[i]) !== -1) return true;

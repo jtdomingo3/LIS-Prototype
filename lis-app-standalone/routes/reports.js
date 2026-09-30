@@ -80,15 +80,55 @@ function flattenResults(obj, prefix = '') {
 
 // uses centralized logger in lib/reportLogger.js
 
+// In-memory cache for completed tests navigation to avoid repeated scans of thousands of records
+let _navCache = null;
+let _navCacheTime = 0;
+
+function getCompletedTestsForNav() {
+  const now = Date.now();
+  if (_navCache && (now - _navCacheTime < 30000)) {
+    return _navCache;
+  }
+  const rawTests = (global.db && typeof global.db.getTests === 'function') 
+    ? global.db.getTests() 
+    : [];
+  const completedSorted = (Array.isArray(rawTests) ? rawTests : [])
+    .filter(t => t && !isDoctorVisitTest(t) && (t.status === 'Completed' || t.status === 'Released'));
+  completedSorted.sort((a, b) => new Date(b.testDate || b.createdAt) - new Date(a.testDate || a.createdAt));
+
+  const rawPatients = (global.db && typeof global.db.getPatients === 'function')
+    ? global.db.getPatients()
+    : [];
+  const patientMap = {};
+  for (let i = 0; i < rawPatients.length; i++) {
+    const p = rawPatients[i];
+    if (p) {
+      const pid = p.id || p._id;
+      if (pid) patientMap[pid] = `${p.lastName || ''}, ${p.firstName || ''}`.replace(/^,\s*/, '').replace(/,\s*$/, '').trim();
+    }
+  }
+
+  const list = new Array(completedSorted.length);
+  for (let i = 0; i < completedSorted.length; i++) {
+    const t = completedSorted[i];
+    list[i] = {
+      id: t.id || t._id,
+      testId: t.testId,
+      testType: t.testType || t.template || '',
+      patientName: t.patient ? (patientMap[t.patient] || '') : '',
+      testDate: t.testDate || t.createdAt || null
+    };
+  }
+  _navCache = list;
+  _navCacheTime = now;
+  return list;
+}
+
 // GET /reports - Reports page
 router.get('/', requireAuth, canAccessPatient, async (req, res) => {
   try {
     // Find the most recent completed/released test and redirect to its preview
-    const allTests = await Test.find({});
-    const completedTests = Array.isArray(allTests)
-      ? allTests.filter(t => t && !isDoctorVisitTest(t) && (t.status === 'Completed' || t.status === 'Released'))
-      : [];
-    completedTests.sort((a, b) => new Date(b.testDate || b.createdAt) - new Date(a.testDate || a.createdAt));
+    const completedTests = getCompletedTestsForNav();
 
     if (completedTests.length) {
       const mostRecent = completedTests[0];
@@ -159,29 +199,8 @@ router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) =
     }
     sanitizeTestSignatures(populatedTest);
 
-    // Build navigation list — lightweight: read patient names from a single
-    // in-memory scan of the patients array, NOT one-by-one async lookups.
-    const allTests = await Test.find({});
-    const completedSorted = Array.isArray(allTests)
-      ? allTests.filter(t => t && !isDoctorVisitTest(t) && (t.status === 'Completed' || t.status === 'Released'))
-      : [];
-    completedSorted.sort((a, b) => new Date(b.testDate || b.createdAt) - new Date(a.testDate || a.createdAt));
-
-    // Build a patient-id → name map from in-memory DB (one scan, not N async calls)
-    const allPatients = await Patient.find ? await Patient.find({}) : [];
-    const patientMap = {};
-    (Array.isArray(allPatients) ? allPatients : []).forEach(p => {
-      const pid = p.id || p._id;
-      if (pid) patientMap[pid] = `${p.lastName || ''}, ${p.firstName || ''}`.replace(/^,\s*/, '').replace(/,\s*$/, '').trim();
-    });
-
-    const testsForNav = completedSorted.map(t => ({
-      id: t.id || t._id,
-      testId: t.testId,
-      testType: t.testType || t.template || '',
-      patientName: t.patient ? (patientMap[t.patient] || '') : '',
-      testDate: t.testDate || t.createdAt || null
-    }));
+    // Build navigation list — lightweight in-memory cache
+    const testsForNav = getCompletedTestsForNav();
 
     const currentIndex = testsForNav.findIndex(tn => String(tn.id) === String(test.id || test._id));
     let prevId = (currentIndex > 0) ? testsForNav[currentIndex - 1].id : null;
@@ -207,44 +226,21 @@ router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) =
       } catch (e) {}
     }
 
-    // Render the result partial + print wrapper HTML for the preview iframe srcdoc
-    const template = getResultTemplate(populatedTest);
-    if (!template) {
-      req.flash('error_msg', 'No diagnostic report template available for this test.');
-      return res.redirect('/reports');
-    }
-    const dbTemplate = await Template.findOne({ testType: populatedTest.testType, isActive: true }) || await Template.findOne({ testType: populatedTest.template, isActive: true });
-    const inlineLogo = getInlineLogo();
-
     const qparts = [];
     if (req.query.filterPatient) qparts.push('filterPatient=' + encodeURIComponent(req.query.filterPatient));
     if (req.query.filterTestType) qparts.push('filterTestType=' + encodeURIComponent(req.query.filterTestType));
     if (req.query.filterDate) qparts.push('filterDate=' + encodeURIComponent(req.query.filterDate));
     const filterQuery = qparts.length ? ('?' + qparts.join('&')) : '';
 
-    // Render result template → HTML string (callback, no layout)
-    res.render(`reports/results/${template}`, { title: 'Result', test: populatedTest, dbTemplate, layout: false, inlineLogo }, (err, renderedHtml) => {
-      if (err) { console.error('Error rendering result template for preview:', err); }
-
-      // Wrap with print layout
-      res.render('reports/print', {
-        title: 'Print Report', test: populatedTest,
-        currentDate: new Date().toLocaleDateString(),
-        renderedResultHtml: renderedHtml, layout: false, inlineLogo
-      }, (err2, finalHtml) => {
-        if (err2) { console.error('Error rendering print wrapper for preview:', err2); }
-
-        return res.render('reports/preview', {
-          title: 'Report Preview',
-          test: populatedTest,
-          currentDate: new Date().toLocaleDateString(),
-          renderedResultHtml: finalHtml || renderedHtml || null,
-          testsForNav,
-          prevId,
-          nextId,
-          filterQuery
-        });
-      });
+    return res.render('reports/preview', {
+      title: 'Report Preview',
+      test: populatedTest,
+      currentDate: new Date().toLocaleDateString(),
+      renderedResultHtml: null,
+      testsForNav,
+      prevId,
+      nextId,
+      filterQuery
     });
 
   } catch (error) {
@@ -301,14 +297,15 @@ router.get('/result/:testId', requireAuth, canAccessPatient, async (req, res) =>
     // allow embedding without layout when requested (used by preview iframe)
     const useLayout = req.query.embedded ? false : 'print';
     const autoPrint = req.query.print === '1' || req.query.print === 'true';
-    const inlineLogo = getInlineLogo();
+    const inlineLogo = req.query.embedded ? '/assets/gezyne-logo.png' : getInlineLogo();
     return res.render(`reports/results/${template}`, {
       title: 'Result',
       test: populatedTest,
       dbTemplate: dbTemplate,
       layout: useLayout,
       print: autoPrint,
-      inlineLogo
+      inlineLogo,
+      sheet: req.query.sheet || 'all'
     });
 
   } catch (error) {
@@ -414,7 +411,7 @@ router.get('/print/:testId', requireAuth, canAccessPatient, async (req, res) => 
 
     // Render the result template without layout to get its HTML
     const inlineLogo = getInlineLogo();
-    res.render(viewPath, { title: 'Result Print', test: populatedTest, dbTemplate, layout: false, inlineLogo }, (err, renderedHtml) => {
+    res.render(viewPath, { title: 'Result Print', test: populatedTest, dbTemplate, layout: false, inlineLogo, sheet: req.query.sheet || 'all' }, (err, renderedHtml) => {
         if (err) {
           console.error('Error rendering result template for print:', err);
           return res.status(500).send('Error preparing print preview');

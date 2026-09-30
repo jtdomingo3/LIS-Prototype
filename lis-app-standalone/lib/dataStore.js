@@ -96,6 +96,14 @@ class DataStore {
       qc_entries: this.db.getQcEntries ? this.db.getQcEntries() : [],
       neqas_records: this.db.getNeqasRecords ? this.db.getNeqasRecords() : [],
       consultations: this.db.getConsultations ? this.db.getConsultations() : [],
+      expenses: this.db.getExpenses ? this.db.getExpenses() : [],
+      revenue_entries: this.db.getRevenueEntries ? this.db.getRevenueEntries() : [],
+      cost_per_test: this.db.getCostPerTests ? this.db.getCostPerTests() : [],
+      employees: this.db.getEmployees ? this.db.getEmployees() : [],
+      payroll_records: this.db.getPayrollRecords ? this.db.getPayrollRecords() : [],
+      hr_documents: this.db.getHrDocuments ? this.db.getHrDocuments() : [],
+      leave_records: this.db.getLeaveRecords ? this.db.getLeaveRecords() : [],
+      dtr_records: this.db.getDtrRecords ? this.db.getDtrRecords() : [],
       settings: readData.settings || {}
     };
   }
@@ -116,6 +124,14 @@ class DataStore {
     if (name === 'qc_controls') return this.db.getQcControls ? this.db.getQcControls() : [];
     if (name === 'qc_entries') return this.db.getQcEntries ? this.db.getQcEntries() : [];
     if (name === 'neqas_records') return this.db.getNeqasRecords ? this.db.getNeqasRecords() : [];
+    if (name === 'expenses') return this.db.getExpenses ? this.db.getExpenses() : [];
+    if (name === 'revenue_entries') return this.db.getRevenueEntries ? this.db.getRevenueEntries() : [];
+    if (name === 'cost_per_test') return this.db.getCostPerTests ? this.db.getCostPerTests() : [];
+    if (name === 'employees') return this.db.getEmployees ? this.db.getEmployees() : [];
+    if (name === 'payroll_records') return this.db.getPayrollRecords ? this.db.getPayrollRecords() : [];
+    if (name === 'hr_documents') return this.db.getHrDocuments ? this.db.getHrDocuments() : [];
+    if (name === 'leave_records') return this.db.getLeaveRecords ? this.db.getLeaveRecords() : [];
+    if (name === 'dtr_records') return this.db.getDtrRecords ? this.db.getDtrRecords() : [];
     return [];
   }
 
@@ -234,6 +250,102 @@ class DataStore {
       }
       items.forEach(it => this.db.saveConsultation && this.db.saveConsultation(it));
     }
+    else if (name === 'expenses' && Array.isArray(items)) {
+      if (opts && opts.replace && this.db.getExpenses) {
+        const incomingIds = new Set(items.map(i => i && (i.id || i._id)).filter(Boolean));
+        const current = this.db.getExpenses() || [];
+        for (const it of current) {
+          if (it && it.id && !incomingIds.has(it.id) && this.db.deleteExpense) {
+            this.db.deleteExpense(it.id);
+          }
+        }
+      }
+      items.forEach(it => this.db.saveExpense && this.db.saveExpense(it));
+    }
+    else if (name === 'revenue_entries' && Array.isArray(items)) {
+      if (opts && opts.replace && this.db.getRevenueEntries) {
+        const incomingIds = new Set(items.map(i => i && (i.id || i._id)).filter(Boolean));
+        const current = this.db.getRevenueEntries() || [];
+        for (const it of current) {
+          if (it && it.id && !incomingIds.has(it.id) && this.db.deleteRevenueEntry) {
+            this.db.deleteRevenueEntry(it.id);
+          }
+        }
+      }
+      items.forEach(it => this.db.saveRevenueEntry && this.db.saveRevenueEntry(it));
+    }
+    else if (name === 'cost_per_test' && Array.isArray(items)) {
+      if (opts && opts.replace && this.db.getCostPerTests) {
+        const incomingIds = new Set(items.map(i => i && (i.id || i._id)).filter(Boolean));
+        const current = this.db.getCostPerTests() || [];
+        for (const it of current) {
+          if (it && it.id && !incomingIds.has(it.id) && this.db.deleteCostPerTest) {
+            this.db.deleteCostPerTest(it.id);
+          }
+        }
+      }
+      items.forEach(it => this.db.saveCostPerTest && this.db.saveCostPerTest(it));
+    }
+    else if (name === 'employees' && Array.isArray(items)) {
+      if (opts && opts.replace && this.db.getEmployees) {
+        const incomingIds = new Set(items.map(i => i && (i.id || i._id)).filter(Boolean));
+        const current = this.db.getEmployees() || [];
+        for (const it of current) {
+          if (it && it.id && !incomingIds.has(it.id) && this.db.deleteEmployee) {
+            this.db.deleteEmployee(it.id);
+          }
+        }
+      }
+      items.forEach(it => this.db.saveEmployee && this.db.saveEmployee(it));
+    }
+    else if (name === 'payroll_records' && Array.isArray(items)) {
+      if (opts && opts.replace && this.db.getPayrollRecords) {
+        const incomingIds = new Set(items.map(i => i && (i.id || i._id)).filter(Boolean));
+        const current = this.db.getPayrollRecords() || [];
+        for (const it of current) {
+          if (it && it.id && !incomingIds.has(it.id) && this.db.deletePayrollRecord) {
+            this.db.deletePayrollRecord(it.id);
+          }
+        }
+      }
+      items.forEach(it => this.db.savePayrollRecord && this.db.savePayrollRecord(it));
+    }
+    else if (name === 'hr_documents' && Array.isArray(items)) {
+      if (opts && opts.replace && this.db.getHrDocuments) {
+        const incomingIds = new Set(items.map(i => i && (i.id || i._id)).filter(Boolean));
+        const current = this.db.getHrDocuments() || [];
+        for (const it of current) {
+          if (it && it.id && !incomingIds.has(it.id) && this.db.deleteHrDocument) {
+            this.db.deleteHrDocument(it.id);
+          }
+        }
+      }
+      items.forEach(it => this.db.saveHrDocument && this.db.saveHrDocument(it));
+    }
+    else if (name === 'leave_records' && Array.isArray(items)) {
+      if (opts && opts.replace && this.db.getLeaveRecords) {
+        const incomingIds = new Set(items.map(i => i && (i.id || i._id)).filter(Boolean));
+        const current = this.db.getLeaveRecords() || [];
+        for (const it of current) {
+          if (it && it.id && !incomingIds.has(it.id) && this.db.deleteLeaveRecord) {
+            this.db.deleteLeaveRecord(it.id);
+          }
+        }
+      }
+      items.forEach(it => this.db.saveLeaveRecord && this.db.saveLeaveRecord(it));
+    }
+    else if (name === 'dtr_records' && Array.isArray(items)) {
+      if (opts && opts.replace && this.db.getDtrRecords) {
+        const incomingIds = new Set(items.map(i => i && (i.id || i._id)).filter(Boolean));
+        const current = this.db.getDtrRecords() || [];
+        for (const it of current) {
+          if (it && it.id && !incomingIds.has(it.id) && this.db.deleteDtrRecord) {
+            this.db.deleteDtrRecord(it.id);
+          }
+        }
+      }
+      items.forEach(it => this.db.saveDtrRecord && this.db.saveDtrRecord(it));
+    }
   }
 
   mergeCollection(name, items, idKey = 'id') {
@@ -291,7 +403,16 @@ class DataStore {
         name === 'equipment_logs' ? this.db.deleteEquipmentLog :
         name === 'qc_controls' ? this.db.deleteQcControl :
         name === 'qc_entries' ? this.db.deleteQcEntry :
-        name === 'neqas_records' ? this.db.deleteNeqasRecord : null;
+        name === 'neqas_records' ? this.db.deleteNeqasRecord :
+        name === 'consultations' ? this.db.deleteConsultation :
+        name === 'expenses' ? this.db.deleteExpense :
+        name === 'revenue_entries' ? this.db.deleteRevenueEntry :
+        name === 'cost_per_test' ? this.db.deleteCostPerTest :
+        name === 'employees' ? this.db.deleteEmployee :
+        name === 'payroll_records' ? this.db.deletePayrollRecord :
+        name === 'hr_documents' ? this.db.deleteHrDocument :
+        name === 'leave_records' ? this.db.deleteLeaveRecord :
+        name === 'dtr_records' ? this.db.deleteDtrRecord : null;
 
       if (deleteFn) {
         for (const id of deletedIds) {

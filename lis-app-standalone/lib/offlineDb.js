@@ -39,6 +39,20 @@ function createOfflineDb(dataStore) {
         if (data.inventory) dataStore.setCollection('inventory', data.inventory);
         if (data.inventory_batches) dataStore.setCollection('inventory_batches', data.inventory_batches);
         if (data.inventory_transactions) dataStore.setCollection('inventory_transactions', data.inventory_transactions);
+        if (data.equipment) dataStore.setCollection('equipment', data.equipment);
+        if (data.equipment_logs) dataStore.setCollection('equipment_logs', data.equipment_logs);
+        if (data.qc_controls) dataStore.setCollection('qc_controls', data.qc_controls);
+        if (data.qc_entries) dataStore.setCollection('qc_entries', data.qc_entries);
+        if (data.neqas_records) dataStore.setCollection('neqas_records', data.neqas_records);
+        if (data.consultations) dataStore.setCollection('consultations', data.consultations);
+        if (data.expenses) dataStore.setCollection('expenses', data.expenses);
+        if (data.revenue_entries) dataStore.setCollection('revenue_entries', data.revenue_entries);
+        if (data.cost_per_test) dataStore.setCollection('cost_per_test', data.cost_per_test);
+        if (data.employees) dataStore.setCollection('employees', data.employees);
+        if (data.payroll_records) dataStore.setCollection('payroll_records', data.payroll_records);
+        if (data.hr_documents) dataStore.setCollection('hr_documents', data.hr_documents);
+        if (data.leave_records) dataStore.setCollection('leave_records', data.leave_records);
+        if (data.dtr_records) dataStore.setCollection('dtr_records', data.dtr_records);
         if (data.settings && this.setSettings) this.setSettings(data.settings);
       }
     },
@@ -634,6 +648,336 @@ function createOfflineDb(dataStore) {
       let list = dataStore.getCollection('consultations') || [];
       list = list.filter(c => !(c && c.id === id));
       dataStore.setCollection('consultations', list);
+      return true;
+    },
+
+    /* ── Expenses ──────────────────────────────────────────────── */
+    getExpenses(month, category) {
+      if (sqliteAdapter && typeof sqliteAdapter.getExpenses === 'function') {
+        return sqliteAdapter.getExpenses(month, category);
+      }
+      let list = dataStore.getCollection('expenses') || [];
+      if (month) list = list.filter(e => e && e.month === month);
+      if (category) list = list.filter(e => e && e.category === category);
+      return list;
+    },
+    getExpenseById(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.getExpenseById === 'function') {
+        return sqliteAdapter.getExpenseById(id);
+      }
+      const list = dataStore.getCollection('expenses') || [];
+      return list.find(e => e && (e.id === id || e._id === id)) || null;
+    },
+    saveExpense(exp) {
+      if (sqliteAdapter && typeof sqliteAdapter.saveExpense === 'function') {
+        return sqliteAdapter.saveExpense(exp);
+      }
+      if (!exp || !exp.id) return null;
+      let list = dataStore.getCollection('expenses') || [];
+      const idx = list.findIndex(e => e && e.id === exp.id);
+      if (idx >= 0) list[idx] = exp;
+      else list.push(exp);
+      dataStore.setCollection('expenses', list);
+      return exp;
+    },
+    deleteExpense(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.deleteExpense === 'function') {
+        return sqliteAdapter.deleteExpense(id);
+      }
+      let list = dataStore.getCollection('expenses') || [];
+      list = list.filter(e => !(e && e.id === id));
+      dataStore.setCollection('expenses', list);
+      return true;
+    },
+
+    /* ── Revenue Entries ───────────────────────────────────────── */
+    getRevenueEntries(month) {
+      if (sqliteAdapter && typeof sqliteAdapter.getRevenueEntries === 'function') {
+        return sqliteAdapter.getRevenueEntries(month);
+      }
+      let list = dataStore.getCollection('revenue_entries') || [];
+      if (month) list = list.filter(r => r && r.month === month);
+      return list;
+    },
+    getRevenueEntryById(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.getRevenueEntryById === 'function') {
+        return sqliteAdapter.getRevenueEntryById(id);
+      }
+      const list = dataStore.getCollection('revenue_entries') || [];
+      return list.find(r => r && (r.id === id || r._id === id)) || null;
+    },
+    saveRevenueEntry(rev) {
+      if (sqliteAdapter && typeof sqliteAdapter.saveRevenueEntry === 'function') {
+        return sqliteAdapter.saveRevenueEntry(rev);
+      }
+      if (!rev || !rev.id) return null;
+      let list = dataStore.getCollection('revenue_entries') || [];
+      const idx = list.findIndex(r => r && r.id === rev.id);
+      if (idx >= 0) list[idx] = rev;
+      else list.push(rev);
+      dataStore.setCollection('revenue_entries', list);
+      return rev;
+    },
+    deleteRevenueEntry(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.deleteRevenueEntry === 'function') {
+        return sqliteAdapter.deleteRevenueEntry(id);
+      }
+      let list = dataStore.getCollection('revenue_entries') || [];
+      list = list.filter(r => !(r && r.id === id));
+      dataStore.setCollection('revenue_entries', list);
+      return true;
+    },
+
+    /* ── Cost Per Test ─────────────────────────────────────────── */
+    getCostPerTests() {
+      if (sqliteAdapter && typeof sqliteAdapter.getCostPerTests === 'function') {
+        return sqliteAdapter.getCostPerTests();
+      }
+      return dataStore.getCollection('cost_per_test') || [];
+    },
+    getCostPerTestById(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.getCostPerTestById === 'function') {
+        return sqliteAdapter.getCostPerTestById(id);
+      }
+      const list = dataStore.getCollection('cost_per_test') || [];
+      return list.find(c => c && (c.id === id || c._id === id)) || null;
+    },
+    getCostPerTestByType(type) {
+      if (sqliteAdapter && typeof sqliteAdapter.getCostPerTestByType === 'function') {
+        return sqliteAdapter.getCostPerTestByType(type);
+      }
+      const list = dataStore.getCollection('cost_per_test') || [];
+      return list.find(c => c && c.testType === type) || null;
+    },
+    saveCostPerTest(cpt) {
+      if (sqliteAdapter && typeof sqliteAdapter.saveCostPerTest === 'function') {
+        return sqliteAdapter.saveCostPerTest(cpt);
+      }
+      if (!cpt || !cpt.id) return null;
+      let list = dataStore.getCollection('cost_per_test') || [];
+      const idx = list.findIndex(c => c && c.id === cpt.id);
+      if (idx >= 0) list[idx] = cpt;
+      else list.push(cpt);
+      dataStore.setCollection('cost_per_test', list);
+      return cpt;
+    },
+    deleteCostPerTest(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.deleteCostPerTest === 'function') {
+        return sqliteAdapter.deleteCostPerTest(id);
+      }
+      let list = dataStore.getCollection('cost_per_test') || [];
+      list = list.filter(c => !(c && c.id === id));
+      dataStore.setCollection('cost_per_test', list);
+      return true;
+    },
+
+    /* ── Employees ─────────────────────────────────────────────── */
+    getEmployees() {
+      if (sqliteAdapter && typeof sqliteAdapter.getEmployees === 'function') {
+        return sqliteAdapter.getEmployees();
+      }
+      return dataStore.getCollection('employees') || [];
+    },
+    getEmployeeById(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.getEmployeeById === 'function') {
+        return sqliteAdapter.getEmployeeById(id);
+      }
+      const list = dataStore.getCollection('employees') || [];
+      return list.find(e => e && (e.id === id || e._id === id)) || null;
+    },
+    getEmployeeByUserId(userId) {
+      if (sqliteAdapter && typeof sqliteAdapter.getEmployeeByUserId === 'function') {
+        return sqliteAdapter.getEmployeeByUserId(userId);
+      }
+      const list = dataStore.getCollection('employees') || [];
+      return list.find(e => e && (e.userId === userId || e.id === userId)) || null;
+    },
+    getEmployeeByCode(code) {
+      if (sqliteAdapter && typeof sqliteAdapter.getEmployeeByCode === 'function') {
+        return sqliteAdapter.getEmployeeByCode(code);
+      }
+      const list = dataStore.getCollection('employees') || [];
+      return list.find(e => e && e.employeeCode === code) || null;
+    },
+    saveEmployee(emp) {
+      if (sqliteAdapter && typeof sqliteAdapter.saveEmployee === 'function') {
+        return sqliteAdapter.saveEmployee(emp);
+      }
+      if (!emp || !emp.id) return null;
+      let list = dataStore.getCollection('employees') || [];
+      const idx = list.findIndex(e => e && e.id === emp.id);
+      if (idx >= 0) list[idx] = emp;
+      else list.push(emp);
+      dataStore.setCollection('employees', list);
+      return emp;
+    },
+    deleteEmployee(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.deleteEmployee === 'function') {
+        return sqliteAdapter.deleteEmployee(id);
+      }
+      let list = dataStore.getCollection('employees') || [];
+      list = list.filter(e => !(e && e.id === id));
+      dataStore.setCollection('employees', list);
+      return true;
+    },
+
+    /* ── Payroll Records ───────────────────────────────────────── */
+    getPayrollRecords(month, employeeId) {
+      if (sqliteAdapter && typeof sqliteAdapter.getPayrollRecords === 'function') {
+        return sqliteAdapter.getPayrollRecords(month, employeeId);
+      }
+      let list = dataStore.getCollection('payroll_records') || [];
+      if (month && month !== 'all') list = list.filter(p => p && p.month === month);
+      if (employeeId) list = list.filter(p => p && p.employeeId === employeeId);
+      return list;
+    },
+    getPayrollRecordById(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.getPayrollRecordById === 'function') {
+        return sqliteAdapter.getPayrollRecordById(id);
+      }
+      const list = dataStore.getCollection('payroll_records') || [];
+      return list.find(p => p && (p.id === id || p._id === id)) || null;
+    },
+    getPayrollRecordsByEmployee(employeeId) {
+      return this.getPayrollRecords(null, employeeId);
+    },
+    savePayrollRecord(p) {
+      if (sqliteAdapter && typeof sqliteAdapter.savePayrollRecord === 'function') {
+        return sqliteAdapter.savePayrollRecord(p);
+      }
+      if (!p || !p.id) return null;
+      let list = dataStore.getCollection('payroll_records') || [];
+      const idx = list.findIndex(item => item && item.id === p.id);
+      if (idx >= 0) list[idx] = p;
+      else list.push(p);
+      dataStore.setCollection('payroll_records', list);
+      return p;
+    },
+    deletePayrollRecord(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.deletePayrollRecord === 'function') {
+        return sqliteAdapter.deletePayrollRecord(id);
+      }
+      let list = dataStore.getCollection('payroll_records') || [];
+      list = list.filter(p => !(p && p.id === id));
+      dataStore.setCollection('payroll_records', list);
+      return true;
+    },
+
+    /* ── HR Documents ──────────────────────────────────────────── */
+    getHrDocuments(employeeId) {
+      if (sqliteAdapter && typeof sqliteAdapter.getHrDocuments === 'function') {
+        return sqliteAdapter.getHrDocuments(employeeId);
+      }
+      let list = dataStore.getCollection('hr_documents') || [];
+      if (employeeId) list = list.filter(d => d && d.employeeId === employeeId);
+      return list;
+    },
+    getHrDocumentById(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.getHrDocumentById === 'function') {
+        return sqliteAdapter.getHrDocumentById(id);
+      }
+      const list = dataStore.getCollection('hr_documents') || [];
+      return list.find(d => d && (d.id === id || d._id === id)) || null;
+    },
+    saveHrDocument(doc) {
+      if (sqliteAdapter && typeof sqliteAdapter.saveHrDocument === 'function') {
+        return sqliteAdapter.saveHrDocument(doc);
+      }
+      if (!doc || !doc.id) return null;
+      let list = dataStore.getCollection('hr_documents') || [];
+      const idx = list.findIndex(d => d && d.id === doc.id);
+      if (idx >= 0) list[idx] = doc;
+      else list.push(doc);
+      dataStore.setCollection('hr_documents', list);
+      return doc;
+    },
+    deleteHrDocument(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.deleteHrDocument === 'function') {
+        return sqliteAdapter.deleteHrDocument(id);
+      }
+      let list = dataStore.getCollection('hr_documents') || [];
+      list = list.filter(d => !(d && d.id === id));
+      dataStore.setCollection('hr_documents', list);
+      return true;
+    },
+
+    /* ── Leave Records ─────────────────────────────────────────── */
+    getLeaveRecords(employeeId) {
+      if (sqliteAdapter && typeof sqliteAdapter.getLeaveRecords === 'function') {
+        return sqliteAdapter.getLeaveRecords(employeeId);
+      }
+      let list = dataStore.getCollection('leave_records') || [];
+      if (employeeId) list = list.filter(l => l && l.employeeId === employeeId);
+      return list;
+    },
+    getLeaveRecordsByEmployee(employeeId) {
+      return this.getLeaveRecords(employeeId);
+    },
+    getLeaveRecordById(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.getLeaveRecordById === 'function') {
+        return sqliteAdapter.getLeaveRecordById(id);
+      }
+      const list = dataStore.getCollection('leave_records') || [];
+      return list.find(l => l && (l.id === id || l._id === id)) || null;
+    },
+    saveLeaveRecord(lr) {
+      if (sqliteAdapter && typeof sqliteAdapter.saveLeaveRecord === 'function') {
+        return sqliteAdapter.saveLeaveRecord(lr);
+      }
+      if (!lr || !lr.id) return null;
+      let list = dataStore.getCollection('leave_records') || [];
+      const idx = list.findIndex(l => l && l.id === lr.id);
+      if (idx >= 0) list[idx] = lr;
+      else list.push(lr);
+      dataStore.setCollection('leave_records', list);
+      return lr;
+    },
+    deleteLeaveRecord(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.deleteLeaveRecord === 'function') {
+        return sqliteAdapter.deleteLeaveRecord(id);
+      }
+      let list = dataStore.getCollection('leave_records') || [];
+      list = list.filter(l => !(l && l.id === id));
+      dataStore.setCollection('leave_records', list);
+      return true;
+    },
+
+    /* ── DTR Records ───────────────────────────────────────────── */
+    getDtrRecords(employeeId, yearMonth) {
+      if (sqliteAdapter && typeof sqliteAdapter.getDtrRecords === 'function') {
+        return sqliteAdapter.getDtrRecords(employeeId, yearMonth);
+      }
+      let list = dataStore.getCollection('dtr_records') || [];
+      if (employeeId) list = list.filter(d => d && d.employeeId === employeeId);
+      if (yearMonth) list = list.filter(d => d && d.date && d.date.startsWith(yearMonth));
+      return list;
+    },
+    getDtrRecordByDate(employeeId, date) {
+      if (sqliteAdapter && typeof sqliteAdapter.getDtrRecordByDate === 'function') {
+        return sqliteAdapter.getDtrRecordByDate(employeeId, date);
+      }
+      const list = dataStore.getCollection('dtr_records') || [];
+      return list.find(d => d && d.employeeId === employeeId && d.date === date) || null;
+    },
+    saveDtrRecord(dtr) {
+      if (sqliteAdapter && typeof sqliteAdapter.saveDtrRecord === 'function') {
+        return sqliteAdapter.saveDtrRecord(dtr);
+      }
+      if (!dtr || !dtr.id) return null;
+      let list = dataStore.getCollection('dtr_records') || [];
+      const idx = list.findIndex(d => d && d.id === dtr.id);
+      if (idx >= 0) list[idx] = dtr;
+      else list.push(dtr);
+      dataStore.setCollection('dtr_records', list);
+      return dtr;
+    },
+    deleteDtrRecord(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.deleteDtrRecord === 'function') {
+        return sqliteAdapter.deleteDtrRecord(id);
+      }
+      let list = dataStore.getCollection('dtr_records') || [];
+      list = list.filter(d => !(d && d.id === id));
+      dataStore.setCollection('dtr_records', list);
       return true;
     },
   };

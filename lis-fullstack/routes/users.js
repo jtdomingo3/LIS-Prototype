@@ -121,11 +121,16 @@ router.post('/', requireAuth, canManageUsers, upload.single('signature'), async 
       permissions[k] = !!(val === '1' || val === 1 || val === true || val === 'on' || val === 'true');
     });
 
+    // Resolve role (support custom specialized role)
+    const resolvedRole = (role === '__other__' && req.body.customRole) 
+      ? String(req.body.customRole).trim() 
+      : ((role && role !== '__other__') ? String(role).trim() : (req.body.customRole ? String(req.body.customRole).trim() : 'Receptionist'));
+
     const user = new User({
       name,
       email: email.toLowerCase(),
       password,
-      role: role || 'Receptionist',
+      role: resolvedRole || 'Receptionist',
       status: status || 'Active',
       licenseNumber: licenseNumber || null,
       signature: req.file && req.file.filename ? req.file.filename : null,
@@ -309,10 +314,15 @@ router.put('/:id', requireAuth, canManageUsers, upload.single('signature'), asyn
       permissions[k] = !!(val === '1' || val === 1 || val === true || val === 'on' || val === 'true');
     });
 
+    // Resolve role (support custom specialized role)
+    const resolvedRole = (role === '__other__' && req.body.customRole) 
+      ? String(req.body.customRole).trim() 
+      : ((role && role !== '__other__') ? String(role).trim() : (req.body.customRole ? String(req.body.customRole).trim() : 'Receptionist'));
+
     const updateData = {
       name,
       email: email.toLowerCase(),
-      role,
+      role: resolvedRole || 'Receptionist',
       status,
       licenseNumber: licenseNumber || null,
       permissions

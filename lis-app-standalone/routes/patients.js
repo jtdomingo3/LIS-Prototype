@@ -472,17 +472,40 @@ router.post('/thermal-print', requireAuth, canAccessPatient, (req, res) => {
     const { spawnSync } = require('child_process');
     const pathMod = require('path');
     const fsMod = require('fs');
-    const scriptPath = pathMod.join(__dirname, '..', 'scripts', 'thermal_test.js');
-    if (!fsMod.existsSync(scriptPath)) {
-      return res.status(404).json({ success: false, error: 'thermal_test.js not found' });
+    let resolveThermalScriptPath;
+    try {
+      resolveThermalScriptPath = require('../lib/printHelper').resolveThermalScriptPath;
+    } catch (e) {}
+
+    let scriptPath = (typeof resolveThermalScriptPath === 'function') ? resolveThermalScriptPath() : null;
+    if (!scriptPath) {
+      const fallbackPath = pathMod.join(__dirname, '..', 'scripts', 'thermal_test.js');
+      if (fsMod.existsSync(fallbackPath)) scriptPath = fallbackPath;
+    }
+
+    if (!scriptPath) {
+      return res.status(404).json({ success: false, error: 'Thermal printer script (scripts/thermal_test.js) not found.' });
     }
 
     // Build args: call Node with the script and --receipt
     const args = [scriptPath, '--receipt'];
-    if (req.body && req.body.printer) args.push('--printer', req.body.printer);
+
+    const settings = (global.db && typeof global.db.getSettings === 'function') ? (global.db.getSettings() || {}) : {};
+    let printer = (req.body && req.body.printer) || (settings && settings.printerName) || process.env.PRINTER_NAME || process.env.THERMAL_PRINTER_NAME || '';
+    if (typeof printer === 'string') {
+      printer = printer.replace(/[^a-zA-Z0-9 _\-\.]/g, '').trim();
+    } else {
+      printer = '';
+    }
+    if (printer) args.push('--printer', printer);
 
     const spawnEnv = Object.assign({}, process.env, { ELECTRON_RUN_AS_NODE: '1' });
-    const proc = spawnSync(process.execPath, args, { cwd: pathMod.join(__dirname, '..'), encoding: 'utf8', maxBuffer: 10 * 1024 * 1024, env: spawnEnv });
+    const proc = spawnSync(process.execPath, args, {
+      cwd: pathMod.dirname(pathMod.dirname(scriptPath)) || pathMod.join(__dirname, '..'),
+      encoding: 'utf8',
+      maxBuffer: 10 * 1024 * 1024,
+      env: spawnEnv
+    });
     // append log
     try {
       const entry = {
@@ -526,7 +549,10 @@ router.post('/:id/print', requireAuth, canAccessPatient, async (req, res) => {
     const Test = require('../models/Test');
     const tests = await Test.find({ patient: req.params.id });
     const result = await printHelper.printPatientReceipt(patient, tests);
-    if (!result || !result.success) return res.status(500).json({ success: false, error: result && result.error ? result.error : 'Print failed' });
+    if (!result || !result.success) {
+      const errDetail = (result && (result.error || result.reason)) ? (result.error || result.reason) : 'Print failed';
+      return res.status(500).json({ success: false, error: errDetail });
+    }
     return res.json({ success: true, output: result.output });
   } catch (e) {
     console.error('Patient print error:', e);

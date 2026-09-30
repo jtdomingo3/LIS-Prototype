@@ -86,6 +86,7 @@
               </td>
               <td style="padding: 14px 16px; text-align: right;">
                 <form action="/reception/release-stashed" method="POST" style="margin: 0; display: inline-block;">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                   <input type="hidden" name="patientId" value="<%= item.patient ? item.patient.id : '' %>">
                   <input type="hidden" name="testIds" value="<%= (item.testIds || []).join(',') %>">
                   <input type="hidden" name="redirectUrl" value="/reception/stashed">

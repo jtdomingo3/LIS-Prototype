@@ -33,6 +33,9 @@ class Test {
     this.stashed = !!data.stashed;
     // Flag indicating all requested tests are awaiting-only (no routing)
     this.awaitingOnly = !!data.awaitingOnly;
+    // Payment status & price
+    this.paid = !!data.paid;
+    this.price = (data.price !== undefined && data.price !== null) ? Number(data.price) : 0;
     // statusHistory: array of { from, to, user, area, timestamp }
     this.statusHistory = Array.isArray(data.statusHistory) ? data.statusHistory : (data.statusHistory || []);
   }
@@ -45,6 +48,17 @@ class Test {
     if (this.status === 'Completed' && !this.completedAt) {
       try { this.completedAt = new Date().toISOString(); } catch (e) { this.completedAt = String(new Date()); }
     }
+
+    // Auto-generate testId if missing
+    if (!this.testId && global.db) {
+      const tests = typeof global.db.getTests === 'function' ? global.db.getTests() : [];
+      const maxNum = tests.reduce((max, t) => {
+        const match = t && t.testId ? String(t.testId).match(/T(\d+)/) : null;
+        return match ? Math.max(max, parseInt(match[1], 10)) : max;
+      }, 0);
+      this.testId = 'T' + String(maxNum + 1).padStart(3, '0');
+    }
+
     const prev = global.db && typeof global.db.getTestById === 'function'
       ? global.db.getTestById(this.id)
       : (global.db.getTests().find(t => t.id === this.id) || null);
@@ -247,7 +261,10 @@ class Test {
 
       if (global.db && typeof global.db.upsertTest === 'function') {
         global.db.upsertTest(test);
-      } else {
+      } else if (global.db && typeof global.db.getTests === 'function') {
+        const tests = global.db.getTests();
+        const index = tests.findIndex(t => t.id === test.id);
+        if (index >= 0) tests[index] = test; else tests.push(test);
         global.db.saveTests(tests);
       }
       console.log(`[DEBUG Test.findOneAndUpdate] id=${test.id} afterStatus=${test.status} updatedAt=${test.updatedAt}`);

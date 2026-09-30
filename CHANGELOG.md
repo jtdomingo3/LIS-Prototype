@@ -7,6 +7,79 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.6.2] - 2026-09-26
+
+### Added
+- **Human Resources (HR) & Philippine Payroll Management Module (`/hr`)**:
+  - **Employee Master Directory (`/hr/employees`)**:
+    - Centralized management of clinic staff profiles: Employee Code, full legal name (with automatic stripping of medical degrees/credentials like "MD, FPSP" for clean legal records while preserving clinical credentials on profiles), department, position/role, employment status (Active, Resigned, AWOL, Terminated with separation dates and reasons).
+    - Separation tracking with separation date, reason, and automated archival.
+    - System Account segregation (`isSystemAccount`) preventing non-human IT/reception logins from cluttering employee lists and payroll computations.
+    - Flexible pay structures: Daily Duty (for clinic/lab staff with daily rates and 5-day week caps) vs Fixed Monthly (for pathologists/doctors) vs Commission Only (exempt consulting physicians).
+    - Statutory ID management: TIN, SSS, PhilHealth PIN, and Pag-IBIG (HDMF) Mid number.
+    - Recurring allowances: Rice subsidy, transport, meal, and custom allowances with audit notes.
+  - **Employee Self-Service / Personal Portal (`/hr/my`)**:
+    - Dedicated portal for authenticated employees to log and review DTR attendance, submit leave applications, track approval statuses, and view/print confidential payslips and annual BIR 2316 tax summaries.
+  - **Daily Time Record (DTR) & Attendance Engine (`/hr/my/dtr`, `/hr/employees/:id/dtr`)**:
+    - Daily biometric and manual attendance logging (Morning In/Out, Afternoon In/Out).
+    - Real-time computation of regular hours, undertime/tardiness, overtime hours, night differential, and holiday premiums (Regular vs Special Non-Working).
+  - **Leave Management & Approval Workflow (`/hr/leaves`)**:
+    - Leave applications supporting Vacation Leave (VL), Sick Leave (SL), Maternity, Paternity, Solo Parent, Bereavement, Emergency, and Leave Without Pay (LWOP).
+    - Automatic leave balance credit checking and validation.
+    - Multi-stage approval workflow (Pending -> Approved / Rejected) with administrator remarks.
+    - Official Printable Leave Application Slip (`/hr/print/leave/:id`) with employee signature and approving supervisor sign-offs.
+  - **Philippine Statutory Contributions & Tax Engine (`lib/philippineContributions.js`)**:
+    - 2025/2026 SSS contribution schedule calculating Employee Share (EE), Employer Share (ER), and mandatory provident fund (WISP/MPF) contributions across monthly salary credit brackets.
+    - PhilHealth 5.0% contribution rate with equal 50-50 split between employee and employer subject to statutory salary floor and ceiling.
+    - Pag-IBIG (HDMF) contribution calculation with statutory salary ceilings.
+    - BIR TRAIN Law graduated withholding tax calculation (semi-monthly and monthly brackets) with non-taxable minimum wage exemptions and de minimis benefit exclusions.
+  - **Semi-Monthly & Monthly Payroll Processing (`/hr/payroll`, `/hr/payroll/compute`, `lib/payrollComputer.js`)**:
+    - Batch computation for active staff: Gross pay, overtime/holiday adjustments, itemized statutory deductions (SSS, PhilHealth, Pag-IBIG, Withholding Tax), salary loans, cash advances, and net take-home pay.
+    - Payroll status workflow: Draft -> Approved -> Paid.
+    - Excel Payroll Register export (`/hr/export/payroll?month=YYYY-MM`) for banking and accounting.
+  - **Official HR Printable Documents Suite**:
+    - Confidential Employee Payslip (`/hr/print/payslip/:id`) with earnings, contributions, and net pay breakdown.
+    - Certificate of Employment (COE) (`/hr/print/coe/:id`) in formal legal Philippine format, signed by Laboratory Owner / Medical Director.
+    - Certificate of Exit Clearance (`/hr/print/clearance/:id`) with multi-department sign-offs.
+    - BIR Form 2316 Tax Summary report (`/hr/print/tax-summary/:id/:year`).
+
+- **Costing & Financial Profitability (P&L) Module (`/costing`)**:
+  - **Cost-Per-Test Analysis Engine (`/costing/cost-per-test`, `models/CostPerTest.js`)**:
+    - Direct itemized unit cost breakdown: Reagent cost, calibrators/controls, consumable supplies (tubes, needles, tips, slides), direct MedTech labor, and equipment depreciation/overhead.
+    - Real-time gross margin %, markup %, and suggested retail price (SRP) calculations.
+    - Direct reagent inventory mapping for automated price adjustment tracking.
+  - **Operating Expenses Tracker (`/costing/expenses`, `models/Expense.js`)**:
+    - Clinic expenditure tracking across standardized categories: Reagents, Staff Salaries, Rent, Utilities, Equipment Maintenance, Regulatory & Licensing (DOH, FDA, BIR, NEQAS), Biohazard Waste Disposal, and Miscellaneous.
+    - Support for recurring expenses, invoice attachments, and payment methods.
+  - **Revenue & Profitability Analytics (`/costing`, `/costing/revenue`, `/costing/monthly`)**:
+    - Patient diagnostic revenue tracking by payment channel (Cash, GCash, Bank Transfer, HMO/Corporate).
+    - Executive dashboard: Total Revenue, COGS, OPEX, Gross Profit, Operating Income, and Net Profit Margin %.
+    - Accounting-style Monthly Income Statement (`/costing/monthly/:month`) with division-by-zero protection.
+  - **Supplier Model Configuration**:
+    - Reagent vendor quotes, packaging sizes, volume discounts, and unit conversion management.
+
+- **2D Echocardiography Dual-Form & Letter Print Engine**:
+  - **Dual-Sheet Architecture (`/reports/results/echocardiography-2d`, `?sheet=all|info|reading`)**:
+    - Sheet 1 (Info Sheet): M-mode / 2-D measurements, 3-column chamber/aorta matrix, and 9-column Doppler matrix.
+    - Sheet 2 (Reading Sheet): Clinical interpretation, Color flow and Spectral Doppler findings, conclusion, and cardiologist signature.
+    - Independent or combined 1-page Letter portrait printing with `page-break-inside: avoid`.
+  - **Doppler Measurement 9-Subcolumn Grid Alignment**:
+    - Standardized valve columns (Mitral, Aortic, Tricuspid, Pulmonic) with Left = Value, Right = Reference.
+    - Pulmonic Vein diastolic, systolic, and sys/dias ratios cleanly positioned alongside PASP by TRJ, Total PASP, and PAT (`≥`).
+    - Mitral Max Velocity: Streamlined data entry with default `E:` and `A:` prefix labels; automatic output formatting as `E: 0.8/3.0` & `A: 0.6/1.7`.
+  - **Balanced Patient Header Layout**:
+    - Rebalanced 6-column proportions (18%, 27%, 9%, 16%, 10%, 20%), preventing contact number wrapping or clipping without excessive dead space.
+
+- **GezyneBot Clinical AI Knowledge Base v2.6.2**:
+  - Expanded knowledge base across `lis-fullstack`, `lis-app-standalone`, and `lis-fullstack/tray` with comprehensive HR, payroll, statutory contributions, cost-per-test unit economics, and 2D Echocardiography guidance.
+  - Added HR and Costing interactive feature cards and quick query exploration in the chatbot UI.
+
+### Changed
+- **Package Version Bump**: Updated all applications (`lis-fullstack`, `lis-app-standalone`, `lis-fullstack/tray`) to version `2.6.2`.
+- **Standalone Workstation Parity**: Ported HR and Costing models, routes, lib utilities, views, and navigation into `lis-app-standalone` for complete parity with `lis-fullstack`.
+
+---
+
 ## [2.6.1] - 2026-09-16
 
 ### Added

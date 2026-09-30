@@ -1,37 +1,74 @@
+const crypto = require('crypto');
+const { validateSyncToken } = require('../lib/syncAuth');
+let extractBearerToken, verifyToken;
+try {
+  const th = require('../lib/tokenHelper');
+  extractBearerToken = th.extractBearerToken;
+  verifyToken = th.verifyToken;
+} catch (_) {}
+
 // Middleware to check if user is authenticated
 const requireAuth = (req, res, next) => {
   if (req.session && req.session.user) {
     return next();
   }
 
-  // Fallback: hash-based auth from standalone app sync requests.
-  // If X-LIS-Sync-Email + X-LIS-Sync-Hash headers or X-LIS-Sync-Replay are present,
-  // verify user credentials or authenticate as admin and create a session.
+  // 1. Bearer Token Auth (preferred modern token auth for API & sync clients)
+  try {
+    if (typeof extractBearerToken === 'function' && typeof verifyToken === 'function') {
+      const bearerToken = extractBearerToken(req);
+      if (bearerToken) {
+        const userPayload = verifyToken(bearerToken);
+        if (userPayload) {
+          req.session = req.session || {};
+          req.session.user = {
+            id: userPayload.id,
+            name: userPayload.name,
+            email: userPayload.email,
+            role: userPayload.role,
+            permissions: userPayload.permissions || {},
+            signature: userPayload.signature || null,
+            licenseNumber: userPayload.licenseNumber || ''
+          };
+          req.user = req.session.user;
+          return next();
+        }
+      }
+    }
+  } catch (e) { /* ignore token verification error */ }
+
+  // 2. Verified HMAC sync auth from standalone desktop sync requests
   try {
     const syncEmail = req.headers['x-lis-sync-email'];
-    const syncHash  = req.headers['x-lis-sync-hash'];
-    const syncReplay = req.headers['x-lis-sync-replay'];
-    if ((syncEmail || syncReplay) && global.db) {
+    const syncHash = req.headers['x-lis-sync-hash'];
+    if (syncEmail && syncHash && global.db) {
       const allUsers = typeof global.db.getUsers === 'function' ? global.db.getUsers() : [];
-      let matchUser = syncEmail ? allUsers.find(u => u && u.email && u.email.toLowerCase() === syncEmail.toLowerCase()) : null;
-      if (!matchUser) {
-        matchUser = allUsers.find(u => u && (u.role === 'Admin' || u.role === 'admin')) || allUsers[0];
-      }
-      if (matchUser) {
+      const matchUser = allUsers.find(u => u && u.email && u.email.toLowerCase() === syncEmail.toLowerCase());
+      if (matchUser && matchUser.status !== 'Inactive' && validateSyncToken(syncHash, syncEmail, matchUser.password)) {
+        req.session = req.session || {};
         req.session.user = {
           id: matchUser.id || matchUser.email,
           name: matchUser.name || matchUser.email,
           email: matchUser.email,
-          role: matchUser.role || 'Admin',
-          permissions: matchUser.permissions || { admin: true, patients: true, tests: true, reception: true, reports: true },
+          role: matchUser.role || 'User',
+          permissions: matchUser.permissions || {},
           signature: matchUser.signature || null,
           licenseNumber: matchUser.licenseNumber || '',
         };
-        console.log(`[auth] requireAuth accepted sync auth for ${matchUser.email} on ${req.method} ${req.originalUrl}`);
+        req.user = req.session.user;
+        console.log(`[auth] requireAuth accepted verified sync auth for ${matchUser.email} on ${req.method} ${req.originalUrl}`);
         return next();
       }
     }
-  } catch (e) { /* ignore hash auth errors */ }
+  } catch (e) { /* ignore sync auth errors */ }
+
+  const isApi = req.xhr ||
+                (req.headers && req.headers.accept && req.headers.accept.includes('application/json') && !req.headers.accept.includes('text/html')) ||
+                (req.originalUrl && (req.originalUrl.startsWith('/api/') || req.originalUrl.startsWith('/export/')));
+
+  if (isApi) {
+    return res.status(401).json({ success: false, error: 'Authentication required' });
+  }
 
   try {
     console.warn(`[auth] requireAuth blocked - no session user for ${req.method} ${req.originalUrl}`);
@@ -166,6 +203,59 @@ const canAccessTemplates = (req, res, next) => {
   return res.redirect(getUserHomeRoute(user));
 };
 
+// Middleware to check if user can access Costing & P&L module
+const canAccessCosting = (req, res, next) => {
+  if (!req.session || !req.session.user) {
+    if (req.flash) req.flash('error_msg', 'Please log in to access this page');
+    return res.redirect('/');
+  }
+
+  const user = req.session.user;
+  const managementRoles = new Set(['Admin', 'Manager', 'Owner']);
+  if (managementRoles.has(user.role)) return next();
+
+  let perms = user.permissions || {};
+  if (typeof perms === 'string') {
+    try { perms = JSON.parse(perms); } catch (_) { perms = {}; }
+  }
+
+  if (perms.costing) return next();
+
+  if (req.flash) req.flash('error_msg', 'Access restricted: Only management can access Financial Costing & Analytics.');
+  return res.redirect(getUserHomeRoute(user));
+};
+
+// Middleware to check if user can manage HR & Payroll
+const canAccessHR = (req, res, next) => {
+  if (!req.session || !req.session.user) {
+    if (req.flash) req.flash('error_msg', 'Please log in to access this page');
+    return res.redirect('/');
+  }
+
+  const user = req.session.user;
+  const managementRoles = new Set(['Admin', 'Manager', 'Owner']);
+  if (managementRoles.has(user.role)) return next();
+
+  let perms = user.permissions || {};
+  if (typeof perms === 'string') {
+    try { perms = JSON.parse(perms); } catch (_) { perms = {}; }
+  }
+
+  if (perms.hr) return next();
+
+  if (req.flash) req.flash('error_msg', 'Access restricted: Only management can manage HR and all staff salaries.');
+  return res.redirect('/hr/my');
+};
+
+// Middleware to allow authenticated staff to view their own HR portal / documents / payslips
+const canAccessOwnHR = (req, res, next) => {
+  if (!req.session || !req.session.user) {
+    if (req.flash) req.flash('error_msg', 'Please log in to access this page');
+    return res.redirect('/');
+  }
+  next();
+};
+
 module.exports = {
   requireAuth,
   requireGuest,
@@ -173,5 +263,8 @@ module.exports = {
   canAccessPatient,
   canAccessTemplates,
   canManageUsers,
+  canAccessCosting,
+  canAccessHR,
+  canAccessOwnHR,
   getUserHomeRoute
 };

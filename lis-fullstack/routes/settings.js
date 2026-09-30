@@ -102,19 +102,23 @@ function performBackup(destDir) {
   const dir = destDir && String(destDir).length ? destDir : DEFAULT_BACKUP_DIR;
   fs.mkdirSync(dir, { recursive: true });
   const ts = new Date().toISOString().replace(/[:.]/g, '-');
-  const dest = path.join(dir, `backup_${ts}.json`);
-  const data = global.db ? global.db.read() : {};
-  fs.writeFileSync(dest, JSON.stringify(data, null, 2), 'utf8');
-
-  // Also backup raw SQLite file if it exists
+  
+  // Backup raw SQLite file
   try {
     const dbFile = dataFile('lis-data.db');
     if (fs.existsSync(dbFile)) {
       const dbDest = path.join(dir, `backup_db_${ts}.db`);
       fs.copyFileSync(dbFile, dbDest);
+      return dbDest;
     }
-  } catch (e) {}
+  } catch (e) {
+    console.error('Failed to create SQLite backup:', e);
+  }
 
+  // Fallback to JSON if SQLite is not available for some reason
+  const dest = path.join(dir, `backup_${ts}.json`);
+  const data = global.db ? global.db.read() : {};
+  fs.writeFileSync(dest, JSON.stringify(data, null, 2), 'utf8');
   return dest;
 }
 
@@ -242,8 +246,18 @@ router.post('/test-print', requireAuth, (req, res) => {
     const { spawnSync } = require('child_process');
     const pathMod = require('path');
     const fsMod = require('fs');
-    const scriptPath = pathMod.join(__dirname, '..', 'scripts', 'thermal_test.js');
-    if (!fsMod.existsSync(scriptPath)) {
+    let resolveThermalScriptPath;
+    try {
+      resolveThermalScriptPath = require('../lib/printHelper').resolveThermalScriptPath;
+    } catch (e) {}
+
+    let scriptPath = (typeof resolveThermalScriptPath === 'function') ? resolveThermalScriptPath() : null;
+    if (!scriptPath) {
+      const fallbackPath = pathMod.join(__dirname, '..', 'scripts', 'thermal_test.js');
+      if (fsMod.existsSync(fallbackPath)) scriptPath = fallbackPath;
+    }
+
+    if (!scriptPath) {
       return res.status(404).json({ success: false, error: 'Thermal printer script (scripts/thermal_test.js) not found.' });
     }
 
@@ -252,12 +266,22 @@ router.post('/test-print', requireAuth, (req, res) => {
     if (printType === 'barcode') args.push('--barcode');
     else args.push('--receipt');
 
-    const printer = (req.body && req.body.printer) || (settings && settings.printerName) || process.env.PRINTER_NAME || process.env.THERMAL_PRINTER_NAME || '';
+    if (process.env.PRINT_DRY_RUN === '1' || (req.body && req.body.dryRun)) {
+      args.push('--dry-run');
+    }
+
+    const settings = (global.db && typeof global.db.getSettings === 'function') ? (global.db.getSettings() || {}) : {};
+    let printer = (req.body && req.body.printer) || (settings && settings.printerName) || process.env.PRINTER_NAME || process.env.THERMAL_PRINTER_NAME || '';
+    if (typeof printer === 'string') {
+      printer = printer.replace(/[^a-zA-Z0-9 _\-\.]/g, '').trim();
+    } else {
+      printer = '';
+    }
     if (printer) args.push('--printer', printer);
 
     const spawnEnv = Object.assign({}, process.env, { ELECTRON_RUN_AS_NODE: '1' });
     const proc = spawnSync(process.execPath, args, {
-      cwd: pathMod.join(__dirname, '..'),
+      cwd: pathMod.dirname(pathMod.dirname(scriptPath)) || pathMod.join(__dirname, '..'),
       encoding: 'utf8',
       maxBuffer: 10 * 1024 * 1024,
       env: spawnEnv
@@ -294,6 +318,10 @@ router.post('/test-ai', requireAuth, canManageUsers, async (req, res) => {
   }
 });
 
+router.post('/sync-from-server', (req, res) => {
+  res.json({ success: true, message: 'Settings already synchronized on central server' });
+});
+
 router.post('/', requireAuth, (req, res) => {
   try {
     const u = req.session && req.session.user;
@@ -318,6 +346,11 @@ router.post('/', requireAuth, (req, res) => {
     cur.doctor2Name = doc2;
     cur.gezynePath = gezyne;
     cur.requirePaymentAmount = reqPay;
+    if (flags.labTin !== undefined) cur.labTin = String(flags.labTin).trim();
+    if (flags.labName !== undefined) cur.labName = String(flags.labName).trim();
+    if (flags.labAddress !== undefined) cur.labAddress = String(flags.labAddress).trim();
+    if (flags.labZipCode !== undefined) cur.labZipCode = String(flags.labZipCode).trim();
+    if (flags.labRdoCode !== undefined) cur.labRdoCode = String(flags.labRdoCode).trim();
 
     process.env.DOCTOR_1_NAME = doc1;
     process.env.DOCTOR_2_NAME = doc2;
@@ -525,35 +558,57 @@ router.post('/backup-users', requireAuth, canManageUsers, (req, res) => {
   return res.redirect('/settings');
 });
 
-// Restore endpoint (upload JSON file)
-router.post('/restore', requireAuth, canManageUsers, upload.single('backupFile'), (req, res) => {
+// Restore endpoint (upload JSON or DB file)
+router.post('/restore', requireAuth, canManageUsers, upload.single('backupFile'), async (req, res) => {
   try {
     if (!req.file) {
-      req.flash('error_msg', 'No file was uploaded. Please select a .json backup file.');
+      req.flash('error_msg', 'No file was uploaded. Please select a .json or .db backup file.');
       return res.redirect('/settings');
     }
-    // Validate JSON first
-    const raw = req.file.buffer.toString('utf8');
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== 'object') {
-      throw new Error('Uploaded file is not a valid JSON database object.');
-    }
+
+    const filename = req.file.originalname.toLowerCase();
 
     // Backup current before overwrite
     performBackup();
 
-    // Write clinical data to database
-    global.db.write(parsed);
+    if (filename.endsWith('.json')) {
+      // Legacy JSON restore logic
+      const raw = req.file.buffer.toString('utf8');
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') {
+        throw new Error('Uploaded file is not a valid JSON database object.');
+      }
 
-    // Force checkpoint to flush immediately to disk
-    if (global.db && typeof global.db.checkpoint === 'function') {
-      global.db.checkpoint();
+      global.db.write(parsed);
+
+      if (global.db && typeof global.db.checkpoint === 'function') {
+        global.db.checkpoint();
+      }
+
+      const patientCount = Array.isArray(parsed.patients) ? parsed.patients.length : (global.db.getPatients ? global.db.getPatients().length : 0);
+      const testCount = Array.isArray(parsed.tests) ? parsed.tests.length : (global.db.getTests ? global.db.getTests().length : 0);
+
+      req.flash('success_msg', `Clinical JSON restore completed successfully (${patientCount.toLocaleString()} patients, ${testCount.toLocaleString()} tests imported). A safety snapshot was created.`);
+    } else if (filename.endsWith('.db')) {
+      // Modern SQLite restore logic
+      const sqliteDbClass = require('../lib/sqliteDb');
+      const dbPath = dataFile('lis-data.db');
+      
+      // Safely close the existing connection
+      if (global.db && typeof global.db.close === 'function') {
+        try { global.db.close(); } catch (e) {}
+      }
+      
+      // Overwrite the actual database file
+      fs.writeFileSync(dbPath, req.file.buffer);
+      
+      // Re-initialize the database connection
+      global.db = await sqliteDbClass.initDb(dbPath);
+      
+      req.flash('success_msg', 'SQLite database restored successfully. A safety snapshot was created.');
+    } else {
+      throw new Error('Unsupported backup file format. Please upload a .json or .db file.');
     }
-
-    const patientCount = Array.isArray(parsed.patients) ? parsed.patients.length : (global.db.getPatients ? global.db.getPatients().length : 0);
-    const testCount = Array.isArray(parsed.tests) ? parsed.tests.length : (global.db.getTests ? global.db.getTests().length : 0);
-
-    req.flash('success_msg', `Clinical restore completed successfully (${patientCount.toLocaleString()} patients, ${testCount.toLocaleString()} tests imported). A safety snapshot was created.`);
   } catch (e) {
     console.error('Restore error:', e);
     req.flash('error_msg', `Restore failed: ${e && e.message ? e.message : String(e)}`);

@@ -410,6 +410,28 @@ router.post('/:id/logs', requireAuth, (req, res) => {
       return res.status(500).json({ success: false, error: 'Failed to record service log.' });
     }
 
+    // Auto-record expense if service cost is entered
+    try {
+      const sCost = Number(log.serviceCost || req.body.serviceCost || req.body.cost) || 0;
+      if (sCost > 0) {
+        const Expense = require('../models/Expense');
+        const nowIso = new Date().toISOString();
+        const exp = new Expense({
+          category: 'equipment_service',
+          subcategory: log.serviceType || 'Maintenance',
+          description: `${log.serviceType || 'Service'} for ${equipment.name} (${equipment.equipmentCode || ''})`,
+          amount: sCost,
+          vendorSupplier: log.serviceProvider || '',
+          referenceId: savedLog.id,
+          referenceType: 'equipment_log',
+          expenseDate: log.serviceDate || nowIso,
+          month: (log.serviceDate || nowIso).slice(0, 7),
+          recordedBy: getActor(req)
+        });
+        exp.save().catch(e => console.warn('[equipment] Expense save error:', e.message));
+      }
+    } catch (_) {}
+
     // Auto-update Equipment dates if service passed
     if (log.isPass || log.resultStatus === 'CONDITIONAL_PASS') {
       const serviceDate = log.serviceDate;

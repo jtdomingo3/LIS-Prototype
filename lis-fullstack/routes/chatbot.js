@@ -1,7 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const { requireAuth } = require('../middleware/auth');
-const { queryOpenRouter, AVAILABLE_MODELS, DEFAULT_MODEL } = require('../lib/gezyneBotService');
+const { 
+  queryOpenRouter, 
+  AVAILABLE_MODELS, 
+  DEFAULT_MODELS, 
+  DEFAULT_MODEL, 
+  getAvailableModels, 
+  fetchFreeOpenRouterModels 
+} = require('../lib/gezyneBotService');
 
 /**
  * GET /chatbot - Dedicated full-page assistant view
@@ -41,17 +48,57 @@ router.get('/', requireAuth, async (req, res) => {
       }
     }
 
+    const modelData = getAvailableModels();
+
     res.render('chatbot/index', {
       title: 'GezyneBot AI Assistant',
       conversations: conversations || [],
       activeConversation,
       initialMessages,
-      availableModels: AVAILABLE_MODELS,
+      defaultModels: modelData.defaultModels,
+      freeModels: modelData.freeModels,
+      availableModels: modelData.allModels,
       defaultModel: DEFAULT_MODEL
     });
   } catch (err) {
     console.error('[chatbot route] render error:', err);
     res.status(500).render('500', { title: 'Assistant Error', error: err });
+  }
+});
+
+/**
+ * GET /api/chatbot/models (or /chatbot/api/models) - Get all available models
+ */
+router.get('/api/models', requireAuth, async (req, res) => {
+  try {
+    const modelData = getAvailableModels();
+    res.json({
+      success: true,
+      defaultModels: modelData.defaultModels,
+      freeModels: modelData.freeModels,
+      availableModels: modelData.allModels
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * POST /api/chatbot/models/refresh (or /chatbot/api/models/refresh) - Fetch latest free models from OpenRouter
+ */
+router.post('/api/models/refresh', requireAuth, async (req, res) => {
+  try {
+    const freeModels = await fetchFreeOpenRouterModels(true);
+    const modelData = getAvailableModels();
+    res.json({
+      success: true,
+      count: freeModels.length,
+      defaultModels: modelData.defaultModels,
+      freeModels: modelData.freeModels,
+      availableModels: modelData.allModels
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

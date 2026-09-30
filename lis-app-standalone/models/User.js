@@ -28,6 +28,7 @@ class User {
 
   // Compare password
   async comparePassword(candidatePassword) {
+    if (!this.password) return false;
     return await bcrypt.compare(candidatePassword, this.password);
   }
 

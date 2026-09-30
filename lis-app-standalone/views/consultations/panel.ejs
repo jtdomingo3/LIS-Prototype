@@ -405,19 +405,19 @@
     </div>
 
     <!-- 2. Multipanel Navigation Tabs Bar -->
-    <div class="consult-tabs-nav">
-      <button type="button" class="consult-tab-btn active" onclick="switchConsultTab('tab-soap', this)" id="tabNavSoap">
+    <div class="consult-tabs-nav" role="tablist">
+      <button type="button" class="consult-tab-btn active" role="tab" data-no-guard="1" onclick="switchConsultTab('tab-soap', this)" id="tabNavSoap">
         <i class="fa fa-stethoscope"></i> SOAP Clinical Encounter
       </button>
-      <button type="button" class="consult-tab-btn" onclick="switchConsultTab('tab-labs', this)" id="tabNavLabs">
+      <button type="button" class="consult-tab-btn" role="tab" data-no-guard="1" onclick="switchConsultTab('tab-labs', this)" id="tabNavLabs">
         <i class="fa fa-flask"></i> Patient Lab History & Diagnostic Results
         <span class="tab-badge"><%= formattedLabTests.length %></span>
       </button>
-      <button type="button" class="consult-tab-btn" onclick="switchConsultTab('tab-history', this)" id="tabNavHistory">
+      <button type="button" class="consult-tab-btn" role="tab" data-no-guard="1" onclick="switchConsultTab('tab-history', this)" id="tabNavHistory">
         <i class="fa fa-history"></i> Previous Clinical Consultations
         <span class="tab-badge"><%= previousConsultations.length %></span>
       </button>
-      <button type="button" class="consult-tab-btn" onclick="switchConsultTab('tab-docs', this)" id="tabNavDocs">
+      <button type="button" class="consult-tab-btn" role="tab" data-no-guard="1" onclick="switchConsultTab('tab-docs', this)" id="tabNavDocs">
         <i class="fa fa-file-medical"></i> Official Documents & Rx
       </button>
     </div>

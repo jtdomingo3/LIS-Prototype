@@ -865,24 +865,28 @@
         else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
         else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
         else if (el.msRequestFullscreen) el.msRequestFullscreen();
-        localStorage.setItem('kioskFullscreen', '1');
+        try { localStorage.setItem('kioskFullscreen', '1'); } catch (_) {}
         updateFullscreenButton();
       } catch (e) { console.warn('[Kiosk] enterFullscreen error', e); }
     }
 
     async function exitFullscreen() {
       try {
-        if (document.exitFullscreen) await document.exitFullscreen();
+        if (document.exitFullscreen) await document.exitFullscreen().catch(function() {});
         else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
         else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
         else if (document.msExitFullscreen) document.msExitFullscreen();
-        localStorage.setItem('kioskFullscreen', '0');
+        try { localStorage.setItem('kioskFullscreen', '0'); } catch (_) {}
         updateFullscreenButton();
       } catch (e) { console.warn('[Kiosk] exitFullscreen error', e); }
     }
 
     function toggleFullscreen() {
       try {
+        if (window.lisApp && typeof window.lisApp.toggleFullscreen === 'function') {
+          window.lisApp.toggleFullscreen().catch(function() {});
+          return;
+        }
         if (isFullscreenActive()) exitFullscreen(); else enterFullscreen();
       } catch (e) { console.warn('[Kiosk] toggleFullscreen error', e); }
     }
@@ -892,6 +896,19 @@
     document.addEventListener('webkitfullscreenchange', updateFullscreenButton);
     document.addEventListener('mozfullscreenchange', updateFullscreenButton);
     document.addEventListener('MSFullscreenChange', updateFullscreenButton);
+
+    if (window.lisApp && typeof window.lisApp.onFullscreenChange === 'function') {
+      window.lisApp.onFullscreenChange(function(isFS) {
+        if (!fullscreenToggle) return;
+        if (isFS) {
+          fullscreenToggle.innerHTML = '<i class="fas fa-compress"></i> Exit Fullscreen';
+          fullscreenToggle.className = 'control-btn enabled';
+        } else {
+          fullscreenToggle.innerHTML = '<i class="fas fa-expand"></i> Fullscreen';
+          fullscreenToggle.className = 'control-btn';
+        }
+      });
+    }
 
     // Expose toggle for inline handler
     window.toggleFullscreen = toggleFullscreen;
@@ -1026,27 +1043,49 @@
       }
     }
 
+    // Global gesture unlocker to cleanly resume AudioContext without triggering browser autoplay warnings
+    let audioUnlockSetup = false;
+    function setupAudioUnlock() {
+      if (audioUnlockSetup) return;
+      audioUnlockSetup = true;
+      const events = ['click', 'touchstart', 'pointerdown', 'keydown'];
+      const unlockHandler = async function() {
+        if (audioContext && audioContext.state === 'suspended') {
+          try {
+            await audioContext.resume();
+            console.log('[Kiosk] AudioContext resumed via user gesture');
+          } catch (e) {}
+        }
+        events.forEach(ev => window.removeEventListener(ev, unlockHandler, true));
+      };
+      events.forEach(ev => window.addEventListener(ev, unlockHandler, { once: true, capture: true, passive: true }));
+    }
+
     // ===== SOUND FUNCTIONS =====
     async function initAudio() {
       try {
-        const AC = window.AudioContext || window.webkitAudioContext;
-        audioContext = new AC();
+        if (!audioContext) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (AC) audioContext = new AC();
+        }
 
-        // Resume if suspended (for Chrome autoplay policy)
-        if (audioContext.state === 'suspended') {
-          await audioContext.resume();
+        // Cleanly listen for user gesture if suspended rather than forcing immediate resume()
+        if (audioContext && audioContext.state === 'suspended') {
+          setupAudioUnlock();
         }
 
         // Try to load and decode the notification sound
-        try {
-          const response = await fetch(CONFIG.SOUND_SRC);
-          if (response.ok) {
-            const arrayBuffer = await response.arrayBuffer();
-            audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-            console.log('[Kiosk] Audio buffer loaded successfully');
+        if (audioContext && !audioBuffer) {
+          try {
+            const response = await fetch(CONFIG.SOUND_SRC);
+            if (response.ok) {
+              const arrayBuffer = await response.arrayBuffer();
+              audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+              console.log('[Kiosk] Audio buffer loaded successfully');
+            }
+          } catch (e) {
+            console.warn('[Kiosk] Could not load audio buffer:', e);
           }
-        } catch (e) {
-          console.warn('[Kiosk] Could not load audio buffer:', e);
         }
 
         return true;
@@ -1056,11 +1095,15 @@
       }
     }
 
-    function playNotificationSound() {
+    async function playNotificationSound() {
       if (!soundEnabled) return;
 
+      if (audioContext && audioContext.state === 'suspended') {
+        try { await audioContext.resume(); } catch (e) {}
+      }
+
       // Try Web Audio API first
-      if (audioContext && audioBuffer) {
+      if (audioContext && audioBuffer && audioContext.state === 'running') {
         try {
           const source = audioContext.createBufferSource();
           source.buffer = audioBuffer;

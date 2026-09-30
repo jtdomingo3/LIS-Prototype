@@ -9,3 +9,9 @@
 *.env
 
 /walkthrough.md
+tmp/
+*.tmp
+
+# Secrets
+.session_secret
+.auth_token_secret

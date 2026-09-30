@@ -97,8 +97,8 @@ const fieldsMapping = {
 
 // 1. Inject defaultFieldsMapping inside the map function
 const mapStartRegex = /return files\.map\(f => \{/;
-const mapStartReplacement = \`return files.map(f => {
-      const defaultFieldsMapping = \$\{JSON.stringify(fieldsMapping, null, 8)};\`;
+const mapStartReplacement = `return files.map(f => {
+      const defaultFieldsMapping = ${JSON.stringify(fieldsMapping, null, 8)};`;
 content = content.replace(mapStartRegex, mapStartReplacement);
 
 // 2. Replace all \`fields: [],\` with \`fields: (defaultFieldsMapping[f] || []),\` inside the map function body

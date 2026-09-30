@@ -1,13 +1,17 @@
 const crypto = require('crypto');
+const path = require('path');
+const fs = require('fs');
 
 /**
  * AES-256-GCM symmetric encryption / decryption helper.
  * Used to protect sensitive secrets (e.g. OpenRouter API keys) at rest.
  */
 
-// Derive a 32-byte key from any secret string using SHA-256
 function deriveMasterKey(secret) {
-  const masterSecret = secret || process.env.DATA_USERS_KEY || process.env.USER_DATA_KEY || process.env.SESSION_SECRET || 'gezyne-lis-ai-assistant-master-secret-2026';
+  const masterSecret = secret || process.env.DATA_USERS_KEY;
+  if (!masterSecret) {
+    throw new Error('DATA_USERS_KEY environment variable is required');
+  }
   return crypto.createHash('sha256').update(String(masterSecret)).digest();
 }
 
@@ -60,16 +64,20 @@ function decryptSecret(cipherPayload, secret) {
       return null;
     }
 
-    const key = deriveMasterKey(secret);
     const iv = Buffer.from(parsed.iv, 'base64');
     const tag = Buffer.from(parsed.tag, 'base64');
     const encrypted = Buffer.from(parsed.data, 'base64');
 
-    const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
-    decipher.setAuthTag(tag);
-    const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
-
-    return decrypted.toString('utf8');
+    // Attempt decryption with current master key
+    try {
+      const key = deriveMasterKey(secret);
+      const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+      decipher.setAuthTag(tag);
+      const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+      return decrypted.toString('utf8');
+    } catch (primaryErr) {
+      throw primaryErr;
+    }
   } catch (err) {
     console.error('[cryptoHelper] Decryption failed:', err && err.message);
     return null;

@@ -9,7 +9,7 @@ fs.mkdirSync(OUT_DIR, { recursive: true });
 async function make() {
   const now = new Date().toISOString();
   // Pre-hashed default administrator credential (cost factor 12)
-  const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$t1ORj/D94UYW057qZm1Ga.KU07BHErrr3BzmeO7fNbu5h5encZvD2';
+  const hash = process.env.ADMIN_INITIAL_PASSWORD_HASH || '$2a$12$KAbxinqnQy.V2flRS4EwIOc645LcBaMWzZNWD.IghCzovgIimC.9G';
 
   const admin = {
     id: uuidv4(),
@@ -47,6 +47,7 @@ async function make() {
     if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
     const { createDb } = require('../lib/sqliteDb');
     const db = createDb(dbPath);
+    if (db._readyPromise) await db._readyPromise;
     db.saveUsers([admin]);
     db.write(initialData);
     db.close();

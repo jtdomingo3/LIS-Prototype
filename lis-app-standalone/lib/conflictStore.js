@@ -37,7 +37,19 @@ class ConflictStore {
       if (fs.existsSync(this.filePath)) {
         const raw = fs.readFileSync(this.filePath, 'utf8');
         const parsed = JSON.parse(raw || '[]');
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) {
+          const valid = parsed.filter(c => {
+            const op = (c && c.operation) || '';
+            const err = (c && c.error) || '';
+            return !op.includes('/settings/sync-from-server') && !err.includes('/settings/sync-from-server');
+          });
+          if (valid.length !== parsed.length) {
+            try {
+              fs.writeFileSync(this.filePath, JSON.stringify(valid, null, 2), 'utf8');
+            } catch (_) {}
+          }
+          return valid;
+        }
       }
     } catch (e) {
       console.warn('[ConflictStore] Failed to load sync-conflicts.json:', e && e.message);
@@ -60,18 +72,12 @@ class ConflictStore {
 
   /**
    * Record a new sync conflict or failed mutation.
-   *
-   * @param {Object} entry
-   * @param {string} entry.type - 'queue_failure' | 'merge_conflict' | 'validation_error' | 'sync_error'
-   * @param {string} entry.entity - 'patients' | 'tests' | 'inventory' | etc.
-   * @param {string} [entry.entityId] - Affected record ID or temporary ID
-   * @param {string} [entry.operation] - HTTP method and path e.g. 'POST /patients'
-   * @param {Object} [entry.payload] - The local mutation payload that failed
-   * @param {string} entry.error - Error description or server message
-   * @param {number} [entry.statusCode] - HTTP status code (409, 400, 500, etc.)
-   * @param {Object} [entry.serverState] - Conflicting server state if available
    */
   recordConflict(entry = {}) {
+    const opStr = (entry.operation || '');
+    if (opStr.includes('/settings/sync-from-server')) {
+      return null;
+    }
     const id = 'cf_' + Date.now() + '_' + crypto.randomBytes(4).toString('hex');
     const nowIso = new Date().toISOString();
 

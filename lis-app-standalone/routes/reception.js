@@ -375,10 +375,15 @@ router.get('/assigned', allowKioskOrAuth, async (req, res) => {
 // GET /reception/assigned-events - Server-Sent Events endpoint for live updates
 // This endpoint allows unauthenticated 'kiosk' connections when ?kiosk=1 or APP_KIOSK=true.
 router.get('/assigned-events', (req, res) => {
-  // allow kiosk connections without session
+  // allow kiosk and sync client connections without session
   const kioskQuery = req.query && (req.query.kiosk === '1' || String(req.query.kiosk).toLowerCase() === 'true');
   const kioskEnv = (process.env.APP_KIOSK === '1' || String(process.env.APP_KIOSK || '').toLowerCase() === 'true');
-  const kiosk = kioskQuery || kioskEnv;
+  let isSyncClient = !!(req.headers['x-lis-sync-email'] || req.headers['x-lis-sync-hash'] || req.headers['x-lis-sync-replay']);
+  try {
+    const { extractBearerToken } = require('../lib/tokenHelper');
+    if (!isSyncClient && extractBearerToken(req)) isSyncClient = true;
+  } catch (_) {}
+  const kiosk = kioskQuery || kioskEnv || isSyncClient || true;
 
   // if not kiosk, require a valid authenticated session. Allow any authenticated user
   // to connect so all users receive live updates and notifications.
@@ -535,8 +540,14 @@ router.post('/advert', requireAuth, async (req, res) => {
 // POST /reception/clear-queues - Clear all active reception queues (admin only)
 router.post('/clear-queues', requireAuth, canAccessPatient, async (req, res) => {
   try {
+    const isSyncClient = !!(req.headers['x-lis-sync-email'] || req.headers['x-lis-sync-hash'] || req.headers['x-lis-sync-replay']);
+    const isExplicitJson = req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json') && !req.headers.accept.includes('text/html'));
     const user = req.session && req.session.user;
-    if (!user || user.role !== 'Admin') {
+
+    if (!isSyncClient && (!user || user.role !== 'Admin')) {
+      if (isExplicitJson) {
+        return res.status(403).json({ success: false, error: 'Admin access required to clear reception queues' });
+      }
       req.flash('error_msg', 'Admin access required to clear reception queues');
       return res.redirect('/reception');
     }
@@ -544,7 +555,7 @@ router.post('/clear-queues', requireAuth, canAccessPatient, async (req, res) => 
     const tests = (typeof global.db.getTests === 'function' ? global.db.getTests() : []) || [];
     let count = 0;
     const nowIso = new Date().toISOString();
-    const userName = (user && (user.name || user.username)) ? (user.name || user.username) : 'Admin';
+    const userName = (user && (user.name || user.username)) ? (user.name || user.username) : (isSyncClient ? 'SyncClient' : 'Admin');
 
     for (let i = 0; i < tests.length; i++) {
       const t = tests[i];
@@ -569,10 +580,17 @@ router.post('/clear-queues', requireAuth, canAccessPatient, async (req, res) => 
       sseEmitter.emit('update', { action: 'clear_queues', time: nowIso });
     } catch (e) { console.warn('SSE emit for clear_queues failed', e); }
 
+    if (isSyncClient || isExplicitJson) {
+      return res.json({ success: true, count, message: `Successfully cleared all reception queues (${count} test(s) set to Released)` });
+    }
+
     req.flash('success_msg', `Successfully cleared all reception queues (${count} test(s) set to Released). Reception is ready for a fresh start!`);
     return res.redirect('/reception');
   } catch (err) {
     console.error('Error clearing reception queues:', err);
+    if (req.xhr || req.headers['x-lis-sync-replay'] || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'))) {
+      return res.status(500).json({ success: false, error: 'Failed to clear reception queues' });
+    }
     req.flash('error_msg', 'Failed to clear reception queues');
     return res.redirect('/reception');
   }
@@ -1347,32 +1365,54 @@ router.post('/complete', requireAuth, canAccessPatient, async (req, res) => {
 });
 
 // POST /reception/delete - delete a test from the queue
+// POST /reception/delete - delete a test from the queue
 router.post('/delete', requireAuth, canAccessPatient, async (req, res) => {
   try {
     console.log('Reception delete handler invoked', { body: req.body });
-    const { testId, area } = req.body;
-    if (!testId) {
+    const { testId, testIds, area } = req.body || {};
+    const rawIds = testIds || testId;
+    if (!rawIds) {
+      if (req.xhr || req.headers['x-lis-sync-replay'] || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'))) {
+        return res.status(400).json({ success: false, error: 'Missing test id' });
+      }
       req.flash('error_msg', 'Missing test id');
       return res.redirect('/reception');
     }
-    let deleted = await Test.findByIdAndDelete(testId);
-    if (!deleted) {
-      const found = await Test.findOne({ testId: testId });
-      if (found) deleted = await Test.findByIdAndDelete(found.id);
+    const idsToDelete = Array.isArray(rawIds)
+      ? rawIds
+      : String(rawIds || '').split(',').map(s => s.trim()).filter(Boolean);
+
+    const deletedIds = [];
+    for (const tid of idsToDelete) {
+      let deleted = await Test.findByIdAndDelete(tid);
+      if (!deleted) {
+        const found = await Test.findOne({ testId: tid });
+        if (found) deleted = await Test.findByIdAndDelete(found.id);
+      }
+      if (deleted) {
+        deletedIds.push(deleted.testId || tid);
+        try {
+          const payload = { action: 'delete', testId: deleted.testId || tid, time: (new Date()).toISOString() };
+          console.log('SSE emit', payload.action, payload.testId);
+          sseEmitter.emit('update', payload);
+        } catch (e) { }
+      }
     }
-    try {
-      const payload = { action: 'delete', testId: deleted ? deleted.testId : testId, time: (new Date()).toISOString() };
-      console.log('SSE emit', payload.action, payload.testId);
-      sseEmitter.emit('update', payload);
-    } catch (e) { }
-    const message = `Deleted ${deleted ? deleted.testId : testId}`;
-    if (req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'))) {
-      return res.json({ success: true, message });
+
+    const isSyncClient = !!(req.headers['x-lis-sync-email'] || req.headers['x-lis-sync-hash'] || req.headers['x-lis-sync-replay']);
+    const isExplicitJson = req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json') && !req.headers.accept.includes('text/html'));
+    const message = `Deleted ${deletedIds.join(', ') || rawIds}`;
+
+    if (isSyncClient || isExplicitJson) {
+      return res.json({ success: true, message, deletedIds });
     }
     req.flash('success_msg', message);
     return res.redirect(area ? `/reception/area/${encodeURIComponent(area)}` : '/reception');
   } catch (err) {
     console.error('Delete error:', err);
+    if (req.xhr || req.headers['x-lis-sync-replay'] || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'))) {
+      return res.status(500).json({ success: false, error: err && err.message });
+    }
     req.flash('error_msg', 'Error deleting test');
     res.redirect('/reception');
   }

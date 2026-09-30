@@ -13,15 +13,41 @@ class SyncEngine {
     this._syncing = false;
     this._credentials = null; // { email, password } for server re-auth
     this._bearerToken = null; // Bearer token for server auth
+
+    // Restore persistent Bearer token from disk on startup if available
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const os = require('os');
+      const baseDir = (this.dataStore && this.dataStore.baseDir) ? this.dataStore.baseDir : path.join(os.homedir(), 'Documents', 'LIS', 'app-sync');
+      const tokenFile = path.join(baseDir, '.sync_token');
+      if (fs.existsSync(tokenFile)) {
+        const saved = fs.readFileSync(tokenFile, 'utf8').trim();
+        if (saved) {
+          this._bearerToken = saved;
+          console.log('[Sync] restored persistent Bearer token from disk on startup');
+        }
+      }
+    } catch (_) {}
   }
 
   setConflictStore(store) {
     this.conflictStore = store || null;
   }
 
-  /** Set a signed Bearer token directly. */
+  /** Set a signed Bearer token directly and persist to disk. */
   setBearerToken(token) {
     this._bearerToken = token || null;
+    if (token) {
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        const os = require('os');
+        const baseDir = (this.dataStore && this.dataStore.baseDir) ? this.dataStore.baseDir : path.join(os.homedir(), 'Documents', 'LIS', 'app-sync');
+        if (!fs.existsSync(baseDir)) fs.mkdirSync(baseDir, { recursive: true });
+        fs.writeFileSync(path.join(baseDir, '.sync_token'), token, 'utf8');
+      } catch (_) {}
+    }
   }
 
   /** Store credentials so we can re-authenticate with the server when needed. */
@@ -55,12 +81,13 @@ class SyncEngine {
           if (Array.isArray(allUsers)) users = allUsers;
         } catch (e) {}
       }
+      const { generateSyncToken } = require('./syncAuth');
       if (email) {
         const user = users.find(u => u && u.email && u.email.toLowerCase() === email.toLowerCase());
-        if (user && user.password) return { email: user.email, hash: user.password };
+        if (user && user.password) return { email: user.email, hash: generateSyncToken(user.email, user.password) };
       }
       const admin = users.find(u => u && (u.role === 'Admin' || u.role === 'admin' || (u.email && u.email.toLowerCase().includes('admin'))));
-      if (admin && admin.password) return { email: admin.email, hash: admin.password };
+      if (admin && admin.password) return { email: admin.email, hash: generateSyncToken(admin.email, admin.password) };
       return null;
     } catch (e) { return null; }
   }
@@ -70,226 +97,118 @@ class SyncEngine {
    * Sets the session cookie in the persist:lis partition so
    * subsequent requests are authenticated.
    */
-  async _ensureServerAuth() {
-    if (!this._credentials) {
-      console.log('[Sync] no stored plain-text credentials — will use hash-based auth headers');
-      return false;
-    }
+  /**
+   * Authenticate with the real server.
+   * Acquires a cryptographically signed Bearer token via /api/auth/token,
+   * or sets session cookies for persist:lis partition.
+   */
+  async _ensureServerAuth(force = false) {
     if (!this.config || !this.config.SERVER_URL) return false;
 
-    let electron = null;
-    try { electron = require('electron'); } catch (_) {}
-    const net = (electron && electron.net) ? electron.net : null;
-    const session = (electron && electron.session) ? electron.session : null;
+    // 1. If we already have a bearer token and not forced to refresh, return true
+    if (this._bearerToken && !force) {
+      return true;
+    }
 
-    const base = this.config.SERVER_URL.replace(/\/$/, '');
-    const loginUrl = base + '/login';
+    const fs = require('fs');
+    const path = require('path');
+    const os = require('os');
+    const baseDir = (this.dataStore && this.dataStore.baseDir) ? this.dataStore.baseDir : path.join(os.homedir(), 'Documents', 'LIS', 'app-sync');
+    const tokenFile = path.join(baseDir, '.sync_token');
 
-    if (!net || !session) {
-      // In non-electron runtime, perform standard HTTP POST /login and store session cookie
-      return new Promise((resolve) => {
-        try {
-          const parsed = new URL(loginUrl);
-          const isHttps = parsed.protocol === 'https:';
-          const client = isHttps ? require('https') : require('http');
-          const postData = new URLSearchParams({
-            email: this._credentials.email,
-            password: this._credentials.password
-          }).toString();
+    // 2. Try loading cached Bearer token from disk if not forced
+    if (!this._bearerToken && !force) {
+      try {
+        if (fs.existsSync(tokenFile)) {
+          const savedToken = fs.readFileSync(tokenFile, 'utf8').trim();
+          if (savedToken) {
+            this._bearerToken = savedToken;
+            console.log('[Sync] restored Bearer token from disk');
+            return true;
+          }
+        }
+      } catch (_) {}
+    }
 
+    // 3. Request Bearer token via /api/auth/token if credentials exist
+    if (this._credentials && this._credentials.email && this._credentials.password) {
+      const base = this.config.SERVER_URL.replace(/\/$/, '');
+      const tokenUrl = base + '/api/auth/token';
+
+      try {
+        const parsed = new URL(tokenUrl);
+        const isHttps = parsed.protocol === 'https:';
+        const client = isHttps ? require('https') : require('http');
+        const postData = JSON.stringify({
+          email: this._credentials.email,
+          password: this._credentials.password
+        });
+
+        const token = await new Promise((resolve) => {
           const req = client.request({
             hostname: parsed.hostname,
             port: parsed.port || (isHttps ? 443 : 80),
             path: parsed.pathname,
             method: 'POST',
             headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
+              'Content-Type': 'application/json',
               'Content-Length': Buffer.byteLength(postData),
-              'Accept': 'application/json, text/html, */*'
+              'Accept': 'application/json'
             },
-            timeout: 10000
+            timeout: 8000
           }, (res) => {
-            const setCookie = res.headers['set-cookie'];
-            if (setCookie) {
-              const cookiesArr = Array.isArray(setCookie) ? setCookie : [setCookie];
-              const sid = cookiesArr.map(c => c.split(';')[0]).join('; ');
-              if (sid) {
-                this._sessionCookie = sid;
-                console.log('[Sync] authenticated with server and session cookie captured (Node fallback)');
-                return resolve(true);
+            let body = '';
+            res.on('data', chunk => { body += chunk.toString(); });
+            res.on('end', () => {
+              if (res.statusCode >= 200 && res.statusCode < 300) {
+                try {
+                  const json = JSON.parse(body);
+                  if (json && json.success && json.token) {
+                    return resolve(json.token);
+                  }
+                } catch (_) {}
               }
-            }
-            if (res.statusCode >= 200 && res.statusCode < 400) {
-              return resolve(true);
-            }
-            resolve(false);
+              resolve(null);
+            });
           });
-          req.on('error', () => resolve(false));
+          req.on('error', () => resolve(null));
+          req.on('timeout', () => { req.destroy(); resolve(null); });
           req.write(postData);
           req.end();
-        } catch (_) {
-          resolve(false);
+        });
+
+        if (token) {
+          this.setBearerToken(token);
+          console.log('[Sync] authenticated with server via /api/auth/token (Bearer token set)');
+          return true;
         }
-      });
+      } catch (e) {
+        console.warn('[Sync] /api/auth/token attempt warning:', e && e.message);
+      }
     }
 
-    return new Promise((resolve) => {
+    // 4. Fallback check for session cookies
+    let electron = null;
+    try { electron = require('electron'); } catch (_) {}
+    const session = (electron && electron.session) ? electron.session : null;
+    if (session) {
       try {
         const sess = session.fromPartition('persist:lis');
-        const req = net.request({
-          method: 'POST',
-          url: loginUrl,
-          session: sess,
-          redirect: 'follow', // automatically follow redirects after login
-        });
-        req.setHeader('Content-Type', 'application/x-www-form-urlencoded');
-        const body = new URLSearchParams({
-          email: this._credentials.email,
-          password: this._credentials.password,
-        }).toString();
+        const cookies = await sess.cookies.get({ name: 'connect.sid' });
+        if (cookies && cookies.length) {
+          console.log('[Sync] session cookie present (connect.sid)');
+          return true;
+        }
+      } catch (_) {}
+    }
 
-        req.on('redirect', (statusCode, method, redirectUrl) => {
-          try { req.followRedirect(); } catch (e) {}
-        });
-
-        let responseBody = '';
-        req.on('response', async (res) => {
-          res.on('data', (chunk) => { responseBody += chunk.toString(); });
-          res.on('end', async () => {
-            // Check session cookie in the persist:lis partition
-            try {
-              const cookies = await sess.cookies.get({ name: 'connect.sid' });
-              if (cookies && cookies.length) {
-                console.log('[Sync] authenticated with server and session cookie set (connect.sid)');
-                return resolve(true);
-              }
-              const anyCookies = await sess.cookies.get({});
-              if (anyCookies && anyCookies.length) {
-                console.log('[Sync] authenticated with server — cookies present');
-                return resolve(true);
-              }
-            } catch (e) {
-              console.warn('[Sync] cookie check failed:', e && e.message);
-            }
-
-            if (res.statusCode >= 200 && res.statusCode < 400) {
-              console.log('[Sync] server returned status', res.statusCode, '— assuming authenticated');
-              return resolve(true);
-            }
-
-            // Fallback: hidden renderer login
-            try {
-              let electron = null;
-              try { electron = require('electron'); } catch (_) {}
-              const BrowserWindow = electron ? electron.BrowserWindow : null;
-              if (!BrowserWindow) return resolve(false);
-
-              const win = new BrowserWindow({ show: false, webPreferences: { partition: 'persist:lis', nodeIntegration: false, contextIsolation: true } });
-              try {
-                await win.loadURL(loginUrl);
-                const submitJs = `(function(){ try {
-                  var e = document.querySelector('input[name="email"]');
-                  var p = document.querySelector('input[name="password"]');
-                  if (!e || !p) return { ok:false, err:'no-form' };
-                  e.value = ${JSON.stringify(this._credentials.email)};
-                  p.value = ${JSON.stringify(this._credentials.password)};
-                  var f = document.querySelector('form[action="/login"]') || document.querySelector('form');
-                  if (f) { f.submit(); return { ok:true, method:'form' }; }
-                  var btn = document.querySelector('button[type="submit"]') || document.querySelector('input[type="submit"]');
-                  if (btn) { btn.click(); return { ok:true, method:'button' }; }
-                  return { ok:false, err:'no-submit' };
-                } catch(e){ return { ok:false, err: String(e) }; } })()`;
-                try { await win.webContents.executeJavaScript(submitJs, true); } catch (e) {}
-
-                const start = Date.now();
-                let found = false;
-                while ((Date.now() - start) < 8000) {
-                  try {
-                    const cookies2 = await sess.cookies.get({ name: 'connect.sid' });
-                    if (cookies2 && cookies2.length) { found = true; break; }
-                  } catch (e) {}
-                  await new Promise(r => setTimeout(r, 400));
-                }
-                try { if (!win.isDestroyed()) win.close(); } catch (e) {}
-                if (found) {
-                  console.log('[Sync] renderer login set session cookie (connect.sid)');
-                  return resolve(true);
-                }
-              } catch (e) {
-                try { if (!win.isDestroyed()) win.close(); } catch (ee) {}
-              }
-            } catch (e) {}
-
-            resolve(false);
-          });
-        });
-
-        req.on('error', async (err) => {
-          console.warn('[Sync] server auth request net event:', err && err.message);
-          // Check if cookie was already set despite the event
-          try {
-            const cookies = await sess.cookies.get({ name: 'connect.sid' });
-            if (cookies && cookies.length) {
-              console.log('[Sync] session cookie verified after net event');
-              return resolve(true);
-            }
-          } catch (e) {}
-
-          try {
-            let electron = null;
-            try { electron = require('electron'); } catch (_) {}
-            const BrowserWindow = electron ? electron.BrowserWindow : null;
-            if (!BrowserWindow) return resolve(false);
-
-            const win = new BrowserWindow({ show: false, webPreferences: { partition: 'persist:lis', nodeIntegration: false, contextIsolation: true } });
-            try {
-              await win.loadURL(loginUrl);
-              const submitJs = `(function(){ try {
-                var e = document.querySelector('input[name="email"]');
-                var p = document.querySelector('input[name="password"]');
-                if (!e || !p) return { ok:false, err:'no-form' };
-                e.value = ${JSON.stringify(this._credentials.email)};
-                p.value = ${JSON.stringify(this._credentials.password)};
-                var f = document.querySelector('form[action="/login"]') || document.querySelector('form');
-                if (f) { f.submit(); return { ok:true, method:'form' }; }
-                var btn = document.querySelector('button[type="submit"]') || document.querySelector('input[type="submit"]');
-                if (btn) { btn.click(); return { ok:true, method:'button' }; }
-                return { ok:false, err:'no-submit' };
-              } catch(e){ return { ok:false, err: String(e) }; } })()`;
-              try { await win.webContents.executeJavaScript(submitJs, true); } catch (e) {}
-
-              const start = Date.now();
-              let found = false;
-              while ((Date.now() - start) < 8000) {
-                try {
-                  const cookies2 = await sess.cookies.get({ name: 'connect.sid' });
-                  if (cookies2 && cookies2.length) { found = true; break; }
-                } catch (e) {}
-                await new Promise(r => setTimeout(r, 400));
-              }
-              try { if (!win.isDestroyed()) win.close(); } catch (e) {}
-              if (found) {
-                console.log('[Sync] renderer login set session cookie (connect.sid) after net event');
-                return resolve(true);
-              }
-            } catch (e) {
-              try { if (!win.isDestroyed()) win.close(); } catch (ee) {}
-            }
-          } catch (e) {}
-
-          resolve(false);
-        });
-
-        req.write(body);
-        req.end();
-      } catch (e) {
-        console.error('[Sync] _ensureServerAuth exception:', e && e.message);
-        resolve(false);
-      }
-    });
+    if (!this._credentials) {
+      console.log('[Sync] no stored plain-text credentials — will use hash-based auth headers');
+    }
+    return false;
   }
 
-    /** Attempt a full download of server data.json into the local DataStore.
+  /** Attempt a full download of server data.json into the local DataStore.
      *  Returns an object { success: boolean, reason?: string, imported?: number }
      */
     async fullSync(progressSender, opts) {
@@ -332,20 +251,20 @@ class SyncEngine {
             } catch (e) {
               lastErr = e;
               console.error('[Sync] full-sync attempt failed for', url, e && e.message);
-              try {
-                if (e && String(e.message).startsWith('http:401') && progressSender && typeof progressSender.executeJavaScript === 'function') {
-                  console.log('[Sync] falling back to renderer fetch for', url);
-                  const js = `(async () => { const r = await fetch(${JSON.stringify(url)}, { credentials: 'include' }); const t = await r.text(); return { status: r.status, text: t }; })()`;
-                  const res = await progressSender.executeJavaScript(js);
-                  if (res && res.status >= 200 && res.status < 300) {
-                    try { result = JSON.parse(res.text); console.log('[Sync] renderer fetch parsed JSON from', url); break; } catch (pe) { lastErr = new Error('invalid-json'); }
-                  } else {
-                    console.error('[Sync] renderer fetch returned', res && res.status);
-                    lastErr = new Error('http:' + (res && res.status ? res.status : 'unknown'));
+              if (e && String(e.message).startsWith('http:401') && this._credentials) {
+                try {
+                  console.log('[Sync] 401 encountered — attempting token re-authentication for', url);
+                  const reauthed = await this._ensureServerAuth(true);
+                  if (reauthed) {
+                    result = await this._fetchJson(net, url, progressSender);
+                    if (result) {
+                      console.log('[Sync] retry succeeded after token re-auth for', url);
+                      break;
+                    }
                   }
+                } catch (retryErr) {
+                  lastErr = retryErr;
                 }
-              } catch (ee) {
-                console.error('[Sync] renderer fetch fallback failed for', url, ee && ee.message);
               }
               continue;
             }
@@ -354,7 +273,7 @@ class SyncEngine {
           if (!result || typeof result !== 'object') return { success: false, reason: 'invalid-json' };
 
           // Merge known collections (best-effort) or replace when requested
-          const collections = ['users', 'patients', 'tests', 'templates', 'counters', 'inventory', 'inventory_batches', 'inventory_transactions', 'equipment', 'equipment_logs', 'qc_controls', 'qc_entries', 'neqas_records'];
+          const collections = ['users', 'patients', 'tests', 'templates', 'counters', 'inventory', 'inventory_batches', 'inventory_transactions', 'equipment', 'equipment_logs', 'qc_controls', 'qc_entries', 'neqas_records', 'consultations', 'expenses', 'revenue_entries', 'cost_per_test', 'employees', 'payroll_records', 'hr_documents', 'leave_records', 'dtr_records'];
           let imported = 0;
           for (const col of collections) {
             if (Array.isArray(result[col])) {
@@ -410,18 +329,22 @@ class SyncEngine {
     /**
      * Debounced fullSync to coalesce rapid successive live bridge events
      */
-    debouncedFullSync(webContents, delayMs = 1200) {
+    debouncedFullSync(webContents, delayMs = 250) {
+      if (!this._debouncedResolvers) this._debouncedResolvers = [];
       if (this._debouncedFullSyncTimer) {
         clearTimeout(this._debouncedFullSyncTimer);
       }
       return new Promise((resolve) => {
+        this._debouncedResolvers.push(resolve);
         this._debouncedFullSyncTimer = setTimeout(async () => {
           this._debouncedFullSyncTimer = null;
+          const resolvers = this._debouncedResolvers.slice();
+          this._debouncedResolvers = [];
           try {
             const res = await this.fullSync(webContents);
-            resolve(res);
+            for (const r of resolvers) { try { r(res); } catch (_) {} }
           } catch (err) {
-            resolve({ success: false, reason: err && err.message });
+            for (const r of resolvers) { try { r({ success: false, reason: err && err.message }); } catch (_) {} }
           }
         }, delayMs);
       });
@@ -540,6 +463,13 @@ class SyncEngine {
     const net = (electron && electron.net) ? electron.net : null;
 
     for (const op of pending) {
+      // Discard operations that should never be replayed to central server
+      if (op.url && op.url.includes('/settings/sync-from-server')) {
+        console.log(`[Sync] Discarding local-only operation ${op.method} ${op.url}`);
+        this.queue.remove(op.id);
+        continue;
+      }
+
       try {
         // replay and capture server response so we can map temp -> server IDs
         const replayResult = await this._replayWithRetry(net, op);
@@ -822,7 +752,7 @@ class SyncEngine {
       if (!collection) return;
 
       // Only handle known collections where local temp IDs exist
-      if (!['patients','tests','templates','users','inventory','equipment','equipment_logs','qc_controls','qc_entries','neqas_records'].includes(collection)) return;
+      if (!['patients','tests','templates','users','inventory','equipment','equipment_logs','qc_controls','qc_entries','neqas_records','consultations','expenses','revenue_entries','cost_per_test','employees','payroll_records','hr_documents','leave_records','dtr_records'].includes(collection)) return;
 
       // Prefer deterministic mapping when server echoed back a client_id in JSON response
       let clientId = null;
@@ -1052,6 +982,21 @@ class SyncEngine {
     const connectStream = async () => {
       if (!this._bridgeActive) return;
       try {
+        const authCreds = this._getAutoLoginHash();
+        const headers = {
+          'Accept': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+          'X-LIS-Sync-Replay': '1'
+        };
+        if (this._bearerToken) {
+          headers['Authorization'] = `Bearer ${this._bearerToken}`;
+        }
+        if (authCreds) {
+          headers['X-LIS-Sync-Email'] = authCreds.email;
+          headers['X-LIS-Sync-Hash'] = authCreds.hash;
+        }
+
         if (net && session) {
           const sess = session.fromPartition('persist:lis');
           const req = net.request({
@@ -1059,27 +1004,25 @@ class SyncEngine {
             url: sseUrl,
             session: sess,
             useSessionCookies: true,
+            redirect: 'manual'
           });
 
-          req.setHeader('Accept', 'text/event-stream');
-          req.setHeader('Cache-Control', 'no-cache');
-          req.setHeader('Connection', 'keep-alive');
-
-          const authCreds = this._getAutoLoginHash();
-          if (authCreds) {
-            req.setHeader('X-Auto-Login-Email', authCreds.email);
-            req.setHeader('X-Auto-Login-Hash', authCreds.hash);
+          for (const [k, v] of Object.entries(headers)) {
+            try { req.setHeader(k, v); } catch (_) {}
           }
 
           req.on('response', (res) => {
             if (res.statusCode === 302 || res.statusCode === 401) {
-              this._ensureServerAuth().catch(() => {});
-              this._scheduleBridgeReconnect(connectStream, 8000);
+              this._ensureServerAuth(true).catch(() => {});
+              this._scheduleBridgeReconnect(connectStream, 4000);
               return;
             }
 
-            if (res.statusCode !== 200) {
-              this._scheduleBridgeReconnect(connectStream, 10000);
+            const ct = (res.headers && (res.headers['content-type'] || res.headers['Content-Type'])) || '';
+            const ctStr = Array.isArray(ct) ? ct[0] : String(ct);
+            if (res.statusCode !== 200 || (!ctStr.includes('text/event-stream') && !ctStr.includes('text/plain'))) {
+              console.warn('[SyncBridge] SSE response unexpected: status', res.statusCode, 'content-type', ctStr);
+              this._scheduleBridgeReconnect(connectStream, 5000);
               return;
             }
 
@@ -1089,11 +1032,11 @@ class SyncEngine {
             let buffer = '';
             res.on('data', (chunk) => {
               buffer += chunk.toString('utf8');
-              const lines = buffer.split('\n\n');
+              const lines = buffer.split(/\r?\n\r?\n/);
               buffer = lines.pop() || '';
 
               for (const block of lines) {
-                const dataLine = block.split('\n').find(l => l.startsWith('data:'));
+                const dataLine = block.split(/\r?\n/).find(l => l.startsWith('data:'));
                 if (!dataLine) continue;
                 const rawData = dataLine.slice(5).trim();
                 if (!rawData) continue;
@@ -1109,9 +1052,16 @@ class SyncEngine {
                     }
 
                     // 2. Debounced fetch of latest server snapshot in background so local DB is kept in sync
-                    this.debouncedFullSync(webContents, 1200).then(() => {
+                    this.debouncedFullSync(webContents, 250).then((syncRes) => {
                       if (typeof onEventCallback === 'function') {
-                        try { onEventCallback({ action: 'live_sync_completed', timestamp: Date.now() }); } catch (e) {}
+                        try {
+                          onEventCallback({
+                            action: 'live_sync_completed',
+                            originalAction: eventData.action || eventData.type,
+                            imported: syncRes ? syncRes.imported : 0,
+                            timestamp: Date.now()
+                          });
+                        } catch (e) {}
                       }
                     }).catch(() => {});
                   }
@@ -1121,24 +1071,24 @@ class SyncEngine {
 
             res.on('end', () => {
               this._bridgeConnected = false;
-              this._scheduleBridgeReconnect(connectStream, 5000);
+              this._scheduleBridgeReconnect(connectStream, 3000);
             });
 
             res.on('error', () => {
               this._bridgeConnected = false;
-              this._scheduleBridgeReconnect(connectStream, 6000);
+              this._scheduleBridgeReconnect(connectStream, 4000);
             });
           });
 
           req.on('error', () => {
             this._bridgeConnected = false;
-            this._scheduleBridgeReconnect(connectStream, 8000);
+            this._scheduleBridgeReconnect(connectStream, 5000);
           });
 
           this._currentBridgeReq = req;
           req.end();
         } else {
-          // Node fallback (e.g. tests)
+          // Node fallback (e.g. tests or headless)
           const parsed = new URL(sseUrl);
           const isHttps = parsed.protocol === 'https:';
           const client = isHttps ? require('https') : require('http');
@@ -1148,26 +1098,31 @@ class SyncEngine {
             port: parsed.port || (isHttps ? 443 : 80),
             path: parsed.pathname + (parsed.search || ''),
             method: 'GET',
-            headers: {
-              'Accept': 'text/event-stream',
-              'Cache-Control': 'no-cache',
-              'Connection': 'keep-alive'
-            },
+            headers,
             timeout: 0
           }, (res) => {
-            if (res.statusCode !== 200) {
+            if (res.statusCode === 302 || res.statusCode === 401) {
               res.resume();
-              this._scheduleBridgeReconnect(connectStream, 10000);
+              this._ensureServerAuth(true).catch(() => {});
+              this._scheduleBridgeReconnect(connectStream, 4000);
               return;
             }
+            const ct = (res.headers && (res.headers['content-type'] || res.headers['Content-Type'])) || '';
+            const ctStr = Array.isArray(ct) ? ct[0] : String(ct);
+            if (res.statusCode !== 200 || (!ctStr.includes('text/event-stream') && !ctStr.includes('text/plain'))) {
+              res.resume();
+              this._scheduleBridgeReconnect(connectStream, 5000);
+              return;
+            }
+
             this._bridgeConnected = true;
             let buffer = '';
             res.on('data', (chunk) => {
               buffer += chunk.toString('utf8');
-              const lines = buffer.split('\n\n');
+              const lines = buffer.split(/\r?\n\r?\n/);
               buffer = lines.pop() || '';
               for (const block of lines) {
-                const dataLine = block.split('\n').find(l => l.startsWith('data:'));
+                const dataLine = block.split(/\r?\n/).find(l => l.startsWith('data:'));
                 if (!dataLine) continue;
                 const rawData = dataLine.slice(5).trim();
                 if (!rawData) continue;
@@ -1177,24 +1132,31 @@ class SyncEngine {
                     if (typeof onEventCallback === 'function') {
                       try { onEventCallback(eventData); } catch (e) {}
                     }
-                    this.debouncedFullSync(webContents, 1200).then(() => {
+                    this.debouncedFullSync(webContents, 250).then((syncRes) => {
                       if (typeof onEventCallback === 'function') {
-                        try { onEventCallback({ action: 'live_sync_completed', timestamp: Date.now() }); } catch (e) {}
+                        try {
+                          onEventCallback({
+                            action: 'live_sync_completed',
+                            originalAction: eventData.action || eventData.type,
+                            imported: syncRes ? syncRes.imported : 0,
+                            timestamp: Date.now()
+                          });
+                        } catch (e) {}
                       }
                     }).catch(() => {});
                   }
                 } catch (e) {}
               }
             });
-            res.on('end', () => { this._bridgeConnected = false; this._scheduleBridgeReconnect(connectStream, 5000); });
-            res.on('error', () => { this._bridgeConnected = false; this._scheduleBridgeReconnect(connectStream, 6000); });
+            res.on('end', () => { this._bridgeConnected = false; this._scheduleBridgeReconnect(connectStream, 3000); });
+            res.on('error', () => { this._bridgeConnected = false; this._scheduleBridgeReconnect(connectStream, 4000); });
           });
-          req.on('error', () => { this._bridgeConnected = false; this._scheduleBridgeReconnect(connectStream, 8000); });
+          req.on('error', () => { this._bridgeConnected = false; this._scheduleBridgeReconnect(connectStream, 5000); });
           this._currentBridgeReq = req;
           req.end();
         }
       } catch (err) {
-        this._scheduleBridgeReconnect(connectStream, 8000);
+        this._scheduleBridgeReconnect(connectStream, 5000);
       }
     };
 
@@ -1519,7 +1481,7 @@ class SyncEngine {
 
     // Step 4: Authoritatively reconcile local DataStore with server data
     // Use replace: true so local database precisely mirrors authoritative server state
-    const collections = ['users', 'patients', 'tests', 'templates', 'counters', 'inventory', 'inventory_batches', 'inventory_transactions', 'equipment', 'equipment_logs', 'qc_controls', 'qc_entries', 'neqas_records', 'consultations'];
+    const collections = ['users', 'patients', 'tests', 'templates', 'counters', 'inventory', 'inventory_batches', 'inventory_transactions', 'equipment', 'equipment_logs', 'qc_controls', 'qc_entries', 'neqas_records', 'consultations', 'expenses', 'revenue_entries', 'cost_per_test', 'employees', 'payroll_records', 'hr_documents', 'leave_records', 'dtr_records'];
     let totalImported = 0;
 
     for (const col of collections) {
@@ -1562,7 +1524,11 @@ class SyncEngine {
         patients: serverPatients.length,
         tests: serverTests.length,
         users: (serverData.users || []).length,
-        inventory: (serverData.inventory || []).length
+        inventory: (serverData.inventory || []).length,
+        expenses: (serverData.expenses || []).length,
+        revenue_entries: (serverData.revenue_entries || []).length,
+        employees: (serverData.employees || []).length,
+        payroll_records: (serverData.payroll_records || []).length
       },
       localCountsBefore: {
         patients: localPatientsBefore.length,

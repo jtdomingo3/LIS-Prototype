@@ -1,0 +1,346 @@
+<div style="width: 100%; box-sizing: border-box;">
+    <!-- Top Bar / Controls -->
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 24px;">
+        <div>
+            <h2 style="margin: 0; font-size: 1.6rem; color: #0f172a; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+                <span>💰</span> Financial Costing & Analytics
+            </h2>
+            <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.9rem;">
+                Track overall lab earnings, reagent usage costs, operational expenses, and monthly profitability
+            </p>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <!-- Month Selector Form -->
+            <form action="/costing" method="GET" style="display: flex; align-items: center; gap: 8px;">
+                <label for="monthPicker" style="font-size: 0.85rem; font-weight: 600; color: #475569;">Month:</label>
+                <input type="month" id="monthPicker" name="month" value="<%= selectedMonth %>" onchange="this.form.submit()" style="padding: 7px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; font-weight: 600; color: #0f172a; background: #fff;">
+            </form>
+
+            <a href="/costing/monthly/<%= selectedMonth %>" class="btn btn-secondary btn-small" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; border-radius: 8px; font-weight: 600;">
+                <span>📄</span> P&L Statement
+            </a>
+
+            <div class="dropdown" style="position: relative; display: inline-block;">
+                <button class="btn btn-primary btn-small" onclick="document.getElementById('exportMenu').classList.toggle('show')" style="padding: 8px 14px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                    <span>📥</span> Export Report ▾
+                </button>
+                <div id="exportMenu" style="display: none; position: absolute; right: 0; top: 105%; background: white; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 100; min-width: 170px; overflow: hidden;">
+                    <a href="/costing/export/excel?month=<%= selectedMonth %>&type=pnl" style="display: block; padding: 10px 14px; color: #1e293b; text-decoration: none; font-size: 0.88rem; font-weight: 500;">📊 P&L Excel (.xlsx)</a>
+                    <a href="/costing/export/csv?month=<%= selectedMonth %>&type=pnl" style="display: block; padding: 10px 14px; color: #1e293b; text-decoration: none; font-size: 0.88rem; font-weight: 500;">📄 P&L CSV (.csv)</a>
+                    <a href="/costing/export/excel?month=<%= selectedMonth %>&type=expenses" style="display: block; padding: 10px 14px; color: #1e293b; text-decoration: none; font-size: 0.88rem; font-weight: 500;">📋 Expenses Excel</a>
+                </div>
+            </div>
+
+            <a href="/costing/expenses" class="btn btn-small" style="padding: 8px 14px; background: #0f172a; color: white; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                <span>➕</span> Manage Expenses
+            </a>
+        </div>
+    </div>
+
+    <!-- Quick Navigation Pills -->
+    <div style="display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; overflow-x: auto;">
+        <a href="/costing?month=<%= selectedMonth %>" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #0f172a; color: white;">Overview</a>
+        <a href="/costing/revenue?month=<%= selectedMonth %>" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #475569;">Revenue Details</a>
+        <a href="/costing/expenses?month=<%= selectedMonth %>" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #475569;">Expenses Log</a>
+        <a href="/costing/cost-per-test" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #475569;">Reagent Cost / Test (<%= costPerTestCount %>)</a>
+        <a href="/costing/monthly/<%= selectedMonth %>" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: #f1f5f9; color: #475569;">Monthly P&L</a>
+        <a href="/hr" style="padding: 8px 16px; border-radius: 20px; font-size: 0.88rem; font-weight: 600; text-decoration: none; background: rgba(79, 70, 229, 0.1); color: #4f46e5; margin-left: auto;">👥 Personnel & Payroll Panel →</a>
+    </div>
+
+    <!-- 4 KPI Summary Cards -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; margin-bottom: 28px;">
+        <!-- Net Revenue Card -->
+        <div style="background: white; border-radius: 14px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 0.85rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Net Revenue</span>
+                <span style="background: rgba(16, 185, 129, 0.12); color: #059669; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">Earnings</span>
+            </div>
+            <div style="font-size: 1.85rem; font-weight: 800; color: #059669; letter-spacing: -0.5px;">
+                ₱<%= summary.netRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %>
+            </div>
+            <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 6px; display: flex; justify-content: space-between;">
+                <span>Gross: ₱<%= summary.totalRevenue.toLocaleString() %></span>
+                <span>Discounts: ₱<%= summary.discountTotal.toLocaleString() %></span>
+            </div>
+        </div>
+
+        <!-- Total Expenses Card -->
+        <div style="background: white; border-radius: 14px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 0.85rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Total Expenses</span>
+                <span style="background: rgba(239, 68, 68, 0.12); color: #dc2626; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">Outflow</span>
+            </div>
+            <div style="font-size: 1.85rem; font-weight: 800; color: #dc2626; letter-spacing: -0.5px;">
+                ₱<%= summary.totalExpenses.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %>
+            </div>
+            <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 6px;">
+                Reagents: ₱<%= summary.categories.reagent_purchase.toLocaleString() %> | Personnel: ₱<%= summary.categories.personnel.toLocaleString() %>
+            </div>
+        </div>
+
+        <!-- Net Profit Card -->
+        <% const isProfit = summary.netProfit >= 0; %>
+        <div style="background: white; border-radius: 14px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 0.85rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Net Profit / (Loss)</span>
+                <span style="background: <%= isProfit ? 'rgba(59, 130, 246, 0.12)' : 'rgba(239, 68, 68, 0.12)' %>; color: <%= isProfit ? '#2563eb' : '#dc2626' %>; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">
+                    <%= isProfit ? 'Profitable' : 'Deficit' %>
+                </span>
+            </div>
+            <div style="font-size: 1.85rem; font-weight: 800; color: <%= isProfit ? '#2563eb' : '#dc2626' %>; letter-spacing: -0.5px;">
+                ₱<%= summary.netProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %>
+            </div>
+            <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 6px;">
+                Net Revenue − All Operating Costs
+            </div>
+        </div>
+
+        <!-- Margin Card -->
+        <div style="background: white; border-radius: 14px; padding: 20px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 0.85rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Profit Margin</span>
+                <span style="background: rgba(147, 51, 234, 0.12); color: #7e22ce; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;">Ratio</span>
+            </div>
+            <div style="font-size: 1.85rem; font-weight: 800; color: #7e22ce; letter-spacing: -0.5px;">
+                <%= summary.marginPercent %>%
+            </div>
+            <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 6px;">
+                Annual Projection: ₱<%= yearlySummary.netProfit.toLocaleString() %> (<%= selectedYear %>)
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 28px;">
+        <!-- 12-Month Trend Chart -->
+        <div style="background: white; border-radius: 14px; padding: 22px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: #0f172a;">12-Month Financial Performance (<%= selectedYear %>)</h3>
+                <span style="font-size: 0.8rem; color: #64748b;">Revenue vs. Expenses</span>
+            </div>
+            <div style="height: 280px; position: relative;">
+                <canvas id="monthlyTrendChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Expense Category Breakdown Donut -->
+        <div style="background: white; border-radius: 14px; padding: 22px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: #0f172a;">Expense Breakdown</h3>
+                <span style="font-size: 0.8rem; color: #64748b;"><%= selectedMonth %></span>
+            </div>
+            <div style="height: 240px; position: relative;">
+                <canvas id="expenseDonutChart"></canvas>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.78rem; color: #64748b; margin-top: 14px;">
+                <div><span style="color:#ef4444;">●</span> Reagents: ₱<%= summary.categories.reagent_purchase.toLocaleString() %></div>
+                <div><span style="color:#3b82f6;">●</span> Personnel: ₱<%= summary.categories.personnel.toLocaleString() %></div>
+                <div><span style="color:#f59e0b;">●</span> Overhead: ₱<%= summary.categories.overhead.toLocaleString() %></div>
+                <div><span style="color:#8b5cf6;">●</span> Equipment: ₱<%= summary.categories.equipment_service.toLocaleString() %></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- P&L Summary Table & Recent Expenses Row -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 28px;">
+        <!-- P&L Statement Snapshot -->
+        <div style="background: white; border-radius: 14px; padding: 22px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: #0f172a;">Monthly Income Statement (<%= selectedMonth %>)</h3>
+                <a href="/costing/monthly/<%= selectedMonth %>" style="font-size: 0.82rem; color: #10b981; font-weight: 600; text-decoration: none;">Full Statement →</a>
+            </div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                <tbody>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 10px 0; color: #475569;">Clinical Laboratory Earnings</td>
+                        <td style="padding: 10px 0; text-align: right; font-weight: 600; color: #0f172a;">₱<%= summary.clinicalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 10px 0; color: #475569;">Radiology / X-Ray Earnings</td>
+                        <td style="padding: 10px 0; text-align: right; font-weight: 600; color: #0f172a;">₱<%= summary.xrayRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 10px 0; color: #475569;">Senior / PWD / Promo Discounts</td>
+                        <td style="padding: 10px 0; text-align: right; font-weight: 600; color: #dc2626;">-₱<%= summary.discountTotal.toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+                    </tr>
+                    <tr style="border-bottom: 2px solid #e2e8f0; font-weight: 700; background: #f8fafc;">
+                        <td style="padding: 10px 6px; color: #0f172a;">NET REVENUE</td>
+                        <td style="padding: 10px 6px; text-align: right; color: #059669;">₱<%= summary.netRevenue.toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 8px 0; color: #64748b;">Less: Reagents & Consumables</td>
+                        <td style="padding: 8px 0; text-align: right; color: #dc2626;">₱<%= summary.categories.reagent_purchase.toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 8px 0; color: #64748b;">Less: Personnel Salaries & Gov Shares</td>
+                        <td style="padding: 8px 0; text-align: right; color: #dc2626;">₱<%= summary.categories.personnel.toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 8px 0; color: #64748b;">Less: Facility Overhead (Rent/Power/Net)</td>
+                        <td style="padding: 8px 0; text-align: right; color: #dc2626;">₱<%= summary.categories.overhead.toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 8px 0; color: #64748b;">Less: Equipment Maintenance</td>
+                        <td style="padding: 8px 0; text-align: right; color: #dc2626;">₱<%= summary.categories.equipment_service.toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+                    </tr>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 8px 0; color: #64748b;">Less: Miscellaneous Expenses</td>
+                        <td style="padding: 8px 0; text-align: right; color: #dc2626;">₱<%= summary.categories.misc.toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+                    </tr>
+                    <tr style="border-top: 2px solid #0f172a; font-weight: 800; font-size: 1rem; background: #f8fafc;">
+                        <td style="padding: 12px 6px; color: #0f172a;">NET OPERATING INCOME</td>
+                        <td style="padding: 12px 6px; text-align: right; color: <%= isProfit ? '#2563eb' : '#dc2626' %>;">₱<%= summary.netProfit.toLocaleString('en-US', { minimumFractionDigits: 2 }) %></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Recent Recorded Expenses -->
+        <div style="background: white; border-radius: 14px; padding: 22px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                <h3 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: #0f172a;">Recent Expense Entries</h3>
+                <a href="/costing/expenses" style="font-size: 0.82rem; color: #10b981; font-weight: 600; text-decoration: none;">View All (<%= recentExpenses.length %>) →</a>
+            </div>
+            <% if (recentExpenses.length === 0) { %>
+                <div style="padding: 30px; text-align: center; color: #94a3b8; font-size: 0.9rem;">
+                    No expenses recorded for <%= selectedMonth %>.
+                    <div style="margin-top: 10px;">
+                        <a href="/costing/expenses" style="color: #10b981; font-weight: 600;">+ Record an Expense</a>
+                    </div>
+                </div>
+            <% } else { %>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                        <thead>
+                            <tr style="border-bottom: 2px solid #e2e8f0; text-align: left; color: #64748b;">
+                                <th style="padding: 8px 6px;">Date</th>
+                                <th style="padding: 8px 6px;">Category</th>
+                                <th style="padding: 8px 6px;">Description</th>
+                                <th style="padding: 8px 6px; text-align: right;">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% recentExpenses.forEach(exp => { %>
+                                <tr style="border-bottom: 1px solid #f1f5f9;">
+                                    <td style="padding: 8px 6px; color: #64748b;"><%= exp.expenseDate ? exp.expenseDate.slice(5, 10) : '' %></td>
+                                    <td style="padding: 8px 6px;">
+                                        <span style="display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 0.72rem; font-weight: 600; background: #f1f5f9; color: #475569;">
+                                            <%= exp.category.replace('_', ' ') %>
+                                        </span>
+                                    </td>
+                                    <td style="padding: 8px 6px; color: #1e293b; max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="<%= exp.description %>">
+                                        <%= exp.description %>
+                                    </td>
+                                    <td style="padding: 8px 6px; text-align: right; font-weight: 700; color: #dc2626;">
+                                        ₱<%= (Number(exp.amount) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) %>
+                                    </td>
+                                </tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+                </div>
+            <% } %>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js Setup -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Close dropdown when clicked outside
+    window.addEventListener('click', function(e) {
+        if (!e.target.matches('.btn-primary') && !e.target.closest('.dropdown')) {
+            const menu = document.getElementById('exportMenu');
+            if (menu && menu.classList.contains('show')) menu.classList.remove('show');
+        }
+    });
+
+    // 12-Month Performance Trend
+    const trendCtx = document.getElementById('monthlyTrendChart').getContext('2d');
+    const trendData = <%- JSON.stringify(monthlyTrend) %>;
+
+    new Chart(trendCtx, {
+        type: 'bar',
+        data: {
+            labels: trendData.map(d => d.label),
+            datasets: [
+                {
+                    label: 'Revenue',
+                    data: trendData.map(d => d.revenue),
+                    backgroundColor: 'rgba(16, 185, 129, 0.85)',
+                    borderRadius: 6
+                },
+                {
+                    label: 'Expenses',
+                    data: trendData.map(d => d.expenses),
+                    backgroundColor: 'rgba(239, 68, 68, 0.85)',
+                    borderRadius: 6
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top', labels: { boxWidth: 12, font: { weight: 600 } } },
+                tooltip: {
+                    callbacks: {
+                        label: function(c) {
+                            return c.dataset.label + ': ₱' + Number(c.raw).toLocaleString('en-US', { minimumFractionDigits: 2 });
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(v) { return '₱' + (v >= 1000 ? (v / 1000) + 'k' : v); }
+                    },
+                    grid: { color: '#f1f5f9' }
+                },
+                x: {
+                    grid: { display: false }
+                }
+            }
+        }
+    });
+
+    // Expense Donut Chart
+    const donutCtx = document.getElementById('expenseDonutChart').getContext('2d');
+    const categories = <%- JSON.stringify(summary.categories) %>;
+
+    new Chart(donutCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Reagents', 'Equipment', 'Personnel', 'Overhead', 'Misc'],
+            datasets: [{
+                data: [
+                    categories.reagent_purchase || 0,
+                    categories.equipment_service || 0,
+                    categories.personnel || 0,
+                    categories.overhead || 0,
+                    categories.misc || 0
+                ],
+                backgroundColor: ['#ef4444', '#8b5cf6', '#3b82f6', '#f59e0b', '#64748b'],
+                borderWidth: 2,
+                borderColor: '#ffffff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(c) {
+                            return c.label + ': ₱' + Number(c.raw).toLocaleString('en-US', { minimumFractionDigits: 2 });
+                        }
+                    }
+                }
+            },
+            cutout: '70%'
+        }
+    });
+</script>

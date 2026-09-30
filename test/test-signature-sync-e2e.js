@@ -1,37 +1,48 @@
-/**
- * E2E Test: Signature File Synchronization between Standalone and Server
- */
-const fs = require('fs');
+const crypto = require('crypto');
 const path = require('path');
+
+process.env.AUTH_TOKEN_SECRET = process.env.AUTH_TOKEN_SECRET || 'test-secret-for-regression-only';
+process.env.SESSION_SECRET = process.env.SESSION_SECRET || 'test-session-secret-for-regression-only';
+
+const { createDb } = require('../lis-fullstack/lib/sqliteDb');
+const { generateSyncToken, validateSyncToken, validateSyncUser } = require('../lis-fullstack/lib/syncAuth');
+
 const http = require('http');
+const express = require('../lis-fullstack/node_modules/express');
+const session = require('../lis-fullstack/node_modules/express-session');
+const { requireAuth } = require('../lis-fullstack/middleware/auth');
 
-async function testSignatureSync() {
-  console.log('🧪 Starting E2E Signature Sync Verification...');
+function assert(condition, message) {
+  if (!condition) throw new Error(message);
+}
 
-  const serverDir = path.join(__dirname, '..', 'lis-fullstack');
-  const serverSigDir = path.join(serverDir, 'assets', 'signature');
-  if (!fs.existsSync(serverSigDir)) fs.mkdirSync(serverSigDir, { recursive: true });
+function postJson(port, headers) {
+  return new Promise((resolve, reject) => {
+    const req = http.request({
+      hostname: '127.0.0.1',
+      port,
+      path: '/protected',
+      method: 'GET',
+      headers
+    }, (res) => {
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => resolve({ statusCode: res.statusCode, body }));
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
 
-  const testFilename = 'test_admin_e2e_signature.png';
-  const targetServerFile = path.join(serverSigDir, testFilename);
+async function testSyncAuth() {
+  const tmpDir = path.join(__dirname, 'tmp-sync-auth');
+  const testDbFile = path.join(tmpDir, 'test-sync-auth.db');
+  const fs = require('fs');
+  fs.mkdirSync(tmpDir, { recursive: true });
+  try { fs.unlinkSync(testDbFile); } catch (_) {}
 
-  // Clean up any old test artifact
-  if (fs.existsSync(targetServerFile)) fs.unlinkSync(targetServerFile);
-
-  // Generate a minimal valid 1x1 PNG in base64
-  const minimalPngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-
-  console.log('1. Simulating signature sync POST to server endpoint (/api/signatures/sync)...');
-
-  // Initialize isolated test sqlite db adapter (never pollute live lis-data.db)
-  const tmpDir = path.join(__dirname, 'tmp-sig-sync');
-  if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true });
-  const testDbFile = path.join(tmpDir, 'test-sig-sync.db');
-  if (fs.existsSync(testDbFile)) { try { fs.unlinkSync(testDbFile); } catch (_) {} }
-
-  const { createDb } = require('../lis-fullstack/lib/sqliteDb');
-  global.db = createDb(testDbFile);
-  const adminUser = {
+  const db = createDb(testDbFile);
+  const user = {
     id: 'test-admin-uuid',
     name: 'Test Administrator',
     email: 'admin_test@lab.com',
@@ -39,119 +50,53 @@ async function testSignatureSync() {
     role: 'Admin',
     status: 'Active'
   };
-  global.db.saveUsers([adminUser]);
-  const users = [adminUser];
-  const testEmail = adminUser.email;
-  const syncHash = adminUser.password;
-  const originalSignature = null;
-  console.log(`   Using isolated test admin user: ${testEmail} in ${testDbFile}`);
+  db.saveUsers([user]);
+  global.db = db;
 
-  console.log('1. Starting test Express instance with /api/signatures/sync endpoint...');
-  let express;
-  try { express = require('express'); } catch (_) {
-    try { express = require('../lis-app-standalone/node_modules/express'); } catch (__) {
-      express = require('../lis-fullstack/node_modules/express');
-    }
-  }
   const app = express();
-
-  app.post('/api/signatures/sync', express.json({ limit: '15mb' }), express.urlencoded({ extended: true, limit: '15mb' }), async (req, res) => {
-    try {
-      const syncEmail = req.headers['x-lis-sync-email'];
-      const syncHashHeader = req.headers['x-lis-sync-hash'];
-      let authorized = false;
-      if (syncEmail && syncHashHeader) {
-        const match = users.find(u => u.email && u.email.toLowerCase() === syncEmail.toLowerCase());
-        if (match && match.password === syncHashHeader) authorized = true;
-      }
-      if (!authorized) return res.status(401).json({ success: false, error: 'Authentication required' });
-
-      const { filename, data, email } = req.body || {};
-      const safeFilename = path.basename(filename).replace(/[^a-zA-Z0-9._-]/g, '_');
-      const targetDir = path.join(serverDir, 'assets', 'signature');
-      if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
-      const targetPath = path.join(targetDir, safeFilename);
-
-      const buffer = Buffer.from(data, 'base64');
-      fs.writeFileSync(targetPath, buffer);
-
-      if (email) {
-        const User = require('../lis-fullstack/models/User');
-        await User.findOneAndUpdate({ email: email.toLowerCase() }, { signature: safeFilename });
-      }
-
-      return res.json({ success: true, filename: safeFilename });
-    } catch (err) {
-      return res.status(500).json({ success: false, error: err.message });
-    }
+  app.use(session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false
+  }));
+  app.get('/protected', requireAuth, (req, res) => res.json({ email: req.session.user.email }));
+  const server = await new Promise(resolve => {
+    const instance = app.listen(0, '127.0.0.1', () => resolve(instance));
   });
+  const port = server.address().port;
+  const token = generateSyncToken(user.email, user.password);
+  const headers = { 'X-LIS-Sync-Email': user.email, 'X-LIS-Sync-Hash': token, Accept: 'application/json' };
 
-  const server = await new Promise((resolve) => {
-    const s = app.listen(0, '127.0.0.1', () => resolve(s));
-  });
-  const TEST_PORT = server.address().port;
+  try {
+    assert(validateSyncUser(token, user.email, user), 'Fullstack sync token validator rejected valid HMAC');
+    assert(!validateSyncUser(user.password, user.email, user), 'Fullstack sync validator accepted raw password hash');
+    assert(!validateSyncToken(token, 'other@lab.com', user.password), 'Sync token validator accepted wrong email');
 
-  console.log(`2. Simulating signature sync POST to server endpoint on port ${TEST_PORT}...`);
-  const postData = JSON.stringify({
-    filename: testFilename,
-    data: minimalPngBase64,
-    email: testEmail
-  });
+    const accepted = await postJson(port, headers);
+    assert(accepted.statusCode === 200 && JSON.parse(accepted.body).email === user.email, 'Standalone auth middleware rejected valid HMAC token');
 
-  const res = await new Promise((resolve, reject) => {
-    const req = http.request({
-      hostname: '127.0.0.1',
-      port: TEST_PORT,
-      path: '/api/signatures/sync',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(postData),
-        'X-LIS-Sync-Email': testEmail,
-        'X-LIS-Sync-Hash': syncHash
-      },
-      timeout: 5000
-    }, (res) => {
-      let body = '';
-      res.on('data', chunk => body += chunk);
-      res.on('end', () => resolve({ statusCode: res.statusCode, body }));
-    });
-    req.on('error', reject);
-    req.write(postData);
-    req.end();
-  });
+    const rawHash = await postJson(port, { ...headers, 'X-LIS-Sync-Hash': user.password });
+    assert(rawHash.statusCode === 401, 'Standalone auth middleware accepted raw stored password hash');
 
-  // Stop test server
-  try { server.close(); } catch (_) {}
+    const invalid = await postJson(port, { ...headers, 'X-LIS-Sync-Hash': `${token.slice(0, -1)}0` });
+    assert(invalid.statusCode === 401, 'Standalone auth middleware accepted invalid HMAC token');
 
-  console.log(`   Response Status: HTTP ${res.statusCode}`);
-  if (res.statusCode !== 200) {
-    throw new Error(`Signature sync failed with status ${res.statusCode}: ${res.body}`);
+    const expiredTimestamp = Math.floor(Date.now() / 1000) - 301;
+    const expiredData = `${user.email}:${expiredTimestamp}`;
+    const expiredHmac = crypto.createHmac('sha256', user.password).update(expiredData).digest('hex');
+    const expired = await postJson(port, { ...headers, 'X-LIS-Sync-Hash': `${expiredData}:${expiredHmac}` });
+    assert(expired.statusCode === 401, 'Standalone auth middleware accepted expired HMAC token');
+
+    console.log('Sync authentication regression tests passed.');
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+    try { fs.unlinkSync(testDbFile); } catch (_) {}
+    try { fs.rmdirSync(tmpDir); } catch (_) {}
+    global.db = undefined;
   }
-
-  const json = JSON.parse(res.body);
-  console.log('   Response Body:', json);
-
-  // 2. Verify file was written to server assets/signature
-  if (!fs.existsSync(targetServerFile)) {
-    throw new Error(`File was not created on server disk at ${targetServerFile}`);
-  }
-  const fileSize = fs.statSync(targetServerFile).size;
-  console.log(`✓ Signature file exists on server disk (${fileSize} bytes)`);
-
-  // 3. Verify user record in database was updated
-  const User = require('../lis-fullstack/models/User');
-  const updatedAdmin = await User.findOne({ email: testEmail });
-  console.log(`✓ Server User record updated with signature: "${updatedAdmin.signature}"`);
-
-  // Clean up test file and restore user state
-  try { fs.unlinkSync(targetServerFile); } catch (_) {}
-  try { fs.unlinkSync(testDbFile); } catch (_) {}
-
-  console.log('\n🎉 E2E SIGNATURE SYNC TEST PASSED SUCCESSFULLY!');
 }
 
-testSignatureSync().catch(err => {
-  console.error('\n❌ TEST FAILED:', err);
-  process.exit(1);
+testSyncAuth().catch(error => {
+  console.error('Sync authentication regression test failed:', error);
+  process.exitCode = 1;
 });
