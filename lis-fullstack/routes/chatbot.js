@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { requireAuth } = require('../middleware/auth');
+const ragClient = require('../lib/ragClient');
 const { 
   queryOpenRouter, 
   AVAILABLE_MODELS, 
@@ -50,6 +51,11 @@ router.get('/', requireAuth, async (req, res) => {
 
     const modelData = getAvailableModels();
 
+    let ragStatus = { online: false, totalChunks: 0 };
+    try {
+      ragStatus = await ragClient.getRagStatus(1000);
+    } catch (_) {}
+
     res.render('chatbot/index', {
       title: 'GezyneBot AI Assistant',
       conversations: conversations || [],
@@ -58,11 +64,24 @@ router.get('/', requireAuth, async (req, res) => {
       defaultModels: modelData.defaultModels,
       freeModels: modelData.freeModels,
       availableModels: modelData.allModels,
-      defaultModel: DEFAULT_MODEL
+      defaultModel: DEFAULT_MODEL,
+      ragStatus
     });
   } catch (err) {
     console.error('[chatbot route] render error:', err);
     res.status(500).render('500', { title: 'Assistant Error', error: err });
+  }
+});
+
+/**
+ * GET /api/chatbot/rag-status - Check live status of Python/ChromaDB RAG microservice
+ */
+router.get(['/api/rag-status', '/rag-status'], requireAuth, async (req, res) => {
+  try {
+    const status = await ragClient.getRagStatus(1500);
+    res.json({ success: true, ...status });
+  } catch (err) {
+    res.json({ success: false, online: false, error: err.message, totalChunks: 0 });
   }
 });
 
@@ -221,7 +240,8 @@ router.post('/api/query', requireAuth, async (req, res) => {
   try {
     const user = req.session.user;
     const userId = user ? (user.id || user.email) : 'default';
-    const { question, conversationId, model } = req.body || {};
+    const { question, conversationId, model, webSearch } = req.body || {};
+    const enableWebSearch = webSearch === true || webSearch === 'true' || webSearch === 1 || webSearch === '1';
 
     if (!question || !String(question).trim()) {
       return res.status(400).json({ success: false, error: 'Question is required' });
@@ -334,26 +354,34 @@ router.post('/api/query', requireAuth, async (req, res) => {
     const executeQuery = async () => {
       let assistantMessage = null;
 
-      // Query OpenRouter with clinical knowledge context
+      // Query OpenRouter with clinical knowledge context and optional live web search
       const aiResult = await queryOpenRouter({
         question: trimmedQuestion,
         history,
         user: req.session.user || null,
-        model: selectedModel
+        model: selectedModel,
+        webSearch: enableWebSearch
       });
 
       // Save assistant's answer to message history
       if (activeConvId && global.db && aiResult.answer && typeof global.db.addChatbotMessage === 'function') {
         try {
+          const sources = aiResult.sources || [
+            { source: 'Gezyne LIS Standard Operating Procedures' },
+            { source: 'CLSI Clinical Laboratory Reference Guidelines' }
+          ];
+          if (aiResult.webSearchUsed && Array.isArray(aiResult.webSources)) {
+            aiResult.webSources.forEach(ws => {
+              sources.push({ source: ws.title, url: ws.url });
+            });
+          }
+
           assistantMessage = global.db.addChatbotMessage({
             conversation_id: activeConvId,
             user_id: 'gezynebot',
             role: 'assistant',
             content: aiResult.answer,
-            sources: aiResult.sources || [
-              { source: 'Gezyne LIS Standard Operating Procedures' },
-              { source: 'CLSI Clinical Laboratory Reference Guidelines' }
-            ],
+            sources,
             created_at: new Date().toISOString()
           });
         } catch (_) {}
@@ -387,6 +415,10 @@ router.post('/api/query', requireAuth, async (req, res) => {
         answer: aiResult.answer,
         conversationId: activeConvId,
         model: aiResult.model || selectedModel,
+        ragUsed: !!aiResult.ragUsed,
+        ragChunks: aiResult.ragChunks || 0,
+        webSearchUsed: !!aiResult.webSearchUsed,
+        webSources: aiResult.webSources || [],
         messageId: assistantMessage ? assistantMessage.id : null
       };
     };

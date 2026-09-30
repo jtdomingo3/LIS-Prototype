@@ -12,6 +12,7 @@ It parses and indexes [`docs/USER_MANUAL.md`](../docs/USER_MANUAL.md) into **Chr
 - **Vector Database:** ChromaDB (embedded, persistent local storage in `data/chroma_db/`, no Docker or external database needed).
 - **Embedding Model:** `all-MiniLM-L6-v2` (ONNX Runtime, ~80MB, fast CPU inference).
 - **Smart Markdown Chunker:** Section-aware chunking preserving headings, steps, tables, and LaTeX equations.
+- **Hybrid Web Search:** Optional DuckDuckGo / Google Custom Search integration (`enable_web: true`) fetching succinct snippet citations without HTML bloat. Defaults to **OFF** to preserve token rate limits and prioritize local LIS SOPs.
 - **Port:** `127.0.0.1:8765`.
 - **Extensible:** Includes `ml/` scaffold for future scikit-learn models (QC drift linear regressions, test triage decision trees).
 
@@ -127,9 +128,9 @@ curl http://127.0.0.1:8765/health
 
 ---
 
-### C. Testing a Semantic Query (`/rag/query`)
+### C. Local Semantic Vector Query (`/rag/query` — Web Search OFF)
 
-Test retrieving knowledge for a specific operational or clinical question:
+By default, web search is **disabled (`enable_web: false`)**. This retrieves exclusively from the local ChromaDB vector store of clinical SOPs and manuals:
 
 **PowerShell:**
 
@@ -137,29 +138,122 @@ Test retrieving knowledge for a specific operational or clinical question:
 $body = @{
     question = "How do I calculate SDI and what are the warning thresholds?"
     top_k = 3
+    enable_web = $false
 } | ConvertTo-Json
 
 Invoke-RestMethod -Uri "http://127.0.0.1:8765/rag/query" -Method Post -ContentType "application/json" -Body $body
 ```
 
-**cURL:**
+**cURL / Bash:**
 
 ```bash
 curl -X POST "http://127.0.0.1:8765/rag/query" \
      -H "Content-Type: application/json" \
-     -d '{"question": "How do I calculate SDI and what are the warning thresholds?", "top_k": 3}'
+     -d '{"question": "How do I calculate SDI and what are the warning thresholds?", "top_k": 3, "enable_web": false}'
 ```
-
-**Expected Output:**
-Returns ranked chunks with similarity scores (`relevance`), matching section titles (e.g. `7. NEQAS & Dynamic External Reference Laboratories`), and the full context snippet including the LaTeX equation:
-
-$$
-\text{SDI} = \frac{\text{Lab Result} - \text{Peer Group Mean}}{\text{Peer Group SD}}
-$$
 
 ---
 
-### D. Syncing the Knowledge Base (`/rag/sync`)
+### D. Hybrid RAG Query with Web Search Enabled (`/rag/query` — `enable_web: true`)
+
+When a user asks about external or rapidly evolving medical guidelines (e.g., latest DOH PhilPEN circulars, drug testing advisories), you can enable web search. The microservice runs ChromaDB vector search and DuckDuckGo/Google search concurrently with `asyncio.gather`:
+
+**PowerShell:**
+
+```powershell
+$body = @{
+    question = "Latest DOH PhilPEN hypertension protocol Philippines 2026"
+    top_k = 2
+    enable_web = $true
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "http://127.0.0.1:8765/rag/query" -Method Post -ContentType "application/json" -Body $body
+```
+
+**cURL / Bash:**
+
+```bash
+curl -X POST "http://127.0.0.1:8765/rag/query" \
+     -H "Content-Type: application/json" \
+     -d '{"question": "Latest DOH PhilPEN hypertension protocol Philippines 2026", "top_k": 2, "enable_web": true}'
+```
+
+**JavaScript (`fetch`):**
+
+```javascript
+const res = await fetch('http://127.0.0.1:8765/rag/query', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    question: 'Latest DOH PhilPEN hypertension protocol Philippines 2026',
+    top_k: 2,
+    enable_web: true
+  })
+});
+const data = await res.json();
+console.log('Web Citations:', data.web_results);
+console.log('Combined Context:\n', data.combined_context);
+```
+
+**Expected JSON Response Structure:**
+
+```json
+{
+  "success": true,
+  "query": "Latest DOH PhilPEN hypertension protocol Philippines 2026",
+  "count": 2,
+  "web_search_enabled": true,
+  "web_results": [
+    {
+      "title": "DOH Manual of Operations-PhilPEN | PDF | Scribd",
+      "url": "https://www.scribd.com/document/422838177/DOH-Manual-of-Operations-PhilPEN",
+      "snippet": "The document introduces the WHO Package of Essential Non-communicable Disease Interventions (WHO PEN) protocol...",
+      "source": "DuckDuckGo"
+    }
+  ],
+  "results": [
+    {
+      "chunk_id": "manual_chunk_004",
+      "heading": "4. Doctor Consultation Module",
+      "relevance": 0.84,
+      "text": "..."
+    }
+  ],
+  "combined_context": "=== LOCAL LIS KNOWLEDGE BASE ===\n...\n\n=== EXTERNAL WEB SEARCH CITATIONS ===\n[Web Citation 1] DOH Manual of Operations-PhilPEN...\nURL: https://www.scribd.com/document/422838177/...\nSnippet: ..."
+}
+```
+
+---
+
+### E. Standalone Web Search Direct Call (`/web/search`)
+
+If you want to test web search in isolation without querying ChromaDB:
+
+**PowerShell:**
+
+```powershell
+$body = @{
+    query = "Philippine DOH critical laboratory panic values protocol"
+    max_results = 3
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "http://127.0.0.1:8765/web/search" -Method Post -ContentType "application/json" -Body $body
+```
+
+**cURL / Bash:**
+
+```bash
+curl -X POST "http://127.0.0.1:8765/web/search" \
+     -H "Content-Type: application/json" \
+     -d '{"query": "Philippine DOH critical laboratory panic values protocol", "max_results": 3}'
+```
+
+**Expected Output:**
+Returns raw snippet objects (`title`, `url`, `snippet`, `source`) and formatted text ready for LLM prompt injection.
+
+---
+
+### F. Syncing the Knowledge Base (`/rag/sync`)
 
 Whenever you update `docs/USER_MANUAL.md`, call `/rag/sync` to immediately re-chunk and re-embed:
 
@@ -167,6 +261,14 @@ Whenever you update `docs/USER_MANUAL.md`, call `/rag/sync` to immediately re-ch
 
 ```powershell
 Invoke-RestMethod -Uri "http://127.0.0.1:8765/rag/sync" -Method Post -ContentType "application/json" -Body '{"force": true}'
+```
+
+**cURL / Bash:**
+
+```bash
+curl -X POST "http://127.0.0.1:8765/rag/sync" \
+     -H "Content-Type: application/json" \
+     -d '{"force": true}'
 ```
 
 ---

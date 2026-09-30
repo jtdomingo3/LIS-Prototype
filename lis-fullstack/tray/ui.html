@@ -114,28 +114,41 @@
       </div>
     </div>
 
-    <!-- Server Logs & Terminal Console -->
+    <!-- Dual Terminal Console (LIS Server & RAG Microservice) -->
     <section class="console-section">
       <div class="console-header">
-        <div class="console-title">
-          <span class="console-icon">💻</span>
-          <span>Server Logs & Interactive Terminal</span>
+        <div class="console-tabs">
+          <button type="button" id="tab-btn-server" class="console-tab active" data-tab="server">
+            <span class="tab-icon">🖥️</span>
+            <span>LIS Server</span>
+          </button>
+          <button type="button" id="tab-btn-rag" class="console-tab" data-tab="rag">
+            <span class="tab-icon">🧠</span>
+            <span>RAG Microservice</span>
+            <span id="rag-tab-badge" class="tab-badge badge-offline">Offline</span>
+          </button>
         </div>
         <div class="console-actions">
+          <div id="rag-quick-actions" style="display:none; align-items:center; gap:6px; margin-right:6px;">
+            <button id="btn-rag-start" class="btn-sm btn-success" title="Start RAG microservice">▶ Start</button>
+            <button id="btn-rag-stop" class="btn-sm btn-danger" title="Stop RAG microservice">⏹ Stop</button>
+            <button id="btn-rag-sync" class="btn-sm btn-outline" title="Re-sync USER_MANUAL.md into ChromaDB">🔄 Sync KB</button>
+          </div>
           <label class="autoscroll-label">
             <input type="checkbox" id="autoscroll-toggle" checked /> Auto-scroll
           </label>
-          <button id="copy-logs" class="btn-sm btn-ghost" title="Copy all logs">📋 Copy Logs</button>
+          <button id="copy-logs" class="btn-sm btn-ghost" title="Copy active tab logs">📋 Copy Logs</button>
           <button id="clear-logs" class="btn-sm btn-ghost" title="Clear console view">🧹 Clear</button>
         </div>
       </div>
 
       <div class="console-body">
-        <pre id="logs" class="logs">Starting server log monitor...</pre>
+        <pre id="logs" class="logs active-tab-content">Starting server log monitor...</pre>
+        <pre id="rag-logs" class="logs" style="display:none;">Starting RAG microservice log monitor...</pre>
       </div>
 
       <div class="console-input-bar">
-        <span class="prompt-symbol">$</span>
+        <span class="prompt-symbol" id="prompt-symbol">$</span>
         <input type="text" id="cmd-input" placeholder="Type command (e.g. pm2 status, pm2 restart, help, cls)..." autocomplete="off" spellcheck="false" />
         <button id="cmd-send" class="btn-send">Run</button>
       </div>

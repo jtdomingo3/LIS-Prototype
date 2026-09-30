@@ -23,7 +23,12 @@
                 </div>
                 <div>
                     <div class="gezynebot-title">GezyneBot</div>
-                    <div class="gezynebot-subtitle">LIS & Clinical Laboratory Assistant</div>
+                    <div class="gezynebot-subtitle" style="display:flex; align-items:center; gap:6px;">
+                        <span>LIS Assistant</span>
+                        <span id="widget-rag-badge" class="widget-rag-pill rag-checking" title="Checking RAG Vector Service...">
+                            <span class="widget-rag-dot"></span> <span id="widget-rag-text">RAG</span>
+                        </span>
+                    </div>
                 </div>
             </div>
             <div class="gezynebot-header-actions">
@@ -63,6 +68,16 @@
                     <p style="font-size:0.85em;color:#64748b;margin-top:6px;">💡 <em>Tip: Click the <strong>⤢</strong> icon above anytime to maximize our discussion into a full dedicated page!</em></p>
                 </div>
             </div>
+        </div>
+
+        <!-- Widget Toolbar (Web Search toggle, Default: OFF) -->
+        <div class="gezynebot-toolbar">
+            <button type="button" id="widget-toggle-web-search" class="widget-web-toggle" title="Web Search is OFF (prioritizes local LIS knowledge). Click to turn ON.">
+                <span class="widget-web-icon">🌐</span>
+                <span class="widget-web-text">Web Search:</span>
+                <span id="widget-web-status" class="widget-web-status off">OFF</span>
+            </button>
+            <span class="widget-web-hint">Default: OFF</span>
         </div>
 
         <!-- Input Composer -->
@@ -233,6 +248,48 @@
 .gezynebot-subtitle {
     font-size: 0.76em;
     color: #94a3b8;
+}
+
+.widget-rag-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.70em;
+    padding: 1px 6px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #cbd5e1;
+    cursor: default;
+    transition: all 0.2s ease;
+}
+.widget-rag-pill.rag-online {
+    background: rgba(16, 185, 129, 0.2);
+    color: #6ee7b7;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+}
+.widget-rag-pill.rag-online .widget-rag-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #34d399;
+    box-shadow: 0 0 5px #34d399;
+}
+.widget-rag-pill.rag-offline {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fde68a;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+.widget-rag-pill.rag-offline .widget-rag-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #fbbf24;
+}
+.widget-rag-pill.rag-checking .widget-rag-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #94a3b8;
 }
 
 .gezynebot-header-actions {
@@ -480,11 +537,108 @@
     40% { opacity: 1; transform: scale(1.1); }
 }
 
+/* Toolbar & Web Search Toggle */
+.gezynebot-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 14px;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+    user-select: none;
+}
+
+.widget-web-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 14px;
+    padding: 3px 10px;
+    font-size: 0.76em;
+    color: #475569;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.widget-web-toggle:hover {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+}
+
+.widget-web-toggle.active {
+    background: #ecfdf5;
+    border-color: #10b981;
+    color: #065f46;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+}
+
+.widget-web-status {
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-size: 0.85em;
+    font-weight: 700;
+}
+
+.widget-web-status.off {
+    background: #e2e8f0;
+    color: #64748b;
+}
+
+.widget-web-status.on {
+    background: #10b981;
+    color: #ffffff;
+}
+
+.widget-web-hint {
+    font-size: 0.72em;
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+/* Citation pills in widget messages */
+.widget-citation-container {
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px dashed #cbd5e1;
+    font-size: 0.80em;
+    color: #64748b;
+}
+
+.widget-citation-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    margin: 3px 4px 0 0;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    color: #0284c7;
+    text-decoration: none;
+    font-size: 0.85em;
+    font-weight: 500;
+    transition: all 0.15s ease;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.widget-citation-link:hover {
+    background: #e0f2fe;
+    border-color: #38bdf8;
+    color: #0369a1;
+}
+
 /* Composer */
 .gezynebot-composer {
-    padding: 12px 14px;
+    padding: 10px 14px 12px 14px;
     background: #ffffff;
-    border-top: 1px solid #e2e8f0;
+    border-top: 1px solid #f1f5f9;
     display: flex;
     align-items: flex-end;
     gap: 10px;
@@ -583,10 +737,54 @@ window.handleWidgetChipClick = function(btn) {
     let currentConversationId = localStorage.getItem('gezynebot_active_conv') || null;
     let isSending = false;
 
+    // Web Search Toggle State (Default: false / OFF)
+    let isWebSearchActive = false;
+    const webToggleBtn = document.getElementById('widget-toggle-web-search');
+    const webStatusSpan = document.getElementById('widget-web-status');
+
+    if (webToggleBtn && webStatusSpan) {
+        webToggleBtn.addEventListener('click', () => {
+            isWebSearchActive = !isWebSearchActive;
+            if (isWebSearchActive) {
+                webToggleBtn.classList.add('active');
+                webStatusSpan.className = 'widget-web-status on';
+                webStatusSpan.textContent = 'ON';
+                webToggleBtn.title = 'Web Search is ON (hybrid retrieval with live citations). Click to turn OFF.';
+            } else {
+                webToggleBtn.classList.remove('active');
+                webStatusSpan.className = 'widget-web-status off';
+                webStatusSpan.textContent = 'OFF';
+                webToggleBtn.title = 'Web Search is OFF (prioritizes local LIS knowledge). Click to turn ON.';
+            }
+        });
+    }
+
     // Bridge global caller
     window.executeWidgetChatSubmit = function(overrideText) {
         sendMessage(overrideText);
     };
+
+    // Check RAG Microservice Health
+    async function checkWidgetRagStatus() {
+        try {
+            const res = await fetch('/chatbot/api/rag-status');
+            const data = await res.json();
+            const badge = document.getElementById('widget-rag-badge');
+            const text = document.getElementById('widget-rag-text');
+            if (!badge || !text) return;
+            if (data && data.online) {
+                badge.className = 'widget-rag-pill rag-online';
+                badge.title = `Python RAG Microservice is online (${data.totalChunks || 27} knowledge chunks loaded)`;
+                text.textContent = 'RAG Online';
+            } else {
+                badge.className = 'widget-rag-pill rag-offline';
+                badge.title = 'RAG Microservice is offline. Using static manual fallback.';
+                text.textContent = 'RAG Fallback';
+            }
+        } catch (_) {}
+    }
+    checkWidgetRagStatus();
+    setInterval(checkWidgetRagStatus, 15000);
 
     // Toggle panel open/close
     function togglePanel() {
@@ -595,6 +793,7 @@ window.handleWidgetChipClick = function(btn) {
             panel.classList.remove('active');
         } else {
             panel.classList.add('active');
+            checkWidgetRagStatus();
             input.focus();
             scrollToBottom();
         }
@@ -816,7 +1015,7 @@ window.handleWidgetChipClick = function(btn) {
 
 
     // Append Message to UI
-    function appendMessage(role, text) {
+    function appendMessage(role, text, metadata = {}) {
         const msgDiv = document.createElement('div');
         msgDiv.className = `gezynebot-msg gezynebot-msg-${role}`;
         
@@ -824,7 +1023,16 @@ window.handleWidgetChipClick = function(btn) {
         bubble.className = 'gezynebot-bubble';
         
         if (role === 'bot') {
-            bubble.innerHTML = formatMarkdown(text);
+            let html = formatMarkdown(text);
+            if (metadata && metadata.webSearchUsed && Array.isArray(metadata.webSources) && metadata.webSources.length > 0) {
+                html += '<div class="widget-citation-container"><strong style="color:#0284c7;">🌐 Web Sources:</strong><br>';
+                metadata.webSources.forEach(s => {
+                    const title = (s.title || 'Web Citation').slice(0, 32);
+                    html += `<a href="${s.url}" target="_blank" rel="noopener noreferrer" class="widget-citation-link" title="${(s.snippet || s.title || '').replace(/"/g, '&quot;')}"><i class="fa fa-external-link-alt" style="font-size:0.82em;"></i> ${title}${s.title && s.title.length > 32 ? '...' : ''}</a>`;
+                });
+                html += '</div>';
+            }
+            bubble.innerHTML = html;
         } else {
             const p = document.createElement('p');
             p.textContent = text;
@@ -877,7 +1085,8 @@ window.handleWidgetChipClick = function(btn) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     question: text,
-                    conversationId: currentConversationId
+                    conversationId: currentConversationId,
+                    webSearch: isWebSearchActive
                 })
             });
 
@@ -885,7 +1094,11 @@ window.handleWidgetChipClick = function(btn) {
             typingDiv.remove();
 
             if (data && data.success) {
-                appendMessage('bot', data.answer);
+                appendMessage('bot', data.answer, {
+                    webSearchUsed: data.webSearchUsed,
+                    webSources: data.webSources,
+                    ragUsed: data.ragUsed
+                });
                 if (data.conversationId) {
                     currentConversationId = data.conversationId;
                     localStorage.setItem('gezynebot_active_conv', currentConversationId);

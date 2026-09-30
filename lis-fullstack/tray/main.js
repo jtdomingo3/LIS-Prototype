@@ -357,17 +357,77 @@ function stopServerDirect(cb) {
 }
 
 let _logSendTimer = null;
-function appendLog(line) {
+let ragLogBuffer = [];
+let ragProcess = null;
+let _ragLogSendTimer = null;
+
+function appendRagLog(line) {
+  const str = String(line || '').trim();
+  if (!str) return;
   const ts = new Date().toISOString();
-  const out = `[${ts}] ${String(line).trim()}`;
+  const out = `[${ts}] ${str}`;
+  ragLogBuffer.push(out);
+  if (ragLogBuffer.length > 2000) ragLogBuffer = ragLogBuffer.slice(ragLogBuffer.length - 2000);
+  if (!_ragLogSendTimer) {
+    _ragLogSendTimer = setTimeout(() => {
+      _ragLogSendTimer = null;
+      try {
+        if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+          mainWindow.webContents.send('rag-log-update', ragLogBuffer.join('\n'));
+        }
+      } catch (e) {}
+    }, 400);
+  }
+}
+
+function appendLog(line) {
+  const str = String(line || '').trim();
+  const ts = new Date().toISOString();
+  const out = `[${ts}] ${str}`;
   logBuffer.push(out);
   if (logBuffer.length > 2000) logBuffer = logBuffer.slice(logBuffer.length - 2000);
+
+  // Automatically mirror any RAG lines into RAG Microservice terminal tab
+  if (str.includes('[RAG') || str.includes('rag.exe') || str.includes('rag_engine') || str.includes('ChromaDB') || str.includes('FastAPI')) {
+    appendRagLog(str);
+  }
+
   if (!_logSendTimer) {
     _logSendTimer = setTimeout(() => {
       _logSendTimer = null;
       try { if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) mainWindow.webContents.send('log-update', logBuffer.join('\n')); } catch (e) {}
     }, 400);
   }
+}
+
+function checkRagUp(timeoutMs = 1500) {
+  return new Promise((resolve) => {
+    const req = http.get(
+      {
+        hostname: '127.0.0.1',
+        port: 8765,
+        path: '/health',
+        timeout: timeoutMs
+      },
+      (res) => {
+        let raw = '';
+        res.on('data', (c) => { raw += c; });
+        res.on('end', () => {
+          try {
+            const data = JSON.parse(raw);
+            resolve({
+              isUp: !!(data && data.status === 'healthy'),
+              totalChunks: (data && data.total_chunks) || 0
+            });
+          } catch (_) {
+            resolve({ isUp: false, totalChunks: 0 });
+          }
+        });
+      }
+    );
+    req.on('timeout', () => { req.destroy(); resolve({ isUp: false, totalChunks: 0 }); });
+    req.on('error', () => { resolve({ isUp: false, totalChunks: 0 }); });
+  });
 }
 
 // If pm2/pm2 logs exist, tail them and append
@@ -526,6 +586,15 @@ function createTray() {
         mainWindow.webContents.send('server-status', { isUp, status: isUp ? 'online' : 'offline' });
       }
     } catch (e) {}
+
+    // Check RAG microservice status and send to renderer
+    checkRagUp().then((ragInfo) => {
+      try {
+        if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+          mainWindow.webContents.send('rag-status', ragInfo);
+        }
+      } catch (e) {}
+    });
   }, 3000);
 }
 
@@ -635,23 +704,43 @@ app.whenReady().then(() => {
         }, 4000);
       });
     });
+
+    // Auto-start RAG microservice alongside server on startup
+    setTimeout(() => {
+      try {
+        startRagService((err, out) => {
+          if (err && !String(err).includes('already')) {
+            appendRagLog('[tray] Auto-start RAG notice: ' + String(err && err.message || err));
+          } else {
+            appendRagLog('[tray] RAG microservice auto-started successfully');
+          }
+        });
+      } catch (e) {
+        appendRagLog('[tray] Failed auto-starting RAG: ' + e.message);
+      }
+    }, 1500);
   } catch (e) { appendLog('[tray] Auto-start failed: ' + String(e)); }
 });
 
 // IPC handlers from renderer
 ipcMain.on('start-server', (e) => {
+  startRagService();
   if (pm2Available) return startViaPm2((err, out) => { if (err) e.sender.send('log-update', `pm2 start failed: ${String(err)}`); else e.sender.send('log-update', String(out)); });
   if (serviceInstalled) return runServiceCommand(`sc start ${SERVICE_NAME}`, (err) => { if (err) e.sender.send('log-update', `Start service failed: ${String(err)}`); else e.sender.send('log-update', 'Service start requested'); });
   startServerDirect((err, out) => { if (err) e.sender.send('log-update', `Start failed: ${String(err)}`); else e.sender.send('log-update', out); });
 });
 
 ipcMain.on('stop-server', (e) => {
+  stopRagService();
   if (pm2Available) return stopViaPm2((err, out) => { if (err) e.sender.send('log-update', `pm2 stop failed: ${String(err)}`); else e.sender.send('log-update', String(out)); });
   if (serviceInstalled) return runServiceCommand(`sc stop ${SERVICE_NAME}`, (err) => { if (err) e.sender.send('log-update', `Stop service failed: ${String(err)}`); else e.sender.send('log-update', 'Service stop requested'); });
   stopServerDirect((err, out) => { if (err) e.sender.send('log-update', `Stop failed: ${String(err)}`); else e.sender.send('log-update', out); });
 });
 
 ipcMain.on('restart-server', (e) => {
+  stopRagService(() => {
+    setTimeout(() => startRagService(), 1500);
+  });
   if (pm2Available) return restartViaPm2((err, out) => { if (err) e.sender.send('log-update', `pm2 restart failed: ${String(err)}`); else e.sender.send('log-update', String(out)); });
   if (serviceInstalled) return runServiceCommand(`sc stop ${SERVICE_NAME} && sc start ${SERVICE_NAME}`, (err) => { if (err) e.sender.send('log-update', `Restart failed: ${String(err)}`); else e.sender.send('log-update', 'Service restart requested'); });
   stopServerDirect(() => startServerDirect((err, out) => { if (err) e.sender.send('log-update', `Restart failed: ${String(err)}`); else e.sender.send('log-update', out); }));
@@ -666,8 +755,12 @@ ipcMain.on('hide-window', (e) => {
 });
 
 ipcMain.on('exit-app', (e) => {
-  // ensure any child server started by tray is killed
+  // ensure any child server or RAG service started by tray is killed
   try { if (serverChild && serverChild.pid) process.kill(serverChild.pid); } catch (e) {}
+  try { if (ragProcess && ragProcess.pid) process.kill(ragProcess.pid); } catch (e) {}
+  if (process.platform === 'win32') {
+    try { exec('taskkill /F /IM rag.exe'); } catch (e) {}
+  }
   app.isQuitting = true;
   app.quit();
 });
@@ -739,6 +832,281 @@ ipcMain.on('run-log-command', (e, rawCmd) => {
     }
   });
 });
+
+// ---- RAG Microservice Management & Dual Tab Console ----
+function findRagExecutable() {
+  const candidates = [
+    path.join(PROJECT_ROOT, '..', 'lis-rag-service', 'dist', 'rag', 'rag.exe'),
+    path.join(PROJECT_ROOT, '..', 'lis-rag-service', 'dist', 'rag.exe'),
+    path.join(PROJECT_ROOT, 'dist', 'rag', 'rag.exe'),
+    path.join(PROJECT_ROOT, 'dist', 'rag.exe'),
+    path.join(process.resourcesPath || '', 'rag', 'rag.exe'),
+    path.join(process.resourcesPath || '', 'rag.exe')
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  return null;
+}
+
+function startRagService(cb) {
+  appendRagLog('[tray] Checking if RAG service is already running...');
+  checkRagUp().then((status) => {
+    if (status.isUp) {
+      appendRagLog(`[tray] RAG microservice is already running (${status.totalChunks} chunks active).`);
+      return cb && cb(null, 'already-running');
+    }
+
+    const exe = findRagExecutable();
+    if (exe) {
+      appendRagLog(`[tray] Launching compiled RAG executable: ${exe}`);
+      try {
+        ragProcess = spawn(exe, [], {
+          cwd: path.dirname(exe),
+          env: { ...process.env, RAG_HOST: '127.0.0.1', RAG_PORT: '8765' },
+          stdio: 'pipe',
+          detached: false,
+          windowsHide: true
+        });
+
+        ragProcess.stdout.on('data', (d) => appendRagLog(d.toString()));
+        ragProcess.stderr.on('data', (d) => appendRagLog('[ERR] ' + d.toString()));
+        ragProcess.on('exit', (code) => {
+          appendRagLog(`[tray] rag.exe exited with code ${code}`);
+          ragProcess = null;
+        });
+
+        setTimeout(() => cb && cb(null, 'started'), 2000);
+        return;
+      } catch (err) {
+        appendRagLog(`[tray] Failed to launch rag.exe: ${err.message}`);
+      }
+    }
+
+    // Fallback: try python app.py in lis-rag-service
+    const scriptCandidates = [
+      path.join(PROJECT_ROOT, '..', 'lis-rag-service', 'app.py'),
+      path.join(PROJECT_ROOT, 'lis-rag-service', 'app.py'),
+    ];
+    let scriptPath = null;
+    for (const s of scriptCandidates) {
+      if (fs.existsSync(s)) { scriptPath = s; break; }
+    }
+
+    if (scriptPath) {
+      appendRagLog(`[tray] Launching Python RAG service: ${scriptPath}`);
+      try {
+        ragProcess = spawn('python', [scriptPath], {
+          cwd: path.dirname(scriptPath),
+          env: { ...process.env, RAG_HOST: '127.0.0.1', RAG_PORT: '8765' },
+          stdio: 'pipe',
+          windowsHide: true
+        });
+        ragProcess.stdout.on('data', (d) => appendRagLog(d.toString()));
+        ragProcess.stderr.on('data', (d) => appendRagLog('[ERR] ' + d.toString()));
+        ragProcess.on('exit', (code) => {
+          appendRagLog(`[tray] Python process exited with code ${code}`);
+          ragProcess = null;
+        });
+        setTimeout(() => cb && cb(null, 'started'), 2000);
+        return;
+      } catch (err) {
+        appendRagLog(`[tray] Python launch failed: ${err.message}`);
+      }
+    }
+
+    appendRagLog('[tray] No rag.exe or Python script found to launch.');
+    return cb && cb(new Error('Executable or script not found'));
+  });
+}
+
+function stopRagService(cb) {
+  appendRagLog('[tray] Stopping RAG service...');
+  if (ragProcess) {
+    try { ragProcess.kill(); } catch (_) {}
+    ragProcess = null;
+  }
+  // Also kill any rogue rag.exe or port 8765 listeners on Windows
+  if (process.platform === 'win32') {
+    exec('taskkill /F /IM rag.exe', () => {
+      appendRagLog('[tray] RAG service stop signal sent.');
+      setTimeout(() => cb && cb(null, 'stopped'), 1000);
+    });
+  } else {
+    setTimeout(() => cb && cb(null, 'stopped'), 1000);
+  }
+}
+
+function syncRagKnowledge(cb) {
+  appendRagLog('[tray] Sending knowledge sync request to ChromaDB...');
+  const payload = JSON.stringify({ force: true });
+  const req = http.request(
+    {
+      hostname: '127.0.0.1',
+      port: 8765,
+      path: '/rag/sync',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(payload)
+      },
+      timeout: 10000
+    },
+    (res) => {
+      let raw = '';
+      res.on('data', (c) => { raw += c; });
+      res.on('end', () => {
+        try {
+          const data = JSON.parse(raw);
+          appendRagLog(`[tray:rag] Knowledge sync completed! Chunks indexed: ${data.chunks_count || data.total_chunks || 0}`);
+          return cb && cb(null, data);
+        } catch (_) {
+          appendRagLog(`[tray:rag] Sync response: ${raw}`);
+          return cb && cb(null, raw);
+        }
+      });
+    }
+  );
+  req.on('timeout', () => { req.destroy(); appendRagLog('[ERR] Sync request timed out'); cb && cb(new Error('timeout')); });
+  req.on('error', (err) => { appendRagLog(`[ERR] Sync error (is RAG running?): ${err.message}`); cb && cb(err); });
+  req.write(payload);
+  req.end();
+}
+
+ipcMain.on('request-rag-logs', (e) => {
+  e.sender.send('rag-log-update', ragLogBuffer.join('\n'));
+});
+
+ipcMain.on('start-rag', () => {
+  startRagService();
+});
+
+ipcMain.on('stop-rag', () => {
+  stopRagService();
+});
+
+ipcMain.on('sync-rag', () => {
+  syncRagKnowledge();
+});
+
+ipcMain.on('run-rag-command', (e, rawCmd) => {
+  const cmd = String(rawCmd || '').trim();
+  if (!cmd) return;
+
+  appendRagLog(`rag> ${cmd}`);
+
+  const lower = cmd.toLowerCase();
+  if (lower === 'help' || lower === '?') {
+    appendRagLog('[RAG Terminal] Available Commands:');
+    appendRagLog('  • status / health      - Check RAG microservice health & ChromaDB chunk stats');
+    appendRagLog('  • sync                 - Re-index docs/USER_MANUAL.md into ChromaDB vector store');
+    appendRagLog('  • query <text>         - Perform test vector similarity search with top chunks');
+    appendRagLog('  • start                - Launch the RAG microservice (rag.exe or python)');
+    appendRagLog('  • stop                 - Stop the RAG microservice');
+    appendRagLog('  • restart              - Restart the RAG microservice');
+    appendRagLog('  • clear / cls          - Clear RAG terminal log view');
+    appendRagLog('  • <command>            - Run shell CLI command in RAG microservice environment');
+    return;
+  }
+
+  if (lower === 'clear' || lower === 'cls') {
+    ragLogBuffer = [];
+    appendRagLog('[terminal] RAG log view cleared');
+    return;
+  }
+
+  if (lower === 'start') {
+    return startRagService();
+  }
+
+  if (lower === 'stop') {
+    return stopRagService();
+  }
+
+  if (lower === 'restart') {
+    return stopRagService(() => {
+      setTimeout(() => startRagService(), 1500);
+    });
+  }
+
+  if (lower === 'sync') {
+    return syncRagKnowledge();
+  }
+
+  if (lower === 'status' || lower === 'health' || lower === 'stats') {
+    http.get({ hostname: '127.0.0.1', port: 8765, path: '/rag/stats', timeout: 3000 }, (res) => {
+      let raw = '';
+      res.on('data', c => raw += c);
+      res.on('end', () => {
+        try {
+          const stats = JSON.parse(raw);
+          appendRagLog('[RAG Stats] ChromaDB Knowledge Base:');
+          appendRagLog('  • Status:          ONLINE');
+          appendRagLog(`  • Total Chunks:    ${stats.total_chunks || 0}`);
+          appendRagLog(`  • Collection:      ${stats.collection_name || 'lis_user_manual'}`);
+          appendRagLog(`  • Manual Found:    ${stats.manual_exists ? 'YES' : 'NO'} (${stats.manual_path || ''})`);
+          appendRagLog(`  • Last Synced:     ${stats.last_synced || 'N/A'}`);
+        } catch (_) {
+          appendRagLog(`[RAG Stats] ${raw}`);
+        }
+      });
+    }).on('error', (err) => {
+      appendRagLog(`[RAG Status] Microservice is OFFLINE (${err.message}). Click 'Start' to launch.`);
+    });
+    return;
+  }
+
+  if (lower.startsWith('query ') || lower.startsWith('search ')) {
+    const q = cmd.slice(cmd.indexOf(' ') + 1).trim();
+    if (!q) {
+      appendRagLog('[ERR] Please specify a query text, e.g.: query How to calibrate chemistry analyzer');
+      return;
+    }
+    appendRagLog(`[RAG Query] Vector searching for: "${q}"...`);
+    const payload = JSON.stringify({ question: q, top_k: 3 });
+    const req = http.request({
+      hostname: '127.0.0.1',
+      port: 8765,
+      path: '/rag/query',
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) },
+      timeout: 5000
+    }, (res) => {
+      let raw = '';
+      res.on('data', c => raw += c);
+      res.on('end', () => {
+        try {
+          const data = JSON.parse(raw);
+          if (data && data.success && data.results) {
+            appendRagLog(`[RAG Query] Found ${data.results.length} relevant chunks:`);
+            data.results.forEach((r, idx) => {
+              const meta = r.metadata || {};
+              appendRagLog(`--- [Chunk ${idx + 1}] Topic: "${meta.topic || 'General'}" | Dist: ${(r.distance || 0).toFixed(4)} ---`);
+              appendRagLog((r.document || '').slice(0, 300) + '...');
+            });
+          } else {
+            appendRagLog('[RAG Query] No matching chunks found.');
+          }
+        } catch (e) {
+          appendRagLog(`[RAG Query] ${raw}`);
+        }
+      });
+    });
+    req.on('error', err => appendRagLog(`[ERR] RAG service unreachable: ${err.message}`));
+    req.write(payload);
+    req.end();
+    return;
+  }
+
+  // Fallback: run CLI command in lis-rag-service directory
+  const ragDir = path.join(PROJECT_ROOT, '..', 'lis-rag-service');
+  exec(cmd, { cwd: fs.existsSync(ragDir) ? ragDir : PROJECT_ROOT, timeout: 30000, env: process.env }, (err, stdout, stderr) => {
+    if (stdout && stdout.trim()) appendRagLog(stdout.trim());
+    if (stderr && stderr.trim()) appendRagLog(`[ERR] ${stderr.trim()}`);
+    if (err && !stdout && !stderr) appendRagLog(`[ERR] Command failed: ${err.message}`);
+  });
+});
+
 
 // Provide app icon as data URL to renderer so UI img tags can display it reliably
 ipcMain.handle('get-app-icon', async () => {

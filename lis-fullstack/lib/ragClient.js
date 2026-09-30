@@ -19,15 +19,17 @@ let isStarting = false;
  * Perform vector search query via Python RAG microservice
  * @param {string} question - Query text
  * @param {number} topK - Number of chunks to retrieve (default: 4)
- * @param {number} timeoutMs - Timeout before fallback (default: 2500ms)
- * @returns {Promise<{success: boolean, combinedContext: string, results: Array}|null>}
+ * @param {boolean} enableWeb - Whether to include live web search snippets (default: false)
+ * @param {number} timeoutMs - Timeout before fallback (default: 4500ms)
+ * @returns {Promise<{success: boolean, combinedContext: string, results: Array, webResults: Array, webSearchEnabled: boolean}|null>}
  */
-async function queryRag({ question, topK = 4, timeoutMs = 2500 }) {
+async function queryRag({ question, topK = 4, enableWeb = false, timeoutMs = 4500 }) {
   if (!question || !question.trim()) return null;
 
   const payload = JSON.stringify({
     question: question.trim(),
-    top_k: topK
+    top_k: topK,
+    enable_web: !!enableWeb
   });
 
   return new Promise((resolve) => {
@@ -54,7 +56,9 @@ async function queryRag({ question, topK = 4, timeoutMs = 2500 }) {
                 return resolve({
                   success: true,
                   combinedContext: data.combined_context,
-                  results: data.results || []
+                  results: data.results || [],
+                  webResults: data.web_results || [],
+                  webSearchEnabled: !!data.web_search_enabled
                 });
               }
             }
@@ -110,6 +114,48 @@ async function checkHealth(timeoutMs = 1500) {
     req.on('error', () => { resolve(false); });
   });
 }
+
+/**
+ * Detailed status check of the Python RAG microservice
+ * @param {number} timeoutMs
+ * @returns {Promise<{online: boolean, totalChunks: number, service: string, engineReady: boolean}>}
+ */
+async function getRagStatus(timeoutMs = 1500) {
+  return new Promise((resolve) => {
+    const req = http.get(
+      {
+        hostname: RAG_HOST,
+        port: RAG_PORT,
+        path: '/health',
+        timeout: timeoutMs
+      },
+      (res) => {
+        let raw = '';
+        res.on('data', (c) => { raw += c; });
+        res.on('end', () => {
+          try {
+            const data = JSON.parse(raw);
+            if (data && data.status === 'healthy') {
+              resolve({
+                online: true,
+                totalChunks: data.total_chunks || 0,
+                service: data.service || 'lis-rag-service',
+                engineReady: !!data.engine_ready
+              });
+            } else {
+              resolve({ online: false, totalChunks: 0, service: 'lis-rag-service', engineReady: false });
+            }
+          } catch (e) {
+            resolve({ online: false, totalChunks: 0, service: 'lis-rag-service', engineReady: false });
+          }
+        });
+      }
+    );
+    req.on('timeout', () => { req.destroy(); resolve({ online: false, totalChunks: 0, service: 'lis-rag-service', engineReady: false }); });
+    req.on('error', () => { resolve({ online: false, totalChunks: 0, service: 'lis-rag-service', engineReady: false }); });
+  });
+}
+
 
 /**
  * Spawn the Python RAG microservice if not already running
@@ -274,6 +320,7 @@ process.on('SIGTERM', stopRagService);
 module.exports = {
   queryRag,
   checkHealth,
+  getRagStatus,
   ensureRagServiceRunning,
   stopRagService,
   RAG_BASE_URL

@@ -193,43 +193,121 @@ uploadUsersBtn.addEventListener('click', async () => {
   uploadUsersBtn.disabled = false;
 });
 
-// ---- Server Logs & Interactive Terminal Console ----
+// ---- Server & RAG Logs & Interactive Terminal Console ----
 const logsEl = document.getElementById('logs');
+const ragLogsEl = document.getElementById('rag-logs');
+const tabBtnServer = document.getElementById('tab-btn-server');
+const tabBtnRag = document.getElementById('tab-btn-rag');
+const ragTabBadge = document.getElementById('rag-tab-badge');
+const ragQuickActions = document.getElementById('rag-quick-actions');
+const btnRagStart = document.getElementById('btn-rag-start');
+const btnRagStop = document.getElementById('btn-rag-stop');
+const btnRagSync = document.getElementById('btn-rag-sync');
+
 const autoscrollToggle = document.getElementById('autoscroll-toggle');
 const clearLogsBtn = document.getElementById('clear-logs');
 const copyLogsBtn = document.getElementById('copy-logs');
 
 const cmdInput = document.getElementById('cmd-input');
 const cmdSendBtn = document.getElementById('cmd-send');
+const promptSymbol = document.getElementById('prompt-symbol');
 
+let activeTab = 'server';
 let cmdHistory = [];
 let historyIndex = -1;
+
+function switchTab(tab) {
+  activeTab = tab;
+  if (tab === 'rag') {
+    tabBtnRag.classList.add('active');
+    tabBtnServer.classList.remove('active');
+    ragLogsEl.style.display = 'block';
+    logsEl.style.display = 'none';
+    if (ragQuickActions) ragQuickActions.style.display = 'flex';
+    if (promptSymbol) promptSymbol.textContent = 'rag>';
+    cmdInput.placeholder = 'Type RAG command (e.g. status, sync, query <question>, help, cls)...';
+    ipcRenderer.send('request-rag-logs');
+    if (autoscrollToggle.checked) ragLogsEl.scrollTop = ragLogsEl.scrollHeight;
+  } else {
+    tabBtnServer.classList.add('active');
+    tabBtnRag.classList.remove('active');
+    logsEl.style.display = 'block';
+    ragLogsEl.style.display = 'none';
+    if (ragQuickActions) ragQuickActions.style.display = 'none';
+    if (promptSymbol) promptSymbol.textContent = '$';
+    cmdInput.placeholder = 'Type command (e.g. pm2 status, pm2 restart, help, cls)...';
+    ipcRenderer.send('request-logs');
+    if (autoscrollToggle.checked) logsEl.scrollTop = logsEl.scrollHeight;
+  }
+}
+
+tabBtnServer.addEventListener('click', () => switchTab('server'));
+tabBtnRag.addEventListener('click', () => switchTab('rag'));
+
+if (btnRagStart) btnRagStart.addEventListener('click', () => ipcRenderer.send('start-rag'));
+if (btnRagStop) btnRagStop.addEventListener('click', () => ipcRenderer.send('stop-rag'));
+if (btnRagSync) btnRagSync.addEventListener('click', () => ipcRenderer.send('sync-rag'));
 
 function appendLocalLog(text) {
   const ts = new Date().toISOString();
   const line = `[${ts}] ${text}\n`;
-  logsEl.textContent += line;
-  if (autoscrollToggle.checked) {
-    logsEl.scrollTop = logsEl.scrollHeight;
+  if (activeTab === 'rag') {
+    ragLogsEl.textContent += line;
+    if (autoscrollToggle.checked) ragLogsEl.scrollTop = ragLogsEl.scrollHeight;
+  } else {
+    logsEl.textContent += line;
+    if (autoscrollToggle.checked) logsEl.scrollTop = logsEl.scrollHeight;
   }
 }
 
 ipcRenderer.on('log-update', (event, data) => {
   logsEl.textContent = data || '';
-  if (autoscrollToggle && autoscrollToggle.checked) {
+  if (autoscrollToggle && autoscrollToggle.checked && activeTab === 'server') {
     logsEl.scrollTop = logsEl.scrollHeight;
   }
 });
 
-setInterval(() => ipcRenderer.send('request-logs'), 2000);
+ipcRenderer.on('rag-log-update', (event, data) => {
+  if (ragLogsEl) {
+    ragLogsEl.textContent = data || '';
+    if (autoscrollToggle && autoscrollToggle.checked && activeTab === 'rag') {
+      ragLogsEl.scrollTop = ragLogsEl.scrollHeight;
+    }
+  }
+});
+
+ipcRenderer.on('rag-status', (event, data) => {
+  if (!ragTabBadge) return;
+  const isUp = !!(data && data.isUp);
+  if (isUp) {
+    ragTabBadge.className = 'tab-badge badge-online';
+    ragTabBadge.textContent = data.totalChunks ? `${data.totalChunks} chunks` : 'Online';
+    ragTabBadge.title = `RAG Microservice Online (${data.totalChunks || 0} chunks in ChromaDB)`;
+  } else {
+    ragTabBadge.className = 'tab-badge badge-offline';
+    ragTabBadge.textContent = 'Offline';
+    ragTabBadge.title = 'RAG Microservice is stopped';
+  }
+});
+
+setInterval(() => {
+  ipcRenderer.send('request-logs');
+  ipcRenderer.send('request-rag-logs');
+}, 2000);
 
 clearLogsBtn.addEventListener('click', () => {
-  logsEl.textContent = '';
-  ipcRenderer.send('run-log-command', 'cls');
+  if (activeTab === 'rag') {
+    ragLogsEl.textContent = '';
+    ipcRenderer.send('run-rag-command', 'cls');
+  } else {
+    logsEl.textContent = '';
+    ipcRenderer.send('run-log-command', 'cls');
+  }
 });
 
 copyLogsBtn.addEventListener('click', () => {
-  copyToClipboard(copyLogsBtn, logsEl.textContent);
+  const textToCopy = activeTab === 'rag' ? ragLogsEl.textContent : logsEl.textContent;
+  copyToClipboard(copyLogsBtn, textToCopy);
 });
 
 // Command Submission
@@ -240,11 +318,17 @@ function sendTerminalCommand() {
   cmdHistory.push(val);
   historyIndex = cmdHistory.length;
 
-  if (val.toLowerCase() === 'cls' || val.toLowerCase() === 'clear') {
-    logsEl.textContent = '';
+  if (activeTab === 'rag') {
+    if (val.toLowerCase() === 'cls' || val.toLowerCase() === 'clear') {
+      ragLogsEl.textContent = '';
+    }
+    ipcRenderer.send('run-rag-command', val);
+  } else {
+    if (val.toLowerCase() === 'cls' || val.toLowerCase() === 'clear') {
+      logsEl.textContent = '';
+    }
+    ipcRenderer.send('run-log-command', val);
   }
-
-  ipcRenderer.send('run-log-command', val);
   cmdInput.value = '';
 }
 

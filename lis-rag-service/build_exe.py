@@ -30,6 +30,8 @@ def build():
         "--collect-all", "fastapi",
         "--collect-all", "pydantic",
         "--collect-all", "starlette",
+        "--collect-all", "ddgs",
+        "--collect-all", "duckduckgo_search",
         "--hidden-import", "uvicorn.logging",
         "--hidden-import", "uvicorn.loops",
         "--hidden-import", "uvicorn.loops.auto",

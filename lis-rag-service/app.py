@@ -1,11 +1,13 @@
+import asyncio
 from contextlib import asynccontextmanager
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from config import HOST, PORT
 from rag_engine import RagEngine
+from web_search import search_web, format_web_snippets_context
 
 # Initialize RAG Engine singleton
 engine: Optional[RagEngine] = None
@@ -46,6 +48,12 @@ app.add_middleware(
 class QueryRequest(BaseModel):
     question: str = Field(..., description="User query or clinical/operational question")
     top_k: int = Field(default=4, ge=1, le=10, description="Number of most relevant knowledge chunks to retrieve")
+    enable_web: bool = Field(default=False, description="Enable live web search snippets alongside vector knowledge")
+
+
+class WebSearchRequest(BaseModel):
+    query: str = Field(..., description="Query string to search the web")
+    max_results: int = Field(default=3, ge=1, le=10, description="Maximum number of snippets to return")
 
 
 class SyncRequest(BaseModel):
@@ -59,20 +67,59 @@ def health_check():
         "status": "healthy",
         "service": "lis-rag-service",
         "engine_ready": engine is not None,
-        "total_chunks": stats.get("total_chunks", 0)
+        "total_chunks": stats.get("total_chunks", 0),
+        "web_search_available": True
     }
 
 
 @app.post("/rag/query")
-def query_knowledge(req: QueryRequest):
+async def query_knowledge(req: QueryRequest):
     if not engine:
         raise HTTPException(status_code=503, detail="RAG Engine not initialized")
 
     try:
-        result = engine.query(query_text=req.question, top_k=req.top_k)
+        # Run ChromaDB vector search in worker thread
+        vector_task = asyncio.to_thread(engine.query, query_text=req.question, top_k=req.top_k)
+
+        web_results = []
+        if req.enable_web:
+            # Query web search concurrently with ChromaDB
+            web_task = asyncio.to_thread(search_web, query=req.question, max_results=3, timeout_seconds=4)
+            result, web_results = await asyncio.gather(vector_task, web_task)
+        else:
+            result = await vector_task
+
+        combined = result.get("combined_context", "")
+        if web_results:
+            web_context = format_web_snippets_context(web_results)
+            combined = (combined + "\n\n" + web_context).strip()
+
         return {
             "success": True,
-            **result
+            **result,
+            "combined_context": combined,
+            "web_search_enabled": req.enable_web,
+            "web_results": web_results or []
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/web/search")
+async def direct_web_search(req: WebSearchRequest):
+    """
+    Direct web search endpoint.
+    Retrieves succinct snippet citations without touching local ChromaDB vector memory.
+    """
+    try:
+        results = await asyncio.to_thread(search_web, query=req.query, max_results=req.max_results)
+        context = format_web_snippets_context(results)
+        return {
+            "success": True,
+            "query": req.query,
+            "count": len(results),
+            "results": results,
+            "formatted_context": context
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -121,4 +168,5 @@ def get_ml_status():
 if __name__ == "__main__":
     import uvicorn
     print(f"Starting Gezyne LIS RAG Microservice on http://{HOST}:{PORT}")
-    uvicorn.run("app:app", host=HOST, port=PORT, reload=False)
+    uvicorn.run(app, host=HOST, port=PORT, reload=False)
+

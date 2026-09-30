@@ -289,7 +289,7 @@ ${retrievedText}
 /**
  * Call OpenRouter API with user prompt and conversation history
  */
-async function queryOpenRouter({ question, history = [], user = null, model = DEFAULT_MODEL }) {
+async function queryOpenRouter({ question, history = [], user = null, model = DEFAULT_MODEL, webSearch = false }) {
   const apiKey = resolveApiKey();
 
   if (!apiKey) {
@@ -309,11 +309,23 @@ async function queryOpenRouter({ question, history = [], user = null, model = DE
     : '';
 
   let knowledgeContext = null;
+  let ragUsed = false;
+  let ragChunks = 0;
+  let webSearchUsed = false;
+  let webSources = [];
   try {
-    const ragResult = await ragClient.queryRag({ question, topK: 4 });
+    const ragResult = await ragClient.queryRag({ question, topK: 4, enableWeb: !!webSearch });
     if (ragResult && ragResult.success && ragResult.combinedContext) {
       knowledgeContext = buildRagKnowledgeContext(ragResult.combinedContext);
-      console.log(`[GezyneBot] Augmented prompt with ${ragResult.results.length} RAG chunks from ChromaDB`);
+      ragUsed = true;
+      ragChunks = (ragResult.results && ragResult.results.length) || 0;
+      if (ragResult.webResults && ragResult.webResults.length > 0) {
+        webSearchUsed = true;
+        webSources = ragResult.webResults;
+        console.log(`[GezyneBot] Augmented prompt with ${ragChunks} RAG chunks + ${webSources.length} web search snippets`);
+      } else {
+        console.log(`[GezyneBot] Augmented prompt with ${ragChunks} RAG chunks from ChromaDB`);
+      }
     }
   } catch (ragErr) {
     // Non-blocking fallback
@@ -390,7 +402,11 @@ async function queryOpenRouter({ question, history = [], user = null, model = DE
                 success: true,
                 answer,
                 model: data.model || model,
-                usage: data.usage || null
+                usage: data.usage || null,
+                ragUsed,
+                ragChunks,
+                webSearchUsed,
+                webSources
               });
             } else {
               const errMsg = data && data.error && (data.error.message || data.error)

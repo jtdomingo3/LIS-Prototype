@@ -43,9 +43,13 @@
                 <h2 id="active-topic-title" style="margin:0; font-size:1.35em; font-weight:700; color:var(--primary-black);">
                     <%= activeConversation ? activeConversation.title : 'New Discussion with GezyneBot' %>
                 </h2>
-                <div style="display:flex; align-items:center; gap:12px; margin-top:4px;">
+                <div style="display:flex; align-items:center; gap:10px; margin-top:4px; flex-wrap:wrap;">
                     <span class="status-indicator-badge">
                         <span class="dot"></span> Online Assistant
+                    </span>
+                    <span id="rag-status-badge" class="status-indicator-badge <%= (typeof ragStatus !== 'undefined' && ragStatus && ragStatus.online) ? 'rag-online' : 'rag-offline' %>" title="<%= (typeof ragStatus !== 'undefined' && ragStatus && ragStatus.online) ? 'Python RAG Microservice (ChromaDB Vector Store) is active (' + (ragStatus.totalChunks || 0) + ' chunks indexed)' : 'RAG Microservice is offline. GezyneBot is currently using static manual fallback.' %>" onclick="refreshRagStatus(true)" style="cursor:pointer;">
+                        <span class="dot <%= (typeof ragStatus !== 'undefined' && ragStatus && ragStatus.online) ? 'dot-rag-online' : 'dot-rag-offline' %>"></span>
+                        <span id="rag-status-text"><%= (typeof ragStatus !== 'undefined' && ragStatus && ragStatus.online) ? 'RAG: Online (' + (ragStatus.totalChunks || 27) + ' chunks)' : 'RAG: Offline (Fallback)' %></span>
                     </span>
                     <span style="font-size:0.82em; color:#64748b;">LIS Operational Workflows & Clinical Guidance</span>
                 </div>
@@ -74,6 +78,17 @@
                         <i class="fas fa-sync-alt" id="icon-fetch-free-models"></i>
                         <span id="text-fetch-free-models">Fetch Free</span>
                     </button>
+                </div>
+                <!-- Live Web Search Toggle (Default: OFF) -->
+                <div class="web-search-toggle-container" title="Enable live internet search snippets (DuckDuckGo/Google). Off by default to focus on internal LIS procedures and preserve token limits.">
+                    <label class="switch-toggle" for="toggle-web-search">
+                        <input type="checkbox" id="toggle-web-search">
+                        <span class="switch-slider round"></span>
+                    </label>
+                    <label for="toggle-web-search" class="switch-text">
+                        <i class="fa fa-globe"></i>
+                        <span>Web Search</span>
+                    </label>
                 </div>
                 <button type="button" id="btn-clear-chat" class="button btn-secondary btn-small" title="Clear current message view">Clear View</button>
             </div>
@@ -338,6 +353,161 @@
     height: 7px;
     border-radius: 50%;
     background: #10b981;
+}
+
+.status-indicator-badge.rag-online {
+    background: #eff6ff;
+    color: #1e40af;
+    border-color: #93c5fd;
+    transition: all 0.2s ease;
+}
+
+.status-indicator-badge.rag-online .dot {
+    background: #2563eb;
+    box-shadow: 0 0 6px rgba(37, 99, 235, 0.6);
+}
+
+.status-indicator-badge.rag-offline {
+    background: #fffbeb;
+    color: #92400e;
+    border-color: #fde68a;
+    transition: all 0.2s ease;
+}
+
+.status-indicator-badge.rag-offline .dot {
+    background: #f59e0b;
+}
+
+.badge-rag-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72em;
+    padding: 2px 7px;
+    border-radius: 12px;
+    background: #dbeafe;
+    color: #1e40af;
+    font-weight: 600;
+    margin-left: 6px;
+    border: 1px solid #bfdbfe;
+    vertical-align: middle;
+}
+
+.badge-web-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72em;
+    padding: 2px 7px;
+    border-radius: 12px;
+    background: #ecfdf5;
+    color: #065f46;
+    font-weight: 600;
+    margin-left: 6px;
+    border: 1px solid #a7f3d0;
+    vertical-align: middle;
+}
+
+.web-source-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.74em;
+    padding: 3px 8px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    color: #2563eb;
+    text-decoration: none;
+    margin-top: 6px;
+    margin-right: 6px;
+    transition: all 0.15s ease;
+}
+.web-source-pill:hover {
+    background: #eff6ff;
+    border-color: #93c5fd;
+    text-decoration: underline;
+}
+
+.web-search-toggle-container {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 10px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    user-select: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.web-search-toggle-container:hover {
+    background: #f1f5f9;
+}
+
+.web-search-toggle-container.active {
+    background: #eff6ff;
+    border-color: #93c5fd;
+}
+
+.switch-toggle {
+    position: relative;
+    display: inline-block;
+    width: 30px;
+    height: 16px;
+    margin: 0;
+    cursor: pointer;
+}
+
+.switch-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.switch-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #cbd5e1;
+    transition: .2s;
+    border-radius: 16px;
+}
+
+.switch-slider:before {
+    position: absolute;
+    content: "";
+    height: 12px;
+    width: 12px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    transition: .2s;
+    border-radius: 50%;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.switch-toggle input:checked + .switch-slider {
+    background-color: #2563eb;
+}
+
+.switch-toggle input:checked + .switch-slider:before {
+    transform: translateX(14px);
+}
+
+.switch-text {
+    font-size: 0.82em;
+    font-weight: 600;
+    color: #475569;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+}
+
+.web-search-toggle-container.active .switch-text {
+    color: #1d4ed8;
 }
 
 .header-controls {
@@ -1113,8 +1283,66 @@ function initChatbot() {
         });
     }
 
+    // Refresh RAG Status
+    async function refreshRagStatus(showToast = false) {
+        try {
+            const res = await fetch('/chatbot/api/rag-status');
+            const data = await res.json();
+            const badge = document.getElementById('rag-status-badge');
+            const text = document.getElementById('rag-status-text');
+            const dot = badge ? badge.querySelector('.dot') : null;
+
+            if (data && data.online) {
+                if (badge) {
+                    badge.className = 'status-indicator-badge rag-online';
+                    badge.title = `Python RAG Microservice (ChromaDB Vector Store) is active (${data.totalChunks || 27} knowledge chunks loaded). Click to re-check.`;
+                }
+                if (text) text.textContent = `RAG: Online (${data.totalChunks || 27} chunks)`;
+                if (dot) dot.className = 'dot dot-rag-online';
+                if (showToast) {
+                    if (typeof showNotification === 'function') {
+                        showNotification(`RAG Vector Engine is Online! (${data.totalChunks || 27} chunks loaded)`, 'success');
+                    } else {
+                        alert(`RAG Vector Engine is Online!\n${data.totalChunks || 27} knowledge chunks indexed in ChromaDB.`);
+                    }
+                }
+            } else {
+                if (badge) {
+                    badge.className = 'status-indicator-badge rag-offline';
+                    badge.title = 'RAG Microservice is offline. GezyneBot will use static manual fallback. Click to re-check.';
+                }
+                if (text) text.textContent = 'RAG: Offline (Fallback)';
+                if (dot) dot.className = 'dot dot-rag-offline';
+                if (showToast) {
+                    if (typeof showNotification === 'function') {
+                        showNotification('RAG Microservice is currently offline. Using static manual fallback.', 'warning');
+                    } else {
+                        alert('RAG Microservice is currently offline.\nGezyneBot will use static manual fallback.');
+                    }
+                }
+            }
+        } catch (_) {}
+    }
+    window.refreshRagStatus = refreshRagStatus;
+
+    // Periodically poll RAG status every 10 seconds
+    setInterval(refreshRagStatus, 10000);
+
+    // Web Search Toggle Handling (Default: OFF)
+    const webSearchCheckbox = document.getElementById('toggle-web-search');
+    const webSearchContainer = document.querySelector('.web-search-toggle-container');
+    if (webSearchCheckbox) {
+        webSearchCheckbox.checked = false;
+        webSearchCheckbox.addEventListener('change', () => {
+            if (webSearchContainer) {
+                if (webSearchCheckbox.checked) webSearchContainer.classList.add('active');
+                else webSearchContainer.classList.remove('active');
+            }
+        });
+    }
+
     // Append Message to Workspace
-    function appendMainMessage(role, text) {
+    function appendMainMessage(role, text, metadata = {}) {
         const welcome = document.getElementById('main-welcome');
         if (welcome) welcome.remove();
 
@@ -1123,15 +1351,34 @@ function initChatbot() {
 
         const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const nameStr = role === 'user' ? '<%= sessionUser ? sessionUser.name : "You" %>' : 'GezyneBot';
+        const ragPill = (role === 'bot' && metadata && metadata.ragUsed)
+            ? `<span class="badge-rag-pill" title="Augmented with ${metadata.ragChunks || 4} chunks from ChromaDB Vector Store"><i class="fa fa-database"></i> RAG Verified</span>`
+            : '';
+        const webPill = (role === 'bot' && metadata && metadata.webSearchUsed)
+            ? `<span class="badge-web-pill" title="Augmented with live web search citations"><i class="fa fa-globe"></i> Web Cited</span>`
+            : '';
+
+        let sourcesHtml = '';
+        if (role === 'bot' && metadata && Array.isArray(metadata.webSources) && metadata.webSources.length > 0) {
+            sourcesHtml = '<div style="margin-top:10px; padding-top:8px; border-top:1px dashed #cbd5e1; font-size:0.80em; color:#64748b;"><strong style="color:#475569;">Web Sources:</strong><br>';
+            metadata.webSources.forEach(s => {
+                const title = (s.title || 'Web Citation').slice(0, 45);
+                sourcesHtml += `<a href="${s.url}" target="_blank" rel="noopener noreferrer" class="web-source-pill" title="${(s.snippet || s.title || '').replace(/"/g, '&quot;')}"><i class="fa fa-external-link-alt"></i> ${title}${s.title && s.title.length > 45 ? '...' : ''}</a>`;
+            });
+            sourcesHtml += '</div>';
+        }
 
         msgDiv.innerHTML = `
             <div class="main-bubble">
                 <div class="bubble-header">
                     <strong>${nameStr}</strong>
+                    ${ragPill}
+                    ${webPill}
                     <span class="bubble-time">${timeStr}</span>
                 </div>
                 <div class="bubble-content">
                     ${role === 'bot' ? formatMarkdown(text) : `<p>${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`}
+                    ${sourcesHtml}
                 </div>
             </div>
         `;
@@ -1173,6 +1420,8 @@ function initChatbot() {
         messagesContainer.appendChild(typingDiv);
         scrollToBottom();
 
+        const enableWebSearch = webSearchCheckbox ? !!webSearchCheckbox.checked : false;
+
         try {
             const res = await fetch('/chatbot/api/query', {
                 method: 'POST',
@@ -1180,7 +1429,8 @@ function initChatbot() {
                 body: JSON.stringify({
                     question,
                     conversationId: activeConversationId || null,
-                    model: modelSelect ? modelSelect.value : undefined
+                    model: modelSelect ? modelSelect.value : undefined,
+                    webSearch: enableWebSearch
                 })
             });
 
@@ -1188,7 +1438,12 @@ function initChatbot() {
             typingDiv.remove();
 
             if (data && data.success) {
-                appendMainMessage('bot', data.answer);
+                appendMainMessage('bot', data.answer, {
+                    ragUsed: data.ragUsed,
+                    ragChunks: data.ragChunks,
+                    webSearchUsed: data.webSearchUsed,
+                    webSources: data.webSources
+                });
                 if (data.conversationId) {
                     activeConversationId = data.conversationId;
                     localStorage.setItem('gezynebot_active_conv', activeConversationId);
