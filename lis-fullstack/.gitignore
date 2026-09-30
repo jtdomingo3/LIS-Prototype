@@ -15,3 +15,7 @@ tmp/
 # Secrets
 .session_secret
 .auth_token_secret
+
+# RAG binary bundle
+/dist/rag/
+

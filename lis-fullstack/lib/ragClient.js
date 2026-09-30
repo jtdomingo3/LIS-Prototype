@@ -124,8 +124,72 @@ async function ensureRagServiceRunning() {
 
   isStarting = true;
 
-  // Resolve python service script location
-  const candidates = [
+  // 1. First check for compiled standalone executable (rag.exe)
+  const exeCandidates = [
+    path.join(__dirname, '..', '..', 'lis-rag-service', 'dist', 'rag', 'rag.exe'),
+    path.join(__dirname, '..', '..', 'lis-rag-service', 'dist', 'rag.exe'),
+    path.join(__dirname, '..', 'dist', 'rag', 'rag.exe'),
+    path.join(__dirname, '..', 'dist', 'rag.exe'),
+    path.join(process.cwd(), 'lis-rag-service', 'dist', 'rag', 'rag.exe'),
+    path.join(process.cwd(), 'lis-rag-service', 'dist', 'rag.exe'),
+    path.join(process.cwd(), 'dist', 'rag', 'rag.exe'),
+    path.join(process.cwd(), 'dist', 'rag.exe'),
+    path.join(process.resourcesPath || '', 'rag', 'rag.exe'),
+    path.join(process.resourcesPath || '', 'rag.exe')
+  ];
+
+  let ragExePath = null;
+  for (const e of exeCandidates) {
+    if (fs.existsSync(e)) {
+      ragExePath = e;
+      break;
+    }
+  }
+
+  if (ragExePath) {
+    console.log(`[RAG Client] Found compiled RAG executable: ${ragExePath}`);
+    const exeDir = path.dirname(ragExePath);
+    try {
+      ragProcess = spawn(ragExePath, [], {
+        cwd: exeDir,
+        env: { ...process.env, RAG_HOST, RAG_PORT: String(RAG_PORT) },
+        stdio: 'pipe',
+        detached: false,
+        windowsHide: true
+      });
+
+      ragProcess.stdout.on('data', (d) => {
+        const msg = d.toString().trim();
+        if (msg) console.log(`[RAG Exe Log] ${msg}`);
+      });
+
+      ragProcess.stderr.on('data', (d) => {
+        const msg = d.toString().trim();
+        if (msg) console.warn(`[RAG Exe Err] ${msg}`);
+      });
+
+      ragProcess.on('exit', (code) => {
+        console.log(`[RAG Client] rag.exe exited with code ${code}`);
+        ragProcess = null;
+        isStarting = false;
+      });
+
+      // Wait up to 5 seconds for health check to pass
+      for (let i = 0; i < 10; i++) {
+        await new Promise(r => setTimeout(r, 500));
+        if (await checkHealth()) {
+          console.log(`[RAG Client] rag.exe successfully ready on port ${RAG_PORT}`);
+          isStarting = false;
+          return true;
+        }
+      }
+    } catch (err) {
+      console.warn('[RAG Client] Could not launch rag.exe:', err.message);
+    }
+  }
+
+  // 2. Fallback to Python script execution (app.py)
+  const scriptCandidates = [
     path.join(__dirname, '..', '..', 'lis-rag-service', 'app.py'),
     path.join(__dirname, '..', 'lis-rag-service', 'app.py'),
     path.join(process.cwd(), 'lis-rag-service', 'app.py'),
@@ -133,7 +197,7 @@ async function ensureRagServiceRunning() {
   ];
 
   let appPyPath = null;
-  for (const c of candidates) {
+  for (const c of scriptCandidates) {
     if (fs.existsSync(c)) {
       appPyPath = c;
       break;
@@ -190,9 +254,28 @@ async function ensureRagServiceRunning() {
   return false;
 }
 
+/**
+ * Gracefully stop the RAG microservice child process
+ */
+function stopRagService() {
+  if (ragProcess) {
+    try {
+      ragProcess.kill();
+      console.log('[RAG Client] Terminated RAG child process');
+    } catch (e) {}
+    ragProcess = null;
+  }
+}
+
+process.on('exit', stopRagService);
+process.on('SIGINT', stopRagService);
+process.on('SIGTERM', stopRagService);
+
 module.exports = {
   queryRag,
   checkHealth,
   ensureRagServiceRunning,
+  stopRagService,
   RAG_BASE_URL
 };
+
