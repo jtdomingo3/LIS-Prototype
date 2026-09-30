@@ -840,10 +840,14 @@ function findRagExecutable() {
     path.join(PROJECT_ROOT, '..', 'lis-rag-service', 'dist', 'rag.exe'),
     path.join(PROJECT_ROOT, 'dist', 'rag', 'rag.exe'),
     path.join(PROJECT_ROOT, 'dist', 'rag.exe'),
+    path.join(process.resourcesPath || '', 'server', 'rag', 'rag.exe'),
+    path.join(process.resourcesPath || '', 'server', 'rag.exe'),
     path.join(process.resourcesPath || '', 'rag', 'rag.exe'),
     path.join(process.resourcesPath || '', 'rag.exe')
   ];
-  for (const c of candidates) {
+  for (let c of candidates) {
+    if (c.startsWith('\\rag')) continue; // Skip bad relative paths if resourcesPath was empty
+    c = path.resolve(c);
     if (fs.existsSync(c)) return c;
   }
   return null;

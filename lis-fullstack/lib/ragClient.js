@@ -182,12 +182,20 @@ async function ensureRagServiceRunning() {
     path.join(process.cwd(), 'lis-rag-service', 'dist', 'rag.exe'),
     path.join(process.cwd(), 'dist', 'rag', 'rag.exe'),
     path.join(process.cwd(), 'dist', 'rag.exe'),
-    path.join(process.resourcesPath || '', 'rag', 'rag.exe'),
-    path.join(process.resourcesPath || '', 'rag.exe')
+    path.join(process.cwd(), 'rag', 'rag.exe'),
+    path.join(process.cwd(), 'rag.exe')
   ];
 
+  if (process.resourcesPath) {
+    exeCandidates.push(
+      path.join(process.resourcesPath, 'rag', 'rag.exe'),
+      path.join(process.resourcesPath, 'rag.exe')
+    );
+  }
+
   let ragExePath = null;
-  for (const e of exeCandidates) {
+  for (let e of exeCandidates) {
+    e = path.resolve(e);
     if (fs.existsSync(e)) {
       ragExePath = e;
       break;

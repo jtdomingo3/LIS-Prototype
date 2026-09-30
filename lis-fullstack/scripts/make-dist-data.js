@@ -80,6 +80,18 @@ async function make() {
     console.warn('Warning: could not create seed SQLite db in installer-resources:', e.message);
   }
 
+  // Copy RAG executable into dist so the NSIS installer bundles it
+  const ragSrcDir = path.join(__dirname, '..', '..', 'lis-rag-service', 'dist', 'rag');
+  const ragDestDir = path.join(__dirname, '..', 'dist', 'rag');
+  if (fs.existsSync(ragSrcDir)) {
+    try {
+      fs.cpSync(ragSrcDir, ragDestDir, { recursive: true });
+      console.log(' - Copied RAG executable from lis-rag-service to dist/rag');
+    } catch (e) {
+      console.warn(' - Warning: failed to copy RAG executable:', e.message);
+    }
+  }
+
   console.log('Wrote installer resources to', OUT_DIR);
   console.log(' -', usersPath);
   console.log(' -', dataPath);
