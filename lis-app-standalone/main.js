@@ -635,6 +635,23 @@ async function createWindow() {
         openPrintPreviewWindow(url);
         return { action: 'deny' };
       }
+
+      // External HTTP/HTTPS links (e.g. GezyneBot web search sources and external references)
+      if (u.protocol === 'http:' || u.protocol === 'https:') {
+        const localHost = `127.0.0.1:${config.LOCAL_PORT}`;
+        const localhostHost = `localhost:${config.LOCAL_PORT}`;
+        let serverHost = null;
+        if (config.SERVER_URL) {
+          try { serverHost = new URL(config.SERVER_URL).host; } catch (_) {}
+        }
+        const isLocal = u.host === localHost || u.host === localhostHost || (serverHost && u.host === serverHost);
+        if (!isLocal) {
+          console.log('[Main] Opening external hyperlink in default browser:', url);
+          shell.openExternal(url);
+          return { action: 'deny' };
+        }
+      }
+
       openChildWindow(url);
       return { action: 'deny' };
     } catch (e) {
@@ -1352,6 +1369,20 @@ function openChildWindow(url) {
         const u = new URL(newUrl);
         const p = u.pathname || '';
         if (p.startsWith('/reports/print') || p.startsWith('/reports/result') || p.includes('print-multiple') || p.includes('/print')) { openPrintPreviewWindow(newUrl); return { action: 'deny' }; }
+        if (u.protocol === 'http:' || u.protocol === 'https:') {
+          const localHost = `127.0.0.1:${config.LOCAL_PORT}`;
+          const localhostHost = `localhost:${config.LOCAL_PORT}`;
+          let serverHost = null;
+          if (config.SERVER_URL) {
+            try { serverHost = new URL(config.SERVER_URL).host; } catch (_) {}
+          }
+          const isLocal = u.host === localHost || u.host === localhostHost || (serverHost && u.host === serverHost);
+          if (!isLocal) {
+            console.log('[Main] Opening external hyperlink in default browser (child):', newUrl);
+            shell.openExternal(newUrl);
+            return { action: 'deny' };
+          }
+        }
         openChildWindow(newUrl);
         return { action: 'deny' };
       } catch (e) { return { action: 'allow' }; }

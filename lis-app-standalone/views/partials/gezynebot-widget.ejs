@@ -23,7 +23,12 @@
                 </div>
                 <div>
                     <div class="gezynebot-title">GezyneBot</div>
-                    <div class="gezynebot-subtitle">LIS & Clinical Laboratory Assistant</div>
+                    <div class="gezynebot-subtitle" style="display:flex; align-items:center; gap:6px;">
+                        <span>LIS Assistant</span>
+                        <span id="widget-rag-badge" class="widget-rag-pill rag-checking" title="Checking RAG Vector Service...">
+                            <span class="widget-rag-dot"></span> <span id="widget-rag-text">RAG</span>
+                        </span>
+                    </div>
                 </div>
             </div>
             <div class="gezynebot-header-actions">
@@ -63,6 +68,22 @@
                     <p style="font-size:0.85em;color:#64748b;margin-top:6px;">💡 <em>Tip: Click the <strong>⤢</strong> icon above anytime to maximize our discussion into a full dedicated page!</em></p>
                 </div>
             </div>
+        </div>
+
+        <!-- Widget Toolbar (Web Search toggle, Default: OFF) -->
+        <div class="gezynebot-toolbar">
+            <div class="widget-switch-wrapper" id="widget-switch-wrapper" title="Enable live internet search snippets (DuckDuckGo). Off by default.">
+                <label class="switch-toggle" for="widget-websearch-toggle">
+                    <input type="checkbox" id="widget-websearch-toggle">
+                    <span class="switch-slider round"></span>
+                </label>
+                <label for="widget-websearch-toggle" class="widget-switch-label">
+                    <i class="fa fa-globe" style="font-size:0.9em; color:#0284c7;"></i>
+                    <span>Web Search</span>
+                    <span id="widget-web-status-badge" class="widget-status-badge off">OFF</span>
+                </label>
+            </div>
+            <span class="widget-web-hint">DuckDuckGo live</span>
         </div>
 
         <!-- Input Composer -->
@@ -233,6 +254,48 @@
 .gezynebot-subtitle {
     font-size: 0.76em;
     color: #94a3b8;
+}
+
+.widget-rag-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.70em;
+    padding: 1px 6px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #cbd5e1;
+    cursor: default;
+    transition: all 0.2s ease;
+}
+.widget-rag-pill.rag-online {
+    background: rgba(16, 185, 129, 0.2);
+    color: #6ee7b7;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+}
+.widget-rag-pill.rag-online .widget-rag-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #34d399;
+    box-shadow: 0 0 5px #34d399;
+}
+.widget-rag-pill.rag-offline {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fde68a;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+.widget-rag-pill.rag-offline .widget-rag-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #fbbf24;
+}
+.widget-rag-pill.rag-checking .widget-rag-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #94a3b8;
 }
 
 .gezynebot-header-actions {
@@ -480,11 +543,182 @@
     40% { opacity: 1; transform: scale(1.1); }
 }
 
+/* Toolbar & Web Search Toggle */
+.gezynebot-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 14px;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+    user-select: none;
+}
+
+.widget-switch-wrapper {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 3px 8px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.widget-switch-wrapper:hover {
+    background: #f1f5f9;
+}
+
+.widget-switch-wrapper.active {
+    background: #eff6ff;
+    border-color: #93c5fd;
+}
+
+.widget-switch-wrapper .switch-toggle {
+    position: relative;
+    display: inline-block;
+    width: 28px;
+    height: 15px;
+    margin: 0;
+    cursor: pointer;
+}
+
+.widget-switch-wrapper .switch-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.widget-switch-wrapper .switch-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #cbd5e1;
+    transition: .2s;
+    border-radius: 15px;
+}
+
+.widget-switch-wrapper .switch-slider:before {
+    position: absolute;
+    content: "";
+    height: 11px;
+    width: 11px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    transition: .2s;
+    border-radius: 50%;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.widget-switch-wrapper .switch-toggle input:checked + .switch-slider {
+    background-color: #2563eb;
+}
+
+.widget-switch-wrapper .switch-toggle input:checked + .switch-slider:before {
+    transform: translateX(13px);
+}
+
+.widget-switch-label {
+    font-size: 0.76em;
+    font-weight: 600;
+    color: #475569;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+}
+
+.widget-status-badge {
+    display: inline-block;
+    padding: 1px 5px;
+    border-radius: 8px;
+    font-size: 0.75em;
+    font-weight: 700;
+    line-height: 1.2;
+    transition: all 0.2s ease;
+}
+
+.widget-status-badge.off {
+    background: #e2e8f0;
+    color: #64748b;
+}
+
+.widget-status-badge.on {
+    background: #2563eb;
+    color: #ffffff;
+}
+
+.widget-web-hint {
+    font-size: 0.72em;
+    color: #94a3b8;
+    font-weight: 500;
+}
+
+/* Citation pills in widget messages */
+.widget-citation-container {
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px dashed #cbd5e1;
+    font-size: 0.80em;
+    color: #64748b;
+}
+
+.widget-citation-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    margin: 3px 4px 0 0;
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    color: #0284c7;
+    text-decoration: none;
+    font-size: 0.85em;
+    font-weight: 500;
+    transition: all 0.15s ease;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.widget-citation-link:hover {
+    background: #e0f2fe;
+    border-color: #38bdf8;
+    color: #0369a1;
+}
+
+/* Hyperlinks in bot bubble */
+.gezynebot-bubble a,
+.gezynebot-bubble .bot-markdown-link {
+    color: #0284c7;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    word-break: break-word;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.15s ease;
+}
+.gezynebot-bubble a:hover,
+.gezynebot-bubble .bot-markdown-link:hover {
+    color: #0369a1;
+    text-decoration-color: #0284c7;
+}
+.gezynebot-bubble .bot-link-icon {
+    font-size: 0.78em;
+    opacity: 0.85;
+}
+
 /* Composer */
 .gezynebot-composer {
-    padding: 12px 14px;
+    padding: 10px 14px 12px 14px;
     background: #ffffff;
-    border-top: 1px solid #e2e8f0;
+    border-top: 1px solid #f1f5f9;
     display: flex;
     align-items: flex-end;
     gap: 10px;
@@ -583,10 +817,75 @@ window.handleWidgetChipClick = function(btn) {
     let currentConversationId = localStorage.getItem('gezynebot_active_conv') || null;
     let isSending = false;
 
+    // Web Search Toggle State (Default: false / OFF, sync with session)
+    const widgetWebCheckbox = document.getElementById('widget-websearch-toggle');
+    const widgetSwitchWrapper = document.getElementById('widget-switch-wrapper');
+    const widgetWebStatusBadge = document.getElementById('widget-web-status-badge');
+
+    function syncWidgetWebSearchUI(isChecked) {
+        if (widgetWebCheckbox) widgetWebCheckbox.checked = isChecked;
+        if (widgetSwitchWrapper) {
+            if (isChecked) widgetSwitchWrapper.classList.add('active');
+            else widgetSwitchWrapper.classList.remove('active');
+        }
+        if (widgetWebStatusBadge) {
+            if (isChecked) {
+                widgetWebStatusBadge.className = 'widget-status-badge on';
+                widgetWebStatusBadge.textContent = 'ON';
+            } else {
+                widgetWebStatusBadge.className = 'widget-status-badge off';
+                widgetWebStatusBadge.textContent = 'OFF';
+            }
+        }
+    }
+
+    if (widgetWebCheckbox) {
+        const savedPref = sessionStorage.getItem('gezynebot_websearch_enabled');
+        const initialActive = savedPref === 'true';
+        syncWidgetWebSearchUI(initialActive);
+
+        widgetWebCheckbox.addEventListener('change', () => {
+            const isChecked = !!widgetWebCheckbox.checked;
+            sessionStorage.setItem('gezynebot_websearch_enabled', isChecked ? 'true' : 'false');
+            syncWidgetWebSearchUI(isChecked);
+        });
+
+        if (widgetSwitchWrapper) {
+            widgetSwitchWrapper.addEventListener('click', (e) => {
+                if (e.target !== widgetWebCheckbox && !e.target.closest('label')) {
+                    widgetWebCheckbox.checked = !widgetWebCheckbox.checked;
+                    widgetWebCheckbox.dispatchEvent(new Event('change'));
+                }
+            });
+        }
+    }
+
     // Bridge global caller
     window.executeWidgetChatSubmit = function(overrideText) {
         sendMessage(overrideText);
     };
+
+    // Check RAG Microservice Health
+    async function checkWidgetRagStatus() {
+        try {
+            const res = await fetch('/chatbot/api/rag-status');
+            const data = await res.json();
+            const badge = document.getElementById('widget-rag-badge');
+            const text = document.getElementById('widget-rag-text');
+            if (!badge || !text) return;
+            if (data && data.online) {
+                badge.className = 'widget-rag-pill rag-online';
+                badge.title = `Python RAG Microservice is online (${data.totalChunks || 27} knowledge chunks loaded)`;
+                text.textContent = 'RAG Online';
+            } else {
+                badge.className = 'widget-rag-pill rag-offline';
+                badge.title = 'RAG Microservice is offline. Using static manual fallback.';
+                text.textContent = 'RAG Fallback';
+            }
+        } catch (_) {}
+    }
+    checkWidgetRagStatus();
+    setInterval(checkWidgetRagStatus, 15000);
 
     // Toggle panel open/close
     function togglePanel() {
@@ -595,6 +894,7 @@ window.handleWidgetChipClick = function(btn) {
             panel.classList.remove('active');
         } else {
             panel.classList.add('active');
+            checkWidgetRagStatus();
             input.focus();
             scrollToBottom();
         }
@@ -705,6 +1005,18 @@ window.handleWidgetChipClick = function(btn) {
         // Italic
         escaped = escaped.replace(/\*(.*?)\*/g, '<em>$1</em>');
 
+        // Markdown Hyperlinks: [Title](URL)
+        escaped = escaped.replace(/\[([^\]\n]+)\]\(((?:https?:\/\/|\/|mailto:)[^\s\)\"\'<>]+)\)/g, (match, label, url) => {
+            const cleanUrl = url.replace(/&amp;/g, '&');
+            return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="bot-markdown-link"><i class="fa fa-external-link-alt bot-link-icon"></i> ${label}</a>`;
+        });
+
+        // Bare URLs (not already part of an <a> tag)
+        escaped = escaped.replace(/(^|[\s(>])(https?:\/\/[^\s)<>"]+)/g, (match, prefix, url) => {
+            const cleanUrl = url.replace(/&amp;/g, '&');
+            return `${prefix}<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="bot-markdown-link"><i class="fa fa-external-link-alt bot-link-icon"></i> ${url}</a>`;
+        });
+
         const lines = escaped.split('\n');
         let html = '';
         let inList = null; // 'ul' or 'ol'
@@ -776,14 +1088,14 @@ window.handleWidgetChipClick = function(btn) {
                 continue;
             }
 
-            // Unordered list item
-            if (/^[-*+]\s+/.test(trimmed)) {
+            // Unordered list item (supports -, *, +, and unicode bullet •)
+            if (/^[-*+•]\s+/.test(trimmed)) {
                 if (inList !== 'ul') {
                     if (inList) html += inList === 'ul' ? '</ul>' : '</ol>';
                     html += '<ul>';
                     inList = 'ul';
                 }
-                html += '<li>' + trimmed.replace(/^[-*+]\s+/, '') + '</li>';
+                html += '<li>' + trimmed.replace(/^[-*+•]\s+/, '') + '</li>';
                 continue;
             }
 
@@ -816,7 +1128,7 @@ window.handleWidgetChipClick = function(btn) {
 
 
     // Append Message to UI
-    function appendMessage(role, text) {
+    function appendMessage(role, text, metadata = {}) {
         const msgDiv = document.createElement('div');
         msgDiv.className = `gezynebot-msg gezynebot-msg-${role}`;
         
@@ -824,7 +1136,16 @@ window.handleWidgetChipClick = function(btn) {
         bubble.className = 'gezynebot-bubble';
         
         if (role === 'bot') {
-            bubble.innerHTML = formatMarkdown(text);
+            let html = formatMarkdown(text);
+            if (metadata && metadata.webSearchUsed && Array.isArray(metadata.webSources) && metadata.webSources.length > 0) {
+                html += '<div class="widget-citation-container"><strong style="color:#0284c7;">🌐 Web Sources:</strong><br>';
+                metadata.webSources.forEach(s => {
+                    const title = (s.title || 'Web Citation').slice(0, 32);
+                    html += `<a href="${s.url}" target="_blank" rel="noopener noreferrer" class="widget-citation-link" title="${(s.snippet || s.title || '').replace(/"/g, '&quot;')}"><i class="fa fa-external-link-alt" style="font-size:0.82em;"></i> ${title}${s.title && s.title.length > 32 ? '...' : ''}</a>`;
+                });
+                html += '</div>';
+            }
+            bubble.innerHTML = html;
         } else {
             const p = document.createElement('p');
             p.textContent = text;
@@ -877,7 +1198,8 @@ window.handleWidgetChipClick = function(btn) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     question: text,
-                    conversationId: currentConversationId
+                    conversationId: currentConversationId,
+                    webSearch: widgetWebCheckbox ? !!widgetWebCheckbox.checked : false
                 })
             });
 
@@ -885,7 +1207,11 @@ window.handleWidgetChipClick = function(btn) {
             typingDiv.remove();
 
             if (data && data.success) {
-                appendMessage('bot', data.answer);
+                appendMessage('bot', data.answer, {
+                    webSearchUsed: data.webSearchUsed,
+                    webSources: data.webSources,
+                    ragUsed: data.ragUsed
+                });
                 if (data.conversationId) {
                     currentConversationId = data.conversationId;
                     localStorage.setItem('gezynebot_active_conv', currentConversationId);

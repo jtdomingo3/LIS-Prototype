@@ -81,6 +81,7 @@ router.get('/', requireAuth, async (req, res) => {
     let conversations = [];
     let activeConversation = null;
     let initialMessages = [];
+    let ragStatus = { online: false, totalChunks: 0 };
 
     if (isOnline) {
         try {
@@ -100,6 +101,14 @@ router.get('/', requireAuth, async (req, res) => {
                     initialMessages = msgData.messages;
                 }
             }
+
+            // Fetch live RAG microservice status from central server
+            try {
+                const ragRes = await fetch(`${serverUrl}/chatbot/api/rag-status`, { headers });
+                if (ragRes.ok) {
+                    ragStatus = await ragRes.json();
+                }
+            } catch (_) {}
         } catch (err) {
             console.warn('[Standalone Chatbot] error loading topics from server:', err && err.message);
         }
@@ -117,8 +126,29 @@ router.get('/', requireAuth, async (req, res) => {
         availableModels: modelData.allModels,
         defaultModel: DEFAULT_MODEL,
         serverUrl,
-        isOnline
+        isOnline,
+        ragStatus
     });
+});
+
+// Proxy live RAG status check to central server
+router.get(['/api/rag-status', '/rag-status'], requireAuth, async (req, res) => {
+    const serverUrl = getServerUrl(req);
+    const isOnline = await checkServerReachable(serverUrl);
+    if (!isOnline) {
+        return res.json({ success: false, online: false, totalChunks: 0, error: 'Central server offline' });
+    }
+    try {
+        const headers = getForwardHeaders(req);
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 3000);
+        const response = await fetch(`${serverUrl}/chatbot/api/rag-status`, { headers, signal: controller.signal });
+        clearTimeout(timer);
+        const data = await response.json();
+        return res.json(data);
+    } catch (err) {
+        return res.json({ success: false, online: false, totalChunks: 0, error: err && err.message });
+    }
 });
 
 // Fetch available models
