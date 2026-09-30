@@ -15,6 +15,10 @@ const assert = require('assert');
 const path = require('path');
 const fs = require('fs');
 
+if (!process.env.AUTH_TOKEN_SECRET) {
+  process.env.AUTH_TOKEN_SECRET = 'test-token-secret-for-testing-1234567890';
+}
+
 let ejs;
 try {
   ejs = require('../lis-fullstack/node_modules/ejs');
