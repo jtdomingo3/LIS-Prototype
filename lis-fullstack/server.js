@@ -1435,6 +1435,16 @@ app.listen(PORT, HOST, () => {
       console.warn('[startup] could not run report generation scan:', e && e.message);
     }
   }
+
+  // Ensure Python RAG vector service is active for GezyneBot AI (if Python is present)
+  try {
+    const ragClient = require('./lib/ragClient');
+    ragClient.ensureRagServiceRunning().catch(e => {
+      console.warn('[startup] RAG service startup notification:', e && e.message);
+    });
+  } catch (e) {
+    // Non-blocking optional module
+  }
 });
 
 // Development-friendly public data endpoint (ONLY enabled in development

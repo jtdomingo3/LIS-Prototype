@@ -1,5 +1,6 @@
 const https = require('https');
 const { decryptSecret } = require('./cryptoHelper');
+const ragClient = require('./ragClient');
 
 /**
  * GezyneBot AI Service
@@ -261,6 +262,31 @@ Your role is to assist laboratory staff, medical technologists, receptionists, e
 }
 
 /**
+ * System Knowledge Context dynamically constructed from ChromaDB vector search
+ */
+function buildRagKnowledgeContext(retrievedText) {
+  const header = `=== GEZYNE CLINICAL LABORATORY INFORMATION SYSTEM (LIS) KNOWLEDGE BASE ===
+
+You are "GezyneBot", the resident Clinical Laboratory, Quality Assurance, and LIS Expert Assistant for Gezyne Clinical Laboratory (LIS Version 2.6.3).
+Your role is to assist laboratory staff, medical technologists, receptionists, encoders, quality managers, and doctors with navigating the software, answering clinical laboratory procedures, and quality assurance.
+
+--- RELEVANT KNOWLEDGE BASE SECTIONS (RETRIEVED VIA CHROMADB VECTOR SEARCH) ---
+${retrievedText}
+`;
+
+  const footer = `
+--- COMMUNICATION STYLE & GUIDELINES ---
+- Provide helpful, friendly, medically accurate, and concise answers.
+- Format responses with clean Markdown (bold keywords, bullet points, and brief tables where useful).
+- When writing mathematical, laboratory, or clinical calculation formulas (such as SDI, Levey-Jennings Mean/SD, BMI, LDL Friedewald, eGFR, Creatinine Clearance, or statutory payroll formulas), ALWAYS format them using standard LaTeX delimiters: use '$$...$$' for display/block equations and '$...$' or '\\(...\\)' for inline equations so they render beautifully with KaTeX.
+- When a user asks about software features (e.g., Equipment & QC, Levey-Jennings, Westgard rules, NEQAS, Inventory, Reception), give clear step-by-step instructions with the exact buttons to click and workflows to follow (as documented in the User Manual).
+- When answering medical or quality control questions, provide clear explanations with normal ranges, formulas, or clinical rationale, and advise clinical correlation.
+`;
+
+  return header + footer;
+}
+
+/**
  * Call OpenRouter API with user prompt and conversation history
  */
 async function queryOpenRouter({ question, history = [], user = null, model = DEFAULT_MODEL }) {
@@ -277,14 +303,29 @@ async function queryOpenRouter({ question, history = [], user = null, model = DE
   // Format messages
   const messages = [];
 
-  // 1. System Prompt with Knowledge Base & Active User Context
+  // 1. System Prompt with RAG or Fallback Knowledge Base & Active User Context
   const userContext = user
     ? `\nCurrent logged-in staff member: ${user.name || user.email} (Role: ${user.role || 'Staff'})`
     : '';
 
+  let knowledgeContext = null;
+  try {
+    const ragResult = await ragClient.queryRag({ question, topK: 4 });
+    if (ragResult && ragResult.success && ragResult.combinedContext) {
+      knowledgeContext = buildRagKnowledgeContext(ragResult.combinedContext);
+      console.log(`[GezyneBot] Augmented prompt with ${ragResult.results.length} RAG chunks from ChromaDB`);
+    }
+  } catch (ragErr) {
+    // Non-blocking fallback
+  }
+
+  if (!knowledgeContext) {
+    knowledgeContext = buildKnowledgeContext();
+  }
+
   messages.push({
     role: 'system',
-    content: buildKnowledgeContext() + userContext
+    content: knowledgeContext + userContext
   });
 
   // 2. Add recent conversation history (max 8 messages for token efficiency)
