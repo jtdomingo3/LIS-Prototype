@@ -80,7 +80,7 @@
                     </button>
                 </div>
                 <!-- Live Web Search Toggle (Default: OFF) -->
-                <div class="web-search-toggle-container" title="Enable live internet search snippets (DuckDuckGo/Google). Off by default to focus on internal LIS procedures and preserve token limits.">
+                <div class="web-search-toggle-container" id="web-search-toggle-box" title="Enable live internet search snippets (DuckDuckGo). Off by default to focus on internal LIS procedures and preserve token limits.">
                     <label class="switch-toggle" for="toggle-web-search">
                         <input type="checkbox" id="toggle-web-search">
                         <span class="switch-slider round"></span>
@@ -88,6 +88,7 @@
                     <label for="toggle-web-search" class="switch-text">
                         <i class="fa fa-globe"></i>
                         <span>Web Search</span>
+                        <span id="web-search-status-badge" class="web-search-badge off">OFF</span>
                     </label>
                 </div>
                 <button type="button" id="btn-clear-chat" class="button btn-secondary btn-small" title="Clear current message view">Clear View</button>
@@ -111,7 +112,7 @@
                 <div class="main-welcome-card" id="main-welcome">
                     <div class="welcome-avatar">🤖</div>
                     <h3>Welcome to GezyneBot AI</h3>
-                    <p>I am your specialized AI Assistant for Gezyne Clinical Laboratory (LIS v2.6.2). I can assist you with software operations, quality assurance, and clinical diagnostic inquiries:</p>
+                    <p>I am your specialized AI Assistant for Gezyne Clinical Laboratory (LIS v2.6.4). I can assist you with software operations, quality assurance, and clinical diagnostic inquiries:</p>
                     <div class="welcome-features-grid">
                         <div class="feature-box feature-box-clickable" onclick="handleQuickChipClick(this)" data-query="How do I use the Clinical Consultation module, record SOAP notes, auto-calculate DOH BMI, and print the patient medical chart in Gezyne LIS?">
                             <div class="feature-icon">🩺</div>
@@ -167,9 +168,25 @@
                         <div class="main-bubble">
                             <div class="bubble-header">
                                 <strong><%= msg.role === 'user' ? (sessionUser ? sessionUser.name : 'You') : 'GezyneBot' %></strong>
+                                <% const wsList = (msg.sources || []).filter(s => s && s.url); %>
+                                <% if (wsList.length > 0) { %>
+                                    <span class="badge-web-pill" title="Augmented with live web search citations"><i class="fa fa-globe"></i> Web Cited</span>
+                                <% } %>
                                 <span class="bubble-time"><%= new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %></span>
                             </div>
                             <div class="bubble-content" data-raw="<%= msg.content %>"></div>
+                            <% if (wsList.length > 0) { %>
+                                <div class="web-sources-container">
+                                    <div class="web-sources-title"><i class="fa fa-globe"></i> Web Sources:</div>
+                                    <div class="web-sources-list">
+                                        <% wsList.forEach(s => { %>
+                                            <a href="<%= s.url %>" target="_blank" rel="noopener noreferrer" class="web-source-pill" title="<%= (s.snippet || s.source || s.title || '').replace(/"/g, '&quot;') %>">
+                                                <i class="fa fa-external-link-alt"></i> <%= (s.source || s.title || 'Web Source').slice(0, 50) %>
+                                            </a>
+                                        <% }); %>
+                                    </div>
+                                </div>
+                            <% } %>
                         </div>
                     </div>
                 <% }); %>
@@ -510,6 +527,25 @@
     color: #1d4ed8;
 }
 
+.web-search-badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-size: 0.76em;
+    font-weight: 700;
+    line-height: 1.2;
+    transition: all 0.2s ease;
+}
+.web-search-badge.off {
+    background: #e2e8f0;
+    color: #64748b;
+}
+.web-search-badge.on {
+    background: #2563eb;
+    color: #ffffff;
+    box-shadow: 0 0 6px rgba(37, 99, 235, 0.4);
+}
+
 .header-controls {
     display: flex;
     align-items: center;
@@ -786,6 +822,27 @@
     color: #0f766e;
     font-family: monospace;
 }
+.main-msg-bot .bubble-content a,
+.bot-markdown-link {
+    color: #0284c7;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    word-break: break-word;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.15s ease;
+}
+.main-msg-bot .bubble-content a:hover,
+.bot-markdown-link:hover {
+    color: #0369a1;
+    text-decoration-color: #0284c7;
+}
+.bot-link-icon {
+    font-size: 0.78em;
+    opacity: 0.85;
+}
 
 /* Composer */
 .chatbot-main-composer {
@@ -842,6 +899,82 @@
     .welcome-features-grid {
         grid-template-columns: 1fr;
     }
+}
+
+/* Web Sources Citation Card */
+.web-sources-container {
+    margin-top: 14px;
+    padding: 12px 16px;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 12px;
+    font-size: 0.86em;
+}
+
+.web-sources-title {
+    font-weight: 700;
+    color: #166534;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.92em;
+}
+
+.web-sources-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.web-source-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #ffffff;
+    border: 1px solid #86efac;
+    color: #15803d;
+    padding: 5px 12px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.88em;
+    transition: all 0.15s ease;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+
+.web-source-pill:hover {
+    background: #dcfce7;
+    border-color: #22c55e;
+    color: #14532d;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(22,101,52,0.18);
+}
+
+.badge-web-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72em;
+    font-weight: 700;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+    padding: 2px 8px;
+    border-radius: 12px;
+}
+
+.badge-rag-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72em;
+    font-weight: 700;
+    background: #ecfdf5;
+    color: #047857;
+    border: 1px solid #a7f3d0;
+    padding: 2px 8px;
+    border-radius: 12px;
 }
 </style>
 
@@ -1064,6 +1197,18 @@ function initChatbot() {
         // Italic
         escaped = escaped.replace(/\*(.*?)\*/g, '<em>$1</em>');
 
+        // Markdown Hyperlinks: [Title](URL)
+        escaped = escaped.replace(/\[([^\]\n]+)\]\(((?:https?:\/\/|\/|mailto:)[^\s\)\"\'<>]+)\)/g, (match, label, url) => {
+            const cleanUrl = url.replace(/&amp;/g, '&');
+            return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="bot-markdown-link"><i class="fa fa-external-link-alt bot-link-icon"></i> ${label}</a>`;
+        });
+
+        // Bare URLs (not already part of an <a> tag)
+        escaped = escaped.replace(/(^|[\s(>])(https?:\/\/[^\s)<>"]+)/g, (match, prefix, url) => {
+            const cleanUrl = url.replace(/&amp;/g, '&');
+            return `${prefix}<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="bot-markdown-link"><i class="fa fa-external-link-alt bot-link-icon"></i> ${url}</a>`;
+        });
+
         const lines = escaped.split('\n');
         let html = '';
         let inList = null; // 'ul' or 'ol'
@@ -1135,14 +1280,14 @@ function initChatbot() {
                 continue;
             }
 
-            // Unordered list item
-            if (/^[-*+]\s+/.test(trimmed)) {
+            // Unordered list item (supports -, *, +, and unicode bullet •)
+            if (/^[-*+•]\s+/.test(trimmed)) {
                 if (inList !== 'ul') {
                     if (inList) html += inList === 'ul' ? '</ul>' : '</ol>';
                     html += '<ul>';
                     inList = 'ul';
                 }
-                html += '<li>' + trimmed.replace(/^[-*+]\s+/, '') + '</li>';
+                html += '<li>' + trimmed.replace(/^[-*+•]\s+/, '') + '</li>';
                 continue;
             }
 
@@ -1328,17 +1473,47 @@ function initChatbot() {
     // Periodically poll RAG status every 10 seconds
     setInterval(refreshRagStatus, 10000);
 
-    // Web Search Toggle Handling (Default: OFF)
+    // Web Search Toggle Handling (Preserves state during session, defaults to OFF)
     const webSearchCheckbox = document.getElementById('toggle-web-search');
-    const webSearchContainer = document.querySelector('.web-search-toggle-container');
-    if (webSearchCheckbox) {
-        webSearchCheckbox.checked = false;
-        webSearchCheckbox.addEventListener('change', () => {
-            if (webSearchContainer) {
-                if (webSearchCheckbox.checked) webSearchContainer.classList.add('active');
-                else webSearchContainer.classList.remove('active');
+    const webSearchContainer = document.getElementById('web-search-toggle-box') || document.querySelector('.web-search-toggle-container');
+    const webSearchBadge = document.getElementById('web-search-status-badge');
+
+    function syncWebSearchUI(isChecked) {
+        if (webSearchCheckbox) webSearchCheckbox.checked = isChecked;
+        if (webSearchContainer) {
+            if (isChecked) webSearchContainer.classList.add('active');
+            else webSearchContainer.classList.remove('active');
+        }
+        if (webSearchBadge) {
+            if (isChecked) {
+                webSearchBadge.className = 'web-search-badge on';
+                webSearchBadge.textContent = 'ON';
+            } else {
+                webSearchBadge.className = 'web-search-badge off';
+                webSearchBadge.textContent = 'OFF';
             }
+        }
+    }
+
+    if (webSearchCheckbox) {
+        const savedPref = sessionStorage.getItem('gezynebot_websearch_enabled');
+        const initialActive = savedPref === 'true';
+        syncWebSearchUI(initialActive);
+
+        webSearchCheckbox.addEventListener('change', () => {
+            const isChecked = !!webSearchCheckbox.checked;
+            sessionStorage.setItem('gezynebot_websearch_enabled', isChecked ? 'true' : 'false');
+            syncWebSearchUI(isChecked);
         });
+
+        if (webSearchContainer) {
+            webSearchContainer.addEventListener('click', (e) => {
+                if (e.target !== webSearchCheckbox && !e.target.closest('label')) {
+                    webSearchCheckbox.checked = !webSearchCheckbox.checked;
+                    webSearchCheckbox.dispatchEvent(new Event('change'));
+                }
+            });
+        }
     }
 
     // Append Message to Workspace
@@ -1360,12 +1535,12 @@ function initChatbot() {
 
         let sourcesHtml = '';
         if (role === 'bot' && metadata && Array.isArray(metadata.webSources) && metadata.webSources.length > 0) {
-            sourcesHtml = '<div style="margin-top:10px; padding-top:8px; border-top:1px dashed #cbd5e1; font-size:0.80em; color:#64748b;"><strong style="color:#475569;">Web Sources:</strong><br>';
+            sourcesHtml = '<div class="web-sources-container"><div class="web-sources-title"><i class="fa fa-globe"></i> Web Sources:</div><div class="web-sources-list">';
             metadata.webSources.forEach(s => {
-                const title = (s.title || 'Web Citation').slice(0, 45);
-                sourcesHtml += `<a href="${s.url}" target="_blank" rel="noopener noreferrer" class="web-source-pill" title="${(s.snippet || s.title || '').replace(/"/g, '&quot;')}"><i class="fa fa-external-link-alt"></i> ${title}${s.title && s.title.length > 45 ? '...' : ''}</a>`;
+                const title = (s.title || s.source || 'Web Citation').slice(0, 50);
+                sourcesHtml += `<a href="${s.url}" target="_blank" rel="noopener noreferrer" class="web-source-pill" title="${(s.snippet || s.title || '').replace(/"/g, '&quot;')}"><i class="fa fa-external-link-alt"></i> ${title}${s.title && s.title.length > 50 ? '...' : ''}</a>`;
             });
-            sourcesHtml += '</div>';
+            sourcesHtml += '</div></div>';
         }
 
         msgDiv.innerHTML = `

@@ -315,4 +315,4 @@ This automatically bundles FastAPI, Uvicorn, ChromaDB, and the ONNX Runtime into
 - **Packaged Executables:**
   - The Fullstack server `.exe`: `lis-fullstack/dist/laboratory-information-system.exe`
   - The Standalone RAG `.exe`: `lis-fullstack/dist/rag/rag.exe`
-  - The Tray Installer: `lis-fullstack/tray/dist/Gezyne LIS Server Setup 2.6.3.exe`
+  - The Tray Installer: `lis-fullstack/tray/dist/Gezyne LIS Server Setup 2.6.4.exe`

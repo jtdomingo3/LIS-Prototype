@@ -25,6 +25,7 @@ def build():
         "--name", "rag",
         "--onedir",  # onedir is significantly faster to launch and ideal for desktop tray bundling
         "--collect-all", "chromadb",
+        "--collect-all", "tokenizers",
         "--collect-all", "onnxruntime",
         "--collect-all", "uvicorn",
         "--collect-all", "fastapi",
@@ -32,6 +33,7 @@ def build():
         "--collect-all", "starlette",
         "--collect-all", "ddgs",
         "--collect-all", "duckduckgo_search",
+        "--hidden-import", "tokenizers",
         "--hidden-import", "uvicorn.logging",
         "--hidden-import", "uvicorn.loops",
         "--hidden-import", "uvicorn.loops.auto",

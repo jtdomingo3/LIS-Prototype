@@ -72,12 +72,18 @@
 
         <!-- Widget Toolbar (Web Search toggle, Default: OFF) -->
         <div class="gezynebot-toolbar">
-            <button type="button" id="widget-toggle-web-search" class="widget-web-toggle" title="Web Search is OFF (prioritizes local LIS knowledge). Click to turn ON.">
-                <span class="widget-web-icon">🌐</span>
-                <span class="widget-web-text">Web Search:</span>
-                <span id="widget-web-status" class="widget-web-status off">OFF</span>
-            </button>
-            <span class="widget-web-hint">Default: OFF</span>
+            <div class="widget-switch-wrapper" id="widget-switch-wrapper" title="Enable live internet search snippets (DuckDuckGo). Off by default.">
+                <label class="switch-toggle" for="widget-websearch-toggle">
+                    <input type="checkbox" id="widget-websearch-toggle">
+                    <span class="switch-slider round"></span>
+                </label>
+                <label for="widget-websearch-toggle" class="widget-switch-label">
+                    <i class="fa fa-globe" style="font-size:0.9em; color:#0284c7;"></i>
+                    <span>Web Search</span>
+                    <span id="widget-web-status-badge" class="widget-status-badge off">OFF</span>
+                </label>
+            </div>
+            <span class="widget-web-hint">DuckDuckGo live</span>
         </div>
 
         <!-- Input Composer -->
@@ -548,48 +554,99 @@
     user-select: none;
 }
 
-.widget-web-toggle {
+.widget-switch-wrapper {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 7px;
+    padding: 3px 8px;
     background: #ffffff;
     border: 1px solid #cbd5e1;
-    border-radius: 14px;
-    padding: 3px 10px;
-    font-size: 0.76em;
-    color: #475569;
+    border-radius: 8px;
     cursor: pointer;
-    font-weight: 600;
     transition: all 0.2s ease;
-    outline: none;
 }
 
-.widget-web-toggle:hover {
+.widget-switch-wrapper:hover {
     background: #f1f5f9;
-    border-color: #94a3b8;
 }
 
-.widget-web-toggle.active {
-    background: #ecfdf5;
-    border-color: #10b981;
-    color: #065f46;
-    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+.widget-switch-wrapper.active {
+    background: #eff6ff;
+    border-color: #93c5fd;
 }
 
-.widget-web-status {
-    padding: 1px 6px;
-    border-radius: 10px;
-    font-size: 0.85em;
+.widget-switch-wrapper .switch-toggle {
+    position: relative;
+    display: inline-block;
+    width: 28px;
+    height: 15px;
+    margin: 0;
+    cursor: pointer;
+}
+
+.widget-switch-wrapper .switch-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.widget-switch-wrapper .switch-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #cbd5e1;
+    transition: .2s;
+    border-radius: 15px;
+}
+
+.widget-switch-wrapper .switch-slider:before {
+    position: absolute;
+    content: "";
+    height: 11px;
+    width: 11px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    transition: .2s;
+    border-radius: 50%;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.widget-switch-wrapper .switch-toggle input:checked + .switch-slider {
+    background-color: #2563eb;
+}
+
+.widget-switch-wrapper .switch-toggle input:checked + .switch-slider:before {
+    transform: translateX(13px);
+}
+
+.widget-switch-label {
+    font-size: 0.76em;
+    font-weight: 600;
+    color: #475569;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+}
+
+.widget-status-badge {
+    display: inline-block;
+    padding: 1px 5px;
+    border-radius: 8px;
+    font-size: 0.75em;
     font-weight: 700;
+    line-height: 1.2;
+    transition: all 0.2s ease;
 }
 
-.widget-web-status.off {
+.widget-status-badge.off {
     background: #e2e8f0;
     color: #64748b;
 }
 
-.widget-web-status.on {
-    background: #10b981;
+.widget-status-badge.on {
+    background: #2563eb;
     color: #ffffff;
 }
 
@@ -632,6 +689,29 @@
     background: #e0f2fe;
     border-color: #38bdf8;
     color: #0369a1;
+}
+
+/* Hyperlinks in bot bubble */
+.gezynebot-bubble a,
+.gezynebot-bubble .bot-markdown-link {
+    color: #0284c7;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    word-break: break-word;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.15s ease;
+}
+.gezynebot-bubble a:hover,
+.gezynebot-bubble .bot-markdown-link:hover {
+    color: #0369a1;
+    text-decoration-color: #0284c7;
+}
+.gezynebot-bubble .bot-link-icon {
+    font-size: 0.78em;
+    opacity: 0.85;
 }
 
 /* Composer */
@@ -737,26 +817,47 @@ window.handleWidgetChipClick = function(btn) {
     let currentConversationId = localStorage.getItem('gezynebot_active_conv') || null;
     let isSending = false;
 
-    // Web Search Toggle State (Default: false / OFF)
-    let isWebSearchActive = false;
-    const webToggleBtn = document.getElementById('widget-toggle-web-search');
-    const webStatusSpan = document.getElementById('widget-web-status');
+    // Web Search Toggle State (Default: false / OFF, sync with session)
+    const widgetWebCheckbox = document.getElementById('widget-websearch-toggle');
+    const widgetSwitchWrapper = document.getElementById('widget-switch-wrapper');
+    const widgetWebStatusBadge = document.getElementById('widget-web-status-badge');
 
-    if (webToggleBtn && webStatusSpan) {
-        webToggleBtn.addEventListener('click', () => {
-            isWebSearchActive = !isWebSearchActive;
-            if (isWebSearchActive) {
-                webToggleBtn.classList.add('active');
-                webStatusSpan.className = 'widget-web-status on';
-                webStatusSpan.textContent = 'ON';
-                webToggleBtn.title = 'Web Search is ON (hybrid retrieval with live citations). Click to turn OFF.';
+    function syncWidgetWebSearchUI(isChecked) {
+        if (widgetWebCheckbox) widgetWebCheckbox.checked = isChecked;
+        if (widgetSwitchWrapper) {
+            if (isChecked) widgetSwitchWrapper.classList.add('active');
+            else widgetSwitchWrapper.classList.remove('active');
+        }
+        if (widgetWebStatusBadge) {
+            if (isChecked) {
+                widgetWebStatusBadge.className = 'widget-status-badge on';
+                widgetWebStatusBadge.textContent = 'ON';
             } else {
-                webToggleBtn.classList.remove('active');
-                webStatusSpan.className = 'widget-web-status off';
-                webStatusSpan.textContent = 'OFF';
-                webToggleBtn.title = 'Web Search is OFF (prioritizes local LIS knowledge). Click to turn ON.';
+                widgetWebStatusBadge.className = 'widget-status-badge off';
+                widgetWebStatusBadge.textContent = 'OFF';
             }
+        }
+    }
+
+    if (widgetWebCheckbox) {
+        const savedPref = sessionStorage.getItem('gezynebot_websearch_enabled');
+        const initialActive = savedPref === 'true';
+        syncWidgetWebSearchUI(initialActive);
+
+        widgetWebCheckbox.addEventListener('change', () => {
+            const isChecked = !!widgetWebCheckbox.checked;
+            sessionStorage.setItem('gezynebot_websearch_enabled', isChecked ? 'true' : 'false');
+            syncWidgetWebSearchUI(isChecked);
         });
+
+        if (widgetSwitchWrapper) {
+            widgetSwitchWrapper.addEventListener('click', (e) => {
+                if (e.target !== widgetWebCheckbox && !e.target.closest('label')) {
+                    widgetWebCheckbox.checked = !widgetWebCheckbox.checked;
+                    widgetWebCheckbox.dispatchEvent(new Event('change'));
+                }
+            });
+        }
     }
 
     // Bridge global caller
@@ -904,6 +1005,18 @@ window.handleWidgetChipClick = function(btn) {
         // Italic
         escaped = escaped.replace(/\*(.*?)\*/g, '<em>$1</em>');
 
+        // Markdown Hyperlinks: [Title](URL)
+        escaped = escaped.replace(/\[([^\]\n]+)\]\(((?:https?:\/\/|\/|mailto:)[^\s\)\"\'<>]+)\)/g, (match, label, url) => {
+            const cleanUrl = url.replace(/&amp;/g, '&');
+            return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="bot-markdown-link"><i class="fa fa-external-link-alt bot-link-icon"></i> ${label}</a>`;
+        });
+
+        // Bare URLs (not already part of an <a> tag)
+        escaped = escaped.replace(/(^|[\s(>])(https?:\/\/[^\s)<>"]+)/g, (match, prefix, url) => {
+            const cleanUrl = url.replace(/&amp;/g, '&');
+            return `${prefix}<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="bot-markdown-link"><i class="fa fa-external-link-alt bot-link-icon"></i> ${url}</a>`;
+        });
+
         const lines = escaped.split('\n');
         let html = '';
         let inList = null; // 'ul' or 'ol'
@@ -975,14 +1088,14 @@ window.handleWidgetChipClick = function(btn) {
                 continue;
             }
 
-            // Unordered list item
-            if (/^[-*+]\s+/.test(trimmed)) {
+            // Unordered list item (supports -, *, +, and unicode bullet •)
+            if (/^[-*+•]\s+/.test(trimmed)) {
                 if (inList !== 'ul') {
                     if (inList) html += inList === 'ul' ? '</ul>' : '</ol>';
                     html += '<ul>';
                     inList = 'ul';
                 }
-                html += '<li>' + trimmed.replace(/^[-*+]\s+/, '') + '</li>';
+                html += '<li>' + trimmed.replace(/^[-*+•]\s+/, '') + '</li>';
                 continue;
             }
 
@@ -1086,7 +1199,7 @@ window.handleWidgetChipClick = function(btn) {
                 body: JSON.stringify({
                     question: text,
                     conversationId: currentConversationId,
-                    webSearch: isWebSearchActive
+                    webSearch: widgetWebCheckbox ? !!widgetWebCheckbox.checked : false
                 })
             });
 

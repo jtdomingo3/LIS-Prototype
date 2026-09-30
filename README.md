@@ -1,13 +1,13 @@
-# Gezyne Laboratory Information System (LIS) v2.6.3
+# Gezyne Laboratory Information System (LIS) v2.6.4
 
-[![Version](https://img.shields.io/badge/version-2.6.3-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
+[![Version](https://img.shields.io/badge/version-2.6.4-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-green.svg?style=flat-square&logo=node.js)](https://nodejs.org/)
 [![Database](https://img.shields.io/badge/database-SQLite%20(WAL%20Enabled)-blue.svg?style=flat-square&logo=sqlite)](https://www.sqlite.org/)
 [![Electron](https://img.shields.io/badge/desktop-Electron%20v28-47848F.svg?style=flat-square&logo=electron)](https://www.electronjs.org/)
 [![Offline](https://img.shields.io/badge/offline-100%25%20Capable-success.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
 [![License](https://img.shields.io/badge/license-MIT-amber.svg?style=flat-square)](LICENSE)
 
-> **Gezyne Clinical Laboratory - Laboratory Information System (LIS) v2.6.3** is an enterprise-grade clinical diagnostic and laboratory management platform. It pairs a centralized full-stack Node.js/Express server with 100% offline-capable standalone desktop workstations, multi-station patient processing pipelines, real-time telemetry, AI clinical assistant, outpatient clinical consultation management, human resources & payroll, cost-per-test economics, Levey-Jennings QC & NEQAS proficiency testing, and robust SQLite WAL backups.
+> **Gezyne Clinical Laboratory - Laboratory Information System (LIS) v2.6.4** is an enterprise-grade clinical diagnostic and laboratory management platform. It pairs a centralized full-stack Node.js/Express server with 100% offline-capable standalone desktop workstations, multi-station patient processing pipelines, real-time telemetry, AI clinical assistant with live web search, outpatient clinical consultation management, human resources & payroll, cost-per-test economics, Levey-Jennings QC & NEQAS proficiency testing, and robust SQLite WAL backups.
 
 ---
 
@@ -15,10 +15,10 @@
 
 ```
 .
-├── README.md                  # Central system documentation (v2.6.3)
+├── README.md                  # Central system documentation (v2.6.4)
 ├── ads.json                   # Kiosk announcement configuration
 │
-├── lis-fullstack/             # Central LIS Server & Electron Tray Launcher (v2.6.3)
+├── lis-fullstack/             # Central LIS Server & Electron Tray Launcher (v2.6.4)
 │   ├── build/                 # Bundled installer resources & seed data
 │   ├── dist/                  # Packaged standalone executable (via pkg)
 │   ├── lib/                   # SQLite database adapter (better-sqlite3), tokens, PDF engine, payroll/tax calculators
@@ -30,13 +30,14 @@
 │   ├── views/                 # Responsive EJS views, layouts & print templates
 │   └── server.js              # Central LIS Server entrypoint
 │
-├── lis-app-standalone/        # Local-First Standalone Desktop Client (Electron) (v2.6.3)
+├── lis-app-standalone/        # Local-First Standalone Desktop Client (Electron) (v2.6.4)
 │   ├── lib/                   # Local Express engine, sync engine, network monitor & queue
 │   ├── models/                # Local SQLite models with offline support
 │   ├── renderer/              # Desktop modals, status banners & print preview
 │   ├── views/                 # Full local UI with auto-hidden sidebars on small screens
 │   └── main.js                # Electron main process & child window manager
 │
+├── lis-rag-service/           # ChromaDB Vector Store & Live DuckDuckGo Web-Augmented RAG Microservice (v2.6.4)
 ├── lis-mobile/                # Mobile companion application (Cordova/Capacitor)
 ├── lis-angular/               # Alternative Angular single-page frontend
 └── test/                      # Comprehensive integration, offline, inventory & sync test suites
@@ -46,7 +47,22 @@
 
 ## 📜 Version History & Release Notes
 
-### **v2.6.2 (Human Resources & Payroll, Financial Costing & Profitability, 2D Echo Dual-Sheet Printing, GezyneBot v2.6.3) — Current Release**
+### **v2.6.4 (DuckDuckGo Live Web Search Integration, ChromaDB RAG Engine Hardening, Markdown Hyperlinks & UI Persistence) — Current Release**
+- 🌐 **Web-Augmented RAG (Hybrid Retrieval via DuckDuckGo)**:
+  - Integrated zero-configuration external search using DuckDuckGo (`ddgs`) into the local Python RAG microservice (`lis-rag-service`), providing live internet search snippets without third-party API keys or Google Search dependencies.
+  - Standardized external citations as generic `"Web Result"` across all API payloads and UI citations.
+  - Added anti-refusal system directives ensuring the AI model synthesizes live web context for recent 2024–2026 Philippine Department of Health (DOH) regulations and laboratory standards without claiming knowledge cutoff limitations.
+- ⚙️ **RAG Microservice Daemon Hardening (`rag.exe`)**:
+  - Recompiled standalone `rag.exe` with PyInstaller bundling `tokenizers`, `onnxruntime`, `chromadb`, and `tornado`.
+  - Implemented safe, fault-tolerant vector retrieval fallback in `app.py`: if local vector search encounters an issue, external web search still executes and returns citations uninterrupted.
+- 🔗 **Interactive Markdown Hyperlinks & Citation Rendering**:
+  - Enhanced markdown parsing in both dedicated full-page chatbot (`/chatbot`) and floating chat head widget (`gezynebot-widget`): markdown links `[Title](URL)` and bare URLs automatically render as clickable `<a>` links with external link icons.
+  - Added support for unicode bullet characters (`• `) converting to clean HTML lists (`<ul><li>`).
+- 🎛️ **Web Search Toggle Persistence & Status Badges**:
+  - Replaced widget toggle with a responsive slider switch and explicit `[ON]` / `[OFF]` badges matching the full chat view.
+  - Tied Web Search toggle state to `sessionStorage`, preventing unexpected reset to OFF when switching conversation topics or reloading.
+
+### **v2.6.3 (Clinical Consultation Module, DOH PhilPEN Risk Assessment, Clinical Document Printing & Worksheet Isolation)**
 - 👥 **Human Resources (HR) & Philippine Payroll Management Module (`/hr`)**:
   - **Employee Master Directory (`/hr/employees`)**:
     - Centralized management of clinic staff profiles: Employee Code, full legal name (with automatic stripping of medical credentials like "MD, FPSP" for clean legal records while preserving clinical credentials in profiles), department, position/role, employment status (Active, Resigned, AWOL, Terminated with separation dates and reasons).
@@ -253,9 +269,9 @@ The desktop client runs an embedded local engine on `http://127.0.0.1:30099` wit
 
 ---
 
-## 📦 Packaging Windows Installers (v2.6.3)
+## 📦 Packaging Windows Installers (v2.6.4)
 
-### 1. Build Central Server Installer (`Gezyne LIS Server Setup 2.6.0.exe`)
+### 1. Build Central Server Installer (`Gezyne LIS Server Setup 2.6.4.exe`)
 
 ```powershell
 cd lis-fullstack
@@ -266,16 +282,16 @@ cd tray
 npm install
 npm run dist:win
 ```
-*Output: `lis-fullstack/tray/dist/Gezyne LIS Server Setup 2.6.0.exe`*
+*Output: `lis-fullstack/tray/dist/Gezyne LIS Server Setup 2.6.4.exe`*
 
-### 2. Build Standalone Client Installer (`Gezyne LIS Setup 2.6.0.exe`)
+### 2. Build Standalone Client Installer (`Gezyne LIS Setup 2.6.4.exe`)
 
 ```powershell
 cd lis-app-standalone
 npm install
 npm run dist:win
 ```
-*Output: `lis-app-standalone/dist/Gezyne LIS Setup 2.6.0.exe`*
+*Output: `lis-app-standalone/dist/Gezyne LIS Setup 2.6.4.exe`*
 
 ---
 

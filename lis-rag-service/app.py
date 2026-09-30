@@ -78,16 +78,26 @@ async def query_knowledge(req: QueryRequest):
         raise HTTPException(status_code=503, detail="RAG Engine not initialized")
 
     try:
-        # Run ChromaDB vector search in worker thread
-        vector_task = asyncio.to_thread(engine.query, query_text=req.question, top_k=req.top_k)
+        # Run ChromaDB vector search safely in worker thread
+        async def safe_vector_search():
+            try:
+                return await asyncio.to_thread(engine.query, query_text=req.question, top_k=req.top_k)
+            except Exception as ve:
+                print(f"[RAG Service] Vector search notice: {ve}")
+                return {
+                    "query": req.question,
+                    "results_count": 0,
+                    "results": [],
+                    "combined_context": ""
+                }
 
         web_results = []
         if req.enable_web:
             # Query web search concurrently with ChromaDB
             web_task = asyncio.to_thread(search_web, query=req.question, max_results=3, timeout_seconds=6)
-            result, web_results = await asyncio.gather(vector_task, web_task)
+            result, web_results = await asyncio.gather(safe_vector_search(), web_task)
         else:
-            result = await vector_task
+            result = await safe_vector_search()
 
         combined = result.get("combined_context", "")
         if web_results:

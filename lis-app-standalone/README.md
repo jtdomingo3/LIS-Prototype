@@ -1,6 +1,6 @@
-# Gezyne LIS Standalone Desktop Client v2.6.3
+# Gezyne LIS Standalone Desktop Client v2.6.4
 
-[![Version](https://img.shields.io/badge/version-2.6.3-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
+[![Version](https://img.shields.io/badge/version-2.6.4-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
 [![Electron](https://img.shields.io/badge/Electron-v28-47848F.svg?style=flat-square&logo=electron)](https://www.electronjs.org/)
 [![Database](https://img.shields.io/badge/database-SQLite%20(Local--First)-blue.svg?style=flat-square&logo=sqlite)](https://www.sqlite.org/)
 [![Offline](https://img.shields.io/badge/offline-100%25%20capable-success.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
@@ -14,7 +14,14 @@ The standalone desktop application operates **100% autonomously without network 
 
 ## 📜 Version History & Release Notes
 
-### **v2.6.3 (Human Resources & Payroll, Financial Costing & Profitability, 2D Echo Dual-Sheet Printing, GezyneBot v2.6.3) — Current Release**
+### **v2.6.4 (DuckDuckGo Live Web Search Integration, ChromaDB RAG Engine Hardening, Markdown Hyperlinks & UI Persistence) — Current Release**
+- 🌐 **Web-Augmented RAG & Offline Workstation Parity**:
+  - Offline GezyneBot AI client synchronized to LIS Version 2.6.4 with live web search capabilities, interactive hyperlink rendering, and unicode bullet parsing.
+  - Interactive slider switch with session toggle memory on the desktop floating assistant widget.
+- ⚙️ **System-Wide Architecture Upgrades**:
+  - Complete parity with central server v2.6.4 across models, view layouts, settings synchronization, and clinical reference materials.
+
+### **v2.6.3 (Human Resources & Payroll, Financial Costing & Profitability, 2D Echo Dual-Sheet Printing, GezyneBot v2.6.3)**
 - 👥 **Human Resources (HR) & Philippine Payroll Management Module (`/hr`)**:
   - Full local-first offline support for Employee Master Directory (`/hr/employees`), Employee Self-Service / Personal Portal (`/hr/my`), Daily Time Record (DTR) attendance logging (`/hr/my/dtr`), and Leave Application workflows (`/hr/leaves`).
   - Integrated Philippine statutory deductions engine (`lib/philippineContributions.js`) and payroll calculation engine (`lib/payrollComputer.js`) supporting 2025/2026 SSS with WISP/MPF, PhilHealth 5%, Pag-IBIG HDMF, and BIR TRAIN graduated withholding tax.
@@ -227,7 +234,7 @@ node test/settings-system.test.js
 
 ---
 
-## 📦 Building the Windows Installer (v2.6.3)
+## 📦 Building the Windows Installer (v2.6.4)
 
 To compile the production Windows desktop installer package:
 
@@ -239,7 +246,7 @@ npm run dist:win
 npm run dist:dir
 ```
 
-Installer Artifact: `lis-app-standalone/dist/Gezyne LIS Setup 2.6.3.exe`
+Installer Artifact: `lis-app-standalone/dist/Gezyne LIS Setup 2.6.4.exe`
 
 ---
 

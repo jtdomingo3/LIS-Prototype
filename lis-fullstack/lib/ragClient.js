@@ -23,8 +23,10 @@ let isStarting = false;
  * @param {number} timeoutMs - Timeout before fallback (default: 4500ms)
  * @returns {Promise<{success: boolean, combinedContext: string, results: Array, webResults: Array, webSearchEnabled: boolean}|null>}
  */
-async function queryRag({ question, topK = 4, enableWeb = false, timeoutMs = 4500 }) {
+async function queryRag({ question, topK = 4, enableWeb = false, timeoutMs = null }) {
   if (!question || !question.trim()) return null;
+
+  const effectiveTimeout = timeoutMs || (enableWeb ? 15000 : 5000);
 
   const payload = JSON.stringify({
     question: question.trim(),
@@ -43,7 +45,7 @@ async function queryRag({ question, topK = 4, enableWeb = false, timeoutMs = 450
           'Content-Type': 'application/json',
           'Content-Length': Buffer.byteLength(payload)
         },
-        timeout: timeoutMs
+        timeout: effectiveTimeout
       },
       (res) => {
         let rawData = '';
@@ -52,10 +54,10 @@ async function queryRag({ question, topK = 4, enableWeb = false, timeoutMs = 450
           try {
             if (res.statusCode === 200) {
               const data = JSON.parse(rawData);
-              if (data && data.success && data.combined_context) {
+              if (data && data.success) {
                 return resolve({
                   success: true,
-                  combinedContext: data.combined_context,
+                  combinedContext: data.combined_context || '',
                   results: data.results || [],
                   webResults: data.web_results || [],
                   webSearchEnabled: !!data.web_search_enabled

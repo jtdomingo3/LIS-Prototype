@@ -232,7 +232,7 @@ function buildKnowledgeContext() {
 
   const header = `=== GEZYNE CLINICAL LABORATORY INFORMATION SYSTEM (LIS) KNOWLEDGE BASE ===
 
-You are "GezyneBot", the resident Clinical Laboratory, Quality Assurance, and LIS Expert Assistant for Gezyne Clinical Laboratory (LIS Version 2.6.3).
+You are "GezyneBot", the resident Clinical Laboratory, Quality Assurance, and LIS Expert Assistant for Gezyne Clinical Laboratory (LIS Version 2.6.4).
 Your role is to assist laboratory staff, medical technologists, receptionists, encoders, quality managers, and doctors with both:
 1. Navigating and operating the Gezyne LIS software smoothly across all modules (including Reception, Test Worksheets, Analyzer Capture, Reports, Signatures, Reagent Inventory, Equipment & Levey-Jennings QC, NEQAS Proficiency Testing, Clinical Consultations, Human Resources (HR) & Payroll, Financial Costing & Profitability, and User Permissions).
 2. Answering clinical laboratory, phlebotomy, diagnostic testing, quality control, Westgard rules, NEQAS/EQA evaluation, outpatient consultation, Philippine statutory contributions (SSS, PhilHealth, Pag-IBIG, BIR tax), diagnostic cost-per-test economics, and medical reference questions accurately.
@@ -264,15 +264,28 @@ Your role is to assist laboratory staff, medical technologists, receptionists, e
 /**
  * System Knowledge Context dynamically constructed from ChromaDB vector search
  */
-function buildRagKnowledgeContext(retrievedText) {
+function buildRagKnowledgeContext(retrievedText, webSources = []) {
   const header = `=== GEZYNE CLINICAL LABORATORY INFORMATION SYSTEM (LIS) KNOWLEDGE BASE ===
 
-You are "GezyneBot", the resident Clinical Laboratory, Quality Assurance, and LIS Expert Assistant for Gezyne Clinical Laboratory (LIS Version 2.6.3).
+You are "GezyneBot", the resident Clinical Laboratory, Quality Assurance, and LIS Expert Assistant for Gezyne Clinical Laboratory (LIS Version 2.6.4).
 Your role is to assist laboratory staff, medical technologists, receptionists, encoders, quality managers, and doctors with navigating the software, answering clinical laboratory procedures, and quality assurance.
 
---- RELEVANT KNOWLEDGE BASE SECTIONS (RETRIEVED VIA CHROMADB VECTOR SEARCH) ---
+--- RELEVANT KNOWLEDGE BASE SECTIONS (RETRIEVED VIA CHROMADB & WEB SEARCH) ---
 ${retrievedText}
 `;
+
+  let webGuideline = '';
+  if (Array.isArray(webSources) && webSources.length > 0) {
+    webGuideline = `
+- CRITICAL WEB SEARCH & CITATION INSTRUCTIONS:
+  1. Live web search results for the user's question have been retrieved and provided in the references above.
+  2. You MUST synthesize and answer directly using these external findings (including current Philippine DOH policies, guidelines, clinical updates, and recent laboratory standards).
+  3. DO NOT refuse to answer, and DO NOT claim that your knowledge cutoff prevents you from answering current events or recent guidelines—you have real-time live web search data explicitly provided above!
+  4. AT THE VERY BOTTOM OF YOUR RESPONSE, YOU MUST INCLUDE A SECTION LABELED:
+### 🌐 Sources & References
+List each web source with its title and markdown link URL so the user can verify the information (e.g., "- [Title](URL)").
+`;
+  }
 
   const footer = `
 --- COMMUNICATION STYLE & GUIDELINES ---
@@ -281,6 +294,7 @@ ${retrievedText}
 - When writing mathematical, laboratory, or clinical calculation formulas (such as SDI, Levey-Jennings Mean/SD, BMI, LDL Friedewald, eGFR, Creatinine Clearance, or statutory payroll formulas), ALWAYS format them using standard LaTeX delimiters: use '$$...$$' for display/block equations and '$...$' or '\\(...\\)' for inline equations so they render beautifully with KaTeX.
 - When a user asks about software features (e.g., Equipment & QC, Levey-Jennings, Westgard rules, NEQAS, Inventory, Reception), give clear step-by-step instructions with the exact buttons to click and workflows to follow (as documented in the User Manual).
 - When answering medical or quality control questions, provide clear explanations with normal ranges, formulas, or clinical rationale, and advise clinical correlation.
+${webGuideline}
 `;
 
   return header + footer;
@@ -316,7 +330,6 @@ async function queryOpenRouter({ question, history = [], user = null, model = DE
   try {
     const ragResult = await ragClient.queryRag({ question, topK: 4, enableWeb: !!webSearch });
     if (ragResult && ragResult.success && ragResult.combinedContext) {
-      knowledgeContext = buildRagKnowledgeContext(ragResult.combinedContext);
       ragUsed = true;
       ragChunks = (ragResult.results && ragResult.results.length) || 0;
       if (ragResult.webResults && ragResult.webResults.length > 0) {
@@ -326,6 +339,7 @@ async function queryOpenRouter({ question, history = [], user = null, model = DE
       } else {
         console.log(`[GezyneBot] Augmented prompt with ${ragChunks} RAG chunks from ChromaDB`);
       }
+      knowledgeContext = buildRagKnowledgeContext(ragResult.combinedContext, webSources);
     }
   } catch (ragErr) {
     // Non-blocking fallback
@@ -466,7 +480,7 @@ async function fetchFreeOpenRouterModels(forceRefresh = false) {
   return new Promise((resolve) => {
     const apiKey = resolveApiKey();
     const headers = {
-      'User-Agent': 'Gezyne-LIS-Bot/2.6.3'
+      'User-Agent': 'Gezyne-LIS-Bot/2.6.4'
     };
     if (apiKey) {
       headers['Authorization'] = `Bearer ${apiKey}`;

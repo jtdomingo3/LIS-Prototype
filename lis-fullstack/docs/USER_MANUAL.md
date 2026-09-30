@@ -1,5 +1,5 @@
 # Gezyne Clinical Laboratory Information System (LIS)
-## Staff & User Operation Manual (Version 2.6.3)
+## Staff & User Operation Manual (Version 2.6.4)
 
 Welcome to the **Gezyne LIS User Guide**. This manual is designed for laboratory staff, medical technologists, receptionists, encoders, clinic nurses, quality assurance managers, and attending physicians. It provides step-by-step instructions on which menu items to select, buttons to click, and forms to complete to operate the system smoothly.
 
@@ -342,4 +342,4 @@ This module is designed for attending clinic physicians and outpatient medical o
 > **Mandatory Emergency Protocol:** Whenever a panic value is encountered, the Medical Technologist must immediately check sample integrity (verify no micro-clot or hemolysis), re-run the test on the instrument, and contact the attending physician and supervising pathologist immediately.
 
 ---
-*End of Gezyne LIS Staff & User Operation Manual (v2.6.3)*
+*End of Gezyne LIS Staff & User Operation Manual (v2.6.4)*
