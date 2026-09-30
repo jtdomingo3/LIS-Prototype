@@ -588,6 +588,11 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   } catch (e) { console.error('[LocalServer] failed to load chatbot routes:', e && e.message); }
 
   try {
+    const manualRoutes = require('../routes/manual');
+    app.use('/manual', manualRoutes);
+  } catch (e) { console.error('[LocalServer] failed to load manual routes:', e && e.message); }
+
+  try {
     const costingRoutes = require('../routes/costing');
     app.use('/costing', costingRoutes);
   } catch (e) { console.error('[LocalServer] failed to load costing routes:', e && e.message); }

@@ -1028,6 +1028,7 @@ const equipmentRoutes = require('./routes/equipment');
 const consultationRoutes = require('./routes/consultations');
 const costingRoutes = require('./routes/costing');
 const hrRoutes = require('./routes/hr');
+const manualRoutes = require('./routes/manual');
 
 app.use('/', authRoutes);
 app.use('/dashboard', dashboardRoutes);
@@ -1041,6 +1042,7 @@ app.use('/consultations', consultationRoutes);
 app.use('/settings', settingsRoutes);
 app.use('/signatures', signaturesRoutes);
 app.use('/chatbot', chatbotRoutes);
+app.use('/manual', manualRoutes);
 app.use('/inventory', inventoryRoutes);
 app.use('/equipment', equipmentRoutes);
 app.use('/api/equipment', equipmentRoutes);

@@ -1,0 +1,491 @@
+<div class="manual-container">
+    <!-- Top Action Bar -->
+    <div class="manual-header-card card">
+        <div class="manual-header-content">
+            <div class="manual-header-title">
+                <h2><i class="fa fa-book-reader" style="color:var(--secondary-green);margin-right:8px;"></i> System User & Staff Operation Manual</h2>
+                <p class="text-muted" style="margin:4px 0 0 0;font-size:0.9em;">
+                    Official step-by-step guide for laboratory staff, medical technologists, receptionists, and doctors.
+                    <% if (typeof lastUpdated !== 'undefined' && lastUpdated) { %>
+                        <span class="badge" style="background:#e0f2fe;color:#0369a1;margin-left:8px;padding:2px 8px;border-radius:12px;font-size:0.8em;">Updated: <%= lastUpdated %></span>
+                    <% } %>
+                </p>
+            </div>
+            <div class="manual-header-actions">
+                <button type="button" onclick="window.print()" class="button btn-small btn-secondary" title="Print Manual">
+                    <i class="fa fa-print"></i> Print Manual
+                </button>
+                <a href="/manual/raw" class="button btn-small btn-secondary" target="_blank" title="Raw Markdown">
+                    <i class="fa fa-download"></i> Download Markdown
+                </a>
+            </div>
+        </div>
+
+        <!-- Real-Time Filter / Search Bar -->
+        <div class="manual-search-wrapper" style="margin-top:14px;">
+            <div style="position:relative;width:100%;">
+                <input type="text" id="manualSearchInput" class="manual-search-input" placeholder="🔍 Search manual for buttons, features, or workflows (e.g. 'Add QC', 'Import Analyzer', 'Soap', 'DTR', 'Leave')..." oninput="filterManualContent()">
+                <button type="button" id="clearManualSearch" onclick="clearSearch()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;cursor:pointer;display:none;font-size:16px;">✕</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Manual Layout: Split TOC + Content -->
+    <div class="manual-layout">
+        <!-- Sidebar Navigation (Table of Contents) -->
+        <aside class="manual-sidebar">
+            <div class="card manual-toc-card">
+                <div class="manual-toc-header">
+                    <strong style="font-size:0.95em;color:#0f172a;"><i class="fa fa-list-ul" style="color:#64748b;"></i> Table of Contents</strong>
+                </div>
+                <nav class="manual-toc-nav" id="manualTocNav">
+                    <% if (typeof toc !== 'undefined' && toc && toc.length > 0) { %>
+                        <ul>
+                            <% toc.forEach(function(item) { %>
+                                <li class="toc-level-<%= item.level %>">
+                                    <a href="#<%= item.slug %>" class="toc-link" onclick="handleTocClick(event, '<%= item.slug %>')">
+                                        <%= item.text %>
+                                    </a>
+                                </li>
+                            <% }); %>
+                        </ul>
+                    <% } else { %>
+                        <p class="text-muted" style="font-size:0.85em;padding:8px;">No sections found.</p>
+                    <% } %>
+                </nav>
+            </div>
+        </aside>
+
+        <!-- Document Content -->
+        <main class="manual-content">
+            <div class="card manual-doc-card" id="manualDocCard">
+                <%- manualHtml %>
+            </div>
+        </main>
+    </div>
+</div>
+
+<style>
+/* Clean, Modern User Manual Styles */
+.manual-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 6px 12px 24px 12px;
+}
+
+.manual-header-card {
+    padding: 16px 20px;
+    margin-bottom: 16px;
+    border: 1px solid var(--border-gray);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+}
+
+.manual-header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.manual-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.manual-search-input {
+    width: 100%;
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    font-size: 0.95em;
+    background: #f8fafc;
+    transition: all 0.2s ease;
+}
+
+.manual-search-input:focus {
+    outline: none;
+    background: #ffffff;
+    border-color: var(--secondary-green);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+.manual-layout {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+/* Sidebar Table of Contents */
+.manual-sidebar {
+    width: 320px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 16px;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+}
+
+.manual-toc-card {
+    padding: 14px 16px;
+    border: 1px solid var(--border-gray);
+}
+
+.manual-toc-header {
+    padding-bottom: 8px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.manual-toc-nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.manual-toc-nav li {
+    margin-bottom: 4px;
+}
+
+.manual-toc-nav li.toc-level-1 {
+    font-weight: 700;
+    margin-top: 10px;
+}
+
+.manual-toc-nav li.toc-level-2 {
+    font-weight: 600;
+    margin-top: 6px;
+}
+
+.manual-toc-nav li.toc-level-3 {
+    padding-left: 12px;
+    font-size: 0.9em;
+}
+
+.manual-toc-nav a.toc-link {
+    color: #475569;
+    text-decoration: none;
+    display: block;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: all 0.15s;
+    line-height: 1.3;
+}
+
+.manual-toc-nav a.toc-link:hover,
+.manual-toc-nav a.toc-link.active {
+    background: rgba(16, 185, 129, 0.08);
+    color: var(--secondary-green-dark);
+}
+
+/* Document Content Body */
+.manual-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.manual-doc-card {
+    padding: 28px 36px;
+    border: 1px solid var(--border-gray);
+    line-height: 1.7;
+    font-size: 14.5px;
+    color: #1e293b;
+    background: #ffffff;
+}
+
+/* Markdown Specific Typography & Component Styling */
+.manual-h1 {
+    font-size: 1.85em;
+    font-weight: 700;
+    color: #0f172a;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 8px;
+    margin-top: 0;
+    margin-bottom: 16px;
+}
+
+.manual-h2 {
+    font-size: 1.35em;
+    font-weight: 700;
+    color: #0f172a;
+    border-bottom: 1px solid #f1f5f9;
+    padding-bottom: 6px;
+    margin-top: 28px;
+    margin-bottom: 14px;
+}
+
+.manual-h3 {
+    font-size: 1.1em;
+    font-weight: 600;
+    color: #1e293b;
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
+
+.manual-anchor {
+    color: #cbd5e1;
+    text-decoration: none;
+    margin-right: 6px;
+    font-size: 0.85em;
+}
+
+.manual-anchor:hover {
+    color: var(--secondary-green);
+}
+
+.manual-p {
+    margin-bottom: 12px;
+}
+
+.manual-list {
+    margin-bottom: 14px;
+    padding-left: 24px;
+}
+
+.manual-list li {
+    margin-bottom: 6px;
+}
+
+.manual-code {
+    background: #f1f5f9;
+    color: #0f172a;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.9em;
+    border: 1px solid #e2e8f0;
+}
+
+.manual-pre {
+    background: #0f172a;
+    color: #f8fafc;
+    padding: 14px 18px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 0.9em;
+    margin: 14px 0;
+}
+
+.manual-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+}
+
+.manual-table th, .manual-table td {
+    border: 1px solid #e2e8f0;
+    padding: 10px 14px;
+    text-align: left;
+}
+
+.manual-table th {
+    background: #f8fafc;
+    font-weight: 600;
+}
+
+.manual-hr {
+    border: none;
+    border-top: 1px solid #e2e8f0;
+    margin: 24px 0;
+}
+
+.step-arrow {
+    display: inline-block;
+    color: var(--secondary-green);
+    font-weight: bold;
+    margin: 0 4px;
+}
+
+.manual-math {
+    font-style: italic;
+    font-family: Cambria, 'Times New Roman', serif;
+    padding: 0 2px;
+}
+
+/* Alert Boxes */
+.manual-blockquote {
+    border-left: 4px solid #cbd5e1;
+    margin: 14px 0;
+    padding: 10px 16px;
+    background: #f8fafc;
+    border-radius: 0 8px 8px 0;
+}
+
+.alert-box {
+    margin: 16px 0;
+    padding: 12px 16px;
+    border-radius: 8px;
+    border-left: 5px solid;
+}
+
+.alert-note {
+    border-color: #3b82f6;
+    background: #eff6ff;
+    color: #1e40af;
+}
+
+.alert-warning {
+    border-color: #f59e0b;
+    background: #fffbeb;
+    color: #92400e;
+}
+
+.alert-important {
+    border-color: #ef4444;
+    background: #fef2f2;
+    color: #991b1b;
+}
+
+.alert-tip {
+    border-color: #10b981;
+    background: #ecfdf5;
+    color: #065f46;
+}
+
+/* KaTeX Formula Styling in User Manual */
+.katex-display {
+    margin: 18px 0 !important;
+    padding: 14px 20px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    text-align: center;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);
+}
+
+.katex-inline {
+    display: inline-block;
+    vertical-align: middle;
+    padding: 0 2px;
+}
+
+.katex {
+    font-size: 1.05em;
+    text-rendering: auto;
+}
+
+/* Responsive adjustments */
+@media (max-width: 992px) {
+    .manual-layout {
+        flex-direction: column;
+    }
+    .manual-sidebar {
+        width: 100%;
+        position: static;
+        max-height: 250px;
+        margin-bottom: 16px;
+    }
+}
+
+@media print {
+    .manual-sidebar, .manual-header-card, .sidebar, .header {
+        display: none !important;
+    }
+    .main-content {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    .manual-doc-card {
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+    }
+}
+</style>
+
+<script>
+// Smooth scroll for TOC anchors
+function handleTocClick(event, slug) {
+    event.preventDefault();
+    const el = document.getElementById(slug);
+    if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Update URL hash without jump
+        history.pushState(null, null, '#' + slug);
+    }
+}
+
+// Live Search in User Manual
+function filterManualContent() {
+    const input = document.getElementById('manualSearchInput');
+    const clearBtn = document.getElementById('clearManualSearch');
+    const query = (input.value || '').trim().toLowerCase();
+
+    if (clearBtn) clearBtn.style.display = query ? 'block' : 'none';
+
+    const card = document.getElementById('manualDocCard');
+    if (!card) return;
+
+    // Get all heading and paragraph blocks
+    const blocks = card.querySelectorAll('.manual-h2, .manual-h3, .manual-p, .manual-list, .manual-table, .katex-display');
+
+    if (!query) {
+        // Reset view
+        blocks.forEach(b => { b.style.display = ''; });
+        return;
+    }
+
+    blocks.forEach(block => {
+        const text = block.textContent.toLowerCase();
+        if (text.includes(query)) {
+            block.style.display = '';
+            // Ensure previous heading is also visible
+            let prev = block.previousElementSibling;
+            while (prev && !prev.classList.contains('manual-h2')) {
+                prev.style.display = '';
+                prev = prev.previousElementSibling;
+            }
+            if (prev) prev.style.display = '';
+        } else {
+            block.style.display = 'none';
+        }
+    });
+}
+
+function clearSearch() {
+    const input = document.getElementById('manualSearchInput');
+    if (input) {
+        input.value = '';
+        filterManualContent();
+        input.focus();
+    }
+}
+
+// Render KaTeX Math in Document
+function renderManualFormulas() {
+    const card = document.getElementById('manualDocCard');
+    if (!card) return;
+
+    if (typeof renderMathInElement === 'function') {
+        renderMathInElement(card, {
+            delimiters: [
+                { left: '$$', right: '$$', display: true },
+                { left: '\\[', right: '\\]', display: true },
+                { left: '$', right: '$', display: false },
+                { left: '\\(', right: '\\)', display: false }
+            ],
+            ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+            throwOnError: false
+        });
+    } else if (typeof katex !== 'undefined') {
+        card.querySelectorAll('[data-expr]').forEach(el => {
+            const expr = el.getAttribute('data-expr');
+            const isDisplay = el.classList.contains('katex-display');
+            if (expr) {
+                try {
+                    katex.render(expr, el, { displayMode: isDisplay, throwOnError: false });
+                } catch(e) {}
+            }
+        });
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', renderManualFormulas);
+} else {
+    renderManualFormulas();
+}
+</script>

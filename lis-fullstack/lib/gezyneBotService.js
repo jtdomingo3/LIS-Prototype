@@ -186,307 +186,78 @@ async function testOpenRouterConnection(keyToTest, model = DEFAULT_MODEL) {
   }
 }
 
+let cachedManualContent = null;
+let lastManualMtime = 0;
+
+function resolveManualPath() {
+  const candidates = [
+    path.join(__dirname, '..', 'docs', 'USER_MANUAL.md'),
+    path.join(process.cwd(), 'docs', 'USER_MANUAL.md'),
+    path.join(process.cwd(), '..', 'docs', 'USER_MANUAL.md'),
+    path.join(__dirname, '..', '..', 'docs', 'USER_MANUAL.md'),
+  ];
+  if (process.env.DATA_DIR) {
+    candidates.unshift(path.join(process.env.DATA_DIR, 'USER_MANUAL.md'));
+  }
+  for (const p of candidates) {
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
+}
+
+function loadUserManualContent() {
+  try {
+    const manualPath = resolveManualPath();
+    if (!manualPath) return null;
+    const stat = fs.statSync(manualPath);
+    if (!cachedManualContent || stat.mtimeMs !== lastManualMtime) {
+      cachedManualContent = fs.readFileSync(manualPath, 'utf8');
+      lastManualMtime = stat.mtimeMs;
+      console.log(`[GezyneBot] Loaded knowledge manual from: ${manualPath} (${cachedManualContent.length} bytes)`);
+    }
+    return cachedManualContent;
+  } catch (err) {
+    console.warn('[GezyneBot] Failed to read knowledge manual:', err.message);
+    return cachedManualContent || null;
+  }
+}
+
 /**
  * System Knowledge Context for Gezyne Clinical Laboratory & Information System
+ * Dynamically populated from docs/USER_MANUAL.md
  */
 function buildKnowledgeContext() {
-  return `
-=== GEZYNE CLINICAL LABORATORY INFORMATION SYSTEM (LIS) KNOWLEDGE BASE ===
+  const manual = loadUserManualContent();
+
+  const header = `=== GEZYNE CLINICAL LABORATORY INFORMATION SYSTEM (LIS) KNOWLEDGE BASE ===
 
 You are "GezyneBot", the resident Clinical Laboratory, Quality Assurance, and LIS Expert Assistant for Gezyne Clinical Laboratory (LIS Version 2.6.3).
 Your role is to assist laboratory staff, medical technologists, receptionists, encoders, quality managers, and doctors with both:
 1. Navigating and operating the Gezyne LIS software smoothly across all modules (including Reception, Test Worksheets, Analyzer Capture, Reports, Signatures, Reagent Inventory, Equipment & Levey-Jennings QC, NEQAS Proficiency Testing, Clinical Consultations, Human Resources (HR) & Payroll, Financial Costing & Profitability, and User Permissions).
 2. Answering clinical laboratory, phlebotomy, diagnostic testing, quality control, Westgard rules, NEQAS/EQA evaluation, outpatient consultation, Philippine statutory contributions (SSS, PhilHealth, Pag-IBIG, BIR tax), diagnostic cost-per-test economics, and medical reference questions accurately.
 
---- LIS SOFTWARE WORKFLOW & OPERATION GUIDE ---
-1. RECEPTION & QUEUEING (/reception):
-   - Workflow starts at Reception where patient demographics, PhilHealth consent, and requested tests are entered.
-   - Patients receive automated codes (e.g. GCL-YYYY-MM-00000).
-   - Area routing stations: Payment Area -> Extraction Area -> Special diagnostic areas (Drug Test, Ultrasound, 2D Echo, X-ray, ECG, Doctor's Check-up) -> Releasing of Result.
-   - Multi-Station Sequence Protection: Late-added tests are routed to their designated station without looping patients back to stations they have already completed.
-   - Live Queue & Calling Kiosk: The queue updates live across the LAN via Server-Sent Events (/reception/stream). Waiting room TV screens run full-screen at /kiosk (or /reception/assigned?kiosk=1) with automated chime and spoken voice announcements (Google TTS).
-   - "Stashed" status is used when a patient is temporarily unavailable (e.g. stepped out) without losing their spot.
+--- OFFICIAL SYSTEM USER MANUAL & REFERENCE GUIDE ---
+`;
 
-2. SPECIMEN COLLECTION & PHLEBOTOMY TRACKING:
-   - Specimen codes can be assigned per department (e.g., CBC-001, U-001).
-   - Barcodes are printed with thermal or standard printers for tubes and sample containers.
-   - Dedicated thermal barcode printer integration supports direct ESC/POS hardware printing.
-
-3. TEST WORKSHEETS & RESULTS ENTRY (/tests):
-   - Departments: Hematology (CBC, Differential, ESR, Blood Typing), Clinical Chemistry, Urinalysis, Fecalysis, Serology / Immunology, Thyroid, Coagulation (PT / APTT), Imaging (X-Ray, Ultrasound, 2D Echo, ECG).
-   - Analyzer Direct Import: In clinical chemistry, clicking "Import from Analyzer" parses the MS Access database (Analyser.MDB) from the chemistry machine and auto-fills FBS, BUN, Creatinine, Lipid profile, AST/SGOT, ALT/SGPT, etc.
-   - Result Guard / Lock: Once a test is set to "Completed" or "Released", the system locks the test so it cannot be accidentally reverted to a pending state.
-   - Standardized Batch Worksheets: Clinical batch worksheets export to Excel (.xlsx, .xls, .csv) with "APPROVED BY", "APPROVED BY LICENSE", attending physician in "REQUESTED BY", patient Age, Sex, and clean diagnostic parameters.
-   - Doctor's Check-up Isolation: Outpatient medical consultations are excluded from batch laboratory worksheets (/worksheet/download, /worksheet/preview) and diagnostic report exports via isDoctorVisitTest, ensuring laboratory worklists strictly contain diagnostic specimens.
-
-4. DIAGNOSTIC REPORTS & PRINTING (/reports):
-   - Automatically renders high-resolution clinical reports using Puppeteer-core and the host's Microsoft Edge Chromium browser.
-   - PDFs are saved to ~/Documents/LIS/reports/Lab_Report_<testId>.pdf for instant download and printing.
-   - Out-of-range abnormal results are automatically flagged and highlighted.
-
-5. SIGNATURES & MULTI-CLIENT SYNC (/signatures):
-   - Medical Technologists, Pathologists, and Attending Physicians upload digital signatures under /signatures.
-   - Digital signatures are stamped directly onto reports and clinical consultation charts with configurable positioning.
-   - Remote/standalone workstations synchronize signatures with the main server via /api/signatures/sync.
-
-6. EQUIPMENT MANAGEMENT & LEVEY-JENNINGS QUALITY CONTROL (QC) (/equipment):
-   - Overview: The Equipment & QC module allows managing laboratory instruments, logging calibrations, tracking preventive maintenance (PM), recording daily quality control runs, plotting Levey-Jennings (LJ) charts, and evaluating Westgard multi-rules.
-   - Equipment Registry:
-     * Supports Clinical Chemistry Analyzers (e.g. Mindray BS-240), Hematology Analyzers (e.g. Nihon Kohden MEK-6500), Electrolyte Analyzers, Urinalysis Systems, Diagnostic X-Ray Units (with CDRRHR / FDA registration, tube specs, kVp/mAs, radiation safety survey logs), Ultrasound machines, 2D Echo, and ECG systems.
-     * Custom equipment categories and multi-machine support.
-   - Calibration & Preventive Maintenance (PM) Logs:
-     * Staff log calibration date, service engineer/technician, certification details, and maintenance notes.
-     * The system auto-calculates the next due date and countdown of days remaining with operational status flags: Operational (Green), Needs Calibration (Yellow), Maintenance Due (Red).
-     * Radiation safety survey records for X-ray units track mGy/mAs leakage and DOH/FDA safety thresholds.
-   - Levey-Jennings (LJ) Quality Control Charts & Statistics:
-     * Pre-populated multi-analyte control lots: Level 1 (Normal) and Level 2 (High) with standard clinical chemistry panels (21 standard analytes: FBS, BUN, Creatinine, Total Cholesterol, Triglycerides, HDL, LDL, Uric Acid, AST/SGOT, ALT/SGPT, Total Protein, Albumin, Total Bilirubin, Direct Bilirubin, Alkaline Phosphatase, Sodium, Potassium, Chloride, Calcium, Phosphorus, Amylase).
-     * Statistical reference lines: Mean, ±1SD, ±2SD, ±3SD.
-     * Real-time automated statistical computations:
-       - Sample size (N)
-       - Observed Mean (x̄)
-       - Standard Deviation (SD)
-       - Coefficient of Variation: %CV = (SD / Mean) * 100
-       - Observed Total Error: TEobs = |%Bias| + 2 * %CV
-       - Comparison against Total Allowable Error (TEa) with PASS / FAIL status.
-     * Interactive Date Range Filtering: Select Month-to-Date or custom date bounds (startDate to endDate) to dynamically recalculate statistics and re-render the SVG chart and summary data table.
-     * Multi-Signatory Layout: Balanced 3-column or 4-column layout for printable LJ reports featuring Performing MedTech, Reviewing Senior MedTech, and Pathologist(s).
-   - Westgard Multi-Rule Evaluation Engine:
-     * 1_2s Rule: One control result exceeds ±2SD. Flagged as a WARNING. Does not require immediate batch rejection; investigate potential trends.
-     * 1_3s Rule: One control result exceeds ±3SD. Flagged as REJECTION due to Random Error. Patient test batch must not be released; re-run control.
-     * 2_2s Rule: Two consecutive control results exceed the same +2SD or -2SD limit. Flagged as REJECTION due to Systematic Error. Check calibration and reagent lots.
-     * R_4s Rule: Difference between two control results within the same run or across levels exceeds 4SD. Flagged as REJECTION due to Random Error.
-     * 4_1s Rule: Four consecutive control results exceed the same +1SD or -1SD limit. Flagged as REJECTION due to Systematic Shift. Check instrument calibration.
-     * 10_x Rule: Ten consecutive control results fall on the same side of the mean. Flagged as REJECTION due to Systematic Drift or Reagent Aging. Recalibration required.
-   - Recording Daily QC Readings & Error Correction:
-     * Navigate to /equipment, select the analyzer, click the "QC & Calibration" or "Levey-Jennings Chart" tab.
-     * Click "+ Add QC Entry" and input the measured value for the analyte.
-     * "Drop / Delete Previous Run": If a clerical or typing error is made during QC entry, staff can click the "Drop Previous Run" button to delete the latest reading for that analyte immediately without corrupting historical records.
-   - DOH Monthly QC Inspection Summary (/equipment/:id/qc/print-monthly-summary):
-     * Generates a multi-analyte compliance summary table across all analytes on a single page, showing monthly N, observed mean, SD, %CV, and compliance status for DOH regulatory licensing inspections.
-
-7. NATIONAL EXTERNAL QUALITY ASSESSMENT SCHEME (NEQAS) & DYNAMIC NRL (/equipment):
-   - Compliance: Meets DOH Health Facilities and Services Regulatory Bureau (HFSRB) and ISO 15189 External Quality Assurance (EQA) proficiency testing requirements.
-   - East Avenue Medical Center (EAMC) Drug Testing PT Surveys:
-     * Full integration for accredited drug testing laboratories under EAMC NRL-EOHTMA (National Reference Laboratory for Environmental and Occupational Health, Toxicology and Micronutrient Assay).
-     * Supports PT surveys for Cannabinoids / THC (Marijuana screening), Methamphetamine / MET (Shabu screening), and MET GC/MS Confirmatory testing.
-     * Records survey round code, sample ID, reported value, peer group mean, peer group standard deviation, and evaluation status.
-   - Dynamic National Reference Laboratory (NRL) Management:
-     * Staff can register, view, edit, and configure designated NRLs directly in the LIS:
-       - East Avenue Medical Center (EAMC - NRL-EOHTMA for Toxicology/Drug Testing)
-       - Lung Center of the Philippines (LCP - NRL for Clinical Chemistry)
-       - National Kidney and Transplant Institute (NKTI - NRL for Hematology, Immunohematology, Urinalysis)
-       - Research Institute for Tropical Medicine (RITM - NRL for Infectious Diseases & Serology)
-       - Philippine Heart Center (PHC - NRL for Cardiovascular Diagnostics)
-     * Dynamic NRLs are saved to the database and synchronize across standalone workstations.
-   - Standard Deviation Index (SDI) / Z-Score Scoring:
-     * Formula: SDI = (Reported Result - Peer Group Mean) / Peer Group SD
-     * |SDI| <= 2.0: ACCEPTABLE (Pass) - Result is within acceptable analytical consensus.
-     * 2.0 < |SDI| < 3.0: QUESTIONABLE (Warning) - Marginal performance; calibration review recommended.
-     * |SDI| >= 3.0: UNSATISFACTORY (Out-of-Tolerance / Fail) - Unacceptable variance.
-     * DOH Mandatory Corrective Action Form: When |SDI| >= 3.0, the LIS automatically generates and appends a DOH-compliant Corrective Action Form to the certificate requiring root-cause analysis (equipment, reagent lot, technician technique, calibration), corrective action steps, and pathologist signature.
-   - Printable NEQAS Quality Assurance Certificate:
-     * Professional printable certificate featuring laboratory header, survey sample details, SDI rating badge, peer consensus data, and dual signatories.
-
-8. REAGENT & CLINICAL SUPPLY INVENTORY MANAGEMENT (/inventory):
-   - Multi-department scope: Clinical Chemistry, Hematology, Urinalysis, Fecalysis, Serology, Radiology films, Ultrasound gels, and ECG supplies.
-   - Lot and batch number tracking, manufacturer expiration dates, and Open-Vial Stability expiration calculations (ISO 15189 compliance).
-   - Automatic per-test reagent stock deduction upon completing laboratory tests.
-   - Complete audit trail: Stock-In, Stock-Out, waste disposal, and adjustments with mandatory justifications.
-   - Department-targeted low-stock and near-expiry warning alerts (MedTechs receive reagent alerts, X-Ray techs receive film alerts, Admins receive all alerts).
-
-9. USER MANAGEMENT & GRANULAR MODULE PERMISSIONS (/users):
-   - User Roles: Admin, MedTech, Receptionist, Doctor / Physician.
-   - Granular permissions: Dashboard, Patients, Reception, Tests, Reports, Worksheet, Templates, Users, Delete, Inventory, and Equipment & QC (equipment).
-   - Process Owners / Section Heads: Staff can be granted dedicated access to the Equipment & QC module (equipment: true) without giving them administrator privileges.
-   - Smart Home-Route Redirection: Users with only Equipment & QC permission are automatically redirected to /equipment upon logging in.
-
-10. STANDALONE WORKSTATION OFFLINE CAPABILITY & TWO-WAY SYNC:
-   - Local-first architecture running on standalone desktop workstations (lis-app-standalone) with an embedded SQLite engine (lis-data.db).
-   - 100% offline autonomy: patient intake, test entry, results recording, equipment QC entries, clinical consultations, and inventory operations continue without network connectivity.
-   - Automatic background two-way synchronization when network connectivity to the central server is restored: queued mutations are pushed with deterministic ID mapping (temp-* translated to server IDs), and server snapshots are downloaded.
-   - Settings Sync (v2.6.3): Standalone workstations can manually retrieve and apply exact application settings (printer configuration, AI configuration, feature flags) directly from the central server via the Settings dashboard (/settings/sync-from-server).
-
-11. AUTOMATED SYSTEM BACKUPS & SECURITY HARDENING:
-   - The server performs automated daily backups at 3:00 PM with SQLite WAL checkpointing into ~/Documents/LIS/backup/ (binary .db snapshots and JSON mirrors with 30-day retention).
-   - Zero hardcoded plaintext passwords in source code, views, or database seeds.
-   - Parameterized SQLite queries protecting against SQL injection across all endpoints (100% score on security audit).
-
-12. CLINICAL CONSULTATION & OUTPATIENT DOCTOR ENCOUNTERS (/consultations/:testId):
-   - Overview: The Clinical Consultation module enables attending physicians to document full outpatient visits following international SOAP (Subjective, Objective, Assessment, Plan) guidelines and DOH Philippine Package of Essential NCD Interventions (PhilPEN) Clinical Practice Guidelines (CPG).
-   - Access & Encounter Flow:
-     * Reception Queue: Check-up patients are routed to the designated Doctor's Check-up station (e.g. /reception/area/Doctor's%20Check-up).
-     * Tests & Results Management (/tests): Consultations are marked with "Doctor Check-up - Dr. [Name]" or DC* IDs. Clicking the teal button "Start Consultation" (or "Consultation" if already checked) opens the encounter panel.
-     * Patient Profile (/patients/:id) & Test Details (/tests/:id): Also feature direct one-click "Consultation" and "Chart" buttons.
-   - Attending Physician & Designation Auto-Capture:
-     * Automatic Account Detection: When a physician logs in with their user account (role = Doctor, Internist, Physician, Cardiologist, etc.), the system automatically detects their identity and pre-fills them as the Attending Physician with their PRC license number and professional designation (e.g. "Internist").
-     * Room Name Matching: Clinic room names configured in Settings (e.g. "Doctor's Check-up - Dr. Lorenzo") map automatically to the doctor's user account, preventing duplicate doctor entries.
-     * Dropdown Synchronization: Choosing any physician from the Attending Physician dropdown dynamically updates the PRC license number and Designation / Role input fields in real time.
-   - SOAP Documentation Sections:
-     * [S] Subjective: Chief Complaint (CC), History of Present Illness (HPI), Past Medical History (PMH), Current Medications, Allergies (flagged in prominent red, or NKDA), and multi-system Review of Systems (ROS).
-     * DOH PhilPEN Lifestyle Risk Assessment:
-       - Smoking / Tobacco: Status (Never, Current, Former), Sticks/Day, Years smoked, automatic pack-years calculation [(sticksPerDay / 20) * years], and years since quit.
-       - Alcohol Consumption: Status (Non-drinker, Occasional, Regular), frequency, drinks per session, and binge drinking risk assessment (>=5 drinks for men, >=4 for women in a single occasion).
-       - Familial Hereditary NCDs & Kinship Auto-Population: Interactive checklist covering Hypertension, Type 2 Diabetes, Premature CAD/Heart Disease, Stroke, Cancer, Asthma/Allergies, and Chronic Kidney Disease. Clicking pills auto-populates kinship notes (e.g. "Hypertension (Father/Mother)"), while "None Reported" records "No known hereditary or familial non-communicable diseases (NCDs) reported." Inputs are sanitized against object-to-string artifacts.
-       - Social & Lifestyle: Occupation, physical activity (Active >=150 mins/week vs Sedentary), and dietary habits.
-     * [O] Objective:
-       - Vital Signs: Blood Pressure (Systolic & Diastolic), Pulse/Heart Rate, Respiratory Rate, Body Temperature (°C), Oxygen Saturation (SpO2 %), Blood Glucose (mg/dL), Pain Scale (0-10), and Waist Circumference (cm).
-       - DOH Philippines / Asia-Pacific (PhilPEN & FNRI) BMI Classification:
-         * Entering Weight (kg) and Height (cm) automatically calculates BMI in real time on client input and persists to the database.
-         * Underweight: < 18.5 (Yellow)
-         * Normal: 18.5 – 22.9 (Emerald Green)
-         * Overweight / At Risk: 23.0 – 24.9 (Orange)
-         * Obese Class I: 25.0 – 29.9 (Red/Pink)
-         * Obese Class II: >= 30.0 (Deep Red)
-       - Physical Examination (PE): Multi-system examination findings.
-       - Patient Diagnostic History: Tabular view of patient's previous diagnostic tests (Urinalysis, Hematology, Blood Chemistry, Fecalysis, X-Ray, etc.) with a "View Result" button that directly opens the official diagnostic report in a new tab (/reports/preview/:id).
-     * [A] Assessment: Searchable ICD-10 clinical diagnosis directory, suspected etiology, differential diagnoses list, and clinical impression.
-     * [P] Plan:
-       - Rx Prescriptions: Medication brand/generic name, dosage, route, frequency, duration, and sig instructions.
-       - Diagnostic Requisitions: Ordering laboratory and imaging procedures with an "Others" custom input for specialized hospital or clinic procedures.
-       - Non-Pharmacologic Advice: DOH lifestyle advice (dietary salt/fat reduction, exercise, hydration, smoking cessation).
-       - Follow-up schedule and specialist referrals.
-   - Official Clinical Documents & Hard-Copy Printing:
-     * Standard Header Format: Clinic name strictly on one line ("Gezyne Clinical Laboratory & Medical Clinic"), DOH Lic. No. 03-435-15CL-20, complete clinic address (0330 Vergel De Dios St., Poblacion, Plaridel, Bulacan), and contact hotlines.
-     * Patient Medical Chart (/consultations/:testId/print/chart): Full encounter hard-copy printout with official facility letterhead, complete SOAP documentation, vitals grid, DOH PhilPEN risk assessment, prescriptions table, and physician signature block. Optimized print CSS using top-level @page { size: portrait; margin: 6mm 8mm; } and borderless chart-sheet print layout replicating the form view proportions across Letter and A4 sheets.
-     * Prescription (/consultations/:testId/print/prescription): Standard Philippine Rx pad layout with doctor's PRC license, PTR, and S2 numbers.
-     * Medical Certificate (/consultations/:testId/print/med-cert): Official fit-to-work / illness certificate with diagnosis, recommended rest days, and doctor's professional designation (e.g. Internist).
-     * Laboratory Request Form (/consultations/:testId/print/lab-request): Official requisition sheet for laboratory and imaging tests.
-   - Consultation Lifecycle & "Checked" Status:
-     * While in progress, saving a draft retains "In Progress" status.
-     * Clicking "Complete Consultation" marks the consultation as "Completed", updates the test status to "Checked", records the completed timestamp, and locks the encounter.
-     * Everywhere in the LIS—including system statistics counters, table badges, filters, patient profiles, and dashboard metrics—the status "Checked" is authoritatively recognized as COMPLETED.
-
-13. HUMAN RESOURCES (HR) & PHILIPPINE PAYROLL MANAGEMENT (/hr):
-   - Overview: The HR & Payroll module manages clinic staff, automated biometric/manual Daily Time Records (DTR), leave credit balances, Philippine statutory benefits (SSS, PhilHealth, Pag-IBIG), withholding tax (TRAIN Law), semi-monthly payroll registers, confidential payslips, and official HR documentation.
-   - Employee Master Directory (/hr/employees):
-     * Staff Profiles: Tracks Employee Code, full legal name (with automatic stripping of clinical titles/suffixes like "MD, FPSP" for clean legal records while preserving clinical credentials in doctor profiles), department, position/role, employment type (Regular, Probationary, Contractual, Part-Time, Consultant), date hired, date regularized, and separation tracking (Resigned, AWOL, Terminated with separation date and reason).
-     * System Account Segregation: Flags non-human system/service accounts (isSystemAccount), cleanly segregating staff records from IT/reception logins.
-     * Compensation Schemes: 'Daily Duty' (for laboratory and clinic staff with daily rates and 5-day week caps) vs 'Fixed Monthly' (for pathologists/doctors) vs 'Commission Only' (exempt consulting physicians).
-     * Recurring Allowances: Rice subsidy, transportation, meal, and other allowances with audit remarks.
-     * Government Statutory IDs: Tax Identification Number (TIN), Social Security System (SSS), PhilHealth PIN, and Pag-IBIG (HDMF) Mid number.
-   - Employee Self-Service / Personal Portal (/hr/my):
-     * Staff access their own attendance time records (DTR), submit leave applications, and view/print confidential payslips and BIR tax certificates without administrative access to other personnel records.
-   - Daily Time Record (DTR) & Attendance Engine (/hr/my/dtr, /hr/employees/:id/dtr):
-     * Daily biometric / manual time-in and time-out logging (Morning In/Out, Afternoon In/Out).
-     * Automatic calculation of hours worked, regular hours, undertime/tardiness, overtime hours, night differential, and holiday premiums (Regular vs Special Non-Working).
-   - Leave Management & Approval Workflow (/hr/leaves):
-     * Leave application submission with leave types: Vacation Leave (VL), Sick Leave (SL), Maternity Leave, Paternity Leave, Solo Parent Leave, Bereavement, Emergency Leave, and Leave Without Pay (LWOP).
-     * Automated leave credit tracking and real-time balance validation.
-     * Multi-tier approval workflow (Pending -> Approved / Rejected) with management remarks.
-     * Printable Leave Slip (/hr/print/leave/:id) with applicant signature and approving authority sign-off.
-   - Philippine Statutory Contributions & Tax Engine (lib/philippineContributions.js):
-     * SSS Contribution Matrix: 2025/2026 progressive rate schedule, computing Employee Share (EE), Employer Share (ER), and mandatory provident fund (WISP/MPF) contributions across monthly salary credit (MSC) brackets.
-     * PhilHealth Premium: 5.0% premium rate with equal 50-50 EE/ER split subject to statutory monthly salary floor and ceiling.
-     * Pag-IBIG (HDMF): Statutory contribution (1% for basic <= 1,500; 2% for basic > 1,500 EE share, 2% ER share) with standard statutory maximum deduction.
-     * BIR Withholding Tax (TRAIN Law): Semi-monthly and monthly graduated withholding tax tables, exempting minimum wage earners and income within the non-taxable 250,000 PHP annual bracket.
-     * De Minimis Benefits: Computation of non-taxable allowances within statutory ceilings.
-   - Payroll Computation Engine (/hr/payroll, /hr/payroll/compute, lib/payrollComputer.js):
-     * Semi-monthly and monthly batch processing for active employees.
-     * Itemized computation: Gross Earnings (Basic Salary / Daily rate * days worked, Overtime, Holiday pay, Allowances) minus Deductions (Late/Undertime, Absences, SSS EE, PhilHealth EE, Pag-IBIG EE, Withholding Tax, Cash Advance, SSS/HDMF Salary Loans) = Net Take-Home Pay.
-     * Multi-status payroll batches: Draft -> Approved -> Paid.
-     * Excel Payroll Register export (/hr/export/payroll?month=YYYY-MM) with full statutory columns for bank disbursements and accounting.
-   - Official HR Printable Documents:
-     * Confidential Payslip (/hr/print/payslip/:id): High-resolution employee payslip detailing cut-off period, payment date, rate, earnings breakdown, employer and employee statutory contributions, loan amortizations, and net pay.
-     * Certificate of Employment (COE) (/hr/print/coe/:id): Standard Philippine legal employment certification issued for bank loans, visa applications, or separation, featuring employment tenure, position, compensation, clean legal name, and signed by the Laboratory Owner / Medical Director.
-     * Certificate of Exit Clearance (/hr/print/clearance/:id): Formal clearance form with department sign-offs (Laboratory, Inventory, Accounts, Management).
-     * BIR Form 2316 Annual Tax Summary (/hr/print/tax-summary/:id/:year): Official tax summary showing gross compensation, non-taxable statutory contributions & de minimis, taxable compensation, tax due, tax withheld, and year-end adjustment.
-
-14. FINANCIAL COSTING, EXPENSE TRACKING & PROFITABILITY (P&L) ANALYTICS (/costing):
-   - Overview: The Costing & P&L module provides diagnostic unit economics, cost-per-test modeling, operating expense tracking, revenue recognition, and financial profitability analytics for clinic administrators.
-   - Cost-Per-Test Analysis Engine (/costing/cost-per-test, models/CostPerTest.js):
-     * Comprehensive breakdown of diagnostic test cost components: Direct Reagent Cost, Calibrators & Controls Cost, Consumable Supplies (tubes, needles, tips, slides), Direct MedTech Labor, and Equipment Depreciation / Maintenance overhead.
-     * Calculates Total Unit Cost per diagnostic test.
-     * Real-time Gross Margin & Markup: Compares selling price (charge to patient) against total cost to calculate Gross Profit (PHP), Gross Margin Percentage (%), and Recommended SRP.
-     * Direct Reagent Mapping: Links reagent inventory items to tests to automatically update cost benchmarks whenever reagent purchase prices change.
-   - Laboratory Operating Expenses Tracker (/costing/expenses, models/Expense.js):
-     * Tracks fixed and variable clinic expenditures across standardized accounting categories: Reagents & Supplies, Staff Salaries & Payroll, Clinic Space Rental, Utilities (Electricity, Water, Internet), Equipment Maintenance & Service Contracts, Regulatory & Licensing Fees (DOH, FDA, BIR, Business Permits, NEQAS fees), Waste Disposal (Biohazard/Sharps), and Miscellaneous.
-     * Supports recurring expenses, receipt/invoice attachment, payment method tracking, and vendor details.
-   - Revenue & Profit & Loss (P&L) Analytics (/costing, /costing/revenue, /costing/monthly):
-     * Revenue recognition: Tracks billed tests, daily patient collections, payment methods (Cash, GCash, Bank Transfer, HMO/Corporate).
-     * Real-time financial dashboard: Total Revenue, Total Cost of Goods Sold (COGS), Operating Expenses (OPEX), Gross Profit, Operating Income, and Net Profit Margin (%).
-     * Monthly Income Statement (/costing/monthly/:month): Accounting-grade financial statement with comparative monthly trends and division-by-zero protection.
-   - Supplier Model Configuration & Procurement Analytics:
-     * Supplier directories, vendor price quotes, packaging sizes, and unit conversions (e.g. kit to tests, bottles to mL).
-
-15. 2D ECHOCARDIOGRAPHY DUAL-SHEET PRINTING & DOPPLER MEASUREMENTS:
-   - Dual-Form Architecture (/reports/results/echocardiography-2d, /reports/preview/:id?sheet=all|info|reading):
-     * Sheet 1: Echocardiography Information Sheet (echo-info-sheet) containing M-mode / 2-D measurements, 3-column chambers/aorta dimensions, and the 9-column Doppler Measurement matrix. Strictly formatted for 1-page Letter portrait printing with page-break-inside protection.
-     * Sheet 2: Reading / Interpretation Sheet (echo-reading-sheet) containing clinical interpretation, Color flow and Spectral Doppler findings, conclusion, and attending cardiologist signature block. Strictly formatted for 1-page Letter portrait printing.
-     * Independent or Combined Printing: Staff can print Both Sheets (2 pages), Info Sheet only (1 page), or Reading Sheet only (1 page).
-   - Doppler Measurement 9-Subcolumn Grid Alignment:
-     * Mitral, Aortic, Tricuspid, and Pulmonic valves each structured with Left = Patient Measured Value and Right = Normal Reference Limits.
-     * Mitral Max Velocity: Streamlined data entry with default E: and A: prefix labels so technicians only encode numeric ratios (e.g. 0.8/3.0 and 0.6/1.7). Output automatically formats with E: 0.8/3.0 and A: 0.6/1.7.
-     * Pulmonic Vein: Tracks Diastoles, Systole, and Sys/Dias ratio.
-     * Pulmonary Artery Systolic Pressure: PASP by TRJ and Total PASP mapped under Tricuspid value column aligned with Aortic reference label.
-     * Pulmonary Artery Acceleration Time: PAT value under Pulmonic value column aligned with Tricuspid reference label and Pulmonic >= normal indicator.
-   - Balanced Patient Header Layout:
-     * Clean, standardized .patient-box header with balanced 6-column proportions: Col 1 Reference Label (18%), Col 2 Value/Name (27%), Col 3 DOB/HR (9%), Col 4 Date/HR Value (16%), Col 5 Sex/Contact Label (10%), Col 6 Contact/Vitals Value (20%).
-     * Contact numbers (e.g. +6319158168881) display completely on a single line without wrapping, clipping, or excessive dead space.
-
---- CLINICAL LABORATORY & MEDICAL REFERENCE GUIDE ---
-1. PHLEBOTOMY ORDER OF DRAW (CLSI Guidelines):
-   1st: Blood Culture bottles (SPS) or sterile tubes (prevent contamination).
-   2nd: Sodium Citrate (Light Blue top, 3.2% ratio 1:9) - Coagulation tests (PT, INR, APTT). Must be filled to the line!
-   3rd: Serum Tubes (Red top plain glass/plastic, Gold/Tiger top SST with clot activator & gel separator) - Chemistry, Serology, Immunology, Thyroid.
-   4th: Heparin (Green top, Lithium or Sodium Heparin) - Stat Chemistry, Troponin, Electrolytes.
-   5th: EDTA (Lavender / Purple top, K2 or K3 EDTA) - Hematology, CBC, Platelet count, Peripheral Blood Smear, Blood Typing, HbA1c. Mix gently 8-10 times to prevent microclots!
-   6th: Sodium Fluoride / Potassium Oxalate (Gray top) - Glucose, Lactic Acid (inhibits glycolysis).
-
-2. PATIENT PREPARATION & FASTING:
-   - Fasting Blood Sugar (FBS): 8 to 10 hours overnight fasting. Water is permitted; no coffee, smoking, or gum.
-   - Lipid Profile (Total Cholesterol, Triglycerides, HDL, LDL): 10 to 12 hours fasting. Avoid heavy alcohol intake 24h prior.
-   - Uric Acid / Creatinine / BUN: 8 hours fasting recommended. Avoid strenuous exercise before creatinine test.
-   - Oral Glucose Tolerance Test (OGTT): Fasting sample first, followed by 75g glucose drink, with timed blood draws at 1 hour and 2 hours.
-
-3. COMMON NORMAL REFERENCE RANGES (Adult Guidelines):
-   - Fasting Blood Sugar: 70 - 99 mg/dL (Normal); 100 - 125 mg/dL (Impaired/Prediabetes); >= 126 mg/dL (Diabetes indicator).
-   - HbA1c: < 5.7% (Normal); 5.7 - 6.4% (Prediabetes); >= 6.5% (Diabetes).
-   - Serum Creatinine: Male: 0.7 - 1.3 mg/dL | Female: 0.6 - 1.1 mg/dL.
-   - Blood Urea Nitrogen (BUN): 7 - 20 mg/dL.
-   - Serum Uric Acid: Male: 3.5 - 7.2 mg/dL | Female: 2.6 - 6.0 mg/dL.
-   - Total Cholesterol: < 200 mg/dL (Desirable).
-   - Triglycerides: < 150 mg/dL (Normal).
-   - HDL Cholesterol: > 40 mg/dL (Male) | > 50 mg/dL (Female).
-   - LDL Cholesterol: < 100 mg/dL (Optimal).
-   - AST (SGOT): 10 - 40 U/L | ALT (SGPT): 7 - 56 U/L.
-   - Hemoglobin (Hb): Male: 13.5 - 17.5 g/dL | Female: 12.0 - 15.5 g/dL.
-   - Hematocrit (Hct): Male: 41% - 50% | Female: 36% - 46%.
-   - White Blood Cells (WBC): 4,500 - 11,000 /uL.
-   - Platelets: 150,000 - 450,000 /uL.
-
-4. CRITICAL / PANIC VALUES (Immediate Physician Notification Required!):
-   - Glucose: < 45 mg/dL (Severe Hypoglycemia) or > 400 mg/dL (Severe Hyperglycemia / DKA).
-   - Potassium (K+): < 2.8 mmol/L (Severe Hypokalemia) or > 6.0 mmol/L (Severe Hyperkalemia - Life-threatening cardiac arrest risk).
-   - Sodium (Na+): < 120 mmol/L or > 160 mmol/L.
-   - Platelet Count: < 20,000 /uL (Spontaneous bleeding risk) or > 1,000,000 /uL.
-   - Hemoglobin: < 7.0 g/dL (Severe anemia requiring transfusion evaluation).
-   - PT / INR: INR > 4.5 (High hemorrhage risk).
-   *PROTOCOL*: When a panic value is encountered, the MedTech must recheck/retest, immediately verify sample integrity (check for clot, hemolysis, or lipemia), and contact the attending physician/pathologist immediately.
-
-5. PHILIPPINE DOH PhilPEN CLINICAL PRACTICE GUIDELINES (CPG) & RISK ASSESSMENT:
-   - Target Population: Adults aged >= 20 years for NCD lifestyle screening; >= 40 years for formal CVD risk assessment.
-   - Cardiovascular Disease Risk Variables: Age, Gender, Tobacco smoking status, Systolic Blood Pressure, and Total Cholesterol (or BMI if laboratory lipids are pending).
-   - Smoking Pack-Years Calculation: (Cigarettes per day / 20) * Years smoked.
-     * Example: 10 sticks/day for 20 years = 10 pack-years. Cumulative exposure >= 20 pack-years signifies major risk for COPD, Atherosclerotic CVD, and bronchogenic carcinoma.
-   - Alcohol Binge Drinking Risk Criteria: Consumption of >= 5 standard drinks (men) or >= 4 standard drinks (women) on a single occasion.
-     * Standard Drink Equivalent: ~10-12g pure ethanol (330mL regular 5% beer, 120mL 12% wine, or 45mL 40% spirits).
-   - Non-Pharmacologic Interventions: Dietary Sodium restriction (< 2g sodium/day or < 5g table salt/day), 150-300 mins moderate aerobic physical activity per week, and waist circumference targets (< 90 cm for Asian men, < 80 cm for Asian women).
-
-6. DOH PHILIPPINES & ASIA-PACIFIC (FNRI) ADULT BMI CLASSIFICATION:
-   - Body Mass Index Formula: BMI = Weight (kg) / [Height (m)]^2
-   - Note: Asians exhibit elevated cardiovascular and diabetic risks at lower BMI values compared to WHO Western populations:
-     * < 18.5 kg/m²: Underweight (Increased risk for nutritional deficiency and osteoporosis)
-     * 18.5 – 22.9 kg/m²: Normal Weight (Lowest morbidity/mortality risk)
-     * 23.0 – 24.9 kg/m²: Overweight / At Risk (Elevated cardiometabolic risk)
-     * 25.0 – 29.9 kg/m²: Obese Class I (High risk for Type 2 Diabetes, Hypertension, and Dyslipidemia)
-     * >= 30.0 kg/m²: Obese Class II (Severe / Very high risk requiring proactive therapeutic lifestyle and medical intervention)
-
+  const footer = `
 --- COMMUNICATION STYLE & GUIDELINES ---
 - Provide helpful, friendly, medically accurate, and concise answers.
 - Format responses with clean Markdown (bold keywords, bullet points, and brief tables where useful).
-- When a user asks about software features (e.g., Equipment & QC, Levey-Jennings, Westgard rules, NEQAS, Inventory, Reception), give clear step-by-step instructions.
+- When writing mathematical, laboratory, or clinical calculation formulas (such as SDI, Levey-Jennings Mean/SD, BMI, LDL Friedewald, eGFR, Creatinine Clearance, or statutory payroll formulas), ALWAYS format them using standard LaTeX delimiters: use '$$...$$' for display/block equations and '$...$' or '\\(...\\)' for inline equations so they render beautifully with KaTeX.
+- When a user asks about software features (e.g., Equipment & QC, Levey-Jennings, Westgard rules, NEQAS, Inventory, Reception), give clear step-by-step instructions with the exact buttons to click and workflows to follow (as documented in the User Manual).
 - When answering medical or quality control questions, provide clear explanations with normal ranges, formulas, or clinical rationale, and advise clinical correlation.
 `;
+
+  if (manual) {
+    return header + manual + footer;
+  }
+
+  // Graceful fallback if manual file is not found
+  return header + `
+[System Note: User manual file was not found on disk. Operating on baseline knowledge.]
+- Core Modules: Reception (/reception), Tests (/tests), Reports (/reports), Signatures (/signatures), Equipment & QC (/equipment), Inventory (/inventory), Consultations (/consultations), HR & Payroll (/hr), Costing & P&L (/costing), Settings (/settings).
+- Supported platforms: Full-Stack Web/LAN, Standalone Desktop Client (with offline 2-way sync), and Android Mobile companion app.
+` + footer;
 }
 
 /**

@@ -635,10 +635,65 @@ window.handleWidgetChipClick = function(btn) {
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
 
-    // Comprehensive markdown to clean HTML parser
+    // Comprehensive markdown to clean HTML parser with KaTeX LaTeX math support
     function formatMarkdown(text) {
         if (!text) return '';
-        let escaped = text
+
+        const mathBlocks = [];
+
+        // 1. Extract Display/Block Math: $$ ... $$ or \[ ... \]
+        let raw = text.replace(/(\$\$|\\\[)([\s\S]+?)(\$\$|\\\])/g, (match, open, math) => {
+            const placeholder = '%%%KATEX_BLOCK_' + mathBlocks.length + '%%%';
+            let rendered = '';
+            if (typeof katex !== 'undefined') {
+                try {
+                    rendered = '<div class="katex-display">' + katex.renderToString(math.trim(), { displayMode: true, throwOnError: false }) + '</div>';
+                } catch (e) {
+                    rendered = '<div class="katex-display katex-error">' + math + '</div>';
+                }
+            } else {
+                rendered = '<div class="katex-display">' + math + '</div>';
+            }
+            mathBlocks.push({ placeholder, rendered });
+            return '\n\n' + placeholder + '\n\n';
+        });
+
+        // 2. Extract Inline Math: \( ... \)
+        raw = raw.replace(/\\\(([\s\S]+?)\\\)/g, (match, math) => {
+            const placeholder = '%%%KATEX_INLINE_' + mathBlocks.length + '%%%';
+            let rendered = '';
+            if (typeof katex !== 'undefined') {
+                try {
+                    rendered = katex.renderToString(math.trim(), { displayMode: false, throwOnError: false });
+                } catch (e) {
+                    rendered = '<span class="katex-error">' + math + '</span>';
+                }
+            } else {
+                rendered = '<span>' + math + '</span>';
+            }
+            mathBlocks.push({ placeholder, rendered });
+            return placeholder;
+        });
+
+        // 3. Extract Inline Math: $ ... $ (excluding simple currency numbers like $50 or $100.50)
+        raw = raw.replace(/(^|[^\$])\$([^\$\n\r]+?)\$(?!\$)/g, (match, prefix, math) => {
+            if (/^\s*\d+([.,]\d+)?\s*$/.test(math)) return match;
+            const placeholder = '%%%KATEX_INLINE_' + mathBlocks.length + '%%%';
+            let rendered = '';
+            if (typeof katex !== 'undefined') {
+                try {
+                    rendered = katex.renderToString(math.trim(), { displayMode: false, throwOnError: false });
+                } catch (e) {
+                    rendered = '<span class="katex-error">' + math + '</span>';
+                }
+            } else {
+                rendered = '<span>' + math + '</span>';
+            }
+            mathBlocks.push({ placeholder, rendered });
+            return prefix + placeholder;
+        });
+
+        let escaped = raw
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;');
@@ -750,6 +805,12 @@ window.handleWidgetChipClick = function(btn) {
 
         if (inList) html += inList === 'ul' ? '</ul>' : '</ol>';
         if (inTable) html += '</tbody></table>';
+
+        // Re-inject rendered LaTeX math
+        mathBlocks.forEach(item => {
+            html = html.split(item.placeholder).join(item.rendered);
+        });
+
         return html;
     }
 
