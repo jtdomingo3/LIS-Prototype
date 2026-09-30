@@ -19,6 +19,7 @@ COLLECTION_NAME = "gezyne_lis_knowledge"
 # Target user manuals to index
 MANUAL_CANDIDATES = [
     REPO_ROOT / "docs" / "USER_MANUAL.md",
+    REPO_ROOT.parent / "docs" / "USER_MANUAL.md",
     REPO_ROOT / "lis-fullstack" / "docs" / "USER_MANUAL.md",
     REPO_ROOT / "lis-app-standalone" / "docs" / "USER_MANUAL.md",
 ]

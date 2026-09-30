@@ -206,9 +206,11 @@ async function ensureRagServiceRunning() {
     console.log(`[RAG Client] Found compiled RAG executable: ${ragExePath}`);
     const exeDir = path.dirname(ragExePath);
     try {
+      const { getDataDir } = require('./dataPath');
+      const ragDataDir = path.join(getDataDir(), 'chroma_db');
       ragProcess = spawn(ragExePath, [], {
         cwd: exeDir,
-        env: { ...process.env, RAG_HOST, RAG_PORT: String(RAG_PORT) },
+        env: { ...process.env, RAG_HOST, RAG_PORT: String(RAG_PORT), RAG_DATA_DIR: ragDataDir },
         stdio: 'pipe',
         detached: false,
         windowsHide: true
@@ -269,9 +271,11 @@ async function ensureRagServiceRunning() {
   console.log(`[RAG Client] Launching Python RAG Microservice from: ${appPyPath}`);
 
   try {
+    const { getDataDir } = require('./dataPath');
+    const ragDataDir = path.join(getDataDir(), 'chroma_db');
     ragProcess = spawn('python', ['app.py'], {
       cwd: serviceDir,
-      env: { ...process.env, RAG_HOST, RAG_PORT: String(RAG_PORT) },
+      env: { ...process.env, RAG_HOST, RAG_PORT: String(RAG_PORT), RAG_DATA_DIR: ragDataDir },
       stdio: 'pipe',
       detached: false,
       windowsHide: true

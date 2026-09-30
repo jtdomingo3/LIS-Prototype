@@ -80,7 +80,6 @@ async function make() {
     console.warn('Warning: could not create seed SQLite db in installer-resources:', e.message);
   }
 
-  // Copy RAG executable into dist so the NSIS installer bundles it
   const ragSrcDir = path.join(__dirname, '..', '..', 'lis-rag-service', 'dist', 'rag');
   const ragDestDir = path.join(__dirname, '..', 'dist', 'rag');
   if (fs.existsSync(ragSrcDir)) {
@@ -89,6 +88,19 @@ async function make() {
       console.log(' - Copied RAG executable from lis-rag-service to dist/rag');
     } catch (e) {
       console.warn(' - Warning: failed to copy RAG executable:', e.message);
+    }
+  }
+
+  // Copy USER_MANUAL.md to dist/docs
+  const manualSrc = path.join(__dirname, '..', 'docs', 'USER_MANUAL.md');
+  const manualDestDir = path.join(__dirname, '..', 'dist', 'docs');
+  if (fs.existsSync(manualSrc)) {
+    try {
+      fs.mkdirSync(manualDestDir, { recursive: true });
+      fs.copyFileSync(manualSrc, path.join(manualDestDir, 'USER_MANUAL.md'));
+      console.log(' - Copied USER_MANUAL.md to dist/docs');
+    } catch (e) {
+      console.warn(' - Warning: failed to copy USER_MANUAL.md:', e.message);
     }
   }
 

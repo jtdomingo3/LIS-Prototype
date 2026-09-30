@@ -77,7 +77,8 @@
             "assets/**/*",
             "lib/**/*",
             "routes/**/*",
-            "templates/**/*"
+            "templates/**/*",
+            "docs/**/*"
         ],
         "targets": [
             "node18-win-x64"

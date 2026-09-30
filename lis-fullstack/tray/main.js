@@ -865,9 +865,10 @@ function startRagService(cb) {
     if (exe) {
       appendRagLog(`[tray] Launching compiled RAG executable: ${exe}`);
       try {
+        const ragDataDir = path.join(computeDataDir(), 'chroma_db');
         ragProcess = spawn(exe, [], {
           cwd: path.dirname(exe),
-          env: { ...process.env, RAG_HOST: '127.0.0.1', RAG_PORT: '8765' },
+          env: { ...process.env, RAG_HOST: '127.0.0.1', RAG_PORT: '8765', RAG_DATA_DIR: ragDataDir },
           stdio: 'pipe',
           detached: false,
           windowsHide: true
@@ -900,9 +901,10 @@ function startRagService(cb) {
     if (scriptPath) {
       appendRagLog(`[tray] Launching Python RAG service: ${scriptPath}`);
       try {
+        const ragDataDir = path.join(computeDataDir(), 'chroma_db');
         ragProcess = spawn('python', [scriptPath], {
           cwd: path.dirname(scriptPath),
-          env: { ...process.env, RAG_HOST: '127.0.0.1', RAG_PORT: '8765' },
+          env: { ...process.env, RAG_HOST: '127.0.0.1', RAG_PORT: '8765', RAG_DATA_DIR: ragDataDir },
           stdio: 'pipe',
           windowsHide: true
         });
