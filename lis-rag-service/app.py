@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 from config import HOST, PORT
 from rag_engine import RagEngine
-from web_search import search_web, format_web_snippets_context
+from web_search import search_web, format_web_snippets_context, is_web_search_available
 
 # Initialize RAG Engine singleton
 engine: Optional[RagEngine] = None
@@ -68,7 +68,7 @@ def health_check():
         "service": "lis-rag-service",
         "engine_ready": engine is not None,
         "total_chunks": stats.get("total_chunks", 0),
-        "web_search_available": True
+        "web_search_available": is_web_search_available()
     }
 
 
@@ -84,7 +84,7 @@ async def query_knowledge(req: QueryRequest):
         web_results = []
         if req.enable_web:
             # Query web search concurrently with ChromaDB
-            web_task = asyncio.to_thread(search_web, query=req.question, max_results=3, timeout_seconds=4)
+            web_task = asyncio.to_thread(search_web, query=req.question, max_results=3, timeout_seconds=6)
             result, web_results = await asyncio.gather(vector_task, web_task)
         else:
             result = await vector_task
@@ -112,7 +112,7 @@ async def direct_web_search(req: WebSearchRequest):
     Retrieves succinct snippet citations without touching local ChromaDB vector memory.
     """
     try:
-        results = await asyncio.to_thread(search_web, query=req.query, max_results=req.max_results)
+        results = await asyncio.to_thread(search_web, query=req.query, max_results=req.max_results, timeout_seconds=6)
         context = format_web_snippets_context(results)
         return {
             "success": True,

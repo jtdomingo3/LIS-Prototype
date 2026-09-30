@@ -205,10 +205,10 @@ console.log('Combined Context:\n', data.combined_context);
   "web_search_enabled": true,
   "web_results": [
     {
-      "title": "DOH Manual of Operations-PhilPEN | PDF | Scribd",
-      "url": "https://www.scribd.com/document/422838177/DOH-Manual-of-Operations-PhilPEN",
-      "snippet": "The document introduces the WHO Package of Essential Non-communicable Disease Interventions (WHO PEN) protocol...",
-      "source": "DuckDuckGo"
+      "title": "DOH Memo on Clinical Lab Regulations 2025",
+      "url": "https://www.scribd.com/document/793665572/dm2024-0165",
+      "snippet": "Signature on official laboratory results also follow the transitory provisions of administrative issuances...",
+      "source": "Web Result"
     }
   ],
   "results": [
@@ -219,7 +219,7 @@ console.log('Combined Context:\n', data.combined_context);
       "text": "..."
     }
   ],
-  "combined_context": "=== LOCAL LIS KNOWLEDGE BASE ===\n...\n\n=== EXTERNAL WEB SEARCH CITATIONS ===\n[Web Citation 1] DOH Manual of Operations-PhilPEN...\nURL: https://www.scribd.com/document/422838177/...\nSnippet: ..."
+  "combined_context": "=== LOCAL LIS KNOWLEDGE BASE ===\n...\n\n=== EXTERNAL WEB SEARCH CITATIONS ===\n[Web Citation 1] DOH Memo on Clinical Lab Regulations 2025...\nURL: https://www.scribd.com/document/793665572/dm2024-0165\nSnippet: ..."
 }
 ```
 
