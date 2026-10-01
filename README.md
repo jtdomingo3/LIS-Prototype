@@ -330,5 +330,5 @@ pm2 save
 
 ## 📌 License
 
-Distributed under the **MIT License**. Developed for **Gezyne Clinical Laboratory**.
+Developed for **Gezyne Clinical Laboratory**.
 
