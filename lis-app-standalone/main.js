@@ -6,8 +6,14 @@ const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, dialog, shell, ses
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const defaultDataDir = path.join(os.homedir(), 'Documents', 'LIS', 'app-sync');
+if (!process.env.DATA_DIR) {
+  process.env.DATA_DIR = defaultDataDir;
+}
+try { fs.mkdirSync(defaultDataDir, { recursive: true }); } catch (_) {}
 const { initAppLogger } = require('./lib/appLogger');
 initAppLogger(path.join(os.homedir(), 'Documents', 'LIS'));
+const { normalizeServerUrl } = require('./lib/serverUrl');
 
 // Single-instance guard: only one copy of the standalone app may run.  If a
 // second instance is launched we exit immediately.  When the existing
@@ -82,7 +88,12 @@ function loadUserSettings() {
         try { fs.writeFileSync(p, JSON.stringify(userSettings, null, 2), 'utf8'); } catch (_) {}
       }
       // apply server override if present
-      if (userSettings.serverUrl) config.SERVER_URL = userSettings.serverUrl;
+      if (userSettings.serverUrl) {
+        const norm = normalizeServerUrl(userSettings.serverUrl);
+        if (norm.ok) {
+          config.SERVER_URL = norm.url;
+        }
+      }
       if (userSettings.printerName || userSettings.printer) {
         process.env.PRINTER_NAME = userSettings.printerName || userSettings.printer;
       }
@@ -100,14 +111,25 @@ function saveUserSettings(newSettings = {}) {
     }
     fs.writeFileSync(settingsFilePath(), JSON.stringify(userSettings, null, 2), 'utf8');
     if (newSettings.serverUrl) {
-      config.SERVER_URL = newSettings.serverUrl;
-      // apply and start network monitor/request interception
-      try { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.loadURL(config.SERVER_URL); } catch (e) {}
-      // start network monitor in background (no await)
-      startNetworkMonitor().catch(() => {});
+      const norm = normalizeServerUrl(newSettings.serverUrl);
+      if (norm.ok) {
+        config.SERVER_URL = norm.url;
+        userSettings.serverUrl = norm.url;
+        // In Local-First architecture, keep main window on local UI
+        try {
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.loadURL(`http://127.0.0.1:${config.LOCAL_PORT}/login`);
+          }
+        } catch (e) {}
+        // start network monitor in background (no await)
+        startNetworkMonitor().catch(() => {});
+      } else {
+        console.warn('[Main] Invalid serverUrl rejected in saveUserSettings:', norm.error);
+      }
     } else if (Object.prototype.hasOwnProperty.call(newSettings, 'serverUrl') && !newSettings.serverUrl) {
       // user cleared server url — stop monitor and go offline
       config.SERVER_URL = '';
+      userSettings.serverUrl = '';
       stopNetworkMonitor().catch(() => {});
       isOnline = false;
       sendStatus();
@@ -956,7 +978,11 @@ ipcMain.handle('open-settings', () => {
 ipcMain.handle('test-thermal-print', async (_e, { printer }) => {
   try {
     const { spawnSync } = require('child_process');
-    const scriptPath = path.join(__dirname, 'scripts', 'thermal_test.js');
+    let scriptPath = path.join(__dirname, 'scripts', 'thermal_test.js');
+    const unpackedScript = path.join(__dirname.replace(/app\.asar$/, 'app.asar.unpacked'), 'scripts', 'thermal_test.js');
+    if (fs.existsSync(unpackedScript)) {
+      scriptPath = unpackedScript;
+    }
     if (!fs.existsSync(scriptPath)) {
       return { success: false, reason: 'thermal_test.js not found' };
     }
@@ -965,10 +991,12 @@ ipcMain.handle('test-thermal-print', async (_e, { printer }) => {
     if (targetPrinter) args.push('--printer', targetPrinter);
 
     const spawnEnv = Object.assign({}, process.env, { ELECTRON_RUN_AS_NODE: '1' });
-    const proc = spawnSync(process.execPath, args, { cwd: __dirname, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024, env: spawnEnv });
+    // Use OS temp dir as cwd to guarantee a real directory on disk (never inside app.asar archive)
+    const workDir = (app && typeof app.getPath === 'function') ? app.getPath('temp') : os.tmpdir();
+    const proc = spawnSync(process.execPath, args, { cwd: workDir, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024, env: spawnEnv });
     if (proc.error) {
       console.error('[Thermal] spawn error:', proc.error);
-      return { success: false, reason: String(proc.error) };
+      return { success: false, reason: proc.error.message || String(proc.error) };
     }
     if (proc.status !== 0) {
       console.error('[Thermal] print failed:', proc.stderr || proc.stdout);

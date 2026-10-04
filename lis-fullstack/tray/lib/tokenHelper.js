@@ -2,41 +2,16 @@ const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
 
-const LEGACY_TOKEN_SECRET = 'gezyne-lis-secure-token-secret-change-in-prod';
+const { getSecret } = require('./secretStore');
 
-function getOrCreateSecret(envNames, secretFilename, legacyFallback) {
-  for (const name of envNames) {
-    if (process.env[name] && String(process.env[name]).trim()) {
-      return String(process.env[name]).trim();
-    }
+function getTokenSecret() {
+  const secret = getSecret('AUTH_TOKEN_SECRET');
+  if (!secret) {
+    throw new Error('AUTH_TOKEN_SECRET environment variable or persistent secret file is required');
   }
-
-  try {
-    let dataDir = process.env.DATA_DIR;
-    if (!dataDir) {
-      try {
-        const dp = require('./dataPath');
-        dataDir = typeof dp.getDataDir === 'function' ? dp.getDataDir() : null;
-      } catch (_) {}
-    }
-    if (!dataDir) dataDir = path.join(__dirname, '..');
-    const secretPath = path.join(dataDir, secretFilename);
-    if (fs.existsSync(secretPath)) {
-      const existing = fs.readFileSync(secretPath, 'utf8').trim();
-      if (existing && existing.length >= 32) return existing;
-    }
-    const generated = crypto.randomBytes(32).toString('hex');
-    try {
-      fs.mkdirSync(dataDir, { recursive: true });
-      fs.writeFileSync(secretPath, generated, { encoding: 'utf8', mode: 0o600 });
-    } catch (_) {}
-    return generated;
-  } catch (_) {
-    return legacyFallback;
-  }
+  return secret;
 }
 
-const TOKEN_SECRET = getOrCreateSecret(['AUTH_TOKEN_SECRET', 'JWT_SECRET'], '.auth_token_secret', LEGACY_TOKEN_SECRET);
 const DEFAULT_EXPIRY_DAYS = 30; // Long-lived token suitable for clinical workstations & offline sync
 
 /**
@@ -63,8 +38,9 @@ function generateToken(user, expiresInDays = DEFAULT_EXPIRY_DAYS) {
   };
 
   const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const secret = getTokenSecret();
   const signature = crypto
-    .createHmac('sha256', TOKEN_SECRET)
+    .createHmac('sha256', secret)
     .update(payloadBase64)
     .digest('base64url');
 
@@ -85,8 +61,9 @@ function verifyToken(token) {
   const [payloadBase64, signature] = parts;
 
   try {
+    const secret = getTokenSecret();
     let expectedSignature = crypto
-      .createHmac('sha256', TOKEN_SECRET)
+      .createHmac('sha256', secret)
       .update(payloadBase64)
       .digest('base64url');
 
@@ -94,16 +71,6 @@ function verifyToken(token) {
     let sigBuf = Buffer.from(signature);
     let expBuf = Buffer.from(expectedSignature);
     let valid = (sigBuf.length === expBuf.length && crypto.timingSafeEqual(sigBuf, expBuf));
-
-    // Fallback: support existing tokens issued with legacy default secret
-    if (!valid && TOKEN_SECRET !== LEGACY_TOKEN_SECRET) {
-      expectedSignature = crypto
-        .createHmac('sha256', LEGACY_TOKEN_SECRET)
-        .update(payloadBase64)
-        .digest('base64url');
-      expBuf = Buffer.from(expectedSignature);
-      valid = (sigBuf.length === expBuf.length && crypto.timingSafeEqual(sigBuf, expBuf));
-    }
 
     if (!valid) {
       return null;
@@ -152,5 +119,8 @@ module.exports = {
   generateToken,
   verifyToken,
   extractBearerToken,
-  TOKEN_SECRET
+  getTokenSecret,
+  get TOKEN_SECRET() {
+    return getTokenSecret();
+  }
 };

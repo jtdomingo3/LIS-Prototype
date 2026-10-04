@@ -7,10 +7,13 @@ const fs = require('fs');
  * Used to protect sensitive secrets (e.g. OpenRouter API keys) at rest.
  */
 
+const { getSecret } = require('./secretStore');
+const LEGACY_MASTER_SECRET = 'gezyne-lis-ai-assistant-master-secret-2026';
+
 function deriveMasterKey(secret) {
-  const masterSecret = secret || process.env.DATA_USERS_KEY;
+  const masterSecret = secret || getSecret('DATA_USERS_KEY');
   if (!masterSecret) {
-    throw new Error('DATA_USERS_KEY environment variable is required');
+    throw new Error('DATA_USERS_KEY could not be resolved from environment or persistent storage');
   }
   return crypto.createHash('sha256').update(String(masterSecret)).digest();
 }
@@ -76,6 +79,16 @@ function decryptSecret(cipherPayload, secret) {
       const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
       return decrypted.toString('utf8');
     } catch (primaryErr) {
+      // If primary decryption fails and no specific secret was passed, try legacy fallback key
+      if (!secret) {
+        try {
+          const legacyKey = crypto.createHash('sha256').update(String(LEGACY_MASTER_SECRET)).digest();
+          const legacyDecipher = crypto.createDecipheriv('aes-256-gcm', legacyKey, iv);
+          legacyDecipher.setAuthTag(tag);
+          const decrypted = Buffer.concat([legacyDecipher.update(encrypted), legacyDecipher.final()]);
+          return decrypted.toString('utf8');
+        } catch (_) {}
+      }
       throw primaryErr;
     }
   } catch (err) {

@@ -55,6 +55,11 @@ const HOST = process.env.HOST || '0.0.0.0';
 const { initAppLogger } = require('./lib/appLogger');
 const DATA_DIR = require('./lib/dataPath').getDataDir();
 initAppLogger(DATA_DIR);
+
+// Ensure essential application secrets exist (SESSION_SECRET, AUTH_TOKEN_SECRET, DATA_USERS_KEY)
+const { ensureServerSecrets, getSecret } = require('./lib/secretStore');
+ensureServerSecrets();
+
 const SQLITE_FILE = path.join(DATA_DIR, 'lis-data.db');
 // Legacy JSON paths (used for migration and backward compatibility)
 const DATA_FILE = path.join(DATA_DIR, 'data.json');
@@ -498,10 +503,19 @@ app.use('/api/auth/token', authLimiter);
 // Rate limiter for sensitive diagnostic and export endpoints
 const sensitiveLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 15, // max 15 requests per minute
+  max: 60, // 60 requests per minute
   standardHeaders: true,
   legacyHeaders: false,
-  message: { success: false, error: 'Too many requests to sensitive endpoint, please try again shortly' }
+  message: { success: false, error: 'Too many requests to sensitive endpoint, please try again shortly' },
+  skip: (req) => {
+    // Authenticated sync requests (Bearer token or Sync headers) should not be throttled out of syncing patient clinical data
+    try {
+      const authHeader = req.headers['authorization'] || req.headers['Authorization'];
+      if (authHeader && authHeader.toLowerCase().startsWith('bearer ')) return true;
+      if (req.headers['x-lis-sync-hash'] && req.headers['x-lis-sync-email']) return true;
+    } catch (_) {}
+    return false;
+  }
 });
 app.use('/settings/test-ai', sensitiveLimiter);
 app.use('/export/', sensitiveLimiter);
@@ -536,10 +550,11 @@ app.set('layout extractStyles', true);
 
 // Resolve or generate a persistent session secret
 function getSessionSecret() {
-  if (process.env.SESSION_SECRET && String(process.env.SESSION_SECRET).trim()) {
-    return String(process.env.SESSION_SECRET).trim();
+  const secret = getSecret('SESSION_SECRET');
+  if (secret) {
+    return secret;
   }
-  throw new Error('SESSION_SECRET environment variable is required');
+  throw new Error('SESSION_SECRET could not be resolved from environment or persistent storage');
 }
 
 const cookieParser = require('cookie-parser');

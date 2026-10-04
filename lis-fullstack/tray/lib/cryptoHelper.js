@@ -7,47 +7,14 @@ const fs = require('fs');
  * Used to protect sensitive secrets (e.g. OpenRouter API keys) at rest.
  */
 
+const { getSecret } = require('./secretStore');
 const LEGACY_MASTER_SECRET = 'gezyne-lis-ai-assistant-master-secret-2026';
 
-function getOrCreateSecret(envNames, secretFilename, legacyFallback) {
-  for (const name of envNames) {
-    if (process.env[name] && String(process.env[name]).trim()) {
-      return String(process.env[name]).trim();
-    }
-  }
-
-  try {
-    let dataDir = process.env.DATA_DIR;
-    if (!dataDir) {
-      try {
-        const dp = require('./dataPath');
-        dataDir = typeof dp.getDataDir === 'function' ? dp.getDataDir() : null;
-      } catch (_) {}
-    }
-    if (!dataDir) dataDir = path.join(__dirname, '..');
-    const secretPath = path.join(dataDir, secretFilename);
-    if (fs.existsSync(secretPath)) {
-      const existing = fs.readFileSync(secretPath, 'utf8').trim();
-      if (existing && existing.length >= 32) return existing;
-    }
-    const generated = crypto.randomBytes(32).toString('hex');
-    try {
-      fs.mkdirSync(dataDir, { recursive: true });
-      fs.writeFileSync(secretPath, generated, { encoding: 'utf8', mode: 0o600 });
-    } catch (_) {}
-    return generated;
-  } catch (_) {
-    return legacyFallback;
-  }
-}
-
-// Derive a 32-byte key from any secret string using SHA-256
 function deriveMasterKey(secret) {
-  const masterSecret = secret || getOrCreateSecret(
-    ['DATA_USERS_KEY', 'USER_DATA_KEY', 'SESSION_SECRET'],
-    '.data_users_secret',
-    LEGACY_MASTER_SECRET
-  );
+  const masterSecret = secret || getSecret('DATA_USERS_KEY');
+  if (!masterSecret) {
+    throw new Error('DATA_USERS_KEY could not be resolved from environment or persistent storage');
+  }
   return crypto.createHash('sha256').update(String(masterSecret)).digest();
 }
 

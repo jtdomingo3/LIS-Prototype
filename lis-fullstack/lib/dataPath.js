@@ -149,6 +149,14 @@ function getDataDir() {
     }
   }
 
+  // Check if running inside Electron asar archive
+  if (__dirname.includes('app.asar')) {
+    const documentsLisDir = path.join(os.homedir(), 'Documents', 'LIS', 'data');
+    try { fs.mkdirSync(documentsLisDir, { recursive: true }); } catch (_) {}
+    _cachedDataDir = documentsLisDir;
+    return _cachedDataDir;
+  }
+
   // development mode: files live in project root (../ relative to this file)
   const devDir = path.join(__dirname, '..');
   console.log('[dataPath] development mode, using', devDir);

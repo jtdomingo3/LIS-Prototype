@@ -11,19 +11,23 @@ const os = require('os');
  * * When running from a pkg-packaged executable (`process.pkg` is defined)
  *   the executable is a read-only snapshot; we store our data next to the
  *   running binary instead (the same directory the exe lives in).
+ * * When running inside an Electron packaged environment (app.asar), data
+ *   lives in ~/Documents/LIS/app-sync so that it is always writable without
+ *   elevation.
  * * An explicit override may be provided via the DATA_DIR environment variable
  *   which allows the installer or user to point the server at a custom
  *   location.
  */
+let _cachedDataDir = null;
+
 function getDataDir() {
+  if (_cachedDataDir) return _cachedDataDir;
+
   // start by honoring an explicit override; this is useful for testing and
   // for environments where the directory should be controlled by the caller.
   if (process.env.DATA_DIR && process.env.DATA_DIR.length) {
     const dir = process.env.DATA_DIR;
     console.log('[dataPath] DATA_DIR override detected:', dir);
-    // if there is an older data.json sitting in the executable directory,
-    // and the new directory doesn't have one yet, copy it across so we
-    // don't lose existing data when migrating to a per-user path.
     try {
       const execDir = path.dirname(process.execPath);
       const oldFile = path.join(execDir, 'data.json');
@@ -37,7 +41,17 @@ function getDataDir() {
       console.error('[dataPath] migration from execDir failed:', err);
     }
     try { fs.mkdirSync(dir, { recursive: true }); } catch (e) { /* ignore */ }
-    return dir;
+    _cachedDataDir = dir;
+    return _cachedDataDir;
+  }
+
+  // Check if running inside Electron asar archive (standalone app)
+  if (__dirname.includes('app.asar')) {
+    const standaloneDir = path.join(os.homedir(), 'Documents', 'LIS', 'app-sync');
+    try { fs.mkdirSync(standaloneDir, { recursive: true }); } catch (_) {}
+    console.log('[dataPath] Electron packaged mode, using', standaloneDir);
+    _cachedDataDir = standaloneDir;
+    return _cachedDataDir;
   }
 
   if (process.pkg) {
@@ -50,11 +64,6 @@ function getDataDir() {
       console.error('[dataPath] unable to create ProgramData directory', pdDir, e);
     }
 
-    // if there is a previous dataset in the user directory, prefer that
-    // unless we have already written to ProgramData. this covers a scenario
-    // where the server initially ran into a permissions problem and wrote to
-    // the home directory, then later started again with ProgramData
-    // available; we don't want to lose the original data.
     const userDir = path.join(os.homedir(), 'GezyneLIS');
     const userData = path.join(userDir, 'data.json');
     const userUsers = path.join(userDir, 'data-users.json');
@@ -106,7 +115,8 @@ function getDataDir() {
       const testFile = path.join(pdDir, `.test_${process.pid}`);
       fs.writeFileSync(testFile, ''); fs.unlinkSync(testFile);
       console.log('[dataPath] using ProgramData directory', pdDir);
-      return pdDir;
+      _cachedDataDir = pdDir;
+      return _cachedDataDir;
     } catch (e) {
       console.warn('[dataPath] ProgramData not writable, falling back to userDir', e);
       try { fs.mkdirSync(userDir, { recursive: true }); } catch (e2) { /* ignore */ }
@@ -121,14 +131,16 @@ function getDataDir() {
         }
       } catch (e3) { console.error('[dataPath] failed to copy from pd to userDir', e3); }
       console.log('[dataPath] using user directory', userDir);
-      return userDir;
+      _cachedDataDir = userDir;
+      return _cachedDataDir;
     }
   }
 
   // development mode: files live in project root (../ relative to this file)
   const devDir = path.join(__dirname, '..');
   console.log('[dataPath] development mode, using', devDir);
-  return devDir;
+  _cachedDataDir = devDir;
+  return _cachedDataDir;
 }
 
 function dataFile(filename) {

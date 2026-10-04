@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.6.4] - 2026-10-04
+
+### Fixed
+- **Server Startup & Authentication Secret Zero-Config Resilience (P0)**:
+  - Resolved fatal server crash (`AUTH_TOKEN_SECRET environment variable is required`) on clean client machines lacking pre-existing `.env` files.
+  - Implemented centralized `secretStore.js` to automatically resolve, generate, and persist cryptographic secrets (`.session_secret`, `.auth_token_secret`, `.data_users_secret`) in the active `DATA_DIR` across server reboots.
+  - Restored fallback decryption with `LEGACY_MASTER_SECRET` in `cryptoHelper.js` so previously configured AI assistant (GezyneBot) keys remain decryptable across upgrades.
+  - Relaxed sensitive endpoint rate limiting on `/export/` for authenticated clinical workstations (Bearer tokens and sync headers) to prevent HTTP 429 errors during live multi-department operations.
+  - Synchronized secret resolution logic across server, tray, and standalone helper copies.
+
+- **Standalone Thermal Printing Spawn Fix (P0)**:
+  - Resolved `spawnSync ENOENT` error (`Gezyne LIS.exe ENOENT`) during receipt printing tests caused by passing `cwd: __dirname` inside the packaged `app.asar` archive.
+  - Configured process working directory to use operating system temporary storage (`app.getPath('temp')`) and supported `app.asar.unpacked` path resolution for `thermal_test.js`.
+
+- **Standalone Data Persistence & Network URL Normalization (P1)**:
+  - Fixed `dataPath.js` in standalone desktop app attempting to resolve writable data directories into read-only `resources/app.asar` by establishing `%USERPROFILE%\Documents\LIS\app-sync` as default `DATA_DIR`.
+  - Added centralized `serverUrl.js` validation to normalize user-entered server URLs (automatically prepending `http://`, trimming trailing slashes, and blocking unsupported protocols) to eliminate `Invalid URL` login failures.
+  - Replaced misleading "Invalid email or password" flash errors with descriptive connection error notices when the central server is offline or unreachable.
+
+- **Standalone Real-time Sync & Audit Hardening (P2 / P3)**:
+  - Introduced a 10-second cooldown in `scheduleAutoFullSync` to debounce rapid SSE stream notifications and eliminate redundant concurrent full data downloads.
+  - Added automatic recovery for expired or invalid cached Bearer tokens (`.sync_token`) to cleanly fallback to hash-based authentication without requiring user intervention.
+  - Refined discrepancy audit logging to clearly separate pre-sync local divergences from duplicate identifiers present in upstream central server records.
+
+---
+
 ## [2.6.2] - 2026-09-26
 
 ### Added

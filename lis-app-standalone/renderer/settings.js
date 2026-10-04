@@ -330,7 +330,29 @@
       saveBtn.textContent = 'Saving…';
       try {
         const pName = printerEl.value ? String(printerEl.value).trim() : '';
-        const sUrl = serverEl.value ? String(serverEl.value).trim() : '';
+        let sUrl = serverEl.value ? String(serverEl.value).trim() : '';
+        if (sUrl) {
+          if (!/^https?:\/\//i.test(sUrl)) {
+            sUrl = 'http://' + sUrl.replace(/^\/+/, '');
+          }
+          try {
+            const parsed = new URL(sUrl);
+            if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+              throw new Error('Only http:// and https:// URLs are supported.');
+            }
+            if (!parsed.hostname) {
+              throw new Error('Please enter a valid hostname or IP address.');
+            }
+            const cleanPath = (parsed.pathname === '/' || !parsed.pathname) ? '' : parsed.pathname.replace(/\/+$/, '');
+            sUrl = `${parsed.protocol}//${parsed.host}${cleanPath}`;
+            serverEl.value = sUrl;
+          } catch (urlErr) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save Settings';
+            setFeedback('Invalid Server URL: ' + urlErr.message, true);
+            return;
+          }
+        }
         const newSettings = {
           serverUrl: sUrl,
           printerName: pName,

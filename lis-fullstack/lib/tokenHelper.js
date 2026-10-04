@@ -2,10 +2,16 @@ const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
 
-const TOKEN_SECRET = process.env.AUTH_TOKEN_SECRET;
-if (!TOKEN_SECRET) {
-  throw new Error('AUTH_TOKEN_SECRET environment variable is required');
+const { getSecret } = require('./secretStore');
+
+function getTokenSecret() {
+  const secret = getSecret('AUTH_TOKEN_SECRET');
+  if (!secret) {
+    throw new Error('AUTH_TOKEN_SECRET environment variable or persistent secret file is required');
+  }
+  return secret;
 }
+
 const DEFAULT_EXPIRY_DAYS = 30; // Long-lived token suitable for clinical workstations & offline sync
 
 /**
@@ -32,8 +38,9 @@ function generateToken(user, expiresInDays = DEFAULT_EXPIRY_DAYS) {
   };
 
   const payloadBase64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const secret = getTokenSecret();
   const signature = crypto
-    .createHmac('sha256', TOKEN_SECRET)
+    .createHmac('sha256', secret)
     .update(payloadBase64)
     .digest('base64url');
 
@@ -54,8 +61,9 @@ function verifyToken(token) {
   const [payloadBase64, signature] = parts;
 
   try {
+    const secret = getTokenSecret();
     let expectedSignature = crypto
-      .createHmac('sha256', TOKEN_SECRET)
+      .createHmac('sha256', secret)
       .update(payloadBase64)
       .digest('base64url');
 
@@ -111,5 +119,8 @@ module.exports = {
   generateToken,
   verifyToken,
   extractBearerToken,
-  TOKEN_SECRET
+  getTokenSecret,
+  get TOKEN_SECRET() {
+    return getTokenSecret();
+  }
 };

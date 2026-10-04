@@ -251,19 +251,38 @@ class SyncEngine {
             } catch (e) {
               lastErr = e;
               console.error('[Sync] full-sync attempt failed for', url, e && e.message);
-              if (e && String(e.message).startsWith('http:401') && this._credentials) {
-                try {
-                  console.log('[Sync] 401 encountered — attempting token re-authentication for', url);
-                  const reauthed = await this._ensureServerAuth(true);
-                  if (reauthed) {
+              if (e && String(e.message).startsWith('http:401')) {
+                if (this._credentials) {
+                  try {
+                    console.log('[Sync] 401 encountered — attempting token re-authentication for', url);
+                    const reauthed = await this._ensureServerAuth(true);
+                    if (reauthed) {
+                      result = await this._fetchJson(net, url, progressSender);
+                      if (result) {
+                        console.log('[Sync] retry succeeded after token re-auth for', url);
+                        break;
+                      }
+                    }
+                  } catch (retryErr) {
+                    lastErr = retryErr;
+                  }
+                } else if (this._bearerToken) {
+                  // Stale cached Bearer token from disk — clear it so fallback hash-headers take effect
+                  console.log('[Sync] 401 with cached Bearer token — clearing stale token and retrying with hash headers');
+                  this.setBearerToken(null);
+                  try {
+                    const tokenFile = path.join(baseDir, '.sync_token');
+                    if (fs.existsSync(tokenFile)) fs.unlinkSync(tokenFile);
+                  } catch (_) {}
+                  try {
                     result = await this._fetchJson(net, url, progressSender);
                     if (result) {
-                      console.log('[Sync] retry succeeded after token re-auth for', url);
+                      console.log('[Sync] retry succeeded with hash headers for', url);
                       break;
                     }
+                  } catch (hashErr) {
+                    lastErr = hashErr;
                   }
-                } catch (retryErr) {
-                  lastErr = retryErr;
                 }
               }
               continue;
@@ -319,6 +338,7 @@ class SyncEngine {
           if (progressSender) progressSender.send('full-sync-progress', { phase: 'error', reason: e && e.message });
           return { success: false, reason: e && e.message };
         } finally {
+          this._lastFullSyncAt = Date.now();
           this._fullSyncActivePromise = null;
         }
       })();
@@ -945,19 +965,30 @@ class SyncEngine {
 
   /**
    * Schedule a debounced background fullSync when remote events are received.
+   * Enforces a cooldown period to protect server resources and avoid 429 rate limiting.
    */
-  scheduleAutoFullSync(webContents, delay = 1200) {
+  scheduleAutoFullSync(webContents, delay = 2500) {
     try {
+      const COOLDOWN_MS = 10000; // minimum 10 seconds between event-triggered full sync passes
+      const now = Date.now();
+      const elapsed = now - (this._lastFullSyncAt || 0);
+
       if (this._autoFullSyncTimer) clearTimeout(this._autoFullSyncTimer);
+
+      const effectiveDelay = elapsed < COOLDOWN_MS ? Math.max(delay, COOLDOWN_MS - elapsed) : delay;
+
       this._autoFullSyncTimer = setTimeout(async () => {
         try {
-          if (this._syncing) return;
+          if (this._fullSyncActivePromise) {
+            // If already syncing, wait for completion before scheduling another pass
+            return;
+          }
           console.log('[SyncBridge] Triggering background fullSync on remote event...');
           await this.fullSync(webContents);
         } catch (err) {
           console.warn('[SyncBridge] Background fullSync failed:', err && err.message);
         }
-      }, delay);
+      }, effectiveDelay);
     } catch (e) {}
   }
 
@@ -1417,67 +1448,51 @@ class SyncEngine {
       return { success: false, reason: errMsg, discrepancies };
     }
 
-    // Step 3: Audit & detect discrepancies
+    // Step 3: Audit & detect discrepancies and server data duplicates
     const localPatientsBefore = (this.dataStore.getCollection('patients') || []).slice();
     const localTestsBefore = (this.dataStore.getCollection('tests') || []).slice();
     const serverPatients = Array.isArray(serverData.patients) ? serverData.patients : [];
     const serverTests = Array.isArray(serverData.tests) ? serverData.tests : [];
 
-    // Check duplicate patients in local database (only temporary client_ids or duplicate patientCodes)
-    const patientCodeMap = new Map();
-    const patientClientMap = new Map();
+    const serverSideDuplicates = [];
+    const localDivergences = [];
 
-    for (const p of localPatientsBefore) {
+    // Audit duplicates within authoritative server data
+    const sPatientCodeMap = new Map();
+    for (const p of serverPatients) {
       if (!p || !p.id) continue;
       const code = (p.patientCode || '').trim().toUpperCase();
-      const cid = (p.client_id || p.clientId || '').trim();
-
       if (code) {
-        if (patientCodeMap.has(code)) {
-          discrepancies.push(`Local duplicate patient code '${code}': IDs [${patientCodeMap.get(code)}, ${p.id}]`);
+        if (sPatientCodeMap.has(code)) {
+          serverSideDuplicates.push(`Server duplicate patient code '${code}': IDs [${sPatientCodeMap.get(code)}, ${p.id}]`);
         } else {
-          patientCodeMap.set(code, p.id);
-        }
-      }
-      if (cid) {
-        if (patientClientMap.has(cid)) {
-          discrepancies.push(`Local duplicate patient client_id '${cid}': IDs [${patientClientMap.get(cid)}, ${p.id}]`);
-        } else {
-          patientClientMap.set(cid, p.id);
+          sPatientCodeMap.set(code, p.id);
         }
       }
     }
 
-    // Check duplicate tests in local database
-    const testIdMap = new Map();
-    const testClientMap = new Map();
-    for (const t of localTestsBefore) {
+    const sTestIdMap = new Map();
+    for (const t of serverTests) {
       if (!t || !t.id) continue;
       const tid = String(t.testId || '').trim();
-      const cid = (t.client_id || t.clientId || '').trim();
       if (tid) {
-        if (testIdMap.has(tid)) {
-          discrepancies.push(`Local duplicate testId '${tid}': IDs [${testIdMap.get(tid)}, ${t.id}]`);
+        if (sTestIdMap.has(tid)) {
+          serverSideDuplicates.push(`Server duplicate testId '${tid}': IDs [${sTestIdMap.get(tid)}, ${t.id}]`);
         } else {
-          testIdMap.set(tid, t.id);
-        }
-      }
-      if (cid) {
-        if (testClientMap.has(cid)) {
-          discrepancies.push(`Local duplicate test client_id '${cid}': IDs [${testClientMap.get(cid)}, ${t.id}]`);
-        } else {
-          testClientMap.set(cid, t.id);
+          sTestIdMap.set(tid, t.id);
         }
       }
     }
 
-    // Check count differences
+    // Check count differences between local before-state and server state
     if (localPatientsBefore.length !== serverPatients.length) {
-      discrepancies.push(`Patient count divergence: Local had ${localPatientsBefore.length}, Server has ${serverPatients.length}`);
+      localDivergences.push(`Patient count divergence: Local had ${localPatientsBefore.length}, Server has ${serverPatients.length}`);
     }
     if (localTestsBefore.length !== serverTests.length) {
-      discrepancies.push(`Test count divergence: Local had ${localTestsBefore.length}, Server has ${serverTests.length}`);
+      localDivergences.push(`Test count divergence: Local had ${localTestsBefore.length}, Server has ${serverTests.length}`);
     }
+
+    discrepancies.push(...localDivergences);
 
     // Step 4: Authoritatively reconcile local DataStore with server data
     // Use replace: true so local database precisely mirrors authoritative server state
@@ -1540,10 +1555,14 @@ class SyncEngine {
       },
       discrepanciesFound: discrepancies.length,
       discrepancies,
-      status: discrepancies.length === 0 ? 'SYNC_VERIFIED_CLEAN' : 'DISCREPANCIES_RESOLVED',
-      summary: discrepancies.length === 0
+      serverSideDuplicatesCount: serverSideDuplicates.length,
+      serverSideDuplicates,
+      status: discrepancies.length === 0 ? 'SYNC_VERIFIED_CLEAN' : 'DIVERGENCES_RECONCILED',
+      summary: (discrepancies.length === 0 && serverSideDuplicates.length === 0)
         ? `Sync 100% verified cleanly (${serverPatients.length} patients, ${serverTests.length} tests). Zero discrepancies found.`
-        : `Sync completed with ${discrepancies.length} discrepancy(ies) resolved and eliminated. Local store is now identical to server.`
+        : (discrepancies.length > 0
+          ? `Sync completed with ${discrepancies.length} local divergence(s) reconciled. Local store is now identical to server.`
+          : `Sync verified: Local store is identical to server (${serverSideDuplicates.length} duplicate identifiers noted in upstream server data).`)
     };
 
     // Step 6: Log audit to file and metadata

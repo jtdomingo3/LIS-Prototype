@@ -33,11 +33,18 @@ router.post('/login', async (req, res) => {
 
     // If local match fails or user not found, verify credentials against live server
     let serverToken = null;
+    let serverAuthNotice = null;
     if (!isMatch) {
       const config = req.app.locals.config || {};
       if (config.SERVER_URL) {
         try {
-          const base = config.SERVER_URL.replace(/\/$/, '');
+          const { normalizeServerUrl } = require('../lib/serverUrl');
+          const norm = normalizeServerUrl(config.SERVER_URL);
+          if (!norm.ok || !norm.url) {
+            req.flash('error_msg', 'Central server URL is invalid. Please check Settings.');
+            return res.redirect('/');
+          }
+          const base = norm.url;
           const tokenUrl = base + '/api/auth/token';
           const parsed = new URL(tokenUrl);
           const isHttps = parsed.protocol === 'https:';
@@ -67,8 +74,15 @@ router.post('/login', async (req, res) => {
                 }
               });
             });
-            trReq.on('error', () => resolve(null));
-            trReq.on('timeout', () => { trReq.destroy(); resolve(null); });
+            trReq.on('error', (err) => {
+              serverAuthNotice = err && err.message ? `Server unreachable (${err.message})` : 'Server unreachable';
+              resolve(null);
+            });
+            trReq.on('timeout', () => {
+              trReq.destroy();
+              serverAuthNotice = 'Connection to server timed out';
+              resolve(null);
+            });
             trReq.write(postData);
             trReq.end();
           });
@@ -103,12 +117,17 @@ router.post('/login', async (req, res) => {
           }
         } catch (authErr) {
           console.warn('[auth] server login verification error:', authErr && authErr.message);
+          serverAuthNotice = authErr && authErr.message;
         }
       }
     }
 
     if (!user || !isMatch) {
-      req.flash('error_msg', 'Invalid email or password');
+      if (!user && serverAuthNotice) {
+        req.flash('error_msg', `Cannot authenticate offline: ${serverAuthNotice}. Please check server connection.`);
+      } else {
+        req.flash('error_msg', 'Invalid email or password');
+      }
       return res.redirect('/');
     }
 
