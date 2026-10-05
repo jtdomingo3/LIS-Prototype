@@ -246,6 +246,7 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
         const areaForTest = mapAreaForTest(t);
         // only count areas that are part of DISPLAY_AREAS
         if (!DISPLAY_AREAS.includes(areaForTest)) continue;
+        if (areaForTest === 'Payment Area' && (t.chargedToPhilhealth || t.paymentMethod === 'PhilHealth')) continue;
         if (!t.patient) continue;
         const patient = patientsById[t.patient];
         if (!patient || !patient.patientCode) continue;
@@ -743,7 +744,9 @@ router.get('/area/:name', requireAuth, canAccessPatient, async (req, res) => {
     const tests = Array.isArray(allTests) ? allTests.filter(t => {
       if (!t.status) return false;
       const mapped = mapAreaForTest(t);
-      return mapped === areaName;
+      if (mapped !== areaName) return false;
+      if (areaName === 'Payment Area' && (t.chargedToPhilhealth || t.paymentMethod === 'PhilHealth')) return false;
+      return true;
     }) : [];
 
     // Populate patient info for each test and prepare specimens list for the area

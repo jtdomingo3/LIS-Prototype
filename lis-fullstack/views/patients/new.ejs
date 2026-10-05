@@ -129,8 +129,12 @@
           </div>
 
           <div id="philIdWrap" style="display:<%= patient && patient.philhealthConsent ? '' : 'none' %>; margin-top: 10px;">
-            <label style="display: block; font-weight: 600; font-size: 0.82em; color: #334155; margin-bottom: 4px;">PhilHealth Identification Number (PIN)</label>
-            <input id="philId" type="text" name="philhealthId" value="<%= patient && patient.philhealthId ? patient.philhealthId : '' %>" placeholder="e.g. 12-345678901-2" style="width: 100%; height: 36px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 4px 10px; font-size: 0.88em; box-sizing: border-box;" />
+            <label style="display: block; font-weight: 600; font-size: 0.82em; color: #334155; margin-bottom: 4px;">PhilHealth Identification Number (PIN / PhilHealth Number)</label>
+            <input id="philId" type="text" name="philhealthId" value="<%= patient && (patient.philhealthId || patient.philhealthNumber) ? (patient.philhealthId || patient.philhealthNumber) : '' %>" placeholder="e.g. 12-345678901-2" style="width: 100%; height: 36px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 4px 10px; font-size: 0.88em; box-sizing: border-box;" />
+            <div style="margin-top: 8px;">
+              <label style="display: block; font-weight: 600; font-size: 0.82em; color: #334155; margin-bottom: 4px;">PhilHealth Agency / Employer</label>
+              <input id="philAgency" type="text" name="philhealthAgency" value="<%= patient && (patient.philhealthAgency || patient.company) ? (patient.philhealthAgency || patient.company) : '' %>" placeholder="e.g. DepEd / Employer / Agency" style="width: 100%; height: 36px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 4px 10px; font-size: 0.88em; box-sizing: border-box;" />
+            </div>
           </div>
         </div>
 
@@ -215,8 +219,8 @@
               <input type="text" name="physician" value="<%= patient.physician || '' %>" placeholder="Doctor or clinic" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 6px 12px; font-size: 0.9em; box-sizing: border-box;" />
             </div>
             <div>
-              <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 5px;">Company / Employer</label>
-              <input type="text" name="company" value="<%= patient.company || '' %>" placeholder="Employer (optional)" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 6px 12px; font-size: 0.9em; box-sizing: border-box;" />
+              <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 5px;">Company / Employer (PhilHealth Agency)</label>
+              <input id="companyInput" type="text" name="company" value="<%= patient.company || patient.philhealthAgency || '' %>" placeholder="Employer / Agency (optional)" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 6px 12px; font-size: 0.9em; box-sizing: border-box;" />
             </div>
           </div>
 
@@ -376,13 +380,36 @@
     }
   })();
 </script>
-<script>
   (function(){
     const yes = document.getElementById('philYes');
     const no = document.getElementById('philNo');
     const wrap = document.getElementById('philIdWrap');
+    const companyInput = document.getElementById('companyInput');
+    const philAgency = document.getElementById('philAgency');
+    if (companyInput && philAgency) {
+      companyInput.addEventListener('input', function() {
+        if (!philAgency.dataset.manuallyEdited) {
+          philAgency.value = companyInput.value;
+        }
+      });
+      philAgency.addEventListener('input', function() {
+        philAgency.dataset.manuallyEdited = '1';
+        if (!companyInput.value) {
+          companyInput.value = philAgency.value;
+        }
+      });
+    }
     if (!yes || !no || !wrap) return;
-    function update(){ if (yes.checked) wrap.style.display = ''; else wrap.style.display = 'none'; }
+    function update(){
+      if (yes.checked) {
+        wrap.style.display = '';
+        if (companyInput && philAgency && companyInput.value && !philAgency.value) {
+          philAgency.value = companyInput.value;
+        }
+      } else {
+        wrap.style.display = 'none';
+      }
+    }
     yes.addEventListener('change', update);
     no.addEventListener('change', update);
     update();

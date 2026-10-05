@@ -5,6 +5,7 @@ const Patient = require('../models/Patient');
 const User = require('../models/User');
 const Template = require('../models/Template');
 const Consultation = require('../models/Consultation');
+const PhilhealthRecord = require('../models/PhilhealthRecord');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -1244,6 +1245,226 @@ router.post('/patient-export/preview', requireAuth, canAccessPatient, async (req
   } catch (err) {
     console.error('Patient preview error:', err);
     return res.status(500).json({ error: 'Error generating patient preview' });
+  }
+});
+
+// POST /reports/philhealth-export/download - Download PhilHealth claims & registry data
+router.post('/philhealth-export/download', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const { dateFrom, dateTo, status, tranche1Paid, tranche2Paid, format } = req.body || {};
+    let records = await PhilhealthRecord.find({});
+
+    if (dateFrom) {
+      records = (records || []).filter(r => String(r.recordDate || r.createdAt || '').slice(0, 10) >= dateFrom);
+    }
+    if (dateTo) {
+      records = (records || []).filter(r => String(r.recordDate || r.createdAt || '').slice(0, 10) <= dateTo);
+    }
+    if (status) {
+      records = (records || []).filter(r => r.status === status);
+    }
+    if (tranche1Paid) {
+      records = (records || []).filter(r => r.tranche1Paid === tranche1Paid);
+    }
+    if (tranche2Paid) {
+      records = (records || []).filter(r => r.tranche2Paid === tranche2Paid);
+    }
+
+    records.sort((a, b) => new Date(b.recordDate || b.createdAt || 0) - new Date(a.recordDate || a.createdAt || 0));
+
+    const headers = [
+      '#',
+      'CONTROL NO',
+      'DATE',
+      'NAME',
+      'FIRST NAME',
+      'MIDDLE NAME',
+      'LAST NAME',
+      'PIN NO.',
+      'PROCEDURE',
+      'AGENCY',
+      'PCU/ERROR',
+      '1ST TRANCHE ENCODED',
+      '2ND TRANCHE ENCODED',
+      'EKAS',
+      '1ST TRANCHE PAID',
+      '2ND TRANCHE PAID',
+      'SOA REF',
+      'PAID DATE',
+      'STATUS',
+      'APPROVED BY',
+      'APPROVED AT'
+    ];
+
+    function mapRecordToRow(r, idx) {
+      const procList = (r.procedures || []).map(p => {
+        if (p.remarks && String(p.remarks).trim()) {
+          return `${p.label} [${p.remarks}]`;
+        }
+        return p.label;
+      }).join('; ');
+
+      return [
+        idx + 1,
+        r.controlNo || '',
+        r.recordDate || (r.createdAt ? String(r.createdAt).slice(0, 10) : ''),
+        r.fullName || `${r.firstName || ''} ${r.middleName || ''} ${r.lastName || ''}`.trim(),
+        r.firstName || '',
+        r.middleName || '',
+        r.lastName || '',
+        r.pinNo || '',
+        procList,
+        r.agency || '',
+        r.pcuError || '',
+        r.tranche1Encoded || 'Pending',
+        r.tranche2Encoded || 'Pending',
+        r.ekas || 'Pending',
+        r.tranche1Paid || 'Not Paid',
+        r.tranche2Paid || 'Not Paid',
+        r.soaRef || '',
+        r.paidDate || '',
+        r.status || 'Pending Approval',
+        r.approvedBy || '',
+        r.approvedAt ? String(r.approvedAt).slice(0, 19).replace('T', ' ') : ''
+      ];
+    }
+
+    const filenameBase = `philhealth_claims_export_${(new Date()).toISOString().slice(0, 19).replace(/[:T]/g, '-')}`;
+    const fmt = (format || '').toLowerCase();
+
+    if (fmt === 'xlsx') {
+      const workbook = new ExcelJS.Workbook();
+      const ws = workbook.addWorksheet('PhilHealth Claims');
+      const cols = headers.map(h => ({
+        header: h,
+        key: h,
+        width: Math.min(45, Math.max(12, String(h).length + 4))
+      }));
+      ws.columns = cols;
+
+      const headerRow = ws.getRow(1);
+      headerRow.eachCell(cell => {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF0D9488' }
+        };
+        cell.font = {
+          name: 'Calibri',
+          color: { argb: 'FFFFFFFF' },
+          bold: true,
+          size: 11
+        };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      });
+      headerRow.height = 28;
+
+      records.forEach((r, idx) => {
+        const rowVals = mapRecordToRow(r, idx);
+        const rowObj = {};
+        headers.forEach((h, i) => { rowObj[h] = rowVals[i]; });
+        const row = ws.addRow(rowObj);
+        row.height = 20;
+      });
+
+      ws.views = [{ state: 'frozen', ySplit: 1 }];
+      ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: headers.length } };
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      res.setHeader('Content-Disposition', `attachment; filename="${filenameBase}.xlsx"`);
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      return res.send(Buffer.from(buffer));
+    }
+
+    // Default CSV export with UTF-8 BOM
+    function escapeCsvCell(val) {
+      if (val === null || val === undefined) return '';
+      const s = String(val);
+      if (s.includes('"') || s.includes(',') || s.includes('\n') || s.includes('\r')) {
+        return '"' + s.replace(/"/g, '""') + '"';
+      }
+      return s;
+    }
+
+    const csvLines = [headers.map(escapeCsvCell).join(',')];
+    records.forEach((r, idx) => {
+      const rowVals = mapRecordToRow(r, idx);
+      csvLines.push(rowVals.map(escapeCsvCell).join(','));
+    });
+
+    const csvOutput = '\uFEFF' + csvLines.join('\r\n');
+    res.setHeader('Content-Disposition', `attachment; filename="${filenameBase}.csv"`);
+    res.setHeader('Content-Type', 'text/csv; charset=UTF-8');
+    return res.send(csvOutput);
+  } catch (error) {
+    console.error('PhilHealth export error:', error);
+    req.flash('error_msg', 'Error generating PhilHealth export');
+    res.redirect('/reports/worksheet');
+  }
+});
+
+// POST /reports/philhealth-export/preview - Limited preview JSON of PhilHealth records
+router.post('/philhealth-export/preview', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const { dateFrom, dateTo, status, tranche1Paid, tranche2Paid, limit } = req.body || {};
+    let records = await PhilhealthRecord.find({});
+
+    if (dateFrom) {
+      records = (records || []).filter(r => String(r.recordDate || r.createdAt || '').slice(0, 10) >= dateFrom);
+    }
+    if (dateTo) {
+      records = (records || []).filter(r => String(r.recordDate || r.createdAt || '').slice(0, 10) <= dateTo);
+    }
+    if (status) {
+      records = (records || []).filter(r => r.status === status);
+    }
+    if (tranche1Paid) {
+      records = (records || []).filter(r => r.tranche1Paid === tranche1Paid);
+    }
+    if (tranche2Paid) {
+      records = (records || []).filter(r => r.tranche2Paid === tranche2Paid);
+    }
+
+    records.sort((a, b) => new Date(b.recordDate || b.createdAt || 0) - new Date(a.recordDate || a.createdAt || 0));
+
+    const previewRows = records.map((r, idx) => {
+      const procList = (r.procedures || []).map(p => {
+        if (p.remarks && String(p.remarks).trim()) {
+          return `${p.label} [${p.remarks}]`;
+        }
+        return p.label;
+      }).join('; ');
+
+      return {
+        index: idx + 1,
+        controlNo: r.controlNo || '',
+        recordDate: r.recordDate || (r.createdAt ? String(r.createdAt).slice(0, 10) : ''),
+        fullName: r.fullName || `${r.firstName || ''} ${r.middleName || ''} ${r.lastName || ''}`.trim(),
+        firstName: r.firstName || '',
+        middleName: r.middleName || '',
+        lastName: r.lastName || '',
+        pinNo: r.pinNo || '',
+        procedures: procList || '—',
+        agency: r.agency || '—',
+        pcuError: r.pcuError || '—',
+        tranche1Encoded: r.tranche1Encoded || 'Pending',
+        tranche2Encoded: r.tranche2Encoded || 'Pending',
+        ekas: r.ekas || 'Pending',
+        tranche1Paid: r.tranche1Paid || 'Not Paid',
+        tranche2Paid: r.tranche2Paid || 'Not Paid',
+        soaRef: r.soaRef || '',
+        paidDate: r.paidDate || '',
+        status: r.status || 'Pending Approval',
+        approvedBy: r.approvedBy || '—',
+        approvedAt: r.approvedAt ? String(r.approvedAt).slice(0, 19).replace('T', ' ') : '—'
+      };
+    });
+
+    const max = Math.min(1000, parseInt(limit || '500', 10) || 500);
+    return res.json({ count: previewRows.length, rows: previewRows.slice(0, max) });
+  } catch (err) {
+    console.error('PhilHealth preview error:', err);
+    return res.status(500).json({ error: 'Error generating PhilHealth preview' });
   }
 });
 

@@ -584,6 +584,35 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     );
     CREATE INDEX IF NOT EXISTS idx_dtr_emp_date ON dtr_records(employeeId, date);
     CREATE INDEX IF NOT EXISTS idx_dtr_date ON dtr_records(date);
+
+    CREATE TABLE IF NOT EXISTS philhealth_records (
+      id TEXT PRIMARY KEY,
+      controlNo TEXT UNIQUE,
+      patientId TEXT NOT NULL,
+      recordDate TEXT NOT NULL,
+      firstName TEXT,
+      middleName TEXT,
+      lastName TEXT,
+      pinNo TEXT,
+      agency TEXT,
+      pcuError TEXT,
+      status TEXT DEFAULT 'Pending Approval',
+      tranche1Encoded TEXT DEFAULT 'Pending',
+      tranche2Encoded TEXT DEFAULT 'Pending',
+      ekas TEXT DEFAULT 'Pending',
+      tranche1Paid TEXT DEFAULT 'Not Paid',
+      tranche2Paid TEXT DEFAULT 'Not Paid',
+      soaRef TEXT,
+      paidDate TEXT,
+      createdAt TEXT,
+      updatedAt TEXT,
+      json TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_ph_controlNo ON philhealth_records(controlNo);
+    CREATE INDEX IF NOT EXISTS idx_ph_patientId ON philhealth_records(patientId);
+    CREATE INDEX IF NOT EXISTS idx_ph_recordDate ON philhealth_records(recordDate);
+    CREATE INDEX IF NOT EXISTS idx_ph_status ON philhealth_records(status);
+    CREATE INDEX IF NOT EXISTS idx_ph_pinNo ON philhealth_records(pinNo);
   `);
 
   const stmts = {
@@ -761,7 +790,15 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     getDtrRecordsByEmployeeAndMonth: sqlite.prepare("SELECT json FROM dtr_records WHERE employeeId = ? AND date LIKE ? ORDER BY date ASC"),
     getDtrRecordByDate: sqlite.prepare('SELECT json FROM dtr_records WHERE employeeId = ? AND date = ? LIMIT 1'),
     upsertDtrRecord: sqlite.prepare('INSERT OR REPLACE INTO dtr_records (id, employeeId, date, amIn, amOut, pmIn, pmOut, totalHours, dutyCredit, isFullDuty, undertimeMinutes, overtimeHours, status, notes, correctedBy, createdAt, updatedAt, json) VALUES (@id, @employeeId, @date, @amIn, @amOut, @pmIn, @pmOut, @totalHours, @dutyCredit, @isFullDuty, @undertimeMinutes, @overtimeHours, @status, @notes, @correctedBy, @createdAt, @updatedAt, @json)'),
-    deleteDtrRecordById: sqlite.prepare('DELETE FROM dtr_records WHERE id = ?')
+    deleteDtrRecordById: sqlite.prepare('DELETE FROM dtr_records WHERE id = ?'),
+
+    // PhilHealth Records
+    getAllPhilhealthRecords: sqlite.prepare('SELECT json FROM philhealth_records ORDER BY createdAt DESC'),
+    getPhilhealthRecordById: sqlite.prepare('SELECT json FROM philhealth_records WHERE id = ?'),
+    getPhilhealthRecordByControlNo: sqlite.prepare('SELECT json FROM philhealth_records WHERE controlNo = ?'),
+    getPhilhealthRecordsByPatientId: sqlite.prepare('SELECT json FROM philhealth_records WHERE patientId = ? ORDER BY createdAt DESC'),
+    upsertPhilhealthRecord: sqlite.prepare('INSERT OR REPLACE INTO philhealth_records (id, controlNo, patientId, recordDate, firstName, middleName, lastName, pinNo, agency, pcuError, status, tranche1Encoded, tranche2Encoded, ekas, tranche1Paid, tranche2Paid, soaRef, paidDate, createdAt, updatedAt, json) VALUES (@id, @controlNo, @patientId, @recordDate, @firstName, @middleName, @lastName, @pinNo, @agency, @pcuError, @status, @tranche1Encoded, @tranche2Encoded, @ekas, @tranche1Paid, @tranche2Paid, @soaRef, @paidDate, @createdAt, @updatedAt, @json)'),
+    deletePhilhealthRecordById: sqlite.prepare('DELETE FROM philhealth_records WHERE id = ?')
   };
 
   const patientCache = createEntityCache(1000);
@@ -2352,6 +2389,83 @@ function createBetterSqliteDb(dbPath, opts = {}) {
       } catch (e) { return false; }
     },
 
+    // PhilHealth Records Methods
+    getPhilhealthRecords(query) {
+      try {
+        let rows = parseRows(stmts.getAllPhilhealthRecords.all());
+        if (query && typeof query === 'object') {
+          if (query.status) rows = rows.filter(r => r.status === query.status);
+          if (query.patientId) rows = rows.filter(r => r.patientId === query.patientId);
+          if (query.controlNo) rows = rows.filter(r => r.controlNo === query.controlNo);
+          if (query.tranche1Paid) rows = rows.filter(r => r.tranche1Paid === query.tranche1Paid);
+          if (query.tranche2Paid) rows = rows.filter(r => r.tranche2Paid === query.tranche2Paid);
+        }
+        return rows;
+      } catch (e) { return []; }
+    },
+    getPhilhealthRecordById(id) {
+      if (!id) return null;
+      try {
+        const row = stmts.getPhilhealthRecordById.get(id);
+        return row && row.json ? JSON.parse(row.json) : null;
+      } catch (e) { return null; }
+    },
+    getPhilhealthRecordByControlNo(controlNo) {
+      if (!controlNo) return null;
+      try {
+        const row = stmts.getPhilhealthRecordByControlNo.get(controlNo);
+        return row && row.json ? JSON.parse(row.json) : null;
+      } catch (e) { return null; }
+    },
+    getPhilhealthRecordsByPatientId(patientId) {
+      if (!patientId) return [];
+      try {
+        const rows = stmts.getPhilhealthRecordsByPatientId.all(patientId);
+        return parseRows(rows);
+      } catch (e) { return []; }
+    },
+    savePhilhealthRecord(record) {
+      if (!record || !record.id) return null;
+      try {
+        const now = new Date().toISOString();
+        const data = {
+          id: String(record.id),
+          controlNo: safeStr(record.controlNo || ''),
+          patientId: safeStr(record.patientId || ''),
+          recordDate: safeStr(record.recordDate || now.slice(0, 10)),
+          firstName: safeStr(record.firstName || ''),
+          middleName: safeStr(record.middleName || ''),
+          lastName: safeStr(record.lastName || ''),
+          pinNo: safeStr(record.pinNo || ''),
+          agency: safeStr(record.agency || ''),
+          pcuError: safeStr(record.pcuError || ''),
+          status: safeStr(record.status || 'Pending Approval'),
+          tranche1Encoded: safeStr(record.tranche1Encoded || 'Pending'),
+          tranche2Encoded: safeStr(record.tranche2Encoded || 'Pending'),
+          ekas: safeStr(record.ekas || 'Pending'),
+          tranche1Paid: safeStr(record.tranche1Paid || 'Not Paid'),
+          tranche2Paid: safeStr(record.tranche2Paid || 'Not Paid'),
+          soaRef: safeStr(record.soaRef || ''),
+          paidDate: safeStr(record.paidDate || ''),
+          createdAt: safeStr(record.createdAt || now),
+          updatedAt: safeStr(record.updatedAt || now),
+          json: JSON.stringify(record)
+        };
+        stmts.upsertPhilhealthRecord.run(data);
+        return record;
+      } catch (e) {
+        console.error('[sqliteDb] savePhilhealthRecord error:', e.message);
+        return null;
+      }
+    },
+    deletePhilhealthRecord(id) {
+      if (!id) return false;
+      try {
+        stmts.deletePhilhealthRecordById.run(id);
+        return true;
+      } catch (e) { return false; }
+    },
+
     close() { try { sqlite.close(); } catch (e) {} }
   };
 }
@@ -2798,6 +2912,35 @@ function createSqlJsDb(SQL, dbPath) {
     CREATE INDEX IF NOT EXISTS idx_dtr_emp ON dtr_records(employeeId);
     CREATE INDEX IF NOT EXISTS idx_dtr_date ON dtr_records(date);
     CREATE INDEX IF NOT EXISTS idx_dtr_emp_date ON dtr_records(employeeId, date);
+
+    CREATE TABLE IF NOT EXISTS philhealth_records (
+      id TEXT PRIMARY KEY,
+      controlNo TEXT UNIQUE,
+      patientId TEXT NOT NULL,
+      recordDate TEXT NOT NULL,
+      firstName TEXT,
+      middleName TEXT,
+      lastName TEXT,
+      pinNo TEXT,
+      agency TEXT,
+      pcuError TEXT,
+      status TEXT DEFAULT 'Pending Approval',
+      tranche1Encoded TEXT DEFAULT 'Pending',
+      tranche2Encoded TEXT DEFAULT 'Pending',
+      ekas TEXT DEFAULT 'Pending',
+      tranche1Paid TEXT DEFAULT 'Not Paid',
+      tranche2Paid TEXT DEFAULT 'Not Paid',
+      soaRef TEXT,
+      paidDate TEXT,
+      createdAt TEXT,
+      updatedAt TEXT,
+      json TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_sqljs_ph_controlNo ON philhealth_records(controlNo);
+    CREATE INDEX IF NOT EXISTS idx_sqljs_ph_patientId ON philhealth_records(patientId);
+    CREATE INDEX IF NOT EXISTS idx_sqljs_ph_recordDate ON philhealth_records(recordDate);
+    CREATE INDEX IF NOT EXISTS idx_sqljs_ph_status ON philhealth_records(status);
+    CREATE INDEX IF NOT EXISTS idx_sqljs_ph_pinNo ON philhealth_records(pinNo);
   `);
 
   let persistTimer = null;
@@ -4431,6 +4574,84 @@ function createSqlJsDb(SQL, dbPath) {
       } catch (e) { return false; }
     },
 
+    // PhilHealth Records (sql.js)
+    getPhilhealthRecords(query) {
+      try {
+        let rows = parseAll(queryAll('SELECT json FROM philhealth_records ORDER BY createdAt DESC'));
+        if (query && typeof query === 'object') {
+          if (query.status) rows = rows.filter(r => r.status === query.status);
+          if (query.patientId) rows = rows.filter(r => r.patientId === query.patientId);
+          if (query.controlNo) rows = rows.filter(r => r.controlNo === query.controlNo);
+          if (query.tranche1Paid) rows = rows.filter(r => r.tranche1Paid === query.tranche1Paid);
+          if (query.tranche2Paid) rows = rows.filter(r => r.tranche2Paid === query.tranche2Paid);
+        }
+        return rows;
+      } catch (e) { return []; }
+    },
+    getPhilhealthRecordById(id) {
+      if (!id) return null;
+      try {
+        const row = queryOne('SELECT json FROM philhealth_records WHERE id = ?', [id]);
+        return row && row.json ? JSON.parse(row.json) : null;
+      } catch (e) { return null; }
+    },
+    getPhilhealthRecordByControlNo(controlNo) {
+      if (!controlNo) return null;
+      try {
+        const row = queryOne('SELECT json FROM philhealth_records WHERE controlNo = ?', [controlNo]);
+        return row && row.json ? JSON.parse(row.json) : null;
+      } catch (e) { return null; }
+    },
+    getPhilhealthRecordsByPatientId(patientId) {
+      if (!patientId) return [];
+      try {
+        return parseAll(queryAll('SELECT json FROM philhealth_records WHERE patientId = ? ORDER BY createdAt DESC', [patientId]));
+      } catch (e) { return []; }
+    },
+    savePhilhealthRecord(record) {
+      if (!record || !record.id) return null;
+      try {
+        const now = new Date().toISOString();
+        const data = [
+          String(record.id),
+          safeStr(record.controlNo || ''),
+          safeStr(record.patientId || ''),
+          safeStr(record.recordDate || now.slice(0, 10)),
+          safeStr(record.firstName || ''),
+          safeStr(record.middleName || ''),
+          safeStr(record.lastName || ''),
+          safeStr(record.pinNo || ''),
+          safeStr(record.agency || ''),
+          safeStr(record.pcuError || ''),
+          safeStr(record.status || 'Pending Approval'),
+          safeStr(record.tranche1Encoded || 'Pending'),
+          safeStr(record.tranche2Encoded || 'Pending'),
+          safeStr(record.ekas || 'Pending'),
+          safeStr(record.tranche1Paid || 'Not Paid'),
+          safeStr(record.tranche2Paid || 'Not Paid'),
+          safeStr(record.soaRef || ''),
+          safeStr(record.paidDate || ''),
+          safeStr(record.createdAt || now),
+          safeStr(record.updatedAt || now),
+          JSON.stringify(record)
+        ];
+        queryRun('INSERT OR REPLACE INTO philhealth_records (id, controlNo, patientId, recordDate, firstName, middleName, lastName, pinNo, agency, pcuError, status, tranche1Encoded, tranche2Encoded, ekas, tranche1Paid, tranche2Paid, soaRef, paidDate, createdAt, updatedAt, json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', data);
+        persist();
+        return record;
+      } catch (e) {
+        console.error('[sqliteDb sql.js] savePhilhealthRecord error:', e.message);
+        return null;
+      }
+    },
+    deletePhilhealthRecord(id) {
+      if (!id) return false;
+      try {
+        queryRun('DELETE FROM philhealth_records WHERE id = ?', [id]);
+        persist();
+        return true;
+      } catch (e) { return false; }
+    },
+
     close() {
       if (isClosed) return;
       persist(true);
@@ -4625,6 +4846,13 @@ function createDb(dbPath, opts = {}) {
     getDtrRecordByDate(e, d) { return underlyingDb ? underlyingDb.getDtrRecordByDate(e, d) : null; },
     saveDtrRecord(d) { if (underlyingDb) return underlyingDb.saveDtrRecord(d); else readyPromise.then(db => db.saveDtrRecord(d)); return d; },
     deleteDtrRecord(id) { if (underlyingDb) return underlyingDb.deleteDtrRecord(id); else readyPromise.then(db => db.deleteDtrRecord(id)); return true; },
+
+    getPhilhealthRecords(q) { return underlyingDb ? underlyingDb.getPhilhealthRecords(q) : []; },
+    getPhilhealthRecordById(id) { return underlyingDb ? underlyingDb.getPhilhealthRecordById(id) : null; },
+    getPhilhealthRecordByControlNo(c) { return underlyingDb ? underlyingDb.getPhilhealthRecordByControlNo(c) : null; },
+    getPhilhealthRecordsByPatientId(pid) { return underlyingDb ? underlyingDb.getPhilhealthRecordsByPatientId(pid) : []; },
+    savePhilhealthRecord(r) { if (underlyingDb) return underlyingDb.savePhilhealthRecord(r); else readyPromise.then(db => db.savePhilhealthRecord(r)); return r; },
+    deletePhilhealthRecord(id) { if (underlyingDb) return underlyingDb.deletePhilhealthRecord(id); else readyPromise.then(db => db.deletePhilhealthRecord(id)); return true; },
 
     close() { if (underlyingDb) underlyingDb.close(); }
   };

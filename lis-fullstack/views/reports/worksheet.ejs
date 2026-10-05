@@ -691,3 +691,204 @@
     })();
   </script>
 </div>
+
+<!-- PhilHealth Claims & Registry Export Card -->
+<div class="card" style="padding:24px 28px; border-radius:16px; box-shadow:0 4px 18px rgba(0,0,0,0.03); margin-top:24px;">
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-bottom:1px solid #f1f5f9; padding-bottom:16px; margin-bottom:20px;">
+    <div>
+      <h3 style="margin:0; font-size:1.4em; display:flex; align-items:center; gap:10px; color:#0f172a;">
+        <span style="font-size:1.1em;">🩺</span> PhilHealth / Health Card Claims & Registry Export
+      </h3>
+      <p style="margin:4px 0 0 0; color:#64748b; font-size:0.9em;">
+        Export PhilHealth member encounters, tranches, EKAS encoding, procedures, and DOH SOA settlement tracking into Excel (.xlsx) or CSV format.
+      </p>
+    </div>
+    <div>
+      <a href="/philhealth" class="button btn-secondary" style="padding:8px 16px; font-size:0.88em; display:inline-flex; align-items:center; gap:6px;">
+        <span>🩺</span> Go to PhilHealth Panel →
+      </a>
+    </div>
+  </div>
+
+  <form id="phForm" action="/reports/philhealth-export/download" method="POST">
+    <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:20px;">
+      <div class="field" style="margin:0;">
+        <label>Record Date Range</label>
+        <div style="display:flex; gap:8px;">
+          <input type="date" name="dateFrom" style="flex:1; height:40px; border-radius:8px; border:1px solid #cbd5e1; padding:0 8px;" />
+          <input type="date" name="dateTo" style="flex:1; height:40px; border-radius:8px; border:1px solid #cbd5e1; padding:0 8px;" />
+        </div>
+      </div>
+
+      <div class="field" style="margin:0;">
+        <label>Approval Status</label>
+        <select name="status" style="width:100%; height:40px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; padding:0 10px;">
+          <option value="">-- All Statuses --</option>
+          <option value="Pending Approval">Pending Approval</option>
+          <option value="Approved">Approved</option>
+          <option value="Cancelled">Cancelled</option>
+        </select>
+      </div>
+
+      <div class="field" style="margin:0;">
+        <label>1st Tranche Paid</label>
+        <select name="tranche1Paid" style="width:100%; height:40px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; padding:0 10px;">
+          <option value="">-- Any Status --</option>
+          <option value="Paid">Paid</option>
+          <option value="Not Paid">Not Paid</option>
+        </select>
+      </div>
+
+      <div class="field" style="margin:0;">
+        <label>2nd Tranche Paid</label>
+        <select name="tranche2Paid" style="width:100%; height:40px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; padding:0 10px;">
+          <option value="">-- Any Status --</option>
+          <option value="Paid">Paid</option>
+          <option value="Not Paid">Not Paid</option>
+        </select>
+      </div>
+
+      <div class="field" style="margin:0;">
+        <label>Export Format</label>
+        <select name="format" style="width:100%; height:40px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; padding:0 10px;">
+          <option value="csv">Comma-Separated Values (.csv)</option>
+          <option value="xlsx">Excel Spreadsheet (.xlsx)</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <button type="submit" class="button btn-primary" style="padding:10px 22px; font-weight:600; background:#0d9488; border-color:#0f766e;">
+        📥 Download PhilHealth Data
+      </button>
+      <button type="button" id="phPreviewBtn" class="button btn-secondary" style="padding:10px 20px;">
+        👁️ Preview PhilHealth Data
+      </button>
+    </div>
+  </form>
+
+  <!-- PhilHealth Preview Area -->
+  <div id="phPreviewArea" style="width:100%; margin-top:20px; display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <h4 style="margin:0; font-size:1em; color:#0f172a;">
+        PhilHealth Preview: <span id="phPreviewCount" style="color:#0d9488; font-weight:700;">0</span> records found
+      </h4>
+    </div>
+    <div style="overflow:auto; max-height:420px; border:1px solid #e2e8f0; border-radius:10px; background:#fff; padding:6px;">
+      <table id="phPreviewTable" style="border-collapse:collapse; width:100%; font-size:0.88em; min-width:980px;">
+        <thead>
+          <tr id="phPreviewHead" style="background:#0d9488; color:#fff; position:sticky; top:0; z-index:2;">
+            <th style="padding:8px 10px; text-align:left;">#</th>
+            <th style="padding:8px 10px; text-align:left;">Control No</th>
+            <th style="padding:8px 10px; text-align:left;">Date</th>
+            <th style="padding:8px 10px; text-align:left;">Patient Name</th>
+            <th style="padding:8px 10px; text-align:left;">PIN No.</th>
+            <th style="padding:8px 10px; text-align:left;">Procedure</th>
+            <th style="padding:8px 10px; text-align:left;">Agency</th>
+            <th style="padding:8px 10px; text-align:left;">PCU/Error</th>
+            <th style="padding:8px 10px; text-align:center;">1st Tranche Encoded</th>
+            <th style="padding:8px 10px; text-align:center;">2nd Tranche Encoded</th>
+            <th style="padding:8px 10px; text-align:center;">EKAS</th>
+            <th style="padding:8px 10px; text-align:center;">1st Tranche Paid</th>
+            <th style="padding:8px 10px; text-align:center;">2nd Tranche Paid</th>
+            <th style="padding:8px 10px; text-align:center;">Status</th>
+          </tr>
+        </thead>
+        <tbody id="phPreviewBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const phForm = document.getElementById('phForm');
+      const phPreviewBtn = document.getElementById('phPreviewBtn');
+      const phPreviewArea = document.getElementById('phPreviewArea');
+      const phPreviewCount = document.getElementById('phPreviewCount');
+      const phPreviewBody = document.getElementById('phPreviewBody');
+
+      function serializeForm(f){
+        const data = {};
+        new FormData(f).forEach((v, k) => { data[k] = v; });
+        return data;
+      }
+
+      phPreviewBtn.addEventListener('click', async function(){
+        const data = serializeForm(phForm);
+        try {
+          phPreviewBtn.disabled = true;
+          phPreviewBtn.textContent = 'Loading...';
+          const resp = await fetch('/reports/philhealth-export/preview', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(Object.assign({}, data, { limit: 500 }))
+          });
+          if (!resp.ok) throw new Error('Preview failed');
+          const json = await resp.json();
+          phPreviewBody.innerHTML = '';
+          if (!json || !Array.isArray(json.rows) || json.rows.length === 0) {
+            phPreviewArea.style.display = 'block';
+            phPreviewCount.textContent = '0';
+            phPreviewBody.innerHTML = '<tr><td colspan="14" style="text-align:center; padding:20px; color:#64748b;">No PhilHealth records matched the selected criteria.</td></tr>';
+            return;
+          }
+
+          const rows = json.rows;
+          rows.forEach((r) => {
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid #f1f5f9';
+
+            const statusColor = r.status === 'Approved' ? '#059669' : (r.status === 'Cancelled' ? '#dc2626' : '#d97706');
+            const statusBg = r.status === 'Approved' ? '#ecfdf5' : (r.status === 'Cancelled' ? '#fef2f2' : '#fffbeb');
+
+            const t1Color = r.tranche1Paid === 'Paid' ? '#0d9488' : '#64748b';
+            const t1Bg = r.tranche1Paid === 'Paid' ? '#ccfbf1' : '#f1f5f9';
+            const t2Color = r.tranche2Paid === 'Paid' ? '#0d9488' : '#64748b';
+            const t2Bg = r.tranche2Paid === 'Paid' ? '#ccfbf1' : '#f1f5f9';
+
+            tr.innerHTML = `
+              <td style="padding:8px 10px; font-weight:600; color:#64748b;">${r.index}</td>
+              <td style="padding:8px 10px; font-weight:700; color:#0f172a; white-space:nowrap;"><code>${r.controlNo}</code></td>
+              <td style="padding:8px 10px; white-space:nowrap;">${r.recordDate}</td>
+              <td style="padding:8px 10px; font-weight:600; color:#0f172a;">${r.fullName}</td>
+              <td style="padding:8px 10px; font-family:monospace; color:#334155;">${r.pinNo || '—'}</td>
+              <td style="padding:8px 10px; font-size:0.92em; max-width:240px;">${r.procedures}</td>
+              <td style="padding:8px 10px;">${r.agency}</td>
+              <td style="padding:8px 10px; font-size:0.9em; color:#475569;">${r.pcuError}</td>
+              <td style="padding:8px 10px; text-align:center;">${r.tranche1Encoded}</td>
+              <td style="padding:8px 10px; text-align:center;">${r.tranche2Encoded}</td>
+              <td style="padding:8px 10px; text-align:center;">${r.ekas}</td>
+              <td style="padding:8px 10px; text-align:center;">
+                <span style="display:inline-block; padding:2px 8px; border-radius:999px; font-size:0.8em; font-weight:700; color:${t1Color}; background:${t1Bg};">
+                  ${r.tranche1Paid}
+                </span>
+              </td>
+              <td style="padding:8px 10px; text-align:center;">
+                <span style="display:inline-block; padding:2px 8px; border-radius:999px; font-size:0.8em; font-weight:700; color:${t2Color}; background:${t2Bg};">
+                  ${r.tranche2Paid}
+                </span>
+              </td>
+              <td style="padding:8px 10px; text-align:center;">
+                <span style="display:inline-block; padding:2px 8px; border-radius:999px; font-size:0.8em; font-weight:700; color:${statusColor}; background:${statusBg};">
+                  ${r.status}
+                </span>
+              </td>
+            `;
+            phPreviewBody.appendChild(tr);
+          });
+
+          phPreviewCount.textContent = json.count || rows.length || 0;
+          phPreviewArea.style.display = 'block';
+        } catch (e) {
+          console.error(e);
+          alert('Failed to load PhilHealth preview');
+        } finally {
+          phPreviewBtn.disabled = false;
+          phPreviewBtn.textContent = '👁️ Preview PhilHealth Data';
+        }
+      });
+    })();
+  </script>
+</div>
+

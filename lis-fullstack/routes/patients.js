@@ -285,9 +285,10 @@ router.post('/', requireAuth, canAccessPatient, [
         normalizedDob = `${yyyy}-${mm}-${dd}`;
       }
     }
-    const company = req.body.company || '';
+    const company = req.body.company || req.body.employer || req.body.philhealthAgency || '';
     const philhealthConsent = req.body.philhealthConsent === 'on' || req.body.philhealthConsent === '1' || req.body.philhealthConsent === 'true';
-    const philhealthId = req.body.philhealthId || '';
+    const philhealthId = req.body.philhealthId || req.body.philhealthNumber || '';
+    const philhealthAgency = req.body.philhealthAgency || company || '';
     const healthInsuranceConsent = req.body.healthInsuranceConsent === 'on' || req.body.healthInsuranceConsent === '1' || req.body.healthInsuranceConsent === 'true';
     const healthInsuranceProvider = req.body.healthInsuranceProvider || req.body.healthCardProvider || '';
     const healthInsuranceId = req.body.healthInsuranceId || req.body.healthCardNumber || '';
@@ -440,6 +441,7 @@ router.post('/', requireAuth, canAccessPatient, [
       company,
       philhealthConsent,
       philhealthId,
+      philhealthAgency,
       healthInsuranceConsent,
       healthInsuranceProvider,
       healthInsuranceId,
@@ -451,6 +453,39 @@ router.post('/', requireAuth, canAccessPatient, [
     });
 
     await patient.save();
+
+    // If patient is enrolled under PhilHealth, auto-create PhilHealth panel record
+    if (philhealthConsent) {
+      try {
+        const PhilhealthRecord = require('../models/PhilhealthRecord');
+        const existingPh = await PhilhealthRecord.findOne({ patientId: patient.id });
+        if (!existingPh) {
+          const recDate = patient.createdAt ? new Date(patient.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+          const controlNo = PhilhealthRecord.getNextControlNo(recDate);
+          const phRec = new PhilhealthRecord({
+            controlNo,
+            patientId: patient.id,
+            recordDate: recDate,
+            firstName: safeFirstName,
+            middleName: safeMiddleName,
+            lastName: safeLastName,
+            pinNo: philhealthId,
+            agency: philhealthAgency || company,
+            pcuError: '',
+            procedures: [],
+            status: 'Pending Approval',
+            tranche1Encoded: 'Pending',
+            tranche2Encoded: 'Pending',
+            ekas: 'Pending',
+            tranche1Paid: 'Not Paid',
+            tranche2Paid: 'Not Paid'
+          });
+          await phRec.save();
+        }
+      } catch (e) {
+        console.warn('Failed auto-creating PhilHealth record on patient create:', e);
+      }
+    }
 
     // Emit SSE update so all connected clients receive a notification
     try {
@@ -676,7 +711,9 @@ router.put('/:id', requireAuth, canAccessPatient, [
         normalizedDob = `${yyyy}-${mm}-${dd}`;
       }
     }
-    const ageManual = req.body.ageManual || req.body.age || null;
+    const company = req.body.company || req.body.employer || req.body.philhealthAgency || '';
+    const philhealthAgency = req.body.philhealthAgency || company || '';
+    const philhealthId = req.body.philhealthId || req.body.philhealthNumber || '';
     const philhealthConsentBool = (philhealthConsent === 'on' || philhealthConsent === '1' || philhealthConsent === 'true');
     const healthInsuranceConsentBool = (healthInsuranceConsent === 'on' || healthInsuranceConsent === '1' || healthInsuranceConsent === 'true');
     const requiredAreas = Array.isArray(req.body.requiredAreas)
@@ -706,6 +743,7 @@ router.put('/:id', requireAuth, canAccessPatient, [
         company: company || '',
         philhealthConsent: !!philhealthConsentBool,
         philhealthId: philhealthId || '',
+        philhealthAgency: philhealthAgency || '',
         healthInsuranceConsent: !!healthInsuranceConsentBool,
         healthInsuranceProvider: healthInsuranceProvider || req.body.healthCardProvider || '',
         healthInsuranceId: healthInsuranceId || req.body.healthCardNumber || ''
@@ -716,6 +754,39 @@ router.put('/:id', requireAuth, canAccessPatient, [
     if (!patient) {
       req.flash('error_msg', 'Patient not found');
       return res.redirect('/patients');
+    }
+
+    // Sync changes to PhilhealthRecord if patient is enrolled under PhilHealth
+    if (philhealthConsentBool) {
+      try {
+        const PhilhealthRecord = require('../models/PhilhealthRecord');
+        let ph = await PhilhealthRecord.findOne({ patientId: patient.id });
+        if (!ph) {
+          const recDate = patient.createdAt ? new Date(patient.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+          ph = new PhilhealthRecord({
+            controlNo: PhilhealthRecord.getNextControlNo(recDate),
+            patientId: patient.id,
+            recordDate: recDate,
+            firstName: safeFirstName,
+            middleName: safeMiddleName,
+            lastName: safeLastName,
+            pinNo: philhealthId,
+            agency: philhealthAgency,
+            status: 'Pending Approval'
+          });
+          await ph.save();
+        } else {
+          ph.firstName = safeFirstName;
+          ph.middleName = safeMiddleName;
+          ph.lastName = safeLastName;
+          if (philhealthId) ph.pinNo = philhealthId;
+          const targetAgency = philhealthAgency || company || '';
+          if (targetAgency) ph.agency = targetAgency;
+          await ph.save();
+        }
+      } catch (e) {
+        console.warn('Failed syncing PhilHealth record on patient update:', e);
+      }
     }
 
     try {

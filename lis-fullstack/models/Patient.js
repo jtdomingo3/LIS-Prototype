@@ -22,9 +22,11 @@ class Patient {
     this.requiredAreas = Array.isArray(data.requiredAreas) ? data.requiredAreas : (data.requiredAreas ? [data.requiredAreas] : []);
     // preserve selected tests list for extraction/processing visibility
     this.requestedTests = Array.isArray(data.requestedTests) ? data.requestedTests : (data.requestedTests ? [data.requestedTests] : []);
-    this.company = data.company || '';
+    this.company = data.company || data.employer || data.philhealthAgency || '';
     this.philhealthConsent = !!data.philhealthConsent;
-    this.philhealthId = data.philhealthId || '';
+    this.philhealthId = data.philhealthId || data.philhealthNumber || '';
+    this.philhealthNumber = this.philhealthId;
+    this.philhealthAgency = data.philhealthAgency || this.company || '';
     this.healthInsuranceConsent = !!(data.healthInsuranceConsent === '1' || data.healthInsuranceConsent === 1 || data.healthInsuranceConsent === true || data.healthInsuranceConsent === 'true');
     this.healthInsuranceProvider = data.healthInsuranceProvider || data.healthCardProvider || '';
     this.healthInsuranceId = data.healthInsuranceId || data.healthCardNumber || '';
@@ -144,6 +146,8 @@ class Patient {
     obj.company = this.company || '';
     obj.philhealthConsent = !!this.philhealthConsent;
     obj.philhealthId = this.philhealthId || null;
+    obj.philhealthNumber = this.philhealthId || null;
+    obj.philhealthAgency = this.philhealthAgency || this.company || '';
     obj.healthInsuranceConsent = !!this.healthInsuranceConsent;
     obj.healthInsuranceProvider = this.healthInsuranceProvider || '';
     obj.healthInsuranceId = this.healthInsuranceId || '';

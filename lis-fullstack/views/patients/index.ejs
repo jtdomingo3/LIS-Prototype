@@ -168,6 +168,8 @@
               <td class="action-buttons" style="padding:14px; text-align:right; white-space:nowrap;">
                 <% if (patient.hasTests) { %>
                   <a href="/patients/<%= patient.id %>" class="button btn-small btn-primary" style="padding:6px 12px; font-size:0.82em; font-weight:600;">View</a>
+                <% } else if (patient.philhealthConsent) { %>
+                  <a href="/philhealth?search=<%= encodeURIComponent(patient.patientCode || patient.lastName) %>" class="button btn-small btn-primary" style="padding:6px 12px; font-size:0.82em; font-weight:600; background:#0284c7;" title="Assign PhilHealth procedures in PhilHealth panel">🩺 PhilHealth</a>
                 <% } else { %>
                   <a href="/tests/new?patient=<%= patient.id %>&returnTo=/patients" class="button btn-small btn-primary" style="padding:6px 12px; font-size:0.82em; font-weight:600;">Assign Test</a>
                 <% } %>
