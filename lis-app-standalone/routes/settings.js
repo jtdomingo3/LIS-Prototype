@@ -311,7 +311,22 @@ router.post('/test-print', requireAuth, (req, res) => {
     }
 
     const settings = (global.db && typeof global.db.getSettings === 'function') ? (global.db.getSettings() || {}) : {};
-    let printer = (req.body && req.body.printer) || (settings && settings.printerName) || process.env.PRINTER_NAME || process.env.THERMAL_PRINTER_NAME || '';
+    let printer = (req.body && req.body.printer) || process.env.PRINTER_NAME || process.env.THERMAL_PRINTER_NAME || '';
+    if (!printer) {
+      try {
+        const userDataPath = (typeof process.env.APPDATA !== 'undefined') ? pathMod.join(process.env.APPDATA, 'lis-app-standalone') : null;
+        if (userDataPath) {
+          const settingsPath = pathMod.join(userDataPath, 'settings.json');
+          if (fsMod.existsSync(settingsPath)) {
+            const s = JSON.parse(fsMod.readFileSync(settingsPath, 'utf8'));
+            if (s && (s.printerName || s.printer)) printer = s.printerName || s.printer;
+          }
+        }
+      } catch (_) {}
+    }
+    if (!printer) {
+      printer = (settings && settings.printerName) || '';
+    }
     if (typeof printer === 'string') {
       printer = printer.replace(/[^a-zA-Z0-9 _\-\.]/g, '').trim();
     } else {
@@ -319,9 +334,19 @@ router.post('/test-print', requireAuth, (req, res) => {
     }
     if (printer) args.push('--printer', printer);
 
-    const spawnEnv = Object.assign({}, process.env, { ELECTRON_RUN_AS_NODE: '1' });
+    const extraNodePaths = [];
+    if (typeof process.resourcesPath === 'string') {
+      extraNodePaths.push(pathMod.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules'));
+      extraNodePaths.push(pathMod.join(process.resourcesPath, 'app.asar', 'node_modules'));
+    }
+    const nodePathStr = extraNodePaths.filter(p => fsMod.existsSync(p)).join(pathMod.delimiter);
+
+    const spawnEnv = Object.assign({}, process.env, {
+      ELECTRON_RUN_AS_NODE: '1',
+      ...(nodePathStr ? { NODE_PATH: nodePathStr + (process.env.NODE_PATH ? pathMod.delimiter + process.env.NODE_PATH : '') } : {})
+    });
     const proc = spawnSync(process.execPath, args, {
-      cwd: pathMod.dirname(pathMod.dirname(scriptPath)) || pathMod.join(__dirname, '..'),
+      cwd: require('os').tmpdir(),
       encoding: 'utf8',
       maxBuffer: 10 * 1024 * 1024,
       env: spawnEnv

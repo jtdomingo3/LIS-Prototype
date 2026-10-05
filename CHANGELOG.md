@@ -17,9 +17,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Relaxed sensitive endpoint rate limiting on `/export/` for authenticated clinical workstations (Bearer tokens and sync headers) to prevent HTTP 429 errors during live multi-department operations.
   - Synchronized secret resolution logic across server, tray, and standalone helper copies.
 
-- **Standalone Thermal Printing Spawn Fix (P0)**:
-  - Resolved `spawnSync ENOENT` error (`Gezyne LIS.exe ENOENT`) during receipt printing tests caused by passing `cwd: __dirname` inside the packaged `app.asar` archive.
-  - Configured process working directory to use operating system temporary storage (`app.getPath('temp')`) and supported `app.asar.unpacked` path resolution for `thermal_test.js`.
+- **Standalone Thermal Printing Self-Contained Dependency & Module Resolution (P0)**:
+  - Resolved `Cannot find module 'iconv-lite'` crash when executing receipt printing tests from `app.asar.unpacked/scripts/thermal_test.js` in packaged client environments.
+  - Implemented multi-path fallback module resolution in `thermal_test.js` checking `app.asar.unpacked/node_modules`, `app.asar/node_modules`, and packaged runtime resources, backed by a safe zero-dependency Latin-1 ESC/POS buffer fallback.
+  - Added `iconv-lite` explicitly to `dependencies` and unpacked it in `build.asarUnpack` in `lis-app-standalone/package.json`.
+  - Configured `NODE_PATH` environment variable and safe working directory (`os.tmpdir()`) across `main.js`, `lib/printHelper.js`, `server-lib/printHelper.js`, and route handlers.
+
+- **Local Print Mutation Queue Exemption & Sync Conflict Purge (P0)**:
+  - Fixed client `POST /patients/:id/print` inadvertently being treated as a database mutation in `localServer.js`, preventing local thermal receipt printing jobs from being queued and repeatedly pushed to the central server.
+  - Updated `OperationQueue.add()` and `OperationQueue._load()` to reject and automatically purge any queued print, report preview, or diagnostic operations.
+  - Hardened `syncEngine.processQueue()` and `ConflictStore` to automatically discard and ignore print operations, eliminating HTTP 500 server replay loops and spurious sync conflict logs.
 
 - **Standalone Data Persistence & Network URL Normalization (P1)**:
   - Fixed `dataPath.js` in standalone desktop app attempting to resolve writable data directories into read-only `resources/app.asar` by establishing `%USERPROFILE%\Documents\LIS\app-sync` as default `DATA_DIR`.

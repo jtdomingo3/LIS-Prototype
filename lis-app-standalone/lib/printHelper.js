@@ -189,26 +189,31 @@ async function printPatientReceipt(patient, testOrTests) {
     const args = [scriptPath, '--json', specPath];
 
     let ENV_PRINTER = null;
+    // 1. HIGHEST PRIORITY: Workstation local thermal printer override from desktop settings.json
     try {
-      if (global.db && typeof global.db.getSettings === 'function') {
-        const s = global.db.getSettings();
-        if (s && s.printerName) ENV_PRINTER = s.printerName;
+      const userDataPath = (typeof process.env.APPDATA !== 'undefined') ? path.join(process.env.APPDATA, 'lis-app-standalone') : null;
+      if (userDataPath) {
+        const settingsPath = path.join(userDataPath, 'settings.json');
+        if (fs.existsSync(settingsPath)) {
+          const s = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+          if (s && (s.printerName || s.printer)) ENV_PRINTER = (s.printerName || s.printer).trim();
+        }
       }
     } catch (e) {}
+
+    // 2. HIGHEST PRIORITY: Environment variable set by standalone desktop client
+    if (!ENV_PRINTER) {
+      ENV_PRINTER = (process.env.PRINTER_NAME || process.env.THERMAL_PRINTER_NAME || process.env.PRINTER || '').trim() || null;
+    }
+
+    // 3. FALLBACK: Database settings (only if no workstation local override is configured)
     if (!ENV_PRINTER) {
       try {
-        const userDataPath = (typeof process.env.APPDATA !== 'undefined') ? path.join(process.env.APPDATA, 'lis-app-standalone') : null;
-        if (userDataPath) {
-          const settingsPath = path.join(userDataPath, 'settings.json');
-          if (fs.existsSync(settingsPath)) {
-            const s = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-            if (s && (s.printerName || s.printer)) ENV_PRINTER = s.printerName || s.printer;
-          }
+        if (global.db && typeof global.db.getSettings === 'function') {
+          const s = global.db.getSettings();
+          if (s && s.printerName) ENV_PRINTER = s.printerName.trim();
         }
       } catch (e) {}
-    }
-    if (!ENV_PRINTER) {
-      ENV_PRINTER = process.env.PRINTER_NAME || process.env.THERMAL_PRINTER_NAME || process.env.PRINTER || null;
     }
     if (ENV_PRINTER) args.push('--printer', ENV_PRINTER);
 
@@ -216,13 +221,24 @@ async function printPatientReceipt(patient, testOrTests) {
     const debugDry = process.env.PRINT_DRY_RUN === '1';
     if (debugDry && !args.includes('--dry-run')) args.push('--dry-run');
 
-    const spawnEnv = Object.assign({}, process.env, { ELECTRON_RUN_AS_NODE: '1' });
+    const extraNodePaths = [];
+    if (typeof process.resourcesPath === 'string') {
+      extraNodePaths.push(path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules'));
+      extraNodePaths.push(path.join(process.resourcesPath, 'app.asar', 'node_modules'));
+    }
+    const nodePathStr = extraNodePaths.filter(p => fs.existsSync(p)).join(path.delimiter);
+
+    const spawnEnv = Object.assign({}, process.env, {
+      ELECTRON_RUN_AS_NODE: '1',
+      ...(nodePathStr ? { NODE_PATH: nodePathStr + (process.env.NODE_PATH ? path.delimiter + process.env.NODE_PATH : '') } : {})
+    });
+    const workDir = os.tmpdir();
 
     // If requested, run a debug dry-run first and print the payload/preview to the terminal
     if (process.env.PRINT_DEBUG_PRINT_PAYLOAD === '1') {
       try {
         const debugArgs = [scriptPath, '--json', specPath, '--dry-run'];
-        const debugProc = spawnSync(process.execPath, debugArgs, { cwd: path.join(__dirname, '..'), encoding: 'utf8', maxBuffer: 40 * 1024 * 1024, env: spawnEnv });
+        const debugProc = spawnSync(process.execPath, debugArgs, { cwd: workDir, encoding: 'utf8', maxBuffer: 40 * 1024 * 1024, env: spawnEnv });
         const preview = debugProc.stdout || debugProc.stderr || '';
         console.log('--- Thermal preview (PRINT_DEBUG_PRINT_PAYLOAD) ---');
         console.log(preview);
@@ -241,7 +257,7 @@ async function printPatientReceipt(patient, testOrTests) {
       }
     } catch (e) {}
 
-    const proc = spawnSync(process.execPath, args, { cwd: path.join(__dirname, '..'), encoding: 'utf8', maxBuffer: 20 * 1024 * 1024, env: spawnEnv });
+    const proc = spawnSync(process.execPath, args, { cwd: workDir, encoding: 'utf8', maxBuffer: 20 * 1024 * 1024, env: spawnEnv });
     // In debug mode keep the spec file and also append the spec JSON to the print log for inspection
     try {
       if (!debugDry) try { fs.unlinkSync(specPath); } catch (e) {}

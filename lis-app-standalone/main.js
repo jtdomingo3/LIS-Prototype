@@ -990,7 +990,17 @@ ipcMain.handle('test-thermal-print', async (_e, { printer }) => {
     const args = [scriptPath, '--receipt'];
     if (targetPrinter) args.push('--printer', targetPrinter);
 
-    const spawnEnv = Object.assign({}, process.env, { ELECTRON_RUN_AS_NODE: '1' });
+    const extraNodePaths = [];
+    if (typeof process.resourcesPath === 'string') {
+      extraNodePaths.push(path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules'));
+      extraNodePaths.push(path.join(process.resourcesPath, 'app.asar', 'node_modules'));
+    }
+    const nodePathStr = extraNodePaths.filter(p => fs.existsSync(p)).join(path.delimiter);
+
+    const spawnEnv = Object.assign({}, process.env, {
+      ELECTRON_RUN_AS_NODE: '1',
+      ...(nodePathStr ? { NODE_PATH: nodePathStr + (process.env.NODE_PATH ? path.delimiter + process.env.NODE_PATH : '') } : {})
+    });
     // Use OS temp dir as cwd to guarantee a real directory on disk (never inside app.asar archive)
     const workDir = (app && typeof app.getPath === 'function') ? app.getPath('temp') : os.tmpdir();
     const proc = spawnSync(process.execPath, args, { cwd: workDir, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024, env: spawnEnv });

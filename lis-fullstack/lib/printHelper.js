@@ -216,13 +216,24 @@ async function printPatientReceipt(patient, testOrTests) {
     const debugDry = process.env.PRINT_DRY_RUN === '1';
     if (debugDry && !args.includes('--dry-run')) args.push('--dry-run');
 
-    const spawnEnv = Object.assign({}, process.env, { ELECTRON_RUN_AS_NODE: '1' });
+    const extraNodePaths = [];
+    if (typeof process.resourcesPath === 'string') {
+      extraNodePaths.push(path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules'));
+      extraNodePaths.push(path.join(process.resourcesPath, 'app.asar', 'node_modules'));
+    }
+    const nodePathStr = extraNodePaths.filter(p => fs.existsSync(p)).join(path.delimiter);
+
+    const spawnEnv = Object.assign({}, process.env, {
+      ELECTRON_RUN_AS_NODE: '1',
+      ...(nodePathStr ? { NODE_PATH: nodePathStr + (process.env.NODE_PATH ? path.delimiter + process.env.NODE_PATH : '') } : {})
+    });
+    const workDir = os.tmpdir();
 
     // If requested, run a debug dry-run first and print the payload/preview to the terminal
     if (process.env.PRINT_DEBUG_PRINT_PAYLOAD === '1') {
       try {
         const debugArgs = [scriptPath, '--json', specPath, '--dry-run'];
-        const debugProc = spawnSync(process.execPath, debugArgs, { cwd: path.join(__dirname, '..'), encoding: 'utf8', maxBuffer: 40 * 1024 * 1024, env: spawnEnv });
+        const debugProc = spawnSync(process.execPath, debugArgs, { cwd: workDir, encoding: 'utf8', maxBuffer: 40 * 1024 * 1024, env: spawnEnv });
         const preview = debugProc.stdout || debugProc.stderr || '';
         console.log('--- Thermal preview (PRINT_DEBUG_PRINT_PAYLOAD) ---');
         console.log(preview);
@@ -241,7 +252,7 @@ async function printPatientReceipt(patient, testOrTests) {
       }
     } catch (e) {}
 
-    const proc = spawnSync(process.execPath, args, { cwd: path.join(__dirname, '..'), encoding: 'utf8', maxBuffer: 20 * 1024 * 1024, env: spawnEnv });
+    const proc = spawnSync(process.execPath, args, { cwd: workDir, encoding: 'utf8', maxBuffer: 20 * 1024 * 1024, env: spawnEnv });
     // In debug mode keep the spec file and also append the spec JSON to the print log for inspection
     try {
       if (!debugDry) try { fs.unlinkSync(specPath); } catch (e) {}

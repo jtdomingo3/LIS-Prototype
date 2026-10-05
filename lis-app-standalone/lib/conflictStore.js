@@ -41,7 +41,12 @@ class ConflictStore {
           const valid = parsed.filter(c => {
             const op = (c && c.operation) || '';
             const err = (c && c.error) || '';
-            return !op.includes('/settings/sync-from-server') && !err.includes('/settings/sync-from-server');
+            const isIgnored = op.includes('/settings/sync-from-server') ||
+                              err.includes('/settings/sync-from-server') ||
+                              op.includes('/print') ||
+                              op.includes('/thermal-print') ||
+                              op.includes('/test-print');
+            return !isIgnored;
           });
           if (valid.length !== parsed.length) {
             try {
@@ -75,7 +80,14 @@ class ConflictStore {
    */
   recordConflict(entry = {}) {
     const opStr = (entry.operation || '');
-    if (opStr.includes('/settings/sync-from-server')) {
+    if (
+      opStr.includes('/settings/sync-from-server') ||
+      opStr.endsWith('/print') ||
+      opStr.includes('/print?') ||
+      opStr.includes('/print ') ||
+      opStr.includes('/thermal-print') ||
+      opStr.includes('/test-print')
+    ) {
       return null;
     }
     const id = 'cf_' + Date.now() + '_' + crypto.randomBytes(4).toString('hex');

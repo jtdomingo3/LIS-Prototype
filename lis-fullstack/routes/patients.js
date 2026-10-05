@@ -515,9 +515,19 @@ router.post('/thermal-print', requireAuth, canAccessPatient, (req, res) => {
     }
     if (printer) args.push('--printer', printer);
 
-    const spawnEnv = Object.assign({}, process.env, { ELECTRON_RUN_AS_NODE: '1' });
+    const extraNodePaths = [];
+    if (typeof process.resourcesPath === 'string') {
+      extraNodePaths.push(pathMod.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules'));
+      extraNodePaths.push(pathMod.join(process.resourcesPath, 'app.asar', 'node_modules'));
+    }
+    const nodePathStr = extraNodePaths.filter(p => fsMod.existsSync(p)).join(pathMod.delimiter);
+
+    const spawnEnv = Object.assign({}, process.env, {
+      ELECTRON_RUN_AS_NODE: '1',
+      ...(nodePathStr ? { NODE_PATH: nodePathStr + (process.env.NODE_PATH ? pathMod.delimiter + process.env.NODE_PATH : '') } : {})
+    });
     const proc = spawnSync(process.execPath, args, {
-      cwd: pathMod.dirname(pathMod.dirname(scriptPath)) || pathMod.join(__dirname, '..'),
+      cwd: require('os').tmpdir(),
       encoding: 'utf8',
       maxBuffer: 10 * 1024 * 1024,
       env: spawnEnv

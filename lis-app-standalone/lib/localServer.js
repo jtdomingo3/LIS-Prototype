@@ -206,6 +206,12 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
       if (reqPath.startsWith('/export/')) return next();
       // Skip local settings sync-from-server trigger (it pulls from server, not an outbound mutation)
       if (reqPath === '/settings/sync-from-server') return next();
+      // Skip print operations (thermal receipts, printer tests) - physical hardware actions on local client
+      if (reqPath.endsWith('/print') || reqPath.includes('/thermal-print') || reqPath.includes('/test-print')) return next();
+      // Skip report generation/download/preview operations — read-only export triggers
+      if (reqPath.startsWith('/reports/') && (reqPath.includes('/download') || reqPath.includes('/preview'))) return next();
+      // Skip settings tests and maintenance operations
+      if (reqPath.startsWith('/settings/') && (reqPath.includes('test-') || reqPath.includes('backup') || reqPath.includes('restore') || reqPath.includes('clear'))) return next();
       // Skip chatbot routes — interactive AI queries are live-proxied to server directly
       if (reqPath.startsWith('/chatbot')) return next();
 

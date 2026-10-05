@@ -23,7 +23,31 @@ try {
 
 let printer = null;
 try { printer = require('printer'); } catch (e) { printer = null; }
-const iconv = require('iconv-lite');
+
+let iconv = null;
+try {
+  iconv = require('iconv-lite');
+} catch (e1) {
+  // Try resolving from possible node_modules paths (including packaged app.asar or unpacked directories)
+  const candidatePaths = [
+    path.join(__dirname, '..', 'node_modules', 'iconv-lite'),
+    path.join(__dirname, '..', 'app.asar.unpacked', 'node_modules', 'iconv-lite'),
+    path.join(__dirname, '..', 'app.asar', 'node_modules', 'iconv-lite'),
+    path.join(__dirname, '..', '..', 'app.asar', 'node_modules', 'iconv-lite'),
+    (typeof process.resourcesPath === 'string') ? path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', 'iconv-lite') : null,
+    (typeof process.resourcesPath === 'string') ? path.join(process.resourcesPath, 'app.asar', 'node_modules', 'iconv-lite') : null,
+    (typeof process.resourcesPath === 'string') ? path.join(process.resourcesPath, 'node_modules', 'iconv-lite') : null
+  ].filter(Boolean);
+
+  for (const cand of candidatePaths) {
+    try {
+      if (fs.existsSync(cand)) {
+        iconv = require(cand);
+        if (iconv) break;
+      }
+    } catch (_) {}
+  }
+}
 const argv = require('process').argv.slice(2);
 const { spawnSync, execSync } = require('child_process');
 
@@ -92,8 +116,13 @@ function getDefaultPrinterName(printers) {
 }
 
 function makeText(s) {
-  // encode to CP437 which many ESC/POS printers expect
-  return iconv.encode(s, 'cp437');
+  // encode to CP437 which many ESC/POS printers expect, with safe Latin1 fallback
+  if (iconv && typeof iconv.encode === 'function') {
+    try {
+      return iconv.encode(s, 'cp437');
+    } catch (_) {}
+  }
+  return Buffer.from(String(s != null ? s : ''), 'latin1');
 }
 
 function formatMoney(v) { return v.toFixed(2); }
@@ -336,7 +365,15 @@ function main() {
 
   if (args.dryRun) {
     console.log('--- Printable preview ---');
-    console.log(iconv.decode(payload, 'cp437'));
+    if (iconv && typeof iconv.decode === 'function') {
+      try {
+        console.log(iconv.decode(payload, 'cp437'));
+      } catch (_) {
+        console.log(payload.toString('latin1'));
+      }
+    } else {
+      console.log(payload.toString('latin1'));
+    }
     console.log('--- Payload (hex) ---');
     console.log(payload.toString('hex'));
     console.log(`Payload length: ${payload.length} bytes`);

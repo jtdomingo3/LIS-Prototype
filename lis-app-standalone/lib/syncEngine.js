@@ -307,16 +307,35 @@ class SyncEngine {
             }
           }
 
-          // Synchronize application settings from server
+          // Synchronize application settings from server while preserving workstation printer override
           if (result.settings && typeof result.settings === 'object') {
             try {
+              let localPrinter = (process.env.PRINTER_NAME || process.env.THERMAL_PRINTER_NAME || '').trim();
+              if (!localPrinter) {
+                try {
+                  const fsMod = require('fs');
+                  const pathMod = require('path');
+                  const userDataPath = (typeof process.env.APPDATA !== 'undefined') ? pathMod.join(process.env.APPDATA, 'lis-app-standalone') : null;
+                  if (userDataPath) {
+                    const settingsPath = pathMod.join(userDataPath, 'settings.json');
+                    if (fsMod.existsSync(settingsPath)) {
+                      const s = JSON.parse(fsMod.readFileSync(settingsPath, 'utf8'));
+                      if (s && (s.printerName || s.printer)) localPrinter = (s.printerName || s.printer).trim();
+                    }
+                  }
+                } catch (_) {}
+              }
+              const mergedSettings = Object.assign({}, result.settings);
+              if (localPrinter) {
+                mergedSettings.printerName = localPrinter;
+              }
               if (this.dataStore && typeof this.dataStore.setSettings === 'function') {
-                this.dataStore.setSettings(result.settings);
+                this.dataStore.setSettings(mergedSettings);
               }
               if (global.db && typeof global.db.setSettings === 'function') {
-                global.db.setSettings(result.settings);
+                global.db.setSettings(mergedSettings);
               }
-              console.log('[Sync] fullSync updated local settings from server');
+              console.log('[Sync] fullSync updated local settings from server' + (localPrinter ? ` (preserved local printer: ${localPrinter})` : ''));
             } catch (settErr) {
               console.warn('[Sync] fullSync settings sync warning:', settErr && settErr.message);
             }
@@ -484,8 +503,17 @@ class SyncEngine {
 
     for (const op of pending) {
       // Discard operations that should never be replayed to central server
-      if (op.url && op.url.includes('/settings/sync-from-server')) {
-        console.log(`[Sync] Discarding local-only operation ${op.method} ${op.url}`);
+      const opUrl = (op && op.url) ? op.url : '';
+      if (
+        opUrl.includes('/settings/sync-from-server') ||
+        opUrl.endsWith('/print') ||
+        opUrl.includes('/print?') ||
+        opUrl.includes('/thermal-print') ||
+        opUrl.includes('/test-print') ||
+        (opUrl.includes('/reports/') && (opUrl.includes('/download') || opUrl.includes('/preview'))) ||
+        (opUrl.includes('/settings/') && (opUrl.includes('test-') || opUrl.includes('backup') || opUrl.includes('restore') || opUrl.includes('clear')))
+      ) {
+        console.log(`[Sync] Discarding local-only non-mutation operation ${op.method} ${op.url}`);
         this.queue.remove(op.id);
         continue;
       }

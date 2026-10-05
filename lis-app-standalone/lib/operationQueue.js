@@ -26,8 +26,27 @@ class OperationQueue {
   /* ── persistence ──────────────────────────────────────────────── */
   _load() {
     try {
-      if (fs.existsSync(this.filePath))
-        return JSON.parse(fs.readFileSync(this.filePath, 'utf8'));
+      if (fs.existsSync(this.filePath)) {
+        const raw = JSON.parse(fs.readFileSync(this.filePath, 'utf8'));
+        if (Array.isArray(raw)) {
+          const filtered = raw.filter(op => {
+            const url = (op && op.url) || '';
+            const isLocalOnly = url.endsWith('/print') ||
+                                url.includes('/print?') ||
+                                url.includes('/thermal-print') ||
+                                url.includes('/test-print') ||
+                                url.includes('/settings/sync-from-server') ||
+                                (url.includes('/reports/') && (url.includes('/download') || url.includes('/preview')));
+            return !isLocalOnly;
+          });
+          if (filtered.length !== raw.length) {
+            try {
+              fs.writeFileSync(this.filePath, JSON.stringify(filtered, null, 2));
+            } catch (_) {}
+          }
+          return filtered;
+        }
+      }
     } catch (e) { console.error('[Queue] load error:', e); }
     return [];
   }
@@ -85,7 +104,19 @@ class OperationQueue {
     // NEVER queue authentication or API operations — these are direct/live calls, not offline database mutations
     try {
       const urlPath = new URL(op.url).pathname;
-      if (urlPath === '/login' || urlPath === '/logout' || urlPath === '/' || urlPath.startsWith('/api/') || urlPath.startsWith('/export/') || urlPath.startsWith('/chatbot')) {
+      if (
+        urlPath === '/login' ||
+        urlPath === '/logout' ||
+        urlPath === '/' ||
+        urlPath.startsWith('/api/') ||
+        urlPath.startsWith('/export/') ||
+        urlPath.startsWith('/chatbot') ||
+        urlPath.endsWith('/print') ||
+        urlPath.includes('/thermal-print') ||
+        urlPath.includes('/test-print') ||
+        (urlPath.startsWith('/reports/') && (urlPath.includes('/download') || urlPath.includes('/preview'))) ||
+        (urlPath.startsWith('/settings/') && (urlPath.includes('test-') || urlPath.includes('backup') || urlPath.includes('restore') || urlPath.includes('clear')))
+      ) {
         console.log(`[Queue] skipping non-replayable route: ${op.method} ${urlPath}`);
         return null;
       }
