@@ -309,28 +309,99 @@
     border: 1px solid #e2e8f0;
     overflow: hidden;
   }
+
+  /* Sticky Floating Control Bar (Patient Category, Urinalysis, Package Actions) */
+  .test-order-sticky-header {
+    position: -webkit-sticky;
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 12px 18px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  @media (max-width: 768px) {
+    .test-order-sticky-header {
+      padding: 10px 12px;
+    }
+  }
 </style>
 
 <div class="card test-order-layout" style="padding: 24px 28px; border-radius: 16px; box-shadow: 0 4px 18px rgba(0,0,0,0.03); background: #ffffff; border: 1px solid #e2e8f0;">
   
-  <!-- Header Banner -->
-  <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; margin-bottom: 18px; border-bottom: 1px solid #f1f5f9; flex-wrap: wrap; gap: 12px;">
-    <div style="display: flex; align-items: center; gap: 12px;">
-      <div style="width: 44px; height: 44px; border-radius: 10px; background: #ecfdf5; color: #10b981; display: flex; align-items: center; justify-content: center; font-size: 1.25em;">
-        <i class="fa fa-notes-medical"></i>
-      </div>
-      <div>
-        <h2 style="margin: 0; font-size: 1.35em; font-weight: 700; color: #0f172a;">Create New Test</h2>
-        <div style="font-size: 0.85em; color: #64748b; margin-top: 2px;">Assign diagnostic laboratory procedures or medical services to a patient</div>
-      </div>
-    </div>
-    <a href="<%= (typeof returnTo !== 'undefined' && returnTo) ? returnTo : '/tests' %>" class="button btn-secondary" style="height: 38px; padding: 0 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em;" id="backButton">
-      <i class="fa fa-arrow-left"></i> <%= (typeof returnTo !== 'undefined' && returnTo && returnTo.startsWith('/patients')) ? 'Back to Patient' : 'Back to Tests' %>
-    </a>
-  </div>
-
   <form action="/tests" method="POST" id="createTestForm">
   <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+
+  <!-- Floating Sticky Control Bar (Patient Category, Urinalysis, Package Actions) - Only shown in Test Packages tab -->
+  <div id="testPackageStickyHeader" class="test-order-sticky-header" style="display: none;">
+    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+      
+      <!-- Patient Category / Discount Buttons -->
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+        <span style="font-size: 0.86em; font-weight: 700; color: #334155; display: inline-flex; align-items: center; gap: 6px;">
+          <i class="fa fa-id-card" style="color: #64748b;"></i> Patient Category:
+        </span>
+        
+        <button type="button" id="btnToggleSenior" onclick="toggleSeniorStatus()" class="status-toggle-btn" title="Click to toggle Senior Citizen status">
+          <i class="fa fa-person-cane"></i> Senior Citizen
+        </button>
+        
+        <button type="button" id="btnTogglePwd" onclick="togglePwdStatus()" class="status-toggle-btn" title="Click to toggle PWD status">
+          <i class="fa fa-wheelchair"></i> PWD
+        </button>
+
+        <span id="discountStatusBadge" style="font-size: 0.78em; padding: 3px 9px; border-radius: 999px; font-weight: 700; background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0;">
+          Regular Patient
+        </span>
+
+        <span id="stickyPkgBadge" style="display: none; font-size: 0.78em; padding: 3px 9px; border-radius: 999px; font-weight: 700; background: #ecfdf5; color: #065f46; border: 1px solid #86efac; align-items: center; gap: 4px;">
+        </span>
+      </div>
+
+      <!-- Action Buttons (Clear Package, Flyer, Create Package, Back) -->
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+        <button type="button" id="clearPkgBtn" onclick="clearActivePackage()" class="btn-clear-pkg" style="display: none;" title="Clear selected package and revert tests">
+          <i class="fa fa-rotate-left"></i>
+          <span>Clear Package</span>
+        </button>
+
+        <button type="button" onclick="openFlyerModal()" class="button btn-secondary" style="height: 34px; padding: 0 12px; border-radius: 8px; font-size: 0.82em; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #cbd5e1; background: #ffffff; color: #334155;" title="View official Laboratory Packages Flyer">
+          <i class="fa fa-file-image" style="color: #0284c7;"></i>
+          <span>Package Flyer</span>
+        </button>
+
+        <% if (canManage) { %>
+          <button type="button" onclick="openPackageModal()" class="button btn-primary" style="height: 34px; padding: 0 12px; border-radius: 8px; font-size: 0.82em; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <i class="fa fa-plus"></i> <span>Create Package</span>
+          </button>
+        <% } %>
+
+        <a href="<%= (typeof returnTo !== 'undefined' && returnTo) ? returnTo : '/tests' %>" class="button btn-secondary" style="height: 34px; padding: 0 12px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; font-size: 0.82em; border: 1px solid #cbd5e1;" id="backButton">
+          <i class="fa fa-arrow-left"></i> <%= (typeof returnTo !== 'undefined' && returnTo && returnTo.startsWith('/patients')) ? 'Back to Patient' : 'Back to Tests' %>
+        </a>
+      </div>
+    </div>
+
+    <!-- Urinalysis Option Bar (Default OFF) -->
+    <div style="padding-top: 8px; margin-top: 8px; border-top: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.88em; font-weight: 700; color: #0f172a; user-select: none;">
+          <input type="checkbox" id="toggleIncludeUrinalysis" onchange="onUrinalysisToggleChange()" style="width: 17px; height: 17px; accent-color: #10b981; cursor: pointer;" />
+          <span>Include Urinalysis in Package</span>
+        </label>
+        <span id="urinalysisPricingHint" style="font-size: 0.8em; color: #64748b;">
+          (Default OFF — check to add. FREE for Senior/PWD, +₱100 for regular patients)
+        </span>
+      </div>
+      <div id="urinalysisActiveState" style="font-size: 0.82em; font-weight: 700; color: #64748b;">
+        Urinalysis: <span style="color: #94a3b8;">Excluded (₱0)</span>
+      </div>
+    </div>
+  </div>
     
     <div class="test-order-grid">
       
@@ -429,8 +500,13 @@
               <span class="tab-badge" id="pkgCountBadge"><%= pkgs.filter(p => p.active !== false).length %></span>
             </button>
           </div>
-          <div id="tabSubNotice" style="font-size: 0.82em; color: #64748b; font-weight: 500;">
-            Check test to enable amount & remarks
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <div id="tabSubNotice" style="font-size: 0.82em; color: #64748b; font-weight: 500;">
+              Check test to enable amount & remarks
+            </div>
+            <a href="<%= (typeof returnTo !== 'undefined' && returnTo) ? returnTo : '/tests' %>" class="button btn-secondary" style="height: 30px; padding: 0 10px; border-radius: 6px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; font-size: 0.8em; border: 1px solid #cbd5e1;" id="backButtonCatalog">
+              <i class="fa fa-arrow-left"></i> <%= (typeof returnTo !== 'undefined' && returnTo && returnTo.startsWith('/patients')) ? 'Back to Patient' : 'Back' %>
+            </a>
           </div>
         </div>
 
@@ -469,58 +545,6 @@
         <!-- Tab 2: Test Packages (2nd Tab Shortcut) -->
         <div id="testTabPackages" class="test-tab-pane" style="display: none;">
           
-          <!-- Controls Bar: Senior Citizen, PWD, and Urinalysis Toggles -->
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 18px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 10px;">
-            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-              
-              <!-- Patient Category / Discount Buttons -->
-              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                <span style="font-size: 0.85em; font-weight: 700; color: #475569;">Patient Category:</span>
-                
-                <button type="button" id="btnToggleSenior" onclick="toggleSeniorStatus()" class="status-toggle-btn" title="Click to toggle Senior Citizen status">
-                  <i class="fa fa-person-cane"></i> Senior Citizen
-                </button>
-                
-                <button type="button" id="btnTogglePwd" onclick="togglePwdStatus()" class="status-toggle-btn" title="Click to toggle PWD status">
-                  <i class="fa fa-wheelchair"></i> PWD
-                </button>
-
-                <span id="discountStatusBadge" style="font-size: 0.78em; padding: 3px 9px; border-radius: 999px; font-weight: 700; background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0;">
-                  Regular Patient
-                </span>
-              </div>
-
-              <!-- Admin/Manage Actions -->
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <button type="button" id="clearPkgBtn" onclick="clearActivePackage()" class="btn-clear-pkg" style="display: none;" title="Clear selected package and revert tests">
-                  <i class="fa fa-rotate-left"></i>
-                  <span>Clear Package</span>
-                </button>
-                <% if (canManage) { %>
-                  <button type="button" onclick="openPackageModal()" class="button btn-primary" style="height: 34px; padding: 0 14px; border-radius: 8px; font-size: 0.84em; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                    <i class="fa fa-plus"></i> <span>Create Package</span>
-                  </button>
-                <% } %>
-              </div>
-            </div>
-
-            <!-- Urinalysis Option Bar (Default OFF) -->
-            <div style="padding-top: 9px; border-top: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-              <div style="display: flex; align-items: center; gap: 10px;">
-                <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9em; font-weight: 700; color: #0f172a; user-select: none;">
-                  <input type="checkbox" id="toggleIncludeUrinalysis" onchange="onUrinalysisToggleChange()" style="width: 18px; height: 18px; accent-color: #10b981; cursor: pointer;" />
-                  <span>Include Urinalysis in Package</span>
-                </label>
-                <span id="urinalysisPricingHint" style="font-size: 0.82em; color: #64748b;">
-                  (Default OFF — check to add. FREE for Senior/PWD, +₱100 for regular patients)
-                </span>
-              </div>
-              <div id="urinalysisActiveState" style="font-size: 0.82em; font-weight: 700; color: #64748b;">
-                Urinalysis: <span style="color: #94a3b8;">Excluded (₱0)</span>
-              </div>
-            </div>
-          </div>
-
           <!-- Active Package Notice Banner -->
           <div id="pkgNoticeBanner" style="display: none; background: #ecfdf5; border: 1px solid #6ee7b7; border-radius: 10px; padding: 12px 16px; margin-bottom: 14px;">
             <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
@@ -666,6 +690,28 @@
   </div>
 </div>
 
+<!-- Modal: Official Laboratory Package Flyer Viewer -->
+<div id="pkgFlyerModalBackdrop" class="pkg-modal-backdrop" onclick="if(event.target === this) closeFlyerModal()">
+  <div class="pkg-modal-dialog" style="max-width: 580px; max-height: 94vh; background: #ffffff;">
+    <div style="padding: 12px 18px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; background: #f8fafc;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <i class="fa fa-file-image" style="color: #0284c7; font-size: 1.1em;"></i>
+        <h3 style="margin: 0; font-size: 1.05em; font-weight: 700; color: #0f172a;">Official Blood Chemistry Packages</h3>
+      </div>
+      <button type="button" onclick="closeFlyerModal()" style="border: none; background: transparent; font-size: 1.25em; color: #64748b; cursor: pointer; padding: 4px 8px; line-height: 1;">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+    <div style="padding: 14px; overflow-y: auto; text-align: center; background: #0f172a; display: flex; align-items: center; justify-content: center;">
+      <img src="/assets/blood-chemistry-packages-flyer.png" alt="Official Laboratory Blood Chemistry Packages Flyer" style="max-width: 100%; max-height: 75vh; height: auto; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); object-fit: contain;" />
+    </div>
+    <div style="padding: 10px 18px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; font-size: 0.82em; color: #64748b;">
+      <span>Packages 1 to 6 &bull; Free Urinalysis for Senior & PWD</span>
+      <button type="button" onclick="closeFlyerModal()" class="button btn-secondary" style="height: 30px; padding: 0 12px; font-size: 0.85em; border-radius: 6px;">Close</button>
+    </div>
+  </div>
+</div>
+
 <script>
   // Server-injected data
   let testPackagesList = <%- JSON.stringify(pkgs) %>;
@@ -725,18 +771,21 @@
     const paneCatalog = document.getElementById('testTabCatalog');
     const panePackages = document.getElementById('testTabPackages');
     const notice = document.getElementById('tabSubNotice');
+    const pkgStickyBar = document.getElementById('testPackageStickyHeader');
 
     if (tab === 'packages') {
       if (btnCatalog) btnCatalog.classList.remove('active');
       if (btnPackages) btnPackages.classList.add('active');
       if (paneCatalog) paneCatalog.style.display = 'none';
       if (panePackages) panePackages.style.display = 'block';
+      if (pkgStickyBar) pkgStickyBar.style.display = 'block';
       if (notice) notice.innerText = 'Click any package to automatically tag tests';
     } else {
       if (btnPackages) btnPackages.classList.remove('active');
       if (btnCatalog) btnCatalog.classList.add('active');
       if (panePackages) panePackages.style.display = 'none';
       if (paneCatalog) paneCatalog.style.display = 'block';
+      if (pkgStickyBar) pkgStickyBar.style.display = 'none';
       if (notice) notice.innerText = 'Check test to enable amount & remarks';
     }
   }
@@ -1020,8 +1069,7 @@
     const title = document.getElementById('pkgNoticeTitle');
     const details = document.getElementById('pkgNoticeDetails');
     const clearBtn = document.getElementById('clearPkgBtn');
-
-    if (!banner || !title || !details) return;
+    const stickyBadge = document.getElementById('stickyPkgBadge');
 
     const uaAdded = includeUrinalysis && pkg.urinalysis && pkg.urinalysis.include;
     const uaPrice = uaAdded 
@@ -1029,31 +1077,40 @@
       : 0;
     const total = pkg.price + uaPrice;
 
-    title.innerHTML = `<i class="fa fa-check-circle" style="color: #10b981;"></i> <strong>${pkg.name} Applied</strong> &nbsp;—&nbsp; Total: <strong>₱${total.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>`;
-    
-    let parts = [];
-    if (pkg.bloodChemParams && pkg.bloodChemParams.length) {
-      parts.push(`Blood Chemistry (${pkg.bloodChemParams.length} tests: ${pkg.bloodChemParams.join(', ')})`);
-    }
-    if (pkg.otherTests && pkg.otherTests.length) {
-      parts.push(`Procedures: ${pkg.otherTests.join(', ')}`);
-    }
-    if (uaAdded) {
-      parts.push(isDiscountEligible() ? 'Urinalysis: FREE (Senior/PWD)' : `Urinalysis (+₱${uaPrice})`);
-    } else {
-      parts.push('Urinalysis: Excluded (₱0)');
+    if (banner && title && details) {
+      title.innerHTML = `<i class="fa fa-check-circle" style="color: #10b981;"></i> <strong>${pkg.name} Applied</strong> &nbsp;—&nbsp; Total: <strong>₱${total.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>`;
+      
+      let parts = [];
+      if (pkg.bloodChemParams && pkg.bloodChemParams.length) {
+        parts.push(`Blood Chemistry (${pkg.bloodChemParams.length} tests: ${pkg.bloodChemParams.join(', ')})`);
+      }
+      if (pkg.otherTests && pkg.otherTests.length) {
+        parts.push(`Procedures: ${pkg.otherTests.join(', ')}`);
+      }
+      if (uaAdded) {
+        parts.push(isDiscountEligible() ? 'Urinalysis: FREE (Senior/PWD)' : `Urinalysis (+₱${uaPrice})`);
+      } else {
+        parts.push('Urinalysis: Excluded (₱0)');
+      }
+
+      details.innerText = parts.join(' • ');
+      banner.style.display = 'block';
     }
 
-    details.innerText = parts.join(' • ');
-    banner.style.display = 'block';
     if (clearBtn) clearBtn.style.display = 'inline-flex';
+    if (stickyBadge) {
+      stickyBadge.innerHTML = `<i class="fa fa-boxes-stacked" style="color: #059669;"></i> ${pkg.name} (₱${total.toLocaleString('en-US', { minimumFractionDigits: 2 })})`;
+      stickyBadge.style.display = 'inline-flex';
+    }
   }
 
   function hidePackageNotice() {
     const banner = document.getElementById('pkgNoticeBanner');
     const clearBtn = document.getElementById('clearPkgBtn');
+    const stickyBadge = document.getElementById('stickyPkgBadge');
     if (banner) banner.style.display = 'none';
     if (clearBtn) clearBtn.style.display = 'none';
+    if (stickyBadge) stickyBadge.style.display = 'none';
   }
 
   function renderPackageCards() {
@@ -1300,6 +1357,23 @@
     if (backdrop) backdrop.style.display = 'none';
   }
 
+  function openFlyerModal() {
+    const backdrop = document.getElementById('pkgFlyerModalBackdrop');
+    if (backdrop) backdrop.style.display = 'flex';
+  }
+
+  function closeFlyerModal() {
+    const backdrop = document.getElementById('pkgFlyerModalBackdrop');
+    if (backdrop) backdrop.style.display = 'none';
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      closePackageModal();
+      closeFlyerModal();
+    }
+  });
+
   async function handleSavePackage(e) {
     e.preventDefault();
     const id = document.getElementById('editPkgId').value;
@@ -1459,6 +1533,11 @@
           if (backBtn) {
             backBtn.href = rt;
             if (rt.startsWith('/patients')) backBtn.innerHTML = '<i class="fa fa-arrow-left"></i> Back to Patient';
+          }
+          const backBtnCatalog = document.getElementById('backButtonCatalog');
+          if (backBtnCatalog) {
+            backBtnCatalog.href = rt;
+            if (rt.startsWith('/patients')) backBtnCatalog.innerHTML = '<i class="fa fa-arrow-left"></i> Back to Patient';
           }
         }
       } catch (e) {}
