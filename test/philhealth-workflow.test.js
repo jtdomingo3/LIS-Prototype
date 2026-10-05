@@ -258,24 +258,37 @@ async function runTests() {
   const soaNumber = 'DOH-SOA-2026-OCT-0099';
   const paymentDate = '2026-10-05';
 
+  // Test universal multi-select batch update for Tranche Encoded and Tranche Paid
   for (const id of targetIds) {
     const r = await PhilhealthRecord.findById(id);
+    r.tranche1Encoded = 'Completed';
+    r.tranche2Encoded = 'Completed';
+    r.ekas = 'Completed';
     r.tranche1Paid = 'Paid';
+    r.tranche2Paid = 'Paid';
     r.soaRef = soaNumber;
     r.paidDate = paymentDate;
     await r.save();
   }
 
   const checkRec1 = await PhilhealthRecord.findById(rec.id);
+  assert.strictEqual(checkRec1.tranche1Encoded, 'Completed');
+  assert.strictEqual(checkRec1.tranche2Encoded, 'Completed');
+  assert.strictEqual(checkRec1.ekas, 'Completed');
   assert.strictEqual(checkRec1.tranche1Paid, 'Paid');
+  assert.strictEqual(checkRec1.tranche2Paid, 'Paid');
   assert.strictEqual(checkRec1.soaRef, 'DOH-SOA-2026-OCT-0099');
   assert.strictEqual(checkRec1.paidDate, '2026-10-05');
 
   const checkRec2 = await PhilhealthRecord.findById(rec2.id);
+  assert.strictEqual(checkRec2.tranche1Encoded, 'Completed');
+  assert.strictEqual(checkRec2.tranche2Encoded, 'Completed');
+  assert.strictEqual(checkRec2.ekas, 'Completed');
   assert.strictEqual(checkRec2.tranche1Paid, 'Paid');
+  assert.strictEqual(checkRec2.tranche2Paid, 'Paid');
   assert.strictEqual(checkRec2.soaRef, 'DOH-SOA-2026-OCT-0099');
 
-  console.log('  ✅ Bulk DOH SOA payment settlement successfully updated records.');
+  console.log('  ✅ Universal batch update for Tranches Encoded and Tranches Paid verified.');
 
   // 6. Test CSV Export Format & Columns
   console.log('\n--- Step 6: Testing CSV Export Formatting & Headers ---');

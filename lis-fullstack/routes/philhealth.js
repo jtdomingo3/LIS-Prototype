@@ -508,6 +508,94 @@ router.post('/:id/cancel', requireAuth, canAccessPatient, async (req, res) => {
   }
 });
 
+// POST /philhealth/bulk-update - Universal Batch Update for Tranches Encoded, Tranches Paid, EKAS
+router.post('/bulk-update', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const {
+      ids,
+      tranche1Encoded,
+      tranche2Encoded,
+      ekas,
+      tranche1Paid,
+      tranche2Paid,
+      soaRef,
+      paidDate
+    } = req.body;
+
+    const idList = Array.isArray(ids) ? ids : (ids ? String(ids).split(',').map(s => s.trim()).filter(Boolean) : []);
+
+    if (!idList.length) {
+      const msg = 'Please select at least one patient record.';
+      if (req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'))) {
+        return res.status(400).json({ success: false, error: msg });
+      }
+      req.flash('error_msg', msg);
+      return res.redirect('/philhealth');
+    }
+
+    let updatedCount = 0;
+    const soa = (soaRef !== undefined && soaRef !== null && String(soaRef).trim()) ? String(soaRef).trim() : null;
+    const pDate = (paidDate !== undefined && paidDate !== null && String(paidDate).trim()) ? String(paidDate).trim() : (new Date()).toISOString().slice(0, 10);
+
+    for (const id of idList) {
+      const rec = await PhilhealthRecord.findById(id);
+      if (rec) {
+        let changed = false;
+
+        if (tranche1Encoded === 'Completed' || tranche1Encoded === 'Pending') {
+          rec.tranche1Encoded = tranche1Encoded;
+          changed = true;
+        }
+        if (tranche2Encoded === 'Completed' || tranche2Encoded === 'Pending') {
+          rec.tranche2Encoded = tranche2Encoded;
+          changed = true;
+        }
+        if (ekas === 'Completed' || ekas === 'Pending') {
+          rec.ekas = ekas;
+          changed = true;
+        }
+        if (tranche1Paid === 'Paid' || tranche1Paid === 'Not Paid') {
+          rec.tranche1Paid = tranche1Paid;
+          if (tranche1Paid === 'Paid') {
+            if (soa) rec.soaRef = soa;
+            rec.paidDate = pDate;
+          }
+          changed = true;
+        }
+        if (tranche2Paid === 'Paid' || tranche2Paid === 'Not Paid') {
+          rec.tranche2Paid = tranche2Paid;
+          if (tranche2Paid === 'Paid') {
+            if (soa) rec.soaRef = soa;
+            rec.paidDate = pDate;
+          }
+          changed = true;
+        }
+
+        if (changed) {
+          await rec.save();
+          updatedCount++;
+        }
+      }
+    }
+
+    const msg = `Successfully updated ${updatedCount} patient record(s) in batch.`;
+
+    if (req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'))) {
+      return res.json({ success: true, count: updatedCount, message: msg });
+    }
+
+    req.flash('success_msg', msg);
+    res.redirect('/philhealth');
+  } catch (err) {
+    console.error('Universal bulk update error:', err);
+    if (req.xhr || (req.headers.accept && req.headers.accept.includes('application/json'))) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+    req.flash('error_msg', 'Failed to perform batch update: ' + err.message);
+    res.redirect('/philhealth');
+  }
+});
+
 // POST /philhealth/bulk-paid - Multi-select DOH SOA Tranche Mark as Paid
 router.post('/bulk-paid', requireAuth, canAccessPatient, async (req, res) => {
   try {

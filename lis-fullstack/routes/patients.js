@@ -692,7 +692,7 @@ router.put('/:id', requireAuth, canAccessPatient, [
     return res.status(400).json({ errors: errors.array() });
   }
   try {
-    const { firstName, middleName, lastName, dateOfBirth, gender, phone, email, address, physician, company, philhealthConsent, philhealthId, healthInsuranceConsent, healthInsuranceProvider, healthInsuranceId } = req.body;
+    const { firstName, middleName, lastName, dateOfBirth, gender, phone, email, address, physician } = req.body;
     
     // Sanitize with xss
     const safeFirstName = xss(firstName);
@@ -714,8 +714,11 @@ router.put('/:id', requireAuth, canAccessPatient, [
     const company = req.body.company || req.body.employer || req.body.philhealthAgency || '';
     const philhealthAgency = req.body.philhealthAgency || company || '';
     const philhealthId = req.body.philhealthId || req.body.philhealthNumber || '';
-    const philhealthConsentBool = (philhealthConsent === 'on' || philhealthConsent === '1' || philhealthConsent === 'true');
-    const healthInsuranceConsentBool = (healthInsuranceConsent === 'on' || healthInsuranceConsent === '1' || healthInsuranceConsent === 'true');
+    const philhealthConsentBool = (req.body.philhealthConsent === 'on' || req.body.philhealthConsent === '1' || req.body.philhealthConsent === 'true' || req.body.philhealthConsent === true);
+    const healthInsuranceConsentBool = (req.body.healthInsuranceConsent === 'on' || req.body.healthInsuranceConsent === '1' || req.body.healthInsuranceConsent === 'true' || req.body.healthInsuranceConsent === true);
+    const healthInsuranceProvider = req.body.healthInsuranceProvider || req.body.healthCardProvider || '';
+    const healthInsuranceId = req.body.healthInsuranceId || req.body.healthCardNumber || '';
+    const ageManual = req.body.ageManual || req.body.age || null;
     const requiredAreas = Array.isArray(req.body.requiredAreas)
       ? req.body.requiredAreas
       : req.body.requiredAreas ? [req.body.requiredAreas] : [];

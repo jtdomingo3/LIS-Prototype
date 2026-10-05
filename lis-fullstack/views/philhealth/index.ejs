@@ -107,23 +107,40 @@
     </div>
   </form>
 
-  <!-- Bulk Action Bar for DOH SOA Settlement -->
-  <div id="bulkActionBar" style="display: none; background: #f0fdf4; border: 1px solid #86efac; border-radius: 10px; padding: 10px 16px; margin-bottom: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-    <div style="display: flex; align-items: center; gap: 10px;">
-      <span style="font-weight: 700; font-size: 0.9em; color: #166534;">
-        <i class="fa fa-check-square"></i> <span id="selectedCount">0</span> record(s) selected
+  <!-- Universal Bulk Action Bar for Multi-select -->
+  <div id="bulkActionBar" style="display: none; background: #f8fafc; border: 1.5px solid #6366f1; border-radius: 12px; padding: 12px 18px; margin-bottom: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; box-shadow: 0 4px 14px rgba(99,102,241,0.12);">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <span style="font-weight: 700; font-size: 0.95em; color: #312e81; display: inline-flex; align-items: center; gap: 6px;">
+        <i class="fa fa-check-double" style="color: #6366f1;"></i> <span id="selectedCount">0</span> record(s) selected
       </span>
-      <span style="font-size: 0.82em; color: #15803d;">(Multi-select for DOH SOA Settlement)</span>
+      <button type="button" onclick="toggleSelectAll({ checked: true })" style="background: none; border: none; color: #4f46e5; font-size: 0.82em; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0;">Select All Visible</button>
+      <span style="color: #cbd5e1;">|</span>
+      <button type="button" onclick="clearSelection()" style="background: none; border: none; color: #64748b; font-size: 0.82em; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0;">Clear</button>
     </div>
-    <div style="display: flex; gap: 8px; align-items: center;">
-      <button type="button" class="button btn-primary" onclick="openBulkPaidModal()" style="height: 34px; padding: 0 14px; font-size: 0.85em; font-weight: 600; background: #16a34a; border-radius: 6px;">
-        <i class="fa fa-money-bill-wave"></i> Mark Tranche Paid (SOA)
+    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+      <!-- Universal Batch Modal Trigger -->
+      <button type="button" class="button" onclick="openUniversalBatchModal()" style="height: 36px; padding: 0 16px; font-size: 0.88em; font-weight: 700; background: linear-gradient(135deg, #4f46e5, #6366f1); color: #fff; border: none; border-radius: 8px; box-shadow: 0 2px 6px rgba(79,70,229,0.25); cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+        <i class="fa fa-layer-group"></i> Universal Batch Update
       </button>
-      <button type="button" class="button btn-secondary" onclick="exportSelectedCsv()" style="height: 34px; padding: 0 12px; font-size: 0.85em; font-weight: 600; border-radius: 6px;">
-        <i class="fa fa-download"></i> Export Selected CSV
-      </button>
-      <button type="button" class="button btn-secondary" onclick="clearSelection()" style="height: 34px; padding: 0 10px; font-size: 0.85em; border-radius: 6px;">
-        Clear
+
+      <!-- Quick 1-Click Presets -->
+      <div style="display: inline-flex; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff;">
+        <button type="button" onclick="quickBatchApply('tranche1Encoded', 'Completed')" style="height: 34px; padding: 0 12px; font-size: 0.82em; font-weight: 600; border: none; border-right: 1px solid #e2e8f0; background: #ffffff; color: #166534; cursor: pointer;" title="Mark all selected as 1st Tranche Encoded Done">
+          ✓ 1st Tranche Done
+        </button>
+        <button type="button" onclick="quickBatchApply('tranche2Encoded', 'Completed')" style="height: 34px; padding: 0 12px; font-size: 0.82em; font-weight: 600; border: none; border-right: 1px solid #e2e8f0; background: #ffffff; color: #166534; cursor: pointer;" title="Mark all selected as 2nd Tranche Encoded Done">
+          ✓ 2nd Tranche Done
+        </button>
+        <button type="button" onclick="quickBatchApply('ekas', 'Completed')" style="height: 34px; padding: 0 12px; font-size: 0.82em; font-weight: 600; border: none; border-right: 1px solid #e2e8f0; background: #ffffff; color: #166534; cursor: pointer;" title="Mark all selected as EKAS Done">
+          ✓ EKAS Done
+        </button>
+        <button type="button" onclick="openBulkPaidModal()" style="height: 34px; padding: 0 12px; font-size: 0.82em; font-weight: 600; border: none; background: #ffffff; color: #0284c7; cursor: pointer;" title="Set payment status / DOH SOA for selected records">
+          <i class="fa fa-file-invoice-dollar"></i> Set Paid (SOA)
+        </button>
+      </div>
+
+      <button type="button" class="button btn-secondary" onclick="exportSelectedCsv()" style="height: 36px; padding: 0 12px; font-size: 0.85em; font-weight: 600; border-radius: 8px;" title="Export selected records to CSV">
+        <i class="fa fa-download"></i> Export Selected
       </button>
     </div>
   </div>
@@ -163,7 +180,7 @@
           </tr>
         <% } else { %>
           <% records.forEach(function(r, idx) { %>
-            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#ffffff'">
+            <tr id="row_<%= r.id %>" class="record-row" style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" onmouseover="if (!this.classList.contains('row-selected')) this.style.background='#f8fafc'" onmouseout="if (!this.classList.contains('row-selected')) this.style.background='#ffffff'">
               <td style="padding: 10px 12px; text-align: center;">
                 <input type="checkbox" class="row-checkbox" value="<%= r.id %>" data-control="<%= r.controlNo %>" onchange="updateSelectedCount()" style="cursor: pointer; width: 16px; height: 16px; accent-color: #10b981;" />
               </td>
@@ -269,45 +286,45 @@
               <!-- 1st Tranche Encoded -->
               <td style="padding: 10px 10px; text-align: center; white-space: nowrap;">
                 <% if (r.tranche1Encoded === 'Completed') { %>
-                  <span style="background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 700;">✓ Done</span>
+                  <span onclick="quickToggleBadge(this, '<%= r.id %>', 'tranche1Encoded', 'Pending', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 700; background: #dcfce7; color: #166534;" title="Click to toggle to Pending">✓ Done</span>
                 <% } else { %>
-                  <span style="background: #f1f5f9; color: #64748b; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 600;">Pending</span>
+                  <span onclick="quickToggleBadge(this, '<%= r.id %>', 'tranche1Encoded', 'Completed', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 600; background: #f1f5f9; color: #64748b;" title="Click to mark as Done">Pending</span>
                 <% } %>
               </td>
 
               <!-- 2nd Tranche Encoded -->
               <td style="padding: 10px 10px; text-align: center; white-space: nowrap;">
                 <% if (r.tranche2Encoded === 'Completed') { %>
-                  <span style="background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 700;">✓ Done</span>
+                  <span onclick="quickToggleBadge(this, '<%= r.id %>', 'tranche2Encoded', 'Pending', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 700; background: #dcfce7; color: #166534;" title="Click to toggle to Pending">✓ Done</span>
                 <% } else { %>
-                  <span style="background: #f1f5f9; color: #64748b; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 600;">Pending</span>
+                  <span onclick="quickToggleBadge(this, '<%= r.id %>', 'tranche2Encoded', 'Completed', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 600; background: #f1f5f9; color: #64748b;" title="Click to mark as Done">Pending</span>
                 <% } %>
               </td>
 
               <!-- EKAS -->
               <td style="padding: 10px 10px; text-align: center; white-space: nowrap;">
                 <% if (r.ekas === 'Completed') { %>
-                  <span style="background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 700;">✓ Done</span>
+                  <span onclick="quickToggleBadge(this, '<%= r.id %>', 'ekas', 'Pending', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 700; background: #dcfce7; color: #166534;" title="Click to toggle to Pending">✓ Done</span>
                 <% } else { %>
-                  <span style="background: #f1f5f9; color: #64748b; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 600;">Pending</span>
+                  <span onclick="quickToggleBadge(this, '<%= r.id %>', 'ekas', 'Completed', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 600; background: #f1f5f9; color: #64748b;" title="Click to mark as Done">Pending</span>
                 <% } %>
               </td>
 
               <!-- 1st Tranche Paid -->
               <td style="padding: 10px 10px; text-align: center; white-space: nowrap;">
                 <% if (r.tranche1Paid === 'Paid') { %>
-                  <span style="background: #dcfce7; color: #15803d; border: 1px solid #86efac; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 700;" title="<%= r.soaRef ? ('SOA: ' + r.soaRef) : 'Paid' %>">✓ Paid</span>
+                  <span onclick="quickToggleBadge(this, '<%= r.id %>', 'tranche1Paid', 'Not Paid', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 700; background: #dcfce7; color: #15803d; border: 1px solid #86efac;" title="Click to toggle Paid / Not Paid<%= r.soaRef ? (' (SOA: ' + r.soaRef + ')') : '' %>">✓ Paid</span>
                 <% } else { %>
-                  <span style="background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 600;">Not Paid</span>
+                  <span onclick="quickToggleBadge(this, '<%= r.id %>', 'tranche1Paid', 'Paid', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 600; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca;" title="Click to mark as Paid">Not Paid</span>
                 <% } %>
               </td>
 
               <!-- 2nd Tranche Paid -->
               <td style="padding: 10px 10px; text-align: center; white-space: nowrap;">
                 <% if (r.tranche2Paid === 'Paid') { %>
-                  <span style="background: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 700;" title="<%= r.soaRef ? ('SOA: ' + r.soaRef) : 'Paid' %>">✓ Paid</span>
+                  <span onclick="quickToggleBadge(this, '<%= r.id %>', 'tranche2Paid', 'Not Paid', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 700; background: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe;" title="Click to toggle Paid / Not Paid<%= r.soaRef ? (' (SOA: ' + r.soaRef + ')') : '' %>">✓ Paid</span>
                 <% } else { %>
-                  <span style="background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 600;">Not Paid</span>
+                  <span onclick="quickToggleBadge(this, '<%= r.id %>', 'tranche2Paid', 'Paid', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 600; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca;" title="Click to mark as Paid">Not Paid</span>
                 <% } %>
               </td>
 
@@ -528,6 +545,137 @@
   </div>
 </div>
 
+<!-- MODAL: Universal Batch Update (Tranches & Payments) -->
+<div id="universalBatchModal" style="display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.65); backdrop-filter: blur(2px); z-index: 1000; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box;">
+  <div style="background: #ffffff; border-radius: 16px; width: 100%; max-width: 620px; max-height: 92vh; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3); overflow: hidden;">
+    <!-- Modal Header -->
+    <div style="padding: 16px 22px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, #1e1b4b, #312e81); color: #fff;">
+      <div>
+        <h4 style="margin: 0; font-size: 1.15em; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+          <i class="fa fa-layer-group" style="color: #a5b4fc;"></i> Universal Batch Update
+        </h4>
+        <div style="font-size: 0.82em; color: #c7d2fe; margin-top: 2px;">
+          Batch update Tranches Encoded & Tranches Paid for <strong id="uniModalCount" style="color: #ffffff; text-decoration: underline;">0</strong> selected patient(s)
+        </div>
+      </div>
+      <button type="button" onclick="closeUniversalBatchModal()" style="background: none; border: none; font-size: 1.5em; color: #c7d2fe; cursor: pointer; line-height: 1;">&times;</button>
+    </div>
+
+    <!-- Quick 1-Click Presets Bar -->
+    <div style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 12px 20px;">
+      <div style="font-size: 0.76em; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px; margin-bottom: 8px;">
+        ⚡ Instant 1-Click Presets
+      </div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button type="button" onclick="setBatchPreset('1st_encoded')" class="button" style="height: 28px; padding: 0 10px; font-size: 0.78em; font-weight: 700; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; border-radius: 6px; cursor: pointer;">
+          ✓ 1st Tranche Encoded
+        </button>
+        <button type="button" onclick="setBatchPreset('2nd_encoded')" class="button" style="height: 28px; padding: 0 10px; font-size: 0.78em; font-weight: 700; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; border-radius: 6px; cursor: pointer;">
+          ✓ 2nd Tranche Encoded
+        </button>
+        <button type="button" onclick="setBatchPreset('ekas')" class="button" style="height: 28px; padding: 0 10px; font-size: 0.78em; font-weight: 700; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; border-radius: 6px; cursor: pointer;">
+          ✓ EKAS Done
+        </button>
+        <button type="button" onclick="setBatchPreset('1st_paid')" class="button" style="height: 28px; padding: 0 10px; font-size: 0.78em; font-weight: 700; background: #f0fdf4; color: #15803d; border: 1px solid #86efac; border-radius: 6px; cursor: pointer;">
+          💰 1st Tranche Paid
+        </button>
+        <button type="button" onclick="setBatchPreset('2nd_paid')" class="button" style="height: 28px; padding: 0 10px; font-size: 0.78em; font-weight: 700; background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; border-radius: 6px; cursor: pointer;">
+          💰 2nd Tranche Paid
+        </button>
+        <button type="button" onclick="setBatchPreset('clear')" class="button" style="height: 28px; padding: 0 8px; font-size: 0.78em; font-weight: 600; background: #ffffff; color: #64748b; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer;">
+          Reset Form
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal Form Body -->
+    <form id="universalBatchForm" onsubmit="submitUniversalBatch(event)" style="padding: 20px 22px; overflow-y: auto; flex: 1;">
+      <p style="margin: 0 0 16px 0; font-size: 0.85em; color: #64748b; line-height: 1.45;">
+        Leave any field as <strong>"-- No Change --"</strong> to keep each patient's current value intact. Only fields with an explicit selection will be updated across all selected records.
+      </p>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+        <!-- Column 1: Tranche Encoding -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px;">
+          <div style="font-weight: 700; font-size: 0.85em; color: #0f172a; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+            <i class="fa fa-clipboard-check" style="color: #0284c7;"></i> Tranche Encoding Status
+          </div>
+
+          <div style="margin-bottom: 12px;">
+            <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; margin-bottom: 4px;">1st Tranche Encoded</label>
+            <select id="batchTranche1Encoded" style="width: 100%; height: 36px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; padding: 0 8px; font-size: 0.88em;">
+              <option value="">-- No Change --</option>
+              <option value="Completed">Completed (Done)</option>
+              <option value="Pending">Pending</option>
+            </select>
+          </div>
+
+          <div style="margin-bottom: 12px;">
+            <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; margin-bottom: 4px;">2nd Tranche Encoded</label>
+            <select id="batchTranche2Encoded" style="width: 100%; height: 36px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; padding: 0 8px; font-size: 0.88em;">
+              <option value="">-- No Change --</option>
+              <option value="Completed">Completed (Done)</option>
+              <option value="Pending">Pending</option>
+            </select>
+          </div>
+
+          <div>
+            <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; margin-bottom: 4px;">EKAS</label>
+            <select id="batchEkas" style="width: 100%; height: 36px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; padding: 0 8px; font-size: 0.88em;">
+              <option value="">-- No Change --</option>
+              <option value="Completed">Completed (Done)</option>
+              <option value="Pending">Pending</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Column 2: Tranche Paid & Settlement -->
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 14px;">
+          <div style="font-weight: 700; font-size: 0.85em; color: #166534; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+            <i class="fa fa-money-bill-wave" style="color: #16a34a;"></i> Payment Status & DOH SOA
+          </div>
+
+          <div style="margin-bottom: 12px;">
+            <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; margin-bottom: 4px;">1st Tranche Paid</label>
+            <select id="batchTranche1Paid" style="width: 100%; height: 36px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; padding: 0 8px; font-size: 0.88em;">
+              <option value="">-- No Change --</option>
+              <option value="Paid">Paid</option>
+              <option value="Not Paid">Not Paid</option>
+            </select>
+          </div>
+
+          <div style="margin-bottom: 12px;">
+            <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; margin-bottom: 4px;">2nd Tranche Paid</label>
+            <select id="batchTranche2Paid" style="width: 100%; height: 36px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; padding: 0 8px; font-size: 0.88em;">
+              <option value="">-- No Change --</option>
+              <option value="Paid">Paid</option>
+              <option value="Not Paid">Not Paid</option>
+            </select>
+          </div>
+
+          <div style="margin-bottom: 12px;">
+            <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; margin-bottom: 4px;">DOH SOA Reference (Optional)</label>
+            <input type="text" id="batchSoaRef" placeholder="e.g. DOH-SOA-2026-OCT-001" style="width: 100%; height: 36px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 8px; font-size: 0.88em; box-sizing: border-box;" />
+          </div>
+
+          <div>
+            <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; margin-bottom: 4px;">Payment Date</label>
+            <input type="date" id="batchPaidDate" value="<%= (new Date()).toISOString().slice(0, 10) %>" style="width: 100%; height: 36px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 8px; font-size: 0.88em; box-sizing: border-box;" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div style="padding-top: 14px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 10px; align-items: center;">
+        <button type="button" onclick="closeUniversalBatchModal()" class="button btn-secondary" style="height: 38px; padding: 0 16px; border-radius: 8px; font-weight: 600;">Cancel</button>
+        <button type="submit" id="btnUniversalSubmit" class="button btn-primary" style="height: 38px; padding: 0 24px; border-radius: 8px; font-weight: 700; background: linear-gradient(135deg, #4f46e5, #6366f1); display: inline-flex; align-items: center; gap: 8px;">
+          <i class="fa fa-bolt"></i> Apply Batch Updates (<span id="btnApplyCount">0</span> Patients)
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- MODAL: Bulk Mark Tranche Paid (SOA) -->
 <div id="bulkPaidModal" style="display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.6); z-index: 1000; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box;">
   <div style="background: #ffffff; border-radius: 16px; width: 100%; max-width: 460px; box-shadow: 0 20px 40px rgba(0,0,0,0.25); overflow: hidden;">
@@ -601,17 +749,52 @@
 
   window.toggleSelectAll = function(master) {
     const checkboxes = document.querySelectorAll('.row-checkbox');
-    checkboxes.forEach(cb => cb.checked = master.checked);
+    const checkedVal = master && typeof master.checked === 'boolean' ? master.checked : true;
+    checkboxes.forEach(cb => {
+      cb.checked = checkedVal;
+      const row = document.getElementById('row_' + cb.value);
+      if (row) {
+        if (checkedVal) {
+          row.classList.add('row-selected');
+          row.style.background = '#f0fdf4';
+        } else {
+          row.classList.remove('row-selected');
+          row.style.background = '#ffffff';
+        }
+      }
+    });
+    const masterEl = document.getElementById('selectAllCheckbox');
+    if (masterEl) masterEl.checked = checkedVal;
     updateSelectedCount();
   };
 
   window.updateSelectedCount = function() {
     const checked = document.querySelectorAll('.row-checkbox:checked');
+    const all = document.querySelectorAll('.row-checkbox');
     const bar = document.getElementById('bulkActionBar');
     const countEl = document.getElementById('selectedCount');
+    
+    // Update row highlighting
+    all.forEach(cb => {
+      const row = document.getElementById('row_' + cb.value);
+      if (row) {
+        if (cb.checked) {
+          row.classList.add('row-selected');
+          row.style.background = '#f0fdf4';
+        } else {
+          row.classList.remove('row-selected');
+          row.style.background = '#ffffff';
+        }
+      }
+    });
+
     if (checked.length > 0) {
       countEl.textContent = checked.length;
       bar.style.display = 'flex';
+      const uniCount = document.getElementById('uniModalCount');
+      if (uniCount) uniCount.textContent = checked.length;
+      const btnApply = document.getElementById('btnApplyCount');
+      if (btnApply) btnApply.textContent = checked.length;
     } else {
       bar.style.display = 'none';
       const master = document.getElementById('selectAllCheckbox');
@@ -620,15 +803,306 @@
   };
 
   window.clearSelection = function() {
-    document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
+    document.querySelectorAll('.row-checkbox').forEach(cb => {
+      cb.checked = false;
+      const row = document.getElementById('row_' + cb.value);
+      if (row) {
+        row.classList.remove('row-selected');
+        row.style.background = '#ffffff';
+      }
+    });
     const master = document.getElementById('selectAllCheckbox');
     if (master) master.checked = false;
     updateSelectedCount();
   };
 
+  // ---- Universal Batch Modal Handlers ----
+  window.openUniversalBatchModal = async function(preset) {
+    let checked = document.querySelectorAll('.row-checkbox:checked');
+    if (!checked.length) {
+      const allCount = document.querySelectorAll('.row-checkbox').length;
+      if (allCount === 0) {
+        if (window.showCustomAlert) {
+          return window.showCustomAlert('No patient records found on this page.', { type: 'warning', title: 'No Records Found' });
+        }
+        return alert('No patient records found on this page.');
+      }
+      const confirmed = window.showConfirmDialog ? await window.showConfirmDialog(
+        'No patients are checked yet.<br><br>Would you like to select all <strong>' + allCount + ' patient(s)</strong> on this page to update together?',
+        {
+          title: 'Batch Selection',
+          btnText: 'Select All & Continue',
+          cancelText: 'Cancel',
+          type: 'primary'
+        }
+      ) : confirm('No patients are checked yet. Would you like to select all ' + allCount + ' patient(s) on this page to update together?');
+
+      if (confirmed) {
+        toggleSelectAll({ checked: true });
+        checked = document.querySelectorAll('.row-checkbox:checked');
+      } else {
+        return;
+      }
+    }
+
+    document.getElementById('uniModalCount').textContent = checked.length;
+    document.getElementById('btnApplyCount').textContent = checked.length;
+
+    if (preset) {
+      setBatchPreset(preset);
+    } else {
+      setBatchPreset('clear');
+    }
+
+    document.getElementById('universalBatchModal').style.display = 'flex';
+  };
+
+  window.closeUniversalBatchModal = function() {
+    document.getElementById('universalBatchModal').style.display = 'none';
+  };
+
+  window.setBatchPreset = function(preset) {
+    const t1Enc = document.getElementById('batchTranche1Encoded');
+    const t2Enc = document.getElementById('batchTranche2Encoded');
+    const ekas = document.getElementById('batchEkas');
+    const t1Paid = document.getElementById('batchTranche1Paid');
+    const t2Paid = document.getElementById('batchTranche2Paid');
+
+    if (preset === '1st_encoded') {
+      t1Enc.value = 'Completed';
+    } else if (preset === '2nd_encoded') {
+      t2Enc.value = 'Completed';
+    } else if (preset === 'ekas') {
+      ekas.value = 'Completed';
+    } else if (preset === '1st_paid') {
+      t1Paid.value = 'Paid';
+    } else if (preset === '2nd_paid') {
+      t2Paid.value = 'Paid';
+    } else if (preset === 'clear') {
+      t1Enc.value = '';
+      t2Enc.value = '';
+      ekas.value = '';
+      t1Paid.value = '';
+      t2Paid.value = '';
+      document.getElementById('batchSoaRef').value = '';
+    }
+  };
+
+  window.submitUniversalBatch = async function(e) {
+    e.preventDefault();
+    const checked = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.value);
+    if (!checked.length) {
+      if (window.showCustomAlert) return window.showCustomAlert('Please select at least one record to update.', { type: 'warning', title: 'Selection Required' });
+      return alert('Please select at least one record.');
+    }
+
+    const tranche1Encoded = document.getElementById('batchTranche1Encoded').value;
+    const tranche2Encoded = document.getElementById('batchTranche2Encoded').value;
+    const ekas = document.getElementById('batchEkas').value;
+    const tranche1Paid = document.getElementById('batchTranche1Paid').value;
+    const tranche2Paid = document.getElementById('batchTranche2Paid').value;
+    const soaRef = document.getElementById('batchSoaRef').value;
+    const paidDate = document.getElementById('batchPaidDate').value;
+
+    if (!tranche1Encoded && !tranche2Encoded && !ekas && !tranche1Paid && !tranche2Paid) {
+      if (window.showCustomAlert) return window.showCustomAlert('Please select at least one field to change (e.g. 1st Tranche Encoded, 2nd Tranche Encoded, EKAS, or Paid Status).', { type: 'warning', title: 'No Changes Specified' });
+      return alert('Please select at least one field to change.');
+    }
+
+    const btn = document.getElementById('btnUniversalSubmit');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Updating ' + checked.length + ' records...';
+
+    try {
+      const res = await fetch('/philhealth/bulk-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          ids: checked,
+          tranche1Encoded,
+          tranche2Encoded,
+          ekas,
+          tranche1Paid,
+          tranche2Paid,
+          soaRef,
+          paidDate
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        window.location.reload();
+      } else {
+        if (window.showCustomAlert) window.showCustomAlert(data.error || 'Failed to update records.', { type: 'danger', title: 'Update Error' });
+        else alert('Error: ' + (data.error || 'Failed to update'));
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+      }
+    } catch (err) {
+      if (window.showCustomAlert) window.showCustomAlert('Network error updating records: ' + err.message, { type: 'danger', title: 'Network Error' });
+      else alert('Network error updating records: ' + err.message);
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    }
+  };
+
+  // Direct quick 1-click preset apply from the bulk bar
+  window.quickBatchApply = async function(field, value) {
+    let checked = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.value);
+    if (!checked.length) {
+      const allCount = document.querySelectorAll('.row-checkbox').length;
+      if (allCount === 0) {
+        if (window.showCustomAlert) return window.showCustomAlert('No patient records found on this page.', { type: 'warning', title: 'No Records Found' });
+        return alert('No patient records found.');
+      }
+      const confirmed = window.showConfirmDialog ? await window.showConfirmDialog(
+        'No patients are checked yet.<br><br>Would you like to select all <strong>' + allCount + ' patient(s)</strong> on this page to update together?',
+        {
+          title: 'Batch Selection',
+          btnText: 'Select All & Continue',
+          cancelText: 'Cancel',
+          type: 'primary'
+        }
+      ) : confirm('No patients are checked yet. Would you like to select all ' + allCount + ' patient(s) on this page to update together?');
+
+      if (confirmed) {
+        toggleSelectAll({ checked: true });
+        checked = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.value);
+      } else {
+        return;
+      }
+    }
+
+    const fieldLabel = field === 'tranche1Encoded' ? '1st Tranche Encoded' :
+                       field === 'tranche2Encoded' ? '2nd Tranche Encoded' :
+                       field === 'ekas' ? 'EKAS' :
+                       field === 'tranche1Paid' ? '1st Tranche Paid' :
+                       field === 'tranche2Paid' ? '2nd Tranche Paid' : field;
+
+    const proceed = window.showConfirmDialog ? await window.showConfirmDialog(
+      'Apply batch update to <strong>' + checked.length + '</strong> selected patient(s)?<br><br>' +
+      'Set <strong>' + fieldLabel + '</strong> to <span style="display:inline-block;padding:2px 8px;border-radius:10px;background:#dcfce7;color:#166534;font-weight:700;">' + value + '</span>',
+      {
+        title: 'Confirm Universal Update',
+        btnText: 'Yes, Apply Batch',
+        cancelText: 'Cancel',
+        type: 'primary'
+      }
+    ) : confirm('Apply batch update:\n\nSet "' + fieldLabel + '" to "' + value + '" for ' + checked.length + ' selected patient(s)?');
+
+    if (!proceed) return;
+
+    try {
+      const res = await fetch('/philhealth/bulk-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ ids: checked, [field]: value })
+      });
+      const data = await res.json();
+      if (data.success) {
+        window.location.reload();
+      } else {
+        if (window.showCustomAlert) window.showCustomAlert(data.error || 'Failed to update records.', { type: 'danger', title: 'Update Error' });
+        else alert('Error: ' + (data.error || 'Failed to update'));
+      }
+    } catch (err) {
+      if (window.showCustomAlert) window.showCustomAlert('Network error updating: ' + err.message, { type: 'danger', title: 'Network Error' });
+      else alert('Network error updating: ' + err.message);
+    }
+  };
+
+  // Single-cell click-to-toggle badge handler
+  window.quickToggleBadge = async function(el, id, field, nextValue, ctrlNo) {
+    if (!id || !field) return;
+    const originalText = el.textContent;
+    el.textContent = '...';
+
+    try {
+      const res = await fetch('/philhealth/' + id, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ [field]: nextValue })
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (field === 'tranche1Encoded' || field === 'tranche2Encoded' || field === 'ekas') {
+          if (nextValue === 'Completed') {
+            el.textContent = '✓ Done';
+            el.style.background = '#dcfce7';
+            el.style.color = '#166534';
+            el.style.fontWeight = '700';
+            el.setAttribute('onclick', "quickToggleBadge(this, '" + id + "', '" + field + "', 'Pending', '" + ctrlNo + "')");
+            el.setAttribute('title', 'Click to toggle to Pending');
+          } else {
+            el.textContent = 'Pending';
+            el.style.background = '#f1f5f9';
+            el.style.color = '#64748b';
+            el.style.fontWeight = '600';
+            el.setAttribute('onclick', "quickToggleBadge(this, '" + id + "', '" + field + "', 'Completed', '" + ctrlNo + "')");
+            el.setAttribute('title', 'Click to mark as Done');
+          }
+        } else if (field === 'tranche1Paid' || field === 'tranche2Paid') {
+          if (nextValue === 'Paid') {
+            el.textContent = '✓ Paid';
+            el.style.background = (field === 'tranche2Paid') ? '#e0e7ff' : '#dcfce7';
+            el.style.color = (field === 'tranche2Paid') ? '#4338ca' : '#15803d';
+            el.style.borderColor = (field === 'tranche2Paid') ? '#c7d2fe' : '#86efac';
+            el.style.fontWeight = '700';
+            el.setAttribute('onclick', "quickToggleBadge(this, '" + id + "', '" + field + "', 'Not Paid', '" + ctrlNo + "')");
+            el.setAttribute('title', 'Click to toggle to Not Paid');
+          } else {
+            el.textContent = 'Not Paid';
+            el.style.background = '#fef2f2';
+            el.style.color = '#b91c1c';
+            el.style.borderColor = '#fecaca';
+            el.style.fontWeight = '600';
+            el.setAttribute('onclick', "quickToggleBadge(this, '" + id + "', '" + field + "', 'Paid', '" + ctrlNo + "')");
+            el.setAttribute('title', 'Click to mark as Paid');
+          }
+        }
+
+        const fieldTitle = field === 'tranche1Encoded' ? '1st Tranche Encoded' :
+                           field === 'tranche2Encoded' ? '2nd Tranche Encoded' :
+                           field === 'ekas' ? 'EKAS' :
+                           field === 'tranche1Paid' ? '1st Tranche Paid' :
+                           field === 'tranche2Paid' ? '2nd Tranche Paid' : field;
+        showToast('✓ ' + fieldTitle + ' marked as ' + nextValue + ' (' + ctrlNo + ')');
+      } else {
+        el.textContent = originalText;
+        if (window.showCustomAlert) window.showCustomAlert(data.error || 'Failed to update', { type: 'danger', title: 'Update Error' });
+        else alert('Error: ' + (data.error || 'Failed to update'));
+      }
+    } catch (err) {
+      el.textContent = originalText;
+      if (window.showCustomAlert) window.showCustomAlert('Network error updating: ' + err.message, { type: 'danger', title: 'Network Error' });
+      else alert('Network error updating: ' + err.message);
+    }
+  };
+
+  function showToast(msg) {
+    let toast = document.getElementById('quickToast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'quickToast';
+      toast.style.cssText = 'position: fixed; bottom: 24px; right: 24px; background: #0f172a; color: #ffffff; padding: 12px 20px; border-radius: 10px; font-size: 0.88em; font-weight: 600; box-shadow: 0 10px 25px rgba(0,0,0,0.25); z-index: 9999; display: flex; align-items: center; gap: 10px; transition: opacity 0.3s;';
+      document.body.appendChild(toast);
+    }
+    toast.innerHTML = '<i class="fa fa-check-circle" style="color: #4ade80; font-size: 1.1em;"></i> ' + msg;
+    toast.style.display = 'flex';
+    toast.style.opacity = '1';
+    if (window._toastTimer) clearTimeout(window._toastTimer);
+    window._toastTimer = setTimeout(() => {
+      toast.style.opacity = '0';
+      setTimeout(() => { toast.style.display = 'none'; }, 300);
+    }, 2600);
+  }
+
   window.openBulkPaidModal = function() {
     const checked = document.querySelectorAll('.row-checkbox:checked');
-    if (!checked.length) return alert('Please select at least one record.');
+    if (!checked.length) {
+      if (window.showCustomAlert) return window.showCustomAlert('Please select at least one record.', { type: 'warning', title: 'Selection Required' });
+      return alert('Please select at least one record.');
+    }
     document.getElementById('bulkModalCount').textContent = checked.length;
     document.getElementById('bulkPaidModal').style.display = 'flex';
   };
@@ -655,16 +1129,21 @@
       if (data.success) {
         window.location.reload();
       } else {
-        alert('Error: ' + (data.error || 'Failed to update'));
+        if (window.showCustomAlert) window.showCustomAlert(data.error || 'Failed to update', { type: 'danger', title: 'Update Error' });
+        else alert('Error: ' + (data.error || 'Failed to update'));
       }
     } catch (err) {
-      alert('Network error updating payment: ' + err.message);
+      if (window.showCustomAlert) window.showCustomAlert('Network error updating payment: ' + err.message, { type: 'danger', title: 'Network Error' });
+      else alert('Network error updating payment: ' + err.message);
     }
   };
 
   window.exportSelectedCsv = function() {
     const checked = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.value);
-    if (!checked.length) return alert('Please select at least one record.');
+    if (!checked.length) {
+      if (window.showCustomAlert) return window.showCustomAlert('Please select at least one record to export.', { type: 'warning', title: 'Selection Required' });
+      return alert('Please select at least one record.');
+    }
     window.location.href = '/philhealth/export.csv?ids=' + encodeURIComponent(checked.join(','));
   };
 
@@ -746,10 +1225,12 @@
       if (data.success) {
         window.location.reload();
       } else {
-        alert('Error: ' + (data.error || 'Failed saving draft'));
+        if (window.showCustomAlert) window.showCustomAlert(data.error || 'Failed saving draft', { type: 'danger', title: 'Save Draft Failed' });
+        else alert('Error: ' + (data.error || 'Failed saving draft'));
       }
     } catch (e) {
-      alert('Error: ' + e.message);
+      if (window.showCustomAlert) window.showCustomAlert('Error saving draft: ' + e.message, { type: 'danger', title: 'Error' });
+      else alert('Error: ' + e.message);
     }
   };
 
@@ -759,12 +1240,14 @@
     const procedures = collectSelectedProcedures();
 
     if (!procedures.length) {
+      if (window.showCustomAlert) return window.showCustomAlert('Please select at least one procedure before approving.', { type: 'warning', title: 'Procedure Required' });
       return alert('Please select at least one procedure before approving.');
     }
 
     // Check sendout remarks
     for (const p of procedures) {
       if ((p.key === 'sputum_microscopy' || p.key === 'pap_smear') && !p.remarks) {
+        if (window.showCustomAlert) return window.showCustomAlert('Remarks are required for send-out procedure: ' + p.key, { type: 'warning', title: 'Remarks Required' });
         return alert('Remarks are required for send-out procedure: ' + p.key);
       }
     }
@@ -781,15 +1264,23 @@
       });
       const data = await res.json();
       if (data.success) {
-        alert(data.message || 'PhilHealth order approved and routed to queue!');
-        window.location.reload();
+        if (window.showCustomAlert) {
+          window.showCustomAlert(data.message || 'PhilHealth order approved and routed to queue!', { type: 'success', title: 'Order Approved' }, function() {
+            window.location.reload();
+          });
+        } else {
+          alert(data.message || 'PhilHealth order approved and routed to queue!');
+          window.location.reload();
+        }
       } else {
-        alert('Error: ' + (data.error || 'Failed to approve'));
+        if (window.showCustomAlert) window.showCustomAlert(data.error || 'Failed to approve', { type: 'danger', title: 'Approval Error' });
+        else alert('Error: ' + (data.error || 'Failed to approve'));
         btn.disabled = false;
         btn.innerHTML = '<i class="fa fa-check-circle"></i> Approve & Send to Queue';
       }
     } catch (err) {
-      alert('Network error approving order: ' + err.message);
+      if (window.showCustomAlert) window.showCustomAlert('Network error approving order: ' + err.message, { type: 'danger', title: 'Network Error' });
+      else alert('Network error approving order: ' + err.message);
       btn.disabled = false;
       btn.innerHTML = '<i class="fa fa-check-circle"></i> Approve & Send to Queue';
     }
@@ -847,10 +1338,12 @@
       if (data.success) {
         window.location.reload();
       } else {
-        alert('Error: ' + (data.error || 'Failed updating record'));
+        if (window.showCustomAlert) window.showCustomAlert(data.error || 'Failed updating record', { type: 'danger', title: 'Update Error' });
+        else alert('Error: ' + (data.error || 'Failed updating record'));
       }
     } catch (err) {
-      alert('Network error updating record: ' + err.message);
+      if (window.showCustomAlert) window.showCustomAlert('Network error updating record: ' + err.message, { type: 'danger', title: 'Network Error' });
+      else alert('Network error updating record: ' + err.message);
     }
   };
 })();
