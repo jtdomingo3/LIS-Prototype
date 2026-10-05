@@ -1,3 +1,7 @@
+<%
+  const pkgs = (typeof testPackages !== 'undefined' && Array.isArray(testPackages)) ? testPackages : [];
+  const canManage = (typeof canManagePackages !== 'undefined' && canManagePackages);
+%>
 <style>
   .test-order-layout {
     width: 100% !important;
@@ -44,6 +48,267 @@
       grid-template-columns: 1fr;
     }
   }
+
+  /* Test Tabs Styling */
+  .test-nav-tabs {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 2px solid #e2e8f0;
+    margin-bottom: 14px;
+    padding-bottom: 0;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .test-tab-btn-group {
+    display: flex;
+    gap: 6px;
+    margin-bottom: -2px;
+  }
+  .test-tab-btn {
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 10px 18px;
+    font-size: 0.94em;
+    font-weight: 700;
+    color: #64748b;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.15s ease;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+  }
+  .test-tab-btn:hover {
+    color: #0f172a;
+    background: #f8fafc;
+  }
+  .test-tab-btn.active {
+    color: #0f172a;
+    border-bottom-color: #10b981;
+    background: #f0fdf4;
+  }
+  .tab-badge {
+    background: #ecfdf5;
+    color: #059669;
+    font-size: 0.75em;
+    padding: 2px 7px;
+    border-radius: 999px;
+    font-weight: 700;
+    border: 1px solid #a7f3d0;
+  }
+
+  /* Packages Grid & Cards Styling */
+  .pkg-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+  }
+  @media (max-width: 1480px) {
+    .pkg-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 768px) {
+    .pkg-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+  .pkg-card {
+    background: #ffffff;
+    border: 2px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    user-select: none;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+  }
+  .pkg-card:hover {
+    border-color: #94a3b8;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+  }
+  .pkg-card.selected {
+    border-color: #10b981;
+    background: #f0fdf4;
+    box-shadow: 0 4px 18px rgba(16, 185, 129, 0.2);
+  }
+  .pkg-header-badge {
+    background: #84cc16;
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 0.84em;
+    padding: 4px 10px;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    box-shadow: 0 2px 4px rgba(132, 204, 22, 0.25);
+  }
+  .pkg-price-badge {
+    background: #f43f5e;
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 0.95em;
+    padding: 4px 12px;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(244, 63, 94, 0.25);
+  }
+  .pkg-item {
+    font-size: 0.85em;
+    font-weight: 600;
+    color: #334155;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    line-height: 1.45;
+  }
+  .pkg-extra-item {
+    font-size: 0.85em;
+    font-weight: 700;
+    color: #0369a1;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    line-height: 1.45;
+  }
+  .pkg-ua-badge {
+    font-size: 0.79em;
+    font-weight: 700;
+    border-radius: 6px;
+    padding: 5px 9px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .pkg-ua-badge.free {
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+  }
+  .pkg-ua-badge.paid {
+    background: #fef3c7;
+    color: #b45309;
+    border: 1px solid #fde68a;
+  }
+  .pkg-btn-select {
+    width: 100%;
+    height: 36px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.88em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    color: #334155;
+    margin-top: 12px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .pkg-card.selected .pkg-btn-select {
+    background: #10b981;
+    color: #ffffff;
+    border-color: #10b981;
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+  }
+
+  /* Status Toggle Buttons */
+  .status-toggle-btn {
+    height: 32px;
+    padding: 0 12px;
+    border-radius: 8px;
+    font-size: 0.84em;
+    font-weight: 700;
+    border: 1.5px solid #cbd5e1;
+    background: #ffffff;
+    color: #475569;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+    user-select: none;
+  }
+  .status-toggle-btn:hover {
+    border-color: #94a3b8;
+    background: #f8fafc;
+  }
+  .status-toggle-btn.active {
+    background: #10b981;
+    color: #ffffff;
+    border-color: #059669;
+    box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
+  }
+
+  /* Clear Package Button */
+  .btn-clear-pkg {
+    height: 34px;
+    padding: 0 14px;
+    border-radius: 8px;
+    font-size: 0.84em;
+    font-weight: 700;
+    background: #ffffff;
+    color: #e11d48;
+    border: 1.5px solid #fecdd3;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    transition: all 0.15s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    user-select: none;
+  }
+  .btn-clear-pkg:hover {
+    background: #fff1f2;
+    border-color: #fda4af;
+    color: #be123c;
+    box-shadow: 0 2px 6px rgba(225, 29, 72, 0.12);
+  }
+  .btn-clear-pkg:active {
+    transform: scale(0.98);
+  }
+
+  /* Modal styling */
+  .pkg-modal-backdrop {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(3px);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    box-sizing: border-box;
+  }
+  .pkg-modal-dialog {
+    background: #ffffff;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 680px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+  }
 </style>
 
 <div class="card test-order-layout" style="padding: 24px 28px; border-radius: 16px; box-shadow: 0 4px 18px rgba(0,0,0,0.03); background: #ffffff; border: 1px solid #e2e8f0;">
@@ -64,7 +329,7 @@
     </a>
   </div>
 
-  <form action="/tests" method="POST">
+  <form action="/tests" method="POST" id="createTestForm">
   <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
     
     <div class="test-order-grid">
@@ -90,7 +355,7 @@
               <option value="">-- Select Patient --</option>
               <% if (patients && patients.length) { %>
                 <% patients.forEach(p => { %>
-                  <option value="<%= p.id %>" <%= (test.patient && test.patient === p.id) ? 'selected' : '' %>>
+                  <option value="<%= p.id %>" <%= (test.patient && test.patient === p.id) ? 'selected' : '' %> data-age="<%= p.age !== undefined && p.age !== null ? p.age : '' %>" data-dob="<%= p.dateOfBirth || '' %>">
                     <%= p.lastName %>, <%= p.firstName %> (<%= p.patientId %>)
                   </option>
                 <% }) %>
@@ -150,44 +415,141 @@
 
       </div>
 
-      <!-- Right Column: Select Requested Tests Catalog (Exactly 4 Columns) -->
+      <!-- Right Column: Tabs for Catalog & Test Packages -->
       <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 20px; display: flex; flex-direction: column;">
-        <div style="font-weight: 700; font-size: 0.96em; color: #0f172a; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
-          <span style="display: flex; align-items: center; gap: 8px;">
-            <i class="fa fa-flask" style="color: #3b82f6;"></i> Available Tests & Procedures
-          </span>
-          <span style="font-size: 0.8em; color: #64748b; font-weight: 500;">Check test to enable amount & remarks</span>
+        
+        <!-- Navigation Tab Header -->
+        <div class="test-nav-tabs">
+          <div class="test-tab-btn-group">
+            <button type="button" id="tabBtnCatalog" class="test-tab-btn active" onclick="switchTestTab('catalog')">
+              <i class="fa fa-flask" style="color: #3b82f6;"></i> Available Tests & Procedures
+            </button>
+            <button type="button" id="tabBtnPackages" class="test-tab-btn" onclick="switchTestTab('packages')">
+              <i class="fa fa-boxes-stacked" style="color: #10b981;"></i> Test Packages
+              <span class="tab-badge" id="pkgCountBadge"><%= pkgs.filter(p => p.active !== false).length %></span>
+            </button>
+          </div>
+          <div id="tabSubNotice" style="font-size: 0.82em; color: #64748b; font-weight: 500;">
+            Check test to enable amount & remarks
+          </div>
         </div>
 
-        <!-- 4-Column Grid for Clear Readability -->
-        <div class="test-catalog-grid">
-          <% (templates || []).forEach(t => {
-               const rawKey = String(t.testType || t.name || '').trim();
-               const slug = rawKey.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
-          %>
-            <label class="test-item-card" style="display: flex; flex-direction: column; padding: 10px 12px; border-radius: 8px; background: #f8fafc; border: 1px solid #e2e8f0; cursor: pointer; transition: all 0.15s ease; user-select: none;">
-              <div style="display: flex; align-items: flex-start; gap: 8px;">
-                <input type="checkbox" class="test-checkbox" data-key="<%= slug %>" name="selectedTests" value="<%= rawKey %>" style="accent-color: #10b981; width: 17px; height: 17px; cursor: pointer; flex-shrink: 0; margin-top: 2px;" />
-                <span style="font-size: 0.9em; font-weight: 600; color: #0f172a; flex: 1; word-break: normal; overflow-wrap: break-word; line-height: 1.3;"><%= t.name || t.testType %></span>
-              </div>
-              <div class="test-fields-wrapper" style="display: none; flex-direction: column; gap: 6px; margin-top: 8px;">
-                <div style="display: flex; align-items: center; gap: 6px;">
-                  <div style="display: flex; align-items: center; gap: 4px; flex: 1;">
-                    <span style="font-size: 0.75em; font-weight: 600; color: #64748b;">Qty:</span>
-                    <input type="number" min="1" max="10" name="qty_<%= slug %>" class="test-qty" value="1" title="Quantity / Number of tests" placeholder="Qty" style="width: 100%; height: 30px; padding: 2px 4px; font-size: 0.84em; border-radius: 5px; border: 1px solid #cbd5e1; box-sizing: border-box; text-align: center; font-weight: 600; background: #ffffff;" />
+        <!-- Tab 1: Available Tests & Procedures (Unchanged catalog) -->
+        <div id="testTabCatalog" class="test-tab-pane">
+          <div class="test-catalog-grid">
+            <% (templates || []).forEach(t => {
+                 const rawKey = String(t.testType || t.name || '').trim();
+                 const slug = rawKey.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
+            %>
+              <label class="test-item-card" style="display: flex; flex-direction: column; padding: 10px 12px; border-radius: 8px; background: #f8fafc; border: 1px solid #e2e8f0; cursor: pointer; transition: all 0.15s ease; user-select: none;">
+                <div style="display: flex; align-items: flex-start; gap: 8px;">
+                  <input type="checkbox" class="test-checkbox" data-key="<%= slug %>" name="selectedTests" value="<%= rawKey %>" style="accent-color: #10b981; width: 17px; height: 17px; cursor: pointer; flex-shrink: 0; margin-top: 2px;" />
+                  <span style="font-size: 0.9em; font-weight: 600; color: #0f172a; flex: 1; word-break: normal; overflow-wrap: break-word; line-height: 1.3;"><%= t.name || t.testType %></span>
+                </div>
+                <div class="test-fields-wrapper" style="display: none; flex-direction: column; gap: 6px; margin-top: 8px;">
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <div style="display: flex; align-items: center; gap: 4px; flex: 1;">
+                      <span style="font-size: 0.75em; font-weight: 600; color: #64748b;">Qty:</span>
+                      <input type="number" min="1" max="10" name="qty_<%= slug %>" class="test-qty" value="1" title="Quantity / Number of tests" placeholder="Qty" style="width: 100%; height: 30px; padding: 2px 4px; font-size: 0.84em; border-radius: 5px; border: 1px solid #cbd5e1; box-sizing: border-box; text-align: center; font-weight: 600; background: #ffffff;" />
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 4px; flex: 1.4;">
+                      <span style="font-size: 0.75em; font-weight: 600; color: #64748b;">₱:</span>
+                      <input type="number" step="0.01" min="0" name="amount_<%= slug %>" class="test-amount" placeholder="Amount" style="width: 100%; height: 30px; padding: 2px 6px; font-size: 0.84em; border-radius: 5px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #ffffff;" />
+                    </div>
                   </div>
-                  <div style="display: flex; align-items: center; gap: 4px; flex: 1.4;">
-                    <span style="font-size: 0.75em; font-weight: 600; color: #64748b;">₱:</span>
-                    <input type="number" step="0.01" min="0" name="amount_<%= slug %>" class="test-amount" placeholder="Amount" style="width: 100%; height: 30px; padding: 2px 6px; font-size: 0.84em; border-radius: 5px; border: 1px solid #cbd5e1; box-sizing: border-box; background: #ffffff;" />
+                  <div class="test-remark-container">
+                    <textarea name="remark_<%= slug %>" class="test-remark" placeholder="Special instructions..." rows="2" style="width: 100%; height: 36px; min-height: 36px; max-height: 48px; font-size: 0.82em; line-height: 1.25; padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 5px; box-sizing: border-box; resize: none; background: #ffffff;"></textarea>
                   </div>
                 </div>
-                <div class="test-remark-container">
-                  <textarea name="remark_<%= slug %>" class="test-remark" placeholder="Special instructions..." rows="2" style="width: 100%; height: 36px; min-height: 36px; max-height: 48px; font-size: 0.82em; line-height: 1.25; padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 5px; box-sizing: border-box; resize: none; background: #ffffff;"></textarea>
-                </div>
-              </div>
-            </label>
-          <% }) %>
+              </label>
+            <% }) %>
+          </div>
         </div>
+
+        <!-- Tab 2: Test Packages (2nd Tab Shortcut) -->
+        <div id="testTabPackages" class="test-tab-pane" style="display: none;">
+          
+          <!-- Controls Bar: Senior Citizen, PWD, and Urinalysis Toggles -->
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 18px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 10px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+              
+              <!-- Patient Category / Discount Buttons -->
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span style="font-size: 0.85em; font-weight: 700; color: #475569;">Patient Category:</span>
+                
+                <button type="button" id="btnToggleSenior" onclick="toggleSeniorStatus()" class="status-toggle-btn" title="Click to toggle Senior Citizen status">
+                  <i class="fa fa-person-cane"></i> Senior Citizen
+                </button>
+                
+                <button type="button" id="btnTogglePwd" onclick="togglePwdStatus()" class="status-toggle-btn" title="Click to toggle PWD status">
+                  <i class="fa fa-wheelchair"></i> PWD
+                </button>
+
+                <span id="discountStatusBadge" style="font-size: 0.78em; padding: 3px 9px; border-radius: 999px; font-weight: 700; background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0;">
+                  Regular Patient
+                </span>
+              </div>
+
+              <!-- Admin/Manage Actions -->
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <button type="button" id="clearPkgBtn" onclick="clearActivePackage()" class="btn-clear-pkg" style="display: none;" title="Clear selected package and revert tests">
+                  <i class="fa fa-rotate-left"></i>
+                  <span>Clear Package</span>
+                </button>
+                <% if (canManage) { %>
+                  <button type="button" onclick="openPackageModal()" class="button btn-primary" style="height: 34px; padding: 0 14px; border-radius: 8px; font-size: 0.84em; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                    <i class="fa fa-plus"></i> <span>Create Package</span>
+                  </button>
+                <% } %>
+              </div>
+            </div>
+
+            <!-- Urinalysis Option Bar (Default OFF) -->
+            <div style="padding-top: 9px; border-top: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.9em; font-weight: 700; color: #0f172a; user-select: none;">
+                  <input type="checkbox" id="toggleIncludeUrinalysis" onchange="onUrinalysisToggleChange()" style="width: 18px; height: 18px; accent-color: #10b981; cursor: pointer;" />
+                  <span>Include Urinalysis in Package</span>
+                </label>
+                <span id="urinalysisPricingHint" style="font-size: 0.82em; color: #64748b;">
+                  (Default OFF — check to add. FREE for Senior/PWD, +₱100 for regular patients)
+                </span>
+              </div>
+              <div id="urinalysisActiveState" style="font-size: 0.82em; font-weight: 700; color: #64748b;">
+                Urinalysis: <span style="color: #94a3b8;">Excluded (₱0)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Active Package Notice Banner -->
+          <div id="pkgNoticeBanner" style="display: none; background: #ecfdf5; border: 1px solid #6ee7b7; border-radius: 10px; padding: 12px 16px; margin-bottom: 14px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 32px; height: 32px; border-radius: 8px; background: #10b981; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 1.1em;">
+                  <i class="fa fa-check"></i>
+                </div>
+                <div>
+                  <div style="font-size: 0.94em; font-weight: 700; color: #065f46;" id="pkgNoticeTitle">
+                    Package Applied
+                  </div>
+                  <div style="font-size: 0.82em; color: #047857;" id="pkgNoticeDetails">
+                    Tests have been selected in the Available Tests tab with prices & remarks pre-filled.
+                  </div>
+                </div>
+              </div>
+              <button type="button" onclick="switchTestTab('catalog')" style="background: #ffffff; border: 1px solid #a7f3d0; color: #065f46; font-size: 0.8em; font-weight: 700; border-radius: 6px; padding: 4px 10px; cursor: pointer;">
+                View Tagged Tests <i class="fa fa-arrow-right"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Packages Grid Container (Populated by JavaScript) -->
+          <div class="pkg-grid" id="pkgGridContainer">
+            <!-- Rendered by JS -->
+          </div>
+
+        </div>
+
       </div>
 
     </div>
@@ -196,8 +558,848 @@
   </form>
 </div>
 
+<!-- Modal: Create / Edit Package (Admin, Owner, Manager, Reception) -->
+<div id="pkgModalBackdrop" class="pkg-modal-backdrop">
+  <div class="pkg-modal-dialog">
+    <div style="padding: 16px 20px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <i class="fa fa-box" style="color: #10b981; font-size: 1.2em;"></i>
+        <h3 id="pkgModalTitle" style="margin: 0; font-size: 1.15em; font-weight: 700; color: #0f172a;">Edit Package</h3>
+      </div>
+      <button type="button" onclick="closePackageModal()" style="border: none; background: transparent; font-size: 1.2em; color: #64748b; cursor: pointer;">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+
+    <form id="pkgEditForm" onsubmit="handleSavePackage(event)" style="display: flex; flex-direction: column; overflow: hidden; margin: 0;">
+      <input type="hidden" id="editPkgId" name="id" value="" />
+      
+      <div style="padding: 16px 20px; overflow-y: auto; max-height: calc(90vh - 130px); display: flex; flex-direction: column; gap: 14px;">
+        
+        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px;">
+          <div>
+            <label style="display: block; font-size: 0.82em; font-weight: 700; color: #334155; margin-bottom: 4px;">Package Name *</label>
+            <input type="text" id="editPkgName" name="name" required placeholder="e.g. Package 1" style="width: 100%; height: 36px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.9em; box-sizing: border-box;" />
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.82em; font-weight: 700; color: #334155; margin-bottom: 4px;">Code</label>
+            <input type="text" id="editPkgCode" name="code" placeholder="e.g. PKG1" style="width: 100%; height: 36px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.9em; box-sizing: border-box;" />
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.82em; font-weight: 700; color: #334155; margin-bottom: 4px;">Price (₱) *</label>
+            <input type="number" step="0.01" min="0" id="editPkgPrice" name="price" required placeholder="680" style="width: 100%; height: 36px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.9em; font-weight: 700; box-sizing: border-box;" />
+          </div>
+        </div>
+
+        <!-- Blood Chemistry Parameters Checklist -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+            <span style="font-size: 0.86em; font-weight: 700; color: #0f172a;">
+              <i class="fa fa-vial" style="color: #10b981;"></i> Blood Chemistry Parameters
+            </span>
+            <span style="font-size: 0.76em; color: #64748b;">Listed in remarks on Blood chemistry</span>
+          </div>
+          <div id="bloodChemParamsContainer" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px;">
+            <!-- Generated dynamically in JS -->
+          </div>
+        </div>
+
+        <!-- Other Diagnostic Tests Checklist -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+            <span style="font-size: 0.86em; font-weight: 700; color: #0f172a;">
+              <i class="fa fa-clipboard-check" style="color: #0284c7;"></i> Other Included Procedures
+            </span>
+            <span style="font-size: 0.76em; color: #64748b;">Checked alongside Blood chemistry at ₱0</span>
+          </div>
+          <div id="otherTestsContainer" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px;">
+            <!-- Generated dynamically from catalog -->
+          </div>
+        </div>
+
+        <!-- Urinalysis Options -->
+        <div style="background: #fefce8; border: 1px solid #fef08a; border-radius: 10px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+          <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.85em; font-weight: 700; color: #854d0e; cursor: pointer;">
+            <input type="checkbox" id="editPkgIncludeUa" checked style="accent-color: #eab308; width: 16px; height: 16px;" />
+            <span>Include Urinalysis</span>
+          </label>
+          <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.85em; font-weight: 600; color: #854d0e; cursor: pointer;">
+            <input type="checkbox" id="editPkgSeniorPwdFree" checked style="accent-color: #eab308; width: 16px; height: 16px;" />
+            <span>Free for Senior & PWD</span>
+          </label>
+          <div style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.85em; font-weight: 600; color: #854d0e;">
+            <span>Regular ₱:</span>
+            <input type="number" step="0.01" min="0" id="editPkgUaPrice" value="100" style="width: 75px; height: 28px; padding: 2px 6px; border-radius: 6px; border: 1px solid #fde047; font-size: 0.86em; text-align: center; font-weight: 700;" />
+          </div>
+        </div>
+
+        <!-- Note & Active -->
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <div style="flex: 1;">
+            <label style="display: block; font-size: 0.82em; font-weight: 700; color: #334155; margin-bottom: 4px;">Notes / Description</label>
+            <input type="text" id="editPkgNote" name="note" placeholder="e.g. With free urinalysis for Senior & PWD" style="width: 100%; height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85em; box-sizing: border-box;" />
+          </div>
+          <div style="padding-top: 18px;">
+            <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.86em; font-weight: 700; color: #1e293b; cursor: pointer;">
+              <input type="checkbox" id="editPkgActive" checked style="accent-color: #10b981; width: 17px; height: 17px;" />
+              <span>Active</span>
+            </label>
+          </div>
+        </div>
+
+      </div>
+
+      <div style="padding: 12px 20px; border-top: 1px solid #e2e8f0; background: #f8fafc; display: flex; align-items: center; justify-content: space-between;">
+        <button type="button" id="deletePkgBtn" onclick="handleDeletePackage()" style="height: 36px; padding: 0 14px; border-radius: 8px; font-weight: 600; background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; cursor: pointer; font-size: 0.86em; display: none;">
+          <i class="fa fa-trash"></i> Delete
+        </button>
+        <div style="display: flex; gap: 8px; margin-left: auto;">
+          <button type="button" onclick="closePackageModal()" class="button btn-secondary" style="height: 36px; padding: 0 14px; border-radius: 8px; font-weight: 600; font-size: 0.86em;">
+            Cancel
+          </button>
+          <button type="submit" class="button btn-primary" style="height: 36px; padding: 0 18px; border-radius: 8px; font-weight: 700; font-size: 0.86em;">
+            <i class="fa fa-save"></i> Save Package
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
+  // Server-injected data
+  let testPackagesList = <%- JSON.stringify(pkgs) %>;
+  if (!Array.isArray(testPackagesList) || testPackagesList.length === 0) {
+    testPackagesList = [
+      {
+        id: 'pkg-1', code: 'PKG1', name: 'Package 1', price: 680,
+        bloodChemParams: ['FBS', 'Cholesterol', 'Uric Acid', 'Creatinine'],
+        otherTests: [], urinalysis: { include: true, seniorPwdFree: true, regularPrice: 100 },
+        active: true, order: 1, note: 'With free urinalysis for Senior Citizen & PWD (+₱100 for regular)'
+      },
+      {
+        id: 'pkg-2', code: 'PKG2', name: 'Package 2', price: 880,
+        bloodChemParams: ['FBS', 'Cholesterol', 'Uric Acid', 'Creatinine', 'Triglycerides'],
+        otherTests: [], urinalysis: { include: true, seniorPwdFree: true, regularPrice: 100 },
+        active: true, order: 2, note: 'With free urinalysis for Senior Citizen & PWD (+₱100 for regular)'
+      },
+      {
+        id: 'pkg-3', code: 'PKG3', name: 'Package 3', price: 1130,
+        bloodChemParams: ['FBS', 'Cholesterol', 'Uric Acid', 'Creatinine', 'Triglycerides', 'HDL', 'LDL'],
+        otherTests: [], urinalysis: { include: true, seniorPwdFree: true, regularPrice: 100 },
+        active: true, order: 3, note: 'With free urinalysis for Senior Citizen & PWD (+₱100 for regular)'
+      },
+      {
+        id: 'pkg-4', code: 'PKG4', name: 'Package 4', price: 1380,
+        bloodChemParams: ['FBS', 'Cholesterol', 'Uric Acid', 'Creatinine', 'HDL', 'LDL', 'SGPT'],
+        otherTests: [], urinalysis: { include: true, seniorPwdFree: true, regularPrice: 100 },
+        active: true, order: 4, note: 'With free urinalysis for Senior Citizen & PWD (+₱100 for regular)'
+      },
+      {
+        id: 'pkg-5', code: 'PKG5', name: 'Package 5', price: 1500,
+        bloodChemParams: ['FBS', 'Cholesterol', 'Uric Acid', 'Creatinine', 'HDL', 'LDL', 'SGPT'],
+        otherTests: ['hematology'], urinalysis: { include: true, seniorPwdFree: true, regularPrice: 100 },
+        active: true, order: 5, note: 'Includes CBC + free urinalysis for Senior/PWD (+₱100 for regular)'
+      },
+      {
+        id: 'pkg-6', code: 'PKG6', name: 'Package 6', price: 2200,
+        bloodChemParams: ['FBS', 'Cholesterol', 'Uric Acid', 'Creatinine', 'Triglycerides', 'HDL', 'LDL', 'SGPT'],
+        otherTests: ['hematology', 'X-ray', 'ecg'], urinalysis: { include: true, seniorPwdFree: true, regularPrice: 100 },
+        active: true, order: 6, note: 'Includes CBC, Chest X-ray, ECG + free urinalysis for Senior/PWD (+₱100 for regular)'
+      }
+    ];
+  }
+  const canManagePackages = <%= canManage ? 'true' : 'false' %>;
+  const csrfToken = "<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>";
+  
+  // Available Blood Chemistry standard parameters
+  const STANDARD_BLOOD_CHEM_PARAMS = [
+    'FBS', 'RBS', 'Cholesterol', 'Triglycerides', 'HDL', 'LDL', 'VLDL',
+    'Uric Acid', 'Creatinine', 'BUN', 'SGPT', 'SGOT', 'HbA1c', 'Total Protein', 'Electrolytes'
+  ];
+
+  // Tab switching function
+  function switchTestTab(tab) {
+    const btnCatalog = document.getElementById('tabBtnCatalog');
+    const btnPackages = document.getElementById('tabBtnPackages');
+    const paneCatalog = document.getElementById('testTabCatalog');
+    const panePackages = document.getElementById('testTabPackages');
+    const notice = document.getElementById('tabSubNotice');
+
+    if (tab === 'packages') {
+      if (btnCatalog) btnCatalog.classList.remove('active');
+      if (btnPackages) btnPackages.classList.add('active');
+      if (paneCatalog) paneCatalog.style.display = 'none';
+      if (panePackages) panePackages.style.display = 'block';
+      if (notice) notice.innerText = 'Click any package to automatically tag tests';
+    } else {
+      if (btnPackages) btnPackages.classList.remove('active');
+      if (btnCatalog) btnCatalog.classList.add('active');
+      if (panePackages) panePackages.style.display = 'none';
+      if (paneCatalog) paneCatalog.style.display = 'block';
+      if (notice) notice.innerText = 'Check test to enable amount & remarks';
+    }
+  }
+
+  // Active package state management
+  let currentActivePackageId = null;
+  let testsAppliedByPackage = {}; // slug -> { wasChecked, prevAmount, prevRemark }
+
+  // Patient Status & Urinalysis options
+  let isSenior = false;
+  let isPwd = false;
+  let includeUrinalysis = false; // Default: false (not added by default)
+
+  function isDiscountEligible() {
+    return isSenior || isPwd;
+  }
+
+  function updateDiscountUI() {
+    const btnSenior = document.getElementById('btnToggleSenior');
+    const btnPwd = document.getElementById('btnTogglePwd');
+    const badge = document.getElementById('discountStatusBadge');
+    const uaState = document.getElementById('urinalysisActiveState');
+    const uaCb = document.getElementById('toggleIncludeUrinalysis');
+
+    if (uaCb) {
+      includeUrinalysis = uaCb.checked;
+    }
+
+    if (btnSenior) {
+      if (isSenior) {
+        btnSenior.classList.add('active');
+        btnSenior.innerHTML = '<i class="fa fa-check-circle"></i> Senior Citizen';
+      } else {
+        btnSenior.classList.remove('active');
+        btnSenior.innerHTML = '<i class="fa fa-person-cane"></i> Senior Citizen';
+      }
+    }
+
+    if (btnPwd) {
+      if (isPwd) {
+        btnPwd.classList.add('active');
+        btnPwd.innerHTML = '<i class="fa fa-check-circle"></i> PWD';
+      } else {
+        btnPwd.classList.remove('active');
+        btnPwd.innerHTML = '<i class="fa fa-wheelchair"></i> PWD';
+      }
+    }
+
+    if (badge) {
+      if (isSenior && isPwd) {
+        badge.innerHTML = '<i class="fa fa-check-circle" style="color: #10b981;"></i> Senior + PWD (FREE UA)';
+        badge.style.background = '#dcfce7';
+        badge.style.color = '#15803d';
+        badge.style.borderColor = '#86efac';
+      } else if (isSenior) {
+        badge.innerHTML = '<i class="fa fa-check-circle" style="color: #10b981;"></i> Senior Citizen (FREE UA)';
+        badge.style.background = '#dcfce7';
+        badge.style.color = '#15803d';
+        badge.style.borderColor = '#86efac';
+      } else if (isPwd) {
+        badge.innerHTML = '<i class="fa fa-check-circle" style="color: #10b981;"></i> PWD Patient (FREE UA)';
+        badge.style.background = '#dcfce7';
+        badge.style.color = '#15803d';
+        badge.style.borderColor = '#86efac';
+      } else {
+        badge.innerHTML = 'Regular Patient';
+        badge.style.background = '#f1f5f9';
+        badge.style.color = '#64748b';
+        badge.style.borderColor = '#e2e8f0';
+      }
+    }
+
+    if (uaState) {
+      if (!includeUrinalysis) {
+        uaState.innerHTML = 'Urinalysis: <span style="color: #94a3b8; font-weight: 700;">Excluded (₱0)</span>';
+      } else {
+        if (isDiscountEligible()) {
+          uaState.innerHTML = 'Urinalysis: <span style="color: #15803d; font-weight: 800;">FREE (Senior/PWD)</span>';
+        } else {
+          uaState.innerHTML = 'Urinalysis: <span style="color: #b45309; font-weight: 800;">+₱100.00 Added</span>';
+        }
+      }
+    }
+
+    renderPackageCards();
+
+    // If a package is active, re-apply it so tagged tests update in real-time
+    if (currentActivePackageId) {
+      applyPackage(currentActivePackageId, true);
+    }
+  }
+
+  function toggleSeniorStatus() {
+    isSenior = !isSenior;
+    updateDiscountUI();
+  }
+
+  function togglePwdStatus() {
+    isPwd = !isPwd;
+    updateDiscountUI();
+  }
+
+  function onUrinalysisToggleChange() {
+    const cb = document.getElementById('toggleIncludeUrinalysis');
+    includeUrinalysis = cb ? cb.checked : false;
+    updateDiscountUI();
+  }
+
+  function normalizeTestKey(key) {
+    return String(key || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+  }
+
+  function findCatalogCheckbox(keyOrSlug) {
+    const slug = normalizeTestKey(keyOrSlug);
+    // Direct slug match
+    let cb = document.querySelector(`.test-checkbox[data-key="${slug}"]`);
+    if (cb) return cb;
+
+    // Common synonyms
+    if (slug === 'cbc' || slug === 'complete_blood_count') {
+      cb = document.querySelector('.test-checkbox[data-key="hematology"]');
+      if (cb) return cb;
+    }
+    if (slug === 'chest_x_ray' || slug === 'xray' || slug === 'chest_xray') {
+      cb = document.querySelector('.test-checkbox[data-key="x_ray"]');
+      if (cb) return cb;
+    }
+    if (slug === 'electrocardiogram' || slug === 'electrocardiography') {
+      cb = document.querySelector('.test-checkbox[data-key="ecg"]');
+      if (cb) return cb;
+    }
+    if (slug === 'blood_chem' || slug === 'blood_chemistry') {
+      cb = document.querySelector('.test-checkbox[data-key="blood_chemistry"]');
+      if (cb) return cb;
+    }
+
+    // Substring fallback
+    const all = document.querySelectorAll('.test-checkbox');
+    for (let c of all) {
+      const cSlug = c.dataset.key || '';
+      const cVal = (c.value || '').toLowerCase();
+      if (cSlug.includes(slug) || cVal.includes(slug)) return c;
+    }
+    return null;
+  }
+
+  function recordPrevTestState(slug, cb) {
+    if (!testsAppliedByPackage[slug]) {
+      const amtInput = document.querySelector(`input[name="amount_${slug}"]`);
+      const remarkInput = document.querySelector(`textarea[name="remark_${slug}"]`);
+      testsAppliedByPackage[slug] = {
+        wasChecked: !!cb.checked,
+        prevAmount: amtInput ? amtInput.value : '',
+        prevRemark: remarkInput ? remarkInput.value : ''
+      };
+    }
+  }
+
+  function revertPackageTests() {
+    Object.keys(testsAppliedByPackage).forEach(slug => {
+      const info = testsAppliedByPackage[slug];
+      const cb = document.querySelector(`.test-checkbox[data-key="${slug}"]`);
+      if (cb) {
+        cb.checked = info.wasChecked;
+        cb.dispatchEvent(new Event('change'));
+        const amtInput = document.querySelector(`input[name="amount_${slug}"]`);
+        const remarkInput = document.querySelector(`textarea[name="remark_${slug}"]`);
+        if (amtInput) amtInput.value = info.prevAmount;
+        if (remarkInput) remarkInput.value = info.prevRemark;
+      }
+    });
+    testsAppliedByPackage = {};
+  }
+
+  function clearActivePackage() {
+    revertPackageTests();
+    currentActivePackageId = null;
+    hidePackageNotice();
+    updatePackageCardsUI();
+  }
+
+  function applyPackage(pkgId, isReapply = false) {
+    const pkg = testPackagesList.find(p => String(p.id) === String(pkgId));
+    if (!pkg) return;
+
+    if (currentActivePackageId === pkgId && !isReapply) {
+      // Toggle off if clicking the active package
+      clearActivePackage();
+      return;
+    }
+
+    // If another package was applied earlier, revert it first
+    if (currentActivePackageId && currentActivePackageId !== pkgId) {
+      revertPackageTests();
+    }
+
+    currentActivePackageId = pkgId;
+
+    // 1. Blood Chemistry
+    const chemCb = findCatalogCheckbox('blood_chemistry');
+    if (chemCb) {
+      recordPrevTestState('blood_chemistry', chemCb);
+      chemCb.checked = true;
+      chemCb.dispatchEvent(new Event('change'));
+
+      const amtInput = document.querySelector('input[name="amount_blood_chemistry"]');
+      const remarkInput = document.querySelector('textarea[name="remark_blood_chemistry"]');
+      if (amtInput) amtInput.value = pkg.price;
+      if (remarkInput) {
+        const paramsList = (pkg.bloodChemParams && pkg.bloodChemParams.length) 
+          ? pkg.bloodChemParams.join(', ') 
+          : 'Standard Blood Chemistry';
+        remarkInput.value = `${pkg.name.toUpperCase()}: ${paramsList}`;
+      }
+    }
+
+    // 2. Urinalysis Handling (Only added if includeUrinalysis toggle is checked!)
+    const shouldAddUrinalysis = includeUrinalysis && pkg.urinalysis && pkg.urinalysis.include;
+    const uaCb = findCatalogCheckbox('urinalysis');
+    if (uaCb) {
+      if (shouldAddUrinalysis) {
+        recordPrevTestState('urinalysis', uaCb);
+        uaCb.checked = true;
+        uaCb.dispatchEvent(new Event('change'));
+
+        const uaAmt = document.querySelector('input[name="amount_urinalysis"]');
+        const uaRemark = document.querySelector('textarea[name="remark_urinalysis"]');
+        const regPrice = (pkg.urinalysis.regularPrice !== undefined) ? pkg.urinalysis.regularPrice : 100;
+        
+        if (uaAmt) {
+          uaAmt.value = isDiscountEligible() ? '0' : String(regPrice);
+        }
+        if (uaRemark) {
+          uaRemark.value = isDiscountEligible() 
+            ? `${pkg.name.toUpperCase()} – FREE Urinalysis (Senior/PWD)` 
+            : `${pkg.name.toUpperCase()} – Urinalysis (+₱${regPrice})`;
+        }
+      } else {
+        // If urinalysis was previously checked by package, revert and uncheck it
+        if (testsAppliedByPackage['urinalysis']) {
+          const info = testsAppliedByPackage['urinalysis'];
+          uaCb.checked = info.wasChecked;
+          uaCb.dispatchEvent(new Event('change'));
+          const uaAmt = document.querySelector('input[name="amount_urinalysis"]');
+          const uaRemark = document.querySelector('textarea[name="remark_urinalysis"]');
+          if (uaAmt) uaAmt.value = info.prevAmount;
+          if (uaRemark) uaRemark.value = info.prevRemark;
+          delete testsAppliedByPackage['urinalysis'];
+        }
+      }
+    }
+
+    // 3. Other procedures (CBC, Chest X-ray, ECG, etc.)
+    if (Array.isArray(pkg.otherTests)) {
+      pkg.otherTests.forEach(testKey => {
+        const cb = findCatalogCheckbox(testKey);
+        if (cb) {
+          const slug = cb.dataset.key;
+          recordPrevTestState(slug, cb);
+          cb.checked = true;
+          cb.dispatchEvent(new Event('change'));
+
+          const amt = document.querySelector(`input[name="amount_${slug}"]`);
+          const rem = document.querySelector(`textarea[name="remark_${slug}"]`);
+          if (amt) amt.value = '0';
+          if (rem) {
+            let label = testKey.toUpperCase();
+            if (label === 'HEMATOLOGY') label = 'CBC (HEMATOLOGY)';
+            rem.value = `${pkg.name.toUpperCase()} – ${label}`;
+          }
+        }
+      });
+    }
+
+    updatePackageCardsUI();
+    showPackageNotice(pkg);
+  }
+
+  function showPackageNotice(pkg) {
+    const banner = document.getElementById('pkgNoticeBanner');
+    const title = document.getElementById('pkgNoticeTitle');
+    const details = document.getElementById('pkgNoticeDetails');
+    const clearBtn = document.getElementById('clearPkgBtn');
+
+    if (!banner || !title || !details) return;
+
+    const uaAdded = includeUrinalysis && pkg.urinalysis && pkg.urinalysis.include;
+    const uaPrice = uaAdded 
+      ? (isDiscountEligible() ? 0 : (pkg.urinalysis.regularPrice || 100)) 
+      : 0;
+    const total = pkg.price + uaPrice;
+
+    title.innerHTML = `<i class="fa fa-check-circle" style="color: #10b981;"></i> <strong>${pkg.name} Applied</strong> &nbsp;—&nbsp; Total: <strong>₱${total.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong>`;
+    
+    let parts = [];
+    if (pkg.bloodChemParams && pkg.bloodChemParams.length) {
+      parts.push(`Blood Chemistry (${pkg.bloodChemParams.length} tests: ${pkg.bloodChemParams.join(', ')})`);
+    }
+    if (pkg.otherTests && pkg.otherTests.length) {
+      parts.push(`Procedures: ${pkg.otherTests.join(', ')}`);
+    }
+    if (uaAdded) {
+      parts.push(isDiscountEligible() ? 'Urinalysis: FREE (Senior/PWD)' : `Urinalysis (+₱${uaPrice})`);
+    } else {
+      parts.push('Urinalysis: Excluded (₱0)');
+    }
+
+    details.innerText = parts.join(' • ');
+    banner.style.display = 'block';
+    if (clearBtn) clearBtn.style.display = 'inline-flex';
+  }
+
+  function hidePackageNotice() {
+    const banner = document.getElementById('pkgNoticeBanner');
+    const clearBtn = document.getElementById('clearPkgBtn');
+    if (banner) banner.style.display = 'none';
+    if (clearBtn) clearBtn.style.display = 'none';
+  }
+
+  function renderPackageCards() {
+    const container = document.getElementById('pkgGridContainer');
+    if (!container) return;
+
+    const activeList = (testPackagesList || []).filter(p => p.active !== false);
+    
+    // Update count badge
+    const badge = document.getElementById('pkgCountBadge');
+    if (badge) badge.innerText = activeList.length;
+
+    if (activeList.length === 0) {
+      container.innerHTML = `
+        <div style="grid-column: 1 / -1; padding: 40px; text-align: center; color: #94a3b8; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 12px;">
+          <i class="fa fa-boxes-stacked" style="font-size: 2.2em; margin-bottom: 8px;"></i>
+          <p style="margin: 0; font-weight: 600;">No test packages configured yet.</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = activeList.map(pkg => {
+      const isSelected = String(pkg.id) === String(currentActivePackageId);
+      const uaInclude = pkg.urinalysis && pkg.urinalysis.include;
+      const uaCost = (uaInclude && includeUrinalysis) ? (isDiscountEligible() ? 0 : (pkg.urinalysis.regularPrice || 100)) : 0;
+      const totalAmount = pkg.price + uaCost;
+
+      const bloodParamsHtml = (pkg.bloodChemParams || []).map(param => `
+        <div class="pkg-item">
+          <i class="fa fa-check-circle" style="color: #22c55e; font-size: 0.95em;"></i>
+          <span>${param}</span>
+        </div>
+      `).join('');
+
+      let otherTestsHtml = '';
+      if (pkg.otherTests && pkg.otherTests.length) {
+        otherTestsHtml = `
+          <div style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed #e2e8f0;">
+            <div style="font-size: 0.74em; font-weight: 700; color: #0369a1; text-transform: uppercase; margin-bottom: 4px;">
+              Extra Procedures:
+            </div>
+            ${pkg.otherTests.map(t => {
+              let label = t;
+              if (t.toLowerCase() === 'hematology') label = 'CBC (Hematology)';
+              else if (t.toLowerCase() === 'x-ray' || t.toLowerCase() === 'x_ray') label = 'Chest X-ray';
+              else if (t.toLowerCase() === 'ecg') label = 'ECG';
+              return `
+                <div class="pkg-extra-item">
+                  <i class="fa fa-plus-circle" style="color: #0284c7; font-size: 0.95em;"></i>
+                  <span>${label}</span>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+      }
+
+      let uaBadgeHtml = '';
+      if (uaInclude) {
+        if (!includeUrinalysis) {
+          uaBadgeHtml = `<div class="pkg-ua-badge" style="background: #f8fafc; color: #64748b; border: 1px dashed #cbd5e1;"><i class="fa fa-circle-minus"></i> Urinalysis: Excluded (₱0)</div>`;
+        } else if (isDiscountEligible()) {
+          uaBadgeHtml = `<div class="pkg-ua-badge free"><i class="fa fa-gift"></i> FREE Urinalysis (Senior/PWD)</div>`;
+        } else {
+          uaBadgeHtml = `<div class="pkg-ua-badge paid"><i class="fa fa-plus"></i> +₱${pkg.urinalysis.regularPrice || 100} Urinalysis included</div>`;
+        }
+      }
+
+      return `
+        <div class="pkg-card ${isSelected ? 'selected' : ''}" onclick="applyPackage('${pkg.id}')">
+          <div>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+              <span class="pkg-header-badge">
+                <i class="fa fa-tag"></i> ${pkg.name}
+              </span>
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <span class="pkg-price-badge">₱${pkg.price.toLocaleString('en-US')}</span>
+                ${canManagePackages ? `
+                  <button type="button" onclick="event.stopPropagation(); openPackageModal('${pkg.id}')" title="Edit Package" style="border: 1px solid #cbd5e1; background: #ffffff; width: 28px; height: 28px; border-radius: 6px; cursor: pointer; color: #64748b; display: flex; align-items: center; justify-content: center; font-size: 0.82em; transition: all 0.15s ease;">
+                    <i class="fa fa-pen"></i>
+                  </button>
+                ` : ''}
+              </div>
+            </div>
+
+            <div style="font-size: 0.74em; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 6px;">
+              Blood Chemistry:
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 3px;">
+              ${bloodParamsHtml}
+            </div>
+
+            ${otherTestsHtml}
+            ${uaBadgeHtml}
+            
+            ${pkg.note ? `
+              <div style="font-size: 0.76em; color: #64748b; font-style: italic; margin-top: 8px;">
+                * ${pkg.note}
+              </div>
+            ` : ''}
+          </div>
+
+          <div>
+            <div style="margin-top: 12px; padding-top: 8px; border-top: 1px solid ${isSelected ? '#bbf7d0' : '#f1f5f9'}; display: flex; align-items: center; justify-content: space-between; font-size: 0.82em;">
+              <span style="color: #64748b; font-weight: 600;">Package Total:</span>
+              <span style="font-weight: 800; color: ${isSelected ? '#059669' : '#0f172a'}; font-size: 1.05em;">
+                ₱${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              </span>
+            </div>
+
+            <button type="button" class="pkg-btn-select">
+              ${isSelected ? '<i class="fa fa-check-circle"></i> Applied to Order' : '<i class="fa fa-plus"></i> Select Package'}
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function updatePackageCardsUI() {
+    renderPackageCards();
+  }
+
+  // Patient Auto-Detection and Toggle
+  function setupPatientAutoDetection() {
+    const patientSelect = document.getElementById('patientSelect');
+
+    function checkAge() {
+      if (!patientSelect) return;
+      const opt = patientSelect.options[patientSelect.selectedIndex];
+      if (!opt || !opt.value) {
+        return;
+      }
+
+      const ageRaw = opt.getAttribute('data-age');
+      const dobRaw = opt.getAttribute('data-dob');
+      let age = parseInt(ageRaw, 10);
+      if (isNaN(age) && dobRaw) {
+        try {
+          const birth = new Date(dobRaw);
+          const diff = Date.now() - birth.getTime();
+          age = Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
+        } catch (_) {}
+      }
+
+      if (!isNaN(age) && age >= 60) {
+        isSenior = true;
+      }
+      updateDiscountUI();
+    }
+
+    if (patientSelect) patientSelect.addEventListener('change', checkAge);
+    // Initial check
+    checkAge();
+  }
+
+  // Modal Package Management functions
+  function openPackageModal(pkgId = null) {
+    const backdrop = document.getElementById('pkgModalBackdrop');
+    const form = document.getElementById('pkgEditForm');
+    const title = document.getElementById('pkgModalTitle');
+    const delBtn = document.getElementById('deletePkgBtn');
+    if (!backdrop || !form) return;
+
+    form.reset();
+
+    // Populate Blood Chem Parameters
+    const chemContainer = document.getElementById('bloodChemParamsContainer');
+    if (chemContainer) {
+      chemContainer.innerHTML = STANDARD_BLOOD_CHEM_PARAMS.map(param => `
+        <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.82em; font-weight: 600; color: #334155; cursor: pointer;">
+          <input type="checkbox" name="bloodChemParams" value="${param}" class="edit-param-cb" style="accent-color: #10b981;" />
+          <span>${param}</span>
+        </label>
+      `).join('');
+    }
+
+    // Populate Other Catalog Tests (from templates in catalog, excluding blood chemistry & urinalysis)
+    const otherContainer = document.getElementById('otherTestsContainer');
+    if (otherContainer) {
+      const candidates = [];
+      document.querySelectorAll('.test-checkbox').forEach(cb => {
+        const slug = cb.dataset.key;
+        const val = cb.value;
+        if (slug !== 'blood_chemistry' && slug !== 'urinalysis' && !slug.includes('sendout')) {
+          candidates.push({ slug, val });
+        }
+      });
+      otherContainer.innerHTML = candidates.map(c => `
+        <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.82em; font-weight: 600; color: #334155; cursor: pointer;">
+          <input type="checkbox" name="otherTests" value="${c.val}" class="edit-other-cb" style="accent-color: #0284c7;" />
+          <span>${c.val}</span>
+        </label>
+      `).join('');
+    }
+
+    if (pkgId) {
+      const pkg = testPackagesList.find(p => String(p.id) === String(pkgId));
+      if (pkg) {
+        if (title) title.innerText = `Edit ${pkg.name}`;
+        document.getElementById('editPkgId').value = pkg.id;
+        document.getElementById('editPkgName').value = pkg.name || '';
+        document.getElementById('editPkgCode').value = pkg.code || '';
+        document.getElementById('editPkgPrice').value = pkg.price || 0;
+        document.getElementById('editPkgNote').value = pkg.note || '';
+        document.getElementById('editPkgActive').checked = pkg.active !== false;
+
+        const ua = pkg.urinalysis || {};
+        document.getElementById('editPkgIncludeUa').checked = ua.include !== false;
+        document.getElementById('editPkgSeniorPwdFree').checked = ua.seniorPwdFree !== false;
+        document.getElementById('editPkgUaPrice').value = ua.regularPrice !== undefined ? ua.regularPrice : 100;
+
+        // Check active params
+        const params = pkg.bloodChemParams || [];
+        document.querySelectorAll('.edit-param-cb').forEach(cb => {
+          cb.checked = params.includes(cb.value);
+        });
+
+        // Check active other tests
+        const others = (pkg.otherTests || []).map(normalizeTestKey);
+        document.querySelectorAll('.edit-other-cb').forEach(cb => {
+          const s = normalizeTestKey(cb.value);
+          cb.checked = others.includes(s);
+        });
+
+        if (delBtn) delBtn.style.display = 'inline-flex';
+      }
+    } else {
+      if (title) title.innerText = 'Create New Test Package';
+      document.getElementById('editPkgId').value = '';
+      document.getElementById('editPkgActive').checked = true;
+      document.getElementById('editPkgIncludeUa').checked = true;
+      document.getElementById('editPkgSeniorPwdFree').checked = true;
+      document.getElementById('editPkgUaPrice').value = 100;
+      if (delBtn) delBtn.style.display = 'none';
+    }
+
+    backdrop.style.display = 'flex';
+  }
+
+  function closePackageModal() {
+    const backdrop = document.getElementById('pkgModalBackdrop');
+    if (backdrop) backdrop.style.display = 'none';
+  }
+
+  async function handleSavePackage(e) {
+    e.preventDefault();
+    const id = document.getElementById('editPkgId').value;
+    const name = document.getElementById('editPkgName').value.trim();
+    const code = document.getElementById('editPkgCode').value.trim();
+    const price = parseFloat(document.getElementById('editPkgPrice').value) || 0;
+    const note = document.getElementById('editPkgNote').value.trim();
+    const active = document.getElementById('editPkgActive').checked;
+
+    const includeUa = document.getElementById('editPkgIncludeUa').checked;
+    const seniorPwdFree = document.getElementById('editPkgSeniorPwdFree').checked;
+    const uaPrice = parseFloat(document.getElementById('editPkgUaPrice').value) || 0;
+
+    const bloodChemParams = [];
+    document.querySelectorAll('.edit-param-cb:checked').forEach(cb => bloodChemParams.push(cb.value));
+
+    const otherTests = [];
+    document.querySelectorAll('.edit-other-cb:checked').forEach(cb => otherTests.push(cb.value));
+
+    const payload = {
+      id: id || undefined,
+      name,
+      code,
+      price,
+      note,
+      active,
+      bloodChemParams,
+      otherTests,
+      urinalysis: {
+        include: includeUa,
+        seniorPwdFree: seniorPwdFree,
+        regularPrice: uaPrice
+      }
+    };
+
+    try {
+      const res = await fetch('/tests/packages/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'CSRF-Token': csrfToken
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data && data.success && data.package) {
+        const saved = data.package;
+        const idx = testPackagesList.findIndex(p => String(p.id) === String(saved.id));
+        if (idx >= 0) testPackagesList[idx] = saved;
+        else testPackagesList.push(saved);
+
+        closePackageModal();
+        renderPackageCards();
+
+        // If currently applied package was updated, re-apply it
+        if (currentActivePackageId === saved.id) {
+          applyPackage(saved.id, true);
+        }
+      } else {
+        alert(data.error || 'Failed to save package');
+      }
+    } catch (err) {
+      alert('Error saving package: ' + err.message);
+    }
+  }
+
+  async function handleDeletePackage() {
+    const id = document.getElementById('editPkgId').value;
+    if (!id) return;
+    if (!confirm('Are you sure you want to delete this test package?')) return;
+
+    try {
+      const res = await fetch(`/tests/packages/${encodeURIComponent(id)}/delete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'CSRF-Token': csrfToken
+        }
+      });
+      const data = await res.json();
+      if (data && data.success) {
+        if (currentActivePackageId === id) {
+          clearActivePackage();
+        }
+        testPackagesList = testPackagesList.filter(p => String(p.id) !== String(id));
+        closePackageModal();
+        renderPackageCards();
+      } else {
+        alert(data.error || 'Failed to delete package');
+      }
+    } catch (err) {
+      alert('Error deleting package: ' + err.message);
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', function(){
+    // Initialize cards and patient category detection
+    setupPatientAutoDetection();
+    updateDiscountUI();
+
     // Patient search -> filter patient select options
     (function(){
       const input = document.getElementById('patientSearch');
@@ -223,7 +1425,11 @@
         if (q !== '' && visibleCount === 1) {
           for (let i = 0; i < select.options.length; i++) {
             const opt = select.options[i];
-            if (!opt.hidden && opt.value) { select.value = opt.value; break; }
+            if (!opt.hidden && opt.value) {
+              select.value = opt.value;
+              select.dispatchEvent(new Event('change'));
+              break; 
+            }
           }
         }
       }
@@ -233,28 +1439,29 @@
       select.addEventListener('change', function(){
         select.size = 1;
       });
-        // populate hidden returnTo input so server can redirect back after create
-        try {
-          const rtField = document.getElementById('returnTo');
-          const backBtn = document.getElementById('backButton');
-          const params = new URLSearchParams(window.location.search || '');
-          let rt = params.get('returnTo');
-          if (!rt && document.referrer) {
-            try {
-              const refUrl = new URL(document.referrer);
-              if (refUrl.pathname !== '/tests/new') {
-                rt = refUrl.pathname + (refUrl.search || '');
-              }
-            } catch (_) {}
-          }
-          if (rt) {
-            if (rtField && !rtField.value) rtField.value = rt;
-            if (backBtn) {
-              backBtn.href = rt;
-              if (rt.startsWith('/patients')) backBtn.innerHTML = '<i class="fa fa-arrow-left"></i> Back to Patient';
+      
+      // populate hidden returnTo input so server can redirect back after create
+      try {
+        const rtField = document.getElementById('returnTo');
+        const backBtn = document.getElementById('backButton');
+        const params = new URLSearchParams(window.location.search || '');
+        let rt = params.get('returnTo');
+        if (!rt && document.referrer) {
+          try {
+            const refUrl = new URL(document.referrer);
+            if (refUrl.pathname !== '/tests/new') {
+              rt = refUrl.pathname + (refUrl.search || '');
             }
+          } catch (_) {}
+        }
+        if (rt) {
+          if (rtField && !rtField.value) rtField.value = rt;
+          if (backBtn) {
+            backBtn.href = rt;
+            if (rt.startsWith('/patients')) backBtn.innerHTML = '<i class="fa fa-arrow-left"></i> Back to Patient';
           }
-        } catch (e) {}
+        }
+      } catch (e) {}
     })();
 
     document.querySelectorAll('.test-checkbox').forEach(cb => {
