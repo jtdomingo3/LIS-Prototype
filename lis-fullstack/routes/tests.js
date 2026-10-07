@@ -2141,13 +2141,36 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
     ) {
       // Biophysical / Pelvic Biometry ultrasound parsing
       const bpd_size = (req.body.bpd_size || '').toString().trim();
-      const bpd_label = (req.body.bpd_label || '').toString().trim();
+      const bpd_w = (req.body.bpd_w || '').toString().trim();
+      const bpd_d = (req.body.bpd_d || '').toString().trim();
+      let bpd_label = (req.body.bpd_label || '').toString().trim();
+      if (!bpd_label && (bpd_w || bpd_d)) {
+        bpd_label = (bpd_w || '0') + ' W ' + (bpd_d || '0') + ' D';
+      }
+
       const hc_size = (req.body.hc_size || '').toString().trim();
-      const hc_label = (req.body.hc_label || '').toString().trim();
+      const hc_w = (req.body.hc_w || '').toString().trim();
+      const hc_d = (req.body.hc_d || '').toString().trim();
+      let hc_label = (req.body.hc_label || '').toString().trim();
+      if (!hc_label && (hc_w || hc_d)) {
+        hc_label = (hc_w || '0') + ' W ' + (hc_d || '0') + ' D';
+      }
+
       const ac_size = (req.body.ac_size || '').toString().trim();
-      const ac_label = (req.body.ac_label || '').toString().trim();
+      const ac_w = (req.body.ac_w || '').toString().trim();
+      const ac_d = (req.body.ac_d || '').toString().trim();
+      let ac_label = (req.body.ac_label || '').toString().trim();
+      if (!ac_label && (ac_w || ac_d)) {
+        ac_label = (ac_w || '0') + ' W ' + (ac_d || '0') + ' D';
+      }
+
       const fl_size = (req.body.fl_size || '').toString().trim();
-      const fl_label = (req.body.fl_label || '').toString().trim();
+      const fl_w = (req.body.fl_w || '').toString().trim();
+      const fl_d = (req.body.fl_d || '').toString().trim();
+      let fl_label = (req.body.fl_label || '').toString().trim();
+      if (!fl_label && (fl_w || fl_d)) {
+        fl_label = (fl_w || '0') + ' W ' + (fl_d || '0') + ' D';
+      }
 
       // extra biometry rows
       const labelsRaw = req.body['biometry_label[]'] || req.body.biometry_label || req.body.biometry_label;
@@ -2165,7 +2188,13 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
       }
 
       const number_of_fetus = (req.body.number_of_fetus || '').toString().trim();
-      const average_ultrasound_age = (req.body.average_ultrasound_age || '').toString().trim();
+      const average_ultrasound_age_w = (req.body.average_ultrasound_age_w || '').toString().trim();
+      const average_ultrasound_age_d = (req.body.average_ultrasound_age_d || '').toString().trim();
+      let average_ultrasound_age = (req.body.average_ultrasound_age || '').toString().trim();
+      if (!average_ultrasound_age && (average_ultrasound_age_w || average_ultrasound_age_d)) {
+        average_ultrasound_age = (average_ultrasound_age_w || '0') + ' W ' + (average_ultrasound_age_d || '0') + ' D';
+      }
+
       const presentation = (req.body.presentation || '').toString().trim();
       const edc_by_ultrasound_raw = (req.body.edc_by_ultrasound || '').toString().trim();
       let edc_by_ultrasound = '';
@@ -2197,13 +2226,13 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
       const doctorDesignation = (req.body.doctorDesignation || '').toString().trim();
 
       resultsObj = {
-        bpd_size, bpd_label,
-        hc_size, hc_label,
-        ac_size, ac_label,
-        fl_size, fl_label,
+        bpd_size, bpd_w, bpd_d, bpd_label,
+        hc_size, hc_w, hc_d, hc_label,
+        ac_size, ac_w, ac_d, ac_label,
+        fl_size, fl_w, fl_d, fl_label,
         biometry,
         number_of_fetus,
-        average_ultrasound_age,
+        average_ultrasound_age_w, average_ultrasound_age_d, average_ultrasound_age,
         presentation,
         edc_by_ultrasound,
         efw,
@@ -2239,9 +2268,21 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
     ) {
       // Transvaginal & Pelvic ultrasound: structured fields per checklist
       const gestational_sac_length = (req.body.gestational_sac_length || req.body.gestationalSacLength || '').toString().trim();
-      const gestational_sac_age = (req.body.gestational_sac_age || req.body.gestationalSacAge || '').toString().trim();
+      const gestational_sac_w = (req.body.gestational_sac_w || '').toString().trim();
+      const gestational_sac_d = (req.body.gestational_sac_d || '').toString().trim();
+      let gestational_sac_age = (req.body.gestational_sac_age || req.body.gestationalSacAge || '').toString().trim();
+      if (!gestational_sac_age && (gestational_sac_w || gestational_sac_d)) {
+        gestational_sac_age = (gestational_sac_w || '0') + ' W ' + (gestational_sac_d || '0') + ' D';
+      }
+
       const crl_length = (req.body.crl_length || req.body.crlLength || '').toString().trim();
-      const crl_age = (req.body.crl_age || req.body.crlAge || '').toString().trim();
+      const crl_w = (req.body.crl_w || '').toString().trim();
+      const crl_d = (req.body.crl_d || '').toString().trim();
+      let crl_age = (req.body.crl_age || req.body.crlAge || '').toString().trim();
+      if (!crl_age && (crl_w || crl_d)) {
+        crl_age = (crl_w || '0') + ' W ' + (crl_d || '0') + ' D';
+      }
+
       // Support multiple comment entries: arrays `comment_sign[]` and `comment_text[]`
       const commentSigns = req.body['comment_sign[]'] || req.body.comment_sign || req.body.comment_signs || req.body.comment_sign;
       const commentTexts = req.body['comment_text[]'] || req.body.comment_text || req.body.comment_texts || req.body.comment_text;
@@ -2262,7 +2303,14 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
         // nothing submitted; keep empty array
         commentEntries = [];
       }
-      const average_ultrasound_age = (req.body.average_ultrasound_age || req.body.averageUltrasoundAge || '').toString().trim();
+
+      const average_ultrasound_age_w = (req.body.average_ultrasound_age_w || '').toString().trim();
+      const average_ultrasound_age_d = (req.body.average_ultrasound_age_d || '').toString().trim();
+      let average_ultrasound_age = (req.body.average_ultrasound_age || req.body.averageUltrasoundAge || '').toString().trim();
+      if (!average_ultrasound_age && (average_ultrasound_age_w || average_ultrasound_age_d)) {
+        average_ultrasound_age = (average_ultrasound_age_w || '0') + ' W ' + (average_ultrasound_age_d || '0') + ' D';
+      }
+
       const fetal_heart_rate = (req.body.fetal_heart_rate || req.body.fetalHeartRate || '').toString().trim();
       const expected_date_of_delivery_raw = (req.body.expected_date_of_delivery || req.body.expectedDateOfDelivery || '').toString().trim();
       let expected_date_of_delivery = '';
@@ -2278,13 +2326,19 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
 
       resultsObj = {
         gestational_sac_length: gestational_sac_length,
+        gestational_sac_w: gestational_sac_w,
+        gestational_sac_d: gestational_sac_d,
         gestational_sac_age: gestational_sac_age,
         crl_length: crl_length,
+        crl_w: crl_w,
+        crl_d: crl_d,
         crl_age: crl_age,
         comment_entries: commentEntries,
         // back-compat: expose the first two entries as separate fields if present
         comment_yolk: (commentEntries && commentEntries[0] ? (commentEntries[0].text || '') : ''),
         comment_hemorrhage: (commentEntries && commentEntries[1] ? (commentEntries[1].text || '') : ''),
+        average_ultrasound_age_w: average_ultrasound_age_w,
+        average_ultrasound_age_d: average_ultrasound_age_d,
         average_ultrasound_age: average_ultrasound_age,
         fetal_heart_rate: fetal_heart_rate,
         expected_date_of_delivery: expected_date_of_delivery,
@@ -2328,14 +2382,28 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
 
       if (isTwin) {
         const gA_len = (req.body.gestational_sac_length_A || req.body.gestational_sac_length || '').toString().trim();
-        const gA_age = (req.body.gestational_sac_age_A || req.body.gestational_sac_age || '').toString().trim();
+        const gA_w = (req.body.gestational_sac_w_A || '').toString().trim();
+        const gA_d = (req.body.gestational_sac_d_A || '').toString().trim();
+        let gA_age = (req.body.gestational_sac_age_A || req.body.gestational_sac_age || '').toString().trim();
+        if (!gA_age && (gA_w || gA_d)) gA_age = (gA_w || '0') + ' W ' + (gA_d || '0') + ' D';
+
         const crlA_len = (req.body.crl_length_A || req.body.crl_length || '').toString().trim();
-        const crlA_age = (req.body.crl_age_A || req.body.crl_age || '').toString().trim();
+        const crlA_w = (req.body.crl_w_A || '').toString().trim();
+        const crlA_d = (req.body.crl_d_A || '').toString().trim();
+        let crlA_age = (req.body.crl_age_A || req.body.crl_age || '').toString().trim();
+        if (!crlA_age && (crlA_w || crlA_d)) crlA_age = (crlA_w || '0') + ' W ' + (crlA_d || '0') + ' D';
 
         const gB_len = (req.body.gestational_sac_length_B || '').toString().trim();
-        const gB_age = (req.body.gestational_sac_age_B || '').toString().trim();
+        const gB_w = (req.body.gestational_sac_w_B || '').toString().trim();
+        const gB_d = (req.body.gestational_sac_d_B || '').toString().trim();
+        let gB_age = (req.body.gestational_sac_age_B || '').toString().trim();
+        if (!gB_age && (gB_w || gB_d)) gB_age = (gB_w || '0') + ' W ' + (gB_d || '0') + ' D';
+
         const crlB_len = (req.body.crl_length_B || '').toString().trim();
-        const crlB_age = (req.body.crl_age_B || '').toString().trim();
+        const crlB_w = (req.body.crl_w_B || '').toString().trim();
+        const crlB_d = (req.body.crl_d_B || '').toString().trim();
+        let crlB_age = (req.body.crl_age_B || '').toString().trim();
+        if (!crlB_age && (crlB_w || crlB_d)) crlB_age = (crlB_w || '0') + ' W ' + (crlB_d || '0') + ' D';
 
         const commentEntriesA = parseCommentArray(req.body['comment_sign_A[]'] || req.body.comment_sign_A, req.body['comment_text_A[]'] || req.body.comment_text_A, 'comment_yolk', 'yolkSac');
         const commentEntriesB = parseCommentArray(req.body['comment_sign_B[]'] || req.body.comment_sign_B, req.body['comment_text_B[]'] || req.body.comment_text_B, 'comment_hemorrhage', 'hemorrhage');
@@ -2353,9 +2421,18 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
           }
         }
 
-        const avgA = (req.body.average_ultrasound_age_A || req.body.average_ultrasound_age || '').toString().trim();
+        const avgA_w = (req.body.average_ultrasound_age_w_A || '').toString().trim();
+        const avgA_d = (req.body.average_ultrasound_age_d_A || '').toString().trim();
+        let avgA = (req.body.average_ultrasound_age_A || req.body.average_ultrasound_age || '').toString().trim();
+        if (!avgA && (avgA_w || avgA_d)) avgA = (avgA_w || '0') + ' W ' + (avgA_d || '0') + ' D';
+
         const fhrA = (req.body.fetal_heart_rate_A || req.body.fetal_heart_rate || '').toString().trim();
-        const avgB = (req.body.average_ultrasound_age_B || '').toString().trim();
+
+        const avgB_w = (req.body.average_ultrasound_age_w_B || '').toString().trim();
+        const avgB_d = (req.body.average_ultrasound_age_d_B || '').toString().trim();
+        let avgB = (req.body.average_ultrasound_age_B || '').toString().trim();
+        if (!avgB && (avgB_w || avgB_d)) avgB = (avgB_w || '0') + ' W ' + (avgB_d || '0') + ' D';
+
         const fhrB = (req.body.fetal_heart_rate_B || '').toString().trim();
 
         const expected_date_of_delivery_raw = (req.body.expected_date_of_delivery || req.body.expectedDateOfDelivery || '').toString().trim();
@@ -2374,19 +2451,31 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
         resultsObj = {
           isTwin: true,
           gestational_sac_length_A: gA_len,
+          gestational_sac_w_A: gA_w,
+          gestational_sac_d_A: gA_d,
           gestational_sac_age_A: gA_age,
           crl_length_A: crlA_len,
+          crl_w_A: crlA_w,
+          crl_d_A: crlA_d,
           crl_age_A: crlA_age,
           gestational_sac_length_B: gB_len,
+          gestational_sac_w_B: gB_w,
+          gestational_sac_d_B: gB_d,
           gestational_sac_age_B: gB_age,
           crl_length_B: crlB_len,
+          crl_w_B: crlB_w,
+          crl_d_B: crlB_d,
           crl_age_B: crlB_age,
           comment_entries_A: commentEntriesA,
           comment_entries_B: commentEntriesB,
           // keep legacy combined comments if present
           comment_entries: (commentEntriesA && commentEntriesA.length) || (commentEntriesB && commentEntriesB.length) ? (commentEntriesA.concat(commentEntriesB)) : (combinedComments.length ? combinedComments : []),
+          average_ultrasound_age_w_A: avgA_w,
+          average_ultrasound_age_d_A: avgA_d,
           average_ultrasound_age_A: avgA,
           fetal_heart_rate_A: fhrA,
+          average_ultrasound_age_w_B: avgB_w,
+          average_ultrasound_age_d_B: avgB_d,
           average_ultrasound_age_B: avgB,
           fetal_heart_rate_B: fhrB,
           expected_date_of_delivery: expected_date_of_delivery,
@@ -2404,9 +2493,16 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
       } else {
         // single fetus parsing (back-compat and new single form)
         const g_len = (req.body.gestational_sac_length || req.body.gestationalSacLength || '').toString().trim();
-        const g_age = (req.body.gestational_sac_age || req.body.gestationalSacAge || '').toString().trim();
+        const g_w = (req.body.gestational_sac_w || '').toString().trim();
+        const g_d = (req.body.gestational_sac_d || '').toString().trim();
+        let g_age = (req.body.gestational_sac_age || req.body.gestationalSacAge || '').toString().trim();
+        if (!g_age && (g_w || g_d)) g_age = (g_w || '0') + ' W ' + (g_d || '0') + ' D';
+
         const crl_len = (req.body.crl_length || req.body.crlLength || '').toString().trim();
-        const crl_age = (req.body.crl_age || req.body.crlAge || '').toString().trim();
+        const crl_w = (req.body.crl_w || '').toString().trim();
+        const crl_d = (req.body.crl_d || '').toString().trim();
+        let crl_age = (req.body.crl_age || req.body.crlAge || '').toString().trim();
+        if (!crl_age && (crl_w || crl_d)) crl_age = (crl_w || '0') + ' W ' + (crl_d || '0') + ' D';
 
         const commentSigns = req.body['comment_sign[]'] || req.body.comment_sign || req.body.comment_signs || req.body.comment_sign;
         const commentTexts = req.body['comment_text[]'] || req.body.comment_text || req.body.comment_texts || req.body.comment_text;
@@ -2425,7 +2521,11 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
           if (req.body.comment_hemorrhage || req.body.hemorrhage) commentEntries.push({ sign: '-', text: (req.body.comment_hemorrhage || req.body.hemorrhage).toString().trim() });
         }
 
-        const average_ultrasound_age = (req.body.average_ultrasound_age || req.body.averageUltrasoundAge || '').toString().trim();
+        const avg_w = (req.body.average_ultrasound_age_w || '').toString().trim();
+        const avg_d = (req.body.average_ultrasound_age_d || '').toString().trim();
+        let average_ultrasound_age = (req.body.average_ultrasound_age || req.body.averageUltrasoundAge || '').toString().trim();
+        if (!average_ultrasound_age && (avg_w || avg_d)) average_ultrasound_age = (avg_w || '0') + ' W ' + (avg_d || '0') + ' D';
+
         const fetal_heart_rate = (req.body.fetal_heart_rate || req.body.fetalHeartRate || '').toString().trim();
         const expected_date_of_delivery_raw = (req.body.expected_date_of_delivery || req.body.expectedDateOfDelivery || '').toString().trim();
         let expected_date_of_delivery = '';
@@ -2442,13 +2542,19 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
         resultsObj = {
           isTwin: false,
           gestational_sac_length: g_len,
+          gestational_sac_w: g_w,
+          gestational_sac_d: g_d,
           gestational_sac_age: g_age,
           crl_length: crl_len,
+          crl_w: crl_w,
+          crl_d: crl_d,
           crl_age: crl_age,
           comment_entries: commentEntries,
           // back-compat
           comment_yolk: (commentEntries && commentEntries[0] ? (commentEntries[0].text || '') : ''),
           comment_hemorrhage: (commentEntries && commentEntries[1] ? (commentEntries[1].text || '') : ''),
+          average_ultrasound_age_w: avg_w,
+          average_ultrasound_age_d: avg_d,
           average_ultrasound_age: average_ultrasound_age,
           fetal_heart_rate: fetal_heart_rate,
           expected_date_of_delivery: expected_date_of_delivery,
