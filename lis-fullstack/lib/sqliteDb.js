@@ -124,14 +124,36 @@ function createBetterSqliteDb(dbPath, opts = {}) {
   const dir = path.dirname(dbPath);
   try { fs.mkdirSync(dir, { recursive: true }); } catch (e) {}
 
-  const sqlite = new BetterSqlite3(dbPath, {
-    verbose: opts.verbose ? console.log : undefined
-  });
+  let sqlite;
+  function openSqlite() {
+    if (fs.existsSync(dbPath)) {
+      const st = fs.statSync(dbPath);
+      if (st.size === 0) {
+        throw new Error('Database file is 0 bytes');
+      }
+    }
+    const instance = new BetterSqlite3(dbPath, {
+      verbose: opts.verbose ? console.log : undefined
+    });
+    instance.pragma('journal_mode = WAL');
+    instance.pragma('synchronous = NORMAL');
+    instance.pragma('foreign_keys = ON');
+    instance.pragma('busy_timeout = 5000');
+    instance.pragma('quick_check');
+    return instance;
+  }
 
-  sqlite.pragma('journal_mode = WAL');
-  sqlite.pragma('synchronous = NORMAL');
-  sqlite.pragma('foreign_keys = ON');
-  sqlite.pragma('busy_timeout = 5000');
+  try {
+    sqlite = openSqlite();
+  } catch (openErr) {
+    console.error(`[sqliteDb] Failed to open ${dbPath} via better-sqlite3: ${openErr.message}. Quarantining and creating fresh DB...`);
+    try {
+      if (fs.existsSync(dbPath)) {
+        fs.renameSync(dbPath, `${dbPath}.corrupt.${Date.now()}`);
+      }
+    } catch (_) {}
+    sqlite = openSqlite();
+  }
 
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS patients (
@@ -2608,9 +2630,18 @@ function createSqlJsDb(SQL, dbPath) {
   if (fs.existsSync(dbPath)) {
     try {
       const fileBuffer = fs.readFileSync(dbPath);
+      if (fileBuffer.length === 0) {
+        throw new Error('Database file is 0 bytes');
+      }
       sqlite = new SQL.Database(fileBuffer);
+      sqlite.run("SELECT 1;");
     } catch (e) {
-      console.warn('[sqliteDb] Failed to load existing .db via sql.js, creating fresh database:', e.message);
+      console.warn('[sqliteDb] Failed to load existing .db via sql.js, quarantining and creating fresh database:', e.message);
+      try {
+        if (fs.existsSync(dbPath)) {
+          fs.renameSync(dbPath, `${dbPath}.corrupt.${Date.now()}`);
+        }
+      } catch (_) {}
       sqlite = new SQL.Database();
     }
   } else {

@@ -124,14 +124,36 @@ function createBetterSqliteDb(dbPath, opts = {}) {
   const dir = path.dirname(dbPath);
   try { fs.mkdirSync(dir, { recursive: true }); } catch (e) {}
 
-  const sqlite = new BetterSqlite3(dbPath, {
-    verbose: opts.verbose ? console.log : undefined
-  });
+  let sqlite;
+  function openSqlite() {
+    if (fs.existsSync(dbPath)) {
+      const st = fs.statSync(dbPath);
+      if (st.size === 0) {
+        throw new Error('Database file is 0 bytes');
+      }
+    }
+    const instance = new BetterSqlite3(dbPath, {
+      verbose: opts.verbose ? console.log : undefined
+    });
+    instance.pragma('journal_mode = WAL');
+    instance.pragma('synchronous = NORMAL');
+    instance.pragma('foreign_keys = ON');
+    instance.pragma('busy_timeout = 5000');
+    instance.pragma('quick_check');
+    return instance;
+  }
 
-  sqlite.pragma('journal_mode = WAL');
-  sqlite.pragma('synchronous = NORMAL');
-  sqlite.pragma('foreign_keys = ON');
-  sqlite.pragma('busy_timeout = 5000');
+  try {
+    sqlite = openSqlite();
+  } catch (openErr) {
+    console.error(`[sqliteDb] Failed to open ${dbPath} via better-sqlite3: ${openErr.message}. Quarantining and creating fresh DB...`);
+    try {
+      if (fs.existsSync(dbPath)) {
+        fs.renameSync(dbPath, `${dbPath}.corrupt.${Date.now()}`);
+      }
+    } catch (_) {}
+    sqlite = openSqlite();
+  }
 
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS patients (
@@ -584,6 +606,20 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     );
     CREATE INDEX IF NOT EXISTS idx_dtr_emp_date ON dtr_records(employeeId, date);
     CREATE INDEX IF NOT EXISTS idx_dtr_date ON dtr_records(date);
+
+    CREATE TABLE IF NOT EXISTS sync_queue (
+      id TEXT PRIMARY KEY,
+      url TEXT NOT NULL,
+      method TEXT NOT NULL,
+      body TEXT,
+      headers TEXT,
+      status TEXT DEFAULT 'pending',
+      attempts INTEGER DEFAULT 0,
+      createdAt TEXT NOT NULL,
+      lastAttemptAt TEXT,
+      error TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_sync_queue_status ON sync_queue(status, createdAt);
   `);
 
   const stmts = {
@@ -621,6 +657,12 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     getAllCounters: sqlite.prepare('SELECT key, value FROM counters'),
     upsertCounter: sqlite.prepare('INSERT OR REPLACE INTO counters (key, value) VALUES (?, ?)'),
     deleteAllCounters: sqlite.prepare('DELETE FROM counters'),
+
+    getPendingSyncQueue: sqlite.prepare("SELECT * FROM sync_queue WHERE status = 'pending' ORDER BY createdAt ASC"),
+    getAllSyncQueue: sqlite.prepare("SELECT * FROM sync_queue ORDER BY createdAt ASC"),
+    upsertSyncQueue: sqlite.prepare("INSERT OR REPLACE INTO sync_queue (id, url, method, body, headers, status, attempts, createdAt, lastAttemptAt, error) VALUES (@id, @url, @method, @body, @headers, @status, @attempts, @createdAt, @lastAttemptAt, @error)"),
+    deleteSyncQueueById: sqlite.prepare("DELETE FROM sync_queue WHERE id = ?"),
+    clearSyncQueue: sqlite.prepare("DELETE FROM sync_queue"),
 
     getSettings: sqlite.prepare("SELECT json FROM settings WHERE key = 'main'"),
     upsertSettings: sqlite.prepare("INSERT OR REPLACE INTO settings (key, json) VALUES ('main', ?)"),
@@ -2358,6 +2400,47 @@ function createBetterSqliteDb(dbPath, opts = {}) {
       } catch (e) { return false; }
     },
 
+    // Sync Queue Methods
+    getSyncQueue() {
+      try { return stmts.getPendingSyncQueue.all(); } catch (e) { return []; }
+    },
+    getAllSyncQueue() {
+      try { return stmts.getAllSyncQueue.all(); } catch (e) { return []; }
+    },
+    upsertSyncQueue(item) {
+      if (!item || !item.id) return false;
+      try {
+        stmts.upsertSyncQueue.run({
+          id: String(item.id),
+          url: String(item.url || ''),
+          method: String(item.method || 'POST'),
+          body: typeof item.body === 'object' ? JSON.stringify(item.body) : (item.body || null),
+          headers: typeof item.headers === 'object' ? JSON.stringify(item.headers) : (item.headers || null),
+          status: String(item.status || 'pending'),
+          attempts: Number(item.attempts || 0),
+          createdAt: String(item.createdAt || new Date().toISOString()),
+          lastAttemptAt: safeStr(item.lastAttemptAt || null),
+          error: safeStr(item.error || null)
+        });
+        return true;
+      } catch (e) {
+        console.error('[sqliteDb] upsertSyncQueue error:', e.message);
+        return false;
+      }
+    },
+    deleteSyncQueue(id) {
+      try {
+        stmts.deleteSyncQueueById.run(String(id));
+        return true;
+      } catch (e) { return false; }
+    },
+    clearSyncQueue() {
+      try {
+        stmts.clearSyncQueue.run();
+        return true;
+      } catch (e) { return false; }
+    },
+
     close() { try { sqlite.close(); } catch (e) {} }
   };
 }
@@ -2373,9 +2456,18 @@ function createSqlJsDb(SQL, dbPath) {
   if (fs.existsSync(dbPath)) {
     try {
       const fileBuffer = fs.readFileSync(dbPath);
+      if (fileBuffer.length === 0) {
+        throw new Error('Database file is 0 bytes');
+      }
       sqlite = new SQL.Database(fileBuffer);
+      sqlite.run("SELECT 1;");
     } catch (e) {
-      console.warn('[sqliteDb] Failed to load existing .db via sql.js, creating fresh database:', e.message);
+      console.warn('[sqliteDb] Failed to load existing .db via sql.js, quarantining and creating fresh database:', e.message);
+      try {
+        if (fs.existsSync(dbPath)) {
+          fs.renameSync(dbPath, `${dbPath}.corrupt.${Date.now()}`);
+        }
+      } catch (_) {}
       sqlite = new SQL.Database();
     }
   } else {
@@ -2804,6 +2896,20 @@ function createSqlJsDb(SQL, dbPath) {
     CREATE INDEX IF NOT EXISTS idx_dtr_emp ON dtr_records(employeeId);
     CREATE INDEX IF NOT EXISTS idx_dtr_date ON dtr_records(date);
     CREATE INDEX IF NOT EXISTS idx_dtr_emp_date ON dtr_records(employeeId, date);
+
+    CREATE TABLE IF NOT EXISTS sync_queue (
+      id TEXT PRIMARY KEY,
+      url TEXT NOT NULL,
+      method TEXT NOT NULL,
+      body TEXT,
+      headers TEXT,
+      status TEXT DEFAULT 'pending',
+      attempts INTEGER DEFAULT 0,
+      createdAt TEXT NOT NULL,
+      lastAttemptAt TEXT,
+      error TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_sqljs_sync_queue_status ON sync_queue(status, createdAt);
   `);
 
   let persistTimer = null;
@@ -4443,6 +4549,43 @@ function createSqlJsDb(SQL, dbPath) {
       } catch (e) { return false; }
     },
 
+    // Sync Queue Methods (sql.js)
+    getSyncQueue() {
+      try { return queryAll("SELECT * FROM sync_queue WHERE status = 'pending' ORDER BY createdAt ASC"); } catch (e) { return []; }
+    },
+    getAllSyncQueue() {
+      try { return queryAll("SELECT * FROM sync_queue ORDER BY createdAt ASC"); } catch (e) { return []; }
+    },
+    upsertSyncQueue(item) {
+      if (!item || !item.id) return false;
+      try {
+        const bodyStr = typeof item.body === 'object' ? JSON.stringify(item.body) : (item.body || null);
+        const headersStr = typeof item.headers === 'object' ? JSON.stringify(item.headers) : (item.headers || null);
+        queryRun(
+          'INSERT OR REPLACE INTO sync_queue (id, url, method, body, headers, status, attempts, createdAt, lastAttemptAt, error) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [String(item.id), String(item.url || ''), String(item.method || 'POST'), bodyStr, headersStr, String(item.status || 'pending'), Number(item.attempts || 0), String(item.createdAt || new Date().toISOString()), safeStr(item.lastAttemptAt || null), safeStr(item.error || null)]
+        );
+        persist();
+        return true;
+      } catch (e) {
+        return false;
+      }
+    },
+    deleteSyncQueue(id) {
+      try {
+        queryRun('DELETE FROM sync_queue WHERE id = ?', [String(id)]);
+        persist();
+        return true;
+      } catch (e) { return false; }
+    },
+    clearSyncQueue() {
+      try {
+        queryRun('DELETE FROM sync_queue');
+        persist();
+        return true;
+      } catch (e) { return false; }
+    },
+
     close() {
       if (isClosed) return;
       persist(true);
@@ -4637,6 +4780,12 @@ function createDb(dbPath, opts = {}) {
     getDtrRecordByDate(e, d) { return underlyingDb ? underlyingDb.getDtrRecordByDate(e, d) : null; },
     saveDtrRecord(d) { if (underlyingDb) return underlyingDb.saveDtrRecord(d); else readyPromise.then(db => db.saveDtrRecord(d)); return d; },
     deleteDtrRecord(id) { if (underlyingDb) return underlyingDb.deleteDtrRecord(id); else readyPromise.then(db => db.deleteDtrRecord(id)); return true; },
+
+    getSyncQueue() { return underlyingDb ? underlyingDb.getSyncQueue() : []; },
+    getAllSyncQueue() { return underlyingDb ? underlyingDb.getAllSyncQueue() : []; },
+    upsertSyncQueue(item) { if (underlyingDb) return underlyingDb.upsertSyncQueue(item); else readyPromise.then(db => db.upsertSyncQueue(item)); return true; },
+    deleteSyncQueue(id) { if (underlyingDb) return underlyingDb.deleteSyncQueue(id); else readyPromise.then(db => db.deleteSyncQueue(id)); return true; },
+    clearSyncQueue() { if (underlyingDb) return underlyingDb.clearSyncQueue(); else readyPromise.then(db => db.clearSyncQueue()); return true; },
 
     close() { if (underlyingDb) underlyingDb.close(); }
   };

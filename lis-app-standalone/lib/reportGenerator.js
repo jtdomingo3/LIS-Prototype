@@ -249,8 +249,38 @@ async function renderHtmlForTest(populatedTest, templateName) {
   return inlineSignatureImages(finalHtml);
 }
 
-// ── convert HTML → PDF using Edge/Chrome via puppeteer-core ────────────
+// ── convert HTML → PDF using Electron native printToPDF (fallback to Edge/Chrome) ─
 async function generatePdfBufferFromHtml(html) {
+  let electron = null;
+  try {
+    electron = require('electron');
+  } catch (_) {}
+
+  if (electron && electron.BrowserWindow) {
+    const { BrowserWindow } = electron;
+    const win = new BrowserWindow({
+      show: false,
+      width: 1200,
+      height: 800,
+      webPreferences: {
+        offscreen: true,
+        sandbox: true
+      }
+    });
+    try {
+      await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+      const buf = await win.webContents.printToPDF({
+        pageSize: 'Letter',
+        printBackground: true,
+        margins: { top: 0.2, bottom: 0.2, left: 0.2, right: 0.2 }
+      });
+      return buf;
+    } finally {
+      try { win.destroy(); } catch (_) {}
+    }
+  }
+
+  // Fallback: outside Electron environment (e.g. standalone test runner)
   const browser = await getBrowser();
   const page = await browser.newPage();
   try {

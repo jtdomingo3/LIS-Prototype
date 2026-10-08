@@ -12,10 +12,12 @@
                     "security-audit":  "node ../tools/security-audit/run-security-audit.js",
                     "test":  "node ../test/run-all-inventory-tests.js \u0026\u0026 node ../test/run-all-offline-tests.js \u0026\u0026 node ../test/standalone-sqlite-datastore.test.js \u0026\u0026 node ../test/standalone-integrated-sync.test.js \u0026\u0026 node ../test/test-signature-sync-e2e.js \u0026\u0026 node ../test/test_standalone_server_equipment.js",
                     "test:equipment":  "node ../test/test_standalone_server_equipment.js",
-                    "test:inventory":  "node ../test/run-all-inventory-tests.js"
+                    "test:inventory":  "node ../test/run-all-inventory-tests.js",
+                    "rebuild": "electron-builder install-app-deps"
                 },
     "dependencies":  {
                          "bcryptjs":  "^3.0.3",
+                         "better-sqlite3": "^11.8.1",
                          "bwip-js":  "^4.8.0",
                          "connect-flash":  "^0.1.1",
                          "ejs":  "^4.0.1",
@@ -25,7 +27,6 @@
                          "express-flash":  "^0.0.2",
                          "express-session":  "^1.19.0",
                          "google-tts-api":  "^2.0.2",
-                         "html-pdf":  "^3.0.1",
                          "iconv-lite":  "^0.6.3",
                          "jimp":  "^1.6.0",
                          "method-override":  "^3.0.0",
@@ -54,7 +55,8 @@
                             ],
                   "asarUnpack":  [
                                      "scripts/**/*",
-                                     "**/node_modules/iconv-lite/**"
+                                     "**/node_modules/iconv-lite/**",
+                                     "**/node_modules/better-sqlite3/**"
                                  ],
                   "win":  {
                               "target":  [

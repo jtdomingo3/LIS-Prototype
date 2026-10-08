@@ -9,8 +9,10 @@ const crypto = require('crypto');
 const os = require('os');
 
 class OperationQueue {
-  constructor(dataDir) {
+  constructor(dataDir, db = null) {
     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+    this.dataDir = dataDir;
+    this.db = db;
     this.filePath = path.join(dataDir, 'pending-operations.json');
 
     // Mirror pending operations to Documents/LIS/offline_changes/ for visibility.
@@ -23,8 +25,28 @@ class OperationQueue {
     this._syncMirror(); // ensure mirror reflects current state on startup
   }
 
+  _getDb() {
+    if (this.db) return this.db;
+    if (this.dataStore && this.dataStore.db) {
+      this.db = this.dataStore.db;
+      return this.db;
+    }
+    try {
+      const { createDb } = require('./sqliteDb');
+      const dbPath = path.join(this.dataDir, 'lis-data.db');
+      this.db = createDb(dbPath);
+      return this.db;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /* ── persistence ──────────────────────────────────────────────── */
   _load() {
+    const db = this._getDb();
+    let loadedOps = [];
+
+    // 1. One-time migration from legacy pending-operations.json if it exists
     try {
       if (fs.existsSync(this.filePath)) {
         const raw = JSON.parse(fs.readFileSync(this.filePath, 'utf8'));
@@ -39,22 +61,64 @@ class OperationQueue {
                                 (url.includes('/reports/') && (url.includes('/download') || url.includes('/preview')));
             return !isLocalOnly;
           });
-          if (filtered.length !== raw.length) {
-            try {
-              fs.writeFileSync(this.filePath, JSON.stringify(filtered, null, 2));
-            } catch (_) {}
+          if (db && typeof db.upsertSyncQueue === 'function') {
+            for (const op of filtered) {
+              db.upsertSyncQueue(op);
+            }
           }
-          return filtered;
+          loadedOps = filtered;
         }
+        try {
+          fs.renameSync(this.filePath, this.filePath + '.migrated');
+        } catch (_) {}
       }
-    } catch (e) { console.error('[Queue] load error:', e); }
-    return [];
+    } catch (e) {
+      console.error('[Queue] legacy JSON load/migration error:', e);
+    }
+
+    // 2. Load from SQLite sync_queue table if available
+    if (db && typeof db.getAllSyncQueue === 'function') {
+      try {
+        const rows = db.getAllSyncQueue();
+        if (Array.isArray(rows) && rows.length > 0) {
+          loadedOps = rows.map(r => {
+            let body = r.body;
+            let headers = r.headers;
+            try { if (typeof body === 'string' && (body.startsWith('{') || body.startsWith('['))) body = JSON.parse(body); } catch (_) {}
+            try { if (typeof headers === 'string' && headers.startsWith('{')) headers = JSON.parse(headers); } catch (_) {}
+            return {
+              ...r,
+              body,
+              headers
+            };
+          });
+        }
+      } catch (dbErr) {
+        console.error('[Queue] SQLite load error:', dbErr);
+      }
+    }
+
+    return loadedOps;
   }
 
   _save() {
-    try {
-      fs.writeFileSync(this.filePath, JSON.stringify(this.operations, null, 2));
-    } catch (e) { console.error('[Queue] save error:', e); }
+    const db = this._getDb();
+    if (db && typeof db.upsertSyncQueue === 'function') {
+      try {
+        const currentIds = new Set(this.operations.map(o => String(o.id)));
+        const existingInDb = typeof db.getAllSyncQueue === 'function' ? db.getAllSyncQueue() : [];
+        for (const row of existingInDb) {
+          if (!currentIds.has(String(row.id))) {
+            if (typeof db.deleteSyncQueue === 'function') db.deleteSyncQueue(row.id);
+          }
+        }
+        for (const op of this.operations) {
+          db.upsertSyncQueue(op);
+        }
+      } catch (e) {
+        console.error('[Queue] SQLite save error:', e);
+      }
+    }
     this._syncMirror();
   }
 
