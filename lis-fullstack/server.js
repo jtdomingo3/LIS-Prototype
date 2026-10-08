@@ -924,6 +924,7 @@ const routePermissionMap = [
   { prefix: '/patients', perm: 'patients' },
   { prefix: '/reception', perm: 'reception' },
   { prefix: '/philhealth', perm: 'reception' },
+  { prefix: '/healthcard', perm: 'reception' },
   { prefix: '/consultations', perm: 'reception' },
   { prefix: '/tests', perm: 'tests' },
   { prefix: '/reports', perm: 'reports' },
@@ -1062,6 +1063,7 @@ const templateRoutes = require('./routes/templates');
 const userRoutes = require('./routes/users');
 const receptionRoutes = require('./routes/reception');
 const philhealthRoutes = require('./routes/philhealth');
+const healthcardRoutes = require('./routes/healthcard');
 const settingsRoutes = require('./routes/settings');
 const signaturesRoutes = require('./routes/signatures');
 const chatbotRoutes = require('./routes/chatbot');
@@ -1081,6 +1083,7 @@ app.use('/templates', templateRoutes);
 app.use('/users', userRoutes);
 app.use('/reception', receptionRoutes);
 app.use('/philhealth', philhealthRoutes);
+app.use('/healthcard', healthcardRoutes);
 app.use('/consultations', consultationRoutes);
 app.use('/settings', settingsRoutes);
 app.use('/signatures', signaturesRoutes);

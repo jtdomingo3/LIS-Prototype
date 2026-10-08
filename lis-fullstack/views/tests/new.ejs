@@ -421,12 +421,26 @@
               <option value="">-- Select Patient --</option>
               <% if (patients && patients.length) { %>
                 <% patients.forEach(p => { %>
-                  <option value="<%= p.id %>" <%= (test.patient && test.patient === p.id) ? 'selected' : '' %> data-age="<%= p.age !== undefined && p.age !== null ? p.age : '' %>" data-dob="<%= p.dateOfBirth || '' %>">
-                    <%= p.lastName %>, <%= p.firstName %> (<%= p.patientId %>)
+                  <option value="<%= p.id %>" <%= (test.patient && test.patient === p.id) ? 'selected' : '' %> data-age="<%= p.age !== undefined && p.age !== null ? p.age : '' %>" data-dob="<%= p.dateOfBirth || '' %>" data-hmo="<%= p.healthInsuranceConsent ? (p.healthInsuranceProvider || 'Health Card') : '' %>" data-patient-code="<%= p.patientCode || p.patientId || '' %>">
+                    <%= p.lastName %>, <%= p.firstName %> (<%= p.patientId %>)<%= p.healthInsuranceConsent ? ' [💳 ' + (p.healthInsuranceProvider || 'HMO') + ']' : '' %>
                   </option>
                 <% }) %>
               <% } %>
             </select>
+
+            <div id="patientHmoNotice" style="display: none; background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 8px; padding: 10px 12px; font-size: 0.85em; color: #3730a3; margin-top: 4px;">
+              <div style="font-weight: 700; display: flex; align-items: center; gap: 6px; margin-bottom: 3px;">
+                <i class="fa fa-id-card-clip"></i> <span id="hmoNoticeTitle">Health Card / HMO Patient</span>
+              </div>
+              <div style="color: #4338ca; line-height: 1.35;">
+                This patient is enrolled with <strong id="hmoNoticeProvider">HMO</strong>. Standard flow requires an approved LOA before assigning tests.
+              </div>
+              <div style="margin-top: 6px;">
+                <a id="hmoNoticeLink" href="/healthcard" class="button" style="background: #6366f1; color: #fff; padding: 4px 10px; border-radius: 6px; font-size: 0.82em; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 5px;">
+                  <span>Go to Health Card Claims (Approve LOA)</span> <i class="fa fa-arrow-right"></i>
+                </a>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1567,5 +1581,31 @@
       cb.addEventListener('change', update);
       update();
     });
+
+    // Patient HMO notice detection
+    const patientSel = document.getElementById('patientSelect');
+    const hmoNotice = document.getElementById('patientHmoNotice');
+    const hmoNoticeProvider = document.getElementById('hmoNoticeProvider');
+    const hmoNoticeLink = document.getElementById('hmoNoticeLink');
+
+    function checkHmoPatient() {
+      if (!patientSel || !hmoNotice) return;
+      const opt = patientSel.options[patientSel.selectedIndex];
+      if (opt && opt.dataset.hmo) {
+        hmoNotice.style.display = 'block';
+        if (hmoNoticeProvider) hmoNoticeProvider.textContent = opt.dataset.hmo;
+        const code = opt.dataset.patientCode || '';
+        if (hmoNoticeLink) {
+          hmoNoticeLink.href = '/healthcard?search=' + encodeURIComponent(code);
+        }
+      } else {
+        hmoNotice.style.display = 'none';
+      }
+    }
+
+    if (patientSel) {
+      patientSel.addEventListener('change', checkHmoPatient);
+      checkHmoPatient();
+    }
   });
 </script>

@@ -1,0 +1,1167 @@
+<div class="card" style="padding: 24px 28px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); margin-bottom: 24px; background: #ffffff;">
+  <!-- Module Tabs: PhilHealth vs Health Card -->
+  <div style="display: flex; gap: 10px; margin-bottom: 22px; border-bottom: 2px solid #f1f5f9; padding-bottom: 4px;">
+    <a href="/philhealth" style="padding: 10px 22px; font-weight: 600; font-size: 0.95em; color: #64748b; border-bottom: 3px solid transparent; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; margin-bottom: -6px; border-radius: 8px 8px 0 0; transition: all 0.15s;" onmouseover="this.style.color='#0284c7'; this.style.background='#f8fafc';" onmouseout="this.style.color='#64748b'; this.style.background='transparent';">
+      <i class="fa fa-file-medical"></i> PhilHealth (Konsulta / DOH)
+    </a>
+    <a href="/healthcard" style="padding: 10px 22px; font-weight: 700; font-size: 0.95em; color: #0284c7; border-bottom: 3px solid #0284c7; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; margin-bottom: -6px; background: #f0f9ff; border-radius: 8px 8px 0 0;">
+      <i class="fa fa-id-card"></i> Health Card (HMO Claims)
+    </a>
+  </div>
+
+  <!-- Header -->
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; border-bottom: 1px solid #f1f5f9; padding-bottom: 16px; margin-bottom: 20px;">
+    <div>
+      <h3 style="margin: 0; font-size: 1.45em; display: flex; align-items: center; gap: 10px; color: #0f172a; font-weight: 700;">
+        <span style="font-size: 1.2em;">💳</span> Health Card / HMO Claims Panel
+      </h3>
+      <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.9em;">
+        Official Philippine HMO claims registry, LOA authorization, diagnostic procedure assignment, and transmittal billing settlement tracking.
+      </p>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+      <a href="/healthcard/export.csv<%= (searchQuery || hmoFilter || statusFilter || dateFrom || dateTo) ? ('?' + new URLSearchParams({ search: searchQuery, hmo: hmoFilter, status: statusFilter, dateFrom, dateTo }).toString()) : '' %>" class="button btn-secondary" style="height: 38px; padding: 0 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em;" title="Download filtered records as CSV">
+        <i class="fa fa-file-csv" style="color: #059669;"></i> Export CSV
+      </a>
+      <a href="/reports/worksheet" class="button btn-secondary" style="height: 38px; padding: 0 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em;">
+        <i class="fa fa-table"></i> Worksheet
+      </a>
+      <button type="button" onclick="openEnrollHealthCardModal()" class="button btn-primary" style="height: 38px; padding: 0 18px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em; background: #0284c7; border: none; cursor: pointer;">
+        <i class="fa fa-user-plus"></i> Enroll Health Card Patient
+      </button>
+    </div>
+  </div>
+
+  <!-- Metrics Cards -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 22px;">
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 18px;">
+      <div style="font-size: 0.78em; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px;">Total Claims</div>
+      <div style="font-size: 1.8em; font-weight: 800; color: #0f172a; margin-top: 4px;"><%= stats.total %></div>
+    </div>
+    <div style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: 12px; padding: 14px 18px;">
+      <div style="font-size: 0.78em; font-weight: 700; text-transform: uppercase; color: #b45309; letter-spacing: 0.5px;">Pending LOA</div>
+      <div style="font-size: 1.8em; font-weight: 800; color: #d97706; margin-top: 4px;">
+        <%= stats.pendingLoa %>
+        <% if (stats.pendingLoa > 0) { %>
+          <span style="font-size: 0.45em; background: #ef4444; color: #fff; padding: 2px 8px; border-radius: 10px; vertical-align: middle; margin-left: 6px;">Action Required</span>
+        <% } %>
+      </div>
+    </div>
+    <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 14px 18px;">
+      <div style="font-size: 0.78em; font-weight: 700; text-transform: uppercase; color: #047857; letter-spacing: 0.5px;">Approved / In Queue</div>
+      <div style="font-size: 1.8em; font-weight: 800; color: #059669; margin-top: 4px;"><%= stats.approved %></div>
+    </div>
+    <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 14px 18px;">
+      <div style="font-size: 0.78em; font-weight: 700; text-transform: uppercase; color: #1d4ed8; letter-spacing: 0.5px;">Billed / Transmitted</div>
+      <div style="font-size: 1.8em; font-weight: 800; color: #2563eb; margin-top: 4px;"><%= stats.billed %></div>
+    </div>
+    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 14px 18px;">
+      <div style="font-size: 0.78em; font-weight: 700; text-transform: uppercase; color: #166534; letter-spacing: 0.5px;">Settled / Paid</div>
+      <div style="font-size: 1.8em; font-weight: 800; color: #15803d; margin-top: 4px;">
+        <%= stats.paid %>
+        <span style="font-size: 0.45em; background: #22c55e; color: #fff; padding: 2px 8px; border-radius: 10px; vertical-align: middle; margin-left: 6px;">₱<%= stats.totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search & Filter Form -->
+  <form action="/healthcard" method="GET" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 18px; margin-bottom: 20px;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; align-items: flex-end;">
+      <div>
+        <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; margin-bottom: 4px;">Search Records</label>
+        <input type="text" name="search" value="<%= searchQuery %>" placeholder="Name, Card #, LOA, Control #" style="width: 100%; height: 36px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 0.88em; box-sizing: border-box;" />
+      </div>
+
+      <div>
+        <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; margin-bottom: 4px;">HMO Provider</label>
+        <select name="hmo" style="width: 100%; height: 36px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; padding: 0 8px; font-size: 0.88em;">
+          <option value="">-- All HMOs --</option>
+          <% (hmoProviders || []).forEach(h => { %>
+            <option value="<%= h %>" <%= (hmoFilter && hmoFilter.toLowerCase() === h.toLowerCase()) ? 'selected' : '' %>><%= h %></option>
+          <% }); %>
+        </select>
+      </div>
+
+      <div>
+        <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; margin-bottom: 4px;">Claim Status</label>
+        <select name="status" style="width: 100%; height: 36px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; padding: 0 8px; font-size: 0.88em;">
+          <option value="">-- All Statuses --</option>
+          <option value="Pending LOA" <%= statusFilter === 'Pending LOA' ? 'selected' : '' %>>Pending LOA</option>
+          <option value="Approved" <%= statusFilter === 'Approved' ? 'selected' : '' %>>Approved / In Queue</option>
+          <option value="Billed" <%= statusFilter === 'Billed' ? 'selected' : '' %>>Billed / Transmitted</option>
+          <option value="Paid" <%= statusFilter === 'Paid' ? 'selected' : '' %>>Paid / Settled</option>
+          <option value="Cancelled" <%= statusFilter === 'Cancelled' ? 'selected' : '' %>>Cancelled</option>
+        </select>
+      </div>
+
+      <div>
+        <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; margin-bottom: 4px;">Record Date Range</label>
+        <div style="display: flex; gap: 6px;">
+          <input type="date" name="dateFrom" value="<%= dateFrom %>" style="flex: 1; height: 36px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 6px; font-size: 0.85em;" />
+          <input type="date" name="dateTo" value="<%= dateTo %>" style="flex: 1; height: 36px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 6px; font-size: 0.85em;" />
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 8px;">
+        <button type="submit" class="button btn-primary" style="height: 36px; padding: 0 16px; border-radius: 8px; font-weight: 600; font-size: 0.88em; flex: 1; background: #0284c7;">
+          <i class="fa fa-filter"></i> Filter
+        </button>
+        <a href="/healthcard" class="button btn-secondary" style="height: 36px; padding: 0 12px; border-radius: 8px; font-weight: 600; font-size: 0.88em; display: inline-flex; align-items: center; justify-content: center;" title="Reset filters">
+          <i class="fa fa-undo"></i>
+        </a>
+      </div>
+    </div>
+  </form>
+
+  <!-- Universal Bulk Action Bar for Multi-select -->
+  <div id="bulkActionBar" style="display: none; background: #f8fafc; border: 1.5px solid #0284c7; border-radius: 12px; padding: 12px 18px; margin-bottom: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; box-shadow: 0 4px 14px rgba(2,132,199,0.12);">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <span style="font-weight: 700; font-size: 0.95em; color: #0369a1; display: inline-flex; align-items: center; gap: 6px;">
+        <i class="fa fa-check-double" style="color: #0284c7;"></i> <span id="selectedCount">0</span> claim(s) selected
+      </span>
+      <button type="button" onclick="toggleSelectAll({ checked: true })" style="background: none; border: none; color: #0284c7; font-size: 0.82em; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0;">Select All Visible</button>
+      <span style="color: #cbd5e1;">|</span>
+      <button type="button" onclick="clearSelection()" style="background: none; border: none; color: #64748b; font-size: 0.82em; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0;">Clear</button>
+    </div>
+    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+      <button type="button" class="button" onclick="openUniversalBatchModal()" style="height: 36px; padding: 0 16px; font-size: 0.88em; font-weight: 700; background: linear-gradient(135deg, #0284c7, #0369a1); color: #fff; border: none; border-radius: 8px; box-shadow: 0 2px 6px rgba(2,132,199,0.25); cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+        <i class="fa fa-layer-group"></i> Universal Batch Update
+      </button>
+
+      <div style="display: inline-flex; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff;">
+        <button type="button" onclick="quickBatchApply('status', 'Billed')" style="height: 34px; padding: 0 12px; font-size: 0.82em; font-weight: 600; border: none; border-right: 1px solid #e2e8f0; background: #ffffff; color: #2563eb; cursor: pointer;" title="Mark all selected as Billed to HMO">
+          ✓ Mark Billed
+        </button>
+        <button type="button" onclick="quickBatchApply('status', 'Paid')" style="height: 34px; padding: 0 12px; font-size: 0.82em; font-weight: 600; border: none; background: #ffffff; color: #166534; cursor: pointer;" title="Mark all selected as Paid by HMO">
+          ✓ Mark Paid
+        </button>
+      </div>
+
+      <button type="button" class="button btn-secondary" onclick="exportSelectedCsv()" style="height: 36px; padding: 0 12px; font-size: 0.85em; font-weight: 600; border-radius: 8px;" title="Export selected claims to CSV">
+        <i class="fa fa-download"></i> Export Selected
+      </button>
+    </div>
+  </div>
+
+  <!-- Records Table -->
+  <div style="overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 12px;">
+    <table style="width: 100%; border-collapse: collapse; font-size: 0.86em; text-align: left; background: #ffffff;">
+      <thead>
+        <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; color: #475569; font-weight: 700; text-transform: uppercase; font-size: 0.78em; letter-spacing: 0.5px;">
+          <th style="padding: 12px 14px; width: 34px; text-align: center;">
+            <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)" style="cursor: pointer; width: 15px; height: 15px;" />
+          </th>
+          <th style="padding: 12px 14px; min-width: 140px;"># / Control No</th>
+          <th style="padding: 12px 14px; min-width: 95px;">Date</th>
+          <th style="padding: 12px 14px; min-width: 170px;">Patient Name</th>
+          <th style="padding: 12px 14px; min-width: 130px;">HMO Provider</th>
+          <th style="padding: 12px 14px; min-width: 140px;">Card / Member ID</th>
+          <th style="padding: 12px 14px; min-width: 130px;">LOA Number</th>
+          <th style="padding: 12px 14px; min-width: 200px;">Authorized Procedures</th>
+          <th style="padding: 12px 14px; min-width: 130px;">Coverage / Co-pay</th>
+          <th style="padding: 12px 14px; min-width: 110px;">Claim Status</th>
+          <th style="padding: 12px 14px; min-width: 130px;">Billing / SOA</th>
+          <th style="padding: 12px 14px; min-width: 110px; text-align: center;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (!records || records.length === 0) { %>
+          <tr>
+            <td colspan="12" style="text-align: center; padding: 48px 20px; color: #94a3b8;">
+              <div style="font-size: 2.8em; margin-bottom: 8px;">💳</div>
+              <div style="font-size: 1.1em; font-weight: 600; color: #475569;">No Health Card Claims Found</div>
+              <p style="margin: 4px 0 16px 0; font-size: 0.9em;">Click "Enroll Health Card Patient" to encode LOA details and authorize laboratory tests.</p>
+              <button type="button" onclick="openEnrollHealthCardModal()" class="button btn-primary" style="height: 36px; padding: 0 16px; border-radius: 8px; font-weight: 600; background: #0284c7; border: none; cursor: pointer;">
+                <i class="fa fa-user-plus"></i> Enroll Health Card Patient
+              </button>
+            </td>
+          </tr>
+        <% } else { %>
+          <% records.forEach((r, idx) => { %>
+            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#ffffff'">
+              <!-- Checkbox -->
+              <td style="padding: 12px 14px; text-align: center;">
+                <input type="checkbox" class="record-checkbox" value="<%= r.id %>" onchange="updateSelectedCount()" style="cursor: pointer; width: 15px; height: 15px;" />
+              </td>
+
+              <!-- Control No & Index -->
+              <td style="padding: 12px 14px;">
+                <span style="font-weight: 700; color: #0284c7; font-family: monospace; font-size: 0.98em;"><%= r.controlNo || 'N/A' %></span>
+                <div style="font-size: 0.78em; color: #94a3b8;">#<%= idx + 1 %></div>
+              </td>
+
+              <!-- Date -->
+              <td style="padding: 12px 14px; color: #475569; font-weight: 500;">
+                <%= r.recordDate || (r.createdAt ? String(r.createdAt).slice(0, 10) : 'N/A') %>
+              </td>
+
+              <!-- Name -->
+              <td style="padding: 12px 14px;">
+                <% if (r.patientId) { %>
+                  <a href="/patients/<%= r.patientId %>" style="font-weight: 700; color: #0f172a; text-decoration: none;" onmouseover="this.style.color='#0284c7'" onmouseout="this.style.color='#0f172a'">
+                    <%= r.fullName || 'Unnamed' %>
+                  </a>
+                <% } else { %>
+                  <span style="font-weight: 700; color: #0f172a;"><%= r.fullName || 'Unnamed' %></span>
+                <% } %>
+                <% if (r.company) { %>
+                  <div style="font-size: 0.78em; color: #64748b; margin-top: 2px;"><i class="fa fa-building" style="font-size: 0.9em;"></i> <%= r.company %></div>
+                <% } %>
+              </td>
+
+              <!-- HMO Provider -->
+              <td style="padding: 12px 14px;">
+                <span style="display: inline-block; background: #f0f9ff; color: #0369a1; border: 1px solid #bae6fd; font-weight: 700; font-size: 0.85em; padding: 2px 8px; border-radius: 6px;">
+                  <%= r.hmoProvider || 'Not Specified' %>
+                </span>
+              </td>
+
+              <!-- Card No -->
+              <td style="padding: 12px 14px; font-family: monospace; font-weight: 600; color: #334155;">
+                <%= r.cardNumber || '—' %>
+              </td>
+
+              <!-- LOA Number -->
+              <td style="padding: 12px 14px;">
+                <% if (r.loaNumber) { %>
+                  <span style="font-family: monospace; font-weight: 700; color: #0f172a;"><%= r.loaNumber %></span>
+                  <% if (r.loaExpiry) { %>
+                    <div style="font-size: 0.75em; color: #64748b;">Exp: <%= r.loaExpiry %></div>
+                  <% } %>
+                <% } else { %>
+                  <span style="color: #94a3b8; font-style: italic;">No LOA #</span>
+                <% } %>
+              </td>
+
+              <!-- Procedures -->
+              <td style="padding: 12px 14px;">
+                <% if (r.procedures && r.procedures.length > 0) { %>
+                  <div style="max-height: 80px; overflow-y: auto; padding-right: 4px;">
+                    <% r.procedures.forEach((p, pidx) => { %>
+                      <div style="margin-bottom: 2px; font-size: 0.92em; line-height: 1.3;">
+                        <span style="color: #0284c7; font-weight: 600;"><%= pidx + 1 %>.</span>
+                        <span style="font-weight: 600; color: #1e293b;"><%= p.label %></span>
+                        <% if (p.amount) { %>
+                          <span style="color: #64748b; font-size: 0.85em;">(₱<%= Number(p.amount).toFixed(2) %>)</span>
+                        <% } %>
+                      </div>
+                    <% }); %>
+                  </div>
+                <% } else { %>
+                  <span style="color: #94a3b8; font-style: italic;">None assigned</span>
+                <% } %>
+              </td>
+
+              <!-- Financials -->
+              <td style="padding: 12px 14px;">
+                <div style="font-weight: 700; color: #047857;">
+                  HMO: ₱<%= Number(r.hmoCoveredAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %>
+                </div>
+                <% if (r.patientExcessAmount > 0) { %>
+                  <div style="font-size: 0.8em; color: #b91c1c; font-weight: 600;">
+                    Excess: ₱<%= Number(r.patientExcessAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %>
+                  </div>
+                <% } %>
+                <div style="font-size: 0.75em; color: #94a3b8;">
+                  Gross: ₱<%= Number(r.grossAmount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %>
+                </div>
+              </td>
+
+              <!-- Status -->
+              <td style="padding: 12px 14px;">
+                <% if (r.status === 'Pending LOA') { %>
+                  <span style="display: inline-flex; align-items: center; gap: 4px; background: #fffbeb; color: #b45309; border: 1px solid #fef3c7; padding: 3px 8px; border-radius: 12px; font-weight: 700; font-size: 0.82em;">
+                    <i class="fa fa-clock"></i> Pending LOA
+                  </span>
+                <% } else if (r.status === 'Approved') { %>
+                  <span style="display: inline-flex; align-items: center; gap: 4px; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 3px 8px; border-radius: 12px; font-weight: 700; font-size: 0.82em;">
+                    <i class="fa fa-check-circle"></i> Approved
+                  </span>
+                <% } else if (r.status === 'Billed') { %>
+                  <span style="display: inline-flex; align-items: center; gap: 4px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; padding: 3px 8px; border-radius: 12px; font-weight: 700; font-size: 0.82em;">
+                    <i class="fa fa-file-invoice"></i> Billed
+                  </span>
+                <% } else if (r.status === 'Paid') { %>
+                  <span style="display: inline-flex; align-items: center; gap: 4px; background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; padding: 3px 8px; border-radius: 12px; font-weight: 700; font-size: 0.82em;">
+                    <i class="fa fa-badge-check"></i> Paid
+                  </span>
+                <% } else { %>
+                  <span style="display: inline-flex; align-items: center; gap: 4px; background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; padding: 3px 8px; border-radius: 12px; font-weight: 600; font-size: 0.82em;">
+                    <%= r.status %>
+                  </span>
+                <% } %>
+              </td>
+
+              <!-- Billing / SOA -->
+              <td style="padding: 12px 14px;">
+                <% if (r.soaRef) { %>
+                  <div style="font-weight: 600; color: #0f172a; font-size: 0.9em;"><i class="fa fa-receipt" style="color: #64748b;"></i> <%= r.soaRef %></div>
+                <% } %>
+                <% if (r.billedDate) { %>
+                  <div style="font-size: 0.78em; color: #64748b;">Billed: <%= r.billedDate %></div>
+                <% } %>
+                <% if (r.paidDate) { %>
+                  <div style="font-size: 0.78em; color: #15803d; font-weight: 600;">Paid: <%= r.paidDate %></div>
+                <% } %>
+                <% if (!r.soaRef && !r.billedDate && !r.paidDate) { %>
+                  <span style="color: #94a3b8; font-style: italic;">Not Billed</span>
+                <% } %>
+              </td>
+
+              <!-- Action -->
+              <td style="padding: 12px 14px; text-align: center;">
+                <div style="display: inline-flex; gap: 6px;">
+                  <% if (r.status === 'Pending LOA') { %>
+                    <button type="button" onclick="openLoaApprovalModal('<%= r.id %>')" class="button btn-primary" style="height: 30px; padding: 0 10px; font-size: 0.82em; font-weight: 600; background: #059669; border: none; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="Approve LOA & Generate Clinical Tests">
+                      <i class="fa fa-check"></i> Approve
+                    </button>
+                  <% } else { %>
+                    <button type="button" onclick="openSettlementModal('<%= r.id %>')" class="button btn-secondary" style="height: 30px; padding: 0 8px; font-size: 0.82em; font-weight: 600; border-radius: 6px;" title="Billing & Settlement">
+                      <i class="fa fa-file-invoice-dollar"></i>
+                    </button>
+                  <% } %>
+                  <button type="button" onclick="openEditHealthCardModal('<%= r.id %>')" class="button btn-secondary" style="height: 30px; padding: 0 8px; font-size: 0.82em; font-weight: 600; border-radius: 6px;" title="Edit Claim">
+                    <i class="fa fa-edit"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          <% }); %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL 1: ENROLL HEALTH CARD PATIENT       -->
+<!-- ========================================== -->
+<div id="enrollHealthCardModal" style="display: none; position: fixed; z-index: 1050; left: 0; top: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center;">
+  <div style="background: #ffffff; border-radius: 16px; width: 92%; max-width: 620px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); overflow: hidden; max-height: 90vh; display: flex; flex-direction: column;">
+    <div style="padding: 18px 24px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+      <h4 style="margin: 0; font-size: 1.15em; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+        <i class="fa fa-id-card" style="color: #0284c7;"></i> Enroll Health Card Patient / Encode LOA
+      </h4>
+      <button type="button" onclick="closeEnrollHealthCardModal()" style="background: none; border: none; font-size: 1.2em; color: #64748b; cursor: pointer;">&times;</button>
+    </div>
+    <form action="/healthcard" method="POST" style="overflow-y: auto; padding: 20px 24px; flex: 1;">
+      <div style="margin-bottom: 14px;">
+        <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">Link Registered Patient <span style="color: #ef4444;">*</span></label>
+        <div style="display: flex; gap: 8px;">
+          <input type="text" id="enrollPatientSearch" placeholder="Type name or code to search..." onkeyup="searchPatientsForEnroll(this.value)" style="flex: 1; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 0.88em;" />
+          <input type="hidden" name="patientId" id="enrollPatientId" required />
+        </div>
+        <div id="patientSearchResults" style="display: none; border: 1px solid #e2e8f0; border-radius: 8px; max-height: 140px; overflow-y: auto; background: #fff; margin-top: 4px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);"></div>
+        <div id="selectedPatientPreview" style="display: none; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 8px 12px; margin-top: 6px; font-size: 0.85em; color: #166534; font-weight: 600;"></div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+        <div>
+          <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">HMO Provider <span style="color: #ef4444;">*</span></label>
+          <select name="hmoProvider" id="enrollHmoProvider" required style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; padding: 0 10px; font-size: 0.88em;">
+            <option value="">-- Select HMO Provider --</option>
+            <% (hmoProviders || []).forEach(h => { %>
+              <option value="<%= h %>"><%= h %></option>
+            <% }); %>
+          </select>
+        </div>
+        <div>
+          <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">Card No / Member ID <span style="color: #ef4444;">*</span></label>
+          <input type="text" name="cardNumber" id="enrollCardNumber" required placeholder="e.g. 1111-2222-3333" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 0.88em; box-sizing: border-box;" />
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+        <div>
+          <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">LOA Number / Approval Code</label>
+          <input type="text" name="loaNumber" placeholder="e.g. LOA-98765432" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 0.88em; box-sizing: border-box;" />
+        </div>
+        <div>
+          <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">LOA Expiry Date</label>
+          <input type="date" name="loaExpiry" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 0.88em; box-sizing: border-box;" />
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+        <div>
+          <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">Corporate Account / Employer</label>
+          <input type="text" name="company" id="enrollCompany" placeholder="e.g. San Miguel Corp, Accenture" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 0.88em; box-sizing: border-box;" />
+        </div>
+        <div>
+          <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">Availment Type</label>
+          <select name="availmentType" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; padding: 0 10px; font-size: 0.88em;">
+            <option value="Outpatient Diagnostic">Outpatient Diagnostic</option>
+            <option value="Consultation">Outpatient Consultation</option>
+            <option value="Executive Checkup">Executive Checkup (ECU)</option>
+            <option value="Pre-employment">Pre-Employment Medical Examination (PEME)</option>
+            <option value="Annual Physical Exam">Annual Physical Examination (APE)</option>
+            <option value="Emergency">Emergency</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+        <div>
+          <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">Clinical Diagnosis / ICD-10</label>
+          <input type="text" name="diagnosis" placeholder="e.g. Routine / Essential Hypertension" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 0.88em; box-sizing: border-box;" />
+        </div>
+        <div>
+          <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">Attending / Requesting Doctor</label>
+          <input type="text" name="physician" id="enrollPhysician" placeholder="Dr. Juan Dela Cruz" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 0.88em; box-sizing: border-box;" />
+        </div>
+      </div>
+
+      <div style="margin-bottom: 14px;">
+        <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">Remarks / Notes</label>
+        <textarea name="notes" rows="2" placeholder="Approval conditions, pre-existing conditions, copay instructions..." style="width: 100%; border-radius: 8px; border: 1px solid #cbd5e1; padding: 8px 10px; font-size: 0.88em; box-sizing: border-box;"></textarea>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
+        <button type="button" onclick="closeEnrollHealthCardModal()" class="button btn-secondary" style="height: 38px; padding: 0 18px; border-radius: 8px; font-weight: 600;">Cancel</button>
+        <button type="submit" class="button btn-primary" style="height: 38px; padding: 0 20px; border-radius: 8px; font-weight: 600; background: #0284c7; border: none; cursor: pointer;">
+          <i class="fa fa-save"></i> Save Claim
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL 2: LOA APPROVAL & PROCEDURE ROUTING  -->
+<!-- ========================================== -->
+<div id="loaApprovalModal" style="display: none; position: fixed; z-index: 1050; left: 0; top: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center;">
+  <div style="background: #ffffff; border-radius: 16px; width: 94%; max-width: 820px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); overflow: hidden; max-height: 92vh; display: flex; flex-direction: column;">
+    <div style="padding: 16px 24px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f0fdf4;">
+      <div>
+        <h4 style="margin: 0; font-size: 1.15em; font-weight: 700; color: #166534; display: flex; align-items: center; gap: 8px;">
+          <i class="fa fa-check-circle" style="color: #16a34a;"></i> Authorize LOA & Route Diagnostic Tests
+        </h4>
+        <div id="loaApprovalSub" style="font-size: 0.84em; color: #15803d; margin-top: 2px;"></div>
+      </div>
+      <button type="button" onclick="closeLoaApprovalModal()" style="background: none; border: none; font-size: 1.2em; color: #64748b; cursor: pointer;">&times;</button>
+    </div>
+
+    <form id="loaApprovalForm" method="POST" style="overflow-y: auto; padding: 20px 24px; flex: 1;">
+      <input type="hidden" name="procedures" id="loaApprovalProceduresJson" />
+
+      <!-- LOA Header Details -->
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+        <div>
+          <label style="display: block; font-size: 0.75em; font-weight: 700; color: #475569; text-transform: uppercase;">LOA Number <span style="color: #ef4444;">*</span></label>
+          <input type="text" name="loaNumber" id="approvalLoaNumber" required placeholder="LOA #" style="width: 100%; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 8px; font-size: 0.88em; font-family: monospace; font-weight: 700;" />
+        </div>
+        <div>
+          <label style="display: block; font-size: 0.75em; font-weight: 700; color: #475569; text-transform: uppercase;">LOA Expiry Date</label>
+          <input type="date" name="loaExpiry" id="approvalLoaExpiry" style="width: 100%; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 8px; font-size: 0.88em;" />
+        </div>
+        <div>
+          <label style="display: block; font-size: 0.75em; font-weight: 700; color: #475569; text-transform: uppercase;">Attending Doctor</label>
+          <input type="text" name="physician" id="approvalPhysician" placeholder="Doctor Name" style="width: 100%; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 8px; font-size: 0.88em;" />
+        </div>
+      </div>
+
+      <!-- Quick Test Selection Catalog -->
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; font-size: 0.85em; font-weight: 700; color: #1e293b; margin-bottom: 6px;">
+          Select Tests Authorized by LOA:
+        </label>
+        <div style="display: flex; gap: 8px; margin-bottom: 8px; align-items: center; flex-wrap: wrap;">
+          <input type="text" id="catalogSearchInput" placeholder="Filter tests (e.g. CBC, Ultrasound, Lipid, X-Ray, Dengue, ECG)..." onkeyup="filterCatalogButtons(this.value)" style="flex: 1; min-width: 220px; height: 34px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 0.85em;" />
+          <div style="display: flex; gap: 6px; align-items: center;">
+            <input type="text" id="customTestInput" placeholder="Type custom test from LOA..." style="width: 220px; height: 34px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 0.85em;" />
+            <button type="button" onclick="addCustomProcedure()" class="button" style="height: 34px; padding: 0 12px; font-size: 0.82em; font-weight: 700; background: #0284c7; color: #fff; border: none; border-radius: 8px; cursor: pointer; white-space: nowrap;">
+              + Add Custom Test
+            </button>
+          </div>
+        </div>
+        <div id="catalogButtonContainer" style="display: flex; flex-wrap: wrap; gap: 6px; max-height: 140px; overflow-y: auto; padding: 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+          <% (catalog || []).forEach(cat => { %>
+            <button type="button" class="catalog-test-btn" data-key="<%= cat.key %>" data-label="<%= cat.label %>" data-category="<%= cat.category %>" data-area="<%= cat.targetArea %>" data-sendout="<%= cat.forSendOut ? '1' : '0' %>" data-price="<%= cat.defaultPrice || 250 %>" onclick="addProcedureToApproval(this)" style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 10px; font-size: 0.8em; font-weight: 600; color: #334155; cursor: pointer; transition: all 0.15s;" onmouseover="this.style.borderColor='#0284c7'; this.style.color='#0284c7';" onmouseout="this.style.borderColor='#cbd5e1'; this.style.color='#334155';">
+              + <%= cat.label %> <span style="color: #64748b; font-size: 0.85em; font-weight: normal;">(₱<%= cat.defaultPrice || 250 %>)</span>
+            </button>
+          <% }); %>
+        </div>
+      </div>
+
+      <!-- Assigned Procedures Table with Financial Breakdown -->
+      <div style="margin-bottom: 18px;">
+        <label style="display: block; font-size: 0.85em; font-weight: 700; color: #1e293b; margin-bottom: 6px;">
+          Authorized Procedures List (<span id="assignedCount">0</span> assigned):
+        </label>
+        <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.85em;">
+            <thead>
+              <tr style="background: #f1f5f9; color: #475569; text-transform: uppercase; font-size: 0.75em;">
+                <th style="padding: 8px 10px; text-align: left;">Procedure</th>
+                <th style="padding: 8px 10px; text-align: left; width: 120px;">Category</th>
+                <th style="padding: 8px 10px; text-align: right; width: 100px;">Price (₱)</th>
+                <th style="padding: 8px 10px; text-align: right; width: 110px;">HMO Covered</th>
+                <th style="padding: 8px 10px; text-align: right; width: 90px;">Patient Co-Pay</th>
+                <th style="padding: 8px 10px; text-align: center; width: 40px;"></th>
+              </tr>
+            </thead>
+            <tbody id="assignedProceduresTbody">
+              <tr>
+                <td colspan="6" style="padding: 20px; text-align: center; color: #94a3b8; font-style: italic;">
+                  No procedures assigned yet. Click the buttons above to add authorized tests.
+                </td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr style="background: #f8fafc; font-weight: 700; border-top: 2px solid #e2e8f0;">
+                <td colspan="2" style="padding: 10px; text-align: right; color: #334155;">Totals:</td>
+                <td style="padding: 10px; text-align: right; color: #0f172a;" id="totalGrossText">₱0.00</td>
+                <td style="padding: 10px; text-align: right; color: #166534;" id="totalCoveredText">₱0.00</td>
+                <td style="padding: 10px; text-align: right; color: #b91c1c;" id="totalExcessText">₱0.00</td>
+                <td></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; font-size: 0.85em; color: #1e40af; display: flex; align-items: center; gap: 8px;">
+        <i class="fa fa-info-circle" style="font-size: 1.2em;"></i>
+        <span>
+          <strong>Automated Clinical Routing:</strong> Upon approval, test orders will skip the cashier and land directly in diagnostic stations (Extraction, X-Ray, Ultrasound, ECG, Send-out) with HMO tags.
+        </span>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
+        <button type="button" onclick="closeLoaApprovalModal()" class="button btn-secondary" style="height: 38px; padding: 0 18px; border-radius: 8px; font-weight: 600;">Cancel</button>
+        <button type="button" onclick="submitLoaApproval()" class="button btn-primary" style="height: 38px; padding: 0 20px; border-radius: 8px; font-weight: 700; background: #059669; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+          <i class="fa fa-check"></i> Approve & Generate Tests
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL 3: BILLING & SETTLEMENT MODAL        -->
+<!-- ========================================== -->
+<div id="settlementModal" style="display: none; position: fixed; z-index: 1050; left: 0; top: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center;">
+  <div style="background: #ffffff; border-radius: 16px; width: 90%; max-width: 520px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); overflow: hidden;">
+    <div style="padding: 16px 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+      <h4 style="margin: 0; font-size: 1.1em; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+        <i class="fa fa-file-invoice-dollar" style="color: #0284c7;"></i> Update Claim Billing & Settlement
+      </h4>
+      <button type="button" onclick="closeSettlementModal()" style="background: none; border: none; font-size: 1.2em; color: #64748b; cursor: pointer;">&times;</button>
+    </div>
+    <form id="settlementForm" onsubmit="submitSettlement(event)" style="padding: 20px;">
+      <input type="hidden" id="settlementRecordId" />
+
+      <div style="margin-bottom: 12px;">
+        <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">Claim Status</label>
+        <select id="settlementStatus" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; padding: 0 10px; font-size: 0.88em;">
+          <option value="Approved">Approved (Ready for Billing)</option>
+          <option value="Billed">Billed / Transmitted to HMO</option>
+          <option value="Paid">Paid / Settled by HMO</option>
+          <option value="Denied">Denied / Disapproved</option>
+          <option value="Cancelled">Cancelled</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom: 12px;">
+        <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">SOA Reference / Transmittal Number</label>
+        <input type="text" id="settlementSoaRef" placeholder="e.g. SOA-2026-10-0012" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 0.88em; box-sizing: border-box;" />
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+        <div>
+          <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">Date Billed / Transmitted</label>
+          <input type="date" id="settlementBilledDate" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 8px; font-size: 0.88em; box-sizing: border-box;" />
+        </div>
+        <div>
+          <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">Date Settled / Paid</label>
+          <input type="date" id="settlementPaidDate" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 8px; font-size: 0.88em; box-sizing: border-box;" />
+        </div>
+      </div>
+
+      <div style="margin-bottom: 14px;">
+        <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">Payment Check # / Remittance Ref</label>
+        <input type="text" id="settlementPaymentRef" placeholder="e.g. Check # 00123958 / BDO Transfer Ref" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 0.88em; box-sizing: border-box;" />
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #e2e8f0; padding-top: 14px;">
+        <button type="button" onclick="closeSettlementModal()" class="button btn-secondary" style="height: 36px; padding: 0 16px; border-radius: 8px;">Cancel</button>
+        <button type="submit" class="button btn-primary" style="height: 36px; padding: 0 18px; border-radius: 8px; background: #0284c7; border: none; font-weight: 600; cursor: pointer;">
+          Save Settlement
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL 4: UNIVERSAL BATCH UPDATE MODAL      -->
+<!-- ========================================== -->
+<div id="universalBatchModal" style="display: none; position: fixed; z-index: 1050; left: 0; top: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center;">
+  <div style="background: #ffffff; border-radius: 16px; width: 90%; max-width: 500px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); overflow: hidden;">
+    <div style="padding: 16px 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+      <h4 style="margin: 0; font-size: 1.1em; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+        <i class="fa fa-layer-group" style="color: #0284c7;"></i> Universal Batch Update (<span id="batchCountBadge">0</span>)
+      </h4>
+      <button type="button" onclick="closeUniversalBatchModal()" style="background: none; border: none; font-size: 1.2em; color: #64748b; cursor: pointer;">&times;</button>
+    </div>
+    <form onsubmit="submitUniversalBatch(event)" style="padding: 20px;">
+      <div style="margin-bottom: 12px;">
+        <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">Update Status To:</label>
+        <select id="batchStatus" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; padding: 0 10px; font-size: 0.88em;">
+          <option value="">-- Do Not Change Status --</option>
+          <option value="Approved">Approved</option>
+          <option value="Billed">Billed / Transmitted to HMO</option>
+          <option value="Paid">Paid / Settled by HMO</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom: 12px;">
+        <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">Set Billing SOA Reference</label>
+        <input type="text" id="batchSoaRef" placeholder="Batch transmittal / SOA #" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 0.88em; box-sizing: border-box;" />
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+        <div>
+          <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">Billed Date</label>
+          <input type="date" id="batchBilledDate" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 8px; font-size: 0.88em; box-sizing: border-box;" />
+        </div>
+        <div>
+          <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">Paid Date</label>
+          <input type="date" id="batchPaidDate" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 8px; font-size: 0.88em; box-sizing: border-box;" />
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #e2e8f0; padding-top: 14px;">
+        <button type="button" onclick="closeUniversalBatchModal()" class="button btn-secondary" style="height: 36px; padding: 0 16px; border-radius: 8px;">Cancel</button>
+        <button type="submit" class="button btn-primary" style="height: 36px; padding: 0 18px; border-radius: 8px; background: #0284c7; border: none; font-weight: 600; cursor: pointer;">
+          Apply to Selected
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL 5: EDIT HEALTH CARD CLAIM            -->
+<!-- ========================================== -->
+<div id="editHealthCardModal" style="display: none; position: fixed; z-index: 1050; left: 0; top: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center;">
+  <div style="background: #ffffff; border-radius: 16px; width: 90%; max-width: 600px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); overflow: hidden; max-height: 90vh; display: flex; flex-direction: column;">
+    <div style="padding: 16px 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+      <h4 style="margin: 0; font-size: 1.1em; font-weight: 700; color: #0f172a;">Edit Health Card Claim</h4>
+      <button type="button" onclick="closeEditHealthCardModal()" style="background: none; border: none; font-size: 1.2em; color: #64748b; cursor: pointer;">&times;</button>
+    </div>
+    <form id="editHealthCardForm" onsubmit="submitEditHealthCard(event)" style="padding: 20px; overflow-y: auto; flex: 1;">
+      <input type="hidden" id="editRecordId" />
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+        <div>
+          <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">HMO Provider</label>
+          <select id="editHmoProvider" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; padding: 0 10px; font-size: 0.88em;">
+            <% (hmoProviders || []).forEach(h => { %>
+              <option value="<%= h %>"><%= h %></option>
+            <% }); %>
+          </select>
+        </div>
+        <div>
+          <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">Card No / Member ID</label>
+          <input type="text" id="editCardNumber" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 0.88em; box-sizing: border-box;" />
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+        <div>
+          <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">LOA Number</label>
+          <input type="text" id="editLoaNumber" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 0.88em; box-sizing: border-box;" />
+        </div>
+        <div>
+          <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">LOA Expiry</label>
+          <input type="date" id="editLoaExpiry" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 0.88em; box-sizing: border-box;" />
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+        <div>
+          <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">Corporate Company / Employer</label>
+          <input type="text" id="editCompany" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 0.88em; box-sizing: border-box;" />
+        </div>
+        <div>
+          <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">Attending Doctor</label>
+          <input type="text" id="editPhysician" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 0.88em; box-sizing: border-box;" />
+        </div>
+      </div>
+
+      <div style="margin-bottom: 12px;">
+        <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">Diagnosis / ICD-10</label>
+        <input type="text" id="editDiagnosis" style="width: 100%; height: 38px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 0.88em; box-sizing: border-box;" />
+      </div>
+
+      <div style="margin-bottom: 14px;">
+        <label style="display: block; font-weight: 600; font-size: 0.85em; color: #334155; margin-bottom: 4px;">Notes / Remarks</label>
+        <textarea id="editNotes" rows="2" style="width: 100%; border-radius: 8px; border: 1px solid #cbd5e1; padding: 8px 10px; font-size: 0.88em; box-sizing: border-box;"></textarea>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #e2e8f0; padding-top: 14px;">
+        <button type="button" onclick="closeEditHealthCardModal()" class="button btn-secondary" style="height: 36px; padding: 0 16px; border-radius: 8px;">Cancel</button>
+        <button type="submit" class="button btn-primary" style="height: 36px; padding: 0 18px; border-radius: 8px; background: #0284c7; border: none; font-weight: 600; cursor: pointer;">
+          Save Changes
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Scripts for Health Card Module -->
+<script>
+  let assignedProcedures = [];
+  let currentActiveRecord = null;
+
+  // Multi-Select Checkboxes
+  function updateSelectedCount() {
+    const checked = document.querySelectorAll('.record-checkbox:checked');
+    const bar = document.getElementById('bulkActionBar');
+    const countEl = document.getElementById('selectedCount');
+    const badgeEl = document.getElementById('batchCountBadge');
+    if (checked.length > 0) {
+      bar.style.display = 'flex';
+      countEl.textContent = checked.length;
+      if (badgeEl) badgeEl.textContent = checked.length;
+    } else {
+      bar.style.display = 'none';
+      if (badgeEl) badgeEl.textContent = '0';
+    }
+  }
+
+  function toggleSelectAll(master) {
+    const checkboxes = document.querySelectorAll('.record-checkbox');
+    checkboxes.forEach(cb => { cb.checked = master.checked; });
+    updateSelectedCount();
+  }
+
+  function clearSelection() {
+    const checkboxes = document.querySelectorAll('.record-checkbox');
+    checkboxes.forEach(cb => { cb.checked = false; });
+    const master = document.getElementById('selectAllCheckbox');
+    if (master) master.checked = false;
+    updateSelectedCount();
+  }
+
+  function getSelectedIds() {
+    const checked = document.querySelectorAll('.record-checkbox:checked');
+    return Array.from(checked).map(cb => cb.value);
+  }
+
+  // Quick 1-Click Status Apply
+  async function quickBatchApply(field, value) {
+    const ids = getSelectedIds();
+    if (!ids.length) return alert('Please select at least one claim.');
+    if (!confirm(`Apply "${value}" to ${ids.length} selected claim(s)?`)) return;
+
+    try {
+      const res = await fetch('/healthcard/bulk-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ ids, [field]: value })
+      });
+      const data = await res.json();
+      if (data.success) {
+        window.location.reload();
+      } else {
+        alert('Error: ' + (data.error || 'Failed to update'));
+      }
+    } catch (err) {
+      alert('Network error: ' + err.message);
+    }
+  }
+
+  function exportSelectedCsv() {
+    const ids = getSelectedIds();
+    if (!ids.length) return alert('Please select claims to export.');
+    window.location.href = '/healthcard/export.csv?ids=' + ids.join(',');
+  }
+
+  // Modal 1: Enroll Health Card
+  function openEnrollHealthCardModal() {
+    document.getElementById('enrollHealthCardModal').style.display = 'flex';
+  }
+  function closeEnrollHealthCardModal() {
+    document.getElementById('enrollHealthCardModal').style.display = 'none';
+  }
+
+  // Patient Autocomplete for Enrollment
+  let patientSearchTimer = null;
+  function searchPatientsForEnroll(query) {
+    clearTimeout(patientSearchTimer);
+    if (!query || query.trim().length < 2) {
+      document.getElementById('patientSearchResults').style.display = 'none';
+      return;
+    }
+    patientSearchTimer = setTimeout(async () => {
+      try {
+        const res = await fetch('/patients?format=json&search=' + encodeURIComponent(query.trim()));
+        if (res.ok) {
+          const patients = await res.json();
+          renderPatientResults(patients);
+        }
+      } catch (e) {}
+    }, 250);
+  }
+
+  function renderPatientResults(patients) {
+    const box = document.getElementById('patientSearchResults');
+    if (!patients || !patients.length) {
+      box.innerHTML = '<div style="padding: 8px 12px; color: #94a3b8; font-size: 0.85em;">No matching patients</div>';
+      box.style.display = 'block';
+      return;
+    }
+    let html = '';
+    patients.slice(0, 6).forEach(p => {
+      const fn = [p.firstName, p.middleName, p.lastName].filter(Boolean).join(' ');
+      const hmo = p.healthInsuranceProvider || p.healthCardProvider || '';
+      const card = p.healthInsuranceId || p.healthCardNumber || '';
+      const comp = p.company || p.philhealthAgency || '';
+      const doc = p.physician || '';
+      html += `<div onclick="selectPatientForEnroll('${p.id}', '${fn.replace(/'/g, "\\'")}', '${p.patientCode || ''}', '${hmo.replace(/'/g, "\\'")}', '${card.replace(/'/g, "\\'")}', '${comp.replace(/'/g, "\\'")}', '${doc.replace(/'/g, "\\'")}')" style="padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #f1f5f9; font-size: 0.85em;" onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background='#fff'">
+        <strong>${fn}</strong> <span style="color: #64748b;">(${p.patientCode || p.id})</span>
+        ${hmo ? `<span style="background: #e0f2fe; color: #0369a1; padding: 1px 6px; border-radius: 4px; font-size: 0.78em; margin-left: 6px;">${hmo}</span>` : ''}
+      </div>`;
+    });
+    box.innerHTML = html;
+    box.style.display = 'block';
+  }
+
+  function selectPatientForEnroll(id, name, code, hmo, card, comp, doc) {
+    document.getElementById('enrollPatientId').value = id;
+    document.getElementById('enrollPatientSearch').value = `${name} (${code})`;
+    document.getElementById('patientSearchResults').style.display = 'none';
+
+    if (hmo) document.getElementById('enrollHmoProvider').value = hmo;
+    if (card) document.getElementById('enrollCardNumber').value = card;
+    if (comp) document.getElementById('enrollCompany').value = comp;
+    if (doc) document.getElementById('enrollPhysician').value = doc;
+
+    const prev = document.getElementById('selectedPatientPreview');
+    prev.innerHTML = `<i class="fa fa-user-check"></i> Selected: <strong>${name}</strong> [${code}]`;
+    prev.style.display = 'block';
+  }
+
+  // Modal 2: LOA Approval & Procedure Assignment
+  async function openLoaApprovalModal(id) {
+    try {
+      const res = await fetch('/healthcard/api/' + id);
+      const data = await res.json();
+      if (!data.success || !data.record) return alert('Failed to load claim details');
+
+      currentActiveRecord = data.record;
+      document.getElementById('loaApprovalSub').textContent = `Patient: ${currentActiveRecord.fullName || 'N/A'} | Control #: ${currentActiveRecord.controlNo || ''} | HMO: ${currentActiveRecord.hmoProvider || 'N/A'}`;
+      document.getElementById('approvalLoaNumber').value = currentActiveRecord.loaNumber || '';
+      document.getElementById('approvalLoaExpiry').value = currentActiveRecord.loaExpiry || '';
+      document.getElementById('approvalPhysician').value = currentActiveRecord.physician || '';
+
+      document.getElementById('loaApprovalForm').action = `/healthcard/${id}/approve`;
+
+      assignedProcedures = Array.isArray(currentActiveRecord.procedures) && currentActiveRecord.procedures.length
+        ? JSON.parse(JSON.stringify(currentActiveRecord.procedures))
+        : [];
+
+      renderAssignedProcedures();
+      document.getElementById('loaApprovalModal').style.display = 'flex';
+    } catch (e) {
+      alert('Error fetching record: ' + e.message);
+    }
+  }
+
+  function closeLoaApprovalModal() {
+    document.getElementById('loaApprovalModal').style.display = 'none';
+  }
+
+  function filterCatalogButtons(query) {
+    const q = (query || '').toLowerCase().trim();
+    const btns = document.querySelectorAll('.catalog-test-btn');
+    btns.forEach(btn => {
+      const label = (btn.getAttribute('data-label') || '').toLowerCase();
+      const cat = (btn.getAttribute('data-category') || '').toLowerCase();
+      if (!q || label.includes(q) || cat.includes(q)) {
+        btn.style.display = 'inline-block';
+      } else {
+        btn.style.display = 'none';
+      }
+    });
+  }
+
+  function addProcedureToApproval(btn) {
+    const key = btn.getAttribute('data-key');
+    const label = btn.getAttribute('data-label');
+    const category = btn.getAttribute('data-category');
+    const targetArea = btn.getAttribute('data-area') || 'Extraction Area';
+    const forSendOut = btn.getAttribute('data-sendout') === '1';
+
+    // Prevent duplicates
+    if (assignedProcedures.some(p => p.key === key)) {
+      return alert(`${label} is already in the authorized list.`);
+    }
+
+    // Default procedure pricing from catalog attribute
+    const defaultPrice = Number(btn.getAttribute('data-price')) || 250;
+
+    assignedProcedures.push({
+      key,
+      label,
+      category,
+      targetArea,
+      forSendOut,
+      amount: defaultPrice,
+      hmoCovered: defaultPrice,
+      patientExcess: 0,
+      remarks: ''
+    });
+
+    renderAssignedProcedures();
+  }
+
+  function addCustomProcedure() {
+    const input = document.getElementById('customTestInput');
+    const name = (input.value || '').trim();
+    if (!name) return alert('Please enter procedure / test name.');
+    const key = 'custom_' + Date.now();
+    assignedProcedures.push({
+      key,
+      label: name,
+      category: 'Diagnostic',
+      targetArea: 'Extraction Area',
+      forSendOut: false,
+      amount: 450,
+      hmoCovered: 450,
+      patientExcess: 0,
+      remarks: 'LOA Authorized'
+    });
+    input.value = '';
+    renderAssignedProcedures();
+  }
+
+  function removeAssignedProcedure(index) {
+    assignedProcedures.splice(index, 1);
+    renderAssignedProcedures();
+  }
+
+  function onProcedurePriceChange(index, field, value) {
+    const num = Math.max(0, Number(value) || 0);
+    const proc = assignedProcedures[index];
+    if (field === 'amount') {
+      proc.amount = num;
+      // Default covered = full amount unless excess specified
+      if (proc.hmoCovered > num) proc.hmoCovered = num;
+      proc.patientExcess = Math.max(0, proc.amount - proc.hmoCovered);
+    } else if (field === 'hmoCovered') {
+      proc.hmoCovered = num;
+      proc.patientExcess = Math.max(0, (proc.amount || 0) - num);
+    } else if (field === 'patientExcess') {
+      proc.patientExcess = num;
+      proc.hmoCovered = Math.max(0, (proc.amount || 0) - num);
+    }
+    renderAssignedProcedures();
+  }
+
+  function renderAssignedProcedures() {
+    const tbody = document.getElementById('assignedProceduresTbody');
+    const countEl = document.getElementById('assignedCount');
+    countEl.textContent = assignedProcedures.length;
+
+    if (!assignedProcedures.length) {
+      tbody.innerHTML = `<tr><td colspan="6" style="padding: 20px; text-align: center; color: #94a3b8; font-style: italic;">No procedures assigned yet. Click the buttons above to add authorized tests.</td></tr>`;
+      document.getElementById('totalGrossText').textContent = '₱0.00';
+      document.getElementById('totalCoveredText').textContent = '₱0.00';
+      document.getElementById('totalExcessText').textContent = '₱0.00';
+      return;
+    }
+
+    let gross = 0, covered = 0, excess = 0;
+    let html = '';
+
+    assignedProcedures.forEach((p, idx) => {
+      gross += (p.amount || 0);
+      covered += (p.hmoCovered || 0);
+      excess += (p.patientExcess || 0);
+
+      html += `<tr style="border-bottom: 1px solid #f1f5f9;">
+        <td style="padding: 8px 10px; font-weight: 600; color: #1e293b;">
+          ${idx + 1}. ${p.label}
+          ${p.forSendOut ? '<span style="background: #fef3c7; color: #b45309; font-size: 0.72em; padding: 1px 4px; border-radius: 4px; margin-left: 4px;">Send-out</span>' : ''}
+        </td>
+        <td style="padding: 8px 10px; color: #64748b; font-size: 0.85em;">${p.category || 'General'}</td>
+        <td style="padding: 8px 10px; text-align: right;">
+          <input type="number" step="0.01" value="${p.amount}" onchange="onProcedurePriceChange(${idx}, 'amount', this.value)" style="width: 80px; height: 28px; text-align: right; border-radius: 4px; border: 1px solid #cbd5e1; padding: 0 4px; font-size: 0.88em;" />
+        </td>
+        <td style="padding: 8px 10px; text-align: right;">
+          <input type="number" step="0.01" value="${p.hmoCovered}" onchange="onProcedurePriceChange(${idx}, 'hmoCovered', this.value)" style="width: 85px; height: 28px; text-align: right; border-radius: 4px; border: 1px solid #86efac; background: #f0fdf4; padding: 0 4px; font-size: 0.88em; font-weight: 600; color: #166534;" />
+        </td>
+        <td style="padding: 8px 10px; text-align: right;">
+          <input type="number" step="0.01" value="${p.patientExcess}" onchange="onProcedurePriceChange(${idx}, 'patientExcess', this.value)" style="width: 75px; height: 28px; text-align: right; border-radius: 4px; border: 1px solid #fca5a5; background: #fff1f2; padding: 0 4px; font-size: 0.88em; font-weight: 600; color: #991b1b;" />
+        </td>
+        <td style="padding: 8px 10px; text-align: center;">
+          <button type="button" onclick="removeAssignedProcedure(${idx})" style="background: none; border: none; color: #ef4444; font-size: 1.1em; cursor: pointer;" title="Remove">&times;</button>
+        </td>
+      </tr>`;
+    });
+
+    tbody.innerHTML = html;
+    document.getElementById('totalGrossText').textContent = '₱' + gross.toFixed(2);
+    document.getElementById('totalCoveredText').textContent = '₱' + covered.toFixed(2);
+    document.getElementById('totalExcessText').textContent = '₱' + excess.toFixed(2);
+  }
+
+  function submitLoaApproval() {
+    if (!assignedProcedures.length) {
+      return alert('Please add at least one authorized test procedure before approving.');
+    }
+    const loaNum = document.getElementById('approvalLoaNumber').value;
+    if (!loaNum || !loaNum.trim()) {
+      return alert('Please specify the LOA Number / Approval Code.');
+    }
+    document.getElementById('loaApprovalProceduresJson').value = JSON.stringify(assignedProcedures);
+    document.getElementById('loaApprovalForm').submit();
+  }
+
+  // Modal 3: Settlement
+  async function openSettlementModal(id) {
+    try {
+      const res = await fetch('/healthcard/api/' + id);
+      const data = await res.json();
+      if (!data.success || !data.record) return alert('Failed to load record');
+
+      const r = data.record;
+      document.getElementById('settlementRecordId').value = r.id;
+      document.getElementById('settlementStatus').value = r.status || 'Approved';
+      document.getElementById('settlementSoaRef').value = r.soaRef || '';
+      document.getElementById('settlementBilledDate').value = r.billedDate || '';
+      document.getElementById('settlementPaidDate').value = r.paidDate || '';
+      document.getElementById('settlementPaymentRef').value = r.paymentRef || '';
+
+      document.getElementById('settlementModal').style.display = 'flex';
+    } catch (e) {
+      alert('Error: ' + e.message);
+    }
+  }
+
+  function closeSettlementModal() {
+    document.getElementById('settlementModal').style.display = 'none';
+  }
+
+  async function submitSettlement(e) {
+    e.preventDefault();
+    const id = document.getElementById('settlementRecordId').value;
+    const status = document.getElementById('settlementStatus').value;
+    const soaRef = document.getElementById('settlementSoaRef').value;
+    const billedDate = document.getElementById('settlementBilledDate').value;
+    const paidDate = document.getElementById('settlementPaidDate').value;
+    const paymentRef = document.getElementById('settlementPaymentRef').value;
+
+    try {
+      const res = await fetch(`/healthcard/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ status, soaRef, billedDate, paidDate, paymentRef })
+      });
+      const data = await res.json();
+      if (data.success) {
+        window.location.reload();
+      } else {
+        alert('Error: ' + (data.error || 'Failed to update'));
+      }
+    } catch (err) {
+      alert('Network error: ' + err.message);
+    }
+  }
+
+  // Modal 4: Universal Batch Update
+  function openUniversalBatchModal() {
+    const ids = getSelectedIds();
+    if (!ids.length) return alert('Please select at least one claim.');
+    document.getElementById('batchCountBadge').textContent = ids.length;
+    document.getElementById('universalBatchModal').style.display = 'flex';
+  }
+  function closeUniversalBatchModal() {
+    document.getElementById('universalBatchModal').style.display = 'none';
+  }
+
+  async function submitUniversalBatch(e) {
+    e.preventDefault();
+    const ids = getSelectedIds();
+    const status = document.getElementById('batchStatus').value;
+    const soaRef = document.getElementById('batchSoaRef').value;
+    const billedDate = document.getElementById('batchBilledDate').value;
+    const paidDate = document.getElementById('batchPaidDate').value;
+
+    try {
+      const res = await fetch('/healthcard/bulk-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ ids, status: status || undefined, soaRef, billedDate, paidDate })
+      });
+      const data = await res.json();
+      if (data.success) {
+        window.location.reload();
+      } else {
+        alert('Error: ' + (data.error || 'Failed to batch update'));
+      }
+    } catch (err) {
+      alert('Network error: ' + err.message);
+    }
+  }
+
+  // Modal 5: Edit Claim
+  async function openEditHealthCardModal(id) {
+    try {
+      const res = await fetch('/healthcard/api/' + id);
+      const data = await res.json();
+      if (!data.success || !data.record) return alert('Failed to load claim');
+
+      const r = data.record;
+      document.getElementById('editRecordId').value = r.id;
+      document.getElementById('editHmoProvider').value = r.hmoProvider || '';
+      document.getElementById('editCardNumber').value = r.cardNumber || '';
+      document.getElementById('editLoaNumber').value = r.loaNumber || '';
+      document.getElementById('editLoaExpiry').value = r.loaExpiry || '';
+      document.getElementById('editCompany').value = r.company || '';
+      document.getElementById('editPhysician').value = r.physician || '';
+      document.getElementById('editDiagnosis').value = r.diagnosis || '';
+      document.getElementById('editNotes').value = r.notes || '';
+
+      document.getElementById('editHealthCardModal').style.display = 'flex';
+    } catch (e) {
+      alert('Error: ' + e.message);
+    }
+  }
+
+  function closeEditHealthCardModal() {
+    document.getElementById('editHealthCardModal').style.display = 'none';
+  }
+
+  async function submitEditHealthCard(e) {
+    e.preventDefault();
+    const id = document.getElementById('editRecordId').value;
+    const hmoProvider = document.getElementById('editHmoProvider').value;
+    const cardNumber = document.getElementById('editCardNumber').value;
+    const loaNumber = document.getElementById('editLoaNumber').value;
+    const loaExpiry = document.getElementById('editLoaExpiry').value;
+    const company = document.getElementById('editCompany').value;
+    const physician = document.getElementById('editPhysician').value;
+    const diagnosis = document.getElementById('editDiagnosis').value;
+    const notes = document.getElementById('editNotes').value;
+
+    try {
+      const res = await fetch(`/healthcard/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ hmoProvider, cardNumber, loaNumber, loaExpiry, company, physician, diagnosis, notes })
+      });
+      const data = await res.json();
+      if (data.success) {
+        window.location.reload();
+      } else {
+        alert('Error: ' + (data.error || 'Failed to update'));
+      }
+    } catch (err) {
+      alert('Network error: ' + err.message);
+    }
+  }
+</script>

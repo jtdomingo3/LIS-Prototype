@@ -487,6 +487,45 @@ router.post('/', requireAuth, canAccessPatient, [
       }
     }
 
+    // If patient is enrolled under Health Card / HMO, auto-create Health Card (HMO) claims panel record
+    const isHealthCardEnrolled = healthInsuranceConsent || Boolean(healthInsuranceProvider && healthInsuranceProvider.trim());
+    if (isHealthCardEnrolled) {
+      try {
+        const HealthCardRecord = require('../models/HealthCardRecord');
+        const existingHc = await HealthCardRecord.findOne({ patientId: patient.id });
+        if (!existingHc) {
+          const recDate = patient.createdAt ? new Date(patient.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+          const controlNo = HealthCardRecord.getNextControlNo(recDate);
+          const hcRec = new HealthCardRecord({
+            controlNo,
+            patientId: patient.id,
+            recordDate: recDate,
+            firstName: safeFirstName,
+            middleName: safeMiddleName,
+            lastName: safeLastName,
+            hmoProvider: healthInsuranceProvider || '',
+            cardNumber: healthInsuranceId || '',
+            company: company || '',
+            loaNumber: req.body.loaNumber || '',
+            loaDate: recDate,
+            loaExpiry: req.body.loaExpiry || '',
+            availmentType: req.body.availmentType || 'Outpatient Diagnostic',
+            diagnosis: req.body.diagnosis || '',
+            physician: patient.physician || '',
+            procedures: [], // No pre-assigned tests — strictly assigned upon LOA approval!
+            grossAmount: 0,
+            hmoCoveredAmount: 0,
+            patientExcessAmount: 0,
+            status: 'Pending LOA', // Lands in HMO panel for LOA verification & procedure assignment
+            notes: req.body.notes || ''
+          });
+          await hcRec.save();
+        }
+      } catch (e) {
+        console.warn('Failed auto-creating Health Card record on patient create:', e);
+      }
+    }
+
     // Emit SSE update so all connected clients receive a notification
     try {
       const msg = `New patient added: ${patient.firstName} ${patient.middleName ? (patient.middleName + ' ') : ''}${patient.lastName}` + (patient.patientId ? ` (ID: ${patient.patientId})` : '');
@@ -789,6 +828,47 @@ router.put('/:id', requireAuth, canAccessPatient, [
         }
       } catch (e) {
         console.warn('Failed syncing PhilHealth record on patient update:', e);
+      }
+    }
+
+    // Sync changes to HealthCardRecord if patient is enrolled under Health Card / HMO
+    const isHealthCardEnrolledUpdate = healthInsuranceConsentBool || Boolean(healthInsuranceProvider && healthInsuranceProvider.trim());
+    if (isHealthCardEnrolledUpdate) {
+      try {
+        const HealthCardRecord = require('../models/HealthCardRecord');
+        let hc = await HealthCardRecord.findOne({ patientId: patient.id });
+        if (!hc) {
+          const recDate = patient.createdAt ? new Date(patient.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+          hc = new HealthCardRecord({
+            controlNo: HealthCardRecord.getNextControlNo(recDate),
+            patientId: patient.id,
+            recordDate: recDate,
+            firstName: safeFirstName,
+            middleName: safeMiddleName,
+            lastName: safeLastName,
+            hmoProvider: healthInsuranceProvider || '',
+            cardNumber: healthInsuranceId || '',
+            company: company || '',
+            loaNumber: req.body.loaNumber || '',
+            loaExpiry: req.body.loaExpiry || '',
+            physician: patient.physician || '',
+            status: 'Pending LOA'
+          });
+          await hc.save();
+        } else {
+          hc.firstName = safeFirstName;
+          hc.middleName = safeMiddleName;
+          hc.lastName = safeLastName;
+          if (healthInsuranceProvider) hc.hmoProvider = healthInsuranceProvider;
+          if (healthInsuranceId) hc.cardNumber = healthInsuranceId;
+          if (company) hc.company = company;
+          if (req.body.loaNumber) hc.loaNumber = req.body.loaNumber;
+          if (req.body.loaExpiry) hc.loaExpiry = req.body.loaExpiry;
+          if (patient.physician) hc.physician = patient.physician;
+          await hc.save();
+        }
+      } catch (e) {
+        console.warn('Failed syncing Health Card record on patient update:', e);
       }
     }
 

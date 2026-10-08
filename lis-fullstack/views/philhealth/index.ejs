@@ -1,9 +1,19 @@
 <div class="card" style="padding: 24px 28px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); margin-bottom: 24px; background: #ffffff;">
+  <!-- Module Tabs: PhilHealth vs Health Card -->
+  <div style="display: flex; gap: 10px; margin-bottom: 22px; border-bottom: 2px solid #f1f5f9; padding-bottom: 4px;">
+    <a href="/philhealth" style="padding: 10px 22px; font-weight: 700; font-size: 0.95em; color: #0284c7; border-bottom: 3px solid #0284c7; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; margin-bottom: -6px; background: #f0f9ff; border-radius: 8px 8px 0 0;">
+      <i class="fa fa-file-medical"></i> PhilHealth (Konsulta / DOH)
+    </a>
+    <a href="/healthcard" style="padding: 10px 22px; font-weight: 600; font-size: 0.95em; color: #64748b; border-bottom: 3px solid transparent; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; margin-bottom: -6px; border-radius: 8px 8px 0 0; transition: all 0.15s;" onmouseover="this.style.color='#0284c7'; this.style.background='#f8fafc';" onmouseout="this.style.color='#64748b'; this.style.background='transparent';">
+      <i class="fa fa-id-card"></i> Health Card (HMO Claims)
+    </a>
+  </div>
+
   <!-- Header -->
   <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; border-bottom: 1px solid #f1f5f9; padding-bottom: 16px; margin-bottom: 20px;">
     <div>
       <h3 style="margin: 0; font-size: 1.45em; display: flex; align-items: center; gap: 10px; color: #0f172a; font-weight: 700;">
-        <span style="font-size: 1.2em;">🩺</span> PhilHealth / Health Card Panel
+        <span style="font-size: 1.2em;">🩺</span> PhilHealth Panel
       </h3>
       <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.9em;">
         Official PhilHealth claims registry, procedure authorization, and DOH SOA tranche settlement tracking.
