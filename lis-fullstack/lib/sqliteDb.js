@@ -138,7 +138,7 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     instance.pragma('journal_mode = WAL');
     instance.pragma('synchronous = NORMAL');
     instance.pragma('foreign_keys = ON');
-    instance.pragma('busy_timeout = 5000');
+    instance.pragma('busy_timeout = 10000');
     instance.pragma('quick_check');
     return instance;
   }
@@ -2615,7 +2615,8 @@ function createBetterSqliteDb(dbPath, opts = {}) {
       } catch (e) { return false; }
     },
 
-    close() { try { sqlite.close(); } catch (e) {} }
+    close() { try { sqlite.close(); } catch (e) {} },
+    getUnderlyingSqlite() { return sqlite; }
   };
 }
 

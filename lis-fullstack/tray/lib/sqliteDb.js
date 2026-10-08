@@ -131,7 +131,7 @@ function createBetterSqliteDb(dbPath, opts = {}) {
   sqlite.pragma('journal_mode = WAL');
   sqlite.pragma('synchronous = NORMAL');
   sqlite.pragma('foreign_keys = ON');
-  sqlite.pragma('busy_timeout = 5000');
+  sqlite.pragma('busy_timeout = 10000');
 
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS patients (

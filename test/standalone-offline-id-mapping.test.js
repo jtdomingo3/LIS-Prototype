@@ -95,7 +95,8 @@ async function runQueueIdMappingTests() {
 
     console.log('✅ TEST 4 PASSED: Offline Queue & Deterministic ID Mapping verified.\n');
   } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    try { if (ds && ds.db && typeof ds.db.close === 'function') ds.db.close(); } catch (_) {}
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {}
   }
 }
 

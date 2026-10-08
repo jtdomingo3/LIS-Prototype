@@ -137,8 +137,9 @@ async function runLocalServerRouteTests() {
 
     console.log('✅ TEST 3 PASSED: Local Server Routes & Operation Queuing working 100% offline.\n');
   } finally {
-    server.close();
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    try { server.close(); } catch (_) {}
+    try { if (ds && ds.db && typeof ds.db.close === 'function') ds.db.close(); } catch (_) {}
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {}
   }
 }
 

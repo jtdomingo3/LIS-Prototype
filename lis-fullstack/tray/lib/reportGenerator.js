@@ -80,6 +80,9 @@ async function getBrowser() {
           '--disable-gpu',
           '--disable-dev-shm-usage',
           '--disable-extensions',
+          '--renderer-process-limit=1',
+          '--js-flags=--max-old-space-size=128',
+          '--disable-background-networking',
         ],
       });
       _browser.on('disconnected', () => { _browser = null; _browserLaunchPromise = null; });

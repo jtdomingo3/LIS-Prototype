@@ -21,7 +21,15 @@ let BetterSqlite3 = null;
 try {
   // Only attempt better-sqlite3 outside of pkg snapshot to avoid fatal N-API version mismatch (node18 pkg vs host node)
   if (!process.pkg) {
-    BetterSqlite3 = require('better-sqlite3');
+    try {
+      BetterSqlite3 = require('better-sqlite3');
+    } catch (_) {
+      try {
+        BetterSqlite3 = require(path.join(__dirname, '../../lis-fullstack/node_modules/better-sqlite3'));
+      } catch (__) {
+        BetterSqlite3 = null;
+      }
+    }
   }
 } catch (e) {
   BetterSqlite3 = null;
@@ -138,7 +146,7 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     instance.pragma('journal_mode = WAL');
     instance.pragma('synchronous = NORMAL');
     instance.pragma('foreign_keys = ON');
-    instance.pragma('busy_timeout = 5000');
+    instance.pragma('busy_timeout = 10000');
     instance.pragma('quick_check');
     return instance;
   }
@@ -2441,7 +2449,8 @@ function createBetterSqliteDb(dbPath, opts = {}) {
       } catch (e) { return false; }
     },
 
-    close() { try { sqlite.close(); } catch (e) {} }
+    close() { try { sqlite.close(); } catch (e) {} },
+    getUnderlyingSqlite() { return sqlite; }
   };
 }
 
