@@ -209,6 +209,13 @@
               <!-- Name -->
               <td style="padding: 10px 12px; font-weight: 600; color: #0f172a; min-width: 220px; white-space: nowrap;">
                 <div><%= r.fullName || `${r.firstName} ${r.lastName}` %></div>
+                <% if (!r.hasLinkedPatient) { %>
+                  <div style="margin-top: 4px;">
+                    <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; font-size: 0.73em; font-weight: 700; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; border-radius: 4px;" title="This entry is not linked to any registered patient record">
+                      <i class="fa fa-unlink"></i> No Patient Linked
+                    </span>
+                  </div>
+                <% } %>
               </td>
 
               <!-- PIN -->
@@ -370,6 +377,10 @@
 
                   <button type="button" class="button btn-small btn-secondary" onclick="openEditModal('<%= r.id %>')" style="padding: 4px 8px; font-size: 0.82em;" title="Edit record details and tranche values">
                     <i class="fa fa-pencil"></i>
+                  </button>
+
+                  <button type="button" class="button btn-small" onclick="confirmDeletePhilhealth('<%= r.id %>', '<%= r.controlNo || r.id %>', <%= !r.hasLinkedPatient %>)" style="padding: 4px 8px; font-size: 0.82em; <%= !r.hasLinkedPatient ? 'background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5;' : 'background: #ffffff; color: #dc2626; border: 1px solid #fecaca;' %>" title="<%= !r.hasLinkedPatient ? 'Delete unlinked PhilHealth entry' : 'Delete PhilHealth entry' %>">
+                    <i class="fa fa-trash"></i>
                   </button>
                 </div>
               </td>
@@ -1354,6 +1365,43 @@
     } catch (err) {
       if (window.showCustomAlert) window.showCustomAlert('Network error updating record: ' + err.message, { type: 'danger', title: 'Network Error' });
       else alert('Network error updating record: ' + err.message);
+    }
+  };
+
+  window.confirmDeletePhilhealth = async function(id, controlNo, isUnlinked) {
+    const promptMsg = isUnlinked
+      ? `⚠️ This PhilHealth record (${controlNo}) has NO LINKED PATIENT.\n\nAre you sure you want to delete it permanently?`
+      : `Are you sure you want to permanently delete PhilHealth record (${controlNo})?`;
+
+    if (!confirm(promptMsg)) return;
+
+    try {
+      let res = await fetch('/philhealth/' + encodeURIComponent(id), {
+        method: 'DELETE',
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
+      });
+      if (!res.ok) {
+        res = await fetch('/philhealth/' + encodeURIComponent(id) + '/delete', {
+          method: 'POST',
+          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
+        });
+      }
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success !== false) {
+        const row = document.getElementById('row_' + id);
+        if (row) {
+          row.style.transition = 'all 0.3s ease';
+          row.style.opacity = '0';
+          row.style.transform = 'translateX(20px)';
+          setTimeout(() => row.remove(), 300);
+        } else {
+          window.location.reload();
+        }
+      } else {
+        alert('Failed to delete record: ' + (data.error || 'Server error'));
+      }
+    } catch (err) {
+      alert('Error deleting record: ' + err.message);
     }
   };
 })();

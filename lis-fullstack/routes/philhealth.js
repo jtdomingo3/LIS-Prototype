@@ -46,23 +46,34 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
 
     let records = await PhilhealthRecord.find();
 
-    // Auto-sync agency with patient's employer/company and PIN with patient's philhealthId
+    const patients = (await Patient.find()) || [];
+    const patientIdMap = new Map();
+    patients.forEach(p => {
+      if (p.id) patientIdMap.set(String(p.id), p);
+      if (p._id) patientIdMap.set(String(p._id), p);
+      if (p.patientId) patientIdMap.set(String(p.patientId), p);
+      if (p.patientCode) patientIdMap.set(String(p.patientCode), p);
+    });
+
+    // Auto-sync agency with patient's employer/company and PIN with patient's philhealthId,
+    // and flag whether record has an active linked patient
     for (const r of records) {
-      if (r.patientId && (!r.agency || !r.pinNo)) {
+      const pid = r.patientId ? String(r.patientId) : null;
+      const linkedP = pid ? patientIdMap.get(pid) : null;
+      r.hasLinkedPatient = !!linkedP;
+
+      if (linkedP && (!r.agency || !r.pinNo)) {
         try {
-          const p = await Patient.findById(r.patientId);
-          if (p) {
-            let changed = false;
-            if (!r.agency && (p.company || p.philhealthAgency)) {
-              r.agency = p.company || p.philhealthAgency;
-              changed = true;
-            }
-            if (!r.pinNo && (p.philhealthId || p.philhealthNumber)) {
-              r.pinNo = p.philhealthId || p.philhealthNumber;
-              changed = true;
-            }
-            if (changed) await r.save();
+          let changed = false;
+          if (!r.agency && (linkedP.company || linkedP.philhealthAgency)) {
+            r.agency = linkedP.company || linkedP.philhealthAgency;
+            changed = true;
           }
+          if (!r.pinNo && (linkedP.philhealthId || linkedP.philhealthNumber)) {
+            r.pinNo = linkedP.philhealthId || linkedP.philhealthNumber;
+            changed = true;
+          }
+          if (changed) await r.save();
         } catch (_) {}
       }
       if (r.procedures && r.procedures.length) {
@@ -293,6 +304,58 @@ router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
     res.redirect('/philhealth');
   }
 });
+
+// Helper to perform PhilHealth record deletion
+async function handlePhilhealthDeletion(req, res) {
+  try {
+    const targetId = req.params.id;
+    let record = await PhilhealthRecord.findById(targetId);
+    if (!record) {
+      record = await PhilhealthRecord.findOne({ controlNo: targetId });
+    }
+    if (!record) {
+      const isApi = req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'));
+      if (isApi) return res.status(404).json({ success: false, error: 'PhilHealth record not found' });
+      req.flash('error_msg', 'PhilHealth record not found');
+      return res.redirect('/philhealth');
+    }
+
+    const controlNo = record.controlNo || record.id;
+    await PhilhealthRecord.findByIdAndDelete(record.id);
+
+    try {
+      sseEmitter.emit('update', {
+        action: 'philhealth_deleted',
+        recordId: record.id,
+        controlNo: controlNo,
+        time: (new Date()).toISOString(),
+        message: `🗑️ PhilHealth record ${controlNo} deleted`
+      });
+    } catch (_) {}
+
+    const isApi = req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'));
+    if (isApi) {
+      return res.json({ success: true, message: `PhilHealth record ${controlNo} deleted successfully.` });
+    }
+
+    req.flash('success_msg', `PhilHealth record ${controlNo} deleted successfully.`);
+    res.redirect('/philhealth');
+  } catch (err) {
+    console.error('Delete PhilHealth record error:', err);
+    const isApi = req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'));
+    if (isApi) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+    req.flash('error_msg', 'Failed to delete PhilHealth record: ' + err.message);
+    res.redirect('/philhealth');
+  }
+}
+
+// DELETE /philhealth/:id - Delete PhilHealth record
+router.delete('/:id', requireAuth, canAccessPatient, handlePhilhealthDeletion);
+
+// POST /philhealth/:id/delete - Fallback delete endpoint
+router.post('/:id/delete', requireAuth, canAccessPatient, handlePhilhealthDeletion);
 
 // POST /philhealth/:id/approve - Approve order & generate clinical tests (skips Payment Area)
 router.post('/:id/approve', requireAuth, canAccessPatient, async (req, res) => {

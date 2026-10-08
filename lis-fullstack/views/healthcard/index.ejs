@@ -178,7 +178,7 @@
           </tr>
         <% } else { %>
           <% records.forEach((r, idx) => { %>
-            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#ffffff'">
+            <tr id="row_<%= r.id %>" style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#ffffff'">
               <!-- Checkbox -->
               <td style="padding: 12px 14px; text-align: center;">
                 <input type="checkbox" class="record-checkbox" value="<%= r.id %>" onchange="updateSelectedCount()" style="cursor: pointer; width: 15px; height: 15px;" />
@@ -197,12 +197,17 @@
 
               <!-- Name -->
               <td style="padding: 12px 14px;">
-                <% if (r.patientId) { %>
+                <% if (r.hasLinkedPatient && r.patientId) { %>
                   <a href="/patients/<%= r.patientId %>" style="font-weight: 700; color: #0f172a; text-decoration: none;" onmouseover="this.style.color='#0284c7'" onmouseout="this.style.color='#0f172a'">
                     <%= r.fullName || 'Unnamed' %>
                   </a>
                 <% } else { %>
                   <span style="font-weight: 700; color: #0f172a;"><%= r.fullName || 'Unnamed' %></span>
+                  <div style="margin-top: 4px;">
+                    <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; font-size: 0.73em; font-weight: 700; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; border-radius: 4px;" title="This entry is not linked to any registered patient record">
+                      <i class="fa fa-unlink"></i> No Patient Linked
+                    </span>
+                  </div>
                 <% } %>
                 <% if (r.company) { %>
                   <div style="font-size: 0.78em; color: #64748b; margin-top: 2px;"><i class="fa fa-building" style="font-size: 0.9em;"></i> <%= r.company %></div>
@@ -322,6 +327,9 @@
                   <% } %>
                   <button type="button" onclick="openEditHealthCardModal('<%= r.id %>')" class="button btn-secondary" style="height: 30px; padding: 0 8px; font-size: 0.82em; font-weight: 600; border-radius: 6px;" title="Edit Claim">
                     <i class="fa fa-edit"></i>
+                  </button>
+                  <button type="button" onclick="confirmDeleteHealthCard('<%= r.id %>', '<%= r.controlNo || r.id %>', <%= !r.hasLinkedPatient %>)" class="button" style="height: 30px; padding: 0 8px; font-size: 0.82em; font-weight: 600; border-radius: 6px; <%= !r.hasLinkedPatient ? 'background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5;' : 'background: #ffffff; color: #dc2626; border: 1px solid #fecaca;' %>" title="<%= !r.hasLinkedPatient ? 'Delete unlinked Health Card claim' : 'Delete Health Card claim' %>">
+                    <i class="fa fa-trash"></i>
                   </button>
                 </div>
               </td>
@@ -1162,6 +1170,43 @@
       }
     } catch (err) {
       alert('Network error: ' + err.message);
+    }
+  }
+
+  async function confirmDeleteHealthCard(id, controlNo, isUnlinked) {
+    const promptMsg = isUnlinked
+      ? `⚠️ This Health Card (HMO) claim (${controlNo}) has NO LINKED PATIENT.\n\nAre you sure you want to delete it permanently?`
+      : `Are you sure you want to permanently delete Health Card claim (${controlNo})?`;
+
+    if (!confirm(promptMsg)) return;
+
+    try {
+      let res = await fetch('/healthcard/' + encodeURIComponent(id), {
+        method: 'DELETE',
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
+      });
+      if (!res.ok) {
+        res = await fetch('/healthcard/' + encodeURIComponent(id) + '/delete', {
+          method: 'POST',
+          headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
+        });
+      }
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success !== false) {
+        const row = document.getElementById('row_' + id);
+        if (row) {
+          row.style.transition = 'all 0.3s ease';
+          row.style.opacity = '0';
+          row.style.transform = 'translateX(20px)';
+          setTimeout(() => row.remove(), 300);
+        } else {
+          window.location.reload();
+        }
+      } else {
+        alert('Failed to delete claim: ' + (data.error || 'Server error'));
+      }
+    } catch (err) {
+      alert('Error deleting claim: ' + err.message);
     }
   }
 </script>

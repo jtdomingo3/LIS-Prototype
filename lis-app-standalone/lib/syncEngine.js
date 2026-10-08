@@ -796,11 +796,13 @@ class SyncEngine {
       const serverId = this._extractServerIdFromReplay(replayResult);
       if (!serverId) return;
 
-      const collection = (segs.length === 1) ? segs[0] : null; // e.g. 'patients' or 'tests'
+      let collection = (segs.length === 1) ? segs[0] : null; // e.g. 'patients' or 'tests'
+      if (collection === 'philhealth') collection = 'philhealth_records';
+      if (collection === 'healthcard') collection = 'healthcard_records';
       if (!collection) return;
 
       // Only handle known collections where local temp IDs exist
-      if (!['patients','tests','templates','users','inventory','equipment','equipment_logs','qc_controls','qc_entries','neqas_records','consultations','expenses','revenue_entries','cost_per_test','employees','payroll_records','hr_documents','leave_records','dtr_records'].includes(collection)) return;
+      if (!['patients','tests','templates','users','inventory','equipment','equipment_logs','qc_controls','qc_entries','neqas_records','consultations','expenses','revenue_entries','cost_per_test','employees','payroll_records','hr_documents','leave_records','dtr_records','philhealth_records','healthcard_records'].includes(collection)) return;
 
       // Prefer deterministic mapping when server echoed back a client_id in JSON response
       let clientId = null;
@@ -860,6 +862,24 @@ class SyncEngine {
               t.id = serverId;
               if (!t.client_id) t.client_id = localId;
               if (this.dataStore.db.upsertTest) this.dataStore.db.upsertTest(t);
+            }
+          } else if (collection === 'philhealth_records') {
+            const list = this.dataStore.getCollection('philhealth_records') || [];
+            const r = list.find(it => it && (it.id === localId || it.id === String(localId)));
+            if (r) {
+              if (this.dataStore.db.deletePhilhealthRecord) this.dataStore.db.deletePhilhealthRecord(localId);
+              r.id = serverId;
+              if (!r.client_id) r.client_id = localId;
+              if (this.dataStore.db.upsertPhilhealthRecord) this.dataStore.db.upsertPhilhealthRecord(r);
+            }
+          } else if (collection === 'healthcard_records') {
+            const list = this.dataStore.getCollection('healthcard_records') || [];
+            const r = list.find(it => it && (it.id === localId || it.id === String(localId)));
+            if (r) {
+              if (this.dataStore.db.deleteHealthCardRecord) this.dataStore.db.deleteHealthCardRecord(localId);
+              r.id = serverId;
+              if (!r.client_id) r.client_id = localId;
+              if (this.dataStore.db.upsertHealthCardRecord) this.dataStore.db.upsertHealthCardRecord(r);
             }
           }
         } catch (rekeyErr) {
@@ -1524,7 +1544,7 @@ class SyncEngine {
 
     // Step 4: Authoritatively reconcile local DataStore with server data
     // Use replace: true so local database precisely mirrors authoritative server state
-    const collections = ['users', 'patients', 'tests', 'templates', 'counters', 'inventory', 'inventory_batches', 'inventory_transactions', 'equipment', 'equipment_logs', 'qc_controls', 'qc_entries', 'neqas_records', 'consultations', 'expenses', 'revenue_entries', 'cost_per_test', 'employees', 'payroll_records', 'hr_documents', 'leave_records', 'dtr_records'];
+    const collections = ['users', 'patients', 'tests', 'templates', 'counters', 'inventory', 'inventory_batches', 'inventory_transactions', 'equipment', 'equipment_logs', 'qc_controls', 'qc_entries', 'neqas_records', 'consultations', 'expenses', 'revenue_entries', 'cost_per_test', 'employees', 'payroll_records', 'hr_documents', 'leave_records', 'dtr_records', 'philhealth_records', 'healthcard_records'];
     let totalImported = 0;
 
     for (const col of collections) {
@@ -1571,7 +1591,9 @@ class SyncEngine {
         expenses: (serverData.expenses || []).length,
         revenue_entries: (serverData.revenue_entries || []).length,
         employees: (serverData.employees || []).length,
-        payroll_records: (serverData.payroll_records || []).length
+        payroll_records: (serverData.payroll_records || []).length,
+        philhealth_records: (serverData.philhealth_records || []).length,
+        healthcard_records: (serverData.healthcard_records || []).length
       },
       localCountsBefore: {
         patients: localPatientsBefore.length,

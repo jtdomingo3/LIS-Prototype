@@ -1280,6 +1280,8 @@ app.get('/export/data.json', (req, res) => {
     data.hr_documents = typeof db.getHrDocuments === 'function' ? db.getHrDocuments() : [];
     data.leave_records = typeof db.getLeaveRecords === 'function' ? db.getLeaveRecords() : [];
     data.dtr_records = typeof db.getDtrRecords === 'function' ? db.getDtrRecords() : [];
+    data.philhealth_records = typeof db.getPhilhealthRecords === 'function' ? db.getPhilhealthRecords() : [];
+    data.healthcard_records = typeof db.getHealthCardRecords === 'function' ? db.getHealthCardRecords() : [];
 
     res.json(data);
   } catch (e) {

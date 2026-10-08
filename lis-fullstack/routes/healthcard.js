@@ -70,27 +70,37 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
 
     let records = await HealthCardRecord.find();
 
-    // Auto-sync demographic data from linked Patient
+    const patients = (await Patient.find()) || [];
+    const patientIdMap = new Map();
+    patients.forEach(p => {
+      if (p.id) patientIdMap.set(String(p.id), p);
+      if (p._id) patientIdMap.set(String(p._id), p);
+      if (p.patientId) patientIdMap.set(String(p.patientId), p);
+      if (p.patientCode) patientIdMap.set(String(p.patientCode), p);
+    });
+
+    // Auto-sync demographic data from linked Patient and flag active patient link
     for (const r of records) {
-      if (r.patientId && (!r.hmoProvider || !r.cardNumber || !r.company)) {
+      const pid = r.patientId ? String(r.patientId) : null;
+      const linkedP = pid ? patientIdMap.get(pid) : null;
+      r.hasLinkedPatient = !!linkedP;
+
+      if (linkedP && (!r.hmoProvider || !r.cardNumber || !r.company)) {
         try {
-          const p = await Patient.findById(r.patientId);
-          if (p) {
-            let changed = false;
-            if (!r.hmoProvider && (p.healthInsuranceProvider || p.healthCardProvider)) {
-              r.hmoProvider = p.healthInsuranceProvider || p.healthCardProvider;
-              changed = true;
-            }
-            if (!r.cardNumber && (p.healthInsuranceId || p.healthCardNumber)) {
-              r.cardNumber = p.healthInsuranceId || p.healthCardNumber;
-              changed = true;
-            }
-            if (!r.company && (p.company || p.philhealthAgency)) {
-              r.company = p.company || p.philhealthAgency;
-              changed = true;
-            }
-            if (changed) await r.save();
+          let changed = false;
+          if (!r.hmoProvider && (linkedP.healthInsuranceProvider || linkedP.healthCardProvider)) {
+            r.hmoProvider = linkedP.healthInsuranceProvider || linkedP.healthCardProvider;
+            changed = true;
           }
+          if (!r.cardNumber && (linkedP.healthInsuranceId || linkedP.healthCardNumber)) {
+            r.cardNumber = linkedP.healthInsuranceId || linkedP.healthCardNumber;
+            changed = true;
+          }
+          if (!r.company && (linkedP.company || linkedP.philhealthAgency)) {
+            r.company = linkedP.company || linkedP.philhealthAgency;
+            changed = true;
+          }
+          if (changed) await r.save();
         } catch (_) {}
       }
     }
@@ -373,6 +383,58 @@ router.put('/:id', requireAuth, canAccessPatient, async (req, res) => {
     res.redirect('/healthcard');
   }
 });
+
+// Helper to perform Health Card claim deletion
+async function handleHealthCardDeletion(req, res) {
+  try {
+    const targetId = req.params.id;
+    let record = await HealthCardRecord.findById(targetId);
+    if (!record) {
+      record = await HealthCardRecord.findOne({ controlNo: targetId });
+    }
+    if (!record) {
+      const isApi = req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'));
+      if (isApi) return res.status(404).json({ success: false, error: 'Health Card claim not found' });
+      req.flash('error_msg', 'Health Card claim not found');
+      return res.redirect('/healthcard');
+    }
+
+    const controlNo = record.controlNo || record.id;
+    await HealthCardRecord.findByIdAndDelete(record.id);
+
+    try {
+      sseEmitter.emit('update', {
+        action: 'healthcard_deleted',
+        recordId: record.id,
+        controlNo: controlNo,
+        time: (new Date()).toISOString(),
+        message: `🗑️ Health Card claim ${controlNo} deleted`
+      });
+    } catch (_) {}
+
+    const isApi = req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'));
+    if (isApi) {
+      return res.json({ success: true, message: `Health Card claim ${controlNo} deleted successfully.` });
+    }
+
+    req.flash('success_msg', `Health Card claim ${controlNo} deleted successfully.`);
+    res.redirect('/healthcard');
+  } catch (err) {
+    console.error('Delete Health Card claim error:', err);
+    const isApi = req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'));
+    if (isApi) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+    req.flash('error_msg', 'Failed to delete Health Card claim: ' + err.message);
+    res.redirect('/healthcard');
+  }
+}
+
+// DELETE /healthcard/:id - Delete Health Card claim
+router.delete('/:id', requireAuth, canAccessPatient, handleHealthCardDeletion);
+
+// POST /healthcard/:id/delete - Fallback delete endpoint
+router.post('/:id/delete', requireAuth, canAccessPatient, handleHealthCardDeletion);
 
 // POST /healthcard/:id/approve - Approve LOA and generate clinical tests
 router.post('/:id/approve', requireAuth, canAccessPatient, async (req, res) => {

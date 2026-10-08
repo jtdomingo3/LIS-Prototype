@@ -1148,10 +1148,10 @@ ipcMain.handle('drop-offline-data', async () => {
     // Overwrite DataStore
     try {
       if (dataStore) {
-        if (Array.isArray(fetched.users)) dataStore.setCollection('users', fetched.users);
-        if (Array.isArray(fetched.patients)) dataStore.setCollection('patients', fetched.patients);
-        if (Array.isArray(fetched.tests)) dataStore.setCollection('tests', fetched.tests);
-        if (Array.isArray(fetched.templates)) dataStore.setCollection('templates', fetched.templates);
+        const colList = ['users', 'patients', 'tests', 'templates', 'inventory', 'inventory_batches', 'inventory_transactions', 'equipment', 'equipment_logs', 'qc_controls', 'qc_entries', 'neqas_records', 'consultations', 'expenses', 'revenue_entries', 'cost_per_test', 'employees', 'payroll_records', 'hr_documents', 'leave_records', 'dtr_records', 'philhealth_records', 'healthcard_records'];
+        for (const col of colList) {
+          if (Array.isArray(fetched[col])) dataStore.setCollection(col, fetched[col], { replace: true });
+        }
         if (fetched.counters && typeof fetched.counters === 'object') { dataStore._data.counters = fetched.counters; }
         try { dataStore._save(); } catch (e) {}
         try { dataStore.setMeta('lastFullSync', new Date().toISOString()); } catch (e) {}
