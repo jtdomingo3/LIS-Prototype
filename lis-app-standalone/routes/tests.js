@@ -2185,6 +2185,7 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
       const doctorDesignation = (req.body.doctorDesignation || '').toString().trim();
 
       resultsObj = {
+        examination: (req.body.examination || '').toString().trim(),
         bpd_size, bpd_w, bpd_d, bpd_label,
         hc_size, hc_w, hc_d, hc_label,
         ac_size, ac_w, ac_d, ac_label,
@@ -2284,6 +2285,7 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
       const doctorDesignation = (req.body.doctorDesignation || '').toString().trim();
 
       resultsObj = {
+        examination: (req.body.examination || '').toString().trim(),
         gestational_sac_length: gestational_sac_length,
         gestational_sac_w: gestational_sac_w,
         gestational_sac_d: gestational_sac_d,
@@ -2408,6 +2410,7 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
         const doctorDesignation = (req.body.doctorDesignation || req.body.doctorDesignation || '').toString().trim();
 
         resultsObj = {
+          examination: (req.body.examination || '').toString().trim(),
           isTwin: true,
           gestational_sac_length_A: gA_len,
           gestational_sac_w_A: gA_w,
@@ -2499,6 +2502,7 @@ router.post('/:id/results', requireAuth, canAccessPatient, upload.single('photoF
         const doctorDesignation = (req.body.doctorDesignation || req.body.doctorDesignation || '').toString().trim();
 
         resultsObj = {
+          examination: (req.body.examination || '').toString().trim(),
           isTwin: false,
           gestational_sac_length: g_len,
           gestational_sac_w: g_w,

@@ -43,6 +43,15 @@
     'ultrasound-1st-trimester-obstetrics': '1st TRIMESTER OBSTETRICS (ULTRASOUND)'
   };
 
+  const defaultExams = {
+    'ultrasound-abd-kubp-hbt': (test && test.results && test.results.examination) || 'WAB-P UTZ',
+    'ultrasound-transvaginal': 'TRANSVAGINAL',
+    'ultrasound-pelvic': 'PELVIC',
+    'ultrasound-pelvic-biometry': 'PELVIC',
+    'ultrasound-biophysical': 'BIOPHYSICAL',
+    'ultrasound-1st-trimester-obstetrics': '1st TRIMESTER OBSTETRICS'
+  };
+
   function getAgeWD(wVal, dVal, labelVal) {
     if (wVal !== undefined && wVal !== null && String(wVal).trim() !== '') {
       return { w: String(wVal).trim(), d: (dVal !== undefined && dVal !== null) ? String(dVal).trim() : '' };
@@ -142,9 +151,25 @@
         <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Time Released:</label>
         <input type="time" name="timeReleased" value="<%= test && test.completedAt ? (new Date(test.completedAt)).toTimeString().slice(0,5) : (new Date()).toTimeString().slice(0,5) %>" style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; font-size: 0.88em; width: 115px;">
       </div>
-      <div style="display: flex; align-items: center; gap: 8px; margin-left: auto; flex: 1; min-width: 240px; justify-content: flex-end;">
-        <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Section Title:</label>
-        <input type="text" id="section_title_input" name="section_title" placeholder="Report Section Title" value="<%= test && test.results && test.results.section_title ? test.results.section_title : (defaultTitles[currentType] || 'ULTRASOUND RESULT') %>" style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.88em; font-weight: 600; width: 260px;">
+      <div style="display: flex; align-items: center; gap: 10px; margin-left: auto; flex-wrap: wrap; justify-content: flex-end;">
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Examination:</label>
+          <% 
+            const curExamVal = (test && test.results && test.results.examination) || (test && test.examination) || (defaultExams[currentType] || 'PELVIC');
+            const validExams = ['PELVIC', 'TRANSVAGINAL', 'BIOPHYSICAL', '1st TRIMESTER OBSTETRICS', 'WAB-P UTZ', 'KUBP-UTZ', 'HBT UTZ', 'WHOLE ABDOMEN'];
+          %>
+          <select id="examination_select_header" onchange="handleExaminationHeaderSelect(this)" style="height: 34px; padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.88em; font-weight: 600; background: #fff;">
+            <% validExams.forEach(function(ex) { %>
+              <option value="<%= ex %>" <%= curExamVal === ex ? 'selected' : '' %>><%= ex %></option>
+            <% }); %>
+            <option value="__custom__" <%= validExams.indexOf(curExamVal) === -1 ? 'selected' : '' %>>Other (custom)...</option>
+          </select>
+          <input type="text" id="examination_header_input" name="examination" placeholder="e.g. PELVIC" value="<%= curExamVal %>" style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.88em; font-weight: 600; width: 140px;">
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #475569; white-space: nowrap;">Section Title:</label>
+          <input type="text" id="section_title_input" name="section_title" placeholder="Report Section Title" value="<%= test && test.results && test.results.section_title ? test.results.section_title : (defaultTitles[currentType] || 'ULTRASOUND RESULT') %>" style="height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.88em; font-weight: 600; width: 230px;">
+        </div>
       </div>
     </div>
 
@@ -167,8 +192,8 @@
               <option value="HBT UTZ" <%= test && test.results && test.results.examination==='HBT UTZ' ? 'selected' : '' %>>HBT UTZ</option>
               <option value="Other" <%= test && test.results && test.results.examination && ['WAB-P UTZ','KUBP-UTZ','HBT UTZ'].indexOf(test.results.examination)===-1 && test.results.examination ? 'selected' : '' %>>Other (type...)</option>
             </select>
-            <input type="text" name="examination_custom" id="examination_custom" placeholder="Type examination" style="display:none; height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.88em; width: 160px;" value="<%= (test && test.results && test.results.examination && ['WAB-P UTZ','KUBP-UTZ','HBT UTZ'].indexOf(test.results.examination)===-1) ? test.results.examination : '' %>">
-            <input type="hidden" name="examination" id="examination_hidden" value="<%= test && test.results && test.results.examination ? test.results.examination : '' %>">
+            <input type="text" name="examination_custom" id="examination_custom" placeholder="Type examination" oninput="var h=document.getElementById('examination_header_input'); if(h) h.value=this.value;" style="display:none; height: 34px; padding: 4px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.88em; width: 160px;" value="<%= (test && test.results && test.results.examination && ['WAB-P UTZ','KUBP-UTZ','HBT UTZ'].indexOf(test.results.examination)===-1) ? test.results.examination : '' %>">
+            <input type="hidden" id="examination_hidden" value="<%= test && test.results && test.results.examination ? test.results.examination : '' %>">
           </div>
         </div>
 
@@ -1908,7 +1933,42 @@
     'ultrasound-1st-trimester-obstetrics': '1st TRIMESTER OBSTETRICS (ULTRASOUND)'
   };
 
+  var DEFAULT_EXAMS = {
+    'ultrasound-abd-kubp-hbt': 'WAB-P UTZ',
+    'ultrasound-transvaginal': 'TRANSVAGINAL',
+    'ultrasound-pelvic': 'PELVIC',
+    'ultrasound-pelvic-biometry': 'PELVIC',
+    'ultrasound-biophysical': 'BIOPHYSICAL',
+    'ultrasound-1st-trimester-obstetrics': '1st TRIMESTER OBSTETRICS'
+  };
+
   var currentProcedure = '<%= currentType %>';
+
+  function handleExaminationHeaderSelect(sel) {
+    var inp = document.getElementById('examination_header_input');
+    if (!inp) return;
+    if (sel.value === '__custom__') {
+      inp.focus();
+    } else {
+      inp.value = sel.value;
+    }
+  }
+
+  function syncExaminationHeaderSelect(val) {
+    var sel = document.getElementById('examination_select_header');
+    if (!sel) return;
+    var match = false;
+    for (var i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].value === val) {
+        sel.selectedIndex = i;
+        match = true;
+        break;
+      }
+    }
+    if (!match) {
+      sel.value = '__custom__';
+    }
+  }
 
   function selectProcedure(type) {
     currentProcedure = type;
@@ -1951,6 +2011,17 @@
         titleInput.value = DEFAULT_TITLES[type];
       }
     }
+
+    // Auto-update examination if default
+    var examInput = document.getElementById('examination_header_input');
+    if (examInput) {
+      var currentExamVal = examInput.value.trim();
+      var isDefaultExam = !currentExamVal || Object.values(DEFAULT_EXAMS).indexOf(currentExamVal) !== -1;
+      if (isDefaultExam && DEFAULT_EXAMS[type]) {
+        examInput.value = DEFAULT_EXAMS[type];
+        syncExaminationHeaderSelect(DEFAULT_EXAMS[type]);
+      }
+    }
   }
 
   // Examination select custom input toggle for ABD/KUBP/HBT
@@ -1958,13 +2029,18 @@
     var sel = document.querySelector('[name="examination_select"]');
     var custom = document.getElementById('examination_custom');
     var hidden = document.getElementById('examination_hidden');
-    if (!sel || !hidden || !custom) return;
+    var headerExam = document.getElementById('examination_header_input');
+    if (!sel) return;
+    var val = '';
     if (sel.value === 'Other') {
-      custom.style.display = 'inline-block';
-      hidden.value = custom.value || '';
+      if (custom) { custom.style.display = 'inline-block'; val = custom.value || ''; }
     } else {
-      custom.style.display = 'none';
-      hidden.value = sel.value || '';
+      if (custom) { custom.style.display = 'none'; }
+      val = sel.value || '';
+    }
+    if (hidden) hidden.value = val;
+    if (headerExam) {
+      headerExam.value = val;
     }
   }
 
@@ -2347,13 +2423,42 @@
         var d = (document.getElementById('aoa_d_' + pfx) || {}).value || '0';
         if (w) aoaText = w + ' W ' + d + ' D';
       }
+
+      // If AOA is still empty, auto-compute from BPD, HC, AC, FL biometry!
+      if (!aoaText || aoaText === '__ W __ D') {
+        var params = ['bpd', 'hc', 'ac', 'fl'];
+        var sumDays = 0, count = 0;
+        params.forEach(function(p){
+          var wEl = document.getElementById(p + '_w_' + pfx);
+          var dEl = document.getElementById(p + '_d_' + pfx);
+          if (wEl && wEl.value.trim() !== '') {
+            var wVal = parseInt(wEl.value.trim(), 10) || 0;
+            var dVal = parseInt(dEl && dEl.value.trim() ? dEl.value.trim() : '0', 10) || 0;
+            sumDays += (wVal * 7) + dVal;
+            count++;
+          }
+        });
+        if (count > 0) {
+          var avgDays = Math.round(sumDays / count);
+          var calcW = Math.floor(avgDays / 7);
+          var calcD = avgDays % 7;
+          aoaText = calcW + ' W ' + calcD + ' D';
+          // Sync back to form fields
+          var aoaWInput = document.getElementById('aoa_w_' + pfx);
+          var aoaDInput = document.getElementById('aoa_d_' + pfx);
+          var aoaTextInput = document.getElementById('aoa_text_' + pfx);
+          if (aoaWInput && !aoaWInput.value) aoaWInput.value = calcW;
+          if (aoaDInput && !aoaDInput.value) aoaDInput.value = calcD;
+          if (aoaTextInput && !aoaTextInput.value) aoaTextInput.value = aoaText;
+        }
+      }
       if (!aoaText) aoaText = '__ W __ D';
 
-      var presEl = document.getElementById('presentation_' + pfx);
-      var presentation = (presEl ? presEl.value : 'CEPHALIC').trim().toUpperCase();
+      var presEl = document.getElementById('presentation_' + pfx) || document.getElementById('presentation_select_' + pfx);
+      var presentation = (presEl && presEl.value ? presEl.value : 'CEPHALIC').trim().toUpperCase();
 
-      var afEl = document.getElementById('amniotic_fluid_' + pfx);
-      var afRaw = (afEl ? afEl.value : 'ADEQUATE').trim().toUpperCase();
+      var afEl = document.getElementById('amniotic_fluid_' + pfx) || document.getElementById('amniotic_fluid_select_' + pfx);
+      var afRaw = (afEl && afEl.value ? afEl.value : 'ADEQUATE').trim().toUpperCase();
       var afStatus = 'NORMOHYDRAMNIOS';
       if (/OLIGO|DECREAS/i.test(afRaw)) {
         afStatus = 'OLIGOHYDRAMNIOS';
@@ -2373,7 +2478,7 @@
              'EDD: ' + eddFormatted + '.';
 
     } else if (currentProcedure === 'ultrasound-transvaginal' || currentProcedure === 'ultrasound-pelvic') {
-      var pfx = currentProcedure === 'ultrasound-transvaginal' ? 'tv' : 'pel';
+      var pfx = currentProcedure === 'ultrasound-transvaginal' ? 'tvus' : 'pelvic';
       var aoaText = '';
       var aoaEl = document.getElementById('aoa_text_' + pfx);
       if (aoaEl && aoaEl.value.trim()) {
@@ -2383,6 +2488,31 @@
         var d = (document.getElementById('aoa_d_' + pfx) || {}).value || '0';
         if (w) aoaText = w + ' W ' + d + ' D';
       }
+
+      // If AOA text is still empty, fallback to CRL age
+      if (!aoaText || aoaText === '__ W __ D') {
+        var crlAgeEl = document.getElementById('crl_label_' + pfx);
+        if (crlAgeEl && crlAgeEl.value.trim()) {
+          aoaText = crlAgeEl.value.trim();
+        } else {
+          var cw = (document.getElementById('crl_w_' + pfx) || {}).value || '';
+          var cd = (document.getElementById('crl_d_' + pfx) || {}).value || '0';
+          if (cw) aoaText = cw + ' W ' + cd + ' D';
+        }
+      }
+
+      // If still empty, fallback to Gestational Sac age
+      if (!aoaText || aoaText === '__ W __ D') {
+        var gsAgeEl = document.getElementById('gs_label_' + pfx);
+        if (gsAgeEl && gsAgeEl.value.trim()) {
+          aoaText = gsAgeEl.value.trim();
+        } else {
+          var gw = (document.getElementById('gs_w_' + pfx) || {}).value || '';
+          var gd = (document.getElementById('gs_d_' + pfx) || {}).value || '0';
+          if (gw) aoaText = gw + ' W ' + gd + ' D';
+        }
+      }
+
       if (!aoaText) aoaText = '__ W __ D';
 
       var eddEl = document.getElementById('edd_' + pfx);
@@ -2404,6 +2534,15 @@
           var dA = (document.getElementById('aoa_d_A') || {}).value || '0';
           if (wA) aoaA = wA + ' W ' + dA + ' D';
         }
+        if (!aoaA) {
+          var crlAgeA = (document.getElementById('crl_label_A') || {}).value || '';
+          if (crlAgeA) aoaA = crlAgeA;
+          else {
+            var cwA = (document.getElementById('crl_w_A') || {}).value || '';
+            var cdA = (document.getElementById('crl_d_A') || {}).value || '0';
+            if (cwA) aoaA = cwA + ' W ' + cdA + ' D';
+          }
+        }
         var fhrA = (document.getElementById('fhr_A') || {}).value || '';
 
         var aoaB = (document.getElementById('aoa_text_B') || {}).value || '';
@@ -2411,6 +2550,15 @@
           var wB = (document.getElementById('aoa_w_B') || {}).value || '';
           var dB = (document.getElementById('aoa_d_B') || {}).value || '0';
           if (wB) aoaB = wB + ' W ' + dB + ' D';
+        }
+        if (!aoaB) {
+          var crlAgeB = (document.getElementById('crl_label_B') || {}).value || '';
+          if (crlAgeB) aoaB = crlAgeB;
+          else {
+            var cwB = (document.getElementById('crl_w_B') || {}).value || '';
+            var cdB = (document.getElementById('crl_d_B') || {}).value || '0';
+            if (cwB) aoaB = cwB + ' W ' + cdB + ' D';
+          }
         }
         var fhrB = (document.getElementById('fhr_B') || {}).value || '';
 
@@ -2424,6 +2572,15 @@
           var w = (document.getElementById('aoa_w_ob') || {}).value || '';
           var d = (document.getElementById('aoa_d_ob') || {}).value || '0';
           if (w) aoa = w + ' W ' + d + ' D';
+        }
+        if (!aoa) {
+          var crlAge = (document.getElementById('crl_label_ob') || {}).value || '';
+          if (crlAge) aoa = crlAge;
+          else {
+            var cw = (document.getElementById('crl_w_ob') || {}).value || '';
+            var cd = (document.getElementById('crl_d_ob') || {}).value || '0';
+            if (cw) aoa = cw + ' W ' + cd + ' D';
+          }
         }
         var fhr = (document.getElementById('fhr_ob') || {}).value || '';
 

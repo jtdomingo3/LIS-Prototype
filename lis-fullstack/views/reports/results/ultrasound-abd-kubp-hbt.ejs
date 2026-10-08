@@ -1,18 +1,19 @@
 <style>
-  .report-page{ position:relative; width:100%; max-width:calc(8.5in - 0.5in); margin:0 auto; padding:8px; font-family: 'Times New Roman', Times, serif; color:#000 }
+  body { margin:0; padding:0; box-sizing:border-box; font-family: Arial, Helvetica, sans-serif; }
+  .report-page{ position:relative; width:100%; max-width:calc(8.5in - 0.5in); margin:0 auto; padding:8px; color:#000 }
   .header{ display:flex; align-items:flex-start; gap:12px }
   .logo{ width:72px; height:auto; margin-right:8px }
   .lab-title{ text-align:center; flex:1; min-width:0 }
-  .lab-title h1{ margin:0; font-size:22px; color:#009957; letter-spacing:1px }
+  .lab-title h1{ margin:0; font-size:22px; color:#009957; letter-spacing:1px; font-weight:700 }
   .lab-sub{ font-size:10px; margin-top:4px; color:#009957 }
-  .patient-box{ margin-top:8px; width:100%; border-collapse:collapse; font-size:12px }
+  .patient-box{ margin-top:8px; width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed }
   .patient-box td{ padding:4px 6px; border:1px solid #000; box-sizing:border-box }
-  .section-title{ text-align:center; margin:12px 0; font-size:20px; font-weight:bold }
+  .section-title{ text-align:center; margin:16px 0 12px; font-size:20px; font-weight:800; text-transform:uppercase }
   .results-frame{ width:100%; border:2px solid #000; border-collapse:collapse; margin-top:6px; box-sizing:border-box }
   .results-frame td, .results-frame th { padding:12px; vertical-align:middle; border:1px solid #000 }
   .results-frame th{ text-align:left; font-weight:700 }
-  .signatures{ display:flex; justify-content:flex-end; margin-top:48px; padding-right:1.25in }
-  .sig{ position:relative; text-align:center; width:40%; padding-right:0.25in; min-height:90px }
+  .signatures{ display:flex; justify-content:flex-end; margin-top:48px; padding-right:1.25in; font-family: 'Times New Roman', Times, serif }
+  .sig{ position:relative; text-align:center; width:40%; padding-right:0.25in; min-height:90px; font-family: 'Times New Roman', Times, serif }
   .signature-overlay{ position:absolute; pointer-events:none; left:50%; transform-origin:center; }
   .results-frame.impression { padding-left:6.25em; padding-right:3.5em }
   .watermark{ position:absolute; left:50%; top:44%; transform:translate(-50%,-50%); width:52%; opacity:0.06; pointer-events:none; z-index:0 }
@@ -43,8 +44,8 @@
 
     <table class="patient-box">
       <tr>
-        <td style="width:20%">Patient's Reference No. :</td>
-        <td style="width:30%"><strong><%= test && test.testId ? test.testId : '' %></strong></td>
+        <td style="width:23%; white-space:nowrap;">Patient's Reference No. :</td>
+        <td style="width:27%"><strong><%= test && test.testId ? test.testId : '' %></strong></td>
         <td style="width:15%">DOB:</td>
         <td style="width:15%"><strong><%= test && test.patient && test.patient.dateOfBirth ? (new Date(test.patient.dateOfBirth)).toLocaleDateString() : '' %></strong></td>
         <td style="width:10%">Sex:</td>
@@ -84,7 +85,7 @@
       <%- htmlOut %>
     </div>
 
-    <div style="margin-top:8px; font-weight:700; padding-left:4.7em; font-family:'Courier New', Courier, monospace">IMPRESSION</div>
+    <div style="margin-top:16px; font-weight:700; padding-left:4.7em; font-family:Arial, Helvetica, sans-serif">IMPRESSION:</div>
     <div class="results-frame" style="border:none; padding:12px; line-height:1.4; padding-left:5.5em; padding-right:3.5em;font-size:<%= (test && test.results && test.results.paragraphs_font_size) ? test.results.paragraphs_font_size : '16px' %>; font-family:<%= (test && test.results && test.results.paragraphs_font_family) ? ('"' + test.results.paragraphs_font_family + '"') : "'Courier New'" %>">
       <% 
         var raw2 = (test && test.results && (test.results.impression || test.results.impression_text)) ? (test.results.impression || test.results.impression_text) : '';
