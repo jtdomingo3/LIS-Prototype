@@ -77,6 +77,11 @@
       <a href="/patients/<%= patient.id %>/edit" class="button btn-secondary" style="height: 38px; padding: 0 14px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em;">
         <i class="fa fa-edit"></i> Edit Patient
       </a>
+      <% if (patient.healthInsuranceConsent) { %>
+        <a href="/healthcard?search=<%= encodeURIComponent(patient.patientCode || patient.patientId || patient.lastName) %>" class="button btn-primary" style="height: 38px; padding: 0 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em; background: #6366f1; border-color: #4f46e5;">
+          <i class="fa fa-id-card-clip"></i> Health Card / LOA Panel
+        </a>
+      <% } %>
       <a href="/tests/new?patient=<%= patient.id %>&returnTo=/patients/<%= patient.id %>" class="button btn-primary" style="height: 38px; padding: 0 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em;">
         <i class="fa fa-plus"></i> Create New Test
       </a>
@@ -88,6 +93,23 @@
       </a>
     </div>
   </div>
+
+  <% if (patient.healthInsuranceConsent && totalTests === 0) { %>
+    <div style="background: #eef2ff; border: 1px solid #c7d2fe; border-left: 4px solid #6366f1; border-radius: 10px; padding: 14px 18px; margin-top: 16px; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <i class="fa fa-circle-info" style="font-size: 1.5em; color: #6366f1;"></i>
+        <div>
+          <div style="font-weight: 700; color: #312e81; font-size: 0.95em;">HMO / Health Card Patient — LOA Approval Required</div>
+          <div style="font-size: 0.85em; color: #4338ca; margin-top: 2px;">
+            This patient is enrolled under <strong><%= patient.healthInsuranceProvider || 'Health Card' %></strong>. Before assigning procedures, verify and approve their LOA in the Health Card Panel.
+          </div>
+        </div>
+      </div>
+      <a href="/healthcard?search=<%= encodeURIComponent(patient.patientCode || patient.patientId || patient.lastName) %>" class="button" style="background: #6366f1; color: #ffffff; padding: 8px 16px; border-radius: 8px; font-size: 0.88em; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+        <span>Open Health Card Panel</span> <i class="fa fa-arrow-right"></i>
+      </a>
+    </div>
+  <% } %>
 
   <!-- Body: Demographic Info & Test Statistics Grid -->
   <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-top: 20px;">
@@ -191,7 +213,7 @@
                 <%= test.testType %>
               </td>
               <td style="padding: 12px 16px; color: #64748b; font-size: 0.9em;">
-                <%= new Date(test.testDate).toLocaleDateString() %>
+                <%= test.testDate ? (typeof formatMMDDYYYY === 'function' ? formatMMDDYYYY(test.testDate) : new Date(test.testDate).toLocaleDateString('en-US')) : '' %>
               </td>
               <td style="padding: 12px 16px;">
                 <% 

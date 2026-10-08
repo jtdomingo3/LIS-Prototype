@@ -53,6 +53,8 @@ function createOfflineDb(dataStore) {
         if (data.hr_documents) dataStore.setCollection('hr_documents', data.hr_documents);
         if (data.leave_records) dataStore.setCollection('leave_records', data.leave_records);
         if (data.dtr_records) dataStore.setCollection('dtr_records', data.dtr_records);
+        if (data.philhealth_records) dataStore.setCollection('philhealth_records', data.philhealth_records);
+        if (data.healthcard_records) dataStore.setCollection('healthcard_records', data.healthcard_records);
         if (data.settings && this.setSettings) this.setSettings(data.settings);
       }
     },
@@ -978,6 +980,134 @@ function createOfflineDb(dataStore) {
       let list = dataStore.getCollection('dtr_records') || [];
       list = list.filter(d => !(d && d.id === id));
       dataStore.setCollection('dtr_records', list);
+      return true;
+    },
+
+    /* ── PhilHealth Records ─────────────────────────────────────── */
+    getPhilhealthRecords(filters) {
+      if (sqliteAdapter && typeof sqliteAdapter.getPhilhealthRecords === 'function') {
+        return sqliteAdapter.getPhilhealthRecords(filters);
+      }
+      let list = dataStore.getCollection('philhealth_records') || [];
+      if (filters) {
+        if (filters.status && filters.status !== 'all') list = list.filter(r => r && r.status === filters.status);
+        if (filters.search) {
+          const s = String(filters.search).toLowerCase();
+          list = list.filter(r => r && (
+            (r.controlNo && r.controlNo.toLowerCase().includes(s)) ||
+            (r.firstName && r.firstName.toLowerCase().includes(s)) ||
+            (r.lastName && r.lastName.toLowerCase().includes(s)) ||
+            (r.pinNo && r.pinNo.toLowerCase().includes(s))
+          ));
+        }
+      }
+      return list;
+    },
+    getPhilhealthRecordById(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.getPhilhealthRecordById === 'function') {
+        return sqliteAdapter.getPhilhealthRecordById(id);
+      }
+      const list = dataStore.getCollection('philhealth_records') || [];
+      return list.find(r => r && (r.id === id || r._id === id)) || null;
+    },
+    getPhilhealthRecordByControlNo(controlNo) {
+      if (sqliteAdapter && typeof sqliteAdapter.getPhilhealthRecordByControlNo === 'function') {
+        return sqliteAdapter.getPhilhealthRecordByControlNo(controlNo);
+      }
+      const list = dataStore.getCollection('philhealth_records') || [];
+      return list.find(r => r && r.controlNo === controlNo) || null;
+    },
+    getPhilhealthRecordsByPatientId(patientId) {
+      if (sqliteAdapter && typeof sqliteAdapter.getPhilhealthRecordsByPatientId === 'function') {
+        return sqliteAdapter.getPhilhealthRecordsByPatientId(patientId);
+      }
+      const list = dataStore.getCollection('philhealth_records') || [];
+      return list.filter(r => r && (r.patientId === patientId || r.patient === patientId));
+    },
+    savePhilhealthRecord(record) {
+      if (sqliteAdapter && typeof sqliteAdapter.savePhilhealthRecord === 'function') {
+        return sqliteAdapter.savePhilhealthRecord(record);
+      }
+      if (!record || !record.id) return null;
+      let list = dataStore.getCollection('philhealth_records') || [];
+      const idx = list.findIndex(r => r && r.id === record.id);
+      if (idx >= 0) list[idx] = record;
+      else list.push(record);
+      dataStore.setCollection('philhealth_records', list);
+      return record;
+    },
+    deletePhilhealthRecord(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.deletePhilhealthRecord === 'function') {
+        return sqliteAdapter.deletePhilhealthRecord(id);
+      }
+      let list = dataStore.getCollection('philhealth_records') || [];
+      list = list.filter(r => !(r && r.id === id));
+      dataStore.setCollection('philhealth_records', list);
+      return true;
+    },
+
+    /* ── Health Card (HMO) Records ───────────────────────────────── */
+    getHealthCardRecords(filters) {
+      if (sqliteAdapter && typeof sqliteAdapter.getHealthCardRecords === 'function') {
+        return sqliteAdapter.getHealthCardRecords(filters);
+      }
+      let list = dataStore.getCollection('healthcard_records') || [];
+      if (filters) {
+        if (filters.status && filters.status !== 'all') list = list.filter(r => r && r.status === filters.status);
+        if (filters.hmoProvider && filters.hmoProvider !== 'all') list = list.filter(r => r && r.hmoProvider === filters.hmoProvider);
+        if (filters.search) {
+          const s = String(filters.search).toLowerCase();
+          list = list.filter(r => r && (
+            (r.controlNo && r.controlNo.toLowerCase().includes(s)) ||
+            (r.firstName && r.firstName.toLowerCase().includes(s)) ||
+            (r.lastName && r.lastName.toLowerCase().includes(s)) ||
+            (r.cardNumber && r.cardNumber.toLowerCase().includes(s)) ||
+            (r.loaNumber && r.loaNumber.toLowerCase().includes(s))
+          ));
+        }
+      }
+      return list;
+    },
+    getHealthCardRecordById(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.getHealthCardRecordById === 'function') {
+        return sqliteAdapter.getHealthCardRecordById(id);
+      }
+      const list = dataStore.getCollection('healthcard_records') || [];
+      return list.find(r => r && (r.id === id || r._id === id)) || null;
+    },
+    getHealthCardRecordByControlNo(controlNo) {
+      if (sqliteAdapter && typeof sqliteAdapter.getHealthCardRecordByControlNo === 'function') {
+        return sqliteAdapter.getHealthCardRecordByControlNo(controlNo);
+      }
+      const list = dataStore.getCollection('healthcard_records') || [];
+      return list.find(r => r && r.controlNo === controlNo) || null;
+    },
+    getHealthCardRecordsByPatientId(patientId) {
+      if (sqliteAdapter && typeof sqliteAdapter.getHealthCardRecordsByPatientId === 'function') {
+        return sqliteAdapter.getHealthCardRecordsByPatientId(patientId);
+      }
+      const list = dataStore.getCollection('healthcard_records') || [];
+      return list.filter(r => r && (r.patientId === patientId || r.patient === patientId));
+    },
+    saveHealthCardRecord(record) {
+      if (sqliteAdapter && typeof sqliteAdapter.saveHealthCardRecord === 'function') {
+        return sqliteAdapter.saveHealthCardRecord(record);
+      }
+      if (!record || !record.id) return null;
+      let list = dataStore.getCollection('healthcard_records') || [];
+      const idx = list.findIndex(r => r && r.id === record.id);
+      if (idx >= 0) list[idx] = record;
+      else list.push(record);
+      dataStore.setCollection('healthcard_records', list);
+      return record;
+    },
+    deleteHealthCardRecord(id) {
+      if (sqliteAdapter && typeof sqliteAdapter.deleteHealthCardRecord === 'function') {
+        return sqliteAdapter.deleteHealthCardRecord(id);
+      }
+      let list = dataStore.getCollection('healthcard_records') || [];
+      list = list.filter(r => !(r && r.id === id));
+      dataStore.setCollection('healthcard_records', list);
       return true;
     },
   };

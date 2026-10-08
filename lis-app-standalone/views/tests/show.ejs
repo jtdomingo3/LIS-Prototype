@@ -96,6 +96,7 @@
         <i class="fa fa-arrow-left"></i> Back to Tests
       </a>
       <form action="/tests/<%= test.id %>?_method=DELETE" method="POST" style="display:inline-flex; align-items:center; margin:0; padding:0;" onsubmit="return confirm('Are you sure you want to delete this test?');">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
         <button type="submit" class="button btn-secondary" style="height: 38px; padding: 0 12px; border-radius: 8px; font-weight: 600; color: #ef4444; border-color: #fecaca; display: inline-flex; align-items: center; gap: 4px; font-size: 0.88em;">
           <i class="fa fa-trash"></i> Delete
         </button>
@@ -108,7 +109,7 @@
     <div>
       <span style="display: block; font-size: 0.75em; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.5px;">Order Date</span>
       <span style="font-size: 0.95em; font-weight: 600; color: #0f172a; margin-top: 2px; display: block;">
-        <%= test.testDate ? new Date(test.testDate).toLocaleDateString() : 'N/A' %>
+        <%= test.testDate ? (typeof formatMMDDYYYY === 'function' ? formatMMDDYYYY(test.testDate) : new Date(test.testDate).toLocaleDateString('en-US')) : 'N/A' %>
       </span>
     </div>
     <div>

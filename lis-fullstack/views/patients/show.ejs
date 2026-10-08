@@ -213,7 +213,7 @@
                 <%= test.testType %>
               </td>
               <td style="padding: 12px 16px; color: #64748b; font-size: 0.9em;">
-                <%= new Date(test.testDate).toLocaleDateString() %>
+                <%= test.testDate ? (typeof formatMMDDYYYY === 'function' ? formatMMDDYYYY(test.testDate) : new Date(test.testDate).toLocaleDateString('en-US')) : '' %>
               </td>
               <td style="padding: 12px 16px;">
                 <% 

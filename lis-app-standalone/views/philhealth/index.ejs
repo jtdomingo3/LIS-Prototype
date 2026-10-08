@@ -1,0 +1,1360 @@
+<div class="card" style="padding: 24px 28px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); margin-bottom: 24px; background: #ffffff;">
+  <!-- Module Tabs: PhilHealth vs Health Card -->
+  <div style="display: flex; gap: 10px; margin-bottom: 22px; border-bottom: 2px solid #f1f5f9; padding-bottom: 4px;">
+    <a href="/philhealth" style="padding: 10px 22px; font-weight: 700; font-size: 0.95em; color: #0284c7; border-bottom: 3px solid #0284c7; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; margin-bottom: -6px; background: #f0f9ff; border-radius: 8px 8px 0 0;">
+      <i class="fa fa-file-medical"></i> PhilHealth (Konsulta / DOH)
+    </a>
+    <a href="/healthcard" style="padding: 10px 22px; font-weight: 600; font-size: 0.95em; color: #64748b; border-bottom: 3px solid transparent; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; margin-bottom: -6px; border-radius: 8px 8px 0 0; transition: all 0.15s;" onmouseover="this.style.color='#0284c7'; this.style.background='#f8fafc';" onmouseout="this.style.color='#64748b'; this.style.background='transparent';">
+      <i class="fa fa-id-card"></i> Health Card (HMO Claims)
+    </a>
+  </div>
+
+  <!-- Header -->
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; border-bottom: 1px solid #f1f5f9; padding-bottom: 16px; margin-bottom: 20px;">
+    <div>
+      <h3 style="margin: 0; font-size: 1.45em; display: flex; align-items: center; gap: 10px; color: #0f172a; font-weight: 700;">
+        <span style="font-size: 1.2em;">🩺</span> PhilHealth Panel
+      </h3>
+      <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.9em;">
+        Official PhilHealth claims registry, procedure authorization, and DOH SOA tranche settlement tracking.
+      </p>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+      <a href="/philhealth/export.csv<%= (searchQuery || dateFrom || dateTo || statusFilter || tranche1PaidFilter || tranche2PaidFilter) ? ('?' + new URLSearchParams({ search: searchQuery, dateFrom, dateTo, status: statusFilter, tranche1Paid: tranche1PaidFilter, tranche2Paid: tranche2PaidFilter }).toString()) : '' %>" class="button btn-secondary" style="height: 38px; padding: 0 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em;" title="Download filtered records as CSV">
+        <i class="fa fa-file-csv" style="color: #059669;"></i> Export CSV
+      </a>
+      <a href="/reports/worksheet" class="button btn-secondary" style="height: 38px; padding: 0 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em;">
+        <i class="fa fa-table"></i> Worksheet
+      </a>
+      <a href="/patients/new" class="button btn-primary" style="height: 38px; padding: 0 18px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; font-size: 0.88em; background: #0284c7;">
+        <i class="fa fa-user-plus"></i> Enroll PhilHealth Patient
+      </a>
+    </div>
+  </div>
+
+  <!-- Metrics Cards -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 22px;">
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 18px;">
+      <div style="font-size: 0.78em; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px;">Total Records</div>
+      <div style="font-size: 1.8em; font-weight: 800; color: #0f172a; margin-top: 4px;"><%= stats.total %></div>
+    </div>
+    <div style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: 12px; padding: 14px 18px;">
+      <div style="font-size: 0.78em; font-weight: 700; text-transform: uppercase; color: #b45309; letter-spacing: 0.5px;">For Approval</div>
+      <div style="font-size: 1.8em; font-weight: 800; color: #d97706; margin-top: 4px;">
+        <%= stats.pendingApproval %>
+        <% if (stats.pendingApproval > 0) { %>
+          <span style="font-size: 0.45em; background: #ef4444; color: #fff; padding: 2px 8px; border-radius: 10px; vertical-align: middle; margin-left: 6px;">Action Required</span>
+        <% } %>
+      </div>
+    </div>
+    <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 14px 18px;">
+      <div style="font-size: 0.78em; font-weight: 700; text-transform: uppercase; color: #047857; letter-spacing: 0.5px;">Approved / In Queue</div>
+      <div style="font-size: 1.8em; font-weight: 800; color: #059669; margin-top: 4px;"><%= stats.approved %></div>
+    </div>
+    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 14px 18px;">
+      <div style="font-size: 0.78em; font-weight: 700; text-transform: uppercase; color: #166534; letter-spacing: 0.5px;">1st Tranche Paid</div>
+      <div style="font-size: 1.8em; font-weight: 800; color: #15803d; margin-top: 4px;"><%= stats.tranche1Paid %></div>
+    </div>
+    <div style="background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 12px; padding: 14px 18px;">
+      <div style="font-size: 0.78em; font-weight: 700; text-transform: uppercase; color: #4338ca; letter-spacing: 0.5px;">2nd Tranche Paid</div>
+      <div style="font-size: 1.8em; font-weight: 800; color: #4f46e5; margin-top: 4px;"><%= stats.tranche2Paid %></div>
+    </div>
+  </div>
+
+  <!-- Search & Filter Form -->
+  <form action="/philhealth" method="GET" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 18px; margin-bottom: 20px;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; align-items: flex-end;">
+      <div>
+        <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; margin-bottom: 4px;">Search Records</label>
+        <input type="text" name="search" value="<%= searchQuery %>" placeholder="Name, PIN, Control #, PCU/Error, Agency" style="width: 100%; height: 36px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 10px; font-size: 0.88em; box-sizing: border-box;" />
+      </div>
+
+      <div>
+        <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; margin-bottom: 4px;">Record Date Range</label>
+        <div style="display: flex; gap: 6px;">
+          <input type="date" name="dateFrom" value="<%= dateFrom %>" style="flex: 1; height: 36px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 6px; font-size: 0.85em;" />
+          <input type="date" name="dateTo" value="<%= dateTo %>" style="flex: 1; height: 36px; border-radius: 8px; border: 1px solid #cbd5e1; padding: 0 6px; font-size: 0.85em;" />
+        </div>
+      </div>
+
+      <div>
+        <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; margin-bottom: 4px;">Approval Status</label>
+        <select name="status" style="width: 100%; height: 36px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; padding: 0 8px; font-size: 0.88em;">
+          <option value="">-- All Statuses --</option>
+          <option value="Pending Approval" <%= statusFilter === 'Pending Approval' ? 'selected' : '' %>>Pending Approval</option>
+          <option value="Approved" <%= statusFilter === 'Approved' ? 'selected' : '' %>>Approved</option>
+          <option value="Completed" <%= statusFilter === 'Completed' ? 'selected' : '' %>>Completed</option>
+          <option value="Cancelled" <%= statusFilter === 'Cancelled' ? 'selected' : '' %>>Cancelled</option>
+        </select>
+      </div>
+
+      <div>
+        <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; margin-bottom: 4px;">1st Tranche Paid</label>
+        <select name="tranche1Paid" style="width: 100%; height: 36px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; padding: 0 8px; font-size: 0.88em;">
+          <option value="">-- Any --</option>
+          <option value="Paid" <%= tranche1PaidFilter === 'Paid' ? 'selected' : '' %>>Paid</option>
+          <option value="Not Paid" <%= tranche1PaidFilter === 'Not Paid' ? 'selected' : '' %>>Not Paid</option>
+        </select>
+      </div>
+
+      <div>
+        <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; margin-bottom: 4px;">2nd Tranche Paid</label>
+        <select name="tranche2Paid" style="width: 100%; height: 36px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; padding: 0 8px; font-size: 0.88em;">
+          <option value="">-- Any --</option>
+          <option value="Paid" <%= tranche2PaidFilter === 'Paid' ? 'selected' : '' %>>Paid</option>
+          <option value="Not Paid" <%= tranche2PaidFilter === 'Not Paid' ? 'selected' : '' %>>Not Paid</option>
+        </select>
+      </div>
+
+      <div style="display: flex; gap: 8px;">
+        <button type="submit" class="button btn-primary" style="height: 36px; padding: 0 16px; border-radius: 8px; font-weight: 600; font-size: 0.88em; flex: 1;">
+          <i class="fa fa-filter"></i> Filter
+        </button>
+        <a href="/philhealth" class="button btn-secondary" style="height: 36px; padding: 0 12px; border-radius: 8px; font-weight: 600; font-size: 0.88em; display: inline-flex; align-items: center; justify-content: center;" title="Reset filters">
+          <i class="fa fa-undo"></i>
+        </a>
+      </div>
+    </div>
+  </form>
+
+  <!-- Universal Bulk Action Bar for Multi-select -->
+  <div id="bulkActionBar" style="display: none; background: #f8fafc; border: 1.5px solid #6366f1; border-radius: 12px; padding: 12px 18px; margin-bottom: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; box-shadow: 0 4px 14px rgba(99,102,241,0.12);">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <span style="font-weight: 700; font-size: 0.95em; color: #312e81; display: inline-flex; align-items: center; gap: 6px;">
+        <i class="fa fa-check-double" style="color: #6366f1;"></i> <span id="selectedCount">0</span> record(s) selected
+      </span>
+      <button type="button" onclick="toggleSelectAll({ checked: true })" style="background: none; border: none; color: #4f46e5; font-size: 0.82em; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0;">Select All Visible</button>
+      <span style="color: #cbd5e1;">|</span>
+      <button type="button" onclick="clearSelection()" style="background: none; border: none; color: #64748b; font-size: 0.82em; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0;">Clear</button>
+    </div>
+    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+      <!-- Universal Batch Modal Trigger -->
+      <button type="button" class="button" onclick="openUniversalBatchModal()" style="height: 36px; padding: 0 16px; font-size: 0.88em; font-weight: 700; background: linear-gradient(135deg, #4f46e5, #6366f1); color: #fff; border: none; border-radius: 8px; box-shadow: 0 2px 6px rgba(79,70,229,0.25); cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+        <i class="fa fa-layer-group"></i> Universal Batch Update
+      </button>
+
+      <!-- Quick 1-Click Presets -->
+      <div style="display: inline-flex; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff;">
+        <button type="button" onclick="quickBatchApply('tranche1Encoded', 'Completed')" style="height: 34px; padding: 0 12px; font-size: 0.82em; font-weight: 600; border: none; border-right: 1px solid #e2e8f0; background: #ffffff; color: #166534; cursor: pointer;" title="Mark all selected as 1st Tranche Encoded Done">
+          ✓ 1st Tranche Done
+        </button>
+        <button type="button" onclick="quickBatchApply('tranche2Encoded', 'Completed')" style="height: 34px; padding: 0 12px; font-size: 0.82em; font-weight: 600; border: none; border-right: 1px solid #e2e8f0; background: #ffffff; color: #166534; cursor: pointer;" title="Mark all selected as 2nd Tranche Encoded Done">
+          ✓ 2nd Tranche Done
+        </button>
+        <button type="button" onclick="quickBatchApply('ekas', 'Completed')" style="height: 34px; padding: 0 12px; font-size: 0.82em; font-weight: 600; border: none; border-right: 1px solid #e2e8f0; background: #ffffff; color: #166534; cursor: pointer;" title="Mark all selected as EKAS Done">
+          ✓ EKAS Done
+        </button>
+        <button type="button" onclick="openBulkPaidModal()" style="height: 34px; padding: 0 12px; font-size: 0.82em; font-weight: 600; border: none; background: #ffffff; color: #0284c7; cursor: pointer;" title="Set payment status / DOH SOA for selected records">
+          <i class="fa fa-file-invoice-dollar"></i> Set Paid (SOA)
+        </button>
+      </div>
+
+      <button type="button" class="button btn-secondary" onclick="exportSelectedCsv()" style="height: 36px; padding: 0 12px; font-size: 0.85em; font-weight: 600; border-radius: 8px;" title="Export selected records to CSV">
+        <i class="fa fa-download"></i> Export Selected
+      </button>
+    </div>
+  </div>
+
+  <!-- Records Table -->
+  <div style="overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 12px;">
+    <table style="width: 100%; border-collapse: collapse; font-size: 0.86em; text-align: left; background: #ffffff;">
+      <thead>
+        <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; color: #475569;">
+          <th style="padding: 10px 12px; width: 34px; text-align: center;">
+            <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)" style="cursor: pointer; width: 16px; height: 16px; accent-color: #10b981;" />
+          </th>
+          <th style="padding: 10px 12px; white-space: nowrap;"># / CONTROL NO</th>
+          <th style="padding: 10px 12px; white-space: nowrap;">DATE</th>
+          <th style="padding: 10px 12px; min-width: 220px; white-space: nowrap;">NAME</th>
+          <th style="padding: 10px 12px; white-space: nowrap; min-width: 130px;">PIN NO.</th>
+          <th style="padding: 10px 14px; min-width: 280px; max-width: 420px;">PROCEDURE</th>
+          <th style="padding: 10px 12px; min-width: 180px;">AGENCY</th>
+          <th style="padding: 10px 12px;">PCU/ERROR</th>
+          <th style="padding: 10px 10px; text-align: center; white-space: nowrap;">1ST TRANCHE<br>ENCODED</th>
+          <th style="padding: 10px 10px; text-align: center; white-space: nowrap;">2ND TRANCHE<br>ENCODED</th>
+          <th style="padding: 10px 10px; text-align: center; white-space: nowrap;">EKAS</th>
+          <th style="padding: 10px 10px; text-align: center; white-space: nowrap;">1ST TRANCHE<br>PAID</th>
+          <th style="padding: 10px 10px; text-align: center; white-space: nowrap;">2ND TRANCHE<br>PAID</th>
+          <th style="padding: 10px 12px; text-align: center;">STATUS</th>
+          <th style="padding: 10px 12px; text-align: right; white-space: nowrap;">ACTIONS</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (!records || !records.length) { %>
+          <tr>
+            <td colspan="15" style="text-align: center; padding: 36px 16px; color: #94a3b8;">
+              <div style="font-size: 2.2em; margin-bottom: 8px;">📋</div>
+              <div style="font-weight: 600; font-size: 1.05em; color: #64748b;">No PhilHealth records found</div>
+              <p style="margin: 4px 0 0; font-size: 0.9em; color: #94a3b8;">When new patients are encoded with PhilHealth coverage, they automatically appear here.</p>
+            </td>
+          </tr>
+        <% } else { %>
+          <% records.forEach(function(r, idx) { %>
+            <tr id="row_<%= r.id %>" class="record-row" style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" onmouseover="if (!this.classList.contains('row-selected')) this.style.background='#f8fafc'" onmouseout="if (!this.classList.contains('row-selected')) this.style.background='#ffffff'">
+              <td style="padding: 10px 12px; text-align: center;">
+                <input type="checkbox" class="row-checkbox" value="<%= r.id %>" data-control="<%= r.controlNo %>" onchange="updateSelectedCount()" style="cursor: pointer; width: 16px; height: 16px; accent-color: #10b981;" />
+              </td>
+
+              <!-- Control No -->
+              <td style="padding: 10px 12px; font-weight: 700; color: #0284c7; white-space: nowrap;">
+                <div style="font-size: 0.95em;"><%= r.controlNo || 'N/A' %></div>
+                <div style="font-size: 0.75em; color: #94a3b8; font-weight: 500;">#<%= idx + 1 %></div>
+              </td>
+
+              <!-- Date -->
+              <td style="padding: 10px 12px; white-space: nowrap; color: #475569;">
+                <%= r.recordDate || (r.createdAt ? String(r.createdAt).slice(0, 10) : '') %>
+              </td>
+
+              <!-- Name -->
+              <td style="padding: 10px 12px; font-weight: 600; color: #0f172a; min-width: 220px; white-space: nowrap;">
+                <div><%= r.fullName || `${r.firstName} ${r.lastName}` %></div>
+              </td>
+
+              <!-- PIN -->
+              <td style="padding: 10px 12px; font-family: monospace; font-size: 0.95em; color: #334155; white-space: nowrap; min-width: 130px;">
+                <% if (r.pinNo) { %>
+                  <%= r.pinNo %>
+                <% } else { %>
+                  <span style="color: #cbd5e1;">—</span>
+                <% } %>
+              </td>
+
+              <!-- Procedures -->
+              <td style="padding: 10px 14px; min-width: 280px; max-width: 420px; vertical-align: top;">
+                <% if (!r.procedures || !r.procedures.length) { %>
+                  <span style="color: #94a3b8; font-style: italic; font-size: 0.9em;">No procedures assigned</span>
+                <% } else { %>
+                  <% 
+                    // Normalize procedures matching Image 2 (DIAGNOSTICS 1-13)
+                    var normList = (r.procedures || []).map(function(proc) {
+                      var key = (proc.key || proc.procedureKey || '').toLowerCase();
+                      var lbl = (proc.label || '').toLowerCase();
+                      var match = catalog.find(function(c) {
+                        return c.key.toLowerCase() === key ||
+                               c.label.toLowerCase() === lbl ||
+                               (c.aliases && c.aliases.some(function(a) { return a.toLowerCase() === key || a.toLowerCase() === lbl; }));
+                      });
+                      var itemNo = match ? match.itemNo : (proc.itemNo || null);
+                      var label = match ? match.label : (proc.label || key);
+                      var forSendOut = match ? match.forSendOut : !!proc.forSendOut;
+                      var remarks = (proc.remarks || '').trim();
+                      if (remarks === 'Blood Chemistry' || remarks.startsWith('Blood Chemistry') || remarks.startsWith('For Send Out')) {
+                        remarks = '';
+                      }
+                      return {
+                        itemNo: itemNo,
+                        label: label,
+                        forSendOut: forSendOut,
+                        remarks: remarks
+                      };
+                    }).sort(function(a, b) {
+                      return (a.itemNo || 99) - (b.itemNo || 99);
+                    });
+                  %>
+                  <div style="display: flex; flex-direction: column; gap: 5px;">
+                    <% normList.forEach(function(proc) { %>
+                      <div style="display: flex; align-items: baseline; gap: 6px; font-size: 0.9em; line-height: 1.4; color: #1e293b;">
+                        <% if (proc.itemNo) { %>
+                          <span style="font-weight: 700; color: #0284c7; min-width: 18px; text-align: right; flex-shrink: 0;"><%= proc.itemNo %>.</span>
+                        <% } else { %>
+                          <span style="color: #94a3b8; min-width: 18px; text-align: right; flex-shrink: 0;">•</span>
+                        <% } %>
+                        <div style="flex: 1;">
+                          <span style="font-weight: 600; color: #0f172a;"><%= proc.label %></span>
+                          <% if (proc.forSendOut) { %>
+                            <span style="background: #fee2e2; color: #b91c1c; font-size: 0.72em; padding: 1px 6px; border-radius: 4px; font-weight: 700; margin-left: 4px; vertical-align: middle;">Send-out</span>
+                          <% } %>
+                          <% if (proc.remarks) { %>
+                            <div style="color: #64748b; font-size: 0.82em; font-style: italic; margin-top: 2px;">Note: <%= proc.remarks %></div>
+                          <% } %>
+                        </div>
+                      </div>
+                    <% }); %>
+                  </div>
+                <% } %>
+              </td>
+
+              <!-- Agency -->
+              <td style="padding: 10px 12px; color: #475569; min-width: 180px;">
+                <% if (r.agency) { %>
+                  <%= r.agency %>
+                <% } else { %>
+                  <span style="color: #cbd5e1;">—</span>
+                <% } %>
+              </td>
+
+              <!-- PCU / Error -->
+              <td style="padding: 10px 12px; color: #334155; font-family: monospace; font-size: 0.92em;">
+                <% if (r.pcuError) { %>
+                  <span style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; border: 1px solid #e2e8f0;"><%= r.pcuError %></span>
+                <% } else { %>
+                  <span style="color: #cbd5e1;">—</span>
+                <% } %>
+              </td>
+
+              <!-- 1st Tranche Encoded -->
+              <td style="padding: 10px 10px; text-align: center; white-space: nowrap;">
+                <% if (r.tranche1Encoded === 'Completed') { %>
+                  <span onclick="quickToggleBadge(this, '<%= r.id %>', 'tranche1Encoded', 'Pending', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 700; background: #dcfce7; color: #166534;" title="Click to toggle to Pending">✓ Done</span>
+                <% } else { %>
+                  <span onclick="quickToggleBadge(this, '<%= r.id %>', 'tranche1Encoded', 'Completed', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 600; background: #f1f5f9; color: #64748b;" title="Click to mark as Done">Pending</span>
+                <% } %>
+              </td>
+
+              <!-- 2nd Tranche Encoded -->
+              <td style="padding: 10px 10px; text-align: center; white-space: nowrap;">
+                <% if (r.tranche2Encoded === 'Completed') { %>
+                  <span onclick="quickToggleBadge(this, '<%= r.id %>', 'tranche2Encoded', 'Pending', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 700; background: #dcfce7; color: #166534;" title="Click to toggle to Pending">✓ Done</span>
+                <% } else { %>
+                  <span onclick="quickToggleBadge(this, '<%= r.id %>', 'tranche2Encoded', 'Completed', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 600; background: #f1f5f9; color: #64748b;" title="Click to mark as Done">Pending</span>
+                <% } %>
+              </td>
+
+              <!-- EKAS -->
+              <td style="padding: 10px 10px; text-align: center; white-space: nowrap;">
+                <% if (r.ekas === 'Completed') { %>
+                  <span onclick="quickToggleBadge(this, '<%= r.id %>', 'ekas', 'Pending', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 700; background: #dcfce7; color: #166534;" title="Click to toggle to Pending">✓ Done</span>
+                <% } else { %>
+                  <span onclick="quickToggleBadge(this, '<%= r.id %>', 'ekas', 'Completed', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 600; background: #f1f5f9; color: #64748b;" title="Click to mark as Done">Pending</span>
+                <% } %>
+              </td>
+
+              <!-- 1st Tranche Paid -->
+              <td style="padding: 10px 10px; text-align: center; white-space: nowrap;">
+                <% if (r.tranche1Paid === 'Paid') { %>
+                  <span onclick="quickToggleBadge(this, '<%= r.id %>', 'tranche1Paid', 'Not Paid', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 700; background: #dcfce7; color: #15803d; border: 1px solid #86efac;" title="Click to toggle Paid / Not Paid<%= r.soaRef ? (' (SOA: ' + r.soaRef + ')') : '' %>">✓ Paid</span>
+                <% } else { %>
+                  <span onclick="quickToggleBadge(this, '<%= r.id %>', 'tranche1Paid', 'Paid', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 600; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca;" title="Click to mark as Paid">Not Paid</span>
+                <% } %>
+              </td>
+
+              <!-- 2nd Tranche Paid -->
+              <td style="padding: 10px 10px; text-align: center; white-space: nowrap;">
+                <% if (r.tranche2Paid === 'Paid') { %>
+                  <span onclick="quickToggleBadge(this, '<%= r.id %>', 'tranche2Paid', 'Not Paid', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 700; background: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe;" title="Click to toggle Paid / Not Paid<%= r.soaRef ? (' (SOA: ' + r.soaRef + ')') : '' %>">✓ Paid</span>
+                <% } else { %>
+                  <span onclick="quickToggleBadge(this, '<%= r.id %>', 'tranche2Paid', 'Paid', '<%= r.controlNo %>')" style="cursor: pointer; user-select: none; display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.8em; font-weight: 600; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca;" title="Click to mark as Paid">Not Paid</span>
+                <% } %>
+              </td>
+
+              <!-- Status -->
+              <td style="padding: 10px 12px; text-align: center; white-space: nowrap;">
+                <% if (r.status === 'Approved') { %>
+                  <span style="background: #ecfdf5; color: #047857; font-weight: 700; padding: 3px 10px; border-radius: 12px; font-size: 0.82em; display: inline-flex; align-items: center; gap: 4px;">
+                    <i class="fa fa-check"></i> Approved
+                  </span>
+                <% } else if (r.status === 'Pending Approval') { %>
+                  <span style="background: #fffbeb; color: #b45309; font-weight: 700; padding: 3px 10px; border-radius: 12px; font-size: 0.82em; display: inline-flex; align-items: center; gap: 4px;">
+                    <i class="fa fa-clock"></i> For Approval
+                  </span>
+                <% } else if (r.status === 'Cancelled') { %>
+                  <span style="background: #f1f5f9; color: #64748b; font-weight: 600; padding: 3px 10px; border-radius: 12px; font-size: 0.82em;">Cancelled</span>
+                <% } else { %>
+                  <span style="background: #f1f5f9; color: #334155; font-weight: 600; padding: 3px 10px; border-radius: 12px; font-size: 0.82em;"><%= r.status %></span>
+                <% } %>
+              </td>
+
+              <!-- Actions -->
+              <td style="padding: 10px 12px; text-align: right; white-space: nowrap;">
+                <div style="display: inline-flex; gap: 6px; align-items: center;">
+                  <% if (r.status === 'Pending Approval') { %>
+                    <button type="button" class="button btn-small btn-primary" onclick="openProcedureModal('<%= r.id %>')" style="padding: 4px 10px; font-size: 0.82em; font-weight: 600; background: #0284c7;" title="Assign procedures and approve for specimen collection">
+                      <i class="fa fa-stethoscope"></i> Assign & Approve
+                    </button>
+                  <% } else { %>
+                    <button type="button" class="button btn-small btn-secondary" onclick="openProcedureModal('<%= r.id %>')" style="padding: 4px 8px; font-size: 0.82em;" title="View or adjust assigned procedures">
+                      <i class="fa fa-list"></i> Procedures
+                    </button>
+                  <% } %>
+
+                  <button type="button" class="button btn-small btn-secondary" onclick="openEditModal('<%= r.id %>')" style="padding: 4px 8px; font-size: 0.82em;" title="Edit record details and tranche values">
+                    <i class="fa fa-pencil"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          <% }); %>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MODAL: Assign Procedures & Approve -->
+<div id="procModal" style="display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.6); z-index: 1000; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box;">
+  <div style="background: #ffffff; border-radius: 16px; width: 100%; max-width: 760px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 20px 40px rgba(0,0,0,0.25); overflow: hidden;">
+    <!-- Modal Header -->
+    <div style="padding: 18px 24px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+      <div>
+        <h4 style="margin: 0; font-size: 1.2em; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+          <i class="fa fa-notes-medical" style="color: #0284c7;"></i> Assign PhilHealth Procedures
+        </h4>
+        <div id="modalPatientInfo" style="font-size: 0.85em; color: #64748b; margin-top: 4px;">Loading patient info...</div>
+      </div>
+      <button type="button" onclick="closeProcedureModal()" style="background: none; border: none; font-size: 1.4em; color: #94a3b8; cursor: pointer;">&times;</button>
+    </div>
+
+    <!-- Modal Body with Catalog Choices -->
+    <form id="procForm" onsubmit="submitApproval(event)" style="padding: 20px 24px; overflow-y: auto; flex: 1;">
+      <input type="hidden" id="currentRecordId" name="recordId" value="" />
+
+      <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; font-size: 0.85em; color: #166534; line-height: 1.5;">
+        <strong><i class="fa fa-info-circle"></i> PhilHealth Rule:</strong> Only accredited procedures below are available. Blood Chemistry tests will receive standardized clinical remarks. Sputum Microscopy and Pap Smear will be designated as <strong>Send-out</strong>. Approved tests bypass Payment Area and proceed directly to specimen collection.
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <span style="font-weight: 700; font-size: 0.88em; color: #334155; text-transform: uppercase; letter-spacing: 0.5px;">DIAGNOSTICS (13)</span>
+        <button type="button" onclick="selectAllProcs(true)" style="background: none; border: none; color: #0284c7; font-size: 0.82em; font-weight: 600; cursor: pointer; text-decoration: underline;">Select All</button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr; gap: 10px;" id="catalogItemsContainer">
+        <% catalog.forEach(function(item) { %>
+          <div class="proc-item-card" data-key="<%= item.key %>" style="border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; background: #ffffff; transition: border-color 0.2s;">
+            <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+              <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; flex: 1;">
+                <input type="checkbox" name="selected_proc" value="<%= item.key %>" onchange="toggleProcItem(this, '<%= item.key %>')" style="width: 18px; height: 18px; accent-color: #0284c7; cursor: pointer;" />
+                <span style="font-weight: 700; color: #0284c7; min-width: 22px; font-size: 0.95em;"><%= item.itemNo %>.</span>
+                <span style="font-weight: 600; font-size: 0.92em; color: #1e293b;"><%= item.label %></span>
+              </label>
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <% if (item.isBloodChem) { %>
+                  <span style="background: #fef3c7; color: #b45309; font-size: 0.72em; padding: 2px 8px; border-radius: 6px; font-weight: 700;">Blood Chem</span>
+                <% } %>
+                <% if (item.forSendOut) { %>
+                  <span style="background: #fee2e2; color: #b91c1c; font-size: 0.72em; padding: 2px 8px; border-radius: 6px; font-weight: 700;">Send-out</span>
+                <% } %>
+                <span style="background: #f1f5f9; color: #475569; font-size: 0.72em; padding: 2px 8px; border-radius: 6px; font-weight: 600;"><%= item.targetArea %></span>
+              </div>
+            </div>
+
+            <!-- Remarks row: auto-shown or required for sendout/blood chem -->
+            <div id="remarks_wrap_<%= item.key %>" style="display: none; margin-top: 10px; padding-top: 8px; border-top: 1px dashed #e2e8f0;">
+              <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; margin-bottom: 3px;">
+                Procedure Remarks <%= item.requiresRemarks ? '<span style="color:#ef4444;">* (Required for send-out)</span>' : '(Auto-applied to laboratory worksheet)' %>
+              </label>
+              <input type="text" id="remark_<%= item.key %>" value="<%= item.defaultRemarks %>" placeholder="Enter remarks (e.g. clinic reason or destination)" style="width: 100%; height: 32px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 8px; font-size: 0.85em; box-sizing: border-box;" />
+            </div>
+          </div>
+        <% }); %>
+      </div>
+
+      <!-- Modal Footer -->
+      <div style="padding-top: 18px; margin-top: 18px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 10px; align-items: center;">
+        <button type="button" onclick="closeProcedureModal()" class="button btn-secondary" style="height: 38px; padding: 0 16px; border-radius: 8px; font-weight: 600;">Cancel</button>
+        <button type="button" onclick="saveProceduresDraft()" class="button btn-secondary" style="height: 38px; padding: 0 16px; border-radius: 8px; font-weight: 600;">Save Draft Only</button>
+        <button type="submit" id="btnApproveSubmit" class="button btn-primary" style="height: 38px; padding: 0 22px; border-radius: 8px; font-weight: 700; background: #059669; display: inline-flex; align-items: center; gap: 6px;">
+          <i class="fa fa-check-circle"></i> Approve & Send to Queue
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: Edit Record Details & Tranches -->
+<div id="editModal" style="display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.6); z-index: 1000; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box;">
+  <div style="background: #ffffff; border-radius: 16px; width: 100%; max-width: 580px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 20px 40px rgba(0,0,0,0.25); overflow: hidden;">
+    <div style="padding: 16px 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+      <h4 style="margin: 0; font-size: 1.15em; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+        <i class="fa fa-pencil" style="color: #0284c7;"></i> Edit PhilHealth Record Details
+      </h4>
+      <button type="button" onclick="closeEditModal()" style="background: none; border: none; font-size: 1.4em; color: #94a3b8; cursor: pointer;">&times;</button>
+    </div>
+
+    <form id="editForm" onsubmit="submitEdit(event)" style="padding: 18px 20px; overflow-y: auto; flex: 1;">
+      <input type="hidden" id="editRecordId" />
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+        <div>
+          <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; margin-bottom: 4px;">Control No.</label>
+          <input type="text" id="editControlNo" readonly style="width: 100%; height: 34px; border-radius: 6px; border: 1px solid #e2e8f0; background: #f8fafc; padding: 0 8px; font-size: 0.88em; font-weight: 600; color: #0284c7; box-sizing: border-box;" />
+        </div>
+        <div>
+          <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; margin-bottom: 4px;">Patient Name</label>
+          <input type="text" id="editFullName" readonly style="width: 100%; height: 34px; border-radius: 6px; border: 1px solid #e2e8f0; background: #f8fafc; padding: 0 8px; font-size: 0.88em; color: #334155; box-sizing: border-box;" />
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+        <div>
+          <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; margin-bottom: 4px;">PIN No. (PhilHealth Number)</label>
+          <input type="text" id="editPinNo" placeholder="e.g. 12-345678901-2" style="width: 100%; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 8px; font-size: 0.88em; box-sizing: border-box;" />
+        </div>
+        <div>
+          <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; margin-bottom: 4px;">Agency / Employer</label>
+          <input type="text" id="editAgency" placeholder="e.g. DepEd / Branch" style="width: 100%; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 8px; font-size: 0.88em; box-sizing: border-box;" />
+        </div>
+      </div>
+
+      <div style="margin-bottom: 12px;">
+        <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; margin-bottom: 4px;">PCU / Error (Alphanumeric from PhilHealth portal)</label>
+        <input type="text" id="editPcuError" placeholder="Enter PCU code or portal error details" style="width: 100%; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 8px; font-size: 0.88em; font-family: monospace; box-sizing: border-box;" />
+      </div>
+
+      <div style="border-top: 1px solid #f1f5f9; padding-top: 12px; margin-top: 12px;">
+        <div style="font-weight: 700; font-size: 0.82em; color: #334155; text-transform: uppercase; margin-bottom: 8px;">Claim Tranches & EKAS Status</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+          <div>
+            <label style="display: block; font-size: 0.75em; font-weight: 600; color: #64748b; margin-bottom: 3px;">1st Tranche Encoded</label>
+            <select id="editTranche1Encoded" style="width: 100%; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; padding: 0 6px; font-size: 0.85em;">
+              <option value="Pending">Pending</option>
+              <option value="Completed">Completed</option>
+            </select>
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.75em; font-weight: 600; color: #64748b; margin-bottom: 3px;">2nd Tranche Encoded</label>
+            <select id="editTranche2Encoded" style="width: 100%; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; padding: 0 6px; font-size: 0.85em;">
+              <option value="Pending">Pending</option>
+              <option value="Completed">Completed</option>
+            </select>
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.75em; font-weight: 600; color: #64748b; margin-bottom: 3px;">EKAS</label>
+            <select id="editEkas" style="width: 100%; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; padding: 0 6px; font-size: 0.85em;">
+              <option value="Pending">Pending</option>
+              <option value="Completed">Completed</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="font-weight: 700; font-size: 0.82em; color: #334155; text-transform: uppercase; margin-bottom: 8px;">Payment Settlement (DOH SOA)</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px;">
+          <div>
+            <label style="display: block; font-size: 0.75em; font-weight: 600; color: #64748b; margin-bottom: 3px;">1st Tranche Paid</label>
+            <select id="editTranche1Paid" style="width: 100%; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; padding: 0 6px; font-size: 0.85em;">
+              <option value="Not Paid">Not Paid</option>
+              <option value="Paid">Paid</option>
+            </select>
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.75em; font-weight: 600; color: #64748b; margin-bottom: 3px;">2nd Tranche Paid</label>
+            <select id="editTranche2Paid" style="width: 100%; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; padding: 0 6px; font-size: 0.85em;">
+              <option value="Not Paid">Not Paid</option>
+              <option value="Paid">Paid</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div>
+            <label style="display: block; font-size: 0.75em; font-weight: 600; color: #64748b; margin-bottom: 3px;">SOA Reference Number</label>
+            <input type="text" id="editSoaRef" placeholder="e.g. SOA-2026-DOH-01" style="width: 100%; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 8px; font-size: 0.85em; box-sizing: border-box;" />
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.75em; font-weight: 600; color: #64748b; margin-bottom: 3px;">Paid Date</label>
+            <input type="date" id="editPaidDate" style="width: 100%; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 6px; font-size: 0.85em; box-sizing: border-box;" />
+          </div>
+        </div>
+      </div>
+
+      <div style="padding-top: 16px; margin-top: 16px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 8px;">
+        <button type="button" onclick="closeEditModal()" class="button btn-secondary" style="height: 36px; padding: 0 16px; border-radius: 6px; font-weight: 600;">Cancel</button>
+        <button type="submit" class="button btn-primary" style="height: 36px; padding: 0 20px; border-radius: 6px; font-weight: 600;">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: Universal Batch Update (Tranches & Payments) -->
+<div id="universalBatchModal" style="display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.65); backdrop-filter: blur(2px); z-index: 1000; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box;">
+  <div style="background: #ffffff; border-radius: 16px; width: 100%; max-width: 620px; max-height: 92vh; display: flex; flex-direction: column; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.3); overflow: hidden;">
+    <!-- Modal Header -->
+    <div style="padding: 16px 22px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, #1e1b4b, #312e81); color: #fff;">
+      <div>
+        <h4 style="margin: 0; font-size: 1.15em; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+          <i class="fa fa-layer-group" style="color: #a5b4fc;"></i> Universal Batch Update
+        </h4>
+        <div style="font-size: 0.82em; color: #c7d2fe; margin-top: 2px;">
+          Batch update Tranches Encoded & Tranches Paid for <strong id="uniModalCount" style="color: #ffffff; text-decoration: underline;">0</strong> selected patient(s)
+        </div>
+      </div>
+      <button type="button" onclick="closeUniversalBatchModal()" style="background: none; border: none; font-size: 1.5em; color: #c7d2fe; cursor: pointer; line-height: 1;">&times;</button>
+    </div>
+
+    <!-- Quick 1-Click Presets Bar -->
+    <div style="background: #f8fafc; border-bottom: 1px solid #e2e8f0; padding: 12px 20px;">
+      <div style="font-size: 0.76em; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px; margin-bottom: 8px;">
+        ⚡ Instant 1-Click Presets
+      </div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button type="button" onclick="setBatchPreset('1st_encoded')" class="button" style="height: 28px; padding: 0 10px; font-size: 0.78em; font-weight: 700; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; border-radius: 6px; cursor: pointer;">
+          ✓ 1st Tranche Encoded
+        </button>
+        <button type="button" onclick="setBatchPreset('2nd_encoded')" class="button" style="height: 28px; padding: 0 10px; font-size: 0.78em; font-weight: 700; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; border-radius: 6px; cursor: pointer;">
+          ✓ 2nd Tranche Encoded
+        </button>
+        <button type="button" onclick="setBatchPreset('ekas')" class="button" style="height: 28px; padding: 0 10px; font-size: 0.78em; font-weight: 700; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; border-radius: 6px; cursor: pointer;">
+          ✓ EKAS Done
+        </button>
+        <button type="button" onclick="setBatchPreset('1st_paid')" class="button" style="height: 28px; padding: 0 10px; font-size: 0.78em; font-weight: 700; background: #f0fdf4; color: #15803d; border: 1px solid #86efac; border-radius: 6px; cursor: pointer;">
+          💰 1st Tranche Paid
+        </button>
+        <button type="button" onclick="setBatchPreset('2nd_paid')" class="button" style="height: 28px; padding: 0 10px; font-size: 0.78em; font-weight: 700; background: #eef2ff; color: #4338ca; border: 1px solid #c7d2fe; border-radius: 6px; cursor: pointer;">
+          💰 2nd Tranche Paid
+        </button>
+        <button type="button" onclick="setBatchPreset('clear')" class="button" style="height: 28px; padding: 0 8px; font-size: 0.78em; font-weight: 600; background: #ffffff; color: #64748b; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer;">
+          Reset Form
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal Form Body -->
+    <form id="universalBatchForm" onsubmit="submitUniversalBatch(event)" style="padding: 20px 22px; overflow-y: auto; flex: 1;">
+      <p style="margin: 0 0 16px 0; font-size: 0.85em; color: #64748b; line-height: 1.45;">
+        Leave any field as <strong>"-- No Change --"</strong> to keep each patient's current value intact. Only fields with an explicit selection will be updated across all selected records.
+      </p>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+        <!-- Column 1: Tranche Encoding -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px;">
+          <div style="font-weight: 700; font-size: 0.85em; color: #0f172a; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+            <i class="fa fa-clipboard-check" style="color: #0284c7;"></i> Tranche Encoding Status
+          </div>
+
+          <div style="margin-bottom: 12px;">
+            <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; margin-bottom: 4px;">1st Tranche Encoded</label>
+            <select id="batchTranche1Encoded" style="width: 100%; height: 36px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; padding: 0 8px; font-size: 0.88em;">
+              <option value="">-- No Change --</option>
+              <option value="Completed">Completed (Done)</option>
+              <option value="Pending">Pending</option>
+            </select>
+          </div>
+
+          <div style="margin-bottom: 12px;">
+            <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; margin-bottom: 4px;">2nd Tranche Encoded</label>
+            <select id="batchTranche2Encoded" style="width: 100%; height: 36px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; padding: 0 8px; font-size: 0.88em;">
+              <option value="">-- No Change --</option>
+              <option value="Completed">Completed (Done)</option>
+              <option value="Pending">Pending</option>
+            </select>
+          </div>
+
+          <div>
+            <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; margin-bottom: 4px;">EKAS</label>
+            <select id="batchEkas" style="width: 100%; height: 36px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; padding: 0 8px; font-size: 0.88em;">
+              <option value="">-- No Change --</option>
+              <option value="Completed">Completed (Done)</option>
+              <option value="Pending">Pending</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Column 2: Tranche Paid & Settlement -->
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 14px;">
+          <div style="font-weight: 700; font-size: 0.85em; color: #166534; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+            <i class="fa fa-money-bill-wave" style="color: #16a34a;"></i> Payment Status & DOH SOA
+          </div>
+
+          <div style="margin-bottom: 12px;">
+            <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; margin-bottom: 4px;">1st Tranche Paid</label>
+            <select id="batchTranche1Paid" style="width: 100%; height: 36px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; padding: 0 8px; font-size: 0.88em;">
+              <option value="">-- No Change --</option>
+              <option value="Paid">Paid</option>
+              <option value="Not Paid">Not Paid</option>
+            </select>
+          </div>
+
+          <div style="margin-bottom: 12px;">
+            <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; margin-bottom: 4px;">2nd Tranche Paid</label>
+            <select id="batchTranche2Paid" style="width: 100%; height: 36px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; padding: 0 8px; font-size: 0.88em;">
+              <option value="">-- No Change --</option>
+              <option value="Paid">Paid</option>
+              <option value="Not Paid">Not Paid</option>
+            </select>
+          </div>
+
+          <div style="margin-bottom: 12px;">
+            <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; margin-bottom: 4px;">DOH SOA Reference (Optional)</label>
+            <input type="text" id="batchSoaRef" placeholder="e.g. DOH-SOA-2026-OCT-001" style="width: 100%; height: 36px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 8px; font-size: 0.88em; box-sizing: border-box;" />
+          </div>
+
+          <div>
+            <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; margin-bottom: 4px;">Payment Date</label>
+            <input type="date" id="batchPaidDate" value="<%= (new Date()).toISOString().slice(0, 10) %>" style="width: 100%; height: 36px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 8px; font-size: 0.88em; box-sizing: border-box;" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div style="padding-top: 14px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 10px; align-items: center;">
+        <button type="button" onclick="closeUniversalBatchModal()" class="button btn-secondary" style="height: 38px; padding: 0 16px; border-radius: 8px; font-weight: 600;">Cancel</button>
+        <button type="submit" id="btnUniversalSubmit" class="button btn-primary" style="height: 38px; padding: 0 24px; border-radius: 8px; font-weight: 700; background: linear-gradient(135deg, #4f46e5, #6366f1); display: inline-flex; align-items: center; gap: 8px;">
+          <i class="fa fa-bolt"></i> Apply Batch Updates (<span id="btnApplyCount">0</span> Patients)
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: Bulk Mark Tranche Paid (SOA) -->
+<div id="bulkPaidModal" style="display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.6); z-index: 1000; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box;">
+  <div style="background: #ffffff; border-radius: 16px; width: 100%; max-width: 460px; box-shadow: 0 20px 40px rgba(0,0,0,0.25); overflow: hidden;">
+    <div style="padding: 16px 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f0fdf4;">
+      <h4 style="margin: 0; font-size: 1.1em; color: #166534; display: flex; align-items: center; gap: 8px;">
+        <i class="fa fa-file-invoice-dollar"></i> DOH SOA Settlement
+      </h4>
+      <button type="button" onclick="closeBulkPaidModal()" style="background: none; border: none; font-size: 1.4em; color: #94a3b8; cursor: pointer;">&times;</button>
+    </div>
+
+    <form onsubmit="submitBulkPaid(event)" style="padding: 18px 20px;">
+      <p style="margin: 0 0 14px 0; font-size: 0.88em; color: #475569;">
+        Update payment status for <strong id="bulkModalCount" style="color:#0f172a;">0</strong> selected patient(s).
+      </p>
+
+      <div style="margin-bottom: 12px;">
+        <label style="display: block; font-size: 0.8em; font-weight: 700; color: #334155; margin-bottom: 4px;">Target Tranche</label>
+        <select id="bulkTranche" style="width: 100%; height: 36px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; padding: 0 8px; font-size: 0.88em;">
+          <option value="1">1st Tranche Paid</option>
+          <option value="2">2nd Tranche Paid</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom: 12px;">
+        <label style="display: block; font-size: 0.8em; font-weight: 700; color: #334155; margin-bottom: 4px;">Payment Status</label>
+        <select id="bulkStatus" style="width: 100%; height: 36px; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; padding: 0 8px; font-size: 0.88em;">
+          <option value="Paid">Paid</option>
+          <option value="Not Paid">Not Paid</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom: 12px;">
+        <label style="display: block; font-size: 0.8em; font-weight: 700; color: #334155; margin-bottom: 4px;">DOH SOA Reference Number</label>
+        <input type="text" id="bulkSoaRef" placeholder="e.g. DOH-SOA-2026-OCT-001" style="width: 100%; height: 36px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 8px; font-size: 0.88em; box-sizing: border-box;" />
+      </div>
+
+      <div style="margin-bottom: 18px;">
+        <label style="display: block; font-size: 0.8em; font-weight: 700; color: #334155; margin-bottom: 4px;">Payment Date</label>
+        <input type="date" id="bulkPaidDate" value="<%= (new Date()).toISOString().slice(0, 10) %>" style="width: 100%; height: 36px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 0 8px; font-size: 0.88em; box-sizing: border-box;" />
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 8px;">
+        <button type="button" onclick="closeBulkPaidModal()" class="button btn-secondary" style="height: 36px; padding: 0 16px; border-radius: 6px; font-weight: 600;">Cancel</button>
+        <button type="submit" class="button btn-primary" style="height: 36px; padding: 0 20px; border-radius: 6px; font-weight: 600; background: #16a34a;">Apply Settlement</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+(function() {
+  const recordsData = <%- JSON.stringify(records.map(r => ({
+    id: r.id,
+    controlNo: r.controlNo,
+    fullName: r.fullName,
+    pinNo: r.pinNo,
+    agency: r.agency,
+    pcuError: r.pcuError,
+    procedures: r.procedures || [],
+    tranche1Encoded: r.tranche1Encoded,
+    tranche2Encoded: r.tranche2Encoded,
+    ekas: r.ekas,
+    tranche1Paid: r.tranche1Paid,
+    tranche2Paid: r.tranche2Paid,
+    soaRef: r.soaRef,
+    paidDate: r.paidDate,
+    status: r.status
+  }))) %>;
+
+  const recordsMap = new Map(recordsData.map(r => [r.id, r]));
+
+  window.toggleSelectAll = function(master) {
+    const checkboxes = document.querySelectorAll('.row-checkbox');
+    const checkedVal = master && typeof master.checked === 'boolean' ? master.checked : true;
+    checkboxes.forEach(cb => {
+      cb.checked = checkedVal;
+      const row = document.getElementById('row_' + cb.value);
+      if (row) {
+        if (checkedVal) {
+          row.classList.add('row-selected');
+          row.style.background = '#f0fdf4';
+        } else {
+          row.classList.remove('row-selected');
+          row.style.background = '#ffffff';
+        }
+      }
+    });
+    const masterEl = document.getElementById('selectAllCheckbox');
+    if (masterEl) masterEl.checked = checkedVal;
+    updateSelectedCount();
+  };
+
+  window.updateSelectedCount = function() {
+    const checked = document.querySelectorAll('.row-checkbox:checked');
+    const all = document.querySelectorAll('.row-checkbox');
+    const bar = document.getElementById('bulkActionBar');
+    const countEl = document.getElementById('selectedCount');
+    
+    // Update row highlighting
+    all.forEach(cb => {
+      const row = document.getElementById('row_' + cb.value);
+      if (row) {
+        if (cb.checked) {
+          row.classList.add('row-selected');
+          row.style.background = '#f0fdf4';
+        } else {
+          row.classList.remove('row-selected');
+          row.style.background = '#ffffff';
+        }
+      }
+    });
+
+    if (checked.length > 0) {
+      countEl.textContent = checked.length;
+      bar.style.display = 'flex';
+      const uniCount = document.getElementById('uniModalCount');
+      if (uniCount) uniCount.textContent = checked.length;
+      const btnApply = document.getElementById('btnApplyCount');
+      if (btnApply) btnApply.textContent = checked.length;
+    } else {
+      bar.style.display = 'none';
+      const master = document.getElementById('selectAllCheckbox');
+      if (master) master.checked = false;
+    }
+  };
+
+  window.clearSelection = function() {
+    document.querySelectorAll('.row-checkbox').forEach(cb => {
+      cb.checked = false;
+      const row = document.getElementById('row_' + cb.value);
+      if (row) {
+        row.classList.remove('row-selected');
+        row.style.background = '#ffffff';
+      }
+    });
+    const master = document.getElementById('selectAllCheckbox');
+    if (master) master.checked = false;
+    updateSelectedCount();
+  };
+
+  // ---- Universal Batch Modal Handlers ----
+  window.openUniversalBatchModal = async function(preset) {
+    let checked = document.querySelectorAll('.row-checkbox:checked');
+    if (!checked.length) {
+      const allCount = document.querySelectorAll('.row-checkbox').length;
+      if (allCount === 0) {
+        if (window.showCustomAlert) {
+          return window.showCustomAlert('No patient records found on this page.', { type: 'warning', title: 'No Records Found' });
+        }
+        return alert('No patient records found on this page.');
+      }
+      const confirmed = window.showConfirmDialog ? await window.showConfirmDialog(
+        'No patients are checked yet.<br><br>Would you like to select all <strong>' + allCount + ' patient(s)</strong> on this page to update together?',
+        {
+          title: 'Batch Selection',
+          btnText: 'Select All & Continue',
+          cancelText: 'Cancel',
+          type: 'primary'
+        }
+      ) : confirm('No patients are checked yet. Would you like to select all ' + allCount + ' patient(s) on this page to update together?');
+
+      if (confirmed) {
+        toggleSelectAll({ checked: true });
+        checked = document.querySelectorAll('.row-checkbox:checked');
+      } else {
+        return;
+      }
+    }
+
+    document.getElementById('uniModalCount').textContent = checked.length;
+    document.getElementById('btnApplyCount').textContent = checked.length;
+
+    if (preset) {
+      setBatchPreset(preset);
+    } else {
+      setBatchPreset('clear');
+    }
+
+    document.getElementById('universalBatchModal').style.display = 'flex';
+  };
+
+  window.closeUniversalBatchModal = function() {
+    document.getElementById('universalBatchModal').style.display = 'none';
+  };
+
+  window.setBatchPreset = function(preset) {
+    const t1Enc = document.getElementById('batchTranche1Encoded');
+    const t2Enc = document.getElementById('batchTranche2Encoded');
+    const ekas = document.getElementById('batchEkas');
+    const t1Paid = document.getElementById('batchTranche1Paid');
+    const t2Paid = document.getElementById('batchTranche2Paid');
+
+    if (preset === '1st_encoded') {
+      t1Enc.value = 'Completed';
+    } else if (preset === '2nd_encoded') {
+      t2Enc.value = 'Completed';
+    } else if (preset === 'ekas') {
+      ekas.value = 'Completed';
+    } else if (preset === '1st_paid') {
+      t1Paid.value = 'Paid';
+    } else if (preset === '2nd_paid') {
+      t2Paid.value = 'Paid';
+    } else if (preset === 'clear') {
+      t1Enc.value = '';
+      t2Enc.value = '';
+      ekas.value = '';
+      t1Paid.value = '';
+      t2Paid.value = '';
+      document.getElementById('batchSoaRef').value = '';
+    }
+  };
+
+  window.submitUniversalBatch = async function(e) {
+    e.preventDefault();
+    const checked = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.value);
+    if (!checked.length) {
+      if (window.showCustomAlert) return window.showCustomAlert('Please select at least one record to update.', { type: 'warning', title: 'Selection Required' });
+      return alert('Please select at least one record.');
+    }
+
+    const tranche1Encoded = document.getElementById('batchTranche1Encoded').value;
+    const tranche2Encoded = document.getElementById('batchTranche2Encoded').value;
+    const ekas = document.getElementById('batchEkas').value;
+    const tranche1Paid = document.getElementById('batchTranche1Paid').value;
+    const tranche2Paid = document.getElementById('batchTranche2Paid').value;
+    const soaRef = document.getElementById('batchSoaRef').value;
+    const paidDate = document.getElementById('batchPaidDate').value;
+
+    if (!tranche1Encoded && !tranche2Encoded && !ekas && !tranche1Paid && !tranche2Paid) {
+      if (window.showCustomAlert) return window.showCustomAlert('Please select at least one field to change (e.g. 1st Tranche Encoded, 2nd Tranche Encoded, EKAS, or Paid Status).', { type: 'warning', title: 'No Changes Specified' });
+      return alert('Please select at least one field to change.');
+    }
+
+    const btn = document.getElementById('btnUniversalSubmit');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Updating ' + checked.length + ' records...';
+
+    try {
+      const res = await fetch('/philhealth/bulk-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({
+          ids: checked,
+          tranche1Encoded,
+          tranche2Encoded,
+          ekas,
+          tranche1Paid,
+          tranche2Paid,
+          soaRef,
+          paidDate
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        window.location.reload();
+      } else {
+        if (window.showCustomAlert) window.showCustomAlert(data.error || 'Failed to update records.', { type: 'danger', title: 'Update Error' });
+        else alert('Error: ' + (data.error || 'Failed to update'));
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+      }
+    } catch (err) {
+      if (window.showCustomAlert) window.showCustomAlert('Network error updating records: ' + err.message, { type: 'danger', title: 'Network Error' });
+      else alert('Network error updating records: ' + err.message);
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    }
+  };
+
+  // Direct quick 1-click preset apply from the bulk bar
+  window.quickBatchApply = async function(field, value) {
+    let checked = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.value);
+    if (!checked.length) {
+      const allCount = document.querySelectorAll('.row-checkbox').length;
+      if (allCount === 0) {
+        if (window.showCustomAlert) return window.showCustomAlert('No patient records found on this page.', { type: 'warning', title: 'No Records Found' });
+        return alert('No patient records found.');
+      }
+      const confirmed = window.showConfirmDialog ? await window.showConfirmDialog(
+        'No patients are checked yet.<br><br>Would you like to select all <strong>' + allCount + ' patient(s)</strong> on this page to update together?',
+        {
+          title: 'Batch Selection',
+          btnText: 'Select All & Continue',
+          cancelText: 'Cancel',
+          type: 'primary'
+        }
+      ) : confirm('No patients are checked yet. Would you like to select all ' + allCount + ' patient(s) on this page to update together?');
+
+      if (confirmed) {
+        toggleSelectAll({ checked: true });
+        checked = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.value);
+      } else {
+        return;
+      }
+    }
+
+    const fieldLabel = field === 'tranche1Encoded' ? '1st Tranche Encoded' :
+                       field === 'tranche2Encoded' ? '2nd Tranche Encoded' :
+                       field === 'ekas' ? 'EKAS' :
+                       field === 'tranche1Paid' ? '1st Tranche Paid' :
+                       field === 'tranche2Paid' ? '2nd Tranche Paid' : field;
+
+    const proceed = window.showConfirmDialog ? await window.showConfirmDialog(
+      'Apply batch update to <strong>' + checked.length + '</strong> selected patient(s)?<br><br>' +
+      'Set <strong>' + fieldLabel + '</strong> to <span style="display:inline-block;padding:2px 8px;border-radius:10px;background:#dcfce7;color:#166534;font-weight:700;">' + value + '</span>',
+      {
+        title: 'Confirm Universal Update',
+        btnText: 'Yes, Apply Batch',
+        cancelText: 'Cancel',
+        type: 'primary'
+      }
+    ) : confirm('Apply batch update:\n\nSet "' + fieldLabel + '" to "' + value + '" for ' + checked.length + ' selected patient(s)?');
+
+    if (!proceed) return;
+
+    try {
+      const res = await fetch('/philhealth/bulk-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ ids: checked, [field]: value })
+      });
+      const data = await res.json();
+      if (data.success) {
+        window.location.reload();
+      } else {
+        if (window.showCustomAlert) window.showCustomAlert(data.error || 'Failed to update records.', { type: 'danger', title: 'Update Error' });
+        else alert('Error: ' + (data.error || 'Failed to update'));
+      }
+    } catch (err) {
+      if (window.showCustomAlert) window.showCustomAlert('Network error updating: ' + err.message, { type: 'danger', title: 'Network Error' });
+      else alert('Network error updating: ' + err.message);
+    }
+  };
+
+  // Single-cell click-to-toggle badge handler
+  window.quickToggleBadge = async function(el, id, field, nextValue, ctrlNo) {
+    if (!id || !field) return;
+    const originalText = el.textContent;
+    el.textContent = '...';
+
+    try {
+      const res = await fetch('/philhealth/' + id, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ [field]: nextValue })
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (field === 'tranche1Encoded' || field === 'tranche2Encoded' || field === 'ekas') {
+          if (nextValue === 'Completed') {
+            el.textContent = '✓ Done';
+            el.style.background = '#dcfce7';
+            el.style.color = '#166534';
+            el.style.fontWeight = '700';
+            el.setAttribute('onclick', "quickToggleBadge(this, '" + id + "', '" + field + "', 'Pending', '" + ctrlNo + "')");
+            el.setAttribute('title', 'Click to toggle to Pending');
+          } else {
+            el.textContent = 'Pending';
+            el.style.background = '#f1f5f9';
+            el.style.color = '#64748b';
+            el.style.fontWeight = '600';
+            el.setAttribute('onclick', "quickToggleBadge(this, '" + id + "', '" + field + "', 'Completed', '" + ctrlNo + "')");
+            el.setAttribute('title', 'Click to mark as Done');
+          }
+        } else if (field === 'tranche1Paid' || field === 'tranche2Paid') {
+          if (nextValue === 'Paid') {
+            el.textContent = '✓ Paid';
+            el.style.background = (field === 'tranche2Paid') ? '#e0e7ff' : '#dcfce7';
+            el.style.color = (field === 'tranche2Paid') ? '#4338ca' : '#15803d';
+            el.style.borderColor = (field === 'tranche2Paid') ? '#c7d2fe' : '#86efac';
+            el.style.fontWeight = '700';
+            el.setAttribute('onclick', "quickToggleBadge(this, '" + id + "', '" + field + "', 'Not Paid', '" + ctrlNo + "')");
+            el.setAttribute('title', 'Click to toggle to Not Paid');
+          } else {
+            el.textContent = 'Not Paid';
+            el.style.background = '#fef2f2';
+            el.style.color = '#b91c1c';
+            el.style.borderColor = '#fecaca';
+            el.style.fontWeight = '600';
+            el.setAttribute('onclick', "quickToggleBadge(this, '" + id + "', '" + field + "', 'Paid', '" + ctrlNo + "')");
+            el.setAttribute('title', 'Click to mark as Paid');
+          }
+        }
+
+        const fieldTitle = field === 'tranche1Encoded' ? '1st Tranche Encoded' :
+                           field === 'tranche2Encoded' ? '2nd Tranche Encoded' :
+                           field === 'ekas' ? 'EKAS' :
+                           field === 'tranche1Paid' ? '1st Tranche Paid' :
+                           field === 'tranche2Paid' ? '2nd Tranche Paid' : field;
+        showToast('✓ ' + fieldTitle + ' marked as ' + nextValue + ' (' + ctrlNo + ')');
+      } else {
+        el.textContent = originalText;
+        if (window.showCustomAlert) window.showCustomAlert(data.error || 'Failed to update', { type: 'danger', title: 'Update Error' });
+        else alert('Error: ' + (data.error || 'Failed to update'));
+      }
+    } catch (err) {
+      el.textContent = originalText;
+      if (window.showCustomAlert) window.showCustomAlert('Network error updating: ' + err.message, { type: 'danger', title: 'Network Error' });
+      else alert('Network error updating: ' + err.message);
+    }
+  };
+
+  function showToast(msg) {
+    let toast = document.getElementById('quickToast');
+    if (!toast) {
+      toast = document.createElement('div');
+      toast.id = 'quickToast';
+      toast.style.cssText = 'position: fixed; bottom: 24px; right: 24px; background: #0f172a; color: #ffffff; padding: 12px 20px; border-radius: 10px; font-size: 0.88em; font-weight: 600; box-shadow: 0 10px 25px rgba(0,0,0,0.25); z-index: 9999; display: flex; align-items: center; gap: 10px; transition: opacity 0.3s;';
+      document.body.appendChild(toast);
+    }
+    toast.innerHTML = '<i class="fa fa-check-circle" style="color: #4ade80; font-size: 1.1em;"></i> ' + msg;
+    toast.style.display = 'flex';
+    toast.style.opacity = '1';
+    if (window._toastTimer) clearTimeout(window._toastTimer);
+    window._toastTimer = setTimeout(() => {
+      toast.style.opacity = '0';
+      setTimeout(() => { toast.style.display = 'none'; }, 300);
+    }, 2600);
+  }
+
+  window.openBulkPaidModal = function() {
+    const checked = document.querySelectorAll('.row-checkbox:checked');
+    if (!checked.length) {
+      if (window.showCustomAlert) return window.showCustomAlert('Please select at least one record.', { type: 'warning', title: 'Selection Required' });
+      return alert('Please select at least one record.');
+    }
+    document.getElementById('bulkModalCount').textContent = checked.length;
+    document.getElementById('bulkPaidModal').style.display = 'flex';
+  };
+
+  window.closeBulkPaidModal = function() {
+    document.getElementById('bulkPaidModal').style.display = 'none';
+  };
+
+  window.submitBulkPaid = async function(e) {
+    e.preventDefault();
+    const checked = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.value);
+    const tranche = document.getElementById('bulkTranche').value;
+    const paidStatus = document.getElementById('bulkStatus').value;
+    const soaRef = document.getElementById('bulkSoaRef').value;
+    const paidDate = document.getElementById('bulkPaidDate').value;
+
+    try {
+      const res = await fetch('/philhealth/bulk-paid', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ ids: checked, tranche, paidStatus, soaRef, paidDate })
+      });
+      const data = await res.json();
+      if (data.success) {
+        window.location.reload();
+      } else {
+        if (window.showCustomAlert) window.showCustomAlert(data.error || 'Failed to update', { type: 'danger', title: 'Update Error' });
+        else alert('Error: ' + (data.error || 'Failed to update'));
+      }
+    } catch (err) {
+      if (window.showCustomAlert) window.showCustomAlert('Network error updating payment: ' + err.message, { type: 'danger', title: 'Network Error' });
+      else alert('Network error updating payment: ' + err.message);
+    }
+  };
+
+  window.exportSelectedCsv = function() {
+    const checked = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.value);
+    if (!checked.length) {
+      if (window.showCustomAlert) return window.showCustomAlert('Please select at least one record to export.', { type: 'warning', title: 'Selection Required' });
+      return alert('Please select at least one record.');
+    }
+    window.location.href = '/philhealth/export.csv?ids=' + encodeURIComponent(checked.join(','));
+  };
+
+  // Procedure Modal Handlers
+  window.openProcedureModal = function(recordId) {
+    const rec = recordsMap.get(recordId);
+    if (!rec) return;
+
+    document.getElementById('currentRecordId').value = rec.id;
+    document.getElementById('modalPatientInfo').innerHTML = 
+      'Patient: <strong>' + rec.fullName + '</strong> &bull; Control No: <strong>' + (rec.controlNo || 'N/A') + '</strong> &bull; PIN: <strong>' + (rec.pinNo || 'N/A') + '</strong>';
+
+    // Reset checkboxes
+    const checkboxes = document.querySelectorAll('input[name="selected_proc"]');
+    checkboxes.forEach(cb => {
+      cb.checked = false;
+      const k = cb.value;
+      const wrap = document.getElementById('remarks_wrap_' + k);
+      if (wrap) wrap.style.display = 'none';
+    });
+
+    // Check existing procedures
+    if (rec.procedures && rec.procedures.length) {
+      rec.procedures.forEach(p => {
+        const cb = document.querySelector('input[name="selected_proc"][value="' + p.key + '"]');
+        if (cb) {
+          cb.checked = true;
+          const wrap = document.getElementById('remarks_wrap_' + p.key);
+          if (wrap) wrap.style.display = 'block';
+          const input = document.getElementById('remark_' + p.key);
+          if (input && p.remarks) input.value = p.remarks;
+        }
+      });
+    }
+
+    document.getElementById('procModal').style.display = 'flex';
+  };
+
+  window.closeProcedureModal = function() {
+    document.getElementById('procModal').style.display = 'none';
+  };
+
+  window.toggleProcItem = function(cb, key) {
+    const wrap = document.getElementById('remarks_wrap_' + key);
+    if (wrap) {
+      wrap.style.display = cb.checked ? 'block' : 'none';
+    }
+  };
+
+  window.selectAllProcs = function(val) {
+    document.querySelectorAll('input[name="selected_proc"]').forEach(cb => {
+      cb.checked = val;
+      toggleProcItem(cb, cb.value);
+    });
+  };
+
+  function collectSelectedProcedures() {
+    const selected = [];
+    document.querySelectorAll('input[name="selected_proc"]:checked').forEach(cb => {
+      const k = cb.value;
+      const remarkInput = document.getElementById('remark_' + k);
+      const remark = remarkInput ? remarkInput.value.trim() : '';
+      selected.push({ key: k, remarks: remark });
+    });
+    return selected;
+  }
+
+  window.saveProceduresDraft = async function() {
+    const recordId = document.getElementById('currentRecordId').value;
+    const procedures = collectSelectedProcedures();
+
+    try {
+      const res = await fetch('/philhealth/' + recordId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ procedures })
+      });
+      const data = await res.json();
+      if (data.success) {
+        window.location.reload();
+      } else {
+        if (window.showCustomAlert) window.showCustomAlert(data.error || 'Failed saving draft', { type: 'danger', title: 'Save Draft Failed' });
+        else alert('Error: ' + (data.error || 'Failed saving draft'));
+      }
+    } catch (e) {
+      if (window.showCustomAlert) window.showCustomAlert('Error saving draft: ' + e.message, { type: 'danger', title: 'Error' });
+      else alert('Error: ' + e.message);
+    }
+  };
+
+  window.submitApproval = async function(e) {
+    e.preventDefault();
+    const recordId = document.getElementById('currentRecordId').value;
+    const procedures = collectSelectedProcedures();
+
+    if (!procedures.length) {
+      if (window.showCustomAlert) return window.showCustomAlert('Please select at least one procedure before approving.', { type: 'warning', title: 'Procedure Required' });
+      return alert('Please select at least one procedure before approving.');
+    }
+
+    // Check sendout remarks
+    for (const p of procedures) {
+      if ((p.key === 'sputum_microscopy' || p.key === 'pap_smear') && !p.remarks) {
+        if (window.showCustomAlert) return window.showCustomAlert('Remarks are required for send-out procedure: ' + p.key, { type: 'warning', title: 'Remarks Required' });
+        return alert('Remarks are required for send-out procedure: ' + p.key);
+      }
+    }
+
+    const btn = document.getElementById('btnApproveSubmit');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Approving...';
+
+    try {
+      const res = await fetch('/philhealth/' + recordId + '/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ procedures })
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (window.showCustomAlert) {
+          window.showCustomAlert(data.message || 'PhilHealth order approved and routed to queue!', { type: 'success', title: 'Order Approved' }, function() {
+            window.location.reload();
+          });
+        } else {
+          alert(data.message || 'PhilHealth order approved and routed to queue!');
+          window.location.reload();
+        }
+      } else {
+        if (window.showCustomAlert) window.showCustomAlert(data.error || 'Failed to approve', { type: 'danger', title: 'Approval Error' });
+        else alert('Error: ' + (data.error || 'Failed to approve'));
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa fa-check-circle"></i> Approve & Send to Queue';
+      }
+    } catch (err) {
+      if (window.showCustomAlert) window.showCustomAlert('Network error approving order: ' + err.message, { type: 'danger', title: 'Network Error' });
+      else alert('Network error approving order: ' + err.message);
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa fa-check-circle"></i> Approve & Send to Queue';
+    }
+  };
+
+  // Edit Modal Handlers
+  window.openEditModal = function(recordId) {
+    const rec = recordsMap.get(recordId);
+    if (!rec) return;
+
+    document.getElementById('editRecordId').value = rec.id;
+    document.getElementById('editControlNo').value = rec.controlNo || '';
+    document.getElementById('editFullName').value = rec.fullName || '';
+    document.getElementById('editPinNo').value = rec.pinNo || '';
+    document.getElementById('editAgency').value = rec.agency || '';
+    document.getElementById('editPcuError').value = rec.pcuError || '';
+    document.getElementById('editTranche1Encoded').value = rec.tranche1Encoded || 'Pending';
+    document.getElementById('editTranche2Encoded').value = rec.tranche2Encoded || 'Pending';
+    document.getElementById('editEkas').value = rec.ekas || 'Pending';
+    document.getElementById('editTranche1Paid').value = rec.tranche1Paid || 'Not Paid';
+    document.getElementById('editTranche2Paid').value = rec.tranche2Paid || 'Not Paid';
+    document.getElementById('editSoaRef').value = rec.soaRef || '';
+    document.getElementById('editPaidDate').value = rec.paidDate || '';
+
+    document.getElementById('editModal').style.display = 'flex';
+  };
+
+  window.closeEditModal = function() {
+    document.getElementById('editModal').style.display = 'none';
+  };
+
+  window.submitEdit = async function(e) {
+    e.preventDefault();
+    const recordId = document.getElementById('editRecordId').value;
+    const payload = {
+      pinNo: document.getElementById('editPinNo').value,
+      agency: document.getElementById('editAgency').value,
+      pcuError: document.getElementById('editPcuError').value,
+      tranche1Encoded: document.getElementById('editTranche1Encoded').value,
+      tranche2Encoded: document.getElementById('editTranche2Encoded').value,
+      ekas: document.getElementById('editEkas').value,
+      tranche1Paid: document.getElementById('editTranche1Paid').value,
+      tranche2Paid: document.getElementById('editTranche2Paid').value,
+      soaRef: document.getElementById('editSoaRef').value,
+      paidDate: document.getElementById('editPaidDate').value
+    };
+
+    try {
+      const res = await fetch('/philhealth/' + recordId, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.success) {
+        window.location.reload();
+      } else {
+        if (window.showCustomAlert) window.showCustomAlert(data.error || 'Failed updating record', { type: 'danger', title: 'Update Error' });
+        else alert('Error: ' + (data.error || 'Failed updating record'));
+      }
+    } catch (err) {
+      if (window.showCustomAlert) window.showCustomAlert('Network error updating record: ' + err.message, { type: 'danger', title: 'Network Error' });
+      else alert('Network error updating record: ' + err.message);
+    }
+  };
+})();
+</script>

@@ -156,6 +156,26 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     return escaped;
   }
 
+  /* ── Universal Philippine date formatter (MM/DD/YYYY) ───────────── */
+  function formatMMDDYYYY(d) {
+    if (!d) return '';
+    if (typeof d === 'string') {
+      const s = d.trim();
+      const m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+      if (m) {
+        return String(m[2]).padStart(2, '0') + '/' + String(m[3]).padStart(2, '0') + '/' + m[1];
+      }
+    }
+    const dt = (d instanceof Date) ? d : new Date(d);
+    if (isNaN(dt.getTime())) return String(d);
+    const mm = String(dt.getMonth() + 1).padStart(2, '0');
+    const dd = String(dt.getDate()).padStart(2, '0');
+    return mm + '/' + dd + '/' + dt.getFullYear();
+  }
+  app.locals.formatMMDDYYYY = formatMMDDYYYY;
+  app.locals.formatMMDDYY = formatMMDDYYYY;
+  app.locals.formatDate = formatMMDDYYYY;
+
   /* ── User session bridge for active logged-in user ────────────────── */
   app.use((req, res, next) => {
     try {
@@ -238,6 +258,12 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
         if (!req.body.id && (reqPath.startsWith('/costing') || reqPath.startsWith('/hr')) && req.method === 'POST') {
           try { req.body.id = require('crypto').randomUUID(); } catch (e) { req.body.id = 'rec-' + Date.now(); }
         }
+        if (!req.body.id && reqPath.startsWith('/philhealth') && req.method === 'POST') {
+          try { req.body.id = require('crypto').randomUUID(); } catch (e) { req.body.id = 'ph-' + Date.now(); }
+        }
+        if (!req.body.id && reqPath.startsWith('/healthcard') && req.method === 'POST') {
+          try { req.body.id = require('crypto').randomUUID(); } catch (e) { req.body.id = 'hc-' + Date.now(); }
+        }
         if (!req.body.client_id) {
           try { req.body.client_id = require('crypto').randomUUID(); } catch (e) { req.body.client_id = 'cli-' + Date.now(); }
         }
@@ -318,6 +344,9 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     res.locals.backupConfig = { enabled: false, frequency: 'daily', path: '' };
     // expose highlight helper used by report templates
     try { res.locals.hl = highlightResult; } catch (e) { /* ignore */ }
+    res.locals.formatMMDDYYYY = formatMMDDYYYY;
+    res.locals.formatMMDDYY = formatMMDDYYYY;
+    res.locals.formatDate = formatMMDDYYYY;
     next();
   });
 
@@ -434,7 +463,9 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
           payroll_records: dataStore.getCollection('payroll_records') || [],
           hr_documents: dataStore.getCollection('hr_documents') || [],
           leave_records: dataStore.getCollection('leave_records') || [],
-          dtr_records: dataStore.getCollection('dtr_records') || []
+          dtr_records: dataStore.getCollection('dtr_records') || [],
+          philhealth_records: dataStore.getCollection('philhealth_records') || (typeof global.db.getPhilhealthRecords === 'function' ? global.db.getPhilhealthRecords() : []) || [],
+          healthcard_records: dataStore.getCollection('healthcard_records') || (typeof global.db.getHealthCardRecords === 'function' ? global.db.getHealthCardRecords() : []) || []
         };
         return res.json(out);
       } catch (e) { return res.status(500).send('datastore-error'); }
@@ -448,6 +479,8 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     { prefix: '/dashboard', perm: 'dashboard' },
     { prefix: '/patients', perm: 'patients' },
     { prefix: '/reception', perm: 'reception' },
+    { prefix: '/philhealth', perm: 'reception' },
+    { prefix: '/healthcard', perm: 'reception' },
     { prefix: '/consultations', perm: 'reception' },
     { prefix: '/tests', perm: 'tests' },
     { prefix: '/reports', perm: 'reports' },
@@ -541,6 +574,16 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     const receptionRoutes = require('../routes/reception');
     app.use('/reception', receptionRoutes);
   } catch (e) { console.error('[LocalServer] failed to load reception routes:', e && e.message); }
+
+  try {
+    const philhealthRoutes = require('../routes/philhealth');
+    app.use('/philhealth', philhealthRoutes);
+  } catch (e) { console.error('[LocalServer] failed to load philhealth routes:', e && e.message); }
+
+  try {
+    const healthcardRoutes = require('../routes/healthcard');
+    app.use('/healthcard', healthcardRoutes);
+  } catch (e) { console.error('[LocalServer] failed to load healthcard routes:', e && e.message); }
 
   try {
     const consultationRoutes = require('../routes/consultations');

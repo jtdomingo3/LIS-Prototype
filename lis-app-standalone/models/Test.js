@@ -36,6 +36,11 @@ class Test {
     // Payment status & price
     this.paid = !!data.paid;
     this.price = (data.price !== undefined && data.price !== null) ? Number(data.price) : 0;
+    this.chargedToPhilhealth = !!data.chargedToPhilhealth;
+    this.chargedToHmo = !!data.chargedToHmo;
+    this.hmoProvider = data.hmoProvider || '';
+    this.loaNumber = data.loaNumber || '';
+    this.paymentMethod = data.paymentMethod || (this.chargedToPhilhealth ? 'PhilHealth' : (this.chargedToHmo ? `HMO (${this.hmoProvider || 'Health Card'})` : null));
     // statusHistory: array of { from, to, user, area, timestamp }
     this.statusHistory = Array.isArray(data.statusHistory) ? data.statusHistory : (data.statusHistory || []);
   }
@@ -103,22 +108,25 @@ class Test {
       if (index >= 0) tests[index] = this; else tests.push(this);
       global.db.saveTests(tests);
     }
-    // After persisting, if the test is Completed/Released and has results, regenerate PDF
-    try {
-      const lockedStates = new Set(['Completed', 'Released']);
-      if (lockedStates.has(this.status) && this.results && !isDoctorVisitTest(this)) {
-        // generate asynchronously — do not block save
-        const testRef = this;
-        setImmediate(async () => {
-          try {
-            await reportGenerator.generatePdfForTest(testRef);
-            console.log(`[Test.save] auto-generated PDF for testId=${testRef.testId || testRef.id}`);
-          } catch (e) {
-            try { logReportError(e, 'auto-generate-pdf'); } catch (er) {}
-          }
-        });
-      }
-    } catch (e) {}
+    // Automatic PDF generation on save disabled (generated on-demand when viewed/downloaded).
+    // To re-enable auto-generation upon completion, set ENABLE_AUTO_REPORT_GENERATION=1.
+    if (process.env.ENABLE_AUTO_REPORT_GENERATION === '1') {
+      try {
+        const lockedStates = new Set(['Completed', 'Released']);
+        if (lockedStates.has(this.status) && this.results && !isDoctorVisitTest(this)) {
+          // generate asynchronously — do not block save
+          const testRef = this;
+          setImmediate(async () => {
+            try {
+              await reportGenerator.generatePdfForTest(testRef);
+              console.log(`[Test.save] auto-generated PDF for testId=${testRef.testId || testRef.id}`);
+            } catch (e) {
+              try { logReportError(e, 'auto-generate-pdf'); } catch (er) {}
+            }
+          });
+        }
+      } catch (e) {}
+    }
 
     return this;
   }
@@ -269,23 +277,26 @@ class Test {
       }
       console.log(`[DEBUG Test.findOneAndUpdate] id=${test.id} afterStatus=${test.status} updatedAt=${test.updatedAt}`);
 
-      // Auto-generate PDF if test is Completed/Released and has results
-      try {
-        const lockedStates2 = new Set(['Completed', 'Released']);
-        if (lockedStates2.has(test.status) && test.results && !isDoctorVisitTest(test)) {
-          const testRef = new Test(test);
-          setImmediate(async () => {
-            try {
-              const pdfPath = await reportGenerator.generatePdfForTest(testRef);
-              if (pdfPath) {
-                console.log(`[Test.findOneAndUpdate] auto-generated PDF for testId=${testRef.testId || testRef.id}`);
+      // Automatic PDF generation on update disabled (generated on-demand when viewed/downloaded).
+      // To re-enable auto-generation upon completion, set ENABLE_AUTO_REPORT_GENERATION=1.
+      if (process.env.ENABLE_AUTO_REPORT_GENERATION === '1') {
+        try {
+          const lockedStates2 = new Set(['Completed', 'Released']);
+          if (lockedStates2.has(test.status) && test.results && !isDoctorVisitTest(test)) {
+            const testRef = new Test(test);
+            setImmediate(async () => {
+              try {
+                const pdfPath = await reportGenerator.generatePdfForTest(testRef);
+                if (pdfPath) {
+                  console.log(`[Test.findOneAndUpdate] auto-generated PDF for testId=${testRef.testId || testRef.id}`);
+                }
+              } catch (e) {
+                try { logReportError(e, 'auto-generate-pdf-findOneAndUpdate'); } catch (er) {}
               }
-            } catch (e) {
-              try { logReportError(e, 'auto-generate-pdf-findOneAndUpdate'); } catch (er) {}
-            }
-          });
-        }
-      } catch (e) {}
+            });
+          }
+        } catch (e) {}
+      }
 
       return options.new !== false ? new Test(test) : new Test(test);
     }

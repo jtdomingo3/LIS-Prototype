@@ -957,6 +957,44 @@
     <!-- Styles injected from individual views (via express-ejs-layouts extractStyles) -->
     <%- style %>
 
+    <!-- Global CSRF Token -->
+    <meta name="csrf-token" content="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const tokenMeta = document.querySelector('meta[name="csrf-token"]');
+        const csrfToken = tokenMeta ? tokenMeta.content : '';
+        if (csrfToken) {
+          // Inject into all existing forms
+          document.querySelectorAll('form').forEach(form => {
+            if (!form.querySelector('input[name="_csrf"]')) {
+              const input = document.createElement('input');
+              input.type = 'hidden';
+              input.name = '_csrf';
+              input.value = csrfToken;
+              form.appendChild(input);
+            }
+          });
+          // Patch fetch for AJAX forms
+          const originalFetch = window.fetch;
+          window.fetch = function(resource, config) {
+            config = config || {};
+            if (['POST', 'PUT', 'DELETE', 'PATCH'].includes((config.method || 'GET').toUpperCase())) {
+              if (!config.headers) config.headers = {};
+              if (config.headers instanceof Headers) {
+                if (!config.headers.has('csrf-token')) {
+                  config.headers.append('csrf-token', csrfToken);
+                }
+              } else {
+                if (!config.headers['csrf-token']) {
+                  config.headers['csrf-token'] = csrfToken;
+                }
+              }
+            }
+            return originalFetch(resource, config);
+          };
+        }
+      });
+    </script>
     </head>
 <body>
     <div class="container">
@@ -977,6 +1015,9 @@
             <% } %>
             <% if (sessionUser.role === 'Admin' || perms.reception) { %>
             <a href="/reception" class="nav-item <%= title.includes('Reception') ? 'active' : '' %>"><span class="nav-emoji">🏥</span><span class="nav-text">Reception</span></a>
+            <% } %>
+            <% if (sessionUser.role === 'Admin' || perms.reception || perms.patients) { %>
+            <a href="/philhealth" class="nav-item <%= (title && (title.includes('PhilHealth') || title.includes('Health Card'))) ? 'active' : '' %>"><span class="nav-emoji">🩺</span><span class="nav-text">PhilHealth / Health Card</span></a>
             <% } %>
             <% if (!featureFlags || featureFlags.tests) { %>
             <% if (sessionUser.role === 'Admin' || perms.tests) { %>
@@ -1014,6 +1055,7 @@
             <a href="/users" class="nav-item <%= title.includes('User') ? 'active' : '' %>"><span class="nav-emoji">👤</span><span class="nav-text">Users</span></a>
             <% } %>
             <form action="/logout" method="POST" style="margin-top: 30px;">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                 <button type="submit" class="logout-btn" title="Logout"><i class="fa fa-power-off logout-emoji" aria-hidden="true"></i><span class="logout-text">Logout</span></button>
             </form>
             <a href="/settings" class="nav-item" style="margin-top:8px;"><span class="nav-emoji">⚙️</span><span class="nav-text">Settings</span></a>
@@ -1649,7 +1691,7 @@
                 else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
                 else if (el.msRequestFullscreen) el.msRequestFullscreen();
 
-                // Create or reveal persistent fullscreen container for browser mode
+                // Create or reveal persistent fullscreen container
                 let container = document.getElementById('lis-fullscreen-viewport');
                 if (!container) {
                     container = document.createElement('div');
@@ -1846,6 +1888,7 @@
           }
           pendingCallback = onConfirm;
           secondaryCallback = null;
+          pendingCancelCallback = (opts && typeof opts.onCancel === 'function') ? opts.onCancel : null;
           if (modal) modal.style.display = 'flex';
         }
 
@@ -1905,19 +1948,29 @@
           }
 
           pendingCallback = onDismiss;
+          pendingCancelCallback = null;
           if (modal) modal.style.display = 'flex';
         }
 
-        function closeConfirm() {
+        let pendingCancelCallback = null;
+
+        function closeConfirm(isCancelled) {
           if (modal) modal.style.display = 'none';
+          const cb = pendingCallback;
+          const secCb = secondaryCallback;
+          const cancelCb = pendingCancelCallback;
           pendingCallback = null;
           secondaryCallback = null;
+          pendingCancelCallback = null;
+          if (isCancelled && typeof cancelCb === 'function') {
+            cancelCb();
+          }
         }
 
         if (cancelBtn) {
           cancelBtn.addEventListener('click', function() {
             const secCb = secondaryCallback;
-            closeConfirm();
+            closeConfirm(true);
             if (secCb) secCb();
           });
         }
@@ -1925,16 +1978,22 @@
         if (okBtn) {
           okBtn.addEventListener('click', function() {
             const cb = pendingCallback;
-            closeConfirm();
+            closeConfirm(false);
             if (cb) cb();
           });
         }
 
         if (modal) {
           modal.addEventListener('click', function(e) {
-            if (e.target === modal) closeConfirm();
+            if (e.target === modal) closeConfirm(true);
           });
         }
+
+        document.addEventListener('keydown', function(e) {
+          if (e.key === 'Escape' && modal && modal.style.display === 'flex') {
+            closeConfirm(true);
+          }
+        });
 
         // Intercept form submissions using native confirm(...) or data-confirm
         document.addEventListener('submit', function(e) {
@@ -2048,9 +2107,36 @@
         window.showCustomConfirm = openConfirm;
         window.showCustomAlert = openAlert;
 
+        window.showConfirmDialog = function(message, options) {
+          return new Promise(function(resolve) {
+            openConfirm(message, function() {
+              resolve(true);
+            }, Object.assign({}, options, {
+              onCancel: function() {
+                resolve(false);
+              }
+            }));
+          });
+        };
+        window.showConfirm = window.showConfirmDialog;
+
+        window.showAlertDialog = function(message, options) {
+          return new Promise(function(resolve) {
+            openAlert(message, options, function() {
+              resolve(true);
+            });
+          });
+        };
+        window.showAlert = window.showAlertDialog;
+
         // Override native window.alert so all alert messages match our UI design
-        window.alert = function(message) {
-          openAlert(message, { type: 'warning', title: 'Attention' });
+        window.alert = function(message, maybeTitle) {
+          const str = String(message != null ? message : '');
+          const isErr = str.toLowerCase().includes('error') || str.toLowerCase().includes('failed');
+          openAlert(str, {
+            type: isErr ? 'danger' : 'warning',
+            title: maybeTitle || (isErr ? 'Warning' : 'Notice')
+          });
         };
       })();
     </script>

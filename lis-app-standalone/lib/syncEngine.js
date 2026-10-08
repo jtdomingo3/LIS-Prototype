@@ -292,7 +292,7 @@ class SyncEngine {
           if (!result || typeof result !== 'object') return { success: false, reason: 'invalid-json' };
 
           // Merge known collections (best-effort) or replace when requested
-          const collections = ['users', 'patients', 'tests', 'templates', 'counters', 'inventory', 'inventory_batches', 'inventory_transactions', 'equipment', 'equipment_logs', 'qc_controls', 'qc_entries', 'neqas_records', 'consultations', 'expenses', 'revenue_entries', 'cost_per_test', 'employees', 'payroll_records', 'hr_documents', 'leave_records', 'dtr_records'];
+          const collections = ['users', 'patients', 'tests', 'templates', 'counters', 'inventory', 'inventory_batches', 'inventory_transactions', 'equipment', 'equipment_logs', 'qc_controls', 'qc_entries', 'neqas_records', 'consultations', 'expenses', 'revenue_entries', 'cost_per_test', 'employees', 'payroll_records', 'hr_documents', 'leave_records', 'dtr_records', 'philhealth_records', 'healthcard_records'];
           let imported = 0;
           for (const col of collections) {
             if (Array.isArray(result[col])) {

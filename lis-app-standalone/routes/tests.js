@@ -9,6 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const os = require('os');
+const packageHelper = require('../lib/packageHelper');
 
 // multer for handling multipart/form-data file uploads in memory
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
@@ -594,6 +595,42 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
   }
 });
 
+// GET /tests/packages/list - Fetch packages JSON
+router.get('/packages/list', requireAuth, (req, res) => {
+  try {
+    const list = packageHelper.getPackages(false);
+    res.json({ success: true, packages: list });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /tests/packages/save - Create or update package
+router.post('/packages/save', requireAuth, (req, res) => {
+  try {
+    if (!packageHelper.canUserManagePackages(req.session.user)) {
+      return res.status(403).json({ success: false, error: 'Unauthorized to manage test packages' });
+    }
+    const pkg = packageHelper.savePackage(req.body);
+    res.json({ success: true, package: pkg });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /tests/packages/:id/delete - Delete a package
+router.post('/packages/:id/delete', requireAuth, (req, res) => {
+  try {
+    if (!packageHelper.canUserManagePackages(req.session.user)) {
+      return res.status(403).json({ success: false, error: 'Unauthorized to delete test packages' });
+    }
+    const ok = packageHelper.deletePackage(req.params.id);
+    res.json({ success: ok });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // GET /tests/new - New test form
 router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
   try {
@@ -684,6 +721,8 @@ router.get('/new', requireAuth, canAccessPatient, async (req, res) => {
       test,
       patients,
       templates,
+      testPackages: packageHelper.getPackages(false),
+      canManagePackages: packageHelper.canUserManagePackages(req.session.user),
       returnTo
     });
   } catch (error) {
@@ -776,7 +815,9 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
         title: 'Create New Test',
         test: req.body,
         patients,
-        templates
+        templates,
+        testPackages: packageHelper.getPackages(false),
+        canManagePackages: packageHelper.canUserManagePackages(req.session.user)
       });
     }
 

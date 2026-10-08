@@ -154,7 +154,7 @@
                 <% } %>
               </td>
               <td style="padding:14px; color:#64748b; font-size:0.9em; white-space:nowrap;">
-                <%= test.testDate ? new Date(test.testDate).toLocaleDateString() : '' %>
+                <%= test.testDate ? (typeof formatMMDDYYYY === 'function' ? formatMMDDYYYY(test.testDate) : new Date(test.testDate).toLocaleDateString('en-US')) : '' %>
               </td>
               <td style="padding:14px; white-space:nowrap;">
                 <span style="display:inline-block; padding:4px 10px; border-radius:20px; font-size:0.8em; font-weight:600; <%= badgeStyle %>">
@@ -189,6 +189,7 @@
                   <% } %>
                 <% } %>
                 <form action="/tests/<%= test.id %>?_method=DELETE" method="POST" style="display:inline;" onsubmit="return confirm('⚠️ Are you sure you want to delete test <%= test.testId %>? This will permanently remove its results.');">
+  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
                   <button type="submit" class="button btn-small btn-danger" style="padding:6px 10px; font-size:0.82em; margin-left:4px;" title="Delete test">Delete</button>
                 </form>
               </td>

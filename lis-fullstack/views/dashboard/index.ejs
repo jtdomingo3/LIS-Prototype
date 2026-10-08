@@ -595,7 +595,7 @@
                 <tr>
                     <td><strong><%= test.patient ? test.patient.firstName + ' ' + test.patient.lastName : 'Unknown' %></strong></td>
                     <td><span style="font-weight: 500; color: #475569;"><%= test.testType %></span></td>
-                    <td><span style="color: #64748b;"><%= new Date(test.testDate).toLocaleDateString() %></span></td>
+                    <td><span style="color: #64748b;"><%= test.testDate ? (typeof formatMMDDYYYY === 'function' ? formatMMDDYYYY(test.testDate) : new Date(test.testDate).toLocaleDateString('en-US')) : '' %></span></td>
                     <td>
                         <span class="badge <%= test.status === 'Completed' ? 'badge-success' : test.status === 'In Progress' ? 'badge-warning' : 'badge-info' %>">
                             <%= test.status %>
