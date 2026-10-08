@@ -1,6 +1,42 @@
 <style>
 .result-highlight{ color:#c00; font-weight:700 }
 </style>
+<%
+if (typeof formatMMDDYYYY === 'undefined') {
+  const _fn = function(d) {
+    if (!d) return '';
+    if (typeof d === 'string') {
+      const s = d.trim();
+      const m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+      if (m) {
+        return String(m[2]).padStart(2, '0') + '/' + String(m[3]).padStart(2, '0') + '/' + m[1];
+      }
+    }
+    const dt = (d instanceof Date) ? d : new Date(d);
+    if (isNaN(dt.getTime())) return String(d);
+    const mm = String(dt.getMonth() + 1).padStart(2, '0');
+    const dd = String(dt.getDate()).padStart(2, '0');
+    return mm + '/' + dd + '/' + dt.getFullYear();
+  };
+  locals.formatMMDDYYYY = _fn;
+  locals.formatMMDDYY = _fn;
+  locals.formatDate = _fn;
+  if (typeof global !== 'undefined') {
+    global.formatMMDDYYYY = _fn;
+    global.formatMMDDYY = _fn;
+    global.formatDate = _fn;
+  }
+}
+if (typeof hl === 'undefined' && typeof locals.hl === 'undefined') {
+  const _fnHl = function(text) {
+    if (text === undefined || text === null) return '';
+    const s = String(text);
+    return s.replace(/(Reactive|Positive|trace|\+{1,4})/gi, (match) => `<span class="result-highlight">${match}</span>`);
+  };
+  locals.hl = _fnHl;
+  if (typeof global !== 'undefined') global.hl = _fnHl;
+}
+%>
 <script>
 // Highlight certain result tokens (Positive, Reactive, trace, +/++/+++/++++)
   (function(){

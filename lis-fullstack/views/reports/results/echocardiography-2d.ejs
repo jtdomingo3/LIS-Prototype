@@ -270,6 +270,31 @@
     }
   }
 </style>
+<%
+function formatMMDDYYYY(d) {
+  if (!d) return '';
+  if (typeof d === 'string') {
+    const s = d.trim();
+    const m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (m) {
+      return String(m[2]).padStart(2, '0') + '/' + String(m[3]).padStart(2, '0') + '/' + m[1];
+    }
+  }
+  const dt = (d instanceof Date) ? d : new Date(d);
+  if (isNaN(dt.getTime())) return String(d);
+  const mm = String(dt.getMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getDate()).padStart(2, '0');
+  return mm + '/' + dd + '/' + dt.getFullYear();
+}
+const formatMMDDYY = formatMMDDYYYY;
+const formatDate = formatMMDDYYYY;
+if (typeof global !== 'undefined') {
+  global.formatMMDDYYYY = formatMMDDYYYY;
+  global.formatMMDDYY = formatMMDDYYYY;
+  global.formatDate = formatMMDDYYYY;
+}
+%>
+
 
 <%- include('./_highlight') %>
 
@@ -298,7 +323,7 @@
   let physician = p.physician || p.physicianName || r.requestingPhysician || '';
   let indication = r.indication || r.indication_for_study || '';
   let contact = p.contactNumber || p.phone || p.contact || r.contact || '';
-  let testDateStr = test && test.testDate ? (new Date(test.testDate)).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : (new Date()).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+  let testDateStr = test && test.testDate ? formatMMDDYYYY(test.testDate) : formatMMDDYYYY(new Date());
 
   // Biometrics
   let weightStr = r.weight ? (r.weight + (String(r.weight).toLowerCase().includes('kg') ? '' : ' kg')) : '';
@@ -343,7 +368,7 @@
     </div>	
     <div class="header-datetime">
       <table>
-        <tr><td>Date:</td><td><strong><%= test && test.testDate ? (new Date(test.testDate)).toLocaleDateString() : new Date().toLocaleDateString() %></strong></td></tr>
+        <tr><td>Date:</td><td><strong><%= test && test.testDate ? formatMMDDYYYY(test.testDate) : formatMMDDYYYY(new Date()) %></strong></td></tr>
         <tr><td>Time Requested:</td><td><strong><%= test && test.testDate ? (new Date(test.testDate)).toLocaleTimeString() : '' %></strong></td></tr>
         <tr><td>Time Released:</td><td><strong><%= test && test.completedAt ? (new Date(test.completedAt)).toLocaleTimeString() : '' %></strong></td></tr>
       </table>
@@ -356,7 +381,7 @@
       <td style="width: 18%;">Patient's Reference No. :</td>
       <td style="width: 27%;"><strong><%= test && test.testId ? test.testId : '' %></strong></td>
       <td style="width: 9%;">DOB:</td>
-      <td style="width: 16%;"><strong><%= test && test.patient && test.patient.dateOfBirth ? (new Date(test.patient.dateOfBirth)).toLocaleDateString() : '' %></strong></td>
+      <td style="width: 16%;"><strong><%= test && test.patient && test.patient.dateOfBirth ? formatMMDDYYYY(test.patient.dateOfBirth) : '' %></strong></td>
       <td style="width: 10%;">Sex:</td>
       <td style="width: 20%;"><strong><%= patientSex %></strong></td>
     </tr>
@@ -847,7 +872,7 @@
     </div>	
     <div class="header-datetime">
       <table>
-        <tr><td>Date:</td><td><strong><%= test && test.testDate ? (new Date(test.testDate)).toLocaleDateString() : new Date().toLocaleDateString() %></strong></td></tr>
+        <tr><td>Date:</td><td><strong><%= test && test.testDate ? formatMMDDYYYY(test.testDate) : formatMMDDYYYY(new Date()) %></strong></td></tr>
         <tr><td>Time Requested:</td><td><strong><%= test && test.testDate ? (new Date(test.testDate)).toLocaleTimeString() : '' %></strong></td></tr>
         <tr><td>Time Released:</td><td><strong><%= test && test.completedAt ? (new Date(test.completedAt)).toLocaleTimeString() : '' %></strong></td></tr>
       </table>
@@ -860,7 +885,7 @@
       <td style="width: 18%;">Patient's Reference No. :</td>
       <td style="width: 27%;"><strong><%= test && test.testId ? test.testId : '' %></strong></td>
       <td style="width: 9%;">DOB:</td>
-      <td style="width: 16%;"><strong><%= test && test.patient && test.patient.dateOfBirth ? (new Date(test.patient.dateOfBirth)).toLocaleDateString() : '' %></strong></td>
+      <td style="width: 16%;"><strong><%= test && test.patient && test.patient.dateOfBirth ? formatMMDDYYYY(test.patient.dateOfBirth) : '' %></strong></td>
       <td style="width: 10%;">Sex:</td>
       <td style="width: 20%;"><strong><%= patientSex %></strong></td>
     </tr>

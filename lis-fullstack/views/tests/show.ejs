@@ -109,7 +109,7 @@
     <div>
       <span style="display: block; font-size: 0.75em; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.5px;">Order Date</span>
       <span style="font-size: 0.95em; font-weight: 600; color: #0f172a; margin-top: 2px; display: block;">
-        <%= test.testDate ? new Date(test.testDate).toLocaleDateString() : 'N/A' %>
+        <%= test.testDate ? (typeof formatMMDDYYYY === 'function' ? formatMMDDYYYY(test.testDate) : new Date(test.testDate).toLocaleDateString('en-US')) : 'N/A' %>
       </span>
     </div>
     <div>

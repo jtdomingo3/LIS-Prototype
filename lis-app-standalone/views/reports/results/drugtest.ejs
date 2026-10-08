@@ -38,6 +38,31 @@
   .small-italic{ font-size:10px; font-style:italic; margin-top:6px }
   .center-note{ text-align:center; margin-top:6px; font-style: italic; font-size:10px }
 </style>
+<%
+function formatMMDDYYYY(d) {
+  if (!d) return '';
+  if (typeof d === 'string') {
+    const s = d.trim();
+    const m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (m) {
+      return String(m[2]).padStart(2, '0') + '/' + String(m[3]).padStart(2, '0') + '/' + m[1];
+    }
+  }
+  const dt = (d instanceof Date) ? d : new Date(d);
+  if (isNaN(dt.getTime())) return String(d);
+  const mm = String(dt.getMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getDate()).padStart(2, '0');
+  return mm + '/' + dd + '/' + dt.getFullYear();
+}
+const formatMMDDYY = formatMMDDYYYY;
+const formatDate = formatMMDDYYYY;
+if (typeof global !== 'undefined') {
+  global.formatMMDDYYYY = formatMMDDYYYY;
+  global.formatMMDDYY = formatMMDDYYYY;
+  global.formatDate = formatMMDDYYYY;
+}
+%>
+
 <%- include('./_highlight') %>
 
 <div class="report-page">

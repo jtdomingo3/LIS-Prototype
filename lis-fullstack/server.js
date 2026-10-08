@@ -718,8 +718,33 @@ app.use((req, res, next) => {
     refreshDebounceMs: 800
   };
 
+  // Universal date formatter helper: MM/DD/YYYY (Philippine & clinical standard)
+  res.locals.formatMMDDYYYY = formatMMDDYYYY;
+  res.locals.formatMMDDYY = formatMMDDYYYY;
+  res.locals.formatDate = formatMMDDYYYY;
+
   next();
 });
+
+// Universal date formatter helper on app.locals
+function formatMMDDYYYY(d) {
+  if (!d) return '';
+  if (typeof d === 'string') {
+    const s = d.trim();
+    const m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (m) {
+      return String(m[2]).padStart(2, '0') + '/' + String(m[3]).padStart(2, '0') + '/' + m[1];
+    }
+  }
+  const dt = (d instanceof Date) ? d : new Date(d);
+  if (isNaN(dt.getTime())) return String(d);
+  const mm = String(dt.getMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getDate()).padStart(2, '0');
+  return mm + '/' + dd + '/' + dt.getFullYear();
+}
+app.locals.formatMMDDYYYY = formatMMDDYYYY;
+app.locals.formatMMDDYY = formatMMDDYYYY;
+app.locals.formatDate = formatMMDDYYYY;
 
 // Expose all users to views for signatory dropdowns
 app.use((req, res, next) => {

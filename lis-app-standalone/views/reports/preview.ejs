@@ -128,7 +128,7 @@
     </div>
     <div>
       <span style="display:block; font-size:0.75em; text-transform:uppercase; color:#64748b; font-weight:700; letter-spacing:0.5px; margin-bottom:4px;">Test Date</span>
-      <span style="font-size:1em; color:#334155;" id="displayTestDate"><%= test.testDate ? new Date(test.testDate).toLocaleDateString() : '' %></span>
+      <span style="font-size:1em; color:#334155;" id="displayTestDate"><%= test.testDate ? (typeof formatMMDDYYYY === 'function' ? formatMMDDYYYY(test.testDate) : new Date(test.testDate).toLocaleDateString('en-US')) : '' %></span>
     </div>
     <div>
       <span style="display:block; font-size:0.75em; text-transform:uppercase; color:#64748b; font-weight:700; letter-spacing:0.5px; margin-bottom:4px;">Work Order ID</span>
@@ -558,13 +558,22 @@
     const filteredList = document.getElementById('filteredList');
     const filteredSelectAll = document.getElementById('filteredSelectAll');
 
+    function formatDateMMDDYYYY(d) {
+      if (!d) return '';
+      const dt = (d instanceof Date) ? d : new Date(d);
+      if (isNaN(dt.getTime())) return String(d);
+      const mm = String(dt.getMonth() + 1).padStart(2, '0');
+      const dd = String(dt.getDate()).padStart(2, '0');
+      return mm + '/' + dd + '/' + dt.getFullYear();
+    }
+
     function populateFilteredList(){
       if (!filteredList) return;
       while (filteredList.firstChild) filteredList.removeChild(filteredList.firstChild);
       const filtered = tests.filter(matchesFilters);
       const frag = document.createDocumentFragment();
       filtered.forEach(t => {
-        const date = t.testDate ? new Date(t.testDate).toLocaleDateString() : '';
+        const date = t.testDate ? formatDateMMDDYYYY(t.testDate) : '';
         const id = String(t.id);
         const labelText = (t.testId || '') + ' - ' + (t.patientName || 'Unknown') + ' - ' + (t.testType || '') + (date ? (' ('+date+')') : '');
 
@@ -800,7 +809,7 @@
       if (elPatientPatientId) elPatientPatientId.textContent = t.patientId || '';
       if (elDisplayTestId) elDisplayTestId.textContent = t.testId || '';
       if (elDisplayTestType) elDisplayTestType.textContent = t.testType || '';
-      if (elDisplayTestDate) elDisplayTestDate.textContent = t.testDate ? new Date(t.testDate).toLocaleDateString() : '';
+      if (elDisplayTestDate) elDisplayTestDate.textContent = t.testDate ? formatDateMMDDYYYY(t.testDate) : '';
       if (downloadPdf) downloadPdf.href = '/reports/pdf/' + encodeURIComponent(id);
       if (printLink) printLink.href = '/reports/result/' + encodeURIComponent(id) + '?embedded=1&print=1';
       const elFloatingPatient = document.getElementById('floatingPatientName');

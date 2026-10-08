@@ -5,6 +5,7 @@ const Patient = require('../models/Patient');
 const User = require('../models/User');
 const Template = require('../models/Template');
 const Consultation = require('../models/Consultation');
+const PhilhealthRecord = require('../models/PhilhealthRecord');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -31,6 +32,22 @@ function getInlineLogo() {
     _cachedInlineLogo = null;
   }
   return _cachedInlineLogo;
+}
+
+function formatMMDDYYYY(d) {
+  if (!d) return '';
+  if (typeof d === 'string') {
+    const s = d.trim();
+    const m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (m) {
+      return String(m[2]).padStart(2, '0') + '/' + String(m[3]).padStart(2, '0') + '/' + m[1];
+    }
+  }
+  const dt = (d instanceof Date) ? d : new Date(d);
+  if (isNaN(dt.getTime())) return String(d);
+  const mm = String(dt.getMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getDate()).padStart(2, '0');
+  return mm + '/' + dd + '/' + dt.getFullYear();
 }
 
 const EXCLUDED_RESULT_KEYS = new Set([
@@ -80,55 +97,15 @@ function flattenResults(obj, prefix = '') {
 
 // uses centralized logger in lib/reportLogger.js
 
-// In-memory cache for completed tests navigation to avoid repeated scans of thousands of records
-let _navCache = null;
-let _navCacheTime = 0;
-
-function getCompletedTestsForNav() {
-  const now = Date.now();
-  if (_navCache && (now - _navCacheTime < 30000)) {
-    return _navCache;
-  }
-  const rawTests = (global.db && typeof global.db.getTests === 'function') 
-    ? global.db.getTests() 
-    : [];
-  const completedSorted = (Array.isArray(rawTests) ? rawTests : [])
-    .filter(t => t && !isDoctorVisitTest(t) && (t.status === 'Completed' || t.status === 'Released'));
-  completedSorted.sort((a, b) => new Date(b.testDate || b.createdAt) - new Date(a.testDate || a.createdAt));
-
-  const rawPatients = (global.db && typeof global.db.getPatients === 'function')
-    ? global.db.getPatients()
-    : [];
-  const patientMap = {};
-  for (let i = 0; i < rawPatients.length; i++) {
-    const p = rawPatients[i];
-    if (p) {
-      const pid = p.id || p._id;
-      if (pid) patientMap[pid] = `${p.lastName || ''}, ${p.firstName || ''}`.replace(/^,\s*/, '').replace(/,\s*$/, '').trim();
-    }
-  }
-
-  const list = new Array(completedSorted.length);
-  for (let i = 0; i < completedSorted.length; i++) {
-    const t = completedSorted[i];
-    list[i] = {
-      id: t.id || t._id,
-      testId: t.testId,
-      testType: t.testType || t.template || '',
-      patientName: t.patient ? (patientMap[t.patient] || '') : '',
-      testDate: t.testDate || t.createdAt || null
-    };
-  }
-  _navCache = list;
-  _navCacheTime = now;
-  return list;
-}
-
 // GET /reports - Reports page
 router.get('/', requireAuth, canAccessPatient, async (req, res) => {
   try {
     // Find the most recent completed/released test and redirect to its preview
-    const completedTests = getCompletedTestsForNav();
+    const allTests = await Test.find({});
+    const completedTests = Array.isArray(allTests)
+      ? allTests.filter(t => t && !isDoctorVisitTest(t) && (t.status === 'Completed' || t.status === 'Released'))
+      : [];
+    completedTests.sort((a, b) => new Date(b.testDate || b.createdAt) - new Date(a.testDate || a.createdAt));
 
     if (completedTests.length) {
       const mostRecent = completedTests[0];
@@ -199,8 +176,29 @@ router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) =
     }
     sanitizeTestSignatures(populatedTest);
 
-    // Build navigation list — lightweight in-memory cache
-    const testsForNav = getCompletedTestsForNav();
+    // Build navigation list — lightweight: read patient names from a single
+    // in-memory scan of the patients array, NOT one-by-one async lookups.
+    const allTests = await Test.find({});
+    const completedSorted = Array.isArray(allTests)
+      ? allTests.filter(t => t && !isDoctorVisitTest(t) && (t.status === 'Completed' || t.status === 'Released'))
+      : [];
+    completedSorted.sort((a, b) => new Date(b.testDate || b.createdAt) - new Date(a.testDate || a.createdAt));
+
+    // Build a patient-id → name map from in-memory DB (one scan, not N async calls)
+    const allPatients = await Patient.find ? await Patient.find({}) : [];
+    const patientMap = {};
+    (Array.isArray(allPatients) ? allPatients : []).forEach(p => {
+      const pid = p.id || p._id;
+      if (pid) patientMap[pid] = `${p.lastName || ''}, ${p.firstName || ''}`.replace(/^,\s*/, '').replace(/,\s*$/, '').trim();
+    });
+
+    const testsForNav = completedSorted.map(t => ({
+      id: t.id || t._id,
+      testId: t.testId,
+      testType: t.testType || t.template || '',
+      patientName: t.patient ? (patientMap[t.patient] || '') : '',
+      testDate: t.testDate || t.createdAt || null
+    }));
 
     const currentIndex = testsForNav.findIndex(tn => String(tn.id) === String(test.id || test._id));
     let prevId = (currentIndex > 0) ? testsForNav[currentIndex - 1].id : null;
@@ -305,7 +303,10 @@ router.get('/result/:testId', requireAuth, canAccessPatient, async (req, res) =>
       layout: useLayout,
       print: autoPrint,
       inlineLogo,
-      sheet: req.query.sheet || 'all'
+      sheet: req.query.sheet || 'all',
+      formatMMDDYYYY,
+      formatMMDDYY: formatMMDDYYYY,
+      formatDate: formatMMDDYYYY
     });
 
   } catch (error) {
@@ -411,7 +412,7 @@ router.get('/print/:testId', requireAuth, canAccessPatient, async (req, res) => 
 
     // Render the result template without layout to get its HTML
     const inlineLogo = getInlineLogo();
-    res.render(viewPath, { title: 'Result Print', test: populatedTest, dbTemplate, layout: false, inlineLogo, sheet: req.query.sheet || 'all' }, (err, renderedHtml) => {
+    res.render(viewPath, { title: 'Result Print', test: populatedTest, dbTemplate, layout: false, inlineLogo, sheet: req.query.sheet || 'all', formatMMDDYYYY, formatMMDDYY: formatMMDDYYYY, formatDate: formatMMDDYYYY }, (err, renderedHtml) => {
         if (err) {
           console.error('Error rendering result template for print:', err);
           return res.status(500).send('Error preparing print preview');
@@ -421,7 +422,7 @@ router.get('/print/:testId', requireAuth, canAccessPatient, async (req, res) => 
         res.render('reports/print', {
           title: 'Print Report',
           test: populatedTest,
-          currentDate: new Date().toLocaleDateString(),
+          currentDate: formatMMDDYYYY(new Date()),
           renderedResultHtml: renderedHtml,
           layout: 'print',
           suppressPrint: !!req.query.suppressPrint
@@ -487,7 +488,7 @@ router.all('/print-multiple', requireAuth, canAccessPatient, async (req, res) =>
       // Render each template into HTML (no layout)
       try {
         const html = await new Promise((resolve, reject) => {
-          res.render(`reports/results/${template}`, { title: 'Result', test: populatedTest, dbTemplate, layout: false, inlineLogo: getInlineLogo() }, (err, html) => {
+          res.render(`reports/results/${template}`, { title: 'Result', test: populatedTest, dbTemplate, layout: false, inlineLogo: getInlineLogo(), formatMMDDYYYY, formatMMDDYY: formatMMDDYYYY, formatDate: formatMMDDYYYY }, (err, html) => {
             if (err) return reject(err);
             resolve(html);
           });
@@ -732,7 +733,7 @@ router.post('/worksheet/download', requireAuth, canAccessPatient, async (req, re
 
     const lines = [headers.map(escapeCsvCell).join(',')];
     for (const r of rows) {
-      const dateStr = r.testDate ? r.testDate.toLocaleDateString() : '';
+      const dateStr = r.testDate ? formatMMDDYYYY(r.testDate) : '';
       const timeStr = r.testDate ? r.testDate.toLocaleTimeString() : '';
       const p = r.patient || {};
       const ageVal = (p.age !== null && p.age !== undefined && p.age !== '') ? p.age : (p.ageManual || '');
@@ -776,7 +777,7 @@ router.post('/worksheet/download', requireAuth, canAccessPatient, async (req, re
       ws.columns = cols;
 
       for (const r of rows) {
-        const dateStr = r.testDate ? r.testDate.toLocaleDateString() : '';
+        const dateStr = r.testDate ? formatMMDDYYYY(r.testDate) : '';
         const timeStr = r.testDate ? r.testDate.toLocaleTimeString() : '';
         const p = r.patient || {};
         const ageVal = (p.age !== null && p.age !== undefined && p.age !== '') ? p.age : (p.ageManual || '');
@@ -826,7 +827,7 @@ router.post('/worksheet/download', requireAuth, canAccessPatient, async (req, re
       html += '</tr></thead><tbody>';
       for (const r of rows) {
         html += '<tr>';
-        const dateStr = r.testDate ? r.testDate.toLocaleDateString() : '';
+        const dateStr = r.testDate ? formatMMDDYYYY(r.testDate) : '';
         const timeStr = r.testDate ? r.testDate.toLocaleTimeString() : '';
         const p = r.patient || {};
         const ageVal = (p.age !== null && p.age !== undefined && p.age !== '') ? p.age : (p.ageManual || '');
@@ -1263,6 +1264,226 @@ router.post('/patient-export/preview', requireAuth, canAccessPatient, async (req
   } catch (err) {
     console.error('Patient preview error:', err);
     return res.status(500).json({ error: 'Error generating patient preview' });
+  }
+});
+
+// POST /reports/philhealth-export/download - Download PhilHealth claims & registry data
+router.post('/philhealth-export/download', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const { dateFrom, dateTo, status, tranche1Paid, tranche2Paid, format } = req.body || {};
+    let records = await PhilhealthRecord.find({});
+
+    if (dateFrom) {
+      records = (records || []).filter(r => String(r.recordDate || r.createdAt || '').slice(0, 10) >= dateFrom);
+    }
+    if (dateTo) {
+      records = (records || []).filter(r => String(r.recordDate || r.createdAt || '').slice(0, 10) <= dateTo);
+    }
+    if (status) {
+      records = (records || []).filter(r => r.status === status);
+    }
+    if (tranche1Paid) {
+      records = (records || []).filter(r => r.tranche1Paid === tranche1Paid);
+    }
+    if (tranche2Paid) {
+      records = (records || []).filter(r => r.tranche2Paid === tranche2Paid);
+    }
+
+    records.sort((a, b) => new Date(b.recordDate || b.createdAt || 0) - new Date(a.recordDate || a.createdAt || 0));
+
+    const headers = [
+      '#',
+      'CONTROL NO',
+      'DATE',
+      'NAME',
+      'FIRST NAME',
+      'MIDDLE NAME',
+      'LAST NAME',
+      'PIN NO.',
+      'PROCEDURE',
+      'AGENCY',
+      'PCU/ERROR',
+      '1ST TRANCHE ENCODED',
+      '2ND TRANCHE ENCODED',
+      'EKAS',
+      '1ST TRANCHE PAID',
+      '2ND TRANCHE PAID',
+      'SOA REF',
+      'PAID DATE',
+      'STATUS',
+      'APPROVED BY',
+      'APPROVED AT'
+    ];
+
+    function mapRecordToRow(r, idx) {
+      const procList = (r.procedures || []).map(p => {
+        if (p.remarks && String(p.remarks).trim()) {
+          return `${p.label} [${p.remarks}]`;
+        }
+        return p.label;
+      }).join('; ');
+
+      return [
+        idx + 1,
+        r.controlNo || '',
+        r.recordDate || (r.createdAt ? String(r.createdAt).slice(0, 10) : ''),
+        r.fullName || `${r.firstName || ''} ${r.middleName || ''} ${r.lastName || ''}`.trim(),
+        r.firstName || '',
+        r.middleName || '',
+        r.lastName || '',
+        r.pinNo || '',
+        procList,
+        r.agency || '',
+        r.pcuError || '',
+        r.tranche1Encoded || 'Pending',
+        r.tranche2Encoded || 'Pending',
+        r.ekas || 'Pending',
+        r.tranche1Paid || 'Not Paid',
+        r.tranche2Paid || 'Not Paid',
+        r.soaRef || '',
+        r.paidDate || '',
+        r.status || 'Pending Approval',
+        r.approvedBy || '',
+        r.approvedAt ? String(r.approvedAt).slice(0, 19).replace('T', ' ') : ''
+      ];
+    }
+
+    const filenameBase = `philhealth_claims_export_${(new Date()).toISOString().slice(0, 19).replace(/[:T]/g, '-')}`;
+    const fmt = (format || '').toLowerCase();
+
+    if (fmt === 'xlsx') {
+      const workbook = new ExcelJS.Workbook();
+      const ws = workbook.addWorksheet('PhilHealth Claims');
+      const cols = headers.map(h => ({
+        header: h,
+        key: h,
+        width: Math.min(45, Math.max(12, String(h).length + 4))
+      }));
+      ws.columns = cols;
+
+      const headerRow = ws.getRow(1);
+      headerRow.eachCell(cell => {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF0D9488' }
+        };
+        cell.font = {
+          name: 'Calibri',
+          color: { argb: 'FFFFFFFF' },
+          bold: true,
+          size: 11
+        };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      });
+      headerRow.height = 28;
+
+      records.forEach((r, idx) => {
+        const rowVals = mapRecordToRow(r, idx);
+        const rowObj = {};
+        headers.forEach((h, i) => { rowObj[h] = rowVals[i]; });
+        const row = ws.addRow(rowObj);
+        row.height = 20;
+      });
+
+      ws.views = [{ state: 'frozen', ySplit: 1 }];
+      ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: headers.length } };
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      res.setHeader('Content-Disposition', `attachment; filename="${filenameBase}.xlsx"`);
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      return res.send(Buffer.from(buffer));
+    }
+
+    // Default CSV export with UTF-8 BOM
+    function escapeCsvCell(val) {
+      if (val === null || val === undefined) return '';
+      const s = String(val);
+      if (s.includes('"') || s.includes(',') || s.includes('\n') || s.includes('\r')) {
+        return '"' + s.replace(/"/g, '""') + '"';
+      }
+      return s;
+    }
+
+    const csvLines = [headers.map(escapeCsvCell).join(',')];
+    records.forEach((r, idx) => {
+      const rowVals = mapRecordToRow(r, idx);
+      csvLines.push(rowVals.map(escapeCsvCell).join(','));
+    });
+
+    const csvOutput = '\uFEFF' + csvLines.join('\r\n');
+    res.setHeader('Content-Disposition', `attachment; filename="${filenameBase}.csv"`);
+    res.setHeader('Content-Type', 'text/csv; charset=UTF-8');
+    return res.send(csvOutput);
+  } catch (error) {
+    console.error('PhilHealth export error:', error);
+    req.flash('error_msg', 'Error generating PhilHealth export');
+    res.redirect('/reports/worksheet');
+  }
+});
+
+// POST /reports/philhealth-export/preview - Limited preview JSON of PhilHealth records
+router.post('/philhealth-export/preview', requireAuth, canAccessPatient, async (req, res) => {
+  try {
+    const { dateFrom, dateTo, status, tranche1Paid, tranche2Paid, limit } = req.body || {};
+    let records = await PhilhealthRecord.find({});
+
+    if (dateFrom) {
+      records = (records || []).filter(r => String(r.recordDate || r.createdAt || '').slice(0, 10) >= dateFrom);
+    }
+    if (dateTo) {
+      records = (records || []).filter(r => String(r.recordDate || r.createdAt || '').slice(0, 10) <= dateTo);
+    }
+    if (status) {
+      records = (records || []).filter(r => r.status === status);
+    }
+    if (tranche1Paid) {
+      records = (records || []).filter(r => r.tranche1Paid === tranche1Paid);
+    }
+    if (tranche2Paid) {
+      records = (records || []).filter(r => r.tranche2Paid === tranche2Paid);
+    }
+
+    records.sort((a, b) => new Date(b.recordDate || b.createdAt || 0) - new Date(a.recordDate || a.createdAt || 0));
+
+    const previewRows = records.map((r, idx) => {
+      const procList = (r.procedures || []).map(p => {
+        if (p.remarks && String(p.remarks).trim()) {
+          return `${p.label} [${p.remarks}]`;
+        }
+        return p.label;
+      }).join('; ');
+
+      return {
+        index: idx + 1,
+        controlNo: r.controlNo || '',
+        recordDate: r.recordDate || (r.createdAt ? String(r.createdAt).slice(0, 10) : ''),
+        fullName: r.fullName || `${r.firstName || ''} ${r.middleName || ''} ${r.lastName || ''}`.trim(),
+        firstName: r.firstName || '',
+        middleName: r.middleName || '',
+        lastName: r.lastName || '',
+        pinNo: r.pinNo || '',
+        procedures: procList || '—',
+        agency: r.agency || '—',
+        pcuError: r.pcuError || '—',
+        tranche1Encoded: r.tranche1Encoded || 'Pending',
+        tranche2Encoded: r.tranche2Encoded || 'Pending',
+        ekas: r.ekas || 'Pending',
+        tranche1Paid: r.tranche1Paid || 'Not Paid',
+        tranche2Paid: r.tranche2Paid || 'Not Paid',
+        soaRef: r.soaRef || '',
+        paidDate: r.paidDate || '',
+        status: r.status || 'Pending Approval',
+        approvedBy: r.approvedBy || '—',
+        approvedAt: r.approvedAt ? String(r.approvedAt).slice(0, 19).replace('T', ' ') : '—'
+      };
+    });
+
+    const max = Math.min(1000, parseInt(limit || '500', 10) || 500);
+    return res.json({ count: previewRows.length, rows: previewRows.slice(0, max) });
+  } catch (err) {
+    console.error('PhilHealth preview error:', err);
+    return res.status(500).json({ error: 'Error generating PhilHealth preview' });
   }
 });
 

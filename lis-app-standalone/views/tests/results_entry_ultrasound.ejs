@@ -237,15 +237,17 @@
     <!-- ===================================================================== -->
     <!-- PROCEDURE 2: Transvaginal Ultrasound (TVUS) -->
     <!-- ===================================================================== -->
+    <!-- ===================================================================== -->
+    <!-- PROCEDURE 2: Transvaginal Ultrasound (TVUS) -->
+    <!-- ===================================================================== -->
     <div id="panel-ultrasound-transvaginal" class="proc-panel" style="display: <%= currentType === 'ultrasound-transvaginal' ? 'block' : 'none' %>;">
       
-      <!-- Parameter Card: Tabulated Biometry Measurements -->
-      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
-        <div style="font-weight: 700; font-size: 1em; color: #0f172a; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
-          <span style="display: flex; align-items: center; gap: 8px;">
-            <i class="fa fa-wave-square" style="color: #6366f1;"></i> Transvaginal Biometry Table
-          </span>
-          <span style="font-size: 0.78em; color: #64748b; font-weight: 600; background: #f1f5f9; padding: 3px 10px; border-radius: 12px;">Endovaginal Pelvic Imaging</span>
+      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
+        
+        <!-- Procedure Form Title -->
+        <div style="text-align: center; margin-bottom: 18px; padding-bottom: 10px; border-bottom: 2px solid #e2e8f0;">
+          <div style="font-weight: 800; font-size: 1.25em; letter-spacing: 0.5px; color: #0f172a;">TRANSVAGINAL ULTRASOUND</div>
+          <div style="font-size: 0.8em; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px;">Endovaginal Pelvic Biometry & Obstetric Survey</div>
         </div>
 
         <% 
@@ -254,136 +256,92 @@
           const aoaAgeTvus = getAgeWD(test && test.results && test.results.average_ultrasound_age_w, test && test.results && test.results.average_ultrasound_age_d, test && test.results && test.results.average_ultrasound_age);
         %>
 
-        <div style="overflow-x: auto;">
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px;">
-            <thead>
-              <tr style="background: #f8fafc; color: #334155; font-size: 0.84em; text-align: left; border-bottom: 2px solid #cbd5e1;">
-                <th style="padding: 10px 14px; border-radius: 6px 0 0 0;">Parameter</th>
-                <th style="padding: 10px 14px; width: 170px;">Size (cm)</th>
-                <th style="padding: 10px 14px; width: 110px;">Weeks (W)</th>
-                <th style="padding: 10px 14px; width: 110px;">Days (D)</th>
-                <th style="padding: 10px 14px; width: 150px; border-radius: 0 6px 0 0;">Equivalent Age</th>
-              </tr>
-            </thead>
-            <tbody>
-              <!-- Gestational Sac -->
-              <tr style="border-bottom: 1px solid #f1f5f9;">
-                <td style="padding: 10px 14px; font-weight: 600; color: #1e293b;">
-                  <strong>Gestational Sac (GS)</strong>
-                </td>
-                <td style="padding: 8px 14px;">
-                  <div style="position: relative;">
-                    <input type="text" name="gestational_sac_length" id="gs_size_tvus" placeholder="0.72" value="<%= test && test.results && test.results.gestational_sac_length ? test.results.gestational_sac_length : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-                    <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 700;">cm</span>
-                  </div>
-                </td>
-                <td style="padding: 8px 14px;">
-                  <input type="number" min="0" max="45" name="gestational_sac_w" id="gs_w_tvus" placeholder="5" value="<%= gsAgeTvus.w %>" oninput="updateBiometryRow('tvus', 'gs')" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-                </td>
-                <td style="padding: 8px 14px;">
-                  <input type="number" min="0" max="6" name="gestational_sac_d" id="gs_d_tvus" placeholder="3" value="<%= gsAgeTvus.d %>" oninput="updateBiometryRow('tvus', 'gs')" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-                </td>
-                <td style="padding: 8px 14px;">
-                  <input type="hidden" name="gestational_sac_age" id="gs_label_tvus" value="<%= test && test.results && test.results.gestational_sac_age ? test.results.gestational_sac_age : '' %>">
-                  <span id="gs_badge_tvus" style="display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.85em; font-weight: 700; background: #f1f5f9; color: #475569;"><%= test && test.results && test.results.gestational_sac_age ? test.results.gestational_sac_age : '--' %></span>
-                </td>
-              </tr>
-
-              <!-- CRL -->
-              <tr style="border-bottom: 1px solid #f1f5f9;">
-                <td style="padding: 10px 14px; font-weight: 600; color: #1e293b;">
-                  <strong>Crown Rump Length (CRL)</strong>
-                </td>
-                <td style="padding: 8px 14px;">
-                  <div style="position: relative;">
-                    <input type="text" name="crl_length" id="crl_size_tvus" placeholder="2.53" value="<%= test && test.results && test.results.crl_length ? test.results.crl_length : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-                    <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 700;">cm</span>
-                  </div>
-                </td>
-                <td style="padding: 8px 14px;">
-                  <input type="number" min="0" max="45" name="crl_w" id="crl_w_tvus" placeholder="9" value="<%= crlAgeTvus.w %>" oninput="updateBiometryRow('tvus', 'crl')" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-                </td>
-                <td style="padding: 8px 14px;">
-                  <input type="number" min="0" max="6" name="crl_d" id="crl_d_tvus" placeholder="2" value="<%= crlAgeTvus.d %>" oninput="updateBiometryRow('tvus', 'crl')" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-                </td>
-                <td style="padding: 8px 14px;">
-                  <input type="hidden" name="crl_age" id="crl_label_tvus" value="<%= test && test.results && test.results.crl_age ? test.results.crl_age : '' %>">
-                  <span id="crl_badge_tvus" style="display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.85em; font-weight: 700; background: #f1f5f9; color: #475569;"><%= test && test.results && test.results.crl_age ? test.results.crl_age : '--' %></span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div style="display: flex; gap: 10px; align-items: center; margin-top: 6px; padding-top: 8px; border-top: 1px solid #f1f5f9;">
-          <button type="button" class="button btn-secondary no-guard calc-btn" data-no-guard="1" onclick="copyCrlToAoa('tvus')" style="height: 32px; padding: 0 12px; font-size: 0.82em; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-            <i class="fa fa-sync-alt" style="color: #6366f1;"></i> Set AOA from CRL Age
-          </button>
-          <button type="button" class="button btn-secondary no-guard calc-btn" data-no-guard="1" onclick="copyGsToAoa('tvus')" style="height: 32px; padding: 0 12px; font-size: 0.82em; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-            <i class="fa fa-sync-alt" style="color: #3b82f6;"></i> Set AOA from GS Age
-          </button>
-        </div>
-      </div>
-
-      <!-- Parameter Card: Clinical & Obstetric Parameters -->
-      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
-        <div style="font-weight: 700; font-size: 1em; color: #0f172a; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; gap: 8px;">
-          <i class="fa fa-notes-medical" style="color: #6366f1;"></i> Clinical Findings & Delivery Estimates
-        </div>
-
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 16px;">
-          <!-- Average Ultrasound Age (AOA) -->
-          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
-            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: flex; justify-content: space-between; align-items: center;">
-              <span>Average Ultrasound Age (AOA)</span>
-              <span style="font-size: 0.74em; color: #6366f1; font-weight: 600;">Weeks & Days</span>
-            </label>
-            <div style="display: flex; gap: 6px; align-items: center;">
-              <input type="number" min="0" max="45" name="average_ultrasound_age_w" id="aoa_w_tvus" placeholder="W" value="<%= aoaAgeTvus.w %>" oninput="updateAOAInput('tvus')" style="height: 36px; width: 68px; padding: 4px 8px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; text-align: center;" title="Weeks">
-              <span style="font-size: 0.8em; font-weight: 700; color: #64748b;">W</span>
-              <input type="number" min="0" max="6" name="average_ultrasound_age_d" id="aoa_d_tvus" placeholder="D" value="<%= aoaAgeTvus.d %>" oninput="updateAOAInput('tvus')" style="height: 36px; width: 62px; padding: 4px 8px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; text-align: center;" title="Days">
-              <span style="font-size: 0.8em; font-weight: 700; color: #64748b;">D</span>
-              <input type="text" name="average_ultrasound_age" id="aoa_text_tvus" placeholder="9 W 2 D" value="<%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : '' %>" style="height: 36px; flex: 1; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; background: #f8fafc;" title="Full AOA String">
+        <!-- 1. BIOMETRY TABLE -->
+        <div style="margin-bottom: 20px;">
+          <div style="font-weight: 800; font-size: 0.88em; color: #1e293b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <span><i class="fa fa-ruler-combined" style="color: #6366f1; margin-right: 6px;"></i> BIOMETRY:</span>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="button btn-secondary no-guard calc-btn" data-no-guard="1" onclick="copyCrlToAoa('tvus')" style="height: 28px; padding: 0 10px; font-size: 0.78em; font-weight: 700; background: #e0e7ff; color: #3730a3; border-color: #c7d2fe; display: inline-flex; align-items: center; gap: 4px;">
+                <i class="fa fa-sync-alt"></i> Set AOA from CRL
+              </button>
+              <button type="button" class="button btn-secondary no-guard calc-btn" data-no-guard="1" onclick="copyGsToAoa('tvus')" style="height: 28px; padding: 0 10px; font-size: 0.78em; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
+                <i class="fa fa-sync-alt" style="color: #3b82f6;"></i> Set AOA from GS
+              </button>
             </div>
           </div>
 
-          <!-- Fetal Heart Rate -->
-          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
-            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Fetal Heart Rate (FHR)</label>
-            <div style="position: relative;">
-              <input type="text" name="fetal_heart_rate" id="fhr_tvus" placeholder="170" value="<%= test && test.results && test.results.fetal_heart_rate ? test.results.fetal_heart_rate : '' %>" style="height: 36px; padding: 4px 45px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-              <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">BPM</span>
-            </div>
-          </div>
+          <div style="overflow-x: auto;">
+            <table class="form-table" style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; margin-bottom: 0;">
+              <thead>
+                <tr>
+                  <th style="padding: 10px 14px; background: #f1f5f9; color: #334155; font-size: 0.84em; font-weight: 700; border: 1px solid #cbd5e1;">PARAMETER</th>
+                  <th style="padding: 10px 14px; width: 180px; background: #f1f5f9; color: #334155; font-size: 0.84em; font-weight: 700; border: 1px solid #cbd5e1;">SIZE (CM)</th>
+                  <th style="padding: 10px 14px; width: 110px; background: #f1f5f9; color: #334155; font-size: 0.84em; font-weight: 700; border: 1px solid #cbd5e1;">WEEKS (W)</th>
+                  <th style="padding: 10px 14px; width: 110px; background: #f1f5f9; color: #334155; font-size: 0.84em; font-weight: 700; border: 1px solid #cbd5e1;">DAYS (D)</th>
+                  <th style="padding: 10px 14px; width: 160px; background: #f1f5f9; color: #334155; font-size: 0.84em; font-weight: 700; border: 1px solid #cbd5e1;">EQUIVALENT AGE</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Gestational Sac -->
+                <tr>
+                  <td class="label-cell" style="padding: 8px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                    Gestational Sac (GS):
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <div style="position: relative;">
+                      <input type="text" name="gestational_sac_length" id="gs_size_tvus" placeholder="0.72" value="<%= test && test.results && test.results.gestational_sac_length ? test.results.gestational_sac_length : '' %>" class="entry-input" style="width: 100%; padding-right: 32px;">
+                      <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #64748b; font-weight: 700;">cm</span>
+                    </div>
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <input type="number" min="0" max="45" name="gestational_sac_w" id="gs_w_tvus" placeholder="5" value="<%= gsAgeTvus.w %>" oninput="updateBiometryRow('tvus', 'gs')" class="entry-input" style="width: 100%; text-align: center;">
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <input type="number" min="0" max="6" name="gestational_sac_d" id="gs_d_tvus" placeholder="3" value="<%= gsAgeTvus.d %>" oninput="updateBiometryRow('tvus', 'gs')" class="entry-input" style="width: 100%; text-align: center;">
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <input type="hidden" name="gestational_sac_age" id="gs_label_tvus" value="<%= test && test.results && test.results.gestational_sac_age ? test.results.gestational_sac_age : '' %>">
+                    <span id="gs_badge_tvus" style="display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.85em; font-weight: 700; background: #f1f5f9; color: #334155;"><%= test && test.results && test.results.gestational_sac_age ? test.results.gestational_sac_age : '--' %></span>
+                  </td>
+                </tr>
 
-          <!-- Expected Date of Delivery (EDD) -->
-          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-              <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #1e293b;">Expected Date of Delivery (EDD)</label>
-              <span id="edd_badge_tvus" style="font-size: 0.76em; font-weight: 700; color: #0284c7;"></span>
-            </div>
-            <input type="date" name="expected_date_of_delivery" id="edd_tvus" onchange="updateEddDisplay('tvus')" value="<%= test && test.results && test.results.expected_date_of_delivery ? (new Date(test.results.expected_date_of_delivery)).toISOString().slice(0,10) : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-          </div>
-
-          <!-- Other Findings -->
-          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
-            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Other Findings</label>
-            <input type="text" name="other" placeholder="Normal adnexa / ovaries" value="<%= test && test.results && test.results.other ? test.results.other : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 500; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+                <!-- CRL -->
+                <tr>
+                  <td class="label-cell" style="padding: 8px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                    CRL (Crown Rump Length):
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <div style="position: relative;">
+                      <input type="text" name="crl_length" id="crl_size_tvus" placeholder="2.53" value="<%= test && test.results && test.results.crl_length ? test.results.crl_length : '' %>" class="entry-input" style="width: 100%; padding-right: 32px;">
+                      <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #64748b; font-weight: 700;">cm</span>
+                    </div>
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <input type="number" min="0" max="45" name="crl_w" id="crl_w_tvus" placeholder="9" value="<%= crlAgeTvus.w %>" oninput="updateBiometryRow('tvus', 'crl')" class="entry-input" style="width: 100%; text-align: center;">
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <input type="number" min="0" max="6" name="crl_d" id="crl_d_tvus" placeholder="2" value="<%= crlAgeTvus.d %>" oninput="updateBiometryRow('tvus', 'crl')" class="entry-input" style="width: 100%; text-align: center;">
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <input type="hidden" name="crl_age" id="crl_label_tvus" value="<%= test && test.results && test.results.crl_age ? test.results.crl_age : '' %>">
+                    <span id="crl_badge_tvus" style="display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.85em; font-weight: 700; background: #f1f5f9; color: #334155;"><%= test && test.results && test.results.crl_age ? test.results.crl_age : '--' %></span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
-        <!-- Structured Quick Comment Chips (matching Excel TVS) -->
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin-top: 10px;">
-          <div style="font-weight: 700; font-size: 0.88em; color: #1e293b; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-            <span style="display: flex; align-items: center; gap: 6px;">
-              <i class="fa fa-comment-medical" style="color: #6366f1;"></i> Comments & Clinical Annotations
-            </span>
+        <!-- 2. COMMENTS SECTION (Directly following Biometry as in Excel Form) -->
+        <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px 16px; margin-bottom: 20px;">
+          <div style="font-weight: 800; font-size: 0.88em; color: #1e293b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <span><i class="fa fa-comment-medical" style="color: #6366f1; margin-right: 6px;"></i> COMMENTS:</span>
             <button type="button" class="button btn-secondary" onclick="addCommentRow('commentsList_tvus')" style="height: 28px; padding: 0 10px; font-size: 0.78em; display: inline-flex; align-items: center; gap: 4px;">
-              <i class="fa fa-plus"></i> Add Custom Row
+              <i class="fa fa-plus"></i> Add Row
             </button>
           </div>
 
-          <!-- One-click Quick Presets from ultrasound von.xlsx -->
+          <!-- Quick Presets -->
           <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; padding: 8px 10px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px;">
             <span style="font-size: 0.8em; font-weight: 700; color: #64748b; align-self: center; margin-right: 4px;">Quick Presets:</span>
             <button type="button" class="comment-chip" onclick="toggleCommentChip('commentsList_tvus', 'Yolk sac', '+')" style="height: 28px; padding: 0 10px; border-radius: 14px; border: 1px solid #cbd5e1; background: #f8fafc; font-size: 0.8em; font-weight: 600; cursor: pointer;">
@@ -423,15 +381,85 @@
             %>
             <% commentEntries_tvus.forEach(function(c, idx){ %>
               <div class="comment-row" style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
-                <select name="comment_sign[]" style="width: 70px; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 700; padding: 2px 6px;">
+                <select name="comment_sign[]" class="entry-select" style="width: 70px; font-weight: 700; padding: 2px 6px;">
                   <option value="-" <%= c.sign === '-' ? 'selected' : '' %>>(-)</option>
                   <option value="+" <%= c.sign === '+' ? 'selected' : '' %>>(+) </option>
                 </select>
-                <input type="text" name="comment_text[]" value="<%= c.text || '' %>" placeholder="Comment description..." style="flex: 1; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 4px 10px; font-size: 0.9em; font-weight: 500;">
+                <input type="text" name="comment_text[]" value="<%= c.text || '' %>" placeholder="Comment description..." class="entry-input" style="flex: 1; font-weight: 500;">
                 <button type="button" class="button btn-secondary" onclick="removeCommentRow(this)" style="height: 34px; padding: 0 10px; color: #ef4444;"><i class="fa fa-trash"></i></button>
               </div>
             <% }); %>
           </div>
+        </div>
+
+        <!-- 3. CLINICAL FINDINGS TABLE (Tabulated 4-row layout matching Excel/Report) -->
+        <div>
+          <div style="font-weight: 800; font-size: 0.88em; color: #1e293b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+            <i class="fa fa-notes-medical" style="color: #6366f1; margin-right: 6px;"></i> CLINICAL FINDINGS & DELIVERY ESTIMATES:
+          </div>
+
+          <table class="form-table" style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1;">
+            <tbody>
+              <!-- Row 1: Average Ultrasound Age -->
+              <tr>
+                <td class="label-cell" style="width: 270px; background: #f8fafc; font-weight: 700; color: #1e293b; padding: 10px 14px; border: 1px solid #cbd5e1;">
+                  Average ultrasound age:
+                </td>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                      <input type="number" min="0" max="45" name="average_ultrasound_age_w" id="aoa_w_tvus" placeholder="W" value="<%= aoaAgeTvus.w %>" oninput="updateAOAInput('tvus')" class="entry-input" style="width: 60px; text-align: center;">
+                      <span style="font-size: 0.82em; font-weight: 700; color: #475569;">W</span>
+                    </div>
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                      <input type="number" min="0" max="6" name="average_ultrasound_age_d" id="aoa_d_tvus" placeholder="D" value="<%= aoaAgeTvus.d %>" oninput="updateAOAInput('tvus')" class="entry-input" style="width: 55px; text-align: center;">
+                      <span style="font-size: 0.82em; font-weight: 700; color: #475569;">D</span>
+                    </div>
+                    <input type="text" name="average_ultrasound_age" id="aoa_text_tvus" placeholder="9 W 2 D" value="<%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : '' %>" class="entry-input" style="width: 140px; background: #f8fafc;" title="Full AOA String">
+                    <span id="aoa_badge_tvus" style="display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.85em; font-weight: 700; background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe;">
+                      <%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : (aoaAgeTvus.w ? (aoaAgeTvus.w + ' W ' + (aoaAgeTvus.d || '0') + ' D') : '--') %>
+                    </span>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Row 2: Fetal Heart Rate -->
+              <tr>
+                <td class="label-cell" style="background: #f8fafc; font-weight: 700; color: #1e293b; padding: 10px 14px; border: 1px solid #cbd5e1;">
+                  Fetal heart rate:
+                </td>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <div style="position: relative; width: 180px;">
+                    <input type="text" name="fetal_heart_rate" id="fhr_tvus" placeholder="170" value="<%= test && test.results && test.results.fetal_heart_rate ? test.results.fetal_heart_rate : '' %>" class="entry-input" style="width: 100%; padding-right: 48px;">
+                    <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #64748b; font-weight: 700;">BPM</span>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Row 3: Expected Date of Delivery -->
+              <tr>
+                <td class="label-cell" style="background: #f8fafc; font-weight: 700; color: #1e293b; padding: 10px 14px; border: 1px solid #cbd5e1;">
+                  Expected date of delivery:
+                </td>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <input type="date" name="expected_date_of_delivery" id="edd_tvus" onchange="updateEddDisplay('tvus')" value="<%= test && test.results && test.results.expected_date_of_delivery ? (new Date(test.results.expected_date_of_delivery)).toISOString().slice(0,10) : '' %>" class="entry-input" style="width: 170px;">
+                    <span id="edd_badge_tvus" style="font-size: 0.84em; font-weight: 700; color: #0284c7; background: #f0f9ff; padding: 4px 10px; border-radius: 6px; border: 1px solid #bae6fd;"></span>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Row 4: Other Findings -->
+              <tr>
+                <td class="label-cell" style="background: #f8fafc; font-weight: 700; color: #1e293b; padding: 10px 14px; border: 1px solid #cbd5e1;">
+                  Others:
+                </td>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <input type="text" name="other" placeholder="e.g. Normal adnexa / ovaries" value="<%= test && test.results && test.results.other ? test.results.other : '' %>" class="entry-input" style="width: 100%;">
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
       </div>
@@ -443,13 +471,12 @@
     <!-- ===================================================================== -->
     <div id="panel-ultrasound-pelvic" class="proc-panel" style="display: <%= currentType === 'ultrasound-pelvic' ? 'block' : 'none' %>;">
       
-      <!-- Parameter Card: Tabulated Biometry Measurements -->
-      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
-        <div style="font-weight: 700; font-size: 1em; color: #0f172a; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
-          <span style="display: flex; align-items: center; gap: 8px;">
-            <i class="fa fa-wave-square" style="color: #6366f1;"></i> Pelvic Biometry Table
-          </span>
-          <span style="font-size: 0.78em; color: #64748b; font-weight: 600; background: #f1f5f9; padding: 3px 10px; border-radius: 12px;">Transabdominal Pelvic Imaging</span>
+      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
+        
+        <!-- Procedure Form Title -->
+        <div style="text-align: center; margin-bottom: 18px; padding-bottom: 10px; border-bottom: 2px solid #e2e8f0;">
+          <div style="font-weight: 800; font-size: 1.25em; letter-spacing: 0.5px; color: #0f172a;">PELVIC ULTRASOUND</div>
+          <div style="font-size: 0.8em; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px;">Transabdominal Pelvic Biometry & Obstetric Survey</div>
         </div>
 
         <% 
@@ -458,136 +485,92 @@
           const aoaAgePelvic = getAgeWD(test && test.results && test.results.average_ultrasound_age_w, test && test.results && test.results.average_ultrasound_age_d, test && test.results && test.results.average_ultrasound_age);
         %>
 
-        <div style="overflow-x: auto;">
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px;">
-            <thead>
-              <tr style="background: #f8fafc; color: #334155; font-size: 0.84em; text-align: left; border-bottom: 2px solid #cbd5e1;">
-                <th style="padding: 10px 14px; border-radius: 6px 0 0 0;">Parameter</th>
-                <th style="padding: 10px 14px; width: 170px;">Size (cm)</th>
-                <th style="padding: 10px 14px; width: 110px;">Weeks (W)</th>
-                <th style="padding: 10px 14px; width: 110px;">Days (D)</th>
-                <th style="padding: 10px 14px; width: 150px; border-radius: 0 6px 0 0;">Equivalent Age</th>
-              </tr>
-            </thead>
-            <tbody>
-              <!-- Gestational Sac -->
-              <tr style="border-bottom: 1px solid #f1f5f9;">
-                <td style="padding: 10px 14px; font-weight: 600; color: #1e293b;">
-                  <strong>Gestational Sac (GS)</strong>
-                </td>
-                <td style="padding: 8px 14px;">
-                  <div style="position: relative;">
-                    <input type="text" name="gestational_sac_length" id="gs_size_pelvic" placeholder="0.72" value="<%= test && test.results && test.results.gestational_sac_length ? test.results.gestational_sac_length : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-                    <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 700;">cm</span>
-                  </div>
-                </td>
-                <td style="padding: 8px 14px;">
-                  <input type="number" min="0" max="45" name="gestational_sac_w" id="gs_w_pelvic" placeholder="5" value="<%= gsAgePelvic.w %>" oninput="updateBiometryRow('pelvic', 'gs')" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-                </td>
-                <td style="padding: 8px 14px;">
-                  <input type="number" min="0" max="6" name="gestational_sac_d" id="gs_d_pelvic" placeholder="3" value="<%= gsAgePelvic.d %>" oninput="updateBiometryRow('pelvic', 'gs')" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-                </td>
-                <td style="padding: 8px 14px;">
-                  <input type="hidden" name="gestational_sac_age" id="gs_label_pelvic" value="<%= test && test.results && test.results.gestational_sac_age ? test.results.gestational_sac_age : '' %>">
-                  <span id="gs_badge_pelvic" style="display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.85em; font-weight: 700; background: #f1f5f9; color: #475569;"><%= test && test.results && test.results.gestational_sac_age ? test.results.gestational_sac_age : '--' %></span>
-                </td>
-              </tr>
-
-              <!-- CRL -->
-              <tr style="border-bottom: 1px solid #f1f5f9;">
-                <td style="padding: 10px 14px; font-weight: 600; color: #1e293b;">
-                  <strong>Crown Rump Length (CRL)</strong>
-                </td>
-                <td style="padding: 8px 14px;">
-                  <div style="position: relative;">
-                    <input type="text" name="crl_length" id="crl_size_pelvic" placeholder="2.53" value="<%= test && test.results && test.results.crl_length ? test.results.crl_length : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-                    <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 700;">cm</span>
-                  </div>
-                </td>
-                <td style="padding: 8px 14px;">
-                  <input type="number" min="0" max="45" name="crl_w" id="crl_w_pelvic" placeholder="9" value="<%= crlAgePelvic.w %>" oninput="updateBiometryRow('pelvic', 'crl')" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-                </td>
-                <td style="padding: 8px 14px;">
-                  <input type="number" min="0" max="6" name="crl_d" id="crl_d_pelvic" placeholder="2" value="<%= crlAgePelvic.d %>" oninput="updateBiometryRow('pelvic', 'crl')" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-                </td>
-                <td style="padding: 8px 14px;">
-                  <input type="hidden" name="crl_age" id="crl_label_pelvic" value="<%= test && test.results && test.results.crl_age ? test.results.crl_age : '' %>">
-                  <span id="crl_badge_pelvic" style="display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.85em; font-weight: 700; background: #f1f5f9; color: #475569;"><%= test && test.results && test.results.crl_age ? test.results.crl_age : '--' %></span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div style="display: flex; gap: 10px; align-items: center; margin-top: 6px; padding-top: 8px; border-top: 1px solid #f1f5f9;">
-          <button type="button" class="button btn-secondary no-guard calc-btn" data-no-guard="1" onclick="copyCrlToAoa('pelvic')" style="height: 32px; padding: 0 12px; font-size: 0.82em; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-            <i class="fa fa-sync-alt" style="color: #6366f1;"></i> Set AOA from CRL Age
-          </button>
-          <button type="button" class="button btn-secondary no-guard calc-btn" data-no-guard="1" onclick="copyGsToAoa('pelvic')" style="height: 32px; padding: 0 12px; font-size: 0.82em; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-            <i class="fa fa-sync-alt" style="color: #3b82f6;"></i> Set AOA from GS Age
-          </button>
-        </div>
-      </div>
-
-      <!-- Parameter Card: Clinical & Obstetric Parameters -->
-      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
-        <div style="font-weight: 700; font-size: 1em; color: #0f172a; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; gap: 8px;">
-          <i class="fa fa-notes-medical" style="color: #6366f1;"></i> Clinical Findings & Delivery Estimates
-        </div>
-
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 16px;">
-          <!-- Average Ultrasound Age (AOA) -->
-          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
-            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: flex; justify-content: space-between; align-items: center;">
-              <span>Average Ultrasound Age (AOA)</span>
-              <span style="font-size: 0.74em; color: #6366f1; font-weight: 600;">Weeks & Days</span>
-            </label>
-            <div style="display: flex; gap: 6px; align-items: center;">
-              <input type="number" min="0" max="45" name="average_ultrasound_age_w" id="aoa_w_pelvic" placeholder="W" value="<%= aoaAgePelvic.w %>" oninput="updateAOAInput('pelvic')" style="height: 36px; width: 68px; padding: 4px 8px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; text-align: center;" title="Weeks">
-              <span style="font-size: 0.8em; font-weight: 700; color: #64748b;">W</span>
-              <input type="number" min="0" max="6" name="average_ultrasound_age_d" id="aoa_d_pelvic" placeholder="D" value="<%= aoaAgePelvic.d %>" oninput="updateAOAInput('pelvic')" style="height: 36px; width: 62px; padding: 4px 8px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; text-align: center;" title="Days">
-              <span style="font-size: 0.8em; font-weight: 700; color: #64748b;">D</span>
-              <input type="text" name="average_ultrasound_age" id="aoa_text_pelvic" placeholder="9 W 2 D" value="<%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : '' %>" style="height: 36px; flex: 1; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; background: #f8fafc;" title="Full AOA String">
+        <!-- 1. BIOMETRY TABLE -->
+        <div style="margin-bottom: 20px;">
+          <div style="font-weight: 800; font-size: 0.88em; color: #1e293b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <span><i class="fa fa-ruler-combined" style="color: #6366f1; margin-right: 6px;"></i> BIOMETRY:</span>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="button btn-secondary no-guard calc-btn" data-no-guard="1" onclick="copyCrlToAoa('pelvic')" style="height: 28px; padding: 0 10px; font-size: 0.78em; font-weight: 700; background: #e0e7ff; color: #3730a3; border-color: #c7d2fe; display: inline-flex; align-items: center; gap: 4px;">
+                <i class="fa fa-sync-alt"></i> Set AOA from CRL
+              </button>
+              <button type="button" class="button btn-secondary no-guard calc-btn" data-no-guard="1" onclick="copyGsToAoa('pelvic')" style="height: 28px; padding: 0 10px; font-size: 0.78em; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
+                <i class="fa fa-sync-alt" style="color: #3b82f6;"></i> Set AOA from GS
+              </button>
             </div>
           </div>
 
-          <!-- Fetal Heart Rate -->
-          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
-            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Fetal Heart Rate (FHR)</label>
-            <div style="position: relative;">
-              <input type="text" name="fetal_heart_rate" id="fhr_pelvic" placeholder="170" value="<%= test && test.results && test.results.fetal_heart_rate ? test.results.fetal_heart_rate : '' %>" style="height: 36px; padding: 4px 45px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-              <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">BPM</span>
-            </div>
-          </div>
+          <div style="overflow-x: auto;">
+            <table class="form-table" style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; margin-bottom: 0;">
+              <thead>
+                <tr>
+                  <th style="padding: 10px 14px; background: #f1f5f9; color: #334155; font-size: 0.84em; font-weight: 700; border: 1px solid #cbd5e1;">PARAMETER</th>
+                  <th style="padding: 10px 14px; width: 180px; background: #f1f5f9; color: #334155; font-size: 0.84em; font-weight: 700; border: 1px solid #cbd5e1;">SIZE (CM)</th>
+                  <th style="padding: 10px 14px; width: 110px; background: #f1f5f9; color: #334155; font-size: 0.84em; font-weight: 700; border: 1px solid #cbd5e1;">WEEKS (W)</th>
+                  <th style="padding: 10px 14px; width: 110px; background: #f1f5f9; color: #334155; font-size: 0.84em; font-weight: 700; border: 1px solid #cbd5e1;">DAYS (D)</th>
+                  <th style="padding: 10px 14px; width: 160px; background: #f1f5f9; color: #334155; font-size: 0.84em; font-weight: 700; border: 1px solid #cbd5e1;">EQUIVALENT AGE</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Gestational Sac -->
+                <tr>
+                  <td class="label-cell" style="padding: 8px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                    Gestational Sac (GS):
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <div style="position: relative;">
+                      <input type="text" name="gestational_sac_length" id="gs_size_pelvic" placeholder="0.72" value="<%= test && test.results && test.results.gestational_sac_length ? test.results.gestational_sac_length : '' %>" class="entry-input" style="width: 100%; padding-right: 32px;">
+                      <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #64748b; font-weight: 700;">cm</span>
+                    </div>
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <input type="number" min="0" max="45" name="gestational_sac_w" id="gs_w_pelvic" placeholder="5" value="<%= gsAgePelvic.w %>" oninput="updateBiometryRow('pelvic', 'gs')" class="entry-input" style="width: 100%; text-align: center;">
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <input type="number" min="0" max="6" name="gestational_sac_d" id="gs_d_pelvic" placeholder="3" value="<%= gsAgePelvic.d %>" oninput="updateBiometryRow('pelvic', 'gs')" class="entry-input" style="width: 100%; text-align: center;">
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <input type="hidden" name="gestational_sac_age" id="gs_label_pelvic" value="<%= test && test.results && test.results.gestational_sac_age ? test.results.gestational_sac_age : '' %>">
+                    <span id="gs_badge_pelvic" style="display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.85em; font-weight: 700; background: #f1f5f9; color: #334155;"><%= test && test.results && test.results.gestational_sac_age ? test.results.gestational_sac_age : '--' %></span>
+                  </td>
+                </tr>
 
-          <!-- Expected Date of Delivery (EDD) -->
-          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-              <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #1e293b;">Expected Date of Delivery (EDD)</label>
-              <span id="edd_badge_pelvic" style="font-size: 0.76em; font-weight: 700; color: #0284c7;"></span>
-            </div>
-            <input type="date" name="expected_date_of_delivery" id="edd_pelvic" onchange="updateEddDisplay('pelvic')" value="<%= test && test.results && test.results.expected_date_of_delivery ? (new Date(test.results.expected_date_of_delivery)).toISOString().slice(0,10) : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-          </div>
-
-          <!-- Other Findings -->
-          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
-            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Other Findings</label>
-            <input type="text" name="other" placeholder="Normal adnexa / ovaries" value="<%= test && test.results && test.results.other ? test.results.other : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 500; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+                <!-- CRL -->
+                <tr>
+                  <td class="label-cell" style="padding: 8px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                    CRL (Crown Rump Length):
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <div style="position: relative;">
+                      <input type="text" name="crl_length" id="crl_size_pelvic" placeholder="2.53" value="<%= test && test.results && test.results.crl_length ? test.results.crl_length : '' %>" class="entry-input" style="width: 100%; padding-right: 32px;">
+                      <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #64748b; font-weight: 700;">cm</span>
+                    </div>
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <input type="number" min="0" max="45" name="crl_w" id="crl_w_pelvic" placeholder="9" value="<%= crlAgePelvic.w %>" oninput="updateBiometryRow('pelvic', 'crl')" class="entry-input" style="width: 100%; text-align: center;">
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <input type="number" min="0" max="6" name="crl_d" id="crl_d_pelvic" placeholder="2" value="<%= crlAgePelvic.d %>" oninput="updateBiometryRow('pelvic', 'crl')" class="entry-input" style="width: 100%; text-align: center;">
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <input type="hidden" name="crl_age" id="crl_label_pelvic" value="<%= test && test.results && test.results.crl_age ? test.results.crl_age : '' %>">
+                    <span id="crl_badge_pelvic" style="display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.85em; font-weight: 700; background: #f1f5f9; color: #334155;"><%= test && test.results && test.results.crl_age ? test.results.crl_age : '--' %></span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
-        <!-- Structured Quick Comment Chips (matching Excel TVS/Pelvic) -->
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin-top: 10px;">
-          <div style="font-weight: 700; font-size: 0.88em; color: #1e293b; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-            <span style="display: flex; align-items: center; gap: 6px;">
-              <i class="fa fa-comment-medical" style="color: #6366f1;"></i> Comments & Clinical Annotations
-            </span>
+        <!-- 2. COMMENTS SECTION -->
+        <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 10px; padding: 14px 16px; margin-bottom: 20px;">
+          <div style="font-weight: 800; font-size: 0.88em; color: #1e293b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+            <span><i class="fa fa-comment-medical" style="color: #6366f1; margin-right: 6px;"></i> COMMENTS:</span>
             <button type="button" class="button btn-secondary" onclick="addCommentRow('commentsList_pelvic')" style="height: 28px; padding: 0 10px; font-size: 0.78em; display: inline-flex; align-items: center; gap: 4px;">
-              <i class="fa fa-plus"></i> Add Custom Row
+              <i class="fa fa-plus"></i> Add Row
             </button>
           </div>
 
-          <!-- One-click Quick Presets from ultrasound von.xlsx -->
+          <!-- Quick Presets -->
           <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; padding: 8px 10px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px;">
             <span style="font-size: 0.8em; font-weight: 700; color: #64748b; align-self: center; margin-right: 4px;">Quick Presets:</span>
             <button type="button" class="comment-chip" onclick="toggleCommentChip('commentsList_pelvic', 'Yolk sac', '+')" style="height: 28px; padding: 0 10px; border-radius: 14px; border: 1px solid #cbd5e1; background: #f8fafc; font-size: 0.8em; font-weight: 600; cursor: pointer;">
@@ -627,15 +610,85 @@
             %>
             <% commentEntries_pelvic.forEach(function(c, idx){ %>
               <div class="comment-row" style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
-                <select name="comment_sign[]" style="width: 70px; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 700; padding: 2px 6px;">
+                <select name="comment_sign[]" class="entry-select" style="width: 70px; font-weight: 700; padding: 2px 6px;">
                   <option value="-" <%= c.sign === '-' ? 'selected' : '' %>>(-)</option>
                   <option value="+" <%= c.sign === '+' ? 'selected' : '' %>>(+) </option>
                 </select>
-                <input type="text" name="comment_text[]" value="<%= c.text || '' %>" placeholder="Comment description..." style="flex: 1; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 4px 10px; font-size: 0.9em; font-weight: 500;">
+                <input type="text" name="comment_text[]" value="<%= c.text || '' %>" placeholder="Comment description..." class="entry-input" style="flex: 1; font-weight: 500;">
                 <button type="button" class="button btn-secondary" onclick="removeCommentRow(this)" style="height: 34px; padding: 0 10px; color: #ef4444;"><i class="fa fa-trash"></i></button>
               </div>
             <% }); %>
           </div>
+        </div>
+
+        <!-- 3. CLINICAL FINDINGS TABLE -->
+        <div>
+          <div style="font-weight: 800; font-size: 0.88em; color: #1e293b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+            <i class="fa fa-notes-medical" style="color: #6366f1; margin-right: 6px;"></i> CLINICAL FINDINGS & DELIVERY ESTIMATES:
+          </div>
+
+          <table class="form-table" style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1;">
+            <tbody>
+              <!-- Row 1: Average Ultrasound Age -->
+              <tr>
+                <td class="label-cell" style="width: 270px; background: #f8fafc; font-weight: 700; color: #1e293b; padding: 10px 14px; border: 1px solid #cbd5e1;">
+                  Average ultrasound age:
+                </td>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                      <input type="number" min="0" max="45" name="average_ultrasound_age_w" id="aoa_w_pelvic" placeholder="W" value="<%= aoaAgePelvic.w %>" oninput="updateAOAInput('pelvic')" class="entry-input" style="width: 60px; text-align: center;">
+                      <span style="font-size: 0.82em; font-weight: 700; color: #475569;">W</span>
+                    </div>
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                      <input type="number" min="0" max="6" name="average_ultrasound_age_d" id="aoa_d_pelvic" placeholder="D" value="<%= aoaAgePelvic.d %>" oninput="updateAOAInput('pelvic')" class="entry-input" style="width: 55px; text-align: center;">
+                      <span style="font-size: 0.82em; font-weight: 700; color: #475569;">D</span>
+                    </div>
+                    <input type="text" name="average_ultrasound_age" id="aoa_text_pelvic" placeholder="9 W 2 D" value="<%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : '' %>" class="entry-input" style="width: 140px; background: #f8fafc;" title="Full AOA String">
+                    <span id="aoa_badge_pelvic" style="display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.85em; font-weight: 700; background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe;">
+                      <%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : (aoaAgePelvic.w ? (aoaAgePelvic.w + ' W ' + (aoaAgePelvic.d || '0') + ' D') : '--') %>
+                    </span>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Row 2: Fetal Heart Rate -->
+              <tr>
+                <td class="label-cell" style="background: #f8fafc; font-weight: 700; color: #1e293b; padding: 10px 14px; border: 1px solid #cbd5e1;">
+                  Fetal heart rate:
+                </td>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <div style="position: relative; width: 180px;">
+                    <input type="text" name="fetal_heart_rate" id="fhr_pelvic" placeholder="170" value="<%= test && test.results && test.results.fetal_heart_rate ? test.results.fetal_heart_rate : '' %>" class="entry-input" style="width: 100%; padding-right: 48px;">
+                    <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #64748b; font-weight: 700;">BPM</span>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Row 3: Expected Date of Delivery -->
+              <tr>
+                <td class="label-cell" style="background: #f8fafc; font-weight: 700; color: #1e293b; padding: 10px 14px; border: 1px solid #cbd5e1;">
+                  Expected date of delivery:
+                </td>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <input type="date" name="expected_date_of_delivery" id="edd_pelvic" onchange="updateEddDisplay('pelvic')" value="<%= test && test.results && test.results.expected_date_of_delivery ? (new Date(test.results.expected_date_of_delivery)).toISOString().slice(0,10) : '' %>" class="entry-input" style="width: 170px;">
+                    <span id="edd_badge_pelvic" style="font-size: 0.84em; font-weight: 700; color: #0284c7; background: #f0f9ff; padding: 4px 10px; border-radius: 6px; border: 1px solid #bae6fd;"></span>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Row 4: Other Findings -->
+              <tr>
+                <td class="label-cell" style="background: #f8fafc; font-weight: 700; color: #1e293b; padding: 10px 14px; border: 1px solid #cbd5e1;">
+                  Others:
+                </td>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <input type="text" name="other" placeholder="e.g. Normal adnexa / ovaries" value="<%= test && test.results && test.results.other ? test.results.other : '' %>" class="entry-input" style="width: 100%;">
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
       </div>
@@ -647,297 +700,360 @@
     <!-- ===================================================================== -->
     <div id="panel-ultrasound-pelvic-biometry" class="proc-panel" style="display: <%= currentType === 'ultrasound-pelvic-biometry' ? 'block' : 'none' %>;">
       
-      <% 
-        const bpdAgePb = getAgeWD(test && test.results && test.results.bpd_w, test && test.results && test.results.bpd_d, test && test.results && test.results.bpd_label);
-        const hcAgePb = getAgeWD(test && test.results && test.results.hc_w, test && test.results && test.results.hc_d, test && test.results && test.results.hc_label);
-        const acAgePb = getAgeWD(test && test.results && test.results.ac_w, test && test.results && test.results.ac_d, test && test.results && test.results.ac_label);
-        const flAgePb = getAgeWD(test && test.results && test.results.fl_w, test && test.results && test.results.fl_d, test && test.results && test.results.fl_label);
-        const aoaAgePb = getAgeWD(test && test.results && test.results.average_ultrasound_age_w, test && test.results && test.results.average_ultrasound_age_d, test && test.results && test.results.average_ultrasound_age);
-      %>
+      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
+        
+        <!-- Procedure Form Title -->
+        <div style="text-align: center; margin-bottom: 18px; padding-bottom: 10px; border-bottom: 2px solid #e2e8f0;">
+          <div style="font-weight: 800; font-size: 1.25em; letter-spacing: 0.5px; color: #0f172a;">PELVIC ULTRASOUND</div>
+          <div style="font-size: 0.8em; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px;">Fetal Biometry Survey & Gestational Assessment</div>
+        </div>
 
-      <!-- Parameter Card: Tabulated Biometry Measurements -->
-      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
-        <div style="font-weight: 700; font-size: 1em; color: #0f172a; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-          <span style="display: flex; align-items: center; gap: 8px;">
-            <i class="fa fa-ruler-combined" style="color: #6366f1;"></i> Fetal Biometry Measurements (Tabulated)
-          </span>
-          <div style="display: flex; gap: 8px; align-items: center;">
-            <button type="button" class="button btn-secondary no-guard calc-btn" data-no-guard="1" onclick="calculateAOA('pb')" style="height: 30px; padding: 0 12px; font-size: 0.82em; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; background: #e0e7ff; color: #3730a3; border-color: #c7d2fe;">
-              <i class="fa fa-calculator"></i> Calculate Average Age (AOA)
-            </button>
-            <button type="button" class="button btn-secondary no-guard" data-no-guard="1" onclick="addBiometryRow('biometryList_pelvic')" style="height: 30px; padding: 0 10px; font-size: 0.8em; display: inline-flex; align-items: center; gap: 4px;">
-              <i class="fa fa-plus"></i> Add Custom Row
-            </button>
+        <% 
+          const bpdAgePb = getAgeWD(test && test.results && test.results.bpd_w, test && test.results && test.results.bpd_d, test && test.results && test.results.bpd_label);
+          const hcAgePb = getAgeWD(test && test.results && test.results.hc_w, test && test.results && test.results.hc_d, test && test.results && test.results.hc_label);
+          const acAgePb = getAgeWD(test && test.results && test.results.ac_w, test && test.results && test.results.ac_d, test && test.results && test.results.ac_label);
+          const flAgePb = getAgeWD(test && test.results && test.results.fl_w, test && test.results && test.results.fl_d, test && test.results && test.results.fl_label);
+          const aoaAgePb = getAgeWD(test && test.results && test.results.average_ultrasound_age_w, test && test.results && test.results.average_ultrasound_age_d, test && test.results && test.results.average_ultrasound_age);
+        %>
+
+        <!-- 1. BIOMETRY TABLE (Exact 4-column layout from Excel) -->
+        <div style="margin-bottom: 20px;">
+          <div style="font-weight: 800; font-size: 0.88em; color: #1e293b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+            <span><i class="fa fa-ruler-combined" style="color: #6366f1; margin-right: 6px;"></i> BIOMETRY:</span>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <button type="button" class="button btn-secondary no-guard calc-btn" data-no-guard="1" onclick="calculateAOA('pb')" style="height: 28px; padding: 0 12px; font-size: 0.8em; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; background: #e0e7ff; color: #3730a3; border-color: #c7d2fe;">
+                <i class="fa fa-bolt"></i> Calculate AOA
+              </button>
+              <button type="button" class="button btn-secondary no-guard" data-no-guard="1" onclick="addBiometryRow('biometryList_pelvic')" style="height: 28px; padding: 0 10px; font-size: 0.8em; display: inline-flex; align-items: center; gap: 4px;">
+                <i class="fa fa-plus"></i> Add Row
+              </button>
+            </div>
+          </div>
+
+          <div style="overflow-x: auto;">
+            <table class="form-table" style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; margin-bottom: 8px;">
+              <thead>
+                <tr>
+                  <th style="padding: 10px 14px; background: #f1f5f9; color: #334155; font-size: 0.84em; font-weight: 700; border: 1px solid #cbd5e1;">PARAMETER</th>
+                  <th style="padding: 10px 14px; width: 180px; background: #f1f5f9; color: #334155; font-size: 0.84em; font-weight: 700; border: 1px solid #cbd5e1;">SIZE (CM)</th>
+                  <th style="padding: 10px 14px; width: 110px; background: #f1f5f9; color: #334155; font-size: 0.84em; font-weight: 700; border: 1px solid #cbd5e1;">WEEKS (W)</th>
+                  <th style="padding: 10px 14px; width: 110px; background: #f1f5f9; color: #334155; font-size: 0.84em; font-weight: 700; border: 1px solid #cbd5e1;">DAYS (D)</th>
+                  <th style="padding: 10px 14px; width: 160px; background: #f1f5f9; color: #334155; font-size: 0.84em; font-weight: 700; border: 1px solid #cbd5e1;">EQUIVALENT AGE</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- BPD -->
+                <tr>
+                  <td class="label-cell" style="padding: 8px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                    BPD: <span style="font-size: 0.82em; color: #64748b; font-weight: normal;">(Biparietal Diameter)</span>
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <div style="position: relative;">
+                      <input type="text" name="bpd_size" id="bpd_size_pb" placeholder="5.92" value="<%= test && test.results && test.results.bpd_size ? test.results.bpd_size : '' %>" class="entry-input" style="width: 100%; padding-right: 32px;">
+                      <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #64748b; font-weight: 700;">cm</span>
+                    </div>
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <input type="number" min="0" max="45" name="bpd_w" id="bpd_w_pb" placeholder="24" value="<%= bpdAgePb.w %>" oninput="updateBiometryRow('pb', 'bpd')" class="entry-input" style="width: 100%; text-align: center;">
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <input type="number" min="0" max="6" name="bpd_d" id="bpd_d_pb" placeholder="1" value="<%= bpdAgePb.d %>" oninput="updateBiometryRow('pb', 'bpd')" class="entry-input" style="width: 100%; text-align: center;">
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <input type="hidden" name="bpd_label" id="bpd_label_pb" value="<%= test && test.results && test.results.bpd_label ? test.results.bpd_label : '' %>">
+                    <span id="bpd_badge_pb" style="display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.85em; font-weight: 700; background: #f1f5f9; color: #334155;"><%= test && test.results && test.results.bpd_label ? test.results.bpd_label : '--' %></span>
+                  </td>
+                </tr>
+
+                <!-- HC -->
+                <tr>
+                  <td class="label-cell" style="padding: 8px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                    HC: <span style="font-size: 0.82em; color: #64748b; font-weight: normal;">(Head Circumference)</span>
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <div style="position: relative;">
+                      <input type="text" name="hc_size" id="hc_size_pb" placeholder="21.87" value="<%= test && test.results && test.results.hc_size ? test.results.hc_size : '' %>" class="entry-input" style="width: 100%; padding-right: 32px;">
+                      <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #64748b; font-weight: 700;">cm</span>
+                    </div>
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <input type="number" min="0" max="45" name="hc_w" id="hc_w_pb" placeholder="24" value="<%= hcAgePb.w %>" oninput="updateBiometryRow('pb', 'hc')" class="entry-input" style="width: 100%; text-align: center;">
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <input type="number" min="0" max="6" name="hc_d" id="hc_d_pb" placeholder="0" value="<%= hcAgePb.d %>" oninput="updateBiometryRow('pb', 'hc')" class="entry-input" style="width: 100%; text-align: center;">
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <input type="hidden" name="hc_label" id="hc_label_pb" value="<%= test && test.results && test.results.hc_label ? test.results.hc_label : '' %>">
+                    <span id="hc_badge_pb" style="display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.85em; font-weight: 700; background: #f1f5f9; color: #334155;"><%= test && test.results && test.results.hc_label ? test.results.hc_label : '--' %></span>
+                  </td>
+                </tr>
+
+                <!-- AC -->
+                <tr>
+                  <td class="label-cell" style="padding: 8px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                    AC: <span style="font-size: 0.82em; color: #64748b; font-weight: normal;">(Abdominal Circumference)</span>
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <div style="position: relative;">
+                      <input type="text" name="ac_size" id="ac_size_pb" placeholder="19.32" value="<%= test && test.results && test.results.ac_size ? test.results.ac_size : '' %>" class="entry-input" style="width: 100%; padding-right: 32px;">
+                      <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #64748b; font-weight: 700;">cm</span>
+                    </div>
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <input type="number" min="0" max="45" name="ac_w" id="ac_w_pb" placeholder="24" value="<%= acAgePb.w %>" oninput="updateBiometryRow('pb', 'ac')" class="entry-input" style="width: 100%; text-align: center;">
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <input type="number" min="0" max="6" name="ac_d" id="ac_d_pb" placeholder="0" value="<%= acAgePb.d %>" oninput="updateBiometryRow('pb', 'ac')" class="entry-input" style="width: 100%; text-align: center;">
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <input type="hidden" name="ac_label" id="ac_label_pb" value="<%= test && test.results && test.results.ac_label ? test.results.ac_label : '' %>">
+                    <span id="ac_badge_pb" style="display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.85em; font-weight: 700; background: #f1f5f9; color: #334155;"><%= test && test.results && test.results.ac_label ? test.results.ac_label : '--' %></span>
+                  </td>
+                </tr>
+
+                <!-- FL -->
+                <tr>
+                  <td class="label-cell" style="padding: 8px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                    FL: <span style="font-size: 0.82em; color: #64748b; font-weight: normal;">(Femur Length)</span>
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <div style="position: relative;">
+                      <input type="text" name="fl_size" id="fl_size_pb" placeholder="4.33" value="<%= test && test.results && test.results.fl_size ? test.results.fl_size : '' %>" class="entry-input" style="width: 100%; padding-right: 32px;">
+                      <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #64748b; font-weight: 700;">cm</span>
+                    </div>
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <input type="number" min="0" max="45" name="fl_w" id="fl_w_pb" placeholder="24" value="<%= flAgePb.w %>" oninput="updateBiometryRow('pb', 'fl')" class="entry-input" style="width: 100%; text-align: center;">
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <input type="number" min="0" max="6" name="fl_d" id="fl_d_pb" placeholder="1" value="<%= flAgePb.d %>" oninput="updateBiometryRow('pb', 'fl')" class="entry-input" style="width: 100%; text-align: center;">
+                  </td>
+                  <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">
+                    <input type="hidden" name="fl_label" id="fl_label_pb" value="<%= test && test.results && test.results.fl_label ? test.results.fl_label : '' %>">
+                    <span id="fl_badge_pb" style="display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.85em; font-weight: 700; background: #f1f5f9; color: #334155;"><%= test && test.results && test.results.fl_label ? test.results.fl_label : '--' %></span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Additional Custom Biometry Rows -->
+          <div id="biometryList_pelvic">
+            <% if (test && test.results && Array.isArray(test.results.biometry) && test.results.biometry.length) { %>
+              <% test.results.biometry.forEach(function(b){ %>
+                <div class="biometry-row" style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
+                  <input type="text" name="biometry_label[]" placeholder="Measurement Label" value="<%= b && b.label ? b.label : '' %>" class="entry-input" style="width: 180px;">
+                  <input type="text" name="biometry_size[]" placeholder="Size / Remarks" value="<%= b && b.size ? b.size : '' %>" class="entry-input" style="flex: 1;">
+                  <button type="button" class="button btn-secondary" onclick="removeBiometryRow(this)" style="height: 34px; padding: 0 10px; color: #ef4444;"><i class="fa fa-trash"></i></button>
+                </div>
+              <% }) %>
+            <% } %>
           </div>
         </div>
 
-        <div style="overflow-x: auto;">
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px;">
+        <!-- 2. CLINICAL PARAMETERS TABLE (Exact 10-Row Vertical Table Matching Excel Form) -->
+        <div>
+          <div style="font-weight: 800; font-size: 0.88em; color: #1e293b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">
+            <i class="fa fa-baby" style="color: #6366f1; margin-right: 6px;"></i> CLINICAL & DIAGNOSTIC PARAMETERS:
+          </div>
+
+          <table class="form-table" style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1;">
             <thead>
-              <tr style="background: #f8fafc; color: #334155; font-size: 0.84em; text-align: left; border-bottom: 2px solid #cbd5e1;">
-                <th style="padding: 10px 14px; border-radius: 6px 0 0 0;">Parameter</th>
-                <th style="padding: 10px 14px; width: 170px;">Size (cm)</th>
-                <th style="padding: 10px 14px; width: 110px;">Weeks (W)</th>
-                <th style="padding: 10px 14px; width: 110px;">Days (D)</th>
-                <th style="padding: 10px 14px; width: 150px; border-radius: 0 6px 0 0;">Equivalent Age</th>
+              <tr>
+                <th style="padding: 10px 14px; width: 280px; background: #f1f5f9; color: #334155; font-size: 0.84em; font-weight: 700; border: 1px solid #cbd5e1;">PARAMETER</th>
+                <th style="padding: 10px 14px; background: #f1f5f9; color: #334155; font-size: 0.84em; font-weight: 700; border: 1px solid #cbd5e1;">ENCODED VALUE / FINDING</th>
               </tr>
             </thead>
             <tbody>
-              <!-- BPD -->
-              <tr style="border-bottom: 1px solid #f1f5f9;">
-                <td style="padding: 10px 14px; font-weight: 600; color: #1e293b;">
-                  <strong>BPD</strong> <span style="font-size: 0.82em; color: #64748b; font-weight: normal;">(Biparietal Diameter)</span>
+              <!-- Row 1: NUMBER OF FETUS -->
+              <tr>
+                <td class="label-cell" style="padding: 10px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                  NUMBER OF FETUS:
                 </td>
-                <td style="padding: 8px 14px;">
-                  <div style="position: relative;">
-                    <input type="text" name="bpd_size" id="bpd_size_pb" placeholder="5.92" value="<%= test && test.results && test.results.bpd_size ? test.results.bpd_size : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-                    <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 700;">cm</span>
-                  </div>
-                </td>
-                <td style="padding: 8px 14px;">
-                  <input type="number" min="0" max="45" name="bpd_w" id="bpd_w_pb" placeholder="24" value="<%= bpdAgePb.w %>" oninput="updateBiometryRow('pb', 'bpd')" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-                </td>
-                <td style="padding: 8px 14px;">
-                  <input type="number" min="0" max="6" name="bpd_d" id="bpd_d_pb" placeholder="1" value="<%= bpdAgePb.d %>" oninput="updateBiometryRow('pb', 'bpd')" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-                </td>
-                <td style="padding: 8px 14px;">
-                  <input type="hidden" name="bpd_label" id="bpd_label_pb" value="<%= test && test.results && test.results.bpd_label ? test.results.bpd_label : '' %>">
-                  <span id="bpd_badge_pb" style="display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.85em; font-weight: 700; background: #f1f5f9; color: #475569;"><%= test && test.results && test.results.bpd_label ? test.results.bpd_label : '--' %></span>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <select name="number_of_fetus" id="number_of_fetus_pb" class="entry-select" style="width: 220px;">
+                    <option value="SINGLE" <%= (!test.results || !test.results.number_of_fetus || test.results.number_of_fetus === 'SINGLE') ? 'selected' : '' %>>SINGLE</option>
+                    <option value="TWIN" <%= test.results && test.results.number_of_fetus === 'TWIN' ? 'selected' : '' %>>TWIN</option>
+                    <option value="TRIPLET" <%= test.results && test.results.number_of_fetus === 'TRIPLET' ? 'selected' : '' %>>TRIPLET</option>
+                  </select>
                 </td>
               </tr>
 
-              <!-- HC -->
-              <tr style="border-bottom: 1px solid #f1f5f9;">
-                <td style="padding: 10px 14px; font-weight: 600; color: #1e293b;">
-                  <strong>HC</strong> <span style="font-size: 0.82em; color: #64748b; font-weight: normal;">(Head Circumference)</span>
+              <!-- Row 2: AVERAGE ULTRASOUND AGE (Wide full-row with W, D, string, and calculate button) -->
+              <tr>
+                <td class="label-cell" style="padding: 10px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                  AVERAGE ULTRASOUND AGE:
                 </td>
-                <td style="padding: 8px 14px;">
-                  <div style="position: relative;">
-                    <input type="text" name="hc_size" id="hc_size_pb" placeholder="21.87" value="<%= test && test.results && test.results.hc_size ? test.results.hc_size : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-                    <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 700;">cm</span>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                      <input type="number" min="0" max="45" name="average_ultrasound_age_w" id="aoa_w_pb" placeholder="24" value="<%= aoaAgePb.w %>" oninput="updateAOAInput('pb')" class="entry-input" style="width: 65px; text-align: center; font-weight: 700; font-size: 1em;">
+                      <span style="font-size: 0.85em; font-weight: 700; color: #475569;">W</span>
+                    </div>
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                      <input type="number" min="0" max="6" name="average_ultrasound_age_d" id="aoa_d_pb" placeholder="0" value="<%= aoaAgePb.d %>" oninput="updateAOAInput('pb')" class="entry-input" style="width: 60px; text-align: center; font-weight: 700; font-size: 1em;">
+                      <span style="font-size: 0.85em; font-weight: 700; color: #475569;">D</span>
+                    </div>
+                    <input type="text" name="average_ultrasound_age" id="aoa_text_pb" placeholder="24 W 0 D" value="<%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : (aoaAgePb.w ? (aoaAgePb.w + ' W ' + (aoaAgePb.d || '0') + ' D') : '') %>" class="entry-input" style="width: 140px; font-weight: 700; background: #f8fafc;" title="Full AOA String">
+                    <span id="aoa_badge_pb" style="display: inline-block; padding: 4px 12px; border-radius: 6px; font-size: 0.88em; font-weight: 700; background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe;">
+                      <%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : (aoaAgePb.w ? (aoaAgePb.w + ' W ' + (aoaAgePb.d || '0') + ' D') : '--') %>
+                    </span>
+                    <button type="button" class="button btn-secondary no-guard calc-btn" data-no-guard="1" onclick="calculateAOA('pb')" style="height: 34px; padding: 0 14px; font-size: 0.82em; font-weight: 700; background: #e0e7ff; color: #3730a3; border-color: #c7d2fe; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                      <i class="fa fa-calculator"></i> Auto-Calculate
+                    </button>
                   </div>
-                </td>
-                <td style="padding: 8px 14px;">
-                  <input type="number" min="0" max="45" name="hc_w" id="hc_w_pb" placeholder="24" value="<%= hcAgePb.w %>" oninput="updateBiometryRow('pb', 'hc')" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-                </td>
-                <td style="padding: 8px 14px;">
-                  <input type="number" min="0" max="6" name="hc_d" id="hc_d_pb" placeholder="0" value="<%= hcAgePb.d %>" oninput="updateBiometryRow('pb', 'hc')" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-                </td>
-                <td style="padding: 8px 14px;">
-                  <input type="hidden" name="hc_label" id="hc_label_pb" value="<%= test && test.results && test.results.hc_label ? test.results.hc_label : '' %>">
-                  <span id="hc_badge_pb" style="display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.85em; font-weight: 700; background: #f1f5f9; color: #475569;"><%= test && test.results && test.results.hc_label ? test.results.hc_label : '--' %></span>
                 </td>
               </tr>
 
-              <!-- AC -->
-              <tr style="border-bottom: 1px solid #f1f5f9;">
-                <td style="padding: 10px 14px; font-weight: 600; color: #1e293b;">
-                  <strong>AC</strong> <span style="font-size: 0.82em; color: #64748b; font-weight: normal;">(Abdominal Circumference)</span>
+              <!-- Row 3: PRESENTATION -->
+              <tr>
+                <td class="label-cell" style="padding: 10px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                  PRESENTATION:
                 </td>
-                <td style="padding: 8px 14px;">
-                  <div style="position: relative;">
-                    <input type="text" name="ac_size" id="ac_size_pb" placeholder="19.32" value="<%= test && test.results && test.results.ac_size ? test.results.ac_size : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-                    <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 700;">cm</span>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <div style="display: flex; gap: 8px; align-items: center;">
+                    <select id="presentation_select_pb" onchange="handleDropdownWithCustom(this, 'presentation_custom_pb', 'presentation_pb')" class="entry-select" style="width: 220px;">
+                      <option value="CEPHALIC" <%= (!test.results || !test.results.presentation || test.results.presentation === 'CEPHALIC') ? 'selected' : '' %>>CEPHALIC</option>
+                      <option value="BREECH" <%= test.results && test.results.presentation === 'BREECH' ? 'selected' : '' %>>BREECH</option>
+                      <option value="TRANSVERSE" <%= test.results && test.results.presentation === 'TRANSVERSE' ? 'selected' : '' %>>TRANSVERSE</option>
+                      <option value="VARIABLE" <%= test.results && test.results.presentation === 'VARIABLE' ? 'selected' : '' %>>VARIABLE</option>
+                      <option value="__other__" <%= (test.results && test.results.presentation && ['CEPHALIC','BREECH','TRANSVERSE','VARIABLE'].indexOf(test.results.presentation) === -1) ? 'selected' : '' %>>Other (custom)...</option>
+                    </select>
+                    <input type="text" id="presentation_custom_pb" placeholder="Type..." class="entry-input" style="display:<%= (test.results && test.results.presentation && ['CEPHALIC','BREECH','TRANSVERSE','VARIABLE'].indexOf(test.results.presentation) === -1) ? 'block' : 'none' %>; width: 160px;" value="<%= (test.results && test.results.presentation && ['CEPHALIC','BREECH','TRANSVERSE','VARIABLE'].indexOf(test.results.presentation) === -1) ? test.results.presentation : '' %>">
+                    <input type="hidden" name="presentation" id="presentation_pb" value="<%= test && test.results && test.results.presentation ? test.results.presentation : 'CEPHALIC' %>">
                   </div>
-                </td>
-                <td style="padding: 8px 14px;">
-                  <input type="number" min="0" max="45" name="ac_w" id="ac_w_pb" placeholder="24" value="<%= acAgePb.w %>" oninput="updateBiometryRow('pb', 'ac')" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-                </td>
-                <td style="padding: 8px 14px;">
-                  <input type="number" min="0" max="6" name="ac_d" id="ac_d_pb" placeholder="0" value="<%= acAgePb.d %>" oninput="updateBiometryRow('pb', 'ac')" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-                </td>
-                <td style="padding: 8px 14px;">
-                  <input type="hidden" name="ac_label" id="ac_label_pb" value="<%= test && test.results && test.results.ac_label ? test.results.ac_label : '' %>">
-                  <span id="ac_badge_pb" style="display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.85em; font-weight: 700; background: #f1f5f9; color: #475569;"><%= test && test.results && test.results.ac_label ? test.results.ac_label : '--' %></span>
                 </td>
               </tr>
 
-              <!-- FL -->
-              <tr style="border-bottom: 1px solid #f1f5f9;">
-                <td style="padding: 10px 14px; font-weight: 600; color: #1e293b;">
-                  <strong>FL</strong> <span style="font-size: 0.82em; color: #64748b; font-weight: normal;">(Femur Length)</span>
+              <!-- Row 4: EDC BY ULTRASOUND -->
+              <tr>
+                <td class="label-cell" style="padding: 10px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                  EDC BY ULTRASOUND:
                 </td>
-                <td style="padding: 8px 14px;">
-                  <div style="position: relative;">
-                    <input type="text" name="fl_size" id="fl_size_pb" placeholder="4.33" value="<%= test && test.results && test.results.fl_size ? test.results.fl_size : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-                    <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 700;">cm</span>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <input type="date" name="edc_by_ultrasound" id="edc_pb" onchange="updateEdcDisplay('pb')" value="<%= test && test.results && test.results.edc_by_ultrasound ? (new Date(test.results.edc_by_ultrasound)).toISOString().slice(0,10) : '' %>" class="entry-input" style="width: 170px;">
+                    <span id="edc_badge_pb" style="font-size: 0.84em; font-weight: 700; color: #0284c7; background: #f0f9ff; padding: 4px 10px; border-radius: 6px; border: 1px solid #bae6fd;"></span>
                   </div>
                 </td>
-                <td style="padding: 8px 14px;">
-                  <input type="number" min="0" max="45" name="fl_w" id="fl_w_pb" placeholder="24" value="<%= flAgePb.w %>" oninput="updateBiometryRow('pb', 'fl')" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+              </tr>
+
+              <!-- Row 5: EFW -->
+              <tr>
+                <td class="label-cell" style="padding: 10px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                  EFW:
                 </td>
-                <td style="padding: 8px 14px;">
-                  <input type="number" min="0" max="6" name="fl_d" id="fl_d_pb" placeholder="1" value="<%= flAgePb.d %>" oninput="updateBiometryRow('pb', 'fl')" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <div style="position: relative; width: 180px;">
+                    <input type="text" name="efw" placeholder="659" value="<%= test && test.results && test.results.efw ? test.results.efw : '' %>" class="entry-input" style="width: 100%; padding-right: 35px;">
+                    <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.76em; color: #64748b; font-weight: 700;">g</span>
+                  </div>
                 </td>
-                <td style="padding: 8px 14px;">
-                  <input type="hidden" name="fl_label" id="fl_label_pb" value="<%= test && test.results && test.results.fl_label ? test.results.fl_label : '' %>">
-                  <span id="fl_badge_pb" style="display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.85em; font-weight: 700; background: #f1f5f9; color: #475569;"><%= test && test.results && test.results.fl_label ? test.results.fl_label : '--' %></span>
+              </tr>
+
+              <!-- Row 6: FETAL HEART RATE -->
+              <tr>
+                <td class="label-cell" style="padding: 10px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                  FETAL HEART RATE:
+                </td>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <div style="position: relative; width: 180px;">
+                    <input type="text" name="fetal_heart_rate" placeholder="145" value="<%= test && test.results && test.results.fetal_heart_rate ? test.results.fetal_heart_rate : '' %>" class="entry-input" style="width: 100%; padding-right: 48px;">
+                    <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #64748b; font-weight: 700;">bpm</span>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Row 7: PLACENTAL LOCATION -->
+              <tr>
+                <td class="label-cell" style="padding: 10px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                  PLACENTAL LOCATION:
+                </td>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <div style="display: flex; gap: 8px; align-items: center;">
+                    <select id="placental_location_select_pb" onchange="handleDropdownWithCustom(this, 'placental_location_custom_pb', 'placental_location_pb')" class="entry-select" style="width: 240px;">
+                      <% 
+                        const pLocs = ['POSTERO - FUNDAL', 'ANTERO - FUNDAL', 'POSTERIOR', 'ANTERIOR', 'FUNDAL', 'TOP', 'LEFT MID', 'LOW LYING', 'PLACENTA PREVIA'];
+                        const curLoc = test && test.results && test.results.placental_location ? test.results.placental_location : 'POSTERO - FUNDAL';
+                        const isCustomLoc = pLocs.indexOf(curLoc) === -1;
+                      %>
+                      <% pLocs.forEach(function(l){ %>
+                        <option value="<%= l %>" <%= curLoc === l ? 'selected' : '' %>><%= l %></option>
+                      <% }); %>
+                      <option value="__other__" <%= isCustomLoc ? 'selected' : '' %>>Other (custom)...</option>
+                    </select>
+                    <input type="text" id="placental_location_custom_pb" placeholder="Type..." class="entry-input" style="display:<%= isCustomLoc ? 'block' : 'none' %>; width: 160px;" value="<%= isCustomLoc ? curLoc : '' %>">
+                    <input type="hidden" name="placental_location" id="placental_location_pb" value="<%= curLoc %>">
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Row 8: MATURITY -->
+              <tr>
+                <td class="label-cell" style="padding: 10px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                  MATURITY:
+                </td>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <div style="display: flex; gap: 8px; align-items: center;">
+                    <select id="maturity_select_pb" onchange="handleDropdownWithCustom(this, 'maturity_custom_pb', 'maturity_pb')" class="entry-select" style="width: 220px;">
+                      <% 
+                        const mats = ['GRADE - 1', 'GRADE - 2', 'GRADE - 3', 'GRADE - 0'];
+                        const curMat = test && test.results && test.results.maturity ? test.results.maturity : 'GRADE - 1';
+                        const isCustomMat = mats.indexOf(curMat) === -1;
+                      %>
+                      <% mats.forEach(function(m){ %>
+                        <option value="<%= m %>" <%= curMat === m ? 'selected' : '' %>><%= m %></option>
+                      <% }); %>
+                      <option value="__other__" <%= isCustomMat ? 'selected' : '' %>>Other (custom)...</option>
+                    </select>
+                    <input type="text" id="maturity_custom_pb" placeholder="Type..." class="entry-input" style="display:<%= isCustomMat ? 'block' : 'none' %>; width: 140px;" value="<%= isCustomMat ? curMat : '' %>">
+                    <input type="hidden" name="maturity" id="maturity_pb" value="<%= curMat %>">
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Row 9: AMNIOTIC FLUID -->
+              <tr>
+                <td class="label-cell" style="padding: 10px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                  AMNIOTIC FLUID:
+                </td>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <div style="display: flex; gap: 8px; align-items: center;">
+                    <select id="amniotic_fluid_select_pb" onchange="handleDropdownWithCustom(this, 'amniotic_fluid_custom_pb', 'amniotic_fluid_pb')" class="entry-select" style="width: 260px;">
+                      <% 
+                        const afs = ['ADEQUATE', 'NORMOHYDRAMNIOS', 'DECREASED', 'DECREASED (OLIGOHYDRAMNIOS)', 'INCREASED', 'INCREASED (POLYHYDRAMNIOS)'];
+                        const curAf = test && test.results && test.results.amniotic_fluid ? test.results.amniotic_fluid : 'ADEQUATE';
+                        const isCustomAf = afs.indexOf(curAf) === -1;
+                      %>
+                      <% afs.forEach(function(a){ %>
+                        <option value="<%= a %>" <%= curAf === a ? 'selected' : '' %>><%= a %></option>
+                      <% }); %>
+                      <option value="__other__" <%= isCustomAf ? 'selected' : '' %>>Other (custom)...</option>
+                    </select>
+                    <input type="text" id="amniotic_fluid_custom_pb" placeholder="Type..." class="entry-input" style="display:<%= isCustomAf ? 'block' : 'none' %>; width: 150px;" value="<%= isCustomAf ? curAf : '' %>">
+                    <input type="hidden" name="amniotic_fluid" id="amniotic_fluid_pb" value="<%= curAf %>">
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Row 10: GENDER -->
+              <tr>
+                <td class="label-cell" style="padding: 10px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                  GENDER:
+                </td>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <select name="gender" id="gender_pb" class="entry-select" style="width: 220px;">
+                    <option value="FEMALE" <%= test && test.results && test.results.gender === 'FEMALE' ? 'selected' : '' %>>FEMALE</option>
+                    <option value="MALE" <%= test && test.results && test.results.gender === 'MALE' ? 'selected' : '' %>>MALE</option>
+                    <option value="UNDETERMINED" <%= (!test.results || !test.results.gender || test.results.gender === 'UNDETERMINED') ? 'selected' : '' %>>UNDETERMINED</option>
+                    <option value="NOT VISUALIZED" <%= test && test.results && test.results.gender === 'NOT VISUALIZED' ? 'selected' : '' %>>NOT VISUALIZED</option>
+                  </select>
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <!-- Additional Custom Biometry Rows -->
-        <div id="biometryList_pelvic" style="margin-top: 10px;">
-          <% if (test && test.results && Array.isArray(test.results.biometry) && test.results.biometry.length) { %>
-            <% test.results.biometry.forEach(function(b){ %>
-              <div class="biometry-row" style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
-                <input type="text" name="biometry_label[]" placeholder="Measurement Label" value="<%= b && b.label ? b.label : '' %>" style="width: 140px; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 4px 8px; font-size: 0.88em;">
-                <input type="text" name="biometry_size[]" placeholder="Size / Remarks" value="<%= b && b.size ? b.size : '' %>" style="flex: 1; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 4px 8px; font-size: 0.88em;">
-                <button type="button" class="button btn-secondary" onclick="removeBiometryRow(this)" style="height: 34px; padding: 0 10px; color: #ef4444;"><i class="fa fa-trash"></i></button>
-              </div>
-            <% }) %>
-          <% } %>
-        </div>
-      </div>
-
-      <!-- Clinical Parameters with Smart Selects (from ultrasound von.xlsx) -->
-      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
-        <div style="font-weight: 700; font-size: 1em; color: #0f172a; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; gap: 8px;">
-          <i class="fa fa-baby" style="color: #6366f1;"></i> Clinical & Diagnostic Parameters
-        </div>
-
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
-          <!-- Number of Fetus -->
-          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
-            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Number of Fetus</label>
-            <select name="number_of_fetus" id="number_of_fetus_pb" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%; background: #ffffff;">
-              <option value="SINGLE" <%= (!test.results || !test.results.number_of_fetus || test.results.number_of_fetus === 'SINGLE') ? 'selected' : '' %>>SINGLE</option>
-              <option value="TWIN" <%= test.results && test.results.number_of_fetus === 'TWIN' ? 'selected' : '' %>>TWIN</option>
-              <option value="TRIPLET" <%= test.results && test.results.number_of_fetus === 'TRIPLET' ? 'selected' : '' %>>TRIPLET</option>
-            </select>
-          </div>
-
-          <!-- Average Ultrasound Age (AOA) -->
-          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
-            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: flex; justify-content: space-between; align-items: center;">
-              <span>Average Ultrasound Age (AOA)</span>
-              <span style="font-size: 0.74em; color: #6366f1; font-weight: 600; cursor: pointer;" onclick="calculateAOA('pb')">Auto-Calculate</span>
-            </label>
-            <div style="display: flex; gap: 6px; align-items: center;">
-              <input type="number" min="0" max="45" name="average_ultrasound_age_w" id="aoa_w_pb" placeholder="W" value="<%= aoaAgePb.w %>" oninput="updateAOAInput('pb')" style="height: 36px; width: 68px; padding: 4px 8px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; text-align: center;" title="Weeks">
-              <span style="font-size: 0.8em; font-weight: 700; color: #64748b;">W</span>
-              <input type="number" min="0" max="6" name="average_ultrasound_age_d" id="aoa_d_pb" placeholder="D" value="<%= aoaAgePb.d %>" oninput="updateAOAInput('pb')" style="height: 36px; width: 62px; padding: 4px 8px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; text-align: center;" title="Days">
-              <span style="font-size: 0.8em; font-weight: 700; color: #64748b;">D</span>
-              <input type="text" name="average_ultrasound_age" id="aoa_text_pb" placeholder="24 W 0 D" value="<%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : '' %>" style="height: 36px; flex: 1; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; background: #f8fafc;" title="Full AOA String">
-            </div>
-          </div>
-
-          <!-- Presentation -->
-          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
-            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Presentation</label>
-            <div style="display: flex; gap: 6px;">
-              <select id="presentation_select_pb" onchange="handleDropdownWithCustom(this, 'presentation_custom_pb', 'presentation_pb')" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%; background: #ffffff;">
-                <option value="CEPHALIC" <%= (!test.results || !test.results.presentation || test.results.presentation === 'CEPHALIC') ? 'selected' : '' %>>CEPHALIC</option>
-                <option value="BREECH" <%= test.results && test.results.presentation === 'BREECH' ? 'selected' : '' %>>BREECH</option>
-                <option value="TRANSVERSE" <%= test.results && test.results.presentation === 'TRANSVERSE' ? 'selected' : '' %>>TRANSVERSE</option>
-                <option value="VARIABLE" <%= test.results && test.results.presentation === 'VARIABLE' ? 'selected' : '' %>>VARIABLE</option>
-                <option value="__other__" <%= (test.results && test.results.presentation && ['CEPHALIC','BREECH','TRANSVERSE','VARIABLE'].indexOf(test.results.presentation) === -1) ? 'selected' : '' %>>Other (custom)...</option>
-              </select>
-              <input type="text" id="presentation_custom_pb" placeholder="Type..." style="display:<%= (test.results && test.results.presentation && ['CEPHALIC','BREECH','TRANSVERSE','VARIABLE'].indexOf(test.results.presentation) === -1) ? 'block' : 'none' %>; height: 36px; padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1; width: 130px;" value="<%= (test.results && test.results.presentation && ['CEPHALIC','BREECH','TRANSVERSE','VARIABLE'].indexOf(test.results.presentation) === -1) ? test.results.presentation : '' %>">
-              <input type="hidden" name="presentation" id="presentation_pb" value="<%= test && test.results && test.results.presentation ? test.results.presentation : 'CEPHALIC' %>">
-            </div>
-          </div>
-
-          <!-- EDC by Ultrasound -->
-          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-              <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #1e293b;">EDC by Ultrasound</label>
-              <span id="edc_badge_pb" style="font-size: 0.76em; font-weight: 700; color: #0284c7;"></span>
-            </div>
-            <input type="date" name="edc_by_ultrasound" id="edc_pb" onchange="updateEdcDisplay('pb')" value="<%= test && test.results && test.results.edc_by_ultrasound ? (new Date(test.results.edc_by_ultrasound)).toISOString().slice(0,10) : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-          </div>
-
-          <!-- Estimated Fetal Weight (EFW) -->
-          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
-            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Estimated Fetal Weight (EFW)</label>
-            <div style="position: relative;">
-              <input type="text" name="efw" placeholder="659" value="<%= test && test.results && test.results.efw ? test.results.efw : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-              <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">g</span>
-            </div>
-          </div>
-
-          <!-- Fetal Heart Rate (FHR) -->
-          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
-            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Fetal Heart Rate (FHR)</label>
-            <div style="position: relative;">
-              <input type="text" name="fetal_heart_rate" placeholder="145" value="<%= test && test.results && test.results.fetal_heart_rate ? test.results.fetal_heart_rate : '' %>" style="height: 36px; padding: 4px 45px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-              <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">BPM</span>
-            </div>
-          </div>
-
-          <!-- Placental Location -->
-          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
-            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Placental Location</label>
-            <div style="display: flex; gap: 6px;">
-              <select id="placental_location_select_pb" onchange="handleDropdownWithCustom(this, 'placental_location_custom_pb', 'placental_location_pb')" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%; background: #ffffff;">
-                <% 
-                  const pLocs = ['POSTERO - FUNDAL', 'ANTERO - FUNDAL', 'POSTERIOR', 'ANTERIOR', 'FUNDAL', 'TOP', 'LEFT MID', 'LOW LYING', 'PLACENTA PREVIA'];
-                  const curLoc = test && test.results && test.results.placental_location ? test.results.placental_location : 'POSTERO - FUNDAL';
-                  const isCustomLoc = pLocs.indexOf(curLoc) === -1;
-                %>
-                <% pLocs.forEach(function(l){ %>
-                  <option value="<%= l %>" <%= curLoc === l ? 'selected' : '' %>><%= l %></option>
-                <% }); %>
-                <option value="__other__" <%= isCustomLoc ? 'selected' : '' %>>Other (custom)...</option>
-              </select>
-              <input type="text" id="placental_location_custom_pb" placeholder="Type..." style="display:<%= isCustomLoc ? 'block' : 'none' %>; height: 36px; padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1; width: 130px;" value="<%= isCustomLoc ? curLoc : '' %>">
-              <input type="hidden" name="placental_location" id="placental_location_pb" value="<%= curLoc %>">
-            </div>
-          </div>
-
-          <!-- Placental Maturity -->
-          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
-            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Placental Maturity</label>
-            <div style="display: flex; gap: 6px;">
-              <select id="maturity_select_pb" onchange="handleDropdownWithCustom(this, 'maturity_custom_pb', 'maturity_pb')" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%; background: #ffffff;">
-                <% 
-                  const mats = ['GRADE - 1', 'GRADE - 2', 'GRADE - 3', 'GRADE - 0'];
-                  const curMat = test && test.results && test.results.maturity ? test.results.maturity : 'GRADE - 1';
-                  const isCustomMat = mats.indexOf(curMat) === -1;
-                %>
-                <% mats.forEach(function(m){ %>
-                  <option value="<%= m %>" <%= curMat === m ? 'selected' : '' %>><%= m %></option>
-                <% }); %>
-                <option value="__other__" <%= isCustomMat ? 'selected' : '' %>>Other (custom)...</option>
-              </select>
-              <input type="text" id="maturity_custom_pb" placeholder="Type..." style="display:<%= isCustomMat ? 'block' : 'none' %>; height: 36px; padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1; width: 120px;" value="<%= isCustomMat ? curMat : '' %>">
-              <input type="hidden" name="maturity" id="maturity_pb" value="<%= curMat %>">
-            </div>
-          </div>
-
-          <!-- Amniotic Fluid -->
-          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
-            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Amniotic Fluid</label>
-            <div style="display: flex; gap: 6px;">
-              <select id="amniotic_fluid_select_pb" onchange="handleDropdownWithCustom(this, 'amniotic_fluid_custom_pb', 'amniotic_fluid_pb')" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%; background: #ffffff;">
-                <% 
-                  const afs = ['ADEQUATE', 'NORMOHYDRAMNIOS', 'DECREASED', 'DECREASED (OLIGOHYDRAMNIOS)', 'INCREASED', 'INCREASED (POLYHYDRAMNIOS)'];
-                  const curAf = test && test.results && test.results.amniotic_fluid ? test.results.amniotic_fluid : 'ADEQUATE';
-                  const isCustomAf = afs.indexOf(curAf) === -1;
-                %>
-                <% afs.forEach(function(a){ %>
-                  <option value="<%= a %>" <%= curAf === a ? 'selected' : '' %>><%= a %></option>
-                <% }); %>
-                <option value="__other__" <%= isCustomAf ? 'selected' : '' %>>Other (custom)...</option>
-              </select>
-              <input type="text" id="amniotic_fluid_custom_pb" placeholder="Type..." style="display:<%= isCustomAf ? 'block' : 'none' %>; height: 36px; padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1; width: 130px;" value="<%= isCustomAf ? curAf : '' %>">
-              <input type="hidden" name="amniotic_fluid" id="amniotic_fluid_pb" value="<%= curAf %>">
-            </div>
-          </div>
-
-          <!-- Fetal Gender -->
-          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
-            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Fetal Gender</label>
-            <select name="gender" id="gender_pb" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%; background: #ffffff;">
-              <option value="FEMALE" <%= test && test.results && test.results.gender === 'FEMALE' ? 'selected' : '' %>>FEMALE</option>
-              <option value="MALE" <%= test && test.results && test.results.gender === 'MALE' ? 'selected' : '' %>>MALE</option>
-              <option value="UNDETERMINED" <%= (!test.results || !test.results.gender || test.results.gender === 'UNDETERMINED') ? 'selected' : '' %>>UNDETERMINED</option>
-              <option value="NOT VISUALIZED" <%= test && test.results && test.results.gender === 'NOT VISUALIZED' ? 'selected' : '' %>>NOT VISUALIZED</option>
-            </select>
-          </div>
-        </div>
       </div>
 
     </div>
@@ -1091,277 +1207,323 @@
         </div>
       </div>
 
-      <!-- Clinical Parameters with Smart Selects (from ultrasound von.xlsx) -->
-      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
-        <div style="font-weight: 700; font-size: 1em; color: #0f172a; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; gap: 8px;">
-          <i class="fa fa-baby" style="color: #6366f1;"></i> Clinical & Diagnostic Parameters
-        </div>
-
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
-          <!-- Number of Fetus -->
-          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
-            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Number of Fetus</label>
-            <select name="number_of_fetus" id="number_of_fetus_bps" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%; background: #ffffff;">
-              <option value="SINGLE" <%= (!test.results || !test.results.number_of_fetus || test.results.number_of_fetus === 'SINGLE') ? 'selected' : '' %>>SINGLE</option>
-              <option value="TWIN" <%= test.results && test.results.number_of_fetus === 'TWIN' ? 'selected' : '' %>>TWIN</option>
-              <option value="TRIPLET" <%= test.results && test.results.number_of_fetus === 'TRIPLET' ? 'selected' : '' %>>TRIPLET</option>
-            </select>
-          </div>
-
-          <!-- Average Ultrasound Age (AOA) -->
-          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
-            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: flex; justify-content: space-between; align-items: center;">
-              <span>Average Ultrasound Age (AOA)</span>
-              <span style="font-size: 0.74em; color: #6366f1; font-weight: 600; cursor: pointer;" onclick="calculateAOA('bps')">Auto-Calculate</span>
-            </label>
-            <div style="display: flex; gap: 6px; align-items: center;">
-              <input type="number" min="0" max="45" name="average_ultrasound_age_w" id="aoa_w_bps" placeholder="W" value="<%= aoaAgeBps.w %>" oninput="updateAOAInput('bps')" style="height: 36px; width: 68px; padding: 4px 8px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; text-align: center;" title="Weeks">
-              <span style="font-size: 0.8em; font-weight: 700; color: #64748b;">W</span>
-              <input type="number" min="0" max="6" name="average_ultrasound_age_d" id="aoa_d_bps" placeholder="D" value="<%= aoaAgeBps.d %>" oninput="updateAOAInput('bps')" style="height: 36px; width: 62px; padding: 4px 8px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; text-align: center;" title="Days">
-              <span style="font-size: 0.8em; font-weight: 700; color: #64748b;">D</span>
-              <input type="text" name="average_ultrasound_age" id="aoa_text_bps" placeholder="36 W 0 D" value="<%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : '' %>" style="height: 36px; flex: 1; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; background: #f8fafc;" title="Full AOA String">
-            </div>
-          </div>
-
-          <!-- Presentation -->
-          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
-            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Presentation</label>
-            <div style="display: flex; gap: 6px;">
-              <select id="presentation_select_bps" onchange="handleDropdownWithCustom(this, 'presentation_custom_bps', 'presentation_bps')" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%; background: #ffffff;">
-                <option value="CEPHALIC" <%= (!test.results || !test.results.presentation || test.results.presentation === 'CEPHALIC') ? 'selected' : '' %>>CEPHALIC</option>
-                <option value="BREECH" <%= test.results && test.results.presentation === 'BREECH' ? 'selected' : '' %>>BREECH</option>
-                <option value="TRANSVERSE" <%= test.results && test.results.presentation === 'TRANSVERSE' ? 'selected' : '' %>>TRANSVERSE</option>
-                <option value="VARIABLE" <%= test.results && test.results.presentation === 'VARIABLE' ? 'selected' : '' %>>VARIABLE</option>
-                <option value="__other__" <%= (test.results && test.results.presentation && ['CEPHALIC','BREECH','TRANSVERSE','VARIABLE'].indexOf(test.results.presentation) === -1) ? 'selected' : '' %>>Other (custom)...</option>
-              </select>
-              <input type="text" id="presentation_custom_bps" placeholder="Type..." style="display:<%= (test.results && test.results.presentation && ['CEPHALIC','BREECH','TRANSVERSE','VARIABLE'].indexOf(test.results.presentation) === -1) ? 'block' : 'none' %>; height: 36px; padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1; width: 130px;" value="<%= (test.results && test.results.presentation && ['CEPHALIC','BREECH','TRANSVERSE','VARIABLE'].indexOf(test.results.presentation) === -1) ? test.results.presentation : '' %>">
-              <input type="hidden" name="presentation" id="presentation_bps" value="<%= test && test.results && test.results.presentation ? test.results.presentation : 'CEPHALIC' %>">
-            </div>
-          </div>
-
-          <!-- EDC by Ultrasound -->
-          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-              <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #1e293b;">EDC by Ultrasound</label>
-              <span id="edc_badge_bps" style="font-size: 0.76em; font-weight: 700; color: #0284c7;"></span>
-            </div>
-            <input type="date" name="edc_by_ultrasound" id="edc_bps" onchange="updateEdcDisplay('bps')" value="<%= test && test.results && test.results.edc_by_ultrasound ? (new Date(test.results.edc_by_ultrasound)).toISOString().slice(0,10) : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-          </div>
-
-          <!-- Estimated Fetal Weight (EFW) -->
-          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
-            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Estimated Fetal Weight (EFW)</label>
-            <div style="position: relative;">
-              <input type="text" name="efw" placeholder="2800" value="<%= test && test.results && test.results.efw ? test.results.efw : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-              <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">g</span>
-            </div>
-          </div>
-
-          <!-- Fetal Heart Rate (FHR) -->
-          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
-            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Fetal Heart Rate (FHR)</label>
-            <div style="position: relative;">
-              <input type="text" name="fetal_heart_rate" placeholder="145" value="<%= test && test.results && test.results.fetal_heart_rate ? test.results.fetal_heart_rate : '' %>" style="height: 36px; padding: 4px 45px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-              <span style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 600;">BPM</span>
-            </div>
-          </div>
-
-          <!-- Placental Location -->
-          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
-            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Placental Location</label>
-            <div style="display: flex; gap: 6px;">
-              <select id="placental_location_select_bps" onchange="handleDropdownWithCustom(this, 'placental_location_custom_bps', 'placental_location_bps')" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%; background: #ffffff;">
-                <% 
-                  const pLocsBps = ['POSTERO - FUNDAL', 'ANTERO - FUNDAL', 'POSTERIOR', 'ANTERIOR', 'FUNDAL', 'TOP', 'LEFT MID', 'LOW LYING', 'PLACENTA PREVIA'];
-                  const curLocBps = test && test.results && test.results.placental_location ? test.results.placental_location : 'POSTERO - FUNDAL';
-                  const isCustomLocBps = pLocsBps.indexOf(curLocBps) === -1;
-                %>
-                <% pLocsBps.forEach(function(l){ %>
-                  <option value="<%= l %>" <%= curLocBps === l ? 'selected' : '' %>><%= l %></option>
-                <% }); %>
-                <option value="__other__" <%= isCustomLocBps ? 'selected' : '' %>>Other (custom)...</option>
-              </select>
-              <input type="text" id="placental_location_custom_bps" placeholder="Type..." style="display:<%= isCustomLocBps ? 'block' : 'none' %>; height: 36px; padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1; width: 130px;" value="<%= isCustomLocBps ? curLocBps : '' %>">
-              <input type="hidden" name="placental_location" id="placental_location_bps" value="<%= curLocBps %>">
-            </div>
-          </div>
-
-          <!-- Placental Maturity -->
-          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
-            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Placental Maturity</label>
-            <div style="display: flex; gap: 6px;">
-              <select id="maturity_select_bps" onchange="handleDropdownWithCustom(this, 'maturity_custom_bps', 'maturity_bps')" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%; background: #ffffff;">
-                <% 
-                  const matsBps = ['GRADE - 1', 'GRADE - 2', 'GRADE - 3', 'GRADE - 0'];
-                  const curMatBps = test && test.results && test.results.maturity ? test.results.maturity : 'GRADE - 2';
-                  const isCustomMatBps = matsBps.indexOf(curMatBps) === -1;
-                %>
-                <% matsBps.forEach(function(m){ %>
-                  <option value="<%= m %>" <%= curMatBps === m ? 'selected' : '' %>><%= m %></option>
-                <% }); %>
-                <option value="__other__" <%= isCustomMatBps ? 'selected' : '' %>>Other (custom)...</option>
-              </select>
-              <input type="text" id="maturity_custom_bps" placeholder="Type..." style="display:<%= isCustomMatBps ? 'block' : 'none' %>; height: 36px; padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1; width: 120px;" value="<%= isCustomMatBps ? curMatBps : '' %>">
-              <input type="hidden" name="maturity" id="maturity_bps" value="<%= curMatBps %>">
-            </div>
-          </div>
-
-          <!-- Amniotic Fluid -->
-          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
-            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Amniotic Fluid</label>
-            <div style="display: flex; gap: 6px;">
-              <select id="amniotic_fluid_select_bps" onchange="handleDropdownWithCustom(this, 'amniotic_fluid_custom_bps', 'amniotic_fluid_bps')" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%; background: #ffffff;">
-                <% 
-                  const afsBps = ['ADEQUATE', 'NORMOHYDRAMNIOS', 'DECREASED', 'DECREASED (OLIGOHYDRAMNIOS)', 'INCREASED', 'INCREASED (POLYHYDRAMNIOS)'];
-                  const curAfBps = test && test.results && test.results.amniotic_fluid ? test.results.amniotic_fluid : 'ADEQUATE';
-                  const isCustomAfBps = afsBps.indexOf(curAfBps) === -1;
-                %>
-                <% afsBps.forEach(function(a){ %>
-                  <option value="<%= a %>" <%= curAfBps === a ? 'selected' : '' %>><%= a %></option>
-                <% }); %>
-                <option value="__other__" <%= isCustomAfBps ? 'selected' : '' %>>Other (custom)...</option>
-              </select>
-              <input type="text" id="amniotic_fluid_custom_bps" placeholder="Type..." style="display:<%= isCustomAfBps ? 'block' : 'none' %>; height: 36px; padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1; width: 130px;" value="<%= isCustomAfBps ? curAfBps : '' %>">
-              <input type="hidden" name="amniotic_fluid" id="amniotic_fluid_bps" value="<%= curAfBps %>">
-            </div>
-          </div>
-
-          <!-- Fetal Gender -->
-          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
-            <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Fetal Gender</label>
-            <select name="gender" id="gender_bps" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%; background: #ffffff;">
-              <option value="FEMALE" <%= test && test.results && test.results.gender === 'FEMALE' ? 'selected' : '' %>>FEMALE</option>
-              <option value="MALE" <%= test && test.results && test.results.gender === 'MALE' ? 'selected' : '' %>>MALE</option>
-              <option value="UNDETERMINED" <%= (!test.results || !test.results.gender || test.results.gender === 'UNDETERMINED') ? 'selected' : '' %>>UNDETERMINED</option>
-              <option value="NOT VISUALIZED" <%= test && test.results && test.results.gender === 'NOT VISUALIZED' ? 'selected' : '' %>>NOT VISUALIZED</option>
-            </select>
-          </div>
-
-          <!-- Estimated Date of Delivery (EDD) -->
-          <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-              <label style="margin: 0; font-weight: 600; font-size: 0.88em; color: #1e293b;">Estimated Date of Delivery (EDD)</label>
-              <span id="edd_badge_bps" style="font-size: 0.76em; font-weight: 700; color: #0284c7;"></span>
-            </div>
-            <input type="date" name="estimated_date_of_delivery" id="edd_bps" onchange="updateEddDisplay('bps')" value="<%= test && test.results && test.results.estimated_date_of_delivery ? (new Date(test.results.estimated_date_of_delivery)).toISOString().slice(0,10) : '' %>" style="height: 36px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-          </div>
-        </div>
-      </div>
-
-      <!-- Biophysical Profile Scoring Card (Interactive 8/8) -->
-      <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
-        <div style="font-weight: 700; font-size: 1em; color: #0f172a; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+      <!-- Unified Clinical & Biophysical Profile Table (Matching ultrasound von.xlsx) -->
+      <div style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 12px; padding: 18px 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); margin-bottom: 20px;">
+        <div style="font-weight: 700; font-size: 1em; color: #0f172a; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 2px solid #cbd5e1; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
           <span style="display: flex; align-items: center; gap: 8px;">
-            <i class="fa fa-heartbeat" style="color: #ec4899;"></i> Biophysical Profile (BPS) Scoring
+            <i class="fa fa-clipboard-list" style="color: #6366f1;"></i> Clinical Findings & Biophysical Profile Parameters
           </span>
-          <div style="display: flex; gap: 8px; align-items: center;">
-            <span style="font-size: 0.82em; font-weight: 700; color: #475569;">Quick Preset:</span>
-            <button type="button" class="button btn-secondary no-guard preset-btn" data-no-guard="1" onclick="presetBpsScore(2,2,2,2)" style="height: 28px; padding: 0 10px; font-size: 0.78em; font-weight: 700; background: #ecfdf5; color: #065f46; border-color: #a7f3d0;">
-              Normal (8/8)
-            </button>
-            <button type="button" class="button btn-secondary no-guard preset-btn" data-no-guard="1" onclick="presetBpsScore(2,2,2,0)" style="height: 28px; padding: 0 10px; font-size: 0.78em; font-weight: 700; background: #fffbeb; color: #92400e; border-color: #fde68a;">
-              Equivocal (6/8)
-            </button>
-            <button type="button" class="button btn-secondary no-guard preset-btn" data-no-guard="1" onclick="presetBpsScore(2,0,2,0)" style="height: 28px; padding: 0 10px; font-size: 0.78em; font-weight: 700; background: #fef2f2; color: #991b1b; border-color: #fecaca;">
-              Abnormal (4/8)
-            </button>
-          </div>
+          <span style="font-size: 0.82em; color: #64748b; font-weight: 600;">Tabulated sequential entry matching report format</span>
         </div>
 
         <div style="overflow-x: auto;">
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
-            <thead>
-              <tr style="background: #f8fafc; color: #334155; font-size: 0.84em; text-align: left; border-bottom: 2px solid #cbd5e1;">
-                <th style="padding: 10px 14px;">BPS Parameter</th>
-                <th style="padding: 10px 14px; width: 260px;">Normal Criteria</th>
-                <th style="padding: 10px 14px; width: 140px;">Score</th>
-              </tr>
-            </thead>
+          <table class="form-table" style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; font-size: 0.9em;">
             <tbody>
-              <!-- Fetal Tone -->
-              <tr style="border-bottom: 1px solid #f1f5f9;">
-                <td style="padding: 10px 14px; font-weight: 600; color: #1e293b;">
-                  <strong>Fetal Tone</strong>
+              <!-- Row 1: NUMBER OF FETUS -->
+              <tr>
+                <td class="label-cell" style="padding: 10px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1; width: 320px;">
+                  NUMBER OF FETUS:
                 </td>
-                <td style="padding: 10px 14px; font-size: 0.85em; color: #64748b;">
-                  >= 1 episode of active extension with return to flexion
-                </td>
-                <td style="padding: 8px 14px;">
-                  <select name="fetal_tone" id="fetal_tone_bps" onchange="calculateBpsTotal()" style="height: 36px; padding: 4px 10px; font-weight: 700; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%; background: #ffffff;">
-                    <option value="2" <%= (!test.results || !test.results.fetal_tone || test.results.fetal_tone === '2') ? 'selected' : '' %>>2 (Normal)</option>
-                    <option value="0" <%= test.results && test.results.fetal_tone === '0' ? 'selected' : '' %>>0 (Absent)</option>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <select name="number_of_fetus" id="number_of_fetus_bps" class="entry-select" style="width: 220px;">
+                    <option value="SINGLE" <%= (!test.results || !test.results.number_of_fetus || test.results.number_of_fetus === 'SINGLE') ? 'selected' : '' %>>SINGLE</option>
+                    <option value="TWIN" <%= test.results && test.results.number_of_fetus === 'TWIN' ? 'selected' : '' %>>TWIN</option>
+                    <option value="TRIPLET" <%= test.results && test.results.number_of_fetus === 'TRIPLET' ? 'selected' : '' %>>TRIPLET</option>
                   </select>
                 </td>
               </tr>
 
-              <!-- Fetal Movement -->
-              <tr style="border-bottom: 1px solid #f1f5f9;">
-                <td style="padding: 10px 14px; font-weight: 600; color: #1e293b;">
-                  <strong>Gross Fetal Movement</strong>
+              <!-- Row 2: AVERAGE ULTRASOUND AGE (Wide full-row with W, D, string, badge, and calculate button) -->
+              <tr>
+                <td class="label-cell" style="padding: 10px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1; width: 320px;">
+                  AVERAGE ULTRASOUND AGE:
                 </td>
-                <td style="padding: 10px 14px; font-size: 0.85em; color: #64748b;">
-                  >= 3 discrete body or limb movements in 30 mins
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                      <input type="number" min="0" max="45" name="average_ultrasound_age_w" id="aoa_w_bps" placeholder="36" value="<%= aoaAgeBps.w %>" oninput="updateAOAInput('bps')" class="entry-input" style="width: 65px; text-align: center; font-weight: 700; font-size: 1em;">
+                      <span style="font-size: 0.85em; font-weight: 700; color: #475569;">W</span>
+                    </div>
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                      <input type="number" min="0" max="6" name="average_ultrasound_age_d" id="aoa_d_bps" placeholder="0" value="<%= aoaAgeBps.d %>" oninput="updateAOAInput('bps')" class="entry-input" style="width: 60px; text-align: center; font-weight: 700; font-size: 1em;">
+                      <span style="font-size: 0.85em; font-weight: 700; color: #475569;">D</span>
+                    </div>
+                    <input type="text" name="average_ultrasound_age" id="aoa_text_bps" placeholder="36 W 0 D" value="<%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : (aoaAgeBps.w ? (aoaAgeBps.w + ' W ' + (aoaAgeBps.d || '0') + ' D') : '') %>" class="entry-input" style="width: 140px; font-weight: 700; background: #f8fafc;" title="Full AOA String">
+                    <span id="aoa_badge_bps" style="display: inline-block; padding: 4px 12px; border-radius: 6px; font-size: 0.88em; font-weight: 700; background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe;">
+                      <%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : (aoaAgeBps.w ? (aoaAgeBps.w + ' W ' + (aoaAgeBps.d || '0') + ' D') : '--') %>
+                    </span>
+                    <button type="button" class="button btn-secondary no-guard calc-btn" data-no-guard="1" onclick="calculateAOA('bps')" style="height: 34px; padding: 0 14px; font-size: 0.82em; font-weight: 700; background: #e0e7ff; color: #3730a3; border-color: #c7d2fe; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+                      <i class="fa fa-calculator"></i> Auto-Calculate
+                    </button>
+                  </div>
                 </td>
-                <td style="padding: 8px 14px;">
-                  <select name="fetal_movement" id="fetal_movement_bps" onchange="calculateBpsTotal()" style="height: 36px; padding: 4px 10px; font-weight: 700; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%; background: #ffffff;">
-                    <option value="2" <%= (!test.results || !test.results.fetal_movement || test.results.fetal_movement === '2') ? 'selected' : '' %>>2 (Normal)</option>
-                    <option value="0" <%= test.results && test.results.fetal_movement === '0' ? 'selected' : '' %>>0 (Absent)</option>
+              </tr>
+
+              <!-- Row 3: PRESENTATION -->
+              <tr>
+                <td class="label-cell" style="padding: 10px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                  PRESENTATION:
+                </td>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <div style="display: flex; gap: 8px; align-items: center;">
+                    <select id="presentation_select_bps" onchange="handleDropdownWithCustom(this, 'presentation_custom_bps', 'presentation_bps')" class="entry-select" style="width: 220px;">
+                      <option value="CEPHALIC" <%= (!test.results || !test.results.presentation || test.results.presentation === 'CEPHALIC') ? 'selected' : '' %>>CEPHALIC</option>
+                      <option value="BREECH" <%= test.results && test.results.presentation === 'BREECH' ? 'selected' : '' %>>BREECH</option>
+                      <option value="TRANSVERSE" <%= test.results && test.results.presentation === 'TRANSVERSE' ? 'selected' : '' %>>TRANSVERSE</option>
+                      <option value="VARIABLE" <%= test.results && test.results.presentation === 'VARIABLE' ? 'selected' : '' %>>VARIABLE</option>
+                      <option value="__other__" <%= (test.results && test.results.presentation && ['CEPHALIC','BREECH','TRANSVERSE','VARIABLE'].indexOf(test.results.presentation) === -1) ? 'selected' : '' %>>Other (custom)...</option>
+                    </select>
+                    <input type="text" id="presentation_custom_bps" placeholder="Type..." class="entry-input" style="display:<%= (test.results && test.results.presentation && ['CEPHALIC','BREECH','TRANSVERSE','VARIABLE'].indexOf(test.results.presentation) === -1) ? 'block' : 'none' %>; width: 160px;" value="<%= (test.results && test.results.presentation && ['CEPHALIC','BREECH','TRANSVERSE','VARIABLE'].indexOf(test.results.presentation) === -1) ? test.results.presentation : '' %>">
+                    <input type="hidden" name="presentation" id="presentation_bps" value="<%= test && test.results && test.results.presentation ? test.results.presentation : 'CEPHALIC' %>">
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Row 4: EDC BY ULTRASOUND -->
+              <tr>
+                <td class="label-cell" style="padding: 10px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                  EDC BY ULTRASOUND:
+                </td>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <input type="date" name="edc_by_ultrasound" id="edc_bps" onchange="updateEdcDisplay('bps')" value="<%= test && test.results && test.results.edc_by_ultrasound ? (new Date(test.results.edc_by_ultrasound)).toISOString().slice(0,10) : '' %>" class="entry-input" style="width: 170px;">
+                    <span id="edc_badge_bps" style="font-size: 0.84em; font-weight: 700; color: #0284c7; background: #f0f9ff; padding: 4px 10px; border-radius: 6px; border: 1px solid #bae6fd;">
+                      <%= test && test.results && test.results.edc_by_ultrasound ? formatMMDDYYYY(test.results.edc_by_ultrasound) : '' %>
+                    </span>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Row 5: EFW -->
+              <tr>
+                <td class="label-cell" style="padding: 10px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                  EFW:
+                </td>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <div style="position: relative; width: 180px;">
+                    <input type="text" name="efw" placeholder="2800" value="<%= test && test.results && test.results.efw ? test.results.efw : '' %>" class="entry-input" style="width: 100%; padding-right: 35px;">
+                    <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.76em; color: #64748b; font-weight: 700;">g</span>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Row 6: FETAL HEART RATE -->
+              <tr>
+                <td class="label-cell" style="padding: 10px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                  FETAL HEART RATE:
+                </td>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <div style="position: relative; width: 180px;">
+                    <input type="text" name="fetal_heart_rate" placeholder="145" value="<%= test && test.results && test.results.fetal_heart_rate ? test.results.fetal_heart_rate : '' %>" class="entry-input" style="width: 100%; padding-right: 45px;">
+                    <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.76em; color: #64748b; font-weight: 700;">BPM</span>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Row 7: PLACENTAL LOCATION -->
+              <tr>
+                <td class="label-cell" style="padding: 10px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                  PLACENTAL LOCATION:
+                </td>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <div style="display: flex; gap: 8px; align-items: center;">
+                    <select id="placental_location_select_bps" onchange="handleDropdownWithCustom(this, 'placental_location_custom_bps', 'placental_location_bps')" class="entry-select" style="width: 260px;">
+                      <% 
+                        const pLocsBps = ['POSTERO - FUNDAL', 'ANTERO - FUNDAL', 'POSTERIOR', 'ANTERIOR', 'FUNDAL', 'TOP', 'LEFT MID', 'LOW LYING', 'PLACENTA PREVIA'];
+                        const curLocBps = test && test.results && test.results.placental_location ? test.results.placental_location : 'POSTERO - FUNDAL';
+                        const isCustomLocBps = pLocsBps.indexOf(curLocBps) === -1;
+                      %>
+                      <% pLocsBps.forEach(function(l){ %>
+                        <option value="<%= l %>" <%= curLocBps === l ? 'selected' : '' %>><%= l %></option>
+                      <% }); %>
+                      <option value="__other__" <%= isCustomLocBps ? 'selected' : '' %>>Other (custom)...</option>
+                    </select>
+                    <input type="text" id="placental_location_custom_bps" placeholder="Type..." class="entry-input" style="display:<%= isCustomLocBps ? 'block' : 'none' %>; width: 160px;" value="<%= isCustomLocBps ? curLocBps : '' %>">
+                    <input type="hidden" name="placental_location" id="placental_location_bps" value="<%= curLocBps %>">
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Row 8: MATURITY -->
+              <tr>
+                <td class="label-cell" style="padding: 10px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                  MATURITY:
+                </td>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <div style="display: flex; gap: 8px; align-items: center;">
+                    <select id="maturity_select_bps" onchange="handleDropdownWithCustom(this, 'maturity_custom_bps', 'maturity_bps')" class="entry-select" style="width: 220px;">
+                      <% 
+                        const matsBps = ['GRADE - 1', 'GRADE - 2', 'GRADE - 3', 'GRADE - 0'];
+                        const curMatBps = test && test.results && test.results.maturity ? test.results.maturity : 'GRADE - 2';
+                        const isCustomMatBps = matsBps.indexOf(curMatBps) === -1;
+                      %>
+                      <% matsBps.forEach(function(m){ %>
+                        <option value="<%= m %>" <%= curMatBps === m ? 'selected' : '' %>><%= m %></option>
+                      <% }); %>
+                      <option value="__other__" <%= isCustomMatBps ? 'selected' : '' %>>Other (custom)...</option>
+                    </select>
+                    <input type="text" id="maturity_custom_bps" placeholder="Type..." class="entry-input" style="display:<%= isCustomMatBps ? 'block' : 'none' %>; width: 140px;" value="<%= isCustomMatBps ? curMatBps : '' %>">
+                    <input type="hidden" name="maturity" id="maturity_bps" value="<%= curMatBps %>">
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Row 9: AMNIOTIC FLUID -->
+              <tr>
+                <td class="label-cell" style="padding: 10px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                  AMNIOTIC FLUID:
+                </td>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <div style="display: flex; gap: 8px; align-items: center;">
+                    <select id="amniotic_fluid_select_bps" onchange="handleDropdownWithCustom(this, 'amniotic_fluid_custom_bps', 'amniotic_fluid_bps')" class="entry-select" style="width: 260px;">
+                      <% 
+                        const afsBps = ['ADEQUATE', 'NORMOHYDRAMNIOS', 'DECREASED', 'DECREASED (OLIGOHYDRAMNIOS)', 'INCREASED', 'INCREASED (POLYHYDRAMNIOS)'];
+                        const curAfBps = test && test.results && test.results.amniotic_fluid ? test.results.amniotic_fluid : 'ADEQUATE';
+                        const isCustomAfBps = afsBps.indexOf(curAfBps) === -1;
+                      %>
+                      <% afsBps.forEach(function(a){ %>
+                        <option value="<%= a %>" <%= curAfBps === a ? 'selected' : '' %>><%= a %></option>
+                      <% }); %>
+                      <option value="__other__" <%= isCustomAfBps ? 'selected' : '' %>>Other (custom)...</option>
+                    </select>
+                    <input type="text" id="amniotic_fluid_custom_bps" placeholder="Type..." class="entry-input" style="display:<%= isCustomAfBps ? 'block' : 'none' %>; width: 160px;" value="<%= isCustomAfBps ? curAfBps : '' %>">
+                    <input type="hidden" name="amniotic_fluid" id="amniotic_fluid_bps" value="<%= curAfBps %>">
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Row 10: GENDER -->
+              <tr>
+                <td class="label-cell" style="padding: 10px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                  GENDER:
+                </td>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <select name="gender" id="gender_bps" class="entry-select" style="width: 220px;">
+                    <option value="FEMALE" <%= test && test.results && test.results.gender === 'FEMALE' ? 'selected' : '' %>>FEMALE</option>
+                    <option value="MALE" <%= test && test.results && test.results.gender === 'MALE' ? 'selected' : '' %>>MALE</option>
+                    <option value="UNDETERMINED" <%= (!test.results || !test.results.gender || test.results.gender === 'UNDETERMINED') ? 'selected' : '' %>>UNDETERMINED</option>
+                    <option value="NOT VISUALIZED" <%= test && test.results && test.results.gender === 'NOT VISUALIZED' ? 'selected' : '' %>>NOT VISUALIZED</option>
                   </select>
                 </td>
               </tr>
 
-              <!-- Fetal Breathing -->
-              <tr style="border-bottom: 1px solid #f1f5f9;">
-                <td style="padding: 10px 14px; font-weight: 600; color: #1e293b;">
-                  <strong>Fetal Breathing</strong>
+              <!-- Row 11: FETAL TONE -->
+              <tr>
+                <td class="label-cell" style="padding: 10px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                  FETAL TONE:
                 </td>
-                <td style="padding: 10px 14px; font-size: 0.85em; color: #64748b;">
-                  >= 1 episode of continuous breathing >= 30 secs
-                </td>
-                <td style="padding: 8px 14px;">
-                  <select name="fetal_breathing" id="fetal_breathing_bps" onchange="calculateBpsTotal()" style="height: 36px; padding: 4px 10px; font-weight: 700; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%; background: #ffffff;">
-                    <option value="2" <%= (!test.results || !test.results.fetal_breathing || test.results.fetal_breathing === '2') ? 'selected' : '' %>>2 (Normal)</option>
-                    <option value="0" <%= test.results && test.results.fetal_breathing === '0' ? 'selected' : '' %>>0 (Absent)</option>
-                  </select>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                    <select name="fetal_tone" id="fetal_tone_bps" onchange="calculateBpsTotal()" class="entry-select" style="width: 140px; font-weight: 700;">
+                      <option value="2" <%= (!test.results || !test.results.fetal_tone || test.results.fetal_tone === '2') ? 'selected' : '' %>>2 (Normal)</option>
+                      <option value="0" <%= test.results && test.results.fetal_tone === '0' ? 'selected' : '' %>>0 (Absent)</option>
+                    </select>
+                    <span style="font-size: 0.85em; color: #64748b;">(>= 1 episode of active extension with return to flexion)</span>
+                  </div>
                 </td>
               </tr>
 
-              <!-- Amniotic Fluid (BPS Score) -->
-              <tr style="border-bottom: 1px solid #f1f5f9;">
-                <td style="padding: 10px 14px; font-weight: 600; color: #1e293b;">
-                  <strong>Amniotic Fluid Volume / AFI</strong>
+              <!-- Row 12: FETAL MOVEMENT -->
+              <tr>
+                <td class="label-cell" style="padding: 10px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                  FETAL MOVEMENT:
                 </td>
-                <td style="padding: 10px 14px; font-size: 0.85em; color: #64748b;">
-                  >= 1 pocket of fluid measuring >= 2 cm or AFI 5-25 cm
-                </td>
-                <td style="padding: 8px 14px;">
-                  <select id="amniotic_score_bps" onchange="calculateBpsTotal()" style="height: 36px; padding: 4px 10px; font-weight: 700; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%; background: #ffffff;">
-                    <option value="2" selected>2 (Normal)</option>
-                    <option value="0">0 (Oligohydramnios)</option>
-                  </select>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                    <select name="fetal_movement" id="fetal_movement_bps" onchange="calculateBpsTotal()" class="entry-select" style="width: 140px; font-weight: 700;">
+                      <option value="2" <%= (!test.results || !test.results.fetal_movement || test.results.fetal_movement === '2') ? 'selected' : '' %>>2 (Normal)</option>
+                      <option value="0" <%= test.results && test.results.fetal_movement === '0' ? 'selected' : '' %>>0 (Absent)</option>
+                    </select>
+                    <span style="font-size: 0.85em; color: #64748b;">(>= 3 discrete body or limb movements in 30 mins)</span>
+                  </div>
                 </td>
               </tr>
+
+              <!-- Row 13: FETAL BREATHING -->
+              <tr>
+                <td class="label-cell" style="padding: 10px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                  FETAL BREATHING:
+                </td>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                    <select name="fetal_breathing" id="fetal_breathing_bps" onchange="calculateBpsTotal()" class="entry-select" style="width: 140px; font-weight: 700;">
+                      <option value="2" <%= (!test.results || !test.results.fetal_breathing || test.results.fetal_breathing === '2') ? 'selected' : '' %>>2 (Normal)</option>
+                      <option value="0" <%= test.results && test.results.fetal_breathing === '0' ? 'selected' : '' %>>0 (Absent)</option>
+                    </select>
+                    <span style="font-size: 0.85em; color: #64748b;">(>= 1 episode of continuous breathing >= 30 secs)</span>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Row 14: AFI (Amniotic Fluid Index) -->
+              <tr>
+                <td class="label-cell" style="padding: 10px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                  AFI / AMNIOTIC FLUID:
+                </td>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                      <span style="font-size: 0.84em; font-weight: 600; color: #475569;">BPS Score:</span>
+                      <select id="amniotic_score_bps" onchange="calculateBpsTotal()" class="entry-select" style="width: 140px; font-weight: 700;">
+                        <option value="2" selected>2 (Normal)</option>
+                        <option value="0">0 (Oligo)</option>
+                      </select>
+                    </div>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                      <span style="font-size: 0.84em; font-weight: 600; color: #475569;">Measured AFI:</span>
+                      <div style="position: relative; width: 140px;">
+                        <input type="text" name="afi" id="afi_bps" placeholder="17.22" value="<%= test && test.results && test.results.afi ? test.results.afi : '' %>" class="entry-input" style="width: 100%; padding-right: 35px;">
+                        <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #64748b; font-weight: 700;">cm</span>
+                      </div>
+                    </div>
+                    <span style="font-size: 0.82em; color: #64748b;">(>= 1 pocket >= 2cm or AFI 5-25cm)</span>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Row 15: TOTAL BPS SCORE -->
+              <tr>
+                <td class="label-cell" style="padding: 10px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                  BPS (TOTAL SCORE):
+                </td>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                    <input type="text" name="bps" id="bps_total_bps" value="<%= test && test.results && test.results.bps ? test.results.bps : '8/8' %>" class="entry-input" style="width: 80px; text-align: center; font-size: 1.1em; font-weight: 800; border: 2px solid #10b981; color: #065f46; background: #ecfdf5;">
+                    <span id="bps_badge_bps" style="font-size: 0.84em; font-weight: 700; padding: 4px 12px; border-radius: 6px; background: #d1fae5; color: #065f46;">NORMAL (8/8)</span>
+                    
+                    <div style="display: flex; gap: 6px; align-items: center; margin-left: 10px;">
+                      <span style="font-size: 0.8em; font-weight: 600; color: #64748b;">Quick Presets:</span>
+                      <button type="button" class="button btn-secondary no-guard preset-btn" data-no-guard="1" onclick="presetBpsScore(2,2,2,2)" style="height: 30px; padding: 0 10px; font-size: 0.76em; font-weight: 700; background: #ecfdf5; color: #065f46; border-color: #a7f3d0; cursor: pointer;">
+                        8/8 Normal
+                      </button>
+                      <button type="button" class="button btn-secondary no-guard preset-btn" data-no-guard="1" onclick="presetBpsScore(2,2,2,0)" style="height: 30px; padding: 0 10px; font-size: 0.76em; font-weight: 700; background: #fffbeb; color: #92400e; border-color: #fde68a; cursor: pointer;">
+                        6/8 Equivocal
+                      </button>
+                      <button type="button" class="button btn-secondary no-guard preset-btn" data-no-guard="1" onclick="presetBpsScore(2,0,2,0)" style="height: 30px; padding: 0 10px; font-size: 0.76em; font-weight: 700; background: #fef2f2; color: #991b1b; border-color: #fecaca; cursor: pointer;">
+                        4/8 Abnormal
+                      </button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Row 16: ESTIMATED DATE OF DELIVERY (EDD) -->
+              <tr>
+                <td class="label-cell" style="padding: 10px 14px; font-weight: 700; color: #1e293b; background: #f8fafc; border: 1px solid #cbd5e1;">
+                  ESTIMATED DATE OF DELIVERY:
+                </td>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">
+                  <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                    <input type="date" name="estimated_date_of_delivery" id="edd_bps" onchange="updateEddDisplay('bps')" value="<%= test && test.results && test.results.estimated_date_of_delivery ? (new Date(test.results.estimated_date_of_delivery)).toISOString().slice(0,10) : '' %>" class="entry-input" style="width: 170px;">
+                    <span id="edd_badge_bps" style="font-size: 0.84em; font-weight: 700; color: #0284c7; background: #f0f9ff; padding: 4px 10px; border-radius: 6px; border: 1px solid #bae6fd;">
+                      <%= test && test.results && test.results.estimated_date_of_delivery ? formatMMDDYYYY(test.results.estimated_date_of_delivery) : '' %>
+                    </span>
+                  </div>
+                </td>
+              </tr>
+
             </tbody>
           </table>
-        </div>
-
-        <!-- AFI and Total Score Summary Bar -->
-        <div style="display: flex; gap: 20px; align-items: center; justify-content: space-between; flex-wrap: wrap; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 18px;">
-          <div style="display: flex; gap: 12px; align-items: center;">
-            <label style="font-weight: 600; font-size: 0.88em; color: #1e293b; margin: 0;">Amniotic Fluid Index (AFI):</label>
-            <div style="position: relative; width: 140px;">
-              <input type="text" name="afi" id="afi_bps" placeholder="17.22" value="<%= test && test.results && test.results.afi ? test.results.afi : '' %>" style="height: 36px; padding: 4px 35px 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; width: 100%;">
-              <span style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 0.74em; color: #94a3b8; font-weight: 700;">cm</span>
-            </div>
-          </div>
-
-          <div style="display: flex; gap: 12px; align-items: center;">
-            <label style="font-weight: 700; font-size: 0.95em; color: #0f172a; margin: 0;">TOTAL BPS SCORE:</label>
-            <div style="display: flex; align-items: center; gap: 6px;">
-              <input type="text" name="bps" id="bps_total_bps" value="<%= test && test.results && test.results.bps ? test.results.bps : '8/8' %>" style="height: 36px; width: 80px; text-align: center; font-size: 1.1em; font-weight: 800; border-radius: 6px; border: 2px solid #10b981; color: #065f46; background: #ecfdf5;">
-              <span id="bps_badge_bps" style="font-size: 0.82em; font-weight: 700; padding: 4px 10px; border-radius: 6px; background: #d1fae5; color: #065f46;">NORMAL (8/8)</span>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -1474,15 +1636,18 @@
           </div>
 
           <!-- AOA and FHR Grid -->
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 16px;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 16px; margin-bottom: 16px;">
             <div class="result-input-row" style="padding: 8px 12px; border: 1px solid #f1f5f9; border-radius: 8px;">
               <label style="margin: 0 0 6px 0; font-weight: 600; font-size: 0.88em; color: #1e293b; display: block;">Average Ultrasound Age (AOA)</label>
-              <div style="display: flex; gap: 6px; align-items: center;">
-                <input type="number" min="0" max="45" name="average_ultrasound_age_w" id="aoa_w_ob" placeholder="W" value="<%= aoaAgeOb.w %>" oninput="updateAOAInput('ob')" style="height: 36px; width: 68px; padding: 4px 8px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; text-align: center;" title="Weeks">
+              <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                <input type="number" min="0" max="45" name="average_ultrasound_age_w" id="aoa_w_ob" placeholder="W" value="<%= aoaAgeOb.w %>" oninput="updateAOAInput('ob')" style="height: 36px; width: 65px; padding: 4px 8px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; text-align: center;" title="Weeks">
                 <span style="font-size: 0.8em; font-weight: 700; color: #64748b;">W</span>
-                <input type="number" min="0" max="6" name="average_ultrasound_age_d" id="aoa_d_ob" placeholder="D" value="<%= aoaAgeOb.d %>" oninput="updateAOAInput('ob')" style="height: 36px; width: 62px; padding: 4px 8px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; text-align: center;" title="Days">
+                <input type="number" min="0" max="6" name="average_ultrasound_age_d" id="aoa_d_ob" placeholder="D" value="<%= aoaAgeOb.d %>" oninput="updateAOAInput('ob')" style="height: 36px; width: 60px; padding: 4px 8px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; text-align: center;" title="Days">
                 <span style="font-size: 0.8em; font-weight: 700; color: #64748b;">D</span>
-                <input type="text" name="average_ultrasound_age" id="aoa_text_ob" placeholder="6 W 6 D" value="<%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : '' %>" style="height: 36px; flex: 1; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; background: #f8fafc;" title="Full AOA String">
+                <input type="text" name="average_ultrasound_age" id="aoa_text_ob" placeholder="6 W 6 D" value="<%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : '' %>" style="height: 36px; width: 120px; padding: 4px 10px; font-weight: 600; border-radius: 6px; border: 1px solid #cbd5e1; background: #f8fafc;" title="Full AOA String">
+                <span id="aoa_badge_ob" style="display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 0.85em; font-weight: 700; background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe;">
+                  <%= test && test.results && test.results.average_ultrasound_age ? test.results.average_ultrasound_age : (aoaAgeOb.w ? (aoaAgeOb.w + ' W ' + (aoaAgeOb.d || '0') + ' D') : '--') %>
+                </span>
               </div>
             </div>
 
@@ -1921,6 +2086,51 @@
     color: #4338ca;
     font-weight: 600;
   }
+  .form-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid #cbd5e1;
+  }
+  .form-table th, .form-table td {
+    border: 1px solid #cbd5e1;
+  }
+  .form-table .label-cell {
+    font-weight: 700;
+    color: #1e293b;
+    background: #f8fafc;
+  }
+  .entry-input {
+    height: 36px;
+    padding: 4px 10px;
+    font-size: 0.9em;
+    font-weight: 600;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    box-sizing: border-box;
+    font-family: inherit;
+  }
+  .entry-input:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  }
+  .entry-select {
+    height: 36px;
+    padding: 4px 10px;
+    font-size: 0.9em;
+    font-weight: 600;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    box-sizing: border-box;
+    font-family: inherit;
+  }
+  .entry-select:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  }
 </style>
 
 <script>
@@ -2181,28 +2391,33 @@
     if (!w && !d) {
       if (labelInput) labelInput.value = '';
       if (badge) badge.innerText = '--';
+      if (['bps', 'pb'].indexOf(prefix) !== -1) calculateAOA(prefix, true);
       return;
     }
 
     var formatted = (w ? w : '0') + ' W ' + (d ? d : '0') + ' D';
     if (labelInput) labelInput.value = formatted;
     if (badge) badge.innerText = formatted;
+    if (['bps', 'pb'].indexOf(prefix) !== -1) calculateAOA(prefix, true);
   }
 
   function updateAOAInput(prefix) {
     var wInput = document.getElementById('aoa_w_' + prefix);
     var dInput = document.getElementById('aoa_d_' + prefix);
     var textInput = document.getElementById('aoa_text_' + prefix);
+    var badge = document.getElementById('aoa_badge_' + prefix);
     if (!wInput || !dInput || !textInput) return;
 
     var w = wInput.value.trim();
     var d = dInput.value.trim();
     if (w || d) {
-      textInput.value = (w ? w : '0') + ' W ' + (d ? d : '0') + ' D';
+      var val = (w ? w : '0') + ' W ' + (d ? d : '0') + ' D';
+      textInput.value = val;
+      if (badge) badge.innerText = val;
     }
   }
 
-  function calculateAOA(prefix) {
+  function calculateAOA(prefix, silent) {
     var params = ['bpd', 'hc', 'ac', 'fl'];
     var sumDays = 0;
     var count = 0;
@@ -2226,12 +2441,17 @@
       var aoaW = document.getElementById('aoa_w_' + prefix);
       var aoaD = document.getElementById('aoa_d_' + prefix);
       var aoaText = document.getElementById('aoa_text_' + prefix);
+      var aoaBadge = document.getElementById('aoa_badge_' + prefix);
 
       if (aoaW) aoaW.value = avgW;
       if (aoaD) aoaD.value = avgD;
-      if (aoaText) aoaText.value = avgW + ' W ' + avgD + ' D';
+      var str = avgW + ' W ' + avgD + ' D';
+      if (aoaText) aoaText.value = str;
+      if (aoaBadge) aoaBadge.innerText = str;
     } else {
-      alert('Please enter Weeks (W) for at least one biometry measurement (BPD, HC, AC, FL) first.');
+      if (!silent) {
+        alert('Please enter Weeks (W) for at least one biometry measurement (BPD, HC, AC, FL) first.');
+      }
     }
   }
 
@@ -2241,13 +2461,16 @@
     var aoaW = document.getElementById('aoa_w_' + prefix);
     var aoaD = document.getElementById('aoa_d_' + prefix);
     var aoaText = document.getElementById('aoa_text_' + prefix);
+    var badge = document.getElementById('aoa_badge_' + prefix);
 
     if (crlW && crlW.value.trim() !== '') {
       var w = crlW.value.trim();
       var d = crlD && crlD.value.trim() !== '' ? crlD.value.trim() : '0';
       if (aoaW) aoaW.value = w;
       if (aoaD) aoaD.value = d;
-      if (aoaText) aoaText.value = w + ' W ' + d + ' D';
+      var str = w + ' W ' + d + ' D';
+      if (aoaText) aoaText.value = str;
+      if (badge) badge.innerText = str;
     } else {
       alert('Please enter CRL Weeks first.');
     }
@@ -2259,37 +2482,38 @@
     var aoaW = document.getElementById('aoa_w_' + prefix);
     var aoaD = document.getElementById('aoa_d_' + prefix);
     var aoaText = document.getElementById('aoa_text_' + prefix);
+    var badge = document.getElementById('aoa_badge_' + prefix);
 
     if (gsW && gsW.value.trim() !== '') {
       var w = gsW.value.trim();
       var d = gsD && gsD.value.trim() !== '' ? gsD.value.trim() : '0';
       if (aoaW) aoaW.value = w;
       if (aoaD) aoaD.value = d;
-      if (aoaText) aoaText.value = w + ' W ' + d + ' D';
+      var str = w + ' W ' + d + ' D';
+      if (aoaText) aoaText.value = str;
+      if (badge) badge.innerText = str;
     } else {
       alert('Please enter GS Weeks first.');
     }
   }
 
   // =========================================================================
-  // DATE FORMATTING (Month DD, YYYY)
+  // DATE FORMATTING (MM/DD/YYYY STANDARD)
   // =========================================================================
-  var MONTH_NAMES = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
-
-  function formatDateToWords(dateStr) {
+  function formatDateMMDDYYYY(dateStr) {
     if (!dateStr) return '';
     var parts = String(dateStr).trim().split('-');
     if (parts.length === 3) {
       var year = parts[0];
-      var monthIdx = parseInt(parts[1], 10) - 1;
-      var day = parseInt(parts[2], 10);
-      if (monthIdx >= 0 && monthIdx < 12 && !isNaN(day)) {
-        return MONTH_NAMES[monthIdx] + ' ' + day + ', ' + year;
-      }
+      var month = String(parts[1]).padStart(2, '0');
+      var day = String(parts[2]).padStart(2, '0');
+      return month + '/' + day + '/' + year;
     }
     var d = new Date(dateStr);
     if (!isNaN(d.getTime())) {
-      return MONTH_NAMES[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+      var mm = String(d.getMonth() + 1).padStart(2, '0');
+      var dd = String(d.getDate()).padStart(2, '0');
+      return mm + '/' + dd + '/' + d.getFullYear();
     }
     return dateStr;
   }
@@ -2298,7 +2522,7 @@
     var input = document.getElementById('edc_' + prefix);
     var badge = document.getElementById('edc_badge_' + prefix);
     if (input && badge) {
-      badge.innerText = input.value ? formatDateToWords(input.value) : '';
+      badge.innerText = input.value ? formatDateMMDDYYYY(input.value) : '';
     }
   }
 
@@ -2306,7 +2530,7 @@
     var input = document.getElementById('edd_' + prefix);
     var badge = document.getElementById('edd_badge_' + prefix);
     if (input && badge) {
-      badge.innerText = input.value ? formatDateToWords(input.value) : '';
+      badge.innerText = input.value ? formatDateMMDDYYYY(input.value) : '';
     }
   }
 
@@ -2471,7 +2695,7 @@
       }
 
       var eddDateEl = document.getElementById('edc_' + pfx) || document.getElementById('edd_' + pfx);
-      var eddFormatted = eddDateEl && eddDateEl.value ? formatDateToWords(eddDateEl.value) : '__________________';
+      var eddFormatted = eddDateEl && eddDateEl.value ? formatDateMMDDYYYY(eddDateEl.value) : '__________________';
 
       text = numFetus + ', LIVE, INTRAUTERINE PREGNANCY OF   ' + aoaText + '   AOG\n' +
              'AGE OF GESTATION, ' + presentation + ' PRESENTATION. ' + afStatus + ',\n' +
@@ -2516,7 +2740,7 @@
       if (!aoaText) aoaText = '__ W __ D';
 
       var eddEl = document.getElementById('edd_' + pfx);
-      var eddFormatted = eddEl && eddEl.value ? formatDateToWords(eddEl.value) : '__________________';
+      var eddFormatted = eddEl && eddEl.value ? formatDateMMDDYYYY(eddEl.value) : '__________________';
 
       text = 'SINGLE, LIVE, INTRAUTERINE PREGNANCY OF   ' + aoaText + '   AOG\n' +
              'EDD: ' + eddFormatted + '.';
@@ -2525,7 +2749,7 @@
       var isTwinCb = document.getElementById('isTwin');
       var isTwin = isTwinCb && isTwinCb.checked;
       var eddEl = document.getElementById('edd_ob');
-      var eddFormatted = eddEl && eddEl.value ? formatDateToWords(eddEl.value) : '__________________';
+      var eddFormatted = eddEl && eddEl.value ? formatDateMMDDYYYY(eddEl.value) : '__________________';
 
       if (isTwin) {
         var aoaA = (document.getElementById('aoa_text_A') || {}).value || '';

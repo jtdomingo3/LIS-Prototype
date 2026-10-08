@@ -189,6 +189,22 @@ function inlineSignatureImages(html) {
   });
 }
 
+function formatMMDDYYYY(d) {
+  if (!d) return '';
+  if (typeof d === 'string') {
+    const s = d.trim();
+    const m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (m) {
+      return String(m[2]).padStart(2, '0') + '/' + String(m[3]).padStart(2, '0') + '/' + m[1];
+    }
+  }
+  const dt = (d instanceof Date) ? d : new Date(d);
+  if (isNaN(dt.getTime())) return String(d);
+  const mm = String(dt.getMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getDate()).padStart(2, '0');
+  return mm + '/' + dd + '/' + dt.getFullYear();
+}
+
 // ── render HTML for a fully-populated test ─────────────────────────────
 async function renderHtmlForTest(populatedTest, templateName) {
   const resultView  = path.join(__dirname, '..', 'views', 'reports', 'results', `${templateName}.ejs`);
@@ -196,7 +212,16 @@ async function renderHtmlForTest(populatedTest, templateName) {
   const inlineLogo  = getInlineLogo();
 
   const renderedResult = await new Promise((resolve, reject) => {
-    ejs.renderFile(resultView, { title: 'Result', test: populatedTest, layout: false, inlineLogo, hl: highlightResult }, (err, str) => {
+    ejs.renderFile(resultView, {
+      title: 'Result',
+      test: populatedTest,
+      layout: false,
+      inlineLogo,
+      hl: highlightResult,
+      formatMMDDYYYY,
+      formatMMDDYY: formatMMDDYYYY,
+      formatDate: formatMMDDYYYY
+    }, (err, str) => {
       if (err) return reject(err);
       resolve(str);
     });
@@ -206,11 +231,14 @@ async function renderHtmlForTest(populatedTest, templateName) {
     ejs.renderFile(wrapperView, {
       title: 'Print Report',
       test: populatedTest,
-      currentDate: new Date().toLocaleDateString(),
+      currentDate: formatMMDDYYYY(new Date()),
       renderedResultHtml: renderedResult,
       layout: false,
       inlineLogo,
-      hl: highlightResult
+      hl: highlightResult,
+      formatMMDDYYYY,
+      formatMMDDYY: formatMMDDYYYY,
+      formatDate: formatMMDDYYYY
     }, (err, str) => {
       if (err) return reject(err);
       resolve(str);

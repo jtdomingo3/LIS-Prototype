@@ -34,6 +34,22 @@ function getInlineLogo() {
   return _cachedInlineLogo;
 }
 
+function formatMMDDYYYY(d) {
+  if (!d) return '';
+  if (typeof d === 'string') {
+    const s = d.trim();
+    const m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (m) {
+      return String(m[2]).padStart(2, '0') + '/' + String(m[3]).padStart(2, '0') + '/' + m[1];
+    }
+  }
+  const dt = (d instanceof Date) ? d : new Date(d);
+  if (isNaN(dt.getTime())) return String(d);
+  const mm = String(dt.getMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getDate()).padStart(2, '0');
+  return mm + '/' + dd + '/' + dt.getFullYear();
+}
+
 const EXCLUDED_RESULT_KEYS = new Set([
   'signatures', 'performedby', 'performedbyname', 'performedbylicense',
   'validatedby', 'validatedbyname', 'validatedbylicense',
@@ -287,7 +303,10 @@ router.get('/result/:testId', requireAuth, canAccessPatient, async (req, res) =>
       layout: useLayout,
       print: autoPrint,
       inlineLogo,
-      sheet: req.query.sheet || 'all'
+      sheet: req.query.sheet || 'all',
+      formatMMDDYYYY,
+      formatMMDDYY: formatMMDDYYYY,
+      formatDate: formatMMDDYYYY
     });
 
   } catch (error) {
@@ -393,7 +412,7 @@ router.get('/print/:testId', requireAuth, canAccessPatient, async (req, res) => 
 
     // Render the result template without layout to get its HTML
     const inlineLogo = getInlineLogo();
-    res.render(viewPath, { title: 'Result Print', test: populatedTest, dbTemplate, layout: false, inlineLogo, sheet: req.query.sheet || 'all' }, (err, renderedHtml) => {
+    res.render(viewPath, { title: 'Result Print', test: populatedTest, dbTemplate, layout: false, inlineLogo, sheet: req.query.sheet || 'all', formatMMDDYYYY, formatMMDDYY: formatMMDDYYYY, formatDate: formatMMDDYYYY }, (err, renderedHtml) => {
         if (err) {
           console.error('Error rendering result template for print:', err);
           return res.status(500).send('Error preparing print preview');
@@ -403,7 +422,7 @@ router.get('/print/:testId', requireAuth, canAccessPatient, async (req, res) => 
         res.render('reports/print', {
           title: 'Print Report',
           test: populatedTest,
-          currentDate: new Date().toLocaleDateString(),
+          currentDate: formatMMDDYYYY(new Date()),
           renderedResultHtml: renderedHtml,
           layout: 'print',
           suppressPrint: !!req.query.suppressPrint
@@ -469,7 +488,7 @@ router.all('/print-multiple', requireAuth, canAccessPatient, async (req, res) =>
       // Render each template into HTML (no layout)
       try {
         const html = await new Promise((resolve, reject) => {
-          res.render(`reports/results/${template}`, { title: 'Result', test: populatedTest, dbTemplate, layout: false, inlineLogo: getInlineLogo() }, (err, html) => {
+          res.render(`reports/results/${template}`, { title: 'Result', test: populatedTest, dbTemplate, layout: false, inlineLogo: getInlineLogo(), formatMMDDYYYY, formatMMDDYY: formatMMDDYYYY, formatDate: formatMMDDYYYY }, (err, html) => {
             if (err) return reject(err);
             resolve(html);
           });
@@ -714,7 +733,7 @@ router.post('/worksheet/download', requireAuth, canAccessPatient, async (req, re
 
     const lines = [headers.map(escapeCsvCell).join(',')];
     for (const r of rows) {
-      const dateStr = r.testDate ? r.testDate.toLocaleDateString() : '';
+      const dateStr = r.testDate ? formatMMDDYYYY(r.testDate) : '';
       const timeStr = r.testDate ? r.testDate.toLocaleTimeString() : '';
       const p = r.patient || {};
       const ageVal = (p.age !== null && p.age !== undefined && p.age !== '') ? p.age : (p.ageManual || '');
@@ -758,7 +777,7 @@ router.post('/worksheet/download', requireAuth, canAccessPatient, async (req, re
       ws.columns = cols;
 
       for (const r of rows) {
-        const dateStr = r.testDate ? r.testDate.toLocaleDateString() : '';
+        const dateStr = r.testDate ? formatMMDDYYYY(r.testDate) : '';
         const timeStr = r.testDate ? r.testDate.toLocaleTimeString() : '';
         const p = r.patient || {};
         const ageVal = (p.age !== null && p.age !== undefined && p.age !== '') ? p.age : (p.ageManual || '');
@@ -808,7 +827,7 @@ router.post('/worksheet/download', requireAuth, canAccessPatient, async (req, re
       html += '</tr></thead><tbody>';
       for (const r of rows) {
         html += '<tr>';
-        const dateStr = r.testDate ? r.testDate.toLocaleDateString() : '';
+        const dateStr = r.testDate ? formatMMDDYYYY(r.testDate) : '';
         const timeStr = r.testDate ? r.testDate.toLocaleTimeString() : '';
         const p = r.patient || {};
         const ageVal = (p.age !== null && p.age !== undefined && p.age !== '') ? p.age : (p.ageManual || '');
