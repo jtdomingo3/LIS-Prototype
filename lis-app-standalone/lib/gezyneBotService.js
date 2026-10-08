@@ -1,5 +1,6 @@
 const https = require('https');
 const { decryptSecret } = require('./cryptoHelper');
+const ragClient = require('./ragClient');
 
 /**
  * GezyneBot AI Service
@@ -231,10 +232,10 @@ function buildKnowledgeContext() {
 
   const header = `=== GEZYNE CLINICAL LABORATORY INFORMATION SYSTEM (LIS) KNOWLEDGE BASE ===
 
-You are "GezyneBot", the resident Clinical Laboratory, Quality Assurance, and LIS Expert Assistant for Gezyne Clinical Laboratory (LIS Version 2.6.4).
+You are "GezyneBot", the resident Clinical Laboratory, Quality Assurance, and LIS Expert Assistant for Gezyne Clinical Laboratory (LIS Version 2.6.5).
 Your role is to assist laboratory staff, medical technologists, receptionists, encoders, quality managers, and doctors with both:
-1. Navigating and operating the Gezyne LIS software smoothly across all modules (including Reception, Test Worksheets, Analyzer Capture, Reports, Signatures, Reagent Inventory, Equipment & Levey-Jennings QC, NEQAS Proficiency Testing, Clinical Consultations, Human Resources (HR) & Payroll, Financial Costing & Profitability, and User Permissions).
-2. Answering clinical laboratory, phlebotomy, diagnostic testing, quality control, Westgard rules, NEQAS/EQA evaluation, outpatient consultation, Philippine statutory contributions (SSS, PhilHealth, Pag-IBIG, BIR tax), diagnostic cost-per-test economics, and medical reference questions accurately.
+1. Navigating and operating the Gezyne LIS software smoothly across all modules (including Reception, PhilHealth & Health Card / HMO Claims, Diagnostic Test Packages 1-6 with Senior/PWD Urinalysis exemption, Comprehensive Ultrasound Reporting Suite, Test Worksheets, Analyzer Capture, Reports, Signatures, Reagent Inventory, Equipment & Levey-Jennings QC, NEQAS Proficiency Testing, Clinical Consultations, Human Resources (HR) & Payroll, Financial Costing & Profitability, and User Permissions).
+2. Answering clinical laboratory, phlebotomy, diagnostic testing, ultrasound biometry, quality control, Westgard rules, NEQAS/EQA evaluation, outpatient consultation, Philippine statutory contributions (SSS, PhilHealth, Pag-IBIG, BIR tax), PhilHealth Konsulta guidelines, HMO approval workflows, diagnostic cost-per-test economics, Philippine Clinical Date Standard (MM/DD/YYYY), and medical reference questions accurately.
 
 --- OFFICIAL SYSTEM USER MANUAL & REFERENCE GUIDE ---
 `;
@@ -242,9 +243,10 @@ Your role is to assist laboratory staff, medical technologists, receptionists, e
   const footer = `
 --- COMMUNICATION STYLE & GUIDELINES ---
 - Provide helpful, friendly, medically accurate, and concise answers.
-- Format responses with clean Markdown (bold keywords, bullet points, and brief tables where useful).
+- Format responses with clean Markdown (bold keywords, bullet points, line breaks, and brief tables where useful).
+- Use proper line breaks (single newlines or double newlines for separate paragraphs) so responses read cleanly.
 - When writing mathematical, laboratory, or clinical calculation formulas (such as SDI, Levey-Jennings Mean/SD, BMI, LDL Friedewald, eGFR, Creatinine Clearance, or statutory payroll formulas), ALWAYS format them using standard LaTeX delimiters: use '$$...$$' for display/block equations and '$...$' or '\\(...\\)' for inline equations so they render beautifully with KaTeX.
-- When a user asks about software features (e.g., Equipment & QC, Levey-Jennings, Westgard rules, NEQAS, Inventory, Reception), give clear step-by-step instructions with the exact buttons to click and workflows to follow (as documented in the User Manual).
+- When a user asks about software features (e.g., PhilHealth / Health Card, Test Packages, Ultrasound templates, Equipment & QC, Levey-Jennings, Westgard rules, NEQAS, Inventory, Reception), give clear step-by-step instructions with the exact buttons to click and workflows to follow (as documented in the User Manual).
 - When answering medical or quality control questions, provide clear explanations with normal ranges, formulas, or clinical rationale, and advise clinical correlation.
 `;
 
@@ -255,15 +257,55 @@ Your role is to assist laboratory staff, medical technologists, receptionists, e
   // Graceful fallback if manual file is not found
   return header + `
 [System Note: User manual file was not found on disk. Operating on baseline knowledge.]
-- Core Modules: Reception (/reception), Tests (/tests), Reports (/reports), Signatures (/signatures), Equipment & QC (/equipment), Inventory (/inventory), Consultations (/consultations), HR & Payroll (/hr), Costing & P&L (/costing), Settings (/settings).
-- Supported platforms: Full-Stack Web/LAN, Standalone Desktop Client (with offline 2-way sync), and Android Mobile companion app.
+- Core Modules: Reception (/reception), PhilHealth & Health Card (/healthcard), Tests (/tests), Reports (/reports), Signatures (/signatures), Equipment & QC (/equipment), Inventory (/inventory), Consultations (/consultations), HR & Payroll (/hr), Costing & P&L (/costing), Settings (/settings).
+- Date Standard: Philippine Clinical Date Standard is MM/DD/YYYY across all forms, filters, and printouts.
+- Supported platforms: Full-Stack Web/LAN, Standalone Desktop Client (with offline 2-way sync & SQLite ACID WAL queue), and Android Mobile companion app.
 ` + footer;
+}
+
+/**
+ * System Knowledge Context dynamically constructed from ChromaDB vector search
+ */
+function buildRagKnowledgeContext(retrievedText, webSources = []) {
+  const header = `=== GEZYNE CLINICAL LABORATORY INFORMATION SYSTEM (LIS) KNOWLEDGE BASE ===
+
+You are "GezyneBot", the resident Clinical Laboratory, Quality Assurance, and LIS Expert Assistant for Gezyne Clinical Laboratory (LIS Version 2.6.5).
+Your role is to assist laboratory staff, medical technologists, receptionists, encoders, quality managers, and doctors with navigating the software, answering clinical laboratory procedures, PhilHealth & HMO claims, ultrasound reporting, test packages, and quality assurance.
+
+--- RELEVANT KNOWLEDGE BASE SECTIONS (RETRIEVED VIA CHROMADB & WEB SEARCH) ---
+${retrievedText}
+`;
+
+  let webGuideline = '';
+  if (Array.isArray(webSources) && webSources.length > 0) {
+    webGuideline = `
+- CRITICAL WEB SEARCH & CITATION INSTRUCTIONS:
+  1. Live web search results for the user's question have been retrieved and provided in the references above.
+  2. You MUST synthesize and answer directly using these external findings (including current Philippine DOH policies, guidelines, clinical updates, and recent laboratory standards).
+  3. DO NOT refuse to answer, and DO NOT claim that your knowledge cutoff prevents you from answering current events or recent guidelines—you have real-time live web search data explicitly provided above!
+  4. AT THE VERY BOTTOM OF YOUR RESPONSE, YOU MUST INCLUDE A SECTION LABELED:
+### 🌐 Sources & References
+List each web source with its title and markdown link URL so the user can verify the information (e.g., "- [Title](URL)").
+`;
+  }
+
+  const footer = `
+--- COMMUNICATION STYLE & GUIDELINES ---
+- Provide helpful, friendly, medically accurate, and concise answers.
+- Format responses with clean Markdown (bold keywords, bullet points, and brief tables where useful).
+- When writing mathematical, laboratory, or clinical calculation formulas (such as SDI, Levey-Jennings Mean/SD, BMI, LDL Friedewald, eGFR, Creatinine Clearance, or statutory payroll formulas), ALWAYS format them using standard LaTeX delimiters: use '$$...$$' for display/block equations and '$...$' or '\\(...\\)' for inline equations so they render beautifully with KaTeX.
+- When a user asks about software features (e.g., Equipment & QC, Levey-Jennings, Westgard rules, NEQAS, Inventory, Reception), give clear step-by-step instructions with the exact buttons to click and workflows to follow (as documented in the User Manual).
+- When answering medical or quality control questions, provide clear explanations with normal ranges, formulas, or clinical rationale, and advise clinical correlation.
+${webGuideline}
+`;
+
+  return header + footer;
 }
 
 /**
  * Call OpenRouter API with user prompt and conversation history
  */
-async function queryOpenRouter({ question, history = [], user = null, model = DEFAULT_MODEL }) {
+async function queryOpenRouter({ question, history = [], user = null, model = DEFAULT_MODEL, webSearch = false }) {
   const apiKey = resolveApiKey();
 
   if (!apiKey) {
@@ -277,14 +319,41 @@ async function queryOpenRouter({ question, history = [], user = null, model = DE
   // Format messages
   const messages = [];
 
-  // 1. System Prompt with Knowledge Base & Active User Context
+  // 1. System Prompt with RAG or Fallback Knowledge Base & Active User Context
   const userContext = user
     ? `\nCurrent logged-in staff member: ${user.name || user.email} (Role: ${user.role || 'Staff'})`
     : '';
 
+  let knowledgeContext = null;
+  let ragUsed = false;
+  let ragChunks = 0;
+  let webSearchUsed = false;
+  let webSources = [];
+  try {
+    const ragResult = await ragClient.queryRag({ question, topK: 4, enableWeb: !!webSearch });
+    if (ragResult && ragResult.success && ragResult.combinedContext) {
+      ragUsed = true;
+      ragChunks = (ragResult.results && ragResult.results.length) || 0;
+      if (ragResult.webResults && ragResult.webResults.length > 0) {
+        webSearchUsed = true;
+        webSources = ragResult.webResults;
+        console.log(`[GezyneBot] Augmented prompt with ${ragChunks} RAG chunks + ${webSources.length} web search snippets`);
+      } else {
+        console.log(`[GezyneBot] Augmented prompt with ${ragChunks} RAG chunks from ChromaDB`);
+      }
+      knowledgeContext = buildRagKnowledgeContext(ragResult.combinedContext, webSources);
+    }
+  } catch (ragErr) {
+    // Non-blocking fallback
+  }
+
+  if (!knowledgeContext) {
+    knowledgeContext = buildKnowledgeContext();
+  }
+
   messages.push({
     role: 'system',
-    content: buildKnowledgeContext() + userContext
+    content: knowledgeContext + userContext
   });
 
   // 2. Add recent conversation history (max 8 messages for token efficiency)
@@ -349,7 +418,11 @@ async function queryOpenRouter({ question, history = [], user = null, model = DE
                 success: true,
                 answer,
                 model: data.model || model,
-                usage: data.usage || null
+                usage: data.usage || null,
+                ragUsed,
+                ragChunks,
+                webSearchUsed,
+                webSources
               });
             } else {
               const errMsg = data && data.error && (data.error.message || data.error)

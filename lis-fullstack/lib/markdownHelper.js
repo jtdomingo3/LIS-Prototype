@@ -104,6 +104,17 @@ function parseMarkdown(md) {
   let codeBlockLang = '';
   let codeBlockLines = [];
 
+  let inParagraph = false;
+  let paragraphLines = [];
+
+  function closeParagraph() {
+    if (inParagraph && paragraphLines.length > 0) {
+      out.push(`<p class="manual-p">${paragraphLines.map(formatInline).join('<br />')}</p>`);
+      inParagraph = false;
+      paragraphLines = [];
+    }
+  }
+
   function closeList() {
     if (inList) {
       out.push(listType === 'ol' ? '</ol>' : '</ul>');
@@ -121,6 +132,9 @@ function parseMarkdown(md) {
 
   function formatInline(str) {
     let s = escapeHtml(str);
+
+    // Allow and normalize explicit HTML line breaks (<br>, <br/>, <br />)
+    s = s.replace(/&lt;br\s*\/?&gt;/gi, '<br />');
 
     // Bold + Italic (***text***)
     s = s.replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>');
@@ -146,6 +160,7 @@ function parseMarkdown(md) {
 
     // 0. Standalone Display Math Block
     if (trimmed.startsWith('___KATEX_DISPLAY_') && trimmed.endsWith('___')) {
+      closeParagraph();
       closeList();
       closeTable();
       out.push(trimmed);
@@ -161,6 +176,7 @@ function parseMarkdown(md) {
         codeBlockLines = [];
         codeBlockLang = '';
       } else {
+        closeParagraph();
         closeList();
         closeTable();
         inCodeBlock = true;
@@ -174,8 +190,9 @@ function parseMarkdown(md) {
       continue;
     }
 
-    // 2. Horizontal Rule
-    if (/^---{3,}$/.test(trimmed) || /^___+$/.test(trimmed)) {
+    // 2. Horizontal Rule (matches ---, ***, ___, and longer)
+    if (/^(\-{3,}|\*{3,}|_{3,})$/.test(trimmed)) {
+      closeParagraph();
       closeList();
       closeTable();
       out.push('<hr class="manual-hr" />');
@@ -185,6 +202,7 @@ function parseMarkdown(md) {
     // 3. Headings
     const headingMatch = rawLine.match(/^(#{1,6})\s+(.*)$/);
     if (headingMatch) {
+      closeParagraph();
       closeList();
       closeTable();
       const level = headingMatch[1].length;
@@ -194,17 +212,18 @@ function parseMarkdown(md) {
       if (level <= 3) {
         toc.push({
           level,
-          text: formatInline(titleText),
+          text: titleText.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1').replace(/`([^`]+)`/g, '$1'),
           slug
         });
       }
 
-      out.push(`<h${level} id="${slug}" class="manual-h${level}"><a href="#${slug}" class="manual-anchor">#</a>${formatInline(titleText)}</h${level}>`);
+      out.push(`<h${level} id="${slug}" class="manual-h${level}">${formatInline(titleText)}</h${level}>`);
       continue;
     }
 
     // 4. Blockquotes / Alerts
     if (trimmed.startsWith('>')) {
+      closeParagraph();
       closeList();
       closeTable();
       let alertContent = trimmed.replace(/^>\s?/, '');
@@ -230,6 +249,7 @@ function parseMarkdown(md) {
 
     // 5. Tables
     if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+      closeParagraph();
       closeList();
       const cells = trimmed.slice(1, -1).split('|').map(c => c.trim());
 
@@ -257,6 +277,7 @@ function parseMarkdown(md) {
     // 6. Ordered Lists (1. item)
     const olMatch = rawLine.match(/^(\s*)(\d+)\.\s+(.*)$/);
     if (olMatch) {
+      closeParagraph();
       if (!inList || listType !== 'ol') {
         closeList();
         inList = true;
@@ -270,6 +291,7 @@ function parseMarkdown(md) {
     // 7. Unordered Lists (* or - item)
     const ulMatch = rawLine.match(/^(\s*)[*-]\s+(.*)$/);
     if (ulMatch) {
+      closeParagraph();
       if (!inList || listType !== 'ul') {
         closeList();
         inList = true;
@@ -282,17 +304,20 @@ function parseMarkdown(md) {
 
     // 8. Empty lines
     if (trimmed === '') {
+      closeParagraph();
       closeList();
       closeTable();
       continue;
     }
 
-    // 9. Regular Paragraph
+    // 9. Regular Paragraph (accumulate lines so multi-line paragraphs render with clean <br /> breaks)
     closeList();
     closeTable();
-    out.push(`<p class="manual-p">${formatInline(trimmed)}</p>`);
+    inParagraph = true;
+    paragraphLines.push(trimmed);
   }
 
+  closeParagraph();
   closeList();
   closeTable();
 

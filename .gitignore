@@ -81,3 +81,5 @@ tools/security-audit/audit-report-latest.json
 lis-fullstack/walkthrough.md
 walkthrough.md
 audit/
+.claude/
+**/.claude/

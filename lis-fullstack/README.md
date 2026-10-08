@@ -1,6 +1,6 @@
-# Gezyne LIS Server (Full-Stack) v2.6.4
+# Gezyne LIS Server (Full-Stack) v2.6.5
 
-[![Version](https://img.shields.io/badge/version-2.6.4-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
+[![Version](https://img.shields.io/badge/version-2.6.5-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-green.svg?style=flat-square&logo=node.js)](https://nodejs.org/)
 [![Database](https://img.shields.io/badge/database-SQLite%20(WAL%20Enabled)-blue.svg?style=flat-square&logo=sqlite)](https://www.sqlite.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](LICENSE)
@@ -11,7 +11,29 @@ An enterprise-grade, full-stack Laboratory Information System (LIS) server built
 
 ## 📜 Version History & Release Notes
 
-### **v2.6.4 (DuckDuckGo Live Web Search Integration, ChromaDB RAG Engine Hardening, Markdown Hyperlinks & UI Persistence) — Current Release**
+### **v2.6.5 (PhilHealth Konsulta, HMO Claims, Test Packages 1–6, Ultrasound Suite, Philippine Date Standard & SQLite WAL Hardening) — Current Release**
+- 🏥 **PhilHealth & Health Card / HMO Claims Management (`/healthcard`)**:
+  - Full PhilHealth Konsulta support covering 13 accredited primary care diagnostic procedures (CBC, Urinalysis, Fecalysis, Blood Typing, FBS, Lipid Profile, Creatinine, SGPT, Chest X-Ray, etc.).
+  - PhilHealth Member PIN tracking, agency/employer identification, eligibility validation, and Statement of Account (SOA) generation.
+  - Comprehensive HMO / Health Card insurance management supporting 55+ diagnostic procedures, Letters of Authorization (LOA), approval reference codes, covered benefits, and copay/patient excess accounting.
+- 📦 **Diagnostic Test Packages (1–6) & Senior/PWD Compliance**:
+  - Six pre-configured clinical packages with bundled lab pricing.
+  - Automatic 20% statutory discount for Senior Citizens (OSCA) and PWD cardholders.
+  - Complies with mandatory Philippine health ordinances granting Senior Citizens and PWD cardholders one complimentary annual Urinalysis test.
+- 🩺 **Comprehensive Clinical Ultrasound Reporting Suite**:
+  - 6 specialized reporting templates: 1st Trimester Obstetrics, Pelvic Ultrasound, Pelvic Biometry with EFW, Transvaginal Ultrasound (TVS), Biophysical Profile Scoring (BPS), and Abdominal/KUBP/HBT.
+  - Auto-calculating ultrasound age (weeks/days), gestational sac parameters, biparietal diameter (BPD), crown-rump length (CRL), femur length (FL), abdominal circumference (AC), estimated fetal weight (EFW via Hadlock), and Estimated Date of Delivery (EDD).
+- 📅 **Philippine Clinical Date Standard (`MM/DD/YYYY`)**:
+  - Standardized date formatting across all intake forms, specimen worksheets, reports, filter ranges, consultations, and audit logs.
+- ⚡ **Database & PDF Generation Resilience Architecture**:
+  - **SQLite WAL Mode**: Enabled Write-Ahead Logging (`PRAGMA journal_mode = WAL;`) for high-throughput, non-blocking concurrent reads and writes between analyzer machines, clinical queries, and sync workers.
+  - **PDF Memory Optimization**: Reusable headless Chromium browser instance in Puppeteer (`pdfService.js`), preventing multi-GB RAM spikes during bulk patient report printing.
+- ✍️ **Line Break & Rich Formatting Engine**:
+  - GitHub-Flavored line break handling (`<br>`) in Markdown parser (`markdownHelper.js`).
+  - Preserved whitespace and line breaks in GezyneBot messages, clinical notes, impressions, and findings textareas.
+  - Code block formatting with syntax preservation.
+
+### **v2.6.4 (DuckDuckGo Live Web Search Integration, ChromaDB RAG Engine Hardening, Markdown Hyperlinks & UI Persistence)**
 - 🌐 **Web-Augmented RAG (Hybrid Retrieval via DuckDuckGo)**:
   - Integrated zero-configuration external search using DuckDuckGo (`ddgs`) into the local Python RAG microservice (`lis-rag-service`), providing live internet search snippets without third-party API keys or Google Search dependencies.
   - Standardized external citations as generic `"Web Result"` across all API payloads and UI citations.

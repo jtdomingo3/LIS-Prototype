@@ -1,13 +1,13 @@
-# Gezyne Laboratory Information System (LIS) v2.6.4
+# Gezyne Laboratory Information System (LIS) v2.6.5
 
-[![Version](https://img.shields.io/badge/version-2.6.4-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
+[![Version](https://img.shields.io/badge/version-2.6.5-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-green.svg?style=flat-square&logo=node.js)](https://nodejs.org/)
 [![Database](https://img.shields.io/badge/database-SQLite%20(WAL%20Enabled)-blue.svg?style=flat-square&logo=sqlite)](https://www.sqlite.org/)
 [![Electron](https://img.shields.io/badge/desktop-Electron%20v28-47848F.svg?style=flat-square&logo=electron)](https://www.electronjs.org/)
 [![Offline](https://img.shields.io/badge/offline-100%25%20Capable-success.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
 [![License](https://img.shields.io/badge/license-MIT-amber.svg?style=flat-square)](LICENSE)
 
-> **Gezyne Clinical Laboratory - Laboratory Information System (LIS) v2.6.4** is an enterprise-grade clinical diagnostic and laboratory management platform. It pairs a centralized full-stack Node.js/Express server with 100% offline-capable standalone desktop workstations, multi-station patient processing pipelines, real-time telemetry, AI clinical assistant with live web search, outpatient clinical consultation management, human resources & payroll, cost-per-test economics, Levey-Jennings QC & NEQAS proficiency testing, and robust SQLite WAL backups.
+> **Gezyne Clinical Laboratory - Laboratory Information System (LIS) v2.6.5** is an enterprise-grade clinical diagnostic and laboratory management platform. It pairs a centralized full-stack Node.js/Express server with 100% offline-capable standalone desktop workstations, multi-station patient processing pipelines, real-time telemetry, AI clinical assistant with live web search, outpatient clinical consultation management, human resources & payroll, cost-per-test economics, Levey-Jennings QC & NEQAS proficiency testing, and robust SQLite WAL backups.
 
 ---
 
@@ -15,30 +15,30 @@
 
 ```
 .
-├── README.md                  # Central system documentation (v2.6.4)
+├── README.md                  # Central system documentation (v2.6.5)
 ├── ads.json                   # Kiosk announcement configuration
 │
-├── lis-fullstack/             # Central LIS Server & Electron Tray Launcher (v2.6.4)
+├── lis-fullstack/             # Central LIS Server & Electron Tray Launcher (v2.6.5)
 │   ├── build/                 # Bundled installer resources & seed data
 │   ├── dist/                  # Packaged standalone executable (via pkg)
 │   ├── lib/                   # SQLite database adapter (better-sqlite3), tokens, PDF engine, payroll/tax calculators
 │   ├── middleware/            # Bearer token auth, role gates, HR/Costing permissions & rate limiting
 │   ├── models/                # Domain models (Patient, Test, User, Employee, Payroll, Expense, CostPerTest, DTR, Leaves)
-│   ├── routes/                # Express MVC routes & RESTful endpoints (including /hr and /costing)
+│   ├── routes/                # Express MVC routes & RESTful endpoints (including /hr, /costing, and /healthcard)
 │   ├── scripts/               # Build, encryption & Windows service scripts
 │   ├── tray/                  # Electron System Tray launcher & NSIS Windows installer
 │   ├── views/                 # Responsive EJS views, layouts & print templates
 │   └── server.js              # Central LIS Server entrypoint
 │
-├── lis-app-standalone/        # Local-First Standalone Desktop Client (Electron) (v2.6.4)
-│   ├── lib/                   # Local Express engine, sync engine, network monitor & queue
+├── lis-app-standalone/        # Local-First Standalone Desktop Client (Electron) (v2.6.5)
+│   ├── lib/                   # Local Express engine, sync engine, network monitor & SQLite queue
 │   ├── models/                # Local SQLite models with offline support
 │   ├── renderer/              # Desktop modals, status banners & print preview
 │   ├── views/                 # Full local UI with auto-hidden sidebars on small screens
 │   └── main.js                # Electron main process & child window manager
 │
-├── lis-rag-service/           # ChromaDB Vector Store & Live DuckDuckGo Web-Augmented RAG Microservice (v2.6.4)
-├── lis-mobile/                # Mobile companion application (Cordova/Capacitor)
+├── lis-rag-service/           # ChromaDB Vector Store & Live DuckDuckGo Web-Augmented RAG Microservice (v2.6.5)
+├── lis-mobile/                # Mobile companion application (Cordova/Capacitor) (v2.6.5)
 ├── lis-angular/               # Alternative Angular single-page frontend
 └── test/                      # Comprehensive integration, offline, inventory & sync test suites
 ```
@@ -47,7 +47,31 @@
 
 ## 📜 Version History & Release Notes
 
-### **v2.6.4 (DuckDuckGo Live Web Search Integration, ChromaDB RAG Engine Hardening, Markdown Hyperlinks & UI Persistence) — Current Release**
+### **v2.6.5 (PhilHealth Konsulta, HMO Claims, Test Packages 1–6, Ultrasound Suite, Philippine Date Standard & SQLite WAL Hardening) — Current Release**
+- 🏥 **PhilHealth & Health Card / HMO Claims Management (`/healthcard`)**:
+  - Full PhilHealth Konsulta support covering 13 accredited primary care diagnostic procedures (CBC, Urinalysis, Fecalysis, Blood Typing, FBS, Lipid Profile, Creatinine, SGPT, Chest X-Ray, etc.).
+  - PhilHealth Member PIN tracking, agency/employer identification, eligibility validation, and Statement of Account (SOA) generation.
+  - Comprehensive HMO / Health Card insurance management supporting 55+ diagnostic procedures, Letters of Authorization (LOA), approval reference codes, covered benefits, and copay/patient excess accounting.
+- 📦 **Diagnostic Test Packages (1–6) & Senior/PWD Compliance**:
+  - Six pre-configured clinical packages with bundled lab pricing.
+  - Automatic 20% statutory discount for Senior Citizens (OSCA) and PWD cardholders.
+  - Complies with mandatory Philippine health ordinances granting Senior Citizens and PWD cardholders one complimentary annual Urinalysis test.
+- 🩺 **Comprehensive Clinical Ultrasound Reporting Suite**:
+  - 6 specialized reporting templates: 1st Trimester Obstetrics, Pelvic Ultrasound, Pelvic Biometry with EFW, Transvaginal Ultrasound (TVS), Biophysical Profile Scoring (BPS), and Abdominal/KUBP/HBT.
+  - Auto-calculating ultrasound age (weeks/days), gestational sac parameters, biparietal diameter (BPD), crown-rump length (CRL), femur length (FL), abdominal circumference (AC), estimated fetal weight (EFW via Hadlock), and Estimated Date of Delivery (EDD).
+- 📅 **Philippine Clinical Date Standard (`MM/DD/YYYY`)**:
+  - Standardized date formatting across all intake forms, specimen worksheets, reports, filter ranges, consultations, and audit logs.
+- ⚡ **Database & PDF Generation Resilience Architecture**:
+  - **better-sqlite3 Migration**: Replaced in-RAM `sql.js` in desktop client with native C++ `better-sqlite3`, guaranteeing immediate, synchronous disk persistence during brownouts and power surges.
+  - **SQLite WAL Mode**: Enabled Write-Ahead Logging (`PRAGMA journal_mode = WAL;`) across fullstack and standalone environments for high-throughput, non-blocking concurrent reads and writes.
+  - **SQLite Sync Queue**: Migrated offline change tracking from vulnerable `pending-operations.json` to an ACID-compliant `sync_queue` SQLite table.
+  - **PDF Memory Optimization**: Reusable headless Chromium browser instance in Puppeteer; Electron built-in `webContents.printToPDF()` in standalone (completely replacing deprecated `html-pdf` and PhantomJS).
+- ✍️ **Line Break & Rich Formatting Engine**:
+  - GitHub-Flavored line break handling (`<br>`) in Markdown parser (`markdownHelper.js`).
+  - Preserved whitespace and line breaks in GezyneBot messages, clinical notes, impressions, and findings textareas.
+  - Code block formatting with syntax preservation.
+
+### **v2.6.4 (DuckDuckGo Live Web Search Integration, ChromaDB RAG Engine Hardening, Markdown Hyperlinks & UI Persistence)**
 - 🌐 **Web-Augmented RAG (Hybrid Retrieval via DuckDuckGo)**:
   - Integrated zero-configuration external search using DuckDuckGo (`ddgs`) into the local Python RAG microservice (`lis-rag-service`), providing live internet search snippets without third-party API keys or Google Search dependencies.
   - Standardized external citations as generic `"Web Result"` across all API payloads and UI citations.
