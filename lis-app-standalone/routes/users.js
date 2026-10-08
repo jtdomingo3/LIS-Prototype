@@ -116,10 +116,15 @@ router.post('/', requireAuth, canManageUsers, upload.single('signature'), async 
     // Build permissions object from nested or flattened form inputs
     const permissionsRaw = req.body.permissions || {};
     const permissions = {};
-    ['dashboard','patients','reception','tests','reports','worksheet','templates','inventory','equipment','users','delete','signatures','signature'].forEach(k => {
+    ['dashboard','patients','reception','philhealth','healthcard','tests','reports','worksheet','templates','inventory','equipment','users','delete','signatures','signature'].forEach(k => {
       const val = (permissionsRaw && permissionsRaw[k] !== undefined) ? permissionsRaw[k] : (req.body[`permissions[${k}]`] !== undefined ? req.body[`permissions[${k}]`] : req.body[`permissions.${k}`]);
       permissions[k] = !!(val === '1' || val === 1 || val === true || val === 'on' || val === 'true');
     });
+    // Ensure both flags sync if either is set
+    if (permissions.philhealth || permissions.healthcard) {
+      permissions.philhealth = true;
+      permissions.healthcard = true;
+    }
 
     // Resolve role (support custom specialized role)
     const resolvedRole = (role === '__other__' && req.body.customRole) 
@@ -309,10 +314,15 @@ router.put('/:id', requireAuth, canManageUsers, upload.single('signature'), asyn
     // Build permissions object from nested or flattened form inputs
     const permissionsRaw = req.body.permissions || {};
     const permissions = {};
-    ['dashboard','patients','reception','tests','reports','worksheet','templates','inventory','equipment','users','delete','signatures','signature'].forEach(k => {
+    ['dashboard','patients','reception','philhealth','healthcard','tests','reports','worksheet','templates','inventory','equipment','users','delete','signatures','signature'].forEach(k => {
       const val = (permissionsRaw && permissionsRaw[k] !== undefined) ? permissionsRaw[k] : (req.body[`permissions[${k}]`] !== undefined ? req.body[`permissions[${k}]`] : req.body[`permissions.${k}`]);
       permissions[k] = !!(val === '1' || val === 1 || val === true || val === 'on' || val === 'true');
     });
+    // Ensure both flags sync if either is set
+    if (permissions.philhealth || permissions.healthcard) {
+      permissions.philhealth = true;
+      permissions.healthcard = true;
+    }
 
     // Resolve role (support custom specialized role)
     const resolvedRole = (role === '__other__' && req.body.customRole) 

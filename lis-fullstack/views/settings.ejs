@@ -491,9 +491,9 @@
     </form>
 
     <!-- Dedicated Isolated Forms for Clinical & User JSON Restore (with multipart/form-data) -->
-    <form id="restoreClinicalForm" method="POST" action="/settings/restore" enctype="multipart/form-data" style="display:none;">
+    <form id="restoreClinicalForm" method="POST" action="/settings/restore?_csrf=<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>" enctype="multipart/form-data" style="display:none;">
   <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>"></form>
-    <form id="restoreUsersForm" method="POST" action="/settings/restore-users" enctype="multipart/form-data" style="display:none;">
+    <form id="restoreUsersForm" method="POST" action="/settings/restore-users?_csrf=<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>" enctype="multipart/form-data" style="display:none;">
   <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>"></form>
     <form id="clearLogsForm" method="POST" action="/settings/clear-logs" style="display:none;">
   <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>"></form>

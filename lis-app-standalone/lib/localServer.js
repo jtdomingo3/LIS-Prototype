@@ -479,8 +479,8 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     { prefix: '/dashboard', perm: 'dashboard' },
     { prefix: '/patients', perm: 'patients' },
     { prefix: '/reception', perm: 'reception' },
-    { prefix: '/philhealth', perm: 'reception' },
-    { prefix: '/healthcard', perm: 'reception' },
+    { prefix: '/philhealth', perm: 'philhealth' },
+    { prefix: '/healthcard', perm: 'philhealth' },
     { prefix: '/consultations', perm: 'reception' },
     { prefix: '/tests', perm: 'tests' },
     { prefix: '/reports', perm: 'reports' },
@@ -531,12 +531,12 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
 
       if (sessionUser.role === 'Admin') return next();
 
-      if (perms[mapping.perm] || (mapping.perm === 'equipment' && perms.inventory)) return next();
+      if (perms[mapping.perm] || (mapping.perm === 'equipment' && perms.inventory) || (mapping.perm === 'philhealth' && (perms.philhealth || perms.healthcard || perms.reception))) return next();
 
       // Role-based baseline workflow access for laboratory personnel (templates and inventory require explicit permission)
       const labRoles = new Set(['Medical Technologist', 'MedTech', 'Technician', 'Doctor', 'Staff', 'Receptionist', 'Encoder']);
       if (labRoles.has(sessionUser.role)) {
-        if (['reception', 'patients', 'tests', 'reports', 'worksheet', 'equipment'].includes(mapping.perm)) {
+        if (['reception', 'patients', 'tests', 'reports', 'worksheet', 'equipment', 'philhealth'].includes(mapping.perm)) {
           return next();
         }
       }

@@ -165,6 +165,7 @@
             const permList = [
               { key: 'dashboard', label: 'Dashboard', desc: 'Analytics & Financials' },
               { key: 'reception', label: 'Reception', desc: 'Patient Intake & Queue' },
+              { key: 'philhealth', label: 'PhilHealth / Health Card', desc: 'Konsulta & HMO Claims' },
               { key: 'patients', label: 'Patients', desc: 'Demographics & Records' },
               { key: 'tests', label: 'Tests', desc: 'Worklist & Results Entry' },
               { key: 'reports', label: 'Reports', desc: 'Sign-off & Printouts' },
@@ -179,7 +180,7 @@
           %>
           <% permList.forEach(p => { %>
             <label style="display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; background: <%= p.highlight ? '#fef2f2' : '#ffffff' %>; border: 1px solid <%= p.highlight ? '#fca5a5' : '#e2e8f0' %>; cursor: pointer; transition: all 0.15s ease;" onmouseover="this.style.borderColor='<%= p.highlight ? '#ef4444' : '#10b981' %>'" onmouseout="this.style.borderColor='<%= p.highlight ? '#fca5a5' : '#e2e8f0' %>'">
-              <input type="checkbox" name="permissions[<%= p.key %>]" value="1" <%= user.permissions && (user.permissions[p.key] || (p.key === 'signatures' && user.permissions.signature)) ? 'checked' : '' %> style="accent-color: #10b981; width: 16px; height: 16px; cursor: pointer; flex-shrink: 0;" />
+              <input type="checkbox" name="permissions[<%= p.key %>]" value="1" <%= user.permissions && (user.permissions[p.key] || (p.key === 'signatures' && user.permissions.signature) || (p.key === 'philhealth' && user.permissions.healthcard)) ? 'checked' : '' %> style="accent-color: #10b981; width: 16px; height: 16px; cursor: pointer; flex-shrink: 0;" />
               <div style="min-width: 0; flex: 1;">
                 <div style="font-weight: 700; font-size: 0.84em; color: <%= p.highlight ? '#b91c1c' : '#0f172a' %>; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><%= p.label %></div>
                 <div style="font-size: 0.7em; color: <%= p.highlight ? '#991b1b' : '#64748b' %>; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><%= p.desc %></div>

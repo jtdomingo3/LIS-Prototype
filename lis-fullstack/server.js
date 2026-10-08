@@ -155,7 +155,7 @@ async function processMaintenanceFlags() {
           signature: null,
           autoSignature: { enabled: false, until: null },
           permissions: {
-            dashboard: true, patients: true, reception: true,
+            dashboard: true, patients: true, reception: true, philhealth: true, healthcard: true,
             tests: true, reports: true, worksheet: true,
             templates: true, inventory: true, equipment: true, users: true, delete: true,
             costing: true, hr: true
@@ -169,7 +169,7 @@ async function processMaintenanceFlags() {
         admin.role = 'Admin';
         admin.status = 'Active';
         admin.permissions = {
-          dashboard: true, patients: true, reception: true,
+          dashboard: true, patients: true, reception: true, philhealth: true, healthcard: true,
           tests: true, reports: true, worksheet: true,
           templates: true, inventory: true, equipment: true, users: true, delete: true,
           costing: true, hr: true
@@ -575,7 +575,9 @@ app.use(session({
   }
 }));
 
-// Setup CSRF protection AFTER session/cookieParser but BEFORE routes
+app.use(flash());
+
+// Setup CSRF protection AFTER session/cookieParser/flash but BEFORE routes
 const csrfProtection = csrf({ cookie: false }); 
 // Exclude API token route from CSRF if needed, or apply selectively. 
 // Standard approach for EJS forms is to use it globally.
@@ -597,7 +599,21 @@ app.use((req, res, next) => {
   csrfProtection(req, res, (err) => {
     if (err) {
       if (err.code === 'EBADCSRFTOKEN') {
-        return res.status(403).send('Form tampered with or session expired (CSRF check failed).');
+        console.warn(`[csrf] EBADCSRFTOKEN caught on ${req.method} ${req.originalUrl}`);
+        const isApi = req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'));
+        if (isApi) {
+          return res.status(403).json({ error: 'Form security token invalid or session expired. Please refresh the page.' });
+        }
+        if (!req.session || !req.session.user) {
+          if (req.flash) req.flash('error_msg', 'Your session has expired. Please log in again.');
+          return res.redirect('/');
+        }
+        if (req.flash) req.flash('error_msg', 'Security token expired or form was refreshed. Please try saving again.');
+        const referer = req.get('Referer');
+        if (referer && !referer.includes('?_method=')) {
+          return res.redirect(referer);
+        }
+        return res.redirect('/users/profile');
       }
       return next(err);
     }
@@ -607,8 +623,6 @@ app.use((req, res, next) => {
     next();
   });
 });
-
-app.use(flash());
 
 // ── Bearer Token & Hash-based session bootstrap for API and standalone sync ──
 app.use((req, res, next) => {
@@ -923,8 +937,8 @@ const routePermissionMap = [
   { prefix: '/dashboard', perm: 'dashboard' },
   { prefix: '/patients', perm: 'patients' },
   { prefix: '/reception', perm: 'reception' },
-  { prefix: '/philhealth', perm: 'reception' },
-  { prefix: '/healthcard', perm: 'reception' },
+  { prefix: '/philhealth', perm: 'philhealth' },
+  { prefix: '/healthcard', perm: 'philhealth' },
   { prefix: '/consultations', perm: 'reception' },
   { prefix: '/tests', perm: 'tests' },
   { prefix: '/reports', perm: 'reports' },
@@ -1018,7 +1032,7 @@ app.use((req, res, next) => {
       return next();
     }
 
-    if (perms[mapping.perm] || (mapping.perm === 'equipment' && perms.inventory)) {
+    if (perms[mapping.perm] || (mapping.perm === 'equipment' && perms.inventory) || (mapping.perm === 'philhealth' && (perms.philhealth || perms.healthcard || perms.reception))) {
       console.debug(`[auth-guard] allowing via permission ${mapping.perm}`);
       return next();
     }
@@ -1026,7 +1040,7 @@ app.use((req, res, next) => {
     // Role-based baseline workflow access for laboratory personnel (templates requires explicit permission)
     const labRoles = new Set(['Medical Technologist', 'MedTech', 'Technician', 'Doctor', 'Staff', 'Receptionist', 'Encoder', 'X-Ray Technologist']);
     if (labRoles.has(sessionUser.role)) {
-      if (['reception', 'patients', 'tests', 'reports', 'worksheet', 'equipment'].includes(mapping.perm)) {
+      if (['reception', 'patients', 'tests', 'reports', 'worksheet', 'equipment', 'philhealth'].includes(mapping.perm)) {
         console.debug(`[auth-guard] allowing ${sessionUser.role} baseline workflow access to ${mapping.perm}`);
         return next();
       }
@@ -1145,7 +1159,7 @@ app.post('/api/restore/users', async (req, res) => {
         signature: null,
         autoSignature: { enabled: false, until: null },
         permissions: {
-          dashboard: true, patients: true, reception: true,
+          dashboard: true, patients: true, reception: true, philhealth: true, healthcard: true,
           tests: true, reports: true, worksheet: true,
           templates: true, inventory: true, equipment: true, users: true, delete: true,
           costing: true, hr: true
@@ -1159,7 +1173,7 @@ app.post('/api/restore/users', async (req, res) => {
       admin.password = hash;
       admin.role = 'Admin';
       admin.status = 'Active';
-      admin.permissions = { dashboard: true, patients: true, reception: true, tests: true, reports: true, worksheet: true, templates: true, inventory: true, equipment: true, users: true, delete: true };
+      admin.permissions = { dashboard: true, patients: true, reception: true, philhealth: true, healthcard: true, tests: true, reports: true, worksheet: true, templates: true, inventory: true, equipment: true, users: true, delete: true, costing: true, hr: true };
     }
 
     db.saveUsers(existing);

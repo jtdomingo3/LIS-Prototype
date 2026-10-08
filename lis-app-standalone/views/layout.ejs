@@ -1016,7 +1016,7 @@
             <% if (sessionUser.role === 'Admin' || perms.reception) { %>
             <a href="/reception" class="nav-item <%= title.includes('Reception') ? 'active' : '' %>"><span class="nav-emoji">🏥</span><span class="nav-text">Reception</span></a>
             <% } %>
-            <% if (sessionUser.role === 'Admin' || perms.reception || perms.patients) { %>
+            <% if (sessionUser.role === 'Admin' || sessionUser.role === 'Manager' || sessionUser.role === 'Owner' || perms.philhealth || perms.healthcard || perms.reception || perms.patients) { %>
             <a href="/philhealth" class="nav-item <%= (title && (title.includes('PhilHealth') || title.includes('Health Card'))) ? 'active' : '' %>"><span class="nav-emoji">🩺</span><span class="nav-text">PhilHealth / Health Card</span></a>
             <% } %>
             <% if (!featureFlags || featureFlags.tests) { %>
@@ -2265,6 +2265,27 @@
 
         // Run check after initial page render
         setTimeout(checkCriticalInventoryStock, 1500);
+      })();
+    </script>
+
+    <!-- Global Security: Automatic CSRF token propagation for multipart/form-data forms -->
+    <script>
+      (function() {
+        var token = '<%= typeof csrfToken !== "undefined" ? csrfToken : "" %>';
+        if (!token) return;
+        window.__CSRF_TOKEN__ = token;
+        document.addEventListener('submit', function(e) {
+          var form = e.target;
+          if (!form || form.tagName !== 'FORM') return;
+          var enc = (form.getAttribute('enctype') || '').toLowerCase();
+          if (enc.indexOf('multipart/form-data') !== -1) {
+            var action = form.getAttribute('action') || window.location.href;
+            if (action.indexOf('_csrf=') === -1) {
+              var delim = action.indexOf('?') === -1 ? '?' : '&';
+              form.setAttribute('action', action + delim + '_csrf=' + encodeURIComponent(token));
+            }
+          }
+        }, true);
       })();
     </script>
 
