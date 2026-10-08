@@ -25,14 +25,13 @@ if (!gotLock) {
   app.quit();
   process.exit(0);
 } else {
-  let secondHandled = false;
   app.on('second-instance', () => {
-    if (secondHandled) return;
-    secondHandled = true;
-    console.log('[standalone] second-instance detected, relaunching');
-    try { /* might not be defined yet */ } catch {}
-    app.relaunch();
-    setImmediate(() => app.exit(0));
+    console.log('[standalone] second-instance detected, focusing existing window');
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
   });
 }
 

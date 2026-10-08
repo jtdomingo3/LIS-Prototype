@@ -19,8 +19,8 @@ const SCHEMA_VERSION = 1;
 
 let BetterSqlite3 = null;
 try {
-  // Only attempt better-sqlite3 outside of pkg snapshot to avoid fatal N-API version mismatch (node18 pkg vs host node)
-  if (!process.pkg) {
+  // Only attempt better-sqlite3 outside of pkg snapshot and outside of Electron (unless rebuilt for Electron) to avoid fatal ABI version mismatch
+  if (!process.pkg && !process.versions.electron) {
     try {
       BetterSqlite3 = require('better-sqlite3');
     } catch (_) {
