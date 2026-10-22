@@ -182,10 +182,17 @@
       <tbody>
         <% if (!records || !records.length) { %>
           <tr>
-            <td colspan="15" style="text-align: center; padding: 36px 16px; color: #94a3b8;">
-              <div style="font-size: 2.2em; margin-bottom: 8px;">📋</div>
-              <div style="font-weight: 600; font-size: 1.05em; color: #64748b;">No PhilHealth records found</div>
-              <p style="margin: 4px 0 0; font-size: 0.9em; color: #94a3b8;">When new patients are encoded with PhilHealth coverage, they automatically appear here.</p>
+            <td colspan="15" style="text-align: center; padding: 48px 20px; color: #94a3b8;">
+              <div style="width: 60px; height: 60px; border-radius: 16px; background: #ecfdf5; color: #059669; display: inline-flex; align-items: center; justify-content: center; font-size: 1.8em; margin-bottom: 12px;">
+                <i class="fa fa-file-medical"></i>
+              </div>
+              <div style="font-size: 1.1em; font-weight: 700; color: #0f172a;">No PhilHealth Records Found</div>
+              <p style="margin: 4px 0 16px 0; font-size: 0.9em; color: #64748b; max-width: 440px; margin-left: auto; margin-right: auto;">When patients are encoded with PhilHealth (Konsulta / DOH) coverage, they automatically synchronize and appear here.</p>
+              <div style="display: inline-flex; gap: 10px; align-items: center;">
+                <button type="button" onclick="triggerManualSync(this)" class="button btn-secondary" style="height: 36px; padding: 0 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                  <i class="fa fa-sync"></i> Refresh Data
+                </button>
+              </div>
             </td>
           </tr>
         <% } else { %>
@@ -837,26 +844,52 @@
     updateSelectedCount();
   };
 
+  function showUiAlert(msg, type = 'info', title = 'Notice', cb = null) {
+    if (typeof window.showCustomAlert === 'function') {
+      window.showCustomAlert(msg, { type, title }, cb);
+    } else {
+      console.log(`[${type}] ${title}: ${msg}`);
+      if (cb) cb();
+    }
+  }
+
+  async function showUiConfirm(msg, opts = {}) {
+    if (typeof window.showConfirmDialog === 'function') {
+      return await window.showConfirmDialog(msg, opts);
+    }
+    if (typeof window.showCustomConfirm === 'function') {
+      return new Promise(resolve => {
+        window.showCustomConfirm(msg, () => resolve(true), Object.assign({}, opts, { onCancel: () => resolve(false) }));
+      });
+    }
+    return false;
+  }
+
+  window.triggerManualSync = async function(btn) {
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Refreshing...';
+    }
+    showUiAlert('Refreshing PhilHealth records...', 'info', 'Synchronizing');
+    setTimeout(() => window.location.reload(), 900);
+  };
+
   // ---- Universal Batch Modal Handlers ----
   window.openUniversalBatchModal = async function(preset) {
     let checked = document.querySelectorAll('.row-checkbox:checked');
     if (!checked.length) {
       const allCount = document.querySelectorAll('.row-checkbox').length;
       if (allCount === 0) {
-        if (window.showCustomAlert) {
-          return window.showCustomAlert('No patient records found on this page.', { type: 'warning', title: 'No Records Found' });
-        }
-        return alert('No patient records found on this page.');
+        return showUiAlert('No patient records found on this page.', 'warning', 'No Records Found');
       }
-      const confirmed = window.showConfirmDialog ? await window.showConfirmDialog(
+      const confirmed = await showUiConfirm(
         'No patients are checked yet.<br><br>Would you like to select all <strong>' + allCount + ' patient(s)</strong> on this page to update together?',
         {
           title: 'Batch Selection',
           btnText: 'Select All & Continue',
-          cancelText: 'Cancel',
           type: 'primary'
         }
-      ) : confirm('No patients are checked yet. Would you like to select all ' + allCount + ' patient(s) on this page to update together?');
+      );
 
       if (confirmed) {
         toggleSelectAll({ checked: true });
@@ -913,8 +946,7 @@
     e.preventDefault();
     const checked = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.value);
     if (!checked.length) {
-      if (window.showCustomAlert) return window.showCustomAlert('Please select at least one record to update.', { type: 'warning', title: 'Selection Required' });
-      return alert('Please select at least one record.');
+      return showUiAlert('Please select at least one record to update.', 'warning', 'Selection Required');
     }
 
     const tranche1Encoded = document.getElementById('batchTranche1Encoded').value;
@@ -926,8 +958,7 @@
     const paidDate = document.getElementById('batchPaidDate').value;
 
     if (!tranche1Encoded && !tranche2Encoded && !ekas && !tranche1Paid && !tranche2Paid) {
-      if (window.showCustomAlert) return window.showCustomAlert('Please select at least one field to change (e.g. 1st Tranche Encoded, 2nd Tranche Encoded, EKAS, or Paid Status).', { type: 'warning', title: 'No Changes Specified' });
-      return alert('Please select at least one field to change.');
+      return showUiAlert('Please select at least one field to change (e.g. 1st Tranche Encoded, 2nd Tranche Encoded, EKAS, or Paid Status).', 'warning', 'No Changes Specified');
     }
 
     const btn = document.getElementById('btnUniversalSubmit');
@@ -954,14 +985,12 @@
       if (data.success) {
         window.location.reload();
       } else {
-        if (window.showCustomAlert) window.showCustomAlert(data.error || 'Failed to update records.', { type: 'danger', title: 'Update Error' });
-        else alert('Error: ' + (data.error || 'Failed to update'));
+        showUiAlert(data.error || 'Failed to update records.', 'danger', 'Update Error');
         btn.disabled = false;
         btn.innerHTML = originalHtml;
       }
     } catch (err) {
-      if (window.showCustomAlert) window.showCustomAlert('Network error updating records: ' + err.message, { type: 'danger', title: 'Network Error' });
-      else alert('Network error updating records: ' + err.message);
+      showUiAlert('Network error updating records: ' + err.message, 'danger', 'Network Error');
       btn.disabled = false;
       btn.innerHTML = originalHtml;
     }
@@ -973,18 +1002,16 @@
     if (!checked.length) {
       const allCount = document.querySelectorAll('.row-checkbox').length;
       if (allCount === 0) {
-        if (window.showCustomAlert) return window.showCustomAlert('No patient records found on this page.', { type: 'warning', title: 'No Records Found' });
-        return alert('No patient records found.');
+        return showUiAlert('No patient records found on this page.', 'warning', 'No Records Found');
       }
-      const confirmed = window.showConfirmDialog ? await window.showConfirmDialog(
+      const confirmed = await showUiConfirm(
         'No patients are checked yet.<br><br>Would you like to select all <strong>' + allCount + ' patient(s)</strong> on this page to update together?',
         {
           title: 'Batch Selection',
           btnText: 'Select All & Continue',
-          cancelText: 'Cancel',
           type: 'primary'
         }
-      ) : confirm('No patients are checked yet. Would you like to select all ' + allCount + ' patient(s) on this page to update together?');
+      );
 
       if (confirmed) {
         toggleSelectAll({ checked: true });
@@ -1000,16 +1027,15 @@
                        field === 'tranche1Paid' ? '1st Tranche Paid' :
                        field === 'tranche2Paid' ? '2nd Tranche Paid' : field;
 
-    const proceed = window.showConfirmDialog ? await window.showConfirmDialog(
+    const proceed = await showUiConfirm(
       'Apply batch update to <strong>' + checked.length + '</strong> selected patient(s)?<br><br>' +
       'Set <strong>' + fieldLabel + '</strong> to <span style="display:inline-block;padding:2px 8px;border-radius:10px;background:#dcfce7;color:#166534;font-weight:700;">' + value + '</span>',
       {
         title: 'Confirm Universal Update',
         btnText: 'Yes, Apply Batch',
-        cancelText: 'Cancel',
         type: 'primary'
       }
-    ) : confirm('Apply batch update:\n\nSet "' + fieldLabel + '" to "' + value + '" for ' + checked.length + ' selected patient(s)?');
+    );
 
     if (!proceed) return;
 
@@ -1023,12 +1049,10 @@
       if (data.success) {
         window.location.reload();
       } else {
-        if (window.showCustomAlert) window.showCustomAlert(data.error || 'Failed to update records.', { type: 'danger', title: 'Update Error' });
-        else alert('Error: ' + (data.error || 'Failed to update'));
+        showUiAlert(data.error || 'Failed to update records.', 'danger', 'Update Error');
       }
     } catch (err) {
-      if (window.showCustomAlert) window.showCustomAlert('Network error updating: ' + err.message, { type: 'danger', title: 'Network Error' });
-      else alert('Network error updating: ' + err.message);
+      showUiAlert('Network error updating: ' + err.message, 'danger', 'Network Error');
     }
   };
 
@@ -1090,13 +1114,11 @@
         showToast('✓ ' + fieldTitle + ' marked as ' + nextValue + ' (' + ctrlNo + ')');
       } else {
         el.textContent = originalText;
-        if (window.showCustomAlert) window.showCustomAlert(data.error || 'Failed to update', { type: 'danger', title: 'Update Error' });
-        else alert('Error: ' + (data.error || 'Failed to update'));
+        showUiAlert(data.error || 'Failed to update', 'danger', 'Update Error');
       }
     } catch (err) {
       el.textContent = originalText;
-      if (window.showCustomAlert) window.showCustomAlert('Network error updating: ' + err.message, { type: 'danger', title: 'Network Error' });
-      else alert('Network error updating: ' + err.message);
+      showUiAlert('Network error updating: ' + err.message, 'danger', 'Network Error');
     }
   };
 
@@ -1121,8 +1143,7 @@
   window.openBulkPaidModal = function() {
     const checked = document.querySelectorAll('.row-checkbox:checked');
     if (!checked.length) {
-      if (window.showCustomAlert) return window.showCustomAlert('Please select at least one record.', { type: 'warning', title: 'Selection Required' });
-      return alert('Please select at least one record.');
+      return showUiAlert('Please select at least one record.', 'warning', 'Selection Required');
     }
     document.getElementById('bulkModalCount').textContent = checked.length;
     document.getElementById('bulkPaidModal').style.display = 'flex';
@@ -1150,20 +1171,17 @@
       if (data.success) {
         window.location.reload();
       } else {
-        if (window.showCustomAlert) window.showCustomAlert(data.error || 'Failed to update', { type: 'danger', title: 'Update Error' });
-        else alert('Error: ' + (data.error || 'Failed to update'));
+        showUiAlert(data.error || 'Failed to update', 'danger', 'Update Error');
       }
     } catch (err) {
-      if (window.showCustomAlert) window.showCustomAlert('Network error updating payment: ' + err.message, { type: 'danger', title: 'Network Error' });
-      else alert('Network error updating payment: ' + err.message);
+      showUiAlert('Network error updating payment: ' + err.message, 'danger', 'Network Error');
     }
   };
 
   window.exportSelectedCsv = function() {
     const checked = Array.from(document.querySelectorAll('.row-checkbox:checked')).map(cb => cb.value);
     if (!checked.length) {
-      if (window.showCustomAlert) return window.showCustomAlert('Please select at least one record to export.', { type: 'warning', title: 'Selection Required' });
-      return alert('Please select at least one record.');
+      return showUiAlert('Please select at least one record to export.', 'warning', 'Selection Required');
     }
     window.location.href = '/philhealth/export.csv?ids=' + encodeURIComponent(checked.join(','));
   };
@@ -1246,12 +1264,10 @@
       if (data.success) {
         window.location.reload();
       } else {
-        if (window.showCustomAlert) window.showCustomAlert(data.error || 'Failed saving draft', { type: 'danger', title: 'Save Draft Failed' });
-        else alert('Error: ' + (data.error || 'Failed saving draft'));
+        showUiAlert(data.error || 'Failed saving draft', 'danger', 'Save Draft Failed');
       }
     } catch (e) {
-      if (window.showCustomAlert) window.showCustomAlert('Error saving draft: ' + e.message, { type: 'danger', title: 'Error' });
-      else alert('Error: ' + e.message);
+      showUiAlert('Error saving draft: ' + e.message, 'danger', 'Error');
     }
   };
 
@@ -1261,15 +1277,13 @@
     const procedures = collectSelectedProcedures();
 
     if (!procedures.length) {
-      if (window.showCustomAlert) return window.showCustomAlert('Please select at least one procedure before approving.', { type: 'warning', title: 'Procedure Required' });
-      return alert('Please select at least one procedure before approving.');
+      return showUiAlert('Please select at least one procedure before approving.', 'warning', 'Procedure Required');
     }
 
     // Check sendout remarks
     for (const p of procedures) {
       if ((p.key === 'sputum_microscopy' || p.key === 'pap_smear') && !p.remarks) {
-        if (window.showCustomAlert) return window.showCustomAlert('Remarks are required for send-out procedure: ' + p.key, { type: 'warning', title: 'Remarks Required' });
-        return alert('Remarks are required for send-out procedure: ' + p.key);
+        return showUiAlert('Remarks are required for send-out procedure: ' + p.key, 'warning', 'Remarks Required');
       }
     }
 
@@ -1285,23 +1299,16 @@
       });
       const data = await res.json();
       if (data.success) {
-        if (window.showCustomAlert) {
-          window.showCustomAlert(data.message || 'PhilHealth order approved and routed to queue!', { type: 'success', title: 'Order Approved' }, function() {
-            window.location.reload();
-          });
-        } else {
-          alert(data.message || 'PhilHealth order approved and routed to queue!');
+        showUiAlert(data.message || 'PhilHealth order approved and routed to queue!', 'success', 'Order Approved', function() {
           window.location.reload();
-        }
+        });
       } else {
-        if (window.showCustomAlert) window.showCustomAlert(data.error || 'Failed to approve', { type: 'danger', title: 'Approval Error' });
-        else alert('Error: ' + (data.error || 'Failed to approve'));
+        showUiAlert(data.error || 'Failed to approve', 'danger', 'Approval Error');
         btn.disabled = false;
         btn.innerHTML = '<i class="fa fa-check-circle"></i> Approve & Send to Queue';
       }
     } catch (err) {
-      if (window.showCustomAlert) window.showCustomAlert('Network error approving order: ' + err.message, { type: 'danger', title: 'Network Error' });
-      else alert('Network error approving order: ' + err.message);
+      showUiAlert('Network error approving order: ' + err.message, 'danger', 'Network Error');
       btn.disabled = false;
       btn.innerHTML = '<i class="fa fa-check-circle"></i> Approve & Send to Queue';
     }
@@ -1359,21 +1366,25 @@
       if (data.success) {
         window.location.reload();
       } else {
-        if (window.showCustomAlert) window.showCustomAlert(data.error || 'Failed updating record', { type: 'danger', title: 'Update Error' });
-        else alert('Error: ' + (data.error || 'Failed updating record'));
+        showUiAlert(data.error || 'Failed updating record', 'danger', 'Update Error');
       }
     } catch (err) {
-      if (window.showCustomAlert) window.showCustomAlert('Network error updating record: ' + err.message, { type: 'danger', title: 'Network Error' });
-      else alert('Network error updating record: ' + err.message);
+      showUiAlert('Network error updating record: ' + err.message, 'danger', 'Network Error');
     }
   };
 
   window.confirmDeletePhilhealth = async function(id, controlNo, isUnlinked) {
     const promptMsg = isUnlinked
-      ? `⚠️ This PhilHealth record (${controlNo}) has NO LINKED PATIENT.\n\nAre you sure you want to delete it permanently?`
-      : `Are you sure you want to permanently delete PhilHealth record (${controlNo})?`;
+      ? `This PhilHealth record <strong>(${controlNo})</strong> has <strong>NO LINKED PATIENT</strong>.<br><br>Are you sure you want to delete it permanently? This cannot be undone.`
+      : `Are you sure you want to permanently delete PhilHealth record <strong>(${controlNo})</strong>?`;
 
-    if (!confirm(promptMsg)) return;
+    const confirmed = await showUiConfirm(promptMsg, {
+      title: isUnlinked ? 'Delete Unlinked Record' : 'Confirm Deletion',
+      btnText: 'Yes, Delete',
+      type: 'danger'
+    });
+
+    if (!confirmed) return;
 
     try {
       let res = await fetch('/philhealth/' + encodeURIComponent(id), {
@@ -1398,10 +1409,10 @@
           window.location.reload();
         }
       } else {
-        alert('Failed to delete record: ' + (data.error || 'Server error'));
+        showUiAlert(data.error || 'Server error', 'danger', 'Delete Failed');
       }
     } catch (err) {
-      alert('Error deleting record: ' + err.message);
+      showUiAlert('Error deleting record: ' + err.message, 'danger', 'Network Error');
     }
   };
 })();

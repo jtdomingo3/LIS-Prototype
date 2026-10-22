@@ -168,12 +168,19 @@
         <% if (!records || records.length === 0) { %>
           <tr>
             <td colspan="12" style="text-align: center; padding: 48px 20px; color: #94a3b8;">
-              <div style="font-size: 2.8em; margin-bottom: 8px;">💳</div>
-              <div style="font-size: 1.1em; font-weight: 600; color: #475569;">No Health Card Claims Found</div>
-              <p style="margin: 4px 0 16px 0; font-size: 0.9em;">Click "Enroll Health Card Patient" to encode LOA details and authorize laboratory tests.</p>
-              <button type="button" onclick="openEnrollHealthCardModal()" class="button btn-primary" style="height: 36px; padding: 0 16px; border-radius: 8px; font-weight: 600; background: #0284c7; border: none; cursor: pointer;">
-                <i class="fa fa-user-plus"></i> Enroll Health Card Patient
-              </button>
+              <div style="width: 60px; height: 60px; border-radius: 16px; background: #f0f9ff; color: #0284c7; display: inline-flex; align-items: center; justify-content: center; font-size: 1.8em; margin-bottom: 12px;">
+                <i class="fa fa-id-card"></i>
+              </div>
+              <div style="font-size: 1.1em; font-weight: 700; color: #0f172a;">No Health Card Claims Found</div>
+              <p style="margin: 4px 0 16px 0; font-size: 0.9em; color: #64748b; max-width: 440px; margin-left: auto; margin-right: auto;">Enroll a health card patient to encode LOA details and authorize laboratory tests.</p>
+              <div style="display: inline-flex; gap: 10px; align-items: center;">
+                <button type="button" onclick="openEnrollHealthCardModal()" class="button btn-primary" style="height: 36px; padding: 0 16px; border-radius: 8px; font-weight: 600; background: #0284c7; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                  <i class="fa fa-user-plus"></i> Enroll Health Card Patient
+                </button>
+                <button type="button" onclick="triggerManualSync(this)" class="button btn-secondary" style="height: 36px; padding: 0 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                  <i class="fa fa-sync"></i> Refresh Data
+                </button>
+              </div>
             </td>
           </tr>
         <% } else { %>
@@ -758,11 +765,46 @@
     return Array.from(checked).map(cb => cb.value);
   }
 
+  function showUiAlert(msg, type = 'info', title = 'Notice', cb = null) {
+    if (typeof window.showCustomAlert === 'function') {
+      window.showCustomAlert(msg, { type, title }, cb);
+    } else {
+      console.log(`[${type}] ${title}: ${msg}`);
+      if (cb) cb();
+    }
+  }
+
+  async function showUiConfirm(msg, opts = {}) {
+    if (typeof window.showConfirmDialog === 'function') {
+      return await window.showConfirmDialog(msg, opts);
+    }
+    if (typeof window.showCustomConfirm === 'function') {
+      return new Promise(resolve => {
+        window.showCustomConfirm(msg, () => resolve(true), Object.assign({}, opts, { onCancel: () => resolve(false) }));
+      });
+    }
+    return false;
+  }
+
+  window.triggerManualSync = async function(btn) {
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Refreshing...';
+    }
+    showUiAlert('Refreshing Health Card claims...', 'info', 'Synchronizing');
+    setTimeout(() => window.location.reload(), 900);
+  };
+
   // Quick 1-Click Status Apply
   async function quickBatchApply(field, value) {
     const ids = getSelectedIds();
-    if (!ids.length) return alert('Please select at least one claim.');
-    if (!confirm(`Apply "${value}" to ${ids.length} selected claim(s)?`)) return;
+    if (!ids.length) return showUiAlert('Please select at least one claim.', 'warning', 'Selection Required');
+    const confirmed = await showUiConfirm(`Apply "<strong>${value}</strong>" to <strong>${ids.length}</strong> selected claim(s)?`, {
+      title: 'Confirm Batch Status Update',
+      btnText: 'Apply Status',
+      type: 'info'
+    });
+    if (!confirmed) return;
 
     try {
       const res = await fetch('/healthcard/bulk-update', {
@@ -774,16 +816,16 @@
       if (data.success) {
         window.location.reload();
       } else {
-        alert('Error: ' + (data.error || 'Failed to update'));
+        showUiAlert(data.error || 'Failed to update', 'danger', 'Update Error');
       }
     } catch (err) {
-      alert('Network error: ' + err.message);
+      showUiAlert('Network error: ' + err.message, 'danger', 'Network Error');
     }
   }
 
   function exportSelectedCsv() {
     const ids = getSelectedIds();
-    if (!ids.length) return alert('Please select claims to export.');
+    if (!ids.length) return showUiAlert('Please select claims to export.', 'warning', 'Selection Required');
     window.location.href = '/healthcard/export.csv?ids=' + ids.join(',');
   }
 
@@ -857,7 +899,7 @@
     try {
       const res = await fetch('/healthcard/api/' + id);
       const data = await res.json();
-      if (!data.success || !data.record) return alert('Failed to load claim details');
+      if (!data.success || !data.record) return showUiAlert('Failed to load claim details', 'danger', 'Load Error');
 
       currentActiveRecord = data.record;
       document.getElementById('loaApprovalSub').textContent = `Patient: ${currentActiveRecord.fullName || 'N/A'} | Control #: ${currentActiveRecord.controlNo || ''} | HMO: ${currentActiveRecord.hmoProvider || 'N/A'}`;
@@ -874,7 +916,7 @@
       renderAssignedProcedures();
       document.getElementById('loaApprovalModal').style.display = 'flex';
     } catch (e) {
-      alert('Error fetching record: ' + e.message);
+      showUiAlert('Error fetching record: ' + e.message, 'danger', 'Network Error');
     }
   }
 
@@ -905,7 +947,7 @@
 
     // Prevent duplicates
     if (assignedProcedures.some(p => p.key === key)) {
-      return alert(`${label} is already in the authorized list.`);
+      return showUiAlert(`${label} is already in the authorized list.`, 'warning', 'Duplicate Procedure');
     }
 
     // Default procedure pricing from catalog attribute
@@ -929,7 +971,7 @@
   function addCustomProcedure() {
     const input = document.getElementById('customTestInput');
     const name = (input.value || '').trim();
-    if (!name) return alert('Please enter procedure / test name.');
+    if (!name) return showUiAlert('Please enter procedure / test name.', 'warning', 'Input Required');
     const key = 'custom_' + Date.now();
     assignedProcedures.push({
       key,
@@ -1019,11 +1061,11 @@
 
   function submitLoaApproval() {
     if (!assignedProcedures.length) {
-      return alert('Please add at least one authorized test procedure before approving.');
+      return showUiAlert('Please add at least one authorized test procedure before approving.', 'warning', 'Procedure Required');
     }
     const loaNum = document.getElementById('approvalLoaNumber').value;
     if (!loaNum || !loaNum.trim()) {
-      return alert('Please specify the LOA Number / Approval Code.');
+      return showUiAlert('Please specify the LOA Number / Approval Code.', 'warning', 'LOA Number Required');
     }
     document.getElementById('loaApprovalProceduresJson').value = JSON.stringify(assignedProcedures);
     document.getElementById('loaApprovalForm').submit();
@@ -1034,7 +1076,7 @@
     try {
       const res = await fetch('/healthcard/api/' + id);
       const data = await res.json();
-      if (!data.success || !data.record) return alert('Failed to load record');
+      if (!data.success || !data.record) return showUiAlert('Failed to load record', 'danger', 'Load Error');
 
       const r = data.record;
       document.getElementById('settlementRecordId').value = r.id;
@@ -1046,7 +1088,7 @@
 
       document.getElementById('settlementModal').style.display = 'flex';
     } catch (e) {
-      alert('Error: ' + e.message);
+      showUiAlert('Error: ' + e.message, 'danger', 'Network Error');
     }
   }
 
@@ -1073,17 +1115,17 @@
       if (data.success) {
         window.location.reload();
       } else {
-        alert('Error: ' + (data.error || 'Failed to update'));
+        showUiAlert(data.error || 'Failed to update', 'danger', 'Update Error');
       }
     } catch (err) {
-      alert('Network error: ' + err.message);
+      showUiAlert('Network error: ' + err.message, 'danger', 'Network Error');
     }
   }
 
   // Modal 4: Universal Batch Update
   function openUniversalBatchModal() {
     const ids = getSelectedIds();
-    if (!ids.length) return alert('Please select at least one claim.');
+    if (!ids.length) return showUiAlert('Please select at least one claim.', 'warning', 'Selection Required');
     document.getElementById('batchCountBadge').textContent = ids.length;
     document.getElementById('universalBatchModal').style.display = 'flex';
   }
@@ -1109,10 +1151,10 @@
       if (data.success) {
         window.location.reload();
       } else {
-        alert('Error: ' + (data.error || 'Failed to batch update'));
+        showUiAlert(data.error || 'Failed to batch update', 'danger', 'Batch Update Failed');
       }
     } catch (err) {
-      alert('Network error: ' + err.message);
+      showUiAlert('Network error: ' + err.message, 'danger', 'Network Error');
     }
   }
 
@@ -1121,7 +1163,7 @@
     try {
       const res = await fetch('/healthcard/api/' + id);
       const data = await res.json();
-      if (!data.success || !data.record) return alert('Failed to load claim');
+      if (!data.success || !data.record) return showUiAlert('Failed to load claim', 'danger', 'Load Error');
 
       const r = data.record;
       document.getElementById('editRecordId').value = r.id;
@@ -1136,7 +1178,7 @@
 
       document.getElementById('editHealthCardModal').style.display = 'flex';
     } catch (e) {
-      alert('Error: ' + e.message);
+      showUiAlert('Error: ' + e.message, 'danger', 'Network Error');
     }
   }
 
@@ -1166,19 +1208,25 @@
       if (data.success) {
         window.location.reload();
       } else {
-        alert('Error: ' + (data.error || 'Failed to update'));
+        showUiAlert(data.error || 'Failed to update', 'danger', 'Update Error');
       }
     } catch (err) {
-      alert('Network error: ' + err.message);
+      showUiAlert('Network error: ' + err.message, 'danger', 'Network Error');
     }
   }
 
   async function confirmDeleteHealthCard(id, controlNo, isUnlinked) {
     const promptMsg = isUnlinked
-      ? `⚠️ This Health Card (HMO) claim (${controlNo}) has NO LINKED PATIENT.\n\nAre you sure you want to delete it permanently?`
-      : `Are you sure you want to permanently delete Health Card claim (${controlNo})?`;
+      ? `This Health Card (HMO) claim <strong>(${controlNo})</strong> has <strong>NO LINKED PATIENT</strong>.<br><br>Are you sure you want to delete it permanently? This cannot be undone.`
+      : `Are you sure you want to permanently delete Health Card claim <strong>(${controlNo})</strong>?`;
 
-    if (!confirm(promptMsg)) return;
+    const confirmed = await showUiConfirm(promptMsg, {
+      title: isUnlinked ? 'Delete Unlinked Claim' : 'Confirm Deletion',
+      btnText: 'Yes, Delete',
+      type: 'danger'
+    });
+
+    if (!confirmed) return;
 
     try {
       let res = await fetch('/healthcard/' + encodeURIComponent(id), {
@@ -1203,10 +1251,10 @@
           window.location.reload();
         }
       } else {
-        alert('Failed to delete claim: ' + (data.error || 'Server error'));
+        showUiAlert(data.error || 'Server error', 'danger', 'Delete Failed');
       }
     } catch (err) {
-      alert('Error deleting claim: ' + err.message);
+      showUiAlert('Error deleting claim: ' + err.message, 'danger', 'Network Error');
     }
   }
 </script>
