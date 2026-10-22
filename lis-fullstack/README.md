@@ -1,6 +1,6 @@
-# Gezyne LIS Server (Full-Stack) v2.6.5
+# Gezyne LIS Server (Full-Stack) v3.0.0
 
-[![Version](https://img.shields.io/badge/version-2.6.5-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
+[![Version](https://img.shields.io/badge/version-3.0.0-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-green.svg?style=flat-square&logo=node.js)](https://nodejs.org/)
 [![Database](https://img.shields.io/badge/database-SQLite%20(WAL%20Enabled)-blue.svg?style=flat-square&logo=sqlite)](https://www.sqlite.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](LICENSE)
@@ -11,7 +11,21 @@ An enterprise-grade, full-stack Laboratory Information System (LIS) server built
 
 ## 📜 Version History & Release Notes
 
-### **v2.6.5 (PhilHealth Konsulta, HMO Claims, Test Packages 1–6, Ultrasound Suite, Philippine Date Standard & SQLite WAL Hardening) — Current Release**
+### **v3.0.0 (Master 17-Suite Regression Harness, 21-Analyte Chemistry Automation, Client Branding Tokens & Zero Defects) — Current Release**
+- 🧪 **Automated Chemistry Calculation Engine & Calculation Parity**:
+  - Full automatic calculation across 21 analytes including Albumin/Globulin (A/G) Ratio, eGFR CKD-EPI (2021 race-free equation), VLDL, LDL Friedewald, Non-HDL Cholesterol, Coronary Risk Index, Osmolality, Anion Gap, and Bilirubin Fractions.
+  - Zero `NaN` and zero arithmetic error safeguards across both input events and server-side worksheet processing.
+- 🎨 **Enterprise-Grade UI/UX Modernization & Design Token System**:
+  - Consistent corporate client branding palette across all 143 server EJS views, modals, cards, badges, and sidebars.
+  - FontAwesome 5 SVG icon parity for PhilHealth Konsulta (`fas fa-file-invoice-dollar`), Health Card / HMO (`fas fa-id-card-alt`), Reception Walk-in Desk (`fas fa-user-plus`), and Ultrasound Suites.
+  - High-contrast accessible typography, dynamic hover transitions, micro-animations, and verified zero CSS/layout breakages.
+- 🛡️ **Master 17-Suite Comprehensive Regression Framework**:
+  - Unified 17-suite automated test framework (`test/run-all-system-tests.js` and `test/system-regression.test.js`) covering 100% of endpoints, multi-role authentication, RBAC authorization matrix, CSRF tokens, diagnostic worksheets, offline queue, inventory, equipment QC, and PhilHealth SOAs.
+  - 100% test pass rate on fullstack server with 0 defects and 0 regressions.
+- 🤖 **GezyneBot AI Knowledge Base v3.0.0**:
+  - Upgraded knowledge base synchronization covering all 16 official user manual chapters, clinical reference panic values, and Philippine statutory updates.
+
+### **v2.6.5 (PhilHealth Konsulta, HMO Claims, Test Packages 1–6, Ultrasound Suite, Philippine Date Standard & SQLite WAL Hardening)**
 - 🏥 **PhilHealth & Health Card / HMO Claims Management (`/healthcard`)**:
   - Full PhilHealth Konsulta support covering 13 accredited primary care diagnostic procedures (CBC, Urinalysis, Fecalysis, Blood Typing, FBS, Lipid Profile, Creatinine, SGPT, Chest X-Ray, etc.).
   - PhilHealth Member PIN tracking, agency/employer identification, eligibility validation, and Statement of Account (SOA) generation.

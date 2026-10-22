@@ -1,13 +1,13 @@
-# Gezyne Laboratory Information System (LIS) v2.6.5
+# Gezyne Laboratory Information System (LIS) v3.0.0
 
-[![Version](https://img.shields.io/badge/version-2.6.5-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
+[![Version](https://img.shields.io/badge/version-3.0.0-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-green.svg?style=flat-square&logo=node.js)](https://nodejs.org/)
 [![Database](https://img.shields.io/badge/database-SQLite%20(WAL%20Enabled)-blue.svg?style=flat-square&logo=sqlite)](https://www.sqlite.org/)
 [![Electron](https://img.shields.io/badge/desktop-Electron%20v28-47848F.svg?style=flat-square&logo=electron)](https://www.electronjs.org/)
 [![Offline](https://img.shields.io/badge/offline-100%25%20Capable-success.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
 [![License](https://img.shields.io/badge/license-MIT-amber.svg?style=flat-square)](LICENSE)
 
-> **Gezyne Clinical Laboratory - Laboratory Information System (LIS) v2.6.5** is an enterprise-grade clinical diagnostic and laboratory management platform. It pairs a centralized full-stack Node.js/Express server with 100% offline-capable standalone desktop workstations, multi-station patient processing pipelines, real-time telemetry, AI clinical assistant with live web search, outpatient clinical consultation management, human resources & payroll, cost-per-test economics, Levey-Jennings QC & NEQAS proficiency testing, and robust SQLite WAL backups.
+> **Gezyne Clinical Laboratory - Laboratory Information System (LIS) v3.0.0** is an enterprise-grade clinical diagnostic and laboratory management platform. It pairs a centralized full-stack Node.js/Express server with 100% offline-capable standalone desktop workstations, multi-station patient processing pipelines, real-time telemetry, AI clinical assistant with live web search, outpatient clinical consultation management, human resources & payroll, cost-per-test economics, Levey-Jennings QC & NEQAS proficiency testing, and robust SQLite WAL backups.
 
 ---
 
@@ -15,10 +15,10 @@
 
 ```
 .
-├── README.md                  # Central system documentation (v2.6.5)
+├── README.md                  # Central system documentation (v3.0.0)
 ├── ads.json                   # Kiosk announcement configuration
 │
-├── lis-fullstack/             # Central LIS Server & Electron Tray Launcher (v2.6.5)
+├── lis-fullstack/             # Central LIS Server & Electron Tray Launcher (v3.0.0)
 │   ├── build/                 # Bundled installer resources & seed data
 │   ├── dist/                  # Packaged standalone executable (via pkg)
 │   ├── lib/                   # SQLite database adapter (better-sqlite3), tokens, PDF engine, payroll/tax calculators
@@ -30,15 +30,15 @@
 │   ├── views/                 # Responsive EJS views, layouts & print templates
 │   └── server.js              # Central LIS Server entrypoint
 │
-├── lis-app-standalone/        # Local-First Standalone Desktop Client (Electron) (v2.6.5)
+├── lis-app-standalone/        # Local-First Standalone Desktop Client (Electron) (v3.0.0)
 │   ├── lib/                   # Local Express engine, sync engine, network monitor & SQLite queue
 │   ├── models/                # Local SQLite models with offline support
 │   ├── renderer/              # Desktop modals, status banners & print preview
 │   ├── views/                 # Full local UI with auto-hidden sidebars on small screens
 │   └── main.js                # Electron main process & child window manager
 │
-├── lis-rag-service/           # ChromaDB Vector Store & Live DuckDuckGo Web-Augmented RAG Microservice (v2.6.5)
-├── lis-mobile/                # Mobile companion application (Cordova/Capacitor) (v2.6.5)
+├── lis-rag-service/           # ChromaDB Vector Store & Live DuckDuckGo Web-Augmented RAG Microservice (v3.0.0)
+├── lis-mobile/                # Mobile companion application (Cordova/Capacitor) (v3.0.0)
 ├── lis-angular/               # Alternative Angular single-page frontend
 └── test/                      # Comprehensive integration, offline, inventory & sync test suites
 ```
@@ -47,7 +47,21 @@
 
 ## 📜 Version History & Release Notes
 
-### **v2.6.5 (PhilHealth Konsulta, HMO Claims, Test Packages 1–6, Ultrasound Suite, Philippine Date Standard & SQLite WAL Hardening) — Current Release**
+### **v3.0.0 (Master 17-Suite Regression Harness, 21-Analyte Chemistry Automation, Client Branding Tokens & Zero Defects) — Current Release**
+- 🧪 **Automated Chemistry Calculation Engine & Calculation Parity**:
+  - Full automatic calculation across 21 analytes including Albumin/Globulin (A/G) Ratio, eGFR CKD-EPI (2021 race-free equation), VLDL, LDL Friedewald, Non-HDL Cholesterol, Coronary Risk Index, Osmolality, Anion Gap, and Bilirubin Fractions.
+  - Zero `NaN` and zero arithmetic error safeguards across both input events and server-side worksheet processing.
+- 🎨 **Enterprise-Grade UI/UX Modernization & Design Token System**:
+  - Consistent corporate client branding palette across all 286 EJS views, modals, cards, badges, and sidebars.
+  - FontAwesome 5 SVG icon parity for PhilHealth Konsulta (`fas fa-file-invoice-dollar`), Health Card / HMO (`fas fa-id-card-alt`), Reception Walk-in Desk (`fas fa-user-plus`), and Ultrasound Suites.
+  - High-contrast accessible typography, dynamic hover transitions, micro-animations, and verified zero CSS/layout breakages.
+- 🛡️ **Master 17-Suite Comprehensive Regression Framework**:
+  - Unified 17-suite automated test framework (`test/run-all-system-tests.js` and `test/system-regression.test.js`) covering 100% of endpoints, multi-role authentication, RBAC authorization matrix, CSRF tokens, diagnostic worksheets, offline queue, inventory, equipment QC, and PhilHealth SOAs.
+  - 100% test pass rate across both Fullstack Central Server and Standalone Offline Workstations.
+- 🤖 **GezyneBot AI Knowledge Base v3.0.0**:
+  - Upgraded knowledge base synchronization across Fullstack Server, Standalone Desktop, and System Tray runtimes covering all 16 official user manual chapters, clinical reference panic values, and Philippine statutory updates.
+
+### **v2.6.5 (PhilHealth Konsulta, HMO Claims, Test Packages 1–6, Ultrasound Suite, Philippine Date Standard & SQLite WAL Hardening)**
 - 🏥 **PhilHealth & Health Card / HMO Claims Management (`/healthcard`)**:
   - Full PhilHealth Konsulta support covering 13 accredited primary care diagnostic procedures (CBC, Urinalysis, Fecalysis, Blood Typing, FBS, Lipid Profile, Creatinine, SGPT, Chest X-Ray, etc.).
   - PhilHealth Member PIN tracking, agency/employer identification, eligibility validation, and Statement of Account (SOA) generation.
@@ -293,9 +307,9 @@ The desktop client runs an embedded local engine on `http://127.0.0.1:30099` wit
 
 ---
 
-## 📦 Packaging Windows Installers (v2.6.4)
+## 📦 Packaging Windows Installers (v3.0.0)
 
-### 1. Build Central Server Installer (`Gezyne LIS Server Setup 2.6.4.exe`)
+### 1. Build Central Server Installer (`Gezyne LIS Server Setup 3.0.0.exe`)
 
 ```powershell
 cd lis-fullstack
@@ -306,16 +320,16 @@ cd tray
 npm install
 npm run dist:win
 ```
-*Output: `lis-fullstack/tray/dist/Gezyne LIS Server Setup 2.6.4.exe`*
+*Output: `lis-fullstack/tray/dist/Gezyne LIS Server Setup 3.0.0.exe`*
 
-### 2. Build Standalone Client Installer (`Gezyne LIS Setup 2.6.4.exe`)
+### 2. Build Standalone Client Installer (`Gezyne LIS Setup 3.0.0.exe`)
 
 ```powershell
 cd lis-app-standalone
 npm install
 npm run dist:win
 ```
-*Output: `lis-app-standalone/dist/Gezyne LIS Setup 2.6.4.exe`*
+*Output: `lis-app-standalone/dist/Gezyne LIS Setup 3.0.0.exe`*
 
 ---
 

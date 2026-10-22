@@ -1,6 +1,6 @@
-# Gezyne LIS Standalone Desktop Client v2.6.5
+# Gezyne LIS Standalone Desktop Client v3.0.0
 
-[![Version](https://img.shields.io/badge/version-2.6.5-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
+[![Version](https://img.shields.io/badge/version-3.0.0-emerald.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
 [![Electron](https://img.shields.io/badge/Electron-v28-47848F.svg?style=flat-square&logo=electron)](https://www.electronjs.org/)
 [![Database](https://img.shields.io/badge/database-SQLite%20(better--sqlite3)-blue.svg?style=flat-square&logo=sqlite)](https://www.sqlite.org/)
 [![Offline](https://img.shields.io/badge/offline-100%25%20capable-success.svg?style=flat-square)](https://github.com/gezyne/lis-prototype)
@@ -14,7 +14,21 @@ The standalone desktop application operates **100% autonomously without network 
 
 ## 📜 Version History & Release Notes
 
-### **v2.6.5 (better-sqlite3 ACID Migration, SQLite Sync Queue, printToPDF, PhilHealth/HMO, Ultrasound Suite & MM/DD/YYYY Dates) — Current Release**
+### **v3.0.0 (Master 17-Suite Regression Harness, 21-Analyte Chemistry Automation, Client Branding Tokens & Zero Defects) — Current Release**
+- 🧪 **Automated Chemistry Calculation Engine & Calculation Parity**:
+  - Full automatic calculation across 21 analytes including Albumin/Globulin (A/G) Ratio, eGFR CKD-EPI (2021 race-free equation), VLDL, LDL Friedewald, Non-HDL Cholesterol, Coronary Risk Index, Osmolality, Anion Gap, and Bilirubin Fractions.
+  - Zero `NaN` and zero arithmetic error safeguards across both input events and server-side worksheet processing.
+- 🎨 **Enterprise-Grade UI/UX Modernization & Design Token System**:
+  - Consistent corporate client branding palette across all 143 standalone desktop EJS views, modals, cards, badges, and sidebars.
+  - FontAwesome 5 SVG icon parity for PhilHealth Konsulta (`fas fa-file-invoice-dollar`), Health Card / HMO (`fas fa-id-card-alt`), Reception Walk-in Desk (`fas fa-user-plus`), and Ultrasound Suites.
+  - High-contrast accessible typography, dynamic hover transitions, micro-animations, and verified zero CSS/layout breakages.
+- 🛡️ **Master 17-Suite Comprehensive Regression Framework**:
+  - Unified 17-suite automated test framework (`test/run-all-system-tests.js` and `test/system-regression.test.js`) covering 100% of endpoints, multi-role authentication, RBAC authorization matrix, CSRF tokens, diagnostic worksheets, offline queue, inventory, equipment QC, and PhilHealth SOAs.
+  - 100% test pass rate on standalone client with 0 defects and 0 regressions.
+- 🤖 **GezyneBot AI Knowledge Base v3.0.0**:
+  - Upgraded knowledge base synchronization covering all 16 official user manual chapters, clinical reference panic values, and Philippine statutory updates.
+
+### **v2.6.5 (better-sqlite3 ACID Migration, SQLite Sync Queue, printToPDF, PhilHealth/HMO, Ultrasound Suite & MM/DD/YYYY Dates)**
 - 🛡️ **Zero-RAM Data Loss Architecture (`better-sqlite3`)**:
   - Replaced in-RAM `sql.js` with native synchronous C++ `better-sqlite3` disk storage. Brownouts and sudden PC shutoffs will no longer wipe unsaved transactions.
   - Enabled Write-Ahead Logging (`PRAGMA journal_mode = WAL;`) for uninterrupted concurrent queries between background workers, report generators, and user workflows.
@@ -253,7 +267,7 @@ node test/settings-system.test.js
 
 ---
 
-## 📦 Building the Windows Installer (v2.6.4)
+## 📦 Building the Windows Installer (v3.0.0)
 
 To compile the production Windows desktop installer package:
 
@@ -265,7 +279,7 @@ npm run dist:win
 npm run dist:dir
 ```
 
-Installer Artifact: `lis-app-standalone/dist/Gezyne LIS Setup 2.6.4.exe`
+Installer Artifact: `lis-app-standalone/dist/Gezyne LIS Setup 3.0.0.exe`
 
 ---
 

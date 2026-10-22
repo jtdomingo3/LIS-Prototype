@@ -59,6 +59,15 @@ async function run() {
     try { fs.unlinkSync(nativeNodeDest); } catch (_) {}
   }
 
+  // Embed icon into executable
+  console.log('Embedding icon into executable with rcedit...');
+  try {
+    await rcedit(exePath, { icon: icoPath });
+    console.log('Embedded ICO into', exePath);
+  } catch (e) {
+    console.warn('rcedit warning (non-fatal):', e.message);
+  }
+
   console.log('Executable build completed successfully.');
 }
 

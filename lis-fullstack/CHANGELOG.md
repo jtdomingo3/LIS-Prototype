@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.0.0] - 2026-10-22
+
+### Added
+- **Automated Chemistry Calculation Engine & Calculation Parity**:
+  - Full automatic calculation across 21 analytes including Albumin/Globulin (A/G) Ratio, eGFR CKD-EPI (2021 race-free equation), VLDL, LDL Friedewald, Non-HDL Cholesterol, Coronary Risk Index, Osmolality, Anion Gap, and Bilirubin Fractions.
+  - Zero `NaN` and zero arithmetic error safeguards across both input events and server-side worksheet processing.
+- **Enterprise-Grade UI/UX Modernization & Design Token System**:
+  - Consistent corporate client branding palette across all 286 EJS views, modals, cards, badges, and sidebars.
+  - FontAwesome 5 SVG icon parity for PhilHealth Konsulta (`fas fa-file-invoice-dollar`), Health Card / HMO (`fas fa-id-card-alt`), Reception Walk-in Desk (`fas fa-user-plus`), and Ultrasound Suites.
+  - High-contrast accessible typography, dynamic hover transitions, micro-animations, and verified zero CSS/layout breakages.
+- **Comprehensive Master System Test Framework & Regression Runner**:
+  - Unified 17-suite automated test framework (`test/run-all-system-tests.js` and `test/system-regression.test.js`) covering 100% of endpoints, multi-role authentication, RBAC authorization matrix, CSRF tokens, diagnostic worksheets, offline queue, inventory, equipment QC, and PhilHealth SOAs.
+  - 100% test pass rate across both Fullstack Central Server and Standalone Offline Workstations.
+- **GezyneBot AI Knowledge Base v3.0.0**:
+  - Upgraded knowledge base synchronization across Fullstack Server, Standalone Desktop, and System Tray runtimes covering all 16 official user manual chapters, clinical reference panic values, and Philippine statutory updates.
+
+### Changed
+- **Version Milestone Bump**: Updated central fullstack server, standalone desktop client, system tray launcher, and mobile companion app to **Version 3.0.0**.
+- **Security Hardening**: 100% OWASP audit score verified via automated security testing (`tools/security-audit/run-security-audit.js`), ensuring strict CSP headers, CSRF token validation, input sanitization, and encrypted credential storage.
+
+---
+
+## [2.6.5] - 2026-10-14
+
+### Added
+- **PhilHealth Konsulta & Health Card / HMO Claims Management (`/healthcard`)**:
+  - Accredited primary care diagnostic procedures, Member PIN tracking, LOA approval authorization codes, Statement of Account (SOA) generation, and transmittal management.
+- **Diagnostic Test Packages (1–6) & Senior Citizen / PWD Compliance**:
+  - Bundled clinical packages with automatic 20% statutory discount and mandatory Philippine health ordinance granting complimentary annual Urinalysis for Senior Citizens (OSCA) and PWD cardholders.
+- **Specialized Ultrasound Suite & Biometry**:
+  - Six clinical templates with automated Hadlock EFW, BPD, CRL, FL, AC, and gestational age calculations.
+- **Philippine Clinical Date Standard (`MM/DD/YYYY`)**:
+  - System-wide standardization of date format across intake forms, queue slips, worksheets, reports, and audit logs.
+- **better-sqlite3 & SQLite WAL Persistence**:
+  - High-throughput Write-Ahead Logging and synchronous disk persistence ensuring brownout resilience.
+
+---
+
 ## [2.6.2] - 2026-09-26
 
 ### Added

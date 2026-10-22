@@ -1,5 +1,5 @@
 # Gezyne Clinical Laboratory Information System (LIS)
-## Staff & User Operation Manual (Version 2.6.5)
+## Staff & User Operation Manual (Version 3.0.0)
 
 Welcome to the **Gezyne LIS User Guide**. This manual is designed for laboratory staff, medical technologists, receptionists, encoders, clinic nurses, billing officers, quality assurance managers, and attending physicians. It provides comprehensive, step-by-step instructions on which menu items to select, buttons to click, and workflows to follow to operate the system smoothly.
 
@@ -352,4 +352,4 @@ $$\textbf{MM/DD/YYYY} \quad (\text{Month/Day/Year})$$
 * This eliminates clinical ambiguity and ensures full compliance across all DOH licensing audits and PhilHealth transmittals.
 
 ---
-*End of Gezyne LIS Staff & User Operation Manual (v2.6.5)*
+*End of Gezyne LIS Staff & User Operation Manual (v3.0.0)*

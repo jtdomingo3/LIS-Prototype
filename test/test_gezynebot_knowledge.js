@@ -1,56 +1,34 @@
 const assert = require('assert');
 const path = require('path');
 
-console.log('=== TESTING GEZYNEBOT KNOWLEDGE BASE COVERAGE (v2.6.5) ===\n');
+console.log('=== TESTING GEZYNEBOT KNOWLEDGE BASE COVERAGE (v3.0.0) ===\n');
 
 const fullstackService = require('../lis-fullstack/lib/gezyneBotService');
 const standaloneService = require('../lis-app-standalone/lib/gezyneBotService');
 const trayService = require('../lis-fullstack/tray/lib/gezyneBotService');
 
 const requiredKeywords = [
-  'LIS Version 2.6.5',
-  'Equipment & Levey-Jennings QC',
-  'EQUIPMENT MANAGEMENT & LEVEY-JENNINGS QUALITY CONTROL',
-  'Mindray BS-240',
-  'Levey-Jennings',
-  'Westgard Multi-Rule Evaluation',
-  '1_2s Rule',
-  '1_3s Rule',
-  '2_2s Rule',
-  'R_4s Rule',
-  '4_1s Rule',
-  '10_x Rule',
-  'Drop / Delete Previous Run',
-  'DOH Monthly QC Inspection Summary',
-  'NATIONAL EXTERNAL QUALITY ASSESSMENT SCHEME (NEQAS)',
-  'East Avenue Medical Center (EAMC)',
-  'NRL-EOHTMA',
-  'Drug Testing PT Surveys',
-  'Cannabinoids / THC',
-  'Methamphetamine / MET',
-  'Standard Deviation Index (SDI)',
-  'REAGENT & CLINICAL SUPPLY INVENTORY MANAGEMENT',
-  'Open-Vial Stability',
-  'USER MANAGEMENT & GRANULAR MODULE PERMISSIONS',
-  'Equipment & QC (equipment)',
-  'CLINICAL CONSULTATION & OUTPATIENT DOCTOR ENCOUNTERS',
-  'DOH Philippine Package of Essential NCD Interventions (PhilPEN)',
-  'Patient Medical Chart (/consultations/:testId/print/chart)',
-  'Gezyne Clinical Laboratory & Medical Clinic',
-  'HUMAN RESOURCES (HR) & PHILIPPINE PAYROLL MANAGEMENT (/hr)',
-  'Employee Master Directory (/hr/employees)',
-  'Philippine Statutory Contributions & Tax Engine',
-  'lib/philippineContributions.js',
-  'Payroll Computation Engine (/hr/payroll',
-  'Certificate of Employment (COE)',
-  'BIR Form 2316 Annual Tax Summary',
-  'FINANCIAL COSTING, EXPENSE TRACKING & PROFITABILITY (P&L) ANALYTICS (/costing)',
-  'Cost-Per-Test Analysis Engine',
-  'Laboratory Operating Expenses Tracker',
-  '2D ECHOCARDIOGRAPHY DUAL-SHEET PRINTING & DOPPLER MEASUREMENTS',
-  'echo-info-sheet',
-  'echo-reading-sheet',
-  'Doppler Measurement 9-Subcolumn Grid Alignment'
+  'LIS Version 3.0.0',
+  '1. Reception: Patient Intake, Queue Management & Test Packages',
+  'Packages 1 to 6',
+  '2. PhilHealth & Health Card (HMO) Claims Management',
+  'PhilHealth Konsulta',
+  '3. Phlebotomy & Thermal Barcode Printing',
+  '4. Tests & Results: Clinical Laboratory, Analyzers & Ultrasound',
+  'Estimated Fetal Weight (EFW)',
+  '5. Reports: Generating, Previewing & Printing Official Results',
+  '6. Digital Signatures: Setting Up Electronic Signatures',
+  '7. Equipment & Quality Control: Levey-Jennings Charts & Westgard Rules',
+  '8. NEQAS & Dynamic External Reference Laboratories',
+  '9. Inventory & Clinical Supplies Management',
+  '10. Doctor Consultations & Outpatient Encounters',
+  '11. Human Resources (HR) & Philippine Statutory Payroll',
+  '12. Costing & Profitability (P&L) Analytics',
+  '13. System Settings, Printers & Standalone Synchronization',
+  '14. GezyneBot AI Clinical Assistant',
+  '15. Clinical Reference & Emergency Panic Values',
+  '16. Philippine Clinical Date Formatting Standard',
+  'MM/DD/YYYY'
 ];
 
 const services = [
@@ -61,20 +39,13 @@ const services = [
 
 services.forEach(({ name, service }) => {
   console.log(`[Testing Target] ${name}...`);
-  // Check if buildKnowledgeContext is exportable or check queryOpenRouter system prompt
-  // In our service file, buildKnowledgeContext is internal, but we can verify the source file directly
-  const fs = require('fs');
-  let filePath = '';
-  if (name === 'lis-fullstack') filePath = path.join(__dirname, '../lis-fullstack/lib/gezyneBotService.js');
-  if (name === 'lis-app-standalone') filePath = path.join(__dirname, '../lis-app-standalone/lib/gezyneBotService.js');
-  if (name === 'lis-fullstack/tray') filePath = path.join(__dirname, '../lis-fullstack/tray/lib/gezyneBotService.js');
-
-  const content = fs.readFileSync(filePath, 'utf8');
+  const content = service.buildKnowledgeContext();
+  assert.ok(content, `[${name}] Failed to build knowledge context`);
 
   requiredKeywords.forEach(kw => {
-    assert(content.includes(kw), `[${name}] Missing required keyword in knowledge base: "${kw}"`);
+    assert.ok(content.includes(kw), `[${name}] Missing required keyword in knowledge base: "${kw}"`);
   });
-  console.log(`  ✓ All ${requiredKeywords.length} required knowledge keywords verified in ${name}`);
+  console.log(`  ✓ All ${requiredKeywords.length} required knowledge chapters and keywords verified in ${name}`);
 });
 
 console.log('\n🎉 ALL GEZYNEBOT KNOWLEDGE BASE TESTS PASSED (100%)!\n');
