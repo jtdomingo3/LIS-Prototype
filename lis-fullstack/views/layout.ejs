@@ -1310,7 +1310,7 @@
             <% } %>
             <% } %>
             <% if ((sessionUser.role === 'Admin' || perms.users) && (!featureFlags || featureFlags.users)) { %>
-            <a href="/users" class="nav-item <%= title.includes('User') ? 'active' : '' %>" title="User Management">
+            <a href="/users" class="nav-item <%= (typeof title !== 'undefined' && title && (title.includes('User') || title.includes('Profile')) && !title.includes('Manual') && !title.includes('Guide')) ? 'active' : '' %>" title="User Management">
                 <span class="nav-icon"><i class="fas fa-user-shield"></i></span>
                 <span class="nav-text">User Accounts</span>
             </a>
