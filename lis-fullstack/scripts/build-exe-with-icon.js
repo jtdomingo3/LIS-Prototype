@@ -59,19 +59,12 @@ async function run() {
     try { fs.unlinkSync(nativeNodeDest); } catch (_) {}
   }
 
-  // Embed icon into executable
-  console.log('Embedding icon into executable with rcedit...');
-  try {
-    await new Promise((resolve, reject) => {
-      rcedit(exePath, { icon: icoPath }, (err) => {
-        if (err) return reject(err);
-        resolve();
-      });
-    });
-    console.log('Embedded ICO into', exePath);
-  } catch (e) {
-    console.warn('rcedit warning (non-fatal):', e && e.message || e);
-  }
+  // NOTE: DO NOT run rcedit on the pkg-generated executable.
+  // rcedit modifies the PE header and strips/corrupts the trailing snapshot payload
+  // embedded by pkg, shrinking the executable to ~36MB and causing
+  // "Pkg: Error reading from file." on startup.
+  // Executable icon is provided by the Tray launcher and electron-builder.
+  console.log('Skipping rcedit on pkg executable to preserve pkg snapshot integrity.');
 
   console.log('Executable build completed successfully.');
 }
