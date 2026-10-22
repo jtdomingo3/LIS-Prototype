@@ -120,14 +120,15 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
     if (searchQuery) {
       const s = searchQuery.toLowerCase().trim();
       records = records.filter(r => {
-        const full = `${r.firstName} ${r.middleName} ${r.lastName}`.toLowerCase();
+        const full = (r.fullName || [r.firstName, r.middleName, r.lastName].filter(Boolean).join(' ')).toLowerCase();
+        const rev = [r.lastName, r.firstName].filter(Boolean).join(', ').toLowerCase();
         const ctrl = String(r.controlNo || '').toLowerCase();
         const hmo = String(r.hmoProvider || '').toLowerCase();
         const card = String(r.cardNumber || '').toLowerCase();
         const loa = String(r.loaNumber || '').toLowerCase();
         const comp = String(r.company || '').toLowerCase();
         const diag = String(r.diagnosis || '').toLowerCase();
-        return full.includes(s) || ctrl.includes(s) || hmo.includes(s) || card.includes(s) || loa.includes(s) || comp.includes(s) || diag.includes(s);
+        return full.includes(s) || rev.includes(s) || ctrl.includes(s) || hmo.includes(s) || card.includes(s) || loa.includes(s) || comp.includes(s) || diag.includes(s);
       });
     }
 
@@ -739,13 +740,14 @@ router.get('/export.csv', requireAuth, canAccessPatient, async (req, res) => {
       if (search) {
         const s = search.toLowerCase().trim();
         records = records.filter(r => {
-          const full = `${r.firstName} ${r.middleName} ${r.lastName}`.toLowerCase();
+          const full = (r.fullName || [r.firstName, r.middleName, r.lastName].filter(Boolean).join(' ')).toLowerCase();
+          const rev = [r.lastName, r.firstName].filter(Boolean).join(', ').toLowerCase();
           const ctrl = String(r.controlNo || '').toLowerCase();
           const prov = String(r.hmoProvider || '').toLowerCase();
           const card = String(r.cardNumber || '').toLowerCase();
           const loa = String(r.loaNumber || '').toLowerCase();
           const comp = String(r.company || '').toLowerCase();
-          return full.includes(s) || ctrl.includes(s) || prov.includes(s) || card.includes(s) || loa.includes(s) || comp.includes(s);
+          return full.includes(s) || rev.includes(s) || ctrl.includes(s) || prov.includes(s) || card.includes(s) || loa.includes(s) || comp.includes(s);
         });
       }
       if (hmo) {

@@ -215,7 +215,7 @@
 
               <!-- Name -->
               <td style="padding: 10px 12px; font-weight: 600; color: #0f172a; min-width: 220px; white-space: nowrap;">
-                <div><%= r.fullName || `${r.firstName} ${r.lastName}` %></div>
+                <div><%= r.fullName || [r.firstName, r.middleName, r.lastName].filter(Boolean).join(' ') || 'Unnamed' %></div>
                 <% if (!r.hasLinkedPatient) { %>
                   <div style="margin-top: 4px;">
                     <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; font-size: 0.73em; font-weight: 700; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; border-radius: 4px;" title="This entry is not linked to any registered patient record">
@@ -758,7 +758,7 @@
   const recordsData = <%- JSON.stringify(records.map(r => ({
     id: r.id,
     controlNo: r.controlNo,
-    fullName: r.fullName,
+    fullName: r.fullName || [r.firstName, r.middleName, r.lastName].filter(Boolean).join(' ') || 'Unnamed',
     pinNo: r.pinNo,
     agency: r.agency,
     pcuError: r.pcuError,

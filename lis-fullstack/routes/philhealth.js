@@ -94,12 +94,13 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
     if (searchQuery) {
       const s = searchQuery.toLowerCase().trim();
       records = records.filter(r => {
-        const full = `${r.firstName} ${r.middleName} ${r.lastName}`.toLowerCase();
+        const full = (r.fullName || [r.firstName, r.middleName, r.lastName].filter(Boolean).join(' ')).toLowerCase();
+        const rev = [r.lastName, r.firstName].filter(Boolean).join(', ').toLowerCase();
         const ctrl = String(r.controlNo || '').toLowerCase();
         const pin = String(r.pinNo || '').toLowerCase();
         const ag = String(r.agency || '').toLowerCase();
         const pcu = String(r.pcuError || '').toLowerCase();
-        return full.includes(s) || ctrl.includes(s) || pin.includes(s) || ag.includes(s) || pcu.includes(s);
+        return full.includes(s) || rev.includes(s) || ctrl.includes(s) || pin.includes(s) || ag.includes(s) || pcu.includes(s);
       });
     }
 
@@ -209,8 +210,14 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
 
     if (patient) {
       patient.philhealthConsent = true;
-      if (pinNo) patient.philhealthId = pinNo;
-      if (agency) patient.philhealthAgency = agency;
+      if (pinNo) {
+        patient.philhealthId = pinNo;
+        patient.philhealthNumber = pinNo;
+      }
+      if (agency) {
+        patient.philhealthAgency = agency;
+        patient.company = agency;
+      }
       await patient.save();
     }
 
@@ -729,12 +736,13 @@ router.get('/export.csv', requireAuth, canAccessPatient, async (req, res) => {
       if (search) {
         const s = search.toLowerCase().trim();
         records = records.filter(r => {
-          const full = `${r.firstName} ${r.middleName} ${r.lastName}`.toLowerCase();
+          const full = (r.fullName || [r.firstName, r.middleName, r.lastName].filter(Boolean).join(' ')).toLowerCase();
+          const rev = [r.lastName, r.firstName].filter(Boolean).join(', ').toLowerCase();
           const ctrl = String(r.controlNo || '').toLowerCase();
           const pin = String(r.pinNo || '').toLowerCase();
           const ag = String(r.agency || '').toLowerCase();
           const pcu = String(r.pcuError || '').toLowerCase();
-          return full.includes(s) || ctrl.includes(s) || pin.includes(s) || ag.includes(s) || pcu.includes(s);
+          return full.includes(s) || rev.includes(s) || ctrl.includes(s) || pin.includes(s) || ag.includes(s) || pcu.includes(s);
         });
       }
       if (dateFrom) {
