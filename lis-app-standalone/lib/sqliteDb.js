@@ -4940,7 +4940,7 @@ function createSqlJsDb(SQL, dbPath) {
     // PhilHealth Records (sql.js)
     getPhilhealthRecords(query) {
       try {
-        let rows = parseAll(queryAll('SELECT json FROM philhealth_records ORDER BY createdAt DESC'));
+        let rows = parseRows(queryAll('SELECT json FROM philhealth_records ORDER BY createdAt DESC'));
         if (query && typeof query === 'object') {
           if (query.status) rows = rows.filter(r => r.status === query.status);
           if (query.patientId) rows = rows.filter(r => r.patientId === query.patientId);
@@ -4949,26 +4949,29 @@ function createSqlJsDb(SQL, dbPath) {
           if (query.tranche2Paid) rows = rows.filter(r => r.tranche2Paid === query.tranche2Paid);
         }
         return rows;
-      } catch (e) { return []; }
+      } catch (e) {
+        console.error('[sqliteDb sql.js] getPhilhealthRecords error:', e.message);
+        return [];
+      }
     },
     getPhilhealthRecordById(id) {
       if (!id) return null;
       try {
-        const row = queryOne('SELECT json FROM philhealth_records WHERE id = ?', [id]);
-        return row && row.json ? JSON.parse(row.json) : null;
+        const rows = queryAll('SELECT json FROM philhealth_records WHERE id = ?', [id]);
+        return rows.length && rows[0].json ? JSON.parse(rows[0].json) : null;
       } catch (e) { return null; }
     },
     getPhilhealthRecordByControlNo(controlNo) {
       if (!controlNo) return null;
       try {
-        const row = queryOne('SELECT json FROM philhealth_records WHERE controlNo = ?', [controlNo]);
-        return row && row.json ? JSON.parse(row.json) : null;
+        const rows = queryAll('SELECT json FROM philhealth_records WHERE controlNo = ?', [controlNo]);
+        return rows.length && rows[0].json ? JSON.parse(rows[0].json) : null;
       } catch (e) { return null; }
     },
     getPhilhealthRecordsByPatientId(patientId) {
       if (!patientId) return [];
       try {
-        return parseAll(queryAll('SELECT json FROM philhealth_records WHERE patientId = ? ORDER BY createdAt DESC', [patientId]));
+        return parseRows(queryAll('SELECT json FROM philhealth_records WHERE patientId = ? ORDER BY createdAt DESC', [patientId]));
       } catch (e) { return []; }
     },
     savePhilhealthRecord(record) {
@@ -5021,7 +5024,7 @@ function createSqlJsDb(SQL, dbPath) {
     // sql.js Health Card (HMO) Records Methods
     getHealthCardRecords(query) {
       try {
-        let rows = parseAll(queryAll('SELECT json FROM healthcard_records ORDER BY createdAt DESC'));
+        let rows = parseRows(queryAll('SELECT json FROM healthcard_records ORDER BY createdAt DESC'));
         if (query && typeof query === 'object') {
           if (query.status) rows = rows.filter(r => r.status === query.status);
           if (query.patientId) rows = rows.filter(r => r.patientId === query.patientId);
@@ -5030,26 +5033,29 @@ function createSqlJsDb(SQL, dbPath) {
           if (query.loaNumber) rows = rows.filter(r => r.loaNumber === query.loaNumber);
         }
         return rows;
-      } catch (e) { return []; }
+      } catch (e) {
+        console.error('[sqliteDb sql.js] getHealthCardRecords error:', e.message);
+        return [];
+      }
     },
     getHealthCardRecordById(id) {
       if (!id) return null;
       try {
-        const row = queryOne('SELECT json FROM healthcard_records WHERE id = ?', [id]);
-        return row && row.json ? JSON.parse(row.json) : null;
+        const rows = queryAll('SELECT json FROM healthcard_records WHERE id = ?', [id]);
+        return rows.length && rows[0].json ? JSON.parse(rows[0].json) : null;
       } catch (e) { return null; }
     },
     getHealthCardRecordByControlNo(controlNo) {
       if (!controlNo) return null;
       try {
-        const row = queryOne('SELECT json FROM healthcard_records WHERE controlNo = ?', [controlNo]);
-        return row && row.json ? JSON.parse(row.json) : null;
+        const rows = queryAll('SELECT json FROM healthcard_records WHERE controlNo = ?', [controlNo]);
+        return rows.length && rows[0].json ? JSON.parse(rows[0].json) : null;
       } catch (e) { return null; }
     },
     getHealthCardRecordsByPatientId(patientId) {
       if (!patientId) return [];
       try {
-        return parseAll(queryAll('SELECT json FROM healthcard_records WHERE patientId = ? ORDER BY createdAt DESC', [patientId]));
+        return parseRows(queryAll('SELECT json FROM healthcard_records WHERE patientId = ? ORDER BY createdAt DESC', [patientId]));
       } catch (e) { return []; }
     },
     saveHealthCardRecord(record) {
