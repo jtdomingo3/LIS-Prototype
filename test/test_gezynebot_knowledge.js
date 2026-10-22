@@ -1,14 +1,14 @@
 const assert = require('assert');
 const path = require('path');
 
-console.log('=== TESTING GEZYNEBOT KNOWLEDGE BASE COVERAGE (v2.6.2) ===\n');
+console.log('=== TESTING GEZYNEBOT KNOWLEDGE BASE COVERAGE (v2.6.5) ===\n');
 
 const fullstackService = require('../lis-fullstack/lib/gezyneBotService');
 const standaloneService = require('../lis-app-standalone/lib/gezyneBotService');
 const trayService = require('../lis-fullstack/tray/lib/gezyneBotService');
 
 const requiredKeywords = [
-  'LIS Version 2.6.2',
+  'LIS Version 2.6.5',
   'Equipment & Levey-Jennings QC',
   'EQUIPMENT MANAGEMENT & LEVEY-JENNINGS QUALITY CONTROL',
   'Mindray BS-240',

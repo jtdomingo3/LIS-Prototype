@@ -1,10 +1,12 @@
 const fs = require('fs');
+const path = require('path');
 
+const rootDir = path.join(__dirname, '..');
 const files = [
-  './lis-fullstack/views/chatbot/index.ejs',
-  './lis-app-standalone/views/chatbot/index.ejs',
-  './lis-fullstack/views/partials/gezynebot-widget.ejs',
-  './lis-app-standalone/views/partials/gezynebot-widget.ejs'
+  path.join(rootDir, 'lis-fullstack/views/chatbot/index.ejs'),
+  path.join(rootDir, 'lis-app-standalone/views/chatbot/index.ejs'),
+  path.join(rootDir, 'lis-fullstack/views/partials/gezynebot-widget.ejs'),
+  path.join(rootDir, 'lis-app-standalone/views/partials/gezynebot-widget.ejs')
 ];
 
 let allPassed = true;

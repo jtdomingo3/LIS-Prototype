@@ -20,7 +20,9 @@
         "test:equipment": "node ../test/equipment-backend.test.js",
         "test:lj-signatories": "node ../test/test_lj_signatories.js",
         "seed:equipment": "node ../test/seed_equipment_data.js",
-        "test": "node ../test/run-all-inventory-tests.js && node ../test/equipment-backend.test.js && node ../test/run-all-offline-tests.js && node ../test/test-signature-sync-e2e.js"
+        "test:regression": "node ../test/system-regression.test.js",
+        "test:all": "node ../test/run-all-system-tests.js",
+        "test": "node ../test/run-all-system-tests.js"
     },
     "keywords": [
         "laboratory",

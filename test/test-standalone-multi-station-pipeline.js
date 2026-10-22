@@ -229,7 +229,9 @@ async function runPipelineTest() {
 
   // Cleanup
   serverInstance.close();
-  fs.rmSync(TMP_DIR, { recursive: true, force: true });
+  try {
+    fs.rmSync(TMP_DIR, { recursive: true, force: true });
+  } catch (_) {}
 }
 
 runPipelineTest().catch(err => {

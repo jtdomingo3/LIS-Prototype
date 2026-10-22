@@ -10,7 +10,9 @@
                     "dist:win":  "electron-builder --win nsis",
                     "dist:dir":  "electron-builder --dir",
                     "security-audit":  "node ../tools/security-audit/run-security-audit.js",
-                    "test":  "node ../test/run-all-inventory-tests.js \u0026\u0026 node ../test/run-all-offline-tests.js \u0026\u0026 node ../test/standalone-sqlite-datastore.test.js \u0026\u0026 node ../test/standalone-integrated-sync.test.js \u0026\u0026 node ../test/test-signature-sync-e2e.js \u0026\u0026 node ../test/test_standalone_server_equipment.js",
+                    "test:regression": "node ../test/system-regression.test.js",
+                    "test:all": "node ../test/run-all-system-tests.js",
+                    "test": "node ../test/run-all-system-tests.js",
                     "test:equipment":  "node ../test/test_standalone_server_equipment.js",
                     "test:inventory":  "node ../test/run-all-inventory-tests.js",
                     "rebuild": "electron-builder install-app-deps"

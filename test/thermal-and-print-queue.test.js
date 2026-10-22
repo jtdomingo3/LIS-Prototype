@@ -49,13 +49,15 @@ console.log('--- Running Thermal & Print Queue Regression Tests ---');
     assert.ok(validOp && validOp.id, 'Real data mutation must be accepted');
 
     // Test 3: OperationQueue._load() purges legacy print ops
-    const pendingFile = path.join(testDir, 'pending-operations.json');
+    const testDir3 = path.join(os.tmpdir(), `thermal-test-reload-${Date.now()}`);
+    fs.mkdirSync(testDir3, { recursive: true });
+    const pendingFile = path.join(testDir3, 'pending-operations.json');
     const dirtyOps = [
       { id: '1', method: 'POST', url: 'http://192.168.1.209:3000/patients/legacy/print', status: 'pending' },
       { id: '2', method: 'POST', url: 'http://192.168.1.209:3000/patients', body: { name: 'Keep me' }, status: 'pending' }
     ];
     fs.writeFileSync(pendingFile, JSON.stringify(dirtyOps));
-    const reloadedQueue = new OperationQueue(testDir);
+    const reloadedQueue = new OperationQueue(testDir3);
     const pending = reloadedQueue.getPending();
     assert.strictEqual(pending.length, 1, 'Legacy print op must be purged from queue');
     assert.strictEqual(pending[0].id, '2', 'Only valid data mutation remains');

@@ -3,6 +3,23 @@ const path = require('path');
 const fs = require('fs');
 const os = require('os');
 
+if (typeof describe === 'undefined') {
+  global.describe = (name, fn) => { console.log(`\n--- ${name} ---`); fn(); };
+  global.it = (name, fn) => {
+    try {
+      fn();
+      console.log(`  ✓ ${name}`);
+    } catch (err) {
+      console.error(`  ✗ ${name}:`, err.message);
+      throw err;
+    }
+  };
+  global.before = (fn) => fn();
+  global.after = (fn) => fn();
+  global.beforeEach = (fn) => fn();
+  global.afterEach = (fn) => fn();
+}
+
 describe('Server Startup & SecretStore Zero-Config Persistence', function() {
   const tmpDir = path.join(os.tmpdir(), `lis-test-secrets-${Date.now()}-${Math.floor(Math.random() * 10000)}`);
 
