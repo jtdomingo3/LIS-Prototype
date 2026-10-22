@@ -211,7 +211,7 @@ async function processMaintenanceFlags() {
         role: 'Admin',
         status: 'Active',
         permissions: {
-          dashboard: true, patients: true, reception: true,
+          dashboard: true, patients: true, reception: true, philhealth: true, healthcard: true,
           tests: true, reports: true, worksheet: true,
           templates: true, inventory: true, equipment: true, users: true, delete: true,
           costing: true, hr: true

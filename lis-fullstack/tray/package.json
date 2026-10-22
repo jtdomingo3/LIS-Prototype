@@ -7,8 +7,9 @@
     "scripts":  {
                     "start":  "electron .",
                     "generate-icon":  "node ./scripts/generate-icon.js",
-                    "build":  "electron-builder",
-                    "dist:win":  "npm run generate-icon \u0026\u0026 electron-builder --win nsis"
+                    "prepare-dist-data": "node ../scripts/make-dist-data.js",
+                    "build":  "npm run prepare-dist-data && electron-builder",
+                    "dist:win":  "npm run prepare-dist-data && npm run generate-icon && electron-builder --win nsis"
                 },
     "devDependencies":  {
                             "electron":  "^28.1.0",

@@ -140,15 +140,26 @@ function createBetterSqliteDb(dbPath, opts = {}) {
         throw new Error('Database file is 0 bytes');
       }
     }
-    const instance = new BetterSqlite3(dbPath, {
-      verbose: opts.verbose ? console.log : undefined
-    });
-    instance.pragma('journal_mode = WAL');
-    instance.pragma('synchronous = NORMAL');
-    instance.pragma('foreign_keys = ON');
-    instance.pragma('busy_timeout = 10000');
-    instance.pragma('quick_check');
-    return instance;
+    let instance;
+    try {
+      instance = new BetterSqlite3(dbPath, {
+        verbose: opts.verbose ? console.log : undefined
+      });
+      instance.pragma('journal_mode = WAL');
+      instance.pragma('synchronous = NORMAL');
+      instance.pragma('foreign_keys = ON');
+      instance.pragma('busy_timeout = 10000');
+      const check = instance.pragma('quick_check');
+      if (!Array.isArray(check) || check.length === 0 || check[0].quick_check !== 'ok') {
+        throw new Error('Database quick_check failed: ' + (check && check[0] ? check[0].quick_check : 'malformed'));
+      }
+      return instance;
+    } catch (err) {
+      if (instance) {
+        try { instance.close(); } catch (_) {}
+      }
+      throw err;
+    }
   }
 
   try {
@@ -157,7 +168,21 @@ function createBetterSqliteDb(dbPath, opts = {}) {
     console.error(`[sqliteDb] Failed to open ${dbPath} via better-sqlite3: ${openErr.message}. Quarantining and creating fresh DB...`);
     try {
       if (fs.existsSync(dbPath)) {
-        fs.renameSync(dbPath, `${dbPath}.corrupt.${Date.now()}`);
+        const corruptDest = `${dbPath}.corrupt.${Date.now()}`;
+        try {
+          fs.renameSync(dbPath, corruptDest);
+        } catch (renameErr) {
+          try {
+            fs.copyFileSync(dbPath, corruptDest);
+            fs.unlinkSync(dbPath);
+          } catch (_) {}
+        }
+      }
+      if (fs.existsSync(`${dbPath}-wal`)) {
+        try { fs.unlinkSync(`${dbPath}-wal`); } catch (_) {}
+      }
+      if (fs.existsSync(`${dbPath}-shm`)) {
+        try { fs.unlinkSync(`${dbPath}-shm`); } catch (_) {}
       }
     } catch (_) {}
     sqlite = openSqlite();
@@ -1268,7 +1293,9 @@ function createBetterSqliteDb(dbPath, opts = {}) {
         tests: this.getTests(),
         templates: this.getTemplates(),
         counters: this.getCounters(),
-        settings
+        settings,
+        philhealth_records: this.getPhilhealthRecords ? this.getPhilhealthRecords() : [],
+        healthcard_records: this.getHealthCardRecords ? this.getHealthCardRecords() : []
       };
     },
 
@@ -1320,6 +1347,16 @@ function createBetterSqliteDb(dbPath, opts = {}) {
         if (data.counters && typeof data.counters === 'object') this.saveCounters(data.counters);
         if (data.settings && typeof data.settings === 'object') {
           stmts.upsertSettings.run(JSON.stringify(data.settings));
+        }
+        if (Array.isArray(data.philhealth_records)) {
+          for (const r of data.philhealth_records) {
+            if (this.savePhilhealthRecord) this.savePhilhealthRecord(r);
+          }
+        }
+        if (Array.isArray(data.healthcard_records)) {
+          for (const r of data.healthcard_records) {
+            if (this.saveHealthCardRecord) this.saveHealthCardRecord(r);
+          }
         }
       })();
     },
@@ -2553,6 +2590,9 @@ function createBetterSqliteDb(dbPath, opts = {}) {
         return null;
       }
     },
+    upsertPhilhealthRecord(record) {
+      return this.savePhilhealthRecord(record);
+    },
     deletePhilhealthRecord(id) {
       if (!id) return false;
       try {
@@ -2636,6 +2676,9 @@ function createBetterSqliteDb(dbPath, opts = {}) {
         return null;
       }
     },
+    upsertHealthCardRecord(record) {
+      return this.saveHealthCardRecord(record);
+    },
     deleteHealthCardRecord(id) {
       if (!id) return false;
       try {
@@ -2709,12 +2752,21 @@ function createSqlJsDb(SQL, dbPath) {
         throw new Error('Database file is 0 bytes');
       }
       sqlite = new SQL.Database(fileBuffer);
-      sqlite.run("SELECT 1;");
+      const checkRes = sqlite.exec("PRAGMA quick_check;");
+      if (!checkRes || !checkRes[0] || !checkRes[0].values || !checkRes[0].values[0] || checkRes[0].values[0][0] !== 'ok') {
+        throw new Error('Database integrity check failed: ' + (checkRes && checkRes[0] && checkRes[0].values ? JSON.stringify(checkRes[0].values) : 'malformed'));
+      }
     } catch (e) {
       console.warn('[sqliteDb] Failed to load existing .db via sql.js, quarantining and creating fresh database:', e.message);
       try {
         if (fs.existsSync(dbPath)) {
           fs.renameSync(dbPath, `${dbPath}.corrupt.${Date.now()}`);
+        }
+        if (fs.existsSync(`${dbPath}-wal`)) {
+          fs.unlinkSync(`${dbPath}-wal`);
+        }
+        if (fs.existsSync(`${dbPath}-shm`)) {
+          fs.unlinkSync(`${dbPath}-shm`);
         }
       } catch (_) {}
       sqlite = new SQL.Database();
@@ -3252,6 +3304,12 @@ function createSqlJsDb(SQL, dbPath) {
         try { fs.unlinkSync(tmp); } catch (_) {}
       }
 
+      // Clean up any stale -wal or -shm files from prior better-sqlite3 sessions
+      try {
+        if (fs.existsSync(`${dbPath}-wal`)) fs.unlinkSync(`${dbPath}-wal`);
+        if (fs.existsSync(`${dbPath}-shm`)) fs.unlinkSync(`${dbPath}-shm`);
+      } catch (_) {}
+
       // Verify file was written and is not empty
       try {
         const st = fs.statSync(dbPath);
@@ -3765,7 +3823,9 @@ function createSqlJsDb(SQL, dbPath) {
         tests: this.getTests(),
         templates: this.getTemplates(),
         counters: this.getCounters(),
-        settings: this.getSettings()
+        settings: this.getSettings(),
+        philhealth_records: this.getPhilhealthRecords ? this.getPhilhealthRecords() : [],
+        healthcard_records: this.getHealthCardRecords ? this.getHealthCardRecords() : []
       };
     },
 
@@ -3808,6 +3868,16 @@ function createSqlJsDb(SQL, dbPath) {
       if (data.counters && typeof data.counters === 'object') this.saveCounters(data.counters);
       if (data.settings && typeof data.settings === 'object') {
         this.setSettings(data.settings);
+      }
+      if (Array.isArray(data.philhealth_records)) {
+        for (const r of data.philhealth_records) {
+          if (this.savePhilhealthRecord) this.savePhilhealthRecord(r);
+        }
+      }
+      if (Array.isArray(data.healthcard_records)) {
+        for (const r of data.healthcard_records) {
+          if (this.saveHealthCardRecord) this.saveHealthCardRecord(r);
+        }
       }
     },
 
@@ -3959,7 +4029,9 @@ function createSqlJsDb(SQL, dbPath) {
         tests: this.getTests(),
         templates: this.getTemplates(),
         counters: this.getCounters(),
-        settings: this.getSettings()
+        settings: this.getSettings(),
+        philhealth_records: this.getPhilhealthRecords ? this.getPhilhealthRecords() : [],
+        healthcard_records: this.getHealthCardRecords ? this.getHealthCardRecords() : []
       };
     },
 
@@ -3977,6 +4049,16 @@ function createSqlJsDb(SQL, dbPath) {
       if (data.counters && typeof data.counters === 'object') this.saveCounters(data.counters);
       if (data.settings && typeof data.settings === 'object') {
         this.setSettings(data.settings);
+      }
+      if (Array.isArray(data.philhealth_records)) {
+        for (const r of data.philhealth_records) {
+          if (this.savePhilhealthRecord) this.savePhilhealthRecord(r);
+        }
+      }
+      if (Array.isArray(data.healthcard_records)) {
+        for (const r of data.healthcard_records) {
+          if (this.saveHealthCardRecord) this.saveHealthCardRecord(r);
+        }
       }
       persist();
     },
@@ -4924,6 +5006,9 @@ function createSqlJsDb(SQL, dbPath) {
         return null;
       }
     },
+    upsertPhilhealthRecord(record) {
+      return this.savePhilhealthRecord(record);
+    },
     deletePhilhealthRecord(id) {
       if (!id) return false;
       try {
@@ -5007,6 +5092,9 @@ function createSqlJsDb(SQL, dbPath) {
         console.error('[sqliteDb sql.js] saveHealthCardRecord error:', e.message);
         return null;
       }
+    },
+    upsertHealthCardRecord(record) {
+      return this.saveHealthCardRecord(record);
     },
     deleteHealthCardRecord(id) {
       if (!id) return false;
@@ -5153,7 +5241,7 @@ function createDb(dbPath, opts = {}) {
     getCounters() { return underlyingDb ? underlyingDb.getCounters() : {}; },
     saveCounters(c) { if (underlyingDb) underlyingDb.saveCounters(c); else readyPromise.then(d => d.saveCounters(c)); },
     checkpoint() { if (underlyingDb) underlyingDb.checkpoint(); else readyPromise.then(d => d.checkpoint()); },
-    read() { return underlyingDb ? underlyingDb.read() : { patients: [], tests: [], templates: [], counters: {}, settings: {} }; },
+    read() { return underlyingDb ? underlyingDb.read() : { patients: [], tests: [], templates: [], counters: {}, settings: {}, philhealth_records: [], healthcard_records: [] }; },
     write(d) { if (underlyingDb) underlyingDb.write(d); else readyPromise.then(db => db.write(d)); },
     getSettings() { return underlyingDb ? underlyingDb.getSettings() : {}; },
     setSettings(s) { if (underlyingDb) underlyingDb.setSettings(s); else readyPromise.then(d => d.setSettings(s)); },
@@ -5268,6 +5356,7 @@ function createDb(dbPath, opts = {}) {
     getPhilhealthRecordByControlNo(c) { return underlyingDb ? underlyingDb.getPhilhealthRecordByControlNo(c) : null; },
     getPhilhealthRecordsByPatientId(pid) { return underlyingDb ? underlyingDb.getPhilhealthRecordsByPatientId(pid) : []; },
     savePhilhealthRecord(r) { if (underlyingDb) return underlyingDb.savePhilhealthRecord(r); else readyPromise.then(db => db.savePhilhealthRecord(r)); return r; },
+    upsertPhilhealthRecord(r) { if (underlyingDb) return (underlyingDb.upsertPhilhealthRecord || underlyingDb.savePhilhealthRecord).call(underlyingDb, r); else readyPromise.then(db => (db.upsertPhilhealthRecord || db.savePhilhealthRecord).call(db, r)); return r; },
     deletePhilhealthRecord(id) { if (underlyingDb) return underlyingDb.deletePhilhealthRecord(id); else readyPromise.then(db => db.deletePhilhealthRecord(id)); return true; },
 
     getHealthCardRecords(q) { return underlyingDb ? underlyingDb.getHealthCardRecords(q) : []; },
@@ -5275,6 +5364,7 @@ function createDb(dbPath, opts = {}) {
     getHealthCardRecordByControlNo(c) { return underlyingDb ? underlyingDb.getHealthCardRecordByControlNo(c) : null; },
     getHealthCardRecordsByPatientId(pid) { return underlyingDb ? underlyingDb.getHealthCardRecordsByPatientId(pid) : []; },
     saveHealthCardRecord(r) { if (underlyingDb) return underlyingDb.saveHealthCardRecord(r); else readyPromise.then(db => db.saveHealthCardRecord(r)); return r; },
+    upsertHealthCardRecord(r) { if (underlyingDb) return (underlyingDb.upsertHealthCardRecord || underlyingDb.saveHealthCardRecord).call(underlyingDb, r); else readyPromise.then(db => (db.upsertHealthCardRecord || db.saveHealthCardRecord).call(db, r)); return r; },
     deleteHealthCardRecord(id) { if (underlyingDb) return underlyingDb.deleteHealthCardRecord(id); else readyPromise.then(db => db.deleteHealthCardRecord(id)); return true; },
 
     getSyncQueue() { return underlyingDb ? underlyingDb.getSyncQueue() : []; },

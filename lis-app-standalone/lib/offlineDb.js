@@ -1036,6 +1036,9 @@ function createOfflineDb(dataStore) {
       dataStore.setCollection('philhealth_records', list);
       return record;
     },
+    upsertPhilhealthRecord(record) {
+      return this.savePhilhealthRecord(record);
+    },
     deletePhilhealthRecord(id) {
       if (sqliteAdapter && typeof sqliteAdapter.deletePhilhealthRecord === 'function') {
         return sqliteAdapter.deletePhilhealthRecord(id);
@@ -1100,6 +1103,9 @@ function createOfflineDb(dataStore) {
       else list.push(record);
       dataStore.setCollection('healthcard_records', list);
       return record;
+    },
+    upsertHealthCardRecord(record) {
+      return this.saveHealthCardRecord(record);
     },
     deleteHealthCardRecord(id) {
       if (sqliteAdapter && typeof sqliteAdapter.deleteHealthCardRecord === 'function') {

@@ -870,7 +870,8 @@ class SyncEngine {
               if (this.dataStore.db.deletePhilhealthRecord) this.dataStore.db.deletePhilhealthRecord(localId);
               r.id = serverId;
               if (!r.client_id) r.client_id = localId;
-              if (this.dataStore.db.upsertPhilhealthRecord) this.dataStore.db.upsertPhilhealthRecord(r);
+              const saveFn = this.dataStore.db.upsertPhilhealthRecord || this.dataStore.db.savePhilhealthRecord;
+              if (saveFn) saveFn.call(this.dataStore.db, r);
             }
           } else if (collection === 'healthcard_records') {
             const list = this.dataStore.getCollection('healthcard_records') || [];
@@ -879,7 +880,8 @@ class SyncEngine {
               if (this.dataStore.db.deleteHealthCardRecord) this.dataStore.db.deleteHealthCardRecord(localId);
               r.id = serverId;
               if (!r.client_id) r.client_id = localId;
-              if (this.dataStore.db.upsertHealthCardRecord) this.dataStore.db.upsertHealthCardRecord(r);
+              const saveFn = this.dataStore.db.upsertHealthCardRecord || this.dataStore.db.saveHealthCardRecord;
+              if (saveFn) saveFn.call(this.dataStore.db, r);
             }
           }
         } catch (rekeyErr) {

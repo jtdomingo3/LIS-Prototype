@@ -6,9 +6,10 @@
     "scripts":  {
                     "start":  "electron .",
                     "dev":  "electron . --dev",
-                    "build":  "electron-builder",
-                    "dist:win":  "electron-builder --win nsis",
-                    "dist:dir":  "electron-builder --dir",
+                    "prepare-dist-data": "node ./scripts/make-dist-data.js",
+                    "build":  "npm run prepare-dist-data && electron-builder",
+                    "dist:win":  "npm run prepare-dist-data && electron-builder --win nsis",
+                    "dist:dir":  "npm run prepare-dist-data && electron-builder --dir",
                     "security-audit":  "node ../tools/security-audit/run-security-audit.js",
                     "test:regression": "node ../test/system-regression.test.js",
                     "test:all": "node ../test/run-all-system-tests.js",
