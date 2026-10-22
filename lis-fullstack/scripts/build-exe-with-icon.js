@@ -62,10 +62,15 @@ async function run() {
   // Embed icon into executable
   console.log('Embedding icon into executable with rcedit...');
   try {
-    await rcedit(exePath, { icon: icoPath });
+    await new Promise((resolve, reject) => {
+      rcedit(exePath, { icon: icoPath }, (err) => {
+        if (err) return reject(err);
+        resolve();
+      });
+    });
     console.log('Embedded ICO into', exePath);
   } catch (e) {
-    console.warn('rcedit warning (non-fatal):', e.message);
+    console.warn('rcedit warning (non-fatal):', e && e.message || e);
   }
 
   console.log('Executable build completed successfully.');
