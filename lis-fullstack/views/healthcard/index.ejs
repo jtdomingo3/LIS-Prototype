@@ -12,10 +12,15 @@
   <!-- Header -->
   <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; border-bottom: 1px solid #f1f5f9; padding-bottom: 16px; margin-bottom: 20px;">
     <div>
-      <h3 style="margin: 0; font-size: 1.45em; display: flex; align-items: center; gap: 10px; color: #0f172a; font-weight: 700;">
-        <span style="font-size: 1.2em;">💳</span> Health Card / HMO Claims Panel
-      </h3>
-      <p style="margin: 4px 0 0 0; color: #64748b; font-size: 0.9em;">
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+        <div style="width: 36px; height: 36px; border-radius: 10px; background: #f0f9ff; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 0 2px 6px rgba(2,132,199,0.15); flex-shrink: 0;">
+          <i class="fas fa-id-card"></i>
+        </div>
+        <h3 style="margin: 0; font-size: 1.45rem; color: #0f172a; font-weight: 800; letter-spacing: -0.02em;">
+          Health Card / HMO Claims Panel
+        </h3>
+      </div>
+      <p style="margin: 0; color: #64748b; font-size: 0.9rem;">
         Official Philippine HMO claims registry, LOA authorization, diagnostic procedure assignment, and transmittal billing settlement tracking.
       </p>
     </div>
@@ -129,11 +134,11 @@
       </button>
 
       <div style="display: inline-flex; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #fff;">
-        <button type="button" onclick="quickBatchApply('status', 'Billed')" style="height: 34px; padding: 0 12px; font-size: 0.82em; font-weight: 600; border: none; border-right: 1px solid #e2e8f0; background: #ffffff; color: #2563eb; cursor: pointer;" title="Mark all selected as Billed to HMO">
-          ✓ Mark Billed
+        <button type="button" onclick="quickBatchApply('status', 'Billed')" style="height: 34px; padding: 0 12px; font-size: 0.82em; font-weight: 700; border: none; border-right: 1px solid #e2e8f0; background: #ffffff; color: #2563eb; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;" title="Mark all selected as Billed to HMO">
+          <i class="fas fa-check" style="font-size: 0.75rem;"></i> Mark Billed
         </button>
-        <button type="button" onclick="quickBatchApply('status', 'Paid')" style="height: 34px; padding: 0 12px; font-size: 0.82em; font-weight: 600; border: none; background: #ffffff; color: #166534; cursor: pointer;" title="Mark all selected as Paid by HMO">
-          ✓ Mark Paid
+        <button type="button" onclick="quickBatchApply('status', 'Paid')" style="height: 34px; padding: 0 12px; font-size: 0.82em; font-weight: 700; border: none; background: #ffffff; color: #166534; cursor: pointer; display: inline-flex; align-items: center; gap: 5px;" title="Mark all selected as Paid by HMO">
+          <i class="fas fa-check" style="font-size: 0.75rem;"></i> Mark Paid
         </button>
       </div>
 

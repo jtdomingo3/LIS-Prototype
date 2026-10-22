@@ -13,7 +13,9 @@
     <link href="/vendor/katex/katex.min.css" rel="stylesheet">
     <script src="/vendor/katex/katex.min.js"></script>
     <script src="/vendor/katex/contrib/auto-render.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -24,12 +26,14 @@
         :root {
             /* Typography */
             --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --font-display: 'Plus Jakarta Sans', var(--font-family);
+            --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
             
-            /* Core Brand Colors */
-            --primary-brand: #0284c7; /* Clinical Sky / Ocean 600 */
-            --primary-brand-dark: #0369a1; /* Ocean 700 */
-            --primary-black: #18181b; /* Slate 800 */
-            --primary-black-dark: #09090b; /* Slate 900 */
+            /* Core Brand Colors - Gezyne Clinical Laboratory (Green, Orange, Black, White) */
+            --primary-brand: #10b981; /* Emerald 500 */
+            --primary-brand-dark: #059669; /* Emerald 600 */
+            --primary-black: #18181b; /* Zinc 900 */
+            --primary-black-dark: #09090b; /* Zinc 950 */
             --secondary-green: #10b981; /* Emerald 500 */
             --secondary-green-dark: #059669; /* Emerald 600 */
             --accent-orange: #f97316; /* Orange 500 */
@@ -37,24 +41,24 @@
             
             /* Text & Backgrounds */
             --text-white: #ffffff;
-            --text-light: #f1f5f9;
-            --text-gray: #71717a; /* Slate 500 */
-            --text-dark: #27272a; /* Slate 700 */
-            --bg-light: #f4f4f5; /* Slate 50 */
-            --border-gray: #e4e4e7; /* Slate 200 */
+            --text-light: #f8fafc;
+            --text-gray: #71717a; /* Zinc 500 */
+            --text-dark: #18181b; /* Zinc 900 */
+            --bg-light: #f4f4f5; /* Zinc 100 */
+            --border-gray: #e4e4e7; /* Zinc 200 */
             
             /* Semantic Colors */
             --success: #10b981; /* Emerald 500 */
             --warning: #f59e0b; /* Amber 500 */
             --danger: #ef4444; /* Red 500 */
-            --info: #0284c7; /* Sky 600 */
+            --info: #10b981; /* Brand Green */
             
             /* Base sizing */
             font-size: 14px;
         }
 
         :focus-visible {
-            outline: 2px solid var(--primary-brand, #0284c7);
+            outline: 2px solid var(--primary-brand, #10b981);
             outline-offset: 2px;
         }
 
@@ -208,15 +212,16 @@
             margin: 2px 0;
             border-radius: 8px;
             cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
             font-weight: 500;
-            color: var(--text-gray);
+            color: #94a3b8;
             text-decoration: none;
             display: flex;
             align-items: center;
-            gap: 11px;
+            gap: 12px;
             background: transparent;
             font-size: 0.92rem;
+            position: relative;
         }
 
         .nav-item:hover {
@@ -226,17 +231,55 @@
         }
 
         .nav-item.active {
-            background: linear-gradient(135deg, var(--secondary-green) 0%, var(--secondary-green-dark) 100%);
+            background: linear-gradient(135deg, var(--primary-brand) 0%, var(--primary-brand-dark) 100%);
             color: var(--text-white);
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
             font-weight: 600;
         }
 
-        .nav-emoji {
-            font-size: 1.2em;
-            width: 28px;
+        .nav-icon {
+            font-size: 1.05rem;
+            width: 20px;
+            height: 20px;
             text-align: center;
-            opacity: 0.9;
+            opacity: 0.85;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+        }
+
+        .nav-item:hover .nav-icon {
+            opacity: 1;
+            transform: scale(1.1);
+        }
+
+        .nav-item.active .nav-icon {
+            opacity: 1;
+        }
+
+        .nav-section-title {
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #64748b;
+            padding: 14px 14px 4px 14px;
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            user-select: none;
+        }
+
+        .sidebar.collapsed .nav-section-title {
+            display: none;
+        }
+
+        .sidebar.collapsed .nav-icon {
+            margin: 0;
+            width: 100%;
         }
 
         .nav-text {
@@ -364,12 +407,23 @@
             z-index: 50;
         }
 
+        h1, h2, h3, h4, h5, h6, .brand-text {
+            font-family: var(--font-display);
+            letter-spacing: -0.025em;
+        }
+
         h1 {
             font-size: 1.8em;
             font-weight: 700;
             color: var(--primary-black);
-            letter-spacing: -0.5px;
             margin: 0;
+        }
+
+        .tabular-nums, .num-tabular, .code-id, .patient-pin {
+            font-family: var(--font-mono);
+            font-variant-numeric: tabular-nums;
+            font-feature-settings: "tnum";
+            letter-spacing: -0.01em;
         }
 
         .user-info {
@@ -408,6 +462,64 @@
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes ping {
+            75%, 100% {
+                transform: scale(2.2);
+                opacity: 0;
+            }
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /* Tactile spring motion utility */
+        .interactive-spring {
+            transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .interactive-spring:hover {
+            transform: translateY(-2px);
+        }
+        .interactive-spring:active {
+            transform: scale(0.98);
+        }
+
+        /* Skeleton Loaders */
+        .skeleton {
+            background-color: #e2e8f0;
+            position: relative;
+            overflow: hidden;
+            border-radius: 6px;
+        }
+        .skeleton::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            transform: translateX(-100%);
+            background-image: linear-gradient(
+                90deg,
+                rgba(255, 255, 255, 0) 0,
+                rgba(255, 255, 255, 0.4) 20%,
+                rgba(255, 255, 255, 0.7) 60%,
+                rgba(255, 255, 255, 0)
+            );
+            animation: shimmer 1.6s infinite;
+        }
+        .skeleton-text {
+            height: 14px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+        }
+        .skeleton-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
         }
 
         /* Forms */
@@ -476,12 +588,12 @@
         .btn-brand {
             background: linear-gradient(135deg, var(--primary-brand) 0%, var(--primary-brand-dark) 100%);
             color: var(--text-white);
-            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
         }
 
         .btn-brand:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(2, 132, 199, 0.4);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
         }
 
         .btn-primary {
@@ -697,6 +809,59 @@
             background: rgba(59, 130, 246, 0.1);
             color: #2563eb;
             border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+
+        .badge-progress {
+            background: rgba(249, 115, 22, 0.1);
+            color: #ea580c;
+            border: 1px solid rgba(249, 115, 22, 0.25);
+        }
+
+        .badge-released {
+            background: rgba(100, 116, 139, 0.1);
+            color: #334155;
+            border: 1px solid rgba(100, 116, 139, 0.2);
+        }
+
+        .badge-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            margin-right: 6px;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+
+        .badge-success .badge-dot { background: #10b981; }
+        .badge-warning .badge-dot { background: #f59e0b; }
+        .badge-danger .badge-dot { background: #ef4444; }
+        .badge-info .badge-dot { background: #10b981; }
+        .badge-progress .badge-dot { background: #f97316; }
+        .badge-released .badge-dot { background: #64748b; }
+
+        .badge-pulse {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+        }
+        .badge-pulse-dot {
+            position: relative;
+            display: inline-flex;
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            margin-right: 6px;
+            flex-shrink: 0;
+        }
+        .badge-pulse-dot::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: inherit;
+            animation: ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+            opacity: 0.75;
         }
 
         /* Alert */
@@ -1037,73 +1202,144 @@
             </div>
             <% const perms = (sessionUser && sessionUser.permissions) ? sessionUser.permissions : {}; %>
             <% const dashboardRoles = new Set(['Admin','Manager','Owner']); %>
+            <!-- Primary Navigation -->
             <% if (dashboardRoles.has(sessionUser.role) || perms.dashboard) { %>
-            <a href="/dashboard" class="nav-item <%= title.includes('Dashboard') ? 'active' : '' %>"><span class="nav-emoji">📊</span><span class="nav-text">Dashboard</span></a>
+            <a href="/dashboard" class="nav-item <%= title.includes('Dashboard') ? 'active' : '' %>" title="Dashboard">
+                <span class="nav-icon"><i class="fas fa-chart-pie"></i></span>
+                <span class="nav-text">Dashboard</span>
+            </a>
             <% } %>
+
+            <!-- Clinical Operations -->
+            <div class="nav-section-title">Clinical Operations</div>
             <% if (sessionUser.role === 'Admin' || perms.patients) { %>
-            <a href="/patients" class="nav-item <%= title.includes('Patient') ? 'active' : '' %>"><span class="nav-emoji">👥</span><span class="nav-text">Patients</span></a>
+            <a href="/patients" class="nav-item <%= title.includes('Patient') ? 'active' : '' %>" title="Patients">
+                <span class="nav-icon"><i class="fas fa-hospital-user"></i></span>
+                <span class="nav-text">Patients</span>
+            </a>
             <% } %>
             <% if (sessionUser.role === 'Admin' || perms.reception) { %>
-            <a href="/reception" class="nav-item <%= title.includes('Reception') ? 'active' : '' %>"><span class="nav-emoji">🏥</span><span class="nav-text">Reception</span></a>
-            <% } %>
-            <% if (sessionUser.role === 'Admin' || sessionUser.role === 'Manager' || sessionUser.role === 'Owner' || perms.philhealth || perms.healthcard || perms.reception || perms.patients) { %>
-            <a href="/philhealth" class="nav-item <%= (title && (title.includes('PhilHealth') || title.includes('Health Card'))) ? 'active' : '' %>"><span class="nav-emoji">🩺</span><span class="nav-text">PhilHealth / Health Card</span></a>
+            <a href="/reception" class="nav-item <%= title.includes('Reception') ? 'active' : '' %>" title="Reception & Queues">
+                <span class="nav-icon"><i class="fas fa-door-open"></i></span>
+                <span class="nav-text">Reception & Queue</span>
+            </a>
             <% } %>
             <% if (!featureFlags || featureFlags.tests) { %>
             <% if (sessionUser.role === 'Admin' || perms.tests) { %>
-            <a href="/tests" class="nav-item <%= ((title.includes('Test') || title.includes('Result')) && !title.includes('Reception')) ? 'active' : '' %>"><span class="nav-emoji">🧪</span><span class="nav-text">Tests & Results</span></a>
+            <a href="/tests" class="nav-item <%= ((title.includes('Test') || title.includes('Result')) && !title.includes('Reception')) ? 'active' : '' %>" title="Tests & Results">
+                <span class="nav-icon"><i class="fas fa-vial"></i></span>
+                <span class="nav-text">Tests & Results</span>
+            </a>
+            <% } %>
+            <% } %>
+            <% if (!featureFlags || featureFlags.worksheet) { %>
+            <% if (sessionUser.role === 'Admin' || perms.worksheet) { %>
+            <a href="/reports/worksheet" class="nav-item <%= title.includes('Worksheet') ? 'active' : '' %>" title="Laboratory Worksheet">
+                <span class="nav-icon"><i class="fas fa-table-list"></i></span>
+                <span class="nav-text">Worksheet</span>
+            </a>
             <% } %>
             <% } %>
             <% if (!featureFlags || featureFlags.reports) { %>
             <% if (sessionUser.role === 'Admin' || perms.reports) { %>
-            <a href="/reports" class="nav-item <%= (title.includes('Report') && !title.includes('Template')) ? 'active' : '' %>"><span class="nav-emoji">📋</span><span class="nav-text">Reports</span></a>
+            <a href="/reports" class="nav-item <%= (title.includes('Report') && !title.includes('Template')) ? 'active' : '' %>" title="Clinical Reports">
+                <span class="nav-icon"><i class="fas fa-file-waveform"></i></span>
+                <span class="nav-text">Reports</span>
+            </a>
             <% } %>
             <% } %>
+
+            <!-- Diagnostics & Laboratory -->
+            <div class="nav-section-title">Diagnostics & Lab</div>
             <% if (!featureFlags || featureFlags.inventory !== false) { %>
-            <% if (sessionUser.role === 'Admin' || perms.inventory) { %>
-            <a href="/inventory" class="nav-item <%= title.includes('Inventory') ? 'active' : '' %>"><span class="nav-emoji">📦</span><span class="nav-text">Inventory</span></a>
+            <% if (sessionUser.role === 'Admin' || sessionUser.role === 'Manager' || sessionUser.role === 'Owner' || perms.inventory) { %>
+            <a href="/inventory" class="nav-item <%= title.includes('Inventory') ? 'active' : '' %>" title="Diagnostic Inventory">
+                <span class="nav-icon"><i class="fas fa-boxes-stacked"></i></span>
+                <span class="nav-text">Inventory</span>
+            </a>
             <% } %>
             <% } %>
             <% if (!featureFlags || featureFlags.equipment !== false) { %>
             <% if (sessionUser.role === 'Admin' || sessionUser.role === 'Manager' || sessionUser.role === 'Owner' || perms.equipment || perms.inventory) { %>
-            <a href="/equipment" class="nav-item <%= title && title.includes('Equipment') ? 'active' : '' %>"><span class="nav-emoji">🔬</span><span class="nav-text">Equipment & QC</span></a>
-            <% } %>
-            <% } %>
-            <!-- Signature area: allows users to upload e-signatures for documents where their name appears -->
-            <a href="/signatures" class="nav-item <%= title.includes('Signature') ? 'active' : '' %>"><span class="nav-emoji">✍️</span><span class="nav-text">Signature</span></a>
-            <% if (!featureFlags || featureFlags.worksheet) { %>
-            <% if (sessionUser.role === 'Admin' || perms.worksheet) { %>
-            <a href="/reports/worksheet" class="nav-item <%= title.includes('Worksheet') ? 'active' : '' %>"><span class="nav-emoji">📊</span><span class="nav-text">Worksheet</span></a>
+            <a href="/equipment" class="nav-item <%= title && title.includes('Equipment') ? 'active' : '' %>" title="Equipment & QC Maintenance">
+                <span class="nav-icon"><i class="fas fa-microscope"></i></span>
+                <span class="nav-text">Equipment & QC</span>
+            </a>
             <% } %>
             <% } %>
             <% if (!featureFlags || featureFlags.templates) { %>
             <% if (sessionUser.role === 'Admin' || perms.templates) { %>
-            <a href="/templates" class="nav-item <%= title.includes('Template') ? 'active' : '' %>"><span class="nav-emoji">📄</span><span class="nav-text">Templates</span></a>
+            <a href="/templates" class="nav-item <%= title.includes('Template') ? 'active' : '' %>" title="Test Templates">
+                <span class="nav-icon"><i class="fas fa-file-medical"></i></span>
+                <span class="nav-text">Templates</span>
+            </a>
             <% } %>
             <% } %>
-            <% if ((sessionUser.role === 'Admin' || perms.users) && (!featureFlags || featureFlags.users)) { %>
-            <a href="/users" class="nav-item <%= title.includes('User') ? 'active' : '' %>"><span class="nav-emoji">👤</span><span class="nav-text">Users</span></a>
+            <a href="/signatures" class="nav-item <%= title.includes('Signature') ? 'active' : '' %>" title="Digital Signatures">
+                <span class="nav-icon"><i class="fas fa-file-signature"></i></span>
+                <span class="nav-text">Signatures</span>
+            </a>
+
+            <!-- Billing & Administration -->
+            <div class="nav-section-title">Billing & Admin</div>
+            <% if (sessionUser.role === 'Admin' || sessionUser.role === 'Manager' || sessionUser.role === 'Owner' || perms.philhealth || perms.healthcard || perms.reception || perms.patients) { %>
+            <a href="/philhealth" class="nav-item <%= (title && (title.includes('PhilHealth') || title.includes('Health Card'))) ? 'active' : '' %>" title="PhilHealth & Health Cards">
+                <span class="nav-icon"><i class="fas fa-shield-alt"></i></span>
+                <span class="nav-text">PhilHealth / HMO</span>
+            </a>
             <% } %>
-            <form action="/logout" method="POST" style="margin-top: 30px;">
-  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
-                <button type="submit" class="logout-btn" title="Logout"><i class="fa fa-power-off logout-emoji" aria-hidden="true"></i><span class="logout-text">Logout</span></button>
-            </form>
-            <a href="/settings" class="nav-item" style="margin-top:8px;"><span class="nav-emoji">⚙️</span><span class="nav-text">Settings</span></a>
-            <a href="/chatbot" class="nav-item <%= title && title.includes('GezyneBot') ? 'active' : '' %>" style="margin-top:4px;"><span class="nav-emoji">🤖</span><span class="nav-text">GezyneBot AI</span></a>
             <% if (!featureFlags || featureFlags.costing !== false) { %>
             <% if (sessionUser.role === 'Admin' || sessionUser.role === 'Manager' || sessionUser.role === 'Owner' || perms.costing) { %>
-            <a href="/costing" class="nav-item <%= (title && (title.includes('Costing') || title.includes('Profit & Loss') || title.includes('Expenses') || title.includes('Cost Per Test'))) ? 'active' : '' %>" style="margin-top:4px;"><span class="nav-emoji">💰</span><span class="nav-text">Costing & P&L</span></a>
+            <a href="/costing" class="nav-item <%= (title && (title.includes('Costing') || title.includes('Profit & Loss') || title.includes('Expenses') || title.includes('Cost Per Test'))) ? 'active' : '' %>" title="Costing & Profit & Loss">
+                <span class="nav-icon"><i class="fas fa-chart-line"></i></span>
+                <span class="nav-text">Costing & P&L</span>
+            </a>
             <% } %>
             <% } %>
             <% if (!featureFlags || featureFlags.hr !== false) { %>
             <% if (sessionUser.role === 'Admin' || sessionUser.role === 'Manager' || sessionUser.role === 'Owner' || perms.hr) { %>
-            <a href="/hr" class="nav-item <%= (title && (title.includes('HR') || title.includes('Employee') || title.includes('Payroll') || title.includes('Leaves')) && !title.includes('My HR') && !title.includes('My Payslip')) ? 'active' : '' %>" style="margin-top:4px;"><span class="nav-emoji">👥</span><span class="nav-text">HR & Payroll</span></a>
+            <a href="/hr" class="nav-item <%= (title && (title.includes('HR') || title.includes('Employee') || title.includes('Payroll') || title.includes('Leaves')) && !title.includes('My HR') && !title.includes('My Payslip')) ? 'active' : '' %>" title="HR & Payroll">
+                <span class="nav-icon"><i class="fas fa-briefcase-medical"></i></span>
+                <span class="nav-text">HR & Payroll</span>
+            </a>
             <% } else { %>
-            <a href="/hr/my" class="nav-item <%= (title && (title.includes('My HR') || title.includes('My Payslip') || title.includes('Daily Time Record'))) ? 'active' : '' %>" style="margin-top:4px;"><span class="nav-emoji">👤</span><span class="nav-text">My HR Portal</span></a>
+            <a href="/hr/my" class="nav-item <%= (title && (title.includes('My HR') || title.includes('My Payslip') || title.includes('Daily Time Record'))) ? 'active' : '' %>" title="My HR Portal">
+                <span class="nav-icon"><i class="fas fa-id-badge"></i></span>
+                <span class="nav-text">My HR Portal</span>
+            </a>
             <% } %>
             <% } %>
-            <a href="/manual" class="nav-item <%= (typeof title !== 'undefined' && title && (title.includes('Manual') || title.includes('Guide'))) ? 'active' : '' %>" style="margin-top:4px;"><span class="nav-emoji">📖</span><span class="nav-text">User Manual</span></a>
-            <button type="button" class="nav-item" id="fullscreenBtn" onclick="toggleFullscreen()" style="margin-top:4px;border:none;width:100%;text-align:left;background:transparent;cursor:pointer;"><span class="nav-emoji">⛶</span><span class="nav-text">Fullscreen</span></button>
+            <% if ((sessionUser.role === 'Admin' || perms.users) && (!featureFlags || featureFlags.users)) { %>
+            <a href="/users" class="nav-item <%= title.includes('User') ? 'active' : '' %>" title="User Management">
+                <span class="nav-icon"><i class="fas fa-user-shield"></i></span>
+                <span class="nav-text">User Accounts</span>
+            </a>
+            <% } %>
+            <a href="/settings" class="nav-item <%= title.includes('Settings') ? 'active' : '' %>" title="System Settings">
+                <span class="nav-icon"><i class="fas fa-sliders"></i></span>
+                <span class="nav-text">Settings</span>
+            </a>
+            <a href="/chatbot" class="nav-item <%= title && title.includes('GezyneBot') ? 'active' : '' %>" title="GezyneBot Assistant">
+                <span class="nav-icon"><i class="fas fa-robot"></i></span>
+                <span class="nav-text">GezyneBot AI</span>
+            </a>
+            <a href="/manual" class="nav-item <%= (typeof title !== 'undefined' && title && (title.includes('Manual') || title.includes('Guide'))) ? 'active' : '' %>" title="User Manual">
+                <span class="nav-icon"><i class="fas fa-book-medical"></i></span>
+                <span class="nav-text">User Manual</span>
+            </a>
+            <button type="button" class="nav-item" id="fullscreenBtn" onclick="toggleFullscreen()" style="border:none;width:100%;text-align:left;background:transparent;cursor:pointer;" title="Toggle Fullscreen">
+                <span class="nav-icon"><i class="fas fa-expand"></i></span>
+                <span class="nav-text">Fullscreen</span>
+            </button>
+
+            <!-- Bottom Session Logout -->
+            <form action="/logout" method="POST" style="margin-top: auto; padding-top: 18px;">
+                <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+                <button type="submit" class="logout-btn" title="Logout">
+                    <i class="fas fa-power-off logout-emoji" aria-hidden="true"></i>
+                    <span class="logout-text">Sign Out</span>
+                </button>
+            </form>
         </div>
         <% } %>
 
@@ -1112,22 +1348,37 @@
             <% if (typeof sessionUser !== 'undefined' && sessionUser) { %>
             <!-- Header -->
             <div class="header">
-                <div style="display:flex; align-items:center; gap:12px;">
-                    <button id="sidebarToggle" class="hamburger" aria-label="Toggle menu">☰</button>
-                    <h1><%= title %></h1>
-                </div>
                 <div style="display:flex; align-items:center; gap:14px;">
+                    <button id="sidebarToggle" class="hamburger" aria-label="Toggle menu" title="Toggle Sidebar">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div>
+                        <h1 style="font-size: 1.5rem; line-height: 1.2;"><%= title %></h1>
+                    </div>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:16px;">
+                    <!-- Global Patient Quick Lookup (Keyboard Shortcut Ctrl+K) -->
+                    <form action="/patients" method="GET" style="margin:0; display:flex;" class="header-search-form">
+                        <div style="position:relative; width:260px;">
+                            <i class="fas fa-search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:0.85em; pointer-events:none;"></i>
+                            <input type="text" name="search" id="globalHeaderSearch" placeholder="Quick search patients / MRN..." style="height:36px; padding:0 38px 0 32px; font-size:0.82rem; border-radius:20px; border:1px solid #cbd5e1; background:#f8fafc; width:100%; box-sizing:border-box; outline:none; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);" onfocus="this.style.background='#ffffff'; this.style.borderColor='#10b981'; this.style.boxShadow='0 0 0 3px rgba(16,185,129,0.15)';" onblur="this.style.background='#f8fafc'; this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';" />
+                            <kbd style="position:absolute; right:8px; top:50%; transform:translateY(-50%); font-size:0.65em; font-family:var(--font-mono); font-weight:700; color:#94a3b8; background:#ffffff; border:1px solid #e2e8f0; border-radius:4px; padding:2px 5px; pointer-events:none;">⌘K</kbd>
+                        </div>
+                    </form>
+
+                    <!-- Notifications -->
                     <div id="notificationWidget" style="position:relative;">
-                        <button id="notifBtn" title="Notifications" style="background:transparent;border:none;padding:0 6px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
-                            <i class="fa fa-bell" style="color:#f3c623;font-size:1.25em;"></i>
-                            <span id="notifConn" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ef4444;box-shadow:0 0 4px rgba(0,0,0,0.15);" title="Disconnected"></span>
-                            <span id="notifBadge" style="display:inline-block;min-width:20px;height:20px;line-height:20px;padding:0 6px;border-radius:10px;background:var(--danger);color:white;font-size:0.85em;text-align:center;visibility:hidden;">0</span>
+                        <button id="notifBtn" title="Notifications" style="background:#ffffff;border:1px solid #e2e8f0;width:36px;height:36px;border-radius:50%;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;position:relative;box-shadow:0 1px 3px rgba(0,0,0,0.04);transition:all 0.2s ease;">
+                            <i class="fas fa-bell" style="color:#64748b;font-size:0.95rem;"></i>
+                            <span id="notifConn" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ef4444;position:absolute;top:2px;right:2px;border:2px solid #ffffff;" title="Status"></span>
+                            <span id="notifBadge" style="position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;line-height:18px;padding:0 4px;border-radius:9px;background:var(--danger);color:white;font-size:0.75rem;text-align:center;visibility:hidden;font-weight:700;">0</span>
                         </button>
-                        <div id="notifDropdown" style="position:absolute;right:0;top:38px;min-width:350px;max-width:400px;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 12px 32px rgba(15,23,42,0.15);display:none;z-index:999;padding:14px;">
+                        <div id="notifDropdown" style="position:absolute;right:0;top:44px;min-width:350px;max-width:400px;background:#ffffff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 12px 32px rgba(15,23,42,0.15);display:none;z-index:999;padding:14px;">
                             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid #f1f5f9;">
-                                <strong style="font-size:0.95em;color:#0f172a;display:inline-flex;align-items:center;gap:6px;"><i class="fa fa-bell" style="color:#f59e0b;"></i> Notifications</strong>
+                                <strong style="font-size:0.95em;color:#0f172a;display:inline-flex;align-items:center;gap:6px;"><i class="fas fa-bell" style="color:#f59e0b;"></i> Notifications</strong>
                                 <div style="display:flex;align-items:center;gap:12px;">
-                                    <small style="color:#64748b;font-size:0.8em;">Auto-refresh: <label style="cursor:pointer;display:inline-block;margin-left:4px;"><input id="notifAutoRefresh" type="checkbox" style="vertical-align:middle;"/> Enable</label></small>
+                                    <small style="color:#64748b;font-size:0.8em;">Auto: <label style="cursor:pointer;display:inline-block;margin-left:4px;"><input id="notifAutoRefresh" type="checkbox" style="vertical-align:middle;"/> </label></small>
                                     <small style="color:#64748b;font-size:0.8em;">Mute: <label style="cursor:pointer;display:inline-block;margin-left:4px;"><input id="notifMute" type="checkbox" style="vertical-align:middle;"/> </label></small>
                                 </div>
                             </div>
@@ -1140,28 +1391,33 @@
                     <audio id="notifSound" preload="auto">
                         <source src="/assets/notificaiton_ringtone.mp3" type="audio/mpeg">
                     </audio>
-                                        <div class="user-info" style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
-                                                <div style="display:flex;align-items:center;gap:8px;">
-                                                                                                        <p style="margin:0;">Welcome, <a href="/users/profile" style="color:inherit;text-decoration:none;font-weight:600;"><%= sessionUser ? sessionUser.name : '' %></a></p>
-                                                                                                        <a href="/users/profile" class="button btn-small" style="padding:6px 8px;margin-left:6px;display:inline-flex;align-items:center;justify-content:center;" title="Profile">
-                                                                                                                <!-- Faceless man / user silhouette icon (simple, no external deps) -->
-                                                                                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-                                                                                                                    <path d="M12 12c2.761 0 5-2.239 5-5s-2.239-5-5-5-5 2.239-5 5 2.239 5 5 5z" fill="currentColor" opacity="0.9" />
-                                                                                                                    <path d="M2.5 21c0-3.59 3.91-6.5 8.5-6.5s8.5 2.91 8.5 6.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.9" />
-                                                                                                                </svg>
-                                                                                                        </a>
-                                                </div>
-                                                <% 
-                                                    const _headerNow = new Date();
-                                                    const _hMM = String(_headerNow.getMonth() + 1).padStart(2, '0');
-                                                    const _hDD = String(_headerNow.getDate()).padStart(2, '0');
-                                                    const _hYYYY = _headerNow.getFullYear();
-                                                    const _headerFormattedDate = _hMM + '/' + _hDD + '/' + _hYYYY;
-                                                %>
-                                                <p style="margin:0;"><span id="currentDate"><%= _headerFormattedDate %></span>&nbsp;<span id="currentTime"><%= new Date().toLocaleTimeString() %></span></p>
-                                        </div>
+
+                    <!-- User Account Card Pill -->
+                    <a href="/users/profile" class="user-pill-link" style="display:flex; align-items:center; gap:10px; padding:4px 12px 4px 6px; background:#ffffff; border:1px solid #e2e8f0; border-radius:30px; text-decoration:none; color:inherit; box-shadow:0 1px 3px rgba(0,0,0,0.03); transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);" onmouseover="this.style.borderColor='#cbd5e1'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.05)';" onmouseout="this.style.borderColor='#e2e8f0'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.03)';">
+                        <div style="width:30px; height:30px; border-radius:50%; background:linear-gradient(135deg, #10b981 0%, #059669 100%); color:#ffffff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.82rem; box-shadow:0 2px 6px rgba(16,185,129,0.3);">
+                            <%= (sessionUser && sessionUser.name ? sessionUser.name.charAt(0).toUpperCase() : 'U') %>
+                        </div>
+                        <div style="display:flex; flex-direction:column; line-height:1.2; text-align:left;">
+                            <strong style="font-size:0.85rem; color:#0f172a; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><%= sessionUser ? sessionUser.name : 'User' %></strong>
+                            <span style="font-size:0.68rem; font-weight:700; color:#f97316; text-transform:uppercase; letter-spacing:0.04em;"><%= (sessionUser ? sessionUser.role : 'Staff') %></span>
+                        </div>
+                    </a>
                 </div>
             </div>
+
+            <script>
+                // Keyboard shortcut Ctrl+K / Cmd+K for quick search
+                window.addEventListener('keydown', function(e) {
+                    if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+                        const searchInput = document.getElementById('globalHeaderSearch');
+                        if (searchInput) {
+                            e.preventDefault();
+                            searchInput.focus();
+                            searchInput.select();
+                        }
+                    }
+                });
+            </script>
             <% } %>
 
             <!-- Alert Messages (render for both guests and authenticated users) -->
@@ -1401,7 +1657,7 @@
                     return `<div style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:0.88em;transition:background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
                         <div style="font-weight:600;color:#1e293b;line-height:1.4;">${escapeHtml(cleanText)}</div>
                         <div style="color:#94a3b8;font-size:0.78em;margin-top:4px;display:flex;align-items:center;gap:6px;">
-                            <i class="fa fa-clock-o" style="font-size:0.85em;"></i> ${formattedDate}, ${formattedTime}
+                            <i class="fa fa-clock" style="font-size:0.85em;"></i> ${formattedDate}, ${formattedTime}
                         </div>
                     </div>`;
                 }).join('');
@@ -1855,13 +2111,13 @@
 
           if (bg) {
             iconWrapper.style.background = bg;
-            iconWrapper.style.color = color || '#0284c7';
+            iconWrapper.style.color = color || '#10b981';
           } else if (type === 'warning') {
             iconWrapper.style.background = '#fef3c7';
             iconWrapper.style.color = '#d97706';
           } else if (type === 'primary' || type === 'info') {
-            iconWrapper.style.background = '#e0f2fe';
-            iconWrapper.style.color = '#0284c7';
+            iconWrapper.style.background = '#ecfdf5';
+            iconWrapper.style.color = '#059669';
           } else if (type === 'success') {
             iconWrapper.style.background = '#dcfce7';
             iconWrapper.style.color = '#16a34a';
@@ -1901,8 +2157,8 @@
               okBtn.style.color = '#ffffff';
             } else if (isPrimary) {
               okBtn.className = 'button btn-primary';
-              okBtn.style.background = '#0284c7';
-              okBtn.style.borderColor = '#0284c7';
+              okBtn.style.background = '#10b981';
+              okBtn.style.borderColor = '#059669';
               okBtn.style.color = '#ffffff';
             } else if (opts.type === 'warning') {
               okBtn.className = 'button btn-orange';
@@ -1938,8 +2194,8 @@
               cancelBtn.style.display = 'inline-block';
               cancelBtn.textContent = opts.secondaryBtnText;
               cancelBtn.className = 'button btn-primary';
-              cancelBtn.style.background = '#0284c7';
-              cancelBtn.style.borderColor = '#0284c7';
+              cancelBtn.style.background = '#10b981';
+              cancelBtn.style.borderColor = '#059669';
               cancelBtn.style.color = '#ffffff';
             }
             secondaryCallback = function() {
@@ -1972,8 +2228,8 @@
               okBtn.style.borderColor = '';
             } else {
               okBtn.className = 'button btn-primary';
-              okBtn.style.background = '#0284c7';
-              okBtn.style.borderColor = '#0284c7';
+              okBtn.style.background = '#10b981';
+              okBtn.style.borderColor = '#059669';
             }
           }
 

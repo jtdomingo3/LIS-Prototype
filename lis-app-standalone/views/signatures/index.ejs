@@ -2,61 +2,70 @@
   const uid = currentUser && (currentUser.id || currentUser._id) ? String(currentUser.id || currentUser._id) : (currentUser && currentUser.email ? currentUser.email : null);
 %>
 
-<!-- Signatory Station Header Banner (Without signature image) -->
-<div class="card" style="padding:16px 24px; border-radius:12px; margin-bottom:18px; background:#f8fafc; border:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
-  <div style="display:flex; align-items:center; gap:12px;">
-    <span style="display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; border-radius:10px; background:#e0e7ff; color:#4338ca; font-size:1.3em;">✍️</span>
+<!-- Signatory Station Header Banner -->
+<div class="card" style="padding:18px 24px; border-radius:14px; margin-bottom:20px; background:#ffffff; border:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px; box-shadow:0 2px 10px rgba(0,0,0,0.02);">
+  <div style="display:flex; align-items:center; gap:14px;">
+    <div style="width:42px; height:42px; border-radius:12px; background:#eef2ff; color:#4f46e5; display:flex; align-items:center; justify-content:center; font-size:1.2rem; box-shadow:0 2px 8px rgba(79,70,229,0.15); flex-shrink:0;">
+      <i class="fas fa-file-signature"></i>
+    </div>
     <div>
-      <h3 style="margin:0; font-size:1.15em; color:#0f172a;">Digital Signatory Station</h3>
-      <p style="margin:2px 0 0 0; color:#64748b; font-size:0.84em;">
-        Authorized Process Owners: <strong>Medical Technologists (RMT), X-Ray Technicians & Sonographers</strong>
+      <h3 style="margin:0; font-size:1.2rem; color:#0f172a; font-weight:800; letter-spacing:-0.02em;">Digital Signatory Station</h3>
+      <p style="margin:2px 0 0 0; color:#64748b; font-size:0.85rem;">
+        Authorized Process Owners: <strong>Medical Technologists (RMT), Radiologic Technologists & Sonologists</strong>
       </p>
     </div>
   </div>
 
-  <div style="display:flex; align-items:center; gap:10px; font-size:0.88em; color:#334155;">
-    <div>Logged in: <strong><%= currentUser ? (currentUser.name || currentUser.email) : 'Technician' %></strong></div>
-    <% if (currentUser && currentUser.role) { %>
-      <span style="background:#e2e8f0; padding:2px 8px; border-radius:10px; font-size:0.8em; font-weight:700; color:#334155;"><%= currentUser.role %></span>
-    <% } %>
+  <div style="display:flex; align-items:center; gap:10px; font-size:0.86rem; color:#334155; flex-wrap:wrap;">
+    <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:6px 12px; border-radius:8px;">
+      <span style="color:#64748b;">Logged in:</span> <strong><%= currentUser ? (currentUser.name || currentUser.email) : 'Technician' %></strong>
+      <% if (currentUser && currentUser.role) { %>
+        <span style="background:#0284c7; color:#ffffff; padding:2px 7px; border-radius:6px; font-size:0.72rem; font-weight:700; margin-left:6px; text-transform:uppercase;"><%= currentUser.role %></span>
+      <% } %>
+    </div>
     <% if (currentUser && currentUser.licenseNumber) { %>
-      <span style="color:#64748b; font-size:0.84em;">PRC License: <strong><%= currentUser.licenseNumber %></strong></span>
+      <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:6px 12px; border-radius:8px; font-family:var(--font-mono, monospace); font-size:0.8rem;">
+        <span style="color:#64748b;">PRC License:</span> <strong><%= currentUser.licenseNumber %></strong>
+      </div>
     <% } %>
   </div>
 </div>
 
-<div class="card" style="padding:24px 28px; border-radius:16px; box-shadow:0 4px 18px rgba(0,0,0,0.03);">
+<div class="card" style="padding:24px 28px; border-radius:16px; box-shadow:0 4px 20px rgba(0,0,0,0.03); background:#ffffff; border:1px solid #e2e8f0;">
   <!-- Search & Filter Bar (Single Clean Line) -->
-  <form method="GET" action="/signatures" style="display:flex; gap:8px; margin-bottom:18px; align-items:center; flex-wrap:nowrap; padding-bottom:16px; border-bottom:1px solid #f1f5f9; width:100%;">
-    <div style="position:relative; flex:1; min-width:200px;">
-      <span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:0.9em; pointer-events:none;">🔍</span>
-      <input type="text" name="search" placeholder="Search Test ID, patient, or test type..." value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>" style="width:100%; height:40px; padding:0 12px 0 34px; font-size:13.5px; box-sizing:border-box; border-radius:8px; border:1px solid #cbd5e1; background:#fff; margin:0;" />
+  <form method="GET" action="/signatures" style="display:flex; gap:10px; margin-bottom:20px; align-items:center; flex-wrap:wrap; padding-bottom:16px; border-bottom:1px solid #f1f5f9; width:100%;">
+    <div style="position:relative; flex:1; min-width:220px;">
+      <i class="fas fa-search" style="position:absolute; left:14px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:0.88rem; pointer-events:none;"></i>
+      <input type="text" name="search" placeholder="Search by Test ID, patient name, or panel..." value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>" style="width:100%; height:42px; padding:0 14px 0 38px; font-size:0.88rem; box-sizing:border-box; border-radius:10px; border:1px solid #cbd5e1; background:#f8fafc; margin:0;" onfocus="this.style.background='#ffffff'; this.style.borderColor='#0284c7'; this.style.boxShadow='0 0 0 3px rgba(2,132,199,0.1)';" onblur="this.style.background='#f8fafc'; this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';" />
     </div>
 
-    <input type="date" name="date" onchange="this.form.submit()" value="<%= typeof dateFilter !== 'undefined' ? dateFilter : '' %>" style="width:135px; flex-shrink:0; height:40px; padding:0 8px; font-size:13px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; margin:0; box-sizing:border-box;" title="Filter by date" />
+    <input type="date" name="date" onchange="this.form.submit()" value="<%= typeof dateFilter !== 'undefined' ? dateFilter : '' %>" style="width:145px; flex-shrink:0; height:42px; padding:0 10px; font-size:0.84rem; border-radius:10px; border:1px solid #cbd5e1; background:#ffffff; margin:0; box-sizing:border-box; color:#334155; cursor:pointer;" title="Filter by date" />
 
-    <select name="type" onchange="this.form.submit()" style="width:165px; flex-shrink:0; height:40px; padding:0 10px; font-size:13px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; margin:0; box-sizing:border-box;">
-      <option value="">-- All Test Types --</option>
+    <select name="type" onchange="this.form.submit()" style="width:180px; flex-shrink:0; height:42px; padding:0 10px; font-size:0.84rem; font-weight:500; border-radius:10px; border:1px solid #cbd5e1; background:#ffffff; margin:0; box-sizing:border-box; color:#334155; cursor:pointer;">
+      <option value="">All Diagnostic Panels</option>
       <% (availableTestTypes || []).forEach(function(tt){ %>
         <option value="<%= tt %>" <%= (typeof typeFilter !== 'undefined' && typeFilter === tt) ? 'selected' : '' %>><%= tt %></option>
       <% }) %>
     </select>
     
-    <a href="/signatures" class="button btn-secondary" style="height:40px; display:inline-flex; align-items:center; padding:0 16px; border-radius:8px; flex-shrink:0; white-space:nowrap; font-size:13px; margin:0;">Clear</a>
+    <a href="/signatures" class="button btn-secondary" style="height:42px; display:inline-flex; align-items:center; gap:6px; padding:0 16px; border-radius:10px; flex-shrink:0; white-space:nowrap; font-size:0.84rem; margin:0; font-weight:600;" title="Reset filters">
+      <i class="fas fa-rotate-left" style="color:#64748b;"></i>
+      <span>Reset</span>
+    </a>
   </form>
 
-  <!-- Signable Tests Table (No signature image rendered) -->
-  <div style="overflow-x:auto;">
+  <!-- Signable Tests Table -->
+  <div class="table-responsive" style="overflow-x:auto; border:1px solid #e2e8f0; border-radius:12px;">
     <% if (tests && tests.length) { %>
-      <table style="width:100%; border-collapse:collapse; margin-bottom:16px;">
+      <table style="width:100%; border-collapse:collapse; margin-bottom:0; font-size:0.88rem;">
         <thead>
-          <tr style="border-bottom:2px solid #e2e8f0; text-align:left;">
-            <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">Test ID</th>
-            <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">Patient</th>
-            <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">Diagnostic Panel</th>
-            <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">Test Date</th>
-            <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">Signatory Status</th>
-            <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b; text-align:right;">Actions</th>
+          <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0; text-align:left;">
+            <th style="padding:14px 16px; font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#64748b; letter-spacing:0.05em; white-space:nowrap;">Test ID</th>
+            <th style="padding:14px 16px; font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#64748b; letter-spacing:0.05em; min-width:200px;">Patient</th>
+            <th style="padding:14px 16px; font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#64748b; letter-spacing:0.05em; min-width:180px;">Diagnostic Panel</th>
+            <th style="padding:14px 16px; font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#64748b; letter-spacing:0.05em; white-space:nowrap;">Test Date</th>
+            <th style="padding:14px 16px; font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#64748b; letter-spacing:0.05em; white-space:nowrap;">Signatory Status</th>
+            <th style="padding:14px 16px; font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#64748b; letter-spacing:0.05em; text-align:right; white-space:nowrap;">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -66,48 +75,53 @@
             const hasAnySig = Object.keys(sigs).length > 0;
             const patientName = t.patient ? (t.patient.lastName + ', ' + t.patient.firstName) : 'Unknown Patient';
           %>
-            <tr style="border-bottom:1px solid #f1f5f9; transition:background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
-              <td style="padding:14px; font-weight:700; color:#0f172a; white-space:nowrap;">
+            <tr style="border-bottom:1px solid #f1f5f9; transition:background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#ffffff'">
+              <td style="padding:14px 16px; white-space:nowrap;">
                 <a href="/tests/<%= t.id %>" style="color:#0284c7; text-decoration:none;">
-                  <code style="background:#f1f5f9; padding:4px 8px; border-radius:6px; font-size:0.9em; color:#0284c7;"><%= t.testId || t.id %></code>
+                  <code style="background:#f1f5f9; padding:4px 8px; border-radius:6px; font-size:0.85rem; font-weight:700; color:#0284c7; border:1px solid #e2e8f0; font-family:var(--font-mono, monospace);"><%= t.testId || t.id %></code>
                 </a>
               </td>
-              <td style="padding:14px;">
-                <strong style="color:#0f172a; display:block; font-size:0.95em;"><%= patientName %></strong>
+              <td style="padding:14px 16px;">
+                <strong style="color:#0f172a; display:block; font-size:0.92rem;"><%= patientName %></strong>
                 <% if (t.patient && t.patient.patientId) { %>
-                  <span style="font-size:0.8em; color:#64748b;">ID: <%= t.patient.patientId %></span>
+                  <span style="font-size:0.75rem; color:#64748b; font-family:var(--font-mono, monospace);">MRN: <%= t.patient.patientId %></span>
                 <% } %>
               </td>
-              <td style="padding:14px;">
+              <td style="padding:14px 16px;">
                 <span style="font-weight:600; color:#334155;"><%= t.testType || t.template || 'General Diagnostic' %></span>
               </td>
-              <td style="padding:14px; color:#64748b; font-size:0.9em; white-space:nowrap;">
+              <td style="padding:14px 16px; color:#64748b; font-size:0.86rem; white-space:nowrap; font-family:var(--font-mono, monospace);">
                 <%= t.testDate ? new Date(t.testDate).toLocaleDateString() : (t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '') %>
               </td>
-              <td style="padding:14px; white-space:nowrap;">
+              <td style="padding:14px 16px; white-space:nowrap;">
                 <% if (isSignedByMe) { %>
-                  <span style="display:inline-flex; align-items:center; gap:6px; background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; padding:4px 10px; border-radius:12px; font-size:0.82em; font-weight:600;">
-                    ✓ Signed by You <small style="color:#64748b; font-weight:400;">(<%= new Date(sigs[uid].uploadedAt).toLocaleDateString() %>)</small>
+                  <span style="display:inline-flex; align-items:center; gap:6px; background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0; padding:4px 10px; border-radius:12px; font-size:0.78rem; font-weight:700;">
+                    <i class="fas fa-check" style="color:#10b981;"></i> Signed by You <small style="color:#64748b; font-weight:500;">(<%= new Date(sigs[uid].uploadedAt).toLocaleDateString() %>)</small>
                   </span>
                 <% } else if (hasAnySig) { %>
                   <% const firstKey = Object.keys(sigs)[0]; %>
-                  <span style="display:inline-flex; align-items:center; gap:6px; background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; padding:4px 10px; border-radius:12px; font-size:0.82em; font-weight:600;">
-                    ✓ Signed: <%= sigs[firstKey].name || 'Technician' %>
+                  <span style="display:inline-flex; align-items:center; gap:6px; background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; padding:4px 10px; border-radius:12px; font-size:0.78rem; font-weight:700;">
+                    <i class="fas fa-check" style="color:#0284c7;"></i> Signed: <%= sigs[firstKey].name || 'Technician' %>
                   </span>
                 <% } else { %>
-                  <span style="color:#94a3b8; font-size:0.85em; font-style:italic;">Awaiting signature</span>
+                  <span style="display:inline-flex; align-items:center; gap:6px; color:#94a3b8; font-size:0.82rem; font-style:italic;">
+                    <i class="far fa-clock"></i> Awaiting signature
+                  </span>
                 <% } %>
               </td>
-              <td style="padding:14px; text-align:right; white-space:nowrap;">
+              <td style="padding:14px 16px; text-align:right; white-space:nowrap;">
                 <% if (!isSignedByMe) { %>
                   <form action="/signatures/<%= t.id %>/sign" method="POST" style="display:inline-block; margin:0;">
-                    <button type="submit" class="button btn-primary btn-small" style="padding:6px 14px; font-size:0.82em; font-weight:600;">
-                      ✍️ Sign Report
+                    <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+                    <button type="submit" class="button btn-primary btn-small" style="padding:6px 14px; font-size:0.8rem; font-weight:700; border-radius:8px; display:inline-flex; align-items:center; gap:6px;">
+                      <i class="fas fa-pen-nib"></i>
+                      <span>Sign Report</span>
                     </button>
                   </form>
                 <% } %>
-                <a href="/reports/preview/<%= t.id %>" target="_blank" class="button btn-orange btn-small" style="padding:6px 12px; font-size:0.82em;">
-                  📄 Preview Report
+                <a href="/reports/preview/<%= t.id %>" target="_blank" class="button btn-orange btn-small" style="padding:6px 12px; font-size:0.8rem; border-radius:8px; display:inline-flex; align-items:center; gap:6px; text-decoration:none;">
+                  <i class="fas fa-file-pdf"></i>
+                  <span>Preview</span>
                 </a>
               </td>
             </tr>
@@ -115,20 +129,25 @@
         </tbody>
       </table>
     <% } else { %>
-      <div style="padding:48px 16px; text-align:center; color:#94a3b8;">
-        <span style="font-size:2.4em; display:block; margin-bottom:8px;">✍️</span>
-        <strong style="font-size:1.1em; color:#475569; display:block;">No Signable Reports in Queue</strong>
-        <span style="font-size:0.9em;">All completed diagnostic reports have been reviewed, or match no current filters.</span>
+      <div style="padding:54px 20px; text-align:center; color:#94a3b8;">
+        <div style="width:64px; height:64px; border-radius:18px; background:#eef2ff; color:#4f46e5; display:inline-flex; align-items:center; justify-content:center; font-size:1.8rem; margin-bottom:14px; box-shadow:0 4px 12px rgba(79,70,229,0.1);">
+          <i class="fas fa-file-signature"></i>
+        </div>
+        <strong style="font-size:1.15rem; color:#0f172a; display:block; margin-bottom:4px;">No Signable Reports in Queue</strong>
+        <p style="font-size:0.88rem; color:#64748b; margin:0;">All completed diagnostic reports have been reviewed and signed, or match no current filters.</p>
       </div>
     <% } %>
   </div>
   
   <!-- Pagination -->
   <% if (typeof totalPages !== 'undefined' && totalPages > 1) { %>
-    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding-top:16px; border-top:1px solid #f1f5f9;">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding-top:18px; margin-top:16px; border-top:1px solid #f1f5f9;">
       <div>
         <% if (hasPrevPage) { %>
-          <a href="?page=<%= prevPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="button btn-secondary btn-small">← Previous</a>
+          <a href="?page=<%= prevPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="button btn-secondary btn-small" style="display:inline-flex; align-items:center; gap:6px; border-radius:8px;">
+            <i class="fas fa-chevron-left" style="font-size:0.75rem;"></i>
+            <span>Previous</span>
+          </a>
         <% } %>
       </div>
 
@@ -141,13 +160,16 @@
           start = Math.max(1, end - maxDisplay + 1);
           for (let p = start; p <= end; p++) {
         %>
-          <a href="?page=<%= p %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link" style="padding:6px 12px; border-radius:6px; text-decoration:none; font-size:0.85em; font-weight:600; <%= p === currentPage ? 'background:#0f172a; color:#fff;' : 'background:#f1f5f9; color:#475569;' %>"><%= p %></a>
+          <a href="?page=<%= p %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link" style="padding:6px 12px; border-radius:8px; text-decoration:none; font-size:0.85rem; font-weight:700; <%= p === currentPage ? 'background:#0f172a; color:#ffffff;' : 'background:#f1f5f9; color:#475569;' %>"><%= p %></a>
         <% } %>
       </div>
 
       <div>
         <% if (hasNextPage) { %>
-          <a href="?page=<%= nextPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="button btn-secondary btn-small">Next →</a>
+          <a href="?page=<%= nextPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&type=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="button btn-secondary btn-small" style="display:inline-flex; align-items:center; gap:6px; border-radius:8px;">
+            <span>Next</span>
+            <i class="fas fa-chevron-right" style="font-size:0.75rem;"></i>
+          </a>
         <% } %>
       </div>
     </div>

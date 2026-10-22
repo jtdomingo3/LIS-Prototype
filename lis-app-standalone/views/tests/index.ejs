@@ -14,61 +14,87 @@
       else countQueue++;
     });
   }
+
+  const completionPct = totalCount > 0 ? Math.round((countCompleted / totalCount) * 100) : 0;
 %>
 
 <!-- Top Diagnostic Overview Counters (System-Wide) -->
-<div class="stats-container" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:24px;">
-  <div class="stat-card" style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:18px 22px; box-shadow:0 2px 10px rgba(0,0,0,0.02);">
+<div class="stats-container" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-bottom:24px;">
+  <!-- All Diagnostic Tests -->
+  <div class="stat-card" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:14px; padding:20px 22px; box-shadow:0 2px 10px rgba(0,0,0,0.02); transition:transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 18px rgba(0,0,0,0.05)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 10px rgba(0,0,0,0.02)';">
     <div style="display:flex; justify-content:space-between; align-items:center;">
-      <span style="font-size:0.85em; text-transform:uppercase; font-weight:700; color:#64748b; letter-spacing:0.5px;">All Diagnostic Tests</span>
-      <span style="font-size:1.4em;">🧪</span>
+      <span style="font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#64748b; letter-spacing:0.06em;">All Diagnostic Tests</span>
+      <div style="width:36px; height:36px; border-radius:10px; background:#f0f9ff; color:#0284c7; display:flex; align-items:center; justify-content:center; font-size:1.05rem;">
+        <i class="fas fa-vials"></i>
+      </div>
     </div>
-    <div style="font-size:2em; font-weight:800; color:#0f172a; margin-top:8px;"><%= totalCount %></div>
-    <div style="font-size:0.82em; color:#64748b; margin-top:4px;">Total in system</div>
+    <div style="font-size:2.2rem; font-weight:800; color:#0f172a; margin-top:8px; line-height:1; font-family:var(--font-mono, monospace);"><%= totalCount %></div>
+    <div style="display:flex; align-items:center; gap:6px; margin-top:8px;">
+      <span style="font-size:0.75rem; color:#64748b;">Active diagnostic registry</span>
+    </div>
   </div>
 
-  <div class="stat-card" style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:18px 22px; box-shadow:0 2px 10px rgba(0,0,0,0.02);">
+  <!-- Completed & Released -->
+  <div class="stat-card" style="background:#ffffff; border:1px solid #a7f3d0; border-radius:14px; padding:20px 22px; box-shadow:0 2px 10px rgba(16,185,129,0.04); transition:transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 18px rgba(16,185,129,0.1)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 10px rgba(16,185,129,0.04)';">
     <div style="display:flex; justify-content:space-between; align-items:center;">
-      <span style="font-size:0.85em; text-transform:uppercase; font-weight:700; color:#10b981; letter-spacing:0.5px;">Completed & Released</span>
-      <span style="font-size:1.4em;">✓</span>
+      <span style="font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#059669; letter-spacing:0.06em;">Completed & Released</span>
+      <div style="width:36px; height:36px; border-radius:10px; background:#ecfdf5; color:#059669; display:flex; align-items:center; justify-content:center; font-size:1.05rem;">
+        <i class="fas fa-circle-check"></i>
+      </div>
     </div>
-    <div style="font-size:2em; font-weight:800; color:#10b981; margin-top:8px;"><%= countCompleted %></div>
-    <div style="font-size:0.82em; color:#64748b; margin-top:4px;">Verified & printable</div>
+    <div style="font-size:2.2rem; font-weight:800; color:#059669; margin-top:8px; line-height:1; font-family:var(--font-mono, monospace);"><%= countCompleted %></div>
+    <div style="display:flex; align-items:center; gap:6px; margin-top:8px;">
+      <span style="background:#ecfdf5; color:#065f46; font-size:0.7rem; font-weight:700; padding:2px 8px; border-radius:12px; border:1px solid #a7f3d0;"><%= completionPct %>% released</span>
+      <span style="font-size:0.75rem; color:#64748b;">Verified & signed</span>
+    </div>
   </div>
 
-  <div class="stat-card" style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:18px 22px; box-shadow:0 2px 10px rgba(0,0,0,0.02);">
+  <!-- In Laboratory Analysis -->
+  <div class="stat-card" style="background:#ffffff; border:1px solid #fde68a; border-radius:14px; padding:20px 22px; box-shadow:0 2px 10px rgba(245,158,11,0.04); transition:transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 18px rgba(245,158,11,0.1)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 10px rgba(245,158,11,0.04)';">
     <div style="display:flex; justify-content:space-between; align-items:center;">
-      <span style="font-size:0.85em; text-transform:uppercase; font-weight:700; color:#d97706; letter-spacing:0.5px;">In Progress</span>
-      <span style="font-size:1.4em;">⏳</span>
+      <span style="font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#d97706; letter-spacing:0.06em;">In Analysis</span>
+      <div style="width:36px; height:36px; border-radius:10px; background:#fffbe6; color:#d97706; display:flex; align-items:center; justify-content:center; font-size:1.05rem;">
+        <i class="fas fa-flask"></i>
+      </div>
     </div>
-    <div style="font-size:2em; font-weight:800; color:#d97706; margin-top:8px;"><%= countInProgress %></div>
-    <div style="font-size:0.82em; color:#64748b; margin-top:4px;">In laboratory analysis</div>
+    <div style="font-size:2.2rem; font-weight:800; color:#d97706; margin-top:8px; line-height:1; font-family:var(--font-mono, monospace);"><%= countInProgress %></div>
+    <div style="display:flex; align-items:center; gap:6px; margin-top:8px;">
+      <span style="background:#fffbe6; color:#b45309; font-size:0.7rem; font-weight:700; padding:2px 8px; border-radius:12px; border:1px solid #fde68a;">Active Bench</span>
+      <span style="font-size:0.75rem; color:#64748b;">On instrument / testing</span>
+    </div>
   </div>
 
-  <div class="stat-card" style="background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:18px 22px; box-shadow:0 2px 10px rgba(0,0,0,0.02);">
+  <!-- Queue / Extraction -->
+  <div class="stat-card" style="background:#ffffff; border:1px solid #e0e7ff; border-radius:14px; padding:20px 22px; box-shadow:0 2px 10px rgba(79,70,229,0.04); transition:transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 18px rgba(79,70,229,0.1)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 10px rgba(79,70,229,0.04)';">
     <div style="display:flex; justify-content:space-between; align-items:center;">
-      <span style="font-size:0.85em; text-transform:uppercase; font-weight:700; color:#6366f1; letter-spacing:0.5px;">Queue / Extraction</span>
-      <span style="font-size:1.4em;">🩸</span>
+      <span style="font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#4f46e5; letter-spacing:0.06em;">Queue / Phlebotomy</span>
+      <div style="width:36px; height:36px; border-radius:10px; background:#eef2ff; color:#4f46e5; display:flex; align-items:center; justify-content:center; font-size:1.05rem;">
+        <i class="fas fa-clock-rotate-left"></i>
+      </div>
     </div>
-    <div style="font-size:2em; font-weight:800; color:#6366f1; margin-top:8px;"><%= countQueue %></div>
-    <div style="font-size:0.82em; color:#64748b; margin-top:4px;">Awaiting phlebotomy / payment</div>
+    <div style="font-size:2.2rem; font-weight:800; color:#4f46e5; margin-top:8px; line-height:1; font-family:var(--font-mono, monospace);"><%= countQueue %></div>
+    <div style="display:flex; align-items:center; gap:6px; margin-top:8px;">
+      <span style="background:#eef2ff; color:#3730a3; font-size:0.7rem; font-weight:700; padding:2px 8px; border-radius:12px; border:1px solid #c7d2fe;">Pending Triage</span>
+      <span style="font-size:0.75rem; color:#64748b;">Awaiting extraction</span>
+    </div>
   </div>
 </div>
 
-<div class="card" style="padding:24px 28px; border-radius:16px; box-shadow:0 4px 18px rgba(0,0,0,0.03);">
+<div class="card" style="padding:24px 28px; border-radius:16px; box-shadow:0 4px 20px rgba(0,0,0,0.03); background:#ffffff; border:1px solid #e2e8f0;">
   <!-- Filter and Search Toolbar (Single Clean Line) -->
-  <div style="display:flex; align-items:center; gap:10px; margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid #f1f5f9; width:100%;">
-    <a href="/tests/new?returnTo=/tests" class="button btn-primary" style="display:inline-flex; align-items:center; gap:8px; font-weight:600; padding:0 18px; height:40px; flex-shrink:0; white-space:nowrap; border-radius:8px;">
-      <i class="fa fa-plus"></i> Create New Test
+  <div style="display:flex; align-items:center; gap:10px; margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid #f1f5f9; width:100%; flex-wrap:wrap;">
+    <a href="/tests/new?returnTo=/tests" class="button btn-primary" style="display:inline-flex; align-items:center; gap:8px; font-weight:700; padding:0 18px; height:42px; flex-shrink:0; white-space:nowrap; border-radius:10px; box-shadow:0 2px 8px rgba(16,185,129,0.25);">
+      <i class="fas fa-plus"></i>
+      <span>Create New Test</span>
     </a>
 
-    <form method="GET" action="/tests" style="flex:1; display:flex; gap:8px; align-items:center; margin:0; min-width:0;">
-      <div style="position:relative; flex:1; min-width:180px;">
-        <span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:0.9em; pointer-events:none;">🔍</span>
-        <input type="text" name="search" placeholder="Search by patient name, ID, or order..." value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>" style="width:100%; height:40px; padding:0 12px 0 34px; font-size:13.5px; box-sizing:border-box; border-radius:8px; border:1px solid #cbd5e1; background:#fff; margin:0;" />
+    <form method="GET" action="/tests" style="flex:1; display:flex; gap:8px; align-items:center; margin:0; min-width:280px; flex-wrap:wrap;">
+      <div style="position:relative; flex:1; min-width:200px;">
+        <i class="fas fa-search" style="position:absolute; left:14px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:0.88rem; pointer-events:none;"></i>
+        <input type="text" name="search" placeholder="Search by patient name, MRN, or test ID..." value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>" style="width:100%; height:42px; padding:0 14px 0 38px; font-size:0.88rem; box-sizing:border-box; border-radius:10px; border:1px solid #cbd5e1; background:#f8fafc; margin:0; transition:all 0.2s;" onfocus="this.style.background='#ffffff'; this.style.borderColor='#0284c7'; this.style.boxShadow='0 0 0 3px rgba(2,132,199,0.1)';" onblur="this.style.background='#f8fafc'; this.style.borderColor='#cbd5e1'; this.style.boxShadow='none';" />
       </div>
 
-      <select name="status" style="width:140px; flex-shrink:0; height:40px; padding:0 8px; font-size:13px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; margin:0; box-sizing:border-box;" onchange="this.form.submit();">
+      <select name="status" style="width:150px; flex-shrink:0; height:42px; padding:0 10px; font-size:0.84rem; font-weight:500; border-radius:10px; border:1px solid #cbd5e1; background:#ffffff; margin:0; box-sizing:border-box; color:#334155; cursor:pointer;" onchange="this.form.submit();">
         <option value="">All Statuses</option>
         <option value="Payment Area" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Payment Area') ? 'selected' : '' %>>Payment Area</option>
         <option value="Extraction Area" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Extraction Area') ? 'selected' : '' %>>Extraction Area</option>
@@ -80,62 +106,75 @@
         <option value="Released" <%= (typeof statusFilter !== 'undefined' && statusFilter === 'Released') ? 'selected' : '' %>>Released</option>
       </select>
 
-      <select name="testType" style="width:140px; flex-shrink:0; height:40px; padding:0 8px; font-size:13px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; margin:0; box-sizing:border-box;" onchange="this.form.submit();">
-        <option value="">All Test Types</option>
+      <select name="testType" style="width:160px; flex-shrink:0; height:42px; padding:0 10px; font-size:0.84rem; font-weight:500; border-radius:10px; border:1px solid #cbd5e1; background:#ffffff; margin:0; box-sizing:border-box; color:#334155; cursor:pointer;" onchange="this.form.submit();">
+        <option value="">All Diagnostic Panels</option>
         <% if (Array.isArray(availableTestTypes)) { availableTestTypes.forEach(function(tt){ %>
           <option value="<%= tt %>" <%= (typeof typeFilter !== 'undefined' && typeFilter === tt) ? 'selected' : '' %>><%= tt %></option>
         <% }) } %>
       </select>
 
-      <input type="date" name="date" onchange="this.form.submit();" value="<%= typeof dateFilter !== 'undefined' ? dateFilter : '' %>" style="width:135px; flex-shrink:0; height:40px; padding:0 8px; font-size:13px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; margin:0; box-sizing:border-box;" title="Filter by date" />
+      <input type="date" name="date" onchange="this.form.submit();" value="<%= typeof dateFilter !== 'undefined' ? dateFilter : '' %>" style="width:145px; flex-shrink:0; height:42px; padding:0 10px; font-size:0.84rem; border-radius:10px; border:1px solid #cbd5e1; background:#ffffff; margin:0; box-sizing:border-box; color:#334155; cursor:pointer;" title="Filter by date" />
 
-      <a href="/tests" class="button btn-secondary" style="height:40px; display:inline-flex; align-items:center; padding:0 14px; border-radius:8px; flex-shrink:0; white-space:nowrap; font-size:13px; margin:0;">Clear</a>
+      <a href="/tests" class="button btn-secondary" style="height:42px; display:inline-flex; align-items:center; gap:6px; padding:0 14px; border-radius:10px; flex-shrink:0; white-space:nowrap; font-size:0.84rem; margin:0; font-weight:600;" title="Reset filters">
+        <i class="fas fa-rotate-left" style="color:#64748b;"></i>
+        <span>Reset</span>
+      </a>
     </form>
   </div>
 
   <!-- Tests Table -->
-  <div style="overflow-x:auto;">
-    <table style="width:100%; border-collapse:collapse; margin-bottom:16px;">
+  <div class="table-responsive" style="overflow-x:auto; border:1px solid #e2e8f0; border-radius:12px;">
+    <table style="width:100%; border-collapse:collapse; margin-bottom:0; font-size:0.88rem;">
       <thead>
-        <tr style="border-bottom:2px solid #e2e8f0; text-align:left;">
-          <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">Test ID</th>
-          <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">Patient Information</th>
-          <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">Diagnostic Panel</th>
-          <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">Test Date</th>
-          <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b;">Status</th>
-          <th style="padding:12px 14px; font-size:0.85em; text-transform:uppercase; color:#64748b; text-align:right;">Actions</th>
+        <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0; text-align:left;">
+          <th style="padding:14px 16px; font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#64748b; letter-spacing:0.05em; white-space:nowrap;">Test ID</th>
+          <th style="padding:14px 16px; font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#64748b; letter-spacing:0.05em; min-width:220px;">Patient Information</th>
+          <th style="padding:14px 16px; font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#64748b; letter-spacing:0.05em; min-width:200px;">Diagnostic Panel</th>
+          <th style="padding:14px 16px; font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#64748b; letter-spacing:0.05em; white-space:nowrap;">Test Date</th>
+          <th style="padding:14px 16px; font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#64748b; letter-spacing:0.05em; white-space:nowrap;">Status</th>
+          <th style="padding:14px 16px; font-size:0.75rem; text-transform:uppercase; font-weight:700; color:#64748b; letter-spacing:0.05em; text-align:right; white-space:nowrap;">Actions</th>
         </tr>
       </thead>
       <tbody>
         <% if (tests && tests.length) { %>
           <% tests.forEach(test => { 
             const patientName = test.patient ? (test.patient.firstName + ' ' + (test.patient.middleName ? test.patient.middleName + ' ' : '') + test.patient.lastName) : 'Unknown Patient';
-            const initials = test.patient ? ((test.patient.firstName || '')[0] || '' + (test.patient.lastName || '')[0] || '').toUpperCase() : 'PT';
+            const initials = test.patient ? (((test.patient.firstName || '')[0] || '') + ((test.patient.lastName || '')[0] || '')).toUpperCase() : 'PT';
             const statusStr = String(test.status || 'Pending');
             const sLower = statusStr.toLowerCase();
             let badgeStyle = 'background:#f1f5f9; color:#475569; border:1px solid #cbd5e1;';
-            if (sLower === 'completed' || sLower === 'released' || sLower === 'checked') badgeStyle = 'background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0;';
-            else if (sLower === 'in progress') badgeStyle = 'background:#fef3c7; color:#92400e; border:1px solid #fde68a;';
-            else if (sLower.includes('extraction')) badgeStyle = 'background:#ede9fe; color:#5b21b6; border:1px solid #ddd6fe;';
-            else if (sLower.includes('payment')) badgeStyle = 'background:#fee2e2; color:#991b1b; border:1px solid #fecaca;';
+            let dotColor = '#64748b';
+            if (sLower === 'completed' || sLower === 'released' || sLower === 'checked') {
+              badgeStyle = 'background:#ecfdf5; color:#065f46; border:1px solid #a7f3d0;';
+              dotColor = '#10b981';
+            } else if (sLower === 'in progress') {
+              badgeStyle = 'background:#fffbeb; color:#92400e; border:1px solid #fde68a;';
+              dotColor = '#f59e0b';
+            } else if (sLower.includes('extraction')) {
+              badgeStyle = 'background:#f5f3ff; color:#5b21b6; border:1px solid #ddd6fe;';
+              dotColor = '#8b5cf6';
+            } else if (sLower.includes('payment')) {
+              badgeStyle = 'background:#fef2f2; color:#991b1b; border:1px solid #fecaca;';
+              dotColor = '#ef4444';
+            }
           %>
-            <tr style="border-bottom:1px solid #f1f5f9; transition:background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
-              <td style="padding:14px; font-weight:700; color:#0f172a; white-space:nowrap;">
-                <code style="background:#f1f5f9; padding:4px 8px; border-radius:6px; font-size:0.9em; color:#334155;"><%= test.testId %></code>
+            <tr style="border-bottom:1px solid #f1f5f9; transition:background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='#ffffff'">
+              <td style="padding:14px 16px; white-space:nowrap;">
+                <code style="background:#f1f5f9; padding:4px 8px; border-radius:6px; font-size:0.85rem; font-weight:700; color:#0f172a; border:1px solid #e2e8f0; font-family:var(--font-mono, monospace);"><%= test.testId %></code>
               </td>
-              <td style="padding:14px;">
+              <td style="padding:14px 16px;">
                 <div style="display:flex; align-items:center; gap:10px;">
-                  <span style="display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:50%; background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.85em;"><%= initials || 'PT' %></span>
+                  <span style="display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:50%; background:#e0f2fe; color:#0369a1; font-weight:700; font-size:0.82rem; flex-shrink:0;"><%= initials || 'PT' %></span>
                   <div>
-                    <strong style="color:#0f172a; display:block; font-size:0.95em;"><%= patientName %></strong>
+                    <strong style="color:#0f172a; display:block; font-size:0.92rem;"><%= patientName %></strong>
                     <% if (test.patient && test.patient.patientId) { %>
-                      <span style="font-size:0.8em; color:#64748b;">MRN: <%= test.patient.patientId %></span>
+                      <span style="font-size:0.75rem; color:#64748b; font-family:var(--font-mono, monospace);">MRN: <%= test.patient.patientId %></span>
                     <% } %>
                   </div>
                 </div>
               </td>
-              <td style="padding:14px; color:#334155; font-size:0.95em;">
-                <strong style="color:#0f172a;"><%= test.testType %></strong>
+              <td style="padding:14px 16px; color:#334155;">
+                <strong style="color:#0f172a; display:block;"><%= test.testType %></strong>
                 <%
                   let rowRemark = '';
                   if (typeof test.remarks === 'string' && test.remarks.trim()) rowRemark = test.remarks.trim();
@@ -147,21 +186,22 @@
                   }
                 %>
                 <% if (rowRemark) { %>
-                  <div style="font-size: 0.78em; color: #0284c7; background: #f0fdfa; border: 1px solid #bae6fd; padding: 2px 8px; border-radius: 6px; margin-top: 5px; display: inline-flex; align-items: center; gap: 5px; max-width: 240px; white-space: normal; line-height: 1.3;">
-                    <i class="fa fa-info-circle" style="flex-shrink: 0; color: #0284c7;"></i>
+                  <div style="font-size:0.75rem; color:#0284c7; background:#f0f9ff; border:1px solid #bae6fd; padding:2px 8px; border-radius:6px; margin-top:4px; display:inline-flex; align-items:center; gap:5px; max-width:260px; white-space:normal; line-height:1.3;">
+                    <i class="fas fa-info-circle" style="flex-shrink:0; color:#0284c7;"></i>
                     <span><%= rowRemark %></span>
                   </div>
                 <% } %>
               </td>
-              <td style="padding:14px; color:#64748b; font-size:0.9em; white-space:nowrap;">
+              <td style="padding:14px 16px; color:#64748b; font-size:0.86rem; white-space:nowrap; font-family:var(--font-mono, monospace);">
                 <%= test.testDate ? (typeof formatMMDDYYYY === 'function' ? formatMMDDYYYY(test.testDate) : new Date(test.testDate).toLocaleDateString('en-US')) : '' %>
               </td>
-              <td style="padding:14px; white-space:nowrap;">
-                <span style="display:inline-block; padding:4px 10px; border-radius:20px; font-size:0.8em; font-weight:600; <%= badgeStyle %>">
-                  <%= statusStr %>
+              <td style="padding:14px 16px; white-space:nowrap;">
+                <span style="display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:20px; font-size:0.78rem; font-weight:700; <%= badgeStyle %>">
+                  <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:<%= dotColor %>;"></span>
+                  <span><%= statusStr %></span>
                 </span>
               </td>
-              <td style="padding:14px; text-align:right; white-space:nowrap;">
+              <td style="padding:14px 16px; text-align:right; white-space:nowrap;">
                 <% 
                   const isDoctor = String(test.testType || '').toLowerCase().includes('doctor') ||
                     String(test.status || '').toLowerCase().includes('doctor') ||
@@ -174,33 +214,54 @@
                   const isDone = test.status === 'Checked' || test.status === 'Completed' || test.status === 'Released';
                 %>
                 <% if (isDoctor) { %>
-                  <a href="/consultations/<%= test.id %>" class="button btn-small" style="padding:6px 12px; font-size:0.82em; font-weight:700; background:<%= isDone ? '#0f766e' : '#0d9488' %>; color:#ffffff; border:1px solid #0f766e; text-decoration:none; display:inline-flex; align-items:center; gap:5px; box-shadow:0 1px 3px rgba(13,148,136,0.25);" title="<%= isDone ? 'View Consultation Encounter' : 'Start / Open Clinical Consultation' %>">
-                    <i class="fa <%= isDone ? 'fa-clipboard-check' : 'fa-user-md' %>"></i> <%= isDone ? 'Consultation' : 'Start Consultation' %>
+                  <a href="/consultations/<%= test.id %>" class="button btn-small" style="padding:6px 12px; font-size:0.8rem; font-weight:700; background:<%= isDone ? '#0f766e' : '#0d9488' %>; color:#ffffff; border:1px solid #0f766e; text-decoration:none; display:inline-flex; align-items:center; gap:6px; border-radius:8px; box-shadow:0 1px 3px rgba(13,148,136,0.25);" title="<%= isDone ? 'View Consultation Encounter' : 'Start / Open Clinical Consultation' %>">
+                    <i class="fas <%= isDone ? 'fa-clipboard-check' : 'fa-user-md' %>"></i>
+                    <span><%= isDone ? 'Consultation' : 'Start Consultation' %></span>
                   </a>
                 <% } else if (!isSendout) { %>
-                  <a href="/tests/<%= test.id %>/results" class="button btn-primary btn-small" style="padding:6px 12px; font-size:0.82em; font-weight:600;">Enter Result</a>
+                  <a href="/tests/<%= test.id %>/results" class="button btn-primary btn-small" style="padding:6px 12px; font-size:0.8rem; font-weight:700; display:inline-flex; align-items:center; gap:6px; border-radius:8px;">
+                    <i class="fas fa-flask"></i>
+                    <span>Enter Result</span>
+                  </a>
                 <% } %>
-                <a href="/tests/<%= test.id %>" class="button btn-secondary btn-small" style="padding:6px 12px; font-size:0.82em;">View</a>
+                <a href="/tests/<%= test.id %>" class="button btn-secondary btn-small" style="padding:6px 12px; font-size:0.8rem; border-radius:8px; display:inline-flex; align-items:center; gap:4px;" title="View Details">
+                  <i class="fas fa-eye" style="color:#64748b;"></i>
+                  <span>View</span>
+                </a>
                 <% if (test.status === 'Completed' || test.status === 'Released' || test.status === 'Checked') { %>
                   <% if (isDoctor) { %>
-                    <a href="/consultations/<%= test.id %>/print/chart" target="_blank" class="button btn-orange btn-small" style="padding:6px 12px; font-size:0.82em;"><i class="fa fa-file-medical"></i> Chart</a>
+                    <a href="/consultations/<%= test.id %>/print/chart" target="_blank" class="button btn-orange btn-small" style="padding:6px 12px; font-size:0.8rem; border-radius:8px; display:inline-flex; align-items:center; gap:6px;">
+                      <i class="fas fa-file-medical"></i>
+                      <span>Chart</span>
+                    </a>
                   <% } else { %>
-                    <a href="/reports/preview/<%= test.id %>" class="button btn-orange btn-small" style="padding:6px 12px; font-size:0.82em;">Report</a>
+                    <a href="/reports/preview/<%= test.id %>" class="button btn-orange btn-small" style="padding:6px 12px; font-size:0.8rem; border-radius:8px; display:inline-flex; align-items:center; gap:6px;">
+                      <i class="fas fa-file-pdf"></i>
+                      <span>Report</span>
+                    </a>
                   <% } %>
                 <% } %>
                 <form action="/tests/<%= test.id %>?_method=DELETE" method="POST" style="display:inline;" onsubmit="return confirm('⚠️ Are you sure you want to delete test <%= test.testId %>? This will permanently remove its results.');">
-  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
-                  <button type="submit" class="button btn-small btn-danger" style="padding:6px 10px; font-size:0.82em; margin-left:4px;" title="Delete test">Delete</button>
+                  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+                  <button type="submit" class="button btn-small btn-danger" style="padding:6px 10px; font-size:0.8rem; margin-left:4px; border-radius:8px;" title="Delete test">
+                    <i class="fas fa-trash-alt"></i>
+                  </button>
                 </form>
               </td>
             </tr>
           <% }) %>
         <% } else { %>
           <tr>
-            <td colspan="6" style="padding:48px 16px; text-align:center; color:#94a3b8;">
-              <span style="font-size:2.4em; display:block; margin-bottom:8px;">🧪</span>
-              <strong style="font-size:1.1em; color:#475569; display:block;">No Diagnostic Tests Found</strong>
-              <span style="font-size:0.9em;">Adjust your search criteria or register a new laboratory work order.</span>
+            <td colspan="6" style="padding:54px 20px; text-align:center; color:#94a3b8;">
+              <div style="width:64px; height:64px; border-radius:18px; background:#f0f9ff; color:#0284c7; display:inline-flex; align-items:center; justify-content:center; font-size:1.8rem; margin-bottom:14px; box-shadow:0 4px 12px rgba(2,132,199,0.1);">
+                <i class="fas fa-flask-vial"></i>
+              </div>
+              <strong style="font-size:1.15rem; color:#0f172a; display:block; margin-bottom:4px;">No Diagnostic Tests Found</strong>
+              <p style="font-size:0.88rem; color:#64748b; margin:0 0 16px 0; max-width:420px; margin-left:auto; margin-right:auto;">Adjust your search or filter criteria, or register a new laboratory work order for processing.</p>
+              <a href="/tests/new?returnTo=/tests" class="button btn-primary" style="display:inline-flex; align-items:center; gap:8px; font-weight:700; padding:8px 18px; border-radius:8px;">
+                <i class="fas fa-plus"></i>
+                <span>Create New Test</span>
+              </a>
             </td>
           </tr>
         <% } %>
@@ -210,10 +271,13 @@
 
   <!-- Pagination Bar -->
   <% if (typeof totalPages !== 'undefined' && totalPages > 1) { %>
-    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding-top:16px; border-top:1px solid #f1f5f9;">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; padding-top:18px; margin-top:16px; border-top:1px solid #f1f5f9;">
       <div>
         <% if (hasPrevPage) { %>
-          <a href="?page=<%= prevPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="button btn-secondary btn-small">← Previous</a>
+          <a href="?page=<%= prevPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="button btn-secondary btn-small" style="display:inline-flex; align-items:center; gap:6px; border-radius:8px;">
+            <i class="fas fa-chevron-left" style="font-size:0.75rem;"></i>
+            <span>Previous</span>
+          </a>
         <% } %>
       </div>
 
@@ -225,22 +289,25 @@
           let end = Math.min(totalPages, start + maxDisplay - 1);
           start = Math.max(1, end - maxDisplay + 1);
           if (totalPages > maxDisplay && start > 1) { %>
-            <a href="?page=1&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link" style="padding:6px 10px; border-radius:6px; text-decoration:none; font-size:0.85em; color:#64748b;">1</a>
+            <a href="?page=1&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link" style="padding:6px 10px; border-radius:8px; text-decoration:none; font-size:0.85rem; color:#64748b;">1</a>
             <span style="color:#94a3b8;">...</span>
         <% }
           for (let p = start; p <= end; p++) {
         %>
-          <a href="?page=<%= p %>&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link" style="padding:6px 12px; border-radius:6px; text-decoration:none; font-size:0.85em; font-weight:600; <%= p === currentPage ? 'background:#0f172a; color:#fff;' : 'background:#f1f5f9; color:#475569;' %>"><%= p %></a>
+          <a href="?page=<%= p %>&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link" style="padding:6px 12px; border-radius:8px; text-decoration:none; font-size:0.85rem; font-weight:700; <%= p === currentPage ? 'background:#0f172a; color:#ffffff;' : 'background:#f1f5f9; color:#475569;' %>"><%= p %></a>
         <% } 
           if (totalPages > maxDisplay && end < totalPages) { %>
             <span style="color:#94a3b8;">...</span>
-            <a href="?page=<%= totalPages %>&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link" style="padding:6px 10px; border-radius:6px; text-decoration:none; font-size:0.85em; color:#64748b;"><%= totalPages %></a>
+            <a href="?page=<%= totalPages %>&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="page-link" style="padding:6px 10px; border-radius:8px; text-decoration:none; font-size:0.85rem; color:#64748b;"><%= totalPages %></a>
         <% } %>
       </div>
 
       <div>
         <% if (hasNextPage) { %>
-          <a href="?page=<%= nextPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="button btn-secondary btn-small">Next →</a>
+          <a href="?page=<%= nextPage %>&search=<%= encodeURIComponent(searchQuery || '') %>&status=<%= encodeURIComponent(statusFilter || '') %>&testType=<%= encodeURIComponent(typeFilter || '') %>&date=<%= encodeURIComponent(dateFilter || '') %>" class="button btn-secondary btn-small" style="display:inline-flex; align-items:center; gap:6px; border-radius:8px;">
+            <span>Next</span>
+            <i class="fas fa-chevron-right" style="font-size:0.75rem;"></i>
+          </a>
         <% } %>
       </div>
     </div>

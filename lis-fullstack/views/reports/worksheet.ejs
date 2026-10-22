@@ -3,7 +3,8 @@
   <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border-bottom:1px solid #f1f5f9; padding-bottom:16px; margin-bottom:20px;">
     <div>
       <h3 style="margin:0; font-size:1.4em; display:flex; align-items:center; gap:10px; color:#0f172a;">
-        <span style="font-size:1.1em;">📊</span> Batch Diagnostic Worksheet Export
+        <i class="fas fa-file-excel" style="color:#059669;"></i>
+        <span>Batch Diagnostic Worksheet Export</span>
       </h3>
       <p style="margin:4px 0 0 0; color:#64748b; font-size:0.9em;">Export daily patient laboratory results and worksheets into Excel (.xlsx) or CSV format.</p>
     </div>
@@ -51,11 +52,13 @@
     </div>
 
     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-      <button type="submit" class="button btn-primary" style="padding:10px 22px; font-weight:600;">
-        📥 Download Worksheet
+      <button type="submit" class="button btn-primary" style="padding:10px 22px; font-weight:700; display:inline-flex; align-items:center; gap:8px;">
+        <i class="fas fa-download"></i>
+        <span>Download Worksheet</span>
       </button>
-      <button type="button" id="previewBtn" class="button btn-secondary" style="padding:10px 20px;">
-        👁️ Preview First 500 Rows
+      <button type="button" id="previewBtn" class="button btn-secondary" style="padding:10px 20px; font-weight:600; display:inline-flex; align-items:center; gap:8px;">
+        <i class="fas fa-eye"></i>
+        <span>Preview First 500 Rows</span>
       </button>
     </div>
   </form>
@@ -165,7 +168,7 @@
           alert('Preview failed');
         } finally {
           previewBtn.disabled = false;
-          previewBtn.textContent = '👁️ Preview First 500 Rows';
+          previewBtn.innerHTML = '<i class="fas fa-eye"></i> <span>Preview First 500 Rows</span>';
         }
       });
     })();
@@ -223,11 +226,13 @@
     </div>
 
     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-      <button type="submit" class="button btn-primary" style="padding:10px 22px; font-weight:600; background:#0d9488; border-color:#0f766e;">
-        📥 Download Medical Records
+      <button type="submit" class="button btn-primary" style="padding:10px 22px; font-weight:700; background:#0d9488; border-color:#0f766e; display:inline-flex; align-items:center; gap:8px;">
+        <i class="fas fa-download"></i>
+        <span>Download Medical Records</span>
       </button>
-      <button type="button" id="consultPreviewBtn" class="button btn-secondary" style="padding:10px 20px;">
-        👁️ Preview Consultations
+      <button type="button" id="consultPreviewBtn" class="button btn-secondary" style="padding:10px 20px; font-weight:600; display:inline-flex; align-items:center; gap:8px;">
+        <i class="fas fa-eye"></i>
+        <span>Preview Consultations</span>
       </button>
     </div>
   </form>
@@ -236,8 +241,9 @@
   <div id="consultPreviewArea" style="width:100%; margin-top:20px; display:none;">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
       <h4 style="margin:0; font-size:1em; color:#0f172a;">Consultations Preview: <span id="consultPreviewCount" style="color:#0d9488; font-weight:700;">0</span> records found</h4>
-      <span style="background:#ccfbf1; color:#0f766e; padding:4px 10px; border-radius:6px; font-size:0.82em; font-weight:700; border:1px solid #99f6e4;">
-        ⚡ 75 ML Parameters in Full Export (Complete SOAP + Demographics + Joins)
+      <span style="background:#ccfbf1; color:#0f766e; padding:4px 10px; border-radius:6px; font-size:0.82em; font-weight:700; border:1px solid #99f6e4; display:inline-flex; align-items:center; gap:6px;">
+        <i class="fas fa-bolt" style="color:#0d9488;"></i>
+        <span>75 ML Parameters in Full Export (Complete SOAP + Demographics + Joins)</span>
       </span>
     </div>
     <div style="overflow:auto; max-height:480px; border:1px solid #cbd5e1; border-radius:10px; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.02);">
@@ -530,7 +536,7 @@
           alert('Preview failed');
         } finally {
           cPreviewBtn.disabled = false;
-          cPreviewBtn.textContent = '👁️ Preview Consultations';
+          cPreviewBtn.innerHTML = '<i class="fas fa-eye"></i> <span>Preview Consultations</span>';
         }
       });
 
@@ -545,7 +551,8 @@
 <div class="card" style="padding:24px 28px; border-radius:16px; box-shadow:0 4px 18px rgba(0,0,0,0.03);">
   <div style="border-bottom:1px solid #f1f5f9; padding-bottom:16px; margin-bottom:20px;">
     <h3 style="margin:0; font-size:1.4em; display:flex; align-items:center; gap:10px; color:#0f172a;">
-      <span style="font-size:1.1em;">👥</span> Patient Demographics Registry Export
+      <i class="fas fa-hospital-user" style="color:#0284c7;"></i>
+      <span>Patient Demographics Registry Export</span>
     </h3>
     <p style="margin:4px 0 0 0; color:#64748b; font-size:0.9em;">Export master patient directory records with corporate accounts and PhilHealth flags.</p>
   </div>
@@ -590,11 +597,13 @@
     </div>
 
     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-      <button type="submit" class="button btn-primary" style="padding:10px 22px; font-weight:600;">
-        📥 Download Patient Registry
+      <button type="submit" class="button btn-primary" style="padding:10px 22px; font-weight:700; display:inline-flex; align-items:center; gap:8px;">
+        <i class="fas fa-download"></i>
+        <span>Download Patient Registry</span>
       </button>
-      <button type="button" id="patientPreviewBtn" class="button btn-secondary" style="padding:10px 20px;">
-        👁️ Preview Patients
+      <button type="button" id="patientPreviewBtn" class="button btn-secondary" style="padding:10px 20px; font-weight:600; display:inline-flex; align-items:center; gap:8px;">
+        <i class="fas fa-eye"></i>
+        <span>Preview Patients</span>
       </button>
     </div>
   </form>
@@ -685,7 +694,7 @@
           alert('Preview failed'); 
         } finally{ 
           pPreviewBtn.disabled = false; 
-          pPreviewBtn.textContent = '👁️ Preview Patients'; 
+          pPreviewBtn.innerHTML = '<i class="fas fa-eye"></i> <span>Preview Patients</span>'; 
         }
       });
     })();
@@ -759,11 +768,13 @@
     </div>
 
     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-      <button type="submit" class="button btn-primary" style="padding:10px 22px; font-weight:600; background:#0d9488; border-color:#0f766e;">
-        📥 Download PhilHealth Data
+      <button type="submit" class="button btn-primary" style="padding:10px 22px; font-weight:700; background:#0d9488; border-color:#0f766e; display:inline-flex; align-items:center; gap:8px;">
+        <i class="fas fa-download"></i>
+        <span>Download PhilHealth Data</span>
       </button>
-      <button type="button" id="phPreviewBtn" class="button btn-secondary" style="padding:10px 20px;">
-        👁️ Preview PhilHealth Data
+      <button type="button" id="phPreviewBtn" class="button btn-secondary" style="padding:10px 20px; font-weight:600; display:inline-flex; align-items:center; gap:8px;">
+        <i class="fas fa-eye"></i>
+        <span>Preview PhilHealth Data</span>
       </button>
     </div>
   </form>
@@ -885,7 +896,7 @@
           alert('Failed to load PhilHealth preview');
         } finally {
           phPreviewBtn.disabled = false;
-          phPreviewBtn.textContent = '👁️ Preview PhilHealth Data';
+          phPreviewBtn.innerHTML = '<i class="fas fa-eye"></i> <span>Preview PhilHealth Data</span>';
         }
       });
     })();

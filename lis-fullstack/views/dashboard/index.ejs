@@ -1,67 +1,110 @@
+<!-- Live Lab Operational Command Strip -->
+<div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 18px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 8px; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 4px 10px; border-radius: 20px;">
+            <span style="position: relative; display: flex; height: 9px; width: 9px;">
+                <span style="position: absolute; display: inline-flex; height: 100%; width: 100%; border-radius: 50%; background: #10b981; opacity: 0.75; animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></span>
+                <span style="position: relative; display: inline-flex; border-radius: 50%; height: 9px; width: 9px; background: #059669;"></span>
+            </span>
+            <span style="font-size: 0.75rem; font-weight: 700; color: #065f46; letter-spacing: 0.04em; text-transform: uppercase;">Laboratory Active</span>
+        </div>
+        <span style="color: #64748b; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px;">
+            <i class="far fa-clock" style="color: #94a3b8;"></i>
+            <span id="liveClockDisplay">Live Operational Command Center</span>
+        </span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: #475569; background: #f8fafc; border: 1px solid #e2e8f0; padding: 5px 12px; border-radius: 8px;">
+            <span style="color: #64748b;">Target TAT:</span>
+            <strong style="color: #0f172a; font-family: monospace; font-size: 0.9em;">&lt; 60 min</strong>
+        </div>
+        <a href="/reception" class="button btn-primary" style="padding: 6px 14px; font-size: 0.82rem; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; font-weight: 600;">
+            <i class="fas fa-plus"></i>
+            <span>Patient Intake</span>
+        </a>
+    </div>
+</div>
+
+<script>
+    (function updateClock() {
+        const el = document.getElementById('liveClockDisplay');
+        if (!el) return;
+        const now = new Date();
+        const options = { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+        el.textContent = now.toLocaleDateString('en-US', options);
+        setTimeout(updateClock, 1000);
+    })();
+</script>
+
 <!-- Top Metric KPI Cards -->
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
     <!-- Total Patients -->
     <a href="/patients" style="text-decoration: none; color: inherit; display: block;">
-        <div style="background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%); padding: 20px; border-radius: 14px; border: 1px solid #bae6fd; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.06); position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;" class="kpi-card" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(2, 132, 199, 0.12)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 12px rgba(2, 132, 199, 0.06)';">
+        <div style="background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%); padding: 20px; border-radius: 14px; border: 1px solid #bae6fd; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.06); position: relative; overflow: hidden; transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;" class="kpi-card" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(2, 132, 199, 0.12)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 12px rgba(2, 132, 199, 0.06)';">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
                 <span style="font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: #0369a1;">Total Patients</span>
-                <div style="width: 36px; height: 36px; border-radius: 10px; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 1.1em;">
-                    <i class="fa fa-users"></i>
+                <div style="width: 36px; height: 36px; border-radius: 10px; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 1.05em;">
+                    <i class="fas fa-hospital-user"></i>
                 </div>
             </div>
-            <div style="font-size: 2.2em; font-weight: 800; color: #0284c7; line-height: 1.1;"><%= stats.totalPatients %></div>
+            <div style="font-size: 2.2em; font-weight: 800; color: #0284c7; line-height: 1.1; font-variant-numeric: tabular-nums;"><%= stats.totalPatients %></div>
+            <div style="font-size: 0.75em; color: #64748b; margin-top: 6px;">Registered laboratory patients</div>
         </div>
     </a>
 
     <!-- Pending Tests -->
     <a href="/tests?status=Pending" style="text-decoration: none; color: inherit; display: block;">
-        <div style="background: linear-gradient(135deg, #ffffff 0%, #fffbe6 100%); padding: 20px; border-radius: 14px; border: 1px solid #fef08a; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.06); position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;" class="kpi-card" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(217, 119, 6, 0.12)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 12px rgba(217, 119, 6, 0.06)';">
+        <div style="background: linear-gradient(135deg, #ffffff 0%, #fffbe6 100%); padding: 20px; border-radius: 14px; border: 1px solid #fef08a; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.06); position: relative; overflow: hidden; transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;" class="kpi-card" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(217, 119, 6, 0.12)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 12px rgba(217, 119, 6, 0.06)';">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
                 <span style="font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: #b45309;">Pending Tests</span>
-                <div style="width: 36px; height: 36px; border-radius: 10px; background: #fef3c7; color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 1.1em;">
-                    <i class="fa fa-hourglass-half"></i>
+                <div style="width: 36px; height: 36px; border-radius: 10px; background: #fef3c7; color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 1.05em;">
+                    <i class="fas fa-hourglass-half"></i>
                 </div>
             </div>
-            <div style="font-size: 2.2em; font-weight: 800; color: #d97706; line-height: 1.1;"><%= stats.pendingTests %></div>
-        </div>
-    </a>
-
-    <!-- Completed Tests -->
-    <a href="/tests?status=Completed" style="text-decoration: none; color: inherit; display: block;">
-        <div style="background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%); padding: 20px; border-radius: 14px; border: 1px solid #a7f3d0; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.06); position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;" class="kpi-card" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(5, 150, 105, 0.12)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 12px rgba(5, 150, 105, 0.06)';">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
-                <span style="font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: #047857;">Completed Tests</span>
-                <div style="width: 36px; height: 36px; border-radius: 10px; background: #d1fae5; color: #059669; display: flex; align-items: center; justify-content: center; font-size: 1.1em;">
-                    <i class="fa fa-check-circle"></i>
-                </div>
-            </div>
-            <div style="font-size: 2.2em; font-weight: 800; color: #059669; line-height: 1.1;"><%= stats.completedTests %></div>
+            <div style="font-size: 2.2em; font-weight: 800; color: #d97706; line-height: 1.1; font-variant-numeric: tabular-nums;"><%= stats.pendingTests %></div>
+            <div style="font-size: 0.75em; color: #92400e; margin-top: 6px;">Awaiting bench analysis</div>
         </div>
     </a>
 
     <!-- In Progress -->
     <a href="/tests?status=In+Progress" style="text-decoration: none; color: inherit; display: block;">
-        <div style="background: linear-gradient(135deg, #ffffff 0%, #faf5ff 100%); padding: 20px; border-radius: 14px; border: 1px solid #e9d5ff; box-shadow: 0 4px 12px rgba(124, 58, 237, 0.06); position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;" class="kpi-card" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(124, 58, 237, 0.12)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 12px rgba(124, 58, 237, 0.06)';">
+        <div style="background: linear-gradient(135deg, #ffffff 0%, #f0fdfa 100%); padding: 20px; border-radius: 14px; border: 1px solid #99f6e4; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.06); position: relative; overflow: hidden; transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;" class="kpi-card" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(13, 148, 136, 0.12)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 12px rgba(13, 148, 136, 0.06)';">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
-                <span style="font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: #6b21a8;">In Progress</span>
-                <div style="width: 36px; height: 36px; border-radius: 10px; background: #f3e8ff; color: #7c3aed; display: flex; align-items: center; justify-content: center; font-size: 1.1em;">
-                    <i class="fa fa-sync-alt"></i>
+                <span style="font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: #0f766e;">In Progress</span>
+                <div style="width: 36px; height: 36px; border-radius: 10px; background: #ccfbf1; color: #0d9488; display: flex; align-items: center; justify-content: center; font-size: 1.05em;">
+                    <i class="fas fa-flask"></i>
                 </div>
             </div>
-            <div style="font-size: 2.2em; font-weight: 800; color: #7c3aed; line-height: 1.1;"><%= stats.activeTests %></div>
+            <div style="font-size: 2.2em; font-weight: 800; color: #0d9488; line-height: 1.1; font-variant-numeric: tabular-nums;"><%= stats.activeTests %></div>
+            <div style="font-size: 0.75em; color: #115e59; margin-top: 6px;">Currently on analyzer</div>
+        </div>
+    </a>
+
+    <!-- Completed Tests -->
+    <a href="/tests?status=Completed" style="text-decoration: none; color: inherit; display: block;">
+        <div style="background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%); padding: 20px; border-radius: 14px; border: 1px solid #a7f3d0; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.06); position: relative; overflow: hidden; transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;" class="kpi-card" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(5, 150, 105, 0.12)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 12px rgba(5, 150, 105, 0.06)';">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                <span style="font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: #047857;">Completed Tests</span>
+                <div style="width: 36px; height: 36px; border-radius: 10px; background: #d1fae5; color: #059669; display: flex; align-items: center; justify-content: center; font-size: 1.05em;">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+            </div>
+            <div style="font-size: 2.2em; font-weight: 800; color: #059669; line-height: 1.1; font-variant-numeric: tabular-nums;"><%= stats.completedTests %></div>
+            <div style="font-size: 0.75em; color: #065f46; margin-top: 6px;">Verified by medtech</div>
         </div>
     </a>
 
     <!-- Released Tests -->
     <a href="/tests?status=Released" style="text-decoration: none; color: inherit; display: block;">
-        <div style="background: linear-gradient(135deg, #ffffff 0%, #f0fdfa 100%); padding: 20px; border-radius: 14px; border: 1px solid #99f6e4; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.06); position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;" class="kpi-card" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(13, 148, 136, 0.12)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 12px rgba(13, 148, 136, 0.06)';">
+        <div style="background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); padding: 20px; border-radius: 14px; border: 1px solid #cbd5e1; box-shadow: 0 4px 12px rgba(51, 65, 85, 0.06); position: relative; overflow: hidden; transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s;" class="kpi-card" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 20px rgba(51, 65, 85, 0.12)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 12px rgba(51, 65, 85, 0.06)';">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
-                <span style="font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: #0f766e;">Released Tests</span>
-                <div style="width: 36px; height: 36px; border-radius: 10px; background: #ccfbf1; color: #0d9488; display: flex; align-items: center; justify-content: center; font-size: 1.1em;">
-                    <i class="fa fa-paper-plane"></i>
+                <span style="font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: #334155;">Released Tests</span>
+                <div style="width: 36px; height: 36px; border-radius: 10px; background: #f1f5f9; color: #475569; display: flex; align-items: center; justify-content: center; font-size: 1.05em;">
+                    <i class="fas fa-paper-plane"></i>
                 </div>
             </div>
-            <div style="font-size: 2.2em; font-weight: 800; color: #0d9488; line-height: 1.1;"><%= stats.releasedTests %></div>
+            <div style="font-size: 2.2em; font-weight: 800; color: #334155; line-height: 1.1; font-variant-numeric: tabular-nums;"><%= stats.releasedTests %></div>
+            <div style="font-size: 0.75em; color: #64748b; margin-top: 6px;">Signed & delivered to patient</div>
         </div>
     </a>
 </div>
@@ -70,66 +113,66 @@
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 24px;">
     <!-- Total Revenue Block -->
     <div style="background: #ffffff; padding: 22px; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 16px;">
-        <div style="background: linear-gradient(135deg, #059669 0%, #047857 100%); padding: 18px 20px; border-radius: 12px; color: #ffffff; box-shadow: 0 6px 16px rgba(5, 150, 105, 0.25);">
+        <div style="background: linear-gradient(135deg, #059669 0%, #047857 100%); padding: 18px 20px; border-radius: 12px; color: #ffffff; box-shadow: 0 6px 16px rgba(5, 150, 105, 0.22);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
                 <span style="font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; opacity: 0.9;">Total Sales</span>
-                <i class="fa fa-wallet" style="font-size: 1.2em; opacity: 0.9;"></i>
+                <i class="fas fa-wallet" style="font-size: 1.2em; opacity: 0.9;"></i>
             </div>
-            <div style="font-size: 2.2em; font-weight: 800; letter-spacing: -0.5px;">₱<%= (typeof stats.totalSales !== 'undefined' ? Number(stats.totalSales).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %></div>
+            <div style="font-size: 2.2em; font-weight: 800; letter-spacing: -0.5px; font-variant-numeric: tabular-nums;">₱<%= (typeof stats.totalSales !== 'undefined' ? Number(stats.totalSales).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %></div>
         </div>
         
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <div style="background: #f8fafc; padding: 12px; border-radius: 10px; border: 1px solid #e2e8f0;">
                 <span style="font-size: 0.72em; text-transform: uppercase; font-weight: 700; color: #64748b; display: block; margin-bottom: 4px;">Clinical Total</span>
-                <div style="font-size: 1.2em; font-weight: 700; color: #1e293b;">₱<%= (typeof stats.clinicalSales !== 'undefined' ? Number(stats.clinicalSales).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %></div>
+                <div style="font-size: 1.2em; font-weight: 700; color: #1e293b; font-variant-numeric: tabular-nums;">₱<%= (typeof stats.clinicalSales !== 'undefined' ? Number(stats.clinicalSales).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %></div>
             </div>
             <div style="background: #fff7ed; padding: 12px; border-radius: 10px; border: 1px solid #ffedd5;">
                 <span style="font-size: 0.72em; text-transform: uppercase; font-weight: 700; color: #c2410c; display: block; margin-bottom: 4px;">X-Ray Total</span>
-                <div style="font-size: 1.2em; font-weight: 700; color: #ea580c;">₱<%= (typeof stats.xraySales !== 'undefined' ? Number(stats.xraySales).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %></div>
+                <div style="font-size: 1.2em; font-weight: 700; color: #ea580c; font-variant-numeric: tabular-nums;">₱<%= (typeof stats.xraySales !== 'undefined' ? Number(stats.xraySales).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %></div>
             </div>
         </div>
     </div>
 
-    <!-- Monthly Sales Block -->
+    <!-- Monthly Sales Block (Clinical Navy) -->
     <div style="background: #ffffff; padding: 22px; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 16px;">
-        <div style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); padding: 18px 20px; border-radius: 12px; color: #ffffff; box-shadow: 0 6px 16px rgba(124, 58, 237, 0.25);">
+        <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 18px 20px; border-radius: 12px; color: #ffffff; box-shadow: 0 6px 16px rgba(15, 23, 42, 0.25);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-                <span style="font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; opacity: 0.9;">Monthly Sales</span>
-                <i class="fa fa-calendar-alt" style="font-size: 1.2em; opacity: 0.9;"></i>
+                <span style="font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: #94a3b8;">Monthly Sales</span>
+                <i class="fas fa-calendar-alt" style="font-size: 1.2em; color: #38bdf8;"></i>
             </div>
-            <div style="font-size: 2.2em; font-weight: 800; letter-spacing: -0.5px;">₱<%= (typeof stats.monthSales !== 'undefined' ? Number(stats.monthSales).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %></div>
+            <div style="font-size: 2.2em; font-weight: 800; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; color: #f8fafc;">₱<%= (typeof stats.monthSales !== 'undefined' ? Number(stats.monthSales).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %></div>
         </div>
         
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <div style="background: #faf5ff; padding: 12px; border-radius: 10px; border: 1px solid #f3e8ff;">
-                <span style="font-size: 0.72em; text-transform: uppercase; font-weight: 700; color: #7e22ce; display: block; margin-bottom: 4px;">Clinical Month</span>
-                <div style="font-size: 1.2em; font-weight: 700; color: #6b21a8;">₱<%= (typeof stats.clinicalMonth !== 'undefined' ? Number(stats.clinicalMonth).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %></div>
+            <div style="background: #f8fafc; padding: 12px; border-radius: 10px; border: 1px solid #e2e8f0;">
+                <span style="font-size: 0.72em; text-transform: uppercase; font-weight: 700; color: #475569; display: block; margin-bottom: 4px;">Clinical Month</span>
+                <div style="font-size: 1.2em; font-weight: 700; color: #0f172a; font-variant-numeric: tabular-nums;">₱<%= (typeof stats.clinicalMonth !== 'undefined' ? Number(stats.clinicalMonth).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %></div>
             </div>
-            <div style="background: #fff1f2; padding: 12px; border-radius: 10px; border: 1px solid #ffe4e6;">
-                <span style="font-size: 0.72em; text-transform: uppercase; font-weight: 700; color: #be123c; display: block; margin-bottom: 4px;">X-Ray Month</span>
-                <div style="font-size: 1.2em; font-weight: 700; color: #e11d48;">₱<%= (typeof stats.xrayMonth !== 'undefined' ? Number(stats.xrayMonth).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %></div>
+            <div style="background: #f0f9ff; padding: 12px; border-radius: 10px; border: 1px solid #e0f2fe;">
+                <span style="font-size: 0.72em; text-transform: uppercase; font-weight: 700; color: #0369a1; display: block; margin-bottom: 4px;">X-Ray Month</span>
+                <div style="font-size: 1.2em; font-weight: 700; color: #0284c7; font-variant-numeric: tabular-nums;">₱<%= (typeof stats.xrayMonth !== 'undefined' ? Number(stats.xrayMonth).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %></div>
             </div>
         </div>
     </div>
 
     <!-- Today Sales Block -->
     <div style="background: #ffffff; padding: 22px; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 16px;">
-        <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 18px 20px; border-radius: 12px; color: #ffffff; box-shadow: 0 6px 16px rgba(37, 99, 235, 0.25);">
+        <div style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); padding: 18px 20px; border-radius: 12px; color: #ffffff; box-shadow: 0 6px 16px rgba(2, 132, 199, 0.22);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
                 <span style="font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; opacity: 0.9;">Sales Today</span>
-                <i class="fa fa-calendar-day" style="font-size: 1.2em; opacity: 0.9;"></i>
+                <i class="fas fa-calendar-day" style="font-size: 1.2em; opacity: 0.9;"></i>
             </div>
-            <div style="font-size: 2.2em; font-weight: 800; letter-spacing: -0.5px;">₱<%= (typeof stats.todaySales !== 'undefined' ? Number(stats.todaySales).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %></div>
+            <div style="font-size: 2.2em; font-weight: 800; letter-spacing: -0.5px; font-variant-numeric: tabular-nums;">₱<%= (typeof stats.todaySales !== 'undefined' ? Number(stats.todaySales).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %></div>
         </div>
         
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <div style="background: #f0f9ff; padding: 12px; border-radius: 10px; border: 1px solid #e0f2fe;">
                 <span style="font-size: 0.72em; text-transform: uppercase; font-weight: 700; color: #0369a1; display: block; margin-bottom: 4px;">Clinical Today</span>
-                <div style="font-size: 1.2em; font-weight: 700; color: #0284c7;">₱<%= (typeof stats.clinicalToday !== 'undefined' ? Number(stats.clinicalToday).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %></div>
+                <div style="font-size: 1.2em; font-weight: 700; color: #0284c7; font-variant-numeric: tabular-nums;">₱<%= (typeof stats.clinicalToday !== 'undefined' ? Number(stats.clinicalToday).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %></div>
             </div>
-            <div style="background: #fdf2f8; padding: 12px; border-radius: 10px; border: 1px solid #fce7f3;">
-                <span style="font-size: 0.72em; text-transform: uppercase; font-weight: 700; color: #be185d; display: block; margin-bottom: 4px;">X-Ray Today</span>
-                <div style="font-size: 1.2em; font-weight: 700; color: #db2777;">₱<%= (typeof stats.xrayToday !== 'undefined' ? Number(stats.xrayToday).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %></div>
+            <div style="background: #fff7ed; padding: 12px; border-radius: 10px; border: 1px solid #ffedd5;">
+                <span style="font-size: 0.72em; text-transform: uppercase; font-weight: 700; color: #c2410c; display: block; margin-bottom: 4px;">X-Ray Today</span>
+                <div style="font-size: 1.2em; font-weight: 700; color: #ea580c; font-variant-numeric: tabular-nums;">₱<%= (typeof stats.xrayToday !== 'undefined' ? Number(stats.xrayToday).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %></div>
             </div>
         </div>
     </div>
@@ -578,38 +621,91 @@
 
 <!-- Recent Test Results -->
 <div class="card">
-    <h3 style="margin-bottom: 20px;"><i class="fa fa-history" style="color:#10b981; margin-right: 8px;"></i>Recent Test Results</h3>
-    <table style="width: 100%; border-collapse: collapse;">
-        <thead>
-            <tr>
-                <th>Patient Name</th>
-                <th>Test Type</th>
-                <th>Date</th>
-                <th>Status</th>
-                <th style="text-align: right;">Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            <% if (recentTests && recentTests.length > 0) { %>
-                <% recentTests.forEach(test => { %>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+        <h3 style="margin:0; display:flex; align-items:center; gap:10px;">
+            <i class="fas fa-microscope" style="color:#0284c7;"></i>
+            <span>Recent Test Results</span>
+            <span style="background: #f1f5f9; color: #475569; font-size: 0.72rem; padding: 2px 10px; border-radius: 12px; font-weight: 700; border: 1px solid #e2e8f0; text-transform: uppercase; letter-spacing: 0.05em;">Real-Time</span>
+        </h3>
+        <a href="/tests" class="button btn-secondary" style="padding: 6px 14px; font-size: 0.82rem; border-radius: 8px; text-decoration: none; font-weight: 600;">
+            <span>View All Tests</span>
+            <i class="fas fa-arrow-right" style="font-size: 0.85em;"></i>
+        </a>
+    </div>
+    <div class="table-responsive">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
                 <tr>
-                    <td><strong><%= test.patient ? (test.patient.fullName || [test.patient.firstName, test.patient.middleName, test.patient.lastName].filter(Boolean).join(' ') || 'Unknown') : 'Unknown' %></strong></td>
-                    <td><span style="font-weight: 500; color: #475569;"><%= test.testType %></span></td>
-                    <td><span style="color: #64748b;"><%= test.testDate ? (typeof formatMMDDYYYY === 'function' ? formatMMDDYYYY(test.testDate) : new Date(test.testDate).toLocaleDateString('en-US')) : '' %></span></td>
-                    <td>
-                        <span class="badge <%= test.status === 'Completed' ? 'badge-success' : test.status === 'In Progress' ? 'badge-warning' : 'badge-info' %>">
-                            <%= test.status %>
-                        </span>
-                    </td>
-                    <td style="text-align: right;">
-                        <a href="/tests/<%= test.id %>" class="button btn-small btn-primary" style="padding: 6px 14px; font-size: 0.8em;">View</a>
-                    </td>
+                    <th style="width: 32%;">Patient</th>
+                    <th style="width: 25%;">Test Ordered</th>
+                    <th style="width: 18%;">Date & Time</th>
+                    <th style="width: 15%;">Status</th>
+                    <th style="text-align: right; width: 10%;">Action</th>
                 </tr>
-                <% }); %>
-            <% } else { %>
-                <tr><td colspan="5" class="text-center" style="color: #64748b; padding: 20px;">No recent tests found</td></tr>
-            <% } %>
-        </tbody>
-    </table>
+            </thead>
+            <tbody>
+                <% if (recentTests && recentTests.length > 0) { %>
+                    <% recentTests.forEach(test => { %>
+                    <% const patName = test.patient ? (test.patient.fullName || [test.patient.firstName, test.patient.middleName, test.patient.lastName].filter(Boolean).join(' ') || 'Unknown') : 'Unknown'; %>
+                    <% const initial = patName.charAt(0).toUpperCase() || 'P'; %>
+                    <tr>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="width: 32px; height: 32px; border-radius: 50%; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; flex-shrink: 0;">
+                                    <%= initial %>
+                                </div>
+                                <div style="min-width: 0;">
+                                    <strong style="color: #0f172a; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><%= patName %></strong>
+                                    <% if (test.patient && test.patient.patientId) { %>
+                                    <small class="tabular-nums" style="color: #64748b; font-size: 0.78rem;">#<%= test.patient.patientId %></small>
+                                    <% } %>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div style="font-weight: 600; color: #1e293b;"><%= test.testType %></div>
+                            <small style="color: #64748b; font-size: 0.78rem;">Specimen: Verified</small>
+                        </td>
+                        <td>
+                            <span class="tabular-nums" style="color: #475569; font-size: 0.88rem; display: inline-flex; align-items: center; gap: 6px;">
+                                <i class="far fa-calendar-alt" style="color: #94a3b8; font-size: 0.9em;"></i>
+                                <%= test.testDate ? (typeof formatMMDDYYYY === 'function' ? formatMMDDYYYY(test.testDate) : new Date(test.testDate).toLocaleDateString('en-US')) : '' %>
+                            </span>
+                        </td>
+                        <td>
+                            <% 
+                            let badgeClass = 'badge-info';
+                            if (test.status === 'Completed') badgeClass = 'badge-success';
+                            else if (test.status === 'In Progress') badgeClass = 'badge-progress';
+                            else if (test.status === 'Pending') badgeClass = 'badge-warning';
+                            else if (test.status === 'Released') badgeClass = 'badge-released';
+                            %>
+                            <span class="badge <%= badgeClass %>">
+                                <span class="badge-dot"></span>
+                                <%= test.status %>
+                            </span>
+                        </td>
+                        <td style="text-align: right;">
+                            <a href="/tests/<%= test.id %>" class="button btn-small btn-primary" style="padding: 5px 12px; font-size: 0.8rem; border-radius: 6px;">
+                                <span>Review</span>
+                            </a>
+                        </td>
+                    </tr>
+                    <% }); %>
+                <% } else { %>
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 48px 20px;">
+                            <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                                <i class="fas fa-flask" style="font-size: 2.2rem; color: #cbd5e1; margin-bottom: 6px;"></i>
+                                <strong style="color: #475569; font-size: 1rem;">No recent tests recorded</strong>
+                                <span style="color: #94a3b8; font-size: 0.85rem;">Patient tests will appear here once submitted at reception</span>
+                                <a href="/reception" class="button btn-secondary" style="margin-top: 10px; padding: 6px 14px; font-size: 0.82rem; border-radius: 8px;">Go to Reception</a>
+                            </div>
+                        </td>
+                    </tr>
+                <% } %>
+            </tbody>
+        </table>
+    </div>
 </div>
  

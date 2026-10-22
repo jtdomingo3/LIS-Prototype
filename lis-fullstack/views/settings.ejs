@@ -7,48 +7,68 @@
     <!-- Header -->
     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; border-bottom:1px solid #e2e8f0; padding-bottom:18px; margin-bottom:20px;">
       <div>
-        <h3 style="margin:0; font-size:1.5em; display:flex; align-items:center; gap:10px;">
-          <span style="font-size:1.1em;">⚙️</span> System Settings & Hardware Management
-        </h3>
-        <p style="margin:4px 0 0 0; color:#64748b; font-size:0.92em;">Configure real-time SSE streams, printer connections, AI integrations, clinical schedules, and system backups.</p>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="width:38px; height:38px; border-radius:10px; background:#f0f9ff; color:#0284c7; display:flex; align-items:center; justify-content:center; font-size:1.15rem; box-shadow:0 2px 6px rgba(2,132,199,0.15); flex-shrink:0;">
+            <i class="fas fa-sliders"></i>
+          </div>
+          <h3 style="margin:0; font-size:1.45rem; color:#0f172a; font-weight:800; letter-spacing:-0.02em;">
+            System Settings & Hardware Management
+          </h3>
+        </div>
+        <p style="margin:4px 0 0 0; color:#64748b; font-size:0.9rem;">Configure real-time SSE streams, printer connections, AI integrations, clinical schedules, and system backups.</p>
       </div>
-      <div style="display:flex; align-items:center; gap:10px;">
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
         <% if (typeof serverUrl !== 'undefined' && serverUrl) { %>
-          <span class="badge <%= (typeof serverConnected !== 'undefined' && serverConnected) ? 'badge-success' : 'badge-warning' %>" style="font-size:0.85em; padding:6px 12px;">
-            <%= (typeof serverConnected !== 'undefined' && serverConnected) ? '✓ Server Synced' : '⚡ Local / Offline' %> (<%= serverUrl %>)
+          <span class="badge <%= (typeof serverConnected !== 'undefined' && serverConnected) ? 'badge-success' : 'badge-warning' %>" style="font-size:0.82rem; padding:6px 12px; display:inline-flex; align-items:center; gap:6px;">
+            <i class="fas <%= (typeof serverConnected !== 'undefined' && serverConnected) ? 'fa-circle-check' : 'fa-bolt' %>"></i>
+            <span><%= (typeof serverConnected !== 'undefined' && serverConnected) ? 'Server Synced' : 'Local / Offline' %> (<%= serverUrl %>)</span>
           </span>
           <form method="POST" action="/settings/sync-from-server" style="display:inline; margin:0;">
-  <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
-            <button type="submit" class="button btn-secondary btn-small" title="Retrieve and apply the exact settings from the central server" <%= !isMgmt ? 'disabled' : '' %>>
-              🔄 Retrieve Server Settings
+            <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+            <button type="submit" class="button btn-secondary btn-small" style="display:inline-flex; align-items:center; gap:6px; font-weight:600;" title="Retrieve and apply the exact settings from the central server" <%= !isMgmt ? 'disabled' : '' %>>
+              <i class="fas fa-rotate"></i>
+              <span>Retrieve Server Settings</span>
             </button>
           </form>
         <% } %>
-        <span class="badge badge-info" style="font-size:0.85em; padding:6px 12px;">
-          🌐 <%= (typeof networkUrl !== 'undefined' && networkUrl) ? networkUrl : '127.0.0.1:3000' %>
+        <span class="badge badge-info" style="font-size:0.82rem; padding:6px 12px; display:inline-flex; align-items:center; gap:6px; font-family:var(--font-mono, monospace);">
+          <i class="fas fa-network-wired"></i>
+          <span><%= (typeof networkUrl !== 'undefined' && networkUrl) ? networkUrl : '127.0.0.1:3000' %></span>
         </span>
       </div>
     </div>
 
     <!-- Clean Tab Navigation Buttons (Clinical Workflow is 1st and active) -->
     <div class="settings-nav-tabs" role="tablist" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:24px; border-bottom:2px solid #f1f5f9; padding-bottom:12px;">
-      <button type="button" class="settings-tab-btn active" role="tab" data-no-guard="1" onclick="switchSettingsTab('tab-clinical')">
-        🏥 Clinical Workflow <span style="font-size:0.75em; padding:2px 7px; background:#dcfce7; color:#15803d; border-radius:4px; margin-left:4px; font-weight:700;">All Users</span>
+      <button type="button" class="settings-tab-btn active" role="tab" data-no-guard="1" onclick="switchSettingsTab('tab-clinical')" style="display:inline-flex; align-items:center; gap:8px; font-weight:700;">
+        <i class="fas fa-stethoscope" style="color:#059669;"></i>
+        <span>Clinical Workflow</span>
+        <span style="font-size:0.7rem; padding:2px 7px; background:#dcfce7; color:#15803d; border-radius:4px; font-weight:700;">All Users</span>
       </button>
-      <button type="button" class="settings-tab-btn" role="tab" data-no-guard="1" onclick="switchSettingsTab('tab-sse')">
-        ⚡ SSE Real-Time <% if (!isMgmt) { %><span style="font-size:0.8em; opacity:0.65;" title="Admin / Manager only">🔒</span><% } %>
+      <button type="button" class="settings-tab-btn" role="tab" data-no-guard="1" onclick="switchSettingsTab('tab-sse')" style="display:inline-flex; align-items:center; gap:8px; font-weight:600;">
+        <i class="fas fa-bolt" style="color:#0284c7;"></i>
+        <span>SSE Real-Time</span>
+        <% if (!isMgmt) { %><i class="fas fa-lock" style="font-size:0.75rem; color:#94a3b8;" title="Admin / Manager only"></i><% } %>
       </button>
-      <button type="button" class="settings-tab-btn" role="tab" data-no-guard="1" onclick="switchSettingsTab('tab-printer')">
-        🖨️ Printer & Hardware <% if (!isMgmt) { %><span style="font-size:0.8em; opacity:0.65;" title="Admin / Manager only">🔒</span><% } %>
+      <button type="button" class="settings-tab-btn" role="tab" data-no-guard="1" onclick="switchSettingsTab('tab-printer')" style="display:inline-flex; align-items:center; gap:8px; font-weight:600;">
+        <i class="fas fa-print" style="color:#f59e0b;"></i>
+        <span>Printer & Hardware</span>
+        <% if (!isMgmt) { %><i class="fas fa-lock" style="font-size:0.75rem; color:#94a3b8;" title="Admin / Manager only"></i><% } %>
       </button>
-      <button type="button" class="settings-tab-btn" role="tab" data-no-guard="1" onclick="switchSettingsTab('tab-ai')">
-        🤖 AI Assistant <% if (!isMgmt) { %><span style="font-size:0.8em; opacity:0.65;" title="Admin / Manager only">🔒</span><% } %>
+      <button type="button" class="settings-tab-btn" role="tab" data-no-guard="1" onclick="switchSettingsTab('tab-ai')" style="display:inline-flex; align-items:center; gap:8px; font-weight:600;">
+        <i class="fas fa-robot" style="color:#8b5cf6;"></i>
+        <span>AI Assistant</span>
+        <% if (!isMgmt) { %><i class="fas fa-lock" style="font-size:0.75rem; color:#94a3b8;" title="Admin / Manager only"></i><% } %>
       </button>
-      <button type="button" class="settings-tab-btn" role="tab" data-no-guard="1" onclick="switchSettingsTab('tab-backup')">
-        💾 Data & Backup <% if (!isMgmt) { %><span style="font-size:0.8em; opacity:0.65;" title="Admin / Manager only">🔒</span><% } %>
+      <button type="button" class="settings-tab-btn" role="tab" data-no-guard="1" onclick="switchSettingsTab('tab-backup')" style="display:inline-flex; align-items:center; gap:8px; font-weight:600;">
+        <i class="fas fa-database" style="color:#0284c7;"></i>
+        <span>Data & Backup</span>
+        <% if (!isMgmt) { %><i class="fas fa-lock" style="font-size:0.75rem; color:#94a3b8;" title="Admin / Manager only"></i><% } %>
       </button>
-      <button type="button" class="settings-tab-btn" role="tab" data-no-guard="1" onclick="switchSettingsTab('tab-system')">
-        🌐 System & .env <% if (!isMgmt) { %><span style="font-size:0.8em; opacity:0.65;" title="Admin / Manager only">🔒</span><% } %>
+      <button type="button" class="settings-tab-btn" role="tab" data-no-guard="1" onclick="switchSettingsTab('tab-system')" style="display:inline-flex; align-items:center; gap:8px; font-weight:600;">
+        <i class="fas fa-server" style="color:#475569;"></i>
+        <span>System & .env</span>
+        <% if (!isMgmt) { %><i class="fas fa-lock" style="font-size:0.75rem; color:#94a3b8;" title="Admin / Manager only"></i><% } %>
       </button>
     </div>
 
@@ -397,11 +417,13 @@
           <h4 style="margin:0 0 14px 0; font-size:1.1em; color:#0f172a;">Manual Snapshot & Restore Tools</h4>
           
           <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
-            <button type="submit" formaction="/settings/backup" class="button btn-primary" <%= !isMgmt ? 'disabled' : '' %>>
-              💾 Create Clinical Backup Now
+            <button type="submit" formaction="/settings/backup" class="button btn-primary" style="display:inline-flex; align-items:center; gap:8px; font-weight:700;" <%= !isMgmt ? 'disabled' : '' %>>
+              <i class="fas fa-database"></i>
+              <span>Create Clinical Backup Now</span>
             </button>
-            <button type="submit" formaction="/settings/backup-users" class="button btn-secondary" <%= !isMgmt ? 'disabled' : '' %>>
-              👤 Backup User Accounts
+            <button type="submit" formaction="/settings/backup-users" class="button btn-secondary" style="display:inline-flex; align-items:center; gap:8px; font-weight:600;" <%= !isMgmt ? 'disabled' : '' %>>
+              <i class="fas fa-users-gear"></i>
+              <span>Backup User Accounts</span>
             </button>
           </div>
 
@@ -470,21 +492,29 @@
           </div>
 
           <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; padding-top:16px; border-top:1px solid #e2e8f0;">
-            <a href="/settings/export-logs" class="button btn-secondary btn-small">📥 Download Application Logs</a>
-            <button type="button" class="button btn-secondary btn-small" onclick="handleClearLogs()" <%= !isMgmt ? 'disabled' : '' %>>🧹 Clear Logs</button>
+            <a href="/settings/export-logs" class="button btn-secondary btn-small" style="display:inline-flex; align-items:center; gap:6px;">
+              <i class="fas fa-download"></i>
+              <span>Download Application Logs</span>
+            </a>
+            <button type="button" class="button btn-secondary btn-small" onclick="handleClearLogs()" style="display:inline-flex; align-items:center; gap:6px;" <%= !isMgmt ? 'disabled' : '' %>>
+              <i class="fas fa-trash-can"></i>
+              <span>Clear Logs</span>
+            </button>
           </div>
         </div>
       </div>
 
       <!-- Action Bar -->
       <div style="display:flex; justify-content:space-between; align-items:center; padding-top:20px; border-top:1px solid #e2e8f0; margin-top:20px; flex-wrap:wrap; gap:12px;">
-        <span style="color:#64748b; font-size:0.9em; display:flex; align-items:center; gap:6px;">
-          <span>💡</span> <span><%= isMgmt ? 'Changes will take effect immediately across server and connected clients.' : 'Clinical workflow changes will take effect immediately across server and connected clients.' %></span>
+        <span style="color:#64748b; font-size:0.9em; display:flex; align-items:center; gap:8px;">
+          <i class="far fa-lightbulb" style="color:#f59e0b;"></i>
+          <span><%= isMgmt ? 'Changes will take effect immediately across server and connected clients.' : 'Clinical workflow changes will take effect immediately across server and connected clients.' %></span>
         </span>
         <div style="display:flex; align-items:center; gap:12px;">
           <a href="/dashboard" class="button btn-secondary" style="padding:10px 20px;">Cancel</a>
-          <button type="submit" class="button btn-primary" style="padding:10px 28px; font-size:1em; font-weight:700;">
-            <%- isMgmt ? '💾 Save & Apply All Settings' : '💾 Save Clinical Workflow Settings' %>
+          <button type="submit" class="button btn-primary" style="padding:10px 28px; font-size:1em; font-weight:700; display:inline-flex; align-items:center; gap:8px;">
+            <i class="fas fa-floppy-disk"></i>
+            <span><%- isMgmt ? 'Save & Apply All Settings' : 'Save Clinical Workflow Settings' %></span>
           </button>
         </div>
       </div>
