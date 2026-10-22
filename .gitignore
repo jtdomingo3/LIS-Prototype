@@ -89,3 +89,15 @@ walkthrough.md
 audit/
 .claude/
 **/.claude/
+
+# Agent skills, caches, and local configurations
+.agents/
+**/.agents/
+.agent/
+**/.agent/
+_agents/
+**/_agents/
+.gemini/
+**/.gemini/
+.system_generated/
+**/.system_generated/
