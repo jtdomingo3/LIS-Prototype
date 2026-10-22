@@ -88,7 +88,7 @@
   </div>
 
   <!-- Patients Table -->
-  <div style="overflow-x:auto;">
+  <div class="table-responsive" style="overflow-x:auto;">
     <table style="width:100%; border-collapse:collapse; margin-bottom:16px;">
       <thead>
         <tr style="border-bottom:2px solid #e2e8f0; text-align:left;">
@@ -106,7 +106,7 @@
         <% if (patients && patients.length > 0) { %>
           <% patients.forEach(patient => { 
             const patientIdDisplay = patient.patientCode ? patient.patientCode.split('-').pop() : patient.patientId;
-            const fullName = (patient.firstName || '') + (patient.middleName ? ' ' + patient.middleName : '') + ' ' + (patient.lastName || '');
+            const fullName = patient.fullName || [patient.firstName, patient.middleName, patient.lastName].filter(Boolean).join(' ') || 'Unnamed Patient';
             const initials = (((patient.firstName || '')[0] || '') + ((patient.lastName || '')[0] || '')).toUpperCase() || 'PT';
             const ageDisplay = (patient.age !== null && patient.age !== undefined && patient.age !== '') ? patient.age : (patient.ageManual !== null && patient.ageManual !== undefined ? patient.ageManual : '—');
             const genderStr = String(patient.gender || 'Unknown');

@@ -25,13 +25,15 @@
             /* Typography */
             --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             
-            /* Core Colors */
+            /* Core Brand Colors */
+            --primary-brand: #0284c7; /* Clinical Sky / Ocean 600 */
+            --primary-brand-dark: #0369a1; /* Ocean 700 */
             --primary-black: #18181b; /* Slate 800 */
             --primary-black-dark: #09090b; /* Slate 900 */
-            --secondary-green: #10b981; /* Sky 500 - elegant blue instead of basic green */
-            --secondary-green-dark: #059669; /* Sky 600 */
-            --accent-orange: #f97316; /* Rose 500 */
-            --accent-orange-light: #fb923c; /* Rose 400 */
+            --secondary-green: #10b981; /* Emerald 500 */
+            --secondary-green-dark: #059669; /* Emerald 600 */
+            --accent-orange: #f97316; /* Orange 500 */
+            --accent-orange-light: #fb923c; /* Orange 400 */
             
             /* Text & Backgrounds */
             --text-white: #ffffff;
@@ -45,10 +47,15 @@
             --success: #10b981; /* Emerald 500 */
             --warning: #f59e0b; /* Amber 500 */
             --danger: #ef4444; /* Red 500 */
-            --info: #3b82f6; /* Blue 500 */
+            --info: #0284c7; /* Sky 600 */
             
             /* Base sizing */
             font-size: 14px;
+        }
+
+        :focus-visible {
+            outline: 2px solid var(--primary-brand, #0284c7);
+            outline-offset: 2px;
         }
 
         html, body {
@@ -453,13 +460,28 @@
             border-radius: 10px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
             font-size: 0.95em;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
             letter-spacing: 0.3px;
+        }
+
+        .button:active, .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-brand {
+            background: linear-gradient(135deg, var(--primary-brand) 0%, var(--primary-brand-dark) 100%);
+            color: var(--text-white);
+            box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+        }
+
+        .btn-brand:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(2, 132, 199, 0.4);
         }
 
         .btn-primary {
@@ -558,7 +580,15 @@
             font-weight: 600;
         }
 
-        /* Tables */
+        /* Tables & Responsive Wrapper */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
         table {
             width: 100%;
             border-collapse: separate;

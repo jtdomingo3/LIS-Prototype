@@ -55,10 +55,6 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   app.use('/assets', express.static(path.join(__dirname, '..', 'assets'), staticCacheOpts));
   app.use(express.static(path.join(__dirname, '..', 'public'), staticCacheOpts));
   app.use(express.static(path.join(__dirname, '..', 'server-public'), staticCacheOpts));
-  try {
-    const hrDocsDir = path.join(require('./dataPath').getDataDir(), 'hr-documents');
-    app.use('/hr-documents', express.static(hrDocsDir, staticCacheOpts));
-  } catch (e) {}
 
   /* ── Session + flash ──────────────────────────────────────────── */
   app.use(session({
@@ -531,6 +527,7 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
       }
 
       if (sessionUser.role === 'Admin') return next();
+      if (['costing', 'hr', 'inventory', 'equipment'].includes(mapping.perm) && isManagement) return next();
 
       if (perms[mapping.perm] || (mapping.perm === 'equipment' && perms.inventory) || (mapping.perm === 'philhealth' && (perms.philhealth || perms.healthcard || perms.reception))) return next();
 
@@ -650,6 +647,13 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
   try {
     const hrRoutes = require('../routes/hr');
     app.use('/hr', hrRoutes);
+    const hrDocsDir = path.join(require('./dataPath').getDataDir(), 'hr-documents');
+    app.use('/hr-documents', (req, res, next) => {
+      if (req.session && req.session.user) {
+        return next();
+      }
+      return res.status(401).send('Authentication required to access documents');
+    }, express.static(hrDocsDir, staticCacheOpts));
   } catch (e) { console.error('[LocalServer] failed to load hr routes:', e && e.message); }
 
   /* ── 404 handler ──────────────────────────────────────────────── */

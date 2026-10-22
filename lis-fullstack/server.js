@@ -420,7 +420,6 @@ app.use(express.static(path.join(__dirname, 'public'), staticCacheOpts));
 app.use('/assets', express.static(path.join(__dirname, 'assets'), staticCacheOpts));
 const hrDocsDir = path.join(DATA_DIR, 'hr-documents');
 try { fs.mkdirSync(hrDocsDir, { recursive: true }); } catch (e) {}
-app.use('/hr-documents', express.static(hrDocsDir, staticCacheOpts));
 
 // Simple request logger to help debug routes and payloads with sensitive field masking
 function maskSensitive(obj) {
@@ -1026,8 +1025,8 @@ app.use((req, res, next) => {
       return next();
     }
 
-    // Allow management access to Costing & HR
-    if (['costing', 'hr'].includes(mapping.perm) && isManagement) {
+    // Allow management access to Costing, HR, Inventory & Equipment
+    if (['costing', 'hr', 'inventory', 'equipment'].includes(mapping.perm) && isManagement) {
       console.debug(`[auth-guard] allowing management access to ${mapping.perm}`);
       return next();
     }
@@ -1108,6 +1107,13 @@ app.use('/equipment', equipmentRoutes);
 app.use('/api/equipment', equipmentRoutes);
 app.use('/costing', costingRoutes);
 app.use('/hr', hrRoutes);
+// Secure HR documents: require authenticated session before serving employee documents
+app.use('/hr-documents', (req, res, next) => {
+  if (req.session && req.session.user) {
+    return next();
+  }
+  return res.status(401).send('Authentication required to access documents');
+}, express.static(hrDocsDir, staticCacheOpts));
 
 // POST /api/internal/maintenance/execute – executes pending maintenance flags immediately from localhost
 app.post('/api/internal/maintenance/execute', async (req, res) => {

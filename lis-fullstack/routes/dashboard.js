@@ -277,7 +277,7 @@ router.get('/', requireAuth, async (req, res) => {
           const patient = Array.isArray(allPatients) ? allPatients.find(p => p.id === test.patient) : null;
           return {
             ...test,
-            patient: patient ? { firstName: patient.firstName, lastName: patient.lastName } : null
+            patient: patient ? { firstName: patient.firstName, middleName: patient.middleName, lastName: patient.lastName, fullName: patient.fullName } : null
           };
         });
     }

@@ -86,15 +86,17 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
     // Available companies for the company filter
     const availableCompanies = Array.isArray(allPatients) ? Array.from(new Set(allPatients.map(p => (p.company || '').toString()).filter(Boolean))).sort() : [];
 
-    // Apply search filter (name/id)
+    // Apply search filter (name/id/code)
     if (searchQuery) {
-      const searchLower = searchQuery.toLowerCase();
-      allPatients = allPatients.filter(patient =>
-        (patient.firstName && patient.firstName.toLowerCase().includes(searchLower)) ||
-        (patient.middleName && patient.middleName.toLowerCase().includes(searchLower)) ||
-        (patient.lastName && patient.lastName.toLowerCase().includes(searchLower)) ||
-        (patient.patientId && patient.patientId.toLowerCase().includes(searchLower))
-      );
+      const searchLower = searchQuery.toLowerCase().trim();
+      allPatients = allPatients.filter(patient => {
+        const fn = (patient.fullName || [patient.firstName, patient.middleName, patient.lastName].filter(Boolean).join(' ')).toLowerCase();
+        const reversed = [patient.lastName, patient.firstName, patient.middleName].filter(Boolean).join(' ').toLowerCase();
+        const commaName = `${patient.lastName || ''}, ${patient.firstName || ''}`.toLowerCase();
+        const pId = String(patient.patientId || '').toLowerCase();
+        const pCode = String(patient.patientCode || '').toLowerCase();
+        return fn.includes(searchLower) || reversed.includes(searchLower) || commaName.includes(searchLower) || pId.includes(searchLower) || pCode.includes(searchLower);
+      });
     }
 
     // PhilHealth filter (yes/no)
@@ -559,13 +561,14 @@ router.post('/', requireAuth, canAccessPatient, [
     }
 
     // Emit SSE update so all connected clients receive a notification
+    const fullPatientName = patient.fullName || [patient.firstName, patient.middleName, patient.lastName].filter(Boolean).join(' ');
     try {
-      const msg = `New patient added: ${patient.firstName} ${patient.middleName ? (patient.middleName + ' ') : ''}${patient.lastName}` + (patient.patientId ? ` (ID: ${patient.patientId})` : '');
-      sseEmitter.emit('update', { action: 'patient_created', patientId: patient.id, patientName: `${patient.firstName} ${patient.lastName}`, patientCode: patient.patientCode || null, patientIdLabel: patient.patientId || null, time: (new Date()).toISOString(), message: msg });
+      const msg = `New patient added: ${fullPatientName}` + (patient.patientId ? ` (ID: ${patient.patientId})` : '');
+      sseEmitter.emit('update', { action: 'patient_created', patientId: patient.id, patientName: fullPatientName, patientCode: patient.patientCode || null, patientIdLabel: patient.patientId || null, time: (new Date()).toISOString(), message: msg });
     } catch (e) { console.warn('SSE emit failed for patient_created', e); }
 
     // Patient saved — tests will be assigned from patient management. Printing is manual.
-    req.flash('success_msg', `Patient ${firstName} ${middleName ? middleName + ' ' : ''}${lastName} added successfully!`);
+    req.flash('success_msg', `Patient ${fullPatientName} added successfully!`);
 
     // If this request came from the standalone sync engine or explicit JSON API client,
     // return JSON including the created id and client_id so the client can map records deterministically.
@@ -919,19 +922,20 @@ router.put('/:id', requireAuth, canAccessPatient, [
       }
     }
 
+    const fullPatientName = patient.fullName || [patient.firstName, patient.middleName, patient.lastName].filter(Boolean).join(' ');
     try {
       sseEmitter.emit('update', {
         action: 'patient_updated',
         patientId: patient.id,
-        patientName: `${patient.firstName} ${patient.lastName}`,
+        patientName: fullPatientName,
         patientCode: patient.patientCode || null,
         patientIdLabel: patient.patientId || null,
         time: (new Date()).toISOString(),
-        message: `Patient ${patient.firstName} ${patient.lastName} updated`
+        message: `Patient ${fullPatientName} updated`
       });
     } catch (e) { console.warn('SSE emit failed for patient_updated', e); }
 
-    req.flash('success_msg', `Patient ${firstName} ${lastName} updated successfully!`);
+    req.flash('success_msg', `Patient ${fullPatientName} updated successfully!`);
     res.redirect(`/patients/${req.params.id}`);
 
   } catch (error) {
@@ -997,7 +1001,7 @@ router.delete('/:id', requireAuth, canAccessPatient, async (req, res) => {
 
     // Emit SSE event so all active client pages (and standalone sync) update immediately
     try {
-      const pName = patient ? `${patient.firstName} ${patient.lastName}` : 'Patient';
+      const pName = patient ? (patient.fullName || [patient.firstName, patient.middleName, patient.lastName].filter(Boolean).join(' ')) : 'Patient';
       sseEmitter.emit('update', {
         action: 'patient_deleted',
         patientId: targetId,

@@ -189,7 +189,9 @@ router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) =
     const patientMap = {};
     (Array.isArray(allPatients) ? allPatients : []).forEach(p => {
       const pid = p.id || p._id;
-      if (pid) patientMap[pid] = `${p.lastName || ''}, ${p.firstName || ''}${p.middleName ? ' ' + p.middleName : ''}`.replace(/^,\s*/, '').replace(/,\s*$/, '').trim();
+      if (pid) {
+        patientMap[pid] = p.fullName || (p.lastName ? `${p.lastName}, ${[p.firstName, p.middleName].filter(Boolean).join(' ')}`.trim() : [p.firstName, p.middleName, p.lastName].filter(Boolean).join(' '));
+      }
     });
 
     const testsForNav = completedSorted.map(t => ({
@@ -1328,7 +1330,7 @@ router.post('/philhealth-export/download', requireAuth, canAccessPatient, async 
         idx + 1,
         r.controlNo || '',
         r.recordDate || (r.createdAt ? String(r.createdAt).slice(0, 10) : ''),
-        r.fullName || `${r.firstName || ''} ${r.middleName || ''} ${r.lastName || ''}`.trim(),
+        r.fullName || [r.firstName, r.middleName, r.lastName].filter(Boolean).join(' '),
         r.firstName || '',
         r.middleName || '',
         r.lastName || '',
@@ -1459,7 +1461,7 @@ router.post('/philhealth-export/preview', requireAuth, canAccessPatient, async (
         index: idx + 1,
         controlNo: r.controlNo || '',
         recordDate: r.recordDate || (r.createdAt ? String(r.createdAt).slice(0, 10) : ''),
-        fullName: r.fullName || `${r.firstName || ''} ${r.middleName || ''} ${r.lastName || ''}`.trim(),
+        fullName: r.fullName || [r.firstName, r.middleName, r.lastName].filter(Boolean).join(' '),
         firstName: r.firstName || '',
         middleName: r.middleName || '',
         lastName: r.lastName || '',
@@ -1709,7 +1711,7 @@ router.post('/consultations-export/preview', requireAuth, canAccessPatient, asyn
       const rawCode = String(p.patientCode || p.patientId || '');
       const shortCode = rawCode ? (rawCode.includes('-') ? rawCode.split('-').pop() : (rawCode.length > 5 ? rawCode.slice(-5) : rawCode)) : '—';
       const fullCode = p.patientCode || p.patientId || '—';
-      const patientFullName = p.firstName || p.lastName ? `${p.lastName || ''}, ${p.firstName || ''} ${p.middleName || ''}`.trim() : (p.fullName || '—');
+      const patientFullName = p.fullName || (p.firstName || p.lastName ? `${p.lastName || ''}, ${[p.firstName, p.middleName].filter(Boolean).join(' ')}`.replace(/^,\s*/, '').trim() : '—');
 
       const bpSys = vit.bloodPressureSystolic !== undefined && vit.bloodPressureSystolic !== null ? String(vit.bloodPressureSystolic).trim() : '';
       const bpDia = vit.bloodPressureDiastolic !== undefined && vit.bloodPressureDiastolic !== null ? String(vit.bloodPressureDiastolic).trim() : '';
@@ -1977,7 +1979,7 @@ router.post('/consultations-export/download', requireAuth, canAccessPatient, asy
 
       const dateStr = v.visitDate ? v.visitDate.toISOString().slice(0, 10) : '';
       const timeStr = v.visitDate ? v.visitDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '';
-      const patientFullName = p.fullName || (p.firstName || p.lastName ? `${p.lastName || ''}, ${p.firstName || ''} ${p.middleName || ''}`.trim() : '');
+      const patientFullName = p.fullName || (p.firstName || p.lastName ? `${p.lastName || ''}, ${[p.firstName, p.middleName].filter(Boolean).join(' ')}`.replace(/^,\s*/, '').trim() : '');
 
       const bpSys = vit.bloodPressureSystolic !== undefined && vit.bloodPressureSystolic !== null ? String(vit.bloodPressureSystolic).trim() : '';
       const bpDia = vit.bloodPressureDiastolic !== undefined && vit.bloodPressureDiastolic !== null ? String(vit.bloodPressureDiastolic).trim() : '';

@@ -475,30 +475,23 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
 
     // Apply search filter
     if (searchQuery) {
-      const searchLower = searchQuery.toLowerCase();
+      const searchLower = searchQuery.toLowerCase().trim();
       allTests = allTests.filter(test => {
-        const patient = allPatients.find(p => p.id === test.patient);
-        const patientName = patient ? `${patient.firstName} ${patient.lastName}`.toLowerCase() : '';
-        return (test.testId || '').toString().toLowerCase().includes(searchLower) ||
-               (test.testType || '').toString().toLowerCase().includes(searchLower) ||
-               patientName.includes(searchLower);
+        const patient = allPatients.find(p => (p.id === test.patient || p._id === test.patient || p.patientId === test.patient));
+        const fn = patient ? [patient.firstName, patient.middleName, patient.lastName].filter(Boolean).join(' ').toLowerCase() : '';
+        const reversed = patient ? [patient.lastName, patient.firstName, patient.middleName].filter(Boolean).join(' ').toLowerCase() : '';
+        const commaName = patient ? `${patient.lastName || ''}, ${patient.firstName || ''}`.toLowerCase() : '';
+        const pCode = patient ? String(patient.patientCode || patient.patientId || '').toLowerCase() : '';
+        const tId = (test.testId || '').toString().toLowerCase();
+        const tType = (test.testType || '').toString().toLowerCase();
+        return tId.includes(searchLower) ||
+               tType.includes(searchLower) ||
+               fn.includes(searchLower) ||
+               reversed.includes(searchLower) ||
+               commaName.includes(searchLower) ||
+               pCode.includes(searchLower);
       });
     }
-
-    // Ensure For Send Out is added even when no selectedTests were provided
-    try {
-      const forSendOutAlways = req.body.forSendOut === '1' || req.body.forSendOut === 'on' || req.body.forSendOut === 'true';
-      if (forSendOutAlways) {
-        const exists = requestedTestsDetailed.some(r => String(r.label || r.key || '').toLowerCase() === 'for send out');
-        if (!exists) {
-          const amtRaw = req.body['amount_sendout'];
-          const amt = amtRaw ? parseFloat(String(amtRaw).replace(/,/g,'')) : 0;
-          const remark = req.body['remark_sendout'] || '';
-          // normalize to internal 'Sendout' area
-          requestedTestsDetailed.push({ key: 'For Send Out', label: 'For Send Out', amount: isNaN(amt) ? 0 : amt, lab: 'external', area: 'Sendout', remarks: remark });
-        }
-      }
-    } catch (e) {}
 
     // Apply status filter
     if (statusFilter) {
@@ -771,9 +764,13 @@ router.post('/', requireAuth, canAccessPatient, async (req, res) => {
         }
       }
       awaitingOnly = selectedTests.length > 0 && mappedAreas.size === 0;
-      // Add For Send Out if present
-      const forSendOut = req.body.forSendOut === '1' || req.body.forSendOut === 'on' || req.body.forSendOut === 'true';
-      if (forSendOut) {
+    }
+
+    // Add For Send Out if present (even if no other selectedTests were provided)
+    const forSendOut = req.body.forSendOut === '1' || req.body.forSendOut === 'on' || req.body.forSendOut === 'true';
+    if (forSendOut) {
+      const exists = requestedTestsDetailed.some(r => String(r.label || r.key || '').toLowerCase() === 'for send out');
+      if (!exists) {
         const amtRaw = req.body['amount_sendout'];
         const amt = amtRaw ? parseFloat(String(amtRaw).replace(/,/g,'')) : 0;
         const remark = req.body['remark_sendout'] || '';

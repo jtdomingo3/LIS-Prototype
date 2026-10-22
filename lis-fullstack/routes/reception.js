@@ -329,10 +329,10 @@ router.get('/assigned', allowKioskOrAuth, async (req, res) => {
         if (!t.status) continue;
         const area = mapAreaForTest(t);
         if (!DISPLAY_AREAS.includes(area)) continue;
-        if (!t.patient) continue;
         const patient = patientsById[t.patient];
         if (!patient || !patient.patientCode) continue;
-        areaAssignments[area].push({ testId: t.testId, patientCode: patient.patientCode, name: `${patient.firstName} ${patient.lastName}`, assignedDoctor: t.assignedDoctorName || null });
+        const pName = patient.fullName || [patient.firstName, patient.middleName, patient.lastName].filter(Boolean).join(' ');
+        areaAssignments[area].push({ testId: t.testId, patientCode: patient.patientCode, name: pName, assignedDoctor: t.assignedDoctorName || null });
       }
     }
 
@@ -623,7 +623,7 @@ router.post('/stash', requireAuth, canAccessPatient, async (req, res) => {
           count++;
           if (t.patient && !patientName) {
             const p = await Patient.findById(t.patient);
-            if (p) patientName = `${p.firstName} ${p.lastName}`;
+            if (p) patientName = p.fullName || [p.firstName, p.middleName, p.lastName].filter(Boolean).join(' ');
           }
         }
       }
@@ -709,7 +709,7 @@ router.post('/release-stashed', requireAuth, canAccessPatient, async (req, res) 
         count++;
         if (t.patient && !patientName) {
           const p = await Patient.findById(t.patient);
-          if (p) patientName = `${p.firstName} ${p.lastName}`;
+          if (p) patientName = p.fullName || [p.firstName, p.middleName, p.lastName].filter(Boolean).join(' ');
         }
       }
     }

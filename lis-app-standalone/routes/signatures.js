@@ -25,7 +25,16 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB max
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype || !file.mimetype.startsWith('image/')) {
+      return cb(new Error('Only image files (PNG, JPG, etc.) are allowed for signatures'));
+    }
+    cb(null, true);
+  }
+});
 
 // List documents where current user's name appears
 router.get('/', requireAuth, async (req, res) => {
@@ -64,13 +73,16 @@ router.get('/', requireAuth, async (req, res) => {
     // Apply server-side filters (search testId, testType, patient name)
     let filtered = matches;
     if (searchQuery) {
-      const q = String(searchQuery).toLowerCase();
+      const q = String(searchQuery).toLowerCase().trim();
       filtered = filtered.filter(test => {
-        const patient = allPatients.find(p => p.id === test.patient);
-        const patientName = patient ? `${patient.firstName || ''} ${patient.lastName || ''}`.toLowerCase() : '';
+        const patient = allPatients.find(p => (p.id === test.patient || p._id === test.patient || p.patientId === test.patient));
+        const fn = patient ? (patient.fullName || [patient.firstName, patient.middleName, patient.lastName].filter(Boolean).join(' ')).toLowerCase() : '';
+        const reversed = patient ? [patient.lastName, patient.firstName, patient.middleName].filter(Boolean).join(' ').toLowerCase() : '';
+        const commaName = patient ? `${patient.lastName || ''}, ${patient.firstName || ''}`.toLowerCase() : '';
+        const pCode = patient ? String(patient.patientCode || patient.patientId || '').toLowerCase() : '';
         return (test.testId || '').toString().toLowerCase().includes(q) ||
                (test.testType || '').toString().toLowerCase().includes(q) ||
-               patientName.includes(q);
+               fn.includes(q) || reversed.includes(q) || commaName.includes(q) || pCode.includes(q);
       });
     }
     if (typeFilter) filtered = filtered.filter(t => ((t.testType || t.template || '') === typeFilter));

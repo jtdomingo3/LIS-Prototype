@@ -172,6 +172,11 @@ function extractDoctorFromArea(areaName) {
   return null;
 }
 
+// GET /consultations - Redirect root to reception queue
+router.get('/', requireAuth, (req, res) => {
+  return res.redirect('/reception');
+});
+
 // GET /consultations/:testId - Open the Clinical Consultation panel
 router.get('/:testId', requireAuth, canAccessPatient, async (req, res) => {
   try {
@@ -366,7 +371,7 @@ router.get('/:testId', requireAuth, canAccessPatient, async (req, res) => {
     }
 
     res.render('consultations/panel', {
-      title: `Clinical Consultation — ${patient.firstName} ${patient.lastName}`,
+      title: `Clinical Consultation — ${patient.fullName || [patient.firstName, patient.middleName, patient.lastName].filter(Boolean).join(' ')}`,
       consultation,
       patient,
       test,
