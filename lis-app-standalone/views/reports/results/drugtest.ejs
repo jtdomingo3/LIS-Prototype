@@ -101,7 +101,7 @@ if (typeof global !== 'undefined') {
            try {
              if (test && test.patient) {
                const p = test.patient;
-               displayName = ((p.lastName || '') + ', ' + (p.firstName || '')).trim();
+               displayName = ((p.lastName || '') + ', ' + (p.firstName || '') + (p.middleName ? ' ' + p.middleName : '')).trim();
              }
            } catch(e){}
            if (!displayName && test && test.results && test.results.name) displayName = test.results.name;

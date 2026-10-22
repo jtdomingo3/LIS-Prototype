@@ -18,7 +18,7 @@
       <% if (tests && tests.length) { %>
         <% tests.forEach(t => { %>
           <option value="<%= t.id %>">
-            <%= t.testId %> — <%= t.patient ? (t.patient.firstName + ' ' + t.patient.lastName) : 'Unknown Patient' %> — <%= t.testType || t.template || 'Diagnostic Test' %> (<%= t.testDate ? new Date(t.testDate).toLocaleDateString() : '' %>)
+            <%= t.testId %> — <%= t.patient ? (t.patient.firstName + ' ' + (t.patient.middleName ? t.patient.middleName + ' ' : '') + t.patient.lastName) : 'Unknown Patient' %> — <%= t.testType || t.template || 'Diagnostic Test' %> (<%= t.testDate ? new Date(t.testDate).toLocaleDateString() : '' %>)
           </option>
         <% }) %>
       <% } %>

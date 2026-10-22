@@ -189,7 +189,7 @@ router.get('/preview/:testId', requireAuth, canAccessPatient, async (req, res) =
     const patientMap = {};
     (Array.isArray(allPatients) ? allPatients : []).forEach(p => {
       const pid = p.id || p._id;
-      if (pid) patientMap[pid] = `${p.lastName || ''}, ${p.firstName || ''}`.replace(/^,\s*/, '').replace(/,\s*$/, '').trim();
+      if (pid) patientMap[pid] = `${p.lastName || ''}, ${p.firstName || ''}${p.middleName ? ' ' + p.middleName : ''}`.replace(/^,\s*/, '').replace(/,\s*$/, '').trim();
     });
 
     const testsForNav = completedSorted.map(t => ({
@@ -717,7 +717,7 @@ router.post('/worksheet/download', requireAuth, canAccessPatient, async (req, re
     const personnelHeaders = ['Performed By', 'Performed By License', 'Validated By', 'Validated By License', 'Approved By', 'Approved By License', 'Requested By'];
     const headers = [
       'Test ID', 'Test Type', 'Test Date', 'Test Time',
-      'Patient ID', 'First Name', 'Last Name', 'Age', 'Sex',
+      'Patient ID', 'First Name', 'Middle Name', 'Last Name', 'Age', 'Sex',
       ...resultCols.map(c => c.toUpperCase()),
       ...personnelHeaders
     ];
@@ -742,7 +742,7 @@ router.post('/worksheet/download', requireAuth, canAccessPatient, async (req, re
       const base = [
         r.testId, r.testType, dateStr, timeStr,
         p.patientId || p.patientCode || '',
-        p.firstName || '', p.lastName || '',
+        p.firstName || '', p.middleName || '', p.lastName || '',
         ageVal,
         sexVal
       ];
@@ -968,6 +968,7 @@ router.post('/worksheet/preview', requireAuth, canAccessPatient, async (req, res
         time: t.testDate ? new Date(t.testDate).toISOString().slice(11,19) : '',
         patientId: p ? (p.patientId || p.patientCode || '') : '',
         firstName: p ? (p.firstName || '') : '',
+        middleName: p ? (p.middleName || '') : '',
         lastName: p ? (p.lastName || '') : '',
         age: p ? ((p.age !== null && p.age !== undefined && p.age !== '') ? p.age : (p.ageManual || '')) : '',
         sex: p ? (p.sex || p.gender || '') : '',

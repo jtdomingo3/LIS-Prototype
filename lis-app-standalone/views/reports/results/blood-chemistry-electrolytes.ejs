@@ -86,7 +86,7 @@ if (typeof global !== 'undefined') {
       </tr>
       <tr>
         <td>Name:</td>
-        <td colspan="3"><strong><%= test && test.patient ? (test.patient.lastName + ', ' + test.patient.firstName) : '' %></strong></td>
+        <td colspan="3"><strong><%= test && test.patient ? (test.patient.lastName + ', ' + test.patient.firstName + (test.patient.middleName ? ' ' + test.patient.middleName : '')) : '' %></strong></td>
         <td>Age:</td>
         <td><strong><%= test && test.patient ? (test.patient.age !== null && test.patient.age !== undefined && test.patient.age !== '' ? test.patient.age : (test.patient.ageManual || '')) : '' %></strong></td>
       </tr>

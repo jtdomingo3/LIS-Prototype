@@ -593,7 +593,7 @@
             <% if (recentTests && recentTests.length > 0) { %>
                 <% recentTests.forEach(test => { %>
                 <tr>
-                    <td><strong><%= test.patient ? test.patient.firstName + ' ' + test.patient.lastName : 'Unknown' %></strong></td>
+                    <td><strong><%= test.patient ? test.patient.firstName + ' ' + (test.patient.middleName ? test.patient.middleName + ' ' : '') + test.patient.lastName : 'Unknown' %></strong></td>
                     <td><span style="font-weight: 500; color: #475569;"><%= test.testType %></span></td>
                     <td><span style="color: #64748b;"><%= test.testDate ? (typeof formatMMDDYYYY === 'function' ? formatMMDDYYYY(test.testDate) : new Date(test.testDate).toLocaleDateString('en-US')) : '' %></span></td>
                     <td>

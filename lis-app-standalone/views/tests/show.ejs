@@ -47,10 +47,10 @@
         <strong style="color: #0f172a;">
           <% if (test.patient && test.patient.id) { %>
             <a href="/patients/<%= test.patient.id %>" style="color: #2563eb; text-decoration: none; font-weight: 700;">
-              <%= test.patient.firstName %> <%= test.patient.lastName %>
+              <%= test.patient.firstName %> <%= test.patient.middleName ? test.patient.middleName + ' ' : '' %><%= test.patient.lastName %>
             </a>
           <% } else { %>
-            <%= test.patient ? (test.patient.firstName + ' ' + test.patient.lastName) : 'Unknown Patient' %>
+            <%= test.patient ? (test.patient.firstName + ' ' + (test.patient.middleName ? test.patient.middleName + ' ' : '') + test.patient.lastName) : 'Unknown Patient' %>
           <% } %>
         </strong>
       </div>

@@ -187,7 +187,7 @@ function renderHeader(test: TestRow, patient: PatientRow, baseUrl: string, inlin
   const sex = esc(patient.gender || '');
   const dob = fmtDate(patient.date_of_birth);
   const age = calcAge(patient.date_of_birth, patient.age_manual);
-  const patientName = patient.last_name ? `${esc(patient.last_name)}, ${esc(patient.first_name)}` : '';
+  const patientName = patient.last_name ? `${esc(patient.last_name)}, ${esc(patient.first_name)}${patient.middle_name ? ' ' + esc(patient.middle_name) : ''}` : '';
   const physician = esc(patient.physician || '');
 
   return `

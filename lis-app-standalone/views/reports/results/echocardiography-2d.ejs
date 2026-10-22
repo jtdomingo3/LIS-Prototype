@@ -310,7 +310,7 @@ if (typeof global !== 'undefined') {
   // Patient Header Data
   let patientName = '';
   if (p.lastName) {
-    patientName = (p.lastName + ', ' + (p.firstName || '') + (p.middleName ? ' ' + p.middleName[0] + '.' : '')).toUpperCase();
+    patientName = (p.lastName + ', ' + (p.firstName || '') + (p.middleName ? ' ' + p.middleName : '')).toUpperCase();
   } else if (p.name) {
     patientName = String(p.name).toUpperCase();
   } else if (test && test.patientName) {

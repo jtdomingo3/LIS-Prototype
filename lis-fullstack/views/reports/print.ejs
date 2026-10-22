@@ -31,7 +31,7 @@
     <div class="section">
       <h3>Patient</h3>
       <% if (test.patient) { %>
-        <p><strong>Name:</strong> <%= test.patient.firstName %> <%= test.patient.lastName %></p>
+        <p><strong>Name:</strong> <%= test.patient.firstName %> <%= test.patient.middleName ? test.patient.middleName + ' ' : '' %><%= test.patient.lastName %></p>
         <p><strong>Patient ID:</strong> <%= test.patient.patientId %></p>
       <% } %>
     </div>
