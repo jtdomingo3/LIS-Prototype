@@ -6,7 +6,17 @@ const path = require('path');
 const os = require('os');
 const { dataFile } = require('../lib/dataPath');
 const multer = require('multer');
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 100 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (!['.json', '.db', '.sqlite', '.sqlite3'].includes(ext)) {
+      return cb(new Error('Invalid backup file format. Only JSON or SQLite DB backup files are accepted.'));
+    }
+    cb(null, true);
+  }
+});
 
 const { decryptJson } = require('../lib/migrateJsonToSqlite');
 const { encryptSecret, decryptSecret } = require('../lib/cryptoHelper');

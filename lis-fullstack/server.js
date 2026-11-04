@@ -476,7 +476,7 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
   crossOriginOpenerPolicy: false,
   originAgentCluster: false,
-  hsts: false
+  hsts: process.env.NODE_ENV === 'production' && process.env.USE_HTTPS === '1' ? { maxAge: 31536000, includeSubDomains: true } : false
 }));
 
 // Global Rate Limiter for all other endpoints
@@ -1223,51 +1223,72 @@ app.post('/api/restore/data', (req, res) => {
   }
 });
 
-// Export endpoint for full-sync (requires authenticated session, Bearer token, or verified sync credentials)
+// Export endpoint for full-sync (requires management session, Bearer token, or verified sync credentials)
 app.get('/export/data.json', (req, res) => {
   try {
-    let authorized = !!(req.session && req.session.user) || (process.env.ALLOW_PUBLIC_DATA_EXPORT === '1');
+    let authorized = false;
+    let isSyncClient = false;
 
-    // 1. Bearer Token Auth
+    // 1. Hash-based sync token from standalone desktop app
+    const syncEmail = req.headers['x-lis-sync-email'];
+    const syncHash  = req.headers['x-lis-sync-hash'];
+    if (syncEmail && syncHash) {
+      try {
+        const allUsers = db.getUsers();
+        const matchUser = allUsers.find(u => u.email && u.email.toLowerCase() === syncEmail.toLowerCase());
+        if (matchUser && validateSyncUser(syncHash, syncEmail, matchUser)) {
+          authorized = true;
+          isSyncClient = true;
+          console.log('[export] hash-based auth accepted for sync client:', syncEmail);
+        }
+      } catch (e) { /* ignore auth check errors */ }
+    }
+
+    // 2. Bearer Token Auth (Desktop app or API sync)
     if (!authorized) {
       const token = extractBearerToken(req);
       if (token && verifyToken(token)) {
         authorized = true;
+        isSyncClient = true;
       }
     }
 
-    // 2. Hash-based sync token from standalone desktop app
-    if (!authorized) {
-      const syncEmail = req.headers['x-lis-sync-email'];
-      const syncHash  = req.headers['x-lis-sync-hash'];
-      if (syncEmail && syncHash) {
-        try {
-          const allUsers = db.getUsers();
-          const matchUser = allUsers.find(u => u.email && u.email.toLowerCase() === syncEmail.toLowerCase());
-          if (matchUser && validateSyncUser(syncHash, syncEmail, matchUser)) {
-            authorized = true;
-            console.log('[export] hash-based auth accepted for', syncEmail);
-          }
-        } catch (e) { /* ignore auth check errors */ }
+    // 3. Authenticated session check: restrict to management roles or explicit export flag
+    if (!authorized && req.session && req.session.user) {
+      const userRole = req.session.user.role;
+      const managementRoles = new Set(['Admin', 'Manager', 'Owner']);
+      const perms = req.session.user.permissions || {};
+      if (managementRoles.has(userRole) || perms.dashboard || perms.users) {
+        authorized = true;
       }
+    }
+
+    if (!authorized && process.env.ALLOW_PUBLIC_DATA_EXPORT === '1') {
+      authorized = true;
     }
 
     if (!authorized) return res.status(401).json({ success: false, error: 'Authentication required' });
     const data = db.read();
     const allUsers = db.getUsers();
 
-    data.users = allUsers.map(u => ({
-      id: u.id || u.email,
-      name: u.name || u.email,
-      email: u.email,
-      password: u.password,  // bcrypt hash — needed for offline auth
-      role: u.role || '',
-      status: u.status || 'Active',
-      permissions: u.permissions || {},
-      licenseNumber: u.licenseNumber || null,
-      signature: u.signature || null,
-      autoSignature: u.autoSignature || { enabled: false, until: null },
-    }));
+    data.users = allUsers.map(u => {
+      const userObj = {
+        id: u.id || u.email,
+        name: u.name || u.email,
+        email: u.email,
+        role: u.role || '',
+        status: u.status || 'Active',
+        permissions: u.permissions || {},
+        licenseNumber: u.licenseNumber || null,
+        signature: u.signature || null,
+        autoSignature: u.autoSignature || { enabled: false, until: null },
+      };
+      // Password hashes are strictly restricted to authenticated sync engine clients for offline support
+      if (isSyncClient && u.password) {
+        userObj.password = u.password;
+      }
+      return userObj;
+    });
 
     data.inventory = typeof db.getInventory === 'function' ? db.getInventory() : [];
     data.inventory_batches = typeof db.getAllInventoryBatches === 'function' ? db.getAllInventoryBatches() : [];
@@ -1365,7 +1386,11 @@ app.post('/api/signatures/sync', express.json({ limit: '15mb' }), express.urlenc
 
 // Fullscreen persistent shell
 app.get('/shell', (req, res) => {
-  const targetUrl = req.query.url || '/dashboard';
+  let targetUrl = req.query.url || '/dashboard';
+  // Security validation: only allow internal relative paths to prevent SSRF and open iframe phishing
+  if (typeof targetUrl !== 'string' || !targetUrl.startsWith('/') || targetUrl.startsWith('//') || targetUrl.includes('\\') || targetUrl.includes('\r') || targetUrl.includes('\n')) {
+    targetUrl = '/dashboard';
+  }
   res.send(`<!DOCTYPE html>
 <html lang="en" style="margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#000;">
 <head>
@@ -1524,6 +1549,14 @@ app.get('/data.json', (req, res) => {
   if (!allow) return res.status(404).send('Not found');
   try {
     const data = db.read();
+    // Strip user password credentials from public snapshot
+    if (data.users && Array.isArray(data.users)) {
+      data.users = data.users.map(u => {
+        const safeU = { ...u };
+        delete safeU.password;
+        return safeU;
+      });
+    }
     data.inventory = typeof db.getInventory === 'function' ? db.getInventory() : [];
     data.inventory_batches = typeof db.getAllInventoryBatches === 'function' ? db.getAllInventoryBatches() : [];
     data.inventory_transactions = typeof db.getInventoryTransactions === 'function' ? db.getInventoryTransactions() : [];

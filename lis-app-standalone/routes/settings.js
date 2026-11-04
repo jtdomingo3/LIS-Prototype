@@ -183,8 +183,14 @@ router.get('/', requireAuth, async (req, res) => {
       const headers = { 'Accept': 'application/json' };
       if (req.session && req.session.user) {
         const { generateSyncToken } = require('../lib/syncAuth');
+        let pw = req.session.user.password;
+        if (!pw) {
+          const allUsers = (global.db && typeof global.db.getUsers === 'function') ? global.db.getUsers() : ((req.app.locals.dataStore && req.app.locals.dataStore.getCollection) ? req.app.locals.dataStore.getCollection('users') : []);
+          const match = Array.isArray(allUsers) ? allUsers.find(u => u && u.email && u.email.toLowerCase() === req.session.user.email.toLowerCase()) : null;
+          if (match && match.password) pw = match.password;
+        }
         headers['X-LIS-Sync-Email'] = req.session.user.email;
-        headers['X-LIS-Sync-Hash'] = generateSyncToken(req.session.user.email, req.session.user.password || '');
+        headers['X-LIS-Sync-Hash'] = generateSyncToken(req.session.user.email, pw || '');
       }
 
       const resp = await fetch(`${cleanUrl}/settings?format=json`, { headers, signal: controller.signal });
@@ -385,8 +391,14 @@ router.post('/sync-from-server', requireAuth, canManageUsers, async (req, res) =
     const headers = { 'Accept': 'application/json' };
     if (req.session && req.session.user) {
       const { generateSyncToken } = require('../lib/syncAuth');
+      let pw = req.session.user.password;
+      if (!pw) {
+        const allUsers = (global.db && typeof global.db.getUsers === 'function') ? global.db.getUsers() : ((req.app.locals.dataStore && req.app.locals.dataStore.getCollection) ? req.app.locals.dataStore.getCollection('users') : []);
+        const match = Array.isArray(allUsers) ? allUsers.find(u => u && u.email && u.email.toLowerCase() === req.session.user.email.toLowerCase()) : null;
+        if (match && match.password) pw = match.password;
+      }
       headers['X-LIS-Sync-Email'] = req.session.user.email;
-      headers['X-LIS-Sync-Hash'] = generateSyncToken(req.session.user.email, req.session.user.password || '');
+      headers['X-LIS-Sync-Hash'] = generateSyncToken(req.session.user.email, pw || '');
     }
 
     const resp = await fetch(`${cleanUrl}/settings?format=json`, { headers });

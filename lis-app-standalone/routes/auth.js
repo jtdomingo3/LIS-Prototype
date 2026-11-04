@@ -153,8 +153,8 @@ router.post('/login', async (req, res) => {
     sessionUserObj.permissions = user.permissions || {};
     // Ensure signature key exists so views can rely on it
     sessionUserObj.signature = sessionUserObj.signature || null;
-    // Retain the hashed password for sync operations to the master server
-    sessionUserObj.password = user.password || null;
+    // Omit sensitive credentials: do not store hashed password in session
+    delete sessionUserObj.password;
     req.session.user = sessionUserObj;
 
     // Bridge user credentials to sync engine for live server synchronization

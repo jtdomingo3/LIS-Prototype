@@ -92,8 +92,8 @@ router.post('/login', [
     sessionUserObj.permissions = user.permissions || {};
     // Ensure signature key exists so views can rely on it
     sessionUserObj.signature = sessionUserObj.signature || null;
-    // Retain the hashed password for sync operations
-    sessionUserObj.password = user.password || null;
+    // Omit sensitive credentials: do not store hashed password in session
+    delete sessionUserObj.password;
     req.session.user = sessionUserObj;
 
     const { getUserHomeRoute } = require('../middleware/auth');

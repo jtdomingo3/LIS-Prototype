@@ -96,6 +96,9 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
     res.setHeader('X-Download-Options', 'noopen');
     res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    const connectAllowed = (config && config.SERVER_URL) ? ' ' + config.SERVER_URL.replace(/\/$/, '') : '';
+    res.setHeader('Content-Security-Policy', "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self'" + connectAllowed);
 
     try {
       const origin = req.get('Origin') || '';
@@ -194,7 +197,6 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
             id: user.id || user.email,
             name: user.name || user.email,
             email: user.email,
-            password: user.password || null,
             role: user.role || 'User',
             permissions: user.permissions || {},
             signature: user.signature || null,
