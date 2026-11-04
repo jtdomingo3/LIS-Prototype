@@ -2,166 +2,1041 @@
 <style>
   /* ==========================================================================
      Clinical Precision Dark Theme Tokens & Overrides (Night Shift Preset)
+     Midnight Obsidian Palette:
+       - Sidebar: #09090b (Jet Black console anchor)
+       - Canvas: #0b0f19 (Midnight Slate workspace - distinctly separated from sidebar)
+       - Header: #111827 (Dark Slate header rail)
+       - Cards & Panels: #111827 (Elevated Clinical Slate surface)
+       - Recessed Elements: #0b0f19 (Inputs, inner wells, table headers)
+       - Badges & Pills: #162032 (Subtle recessed chip)
+       - Borders: #1f293d (Crisp subtle clinical border)
+       - Hover: #1a2333 (High-visibility interactive highlight)
+       - Text Primary: #f8fafc (Clean Slate-50)
+       - Text Muted: #94a3b8 (Slate-400)
      ========================================================================== */
+
   [data-theme="dark"] {
-    --bg-light: #09090b;
-    --surface-app: #09090b;
-    --surface-card: #141417;
-    --surface-muted: #18181b;
-    --surface-subtle: #27272a;
-    --border-subtle: #27272a;
-    --border-strong: #3f3f46;
+    --bg-light: #0b0f19;
+    --surface-app: #0b0f19;
+    --surface-card: #111827;
+    --surface-muted: #0b0f19;
+    --surface-subtle: #162032;
+    --border-subtle: #1f293d;
+    --border-strong: #334155;
+    --border-gray: #1f293d;
     --text-dark: #f8fafc;
+    --text-gray: #94a3b8;
     --text-muted: #94a3b8;
-    --text-white: #ffffff;
-    --card-bg: #141417;
+    --text-light: #f8fafc;
+    --card-bg: #111827;
+    --primary-brand-subtle: #064e3b;
+    --accent-orange-subtle: #451a03;
+    --clinical-blue-subtle: #0c4a6e;
+    --clinical-blue-border: #0284c7;
+    --philhealth-blue-subtle: #0c4a6e;
     color-scheme: dark;
   }
 
+  /* ── 1. Page Canvas & Navigation Sidebar Isolation ── */
   [data-theme="dark"] body {
-    background-color: #09090b !important;
+    background-color: #0b0f19 !important;
     color: #f8fafc !important;
   }
 
   [data-theme="dark"] .main-content {
-    background-color: #09090b;
+    background-color: #0b0f19 !important;
   }
 
+  /* Anchor sidebar strictly in deep Jet Black so it is visually separated from #0b0f19 workspace */
+  .sidebar {
+    background: linear-gradient(180deg, #09090b 0%, #18181b 100%) !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+
+  /* ── 2. Top Header Bar ── */
   [data-theme="dark"] .header {
-    background-color: #141417 !important;
-    border-color: #27272a !important;
+    background-color: #111827 !important;
+    border-color: #1f293d !important;
   }
 
   [data-theme="dark"] .header h1,
-  [data-theme="dark"] .header strong {
+  [data-theme="dark"] .header strong,
+  [data-theme="dark"] .header span:not([class*="badge"]) {
     color: #f8fafc !important;
   }
 
-  [data-theme="dark"] .header-search-form input {
-    background-color: #18181b !important;
-    border-color: #27272a !important;
+  [data-theme="dark"] .header-search-form input,
+  [data-theme="dark"] #globalHeaderSearch {
+    background-color: #0b0f19 !important;
+    border-color: #1f293d !important;
     color: #f8fafc !important;
+  }
+
+  [data-theme="dark"] .header-search-form kbd {
+    background-color: #111827 !important;
+    border-color: #1f293d !important;
+    color: #94a3b8 !important;
   }
 
   [data-theme="dark"] #notifBtn,
   [data-theme="dark"] #themeToggleBtn {
-    background-color: #18181b !important;
-    border-color: #27272a !important;
+    background-color: #111827 !important;
+    border-color: #1f293d !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.3) !important;
   }
 
-  [data-theme="dark"] #notifBtn i,
-  [data-theme="dark"] #themeToggleBtn i {
-    color: #94a3b8 !important;
+  [data-theme="dark"] #notifBtn:hover,
+  [data-theme="dark"] #themeToggleBtn:hover {
+    background-color: #1a2333 !important;
+    border-color: #334155 !important;
   }
 
   [data-theme="dark"] #notifDropdown {
-    background-color: #18181b !important;
-    border-color: #27272a !important;
+    background-color: #111827 !important;
+    border-color: #1f293d !important;
     color: #f8fafc !important;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5) !important;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6) !important;
   }
 
-  [data-theme="dark"] .card,
-  [data-theme="dark"] .stat-card,
-  [data-theme="dark"] .reception-area-tile,
-  [data-theme="dark"] .modal-box,
-  [data-theme="dark"] .clinical-modal-box {
-    background-color: #141417 !important;
-    border-color: #27272a !important;
+  [data-theme="dark"] #notifDropdown strong {
     color: #f8fafc !important;
   }
 
-  [data-theme="dark"] .stat-card {
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25) !important;
-  }
-
-  [data-theme="dark"] table {
-    background-color: #141417 !important;
-  }
-
-  [data-theme="dark"] table thead tr {
-    background-color: #18181b !important;
-    border-color: #27272a !important;
-  }
-
-  [data-theme="dark"] table th {
-    color: #94a3b8 !important;
-  }
-
-  [data-theme="dark"] table tr {
-    border-color: #27272a !important;
-    background-color: transparent !important;
-  }
-
-  [data-theme="dark"] table tr:hover {
-    background-color: #1c1c21 !important;
-  }
-
-  [data-theme="dark"] table td {
-    border-color: #27272a !important;
-    color: #f8fafc !important;
-  }
-
-  [data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
-  [data-theme="dark"] select,
-  [data-theme="dark"] textarea {
-    background-color: #18181b !important;
-    border-color: #3f3f46 !important;
-    color: #f8fafc !important;
-  }
-
-  [data-theme="dark"] input:focus,
-  [data-theme="dark"] select:focus,
-  [data-theme="dark"] textarea:focus {
-    background-color: #1c1c21 !important;
-    border-color: var(--primary-brand, #10b981) !important;
-  }
-
-  [data-theme="dark"] .btn-secondary {
-    background-color: #27272a !important;
-    border-color: #3f3f46 !important;
-    color: #f8fafc !important;
-  }
-
-  [data-theme="dark"] .btn-secondary:hover {
-    background-color: #3f3f46 !important;
+  [data-theme="dark"] #notifDropdown div {
+    border-color: #1f293d !important;
   }
 
   [data-theme="dark"] .user-pill-link {
-    background-color: #18181b !important;
-    border-color: #27272a !important;
+    background-color: #111827 !important;
+    border-color: #1f293d !important;
   }
 
   [data-theme="dark"] .user-pill-link strong {
     color: #f8fafc !important;
   }
 
-  [data-theme="dark"] code {
-    background-color: #27272a !important;
-    border-color: #3f3f46 !important;
-    color: #34d399 !important;
+  /* ── 3. Cards, Panels, Sections & Containers (Universal Elimination of White Blocs) ── */
+  [data-theme="dark"] .card,
+  [data-theme="dark"] .stat-card,
+  [data-theme="dark"] .eq-stat-card,
+  [data-theme="dark"] .reception-card,
+  [data-theme="dark"] .modal-box,
+  [data-theme="dark"] .clinical-modal-box,
+  [data-theme="dark"] .section-card,
+  [data-theme="dark"] .detail-card,
+  [data-theme="dark"] .chart-panel,
+  [data-theme="dark"] .intel-card,
+  [data-theme="dark"] .filter-form,
+  [data-theme="dark"] .reports-floating-toolbar {
+    background: #111827 !important;
+    background-color: #111827 !important;
+    background-image: none !important;
+    border: 1px solid #1f293d !important;
+    color: #f8fafc !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
   }
 
-  [data-theme="dark"] .bench-kbd-hint {
-    background-color: #18181b !important;
-    border-color: #27272a !important;
-    color: #cbd5e1 !important;
-  }
-
-  [data-theme="dark"] .bench-kbd-hint kbd {
-    background-color: #27272a !important;
-    border-color: #3f3f46 !important;
+  /* Catch-all for elements styled with inline bright backgrounds (div, form, section, article) */
+  [data-theme="dark"] div[style*="background: white"],
+  [data-theme="dark"] div[style*="background:white"],
+  [data-theme="dark"] div[style*="background:#fff"],
+  [data-theme="dark"] div[style*="background: #fff"],
+  [data-theme="dark"] div[style*="background:#ffffff"],
+  [data-theme="dark"] div[style*="background: #ffffff"],
+  [data-theme="dark"] div[style*="background:#f8fafc"],
+  [data-theme="dark"] div[style*="background: #f8fafc"],
+  [data-theme="dark"] div[style*="background-color: white"],
+  [data-theme="dark"] div[style*="background-color:white"],
+  [data-theme="dark"] div[style*="background-color:#fff"],
+  [data-theme="dark"] div[style*="background-color: #fff"],
+  [data-theme="dark"] div[style*="background-color:#ffffff"],
+  [data-theme="dark"] div[style*="background-color: #ffffff"],
+  [data-theme="dark"] form[style*="background"],
+  [data-theme="dark"] section[style*="background"],
+  [data-theme="dark"] article[style*="background"] {
+    background-color: #111827 !important;
+    background-image: none !important;
+    border-color: #1f293d !important;
     color: #f8fafc !important;
   }
 
-  /* CRITICAL: Strict print protection — physical prints always remain crisp white paper with black ink */
+  /* ── 4. Dashboard Command Strip, Filter Bar & KPI Cards ── */
+  [data-theme="dark"] .dash-command-strip,
+  [data-theme="dark"] .filter-bar {
+    background: #111827 !important;
+    border: 1px solid #1f293d !important;
+  }
+
+  [data-theme="dark"] .dash-pulse-badge {
+    background: #064e3b !important;
+    border: 1px solid #059669 !important;
+  }
+
+  [data-theme="dark"] .pulse-text {
+    color: #34d399 !important;
+  }
+
+  [data-theme="dark"] .filter-pill {
+    background: #0b0f19 !important;
+    border: 1px solid #1f293d !important;
+    color: #94a3b8 !important;
+  }
+
+  [data-theme="dark"] .filter-pill:hover {
+    background: #1a2333 !important;
+    color: #f8fafc !important;
+  }
+
+  [data-theme="dark"] .filter-pill.active {
+    background: #10b981 !important;
+    color: #ffffff !important;
+    border-color: #10b981 !important;
+  }
+
+  [data-theme="dark"] .kpi-card {
+    background: #111827 !important;
+    background-image: none !important;
+    border: 1px solid #1f293d !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35) !important;
+  }
+
+  [data-theme="dark"] .kpi-patients { border-color: #0369a1 !important; }
+  [data-theme="dark"] .kpi-patients .kpi-title,
+  [data-theme="dark"] .kpi-patients .kpi-value { color: #38bdf8 !important; }
+  [data-theme="dark"] .kpi-patients .kpi-icon-pill { background: #0c4a6e !important; color: #38bdf8 !important; }
+  [data-theme="dark"] .kpi-patients .kpi-sub { color: #94a3b8 !important; }
+
+  [data-theme="dark"] .kpi-pending { border-color: #d97706 !important; }
+  [data-theme="dark"] .kpi-pending .kpi-title,
+  [data-theme="dark"] .kpi-pending .kpi-value { color: #fbbf24 !important; }
+  [data-theme="dark"] .kpi-pending .kpi-icon-pill { background: #451a03 !important; color: #fbbf24 !important; }
+  [data-theme="dark"] .kpi-pending .kpi-sub { color: #94a3b8 !important; }
+
+  [data-theme="dark"] .kpi-progress { border-color: #0d9488 !important; }
+  [data-theme="dark"] .kpi-progress .kpi-title,
+  [data-theme="dark"] .kpi-progress .kpi-value { color: #2dd4bf !important; }
+  [data-theme="dark"] .kpi-progress .kpi-icon-pill { background: #134e4a !important; color: #2dd4bf !important; }
+  [data-theme="dark"] .kpi-progress .kpi-sub { color: #94a3b8 !important; }
+
+  [data-theme="dark"] .kpi-completed { border-color: #059669 !important; }
+  [data-theme="dark"] .kpi-completed .kpi-title,
+  [data-theme="dark"] .kpi-completed .kpi-value { color: #34d399 !important; }
+  [data-theme="dark"] .kpi-completed .kpi-icon-pill { background: #064e3b !important; color: #34d399 !important; }
+  [data-theme="dark"] .kpi-completed .kpi-sub { color: #94a3b8 !important; }
+
+  [data-theme="dark"] .kpi-released { border-color: #334155 !important; }
+  [data-theme="dark"] .kpi-released .kpi-title { color: #94a3b8 !important; }
+  [data-theme="dark"] .kpi-released .kpi-value { color: #f8fafc !important; }
+  [data-theme="dark"] .kpi-released .kpi-icon-pill { background: #1e293b !important; color: #94a3b8 !important; }
+  [data-theme="dark"] .kpi-released .kpi-sub { color: #64748b !important; }
+
+  [data-theme="dark"] .intel-card strong,
+  [data-theme="dark"] .intel-card h3,
+  [data-theme="dark"] .intel-card h4,
+  [data-theme="dark"] .chart-header h3 {
+    color: #f8fafc !important;
+  }
+
+  [data-theme="dark"] .chart-controls {
+    background: #0b0f19 !important;
+    border: 1px solid #1f293d !important;
+  }
+
+  [data-theme="dark"] .chart-btn {
+    color: #94a3b8 !important;
+  }
+
+  [data-theme="dark"] .chart-btn.active {
+    background: #1a2333 !important;
+    color: #f8fafc !important;
+  }
+
+  [data-theme="dark"] .leader-item {
+    background: #0b0f19 !important;
+    border: 1px solid #1f293d !important;
+  }
+
+  [data-theme="dark"] .leader-item strong { color: #f8fafc !important; }
+  [data-theme="dark"] .leader-item span { color: #94a3b8 !important; }
+
+  /* ── 5. Reception Area Tiles & Controls ── */
+  [data-theme="dark"] .reception-area-tile,
+  [data-theme="dark"] .reception-area-tile[style] {
+    background: #111827 !important;
+    background-image: none !important;
+    border: 1px solid #1f293d !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35) !important;
+  }
+
+  [data-theme="dark"] .reception-area-tile:hover {
+    background: #1a2333 !important;
+    border-color: #10b981 !important;
+  }
+
+  [data-theme="dark"] .reception-area-tile h4,
+  [data-theme="dark"] .reception-area-tile strong,
+  [data-theme="dark"] .reception-area-tile div,
+  [data-theme="dark"] .reception-area-tile span {
+    color: #f8fafc !important;
+  }
+
+  [data-theme="dark"] .reception-area-tile div[style*="background: #ffffff"],
+  [data-theme="dark"] .reception-area-tile div[style*="background:#ffffff"] {
+    background: #0b0f19 !important;
+    border: 1px solid #1f293d !important;
+  }
+
+  /* ── 5b. Reception Admin Reset Queues Alert Box ── */
+  [data-theme="dark"] .reception-admin-reset-box,
+  [data-theme="dark"] div[style*="fff5f5"],
+  [data-theme="dark"] div[style*="linear-gradient"][style*="fecaca"] {
+    background: #1c1417 !important;
+    background-image: none !important;
+    border: 1px solid #7f1d1d !important;
+    box-shadow: 0 4px 16px rgba(220, 38, 38, 0.15) !important;
+  }
+
+  [data-theme="dark"] .reception-admin-reset-box h4,
+  [data-theme="dark"] .reception-admin-reset-box h4 span,
+  [data-theme="dark"] div[style*="fff5f5"] h4,
+  [data-theme="dark"] div[style*="fff5f5"] h4 span {
+    color: #f87171 !important;
+  }
+
+  [data-theme="dark"] .reception-admin-reset-box p,
+  [data-theme="dark"] div[style*="fff5f5"] p {
+    color: #fecdd3 !important;
+  }
+
+  [data-theme="dark"] .reception-admin-reset-box p strong,
+  [data-theme="dark"] div[style*="fff5f5"] p strong {
+    color: #ffffff !important;
+  }
+
+  [data-theme="dark"] .reception-admin-reset-box p span,
+  [data-theme="dark"] div[style*="fff5f5"] p span {
+    color: #94a3b8 !important;
+  }
+
+
+  /* ── 6. Stat Counters Across All Modules (Patients, Tests, Inventory, Equipment, PhilHealth, Costing) ── */
+  [data-theme="dark"] .stat-card > div[style*="font-size:2.2"],
+  [data-theme="dark"] .stat-card > div[style*="font-size: 2.2"],
+  [data-theme="dark"] .eq-stat-val {
+    color: #f8fafc !important;
+  }
+
+  [data-theme="dark"] .eq-stat-title {
+    color: #94a3b8 !important;
+  }
+
+  /* Female stat card */
+  [data-theme="dark"] .stat-card div[style*="color:#be185d"],
+  [data-theme="dark"] .stat-card div[style*="color: #be185d"] { color: #f472b6 !important; }
+  [data-theme="dark"] .stat-card span[style*="background:#fdf2f8"] {
+    background: #500724 !important;
+    color: #f472b6 !important;
+    border: 1px solid #831843 !important;
+  }
+
+  /* Male stat card */
+  [data-theme="dark"] .stat-card div[style*="color:#1d4ed8"],
+  [data-theme="dark"] .stat-card div[style*="color: #1d4ed8"] { color: #60a5fa !important; }
+  [data-theme="dark"] .stat-card span[style*="background:#eff6ff"] {
+    background: #172554 !important;
+    color: #60a5fa !important;
+    border: 1px solid #1e40af !important;
+  }
+
+  /* PhilHealth stat card */
+  [data-theme="dark"] .stat-card div[style*="color:#059669"],
+  [data-theme="dark"] .stat-card div[style*="color: #059669"] { color: #34d399 !important; }
+  [data-theme="dark"] .stat-card span[style*="background:#ecfdf5"] {
+    background: #022c22 !important;
+    color: #34d399 !important;
+    border: 1px solid #065f46 !important;
+  }
+
+  /* In Analysis / Bench stat card */
+  [data-theme="dark"] .stat-card div[style*="color:#d97706"],
+  [data-theme="dark"] .stat-card div[style*="color: #d97706"] { color: #fbbf24 !important; }
+  [data-theme="dark"] .stat-card span[style*="background:#fffbe6"] {
+    background: #451a03 !important;
+    color: #fbbf24 !important;
+    border: 1px solid #d97706 !important;
+  }
+
+  /* Queue / Phlebotomy stat card */
+  [data-theme="dark"] .stat-card div[style*="color:#0284c7"],
+  [data-theme="dark"] .stat-card div[style*="color: #0284c7"] { color: #38bdf8 !important; }
+  [data-theme="dark"] .stat-card span[style*="background:#f0f9ff"] {
+    background: #0c4a6e !important;
+    color: #38bdf8 !important;
+    border: 1px solid #0284c7 !important;
+  }
+
+  /* Inventory Alerts */
+  [data-theme="dark"] .stat-card div[style*="color: #b91c1c"],
+  [data-theme="dark"] .stat-card div[style*="color: var(--danger)"],
+  [data-theme="dark"] .stat-card h4[style*="color: #b91c1c"],
+  [data-theme="dark"] .stat-card h4[style*="color: var(--danger)"] {
+    color: #f87171 !important;
+  }
+  [data-theme="dark"] .stat-card div[style*="color: var(--accent-orange)"],
+  [data-theme="dark"] .stat-card h4[style*="color: var(--accent-orange)"] {
+    color: #fb923c !important;
+  }
+
+  /* Equipment Stat Badges */
+  [data-theme="dark"] .badge-overdue {
+    background: #450a0a !important;
+    color: #f87171 !important;
+    border: 1px solid #dc2626 !important;
+  }
+  [data-theme="dark"] .badge-duesoon {
+    background: #451a03 !important;
+    color: #fbbf24 !important;
+    border: 1px solid #d97706 !important;
+  }
+  [data-theme="dark"] .badge-operational {
+    background: #064e3b !important;
+    color: #34d399 !important;
+    border: 1px solid #059669 !important;
+  }
+
+  /* PhilHealth Panel Top Stat Cards */
+  [data-theme="dark"] div[style*="background: #fffbeb"],
+  [data-theme="dark"] div[style*="background: #ecfdf5"],
+  [data-theme="dark"] div[style*="background: #f0fdf4"],
+  [data-theme="dark"] div[style*="background: #eef2ff"] {
+    background: #111827 !important;
+    border: 1px solid #1f293d !important;
+    color: #f8fafc !important;
+  }
+
+  /* Costing KPI Cards & Values */
+  [data-theme="dark"] div[style*="font-size: 1.85rem"][style*="color: #059669"] { color: #34d399 !important; }
+  [data-theme="dark"] div[style*="font-size: 1.85rem"][style*="color: #dc2626"] { color: #f87171 !important; }
+  [data-theme="dark"] div[style*="font-size: 1.85rem"][style*="color: #2563eb"] { color: #38bdf8 !important; }
+  [data-theme="dark"] div[style*="font-size: 1.85rem"][style*="color: #7e22ce"] { color: #c084fc !important; }
+
+  /* ── 7. Tables Across All Modules ── */
+  [data-theme="dark"] table,
+  [data-theme="dark"] table[style],
+  [data-theme="dark"] .table-responsive {
+    background: #111827 !important;
+    background-color: #111827 !important;
+    border-color: #1f293d !important;
+  }
+
+  [data-theme="dark"] table thead,
+  [data-theme="dark"] table thead tr,
+  [data-theme="dark"] table thead th,
+  [data-theme="dark"] table th {
+    background: #0b0f19 !important;
+    background-color: #0b0f19 !important;
+    border-color: #1f293d !important;
+    color: #94a3b8 !important;
+  }
+
+  [data-theme="dark"] table tbody tr,
+  [data-theme="dark"] table tbody tr[style] {
+    background: #111827 !important;
+    background-color: #111827 !important;
+    background-image: none !important;
+    border-color: #1f293d !important;
+  }
+
+  [data-theme="dark"] table tbody tr:hover,
+  [data-theme="dark"] table tbody tr[style]:hover,
+  [data-theme="dark"] table tbody tr:hover td {
+    background: #1a2333 !important;
+    background-color: #1a2333 !important;
+    background-image: none !important;
+  }
+
+  [data-theme="dark"] table td {
+    border-color: #1f293d !important;
+    color: #e2e8f0 !important;
+  }
+
+  [data-theme="dark"] table td strong,
+  [data-theme="dark"] table td b,
+  [data-theme="dark"] table td strong[style],
+  [data-theme="dark"] table td a strong,
+  [data-theme="dark"] table td a[href*="/inventory/"] {
+    color: #f8fafc !important;
+  }
+
+  /* Universal Badges, Pills & Code Chips (Fixes solid white pills) */
+  [data-theme="dark"] td span.badge,
+  [data-theme="dark"] td .badge,
+  [data-theme="dark"] .badge,
+  [data-theme="dark"] table td code,
+  [data-theme="dark"] code.tabular-nums {
+    background: #162032 !important;
+    background-color: #162032 !important;
+    border: 1px solid #26354d !important;
+    color: #cbd5e1 !important;
+  }
+
+  /* Monospace asset codes / SKU chips */
+  [data-theme="dark"] td span[style*="font-family: monospace"],
+  [data-theme="dark"] td span[style*="font-family:monospace"] {
+    background: #0c4a6e !important;
+    color: #38bdf8 !important;
+    border: 1px solid #0284c7 !important;
+  }
+
+  /* Table Gender Badges */
+  [data-theme="dark"] table td span[style*="background:#eff6ff"],
+  [data-theme="dark"] table td span[style*="background: #eff6ff"] {
+    background: #172554 !important;
+    color: #60a5fa !important;
+    border: 1px solid #1d4ed8 !important;
+  }
+  [data-theme="dark"] table td span[style*="background:#fdf2f8"],
+  [data-theme="dark"] table td span[style*="background: #fdf2f8"] {
+    background: #500724 !important;
+    color: #f472b6 !important;
+    border: 1px solid #db2777 !important;
+  }
+
+  /* Table HMO, PhilHealth, Self-Pay Pills */
+  [data-theme="dark"] table td span[style*="background:#f0f9ff"],
+  [data-theme="dark"] table td span[style*="background: #f0f9ff"] {
+    background: #0c4a6e !important;
+    color: #38bdf8 !important;
+    border: 1px solid #0284c7 !important;
+  }
+  [data-theme="dark"] table td span[style*="background:#ecfdf5"],
+  [data-theme="dark"] table td span[style*="background: #ecfdf5"] {
+    background: #022c22 !important;
+    color: #34d399 !important;
+    border: 1px solid #059669 !important;
+  }
+  [data-theme="dark"] table td span[style*="background:#f1f5f9"],
+  [data-theme="dark"] table td span[style*="background: #f1f5f9"] {
+    background: #162032 !important;
+    color: #94a3b8 !important;
+    border: 1px solid #26354d !important;
+  }
+
+  /* Table Status Badges */
+  [data-theme="dark"] table td span[style*="background:#fffbeb"],
+  [data-theme="dark"] table td span[style*="background: #fffbeb"] {
+    background: #451a03 !important;
+    color: #fbbf24 !important;
+    border: 1px solid #d97706 !important;
+  }
+  [data-theme="dark"] table td span[style*="background:#fef2f2"],
+  [data-theme="dark"] table td span[style*="background: #fef2f2"] {
+    background: #450a0a !important;
+    color: #f87171 !important;
+    border: 1px solid #dc2626 !important;
+  }
+  [data-theme="dark"] table td span[style*="background:#dcfce7"],
+  [data-theme="dark"] table td span[style*="background: #dcfce7"] {
+    background: #064e3b !important;
+    color: #34d399 !important;
+    border: 1px solid #059669 !important;
+  }
+
+  /* Report Preview Specific Elements */
+  [data-theme="dark"] #displayTestId,
+  [data-theme="dark"] #patientPatientId,
+  [data-theme="dark"] #filteredContainer {
+    background: #0b0f19 !important;
+    border-color: #1f293d !important;
+  }
+  [data-theme="dark"] #displayTestId {
+    color: #34d399 !important;
+  }
+
+  /* ── 8. Form Inputs, Selects, and Textareas ── */
+  [data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
+  [data-theme="dark"] select,
+  [data-theme="dark"] textarea,
+  [data-theme="dark"] .filter-form .filter-select,
+  [data-theme="dark"] .filter-form .search-box {
+    background: #0b0f19 !important;
+    background-color: #0b0f19 !important;
+    border: 1px solid #1f293d !important;
+    color: #f8fafc !important;
+  }
+
+  [data-theme="dark"] input:focus,
+  [data-theme="dark"] select:focus,
+  [data-theme="dark"] textarea:focus,
+  [data-theme="dark"] .filter-form .filter-select:focus,
+  [data-theme="dark"] .filter-form .search-box:focus {
+    background: #111827 !important;
+    background-color: #111827 !important;
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2) !important;
+  }
+
+  [data-theme="dark"] option {
+    background: #0b0f19 !important;
+    color: #f8fafc !important;
+  }
+
+  [data-theme="dark"] label {
+    color: #cbd5e1 !important;
+  }
+
+  /* ── 9. Universal Text Overrides (Eliminates Black-on-Black) ── */
+  [data-theme="dark"] [style*="color:#0f172a"],
+  [data-theme="dark"] [style*="color: #0f172a"],
+  [data-theme="dark"] [style*="color:#09090b"],
+  [data-theme="dark"] [style*="color: #09090b"],
+  [data-theme="dark"] [style*="color:#18181b"],
+  [data-theme="dark"] [style*="color: #18181b"],
+  [data-theme="dark"] [style*="color:#1e293b"],
+  [data-theme="dark"] [style*="color: #1e293b"],
+  [data-theme="dark"] [style*="color:#334155"],
+  [data-theme="dark"] [style*="color: #334155"],
+  [data-theme="dark"] .main-content *[style*="color: var(--primary-black)"],
+  [data-theme="dark"] .main-content *[style*="color:var(--primary-black)"] {
+    color: #f8fafc !important;
+  }
+
+  [data-theme="dark"] [style*="color:#64748b"],
+  [data-theme="dark"] [style*="color: #64748b"],
+  [data-theme="dark"] [style*="color:#475569"],
+  [data-theme="dark"] [style*="color: #475569"],
+  [data-theme="dark"] .main-content *[style*="color: var(--text-gray)"],
+  [data-theme="dark"] .main-content *[style*="color:var(--text-gray)"] {
+    color: #94a3b8 !important;
+  }
+
+  [data-theme="dark"] h1,
+  [data-theme="dark"] h2,
+  [data-theme="dark"] h3,
+  [data-theme="dark"] h4,
+  [data-theme="dark"] h5,
+  [data-theme="dark"] h6 {
+    color: #f8fafc !important;
+  }
+
+  [data-theme="dark"] p {
+    color: #cbd5e1 !important;
+  }
+
+  [data-theme="dark"] hr,
+  [data-theme="dark"] [style*="border-bottom:1px solid #f1f5f9"],
+  [data-theme="dark"] [style*="border-bottom: 1px solid #f1f5f9"],
+  [data-theme="dark"] [style*="border-top:1px solid #f1f5f9"],
+  [data-theme="dark"] [style*="border-top: 1px solid #f1f5f9"],
+  [data-theme="dark"] [style*="border:1px solid #e2e8f0"],
+  [data-theme="dark"] [style*="border: 1px solid #e2e8f0"],
+  [data-theme="dark"] [style*="border:1px solid #cbd5e1"],
+  [data-theme="dark"] [style*="border: 1px solid #cbd5e1"] {
+    border-color: #1f293d !important;
+  }
+
+  /* ── 10. Buttons, Navigation Tabs, and Dropdowns ── */
+  [data-theme="dark"] .btn-secondary,
+  [data-theme="dark"] .button.btn-secondary {
+    background: #1a2333 !important;
+    border: 1px solid #1f293d !important;
+    color: #f8fafc !important;
+  }
+
+  [data-theme="dark"] .btn-secondary:hover,
+  [data-theme="dark"] .button.btn-secondary:hover {
+    background: #24334a !important;
+    border-color: #334155 !important;
+    color: #ffffff !important;
+  }
+
+  [data-theme="dark"] .settings-tab-btn,
+  [data-theme="dark"] .eq-tab-btn,
+  [data-theme="dark"] .consult-tab-btn,
+  [data-theme="dark"] .profile-tab,
+  [data-theme="dark"] .tab-btn {
+    background: #0b0f19 !important;
+    color: #94a3b8 !important;
+    border: 1px solid #1f293d !important;
+  }
+
+  [data-theme="dark"] .settings-tab-btn.active,
+  [data-theme="dark"] .eq-tab-btn.active,
+  [data-theme="dark"] .consult-tab-btn.active,
+  [data-theme="dark"] .profile-tab.active,
+  [data-theme="dark"] .tab-btn.active {
+    background: #10b981 !important;
+    color: #ffffff !important;
+    border-color: #10b981 !important;
+  }
+
+  [data-theme="dark"] #exportMenu,
+  [data-theme="dark"] #filterTestTypeList,
+  [data-theme="dark"] #filterPatientDropdown {
+    background: #111827 !important;
+    border: 1px solid #1f293d !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important;
+  }
+
+  [data-theme="dark"] #exportMenu a {
+    color: #f8fafc !important;
+  }
+  [data-theme="dark"] #exportMenu a:hover {
+    background: #1a2333 !important;
+  }
+
+  /* ── 11. Modals & Overlays ── */
+  [data-theme="dark"] .modal,
+  [data-theme="dark"] .modal-overlay,
+  [data-theme="dark"] #modalMainRelease {
+    background-color: rgba(0, 0, 0, 0.75) !important;
+    backdrop-filter: blur(4px) !important;
+  }
+
+  [data-theme="dark"] .modal-box,
+  [data-theme="dark"] .clinical-modal-box {
+    background: #111827 !important;
+    border: 1px solid #1f293d !important;
+    color: #f8fafc !important;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6) !important;
+  }
+
+  /* ── 12. Strict Physical Print Protection (White Paper Integrity) ── */
+  
+  /* ── 13. Dashboard Recent Laboratory Tests Table Card ── */
+  [data-theme="dark"] .recent-table-card {
+    background: #111827 !important;
+    background-color: #111827 !important;
+    background-image: none !important;
+    border: 1px solid #1f293d !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+  }
+  [data-theme="dark"] .recent-table-card h3 {
+    color: #f8fafc !important;
+  }
+  [data-theme="dark"] .recent-table-card span[style*="background: #f1f5f9"],
+  [data-theme="dark"] .recent-table-card span[style*="background:#f1f5f9"] {
+    background: #162032 !important;
+    border: 1px solid #26354d !important;
+    color: #38bdf8 !important;
+  }
+
+  /* ── 14. Full-Page GezyneBot AI Assistant (/chatbot) ── */
+  [data-theme="dark"] .chatbot-sidebar {
+    background: #111827 !important;
+    border: 1px solid #1f293d !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+  }
+  [data-theme="dark"] .chatbot-search {
+    background: #0b0f19 !important;
+    border: 1px solid #1f293d !important;
+    color: #f8fafc !important;
+  }
+  [data-theme="dark"] .chatbot-search:focus {
+    background: #111827 !important;
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2) !important;
+  }
+  [data-theme="dark"] .topic-item {
+    background: #0b0f19 !important;
+    border: 1px solid #1f293d !important;
+  }
+  [data-theme="dark"] .topic-item:hover {
+    background: #1a2333 !important;
+    border-color: #334155 !important;
+  }
+  [data-theme="dark"] .topic-item.active {
+    background: #064e3b !important;
+    border-color: #059669 !important;
+  }
+  [data-theme="dark"] .topic-title {
+    color: #f8fafc !important;
+  }
+  [data-theme="dark"] .topic-date {
+    color: #94a3b8 !important;
+  }
+  [data-theme="dark"] .btn-delete-topic {
+    color: #94a3b8 !important;
+  }
+  [data-theme="dark"] .btn-delete-topic:hover {
+    background: #450a0a !important;
+    color: #f87171 !important;
+  }
+
+  [data-theme="dark"] .chatbot-main {
+    background: #111827 !important;
+    border: 1px solid #1f293d !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+  }
+  [data-theme="dark"] .chatbot-main-header {
+    background: #111827 !important;
+    border-bottom: 1px solid #1f293d !important;
+  }
+  [data-theme="dark"] #active-topic-title {
+    color: #f8fafc !important;
+  }
+  [data-theme="dark"] #ai-model-select {
+    background: #0b0f19 !important;
+    border: 1px solid #1f293d !important;
+    color: #f8fafc !important;
+  }
+  [data-theme="dark"] .chatbot-main-messages {
+    background: #0b0f19 !important;
+  }
+  [data-theme="dark"] .main-welcome-card {
+    background: #111827 !important;
+    border: 1px solid #1f293d !important;
+    color: #f8fafc !important;
+  }
+  [data-theme="dark"] .feature-box {
+    background: #0b0f19 !important;
+    border: 1px solid #1f293d !important;
+  }
+  [data-theme="dark"] .feature-box-clickable:hover {
+    background: #1a2333 !important;
+    border-color: #10b981 !important;
+  }
+  [data-theme="dark"] .feature-title {
+    color: #f8fafc !important;
+  }
+  [data-theme="dark"] .feature-desc {
+    color: #94a3b8 !important;
+  }
+  [data-theme="dark"] .main-msg-bot .main-bubble {
+    background: #111827 !important;
+    border: 1px solid #1f293d !important;
+    color: #e2e8f0 !important;
+  }
+  [data-theme="dark"] .main-msg-bot .bubble-header strong {
+    color: #34d399 !important;
+  }
+  [data-theme="dark"] .main-msg-bot .bubble-content h3,
+  [data-theme="dark"] .main-msg-bot .bubble-content h4 {
+    color: #f8fafc !important;
+    border-bottom-color: #1f293d !important;
+  }
+  [data-theme="dark"] .main-msg-bot .bubble-content blockquote {
+    background: #0b0f19 !important;
+    color: #cbd5e1 !important;
+    border-left-color: #10b981 !important;
+  }
+  [data-theme="dark"] .chatbot-quick-chips {
+    background: #111827 !important;
+    border-bottom: 1px solid #1f293d !important;
+  }
+  [data-theme="dark"] .quick-chip {
+    background: #0b0f19 !important;
+    border: 1px solid #1f293d !important;
+    color: #cbd5e1 !important;
+  }
+  [data-theme="dark"] .quick-chip:hover {
+    background: #1a2333 !important;
+    border-color: #10b981 !important;
+    color: #34d399 !important;
+  }
+  [data-theme="dark"] .chatbot-main-composer {
+    background: #111827 !important;
+    border-top: 1px solid #1f293d !important;
+  }
+  [data-theme="dark"] .chatbot-main-composer textarea {
+    background: #0b0f19 !important;
+    border: 1px solid #1f293d !important;
+    color: #f8fafc !important;
+  }
+
+  /* ── 15. Floating GezyneBot AI Widget Popup ── */
+  [data-theme="dark"] .gezynebot-panel {
+    background: #111827 !important;
+    border: 1px solid #1f293d !important;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.6) !important;
+  }
+  [data-theme="dark"] .gezynebot-chips {
+    background: #0b0f19 !important;
+    border-bottom: 1px solid #1f293d !important;
+  }
+  [data-theme="dark"] .gezynebot-chip {
+    background: #111827 !important;
+    border: 1px solid #1f293d !important;
+    color: #cbd5e1 !important;
+  }
+  [data-theme="dark"] .gezynebot-chip:hover {
+    background: #1a2333 !important;
+    border-color: #10b981 !important;
+    color: #34d399 !important;
+  }
+  [data-theme="dark"] .gezynebot-messages {
+    background: #0b0f19 !important;
+  }
+  [data-theme="dark"] .gezynebot-msg-bot .gezynebot-bubble {
+    background: #111827 !important;
+    border: 1px solid #1f293d !important;
+    color: #e2e8f0 !important;
+  }
+  [data-theme="dark"] .gezynebot-msg-bot .gezynebot-bubble p,
+  [data-theme="dark"] .gezynebot-msg-bot .gezynebot-bubble span,
+  [data-theme="dark"] .gezynebot-msg-bot .gezynebot-bubble li,
+  [data-theme="dark"] .gezynebot-msg-bot .gezynebot-bubble div {
+    color: #e2e8f0 !important;
+  }
+  [data-theme="dark"] .gezynebot-msg-bot .gezynebot-bubble strong,
+  [data-theme="dark"] .gezynebot-msg-bot .gezynebot-bubble b {
+    color: #f8fafc !important;
+  }
+  [data-theme="dark"] .gezynebot-msg-bot .gezynebot-bubble em,
+  [data-theme="dark"] .gezynebot-msg-bot .gezynebot-bubble i {
+    color: #94a3b8 !important;
+  }
+  [data-theme="dark"] .gezynebot-msg-bot .gezynebot-bubble blockquote {
+    background: #0b0f19 !important;
+    border-left-color: #10b981 !important;
+    color: #cbd5e1 !important;
+  }
+  [data-theme="dark"] .gezynebot-toolbar {
+    background: #111827 !important;
+    border-top: 1px solid #1f293d !important;
+  }
+  [data-theme="dark"] .widget-switch-wrapper {
+    background: #0b0f19 !important;
+    border: 1px solid #1f293d !important;
+  }
+  [data-theme="dark"] .widget-switch-label {
+    color: #cbd5e1 !important;
+  }
+  [data-theme="dark"] .widget-web-hint {
+    color: #94a3b8 !important;
+  }
+  [data-theme="dark"] .gezynebot-composer {
+    background: #111827 !important;
+  }
+  [data-theme="dark"] .gezynebot-input {
+    background: #0b0f19 !important;
+    border: 1px solid #1f293d !important;
+    color: #f8fafc !important;
+  }
+
+  
+  /* ── 20. Login Page Full Dark Modernization ── */
+  [data-theme="dark"] .login-page-wrapper {
+    background: transparent !important;
+  }
+
+  [data-theme="dark"] .login-card-container {
+    background: #111827 !important;
+    border: 1px solid #1f293d !important;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+  }
+
+  [data-theme="dark"] .lab-info-panel {
+    border-right: 1px solid #1f293d !important;
+  }
+
+  [data-theme="dark"] .login-form-panel {
+    background: #111827 !important;
+  }
+
+  [data-theme="dark"] .login-main-title {
+    color: #f8fafc !important;
+  }
+
+  [data-theme="dark"] .login-sub-title {
+    color: #94a3b8 !important;
+  }
+
+  [data-theme="dark"] .input-group-custom label {
+    color: #cbd5e1 !important;
+  }
+
+  [data-theme="dark"] .input-field-wrapper input {
+    background: #0b0f19 !important;
+    border: 1.5px solid #1f293d !important;
+    color: #f8fafc !important;
+  }
+
+  [data-theme="dark"] .input-field-wrapper input:focus {
+    background: #0f172a !important;
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.22) !important;
+  }
+
+  [data-theme="dark"] .input-field-wrapper input::placeholder {
+    color: #475569 !important;
+  }
+
+  [data-theme="dark"] .input-field-wrapper i.field-icon {
+    color: #64748b !important;
+  }
+
+  [data-theme="dark"] .input-field-wrapper input:focus + i.field-icon,
+  [data-theme="dark"] .input-field-wrapper input:focus ~ i.field-icon {
+    color: #10b981 !important;
+  }
+
+  [data-theme="dark"] .toggle-pw-btn {
+    color: #64748b !important;
+  }
+
+  [data-theme="dark"] .toggle-pw-btn:hover {
+    color: #10b981 !important;
+  }
+
+  [data-theme="dark"] .remember-me-wrapper {
+    color: #94a3b8 !important;
+  }
+
+  [data-theme="dark"] .saved-accounts-dropdown {
+    background: #0b0f19 !important;
+    border: 1px solid #1f293d !important;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6) !important;
+  }
+
+  [data-theme="dark"] .saved-accounts-header {
+    border-bottom: 1px solid #1f293d !important;
+    color: #94a3b8 !important;
+  }
+
+  [data-theme="dark"] .saved-account-item:hover {
+    background: #1e293b !important;
+  }
+
+  [data-theme="dark"] .login-submit-btn {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35) !important;
+  }
+
+  [data-theme="dark"] .login-submit-btn:hover {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    box-shadow: 0 6px 22px rgba(16, 185, 129, 0.5) !important;
+  }
+
+  [data-theme="dark"] .login-footer-info {
+    border-top: 1px solid #1f293d !important;
+    color: #94a3b8 !important;
+  }
+
+  [data-theme="dark"] #loginThemeToggleBtn {
+    background: #111827 !important;
+    border-color: #1f293d !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5) !important;
+  }
+
+  [data-theme="dark"] #loginThemeToggleBtn i {
+    color: #f59e0b !important;
+  }
+
   @media print {
     [data-theme="dark"],
     [data-theme="dark"] body,
     [data-theme="dark"] .card,
-    [data-theme="dark"] table {
+    [data-theme="dark"] table,
+    [data-theme="dark"] table tr,
+    [data-theme="dark"] table td,
+    [data-theme="dark"] table th {
       background: #ffffff !important;
+      background-color: #ffffff !important;
+      background-image: none !important;
       color: #000000 !important;
+      border-color: #e2e8f0 !important;
     }
   }
 </style>
@@ -169,39 +1044,66 @@
 <script>
 (function() {
   function applyTheme(theme) {
-    if (theme === 'dark') {
+    const isDark = (theme === 'dark');
+    if (isDark) {
       document.documentElement.setAttribute('data-theme', 'dark');
     } else {
       document.documentElement.removeAttribute('data-theme');
     }
-    const icon = document.getElementById('themeToggleIcon');
-    if (icon) {
-      if (theme === 'dark') {
-        icon.className = 'fas fa-sun';
+
+    window.__toggleTheme = function(e) {
+      if (e && e.preventDefault) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      const currentIsDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      const nextTheme = currentIsDark ? 'light' : 'dark';
+      try {
+        localStorage.setItem('gezyne_theme', nextTheme);
+      } catch(err) {}
+      applyTheme(nextTheme);
+    };
+
+    const icons = document.querySelectorAll('.theme-toggle-icon, #themeToggleIcon, #loginThemeToggleIcon');
+    icons.forEach(function(icon) {
+      if (isDark) {
+        icon.className = 'fas fa-sun theme-toggle-icon';
         icon.style.color = '#f59e0b';
       } else {
-        icon.className = 'fas fa-moon';
+        icon.className = 'fas fa-moon theme-toggle-icon';
         icon.style.color = '#64748b';
       }
-    }
+    });
+
+    const buttons = document.querySelectorAll('#themeToggleBtn, #loginThemeToggleBtn, .theme-toggle-trigger');
+    buttons.forEach(function(btn) {
+      btn.disabled = false;
+      delete btn.dataset.__loading;
+      btn.title = isDark ? 'Night Shift Active — Click to switch to Day Mode' : 'Switch to 24/7 Night Duty Mode';
+    });
+
+    // Chart.js dark mode synchronizer
+    try {
+      if (window.Chart && window.Chart.defaults) {
+        window.Chart.defaults.color = isDark ? '#94a3b8' : '#64748b';
+        window.Chart.defaults.borderColor = isDark ? '#1f293d' : '#f1f5f9';
+      }
+    } catch(e) {}
   }
 
-  document.addEventListener('DOMContentLoaded', function() {
-    const currentTheme = localStorage.getItem('gezyne_theme') || 'light';
-    applyTheme(currentTheme);
+  // Synchronous initial apply to eliminate flashes
+  const savedTheme = localStorage.getItem('gezyne_theme') || 'light';
+  applyTheme(savedTheme);
 
-    const toggleBtn = document.getElementById('themeToggleBtn');
-    if (toggleBtn) {
-      toggleBtn.addEventListener('click', function(e) {
-        e.preventDefault();
-        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-        const nextTheme = isDark ? 'light' : 'dark';
-        try {
-          localStorage.setItem('gezyne_theme', nextTheme);
-        } catch(err) {}
-        applyTheme(nextTheme);
-      });
-    }
+  document.addEventListener('DOMContentLoaded', function() {
+    const activeTheme = localStorage.getItem('gezyne_theme') || 'light';
+    applyTheme(activeTheme);
+
+    document.querySelectorAll('#themeToggleBtn, #loginThemeToggleBtn, .theme-toggle-trigger').forEach(function(btn) {
+      btn.disabled = false;
+      delete btn.dataset.__loading;
+      btn.addEventListener('click', window.__toggleTheme);
+    });
   });
 })();
 </script>

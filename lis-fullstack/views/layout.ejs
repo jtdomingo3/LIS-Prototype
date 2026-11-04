@@ -1559,13 +1559,13 @@
                     </form>
 
                                         <!-- Night Shift / Dark Mode Preset Toggle -->
-                    <button id="themeToggleBtn" type="button" aria-label="Toggle Night Shift / Dark Mode" title="Toggle Night Shift / Dark Mode" style="background:#ffffff;border:1px solid #e2e8f0;width:36px;height:36px;border-radius:50%;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,0.04);transition:all 0.2s ease;">
+                    <button id="themeToggleBtn" type="button" class="no-guard" data-no-guard="1" aria-label="Toggle Night Shift / Dark Mode" title="Toggle Night Shift / Dark Mode" style="background:#ffffff;border:1px solid #e2e8f0;width:36px;height:36px;border-radius:50%;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,0.04);transition:all 0.2s ease;">
                         <i id="themeToggleIcon" class="fas fa-moon" style="color:#64748b;font-size:0.95rem;"></i>
                     </button>
 
                     <!-- Notifications -->
                     <div id="notificationWidget" style="position:relative;">
-                        <button id="notifBtn" title="Notifications" style="background:#ffffff;border:1px solid #e2e8f0;width:36px;height:36px;border-radius:50%;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;position:relative;box-shadow:0 1px 3px rgba(0,0,0,0.04);transition:all 0.2s ease;">
+                        <button id="notifBtn" type="button" class="no-guard" data-no-guard="1" title="Notifications" style="background:#ffffff;border:1px solid #e2e8f0;width:36px;height:36px;border-radius:50%;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;position:relative;box-shadow:0 1px 3px rgba(0,0,0,0.04);transition:all 0.2s ease;">
                             <i class="fas fa-bell" style="color:#64748b;font-size:0.95rem;"></i>
                             <span id="notifConn" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ef4444;position:absolute;top:2px;right:2px;border:2px solid #ffffff;" title="Status"></span>
                             <span id="notifBadge" style="position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;line-height:18px;padding:0 4px;border-radius:9px;background:var(--danger);color:white;font-size:0.75rem;text-align:center;visibility:hidden;font-weight:700;">0</span>

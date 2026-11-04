@@ -335,9 +335,101 @@
       padding: 36px 28px;
     }
   }
+
+  /* Scoped Dark Mode Rules for Login */
+  [data-theme="dark"] .login-card-container {
+    background: #111827 !important;
+    border: 1px solid #1f293d !important;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+  }
+  [data-theme="dark"] .lab-info-panel {
+    border-right: 1px solid #1f293d !important;
+  }
+  [data-theme="dark"] .login-form-panel {
+    background: #111827 !important;
+  }
+  [data-theme="dark"] .login-main-title {
+    color: #f8fafc !important;
+  }
+  [data-theme="dark"] .login-sub-title {
+    color: #94a3b8 !important;
+  }
+  [data-theme="dark"] .input-group-custom label {
+    color: #cbd5e1 !important;
+  }
+  [data-theme="dark"] .input-field-wrapper input {
+    background: #0b0f19 !important;
+    border: 1.5px solid #1f293d !important;
+    color: #f8fafc !important;
+  }
+  [data-theme="dark"] .input-field-wrapper input:focus {
+    background: #0f172a !important;
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.22) !important;
+  }
+  [data-theme="dark"] .input-field-wrapper input::placeholder {
+    color: #475569 !important;
+  }
+  [data-theme="dark"] .input-field-wrapper i.field-icon {
+    color: #64748b !important;
+  }
+  [data-theme="dark"] .input-field-wrapper input:focus + i.field-icon,
+  [data-theme="dark"] .input-field-wrapper input:focus ~ i.field-icon {
+    color: #10b981 !important;
+  }
+  [data-theme="dark"] .toggle-pw-btn {
+    color: #64748b !important;
+  }
+  [data-theme="dark"] .toggle-pw-btn:hover {
+    color: #10b981 !important;
+  }
+  [data-theme="dark"] .remember-me-wrapper {
+    color: #94a3b8 !important;
+  }
+  [data-theme="dark"] .saved-accounts-dropdown {
+    background: #0b0f19 !important;
+    border: 1px solid #1f293d !important;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6) !important;
+  }
+  [data-theme="dark"] .saved-accounts-header {
+    border-bottom: 1px solid #1f293d !important;
+    color: #94a3b8 !important;
+  }
+  [data-theme="dark"] .saved-account-item:hover {
+    background: #1e293b !important;
+  }
+  [data-theme="dark"] .login-submit-btn {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35) !important;
+  }
+  [data-theme="dark"] .login-submit-btn:hover {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    box-shadow: 0 6px 22px rgba(16, 185, 129, 0.5) !important;
+  }
+  [data-theme="dark"] .login-footer-info {
+    border-top: 1px solid #1f293d !important;
+    color: #94a3b8 !important;
+  }
+  [data-theme="dark"] #loginThemeToggleBtn {
+    background: #111827 !important;
+    border-color: #1f293d !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5) !important;
+  }
+  [data-theme="dark"] #loginThemeToggleBtn i {
+    color: #f59e0b !important;
+  }
+
 </style>
 
 <div class="login-page-wrapper">
+  <!-- Floating Night Mode Toggle for Login -->
+  <div style="position: absolute; top: 18px; right: 24px; z-index: 100;">
+    <button id="loginThemeToggleBtn" type="button" class="no-guard theme-toggle-trigger" data-no-guard="1" onclick="window.__toggleTheme && window.__toggleTheme(event)" aria-label="Toggle Night Shift / Dark Mode" title="Toggle Night Shift / Dark Mode" style="background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(8px); border: 1px solid #cbd5e1; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.08); transition: all 0.2s ease;">
+      <i id="loginThemeToggleIcon" class="fas fa-moon theme-toggle-icon" style="color: #64748b; font-size: 1rem;"></i>
+    </button>
+  </div>
+
   <div class="login-card-container">
 
     <!-- Left Side: Gezyne Laboratory Details -->

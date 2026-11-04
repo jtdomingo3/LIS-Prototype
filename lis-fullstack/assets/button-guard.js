@@ -75,6 +75,10 @@
   // EXCLUSION: buttons we should NOT guard
   function isExcludedButton(el){
     if (!el) return false;
+    // Explicit exclusions: theme toggle, notifications, hamburger, and no-guard elements
+    if (el.id === 'themeToggleBtn' || el.id === 'notifBtn' || el.id === 'sidebarToggle') return true;
+    if (el.closest && el.closest('#themeToggleBtn, #notifBtn, #sidebarToggle, .no-guard, [data-no-guard]')) return true;
+    if (!el) return false;
     // Exempt all buttons on Dashboard page
     if (typeof window !== 'undefined' && window.location && window.location.pathname && (window.location.pathname === '/dashboard' || window.location.pathname === '/')) return true;
     if (el.closest && el.closest('.dashboard-container, #dashboardView, [data-page="dashboard"]')) return true;

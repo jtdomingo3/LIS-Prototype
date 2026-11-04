@@ -43,7 +43,7 @@
       <div style="font-size: 0.78em; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px;">Total Records</div>
       <div style="font-size: 1.8em; font-weight: 800; color: #0f172a; margin-top: 4px;"><%= stats.total %></div>
     </div>
-    <div style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: 12px; padding: 14px 18px;">
+    <div class="stat-card" style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: 12px; padding: 14px 18px;">
       <div style="font-size: 0.78em; font-weight: 700; text-transform: uppercase; color: #b45309; letter-spacing: 0.5px;">For Approval</div>
       <div style="font-size: 1.8em; font-weight: 800; color: #d97706; margin-top: 4px;">
         <%= stats.pendingApproval %>
@@ -52,22 +52,22 @@
         <% } %>
       </div>
     </div>
-    <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 14px 18px;">
+    <div class="stat-card" style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 14px 18px;">
       <div style="font-size: 0.78em; font-weight: 700; text-transform: uppercase; color: #047857; letter-spacing: 0.5px;">Approved / In Queue</div>
       <div style="font-size: 1.8em; font-weight: 800; color: #059669; margin-top: 4px;"><%= stats.approved %></div>
     </div>
-    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 14px 18px;">
+    <div class="stat-card" style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 14px 18px;">
       <div style="font-size: 0.78em; font-weight: 700; text-transform: uppercase; color: #166534; letter-spacing: 0.5px;">1st Tranche Paid</div>
       <div style="font-size: 1.8em; font-weight: 800; color: #15803d; margin-top: 4px;"><%= stats.tranche1Paid %></div>
     </div>
-    <div style="background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 12px; padding: 14px 18px;">
+    <div class="stat-card" style="background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 12px; padding: 14px 18px;">
       <div style="font-size: 0.78em; font-weight: 700; text-transform: uppercase; color: #4338ca; letter-spacing: 0.5px;">2nd Tranche Paid</div>
       <div style="font-size: 1.8em; font-weight: 800; color: #0284c7; margin-top: 4px;"><%= stats.tranche2Paid %></div>
     </div>
   </div>
 
   <!-- Search & Filter Form -->
-  <form action="/philhealth" method="GET" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 18px; margin-bottom: 20px;">
+  <form action="/philhealth" method="GET" class="card" style="border-radius: 12px; padding: 14px 18px; margin-bottom: 20px;">
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; align-items: flex-end;">
       <div>
         <label style="display: block; font-size: 0.78em; font-weight: 700; color: #475569; margin-bottom: 4px;">Search Records</label>
@@ -202,7 +202,7 @@
           </tr>
         <% } else { %>
           <% records.forEach(function(r, idx) { %>
-            <tr id="row_<%= r.id %>" class="record-row" style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" onmouseover="if (!this.classList.contains('row-selected')) this.style.background='#f8fafc'" onmouseout="if (!this.classList.contains('row-selected')) this.style.background='#ffffff'">
+            <tr id="row_<%= r.id %>" class="record-row" style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;">
               <td style="padding: 10px 12px; text-align: center;">
                 <input type="checkbox" class="row-checkbox" value="<%= r.id %>" data-control="<%= r.controlNo %>" onchange="updateSelectedCount()" style="cursor: pointer; width: 16px; height: 16px; accent-color: #10b981;" />
               </td>

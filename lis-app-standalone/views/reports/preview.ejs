@@ -104,7 +104,7 @@
 
   <!-- Filtered Selection Drawer -->
   <div style="margin-bottom:14px;">
-    <div id="filteredContainer" style="width:100%; padding:10px 14px; border:1px solid #e2e8f0; border-radius:10px; max-height:130px; overflow:auto; background:#f8fafc;">
+    <div id="filteredContainer" style="width:100%; padding:10px 14px; border:1px solid #e2e8f0; border-radius:10px; max-height:130px; overflow:auto;">
       <label style="display:block; margin-bottom:8px; font-size:0.85em; font-weight:700;"><input type="checkbox" id="filteredSelectAll"> Select all visible in print batch</label>
       <div id="filteredList" style="display:block;">
         <!-- items injected here -->
@@ -113,7 +113,7 @@
   </div>
 
   <!-- Active Patient & Report Summary Card -->
-  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:14px; margin-bottom:18px; padding:16px 20px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px;">
+  <div class="card" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:14px; margin-bottom:18px; padding:16px 20px; border-radius:12px;">
     <div>
       <span style="display:block; font-size:0.75em; text-transform:uppercase; color:#64748b; font-weight:700; letter-spacing:0.5px; margin-bottom:4px;">Patient Name</span>
       <strong style="font-size:1.1em; color:#0f172a;" id="patientName"><% if (test.patient) { %><%= test.patient.firstName %> <%= test.patient.middleName ? test.patient.middleName + ' ' : '' %><%= test.patient.lastName %><% } else { %><%= test.patientName || '' %><% } %></strong>
