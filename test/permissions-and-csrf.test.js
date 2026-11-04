@@ -98,4 +98,23 @@ assert.ok(layoutEjs.includes("window.__CSRF_TOKEN__"), "layout.ejs must have glo
 
 console.log('[Test] Multipart forms and layout contain CSRF token propagation');
 
+// 9. Verify CSRF token propagation in dynamic batch print form (preview.ejs)
+['lis-fullstack', 'lis-app-standalone'].forEach(appDir => {
+  const previewPath = path.join(__dirname, '..', appDir, 'views', 'reports', 'preview.ejs');
+  const previewContent = fs.readFileSync(previewPath, 'utf8');
+  assert.ok(
+    previewContent.includes("csrfInput.name = '_csrf'") &&
+    previewContent.includes("window.__CSRF_TOKEN__"),
+    `[${appDir}] preview.ejs must dynamically inject _csrf into print-multiple form`
+  );
+  console.log(`[Test] ${appDir} preview.ejs injects CSRF token into dynamic print-multiple form`);
+});
+
+// 10. Verify server.js exempts read-only POST /reports/print-multiple from CSRF failure
+assert.ok(
+  serverContent.includes("req.path === '/reports/print-multiple'"),
+  "server.js CSRF middleware must include /reports/print-multiple in safe read-only bypass list"
+);
+console.log('[Test] server.js safely permits large batch print requests without CSRF token expiry errors');
+
 console.log('\n🎉 ALL PERMISSIONS AND CSRF TESTS PASSED!');

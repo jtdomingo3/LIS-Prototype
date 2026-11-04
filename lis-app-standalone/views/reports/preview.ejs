@@ -703,6 +703,17 @@
           form.method = 'POST';
           form.action = '/reports/print-multiple';
           form.target = '_blank';
+
+          // Include CSRF Token so form submission succeeds under CSRF protection
+          const csrfToken = (typeof window !== 'undefined' && window.__CSRF_TOKEN__) ? window.__CSRF_TOKEN__ : '<%= typeof csrfToken !== "undefined" ? csrfToken : "" %>';
+          if (csrfToken) {
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_csrf';
+            csrfInput.value = csrfToken;
+            form.appendChild(csrfInput);
+          }
+
           const input = document.createElement('input');
           input.type = 'hidden';
           input.name = 'ids';

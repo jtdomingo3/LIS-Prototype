@@ -498,6 +498,12 @@ const authLimiter = rateLimit({
 });
 app.use('/login', authLimiter);
 app.use('/api/auth/token', authLimiter);
+app.use((req, res, next) => {
+  if (req.method === 'POST' && (req.path === '/' || req.path === '/login')) {
+    return authLimiter(req, res, next);
+  }
+  next();
+});
 
 // Rate limiter for sensitive diagnostic and export endpoints
 const sensitiveLimiter = rateLimit({
@@ -587,6 +593,7 @@ app.use((req, res, next) => {
     req.path.startsWith('/api/') || 
     req.path.startsWith('/chatbot/api/') || 
     req.path.startsWith('/export/') || 
+    req.path === '/reports/print-multiple' || 
     extractBearerToken(req) || 
     req.headers['x-lis-sync-replay'] || 
     req.headers['x-lis-sync-hash'] ||
@@ -612,7 +619,8 @@ app.use((req, res, next) => {
         if (referer && !referer.includes('?_method=')) {
           return res.redirect(referer);
         }
-        return res.redirect('/users/profile');
+        const fallback = req.path.startsWith('/reports') ? '/reports' : (req.path.startsWith('/patients') ? '/patients' : (req.path.startsWith('/tests') ? '/tests' : '/dashboard'));
+        return res.redirect(fallback);
       }
       return next(err);
     }

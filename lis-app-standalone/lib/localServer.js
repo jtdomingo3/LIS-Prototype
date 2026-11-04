@@ -118,6 +118,38 @@ function createLocalServer(pageCache, operationQueue, config, dataStore) {
     next();
   });
 
+  /* ── Rate limiting for local authentication attempts ─────────────── */
+  const localLoginAttempts = new Map();
+  app.use((req, res, next) => {
+    if (req.method === 'POST' && (req.path === '/' || req.path === '/login')) {
+      const ip = req.ip || (req.connection && req.connection.remoteAddress) || '127.0.0.1';
+      const now = Date.now();
+      const windowMs = 15 * 60 * 1000;
+      const maxAttempts = 30;
+
+      let record = localLoginAttempts.get(ip);
+      if (!record || now > record.resetTime) {
+        record = { count: 1, resetTime: now + windowMs };
+        localLoginAttempts.set(ip, record);
+      } else {
+        record.count++;
+      }
+
+      if (localLoginAttempts.size > 500) {
+        for (const [k, v] of localLoginAttempts.entries()) {
+          if (now > v.resetTime) localLoginAttempts.delete(k);
+        }
+      }
+
+      if (record.count > maxAttempts) {
+        const waitMin = Math.ceil((record.resetTime - now) / 60000);
+        if (req.flash) req.flash('error_msg', `Too many login attempts. Please wait ${waitMin} minute(s) before trying again.`);
+        return res.redirect('/');
+      }
+    }
+    next();
+  });
+
   /* ── Pre-compute inline logo as base64 data URI ───────────────── */
   try {
     const _logoBuffer = require('fs').readFileSync(path.join(__dirname, '..', 'server-assets', 'gezyne-logo.png'));

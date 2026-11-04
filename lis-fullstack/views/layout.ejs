@@ -2565,24 +2565,115 @@
       })();
     </script>
 
-    <!-- Global Security: Automatic CSRF token propagation for multipart/form-data forms -->
+    <!-- Global Security: Automatic CSRF token propagation for forms, programmatic submits, fetch, and AJAX -->
     <script>
       (function() {
         var token = '<%= typeof csrfToken !== "undefined" ? csrfToken : "" %>';
         if (!token) return;
         window.__CSRF_TOKEN__ = token;
-        document.addEventListener('submit', function(e) {
-          var form = e.target;
+
+        function injectCsrf(form) {
           if (!form || form.tagName !== 'FORM') return;
-          var enc = (form.getAttribute('enctype') || '').toLowerCase();
-          if (enc.indexOf('multipart/form-data') !== -1) {
-            var action = form.getAttribute('action') || window.location.href;
-            if (action.indexOf('_csrf=') === -1) {
-              var delim = action.indexOf('?') === -1 ? '?' : '&';
-              form.setAttribute('action', action + delim + '_csrf=' + encodeURIComponent(token));
+          var method = (form.getAttribute('method') || 'GET').toUpperCase();
+          if (method === 'POST') {
+            if (!form.querySelector('input[name="_csrf"]')) {
+              var csrfInput = document.createElement('input');
+              csrfInput.type = 'hidden';
+              csrfInput.name = '_csrf';
+              csrfInput.value = token;
+              form.appendChild(csrfInput);
+            }
+            var enc = (form.getAttribute('enctype') || '').toLowerCase();
+            if (enc.indexOf('multipart/form-data') !== -1) {
+              var action = form.getAttribute('action') || window.location.href;
+              if (action.indexOf('_csrf=') === -1) {
+                var delim = action.indexOf('?') === -1 ? '?' : '&';
+                form.setAttribute('action', action + delim + '_csrf=' + encodeURIComponent(token));
+              }
             }
           }
+        }
+
+        // 1. Intercept standard submit events (event bubbling / capturing)
+        document.addEventListener('submit', function(e) {
+          injectCsrf(e.target);
         }, true);
+
+        // 2. Intercept programmatic form.submit() calls which bypass the submit event
+        if (typeof HTMLFormElement !== 'undefined' && HTMLFormElement.prototype) {
+          var _origSubmit = HTMLFormElement.prototype.submit;
+          HTMLFormElement.prototype.submit = function() {
+            try {
+              injectCsrf(this);
+            } catch (err) {
+              console.warn('[csrf-guard] error injecting token:', err);
+            }
+            return _origSubmit.apply(this, arguments);
+          };
+        }
+
+        // 3. Intercept window.fetch for non-GET same-origin requests
+        if (typeof window.fetch === 'function') {
+          var _origFetch = window.fetch;
+          window.fetch = function(input, init) {
+            init = init || {};
+            var method = (init.method || 'GET').toUpperCase();
+            if (['POST', 'PUT', 'DELETE', 'PATCH'].indexOf(method) !== -1) {
+              var isRelativeOrSameOrigin = true;
+              if (typeof input === 'string') {
+                if (input.startsWith('http://') || input.startsWith('https://')) {
+                  isRelativeOrSameOrigin = (typeof window.location !== 'undefined') && input.startsWith(window.location.origin);
+                }
+              }
+              if (isRelativeOrSameOrigin) {
+                if (!init.headers) {
+                  init.headers = {};
+                }
+                if (typeof Headers !== 'undefined' && init.headers instanceof Headers) {
+                  if (!init.headers.has('X-CSRF-Token') && !init.headers.has('CSRF-Token')) {
+                    init.headers.append('X-CSRF-Token', token);
+                  }
+                } else if (Array.isArray(init.headers)) {
+                  init.headers.push(['X-CSRF-Token', token]);
+                } else if (typeof init.headers === 'object') {
+                  if (!init.headers['X-CSRF-Token'] && !init.headers['CSRF-Token'] && !init.headers['x-csrf-token'] && !init.headers['csrf-token']) {
+                    init.headers['X-CSRF-Token'] = token;
+                  }
+                }
+              }
+            }
+            return _origFetch.call(this, input, init);
+          };
+        }
+
+        // 4. Intercept XMLHttpRequest for non-GET same-origin requests
+        if (typeof XMLHttpRequest !== 'undefined' && XMLHttpRequest.prototype) {
+          var _origOpen = XMLHttpRequest.prototype.open;
+          var _origSend = XMLHttpRequest.prototype.send;
+          XMLHttpRequest.prototype.open = function(method, url) {
+            this._csrfMethod = (method || 'GET').toUpperCase();
+            this._csrfUrl = url;
+            return _origOpen.apply(this, arguments);
+          };
+          XMLHttpRequest.prototype.send = function() {
+            if (this._csrfMethod && ['POST', 'PUT', 'DELETE', 'PATCH'].indexOf(this._csrfMethod) !== -1) {
+              var isRelativeOrSameOrigin = true;
+              if (typeof this._csrfUrl === 'string') {
+                if (this._csrfUrl.startsWith('http://') || this._csrfUrl.startsWith('https://')) {
+                  isRelativeOrSameOrigin = (typeof window.location !== 'undefined') && this._csrfUrl.startsWith(window.location.origin);
+                }
+              }
+              if (isRelativeOrSameOrigin) {
+                try {
+                  this.setRequestHeader('X-CSRF-Token', token);
+                } catch (e) {
+                  // Ignore if headers cannot be set in current state
+                }
+              }
+            }
+            return _origSend.apply(this, arguments);
+          };
+        }
       })();
     </script>
 
