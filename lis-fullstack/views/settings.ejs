@@ -425,6 +425,10 @@
               <i class="fas fa-users-gear"></i>
               <span>Backup User Accounts</span>
             </button>
+            <button type="submit" formaction="/settings/optimize-db" class="button" style="display:inline-flex; align-items:center; gap:8px; font-weight:600; background:#0284c7; color:#fff;" <%= !isMgmt ? 'disabled' : '' %> title="Reclaim disk space, defragment tables, and optimize SQLite query indexes">
+              <i class="fas fa-broom"></i>
+              <span>Optimize Database</span>
+            </button>
           </div>
 
           <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:16px; margin-top:16px; padding-top:16px; border-top:1px solid #f1f5f9;">

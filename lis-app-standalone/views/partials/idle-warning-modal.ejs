@@ -1,0 +1,175 @@
+<!-- ===================================================================== -->
+<!-- GEZYNE LIS - CLINICAL SESSION INACTIVITY & IDLE WARNING MODAL       -->
+<!-- Protects Patient Health Information (PHI) & Prevents Work Loss     -->
+<!-- ===================================================================== -->
+
+<div id="idleWarningModal" style="display: none; position: fixed; inset: 0; z-index: 99999; background: rgba(15, 23, 42, 0.78); backdrop-filter: blur(6px); align-items: center; justify-content: center; padding: 16px;" role="dialog" aria-modal="true" aria-labelledby="idleWarningTitle">
+  <div style="background: #ffffff; width: 100%; max-width: 480px; border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35); border: 1px solid #e2e8f0; overflow: hidden; animation: idleModalFadeIn 0.25s ease-out;">
+    
+    <!-- Modal Header -->
+    <div style="background: #fffbeb; padding: 20px 24px 16px; border-bottom: 1px solid #fef3c7; display: flex; align-items: center; gap: 14px;">
+      <div style="width: 48px; height: 48px; border-radius: 50%; background: #fef3c7; color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; box-shadow: 0 0 0 6px #fffbeb;">
+        <i class="fa fa-clock-o"></i>
+      </div>
+      <div>
+        <h3 id="idleWarningTitle" style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #92400e;">
+          Session Inactivity Warning
+        </h3>
+        <p style="margin: 3px 0 0; font-size: 0.85rem; color: #b45309; font-weight: 500;">
+          Are you still working on this terminal?
+        </p>
+      </div>
+    </div>
+
+    <!-- Modal Body -->
+    <div style="padding: 24px; text-align: center;">
+      <p style="margin: 0 0 16px; font-size: 0.92rem; color: #475569; line-height: 1.55;">
+        Your clinical session has been idle. To protect confidential <strong>Patient Health Information (PHI)</strong> and prevent unauthorized access, your session will automatically lock in:
+      </p>
+
+      <!-- Countdown Display -->
+      <div style="display: inline-flex; align-items: baseline; justify-content: center; background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 12px; padding: 8px 24px; margin-bottom: 20px;">
+        <span id="idleWarningCountdown" style="font-size: 2.8rem; font-weight: 800; font-family: monospace, sans-serif; color: #ea580c; line-height: 1;">60</span>
+        <span style="font-size: 1.1rem; font-weight: 700; color: #64748b; margin-left: 6px;">seconds</span>
+      </div>
+
+      <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 10px 14px; margin-bottom: 24px; font-size: 0.84rem; color: #166534; text-align: left; display: flex; align-items: center; gap: 8px;">
+        <i class="fa fa-info-circle" style="color: #16a34a; font-size: 1rem; flex-shrink: 0;"></i>
+        <span>Click <strong>"Keep Working"</strong> to extend your active session and continue entering clinical data.</span>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display: flex; gap: 12px; justify-content: flex-end;">
+        <button type="button" id="btnIdleLogout" style="background: #f1f5f9; color: #dc2626; border: 1px solid #cbd5e1; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 0.88rem; cursor: pointer; transition: all 0.15s ease;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#f1f5f9'">
+          <i class="fa fa-sign-out" style="margin-right: 5px;"></i> Log Out Now
+        </button>
+        <button type="button" id="btnIdleKeepWorking" style="background: #4f46e5; color: #ffffff; border: none; padding: 10px 22px; border-radius: 8px; font-weight: 700; font-size: 0.92rem; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.3); transition: all 0.15s ease;" onmouseover="this.style.background='#4338ca'" onmouseout="this.style.background='#4f46e5'">
+          <i class="fa fa-check-circle" style="margin-right: 6px;"></i> I'm Still Here, Keep Working
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes idleModalFadeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+</style>
+
+<script>
+(function() {
+  // Configurable thresholds (default: 15 minutes idle, 60 seconds countdown)
+  const config = window.__IDLE_WARNING_CONFIG__ || {
+    idleTimeoutMs: 15 * 60 * 1000,
+    countdownSeconds: 60,
+    pingEndpoint: '/api/auth/ping',
+    logoutEndpoint: '/logout'
+  };
+
+  const modal = document.getElementById('idleWarningModal');
+  const countdownEl = document.getElementById('idleWarningCountdown');
+  const btnKeepWorking = document.getElementById('btnIdleKeepWorking');
+  const btnLogout = document.getElementById('btnIdleLogout');
+
+  if (!modal || !countdownEl || !btnKeepWorking || !btnLogout) return;
+
+  let lastActivityTime = Date.now();
+  let warningActive = false;
+  let countdownRemaining = config.countdownSeconds;
+  let countdownTimer = null;
+  let checkInterval = null;
+
+  // Throttled activity tracker (resets timer on typing/moving mouse if warning not active)
+  let lastThrottledRecord = 0;
+  function recordUserActivity() {
+    const now = Date.now();
+    if (warningActive) return; // If warning modal is showing, require explicit button click
+    if (now - lastThrottledRecord > 3000) {
+      lastActivityTime = now;
+      lastThrottledRecord = now;
+    }
+  }
+
+  const activityEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
+  activityEvents.forEach(evt => {
+    window.addEventListener(evt, recordUserActivity, { passive: true });
+  });
+
+  // Display the warning modal and begin live seconds countdown
+  function showIdleWarning() {
+    if (warningActive) return;
+    warningActive = true;
+    countdownRemaining = config.countdownSeconds;
+    countdownEl.textContent = countdownRemaining;
+    modal.style.display = 'flex';
+    btnKeepWorking.focus();
+
+    countdownTimer = setInterval(() => {
+      countdownRemaining--;
+      if (countdownEl) {
+        countdownEl.textContent = countdownRemaining;
+      }
+      if (countdownRemaining <= 0) {
+        clearInterval(countdownTimer);
+        countdownTimer = null;
+        performAutomaticLogout();
+      }
+    }, 1000);
+  }
+
+  // Dismiss modal, ping backend to extend session cookie, reset clock
+  function keepSessionAlive() {
+    if (countdownTimer) {
+      clearInterval(countdownTimer);
+      countdownTimer = null;
+    }
+    warningActive = false;
+    modal.style.display = 'none';
+    lastActivityTime = Date.now();
+    lastThrottledRecord = Date.now();
+
+    // Send keep-alive ping to touch server session
+    try {
+      fetch(config.pingEndpoint, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      }).catch(err => console.debug('[idle-guard] ping error:', err));
+    } catch (_) {}
+  }
+
+  function performAutomaticLogout() {
+    warningActive = false;
+    modal.style.display = 'none';
+    window.location.href = config.logoutEndpoint + '?reason=idle_timeout';
+  }
+
+  btnKeepWorking.addEventListener('click', keepSessionAlive);
+  btnLogout.addEventListener('click', () => {
+    window.location.href = config.logoutEndpoint;
+  });
+
+  // Periodic heartbeat checker (checks idle time every 5 seconds)
+  checkInterval = setInterval(() => {
+    if (warningActive) return;
+    const idleElapsed = Date.now() - lastActivityTime;
+    if (idleElapsed >= config.idleTimeoutMs) {
+      showIdleWarning();
+    }
+  }, 5000);
+
+  // Diagnostic / testing hooks
+  window.__resetIdleTimer = keepSessionAlive;
+  window.__triggerIdleWarningTest = showIdleWarning;
+  window.__getIdleStatus = function() {
+    return {
+      warningActive,
+      countdownRemaining,
+      idleElapsedMs: Date.now() - lastActivityTime,
+      timeoutThresholdMs: config.idleTimeoutMs
+    };
+  };
+})();
+</script>
+

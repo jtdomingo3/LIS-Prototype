@@ -2692,5 +2692,9 @@
     <% if (!isDocumentOrPrintPage) { %>
       <%- include('partials/gezynebot-widget') %>
     <% } %>
+    <!-- Client-Side Session Inactivity & Idle Warning (active for authenticated users) -->
+    <% if (!isDocumentOrPrintPage && typeof user !== 'undefined' && user) { %>
+      <%- include('partials/idle-warning-modal') %>
+    <% } %>
 </body>
 </html>

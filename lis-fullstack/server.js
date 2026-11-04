@@ -50,7 +50,7 @@ const PORT = process.env.PORT || 3000;
 // Default host/IP for the server. Override with the HOST env var if needed.
 // Default to listening on all interfaces so the server is reachable from other devices on the network.
 // If you prefer localhost-only, set HOST=127.0.0.1 before starting.
-const HOST = process.env.HOST || '0.0.0.0';
+const HOST = process.env.BIND_IP || process.env.HOST || '0.0.0.0';
 // data files live in a directory determined by dataPath.getDataDir();
 const { initAppLogger } = require('./lib/appLogger');
 const DATA_DIR = require('./lib/dataPath').getDataDir();

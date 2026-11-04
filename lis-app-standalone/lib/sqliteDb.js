@@ -2732,6 +2732,16 @@ function createBetterSqliteDb(dbPath, opts = {}) {
       } catch (e) { return false; }
     },
 
+    vacuum() {
+      try {
+        if (typeof sqlite.exec === 'function') sqlite.exec('VACUUM;');
+        if (typeof sqlite.pragma === 'function') sqlite.pragma('optimize');
+        return true;
+      } catch (e) {
+        console.warn('[sqliteDb] vacuum error:', e.message);
+        return false;
+      }
+    },
     close() { try { sqlite.close(); } catch (e) {} },
     getUnderlyingSqlite() { return sqlite; }
   };
@@ -5162,6 +5172,16 @@ function createSqlJsDb(SQL, dbPath) {
       } catch (e) { return false; }
     },
 
+    vacuum() {
+      try {
+        if (typeof sqlite.exec === 'function') sqlite.exec('VACUUM;');
+        persist(true);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    },
+
     close() {
       if (isClosed) return;
       persist(true);
@@ -5379,6 +5399,7 @@ function createDb(dbPath, opts = {}) {
     deleteSyncQueue(id) { if (underlyingDb) return underlyingDb.deleteSyncQueue(id); else readyPromise.then(db => db.deleteSyncQueue(id)); return true; },
     clearSyncQueue() { if (underlyingDb) return underlyingDb.clearSyncQueue(); else readyPromise.then(db => db.clearSyncQueue()); return true; },
 
+    vacuum() { if (underlyingDb && underlyingDb.vacuum) return underlyingDb.vacuum(); else readyPromise.then(db => db && db.vacuum && db.vacuum()); return true; },
     close() { if (underlyingDb) underlyingDb.close(); }
   };
 

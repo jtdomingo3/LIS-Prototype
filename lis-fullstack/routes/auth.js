@@ -240,4 +240,24 @@ router.post('/api/auth/verify', (req, res) => {
   }
 });
 
+// GET /api/auth/ping - Touch/extend active session and verify auth state
+router.get('/api/auth/ping', (req, res) => {
+  if (req.session && req.session.user) {
+    if (typeof req.session.touch === 'function') {
+      req.session.touch();
+    }
+    return res.json({
+      success: true,
+      authenticated: true,
+      user: {
+        id: req.session.user.id || req.session.user._id,
+        email: req.session.user.email,
+        name: req.session.user.name,
+        role: req.session.user.role
+      }
+    });
+  }
+  return res.status(401).json({ success: false, authenticated: false, error: 'Session expired or not authenticated' });
+});
+
 module.exports = router;

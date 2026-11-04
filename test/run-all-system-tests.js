@@ -138,6 +138,11 @@ const suites = [
     name: 'Batch Print Filter & CSRF Resilience Suite',
     file: 'batch-print-csrf-resilience.test.js',
     scope: 'Large Array Print Filtering (130+ UUIDs), Dynamic CSRF Forms, Global Interceptors, Mutating Route CSRF'
+  },
+  {
+    name: 'Client-Side Idle Warning & Session Touch Suite',
+    file: 'client-side-idle-warning.test.js',
+    scope: 'Inactivity Detection, Warning Modal, Live Countdown, Session Touch Keep-Alive, PHI Protection'
   }
 ];
 

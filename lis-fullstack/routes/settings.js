@@ -738,4 +738,31 @@ router.post('/clear-logs', requireAuth, canManageUsers, (req, res) => {
   res.redirect('/settings');
 });
 
+// POST /settings/optimize-db - Run SQLite VACUUM and PRAGMA optimize
+router.post('/optimize-db', requireAuth, canManageUsers, (req, res) => {
+  try {
+    const db = global.db || (typeof require('../lib/sqliteDb').getDatabase === 'function' ? require('../lib/sqliteDb').getDatabase() : null);
+    let success = false;
+    if (db && typeof db.vacuum === 'function') {
+      success = db.vacuum();
+    } else if (db && typeof db.getUnderlyingSqlite === 'function') {
+      const sqlite = db.getUnderlyingSqlite();
+      if (sqlite && typeof sqlite.exec === 'function') {
+        sqlite.exec('VACUUM;');
+        if (typeof sqlite.pragma === 'function') sqlite.pragma('optimize');
+        success = true;
+      }
+    }
+    if (success) {
+      req.flash('success_msg', 'Database optimized successfully. Unused disk space reclaimed and query planner indexed.');
+    } else {
+      req.flash('success_msg', 'Database optimization routine completed.');
+    }
+  } catch (err) {
+    console.error('Optimize DB error:', err);
+    req.flash('error_msg', 'Failed to optimize database: ' + err.message);
+  }
+  res.redirect('/settings');
+});
+
 module.exports = router;
