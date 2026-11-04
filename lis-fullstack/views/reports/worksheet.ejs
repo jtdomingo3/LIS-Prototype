@@ -325,7 +325,9 @@
         const r = currentRows[idx];
         if (!r || !soapModalBody) return;
 
-        soapModalTitle.innerHTML = `<span>🩺</span> Clinical Record: ${r.patientName || 'Patient'} (${r.patientId || 'N/A'})`;
+        const safeName = (typeof escapeHtml === 'function' ? escapeHtml : window.escapeHtml)(r.patientName || 'Patient');
+        const safeId = (typeof escapeHtml === 'function' ? escapeHtml : window.escapeHtml)(r.patientId || 'N/A');
+        soapModalTitle.innerHTML = `<span>🩺</span> Clinical Record: ${safeName} (${safeId})`;
         soapModalSubtitle.textContent = `Encounter Date: ${r.visitDate} ${r.visitTime || ''} • Attending: ${r.doctorName || 'N/A'} (PRC: ${r.doctorLicenseNumber || '—'})`;
 
         soapModalBody.innerHTML = `

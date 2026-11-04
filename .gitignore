@@ -72,13 +72,9 @@ tools/security-audit/audit-report-latest.json
 !**/.env.example
 *.secret
 **/*.secret
+.*_secret
+**/.*_secret
 .auth_token_secret
-**/.auth_token_secret
-.data_users_secret
-**/.data_users_secret
-.session_secret
-**/.session_secret
-**/.auth_token_secret
 **/.auth_token_secret
 .data_users_secret
 **/.data_users_secret

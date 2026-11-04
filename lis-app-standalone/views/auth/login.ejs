@@ -731,22 +731,25 @@
         const li = document.createElement('li');
         li.className = 'saved-account-item';
         
-        const initial = (acc.name || acc.email || 'U').charAt(0).toUpperCase();
-        const roleLabel = acc.role || 'Staff';
+        const escLogin = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        const initial = escLogin((acc.name || acc.email || 'U').charAt(0).toUpperCase());
+        const roleLabel = escLogin(acc.role || 'Staff');
+        const safeName = escLogin(acc.name || acc.email || '');
+        const safeEmail = escLogin(acc.email || '');
         
         li.innerHTML = `
           <div class="saved-account-info">
             <div class="saved-account-avatar">${initial}</div>
             <div class="saved-account-texts">
               <div class="saved-account-name">
-                ${acc.name || acc.email}
+                ${safeName}
                 <span class="saved-account-role-badge">${roleLabel}</span>
               </div>
-              <div class="saved-account-email">${acc.email}</div>
+              <div class="saved-account-email">${safeEmail}</div>
               <div class="saved-account-dots">••••••••</div>
             </div>
           </div>
-          <button type="button" class="saved-account-delete-btn" title="Remove from this PC" data-email="${acc.email}">
+          <button type="button" class="saved-account-delete-btn" title="Remove from this PC" data-email="${safeEmail}">
             ✕
           </button>
         `;
@@ -833,4 +836,4 @@
     }
 
   })();
-</script>
+</script>

@@ -450,7 +450,8 @@
 
     function resetButton() {
       btn.disabled = false;
-      btn.innerHTML = `<i class="fa fa-check"></i> <span id="lblSubmitBtn">${originalText}</span>`;
+      const safeText = typeof window.escapeHtml === 'function' ? window.escapeHtml(originalText) : String(originalText || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      btn.innerHTML = `<i class="fa fa-check"></i> <span id="lblSubmitBtn">${safeText}</span>`;
     }
 
     try {

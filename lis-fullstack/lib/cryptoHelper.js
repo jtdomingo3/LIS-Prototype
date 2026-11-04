@@ -81,9 +81,10 @@ function decryptSecret(cipherPayload, secret) {
       return decrypted.toString('utf8');
     } catch (primaryErr) {
       // If primary decryption fails and no specific secret was passed, try legacy fallback key
-      if (!secret && LEGACY_MASTER_SECRET) {
+      const legacySecret = process.env.LEGACY_MASTER_SECRET || (typeof getSecret === 'function' ? getSecret('LEGACY_MASTER_SECRET') : null);
+      if (!secret && legacySecret) {
         try {
-          const legacyKey = crypto.createHash('sha256').update(String(LEGACY_MASTER_SECRET)).digest();
+          const legacyKey = crypto.createHash('sha256').update(String(legacySecret)).digest();
           const legacyDecipher = crypto.createDecipheriv('aes-256-gcm', legacyKey, iv);
           legacyDecipher.setAuthTag(tag);
           const decrypted = Buffer.concat([legacyDecipher.update(encrypted), legacyDecipher.final()]);

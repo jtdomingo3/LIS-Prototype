@@ -38,6 +38,14 @@
                          "sql.js":  "^1.14.2",
                          "uuid":  "^9.0.1"
                      },
+    "overrides": {
+        "axios": "^1.7.4",
+        "tar": "^7.4.3",
+        "minimist": "^1.2.8",
+        "follow-redirects": "^1.15.6",
+        "ws": "^8.17.1",
+        "micromatch": "^4.0.8"
+    },
     "devDependencies":  {
                             "electron":  "^28.1.0",
                             "electron-builder":  "^24.9.1",

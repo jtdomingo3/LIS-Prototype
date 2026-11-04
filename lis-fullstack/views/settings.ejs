@@ -642,14 +642,14 @@ async function executeTestPrint() {
       banner.style.background = '#ecfdf5';
       banner.style.color = '#065f46';
       banner.style.border = '1px solid #a7f3d0';
-      banner.innerHTML = '<strong>✓ ' + (data.message || 'Print job sent successfully!') + '</strong>' + 
-        (data.output ? '<pre style="margin:6px 0 0 0; font-size:0.85em; opacity:0.85;">' + data.output + '</pre>' : '');
+      banner.innerHTML = '<strong>✓ ' + escapeHtml(data.message || 'Print job sent successfully!') + '</strong>' + 
+        (data.output ? '<pre style="margin:6px 0 0 0; font-size:0.85em; opacity:0.85;">' + escapeHtml(data.output) + '</pre>' : '');
       if (statusNote) statusNote.textContent = 'Last test print successful.';
     } else {
       banner.style.background = '#fef2f2';
       banner.style.color = '#991b1b';
       banner.style.border = '1px solid #fecaca';
-      banner.innerHTML = '<strong>✗ ' + (data.error || 'Print test failed.') + '</strong>';
+      banner.innerHTML = '<strong>✗ ' + escapeHtml(data.error || 'Print test failed.') + '</strong>';
       if (statusNote) statusNote.textContent = 'Printer error reported.';
     }
   } catch (err) {
@@ -657,7 +657,7 @@ async function executeTestPrint() {
     banner.style.background = '#fef2f2';
     banner.style.color = '#991b1b';
     banner.style.border = '1px solid #fecaca';
-    banner.innerHTML = '<strong>✗ Communication Error: ' + err.message + '</strong>';
+    banner.innerHTML = '<strong>✗ Communication Error: ' + escapeHtml(err.message) + '</strong>';
   } finally {
     btn.disabled = false;
     btn.innerHTML = '🖨️ Send Test Print to Printer';
@@ -706,18 +706,18 @@ async function testAiConnection() {
       fb.style.background = '#ecfdf5';
       fb.style.color = '#065f46';
       fb.style.border = '1px solid #a7f3d0';
-      fb.innerHTML = '<strong>✓ ' + (data.message || 'Connection successful! OpenRouter responded.') + '</strong>';
+      fb.innerHTML = '<strong>✓ ' + escapeHtml(data.message || 'Connection successful! OpenRouter responded.') + '</strong>';
     } else {
       fb.style.background = '#fef2f2';
       fb.style.color = '#991b1b';
       fb.style.border = '1px solid #fecaca';
-      fb.innerHTML = '<strong>✗ ' + (data.error || 'Connection failed.') + '</strong>';
+      fb.innerHTML = '<strong>✗ ' + escapeHtml(data.error || 'Connection failed.') + '</strong>';
     }
   } catch (err) {
     fb.style.background = '#fef2f2';
     fb.style.color = '#991b1b';
     fb.style.border = '1px solid #fecaca';
-    fb.innerHTML = '<strong>✗ Network error: ' + err.message + '</strong>';
+    fb.innerHTML = '<strong>✗ Network error: ' + escapeHtml(err.message) + '</strong>';
   } finally {
     btn.disabled = false;
   }

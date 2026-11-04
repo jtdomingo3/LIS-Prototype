@@ -81,27 +81,32 @@ describe('Server Startup & SecretStore Zero-Config Persistence', function() {
   });
 
   it('decrypts ciphertext produced with legacy master secret', function() {
-    const crypto = require('crypto');
-    const cryptoHelper = require('../lis-fullstack/lib/cryptoHelper');
-    const legacySecret = 'gezyne-lis-ai-assistant-master-secret-2026';
-    const legacyKey = crypto.createHash('sha256').update(legacySecret).digest();
+    process.env.LEGACY_MASTER_SECRET = 'gezyne-lis-ai-assistant-master-secret-2026';
+    try {
+      const crypto = require('crypto');
+      const cryptoHelper = require('../lis-fullstack/lib/cryptoHelper');
+      const legacySecret = 'gezyne-lis-ai-assistant-master-secret-2026';
+      const legacyKey = crypto.createHash('sha256').update(legacySecret).digest();
 
-    const plaintext = 'sk-or-v1-legacy-key-stored-before-update';
-    const iv = crypto.randomBytes(12);
-    const cipher = crypto.createCipheriv('aes-256-gcm', legacyKey, iv);
-    const encrypted = Buffer.concat([cipher.update(Buffer.from(plaintext, 'utf8')), cipher.final()]);
-    const tag = cipher.getAuthTag();
+      const plaintext = 'sk-or-v1-legacy-key-stored-before-update';
+      const iv = crypto.randomBytes(12);
+      const cipher = crypto.createCipheriv('aes-256-gcm', legacyKey, iv);
+      const encrypted = Buffer.concat([cipher.update(Buffer.from(plaintext, 'utf8')), cipher.final()]);
+      const tag = cipher.getAuthTag();
 
-    const payload = {
-      v: 1,
-      iv: iv.toString('base64'),
-      tag: tag.toString('base64'),
-      data: encrypted.toString('base64')
-    };
-    const legacyCipherPayload = Buffer.from(JSON.stringify(payload)).toString('base64url');
+      const payload = {
+        v: 1,
+        iv: iv.toString('base64'),
+        tag: tag.toString('base64'),
+        data: encrypted.toString('base64')
+      };
+      const legacyCipherPayload = Buffer.from(JSON.stringify(payload)).toString('base64url');
 
-    const decrypted = cryptoHelper.decryptSecret(legacyCipherPayload);
-    assert.strictEqual(decrypted, plaintext, 'Legacy ciphertext decrypted via fallback');
+      const decrypted = cryptoHelper.decryptSecret(legacyCipherPayload);
+      assert.strictEqual(decrypted, plaintext, 'Legacy ciphertext decrypted via fallback');
+    } finally {
+      delete process.env.LEGACY_MASTER_SECRET;
+    }
   });
 
   it('persists and reuses existing secrets across simulated server restarts', function() {

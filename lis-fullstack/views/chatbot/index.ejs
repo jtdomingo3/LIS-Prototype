@@ -1035,7 +1035,7 @@ function initChatbot() {
         }
         toast.style.background = type === 'success' ? '#065f46' : (type === 'info' ? '#1e293b' : '#991b1b');
         toast.style.color = '#ffffff';
-        toast.innerHTML = (type === 'success' ? '✅ ' : (type === 'info' ? 'ℹ️ ' : '⚠️ ')) + msg;
+        toast.textContent = (type === 'success' ? '✅ ' : (type === 'info' ? 'ℹ️ ' : '⚠️ ')) + msg;
         toast.style.opacity = '1';
         toast.style.transform = 'translateY(0)';
         setTimeout(() => {
@@ -1536,9 +1536,13 @@ function initChatbot() {
         let sourcesHtml = '';
         if (role === 'bot' && metadata && Array.isArray(metadata.webSources) && metadata.webSources.length > 0) {
             sourcesHtml = '<div class="web-sources-container"><div class="web-sources-title"><i class="fa fa-globe"></i> Web Sources:</div><div class="web-sources-list">';
+            const esc = typeof window.escapeHtml === 'function' ? window.escapeHtml : s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
             metadata.webSources.forEach(s => {
                 const title = (s.title || s.source || 'Web Citation').slice(0, 50);
-                sourcesHtml += `<a href="${s.url}" target="_blank" rel="noopener noreferrer" class="web-source-pill" title="${(s.snippet || s.title || '').replace(/"/g, '&quot;')}"><i class="fa fa-external-link-alt"></i> ${title}${s.title && s.title.length > 50 ? '...' : ''}</a>`;
+                const safeTitle = esc(title);
+                const safeSnippet = esc(s.snippet || s.title || '');
+                const safeUrl = (typeof s.url === 'string' && (s.url.startsWith('https://') || s.url.startsWith('http://'))) ? s.url.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') : '#';
+                sourcesHtml += `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer" class="web-source-pill" title="${safeSnippet}"><i class="fa fa-external-link-alt"></i> ${safeTitle}${s.title && s.title.length > 50 ? '...' : ''}</a>`;
             });
             sourcesHtml += '</div></div>';
         }

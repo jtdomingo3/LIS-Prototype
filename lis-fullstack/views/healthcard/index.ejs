@@ -894,8 +894,9 @@
     if (comp) document.getElementById('enrollCompany').value = comp;
     if (doc) document.getElementById('enrollPhysician').value = doc;
 
+    const escHc = typeof window.escapeHtml === 'function' ? window.escapeHtml : s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     const prev = document.getElementById('selectedPatientPreview');
-    prev.innerHTML = `<i class="fa fa-user-check"></i> Selected: <strong>${name}</strong> [${code}]`;
+    prev.innerHTML = `<i class="fa fa-user-check"></i> Selected: <strong>${escHc(name)}</strong> [${escHc(code)}]`;
     prev.style.display = 'block';
   }
 

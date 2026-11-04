@@ -2336,7 +2336,7 @@
       row.innerHTML = '<select name="comment_sign[]" style="width: 70px; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; font-weight: 700; padding: 2px 6px;">' +
         '<option value="-" ' + (sign === '-' ? 'selected' : '') + '>-</option>' +
         '<option value="+" ' + (sign === '+' ? 'selected' : '') + '>+</option></select>' +
-        '<input type="text" name="comment_text[]" value="' + text + '" style="flex: 1; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 4px 10px; font-size: 0.9em; font-weight: 500;">' +
+        '<input type="text" name="comment_text[]" value="' + String(text || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '" style="flex: 1; height: 34px; border-radius: 6px; border: 1px solid #cbd5e1; padding: 4px 10px; font-size: 0.9em; font-weight: 500;">' +
         '<button type="button" class="button btn-secondary" onclick="removeCommentRow(this)" style="height: 34px; padding: 0 10px; color: #ef4444;"><i class="fa fa-trash"></i></button>';
       container.appendChild(row);
     }

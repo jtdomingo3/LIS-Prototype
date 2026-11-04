@@ -577,7 +577,9 @@
         if (nextEl) {
           if (patients.length > 1) {
             const nextCode = patients[1].patientCode || '';
-            nextEl.innerHTML = 'Next: <strong>' + (nextCode.includes('-') ? nextCode.split('-').pop() : nextCode) + '</strong>';
+            const escAssigned = typeof window.escapeHtml === 'function' ? window.escapeHtml : s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            const nextPart = nextCode.includes('-') ? nextCode.split('-').pop() : nextCode;
+            nextEl.innerHTML = 'Next: <strong>' + escAssigned(nextPart) + '</strong>';
             nextEl.style.display = 'block';
           } else {
             nextEl.style.display = 'none';

@@ -123,6 +123,16 @@ const suites = [
     name: 'GezyneBot AI Knowledge Coverage (v3.0.0)',
     file: 'test_gezynebot_knowledge.js',
     scope: '16 Manual Chapters, Westgard Rules, Ultrasound, HR/Payroll across Server, Client & Tray'
+  },
+  {
+    name: 'Security & Amazon Inspector Compliance Suite',
+    file: 'security-compliance.test.js',
+    scope: 'TLS Enforcement (CWE-295), Dynamic CSPRNG Keys (CWE-798), DOM XSS (CWE-79), CVE Overrides'
+  },
+  {
+    name: 'Clinical Features End-to-End Suite',
+    file: 'clinical-features-e2e.test.js',
+    scope: 'MRN Generation, 10-Station Queue, Wintrobe Indices, Westgard QC, ISO 15189 Inventory, Dual Signatures'
   }
 ];
 

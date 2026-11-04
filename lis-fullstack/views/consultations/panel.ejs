@@ -1794,11 +1794,20 @@
       if (!existing.includes(val.toLowerCase())) {
         const tag = document.createElement('span');
         tag.className = 'custom-lab-tag';
-        tag.innerHTML = `
-          <span>${val}</span>
-          <input type="hidden" class="custom-lab-tag-val" value="${val}">
-          <button type="button" onclick="removeCustomLabTag(this)" style="background: none; border: none; color: #0284c7; cursor: pointer; font-size: 1.1em; line-height: 1; padding: 0 2px;">&times;</button>
-        `;
+        const spanText = document.createElement('span');
+        spanText.textContent = val;
+        const hiddenInp = document.createElement('input');
+        hiddenInp.type = 'hidden';
+        hiddenInp.className = 'custom-lab-tag-val';
+        hiddenInp.value = val;
+        const rmBtn = document.createElement('button');
+        rmBtn.type = 'button';
+        rmBtn.setAttribute('onclick', 'removeCustomLabTag(this)');
+        rmBtn.style.cssText = 'background: none; border: none; color: #0284c7; cursor: pointer; font-size: 1.1em; line-height: 1; padding: 0 2px;';
+        rmBtn.innerHTML = '&times;';
+        tag.appendChild(spanText);
+        tag.appendChild(hiddenInp);
+        tag.appendChild(rmBtn);
         container.appendChild(tag);
       }
     }
