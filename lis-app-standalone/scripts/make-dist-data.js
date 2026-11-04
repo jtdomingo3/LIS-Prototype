@@ -20,8 +20,11 @@ async function make() {
     status: 'Active',
     permissions: {
       dashboard: true, patients: true, reception: true,
+      philhealth: true, healthcard: true,
       tests: true, reports: true, worksheet: true,
-      templates: true, users: true, delete: true
+      templates: true, inventory: true, equipment: true,
+      users: true, delete: true, costing: true, hr: true,
+      signatures: true, signature: true
     },
     createdAt: now,
     lastLogin: null
@@ -38,7 +41,9 @@ async function make() {
     patients: [],
     tests: [],
     templates: [],
-    counters: {}
+    counters: {},
+    philhealth_records: [],
+    healthcard_records: []
   };
   fs.writeFileSync(dataPath, JSON.stringify(initialData, null, 2), 'utf8');
 

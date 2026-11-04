@@ -155,7 +155,7 @@ async function processMaintenanceFlags() {
           signature: null,
           autoSignature: { enabled: false, until: null },
           permissions: {
-            dashboard: true, patients: true, reception: true,
+            dashboard: true, patients: true, reception: true, philhealth: true, healthcard: true,
             tests: true, reports: true, worksheet: true,
             templates: true, inventory: true, equipment: true, users: true, delete: true,
             costing: true, hr: true
@@ -169,7 +169,7 @@ async function processMaintenanceFlags() {
         admin.role = 'Admin';
         admin.status = 'Active';
         admin.permissions = {
-          dashboard: true, patients: true, reception: true,
+          dashboard: true, patients: true, reception: true, philhealth: true, healthcard: true,
           tests: true, reports: true, worksheet: true,
           templates: true, inventory: true, equipment: true, users: true, delete: true,
           costing: true, hr: true
@@ -211,7 +211,7 @@ async function processMaintenanceFlags() {
         role: 'Admin',
         status: 'Active',
         permissions: {
-          dashboard: true, patients: true, reception: true,
+          dashboard: true, patients: true, reception: true, philhealth: true, healthcard: true,
           tests: true, reports: true, worksheet: true,
           templates: true, inventory: true, equipment: true, users: true, delete: true,
           costing: true, hr: true
@@ -420,7 +420,6 @@ app.use(express.static(path.join(__dirname, 'public'), staticCacheOpts));
 app.use('/assets', express.static(path.join(__dirname, 'assets'), staticCacheOpts));
 const hrDocsDir = path.join(DATA_DIR, 'hr-documents');
 try { fs.mkdirSync(hrDocsDir, { recursive: true }); } catch (e) {}
-app.use('/hr-documents', express.static(hrDocsDir, staticCacheOpts));
 
 // Simple request logger to help debug routes and payloads with sensitive field masking
 function maskSensitive(obj) {
@@ -575,7 +574,9 @@ app.use(session({
   }
 }));
 
-// Setup CSRF protection AFTER session/cookieParser but BEFORE routes
+app.use(flash());
+
+// Setup CSRF protection AFTER session/cookieParser/flash but BEFORE routes
 const csrfProtection = csrf({ cookie: false }); 
 // Exclude API token route from CSRF if needed, or apply selectively. 
 // Standard approach for EJS forms is to use it globally.
@@ -597,7 +598,21 @@ app.use((req, res, next) => {
   csrfProtection(req, res, (err) => {
     if (err) {
       if (err.code === 'EBADCSRFTOKEN') {
-        return res.status(403).send('Form tampered with or session expired (CSRF check failed).');
+        console.warn(`[csrf] EBADCSRFTOKEN caught on ${req.method} ${req.originalUrl}`);
+        const isApi = req.xhr || (req.headers && req.headers.accept && req.headers.accept.includes('application/json'));
+        if (isApi) {
+          return res.status(403).json({ error: 'Form security token invalid or session expired. Please refresh the page.' });
+        }
+        if (!req.session || !req.session.user) {
+          if (req.flash) req.flash('error_msg', 'Your session has expired. Please log in again.');
+          return res.redirect('/');
+        }
+        if (req.flash) req.flash('error_msg', 'Security token expired or form was refreshed. Please try saving again.');
+        const referer = req.get('Referer');
+        if (referer && !referer.includes('?_method=')) {
+          return res.redirect(referer);
+        }
+        return res.redirect('/users/profile');
       }
       return next(err);
     }
@@ -607,8 +622,6 @@ app.use((req, res, next) => {
     next();
   });
 });
-
-app.use(flash());
 
 // ── Bearer Token & Hash-based session bootstrap for API and standalone sync ──
 app.use((req, res, next) => {
@@ -718,8 +731,33 @@ app.use((req, res, next) => {
     refreshDebounceMs: 800
   };
 
+  // Universal date formatter helper: MM/DD/YYYY (Philippine & clinical standard)
+  res.locals.formatMMDDYYYY = formatMMDDYYYY;
+  res.locals.formatMMDDYY = formatMMDDYYYY;
+  res.locals.formatDate = formatMMDDYYYY;
+
   next();
 });
+
+// Universal date formatter helper on app.locals
+function formatMMDDYYYY(d) {
+  if (!d) return '';
+  if (typeof d === 'string') {
+    const s = d.trim();
+    const m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (m) {
+      return String(m[2]).padStart(2, '0') + '/' + String(m[3]).padStart(2, '0') + '/' + m[1];
+    }
+  }
+  const dt = (d instanceof Date) ? d : new Date(d);
+  if (isNaN(dt.getTime())) return String(d);
+  const mm = String(dt.getMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getDate()).padStart(2, '0');
+  return mm + '/' + dd + '/' + dt.getFullYear();
+}
+app.locals.formatMMDDYYYY = formatMMDDYYYY;
+app.locals.formatMMDDYY = formatMMDDYYYY;
+app.locals.formatDate = formatMMDDYYYY;
 
 // Expose all users to views for signatory dropdowns
 app.use((req, res, next) => {
@@ -898,6 +936,8 @@ const routePermissionMap = [
   { prefix: '/dashboard', perm: 'dashboard' },
   { prefix: '/patients', perm: 'patients' },
   { prefix: '/reception', perm: 'reception' },
+  { prefix: '/philhealth', perm: 'philhealth' },
+  { prefix: '/healthcard', perm: 'philhealth' },
   { prefix: '/consultations', perm: 'reception' },
   { prefix: '/tests', perm: 'tests' },
   { prefix: '/reports', perm: 'reports' },
@@ -985,13 +1025,13 @@ app.use((req, res, next) => {
       return next();
     }
 
-    // Allow management access to Costing & HR
-    if (['costing', 'hr'].includes(mapping.perm) && isManagement) {
+    // Allow management access to Costing, HR, Inventory & Equipment
+    if (['costing', 'hr', 'inventory', 'equipment'].includes(mapping.perm) && isManagement) {
       console.debug(`[auth-guard] allowing management access to ${mapping.perm}`);
       return next();
     }
 
-    if (perms[mapping.perm] || (mapping.perm === 'equipment' && perms.inventory)) {
+    if (perms[mapping.perm] || (mapping.perm === 'equipment' && perms.inventory) || (mapping.perm === 'philhealth' && (perms.philhealth || perms.healthcard || perms.reception))) {
       console.debug(`[auth-guard] allowing via permission ${mapping.perm}`);
       return next();
     }
@@ -999,7 +1039,7 @@ app.use((req, res, next) => {
     // Role-based baseline workflow access for laboratory personnel (templates requires explicit permission)
     const labRoles = new Set(['Medical Technologist', 'MedTech', 'Technician', 'Doctor', 'Staff', 'Receptionist', 'Encoder', 'X-Ray Technologist']);
     if (labRoles.has(sessionUser.role)) {
-      if (['reception', 'patients', 'tests', 'reports', 'worksheet', 'equipment'].includes(mapping.perm)) {
+      if (['reception', 'patients', 'tests', 'reports', 'worksheet', 'equipment', 'philhealth'].includes(mapping.perm)) {
         console.debug(`[auth-guard] allowing ${sessionUser.role} baseline workflow access to ${mapping.perm}`);
         return next();
       }
@@ -1035,6 +1075,8 @@ const reportRoutes = require('./routes/reports');
 const templateRoutes = require('./routes/templates');
 const userRoutes = require('./routes/users');
 const receptionRoutes = require('./routes/reception');
+const philhealthRoutes = require('./routes/philhealth');
+const healthcardRoutes = require('./routes/healthcard');
 const settingsRoutes = require('./routes/settings');
 const signaturesRoutes = require('./routes/signatures');
 const chatbotRoutes = require('./routes/chatbot');
@@ -1053,6 +1095,8 @@ app.use('/reports', reportRoutes);
 app.use('/templates', templateRoutes);
 app.use('/users', userRoutes);
 app.use('/reception', receptionRoutes);
+app.use('/philhealth', philhealthRoutes);
+app.use('/healthcard', healthcardRoutes);
 app.use('/consultations', consultationRoutes);
 app.use('/settings', settingsRoutes);
 app.use('/signatures', signaturesRoutes);
@@ -1063,6 +1107,13 @@ app.use('/equipment', equipmentRoutes);
 app.use('/api/equipment', equipmentRoutes);
 app.use('/costing', costingRoutes);
 app.use('/hr', hrRoutes);
+// Secure HR documents: require authenticated session before serving employee documents
+app.use('/hr-documents', (req, res, next) => {
+  if (req.session && req.session.user) {
+    return next();
+  }
+  return res.status(401).send('Authentication required to access documents');
+}, express.static(hrDocsDir, staticCacheOpts));
 
 // POST /api/internal/maintenance/execute – executes pending maintenance flags immediately from localhost
 app.post('/api/internal/maintenance/execute', async (req, res) => {
@@ -1114,7 +1165,7 @@ app.post('/api/restore/users', async (req, res) => {
         signature: null,
         autoSignature: { enabled: false, until: null },
         permissions: {
-          dashboard: true, patients: true, reception: true,
+          dashboard: true, patients: true, reception: true, philhealth: true, healthcard: true,
           tests: true, reports: true, worksheet: true,
           templates: true, inventory: true, equipment: true, users: true, delete: true,
           costing: true, hr: true
@@ -1128,7 +1179,7 @@ app.post('/api/restore/users', async (req, res) => {
       admin.password = hash;
       admin.role = 'Admin';
       admin.status = 'Active';
-      admin.permissions = { dashboard: true, patients: true, reception: true, tests: true, reports: true, worksheet: true, templates: true, inventory: true, equipment: true, users: true, delete: true };
+      admin.permissions = { dashboard: true, patients: true, reception: true, philhealth: true, healthcard: true, tests: true, reports: true, worksheet: true, templates: true, inventory: true, equipment: true, users: true, delete: true, costing: true, hr: true };
     }
 
     db.saveUsers(existing);
@@ -1235,6 +1286,8 @@ app.get('/export/data.json', (req, res) => {
     data.hr_documents = typeof db.getHrDocuments === 'function' ? db.getHrDocuments() : [];
     data.leave_records = typeof db.getLeaveRecords === 'function' ? db.getLeaveRecords() : [];
     data.dtr_records = typeof db.getDtrRecords === 'function' ? db.getDtrRecords() : [];
+    data.philhealth_records = typeof db.getPhilhealthRecords === 'function' ? db.getPhilhealthRecords() : [];
+    data.healthcard_records = typeof db.getHealthCardRecords === 'function' ? db.getHealthCardRecords() : [];
 
     res.json(data);
   } catch (e) {

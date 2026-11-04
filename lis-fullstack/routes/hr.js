@@ -34,7 +34,15 @@ const storage = multer.diskStorage({
 });
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const allowed = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.doc', '.docx', '.xls', '.xlsx', '.txt']);
+    if (!allowed.has(ext)) {
+      return cb(new Error('Invalid file type. Allowed: PDF, PNG, JPG, DOC/DOCX, XLS/XLSX, TXT.'));
+    }
+    cb(null, true);
+  }
 });
 
 // Helper to determine if current session user is management
@@ -1765,7 +1773,6 @@ router.post('/payroll/:id/delete', async (req, res) => {
     res.redirect('/hr/payroll');
   }
 });
-
 
 /**
  * GET /hr/documents

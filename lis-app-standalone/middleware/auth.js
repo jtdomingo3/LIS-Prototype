@@ -153,7 +153,7 @@ const canAccessPatient = (req, res, next) => {
   }
 
   // Any laboratory workflow permission or role grants access to patient workflows/templates
-  if (perms.patients || perms.tests || perms.reception || perms.templates || perms.reports) {
+  if (perms.patients || perms.tests || perms.reception || perms.templates || perms.reports || perms.philhealth || perms.healthcard) {
     return next();
   }
 

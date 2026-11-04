@@ -119,7 +119,8 @@ async function runDatastoreCrudTests() {
 
     console.log('✅ TEST 1 PASSED: SQLite DataStore CRUD & Models functioning 100% offline.\n');
   } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    try { if (ds && ds.db && typeof ds.db.close === 'function') ds.db.close(); } catch (_) {}
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {}
   }
 }
 

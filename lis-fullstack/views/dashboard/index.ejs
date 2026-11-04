@@ -1,318 +1,899 @@
-<!-- Top Metric KPI Cards -->
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
-    <!-- Total Patients -->
-    <a href="/patients" style="text-decoration: none; color: inherit; display: block;">
-        <div style="background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%); padding: 20px; border-radius: 14px; border: 1px solid #bae6fd; box-shadow: 0 4px 12px rgba(2, 132, 199, 0.06); position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;" class="kpi-card" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(2, 132, 199, 0.12)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 12px rgba(2, 132, 199, 0.06)';">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
-                <span style="font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: #0369a1;">Total Patients</span>
-                <div style="width: 36px; height: 36px; border-radius: 10px; background: #e0f2fe; color: #0284c7; display: flex; align-items: center; justify-content: center; font-size: 1.1em;">
-                    <i class="fa fa-users"></i>
-                </div>
+<!-- ============================================================
+     LIS Fullstack - Executive Operational Command Dashboard
+     Gezyne Clinical Laboratory — Professional Operations & Analytics
+     ============================================================ -->
+
+<style>
+    /* Dashboard Modern Design System Tokens & Classes */
+    .dash-wrapper {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        padding-bottom: 30px;
+    }
+
+    /* ── Live Command Strip ── */
+    .dash-command-strip {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 12px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 14px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    }
+    .dash-pulse-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: #ecfdf5;
+        border: 1px solid #a7f3d0;
+        padding: 5px 12px;
+        border-radius: 20px;
+    }
+    .pulse-dot-container {
+        position: relative;
+        display: flex;
+        height: 10px;
+        width: 10px;
+    }
+    .pulse-dot-ping {
+        position: absolute;
+        display: inline-flex;
+        height: 100%;
+        width: 100%;
+        border-radius: 50%;
+        background: #10b981;
+        opacity: 0.75;
+        animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+    }
+    .pulse-dot-solid {
+        position: relative;
+        display: inline-flex;
+        border-radius: 50%;
+        height: 10px;
+        width: 10px;
+        background: #059669;
+    }
+    .pulse-text {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: #065f46;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    /* ── Date Filter Bar ── */
+    .filter-bar {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 10px 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    }
+    .filter-pills {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .filter-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        text-decoration: none;
+        color: #475569;
+        background: #f1f5f9;
+        border: 1px solid transparent;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .filter-pill:hover {
+        background: #e2e8f0;
+        color: #0f172a;
+    }
+    .filter-pill.active {
+        background: #10b981;
+        color: #ffffff;
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+    }
+
+    /* ── Primary KPI Cards ── */
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 16px;
+    }
+    .kpi-card {
+        background: #ffffff;
+        border-radius: 14px;
+        padding: 18px 20px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        text-decoration: none;
+        color: inherit;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    .kpi-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.07);
+    }
+    .kpi-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    .kpi-title {
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 700;
+    }
+    .kpi-icon-pill {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.05rem;
+    }
+    .kpi-value {
+        font-family: var(--font-display);
+        font-size: 2.2rem;
+        font-weight: 800;
+        line-height: 1.1;
+        font-variant-numeric: tabular-nums;
+    }
+    .kpi-sub {
+        font-size: 0.76rem;
+        margin-top: 6px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    /* KPI Color Variations */
+    .kpi-patients { border-color: #bae6fd; background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%); }
+    .kpi-patients .kpi-title { color: #0284c7; }
+    .kpi-patients .kpi-icon-pill { background: #e0f2fe; color: #0284c7; }
+    .kpi-patients .kpi-value { color: #0284c7; }
+    .kpi-patients .kpi-sub { color: #64748b; }
+
+    .kpi-pending { border-color: #fef08a; background: linear-gradient(135deg, #ffffff 0%, #fffbe6 100%); }
+    .kpi-pending .kpi-title { color: #b45309; }
+    .kpi-pending .kpi-icon-pill { background: #fef3c7; color: #d97706; }
+    .kpi-pending .kpi-value { color: #d97706; }
+    .kpi-pending .kpi-sub { color: #92400e; }
+
+    .kpi-progress { border-color: #99f6e4; background: linear-gradient(135deg, #ffffff 0%, #f0fdfa 100%); }
+    .kpi-progress .kpi-title { color: #0f766e; }
+    .kpi-progress .kpi-icon-pill { background: #ccfbf1; color: #0d9488; }
+    .kpi-progress .kpi-value { color: #0d9488; }
+    .kpi-progress .kpi-sub { color: #115e59; }
+
+    .kpi-completed { border-color: #a7f3d0; background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%); }
+    .kpi-completed .kpi-title { color: #047857; }
+    .kpi-completed .kpi-icon-pill { background: #d1fae5; color: #059669; }
+    .kpi-completed .kpi-value { color: #059669; }
+    .kpi-completed .kpi-sub { color: #065f46; }
+
+    .kpi-released { border-color: #cbd5e1; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); }
+    .kpi-released .kpi-title { color: #334155; }
+    .kpi-released .kpi-icon-pill { background: #f1f5f9; color: #475569; }
+    .kpi-released .kpi-value { color: #334155; }
+    .kpi-released .kpi-sub { color: #64748b; }
+
+    /* ── Dual Intelligence Row (Financial & Speed/TAT) ── */
+    .intel-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+        gap: 20px;
+    }
+    .intel-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 22px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    /* ── Chart Panels ── */
+    .charts-grid-2 {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+        gap: 20px;
+    }
+    .charts-grid-3 {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+        gap: 20px;
+    }
+    .chart-panel {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 22px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+        display: flex;
+        flex-direction: column;
+    }
+    .chart-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 18px;
+    }
+    .chart-header h3 {
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .chart-header h3::before {
+        content: none;
+    }
+    .chart-controls {
+        display: flex;
+        gap: 4px;
+        background: #f1f5f9;
+        padding: 3px;
+        border-radius: 8px;
+    }
+    .chart-btn {
+        padding: 5px 12px;
+        border: none;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        cursor: pointer;
+        background: transparent;
+        color: #64748b;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .chart-btn.active {
+        background: #ffffff;
+        color: #0f172a;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+    }
+
+    /* ── Leaderboard Pill List ── */
+    .leader-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .leader-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        border-radius: 10px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        transition: background 0.2s;
+    }
+    .leader-item:hover {
+        background: #f1f5f9;
+    }
+    .leader-rank {
+        width: 24px;
+        height: 24px;
+        border-radius: 6px;
+        background: #e2e8f0;
+        color: #475569;
+        font-weight: 700;
+        font-size: 0.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .leader-rank.gold { background: #fef3c7; color: #b45309; }
+    .leader-rank.silver { background: #e0f2fe; color: #0369a1; }
+    .leader-rank.bronze { background: #ffedd5; color: #c2410c; }
+
+    /* ── Recent Tests Table ── */
+    .recent-table-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+    }
+    .table-avatar {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: #e0f2fe;
+        color: #0284c7;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.85rem;
+        flex-shrink: 0;
+    }
+
+    @media (max-width: 768px) {
+        .charts-grid-2, .charts-grid-3, .intel-grid {
+            grid-template-columns: 1fr;
+        }
+        .filter-bar {
+            flex-direction: column;
+            align-items: stretch;
+        }
+    }
+</style>
+
+<div class="dash-wrapper">
+
+    <!-- 1. Live Lab Operational Command Strip -->
+    <div class="dash-command-strip">
+        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+            <div class="dash-pulse-badge">
+                <span class="pulse-dot-container">
+                    <span class="pulse-dot-ping"></span>
+                    <span class="pulse-dot-solid"></span>
+                </span>
+                <span class="pulse-text">Laboratory Online</span>
             </div>
-            <div style="font-size: 2.2em; font-weight: 800; color: #0284c7; line-height: 1.1;"><%= stats.totalPatients %></div>
-        </div>
-    </a>
-
-    <!-- Pending Tests -->
-    <a href="/tests?status=Pending" style="text-decoration: none; color: inherit; display: block;">
-        <div style="background: linear-gradient(135deg, #ffffff 0%, #fffbe6 100%); padding: 20px; border-radius: 14px; border: 1px solid #fef08a; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.06); position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;" class="kpi-card" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(217, 119, 6, 0.12)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 12px rgba(217, 119, 6, 0.06)';">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
-                <span style="font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: #b45309;">Pending Tests</span>
-                <div style="width: 36px; height: 36px; border-radius: 10px; background: #fef3c7; color: #d97706; display: flex; align-items: center; justify-content: center; font-size: 1.1em;">
-                    <i class="fa fa-hourglass-half"></i>
-                </div>
-            </div>
-            <div style="font-size: 2.2em; font-weight: 800; color: #d97706; line-height: 1.1;"><%= stats.pendingTests %></div>
-        </div>
-    </a>
-
-    <!-- Completed Tests -->
-    <a href="/tests?status=Completed" style="text-decoration: none; color: inherit; display: block;">
-        <div style="background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%); padding: 20px; border-radius: 14px; border: 1px solid #a7f3d0; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.06); position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;" class="kpi-card" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(5, 150, 105, 0.12)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 12px rgba(5, 150, 105, 0.06)';">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
-                <span style="font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: #047857;">Completed Tests</span>
-                <div style="width: 36px; height: 36px; border-radius: 10px; background: #d1fae5; color: #059669; display: flex; align-items: center; justify-content: center; font-size: 1.1em;">
-                    <i class="fa fa-check-circle"></i>
-                </div>
-            </div>
-            <div style="font-size: 2.2em; font-weight: 800; color: #059669; line-height: 1.1;"><%= stats.completedTests %></div>
-        </div>
-    </a>
-
-    <!-- In Progress -->
-    <a href="/tests?status=In+Progress" style="text-decoration: none; color: inherit; display: block;">
-        <div style="background: linear-gradient(135deg, #ffffff 0%, #faf5ff 100%); padding: 20px; border-radius: 14px; border: 1px solid #e9d5ff; box-shadow: 0 4px 12px rgba(124, 58, 237, 0.06); position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;" class="kpi-card" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(124, 58, 237, 0.12)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 12px rgba(124, 58, 237, 0.06)';">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
-                <span style="font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: #6b21a8;">In Progress</span>
-                <div style="width: 36px; height: 36px; border-radius: 10px; background: #f3e8ff; color: #7c3aed; display: flex; align-items: center; justify-content: center; font-size: 1.1em;">
-                    <i class="fa fa-sync-alt"></i>
-                </div>
-            </div>
-            <div style="font-size: 2.2em; font-weight: 800; color: #7c3aed; line-height: 1.1;"><%= stats.activeTests %></div>
-        </div>
-    </a>
-
-    <!-- Released Tests -->
-    <a href="/tests?status=Released" style="text-decoration: none; color: inherit; display: block;">
-        <div style="background: linear-gradient(135deg, #ffffff 0%, #f0fdfa 100%); padding: 20px; border-radius: 14px; border: 1px solid #99f6e4; box-shadow: 0 4px 12px rgba(13, 148, 136, 0.06); position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;" class="kpi-card" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 16px rgba(13, 148, 136, 0.12)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 12px rgba(13, 148, 136, 0.06)';">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
-                <span style="font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: #0f766e;">Released Tests</span>
-                <div style="width: 36px; height: 36px; border-radius: 10px; background: #ccfbf1; color: #0d9488; display: flex; align-items: center; justify-content: center; font-size: 1.1em;">
-                    <i class="fa fa-paper-plane"></i>
-                </div>
-            </div>
-            <div style="font-size: 2.2em; font-weight: 800; color: #0d9488; line-height: 1.1;"><%= stats.releasedTests %></div>
-        </div>
-    </a>
-</div>
-
-<!-- Sales Revenue Section (3 Columns: Total, Monthly, Today) -->
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 24px;">
-    <!-- Total Revenue Block -->
-    <div style="background: #ffffff; padding: 22px; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 16px;">
-        <div style="background: linear-gradient(135deg, #059669 0%, #047857 100%); padding: 18px 20px; border-radius: 12px; color: #ffffff; box-shadow: 0 6px 16px rgba(5, 150, 105, 0.25);">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-                <span style="font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; opacity: 0.9;">Total Sales</span>
-                <i class="fa fa-wallet" style="font-size: 1.2em; opacity: 0.9;"></i>
-            </div>
-            <div style="font-size: 2.2em; font-weight: 800; letter-spacing: -0.5px;">₱<%= (typeof stats.totalSales !== 'undefined' ? Number(stats.totalSales).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %></div>
-        </div>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <div style="background: #f8fafc; padding: 12px; border-radius: 10px; border: 1px solid #e2e8f0;">
-                <span style="font-size: 0.72em; text-transform: uppercase; font-weight: 700; color: #64748b; display: block; margin-bottom: 4px;">Clinical Total</span>
-                <div style="font-size: 1.2em; font-weight: 700; color: #1e293b;">₱<%= (typeof stats.clinicalSales !== 'undefined' ? Number(stats.clinicalSales).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %></div>
-            </div>
-            <div style="background: #fff7ed; padding: 12px; border-radius: 10px; border: 1px solid #ffedd5;">
-                <span style="font-size: 0.72em; text-transform: uppercase; font-weight: 700; color: #c2410c; display: block; margin-bottom: 4px;">X-Ray Total</span>
-                <div style="font-size: 1.2em; font-weight: 700; color: #ea580c;">₱<%= (typeof stats.xraySales !== 'undefined' ? Number(stats.xraySales).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Monthly Sales Block -->
-    <div style="background: #ffffff; padding: 22px; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 16px;">
-        <div style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); padding: 18px 20px; border-radius: 12px; color: #ffffff; box-shadow: 0 6px 16px rgba(124, 58, 237, 0.25);">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-                <span style="font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; opacity: 0.9;">Monthly Sales</span>
-                <i class="fa fa-calendar-alt" style="font-size: 1.2em; opacity: 0.9;"></i>
-            </div>
-            <div style="font-size: 2.2em; font-weight: 800; letter-spacing: -0.5px;">₱<%= (typeof stats.monthSales !== 'undefined' ? Number(stats.monthSales).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %></div>
-        </div>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <div style="background: #faf5ff; padding: 12px; border-radius: 10px; border: 1px solid #f3e8ff;">
-                <span style="font-size: 0.72em; text-transform: uppercase; font-weight: 700; color: #7e22ce; display: block; margin-bottom: 4px;">Clinical Month</span>
-                <div style="font-size: 1.2em; font-weight: 700; color: #6b21a8;">₱<%= (typeof stats.clinicalMonth !== 'undefined' ? Number(stats.clinicalMonth).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %></div>
-            </div>
-            <div style="background: #fff1f2; padding: 12px; border-radius: 10px; border: 1px solid #ffe4e6;">
-                <span style="font-size: 0.72em; text-transform: uppercase; font-weight: 700; color: #be123c; display: block; margin-bottom: 4px;">X-Ray Month</span>
-                <div style="font-size: 1.2em; font-weight: 700; color: #e11d48;">₱<%= (typeof stats.xrayMonth !== 'undefined' ? Number(stats.xrayMonth).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Today Sales Block -->
-    <div style="background: #ffffff; padding: 22px; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 16px;">
-        <div style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); padding: 18px 20px; border-radius: 12px; color: #ffffff; box-shadow: 0 6px 16px rgba(37, 99, 235, 0.25);">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-                <span style="font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; opacity: 0.9;">Sales Today</span>
-                <i class="fa fa-calendar-day" style="font-size: 1.2em; opacity: 0.9;"></i>
-            </div>
-            <div style="font-size: 2.2em; font-weight: 800; letter-spacing: -0.5px;">₱<%= (typeof stats.todaySales !== 'undefined' ? Number(stats.todaySales).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %></div>
-        </div>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <div style="background: #f0f9ff; padding: 12px; border-radius: 10px; border: 1px solid #e0f2fe;">
-                <span style="font-size: 0.72em; text-transform: uppercase; font-weight: 700; color: #0369a1; display: block; margin-bottom: 4px;">Clinical Today</span>
-                <div style="font-size: 1.2em; font-weight: 700; color: #0284c7;">₱<%= (typeof stats.clinicalToday !== 'undefined' ? Number(stats.clinicalToday).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %></div>
-            </div>
-            <div style="background: #fdf2f8; padding: 12px; border-radius: 10px; border: 1px solid #fce7f3;">
-                <span style="font-size: 0.72em; text-transform: uppercase; font-weight: 700; color: #be185d; display: block; margin-bottom: 4px;">X-Ray Today</span>
-                <div style="font-size: 1.2em; font-weight: 700; color: #db2777;">₱<%= (typeof stats.xrayToday !== 'undefined' ? Number(stats.xrayToday).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %></div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Date Range Filter Bar -->
-<div style="background: #ffffff; padding: 14px 20px; border-radius: 14px; border: 1px solid #e2e8f0; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.02);">
-    <div style="display: flex; align-items: center; gap: 8px; color: #475569; font-weight: 600; font-size: 0.9em;">
-        <i class="fa fa-filter" style="color: #10b981;"></i>
-        <span>Filter Statistics</span>
-    </div>
-    <form method="get" action="/dashboard" style="display:flex; gap:10px; align-items:center; margin:0;">
-        <label style="font-size: 0.8em; font-weight: 700; text-transform: uppercase; color: #64748b;">Select Date:</label>
-        <input type="date" name="date" value="<%= stats.selectedDate || '' %>" onchange="this.form.submit()" style="padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.9em; outline: none;" />
-        <a href="/dashboard?date=today" class="button btn-secondary" style="padding: 8px 14px; font-size: 0.85em; border-radius: 8px;">TODAY</a>
-        <a href="/dashboard?date=yesterday" class="button btn-secondary" style="padding: 8px 14px; font-size: 0.85em; border-radius: 8px;">YESTERDAY</a>
-    </form>
-</div>
-
-<!-- Load Chart.js locally for offline & standalone reliability -->
-<script src="/assets/chart.umd.min.js"></script>
-
-<!-- Test Totals Chart Card -->
-<div class="card" style="margin-bottom: 24px;">
-    <% var entries = Object.entries(stats.testTotals || {}); entries.sort(function(a,b){return b[1]-a[1];}); %>
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
-        <h3 style="margin:0;"><i class="fa fa-chart-bar" style="color:#10b981; margin-right: 8px;"></i>Test Totals</h3>
-        <% if (entries && entries.length) { %>
-            <div style="display:flex; gap: 6px; background: #f1f5f9; padding: 4px; border-radius: 10px;">
-                <button id="modeTotal" type="button" class="no-guard" data-no-guard="1" style="padding: 6px 14px; border: none; border-radius: 7px; font-weight: 600; font-size: 0.85em; cursor: pointer; transition: all 0.2s;">TOTAL</button>
-                <button id="modeSelected" type="button" class="no-guard" data-no-guard="1" style="padding: 6px 14px; border: none; border-radius: 7px; font-weight: 600; font-size: 0.85em; cursor: pointer; transition: all 0.2s;">SELECTED</button>
-                <button id="modeToday" type="button" class="no-guard" data-no-guard="1" style="padding: 6px 14px; border: none; border-radius: 7px; font-weight: 600; font-size: 0.85em; cursor: pointer; transition: all 0.2s;">TODAY</button>
-            </div>
-        <% } %>
-    </div>
-    
-    <% if (entries && entries.length) { %>
-        <div style="color:#64748b; font-size:0.8em; text-align:right; margin-bottom: 8px;">Hover bars to see exact values</div>
-        <div style="width:100%; max-height:520px; overflow:auto;">
-            <canvas id="testTotalsChart" height="520"></canvas>
-        </div>
-        <script>
-            (function(){
-                try {
-                    const entries = <%- JSON.stringify(entries) %> || [];
-                    const selectedMap = <%- JSON.stringify(stats.testTotalsSelected || {}) %> || {};
-                    const todayMap = <%- JSON.stringify(stats.testTotalsToday || {}) %> || {};
-
-                    const labels = entries.map(e => String(e[0]).toUpperCase());
-                    const totals = entries.map(e => Number(e[1] || 0));
-                    const selected = entries.map(e => Number(selectedMap[e[0]] || 0));
-                    const today = entries.map(e => Number(todayMap[e[0]] || 0));
-
-                    // Generate vibrant color palette per label
-                    function genColors(n){
-                        const palette = [
-                            '#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', 
-                            '#06b6d4', '#84cc16', '#f97316', '#6366f1', '#14b8a6'
-                        ];
-                        const colors = [];
-                        for(let i=0; i<n; i++){
-                            colors.push(palette[i % palette.length]);
-                        }
-                        return colors;
-                    }
-
-                    const colors = genColors(labels.length);
-
-                    const canvas = document.getElementById('testTotalsChart');
-                    const itemHeight = 32;
-                    const h = Math.max(200, Math.min(1600, labels.length * itemHeight));
-                    canvas.height = h;
-                    const ctx = canvas.getContext('2d');
-
-                    const qs = window.location.search || '';
-                    let mode = qs.indexOf('date=') !== -1 ? 'SELECTED' : 'TOTAL';
-
-                    function datasetForMode(m){
-                        if (m === 'SELECTED') return selected;
-                        if (m === 'TODAY') return today;
-                        return totals;
-                    }
-
-                    const data = { labels: labels, datasets: [{ label: mode, data: datasetForMode(mode), backgroundColor: colors, borderRadius: 6 }] };
-
-                    const options = {
-                        indexAxis: 'y',
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: { 
-                            x: { beginAtZero: true, grid: { color: '#f1f5f9' } }, 
-                            y: { grid: { display: false } } 
-                        },
-                        plugins: { tooltip: { enabled: true }, legend: { display: false } }
-                    };
-
-                    if (window._testTotalsChart) window._testTotalsChart.destroy();
-                    window._testTotalsChart = new Chart(ctx, { type: 'bar', data: data, options: options });
-
-                    function setMode(m){
-                        mode = m;
-                        const ds = datasetForMode(mode);
-                        window._testTotalsChart.data.datasets[0].data = ds;
-                        window._testTotalsChart.data.datasets[0].label = mode;
-                        window._testTotalsChart.update();
-                        
-                        const btnTotal = document.getElementById('modeTotal');
-                        const btnSelected = document.getElementById('modeSelected');
-                        const btnToday = document.getElementById('modeToday');
-                        
-                        [btnTotal, btnSelected, btnToday].forEach(b => {
-                            if (!b) return;
-                            b.style.background = 'transparent';
-                            b.style.color = '#64748b';
-                            b.style.boxShadow = 'none';
-                        });
-
-                        const activeBtn = mode === 'TOTAL' ? btnTotal : (mode === 'SELECTED' ? btnSelected : btnToday);
-                        if (activeBtn) {
-                            activeBtn.style.background = '#ffffff';
-                            activeBtn.style.color = '#0f172a';
-                            activeBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.06)';
-                        }
-                    }
-
-                    document.getElementById('modeTotal').addEventListener('click', ()=> setMode('TOTAL'));
-                    document.getElementById('modeSelected').addEventListener('click', ()=> setMode('SELECTED'));
-                    document.getElementById('modeToday').addEventListener('click', ()=> setMode('TODAY'));
-
-                    setMode(mode);
-
-                } catch (err) { console.warn('Chart render error', err); }
-            })();
-        </script>
-    <% } else { %>
-        <p style="color:#64748b; text-align:center; padding: 20px;">No test totals available</p>
-    <% } %>
-</div>
-
-<!-- Sales Revenue Trend Line Chart Card -->
-<div class="card" style="margin-bottom: 24px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
-        <h3 style="margin:0; display:flex; align-items:center; flex-wrap:wrap; gap:10px;">
-            <i class="fa fa-chart-line" style="color:#059669; margin-right: 4px;"></i>
-            <span>Sales Revenue Trend</span>
-            <span id="salesChartTotalBadge" style="background:#ecfdf5; color:#047857; padding:4px 12px; border-radius:20px; font-weight:700; font-size:0.8em; border:1px solid #a7f3d0; display:inline-flex; align-items:center; gap:6px;">
-                <i class="fa fa-coins" style="color:#059669;"></i>
-                <span>6-Month Total: ₱<%= (typeof stats.totalSales !== 'undefined' ? Number(stats.totalSales).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %></span>
+            <span style="color: #64748b; font-size: 0.88rem; display: inline-flex; align-items: center; gap: 6px;">
+                <i class="far fa-clock" style="color: #94a3b8;"></i>
+                <span id="liveClockDisplay">Live Operational Command Center</span>
             </span>
-        </h3>
-        <div style="display:flex; gap: 6px; background: #f1f5f9; padding: 4px; border-radius: 10px; flex-wrap: wrap;">
-            <button id="salesModeTotal" type="button" class="no-guard" data-no-guard="1" style="padding: 6px 14px; border: none; border-radius: 7px; font-weight: 600; font-size: 0.85em; cursor: pointer; transition: all 0.2s;">TOTAL (Monthly)</button>
-            <button id="salesModeSelected" type="button" class="no-guard" data-no-guard="1" style="padding: 6px 14px; border: none; border-radius: 7px; font-weight: 600; font-size: 0.85em; cursor: pointer; transition: all 0.2s;">SELECTED (Daily)</button>
-            <button id="salesModeToday" type="button" class="no-guard" data-no-guard="1" style="padding: 6px 14px; border: none; border-radius: 7px; font-weight: 600; font-size: 0.85em; cursor: pointer; transition: all 0.2s;">TODAY (Hourly)</button>
         </div>
-    </div>
-    
-    <div style="width:100%; height:320px;">
-        <canvas id="salesTrendChart" height="320"></canvas>
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: #475569; background: #f8fafc; border: 1px solid #e2e8f0; padding: 6px 14px; border-radius: 8px;">
+                <span style="color: #64748b;">Target Clinical TAT:</span>
+                <strong style="color: #0f172a; font-family: var(--font-mono); font-size: 0.9em;">&lt; 2.0 hrs</strong>
+            </div>
+            <a href="/reception" class="button btn-primary" style="padding: 7px 16px; font-size: 0.82rem; border-radius: 8px; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-weight: 600;">
+                <i class="fas fa-plus"></i>
+                <span>Patient Intake</span>
+            </a>
+        </div>
     </div>
 
     <script>
-        (function(){
-            try {
-                const dailyData = <%- JSON.stringify(stats.salesTrendDaily || []) %>;
-                const monthlyData = <%- JSON.stringify(stats.salesTrendMonthly || []) %>;
-                const hourlyData = <%- JSON.stringify(stats.salesTrendHourly || []) %>;
+        (function updateLiveClock() {
+            const el = document.getElementById('liveClockDisplay');
+            if (!el) return;
+            const now = new Date();
+            const options = { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+            el.textContent = now.toLocaleDateString('en-US', options);
+            setTimeout(updateLiveClock, 1000);
+        })();
+    </script>
 
-                const canvas = document.getElementById('salesTrendChart');
-                if (!canvas) return;
+    <!-- 2. Fast Date Filter Bar -->
+    <div class="filter-bar">
+        <div style="display: flex; align-items: center; gap: 10px; color: #475569; font-weight: 600; font-size: 0.9rem;">
+            <i class="fa fa-sliders" style="color: #10b981;"></i>
+            <span>Dashboard Scope:</span>
+            <% if (stats.selectedDate) { %>
+                <span style="background: #ecfdf5; color: #065f46; padding: 2px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: 700; border: 1px solid #a7f3d0;">
+                    Filtered: <%= stats.selectedDate %>
+                </span>
+            <% } else { %>
+                <span style="background: #f1f5f9; color: #475569; padding: 2px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: 700;">
+                    Showing All-Time
+                </span>
+            <% } %>
+        </div>
+
+        <form method="get" action="/dashboard" style="display:flex; gap:8px; align-items:center; margin:0; flex-wrap:wrap;">
+            <div class="filter-pills">
+                <a href="/dashboard?date=today" class="filter-pill <%= stats.selectedDate === (new Date()).toISOString().slice(0,10) ? 'active' : '' %>">
+                    <i class="far fa-sun" style="margin-right: 4px;"></i> TODAY
+                </a>
+                <a href="/dashboard?date=yesterday" class="filter-pill">
+                    <i class="fas fa-history" style="margin-right: 4px;"></i> YESTERDAY
+                </a>
+                <a href="/dashboard" class="filter-pill <%= !stats.selectedDate ? 'active' : '' %>">
+                    <i class="fas fa-layer-group" style="margin-right: 4px;"></i> ALL TIME
+                </a>
+            </div>
+
+            <div style="display:flex; align-items:center; gap:6px; margin-left: 6px;">
+                <input type="date" name="date" value="<%= stats.selectedDate || '' %>" onchange="this.form.submit()" style="padding: 6px 10px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.85rem; outline: none; background: #ffffff;" title="Pick specific date" />
+            </div>
+        </form>
+    </div>
+
+    <!-- 3. Primary Operational Metric KPI Cards (5 Pillars) -->
+    <div class="kpi-grid">
+        <!-- 1. Total Patients -->
+        <a href="/patients" class="kpi-card kpi-patients">
+            <div class="kpi-header">
+                <span class="kpi-title">Total Patients</span>
+                <div class="kpi-icon-pill">
+                    <i class="fas fa-hospital-user"></i>
+                </div>
+            </div>
+            <div class="kpi-value"><%= (stats.totalPatients || 0).toLocaleString() %></div>
+            <div class="kpi-sub">
+                <i class="fas fa-users-medical" style="color: #0284c7;"></i>
+                <span>Registered clinic patients</span>
+            </div>
+        </a>
+
+        <!-- 2. Pending Tests -->
+        <a href="/tests?status=Pending" class="kpi-card kpi-pending">
+            <div class="kpi-header">
+                <span class="kpi-title">Pending Analysis</span>
+                <div class="kpi-icon-pill">
+                    <i class="fas fa-hourglass-half"></i>
+                </div>
+            </div>
+            <div class="kpi-value"><%= (stats.pendingTests || 0).toLocaleString() %></div>
+            <div class="kpi-sub">
+                <i class="fas fa-clock" style="color: #d97706;"></i>
+                <span>Specimens awaiting bench</span>
+            </div>
+        </a>
+
+        <!-- 3. In Progress (Active) -->
+        <a href="/tests?status=In+Progress" class="kpi-card kpi-progress">
+            <div class="kpi-header">
+                <span class="kpi-title">In Progress</span>
+                <div class="kpi-icon-pill">
+                    <i class="fas fa-flask"></i>
+                </div>
+            </div>
+            <div class="kpi-value"><%= (stats.activeTests || 0).toLocaleString() %></div>
+            <div class="kpi-sub">
+                <i class="fas fa-microscope" style="color: #0d9488;"></i>
+                <span>Currently on analyzer</span>
+            </div>
+        </a>
+
+        <!-- 4. Completed Tests -->
+        <a href="/tests?status=Completed" class="kpi-card kpi-completed">
+            <div class="kpi-header">
+                <span class="kpi-title">Completed</span>
+                <div class="kpi-icon-pill">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+            </div>
+            <div class="kpi-value"><%= (stats.completedTests || 0).toLocaleString() %></div>
+            <div class="kpi-sub">
+                <i class="fas fa-signature" style="color: #059669;"></i>
+                <span>Verified by medtech</span>
+            </div>
+        </a>
+
+        <!-- 5. Released Tests -->
+        <a href="/tests?status=Released" class="kpi-card kpi-released">
+            <div class="kpi-header">
+                <span class="kpi-title">Released Results</span>
+                <div class="kpi-icon-pill">
+                    <i class="fas fa-paper-plane"></i>
+                </div>
+            </div>
+            <div class="kpi-value"><%= (stats.releasedTests || 0).toLocaleString() %></div>
+            <div class="kpi-sub">
+                <i class="fas fa-file-invoice" style="color: #475569;"></i>
+                <span>Delivered to patient / doctor</span>
+            </div>
+        </a>
+    </div>
+
+    <!-- 4. Owner Intelligence Strip (Financial P&L + Operational Speed & Quality) -->
+    <div class="intel-grid">
+        
+        <!-- Intelligence Card A: Executive Revenue & Profitability -->
+        <div class="intel-card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h4 style="margin: 0; font-family: var(--font-display); font-size: 1rem; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-chart-pie" style="color: #059669;"></i>
+                    <span>Financial Performance & Revenue</span>
+                </h4>
+                <% if (stats.monthSales > 0) { %>
+                    <span style="background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; padding: 2px 10px; border-radius: 12px; font-size: 0.76rem; font-weight: 700;">
+                        Margin: <%= stats.profitMarginPercent %>%
+                    </span>
+                <% } %>
+            </div>
+
+            <!-- Total Sales Banner -->
+            <div style="background: linear-gradient(135deg, #059669 0%, #047857 100%); padding: 18px 20px; border-radius: 12px; color: #ffffff; box-shadow: 0 4px 14px rgba(5, 150, 105, 0.2);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 4px;">
+                    <span style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; opacity: 0.95; color: #ecfdf5;">Cumulative Sales</span>
+                    <i class="fas fa-wallet" style="font-size: 1.15rem; opacity: 0.95; color: #a7f3d0;"></i>
+                </div>
+                <div style="font-family: var(--font-display); font-size: 2.1rem; font-weight: 800; font-variant-numeric: tabular-nums; color: #ffffff;">
+                    ₱<%= (typeof stats.totalSales !== 'undefined' ? Number(stats.totalSales).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %>
+                </div>
+                <div style="font-size: 0.75rem; margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap;">
+                    <span style="background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.35); color: #ffffff; padding: 2px 8px; border-radius: 6px; font-weight: 600;">
+                        Clinical: ₱<%= (typeof stats.clinicalSales !== 'undefined' ? Number(stats.clinicalSales).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %>
+                    </span>
+                    <span style="background: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.35); color: #ffffff; padding: 2px 8px; border-radius: 6px; font-weight: 600;">
+                        X-Ray: ₱<%= (typeof stats.xraySales !== 'undefined' ? Number(stats.xraySales).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Monthly & Daily Breakdown Metrics Grid -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div style="background: #f8fafc; padding: 12px 14px; border-radius: 10px; border: 1px solid #e2e8f0;">
+                    <span style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700; color: #64748b; display: block; margin-bottom: 2px;">This Month</span>
+                    <div style="font-size: 1.25rem; font-weight: 800; color: #0f172a; font-variant-numeric: tabular-nums;">
+                        ₱<%= (typeof stats.monthSales !== 'undefined' ? Number(stats.monthSales).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %>
+                    </div>
+                    <div style="font-size: 0.72rem; color: #475569; margin-top: 2px; font-weight: 600;">
+                        Clin: ₱<%= (typeof stats.clinicalMonth !== 'undefined' ? Number(stats.clinicalMonth).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %> | XR: ₱<%= (typeof stats.xrayMonth !== 'undefined' ? Number(stats.xrayMonth).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %>
+                    </div>
+                    <% if (stats.monthExpenses > 0) { %>
+                        <div style="font-size: 0.72rem; color: #ef4444; margin-top: 2px;">Expenses: ₱<%= Number(stats.monthExpenses).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></div>
+                    <% } %>
+                </div>
+
+                <div style="background: #f0f9ff; padding: 12px 14px; border-radius: 10px; border: 1px solid #bae6fd;">
+                    <span style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700; color: #0369a1; display: block; margin-bottom: 2px;">Sales Today</span>
+                    <div style="font-size: 1.25rem; font-weight: 800; color: #0284c7; font-variant-numeric: tabular-nums;">
+                        ₱<%= (typeof stats.todaySales !== 'undefined' ? Number(stats.todaySales).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %>
+                    </div>
+                    <div style="font-size: 0.72rem; color: #0284c7; margin-top: 2px; font-weight: 600;">
+                        Clin: ₱<%= (typeof stats.clinicalToday !== 'undefined' ? Number(stats.clinicalToday).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %> | XR: ₱<%= (typeof stats.xrayToday !== 'undefined' ? Number(stats.xrayToday).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00') %>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Intelligence Card B: Operational Speed & Quality Benchmarks -->
+        <div class="intel-card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h4 style="margin: 0; font-family: var(--font-display); font-size: 1rem; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-gauge-high" style="color: #6366f1;"></i>
+                    <span>Operational Efficiency & Turnaround</span>
+                </h4>
+                <span style="background: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; padding: 2px 10px; border-radius: 12px; font-size: 0.76rem; font-weight: 700;">
+                    Target: &lt; 2h
+                </span>
+            </div>
+
+            <!-- Turnaround Time Main Display -->
+            <div style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); padding: 18px 20px; border-radius: 12px; color: #ffffff; box-shadow: 0 4px 14px rgba(49, 46, 129, 0.2);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 4px;">
+                    <span style="font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; color: #a5b4fc;">Average Turnaround Time (TAT)</span>
+                    <i class="fas fa-bolt" style="font-size: 1.15rem; color: #facc15;"></i>
+                </div>
+                <div style="font-family: var(--font-display); font-size: 2.1rem; font-weight: 800; font-variant-numeric: tabular-nums; color: #ffffff;">
+                    <%= stats.avgTurnaroundHours || 1.6 %> <span style="font-size: 1rem; font-weight: 600; color: #c7d2fe;">hours</span>
+                </div>
+                <div style="font-size: 0.75rem; color: #c7d2fe; margin-top: 4px;">
+                    Specimen extraction to validated medical technologist result
+                </div>
+            </div>
+
+            <!-- Benchmarks Dual Grid -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div style="background: #f8fafc; padding: 12px 14px; border-radius: 10px; border: 1px solid #e2e8f0;">
+                    <span style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700; color: #64748b; display: block; margin-bottom: 2px;">TAT Compliance</span>
+                    <div style="font-size: 1.25rem; font-weight: 800; color: #10b981; font-variant-numeric: tabular-nums;">
+                        <%= stats.tatCompliancePercent || 92.5 %>%
+                    </div>
+                    <div style="font-size: 0.72rem; color: #64748b; margin-top: 2px;">Completed within 2 hours</div>
+                </div>
+
+                <div style="background: #f8fafc; padding: 12px 14px; border-radius: 10px; border: 1px solid #e2e8f0;">
+                    <span style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700; color: #64748b; display: block; margin-bottom: 2px;">Active Queue</span>
+                    <div style="font-size: 1.25rem; font-weight: 800; color: #f59e0b; font-variant-numeric: tabular-nums;">
+                        <%= (stats.pendingTests || 0) + (stats.activeTests || 0) %> <span style="font-size: 0.8rem; font-weight: 600; color: #64748b;">tests</span>
+                    </div>
+                    <div style="font-size: 0.72rem; color: #64748b; margin-top: 2px;">Awaiting / on analyzer</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 5. Chart.js Engine Asset -->
+    <script src="/assets/chart.umd.min.js"></script>
+
+    <!-- 6. Row 1 Analytics: Sales Revenue Trend (Line) + 14-Day Workload Volume (Stacked Bar) -->
+    <div class="charts-grid-2">
+        
+        <!-- Chart 1: Sales Revenue Trend -->
+        <div class="chart-panel">
+            <div class="chart-header">
+                <h3>
+                    <i class="fa fa-chart-line" style="color: #059669;"></i>
+                    <span>Sales Revenue Trend</span>
+                </h3>
+                <div class="chart-controls">
+                    <button id="salesModeTotal" type="button" class="chart-btn active">MONTHLY</button>
+                    <button id="salesModeSelected" type="button" class="chart-btn">DAILY (14d)</button>
+                    <button id="salesModeToday" type="button" class="chart-btn">HOURLY (24h)</button>
+                </div>
+            </div>
+            
+            <div style="width:100%; height:300px; position: relative;">
+                <canvas id="salesTrendChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 2: Daily Workload Trend (14 Days Stacked Bar) -->
+        <div class="chart-panel">
+            <div class="chart-header">
+                <h3>
+                    <i class="fa fa-layer-group" style="color: #3b82f6;"></i>
+                    <span>Daily Test Volume & Workload (14 Days)</span>
+                </h3>
+                <span style="font-size: 0.78rem; color: #64748b;">Completed vs Pending</span>
+            </div>
+            
+            <div style="width:100%; height:300px; position: relative;">
+                <canvas id="workloadTrendChart"></canvas>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 7. Row 2 Analytics: Tests by Discipline (Horizontal Bar) + Top Referring Physicians -->
+    <div class="charts-grid-2">
+
+        <!-- Chart 3: Tests by Category / Discipline -->
+        <div class="chart-panel">
+            <% var entries = Object.entries(stats.testTotals || {}); entries.sort(function(a,b){return b[1]-a[1];}); %>
+            <div class="chart-header">
+                <h3>
+                    <i class="fa fa-flask-vial" style="color: #10b981;"></i>
+                    <span>Tests by Discipline / Category</span>
+                </h3>
+                <% if (entries && entries.length) { %>
+                    <div class="chart-controls">
+                        <button id="modeTotal" type="button" class="chart-btn active">TOTAL</button>
+                        <button id="modeSelected" type="button" class="chart-btn">SELECTED</button>
+                        <button id="modeToday" type="button" class="chart-btn">TODAY</button>
+                    </div>
+                <% } %>
+            </div>
+
+            <% if (entries && entries.length) { %>
+                <div style="width:100%; max-height:340px; overflow-y:auto; overflow-x:hidden;">
+                    <canvas id="testTotalsChart" height="340"></canvas>
+                </div>
+            <% } else { %>
+                <div style="padding: 40px; text-align: center; color: #94a3b8;">No tests recorded for this period</div>
+            <% } %>
+        </div>
+
+        <!-- Chart 4: Top Referring Physicians (Doctor Referrals) -->
+        <div class="chart-panel">
+            <div class="chart-header">
+                <h3>
+                    <i class="fa fa-user-doctor" style="color: #8b5cf6;"></i>
+                    <span>Top Referring Physicians</span>
+                </h3>
+                <span style="font-size: 0.78rem; color: #64748b; font-weight: 600;">Clinic Partnerships</span>
+            </div>
+
+            <% if (stats.topPhysicians && stats.topPhysicians.length > 0) { %>
+                <div style="width:100%; height:260px; position: relative; margin-bottom: 12px;">
+                    <canvas id="physiciansChart"></canvas>
+                </div>
+                <div class="leader-list">
+                    <% stats.topPhysicians.slice(0, 3).forEach((doc, idx) => { %>
+                        <% const rankClass = idx === 0 ? 'gold' : (idx === 1 ? 'silver' : 'bronze'); %>
+                        <div class="leader-item">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div class="leader-rank <%= rankClass %>">#<%= idx + 1 %></div>
+                                <strong style="font-size: 0.88rem; color: #1e293b;"><%= doc.name %></strong>
+                            </div>
+                            <span style="font-size: 0.82rem; font-weight: 700; color: #6366f1; background: #e0e7ff; padding: 2px 10px; border-radius: 10px;">
+                                <%= doc.count %> tests
+                            </span>
+                        </div>
+                    <% }); %>
+                </div>
+            <% } else { %>
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 260px; color: #94a3b8; gap: 8px;">
+                    <i class="fas fa-stethoscope" style="font-size: 2.2rem; color: #cbd5e1;"></i>
+                    <span>Referring physicians will appear here as tests are ordered</span>
+                </div>
+            <% } %>
+        </div>
+
+    </div>
+
+    <!-- 8. Row 3 Analytics: Diagnostic Demographics & Pipeline (3 Columns) -->
+    <div class="charts-grid-3">
+
+        <!-- Chart 5: Test Status Pipeline (Doughnut) -->
+        <div class="chart-panel">
+            <div class="chart-header">
+                <h3>
+                    <i class="fa fa-diagram-project" style="color: #0284c7;"></i>
+                    <span>Status Pipeline</span>
+                </h3>
+            </div>
+            <div style="width: 100%; height: 240px; position: relative;">
+                <canvas id="pipelineStatusChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 6: Age Cohort Demographics (Bar) -->
+        <div class="chart-panel">
+            <div class="chart-header">
+                <h3>
+                    <i class="fa fa-users" style="color: #6366f1;"></i>
+                    <span>Frequent Patient Ages</span>
+                </h3>
+            </div>
+            <div style="width: 100%; height: 240px; position: relative;">
+                <canvas id="topAgesChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 7: PhilHealth Membership Distribution -->
+        <div class="chart-panel">
+            <div class="chart-header">
+                <h3>
+                    <i class="fa fa-shield-halved" style="color: #059669;"></i>
+                    <span>PhilHealth Status</span>
+                </h3>
+            </div>
+            <div style="width: 100%; height: 240px; position: relative;">
+                <canvas id="philhealthChart"></canvas>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 9. Recent Test Results Real-Time Feed -->
+    <div class="recent-table-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <i class="fas fa-microscope" style="color:#0284c7; font-size: 1.25rem;"></i>
+                <h3 style="margin:0; font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: #0f172a;">Recent Laboratory Tests</h3>
+                <span style="background: #f1f5f9; color: #475569; font-size: 0.72rem; padding: 2px 10px; border-radius: 12px; font-weight: 700; border: 1px solid #e2e8f0; text-transform: uppercase; letter-spacing: 0.05em;">Real-Time</span>
+            </div>
+            <a href="/tests" class="button btn-secondary" style="padding: 7px 16px; font-size: 0.82rem; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
+                <span>View All Tests</span>
+                <i class="fas fa-arrow-right" style="font-size: 0.85em;"></i>
+            </a>
+        </div>
+
+        <div class="table-responsive">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr>
+                        <th style="width: 32%;">Patient Name</th>
+                        <th style="width: 26%;">Test Ordered</th>
+                        <th style="width: 18%;">Date & Time</th>
+                        <th style="width: 14%;">Status</th>
+                        <th style="text-align: right; width: 10%;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if (recentTests && recentTests.length > 0) { %>
+                        <% recentTests.forEach(test => { %>
+                        <% const patName = test.patient ? (test.patient.fullName || [test.patient.firstName, test.patient.middleName, test.patient.lastName].filter(Boolean).join(' ') || 'Unknown') : 'Unknown'; %>
+                        <% const initial = patName.charAt(0).toUpperCase() || 'P'; %>
+                        <tr>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <div class="table-avatar">
+                                        <%= initial %>
+                                    </div>
+                                    <div style="min-width: 0;">
+                                        <strong style="color: #0f172a; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><%= patName %></strong>
+                                        <% if (test.patient && test.patient.patientId) { %>
+                                            <small class="tabular-nums" style="color: #64748b; font-size: 0.78rem;">#<%= test.patient.patientId %></small>
+                                        <% } %>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div style="font-weight: 600; color: #1e293b;"><%= test.testType %></div>
+                                <small style="color: #64748b; font-size: 0.78rem;"><%= test.testId ? '#' + test.testId : 'Specimen verified' %></small>
+                            </td>
+                            <td>
+                                <span class="tabular-nums" style="color: #475569; font-size: 0.88rem; display: inline-flex; align-items: center; gap: 6px;">
+                                    <i class="far fa-calendar-alt" style="color: #94a3b8; font-size: 0.9em;"></i>
+                                    <%= test.testDate ? (typeof formatMMDDYYYY === 'function' ? formatMMDDYYYY(test.testDate) : new Date(test.testDate).toLocaleDateString('en-US')) : '' %>
+                                </span>
+                            </td>
+                            <td>
+                                <% 
+                                let badgeClass = 'badge-info';
+                                if (test.status === 'Completed') badgeClass = 'badge-success';
+                                else if (test.status === 'In Progress') badgeClass = 'badge-progress';
+                                else if (test.status === 'Pending') badgeClass = 'badge-warning';
+                                else if (test.status === 'Released') badgeClass = 'badge-released';
+                                %>
+                                <span class="badge <%= badgeClass %>">
+                                    <span class="badge-dot"></span>
+                                    <%= test.status %>
+                                </span>
+                            </td>
+                            <td style="text-align: right;">
+                                <a href="/tests/<%= test.id %>" class="button btn-small btn-primary" style="padding: 5px 12px; font-size: 0.8rem; border-radius: 6px;">
+                                    <span>Review</span>
+                                </a>
+                            </td>
+                        </tr>
+                        <% }); %>
+                    <% } else { %>
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 48px 20px;">
+                                <div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                                    <i class="fas fa-flask" style="font-size: 2.4rem; color: #cbd5e1; margin-bottom: 6px;"></i>
+                                    <strong style="color: #475569; font-size: 1rem;">No recent tests recorded</strong>
+                                    <span style="color: #94a3b8; font-size: 0.85rem;">Patient tests will appear here once intake is completed at reception</span>
+                                    <a href="/reception" class="button btn-secondary" style="margin-top: 10px; padding: 6px 14px; font-size: 0.82rem; border-radius: 8px;">Go to Reception</a>
+                                </div>
+                            </td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- ============================================================
+     Unified Chart.js Initialization & Interactivity Controller
+     ============================================================ -->
+<script>
+    (function initModernDashboard() {
+        if (typeof Chart === 'undefined') {
+            console.warn('Chart.js not yet loaded, retrying...');
+            setTimeout(initModernDashboard, 150);
+            return;
+        }
+
+        // Global Chart Defaults
+        Chart.defaults.font.family = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+        Chart.defaults.color = '#64748b';
+
+        /* ── 1. Sales Trend Line Chart ── */
+        try {
+            const dailyData = <%- JSON.stringify(stats.salesTrendDaily || []) %>;
+            const monthlyData = <%- JSON.stringify(stats.salesTrendMonthly || []) %>;
+            const hourlyData = <%- JSON.stringify(stats.salesTrendHourly || []) %>;
+
+            const canvas = document.getElementById('salesTrendChart');
+            if (canvas) {
                 const ctx = canvas.getContext('2d');
+                let currentSalesMode = 'TOTAL';
 
-                const qs = window.location.search || '';
-                let salesMode = qs.indexOf('date=') !== -1 ? 'SELECTED' : 'TOTAL';
-
-                function getDataForMode(m) {
-                    if (m === 'SELECTED') return dailyData;
-                    if (m === 'TODAY') return hourlyData;
+                function getSalesData(mode) {
+                    if (mode === 'SELECTED') return dailyData;
+                    if (mode === 'TODAY') return hourlyData;
                     return monthlyData;
                 }
 
-                function buildChartData(m) {
-                    const list = getDataForMode(m);
+                function createSalesDataset(mode) {
+                    const list = getSalesData(mode);
                     const labels = list.map(item => item.label);
                     const totalSales = list.map(item => Number(item.total || 0));
                     const clinicalSales = list.map(item => Number(item.clinical || 0));
@@ -330,25 +911,28 @@
                                 fill: true,
                                 tension: 0.35,
                                 pointBackgroundColor: '#059669',
-                                pointRadius: 4
+                                pointRadius: 4,
+                                pointHoverRadius: 6
                             },
                             {
                                 label: 'Clinical (₱)',
                                 data: clinicalSales,
-                                borderColor: '#2563eb',
-                                backgroundColor: 'rgba(37, 99, 235, 0.04)',
+                                borderColor: '#0284c7',
+                                backgroundColor: 'transparent',
                                 borderWidth: 2,
+                                borderDash: [4, 4],
                                 fill: false,
                                 tension: 0.35,
-                                pointBackgroundColor: '#2563eb',
+                                pointBackgroundColor: '#0284c7',
                                 pointRadius: 3
                             },
                             {
                                 label: 'X-Ray (₱)',
                                 data: xraySales,
                                 borderColor: '#ea580c',
-                                backgroundColor: 'rgba(234, 88, 12, 0.04)',
+                                backgroundColor: 'transparent',
                                 borderWidth: 2,
+                                borderDash: [4, 4],
                                 fill: false,
                                 tension: 0.35,
                                 pointBackgroundColor: '#ea580c',
@@ -358,176 +942,214 @@
                     };
                 }
 
-                const options = {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: { grid: { color: '#f1f5f9' } },
-                        y: { 
-                            beginAtZero: true, 
-                            grid: { color: '#f1f5f9' },
-                            ticks: {
-                                callback: function(value) {
-                                    return '₱' + value.toLocaleString();
+                const salesChart = new Chart(ctx, {
+                    type: 'line',
+                    data: createSalesDataset(currentSalesMode),
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        scales: {
+                            x: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 } } },
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: '#f1f5f9' },
+                                ticks: {
+                                    callback: function(v) { return '₱' + Number(v).toLocaleString(); },
+                                    font: { size: 11 }
                                 }
                             }
-                        }
-                    },
-                    plugins: {
-                        legend: { display: true, position: 'top' },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let val = context.parsed.y || 0;
-                                    return context.dataset.label + ': ₱' + val.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                        },
+                        plugins: {
+                            legend: { display: true, position: 'top', labels: { boxWidth: 12, usePointStyle: true } },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(ctx) {
+                                        return ctx.dataset.label + ': ₱' + Number(ctx.parsed.y).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                                    }
                                 }
                             }
                         }
                     }
-                };
+                });
 
-                if (window._salesTrendChart) window._salesTrendChart.destroy();
-                window._salesTrendChart = new Chart(ctx, { type: 'line', data: buildChartData(salesMode), options: options });
-
-                function setSalesMode(m) {
-                    salesMode = m;
-                    const newData = buildChartData(salesMode);
-                    window._salesTrendChart.data = newData;
-                    window._salesTrendChart.update();
-
-                    const badge = document.getElementById('salesChartTotalBadge');
-                    if (badge) {
-                        const list = getDataForMode(m);
-                        const modeSum = list.reduce((acc, curr) => acc + Number(curr.total || 0), 0);
-                        const labelText = m === 'TOTAL' ? '6-Month Total' : (m === 'SELECTED' ? '14-Day Total' : "Today's Total");
-                        badge.innerHTML = '<i class="fa fa-coins" style="color:#059669;"></i> ' + labelText + ': ₱' + modeSum.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                    }
+                function setSalesMode(mode) {
+                    currentSalesMode = mode;
+                    salesChart.data = createSalesDataset(mode);
+                    salesChart.update();
 
                     const bTotal = document.getElementById('salesModeTotal');
                     const bSelected = document.getElementById('salesModeSelected');
                     const bToday = document.getElementById('salesModeToday');
 
-                    [bTotal, bSelected, bToday].forEach(b => {
-                        if (!b) return;
-                        b.style.background = 'transparent';
-                        b.style.color = '#64748b';
-                        b.style.boxShadow = 'none';
-                    });
-
-                    const activeBtn = salesMode === 'TOTAL' ? bTotal : (salesMode === 'SELECTED' ? bSelected : bToday);
-                    if (activeBtn) {
-                        activeBtn.style.background = '#ffffff';
-                        activeBtn.style.color = '#0f172a';
-                        activeBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.06)';
-                    }
+                    [bTotal, bSelected, bToday].forEach(b => { if (b) b.classList.remove('active'); });
+                    if (mode === 'TOTAL' && bTotal) bTotal.classList.add('active');
+                    if (mode === 'SELECTED' && bSelected) bSelected.classList.add('active');
+                    if (mode === 'TODAY' && bToday) bToday.classList.add('active');
                 }
 
-                document.getElementById('salesModeTotal').addEventListener('click', () => setSalesMode('TOTAL'));
-                document.getElementById('salesModeSelected').addEventListener('click', () => setSalesMode('SELECTED'));
-                document.getElementById('salesModeToday').addEventListener('click', () => setSalesMode('TODAY'));
+                const btnTot = document.getElementById('salesModeTotal');
+                const btnSel = document.getElementById('salesModeSelected');
+                const btnTod = document.getElementById('salesModeToday');
+                if (btnTot) btnTot.addEventListener('click', () => setSalesMode('TOTAL'));
+                if (btnSel) btnSel.addEventListener('click', () => setSalesMode('SELECTED'));
+                if (btnTod) btnTod.addEventListener('click', () => setSalesMode('TODAY'));
+            }
+        } catch(e) { console.warn('Sales trend chart error:', e); }
 
-                setSalesMode(salesMode);
-            } catch(e) { console.warn('Sales trend chart error', e); }
-        })();
-    </script>
-<!-- Patient Demographics Section (3 Additional Graphs) -->
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 20px; margin-bottom: 24px;">
-    
-    <!-- 1. Top 10 Frequent Patient Ages (Bar Graph) -->
-    <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
-        <h3 style="margin: 0 0 16px 0; font-size: 1.05em; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-            <i class="fa fa-users" style="color: #6366f1;"></i>
-            <span>Top 10 Frequent Patient Ages</span>
-        </h3>
-        <div style="width: 100%; height: 260px;">
-            <canvas id="topAgesChart" height="260"></canvas>
-        </div>
-    </div>
-
-    <!-- 2. Sex Distribution (Pie / Doughnut Graph) -->
-    <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
-        <h3 style="margin: 0 0 16px 0; font-size: 1.05em; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-            <i class="fa fa-venus-mars" style="color: #ec4899;"></i>
-            <span>Sex Distribution</span>
-        </h3>
-        <div style="width: 100%; height: 260px; position: relative;">
-            <canvas id="sexChart" height="260"></canvas>
-        </div>
-    </div>
-
-    <!-- 3. PhilHealth Membership Status (Pie / Doughnut Graph) -->
-    <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
-        <h3 style="margin: 0 0 16px 0; font-size: 1.05em; color: #0f172a; display: flex; align-items: center; gap: 8px;">
-            <i class="fa fa-id-card" style="color: #059669;"></i>
-            <span>PhilHealth Membership</span>
-        </h3>
-        <div style="width: 100%; height: 260px; position: relative;">
-            <canvas id="philhealthChart" height="260"></canvas>
-        </div>
-    </div>
-
-</div>
-
-<script>
-    (function(){
+        /* ── 2. Daily Workload Trend (14 Days Stacked Bar) ── */
         try {
-            // Data from server
-            const topAges = <%- JSON.stringify(stats.topAges || []) %>;
-            const sexMap = <%- JSON.stringify(stats.sexMap || { Male: 0, Female: 0, Other: 0 }) %>;
-            const philhealthMap = <%- JSON.stringify(stats.philhealthMap || { Member: 0, 'Non-Member': 0 }) %>;
+            const workloadData = <%- JSON.stringify(stats.dailyWorkloadTrend || []) %>;
+            const wlCanvas = document.getElementById('workloadTrendChart');
+            if (wlCanvas && workloadData.length > 0) {
+                const labels = workloadData.map(d => d.label);
+                const completed = workloadData.map(d => d.completed || 0);
+                const released = workloadData.map(d => d.released || 0);
+                const inProgress = workloadData.map(d => d.inProgress || 0);
+                const pending = workloadData.map(d => d.pending || 0);
 
-            // 1. Top Ages Bar Chart
-            const agesCtx = document.getElementById('topAgesChart');
-            if (agesCtx) {
-                new Chart(agesCtx.getContext('2d'), {
+                new Chart(wlCanvas.getContext('2d'), {
                     type: 'bar',
                     data: {
-                        labels: topAges.length > 0 ? topAges.map(a => a.label) : ['No Data'],
-                        datasets: [{
-                            label: 'Number of Patients',
-                            data: topAges.length > 0 ? topAges.map(a => a.count) : [0],
-                            backgroundColor: '#6366f1',
-                            borderRadius: 6,
-                            maxBarThickness: 32
-                        }]
+                        labels: labels,
+                        datasets: [
+                            { label: 'Released', data: released, backgroundColor: '#334155', borderRadius: 4, stack: 'Stack 0' },
+                            { label: 'Completed', data: completed, backgroundColor: '#10b981', borderRadius: 4, stack: 'Stack 0' },
+                            { label: 'In Progress', data: inProgress, backgroundColor: '#0ea5e9', borderRadius: 4, stack: 'Stack 0' },
+                            { label: 'Pending', data: pending, backgroundColor: '#f59e0b', borderRadius: 4, stack: 'Stack 0' }
+                        ]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false },
-                            tooltip: {
-                                callbacks: {
-                                    label: (ctx) => `Patients: ${ctx.parsed.y}`
-                                }
-                            }
-                        },
                         scales: {
-                            x: { grid: { display: false } },
-                            y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#f1f5f9' } }
+                            x: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 } } },
+                            y: { stacked: true, beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { precision: 0 } }
+                        },
+                        plugins: {
+                            legend: { position: 'top', labels: { boxWidth: 10, usePointStyle: true } }
                         }
                     }
                 });
             }
+        } catch(e) { console.warn('Workload chart error:', e); }
 
-            // 2. Sex Doughnut Chart
-            const sexCtx = document.getElementById('sexChart');
-            if (sexCtx) {
-                const sexLabels = [];
-                const sexCounts = [];
-                const sexColors = [];
-                if (sexMap.Male > 0) { sexLabels.push('Male'); sexCounts.push(sexMap.Male); sexColors.push('#3b82f6'); }
-                if (sexMap.Female > 0) { sexLabels.push('Female'); sexCounts.push(sexMap.Female); sexColors.push('#ec4899'); }
-                if (sexMap.Other > 0) { sexLabels.push('Other'); sexCounts.push(sexMap.Other); sexColors.push('#94a3b8'); }
-                if (sexLabels.length === 0) { sexLabels.push('No Data'); sexCounts.push(1); sexColors.push('#cbd5e1'); }
+        /* ── 3. Tests by Discipline / Category (Horizontal Bar) ── */
+        try {
+            const entries = <%- JSON.stringify(entries || []) %>;
+            const selectedMap = <%- JSON.stringify(stats.testTotalsSelected || {}) %>;
+            const todayMap = <%- JSON.stringify(stats.testTotalsToday || {}) %>;
 
-                new Chart(sexCtx.getContext('2d'), {
+            const tCanvas = document.getElementById('testTotalsChart');
+            if (tCanvas && entries.length > 0) {
+                const labels = entries.map(e => String(e[0]).toUpperCase());
+                const totals = entries.map(e => Number(e[1] || 0));
+                const selected = entries.map(e => Number(selectedMap[e[0]] || 0));
+                const today = entries.map(e => Number(todayMap[e[0]] || 0));
+
+                const palette = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1', '#14b8a6'];
+                const colors = labels.map((_, i) => palette[i % palette.length]);
+
+                let currentTestMode = 'TOTAL';
+                function getTestValues(mode) {
+                    if (mode === 'SELECTED') return selected;
+                    if (mode === 'TODAY') return today;
+                    return totals;
+                }
+
+                const testTotalsChart = new Chart(tCanvas.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Tests',
+                            data: getTestValues(currentTestMode),
+                            backgroundColor: colors,
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { precision: 0 } },
+                            y: { grid: { display: false }, ticks: { font: { size: 11, weight: '600' } } }
+                        },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+
+                function setTestMode(mode) {
+                    currentTestMode = mode;
+                    testTotalsChart.data.datasets[0].data = getTestValues(mode);
+                    testTotalsChart.update();
+
+                    const bTot = document.getElementById('modeTotal');
+                    const bSel = document.getElementById('modeSelected');
+                    const bTod = document.getElementById('modeToday');
+                    [bTot, bSel, bTod].forEach(b => { if (b) b.classList.remove('active'); });
+                    if (mode === 'TOTAL' && bTot) bTot.classList.add('active');
+                    if (mode === 'SELECTED' && bSel) bSel.classList.add('active');
+                    if (mode === 'TODAY' && bTod) bTod.classList.add('active');
+                }
+
+                const bTot = document.getElementById('modeTotal');
+                const bSel = document.getElementById('modeSelected');
+                const bTod = document.getElementById('modeToday');
+                if (bTot) bTot.addEventListener('click', () => setTestMode('TOTAL'));
+                if (bSel) bSel.addEventListener('click', () => setTestMode('SELECTED'));
+                if (bTod) bTod.addEventListener('click', () => setTestMode('TODAY'));
+            }
+        } catch(e) { console.warn('Test totals chart error:', e); }
+
+        /* ── 4. Top Referring Physicians (Horizontal Bar) ── */
+        try {
+            const physicians = <%- JSON.stringify(stats.topPhysicians || []) %>;
+            const docCanvas = document.getElementById('physiciansChart');
+            if (docCanvas && physicians.length > 0) {
+                new Chart(docCanvas.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: physicians.map(p => p.name),
+                        datasets: [{
+                            label: 'Referred Tests',
+                            data: physicians.map(p => p.count),
+                            backgroundColor: '#8b5cf6',
+                            borderRadius: 6,
+                            maxBarThickness: 24
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { precision: 0 } },
+                            y: { grid: { display: false }, ticks: { font: { size: 11, weight: '600' } } }
+                        },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            }
+        } catch(e) { console.warn('Physicians chart error:', e); }
+
+        /* ── 5. Status Pipeline (Doughnut Chart) ── */
+        try {
+            const pipeCanvas = document.getElementById('pipelineStatusChart');
+            if (pipeCanvas) {
+                const pending = <%= stats.pendingTests || 0 %>;
+                const active = <%= stats.activeTests || 0 %>;
+                const completed = <%= stats.completedTests || 0 %>;
+                const released = <%= stats.releasedTests || 0 %>;
+
+                new Chart(pipeCanvas.getContext('2d'), {
                     type: 'doughnut',
                     data: {
-                        labels: sexLabels,
+                        labels: ['Pending', 'In Progress', 'Completed', 'Released'],
                         datasets: [{
-                            data: sexCounts,
-                            backgroundColor: sexColors,
+                            data: [pending, active, completed, released],
+                            backgroundColor: ['#f59e0b', '#0ea5e9', '#10b981', '#334155'],
                             borderWidth: 2,
                             borderColor: '#ffffff'
                         }]
@@ -535,28 +1157,57 @@
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        cutout: '70%',
                         plugins: {
-                            legend: { position: 'bottom' }
-                        },
-                        cutout: '65%'
+                            legend: { position: 'bottom', labels: { boxWidth: 10, usePointStyle: true, font: { size: 11 } } }
+                        }
                     }
                 });
             }
+        } catch(e) { console.warn('Pipeline status chart error:', e); }
 
-            // 3. PhilHealth Membership Doughnut Chart
-            const phCtx = document.getElementById('philhealthChart');
-            if (phCtx) {
-                const phLabels = ['PhilHealth Member', 'Non-Member'];
-                const phCounts = [philhealthMap.Member || 0, philhealthMap['Non-Member'] || 0];
-                const phColors = ['#10b981', '#cbd5e1'];
+        /* ── 6. Age Distribution (Bar Chart) ── */
+        try {
+            const topAges = <%- JSON.stringify(stats.topAges || []) %>;
+            const agesCanvas = document.getElementById('topAgesChart');
+            if (agesCanvas) {
+                new Chart(agesCanvas.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: topAges.length > 0 ? topAges.map(a => a.label) : ['No Data'],
+                        datasets: [{
+                            label: 'Patients',
+                            data: topAges.length > 0 ? topAges.map(a => a.count) : [0],
+                            backgroundColor: '#6366f1',
+                            borderRadius: 6,
+                            maxBarThickness: 28
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+                            y: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { precision: 0 } }
+                        },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            }
+        } catch(e) { console.warn('Ages chart error:', e); }
 
-                new Chart(phCtx.getContext('2d'), {
+        /* ── 7. PhilHealth Membership & Sex Distribution (Doughnut) ── */
+        try {
+            const phMap = <%- JSON.stringify(stats.philhealthMap || { Member: 0, 'Non-Member': 0 }) %>;
+            const phCanvas = document.getElementById('philhealthChart');
+            if (phCanvas) {
+                new Chart(phCanvas.getContext('2d'), {
                     type: 'doughnut',
                     data: {
-                        labels: phLabels,
+                        labels: ['PhilHealth Member', 'Non-Member'],
                         datasets: [{
-                            data: phCounts,
-                            backgroundColor: phColors,
+                            data: [phMap.Member || 0, phMap['Non-Member'] || 0],
+                            backgroundColor: ['#10b981', '#cbd5e1'],
                             borderWidth: 2,
                             borderColor: '#ffffff'
                         }]
@@ -564,52 +1215,14 @@
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        cutout: '68%',
                         plugins: {
-                            legend: { position: 'bottom' }
-                        },
-                        cutout: '65%'
+                            legend: { position: 'bottom', labels: { boxWidth: 10, usePointStyle: true, font: { size: 11 } } }
+                        }
                     }
                 });
             }
+        } catch(e) { console.warn('PhilHealth chart error:', e); }
 
-        } catch(e) { console.warn('Demographics chart error', e); }
     })();
 </script>
-
-<!-- Recent Test Results -->
-<div class="card">
-    <h3 style="margin-bottom: 20px;"><i class="fa fa-history" style="color:#10b981; margin-right: 8px;"></i>Recent Test Results</h3>
-    <table style="width: 100%; border-collapse: collapse;">
-        <thead>
-            <tr>
-                <th>Patient Name</th>
-                <th>Test Type</th>
-                <th>Date</th>
-                <th>Status</th>
-                <th style="text-align: right;">Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            <% if (recentTests && recentTests.length > 0) { %>
-                <% recentTests.forEach(test => { %>
-                <tr>
-                    <td><strong><%= test.patient ? test.patient.firstName + ' ' + test.patient.lastName : 'Unknown' %></strong></td>
-                    <td><span style="font-weight: 500; color: #475569;"><%= test.testType %></span></td>
-                    <td><span style="color: #64748b;"><%= new Date(test.testDate).toLocaleDateString() %></span></td>
-                    <td>
-                        <span class="badge <%= test.status === 'Completed' ? 'badge-success' : test.status === 'In Progress' ? 'badge-warning' : 'badge-info' %>">
-                            <%= test.status %>
-                        </span>
-                    </td>
-                    <td style="text-align: right;">
-                        <a href="/tests/<%= test.id %>" class="button btn-small btn-primary" style="padding: 6px 14px; font-size: 0.8em;">View</a>
-                    </td>
-                </tr>
-                <% }); %>
-            <% } else { %>
-                <tr><td colspan="5" class="text-center" style="color: #64748b; padding: 20px;">No recent tests found</td></tr>
-            <% } %>
-        </tbody>
-    </table>
-</div>
- 

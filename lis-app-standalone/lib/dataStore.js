@@ -104,6 +104,8 @@ class DataStore {
       hr_documents: this.db.getHrDocuments ? this.db.getHrDocuments() : [],
       leave_records: this.db.getLeaveRecords ? this.db.getLeaveRecords() : [],
       dtr_records: this.db.getDtrRecords ? this.db.getDtrRecords() : [],
+      philhealth_records: this.db.getPhilhealthRecords ? this.db.getPhilhealthRecords() : [],
+      healthcard_records: this.db.getHealthCardRecords ? this.db.getHealthCardRecords() : [],
       settings: readData.settings || {}
     };
   }
@@ -132,6 +134,8 @@ class DataStore {
     if (name === 'hr_documents') return this.db.getHrDocuments ? this.db.getHrDocuments() : [];
     if (name === 'leave_records') return this.db.getLeaveRecords ? this.db.getLeaveRecords() : [];
     if (name === 'dtr_records') return this.db.getDtrRecords ? this.db.getDtrRecords() : [];
+    if (name === 'philhealth_records') return this.db.getPhilhealthRecords ? this.db.getPhilhealthRecords() : [];
+    if (name === 'healthcard_records') return this.db.getHealthCardRecords ? this.db.getHealthCardRecords() : [];
     return [];
   }
 
@@ -346,6 +350,30 @@ class DataStore {
       }
       items.forEach(it => this.db.saveDtrRecord && this.db.saveDtrRecord(it));
     }
+    else if (name === 'philhealth_records' && Array.isArray(items)) {
+      if (opts && opts.replace && this.db.getPhilhealthRecords) {
+        const incomingIds = new Set(items.map(i => i && (i.id || i._id)).filter(Boolean));
+        const current = this.db.getPhilhealthRecords() || [];
+        for (const it of current) {
+          if (it && it.id && !incomingIds.has(it.id) && this.db.deletePhilhealthRecord) {
+            this.db.deletePhilhealthRecord(it.id);
+          }
+        }
+      }
+      items.forEach(it => this.db.savePhilhealthRecord && this.db.savePhilhealthRecord(it));
+    }
+    else if (name === 'healthcard_records' && Array.isArray(items)) {
+      if (opts && opts.replace && this.db.getHealthCardRecords) {
+        const incomingIds = new Set(items.map(i => i && (i.id || i._id)).filter(Boolean));
+        const current = this.db.getHealthCardRecords() || [];
+        for (const it of current) {
+          if (it && it.id && !incomingIds.has(it.id) && this.db.deleteHealthCardRecord) {
+            this.db.deleteHealthCardRecord(it.id);
+          }
+        }
+      }
+      items.forEach(it => this.db.saveHealthCardRecord && this.db.saveHealthCardRecord(it));
+    }
   }
 
   mergeCollection(name, items, idKey = 'id') {
@@ -412,7 +440,9 @@ class DataStore {
         name === 'payroll_records' ? this.db.deletePayrollRecord :
         name === 'hr_documents' ? this.db.deleteHrDocument :
         name === 'leave_records' ? this.db.deleteLeaveRecord :
-        name === 'dtr_records' ? this.db.deleteDtrRecord : null;
+        name === 'dtr_records' ? this.db.deleteDtrRecord :
+        name === 'philhealth_records' ? this.db.deletePhilhealthRecord :
+        name === 'healthcard_records' ? this.db.deleteHealthCardRecord : null;
 
       if (deleteFn) {
         for (const id of deletedIds) {

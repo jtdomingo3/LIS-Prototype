@@ -80,6 +80,9 @@ async function getBrowser() {
           '--disable-gpu',
           '--disable-dev-shm-usage',
           '--disable-extensions',
+          '--renderer-process-limit=1',
+          '--js-flags=--max-old-space-size=128',
+          '--disable-background-networking',
         ],
       });
       _browser.on('disconnected', () => { _browser = null; _browserLaunchPromise = null; });
@@ -189,6 +192,22 @@ function inlineSignatureImages(html) {
   });
 }
 
+function formatMMDDYYYY(d) {
+  if (!d) return '';
+  if (typeof d === 'string') {
+    const s = d.trim();
+    const m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (m) {
+      return String(m[2]).padStart(2, '0') + '/' + String(m[3]).padStart(2, '0') + '/' + m[1];
+    }
+  }
+  const dt = (d instanceof Date) ? d : new Date(d);
+  if (isNaN(dt.getTime())) return String(d);
+  const mm = String(dt.getMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getDate()).padStart(2, '0');
+  return mm + '/' + dd + '/' + dt.getFullYear();
+}
+
 // ── render HTML for a fully-populated test ─────────────────────────────
 async function renderHtmlForTest(populatedTest, templateName) {
   const resultView  = path.join(__dirname, '..', 'views', 'reports', 'results', `${templateName}.ejs`);
@@ -196,7 +215,16 @@ async function renderHtmlForTest(populatedTest, templateName) {
   const inlineLogo  = getInlineLogo();
 
   const renderedResult = await new Promise((resolve, reject) => {
-    ejs.renderFile(resultView, { title: 'Result', test: populatedTest, layout: false, inlineLogo, hl: highlightResult }, (err, str) => {
+    ejs.renderFile(resultView, {
+      title: 'Result',
+      test: populatedTest,
+      layout: false,
+      inlineLogo,
+      hl: highlightResult,
+      formatMMDDYYYY,
+      formatMMDDYY: formatMMDDYYYY,
+      formatDate: formatMMDDYYYY
+    }, (err, str) => {
       if (err) return reject(err);
       resolve(str);
     });
@@ -206,11 +234,14 @@ async function renderHtmlForTest(populatedTest, templateName) {
     ejs.renderFile(wrapperView, {
       title: 'Print Report',
       test: populatedTest,
-      currentDate: new Date().toLocaleDateString(),
+      currentDate: formatMMDDYYYY(new Date()),
       renderedResultHtml: renderedResult,
       layout: false,
       inlineLogo,
-      hl: highlightResult
+      hl: highlightResult,
+      formatMMDDYYYY,
+      formatMMDDYY: formatMMDDYYYY,
+      formatDate: formatMMDDYYYY
     }, (err, str) => {
       if (err) return reject(err);
       resolve(str);
@@ -221,8 +252,38 @@ async function renderHtmlForTest(populatedTest, templateName) {
   return inlineSignatureImages(finalHtml);
 }
 
-// ── convert HTML → PDF using Edge/Chrome via puppeteer-core ────────────
+// ── convert HTML → PDF using Electron native printToPDF (fallback to Edge/Chrome) ─
 async function generatePdfBufferFromHtml(html) {
+  let electron = null;
+  try {
+    electron = require('electron');
+  } catch (_) {}
+
+  if (electron && electron.BrowserWindow) {
+    const { BrowserWindow } = electron;
+    const win = new BrowserWindow({
+      show: false,
+      width: 1200,
+      height: 800,
+      webPreferences: {
+        offscreen: true,
+        sandbox: true
+      }
+    });
+    try {
+      await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+      const buf = await win.webContents.printToPDF({
+        pageSize: 'Letter',
+        printBackground: true,
+        margins: { top: 0.2, bottom: 0.2, left: 0.2, right: 0.2 }
+      });
+      return buf;
+    } finally {
+      try { win.destroy(); } catch (_) {}
+    }
+  }
+
+  // Fallback: outside Electron environment (e.g. standalone test runner)
   const browser = await getBrowser();
   const page = await browser.newPage();
   try {

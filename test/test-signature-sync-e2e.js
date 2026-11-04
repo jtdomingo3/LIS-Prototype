@@ -78,7 +78,8 @@ async function testSyncAuth() {
     const rawHash = await postJson(port, { ...headers, 'X-LIS-Sync-Hash': user.password });
     assert(rawHash.statusCode === 401, 'Standalone auth middleware accepted raw stored password hash');
 
-    const invalid = await postJson(port, { ...headers, 'X-LIS-Sync-Hash': `${token.slice(0, -1)}0` });
+    const invalidHmac = 'f'.repeat(64);
+    const invalid = await postJson(port, { ...headers, 'X-LIS-Sync-Hash': `${user.email}:${Math.floor(Date.now() / 1000)}:${invalidHmac}` });
     assert(invalid.statusCode === 401, 'Standalone auth middleware accepted invalid HMAC token');
 
     const expiredTimestamp = Math.floor(Date.now() / 1000) - 301;
@@ -90,6 +91,9 @@ async function testSyncAuth() {
     console.log('Sync authentication regression tests passed.');
   } finally {
     await new Promise(resolve => server.close(resolve));
+    if (db && typeof db.close === 'function') {
+      try { db.close(); } catch (_) {}
+    }
     try { fs.unlinkSync(testDbFile); } catch (_) {}
     try { fs.rmdirSync(tmpDir); } catch (_) {}
     global.db = undefined;

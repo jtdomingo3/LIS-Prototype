@@ -1,19 +1,37 @@
-<div class="container mt-5">
-  <div class="row justify-content-center">
-    <div class="col-md-6">
-      <div class="card shadow">
-        <div class="card-body text-center">
-          <h1 class="display-1 text-danger">500</h1>
-          <h2 class="card-title">Server Error</h2>
-          <p class="card-text">An internal server error occurred.</p>
-          <% if (typeof error !== 'undefined' && error && error.message) { %>
-            <div class="alert alert-danger">
-              <strong>Error:</strong> <%= error.message %>
-            </div>
-          <% } %>
-          <a href="/dashboard" class="btn btn-primary">Go to Dashboard</a>
+<div style="display: flex; align-items: center; justify-content: center; min-height: 80vh; padding: 24px;">
+  <div style="max-width: 540px; width: 100%; background: #ffffff; border-radius: 16px; border: 1px solid #fee2e2; box-shadow: 0 10px 25px -5px rgba(239, 68, 68, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04); padding: 40px 32px; text-align: center;">
+    <div style="width: 72px; height: 72px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px; color: #dc2626;">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+        <line x1="12" y1="9" x2="12" y2="13"></line>
+        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+      </svg>
+    </div>
+    <div style="font-size: 0.85em; font-weight: 700; color: #dc2626; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;">System Exception 500</div>
+    <h1 style="font-size: 1.75em; font-weight: 800; color: #0f172a; margin: 0 0 12px; letter-spacing: -0.02em;">Internal Processing Error</h1>
+    <p style="font-size: 0.95em; color: #64748b; line-height: 1.6; margin: 0 0 24px;">
+      An unexpected condition occurred while processing this clinical operation. System logging has recorded this event to prevent data corruption.
+    </p>
+
+    <% if (typeof error !== 'undefined' && error && error.message && (process.env.NODE_ENV !== 'production' || (typeof user !== 'undefined' && user && user.role === 'admin'))) { %>
+      <details style="text-align: left; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin-bottom: 24px; font-size: 0.85em;">
+        <summary style="font-weight: 600; color: #475569; cursor: pointer; user-select: none;">Diagnostic Information</summary>
+        <div style="margin-top: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; color: #b91c1c; word-break: break-all; white-space: pre-wrap;">
+          <%= error.message %>
         </div>
-      </div>
+      </details>
+    <% } %>
+
+    <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+      <a href="/dashboard" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; background: #0284c7; color: #ffffff; font-weight: 600; font-size: 0.9em; border-radius: 8px; text-decoration: none; transition: background 0.15s ease;" onmouseover="this.style.background='#0369a1'" onmouseout="this.style.background='#0284c7'">
+        <i class="fas fa-chart-line"></i> Dashboard
+      </a>
+      <button onclick="window.location.reload()" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; background: #f8fafc; color: #334155; font-weight: 600; font-size: 0.9em; border-radius: 8px; border: 1px solid #cbd5e1; cursor: pointer; transition: background 0.15s ease;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='#f8fafc'">
+        <i class="fas fa-redo"></i> Retry
+      </button>
+      <button onclick="history.back()" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; background: transparent; color: #64748b; font-weight: 600; font-size: 0.9em; border-radius: 8px; border: 1px solid transparent; cursor: pointer; transition: color 0.15s ease;" onmouseover="this.style.color='#0f172a'" onmouseout="this.style.color='#64748b'">
+        <i class="fas fa-arrow-left"></i> Go Back
+      </button>
     </div>
   </div>
 </div>

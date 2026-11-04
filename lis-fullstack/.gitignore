@@ -19,3 +19,9 @@ tmp/
 # RAG binary bundle
 /dist/rag/
 
+# Chroma vector database
+chroma_db/
+/chroma_db/
+*.sqlite3
+
+

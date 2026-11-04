@@ -20,8 +20,11 @@ async function make() {
     status: 'Active',
     permissions: {
       dashboard: true, patients: true, reception: true,
+      philhealth: true, healthcard: true,
       tests: true, reports: true, worksheet: true,
-      templates: true, users: true, delete: true
+      templates: true, inventory: true, equipment: true,
+      users: true, delete: true, costing: true, hr: true,
+      signatures: true, signature: true
     },
     createdAt: now,
     lastLogin: null
@@ -44,6 +47,8 @@ async function make() {
     tests: [],
     templates: [],
     counters: {},
+    philhealth_records: [],
+    healthcard_records: [],
     settings: {
       openrouterApiKeyEncrypted: process.env.OPENROUTER_ENCRYPTED_KEY || null,
       openrouterModel: process.env.OPENROUTER_DEFAULT_MODEL || 'openai/gpt-4o-mini'

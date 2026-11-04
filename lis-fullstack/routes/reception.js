@@ -246,6 +246,7 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
         const areaForTest = mapAreaForTest(t);
         // only count areas that are part of DISPLAY_AREAS
         if (!DISPLAY_AREAS.includes(areaForTest)) continue;
+        if (areaForTest === 'Payment Area' && (t.chargedToPhilhealth || t.paymentMethod === 'PhilHealth')) continue;
         if (!t.patient) continue;
         const patient = patientsById[t.patient];
         if (!patient || !patient.patientCode) continue;
@@ -328,10 +329,10 @@ router.get('/assigned', allowKioskOrAuth, async (req, res) => {
         if (!t.status) continue;
         const area = mapAreaForTest(t);
         if (!DISPLAY_AREAS.includes(area)) continue;
-        if (!t.patient) continue;
         const patient = patientsById[t.patient];
         if (!patient || !patient.patientCode) continue;
-        areaAssignments[area].push({ testId: t.testId, patientCode: patient.patientCode, name: `${patient.firstName} ${patient.lastName}`, assignedDoctor: t.assignedDoctorName || null });
+        const pName = patient.fullName || [patient.firstName, patient.middleName, patient.lastName].filter(Boolean).join(' ');
+        areaAssignments[area].push({ testId: t.testId, patientCode: patient.patientCode, name: pName, assignedDoctor: t.assignedDoctorName || null });
       }
     }
 
@@ -622,7 +623,7 @@ router.post('/stash', requireAuth, canAccessPatient, async (req, res) => {
           count++;
           if (t.patient && !patientName) {
             const p = await Patient.findById(t.patient);
-            if (p) patientName = `${p.firstName} ${p.lastName}`;
+            if (p) patientName = p.fullName || [p.firstName, p.middleName, p.lastName].filter(Boolean).join(' ');
           }
         }
       }
@@ -708,7 +709,7 @@ router.post('/release-stashed', requireAuth, canAccessPatient, async (req, res) 
         count++;
         if (t.patient && !patientName) {
           const p = await Patient.findById(t.patient);
-          if (p) patientName = `${p.firstName} ${p.lastName}`;
+          if (p) patientName = p.fullName || [p.firstName, p.middleName, p.lastName].filter(Boolean).join(' ');
         }
       }
     }
@@ -743,7 +744,9 @@ router.get('/area/:name', requireAuth, canAccessPatient, async (req, res) => {
     const tests = Array.isArray(allTests) ? allTests.filter(t => {
       if (!t.status) return false;
       const mapped = mapAreaForTest(t);
-      return mapped === areaName;
+      if (mapped !== areaName) return false;
+      if (areaName === 'Payment Area' && (t.chargedToPhilhealth || t.paymentMethod === 'PhilHealth')) return false;
+      return true;
     }) : [];
 
     // Populate patient info for each test and prepare specimens list for the area

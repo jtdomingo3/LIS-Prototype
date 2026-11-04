@@ -59,6 +59,13 @@ async function run() {
     try { fs.unlinkSync(nativeNodeDest); } catch (_) {}
   }
 
+  // NOTE: DO NOT run rcedit on the pkg-generated executable.
+  // rcedit modifies the PE header and strips/corrupts the trailing snapshot payload
+  // embedded by pkg, shrinking the executable to ~36MB and causing
+  // "Pkg: Error reading from file." on startup.
+  // Executable icon is provided by the Tray launcher and electron-builder.
+  console.log('Skipping rcedit on pkg executable to preserve pkg snapshot integrity.');
+
   console.log('Executable build completed successfully.');
 }
 

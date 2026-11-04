@@ -47,10 +47,10 @@
         <strong style="color: #0f172a;">
           <% if (test.patient && test.patient.id) { %>
             <a href="/patients/<%= test.patient.id %>" style="color: #2563eb; text-decoration: none; font-weight: 700;">
-              <%= test.patient.firstName %> <%= test.patient.lastName %>
+              <%= test.patient.firstName %> <%= test.patient.middleName ? test.patient.middleName + ' ' : '' %><%= test.patient.lastName %>
             </a>
           <% } else { %>
-            <%= test.patient ? (test.patient.firstName + ' ' + test.patient.lastName) : 'Unknown Patient' %>
+            <%= test.patient ? (test.patient.firstName + ' ' + (test.patient.middleName ? test.patient.middleName + ' ' : '') + test.patient.lastName) : 'Unknown Patient' %>
           <% } %>
         </strong>
       </div>
@@ -109,7 +109,7 @@
     <div>
       <span style="display: block; font-size: 0.75em; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.5px;">Order Date</span>
       <span style="font-size: 0.95em; font-weight: 600; color: #0f172a; margin-top: 2px; display: block;">
-        <%= test.testDate ? new Date(test.testDate).toLocaleDateString() : 'N/A' %>
+        <%= test.testDate ? (typeof formatMMDDYYYY === 'function' ? formatMMDDYYYY(test.testDate) : new Date(test.testDate).toLocaleDateString('en-US')) : 'N/A' %>
       </span>
     </div>
     <div>

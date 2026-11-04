@@ -1,14 +1,15 @@
 {
     "name":  "lis-tray",
-    "version":  "2.6.4",
+    "version":  "3.0.0",
     "description":  "Tray launcher for Gezyne LIS: open browser, control service",
     "author":  "Gezyne-Jamir Software Tech",
     "main":  "main.js",
     "scripts":  {
                     "start":  "electron .",
                     "generate-icon":  "node ./scripts/generate-icon.js",
-                    "build":  "electron-builder",
-                    "dist:win":  "npm run generate-icon \u0026\u0026 electron-builder --win nsis"
+                    "prepare-dist-data": "node ../scripts/make-dist-data.js",
+                    "build":  "npm run prepare-dist-data && electron-builder",
+                    "dist:win":  "npm run prepare-dist-data && npm run generate-icon && electron-builder --win nsis"
                 },
     "devDependencies":  {
                             "electron":  "^28.1.0",

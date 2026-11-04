@@ -21,7 +21,7 @@
     </div>
   </div>
 
-  <form action="/users/profile?_method=PUT" method="POST" enctype="multipart/form-data">
+  <form action="/users/profile?_method=PUT&_csrf=<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>" method="POST" enctype="multipart/form-data">
   <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 28px;">
       

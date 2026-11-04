@@ -56,6 +56,12 @@ lis-angular/backend/data/lis.db-wal
 lis-angular/backend/data/lib.db
 lis-angular/backend/data/lib.db-shm
 lis-angular/backend/data/lib.db-wal
+# Chroma vector database and SQLite internal DBs
+chroma_db/
+**/chroma_db/
+*.sqlite3
+**/*.sqlite3
+
 lis-fullstack/logs/print.log
 tools/security-audit/audit-report-latest.json
 # Environment variable files and secrets
@@ -81,3 +87,17 @@ tools/security-audit/audit-report-latest.json
 lis-fullstack/walkthrough.md
 walkthrough.md
 audit/
+.claude/
+**/.claude/
+
+# Agent skills, caches, and local configurations
+.agents/
+**/.agents/
+.agent/
+**/.agent/
+_agents/
+**/_agents/
+.gemini/
+**/.gemini/
+.system_generated/
+**/.system_generated/

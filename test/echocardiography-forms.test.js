@@ -372,12 +372,13 @@ runTest('Entry form renders Doppler Measurements as unified table matching Image
 
   // Verify correct column positions: Left = Value, Right = Reference/Label
   // In Row 9: Mitral(Value), Mitral(Blank), Aortic(Blank), Aortic(PASP label), Tricuspid(PASP value), Tricuspid(PAT label), Pulmonic(PAT value), Pulmonic(>= label)
-  const dopPvIdx = html.indexOf('name="dop_pv_diastoles"');
-  const paspLabelIdx = html.indexOf('PASP by TRJ<br>Total PASP');
-  const paspInputIdx = html.indexOf('name="dop_pasp_trj"');
-  const patLabelIdx = html.indexOf('\n                PAT\n');
-  const patInputIdx = html.indexOf('name="dop_pat"');
-  const geLabelIdx = html.lastIndexOf('&ge;');
+  const normHtml = html.replace(/\r\n/g, '\n');
+  const dopPvIdx = normHtml.indexOf('name="dop_pv_diastoles"');
+  const paspLabelIdx = normHtml.indexOf('PASP by TRJ<br>Total PASP');
+  const paspInputIdx = normHtml.indexOf('name="dop_pasp_trj"');
+  const patLabelIdx = normHtml.indexOf('\n                PAT\n');
+  const patInputIdx = normHtml.indexOf('name="dop_pat"');
+  const geLabelIdx = normHtml.lastIndexOf('&ge;');
   assert(dopPvIdx < paspLabelIdx, 'Pulmonic vein value must be before PASP label');
   assert(paspLabelIdx < paspInputIdx, 'PASP label (Aortic right) must be before PASP inputs (Tricuspid left)');
   assert(paspInputIdx < patLabelIdx, 'PASP inputs (Tricuspid left) must be before PAT label (Tricuspid right)');

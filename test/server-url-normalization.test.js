@@ -1,6 +1,21 @@
 const assert = require('assert');
 const { normalizeServerUrl } = require('../lis-app-standalone/lib/serverUrl');
 
+if (typeof describe === 'undefined') {
+  global.describe = (name, fn) => { console.log(`\n--- ${name} ---`); fn(); };
+  global.it = (name, fn) => {
+    try {
+      fn();
+      console.log(`  ✓ ${name}`);
+    } catch (err) {
+      console.error(`  ✗ ${name}:`, err.message);
+      throw err;
+    }
+  };
+  global.before = (fn) => fn();
+  global.after = (fn) => fn();
+}
+
 describe('Standalone Server URL Normalization & Validation', function() {
   it('normalizes IP with port missing protocol to http://', function() {
     const res = normalizeServerUrl('192.168.1.209:3000');

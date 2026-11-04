@@ -36,6 +36,11 @@ class Test {
     // Payment status & price
     this.paid = !!data.paid;
     this.price = (data.price !== undefined && data.price !== null) ? Number(data.price) : 0;
+    this.chargedToPhilhealth = !!data.chargedToPhilhealth;
+    this.chargedToHmo = !!data.chargedToHmo;
+    this.hmoProvider = data.hmoProvider || '';
+    this.loaNumber = data.loaNumber || '';
+    this.paymentMethod = data.paymentMethod || (this.chargedToPhilhealth ? 'PhilHealth' : (this.chargedToHmo ? `HMO (${this.hmoProvider || 'Health Card'})` : null));
     // statusHistory: array of { from, to, user, area, timestamp }
     this.statusHistory = Array.isArray(data.statusHistory) ? data.statusHistory : (data.statusHistory || []);
   }

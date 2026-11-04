@@ -2597,7 +2597,16 @@
     const eqObj = (allEquipment || []).find(e => e.id === eqId);
     const eqName = eqObj ? eqObj.name : 'selected analyzer';
 
-    const confirmed = confirm(`Pre-add all 21 official Blood Chemistry analytes (from the test entry form) to ${eqName}?\n\nThis includes:\n- Blood Sugar (FBS, RBS, 1st & 2nd Hour OGTT, HbA1c)\n- Lipid Profile (Cholesterol, TG, HDL, LDL, VLDL)\n- Renal Function (BUN, Creatinine, Urea, Uric Acid)\n- Liver & Proteins (SGPT, SGOT, Albumin)\n- Electrolytes (Sodium, Potassium, Chloride, Calcium)\n\nExisting recorded QC runs and custom control targets will be preserved.`);
+    const confirmed = window.showConfirmDialog ? await window.showConfirmDialog(
+      `Pre-add all 21 official Blood Chemistry analytes (from the test entry form) to <strong>${eqName}</strong>?<br><br>` +
+      `<small style="color:#64748b;">This includes Blood Sugar, Lipid Profile, Renal Function, Liver & Proteins, and Electrolytes.<br>Existing recorded QC runs and custom control targets will be preserved.</small>`,
+      {
+        title: 'Pre-add Official Analytes',
+        btnText: 'Yes, Pre-add Analytes',
+        cancelText: 'Cancel',
+        type: 'primary'
+      }
+    ) : confirm(`Pre-add all 21 official Blood Chemistry analytes (from the test entry form) to ${eqName}?`);
     if (!confirmed) return;
 
     // Immediately close modal popup so user does not wait with popup open
@@ -3303,9 +3312,16 @@
 
   async function deleteQcEntryRecord(entryId) {
     if (!entryId) return;
-    if (!confirm('Are you sure you want to delete this QC run measurement? This action will permanently remove the record and re-evaluate Westgard statistics.')) {
-      return;
-    }
+    const confirmed = window.showConfirmDialog ? await window.showConfirmDialog(
+      'Are you sure you want to delete this QC run measurement?<br><br>This action will permanently remove the record and re-evaluate Westgard statistics.',
+      {
+        title: 'Delete QC Measurement',
+        btnText: 'Yes, Delete',
+        cancelText: 'Cancel',
+        type: 'danger'
+      }
+    ) : confirm('Are you sure you want to delete this QC run measurement?');
+    if (!confirmed) return;
 
     try {
       const res = await fetch(`/equipment/qc/entries/${entryId}`, {
@@ -3331,9 +3347,16 @@
       return;
     }
 
-    if (!confirm(`Drop / delete the most recent QC run reading for "${analyteCode.toUpperCase()}"?`)) {
-      return;
-    }
+    const confirmed = window.showConfirmDialog ? await window.showConfirmDialog(
+      `Drop / delete the most recent QC run reading for <strong>"${analyteCode.toUpperCase()}"</strong>?`,
+      {
+        title: 'Drop Previous QC Entry',
+        btnText: 'Yes, Drop Entry',
+        cancelText: 'Cancel',
+        type: 'danger'
+      }
+    ) : confirm(`Drop / delete the most recent QC run reading for "${analyteCode.toUpperCase()}"?`);
+    if (!confirmed) return;
 
     try {
       // 1. Try dedicated endpoint
@@ -3382,7 +3405,15 @@
       return;
     }
 
-    const confirmed = confirm(`Are you sure you want to EMPTY / DELETE ALL recorded QC runs for "${analyteCode.toUpperCase()}" on this analyzer?\n\nThis will reset the Levey-Jennings chart and run log for testing. This action cannot be undone.`);
+    const confirmed = window.showConfirmDialog ? await window.showConfirmDialog(
+      `Are you sure you want to <strong>EMPTY / DELETE ALL</strong> recorded QC runs for <strong>"${analyteCode.toUpperCase()}"</strong> on this analyzer?<br><br>This will reset the Levey-Jennings chart and run log. <em>This action cannot be undone.</em>`,
+      {
+        title: 'Reset QC Run History',
+        btnText: 'Yes, Reset History',
+        cancelText: 'Cancel',
+        type: 'danger'
+      }
+    ) : confirm(`Are you sure you want to EMPTY / DELETE ALL recorded QC runs for "${analyteCode.toUpperCase()}" on this analyzer?`);
     if (!confirmed) return;
 
     try {
@@ -3790,7 +3821,16 @@
 
   async function deleteCustomNrl(id, encodedName) {
     const name = decodeURIComponent(encodedName);
-    if (!confirm(`Are you sure you want to remove the custom NRL "${name}"?`)) return;
+    const confirmed = window.showConfirmDialog ? await window.showConfirmDialog(
+      `Are you sure you want to remove the custom NRL <strong>"${name}"</strong>?`,
+      {
+        title: 'Remove Custom NRL',
+        btnText: 'Yes, Remove',
+        cancelText: 'Cancel',
+        type: 'danger'
+      }
+    ) : confirm(`Are you sure you want to remove the custom NRL "${name}"?`);
+    if (!confirmed) return;
 
     try {
       const res = await fetch(`/equipment/neqas/nrl-list/${id}`, {

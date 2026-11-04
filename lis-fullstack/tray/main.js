@@ -1298,7 +1298,7 @@ ipcMain.handle('restore-users', async () => {
         signature: null,
         autoSignature: { enabled: false, until: null },
         permissions: {
-          dashboard: true, patients: true, reception: true,
+          dashboard: true, patients: true, reception: true, philhealth: true, healthcard: true,
           tests: true, reports: true, worksheet: true,
           templates: true, inventory: true, equipment: true, users: true, delete: true
         },
@@ -1312,7 +1312,7 @@ ipcMain.handle('restore-users', async () => {
       admin.role = 'Admin';
       admin.status = 'Active';
       admin.permissions = {
-        dashboard: true, patients: true, reception: true,
+        dashboard: true, patients: true, reception: true, philhealth: true, healthcard: true,
         tests: true, reports: true, worksheet: true,
         templates: true, inventory: true, equipment: true, users: true, delete: true
       };

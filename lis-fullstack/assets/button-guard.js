@@ -71,16 +71,17 @@
     // Exempt all buttons on Dashboard page
     if (typeof window !== 'undefined' && window.location && window.location.pathname && (window.location.pathname === '/dashboard' || window.location.pathname === '/')) return true;
     if (el.closest && el.closest('.dashboard-container, #dashboardView, [data-page="dashboard"]')) return true;
-    if (el.classList && el.classList.contains('no-guard')) return true;
-    if (el.getAttribute && (el.getAttribute('data-no-guard') === '1' || el.getAttribute('data-no-guard') === 'true')) return true;
+    if (el.classList && (el.classList.contains('no-guard') || el.classList.contains('template-btn') || el.classList.contains('preset-btn') || el.classList.contains('preset-pill') || el.classList.contains('auto-gen-btn') || el.classList.contains('comment-chip') || el.classList.contains('calc-btn'))) return true;
+    if (el.getAttribute && (el.getAttribute('data-no-guard') === '1' || el.getAttribute('data-no-guard') === 'true' || el.getAttribute('data-template'))) return true;
+    if (el.matches && el.matches('.no-guard, [data-no-guard], .template-btn, .preset-pill, .preset-btn, .comment-chip, .auto-gen-btn, .calc-btn, [data-template]')) return true;
 
     // 1. Exclude tabs and tab navigation elements (Settings, Equipment QC, Consultations, HR Profiles, Ultrasound, etc.)
     if (el.matches && el.matches('[role="tab"], .settings-tab-btn, .eq-tab-btn, .consult-tab-btn, .profile-tab, .proc-tab, .echo-preview-tab-btn, [class*="tab-btn"], [class*="tab-nav"], [data-tab], [data-bs-toggle="tab"], [data-toggle="tab"]')) return true;
     if (el.closest && el.closest('.settings-nav-tabs, .eq-tabs, [role="tablist"], .nav-tabs, .tabs, .tab-nav, .tab-buttons, .tab-bar, .profile-tabs, .echo-preview-tabs')) return true;
 
-    // 2. Exclude client-side UI actions (tabs, modal dismissals, accordions, toggles, text formatting, add/remove row)
+    // 2. Exclude client-side UI actions (tabs, modal dismissals, accordions, toggles, text formatting, add/remove row, templates, calculations, chip presets)
     const oc = (el.getAttribute && el.getAttribute('onclick')) || '';
-    if (oc && /switch|tab|toggle|modal|close|cancel|back|reset|clear|filter|wrapSelection|insertParagraph|addRow|removeRow|selectProcedure|setPreview/i.test(oc)) return true;
+    if (oc && /switch|tab|toggle|modal|close|cancel|back|reset|clear|filter|wrapSelection|insertParagraph|addRow|removeRow|selectProcedure|setPreview|template|setImpressionTemplate|autoGenerate|preset|presetBpsScore|copy|copyCrl|copyGs|calculate|calculateAOA|insertComment|toggleCommentChip|chip|bps|aoa|clearImpression/i.test(oc)) return true;
 
     // 3. Exclude modal close & dialog dismiss buttons
     if (el.matches && el.matches('.close, .modal-close, [data-dismiss], [data-bs-dismiss]')) return true;
@@ -97,12 +98,15 @@
       'create new template', 'edit', 'view', 'clear reception queue', 'clear queue', 'clear queues', 
       'total', 'selected', 'today', 'yesterday', 'monthly', 'daily', 'hourly',
       'clinical workflow', 'sse real-time', 'printer & hardware', 'ai assistant', 'data & backup', 'system & .env',
-      'equipment registry', 'quality control', 'external quality assessment'
+      'equipment registry', 'quality control', 'external quality assessment',
+      'live ob', 'early tvs', 'tvs follow-up', 'twin ob', 'normal pelvic', 'clear', 'auto-generate', 'auto-generate impression',
+      'normal (8/8)', 'equivocal (6/8)', 'abnormal (4/8)', 'set aoa from crl', 'set aoa from gs', 'auto-calculate', 'calculate aoa',
+      '+ yolk sac', '+ cardiac activity', '- hemorrhage'
     ];
     for (let i=0; i<exceptions.length; i++) {
       if (txt.indexOf(exceptions[i]) !== -1) return true;
     }
-    if (el.id === 'addFieldBtn' || el.classList.contains('add-field-btn') || el.classList.contains('remove-field-btn') || el.classList.contains('preset-pill')) return true;
+    if (el.id === 'addFieldBtn' || el.classList.contains('add-field-btn') || el.classList.contains('remove-field-btn') || el.classList.contains('preset-pill') || el.classList.contains('template-btn') || el.classList.contains('preset-btn') || el.classList.contains('comment-chip') || el.classList.contains('auto-gen-btn') || el.classList.contains('calc-btn')) return true;
     return false;
   }
 

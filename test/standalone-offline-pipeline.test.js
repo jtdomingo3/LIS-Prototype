@@ -152,7 +152,8 @@ async function runReceptionPipelineTests() {
 
     console.log('✅ TEST 2 PASSED: Reception Multi-Station Pipeline verified 100% offline.\n');
   } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    try { if (ds && ds.db && typeof ds.db.close === 'function') ds.db.close(); } catch (_) {}
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {}
   }
 }
 

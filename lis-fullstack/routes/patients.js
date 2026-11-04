@@ -54,15 +54,17 @@ router.get('/', requireAuth, canAccessPatient, async (req, res) => {
     // Available companies for the company filter
     const availableCompanies = Array.isArray(allPatients) ? Array.from(new Set(allPatients.map(p => (p.company || '').toString()).filter(Boolean))).sort() : [];
 
-    // Apply search filter (name/id)
+    // Apply search filter (name/id/code)
     if (searchQuery) {
-      const searchLower = searchQuery.toLowerCase();
-      allPatients = allPatients.filter(patient =>
-        (patient.firstName && patient.firstName.toLowerCase().includes(searchLower)) ||
-        (patient.middleName && patient.middleName.toLowerCase().includes(searchLower)) ||
-        (patient.lastName && patient.lastName.toLowerCase().includes(searchLower)) ||
-        (patient.patientId && patient.patientId.toLowerCase().includes(searchLower))
-      );
+      const searchLower = searchQuery.toLowerCase().trim();
+      allPatients = allPatients.filter(patient => {
+        const fn = (patient.fullName || [patient.firstName, patient.middleName, patient.lastName].filter(Boolean).join(' ')).toLowerCase();
+        const reversed = [patient.lastName, patient.firstName, patient.middleName].filter(Boolean).join(' ').toLowerCase();
+        const commaName = `${patient.lastName || ''}, ${patient.firstName || ''}`.toLowerCase();
+        const pId = String(patient.patientId || '').toLowerCase();
+        const pCode = String(patient.patientCode || '').toLowerCase();
+        return fn.includes(searchLower) || reversed.includes(searchLower) || commaName.includes(searchLower) || pId.includes(searchLower) || pCode.includes(searchLower);
+      });
     }
 
     // PhilHealth filter (yes/no)
@@ -285,9 +287,10 @@ router.post('/', requireAuth, canAccessPatient, [
         normalizedDob = `${yyyy}-${mm}-${dd}`;
       }
     }
-    const company = req.body.company || '';
+    const company = req.body.company || req.body.employer || req.body.philhealthAgency || '';
     const philhealthConsent = req.body.philhealthConsent === 'on' || req.body.philhealthConsent === '1' || req.body.philhealthConsent === 'true';
-    const philhealthId = req.body.philhealthId || '';
+    const philhealthId = req.body.philhealthId || req.body.philhealthNumber || '';
+    const philhealthAgency = req.body.philhealthAgency || company || '';
     const healthInsuranceConsent = req.body.healthInsuranceConsent === 'on' || req.body.healthInsuranceConsent === '1' || req.body.healthInsuranceConsent === 'true';
     const healthInsuranceProvider = req.body.healthInsuranceProvider || req.body.healthCardProvider || '';
     const healthInsuranceId = req.body.healthInsuranceId || req.body.healthCardNumber || '';
@@ -440,6 +443,7 @@ router.post('/', requireAuth, canAccessPatient, [
       company,
       philhealthConsent,
       philhealthId,
+      philhealthAgency,
       healthInsuranceConsent,
       healthInsuranceProvider,
       healthInsuranceId,
@@ -452,14 +456,87 @@ router.post('/', requireAuth, canAccessPatient, [
 
     await patient.save();
 
+    // If patient is enrolled under PhilHealth, auto-create PhilHealth panel record
+    if (philhealthConsent) {
+      try {
+        const PhilhealthRecord = require('../models/PhilhealthRecord');
+        const existingPh = await PhilhealthRecord.findOne({ patientId: patient.id });
+        if (!existingPh) {
+          const recDate = patient.createdAt ? new Date(patient.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+          const controlNo = PhilhealthRecord.getNextControlNo(recDate);
+          const phRec = new PhilhealthRecord({
+            controlNo,
+            patientId: patient.id,
+            recordDate: recDate,
+            firstName: safeFirstName,
+            middleName: safeMiddleName,
+            lastName: safeLastName,
+            pinNo: philhealthId,
+            agency: philhealthAgency || company,
+            pcuError: '',
+            procedures: [],
+            status: 'Pending Approval',
+            tranche1Encoded: 'Pending',
+            tranche2Encoded: 'Pending',
+            ekas: 'Pending',
+            tranche1Paid: 'Not Paid',
+            tranche2Paid: 'Not Paid'
+          });
+          await phRec.save();
+        }
+      } catch (e) {
+        console.warn('Failed auto-creating PhilHealth record on patient create:', e);
+      }
+    }
+
+    // If patient is enrolled under Health Card / HMO, auto-create Health Card (HMO) claims panel record
+    const isHealthCardEnrolled = healthInsuranceConsent || Boolean(healthInsuranceProvider && healthInsuranceProvider.trim());
+    if (isHealthCardEnrolled) {
+      try {
+        const HealthCardRecord = require('../models/HealthCardRecord');
+        const existingHc = await HealthCardRecord.findOne({ patientId: patient.id });
+        if (!existingHc) {
+          const recDate = patient.createdAt ? new Date(patient.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+          const controlNo = HealthCardRecord.getNextControlNo(recDate);
+          const hcRec = new HealthCardRecord({
+            controlNo,
+            patientId: patient.id,
+            recordDate: recDate,
+            firstName: safeFirstName,
+            middleName: safeMiddleName,
+            lastName: safeLastName,
+            hmoProvider: healthInsuranceProvider || '',
+            cardNumber: healthInsuranceId || '',
+            company: company || '',
+            loaNumber: req.body.loaNumber || '',
+            loaDate: recDate,
+            loaExpiry: req.body.loaExpiry || '',
+            availmentType: req.body.availmentType || 'Outpatient Diagnostic',
+            diagnosis: req.body.diagnosis || '',
+            physician: patient.physician || '',
+            procedures: [], // No pre-assigned tests — strictly assigned upon LOA approval!
+            grossAmount: 0,
+            hmoCoveredAmount: 0,
+            patientExcessAmount: 0,
+            status: 'Pending LOA', // Lands in HMO panel for LOA verification & procedure assignment
+            notes: req.body.notes || ''
+          });
+          await hcRec.save();
+        }
+      } catch (e) {
+        console.warn('Failed auto-creating Health Card record on patient create:', e);
+      }
+    }
+
     // Emit SSE update so all connected clients receive a notification
+    const fullPatientName = patient.fullName || [patient.firstName, patient.middleName, patient.lastName].filter(Boolean).join(' ');
     try {
-      const msg = `New patient added: ${patient.firstName} ${patient.middleName ? (patient.middleName + ' ') : ''}${patient.lastName}` + (patient.patientId ? ` (ID: ${patient.patientId})` : '');
-      sseEmitter.emit('update', { action: 'patient_created', patientId: patient.id, patientName: `${patient.firstName} ${patient.lastName}`, patientCode: patient.patientCode || null, patientIdLabel: patient.patientId || null, time: (new Date()).toISOString(), message: msg });
+      const msg = `New patient added: ${fullPatientName}` + (patient.patientId ? ` (ID: ${patient.patientId})` : '');
+      sseEmitter.emit('update', { action: 'patient_created', patientId: patient.id, patientName: fullPatientName, patientCode: patient.patientCode || null, patientIdLabel: patient.patientId || null, time: (new Date()).toISOString(), message: msg });
     } catch (e) { console.warn('SSE emit failed for patient_created', e); }
 
     // Patient saved — tests will be assigned from patient management. Printing is manual.
-    req.flash('success_msg', `Patient ${firstName} ${middleName ? middleName + ' ' : ''}${lastName} added successfully!`);
+    req.flash('success_msg', `Patient ${fullPatientName} added successfully!`);
 
     // If this request came from the standalone sync engine or explicit JSON API client,
     // return JSON including the created id and client_id so the client can map records deterministically.
@@ -657,7 +734,7 @@ router.put('/:id', requireAuth, canAccessPatient, [
     return res.status(400).json({ errors: errors.array() });
   }
   try {
-    const { firstName, middleName, lastName, dateOfBirth, gender, phone, email, address, physician, company, philhealthConsent, philhealthId, healthInsuranceConsent, healthInsuranceProvider, healthInsuranceId } = req.body;
+    const { firstName, middleName, lastName, dateOfBirth, gender, phone, email, address, physician } = req.body;
     
     // Sanitize with xss
     const safeFirstName = xss(firstName);
@@ -676,9 +753,14 @@ router.put('/:id', requireAuth, canAccessPatient, [
         normalizedDob = `${yyyy}-${mm}-${dd}`;
       }
     }
+    const company = req.body.company || req.body.employer || req.body.philhealthAgency || '';
+    const philhealthAgency = req.body.philhealthAgency || company || '';
+    const philhealthId = req.body.philhealthId || req.body.philhealthNumber || '';
+    const philhealthConsentBool = (req.body.philhealthConsent === 'on' || req.body.philhealthConsent === '1' || req.body.philhealthConsent === 'true' || req.body.philhealthConsent === true);
+    const healthInsuranceConsentBool = (req.body.healthInsuranceConsent === 'on' || req.body.healthInsuranceConsent === '1' || req.body.healthInsuranceConsent === 'true' || req.body.healthInsuranceConsent === true);
+    const healthInsuranceProvider = req.body.healthInsuranceProvider || req.body.healthCardProvider || '';
+    const healthInsuranceId = req.body.healthInsuranceId || req.body.healthCardNumber || '';
     const ageManual = req.body.ageManual || req.body.age || null;
-    const philhealthConsentBool = (philhealthConsent === 'on' || philhealthConsent === '1' || philhealthConsent === 'true');
-    const healthInsuranceConsentBool = (healthInsuranceConsent === 'on' || healthInsuranceConsent === '1' || healthInsuranceConsent === 'true');
     const requiredAreas = Array.isArray(req.body.requiredAreas)
       ? req.body.requiredAreas
       : req.body.requiredAreas ? [req.body.requiredAreas] : [];
@@ -706,6 +788,7 @@ router.put('/:id', requireAuth, canAccessPatient, [
         company: company || '',
         philhealthConsent: !!philhealthConsentBool,
         philhealthId: philhealthId || '',
+        philhealthAgency: philhealthAgency || '',
         healthInsuranceConsent: !!healthInsuranceConsentBool,
         healthInsuranceProvider: healthInsuranceProvider || req.body.healthCardProvider || '',
         healthInsuranceId: healthInsuranceId || req.body.healthCardNumber || ''
@@ -718,19 +801,94 @@ router.put('/:id', requireAuth, canAccessPatient, [
       return res.redirect('/patients');
     }
 
+    // Sync changes to PhilhealthRecord if patient is enrolled under PhilHealth
+    if (philhealthConsentBool) {
+      try {
+        const PhilhealthRecord = require('../models/PhilhealthRecord');
+        let ph = await PhilhealthRecord.findOne({ patientId: patient.id });
+        if (!ph) {
+          const recDate = patient.createdAt ? new Date(patient.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+          ph = new PhilhealthRecord({
+            controlNo: PhilhealthRecord.getNextControlNo(recDate),
+            patientId: patient.id,
+            recordDate: recDate,
+            firstName: safeFirstName,
+            middleName: safeMiddleName,
+            lastName: safeLastName,
+            pinNo: philhealthId,
+            agency: philhealthAgency,
+            status: 'Pending Approval'
+          });
+          await ph.save();
+        } else {
+          ph.firstName = safeFirstName;
+          ph.middleName = safeMiddleName;
+          ph.lastName = safeLastName;
+          if (philhealthId) ph.pinNo = philhealthId;
+          const targetAgency = philhealthAgency || company || '';
+          if (targetAgency) ph.agency = targetAgency;
+          await ph.save();
+        }
+      } catch (e) {
+        console.warn('Failed syncing PhilHealth record on patient update:', e);
+      }
+    }
+
+    // Sync changes to HealthCardRecord if patient is enrolled under Health Card / HMO
+    const isHealthCardEnrolledUpdate = healthInsuranceConsentBool || Boolean(healthInsuranceProvider && healthInsuranceProvider.trim());
+    if (isHealthCardEnrolledUpdate) {
+      try {
+        const HealthCardRecord = require('../models/HealthCardRecord');
+        let hc = await HealthCardRecord.findOne({ patientId: patient.id });
+        if (!hc) {
+          const recDate = patient.createdAt ? new Date(patient.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+          hc = new HealthCardRecord({
+            controlNo: HealthCardRecord.getNextControlNo(recDate),
+            patientId: patient.id,
+            recordDate: recDate,
+            firstName: safeFirstName,
+            middleName: safeMiddleName,
+            lastName: safeLastName,
+            hmoProvider: healthInsuranceProvider || '',
+            cardNumber: healthInsuranceId || '',
+            company: company || '',
+            loaNumber: req.body.loaNumber || '',
+            loaExpiry: req.body.loaExpiry || '',
+            physician: patient.physician || '',
+            status: 'Pending LOA'
+          });
+          await hc.save();
+        } else {
+          hc.firstName = safeFirstName;
+          hc.middleName = safeMiddleName;
+          hc.lastName = safeLastName;
+          if (healthInsuranceProvider) hc.hmoProvider = healthInsuranceProvider;
+          if (healthInsuranceId) hc.cardNumber = healthInsuranceId;
+          if (company) hc.company = company;
+          if (req.body.loaNumber) hc.loaNumber = req.body.loaNumber;
+          if (req.body.loaExpiry) hc.loaExpiry = req.body.loaExpiry;
+          if (patient.physician) hc.physician = patient.physician;
+          await hc.save();
+        }
+      } catch (e) {
+        console.warn('Failed syncing Health Card record on patient update:', e);
+      }
+    }
+
+    const fullPatientName = patient.fullName || [patient.firstName, patient.middleName, patient.lastName].filter(Boolean).join(' ');
     try {
       sseEmitter.emit('update', {
         action: 'patient_updated',
         patientId: patient.id,
-        patientName: `${patient.firstName} ${patient.lastName}`,
+        patientName: fullPatientName,
         patientCode: patient.patientCode || null,
         patientIdLabel: patient.patientId || null,
         time: (new Date()).toISOString(),
-        message: `Patient ${patient.firstName} ${patient.lastName} updated`
+        message: `Patient ${fullPatientName} updated`
       });
     } catch (e) { console.warn('SSE emit failed for patient_updated', e); }
 
-    req.flash('success_msg', `Patient ${firstName} ${lastName} updated successfully!`);
+    req.flash('success_msg', `Patient ${fullPatientName} updated successfully!`);
     res.redirect(`/patients/${req.params.id}`);
 
   } catch (error) {
@@ -796,7 +954,7 @@ router.delete('/:id', requireAuth, canAccessPatient, async (req, res) => {
 
     // Emit SSE event so all active client pages (and standalone sync) update immediately
     try {
-      const pName = patient ? `${patient.firstName} ${patient.lastName}` : 'Patient';
+      const pName = patient ? (patient.fullName || [patient.firstName, patient.middleName, patient.lastName].filter(Boolean).join(' ')) : 'Patient';
       sseEmitter.emit('update', {
         action: 'patient_deleted',
         patientId: targetId,

@@ -28,7 +28,16 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB max for signature
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype || !file.mimetype.startsWith('image/')) {
+      return cb(new Error('Only image files are allowed for signatures'));
+    }
+    cb(null, true);
+  }
+});
 
 // GET /users - List all users
 router.get('/', requireAuth, canManageUsers, async (req, res) => {
@@ -116,10 +125,15 @@ router.post('/', requireAuth, canManageUsers, upload.single('signature'), async 
     // Build permissions object from nested or flattened form inputs
     const permissionsRaw = req.body.permissions || {};
     const permissions = {};
-    ['dashboard','patients','reception','tests','reports','worksheet','templates','inventory','equipment','users','delete','signatures','signature'].forEach(k => {
+    ['dashboard','patients','reception','philhealth','healthcard','tests','reports','worksheet','templates','inventory','equipment','users','delete','signatures','signature'].forEach(k => {
       const val = (permissionsRaw && permissionsRaw[k] !== undefined) ? permissionsRaw[k] : (req.body[`permissions[${k}]`] !== undefined ? req.body[`permissions[${k}]`] : req.body[`permissions.${k}`]);
       permissions[k] = !!(val === '1' || val === 1 || val === true || val === 'on' || val === 'true');
     });
+    // Ensure both flags sync if either is set
+    if (permissions.philhealth || permissions.healthcard) {
+      permissions.philhealth = true;
+      permissions.healthcard = true;
+    }
 
     // Resolve role (support custom specialized role)
     const resolvedRole = (role === '__other__' && req.body.customRole) 
@@ -309,10 +323,15 @@ router.put('/:id', requireAuth, canManageUsers, upload.single('signature'), asyn
     // Build permissions object from nested or flattened form inputs
     const permissionsRaw = req.body.permissions || {};
     const permissions = {};
-    ['dashboard','patients','reception','tests','reports','worksheet','templates','inventory','equipment','users','delete','signatures','signature'].forEach(k => {
+    ['dashboard','patients','reception','philhealth','healthcard','tests','reports','worksheet','templates','inventory','equipment','users','delete','signatures','signature'].forEach(k => {
       const val = (permissionsRaw && permissionsRaw[k] !== undefined) ? permissionsRaw[k] : (req.body[`permissions[${k}]`] !== undefined ? req.body[`permissions[${k}]`] : req.body[`permissions.${k}`]);
       permissions[k] = !!(val === '1' || val === 1 || val === true || val === 'on' || val === 'true');
     });
+    // Ensure both flags sync if either is set
+    if (permissions.philhealth || permissions.healthcard) {
+      permissions.philhealth = true;
+      permissions.healthcard = true;
+    }
 
     // Resolve role (support custom specialized role)
     const resolvedRole = (role === '__other__' && req.body.customRole) 
@@ -426,7 +445,7 @@ router.get('/profile', requireAuth, async (req, res) => {
 // PUT /profile - update current user's profile (name, email, password)
 router.put('/profile', requireAuth, async (req, res) => {
   try {
-    const { name, email, password, confirmPassword, autoSignatureOption } = req.body;
+    const { name, email, password, confirmPassword, autoSignatureOption, licenseNumber } = req.body;
     if (!name || !email) {
       req.flash('error_msg', 'Please fill all required fields');
       return res.redirect('/profile');
@@ -439,7 +458,11 @@ router.put('/profile', requireAuth, async (req, res) => {
       return res.redirect('/profile');
     }
 
-    const update = { name, email: email.toLowerCase() };
+    const update = {
+      name,
+      email: email.toLowerCase(),
+      licenseNumber: licenseNumber !== undefined ? (licenseNumber.trim() || null) : undefined
+    };
     if (password) {
       if (password !== confirmPassword) {
         req.flash('error_msg', 'Passwords do not match');
@@ -475,6 +498,7 @@ router.put('/profile', requireAuth, async (req, res) => {
     // Update session info
     req.session.user.name = updated.name;
     req.session.user.email = updated.email;
+    req.session.user.licenseNumber = updated.licenseNumber || null;
     req.session.user.autoSignature = updated.autoSignature || { enabled:false, until:null };
 
     req.flash('success_msg', 'Profile updated successfully');
