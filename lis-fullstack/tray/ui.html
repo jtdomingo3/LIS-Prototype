@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <title>Gezyne LIS - Server Control Center</title>
+  <link rel="stylesheet" href="../public/vendor/fontawesome/css/all.min.css">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -26,13 +27,13 @@
     <section class="address-section">
       <div class="address-card">
         <div class="card-header">
-          <span class="card-icon">💻</span>
+          <span class="card-icon"><i class="fa-solid fa-server"></i></span>
           <span class="card-title">Local Server (Host)</span>
         </div>
         <div class="card-body">
           <span id="addr-local" class="addr-value">http://localhost:3000</span>
           <div class="card-actions">
-            <button id="copy-local" class="btn-sm btn-outline" title="Copy Local URL">📋 Copy</button>
+            <button id="copy-local" class="btn-sm btn-outline" title="Copy Local URL"><i class="fa-solid fa-copy"></i> Copy</button>
             <button id="open-local" class="btn-sm btn-primary" title="Open in Browser">↗ Open</button>
           </div>
         </div>
@@ -40,13 +41,13 @@
 
       <div class="address-card">
         <div class="card-header">
-          <span class="card-icon">🌐</span>
+          <span class="card-icon"><i class="fa-solid fa-network-wired"></i></span>
           <span class="card-title">Network Server (LAN Client)</span>
         </div>
         <div class="card-body">
           <span id="addr-network" class="addr-value">http://--:3000</span>
           <div class="card-actions">
-            <button id="copy-network" class="btn-sm btn-outline" title="Copy Network URL">📋 Copy</button>
+            <button id="copy-network" class="btn-sm btn-outline" title="Copy Network URL"><i class="fa-solid fa-copy"></i> Copy</button>
             <button id="open-network" class="btn-sm btn-primary" title="Open in Browser">↗ Open</button>
           </div>
         </div>
@@ -61,14 +62,14 @@
 
     <!-- Controls Toolbar -->
     <div class="controls">
-      <button id="start" class="btn btn-success">▶ Start</button>
-      <button id="stop" class="btn btn-danger">⏹ Stop</button>
-      <button id="restart" class="btn btn-warning">🔄 Restart</button>
-      <button id="open" class="btn btn-accent">🌐 Open LIS</button>
-      <button id="save" class="btn btn-secondary">💾 Save Logs</button>
-      <button id="settings" class="btn btn-secondary">⚙️ Settings</button>
-      <button id="hide" class="btn btn-ghost">📥 Hide to Tray</button>
-      <button id="exit" class="btn btn-danger-ghost">❌ Exit App</button>
+      <button id="start" class="btn btn-success"><i class="fa-solid fa-play"></i> Start</button>
+      <button id="stop" class="btn btn-danger"><i class="fa-solid fa-stop"></i> Stop</button>
+      <button id="restart" class="btn btn-warning"><i class="fa-solid fa-rotate-right"></i> Restart</button>
+      <button id="open" class="btn btn-accent"><i class="fa-solid fa-arrow-up-right-from-square"></i> Open LIS</button>
+      <button id="save" class="btn btn-secondary"><i class="fa-solid fa-floppy-disk"></i> Save Logs</button>
+      <button id="settings" class="btn btn-secondary"><i class="fa-solid fa-gear"></i> Settings</button>
+      <button id="hide" class="btn btn-ghost"><i class="fa-solid fa-chevron-down"></i> Hide to Tray</button>
+      <button id="exit" class="btn btn-danger-ghost"><i class="fa-solid fa-power-off"></i> Exit App</button>
     </div>
 
     <!-- Settings Modal -->
@@ -119,26 +120,26 @@
       <div class="console-header">
         <div class="console-tabs">
           <button type="button" id="tab-btn-server" class="console-tab active" data-tab="server">
-            <span class="tab-icon">🖥️</span>
+            <span class="tab-icon"><i class="fa-solid fa-terminal"></i></span>
             <span>LIS Server</span>
           </button>
           <button type="button" id="tab-btn-rag" class="console-tab" data-tab="rag">
-            <span class="tab-icon">🧠</span>
+            <span class="tab-icon"><i class="fa-solid fa-brain"></i></span>
             <span>RAG Microservice</span>
             <span id="rag-tab-badge" class="tab-badge badge-offline">Offline</span>
           </button>
         </div>
         <div class="console-actions">
           <div id="rag-quick-actions" style="display:none; align-items:center; gap:6px; margin-right:6px;">
-            <button id="btn-rag-start" class="btn-sm btn-success" title="Start RAG microservice">▶ Start</button>
-            <button id="btn-rag-stop" class="btn-sm btn-danger" title="Stop RAG microservice">⏹ Stop</button>
-            <button id="btn-rag-sync" class="btn-sm btn-outline" title="Re-sync USER_MANUAL.md into ChromaDB">🔄 Sync KB</button>
+            <button id="btn-rag-start" class="btn-sm btn-success" title="Start RAG microservice"><i class="fa-solid fa-play"></i> Start</button>
+            <button id="btn-rag-stop" class="btn-sm btn-danger" title="Stop RAG microservice"><i class="fa-solid fa-stop"></i> Stop</button>
+            <button id="btn-rag-sync" class="btn-sm btn-outline" title="Re-sync USER_MANUAL.md into ChromaDB"><i class="fa-solid fa-arrows-rotate"></i> Sync KB</button>
           </div>
           <label class="autoscroll-label">
             <input type="checkbox" id="autoscroll-toggle" checked /> Auto-scroll
           </label>
-          <button id="copy-logs" class="btn-sm btn-ghost" title="Copy active tab logs">📋 Copy Logs</button>
-          <button id="clear-logs" class="btn-sm btn-ghost" title="Clear console view">🧹 Clear</button>
+          <button id="copy-logs" class="btn-sm btn-ghost" title="Copy active tab logs"><i class="fa-solid fa-copy"></i> Copy Logs</button>
+          <button id="clear-logs" class="btn-sm btn-ghost" title="Clear console view"><i class="fa-solid fa-eraser"></i> Clear</button>
         </div>
       </div>
 

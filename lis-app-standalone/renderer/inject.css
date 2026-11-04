@@ -138,7 +138,7 @@
 #lis-sync-progress {
   width: 0%;
   height: 100%;
-  background: linear-gradient(90deg, #38bdf8, #3b82f6, #6366f1);
+  background: linear-gradient(90deg, #059669, #10b981, #0284c7);
   transition: width 0.2s ease;
   border-radius: 4px;
 }

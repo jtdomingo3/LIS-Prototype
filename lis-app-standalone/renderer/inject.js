@@ -90,10 +90,10 @@
     '      <span>⟳</span> Sync Now',
     '    </button>',
     '    <button class="lis-btn" id="lis-retry-btn" style="display:none">',
-    '      <span>⚡</span> Connect',
+    '      <i class="fa fa-bolt" style="margin-right:4px;"></i> Connect',
     '    </button>',
     '    <button class="lis-btn lis-btn-icon" id="lis-refresh-btn" title="Refresh page">⟲</button>',
-    '    <button class="lis-btn lis-btn-icon" id="lis-settings-btn" title="Settings & GezyneLab DB Storage">⚙</button>',
+    '    <button class="lis-btn lis-btn-icon" id="lis-settings-btn" title="Settings & GezyneLab DB Storage"><i class="fa fa-gear"></i></button>',
     '  </div>',
     '</div>',
   ].join('\n');
@@ -103,7 +103,7 @@
   var toast = document.createElement('div');
   toast.id = 'lis-sync-toast';
   toast.innerHTML = [
-    '<div class="lis-toast-icon" id="lis-toast-icon">✓</div>',
+    '<div class="lis-toast-icon" id="lis-toast-icon"><i class="fa fa-check"></i></div>',
     '<div class="lis-toast-body">',
     '  <div class="lis-toast-title" id="lis-toast-title">Sync Complete</div>',
     '  <div class="lis-toast-desc" id="lis-toast-desc">Offline records synchronized successfully.</div>',
@@ -120,7 +120,7 @@
     if (titleEl) titleEl.textContent = title || 'Notification';
     if (descEl) descEl.textContent = desc || '';
     if (iconEl) {
-      iconEl.textContent = isError ? '✕' : '✓';
+      iconEl.innerHTML = isError ? '<i class="fa fa-xmark"></i>' : '<i class="fa fa-check"></i>';
       iconEl.className = 'lis-toast-icon' + (isError ? ' error' : '');
     }
     toast.className = isError ? 'toast-error show' : 'show';
@@ -251,7 +251,7 @@
       retryBtn.innerHTML = '<span>⏳</span> Connecting…';
       window.lisApp.retryConnection().then(function (res) {
         retryBtn.disabled = false;
-        retryBtn.innerHTML = '<span>⚡</span> Connect';
+        retryBtn.innerHTML = '<i class="fa fa-bolt" style="margin-right:4px;"></i> Connect';
         if (res && res.online) {
           showToast('Connected', 'Server connection established.');
         } else {
@@ -259,7 +259,7 @@
         }
       }).catch(function () {
         retryBtn.disabled = false;
-        retryBtn.innerHTML = '<span>⚡</span> Connect';
+        retryBtn.innerHTML = '<i class="fa fa-bolt" style="margin-right:4px;"></i> Connect';
       });
     });
   }
@@ -301,22 +301,22 @@
       '<div class="lis-modal-card">',
       '  <div class="lis-modal-header">',
       '    <div class="lis-modal-header-left">',
-      '      <div class="lis-modal-icon-badge">⚠</div>',
+      '      <div class="lis-modal-icon-badge"><i class="fa fa-triangle-exclamation"></i></div>',
       '      <div>',
       '        <h3 class="lis-modal-title">Sync Conflicts & Non-Merging Changes</h3>',
       '        <p class="lis-modal-subtitle">Stored changes that could not be reconciled with the central server</p>',
       '      </div>',
       '    </div>',
-      '    <button class="lis-modal-close-btn" id="lis-conflict-modal-close" title="Close">✕</button>',
+      '    <button class="lis-modal-close-btn" id="lis-conflict-modal-close" title="Close">&times;</button>',
       '  </div>',
       '  <div class="lis-modal-body" id="lis-conflict-list">',
       '    <div style="text-align:center; padding:30px; color:#94a3b8;">Loading conflict items…</div>',
       '  </div>',
       '  <div class="lis-modal-footer">',
       '    <div style="display:flex; gap:8px;">',
-      '      <button class="lis-btn" id="lis-conflict-export-btn">📥 Export JSON Report</button>',
-      '      <button class="lis-btn" id="lis-conflict-clear-resolved-btn">🧹 Clear Resolved</button>',
-      '      <button class="lis-btn" id="lis-conflict-clear-all-btn" style="color:#f87171; border-color:rgba(239,68,68,0.3);">🗑 Clear All</button>',
+      '      <button class="lis-btn" id="lis-conflict-export-btn"><i class="fa fa-download" style="margin-right:4px;"></i> Export JSON Report</button>',
+      '      <button class="lis-btn" id="lis-conflict-clear-resolved-btn"><i class="fa fa-broom" style="margin-right:4px;"></i> Clear Resolved</button>',
+      '      <button class="lis-btn" id="lis-conflict-clear-all-btn" style="color:#f87171; border-color:rgba(239,68,68,0.3);"><i class="fa fa-trash-can" style="margin-right:4px;"></i> Clear All</button>',
       '    </div>',
       '    <button class="lis-btn lis-btn-primary" id="lis-conflict-close-footer-btn">Close</button>',
       '  </div>',
@@ -342,7 +342,7 @@
         if (!conflicts || conflicts.length === 0) {
           listEl.innerHTML = [
             '<div class="lis-empty-conflicts">',
-            '  <div class="lis-empty-conflicts-icon">✓</div>',
+            '  <div class="lis-empty-conflicts-icon"><i class="fa fa-check"></i></div>',
             '  <h4 style="margin:0 0 6px 0; font-size:16px; color:#f8fafc;">Zero Sync Conflicts</h4>',
             '  <p style="margin:0; font-size:13px;">All local workstation data is harmonized with the central server.</p>',
             '</div>'
@@ -407,7 +407,7 @@
             html.push(
               '<div class="lis-conflict-actions">',
               '  <button class="lis-btn lis-btn-retry" data-id="' + item.id + '" style="background:rgba(56,189,248,0.2); border-color:rgba(56,189,248,0.4); color:#38bdf8;">⟳ Retry Sync</button>',
-              '  <button class="lis-btn lis-btn-resolve" data-id="' + item.id + '" style="background:rgba(16,185,129,0.2); border-color:rgba(16,185,129,0.4); color:#6ee7b7;">✓ Mark Resolved</button>',
+              '  <button class="lis-btn lis-btn-resolve" data-id="' + item.id + '" style="background:rgba(16,185,129,0.2); border-color:rgba(16,185,129,0.4); color:#6ee7b7;"><i class="fa fa-check" style="margin-right:4px;"></i> Mark Resolved</button>',
               '</div>'
             );
           }
@@ -461,7 +461,7 @@
               window.lisApp.getStatus().then(updateStatus).catch(function () {});
             }).catch(function (err) {
               btn.disabled = false;
-              btn.textContent = '✓ Mark Resolved';
+              btn.textContent = '<i class="fa fa-check" style="margin-right:4px;"></i> Mark Resolved';
               showToast('Resolve Failed', (err && err.message) || 'Could not resolve', true);
             });
           });

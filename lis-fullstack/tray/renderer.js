@@ -42,7 +42,7 @@ function copyToClipboard(btn, text) {
   if (!text) return;
   navigator.clipboard.writeText(text).then(() => {
     const orig = btn.textContent;
-    btn.textContent = '✓ Copied!';
+    btn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
     btn.classList.add('copied');
     setTimeout(() => {
       btn.textContent = orig;
