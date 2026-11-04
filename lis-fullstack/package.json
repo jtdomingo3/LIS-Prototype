@@ -75,7 +75,8 @@
         "qs": "^6.16.2",
         "ip-address": "^10.7.6",
         "cookie": "^0.7.2",
-        "basic-ftp": "^6.2.1"
+        "basic-ftp": "^6.2.1",
+        "phin": "^3.7.1"
     },
     "devDependencies": {
         "jimp": "^0.16.1",

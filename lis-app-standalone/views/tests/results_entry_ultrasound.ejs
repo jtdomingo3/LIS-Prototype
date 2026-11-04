@@ -2302,8 +2302,10 @@
     row.style.gap = '6px';
     row.style.alignItems = 'center';
     row.style.marginTop = '4px';
-    row.innerHTML = '<select name="' + signName + '" style="width: 55px; height: 30px; border-radius: 5px; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.8em; padding: 2px 4px;"><option value="-">-</option><option value="+">+</option></select>' +
-      '<input type="text" name="' + textName + '" placeholder="Comment..." style="flex: 1; height: 30px; border-radius: 5px; border: 1px solid #cbd5e1; padding: 2px 6px; font-size: 0.82em;">' +
+    var safeSign = String(signName || '').replace(/[^a-zA-Z0-9_\[\]]/g, '');
+    var safeText = String(textName || '').replace(/[^a-zA-Z0-9_\[\]]/g, '');
+    row.innerHTML = '<select name="' + safeSign + '" style="width: 55px; height: 30px; border-radius: 5px; border: 1px solid #cbd5e1; font-weight: 700; font-size: 0.8em; padding: 2px 4px;"><option value="-">-</option><option value="+">+</option></select>' +
+      '<input type="text" name="' + safeText + '" placeholder="Comment..." style="flex: 1; height: 30px; border-radius: 5px; border: 1px solid #cbd5e1; padding: 2px 6px; font-size: 0.82em;">' +
       '<button type="button" class="button btn-secondary" onclick="removeCommentRow(this)" style="height: 30px; padding: 0 8px; color: #ef4444;"><i class="fa fa-trash"></i></button>';
     container.appendChild(row);
   }

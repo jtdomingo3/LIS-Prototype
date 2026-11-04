@@ -1,90 +1,91 @@
 {
-    "name":  "lis-app-standalone",
-    "version":  "3.0.0",
-    "description":  "Standalone desktop client for Gezyne LIS with offline support",
-    "main":  "main.js",
-    "scripts":  {
-                    "start":  "electron .",
-                    "dev":  "electron . --dev",
-                    "prepare-dist-data": "node ./scripts/make-dist-data.js",
-                    "build":  "npm run prepare-dist-data && electron-builder",
-                    "dist:win":  "npm run prepare-dist-data && electron-builder --win nsis",
-                    "dist:dir":  "npm run prepare-dist-data && electron-builder --dir",
-                    "security-audit":  "node ../tools/security-audit/run-security-audit.js",
-                    "test:regression": "node ../test/system-regression.test.js",
-                    "test:all": "node ../test/run-all-system-tests.js",
-                    "test": "node ../test/run-all-system-tests.js",
-                    "test:equipment":  "node ../test/test_standalone_server_equipment.js",
-                    "test:inventory":  "node ../test/run-all-inventory-tests.js",
-                    "rebuild": "electron-builder install-app-deps"
-                },
-    "dependencies":  {
-                         "bcryptjs":  "^3.0.3",
-                         "better-sqlite3": "^11.8.1",
-                         "bwip-js":  "^4.8.0",
-                         "connect-flash":  "^0.1.1",
-                         "ejs":  "^4.0.1",
-                         "exceljs":  "^4.4.0",
-                         "express":  "^4.18.2",
-                         "express-ejs-layouts":  "^2.5.1",
-                         "express-flash":  "^0.0.2",
-                         "express-session":  "^1.19.0",
-                         "google-tts-api":  "^2.0.2",
-                         "iconv-lite":  "^0.6.3",
-                         "jimp":  "^1.6.0",
-                         "method-override":  "^3.0.0",
-                         "multer":  "^2.0.2",
-                         "pdfjs-dist":  "^3.11.174",
-                         "sql.js":  "^1.14.2",
-                         "uuid":  "^9.0.1"
-                     },
+    "name": "lis-app-standalone",
+    "version": "3.0.0",
+    "description": "Standalone desktop client for Gezyne LIS with offline support",
+    "main": "main.js",
+    "scripts": {
+        "start": "electron .",
+        "dev": "electron . --dev",
+        "prepare-dist-data": "node ./scripts/make-dist-data.js",
+        "build": "npm run prepare-dist-data && electron-builder",
+        "dist:win": "npm run prepare-dist-data && electron-builder --win nsis",
+        "dist:dir": "npm run prepare-dist-data && electron-builder --dir",
+        "security-audit": "node ../tools/security-audit/run-security-audit.js",
+        "test:regression": "node ../test/system-regression.test.js",
+        "test:all": "node ../test/run-all-system-tests.js",
+        "test": "node ../test/run-all-system-tests.js",
+        "test:equipment": "node ../test/test_standalone_server_equipment.js",
+        "test:inventory": "node ../test/run-all-inventory-tests.js",
+        "rebuild": "electron-builder install-app-deps"
+    },
+    "dependencies": {
+        "bcryptjs": "^3.0.3",
+        "better-sqlite3": "^11.8.1",
+        "bwip-js": "^4.8.0",
+        "connect-flash": "^0.1.1",
+        "ejs": "^4.0.1",
+        "exceljs": "^4.4.0",
+        "express": "^4.18.2",
+        "express-ejs-layouts": "^2.5.1",
+        "express-flash": "^0.0.2",
+        "express-session": "^1.19.0",
+        "google-tts-api": "^2.0.2",
+        "iconv-lite": "^0.6.3",
+        "jimp": "^1.6.0",
+        "method-override": "^3.0.0",
+        "multer": "^2.0.2",
+        "pdfjs-dist": "^3.11.174",
+        "sql.js": "^1.14.2",
+        "uuid": "^9.0.1"
+    },
     "overrides": {
         "axios": "^1.7.4",
         "tar": "^7.4.3",
         "minimist": "^1.2.8",
         "follow-redirects": "^1.15.6",
         "ws": "^8.17.1",
-        "micromatch": "^4.0.8"
+        "micromatch": "^4.0.8",
+        "phin": "^3.7.1"
     },
-    "devDependencies":  {
-                            "electron":  "^28.1.0",
-                            "electron-builder":  "^24.9.1",
-                            "png-to-ico":  "^3.0.1",
-                            "sharp":  "^0.32.6"
-                        },
-    "build":  {
-                  "appId":  "com.gezyne.lis-standalone",
-                  "productName":  "Gezyne LIS",
-                  "directories":  {
-                                      "buildResources":  "build",
-                                      "output":  "dist"
-                                  },
-                  "files":  [
-                                "**/*",
-                                "!dist/**",
-                                "!node_modules/.cache/**"
-                            ],
-                  "asarUnpack":  [
-                                     "scripts/**/*",
-                                     "**/node_modules/iconv-lite/**",
-                                     "**/node_modules/better-sqlite3/**"
-                                 ],
-                  "win":  {
-                              "target":  [
-                                             "nsis"
-                                         ],
-                              "icon":  "build/icon.ico",
-                              "publisherName":  "Gezyne-Jamir Software Tech"
-                          },
-                  "nsis":  {
-                               "oneClick":  false,
-                               "perMachine":  false,
-                               "allowElevation":  true,
-                               "createDesktopShortcut":  true,
-                               "createStartMenuShortcut":  true,
-                               "license":  "build/TERMS.txt"
-                           }
-              },
-    "author":  "Gezyne-Jamir Software Tech",
-    "license":  "MIT"
+    "devDependencies": {
+        "electron": "^28.1.0",
+        "electron-builder": "^24.9.1",
+        "png-to-ico": "^3.0.1",
+        "sharp": "^0.32.6"
+    },
+    "build": {
+        "appId": "com.gezyne.lis-standalone",
+        "productName": "Gezyne LIS",
+        "directories": {
+            "buildResources": "build",
+            "output": "dist"
+        },
+        "files": [
+            "**/*",
+            "!dist/**",
+            "!node_modules/.cache/**"
+        ],
+        "asarUnpack": [
+            "scripts/**/*",
+            "**/node_modules/iconv-lite/**",
+            "**/node_modules/better-sqlite3/**"
+        ],
+        "win": {
+            "target": [
+                "nsis"
+            ],
+            "icon": "build/icon.ico",
+            "publisherName": "Gezyne-Jamir Software Tech"
+        },
+        "nsis": {
+            "oneClick": false,
+            "perMachine": false,
+            "allowElevation": true,
+            "createDesktopShortcut": true,
+            "createStartMenuShortcut": true,
+            "license": "build/TERMS.txt"
+        }
+    },
+    "author": "Gezyne-Jamir Software Tech",
+    "license": "MIT"
 }

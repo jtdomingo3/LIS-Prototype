@@ -56,7 +56,7 @@
           <div style="display: flex; gap: 16px; align-items: center; margin-bottom: 12px;">
             <div style="width: 150px; height: 68px; border: 1px dashed #cbd5e1; border-radius: 8px; background: #ffffff; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 4px;">
               <% if (sigPath) { %>
-                <img src="<%= sigPath %>" alt="signature" style="max-height: 56px; max-width: 100%; object-fit: contain;" onerror="this.onerror=null; this.src=''; this.parentElement.innerHTML='<span style=\'font-size:0.75em;color:#94a3b8;\'>No signature</span>';" />
+                <img src="<%= sigPath %>" alt="signature" style="max-height: 56px; max-width: 100%; object-fit: contain;" onerror="this.onerror=null; this.src=''; this.style.display='none'; this.parentElement.textContent='No signature';" />
               <% } else { %>
                 <span style="font-size: 0.75em; color: #94a3b8; text-align: center;">No signature uploaded</span>
               <% } %>

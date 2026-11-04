@@ -86,7 +86,7 @@
       <% const sigPath = user.signature ? ('/assets/signature/' + user.signature) : null; %>
       <div style="width: 100%; height: 80px; border: 1px dashed #cbd5e1; border-radius: 8px; background: #ffffff; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 6px; margin-bottom: 10px;">
         <% if (sigPath) { %>
-          <img src="<%= sigPath %>" alt="signature" style="max-height: 68px; max-width: 100%; object-fit: contain;" onerror="this.onerror=null; this.parentElement.innerHTML='<span style=\'font-size:0.8em;color:#94a3b8;\'>Signature file not found on disk</span>';" />
+          <img src="<%= sigPath %>" alt="signature" style="max-height: 68px; max-width: 100%; object-fit: contain;" onerror="this.onerror=null; this.style.display='none'; this.parentElement.textContent='Signature file not found on disk';" />
         <% } else { %>
           <span style="font-size: 0.8em; color: #94a3b8;">No digital signature uploaded</span>
         <% } %>
