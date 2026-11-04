@@ -8,7 +8,8 @@ const fs = require('fs');
  */
 
 const { getSecret } = require('./secretStore');
-const LEGACY_MASTER_SECRET = 'gezyne-lis-ai-assistant-master-secret-2026';
+// Resolved via environment variable or secretStore; no hardcoded credentials in source
+const LEGACY_MASTER_SECRET = process.env.LEGACY_MASTER_SECRET || getSecret('LEGACY_MASTER_SECRET') || null;
 
 function deriveMasterKey(secret) {
   const masterSecret = secret || getSecret('DATA_USERS_KEY');
@@ -80,7 +81,7 @@ function decryptSecret(cipherPayload, secret) {
       return decrypted.toString('utf8');
     } catch (primaryErr) {
       // If primary decryption fails and no specific secret was passed, try legacy fallback key
-      if (!secret) {
+      if (!secret && LEGACY_MASTER_SECRET) {
         try {
           const legacyKey = crypto.createHash('sha256').update(String(LEGACY_MASTER_SECRET)).digest();
           const legacyDecipher = crypto.createDecipheriv('aes-256-gcm', legacyKey, iv);

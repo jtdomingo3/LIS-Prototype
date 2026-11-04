@@ -111,3 +111,7 @@ _agents/
 **/.gemini/
 .system_generated/
 **/.system_generated/
+
+# Temporary scratch and debugging scripts
+scratch/
+**/scratch/
